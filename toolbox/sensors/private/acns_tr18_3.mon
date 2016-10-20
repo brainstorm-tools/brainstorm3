@@ -1,0 +1,29 @@
+# American Clinical Neurophysiology Society, 2006
+# Guideline 6: A Proposal for Standard Montages to Be Used in Clinical EEG
+# 
+# https://www.acns.org/practice/guidelines
+# https://www.acns.org/pdf/guidelines/Guideline-6.pdf
+#
+# Longitudinal Bipolar Montage, 18 electrodes, variant #1
+#
+# Equivalences: T8=T4, P8=T6, T7=T3, P7=T5
+
+Referential 3
+F7-T1  : F7,  -T1 
+F8-T2  : F8,  -T2 
+T7-T1  : T7,  -T1 
+T8-T2  : T8,  -T2 
+P7-T1  : P7,  -T1 
+P8-T2  : P8,  -T2 
+Fp1-T1 : Fp1, -T1
+Fp2-T2 : Fp2, -T2
+F3-T1  : F3,  -T1 
+F4-T2  : F4,  -T2 
+C3-T1  : C3,  -T1 
+C4-T2  : C4,  -T2 
+P3-T1  : P3,  -T1 
+P4-T2  : P4,  -T2 
+O1-T1  : O1,  -T1 
+O2-T2  : O2,  -T2 
+Fz-T1  : Fz,  -T1 
+Pz-T2  : Pz,  -T2 

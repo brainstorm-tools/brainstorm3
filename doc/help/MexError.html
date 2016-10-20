@@ -1,0 +1,36 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>ProtocolEditor</title></head>
+<body style="margin-left: 18px;">
+<h2>MEX compiler error</h2>
+<span style="font-weight: bold;">1. Origins of the problem</span><br><br><span style="font-weight: bold;"></span>In
+order to run properly, some functions of Brainstorm written in C++ have
+to be compiled with Matlab mex compiler before being executed. This
+compiler requires that you have a&nbsp;C++ compiler compatible with
+Matlab installed on your computer. Some Matlab distributions or your
+operating system may already provide a compiler, but if it is not the
+case you may need to install a compiler by yourself in order to use
+those functionnalities of Brainstorm. For instance, on Windows, the
+64-bit versions of Matlab never include any compiler, while the 32-bit
+usually do (lcc-win32).<br><br><span style="font-weight: bold;">2. Diagnostic</span><br><br>In
+the Matlab command window, type "mbuild -setup". After answering "y"
+when asked for the detection of the compilers, you should see a list of
+compilers available on your computer.&nbsp;If you do not see any other
+choice than "[0] None", you do not have a compatible compiler
+installed. <br>If there is an available compiler, select it, and try
+running again the operation that led to this error. If it does not
+solve the problem, please post a bug report on the Brainstorm forum.<br><br><span style="font-style: italic;">64-bit operating systems</span><br>Before
+trying to install a compiler, another option is available on 64-bit
+systems. On a 64-bit computer, the typical installation of Matlab
+includes both the 32-bit and 64-bit versions of the program. The
+default version launched when clicking on the icon or typing "matlab"
+in your terminal is the 64-bit one. You should try running the 32-bit
+version, and type again "mbuid -setup" to check if a compiler is
+available on it. In that case, it would solve your problem. If not, you
+have no other choice than installing a compiler manually.<br><br><span style="font-weight: bold;">3. Installing a compiler</span><br><br>You
+need to pick a compiler that is compatible with your version of Matlab.
+For that, please refer to the Mathworks website. Select your operating
+system, and follow the instructions carefully.<br><ul><li><span style="font-weight: bold;">2013a</span>: <br>http://www.mathworks.com/support/compilers/R2013a</li><li><span style="font-weight: bold;">2012b</span>: <br>http://www.mathworks.com/support/compilers/R2012b</li><li><span style="font-weight: bold;">2012a</span>: <br>http://www.mathworks.com/support/compilers/R2012a</li><li><span style="font-weight: bold;">2011b</span>: <br>http://www.mathworks.com/support/compilers/R2011b</li><li><span style="font-weight: bold;">2011a</span>: <br>http://www.mathworks.com/support/compilers/R2011a</li><li><span style="font-weight: bold;">2010b</span>: <br>http://www.mathworks.com/support/compilers/R2010b</li><li><span style="font-weight: bold;">2010a</span>: <br>http://www.mathworks.com/support/compilers/R2010a</li><li><span style="font-weight: bold;">2009b</span>: <br>http://www.mathworks.com/support/compilers/R2009b</li><li><span style="font-weight: bold;">2009a</span>: <br>http://www.mathworks.com/support/compilers/release2009a/</li><li><span style="font-weight: bold;">2008b</span>: <br>http://www.mathworks.com/support/compilers/release2008b/</li><li><span style="font-weight: bold;">2008a</span>: <br>http://www.mathworks.com/support/compilers/release2008a/</li><li><span style="font-weight: bold;">2007b</span>: <br>http://www.mathworks.com/support/compilers/release2007b/</li><li><span style="font-weight: bold;">Older releases</span>: <br>http://www.mathworks.com/support/compilers/1601_74.html</li></ul>Close
+Matlab. Install the compiler. Start Matlab again, type "mbuild -setup"
+and select the compiler that you just installed in the list. If nothing
+appears, please contact the Mathworks, this is not a Brainstorm issue.<br><br><span style="font-weight: bold;">&nbsp;</span></body></html>

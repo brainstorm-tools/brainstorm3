@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>ProtocolEditor</title></head>
+<body style="margin-left: 15px;">
+<h3>Default channel file</h3>
+The <i>channel file</i> describes the sensors used for the acquisition:&nbsp;<span style="font-weight: bold;">position</span>,
+orientation, name, types, etc. It also contains the <span style="font-weight: bold;">projectors</span> that were computed during the pre-processing (EEG re-referencing, <span style="font-weight: bold;">SSP</span> or <span style="font-weight: bold;">ICA</span> artifact cleaning). <br>A&nbsp;channel file can be shared between different
+subjects or folders, but it means that all the recordings related with it must share the same SSP/ICA cleaning procedure.<br>
+To estimate the source activity, you have
+to compute a head model and an inverse solution for each channel file,
+so if you share this channel file between several subjects or
+conditons, you can decrease significantly
+the computation time and the amount of hard drive space required.<br><br>
+
+<b>-&nbsp;No, use one channel file per acquisition run (MEG/EEG)</b><br>
+Do not share the channel files between folders. Select this option if
+you
+may have different sensor positions for one subject, or multiple
+acquisition runs with different SSP/ICA projectors. In MEG, this is a
+common setting: one recording session is
+split in multiple acquisition runs, and the position of the subject's
+head in the MEG might be different between two runs.<br><br>
+
+<b>- Yes, use one channel file per subject (EEG)</b><br>
+Share the channel file between all the sub-folders of a subject. You
+need to define the positions of the sensors for each subject. This is a
+common setting for EEG: the electrodes are in the same position for all
+the files recorded on one subject. But never use this option if you
+have multiple acquisition runs and plan to correct for artifacts with
+SSP or ICA separately for each run.<br><br>
+
+<b>- Yes, use only one global channel file</b><br>
+Share the same channel file for all the subjects and all the conditions.<br>
+This is never a recommended setting. It could be used in the case of an
+EEG study where you use only standard EEG positions on a standard
+anatomy, but only if you are not doing any advanced source
+reconstruction. If you share the position of the electrodes between all
+the subjects, it will also share the noise estimates and the source
+models, which are highly dependent on the quality of the recordings for
+each subject.
+<br><br>
+</body></html>

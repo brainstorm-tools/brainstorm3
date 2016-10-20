@@ -1,0 +1,30 @@
+# American Clinical Neurophysiology Society, 2006
+# Guideline 6: A Proposal for Standard Montages to Be Used in Clinical EEG
+# 
+# https://www.acns.org/practice/guidelines
+# https://www.acns.org/pdf/guidelines/Guideline-6.pdf
+#
+# Transverse Bipolar Montages, 18 electrodes, variant #1
+#
+# Equivalences: T8=T4, P8=T6, T7=T3, P7=T5
+
+Transversal 1
+F7-Fp1  : F7,  -Fp1
+Fp1-Fp2 : Fp1, -Fp2
+Fp2-F8  : Fp2, -F8 
+F7-F3   : F7,  -F3  
+F3-Fz   : F3,  -Fz  
+Fz-F4   : Fz,  -F4  
+F4-F8   : F4,  -F8  
+T7-C3   : T7,  -C3  
+C3-Cz   : C3,  -Cz  
+Cz-C4   : Cz,  -C4  
+C4-T8   : C4,  -T8  
+P7-P3   : P7,  -P3  
+P3-Pz   : P3,  -Pz  
+Pz-P4   : Pz,  -P4  
+P4-P8   : P4,  -P8  
+P7-O1   : P7,  -O1  
+O1-O2   : O1,  -O2  
+O2-P8   : O2,  -P8  
+

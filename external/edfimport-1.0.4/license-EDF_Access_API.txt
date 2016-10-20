@@ -1,0 +1,6 @@
+This folder contains the EDF Access API C DLL for Windows:
+- edfapi.dll
+- edfapi64.dll
+- zlibwapi.dll
+
+The EDFAccess API is owned and maintained by SR Research.

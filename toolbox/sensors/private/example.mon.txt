@@ -1,0 +1,23 @@
+# Brainstorm EEG montage example file
+# First line:      
+#     Describes the montage name 
+# Following lines: 
+#     <display_name>: <w1><channel1>, <w2><channel2>, <w3><channel3>, ..., <wn><channeln>
+#     Possible values for <wi>: empty string, a plus/minus sign, a scalar value followed by a multiplication sign
+#     Possible values for n: from 1 to the total number of channels in the montage
+# Examples:
+#     Cz-C4: Cz,-C4         => Displays the subtraction (Cz-C4) as a channel named "Cz-C4"
+#     MC: 0.33*M1, 0.33*M2  => Displays the average of sensors (M1,M2) as a channel named "MC"
+#     EOG: EOG              => Displays the channel EOG without modifications
+#
+# Author: Francois Tadel, 2014
+
+Temporal ring
+Cz-C4 : Cz, -C4
+C4-T8 : C4, -T8
+T8-T2 : C8, -T2
+T2-T1 : T2, -T1
+T1-T7 : T1, -T7
+T7-C3 : T7, -C3
+C3-Cz : C3, -Cz
+
