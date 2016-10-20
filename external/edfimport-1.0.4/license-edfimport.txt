@@ -1,0 +1,5 @@
+edfimport-1.0.4
+
+Copyright Alexander Pastukhov
+
+http://kobi.nat.uni-magdeburg.de/edfImport

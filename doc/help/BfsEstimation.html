@@ -1,0 +1,90 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1"><title>BFS Estimation</title></head>
+<body>
+<table style="text-align: left; width: 100%;" border="0" cellpadding="2" cellspacing="0">
+<tbody>
+<tr>
+<td>
+<h2 style="text-decoration: underline;">Best fitting sphere estimation</h2>
+The
+forward method you selected uses a spherical approximation of the head.
+The window&nbsp;<span style="font-style: italic;">Edit
+best fitting sphere </span>will help you&nbsp;define this
+sphere.</td>
+<td style="text-align: center;"><img style="width: 180px; height: 112px;" alt="Edit best fitting sphere window" src="img/BfsEstimation_1.gif"></td>
+</tr>
+</tbody>
+</table>
+The objective to get a sphere that is as close as possible to the shape
+of the head, particularly in the regions you are studying.&nbsp;<br><br>
+<table style="text-align: left; background-color: rgb(244, 244, 244); width: 100%;" border="0" cellpadding="7" cellspacing="0">
+<tbody>
+<tr>
+<td style="text-align: center; background-color: rgb(228, 228, 230);"><img src="img/BfsEstimation_uselast.gif"><br>
+</td>
+<td style="background-color: rgb(228, 228, 230);">Reload
+the previous sphere.</td>
+</tr>
+<tr>
+<td style="vertical-align: top;">
+<table border="0" cellpadding="2" cellspacing="0">
+<tbody>
+<tr>
+<td><img src="img/BfsEstimation_scalp.gif">
+</td>
+<td><img src="img/BfsEstimation_cortex.gif"></td>
+</tr>
+<tr>
+<td><img src="img/BfsEstimation_innerskull.gif"></td>
+<td><img src="img/BfsEstimation_channel.gif"></td>
+</tr>
+</tbody>
+</table>
+</td>
+<td>Automatic estimations of the sphere; each one
+is based on a
+different set of point (eg. scalp vertices, cortex vertices,&nbsp;EEG electrodes...). <br>Select the best estimation, then adjust it manually if necessary.</td>
+</tr>
+<tr>
+<td style="vertical-align: top; background-color: rgb(228, 228, 230);">
+<table border="0" cellpadding="2" cellspacing="0">
+<tbody>
+<tr>
+<td><img src="img/BfsEstimation_tx.gif">
+</td>
+<td><img src="img/BfsEstimation_ty.gif"></td>
+</tr>
+<tr>
+<td><img src="img/BfsEstimation_tz.gif"></td>
+<td><img src="img/BfsEstimation_resize.gif"></td>
+</tr>
+</tbody>
+</table>
+</td>
+<td style="background-color: rgb(228, 228, 230);">Graphically
+edit the sphere: translation along each
+axis, and resize.<br>
+1) Select&nbsp;one of these buttons<br>
+2) Right-click anywhere in the figure and <span style="font-weight: bold;">hold</span> the button<br>
+3) Move the mouse up or down</td>
+</tr>
+<tr>
+<td style="vertical-align: top; text-align: center;"><img style="width: 16px; height: 16px;" alt="" src="img/BfsEstimation_edit.gif"><br>
+</td>
+<td>Edit the sphere properties manually: center and radius.<br>
+For multiple spheres models (EEG only), also edit:<br>
+-&nbsp;the conductivity of each shell,<br>
+- the radii of the other spheres (relative to the scalp sphere)</td>
+</tr>
+<tr>
+<td style="vertical-align: top; background-color: rgb(228, 228, 230); text-align: center;"><img style="width: 12px; height: 7px;" alt="" src="img/BfsEstimation_ok.gif"><br>
+</td>
+<td style="background-color: rgb(228, 228, 230);">Click
+on this button when you are done, to start the
+forward model computation.</td>
+</tr>
+</tbody>
+</table>
+<br>
+<small>More information about head models: <a href="http://neuroimage.usc.edu/brainstorm/Tutorials/TutHeadModel">Brainstorm website</a>.</small></body></html>

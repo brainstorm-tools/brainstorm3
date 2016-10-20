@@ -1,0 +1,2007 @@
+function varargout = panel_montage(varargin)
+% PANEL_MONTAGE: Edit sensor montages.
+%
+% USAGE:            panel_montage('ShowEditor');
+%        [S,D,WL] = panel_montage('ParseNirsChannelNames', ChannelNames);
+
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% http://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c)2000-2016 University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Authors: Francois Tadel, 2009-2016
+
+eval(macro_method);
+end
+
+
+%% ===== CREATE PANEL =====
+function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
+    % Java initializations
+    import java.awt.*;
+    import javax.swing.*;
+    import org.brainstorm.icon.*;
+    panelName = 'EditMontages';
+    % Constants
+    global GlobalData;
+    OldMontages = GlobalData.ChannelMontages;
+    
+    % Create main panel
+    jPanelNew = gui_component('Panel');
+    jPanelNew.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    
+    % PANEL: left panel (list of available montages)
+    jPanelMontages = gui_component('Panel');
+    jPanelMontages.setBorder(BorderFactory.createCompoundBorder(...
+                             BorderFactory.createTitledBorder('Montages'), ...
+                             BorderFactory.createEmptyBorder(3, 10, 10, 10)));
+        % ===== TOOLBAR =====
+        jToolbar = gui_component('Toolbar', jPanelMontages, BorderLayout.NORTH);
+        jToolbar.setPreferredSize(Dimension(100,25));
+            TB_SIZE = Dimension(25,25);
+            jButtonNew      = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_MONTAGE_MENU, Dimension(35,25)}, 'New montage', []);
+            jButtonLoadFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_FOLDER_OPEN, TB_SIZE}, 'Load montage', []);
+            jButtonSaveFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SAVE, TB_SIZE}, 'Save montage', []);
+            jToolbar.addSeparator();
+            jButtonAll = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SCOUT_ALL, TB_SIZE}, 'Display all the montages', []);
+        % LIST: Create list
+        jListMontages = JList({' '});
+            jListMontages.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+            java_setcb(jListMontages, 'ValueChangedCallback', [], ...
+                                      'KeyTypedCallback',     [], ...
+                                      'MouseClickedCallback', []);
+            % Create scroll panel
+            jScrollPanelSel = JScrollPane(jListMontages);
+            jScrollPanelSel.setPreferredSize(Dimension(150,200));
+        jPanelMontages.add(jScrollPanelSel, BorderLayout.CENTER);
+    jPanelNew.add(jPanelMontages, BorderLayout.WEST);
+    
+    % PANEL: right panel (sensors list OR text editor)
+    jPanelRight = gui_component('Panel');
+        % === SENSOR SELECTION ===
+        jPanelSelection = gui_component('Panel');
+        jPanelSelection.setBorder(BorderFactory.createCompoundBorder(...
+                                  BorderFactory.createTitledBorder('Channel selection'), ...
+                                  BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+        % LABEL: Title
+        jPanelSelection.add(JLabel('<HTML><DIV style="height:15px;">Available sensors:</DIV>'), BorderLayout.NORTH);
+        % LIST: Create list (display labels of all clusters)
+        jListSensors = JList({'Sensor #1', 'Sensor #2', 'Sensor #3','Sensor #4', 'Sensor #5', 'Sensor #6','Sensor #7', 'Sensor #8', 'Sensor #9','Sensor #10', 'Sensor #11', 'Sensor #12'});
+            jListSensors.setLayoutOrientation(jListSensors.VERTICAL_WRAP);
+            jListSensors.setVisibleRowCount(-1);
+            jListSensors.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+            % Create scroll panel
+            jScrollPanel = JScrollPane(jListSensors);
+        jPanelSelection.add(jScrollPanel, BorderLayout.CENTER);
+        
+        % === TEXT VIEWER ===
+        jPanelViewer = gui_component('Panel');
+        jPanelViewer.setBorder(BorderFactory.createCompoundBorder(...
+                             BorderFactory.createTitledBorder('Channel selection [Read-only]'), ...
+                             BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+        jTextViewer = JTextArea(6, 12);
+        jTextViewer.setFont(Font('Monospaced', Font.PLAIN, 11));
+        jTextViewer.setEditable(0);
+        % Create scroll panel
+        jScrollPanel = JScrollPane(jTextViewer);
+        jPanelViewer.add(jScrollPanel, BorderLayout.CENTER);
+                
+        % === TEXT EDITOR ===
+        jPanelText = gui_component('Panel');
+        jPanelText.setBorder(BorderFactory.createCompoundBorder(...
+                             BorderFactory.createTitledBorder('Custom montage'), ...
+                             BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+        % LABEL: Title
+        strHelp = ['Examples:<BR>' ...
+            '  Cz-C4 : Cz,-C4          % Difference Cz-C4<BR>' ...
+            '  MC    : 0.5*M1, 0.5*M2  % Average of M1 and M2<BR>' ...
+            '  EOG|00FF00 : EOG        % Display EOG in green<BR>'];
+        jPanelText.add(JLabel(['<HTML><PRE>' strHelp '</PRE>']), BorderLayout.NORTH);
+        % TEXT: Create text editor
+        jTextMontage = JTextArea(6, 12);
+        jTextMontage.setFont(Font('Monospaced', Font.PLAIN, 11));
+        % Create scroll panel
+        jScrollPanel = JScrollPane(jTextMontage);
+        jPanelText.add(jScrollPanel, BorderLayout.CENTER);
+
+        % === MATRIX EDITOR ===
+        jPanelMatrix = gui_component('Panel');
+        jPanelMatrix.setBorder(BorderFactory.createCompoundBorder(...
+                             BorderFactory.createTitledBorder('Matrix viewer'), ...
+                             BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+        % Create JTable
+        jTableMatrix = JTable();
+        %jTableMatrix.setRowHeight(22);
+        jTableMatrix.setEnabled(0);
+        jTableMatrix.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
+        jTableMatrix.getTableHeader.setReorderingAllowed(0);
+        jTableMatrix.setPreferredScrollableViewportSize(Dimension(5,5));
+        % Create scroll panel
+        jScrollPanel = JScrollPane(jTableMatrix);
+        jScrollPanel.setBorder([]);
+        jPanelMatrix.add(jScrollPanel, BorderLayout.CENTER);          
+        
+    jPanelRight.setPreferredSize(Dimension(400,550));
+    % PANEL: Selections buttons
+    jPanelBottom = gui_component('Panel');
+    jPanelBottomLeft = gui_river([10 0], [10 10 0 10]);
+    jPanelBottomRight = gui_river([10 0], [10 10 0 10]);
+        jButtonValidate = gui_component('button', jPanelBottomLeft,  [], 'Validate', [], [], [], []);
+        jButtonValidate.setVisible(0);
+        gui_component('button', jPanelBottomRight, [], 'Cancel', [], [], @(h,ev)ButtonCancel_Callback(), []);
+        jButtonSave = gui_component('button', jPanelBottomRight, [], 'Save', [], [], [], []);
+    jPanelBottom.add(jPanelBottomLeft, BorderLayout.WEST);
+    jPanelBottom.add(jPanelBottomRight, BorderLayout.EAST);
+    jPanelRight.add(jPanelBottom, BorderLayout.SOUTH);
+    jPanelNew.add(jPanelRight, BorderLayout.CENTER);
+    % Create object to track modifications to the selected montage
+    MontageModified = java.util.Vector();
+    MontageModified.add('');
+    % Create the BstPanel object that is returned by the function
+    % => constructor BstPanel(jHandle, panelName, sControls)
+    bstPanelNew = BstPanel(panelName, ...
+                           jPanelNew, ...
+                           struct('jButtonAll',       jButtonAll, ...
+                                  'jPanelRight',      jPanelRight, ...
+                                  'jPanelSelection',  jPanelSelection, ...
+                                  'jPanelText',       jPanelText, ...
+                                  'jPanelMatrix',     jPanelMatrix, ...
+                                  'jPanelViewer',     jPanelViewer, ...
+                                  'jListMontages',    jListMontages, ...
+                                  'jTextMontage',     jTextMontage, ...
+                                  'jTableMatrix',     jTableMatrix, ...
+                                  'jTextViewer',      jTextViewer, ...
+                                  'jButtonNew',       jButtonNew, ...
+                                  'jButtonLoadFile',  jButtonLoadFile, ...
+                                  'jButtonSaveFile',  jButtonSaveFile, ...
+                                  'jListSensors',     jListSensors, ...
+                                  'jButtonValidate',  jButtonValidate, ...
+                                  'jButtonSave',      jButtonSave, ...
+                                  'MontageModified',  MontageModified));
+              
+                               
+
+%% =================================================================================
+%  === CONTROLS CALLBACKS  =========================================================
+%  =================================================================================
+%% ===== CANCEL BUTTONS =====
+    function ButtonCancel_Callback(varargin)
+        % Revert changes
+        GlobalData.ChannelMontages = OldMontages;
+        % Close panel without saving
+        gui_hide(panelName);
+    end
+end
+
+%% ===== SAVE BUTTON =====
+function ButtonSave_Callback(hFig)
+    % Save last modifications
+    SaveModifications(hFig);
+    % If a figure is selected
+    if ~isempty(hFig)
+        % Get panel controls handles
+        ctrl = bst_get('PanelControls', 'EditMontages');
+        if isempty(ctrl)
+            return;
+        end
+        % Get last montage selected
+        jMontage = ctrl.jListMontages.getSelectedValue();
+        % Update changes (re-select the current montage)
+        if ~isempty(jMontage)
+            % Get selected montage in the interface
+            MontageName = char(jMontage.getName());
+            % Get figure montages
+            sFigMontages = GetMontagesForFigure(hFig);
+            % If the selected montage is a valid montage for the figure: set it as the current montage
+            if any(strcmpi(MontageName, {sFigMontages.Name}))
+                SetCurrentMontage(hFig, MontageName);
+            end
+        end
+    end
+    % Close panel
+    gui_hide('EditMontages');
+end
+
+
+%% ===== JLIST: MONTAGE SELECTION CHANGE =====
+function MontageChanged_Callback(ev, hFig)
+    if ~ev.getValueIsAdjusting() && (length(ev.getSource().getSelectedValues()) <= 1)
+        % Save previous modifications
+        SaveModifications(hFig);
+        % Update editor for new selected montage
+        UpdateEditor(hFig);
+    end
+end
+
+%% ===== JLIST: MOUSE CLICK =====
+function MontageClick_Callback(ev, hFig)
+    % If DOUBLE CLICK
+    if (ev.getClickCount() == 2)
+        % Rename selected montage
+        ButtonRename_Callback(hFig);
+    end
+end
+
+%% ===== JLIST: KEY TYPE =====
+function MontageKeyTyped_Callback(ev, hFig)
+    switch(uint8(ev.getKeyChar()))
+        % DELETE
+        case {ev.VK_DELETE, ev.VK_BACK_SPACE}
+            ButtonDelete_Callback(hFig);
+    end
+end
+
+%% ===== CHANNELS SELECTION CHANGED =====
+function ChannelsChanged_Callback(hObj, ev)
+    if ~ev.getValueIsAdjusting()
+        % Get panel controls handles
+        ctrl = bst_get('PanelControls', 'EditMontages');
+        if isempty(ctrl)
+            return;
+        end
+        % Cancel if there are multiple montages selected
+        if (length(ctrl.jListMontages.getSelectedValues()) > 1)
+            return;
+        end
+        % Get selected montage
+        jMontage = ctrl.jListMontages.getSelectedValue();
+        % Set as modified
+        if ~isempty(jMontage)
+            % Update changes (re-select the current montage)
+            ctrl.MontageModified.set(0, jMontage.getName());
+        else
+            ctrl.MontageModified.set(0, '');
+        end
+    end
+end
+    
+%% ===== EDITOR KEY TYPED =====
+function EditorKeyTyped_Callback(hObj, ev)
+    % Get panel controls handles
+    ctrl = bst_get('PanelControls', 'EditMontages');
+    if isempty(ctrl)
+        return;
+    end
+    % Cancel if there are multiple montages selected
+    if (length(ctrl.jListMontages.getSelectedValues()) > 1)
+        return;
+    end
+    % Get selected montage
+    jMontage = ctrl.jListMontages.getSelectedValue();
+    % Set as modified
+    if ~isempty(jMontage)
+        % Update changes (re-select the current montage)
+        ctrl.MontageModified.set(0, jMontage.getName());
+    else
+        ctrl.MontageModified.set(0, '');
+    end
+end
+
+
+
+%% =================================================================================
+%  === PANEL FUNCTIONS =============================================================
+%  =================================================================================
+    
+%% ===== BUTTON: DELETE =====
+function ButtonDelete_Callback(hFig)
+	% Get selected montage
+    sMontages = GetSelectedMontages(hFig);
+    if isempty(sMontages)
+        return
+    end
+    % Loop on all the selected montages
+    for i = 1:length(sMontages)
+        % Remove montage
+        DeleteMontage(sMontages(i).Name);
+    end
+    % Update montages list
+    UpdateMontagesList(hFig);
+    % Update montage editor
+    UpdateEditor(hFig);
+end
+    
+%% ===== BUTTON: RENAME =====
+function ButtonRename_Callback(hFig)
+	% Get selected montage
+    sMontage = GetSelectedMontage(hFig);
+    if isempty(sMontage)
+        return
+    end
+	% Rename montage
+    newName = RenameMontage(sMontage.Name);
+    % Update panel
+    if ~isempty(newName)
+        % Update montage list
+        UpdateMontagesList(hFig, newName);
+        % Update montage editor
+        UpdateEditor(hFig);
+    end
+end
+    
+%% ===== BUTTON: DUPLICATE =====
+function ButtonDuplicate_Callback(hFig)
+	% Get selected montage
+    sMontage = GetSelectedMontage(hFig);
+    if isempty(sMontage)
+        return
+    end
+	% Add again the same montage
+    MontageName = SetMontage(sMontage.Name, sMontage, 0);
+    % If a figure is passed in argument
+    if ~isempty(MontageName)
+        % Update montage list
+        UpdateMontagesList(hFig, MontageName);
+        % Update montage editor
+        UpdateEditor(hFig);
+    end
+end
+
+%% ===== BUTTON: LOAD FILE =====
+function ButtonLoadFile_Callback(hFig)
+	% Load file
+    sNewMontage = LoadMontageFiles();
+    % Update panel
+    if ~isempty(sNewMontage)
+        % If the montage is not part of this figure: switch to ALL
+        if ~isempty(hFig)
+            % Get figure montages
+            sFigMontages = GetMontagesForFigure(hFig);
+            % If last montage loaded is not part of the figure
+            if ~any(strcmpi(sNewMontage(end).Name, {sFigMontages.Name}))
+                % Get panel controls handles
+                ctrl = bst_get('PanelControls', 'EditMontages');
+                % Select ALL button
+                if ~isempty(ctrl)
+                    ctrl.jButtonAll.setSelected(1);
+                end
+            end
+        end
+        % Update montage list
+        UpdateMontagesList(hFig, sNewMontage(end).Name);
+        % Update montage editor
+        UpdateEditor(hFig);
+    end
+end
+
+%% ===== BUTTON: SAVE FILE =====
+function ButtonSaveFile_Callback()
+    % Get current montage
+    sMontage = GetSelectedMontage();
+    % Save file
+    SaveMontageFile(sMontage);
+end
+
+%% ===== BUTTON: ALL =====
+function ButtonAll_Callback(hFig)
+    % Update montage list
+    UpdateMontagesList(hFig);
+    % Update montage editor
+    UpdateEditor(hFig);
+end
+
+
+%% ===== LOAD FIGURE =====
+function LoadFigure(hFig)
+    import org.brainstorm.list.*;
+    global GlobalData;
+    % Get panel controls handles
+    ctrl = bst_get('PanelControls', 'EditMontages');
+    % Find figure info
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+    % Update montage list
+    UpdateMontagesList(hFig);
+    % Remove JList callbacks
+    java_setcb(ctrl.jListSensors, 'ValueChangedCallback', []);
+    java_setcb(ctrl.jTextMontage, 'KeyTypedCallback', []);
+    % Get channels displayed in this figure
+    iChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+    Channels = {GlobalData.DataSet(iDS).Channel(iChannels).Name};
+    % Create a list with all the available selections
+    listModel = javax.swing.DefaultListModel();
+    for i = 1:length(Channels)
+        listModel.addElement(BstListItem('', '', [Channels{i} '       '], i));
+    end
+    ctrl.jListSensors.setModel(listModel);
+    % Update channel selection fot the first time
+    UpdateEditor(hFig);
+    % Set callbacks
+    java_setcb(ctrl.jButtonAll,      'ActionPerformedCallback', @(h,ev)ButtonAll_Callback(hFig));
+    java_setcb(ctrl.jListSensors,    'ValueChangedCallback',    @ChannelsChanged_Callback);
+    java_setcb(ctrl.jTextMontage,    'KeyTypedCallback',        @EditorKeyTyped_Callback)
+    java_setcb(ctrl.jButtonNew,      'ActionPerformedCallback', @(h,ev)CreateMontageMenu(ev.getSource(), hFig));
+    java_setcb(ctrl.jButtonLoadFile, 'ActionPerformedCallback', @(h,ev)ButtonLoadFile_Callback(hFig));
+    java_setcb(ctrl.jButtonSaveFile, 'ActionPerformedCallback', @(h,ev)ButtonSaveFile_Callback());
+    java_setcb(ctrl.jButtonValidate, 'ActionPerformedCallback', @(h,ev)ValidateEditor(hFig));
+    java_setcb(ctrl.jButtonSave,     'ActionPerformedCallback', @(h,ev)ButtonSave_Callback(hFig));
+end
+
+
+%% ===== UPDATE MONTAGES LIST =====
+function [sFigMontages, iFigMontages] = UpdateMontagesList(hFig, SelMontageName)
+    import org.brainstorm.list.*;
+    % Parse inputs
+    if (nargin < 2) || isempty(SelMontageName)
+        SelMontageName = [];
+    end
+    % Get panel controls handles
+    ctrl = bst_get('PanelControls', 'EditMontages');
+    % Remove JList callbacks
+    java_setcb(ctrl.jListMontages, 'ValueChangedCallback', []);
+    % Get available montages
+    [sAllMontages, iAllMontages] = GetMontage([], hFig);
+    if ~isempty(hFig)
+        [sFigMontages, iFigMontages] = GetMontagesForFigure(hFig);
+    else
+        sFigMontages = sAllMontages;
+        iFigMontages = iAllMontages;
+    end
+    % Displayed montages depend on the "ALL" button
+    isAll = ctrl.jButtonAll.isSelected();
+    if isAll
+        iDispMontages = iAllMontages;
+    else
+        iDispMontages = iFigMontages;
+    end
+    % If the selected montage was not passed in argument: Get previously selected montage
+    if isempty(SelMontageName)
+        prevSel = ctrl.jListMontages.getSelectedValue();
+        if ~isempty(prevSel) && ~ischar(prevSel)          
+            SelMontageName = prevSel.getType();
+        end
+    end
+    % No previously selected montage: Get the selected montage from the current figure
+    if isempty(SelMontageName)
+        sMontage = GetCurrentMontage(hFig);
+        if ~isempty(sMontage)
+            SelMontageName = sMontage.Name;
+        end
+    end
+    % Create a list with all the available montages
+    listModel = javax.swing.DefaultListModel();
+    for i = 1:length(iDispMontages)
+        iMontage = iDispMontages(i);
+        if ~isAll || ismember(iMontage, iFigMontages)
+            strMontage = sAllMontages(iMontage).Name;
+        else
+            strMontage = ['[' sAllMontages(iMontage).Name ']'];
+        end
+        listModel.addElement(BstListItem(sAllMontages(iMontage).Name, '', strMontage, iMontage));
+    end
+    ctrl.jListMontages.setModel(listModel);
+    % Look for selected montage index in the list of displayed montages
+    if isempty(sFigMontages)
+        iCurSel = 0;
+    elseif ~isempty(SelMontageName)
+        if isAll
+            iCurSel = find(strcmpi({sAllMontages.Name}, SelMontageName));
+        else
+            iCurSel = find(strcmpi({sFigMontages.Name}, SelMontageName));
+        end
+        if isempty(iCurSel)
+            iCurSel = 1;
+        end
+    else
+        iCurSel = 1;
+    end
+    % Select one item
+    ctrl.jListMontages.setSelectedIndex(iCurSel - 1);
+    % Scroll to see the selected scout in the list
+    if ~isequal(iCurSel, 0)
+        selRect = ctrl.jListMontages.getCellBounds(iCurSel-1, iCurSel-1);
+        ctrl.jListMontages.scrollRectToVisible(selRect);
+        ctrl.jListMontages.repaint();
+    end
+    % Set callbacks
+    java_setcb(ctrl.jListMontages, 'ValueChangedCallback', @(h,ev)MontageChanged_Callback(ev,hFig), ...
+                                   'KeyTypedCallback',     @(h,ev)MontageKeyTyped_Callback(ev,hFig), ...
+                                   'MouseClickedCallback', @(h,ev)MontageClick_Callback(ev,hFig));
+end
+
+
+%% ===== GET SELECTED MONTAGE =====
+function [sMontage, iMontage] = GetSelectedMontage(hFig)
+    % Parse inputs
+    if (nargin < 1) || isempty(hFig)
+        hFig = [];
+    end
+    % Get panel controls handles
+    ctrl = bst_get('PanelControls', 'EditMontages');
+    % Get all montages
+    sMontages = GetMontage([], hFig);
+    % Get the index of the montage
+    jMontage = ctrl.jListMontages.getSelectedValue();
+    % Get the target montage
+    if ~isempty(jMontage)
+        iMontage = jMontage.getUserData();
+        sMontage = sMontages(iMontage);
+    else
+        sMontage = [];
+        iMontage = [];
+    end
+end
+
+
+%% ===== GET SELECTED MONTAGES (MULTIPLE SELECTION ALLOWED) =====
+function [sMontages, iMontages] = GetSelectedMontages(hFig)
+    % Parse inputs
+    if (nargin < 1) || isempty(hFig)
+        hFig = [];
+    end
+    % Get panel controls handles
+    ctrl = bst_get('PanelControls', 'EditMontages');
+    % Get all montages
+    sAllMontages = GetMontage([], hFig);
+    % Get the index of the montage
+    jMontages = ctrl.jListMontages.getSelectedValues();
+    % Get the target montage
+    if ~isempty(jMontages)
+        for i = 1:length(jMontages)
+            iMontages(i) = jMontages(i).getUserData();
+            sMontages(i) = sAllMontages(iMontages(i));
+        end
+    else
+        sMontages = [];
+        iMontages = [];
+    end
+end
+
+
+%% ===== UPDATE MONTAGE =====
+function UpdateEditor(hFig)
+    global GlobalData;
+    % Get panel controls handles
+    ctrl = bst_get('PanelControls', 'EditMontages');
+    % Get montages for this figure
+    [sMontage, iMontage] = GetSelectedMontage(hFig);
+    % If nothing selected: unselect all channels and return
+    if isempty(sMontage)
+        ctrl.jListSensors.setSelectedIndex(-1);
+        return;
+    end
+    % Progress bar
+    bst_progress('start', 'Montage editor', 'Loading selected montage...');
+    % Get the montages for the current figure
+    if ~isempty(hFig)
+        [sFigMontages, iFigMontages] = GetMontagesForFigure(hFig);
+        isFigMontage = ismember(iMontage, iFigMontages);
+    else
+        [sFigMontages, iFigMontages] = GetMontage([], hFig);
+        isFigMontage = 0;
+    end
+    % Remove all the previous panels
+    ctrl.jPanelRight.remove(ctrl.jPanelSelection);
+    ctrl.jPanelRight.remove(ctrl.jPanelText);
+    ctrl.jPanelRight.remove(ctrl.jPanelMatrix);
+    ctrl.jPanelRight.remove(ctrl.jPanelViewer);
+    
+    % === TEXT VIEWER: CHANNEL LISTS ===
+    if strcmpi(sMontage.Name, 'Bad channels') || (strcmpi(sMontage.Type, 'selection') && ~isFigMontage)
+        % Make selection panel visible
+        ctrl.jButtonValidate.setVisible(0);
+        ctrl.jPanelRight.add(ctrl.jPanelViewer, java.awt.BorderLayout.CENTER);
+        % Build a string to represent the channels list
+        strChan = '';
+        for iChan = 1:length(sMontage.ChanNames)
+            if (mod(iChan-1,5) == 0) && (iChan ~= 1)
+                strChan = [strChan, 10];
+            end
+            strChan = [strChan, ' ' sMontage.ChanNames{iChan}];
+            if (iChan ~= length(sMontage.ChanNames))
+                strChan = [strChan, ','];
+            end
+        end
+        ctrl.jTextViewer.setText(strChan);
+        
+    % === SELECTION EDITOR ===
+    elseif strcmpi(sMontage.Type, 'selection')
+        % Make selection panel visible
+        ctrl.jButtonValidate.setVisible(0);
+        ctrl.jPanelRight.add(ctrl.jPanelSelection, java.awt.BorderLayout.CENTER);
+        % Remove JList callbacks
+        java_setcb(ctrl.jListSensors, 'ValueChangedCallback', []);
+        % Find figure info
+        [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+        % Get channels displayed in this figure
+        iChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+        Channels = {GlobalData.DataSet(iDS).Channel(iChannels).Name};
+        % Remove all the spaces in channels names
+        Channels     = cellfun(@(c)c(c~=' '), Channels, 'UniformOutput', 0);
+        MontageNames = cellfun(@(c)c(c~=' '), sMontage.ChanNames, 'UniformOutput', 0);
+        % Build the list of elements to select in sensors list
+        iSelChan = [];
+        for i = 1:length(MontageNames)
+            iTmp = find(strcmpi(Channels, MontageNames{i}));
+            if ~isempty(iTmp)
+                iSelChan = [iSelChan, iTmp];
+            end
+        end
+        % Select channels
+        if isempty(iSelChan)
+            iSelChan = 0;
+        end
+        ctrl.jListSensors.setSelectedIndices(iSelChan - 1);
+        % Restore JList callbacks
+        java_setcb(ctrl.jListSensors, 'ValueChangedCallback', @ChannelsChanged_Callback);
+        
+    % === TEXT EDITOR ===
+    elseif strcmpi(sMontage.Type, 'text')
+        % Make editor panel visible
+        ctrl.jButtonValidate.setVisible(1);
+        ctrl.jPanelRight.add(ctrl.jPanelText, java.awt.BorderLayout.CENTER);
+        % Set the text corresponding to the montage
+        strEdit = out_montage_mon([], sMontage);
+        iFirstCr = find(strEdit == 10, 1);
+        ctrl.jTextMontage.setText(strEdit(iFirstCr+1:end));
+        
+    % === MATRIX VIEWER ===
+    elseif strcmpi(sMontage.Type, 'matrix') && ~isempty(sMontage.Matrix)
+        % Make editor panel visible
+        ctrl.jButtonValidate.setVisible(0);
+        ctrl.jPanelRight.add(ctrl.jPanelMatrix, java.awt.BorderLayout.CENTER);
+        % Create table model
+        model = javax.swing.table.DefaultTableModel(size(sMontage.Matrix,1)+1, size(sMontage.Matrix,2)+1);
+        for iDisp = 1:size(sMontage.Matrix,1)
+            row = cell(1, size(sMontage.Matrix,2)+1);
+            row{1} = sMontage.DispNames{iDisp};
+            for iChan = 1:size(sMontage.Matrix,2)
+                % row{iChan+1} = num2str(sMontage.Matrix(iDisp,iChan));
+                if (sMontage.Matrix(iDisp,iChan) == 0)
+                    row{iChan+1} = '0';
+                elseif (sMontage.Matrix(iDisp,iChan) == 1)
+                    row{iChan+1} = '1';
+                else
+                    row{iChan+1} = sprintf('%1.3f', sMontage.Matrix(iDisp,iChan));
+                end
+            end
+            model.insertRow(iDisp-1, row);
+        end
+        ctrl.jTableMatrix.setModel(model);
+        % Resize all the columns
+        for iCol = 0:size(sMontage.Matrix,2)
+            ctrl.jTableMatrix.getColumnModel().getColumn(iCol).setPreferredWidth(50);
+            if (iCol > 0)
+                ctrl.jTableMatrix.getColumnModel().getColumn(iCol).setHeaderValue(sMontage.ChanNames{iCol});
+            else
+                ctrl.jTableMatrix.getColumnModel().getColumn(iCol).setHeaderValue(' ');
+            end
+        end
+        
+    % === ERROR ===
+    else
+        % Make selection panel visible
+        ctrl.jButtonValidate.setVisible(0);
+        ctrl.jPanelRight.add(ctrl.jPanelViewer, java.awt.BorderLayout.CENTER);
+        % Display error message
+        ctrl.jTextViewer.setText('This montage cannot be loaded for this dataset.');
+    end
+    % Force update of the display
+    ctrl.jPanelRight.revalidate();
+    ctrl.jPanelRight.repaint();
+    % Close progress bar
+    bst_progress('stop');
+end
+
+%% ===== VALIDATE EDITOR CONTENTS =====
+function ValidateEditor(hFig)
+    % Get panel controls handles
+    ctrl = bst_get('PanelControls', 'EditMontages');
+    % Convert text in editor to montage structure
+    strText = char(ctrl.jTextMontage.getText());
+    strText = ['Validate', 10, strText];
+    [sMontage, errMsg] = in_montage_mon(strText);
+    % Set the text corresponding to the montage
+    strEdit = out_montage_mon([], sMontage);
+    iFirstCr = find(strEdit == 10, 1);
+    ctrl.jTextMontage.setText(strEdit(iFirstCr+1:end));
+    % Display error messages
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'Validate montage', 0);
+    end
+    % Change figure selection: save modifications
+    if ~isempty(hFig)
+        SaveModifications(hFig);
+    end
+end
+
+
+%% ===== SAVE MODIFICATIONS =====
+function SaveModifications(hFig)
+    % Parse inputs
+    if (nargin < 1) || isempty(hFig)
+        hFig = [];
+    end
+    % Get panel controls handles
+    ctrl = bst_get('PanelControls', 'EditMontages');
+    % Check if there were modifications
+    MontageName = ctrl.MontageModified.get(0);
+    if isempty(MontageName)
+        return;
+    end
+    % Reset the modification
+    ctrl.MontageModified.set(0, '');
+    % Get montage structure
+    sMontage = GetMontage(MontageName, hFig);
+    % Channel selection
+    if strcmpi(sMontage.Type, 'selection')
+        % Get selected channels
+        selChans = ctrl.jListSensors.getSelectedValues();
+        % Build list of channels for updated setup
+        ChanNames = cell(1,length(selChans));
+        for i = 1:length(selChans)
+            % Get directly the name of the channel (and remove the trailing spaces added for display)
+            chName = char(selChans(i).getName());
+            ChanNames{i} = chName(1:end-7);
+        end
+        % Update montage
+        sMontage.ChanNames = ChanNames;
+        sMontage.DispNames = ChanNames;
+        sMontage.Matrix = eye(length(ChanNames));
+    % Text editor
+    elseif strcmpi(sMontage.Type, 'text')
+        % Get text from the editor
+        strText = char(ctrl.jTextMontage.getText());
+        % Add montage name
+        strText = [sMontage.Name, 10, strText];
+        % Convert to montage structure
+        sMontage = in_montage_mon(strText);
+    end
+    % Save updated montage
+    SetMontage(MontageName, sMontage);
+end
+
+
+%% ===== EDIT SELECTIONS =====
+% USAGE:  EditMontages(hFig)
+%         EditMontages()
+function EditMontages(hFig)
+    % No specific figure
+    if (nargin < 1)
+        hFig = [];
+    end
+    % Display edition panel
+    gui_show('panel_montage', 'JavaWindow', 'Montage editor', [], 0, 1, 0);
+    % Load montages for figure
+    LoadFigure(hFig);
+end
+
+%% ===== NEW MONTAGE =====
+function newName = NewMontage(MontageType, ChanNames, hFig)
+    global GlobalData;
+    % Parse inputs
+    if (nargin < 3) || isempty(hFig)
+        hFig = [];
+    end
+    % Display warning: Use projector to reference the recordings
+    if strcmpi(MontageType, 'ref') || strcmpi(MontageType, 'linkref')
+        java_dialog('warning', ['Re-referencing the EEG with a montage will only affect the display ' 10 ...
+                                'of the signals but will not be considered when processing them.' 10 10 ...
+                                'To change the reference permanently, consider using a projector instead:' 10 ...
+                                ' - In the Record tab, menu "Artifacts > Re-reference EEG"' 10 ...
+                                ' - Process "Standardize > Re-reference EEG"'], 'Re-referencing montage');
+    end
+    % Ask user the name for the new montage
+    newName = java_dialog('input', 'New montage name:', 'New montage');
+    if isempty(newName)
+        return;
+    elseif ~isempty(GetMontage(newName, hFig))
+        bst_error('This montage name already exists.', 'New montage', 0);
+        newName = [];
+        return
+    end
+    % Make sure Channels is a cell list of strings
+    if isempty(ChanNames) || ~iscell(ChanNames)
+        ChanNames = {};
+    end
+    % Re-referecing montage
+    if strcmpi(MontageType, 'ref') || strcmpi(MontageType, 'linkref')
+        % Find figure info
+        [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+        % Get channels displayed in this figure
+        iChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+        ChanNames = {GlobalData.DataSet(iDS).Channel.Name};
+        % Remove all the spaces in channels names
+        ChanNames = cellfun(@(c)c(c~=' '), ChanNames, 'UniformOutput', 0);
+        % Ask the user what channel to use as a reference
+        refChan1 = java_dialog('combo', '<HTML>Select the reference channel:<BR><BR>', 'New re-referencing montage', [], ChanNames);
+        if isempty(refChan1)
+            return
+        end
+        % Ask the user a second/linked reference
+        if strcmpi(MontageType, 'linkref')
+            refChan2 = java_dialog('combo', '<HTML>Select the linked reference channel:<BR><BR>', 'New re-referencing montage', [], ChanNames);
+            if isempty(refChan2)
+                return
+            end
+        else
+            refChan2 = '';
+        end
+        % Get channel index
+        iRef = find(strcmpi(refChan1, ChanNames) | strcmpi(refChan2, ChanNames));
+        iChannelsDisp = setdiff(iChannels, iRef);
+        iChannelsRef  = unique([iChannels, iRef]);
+        % Create a bi-polar montage: 1 on the diagonal and -1 for the reference
+        MontageMatrix = eye(length(ChanNames), length(ChanNames));
+        MontageMatrix(:,iRef) = -1 ./ length(iRef);
+        % Remove all the unecessary rows/columns
+        iAll = 1:length(ChanNames);
+        MontageMatrix(setdiff(iAll,iChannelsDisp), :) = [];
+        MontageMatrix(:, setdiff(iAll,iChannelsRef)) = [];
+        % Channel names
+        DispNames = ChanNames(iChannelsDisp);
+        ChanNames = ChanNames(iChannelsRef);
+        % Real montage type: text
+        MontageType = 'text';
+    else
+        % Identity matrix
+        MontageMatrix = eye(length(ChanNames));
+        DispNames = ChanNames;
+    end
+    % Create new montage structure
+    sMontage = db_template('Montage');
+    sMontage.Name      = newName;
+    sMontage.Type      = MontageType;
+    sMontage.ChanNames = ChanNames;
+    sMontage.DispNames = DispNames;
+    sMontage.Matrix    = MontageMatrix;
+    % Save new montage
+    SetMontage(newName, sMontage);
+    % Update panel
+    if ~isempty(hFig)
+        % Get panel controls handles
+        ctrl = bst_get('PanelControls', 'EditMontages');
+        % If the panel is available: update it
+        if ~isempty(ctrl)
+            % Update montages list
+            UpdateMontagesList(hFig);
+            % Select last element in list
+            iNewInd = ctrl.jListMontages.getModel().getSize() - 1;
+            ctrl.jListMontages.setSelectedIndex(iNewInd);
+            % Update channels selection
+            UpdateEditor(hFig);
+        end
+        % Reset selection
+        bst_figures('SetSelectedRows', []);
+    end
+end
+
+
+%% =================================================================================
+%  === CORE FUNCTIONS ==============================================================
+%  =================================================================================
+
+%% ===== LOAD DEFAULT MONTAGES ======
+function LoadDefaultMontages() %#ok<DEFNU>
+    % Set average reference montage
+    sMontage = db_template('Montage');
+    sMontage.Name = 'Average reference';
+    sMontage.Type = 'matrix';
+    SetMontage(sMontage.Name, sMontage);
+    % Set bad channels montage
+    sMontage = db_template('Montage');
+    sMontage.Name = 'Bad channels';
+    sMontage.Type = 'selection';
+    SetMontage(sMontage.Name, sMontage);
+    % Get the path to the default .sel/.mon files
+    MontagePath = bst_fullfile(bst_get('BrainstormHomeDir'), 'toolbox', 'sensors', 'private');    
+    % Load MNE selection files
+    MontageFiles = dir(bst_fullfile(MontagePath, '*.sel'));
+    for i = 1:length(MontageFiles)
+        LoadMontageFiles(bst_fullfile(MontagePath, MontageFiles(i).name), 'MNE');
+    end
+    % Load Brainstorm EEG montage files
+    MontageFiles = dir(bst_fullfile(MontagePath, '*.mon'));
+    for i = 1:length(MontageFiles)
+        LoadMontageFiles(bst_fullfile(MontagePath, MontageFiles(i).name), 'MON');
+    end
+end
+   
+
+%% ===== GET MONTAGE ======
+function [sMontage, iMontage] = GetMontage(MontageName, hFig)
+    global GlobalData;
+    % Parse inputs
+    if (nargin < 2) || isempty(hFig)
+        hFig = [];
+    end
+    % If no montage defined
+    if isempty(GlobalData.ChannelMontages.Montages)
+        sMontage = [];
+        iMontage = [];
+    % Else: Look for required montage in loaded list
+    else
+        % Find montage in valid list of montages
+        if ~isempty(MontageName)
+            iMontage = find(strcmpi({GlobalData.ChannelMontages.Montages.Name}, MontageName));
+        else
+            iMontage = 1:length(GlobalData.ChannelMontages.Montages);
+        end
+        % If montage is found
+        if ~isempty(iMontage)
+            sMontage = GlobalData.ChannelMontages.Montages(iMontage);
+            % Find average reference montage
+            iAvgRef = find(strcmpi({sMontage.Name}, 'Average reference'));
+            if ~isempty(iAvgRef) && ~isempty(hFig)
+                [sTmp, iTmp] = GetMontageAvgRef(hFig, [], 1);
+                if ~isempty(sTmp)
+                    sMontage(iAvgRef) = sTmp;
+                    iMontage(iAvgRef) = iTmp;
+                end
+            end
+            % Find average reference montage
+            iBadChan = find(strcmpi({sMontage.Name}, 'Bad channels'));
+            if ~isempty(iBadChan) && ~isempty(hFig)
+                [sTmp, iTmp] = GetMontageBadChan(hFig);
+                if ~isempty(sTmp)
+                    sMontage(iBadChan) = sTmp;
+                    iMontage(iBadChan) = iTmp;
+                end
+            end
+        else
+            sMontage = [];
+        end
+    end
+end
+
+%% ===== SET MONTAGE ======
+% USAGE:  SetMontage(MontageName, ChanNames, isOverwrite=1)
+%         SetMontage(MontageName, sMontage, isOverwrite=1)
+function MontageName = SetMontage(MontageName, sMontage, isOverwrite)
+    global GlobalData;
+    % Parse inputs
+    if (nargin < 3) || isempty(isOverwrite)
+        isOverwrite = 1;
+    end
+    % Input is a list of channel names
+    if iscell(sMontage)
+        ChanNames = sMontage;
+        % Remove all the spaces in channels names
+        ChanNames = cellfun(@(c)c(c~=' '), ChanNames, 'UniformOutput', 0);
+        % Create new structure
+        sMontage = db_template('Montage');
+        sMontage.Name      = MontageName;
+        sMontage.Type      = 'selection';
+        sMontage.ChanNames = ChanNames;
+        sMontage.DispNames = ChanNames;
+        sMontage.Matrix    = eye(length(ChanNames));
+    end
+    % If list of montages is still empty
+    if isempty(GlobalData.ChannelMontages.Montages)
+        GlobalData.ChannelMontages.Montages = sMontage;
+    else
+        % Try to get an existing montage
+        [tmp__, iMontage] = GetMontage(MontageName);
+        % If montage already exists, but we don't want to overwrite it: create a unique name
+        if ~isempty(iMontage) && ~isOverwrite
+            MontageName = file_unique(MontageName, {GlobalData.ChannelMontages.Montages.Name});
+            sMontage.Name = MontageName;
+            iMontage = [];
+        end
+        % If no existing montage, append new montage at the end of the list
+        if isempty(iMontage)
+            iMontage = length(GlobalData.ChannelMontages.Montages) + 1;
+        end
+        % Save montage
+        GlobalData.ChannelMontages.Montages(iMontage) = sMontage;
+    end
+end
+
+%% ===== GET CURRENT MONTAGE ======
+% USAGE:  sMontage = GetCurrentMontage(hFig)
+%         sMontage = GetCurrentMontage(Modality)
+function sMontage = GetCurrentMontage(hFig)
+    global GlobalData;
+    sMontage = [];
+    % Get modality
+    if (nargin < 1) || isempty(hFig)
+        disp('BST> Error: Invalid call to GetCurrentMontage()');
+        return;
+    elseif ischar(hFig)
+        Modality = hFig;
+        hFig = [];
+    else
+        % Get modality
+        TsInfo = getappdata(hFig, 'TsInfo');
+        if isempty(TsInfo) || isempty(TsInfo.Modality)
+            disp('BST> Error: Invalid figure for GetCurrentMontage()');
+            return;
+        end
+        Modality = TsInfo.Modality;
+        % Topo: different category
+        TopoInfo = getappdata(hFig, 'TopoInfo');
+        if ~isempty(TopoInfo)
+            Modality = ['topo_' Modality];
+        end
+    end
+    % Storage field 
+    FieldName = ['mod_' lower(file_standardize(Modality))];
+    % Check that this category exists
+    if ~isfield(GlobalData.ChannelMontages.CurrentMontage, FieldName)
+        % disp(['BST> Error: Invalid modality "' Modality '"']);
+        return;
+    end
+    % Get current montage name
+    MontageName = GlobalData.ChannelMontages.CurrentMontage.(FieldName);
+    % Get current montage definition
+    if ~isempty(MontageName)
+        sMontage = GetMontage(MontageName, hFig);
+    end
+end
+
+%% ===== DELETE MONTAGE =====
+function DeleteMontage(MontageName)
+    global GlobalData;
+    % Get montage index
+    [sMontage, iMontage] = GetMontage(MontageName);
+    % If this is a non-editable montage: error
+    if ismember(sMontage.Name, {'Bad channels', 'Average reference'})
+        return;
+    end    
+    % Remove montage if it exists
+    if ~isempty(iMontage)
+        GlobalData.ChannelMontages.Montages(iMontage) = [];
+    end
+    % Check if is the current montage
+    for structField = fieldnames(GlobalData.ChannelMontages.CurrentMontage)'
+        if strcmpi(GlobalData.ChannelMontages.CurrentMontage.(structField{1}), sMontage.Name)
+            GlobalData.ChannelMontages.CurrentMontage.(structField{1}) = sMontage.Name;
+        end
+    end
+end
+
+%% ===== GET MONTAGES FOR FIGURE =====
+function [sMontage, iMontage] = GetMontagesForFigure(hFig)
+    global GlobalData;
+    sMontage = [];
+    iMontage = [];
+    % If no available montages: return
+    if isempty(GlobalData.ChannelMontages.Montages)
+        return
+    end
+    % If menu is designed to fit a specific figure: get only the ones that fits to this figure
+    if ~isempty(hFig)
+        % Get figure description
+        [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+        % Check that this figure can handle montages
+        if isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) || isempty(GlobalData.DataSet(iDS).Channel) || isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
+            return;
+        end
+        % Get channels displayed in this figure
+        iFigChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+        FigChannels = {GlobalData.DataSet(iDS).Channel(iFigChannels).Name};
+        FigId = GlobalData.DataSet(iDS).Figure(iFig).Id;
+        isStat = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat');
+        % Remove all the spaces
+        FigChannels = cellfun(@(c)c(c~=' '), FigChannels, 'UniformOutput', 0);
+        % Get the predefined montages that match this list of channels
+        iMontage = [];
+        for i = 1:length(GlobalData.ChannelMontages.Montages)
+            % Topography figures
+            if strcmpi(FigId.Type, 'Topography')
+                % 2DLayout: Accept all types of montages
+                if isequal(FigId.SubType, '2DLayout')
+                    % Accept
+                % Skip "selection" montage types (except for NIRS)
+                elseif strcmpi(GlobalData.ChannelMontages.Montages(i).Type, 'selection') && ~isequal(FigId.Modality, 'NIRS')
+                    continue;
+                % Skip "overlay NIRS" montage for topography
+                elseif ismember(GlobalData.ChannelMontages.Montages(i).Name, {'NIRS overlay[tmp]', 'Bad channels'})
+                    continue;
+                % Selection: Skip if not defining a re-referencial montage (avg ref for instance)
+                elseif strcmpi(GlobalData.ChannelMontages.Montages(i).Type, 'text') && ...
+                        (~all(sum(GlobalData.ChannelMontages.Montages(i).Matrix,2) == 0) || ~all(ismember(FigChannels, GlobalData.ChannelMontages.Montages(i).DispNames)))
+                    continue;
+                end
+            end
+            % Stat figures: Skip "text" and "matrix" montage types
+            if isStat && ~strcmpi(GlobalData.ChannelMontages.Montages(i).Type, 'selection')
+                continue;
+            end
+            % Not EEG: Skip average reference
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG'})
+                continue;
+            end
+            % No bad channels: Skip the bad channels montage
+            isBadMontage = strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Bad channels');
+            if isBadMontage && ~any(GlobalData.DataSet(iDS).Measures.ChannelFlag == -1)
+                continue;
+            end
+            % Skip montages that have no common channels with the current figure (remove all the white spaces in the channel names)
+            curSelChannels = GlobalData.ChannelMontages.Montages(i).ChanNames;
+            curSelChannels = cellfun(@(c)c(c~=' '), curSelChannels, 'UniformOutput', 0);
+            if ~isBadMontage && ~isempty(curSelChannels) && (length(intersect(curSelChannels, FigChannels)) < 0.3 * length(curSelChannels))    % We need at least 30% of the montage channels
+                continue;
+            end
+            % Remove the re-referencing montages when the reference is not available
+            if ~isBadMontage && strcmpi(GlobalData.ChannelMontages.Montages(i).Type, 'text')
+                iRef = find(sum(GlobalData.ChannelMontages.Montages(i).Matrix ~= 0) > 0.7 * length(GlobalData.ChannelMontages.Montages(i).DispNames));
+                % Check across all channels if the references can be found
+                if ~all(ismember(curSelChannels(iRef), {GlobalData.DataSet(iDS).Channel.Name}))
+                    continue;
+                end
+            end
+            % Add montage
+            iMontage(end+1) = i;
+        end
+    % Else: get all the montages
+    else
+        iMontage = 1:length(GlobalData.ChannelMontages.Montages);
+    end
+    % Return montages
+    sMontage = GlobalData.ChannelMontages.Montages(iMontage);
+end
+
+%% ===== GET MONTAGE CHANNELS =====
+% Find a list of channels in a target montage
+% USAGE:  [iChannels, iMatrixChan, iMatrixDisp] = GetMontageChannels(sMontage, ChanNames, ChannelFlag=[])
+function [iChannels, iMatrixChan, iMatrixDisp] = GetMontageChannels(sMontage, ChanNames, ChannelFlag) %#ok<DEFNU>
+    % Initialize returned variables
+    iChannels = [];
+    iMatrixChan = [];
+    iMatrixDisp = [];
+    % Channel flags not provided
+    if (nargin < 3) || isempty(ChannelFlag)
+        ChannelFlag = [];
+    end
+    % No montage: no selection
+    if isempty(sMontage)
+        return;
+    end
+    % Get target channels in this montage
+    if ~isempty(sMontage) && ~isempty(sMontage.ChanNames)
+        % Remove all the spaces
+        sMontage.ChanNames = cellfun(@(c)c(c~=' '), sMontage.ChanNames, 'UniformOutput', 0);
+        ChanNames          = cellfun(@(c)c(c~=' '), ChanNames,          'UniformOutput', 0);
+        % Look for each of these selected channels in the list of loaded channels
+        for i = 1:length(sMontage.ChanNames)
+            % Skip empty channel name
+            if isempty(sMontage.ChanNames{i})
+                continue;
+            end
+            % Look for for the montage channel names in the channel file
+            iTmp = find(strcmpi(sMontage.ChanNames{i}, ChanNames));
+            % If channel was not found: skip
+            if isempty(iTmp)
+                continue;
+            end
+            % Skip bad channel
+            if ~isempty(ChannelFlag) && (ChannelFlag(iTmp) == -1) && ~isequal(sMontage.Name, 'Bad channels')
+                continue;
+            end
+            % Good channel was found: Add it to the display list
+            iChannels(end+1) = iTmp;
+            iMatrixChan(end+1) = i;
+        end
+        % Get the display rows that we can display with these input channels
+        if ~isempty(iChannels)
+            sumDisp = sum(sMontage.Matrix(:,iMatrixChan) ~= 0, 2);
+            sumTotal = sum(sMontage.Matrix ~= 0,2);
+            iMatrixDisp = find((sumDisp == sumTotal) | (sumDisp >= 4));
+        end
+    end
+end
+
+%% ===== GET AVERAGE REF MONTAGE =====
+% USAGE:  [sMontage, iMontage, isLocal] = GetMontageAvgRef(hFig)
+%         [sMontage, iMontage, isLocal] = GetMontageAvgRef(Channels, ChannelFlag, isSubGroups=0)
+function [sMontage, iMontage, isLocal] = GetMontageAvgRef(Channels, ChannelFlag, isSubGroups)
+    global GlobalData;
+    sMontage = [];
+    iMontage = [];
+    isLocal = 0;
+    % Split the electrodes in subgroups or group them all
+    if (nargin < 3) || isempty(isSubGroups)
+        isSubGroups = 0;
+    end
+    % Get info from figure
+    if (nargin < 2) || isempty(ChannelFlag)
+        hFig = Channels;
+        % Create EEG average reference menus
+        TsInfo = getappdata(hFig,'TsInfo');
+        if isempty(TsInfo.Modality) || ~ismember(TsInfo.Modality, {'EEG','SEEG','ECOG'})
+            return;
+        end
+        % Get figure description
+        [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+        % Check that this figure can handle montages
+        if isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) || isempty(GlobalData.DataSet(iDS).Channel) || isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
+            return;
+        end
+        % Get selected channels
+        iChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+        Channels = GlobalData.DataSet(iDS).Channel(iChannels);
+        ChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag(iChannels);
+    else
+        iChannels = 1:length(Channels);
+    end
+    % Set montage structure
+    iMontage = find(strcmpi({GlobalData.ChannelMontages.Montages.Name}, 'Average reference'), 1);
+    if ~isempty(iMontage)
+        sMontage = GlobalData.ChannelMontages.Montages(iMontage);
+        sMontage.DispNames = {Channels.Name};
+        sMontage.ChanNames = {Channels.Name};
+        sMontage.Matrix    = eye(length(iChannels));
+        
+        % Get EEG groups
+        [iEEG, GroupNames] = GetEegGroups(Channels, ChannelFlag, isSubGroups);
+        % % If there is more that one: display a message
+        % if (length(GroupNames) > 2)
+        %     strNames = '';
+        %     for i = 1:length(GroupNames)
+        %         strNames = [strNames GroupNames{i} ', '];
+        %     end
+        %     disp(['BST> Groups of electrodes processed separately:  ' strNames(1:end-2)]);
+        % end
+
+        % Computation
+        for i = 1:length(iEEG)
+            nChan = length(iEEG{i});
+            if (nChan >= 2)
+                sMontage.Matrix(iEEG{i},iEEG{i}) = eye(nChan) - ones(nChan) ./ nChan;
+            end
+        end
+        % If there are multiple subgroup, consider it is a "local" average reference (used for SEEG or ECOG)
+        isLocal = (length(iEEG) > 1);
+    end
+end
+
+
+%% ===== GET BAD CHANNELS MONTAGE =====
+% USAGE:  [sMontage, iMontage] = GetMontageBadChan(hFig)
+%         [sMontage, iMontage] = GetMontageBadChan(Channels, ChannelFlag)
+function [sMontage, iMontage] = GetMontageBadChan(Channels, ChannelFlag)
+    global GlobalData;
+    sMontage = [];
+    iMontage = [];
+    % Get info from figure
+    if (nargin == 1)
+        hFig = Channels;
+        % Create EEG average reference menus
+        TsInfo = getappdata(hFig,'TsInfo');
+        if isempty(TsInfo.Modality)
+            return;
+        end
+        % Get figure description
+        [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+        % Get selected channels
+        Channels = GlobalData.DataSet(iDS).Channel;
+        ChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
+    end
+    % Get bad channels
+    iChannels = find(ChannelFlag == -1);
+    % Set montage structure
+    iMontage = find(strcmpi({GlobalData.ChannelMontages.Montages.Name}, 'Bad channels'), 1);
+    if ~isempty(iMontage)
+        sMontage = GlobalData.ChannelMontages.Montages(iMontage);
+        sMontage.DispNames = {Channels(iChannels).Name};
+        sMontage.ChanNames = {Channels(iChannels).Name};
+        sMontage.Matrix    = eye(length(iChannels));
+    end
+end
+
+
+%% ===== SET CURRENT MONTAGE ======
+% USAGE:  SetCurrentMontage(Modality, MontageName)
+%         SetCurrentMontage(hFig,     MontageName)
+function SetCurrentMontage(Modality, MontageName)
+    global GlobalData;
+    % Get modality
+    if (nargin < 2) || isempty(Modality)
+        disp('BST> Error: Invalid call to SetCurrentMontage()');
+        return;
+    elseif ~ischar(Modality)
+        % Get figure modality
+        hFig = Modality;
+        TsInfo = getappdata(hFig, 'TsInfo');
+        if isempty(TsInfo) || isempty(TsInfo.Modality)
+            disp('BST> Error: Invalid figure for SetCurrentMontage()');
+            return;
+        end
+        Modality = TsInfo.Modality;
+        % Topo: different category
+        TopoInfo = getappdata(hFig, 'TopoInfo');
+        if ~isempty(TopoInfo)
+            Modality = ['topo_' Modality];
+        end
+    else
+        hFig = [];
+    end
+    % Storage field 
+    FieldName = ['mod_' lower(file_standardize(Modality))];
+    % Update default montage
+    if ~isequal(MontageName, 'Bad channels')
+        GlobalData.ChannelMontages.CurrentMontage.(FieldName) = MontageName;
+    end
+    % Update figure
+    if ~isempty(hFig)
+        bst_progress('start', 'Montage selection', 'Updating figures...');
+        % Update config structure
+        TsInfo = getappdata(hFig, 'TsInfo');
+        TsInfo.MontageName = MontageName;
+        setappdata(hFig, 'TsInfo', TsInfo);
+        % Update panel Recorf
+        panel_record('UpdateDisplayOptions', hFig);
+        % Update figure plot
+        bst_figures('ReloadFigures', hFig, 0);
+        % Close progress bar
+        bst_progress('stop');
+    end
+end
+
+%% ===== CREATE POPUP MENU ======
+function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
+    import java.awt.event.*;
+    import javax.swing.*;
+    import java.awt.*;
+
+    % Remove all previous menus
+    jMenu.removeAll();
+    % Get montages
+    sFigMontages = GetMontagesForFigure(hFig);
+    % Get current montage
+    TsInfo = getappdata(hFig, 'TsInfo');
+    % Get selected sensors
+    if ~isempty(TsInfo) && (strcmpi(TsInfo.DisplayMode, 'column') || strcmpi(TsInfo.DisplayMode, 'butterfly'))
+        SelChannels = figure_timeseries('GetFigSelectedRows', hFig);
+    elseif ~isempty(TsInfo) && strcmpi(TsInfo.DisplayMode, 'topography')
+        SelChannels = figure_3d('GetFigSelectedRows', hFig);
+    else
+        SelChannels = [];
+    end
+    
+    % MENU: Edit montages
+    gui_component('MenuItem', jMenu, [], 'Edit montages...', [], [], @(h,ev)EditMontages(hFig));
+    % MENU: Create from mouse selection
+    if ~isempty(hFig) && ~isempty(SelChannels)
+        gui_component('MenuItem', jMenu, [], 'Create from selection', [], [], @(h,ev)NewMontage('selection', SelChannels, hFig));
+    end
+    jMenu.addSeparator();
+
+    % MENU: All channels
+    if ~(isequal(TsInfo.Modality, 'NIRS') && strcmpi(TsInfo.DisplayMode, 'topography'))
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'All channels', [], [], @(h,ev)SetCurrentMontage(hFig, []));
+        jItem.setSelected(isempty(TsInfo.MontageName));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A), KeyEvent.SHIFT_MASK));
+    end
+    % MENUS: List of available montages
+    for i = 1:length(sFigMontages)
+        % Is it the selected one
+        if ~isempty(TsInfo.MontageName)
+            isSelected = strcmpi(sFigMontages(i).Name, TsInfo.MontageName);
+        else
+            isSelected = 0;
+        end
+        % Special test for average reference: local or global
+        if strcmpi(sFigMontages(i).Name, 'Average reference')
+            % Get montage
+            [sTmp, iTmp, isLocal] = panel_montage('GetMontageAvgRef', hFig, [], 1);
+            % Change the title depending on the type of average reference
+            if isLocal
+                DisplayName = 'Local average ref';
+            else
+                DisplayName = 'Average reference';
+            end
+        % Temporary montages:  Remove the [tmp] tag or display
+        elseif ~isempty(strfind(sFigMontages(i).Name, '[tmp]'))
+            DisplayName = ['<HTML><I>' strrep(sFigMontages(i).Name, '[tmp]', '') '</I>'];
+        else
+            DisplayName = sFigMontages(i).Name;
+        end
+        % Create menu
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], DisplayName, [], [], @(h,ev)SetCurrentMontage(hFig, sFigMontages(i).Name));
+        jItem.setSelected(isSelected);
+        if (i <= 25)
+            jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A + i), KeyEvent.SHIFT_MASK));
+        end
+    end
+    drawnow;
+    jMenu.repaint();
+end
+
+%% ===== CREATE MONTAGE MENU =====
+function CreateMontageMenu(jButton, hFig)
+    import org.brainstorm.icon.*;
+    % Create popup menu
+    jPopup = java_create('javax.swing.JPopupMenu');
+    % Get figure info
+    if ~isempty(hFig)
+        TsInfo = getappdata(hFig, 'TsInfo');
+    end
+    % Create new montages
+    if isempty(hFig) || ~strcmpi(TsInfo.DisplayMode, 'topography')
+        gui_component('MenuItem', jPopup, [], 'New channel selection', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('selection', [], hFig), []);
+    end
+    if ~isempty(hFig) 
+        gui_component('MenuItem', jPopup, [], 'New re-referencing montage (single ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('ref', [], hFig), []);
+        gui_component('MenuItem', jPopup, [], 'New re-referencing montage (linked ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('linkref', [], hFig), []);
+    end
+    gui_component('MenuItem', jPopup, [], 'New custom montage',  IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('text', [], hFig), []);
+    jPopup.addSeparator();
+    gui_component('MenuItem', jPopup, [], 'Duplicate montage', IconLoader.ICON_COPY, [], @(h,ev)ButtonDuplicate_Callback(hFig), []);
+    gui_component('MenuItem', jPopup, [], 'Rename montage', IconLoader.ICON_EDIT, [], @(h,ev)ButtonRename_Callback(hFig), []);
+    gui_component('MenuItem', jPopup, [], 'Delete montage', IconLoader.ICON_DELETE, [], @(h,ev)ButtonDelete_Callback(hFig), []);
+    % Show popup menu
+    jPopup.show(jButton, 0, jButton.getHeight());
+end
+
+%% ===== RENAME MONTAGE =====
+function newName = RenameMontage(oldName, newName)
+    global GlobalData;
+    % Look for existing montage
+    [sMontage, iMontage] = GetMontage(oldName);
+    % If montage does not exist
+    if isempty(sMontage)
+        error('Condition does not exist.');
+    end
+    % If this is a non-editable montage: error
+    if ismember(sMontage.Name, {'Bad channels', 'Average reference'})
+        newName = [];
+        return;
+    end
+    % If new name was not provided: Ask the user
+    if (nargin < 2) || isempty(newName)
+        newName = java_dialog('input', 'Enter a new name for this montage:', 'Rename montage', [], oldName);
+        if isempty(newName)
+            return;
+        elseif ~isempty(GetMontage(newName))
+            bst_error('This montage name already exists.', 'Rename montage', 0);
+            newName = [];
+            return
+        end
+    end
+    % Rename montage
+    GlobalData.ChannelMontages.Montages(iMontage).Name = newName;
+end
+
+
+%% ===== PROCESS KEYPRESS =====
+function isProcessed = ProcessKeyPress(hFig, Key) %#ok<DEFNU>
+    isProcessed = 0;
+    % Get montages for the figure
+    sMontages = GetMontagesForFigure(hFig);
+    if isempty(sMontages)
+        return
+    end
+    % Accept only alphabetical chars
+    Key = uint8(lower(Key));
+    if (length(Key) ~= 1) || (Key < uint8('a')) || (Key > uint8('z'))
+        return
+    end
+    % Get the selection indicated by the key
+    iSel = Key - uint8('a');
+    if (iSel > length(sMontages))
+        return
+    elseif (iSel == 0)
+        newName = [];
+    else
+        newName = sMontages(iSel).Name;
+    end
+    % Process key pressed: switch to new montage
+    SetCurrentMontage(hFig, newName);
+    isProcessed = 1;
+end
+
+
+%% ===== LOAD MONTAGE FILE =====
+% USAGE:  LoadMontageFiles(FileNames, FileFormat)
+%         LoadMontageFiles()   : Ask user the file to load
+function sMontages = LoadMontageFiles(FileNames, FileFormat)
+    sMontages = [];
+    % Ask filename to user
+    if (nargin < 2) || isempty(FileNames) || isempty(FileFormat)
+        % Get default import directory
+        LastUsedDirs = bst_get('LastUsedDirs');
+        if isempty(LastUsedDirs.ImportMontage)
+            LastUsedDirs.ImportMontage = bst_fullfile(bst_get('BrainstormHomeDir'), 'toolbox', 'sensors', 'private');
+        end
+        % Get default file format
+        DefaultFormats = bst_get('DefaultFormats');
+        if isempty(DefaultFormats.MontageIn)
+            DefaultFormats.MontageIn = 'MON';
+        end
+        % Select file
+        [FileNames, FileFormat] = java_getfile( 'open', 'Import montages', ...
+            LastUsedDirs.ImportMontage, 'multiple', 'files', ...
+            bst_get('FileFilters', 'montagein'), ...
+            DefaultFormats.MontageIn);
+        if isempty(FileNames)
+            return
+        end
+        % Save default import directory
+        LastUsedDirs.ImportMontage = bst_fileparts(FileNames{1});
+        bst_set('LastUsedDirs', LastUsedDirs);
+        % Save default export format
+        DefaultFormats.MontageIn = FileFormat;
+        bst_set('DefaultFormats',  DefaultFormats);
+    elseif ~iscell(FileNames)
+        FileNames = {FileNames};
+    end
+    % Progress bar
+    bst_progress('start', 'Import montage', 'Loading montage files...');
+    % Load files
+    sMontages = repmat(db_template('Montage'), 0);
+    for iFile = 1:length(FileNames)
+        % Read file
+        switch (FileFormat)
+            case 'MNE'
+                sMon = in_montage_mne(FileNames{iFile});
+            case 'MON'
+                sMon = in_montage_mon(FileNames{iFile});
+            case 'EEG-COMPUMEDICS-PFS'
+                sMon = in_montage_compumedics(FileNames{iFile});
+            case 'BST'
+                DataMat = load(FileNames{iFile});
+                sMon = DataMat.Montages;
+        end
+        % Concatenate with the list of loaded montages
+        sMontages = cat(2, sMontages, sMon);
+    end
+    % Close progress bar
+    bst_progress('stop');
+    % If file was not read: return
+    if isempty(sMontages) || ~isequal(fieldnames(sMontages), fieldnames(db_template('Montage')))
+        return
+    end
+    % Loop to add all montages 
+    for i = 1:length(sMontages)
+        sMontages(i).Name = SetMontage(sMontages(i).Name, sMontages(i), 0);
+    end
+end
+
+
+%% ===== SAVE MONTAGE FILE =====
+% USAGE:  SaveMontageFile(sMontages, FileName, FileFormat)
+%         SaveMontageFile(sMontages)           : Ask user the file to be loaded
+function SaveMontageFile(sMontages, FileName, FileFormat)
+    % Ask filename to user
+    if (nargin < 3) || isempty(FileName)
+        % Get default file
+        LastUsedDirs = bst_get('LastUsedDirs');
+        DefaultFormats = bst_get('DefaultFormats');
+        if isempty(DefaultFormats.MontageOut)
+            DefaultFormats.MontageOut = 'MON';
+        end
+        switch (DefaultFormats.MontageOut)
+            case 'MNE',  DefaultExt = '.sel';
+            case 'MON',  DefaultExt = '.mon';
+            case 'BST',  DefaultExt = '.mat';    
+        end
+        DefaultFile = bst_fullfile(LastUsedDirs.ExportMontage, [file_standardize(sMontages(1).Name), DefaultExt]);
+        % Select file
+        [FileName, FileFormat] = java_getfile( 'save', 'Export montages', ...
+            DefaultFile, 'single', 'files', ...
+            bst_get('FileFilters', 'montageout'), ...
+            DefaultFormats.MontageOut);
+        if isempty(FileName)
+            return
+        end
+        % Save default export directory
+        LastUsedDirs.ExportMontage = bst_fileparts(FileName);
+        bst_set('LastUsedDirs', LastUsedDirs);
+        % Save default export format
+        DefaultFormats.MontageOut = FileFormat;
+        bst_set('DefaultFormats',  DefaultFormats);
+    end
+    % Save file
+    switch (FileFormat)
+        case 'MNE'
+            out_montage_mne(FileName, sMontages);
+        case 'MON'
+            if (length(sMontages) > 1)
+                error('Cannot save more than one montage per file.');
+            end
+            out_montage_mon(FileName, sMontages);
+        case 'BST'
+            DataMat.Montages = sMontages;
+            bst_save(FileName, DataMat, 'v6');
+    end    
+end
+
+
+%% ===== GET EEG GROUPS =====
+function [iEEG, GroupNames, DisplayNames] = GetEegGroups(Channel, ChannelFlag, isSubGroups)
+    GroupNames   = {};
+    iEEG         = {};
+    % Parse inputs
+    if (nargin < 3) || isempty(isSubGroups)
+        isSubGroups = 0;
+    end
+    if (nargin < 2) || isempty(ChannelFlag)
+        ChannelFlag = [];
+    end
+    % Default display name: actual channel name
+    DisplayNames = {Channel.Name};
+    % Try to split SEEG and ECOG with the Comment field
+    for Modality = {'EEG', 'SEEG', 'ECOG'}
+        % Get channels for modality
+        iMod = good_channel(Channel, ChannelFlag, Modality{1});
+        if isempty(iMod)
+            continue;
+        end
+        % Use subgroups
+        if isSubGroups
+            % Parse sensor names
+            [AllGroups, AllTags, AllInd, isNoInd] = ParseSensorNames(Channel(iMod));
+            % If the group name is empty, replace with "Unknown"
+            AllGroups(cellfun(@isempty, AllGroups)) = {'Unknown'};
+            uniqueGroups = unique(AllGroups);
+            % If the sensors are not separated in groups using the comments fields
+            if isempty(uniqueGroups) || (length(uniqueGroups) == 1)
+                % All the channels = one block
+                iEEG{end+1}  = iMod;
+                GroupNames{end+1} = Modality{1};
+            % Else: split in groups
+            else
+                for iGroup = 1:length(uniqueGroups)
+                    % Look for all the sensors belonging to this group
+                    iTmp = find(strcmp({Channel(iMod).Group}, uniqueGroups{iGroup}));
+                    % If the sensors can be split using the tag/index logic
+                    if ~isNoInd
+                        % Sort the sensors indices
+                        [tmp_, I] = sort(AllInd(iTmp));
+                        iTmp = iTmp(I);
+                        % Display name: full name for the first and last sensor of the group, indice for the others
+                        for i = 2:(length(iTmp)-1)
+                            strInd = DisplayNames{iMod(iTmp(i))}(ismember(DisplayNames{iMod(iTmp(i))}, '0123456789'));
+                            if ~isempty(strInd)
+                                DisplayNames{iMod(iTmp(i))} = strInd;
+                            else
+                                DisplayNames{iMod(iTmp(i))} = num2str(i);
+                            end
+                        end
+                    end
+                    iEEG{end+1} = iMod(iTmp);
+                    GroupNames{end+1} = uniqueGroups{iGroup};
+                end
+            end
+        % Put all the electrodes in the same group
+        else
+            iEEG{end+1}  = iMod;
+            GroupNames{end+1} = Modality{1};
+        end
+    end
+end
+
+
+%% ===== PARSE SENSOR NAMES =====
+function [AllGroups, AllTags, AllInd, isNoInd] = ParseSensorNames(Channels)
+    % Only one type of sensors per call
+    Modality = Channels(1).Type;
+    % Get all groups
+    AllGroups = {Channels.Group};
+    % Get all names: remove special characters
+    AllNames = {Channels.Name};
+    if strcmpi(Modality, 'ECOG')
+        % ECOG grids in Freiburg: G_A1, G_A2, ... , G_A8, G_B1, G_B2, ..., G_B8, G_C1, ...
+        AllNames = strrep(AllNames, 'G_A', 'G0');
+        AllNames = strrep(AllNames, 'G_B', 'G1');
+        AllNames = strrep(AllNames, 'G_C', 'G2');
+        AllNames = strrep(AllNames, 'G_D', 'G3');
+        AllNames = strrep(AllNames, 'G_E', 'G4');
+        AllNames = strrep(AllNames, 'G_F', 'G5');
+        AllNames = strrep(AllNames, 'G_G', 'G6');
+        AllNames = strrep(AllNames, 'G_H', 'G7');
+        AllNames = strrep(AllNames, 'G_I', 'G8');
+        AllNames = strrep(AllNames, 'G_K', 'G9');
+        AllNames = strrep(AllNames, 'G_L', 'G10');
+    end
+    AllNames = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), AllNames, 'UniformOutput', 0);
+    % Separate characters and numbers in the names
+    AllTags = cellfun(@(c)c(~ismember(c, '0123456789')), AllNames, 'UniformOutput', 0);
+    % Get indices
+    AllInd = cellfun(@(c)c(ismember(c, '0123456789')), AllNames, 'UniformOutput', 0);
+    isNoInd = any(cellfun(@isempty, AllInd));
+    if ~isNoInd
+        AllInd = cellfun(@str2num, AllInd);
+    end
+end
+
+
+%% ===== SHOW EDITOR =====
+function ShowEditor() %#ok<DEFNU>
+    gui_show('panel_montage', 'JavaWindow', 'Montage editor', [], 0, 1, 0);
+    UpdateMontagesList([]);
+end
+
+
+%% ===== ADD AUTO MONTAGES: EEG =====
+function AddAutoMontagesEeg(iDS, ChannelMat)
+    global GlobalData;
+    % Get groups of electrodes
+    [iEeg, GroupNames] = panel_montage('GetEegGroups', ChannelMat.Channel, [], 1);    
+    % If there is more than one EEG group
+    if (length(iEeg) > 2)
+        % Get subject name
+        SubjectName = bst_fileparts(GlobalData.DataSet(iDS).SubjectFile);
+        % Get all the modalities available
+        AllModalities = unique(upper({ChannelMat.Channel([iEeg{:}]).Type}));
+    
+        % === MONTAGES: ALL ===
+        for iMod = 1:length(AllModalities)
+            Mod = AllModalities{iMod};
+            % All (orig)
+            sMontageAllOrig.(Mod) = db_template('Montage');
+            sMontageAllOrig.(Mod).Name   = [SubjectName ': ' Mod ' (orig)[tmp]'];
+            sMontageAllOrig.(Mod).Type   = 'selection';
+            SetMontage(sMontageAllOrig.(Mod).Name, sMontageAllOrig.(Mod));
+            % All (bipolar 1)
+            sMontageAllBip1.(Mod) = db_template('Montage');
+            sMontageAllBip1.(Mod).Name   = [SubjectName ': ' Mod ' (bipolar 1)[tmp]'];
+            sMontageAllBip1.(Mod).Type   = 'text';
+            SetMontage(sMontageAllBip1.(Mod).Name, sMontageAllBip1.(Mod));
+            % All (bipolar 2)
+            sMontageAllBip2.(Mod) = db_template('Montage');
+            sMontageAllBip2.(Mod).Name   = [SubjectName ': ' Mod ' (bipolar 2)[tmp]'];
+            sMontageAllBip2.(Mod).Type   = 'text';
+            SetMontage(sMontageAllBip2.(Mod).Name, sMontageAllBip2.(Mod));
+        end
+
+        % For each group
+        for iGroup = 1:length(iEeg)
+            % Get the electrodes for this group
+            iChan = iEeg{iGroup};
+            ChanNames = {ChannelMat.Channel(iChan).Name};
+            Mod = upper(ChannelMat.Channel(iChan(1)).Type);
+
+            % === MONTAGE: ORIG ===
+            % Create montage
+            sMontage = db_template('Montage');
+            sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (orig)[tmp]'];
+            sMontage.Type      = 'selection';
+            sMontage.ChanNames = ChanNames;
+            sMontage.DispNames = ChanNames;
+            sMontage.Matrix    = eye(length(iChan));
+            % Add montage
+            SetMontage(sMontage.Name, sMontage);
+            % Add to ALL-orig montage
+            sMontageAllOrig.(Mod).ChanNames = cat(2, sMontageAllOrig.(Mod).ChanNames, sMontage.ChanNames);
+            sMontageAllOrig.(Mod).DispNames = cat(2, sMontageAllOrig.(Mod).DispNames, sMontage.DispNames);
+            sMontageAllOrig.(Mod).Matrix(size(sMontageAllOrig.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllOrig.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
+
+            % Skip bipolar montages if there is only one channel
+            if (length(iChan) < 2)
+                continue;
+            end
+
+            % === MONTAGE: BIPOLAR 1 ===
+            % Example: A1-A2, A3-A4, ...
+            % Create montage
+            sMontage = db_template('Montage');
+            sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (bipolar 1)[tmp]'];
+            sMontage.Type      = 'text';
+            sMontage.ChanNames = ChanNames;
+            sMontage.Matrix    = zeros(ceil(length(iChan)/2), length(iChan));
+            iDisp = 1;
+            for i = 1:2:length(ChanNames)
+                % Last pair is not complete: A1-A2, A3-A4, A4-A5
+                if (i == length(ChanNames))
+                    sMontage.DispNames{iDisp} = [ChanNames{i-1} '-' ChanNames{i}];
+                    sMontage.Matrix(iDisp, i-1) =  1;
+                    sMontage.Matrix(iDisp, i)   = -1;
+                % Last pair is complete: A1-A2, A3-A4, A5-A6
+                else
+                    sMontage.DispNames{iDisp} = [ChanNames{i} '-' ChanNames{i+1}];
+                    sMontage.Matrix(iDisp, i)   =  1;
+                    sMontage.Matrix(iDisp, i+1) = -1;
+                end
+                iDisp = iDisp + 1;
+            end
+            % Add montage: orig
+            SetMontage(sMontage.Name, sMontage);
+            % Add to ALL-dip1 montage
+            sMontageAllBip1.(Mod).ChanNames = cat(2, sMontageAllBip1.(Mod).ChanNames, sMontage.ChanNames);
+            sMontageAllBip1.(Mod).DispNames = cat(2, sMontageAllBip1.(Mod).DispNames, sMontage.DispNames);
+            sMontageAllBip1.(Mod).Matrix(size(sMontageAllBip1.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllBip1.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
+
+            % === MONTAGE: BIPOLAR 2 ===
+            % Example: A1-A2, A2-A3, ...
+            % Create montage
+            sMontage = db_template('Montage');
+            sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (bipolar 2)[tmp]'];
+            sMontage.Type      = 'text';
+            sMontage.ChanNames = ChanNames;
+            sMontage.Matrix    = zeros(length(iChan)-1, length(iChan));
+            iDisp = 1;
+            for i = 1:length(ChanNames)-1
+                sMontage.DispNames{iDisp} = [ChanNames{i} '-' ChanNames{i+1}];
+                sMontage.Matrix(iDisp, i)   =  1;
+                sMontage.Matrix(iDisp, i+1) = -1;
+                iDisp = iDisp + 1;
+            end
+            % Add montage: orig
+            SetMontage(sMontage.Name, sMontage);
+            % Add to ALL-dip2 montage
+            sMontageAllBip2.(Mod).ChanNames = cat(2, sMontageAllBip2.(Mod).ChanNames, sMontage.ChanNames);
+            sMontageAllBip2.(Mod).DispNames = cat(2, sMontageAllBip2.(Mod).DispNames, sMontage.DispNames);
+            sMontageAllBip2.(Mod).Matrix(size(sMontageAllBip2.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllBip2.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
+        end 
+
+        % Update the ALL montages
+        for iMod = 1:length(AllModalities)
+            Mod = AllModalities{iMod};
+            SetMontage(sMontageAllOrig.(Mod).Name, sMontageAllOrig.(Mod));
+            SetMontage(sMontageAllBip1.(Mod).Name, sMontageAllBip1.(Mod));
+            SetMontage(sMontageAllBip2.(Mod).Name, sMontageAllBip2.(Mod));
+        end
+    end
+end
+
+
+
+%% ===== ADD AUTO MONTAGES: NIRS =====
+function AddAutoMontagesNirs(ChannelMat)
+    % Get NIRS sensors
+    iNirs = channel_find(ChannelMat.Channel, 'NIRS');
+    
+    % === GET COLORS ===
+    % Get all the groups
+    [uniqueGroups,I,J] = unique({ChannelMat.Channel(iNirs).Group});
+    % Get color map
+    ColorTable = panel_scout('GetScoutsColorTable');
+    % Standard color for HbO
+    iHbO = find(strcmpi(uniqueGroups, 'hbo'));
+    if ~isempty(iHbO)
+        ColorTable(iHbO,:) = [1,0,0];
+    end
+    % Standard color for HbR
+    iHbR = find(strcmpi(uniqueGroups, 'hbr'));
+    if ~isempty(iHbR)
+        ColorTable(iHbR,:) = [0,0,1];
+    end
+    % Standard color for HbT
+    iHbT = find(strcmpi(uniqueGroups, 'hbt'));
+    if ~isempty(iHbT)
+        ColorTable(iHbT,:) = [0,1,0];
+    end
+    
+    % === OVERLAY MONTAGE ===
+    % Add one montage to superimpose all the channels for each pair source/detector
+    sMontage = db_template('Montage');
+    sMontage.Name      = 'NIRS overlay[tmp]';
+    sMontage.Type      = 'text';    
+    sMontage.ChanNames = {ChannelMat.Channel(iNirs).Name};
+    sMontage.Matrix    = eye(length(iNirs), length(iNirs));
+    % For each channel
+    for i = 1:length(iNirs)
+        % Parse channel name
+        [S,D,WL] = ParseNirsChannelNames({ChannelMat.Channel(iNirs(i)).Name});
+        % Get group color
+        iGroup = find(strcmpi(uniqueGroups, ChannelMat.Channel(iNirs(i)).Group));
+        dispColor = dec2hex(round(ColorTable(iGroup,:) .* 255),2)';
+        dispColor = dispColor(:)';
+        % Display name: NAME|COLOR
+        sMontage.DispNames{i} = sprintf('S%dD%d|%s', S, D, dispColor);
+    end
+    % Add HbT sum, if not present
+    if ~isempty(iHbO) && ~isempty(iHbR) && isempty(iHbT)
+        % Get the HbO/HbR channels
+        iHbO = find(strcmpi({ChannelMat.Channel(iNirs).Group}, 'hbo'));
+        iHbR = find(strcmpi({ChannelMat.Channel(iNirs).Group}, 'hbr'));
+        % Add one HbT channel for each HbO channel
+        for i = 1:length(iHbO)
+            % Parse channel name
+            [S,D,WL] = ParseNirsChannelNames({ChannelMat.Channel(iHbO(i)).Name});
+            % Display in green
+            sMontage.DispNames{length(iNirs) + i} = sprintf('S%dD%d|%s', S, D, '00FF00');
+            % Sum the two values HbO and HbR
+            sMontage.Matrix(length(iNirs) + i, [iHbO(i), iHbR(i)]) = 1;
+        end
+    end
+    % Add montage: overlay
+    SetMontage(sMontage.Name, sMontage);
+    
+    % === GROUPS MONTAGES ===
+    % Create one montage per group (wavelength or concentration)
+    for i = 1:length(uniqueGroups)
+        % Get all the sensors in this group
+        iGroup = find(J == i);
+        % Create montage
+        sMontage = db_template('Montage');
+        sMontage.Name      = [uniqueGroups{i}, '[tmp]'];
+        sMontage.Type      = 'selection';
+        sMontage.ChanNames = {ChannelMat.Channel(iNirs(iGroup)).Name};
+        sMontage.DispNames = sMontage.ChanNames;
+        sMontage.Matrix    = eye(length(iGroup));
+        % Add montage
+        SetMontage(sMontage.Name, sMontage);
+    end
+end
+
+
+%% ===== UNLOAD AUTO MONTAGES =====
+function UnloadAutoMontages()
+    global GlobalData;
+    % Exist in no montages loaded
+    if isempty(GlobalData) || isempty(GlobalData.ChannelMontages) || isempty(GlobalData.ChannelMontages.Montages)
+        return;
+    end
+    % Look for temporary montages
+    iTmp = find(~cellfun(@(c)isempty(strfind(c, '[tmp]')), {GlobalData.ChannelMontages.Montages.Name}));
+    if isempty(iTmp)
+        return;
+    end
+    % Delete temporary montages
+    GlobalData.ChannelMontages.Montages(iTmp) = [];
+end
+
+
+%% ===== PARSE NIRS CHANNEL NAMES =====
+%USAGE: [S,D,WL] = panel_montage('ParseNirsChannelNames', ChannelNames);
+function [S,D,WL] = ParseNirsChannelNames(ChannelNames)
+    % Parse inputs
+    if ischar(ChannelNames)
+        ChannelNames = {ChannelNames};
+    end
+    % Initialize returned variables
+    N = length(ChannelNames);
+    S  = zeros(1,N);
+    D  = zeros(1,N);
+    WL = zeros(1,N);
+    % Loop on all the channel names
+    for i = 1:length(ChannelNames)
+        % Parse channel name
+        val = sscanf(ChannelNames{i}, 'S%dD%dWL%d');
+        % If three values were read: use them
+        if (length(val) >= 2)
+            S(i)  = val(1);
+            D(i)  = val(2);
+        end
+        if (length(val) == 3)
+            WL(i) = val(3);
+        end
+    end
+end
+
+
+
+%% ===== PARSE LINE LABELS =====
+function [LinesLabels, LinesColor] = ParseMontageLabels(LinesLabels, DefaultColor)
+    % Number of lines
+    nLines = length(LinesLabels);
+    % If some channels use the extended "NAME|COLOR"
+    if any(cellfun(@(c)any(c == '|'), LinesLabels)) % && ~any(cellfun(@(c)any(c == ' '), LinesLabels))
+        LinesColor = repmat(DefaultColor, nLines, 1);
+        for i = 1:length(LinesLabels)
+            splitLabel = str_split(LinesLabels{i}, '|');
+            % Channel name
+            LinesLabels{i} = splitLabel{1};
+            % Channel color
+            if (length(splitLabel) >= 2) && (length(splitLabel{2}) == 6)
+                color = [hex2dec(splitLabel{2}(1:2)), hex2dec(splitLabel{2}(3:4)), hex2dec(splitLabel{2}(5:6))];
+                if (length(color) == 3)
+                    LinesColor(i,:) = color ./ 255;
+                end
+            end
+        end
+    else
+        LinesColor = [];
+    end
+end
+
+
+%% ===== GET RELATED NIRS CHANNELS =====
+function AllChannels = GetRelatedNirsChannels(Channels, ChannelName)
+    % Parse all the NIRS channel names
+    iNirs = channel_find(Channels, 'NIRS');
+    [S,D,WL] = ParseNirsChannelNames({Channels(iNirs).Name});
+    % Parse target
+    [St, Dt, WLt] = ParseNirsChannelNames(ChannelName);
+    % Get corresponding channels
+    iSelChan = find((S == St) & (D == Dt));
+    % Get channel names
+    AllChannels = unique({Channels(iSelChan).Name, sprintf('S%dD%d', St, Dt), ChannelName});
+end
+

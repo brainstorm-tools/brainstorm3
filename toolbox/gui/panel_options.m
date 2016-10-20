@@ -1,0 +1,480 @@
+function varargout = panel_options(varargin)
+% PANEL_OPTIONS:  Set general Brainstorm configuration.
+% USAGE:  [bstPanelNew, panelName] = panel_options('CreatePanel')
+
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% http://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c)2000-2016 University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Authors: Francois Tadel, 2009-2014
+
+eval(macro_method);
+end
+
+
+%% ===== CREATE PANEL =====
+function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
+    % Java initializations
+    import java.awt.*;
+    import javax.swing.*;   
+    % Constants
+    panelName = 'Preferences';
+    
+    % Create main main panel
+    jPanelNew = gui_river();
+    
+    % ===== LEFT =====
+    jPanelLeft = gui_river();
+    jPanelNew.add('vtop', jPanelLeft);
+    % ===== LEFT: SYSTEM =====
+    jPanelSystem = gui_river([5 2], [0 15 8 15], 'System');
+        jCheckUpdates    = gui_component('CheckBox', jPanelSystem, 'br', 'Automatic updates', [], [], [], []);
+        if (bst_get('MatlabVersion') >= 804)
+            jCheckSmooth = gui_component('CheckBox', jPanelSystem, 'br', 'Use smooth graphics', [], [], [], []);
+        else
+            jCheckSmooth = [];
+        end
+        jCheckGfp        = gui_component('CheckBox', jPanelSystem, 'br', 'Display GFP over time series', [], [], [], []);
+        jCheckForceComp  = gui_component('CheckBox', jPanelSystem, 'br', 'Force mat-files compression (slower)', [], [], [], []);
+        jCheckIgnoreMem  = gui_component('CheckBox', jPanelSystem, 'br', 'Ignore memory warnings', [], [], [], []);
+    jPanelLeft.add('hfill', jPanelSystem);
+    % ===== LEFT: OPEN GL =====
+    jPanelOpengl = gui_river([5 2], [0 15 8 15], 'OpenGL rendering');
+        jRadioOpenNone = gui_component('Radio', jPanelOpengl, '',   'OpenGL: Disabled (no transparency)', [], [], [], []);
+        jRadioOpenSoft = gui_component('Radio', jPanelOpengl, 'br', 'OpenGL: Software (slow)', [], [], [], []);
+        jRadioOpenHard = gui_component('Radio', jPanelOpengl, 'br', 'OpenGL: Hardware (accelerated)', [], [], [], []);
+        % Group buttons
+        jButtonGroup = ButtonGroup();
+        jButtonGroup.add(jRadioOpenNone);
+        jButtonGroup.add(jRadioOpenSoft);
+        jButtonGroup.add(jRadioOpenHard);
+        % On mac systems: opengl software is not supported
+        if strncmp(computer,'MAC',3)
+            jRadioOpenSoft.setEnabled(0);
+        end
+    jPanelLeft.add('br hfill', jPanelOpengl);
+
+    % ===== RIGHT =====
+    jPanelRight = gui_river();
+    jPanelNew.add(jPanelRight);
+    % ===== RIGHT: DATA IMPORT =====
+    jPanelImport = gui_river([5 5], [0 15 15 15], 'Folders');
+        % Temporary directory
+        gui_component('Label', jPanelImport, '', 'Temporary directory: ', [], [], [], []);
+        jTextTempDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], [], []);
+        jButtonTempDir = gui_component('Button', jPanelImport, [], '...', [], [], @TempDirectory_Callback, []);
+        jButtonTempDir.setMargin(Insets(2,2,2,2));
+        jButtonTempDir.setFocusable(0);
+        % FieldTrip folder
+        gui_component('Label', jPanelImport, 'br', 'FieldTrip toolbox: ', [], [], [], []);
+        jTextFtDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], [], []);
+        jButtonFtDir = gui_component('Button', jPanelImport, [], '...', [], [], @FtDirectory_Callback, []);
+        jButtonFtDir.setMargin(Insets(2,2,2,2));
+        jButtonFtDir.setFocusable(0);
+    jPanelRight.add('br hfill', jPanelImport);
+    
+    % ===== RIGHT: SIGNAL PROCESSING =====
+    jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
+        jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', [], []);
+        % jCheckOrigFolder = gui_component('CheckBox', jPanelProc, 'br', 'Store continuous files in original folder', [], '<HTML>If selected, the continuous files processed with the Process1 tab are stored in the same folder as the input raw files. <BR>Else, they are stored directly in the Brainstorm database.', @UpdateProcessOptions_Callback, []);
+        % jCheckOrigFormat = gui_component('CheckBox', jPanelProc, 'br', 'Save continuous files in original format',  [], '<HTML>If selected, the continuous files processed with the Process1 tab are saved in the same data format as the input raw files.<BR>Else, they are saved in the Brainstorm binary format.<BR>This option is available only for FIF and CTF files.', [], []);
+    jPanelRight.add('br hfill', jPanelProc);
+    
+    % ===== RIGHT: RESET =====
+    jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
+        gui_component('Label',  jPanelReset, [], 'Reset database and options to defaults: ', [], [], [], []);
+        gui_component('Button', jPanelReset, [], 'Reset', [], [], @ButtonReset_Callback, []);
+    jPanelRight.add('br hfill', jPanelReset);
+    
+    % ===== BOTTOM =====
+    jPanelBottom = gui_river();
+    jPanelNew.add('br hfill', jPanelBottom);
+    % MEMORY
+    [MaxVar, TotalMem] = bst_get('SystemMemory');
+    if ~isempty(MaxVar) && ~isempty(TotalMem)
+        % Display memory info
+        jPanelMem = gui_river([0 0], [0 15 8 15]);
+        labelBottom = sprintf('Max variable size: %d Mb       Memory available: %d Mb', MaxVar, TotalMem);
+        jPanelLeft.add('br hfill', jPanelMem);
+    else
+        labelBottom = '';
+    end
+    
+    % ===== VALIDATION BUTTONS =====
+    gui_component('Label', jPanelBottom, '', labelBottom, [], [], [], []);
+    gui_component('Label', jPanelBottom, 'hfill', ' ');
+    gui_component('Button', jPanelBottom, 'right', 'Cancel', [], [], @ButtonCancel_Callback, []);
+    gui_component('Button', jPanelBottom, [],         'Save',   [], [], @ButtonSave_Callback,   []);
+
+    % ===== LOAD OPTIONS =====
+    LoadOptions();
+    
+    % ===== CREATE PANEL =====   
+    bstPanelNew = BstPanel(panelName, ...
+                           jPanelNew, ...
+                           struct());
+                              
+
+%% =================================================================================
+%  === CONTROLS CALLBACKS  =========================================================
+%  =================================================================================
+%% ===== LOAD OPTIONS =====
+    function LoadOptions()
+        % GUI
+        jCheckForceComp.setSelected(bst_get('ForceMatCompression'));
+        jCheckUpdates.setSelected(bst_get('AutoUpdates'));
+        jCheckGfp.setSelected(bst_get('DisplayGFP'));
+        jCheckIgnoreMem.setSelected(bst_get('IgnoreMemoryWarnings'));
+        if ~isempty(jCheckSmooth)
+            jCheckSmooth.setSelected(bst_get('GraphicsSmoothing'));
+        end
+        switch bst_get('DisableOpenGL')
+            case 0
+                jRadioOpenHard.setSelected(1);
+            case 1
+                jRadioOpenNone.setSelected(1);
+            case 2
+                if strncmp(computer,'MAC',3)
+                    jRadioOpenHard.setSelected(1);
+                else
+                    jRadioOpenSoft.setSelected(1);
+                end
+        end
+        % Temporary directory
+        jTextTempDir.setText(bst_get('BrainstormTmpDir'));
+        % FieldTrip directory
+        jTextFtDir.setText(bst_get('FieldTripDir'));
+        % Use signal processing toolbox
+        isToolboxInstalled = (exist('fir2', 'file') > 0);
+        jCheckUseSigProc.setEnabled(isToolboxInstalled);
+        jCheckUseSigProc.setSelected(bst_get('UseSigProcToolbox'));
+    end
+
+
+%% ===== SAVE OPTIONS =====
+    function SaveOptions()
+        bst_progress('start', 'Brainstorm preferences', 'Applying preferences...');
+        % ===== GUI =====
+        bst_set('ForceMatCompression', jCheckForceComp.isSelected());
+        bst_set('AutoUpdates', jCheckUpdates.isSelected());
+        bst_set('DisplayGFP',  jCheckGfp.isSelected());
+        bst_set('IgnoreMemoryWarnings',  jCheckIgnoreMem.isSelected());
+        if ~isempty(jCheckSmooth)
+            % Update value
+            isSmoothing = jCheckSmooth.isSelected();
+            isChangedSmoothing = (bst_get('GraphicsSmoothing') ~= isSmoothing);
+            bst_set('GraphicsSmoothing', isSmoothing);
+            % Update open figures
+            if isChangedSmoothing
+                % Get all figures
+                hFigAll = bst_figures('GetFiguresByType', {'DataTimeSeries', 'ResultsTimeSeries', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Spectrum', 'Pac', 'Image'});
+                % Set figurs properties
+                if ~isempty(hFigAll)
+                    if isSmoothing
+                        set(hFigAll, 'GraphicsSmoothing', 'on');
+                    else
+                        set(hFigAll, 'GraphicsSmoothing', 'off');
+                    end
+                end
+            end
+        end
+        
+        % === OPENGL ===
+        % Get selected status
+        if jRadioOpenHard.isSelected()
+            DisableOpenGL = 0;
+        elseif jRadioOpenNone.isSelected()
+            DisableOpenGL = 1;
+        else
+            DisableOpenGL = 2;
+        end
+        % Apply changes
+        if (DisableOpenGL ~= bst_get('DisableOpenGL'))
+            bst_set('DisableOpenGL', DisableOpenGL);
+            StartOpenGL();
+        end
+        
+        % ===== DATA IMPORT =====
+        % Temporary directory
+        oldTmpDir = bst_get('BrainstormTmpDir');
+        newTmpDir = char(jTextTempDir.getText());
+        if ~file_compare(oldTmpDir, newTmpDir)
+            % If temp directory changed: create directory if it doesn't exist
+            if file_exist(newTmpDir) || mkdir(newTmpDir)
+                bst_set('BrainstormTmpDir', newTmpDir);
+            else
+                java_dialog('warning', 'Could not create temporary directory.');
+            end
+        end
+        % FieldTrip directory
+        oldFtDir = bst_get('FieldTripDir');
+        newFtDir = char(jTextFtDir.getText());
+        % If directory changed
+        if ~file_compare(oldFtDir, newFtDir)
+            % Folder doesn't exist
+            if ~isempty(newFtDir) && ~file_exist(newFtDir)
+                java_dialog('warning', 'Selected FieldTrip folder doesn''t exist. Ignoring...');
+            elseif ~isempty(newFtDir) && ~file_exist(bst_fullfile(newFtDir, 'ft_defaults.m'))
+                java_dialog('warning', 'Selected folder does not contain a valid FieldTrip install. Ignoring...');
+            else
+                bst_set('FieldTripDir', newFtDir);
+            end
+        end
+        
+        % ===== PROCESSING OPTIONS =====
+        % Use signal processing toolbox
+        bst_set('UseSigProcToolbox', jCheckUseSigProc.isSelected());
+        
+        bst_progress('stop');
+    end
+
+
+%% ===== SAVE OPTIONS =====
+    function ButtonSave_Callback(varargin)
+        % Save options
+        SaveOptions()
+        % Hide panel
+        gui_hide(panelName);
+    end
+
+%% ===== CANCEL BUTTON =====
+    function ButtonCancel_Callback(varargin)
+        % Hide panel
+        gui_hide(panelName);
+    end
+
+
+%% ===== TEMP DIRECTORY SELECTION =====
+    % Callback for '...' button
+    function TempDirectory_Callback(varargin)
+        % Get the initial path
+        initDir = bst_get('BrainstormTmpDir', 1);
+        % Open 'Select directory' dialog
+        tempDir = uigetdir(initDir, 'Select temporary directory.');
+        % If no directory was selected : return without doing anything
+        if (isempty(tempDir) || (tempDir(1) == 0))
+            return
+        end
+        % Else : update control text
+        jTextTempDir.setText(tempDir);
+        % Focus main brainstorm figure
+        jBstFrame = bst_get('BstFrame');
+        jBstFrame.setVisible(1);
+    end
+
+
+%% ===== FIELDTRIP DIRECTORY SELECTION =====
+    % Callback for '...' button
+    function FtDirectory_Callback(varargin)
+        % Get the initial path
+        initDir = bst_get('FieldTripDir', 1);
+        % Open 'Select directory' dialog
+        ftDir = uigetdir(initDir, 'Select FieldTrip directory.');
+        % If no directory was selected : return without doing anything
+        if (isempty(ftDir) || (ftDir(1) == 0) || (~isempty(initDir) && file_compare(initDir, ftDir)))
+            return;
+        % Directory is not avalid FieldTrip folder
+        elseif ~file_exist(bst_fullfile(ftDir, 'ft_defaults.m'))
+            java_dialog('warning', 'Selected folder does not contain a valid FieldTrip install.');
+            return;
+        end
+        % Else : update control text
+        jTextFtDir.setText(ftDir);
+        % Focus main brainstorm figure
+        jBstFrame = bst_get('BstFrame');
+        jBstFrame.setVisible(1);
+        % Remove all the previous FieldTrip folders from the path
+        if ~isempty(initDir) && isdir(initDir)
+            warning('off', 'MATLAB:rmpath:DirNotFound');
+            allFtPath = genpath(initDir);
+            rmpath(allFtPath);
+            warning('on', 'MATLAB:rmpath:DirNotFound');
+        end
+    end
+
+% %% ===== UPDATE PROCESS OPTIONS =====
+%     function UpdateProcessOptions_Callback(varargin)
+%         if ~jCheckOrigFolder.isSelected()
+%             jCheckOrigFormat.setSelected(0);
+%             jCheckOrigFormat.setEnabled(0);
+%         else
+%             jCheckOrigFormat.setEnabled(1);
+%         end
+%     end
+end
+
+
+%% ===== START OPENGL =====
+function [isOpenGL, DisableOpenGL] = StartOpenGL()
+    global GlobalOpenGLStatus;
+    % Get configuration 
+    DisableOpenGL = bst_get('DisableOpenGL');
+    isOpenGL = 1;
+    isUnixWarning = 0;
+    
+    % ===== MATLAB < 2014b =====
+    if (bst_get('MatlabVersion') < 804)
+        % Define OpenGL options
+        switch DisableOpenGL
+            case 0
+                if strncmp(computer,'MAC',3)
+                    OpenGLMode = 'autoselect';
+                elseif isunix && ~isempty(GlobalOpenGLStatus)
+                    OpenGLMode = 'autoselect';
+                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
+                else
+                    OpenGLMode = 'hardware';
+                end
+                FigureRenderer = 'opengl';
+            case 1
+                OpenGLMode = 'neverselect';
+                FigureRenderer = 'zbuffer';
+            case 2
+                if strncmp(computer,'MAC',3)
+                    OpenGLMode = 'autoselect';
+                elseif isunix && ~isempty(GlobalOpenGLStatus)
+                    OpenGLMode = 'autoselect';
+                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
+                else
+                    OpenGLMode = 'software';
+                end
+                FigureRenderer = 'opengl';
+        end
+        % Configure OpenGL
+        try
+            opengl(OpenGLMode);
+        catch
+            isOpenGL = 0;
+        end
+        % Check that OpenGL is running
+        s = opengl('data');
+        if isempty(s) || isempty(s.Version)
+            isOpenGL = 0;
+        end
+        % Figure types for which the OpenGL renderer is used
+        figTypes = {'3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
+        
+    % ===== MATLAB >= 2014b =====
+    else
+        % Start OpenGL
+        s = opengl('data');
+        if isempty(s) || isempty(s.Version)
+            isOpenGL = 0;
+        end
+        % Linux: Cannot change the OpenGL mode at runtime
+        if isunix
+            if ~isOpenGL
+                DisableOpenGL = 1;
+            % If the requested configuration is not the current OpenGL status: Error
+            elseif (DisableOpenGL == 0) && (s.Software == 1) 
+                isUnixWarning = 1;
+                DisableOpenGL = 2;
+                bst_set('DisableOpenGL', DisableOpenGL);
+            elseif (DisableOpenGL == 2) && (s.Software == 0)
+                isUnixWarning = 1;
+                DisableOpenGL = 0;
+                bst_set('DisableOpenGL', DisableOpenGL);
+            end
+        % MacOSX: No software OpenGL
+        elseif strncmp(computer,'MAC',3)
+            % Nothing to do
+        % Windows: Try to change the current status hardware/software
+        else
+            try
+                if (DisableOpenGL == 0)
+                    opengl('hardware');
+                elseif (DisableOpenGL == 2)
+                    opengl('software');
+                end
+                s = opengl('data');
+            catch
+                isOpenGL = 0;
+            end
+        end
+        % Configure OpenGL
+        switch DisableOpenGL
+            case 0,  FigureRenderer = 'opengl';
+            case 1,  FigureRenderer = 'painters';
+            case 2,  FigureRenderer = 'opengl';
+        end
+        % Figure types for which the OpenGL renderer is used
+        figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
+    end
+    
+    % Add comment if not running Brainstorm
+    if isappdata(0, 'BrainstormRunning')
+        fprintf(1, 'BST> OpenGL status: ');
+    end
+    % If OpenGL is running: save status
+    if isOpenGL
+        GlobalOpenGLStatus = DisableOpenGL;
+        if (DisableOpenGL == 1)
+            disp('disabled');
+        elseif s.Software
+            disp('software');
+        else
+            disp('hardware');
+        end
+    else
+        GlobalOpenGLStatus = -1;
+        FigureRenderer = 'painters';
+        disp('failed');
+    end
+        
+    % Display warning
+    if isUnixWarning
+        disp('BST> Warning: Switching between hardware and software at runtime is not possible on Linux systems.');
+        disp('BST> To force Matlab to use the software OpenGL: matlab -softwareopengl');
+        disp('BST> To force Matlab to use the hardware OpenGL: matlab -nosoftwareopengl');
+    end
+    
+    % ===== UPDATE FIGURES =====
+    % Get all figures
+    hFigAll = bst_figures('GetFiguresByType', figTypes);
+    % Set figures renderers
+    if ~isempty(hFigAll)
+        bst_progress('start', 'OpenGL configuration', 'Updating figures...');
+        set(hFigAll, 'Renderer', FigureRenderer);
+        drawnow;
+        bst_progress('stop');
+    end
+end
+
+
+%% ===== BUTTON: RESET =====
+function ButtonReset_Callback(varargin)
+    % Ask user confirmation
+    isConfirm = java_dialog('confirm', ...
+        ['You are about to reinitialize your Brainstorm installation, this will:' 10 10 ...
+         ' - Detach all the protocols from the database (without deleting any file)' 10 ...
+         ' - Reset all the Brainstorm and processes preferences' 10 ...
+         ' - Restart Brainstorm as if it was the first time on this computer' 10 10 ...
+         'Reset Brainstorm now?' 10 10], ...
+        'Reset Brainstorm');
+    if ~isConfirm
+        return;
+    end
+    % Close panel
+    gui_hide('Preferences');
+    % Reset and restart brainstorm
+    brainstorm stop;
+    brainstorm reset;
+    brainstorm;
+end
+
+
+
