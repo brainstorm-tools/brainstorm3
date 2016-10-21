@@ -19,7 +19,7 @@ function varargout = process_import_channel( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012
+% Authors: Francois Tadel, 2012-2016
 
 eval(macro_method);
 end
@@ -46,8 +46,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 30;
     sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy#Prepare_the_channel_file';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'raw'};
-    sProcess.OutputTypes = {'data', 'raw'};
+    sProcess.InputTypes  = {'data', 'raw', 'matrix'};
+    sProcess.OutputTypes = {'data', 'raw', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Option: File to import

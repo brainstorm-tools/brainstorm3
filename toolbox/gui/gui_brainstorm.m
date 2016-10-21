@@ -968,11 +968,13 @@ end
 
 
 %% ===== CREATE PROTOCOL =====
-function iProtocol = CreateProtocol(ProtocolName, UseDefaultAnat, UseDefaultChannel) %#ok<DEFNU>
+function iProtocol = CreateProtocol(ProtocolName, UseDefaultAnat, UseDefaultChannel, DbDir) %#ok<DEFNU>
     % Get Brainstorm directory
-    DbDir = bst_get('BrainstormDbDir');
-    if isempty(DbDir)
-        error('Please set the database folder before calling this function.');
+    if (nargin < 4) || isempty(DbDir)
+        DbDir = bst_get('BrainstormDbDir');
+        if isempty(DbDir)
+            error('Please set the database folder before calling this function.');
+        end
     end
     % Standardize protocol name
     ProtocolName = file_standardize(ProtocolName);

@@ -419,6 +419,7 @@ sFilesEpochs2 = bst_process('CallProcess', 'process_import_data_event', sFilesRu
     'baseline',    [-0.1, -0.0017]);
 % Display raster plot
 hFigRaster = view_erpimage({sFilesEpochs1.FileName}, 'erpimage', 'MEG');
+panel_display();
 bst_report('Snapshot', hFigRaster, sFilesEpochs1(1).FileName, 'ERP image');
 close(hFigRaster);
 
@@ -450,7 +451,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'contact_nimage', 15, ...
     'Comment',        'Evoked response');
 
-% Process: Weighted Average+Stderr: By trial group (subject average)
+% Process: Average+Stderr: By trial group (subject average)
 sFilesAvgAll = bst_process('CallProcess', 'process_average', [sFilesEpochs1, sFilesEpochs2], [], ...
     'avgtype',    6, ...  % By trial group (subject average)
     'avg_func',   7, ...  % Arithmetic average + Standard error

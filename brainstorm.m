@@ -7,7 +7,6 @@ function varargout = brainstorm( varargin )
 %        brainstorm server        : Start Brainstorm on a Matlab server (keeps the environment alive at the end of the execution)
 %        brainstorm stop          : Stop Brainstorm
 %        brainstorm reset         : Re-inialize Brainstorm (delete preferences and database)
-%        brainstorm kinect        : Use a Microsoft Kinect to generate a head shape
 %        brainstorm digitize      : Digitize points using a Polhemus system
 %        brainstorm setpath       : Add Brainstorm subdirectories to current path
 %        brainstorm startjava     : Add Brainstorm Java classes to dynamic classpath
@@ -16,6 +15,7 @@ function varargout = brainstorm( varargin )
 %        brainstorm update        : Download and install latest Brainstorm update
 %        brainstorm tutorial name : Run the validation script attached to a tutorial (ctf, neuromag, raw, resting, yokogawa
 %        brainstorm tutorial all  : Run all the validation scripts
+%        brainstorm test          : Run a coverage test
 %        brainstorm deploy        : Create a zip file for distribution (see bst_deploy for options)
 %        brainstorm deploy 1      : Compile the current version of Brainstorm with Matlab mcc compiler
 %  res = brainstorm('status')     : Return brainstorm status (1=running, 0=stopped)
@@ -130,9 +130,6 @@ switch action
     case 'server'
         bst_set_path(BrainstormHomeDir);
         bst_startup(BrainstormHomeDir, 0, 1);
-    case 'kinect'
-        bst_set_path(BrainstormHomeDir);
-        bst_kinect_record;
     case 'digitize'
         brainstorm nogui
         panel_digitize('Start');
@@ -194,6 +191,13 @@ switch action
                 bst_report('Close');
             end
         end
+    case 'test'
+        bst_set_path(BrainstormHomeDir);
+        if (nargin < 2)
+            error(['You must specify an empty test folder.' 10 'Usage: brainstorm test test_dir']);
+        end
+        test_dir = varargin{2};
+        test_all(test_dir);
     case 'deploy'
         % Close Brainstorm
         if isappdata(0, 'BrainstormRunning')

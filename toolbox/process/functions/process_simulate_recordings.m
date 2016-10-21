@@ -1,5 +1,5 @@
 function varargout = process_simulate_recordings( varargin )
-% PROCESS_SIMULATE_SOURCES: Simulate source files based on some scouts.
+% PROCESS_SIMULATE_RECORDINGS: Simulate source files based on some scouts.
 %
 % USAGE:  OutputFiles = process_simulate_recordings('Run', sProcess, sInputA)
  

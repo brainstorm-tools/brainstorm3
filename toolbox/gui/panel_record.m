@@ -1695,6 +1695,9 @@ function EventTypeRename()
     end
     % Get event (ignore current epoch)
     sEvent = GetEvents(iEvent, 1);
+    if isempty(sEvent)
+        return;
+    end
     % Ask new label to the user
     newLabel = java_dialog('input', 'Enter new label:', 'Rename event', [], sEvent.label);
     if isempty(newLabel)

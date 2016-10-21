@@ -7,6 +7,7 @@ October 2016
 - API changes: Replaced "macro_methodcall" with "eval(macro_method)" because of changes in Matlab 2016b
 - Doc: Added full text search on the forum using Google
 - Distrib: Added support for compiled Matlab 2016b
+- Distrib: Transferred the code base from private SVN to public GitHub
 ---------------------------------------------------------------
 September 2016
 - Bug fix: Downsampling of the surfaces was not working well between Aug 26 and Sept 8 (obvious error)
