@@ -1,3 +1,5 @@
+![](http://neuroimage.usc.edu/brainstorm/Introduction?action=AttachFile&do=get&target=logo_line.gif)
+
 # Brainstorm
 Brainstorm is a collaborative, open-source application dedicated to the analysis of brain recordings:
 MEG, EEG, fNIRS, ECoG, depth electrodes and animal electrophysiology.
