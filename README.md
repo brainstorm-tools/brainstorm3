@@ -1,7 +1,6 @@
 ![](http://neuroimage.usc.edu/brainstorm/Introduction?action=AttachFile&do=get&target=logo_line.gif)
 
 # Brainstorm
-http://neuroimage.usc.edu/brainstorm
 Brainstorm is a collaborative, open-source application dedicated to the analysis of brain recordings:
 MEG, EEG, fNIRS, ECoG, depth electrodes and animal electrophysiology.
 
@@ -12,3 +11,5 @@ Since the project started by the end of the 1990's, our server has registered mo
 The best way to learn how to use Brainstorm, like any other academic software, is to benefit from local experts. However, you may be the first one in your institution to consider using Brainstorm for your research. We are happy to provide comprehensive [online tutorials](http://neuroimage.usc.edu/brainstorm/Tutorials) and support through our forum but there is nothing better than a course to make your learning curve steeper. Consult our [training pages](http://neuroimage.usc.edu/brainstorm/Training) for upcoming opportunities to learn better and faster.
 
 Finally, have a look regularly at our [What's new](http://neuroimage.usc.edu/brainstorm/News) page for staying on top of Brainstorm news and updates and [Like us on Facebook](https://www.facebook.com/brainstormsoftware) to stay in touch. We hope you enjoy using Brainstorm as much as we enjoy developing and sharing these tools with the community! 
+
+http://neuroimage.usc.edu/brainstorm
