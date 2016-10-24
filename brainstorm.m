@@ -1,5 +1,5 @@
 function varargout = brainstorm( varargin )
-% BRAINSTORM Brainstorm startup function. 
+% BRAINSTORM Brainstorm startup function
 %
 % USAGE: brainstorm               : Start Brainstorm
 %        brainstorm start         : Start Brainstorm
