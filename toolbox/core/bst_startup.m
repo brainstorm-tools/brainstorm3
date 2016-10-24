@@ -1,7 +1,7 @@
-function bst_startup(BrainstormHomeDir, isGUI, isServer)
+function bst_startup(BrainstormHomeDir, isGUI, isServer, BrainstormDbDir)
 % BST_STARTUP: Start a new Brainstorm Session.
 %
-% USAGE:  bst_startup(BrainstormHomeDir, isGUI=1, isServer=0)
+% USAGE:  bst_startup(BrainstormHomeDir, isGUI=1, isServer=0, BrainstormDbDir=[])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -26,6 +26,10 @@ function bst_startup(BrainstormHomeDir, isGUI, isServer)
 
 
 %% ===== MATLAB CHECK =====
+% Parse inputs
+if (nargin < 4) || isempty(BrainstormDbDir)
+    BrainstormDbDir = [];
+end
 % If version is too old
 MatlabVersion = bst_get('MatlabVersion');
 if (MatlabVersion < 701)
@@ -423,7 +427,9 @@ end
 %% ===== SET DATABASE DIRECTORY =====
 isImportDb = 0;
 % Get database folder
-BrainstormDbDir = bst_get('BrainstormDbDir');
+if isempty(BrainstormDbDir)
+    BrainstormDbDir = bst_get('BrainstormDbDir');
+end
 % If folder is not defined yet: ask user to set it
 if isempty(BrainstormDbDir)
     % Hide splash screen

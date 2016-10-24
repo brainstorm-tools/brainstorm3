@@ -23,9 +23,19 @@ if (nargin < 1) || isempty(test_dir) || ~isdir(test_dir)
     error('You must specify an empty directory in input.');
 end
 % Start profiling
-profile on
+% profile on
+% Reset brainstorm
+bst_reset();
+% Prepare test folders
+BrainstormHomeDir = fileparts(fileparts(fileparts(which(mfilename))));
+BrainstormDbDir = fullfile(test_dir, 'brainstorm_db');
+if isdir(BrainstormDbDir)
+    error(['You should delete the test database folder first: ' BrainstormDbDir]);
+end
+mkdir(BrainstormDbDir);
 % Start Brainstorm with GUI
-brainstorm
+bst_startup(BrainstormHomeDir, 0, 0, BrainstormDbDir);
+
 % Initialize random generator
 rng('default');
 rng(1);
