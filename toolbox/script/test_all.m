@@ -19,8 +19,14 @@ function test_all(test_dir)
 
 %% ===== START =====
 % Check inputs
-if (nargin < 1) || isempty(test_dir) || ~isdir(test_dir)
+if (nargin < 1) || isempty(test_dir)
     error('You must specify an empty directory in input.');
+end
+% Create test folder
+if ~isdir(test_dir)
+    if ~mkdir(test_dir)
+        error(['Could not create folder: ' test_dir]);
+    end
 end
 % Start profiling
 % profile on
@@ -45,7 +51,7 @@ ProtocolName = 'ProtocolTest';
 % Delete existing protocol
 gui_brainstorm('DeleteProtocol', ProtocolName);
 % Create new protocol
-gui_brainstorm('CreateProtocol', ProtocolName, 0, 0, test_dir);
+gui_brainstorm('CreateProtocol', ProtocolName, 0, 0, BrainstormDbDir);
 % Start a new report
 bst_report('Start');
 
@@ -316,6 +322,7 @@ bst_report('Snapshot', hFigTp2, sFilesEpochs(1).FileName, '3DSensorCap');
 bst_report('Snapshot', hFigTp3, sFilesEpochs(1).FileName, '2DDisc');
 bst_report('Snapshot', hFigTp4, sFilesEpochs(1).FileName, '2DLayout');
 bst_report('Snapshot', hFigTp5, sFilesEpochs(1).FileName, '3DElectrodes');
+bst_report('Snapshot', hContactFig, sFilesEpochs(1).FileName, 'Contact sheet');
 % Colormap tests
 bst_colormaps('SetColormapName', 'eeg', 'jet');
 bst_colormaps('SetColormapName', 'eeg', 'cmap_rbw');
@@ -325,6 +332,7 @@ bst_colormaps('SetDisplayColorbar', 'eeg', 0);
 bst_colormaps('RestoreDefaults', 'eeg');
 gui_edit_channelflag(sFilesAvg.FileName);
 bst_memory('UnloadAll', 'Forced');
+close(hContactFig);
 
 
 %% ===== SOURCE ANALYSIS =====
