@@ -38,7 +38,7 @@ function varargout = brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2016
 
 % Make sure that "more" is off
 more off
