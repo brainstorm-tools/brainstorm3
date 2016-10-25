@@ -1718,7 +1718,7 @@ function SetSelectionState(isSelected)
     % No figure available
     if isempty(hFigures)
         if isSelected
-            java_dialog('warning', 'You need to display a cortex surface before creating scouts.', 'Select a cortical spot');
+            java_dialog('warning', 'You need to open a 3D figure before creating scouts.', 'Create scout');
         end
         % Release toolbar "AddScout" button 
         ctrl.jButtonAddScout.setSelected(0);
@@ -3229,6 +3229,8 @@ function EditScoutsSize(action)
     % If constrained growth
     isContrained = ctrl.jToggleConst.isSelected();
     
+    % Get surface information
+    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
     % Volume scouts: Get number of points for this atlas
     isVolumeAtlas = ~isempty(strfind(sAtlas.Name, 'Volume scouts'));
     if isVolumeAtlas
@@ -3254,8 +3256,6 @@ function EditScoutsSize(action)
         patchVertices = GridLoc;
     % Surface scouts
     else
-        % Get cortex and anatomy surface handle
-        [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
         % Just for the special purpose of editing the scalp surface (remove imperfections)
         patchVertices = get(TessInfo(iTess).hPatch, 'Vertices');
     end
@@ -3310,6 +3310,8 @@ function EditScoutsSize(action)
                         [tmp, I] = sort(distFromSeed);
                         vi = union(vi, viPossible(I(1:10)));
                     end
+                    % Remove vertices under the threshold
+                    vi = setdiff(vi, iUnderThresh);
                 % Surface scout
                 else
                     % Get closest neighbours
@@ -3361,6 +3363,8 @@ function EditScoutsSize(action)
                         [tmp, I] = sort(distFromSeed);
                         vi = union(vi, viPossible(I(1)));
                     end
+                    % Remove vertices under the threshold
+                    vi = setdiff(vi, iUnderThresh);
                 % Surface scout
                 else
                     % Get closest neighbours
