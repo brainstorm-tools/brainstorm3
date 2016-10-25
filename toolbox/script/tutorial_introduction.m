@@ -45,7 +45,8 @@ NoiseFile  = fullfile(tutorial_dir, 'sample_introduction', 'data', 'S01_Noise_20
 if ~file_exist(Run1File)
     error(['The folder ' tutorial_dir ' does not contain the folder from the file sample_introduction.zip.']);
 end
-
+% Re-inialize random number generator
+rng('default');
 
 
 %% ===== TUTORIAL #1: CREATE PROTOCOL ================================================
@@ -177,8 +178,8 @@ panel_record('SetTimeLength', 3);
 panel_record('SetStartTime', 100);
 panel_record('SetDisplayMode', hFigMeg, 'column');
 panel_montage('SetCurrentMontage', hFigMeg, 'CTF LT');
-% Set filters: panel_filter('SetFilters', LowPassEnabled, LowPassValue, HighPassEnabled, HighPassValue, SinRemovalEnabled, SinRemovalValue, MirrorEnabled)
-panel_filter('SetFilters', 1, 100, 1, 1, 0, [], 1, 0);
+% Set filters: panel_filter('SetFilters', LowPassEnabled, LowPassValue, HighPassEnabled, HighPassValue, SinRemovalEnabled, SinRemovalValue, MirrorEnabled, FullSourcesEnabled)
+panel_filter('SetFilters', 1, 100, 1, 1, 0, [], 0, 0, []);
 pause(0.5);
 panel_record('SetDisplayMode', hFigMeg, 'butterfly');
 panel_montage('SetCurrentMontage', hFigMeg, '');
@@ -486,7 +487,7 @@ hFigTp4   = view_topography(sFilesAvg(3).FileName, 'MEG', '2DLayout');
 % Set time: 90ms
 panel_time('SetCurrentTime', 0.090);
 % Set filters: 40Hz low-pass, no high-pass
-panel_filter('SetFilters', 1, 40, 0, [], 0, [], 1, 0);
+panel_filter('SetFilters', 1, 40, 0, [], 0, [], 0, 0);
 % View selected sensors
 SelectedChannels = {'MLC31', 'MLC32'};
 bst_figures('SetSelectedRows', SelectedChannels);
@@ -1369,7 +1370,7 @@ sSimulData = bst_process('CallProcess', 'process_simulate_recordings', sTestPara
 [sStudy,iStudy,iRes] = bst_get('ResultsForDataFile', sSimulData.FileName);
 sSimulSrc = sStudy.Result(iRes).FileName;
 % Reset visualization filters
-panel_filter('SetFilters', 0, [], 0, [], 0, [], 1, 0);
+panel_filter('SetFilters', 0, [], 0, [], 0, [], 0, 0);
 % Process: Snapshot: Recordings time series
 bst_process('CallProcess', 'process_snapshot', sTestParamScout, [], ...
     'target',    5, ...  % Recordings time series

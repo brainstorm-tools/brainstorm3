@@ -108,7 +108,7 @@ if (iSubjStart == 1)
     gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
 end
 % Set visualization filters: 40Hz low-pass, no high-pass
-panel_filter('SetFilters', 1, 40, 0, [], 0, [], 1, 0);
+panel_filter('SetFilters', 1, 40, 0, [], 0, [], 0, 0);
 
 
 %% ===== EMPTY ROOM RECORDINGS =====

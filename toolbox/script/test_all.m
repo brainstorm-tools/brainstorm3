@@ -304,7 +304,7 @@ figure_3d('SetStandardView', hFigTp5, 'left');
 % Set time: 90ms
 panel_time('SetCurrentTime', 0.250);
 % Set filters: 40Hz low-pass, no high-pass
-panel_filter('SetFilters', 1, 40, 0, [], 0, [], 1, 0);
+panel_filter('SetFilters', 1, 40, 0, [], 0, [], 0, 0);
 % View selected sensors
 SelectedChannels = {'O1', 'T5'};
 bst_figures('SetSelectedRows', SelectedChannels);
