@@ -200,7 +200,7 @@ x = bst_bsxfun(@minus, x, xmean);
 
 % Mirroring requires the data to be longer than the filter
 if (FiltSpec.mirror) && (nTime < M)
-    Messages = [Messages, 'Data is too short for mirroring. Option is ignored...' 10];
+    Messages = [Messages, 'Warning: Data is too short for mirroring. Option is ignored...' 10];
     FiltSpec.mirror = 0;
 end
 % Mirror signals

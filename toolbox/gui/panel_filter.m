@@ -1,7 +1,8 @@
 function varargout = panel_filter(varargin)
 % PANEL_FILTER: Apply a frequency filter to the data time series displayed in brainstorm figures.
 % 
-% USAGE:  bstPanelNew = panel_filter('CreatePanel')
+% USAGE:  bstPanel = panel_filter('CreatePanel')
+%                    panel_filter('SetFilters', LowPassEnabled=[], LowPassValue=[], HighPassEnable=[], HighPassValue=[], SinRemovalEnabled=[], SinRemovalValue=[], MirrorEnabled=[], FullSourcesEnabled=[])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,7 +22,7 @@ function varargout = panel_filter(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2016
 
 eval(macro_method);
 end

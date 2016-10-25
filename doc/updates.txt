@@ -6,8 +6,10 @@ October 2016
 - Process: Hilbert: Using the new band-pass filters (slower but more accurate + documented transients)
 - API changes: Replaced "macro_methodcall" with "eval(macro_method)" because of changes in Matlab 2016b
 - Doc: Added full text search on the forum using Google
+- GUI: Growing volume scouts can now be constrained to the current data threshold
 - Distrib: Added support for compiled Matlab 2016b
 - Distrib: Transferred the code base from private SVN to public GitHub
+  | https://github.com/brainstorm-tools/brainstorm3
 ---------------------------------------------------------------
 September 2016
 - Bug fix: Downsampling of the surfaces was not working well between Aug 26 and Sept 8 (obvious error)
