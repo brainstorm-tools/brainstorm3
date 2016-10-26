@@ -204,6 +204,10 @@ if ~isempty(bstOptions)
             GlobalData.Colormaps = bstOptions.Colormaps;
         end
     end
+    % Clone control
+    if isfield(bstOptions, 'CloneLock') && ~isempty(bstOptions.CloneLock)
+        GlobalData.Program.CloneLock = bstOptions.CloneLock;
+    end
     % Get saved preferences
     if isfield(bstOptions, 'Preferences') && isstruct(bstOptions.Preferences)
         GlobalData.Preferences = struct_copy_fields(GlobalData.Preferences, bstOptions.Preferences, 0);
@@ -297,6 +301,10 @@ disp('BST> Initializing user interface...');
 GlobalData.Program.ScreenDef = gui_layout('GetScreenClientArea');
 % Create main window
 gui_initialize();
+% Abort if something went wrong
+if isempty(GlobalData.Program.GUI)
+    return;
+end
 
 
 %% ===== INITIALIZE DATABASE =====

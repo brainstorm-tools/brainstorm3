@@ -52,6 +52,7 @@ BstMat.ProtocolsListStudies  = GlobalData.DataBase.ProtocolStudies;
 BstMat.isProtocolLoaded      = GlobalData.DataBase.isProtocolLoaded;
 BstMat.BrainStormDbDir       = GlobalData.DataBase.BrainstormDbDir;
 BstMat.DbVersion             = GlobalData.DataBase.DbVersion;
+BstMat.CloneLock             = GlobalData.Program.CloneLock;
 BstMat.Colormaps             = GlobalData.Colormaps;
 BstMat.ChannelMontages       = GlobalData.ChannelMontages;
 BstMat.DataViewer.DefaultFactor = [];

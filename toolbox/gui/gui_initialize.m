@@ -28,7 +28,11 @@ global TimeSliderMutex;
 TimeSliderMutex = [];
 % Create main Brainstorm window
 GlobalData.Program.GUI = gui_brainstorm('CreateWindow');
-
+% Abort if something went wrong
+if isempty(GlobalData.Program.GUI)
+    return;
+end
+    
 % Add main Brainstorm panels
 % Explorer container
 gui_show('panel_protocols', 'BrainstormPanel', 'explorer');

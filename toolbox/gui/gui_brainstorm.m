@@ -46,6 +46,15 @@ function GUI = CreateWindow() %#ok<DEFNU>
     isServer = GlobalData.Program.isServer;
     
     % ===== CREATE GLOBAL MUTEX =====
+    % Clone control
+    if isequal(GlobalData.Program.CloneLock, 1)
+        bst_splash('hide');
+        GlobalData.Program.CloneLock = ~org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+        if isequal(GlobalData.Program.CloneLock, 1)
+            GUI = [];
+            return;
+        end
+    end
     % In order to catch when Matlab is closed with Brainstorm still running
     bst_mutex('create', 'Brainstorm');
     if ~isServer
@@ -384,7 +393,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jSplitH.setDividerLocation(uint32(round(defPos(4) - 240)));
         jSplitV.setDividerLocation(uint32(round(defPos(3) - 260)));
     end
-
+    
     % ===== EXPLORATION MODE =====
     switch sLayout.ExplorationMode
         case 'Subjects',    jToolButtonSubject.setSelected(1);
