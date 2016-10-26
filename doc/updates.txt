@@ -10,6 +10,7 @@ October 2016
 - Distrib: Added support for compiled Matlab 2016b
 - Distrib: Transferred the code base from private SVN to public GitHub
   | https://github.com/brainstorm-tools/brainstorm3
+- Distrib: Converted the tutorial datasets to BIDS specifications (introduction)
 ---------------------------------------------------------------
 September 2016
 - Bug fix: Downsampling of the surfaces was not working well between Aug 26 and Sept 8 (obvious error)

@@ -27,7 +27,6 @@ function tutorial_auditory(tutorial_dir)
 %
 % Author: Francois Tadel, 2014-2016
 
-
 % ===== FILES TO IMPORT =====
 % You have to specify the folder in which the tutorial dataset is unzipped
 if (nargin == 0) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)

@@ -87,8 +87,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.usectfcomp.Comment = 'Use CTF compensation';
     sProcess.options.usectfcomp.Type    = 'checkbox';
     sProcess.options.usectfcomp.Value   = 1;
-    % Use SSP
-    sProcess.options.usessp.Comment = 'Use SSP projectors';
+    % Use SSP/ICA
+    sProcess.options.usessp.Comment = 'Use SSP/ICA projectors';
     sProcess.options.usessp.Type    = 'checkbox';
     sProcess.options.usessp.Value   = 1;
     % Don't forget DC/resample
