@@ -272,10 +272,10 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     
     % Compute filter response
     if bst_get('UseSigProcToolbox')
-        [Hf,Freqs] = freqz(FiltSpec.b, FiltSpec.a, 10000, sfreq);
+        [Hf,Freqs] = freqz(FiltSpec.b, FiltSpec.a, 2^14, sfreq);
         [Ht,t] = impz(FiltSpec.b, FiltSpec.a, [], sfreq);
     else
-        [Hf,Freqs] = oc_freqz(FiltSpec.b, FiltSpec.a, [], sfreq);
+        [Hf,Freqs] = oc_freqz(FiltSpec.b, FiltSpec.a, 2^14, sfreq);
         [Ht,t] = oc_impz(FiltSpec.b, FiltSpec.a, [], sfreq);
     end
     % Plot frequency response
