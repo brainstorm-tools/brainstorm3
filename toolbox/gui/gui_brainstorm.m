@@ -47,14 +47,14 @@ function GUI = CreateWindow() %#ok<DEFNU>
     
     % ===== CREATE GLOBAL MUTEX =====
     % Clone control
-    if isequal(GlobalData.Program.CloneLock, 1)
-        bst_splash('hide');
-        GlobalData.Program.CloneLock = ~org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
-        if isequal(GlobalData.Program.CloneLock, 1)
-            GUI = [];
-            return;
-        end
-    end
+    % if isequal(GlobalData.Program.CloneLock, 1)
+    %     bst_splash('hide');
+    %     GlobalData.Program.CloneLock = ~org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+    %     if isequal(GlobalData.Program.CloneLock, 1)
+    %         GUI = [];
+    %         return;
+    %     end
+    % end
     % In order to catch when Matlab is closed with Brainstorm still running
     bst_mutex('create', 'Brainstorm');
     if ~isServer
