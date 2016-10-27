@@ -726,7 +726,11 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
                 newFileType = inFileType;
             end
         case 'timefreq'
-            newFileType = inFileType;
+            if (length(iFreqs) == 1)
+                newFileType = 'matrix';
+            else
+                newFileType = inFileType;
+            end
         case 'matrix'
             newFileType = inFileType;
     end
