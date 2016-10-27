@@ -205,18 +205,22 @@ function ScreenDef = GetScreenClientArea()
         end
         
         % === SCALING ===
-        % Adjust with the OS scaling factor (for high-DPI screens)
-        javaScreenSize = jScreens(i).getDisplayMode().getWidth();
-        if (i == 1) || (i > size(MonitorPositions,1))
-            matlabScreenSize = MonitorPositions(1,3) - MonitorPositions(1,1) + 1;
-        else
-            matlabScreenSize = MonitorPositions(i,3) - (MonitorPositions(i,1) - MonitorPositions(i-1,3)) + 1;
-        end
-        ZoomFactor = double(javaScreenSize) ./ double(matlabScreenSize);
-        ZoomFactor = round(ZoomFactor * 100) / 100;
-        % For Matlab R2015b and above: the screen size not in scaled coordinates, need to fix this
-        if (ZoomFactor >= 1.05) && (bst_get('MatlabVersion') >= 806) 
-            MaxWin = floor(MaxWin ./ ZoomFactor);
+        try
+            % Adjust with the OS scaling factor (for high-DPI screens)
+            javaScreenSize = jScreens(i).getDisplayMode().getWidth();
+            if (i == 1) || (i > size(MonitorPositions,1))
+                matlabScreenSize = MonitorPositions(1,3) - MonitorPositions(1,1) + 1;
+            else
+                matlabScreenSize = MonitorPositions(i,3) - (MonitorPositions(i,1) - MonitorPositions(i-1,3)) + 1;
+            end
+            ZoomFactor = double(javaScreenSize) ./ double(matlabScreenSize);
+            ZoomFactor = round(ZoomFactor * 100) / 100;
+            % For Matlab R2015b and above: the screen size not in scaled coordinates, need to fix this
+            if (ZoomFactor >= 1.05) && (bst_get('MatlabVersion') >= 806) 
+                MaxWin = floor(MaxWin ./ ZoomFactor);
+            end
+        catch
+            ZoomFactor = 1;
         end
         % Save maximum window position and zoom factor
         ScreenDef(i).matlabPos = MaxWin;
