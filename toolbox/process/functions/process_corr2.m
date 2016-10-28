@@ -222,6 +222,12 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
     if strcmpi(sInputB(1).FileType, 'results') && isfield(sProcess.options, 'dest_scouts') && isfield(sProcess.options.dest_scouts, 'Value') && ~isempty(sProcess.options.dest_scouts.Value)
         OPTIONS.TargetB = sProcess.options.dest_scouts.Value;
     end
+    % === FILE TYPE: NO TIMEFREQ ===
+    if strcmpi(sInputA(1).FileType, 'timefreq') || strcmpi(sInputB(1).FileType, 'timefreq')
+        bst_report('Error', sProcess, [], 'Time-frequency files are not allowed in input of this process.');
+        OPTIONS = [];
+        return;
+    end
 
     % === OUTPUT ===
     % Output mode
