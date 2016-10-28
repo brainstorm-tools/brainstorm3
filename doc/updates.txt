@@ -2,9 +2,10 @@
 October 2016
 - Compatibility: The default band-pass/low-pass/high-pass filters use a different implementation
   | For obtaining the same results as before, select the process option "Use old implementation"
+- API changes: Replaced "macro_methodcall" with "eval(macro_method)" because of changes in Matlab 2016b
 - Process: Band-pass filter: Main update of the filters used in the interface
 - Process: Hilbert: Using the new band-pass filters (slower but more accurate + documented transients)
-- API changes: Replaced "macro_methodcall" with "eval(macro_method)" because of changes in Matlab 2016b
+- Process: Extract values: Extracting one freq from a TF files creates a "matrix" or "results" file
 - Doc: Added full text search on the forum using Google
 - GUI: Growing volume scouts can now be constrained to the current data threshold
 - Distrib: Added support for compiled Matlab 2016b

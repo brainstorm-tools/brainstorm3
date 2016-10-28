@@ -727,7 +727,13 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
             end
         case 'timefreq'
             if (length(iFreqs) == 1)
-                newFileType = 'matrix';
+                % TF of data or matrix
+                if iscell(OutNames)
+                    newFileType = 'matrix';
+                % TF of sources
+                else
+                    newFileType = 'results';
+                end
             else
                 newFileType = inFileType;
             end
@@ -737,6 +743,13 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
     % If the input and output file types are the same: keep the loaded structure
     if isequal(newFileType, inFileType)
         newMat = LoadedMat;
+    % Else: Create a new empty sources structure
+    elseif strcmpi(newFileType, 'results')
+        newMat = {db_template('resultsmat')};
+        % Copy source information
+        newMat{1}.HeadModelFile = LoadedMat{1}.HeadModelFile;
+        newMat{1}.HeadModelType = LoadedMat{1}.HeadModelType;
+        newMat{1}.SurfaceFile   = LoadedMat{1}.SurfaceFile;
     % Else: Create a new empty matrix structure
     else
         newMat = {db_template('matrixmat')};
