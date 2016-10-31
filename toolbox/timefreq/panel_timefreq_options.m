@@ -521,7 +521,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
         % Get frequencies
         if jRadioFreqLinear.isSelected()
-            if ~isempty(jTextFreqLinear);
+            if ~isempty(jTextFreqLinear)
                 try
                     nFreq = length(eval(char(jTextFreqLinear.getText())));
                 catch

@@ -61,7 +61,8 @@ else
     Messages = [Messages, sprintf('Using %d windows of %d samples each', Nwin, Lwin)];
 end
 % Next power of 2 from length of signal
-NFFT = 2^nextpow2(Lwin);
+% NFFT = 2^nextpow2(Lwin);      % Function fft() pads the signal with zeros before computing the FT
+NFFT = Lwin;                    % No zero-padding: Nfft = Ntime
 % Positive frequency bins spanned by FFT
 FreqVector = sfreq / 2 * linspace(0,1,NFFT/2+1);
 
