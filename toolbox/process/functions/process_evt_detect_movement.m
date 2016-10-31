@@ -1,4 +1,4 @@
-function varargout = process_detect_movement( varargin )
+function varargout = process_evt_detect_movement( varargin )
 %
 
 % @=============================================================================
@@ -28,7 +28,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Detect Movement [Experimental]';
+    sProcess.Comment     = 'Detect movement [Experimental]';
     sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/MovementDetect';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
