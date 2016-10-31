@@ -468,8 +468,8 @@ for iData = 1:length(Data)
         case 'fft'
             % Next power of 2 from length of signal
             nTime = length(OPTIONS.TimeVector);
-%             NFFT = 2^nextpow2(nTime);
-            NFFT = nTime;
+            % NFFT = 2^nextpow2(nTime);    % Function fft() pads the signal with zeros before computing the FT
+            NFFT = nTime;                  % No zero-padding: Nfft = Ntime
             % Positive frequency bins spanned by FFT
             OPTIONS.Freqs = sfreq / 2 * linspace(0,1,NFFT/2+1);
             % Keep only first and last time instants
