@@ -80,7 +80,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         elseif (size(GlobalData.UserFrequencies.Freqs, 2) == 3)
             BandBounds = process_tf_bands('GetBounds', GlobalData.UserFrequencies.Freqs(iCurFreq,:));
             strFreq = ['<HTML>' GlobalData.UserFrequencies.Freqs{iCurFreq, 1} '<BR>' ...
-                       sprintf('%d-%d Hz', round(BandBounds))];
+                       sprintf('%g-%g Hz', BandBounds)];
         % Names
         else
             strFreq = GlobalData.UserFrequencies.Freqs{iCurFreq};
@@ -136,7 +136,7 @@ function UpdatePanel()
             elseif (size(GlobalData.UserFrequencies.Freqs,2) == 3)
                 BandBounds = process_tf_bands('GetBounds', GlobalData.UserFrequencies.Freqs(iCurFreq,:));
                 strFreq = ['<HTML>' GlobalData.UserFrequencies.Freqs{iCurFreq, 1} '<BR>' ...
-                           sprintf('%d-%d Hz', round(BandBounds))];
+                           sprintf('%g-%g Hz', BandBounds)];
                 ctrl.jLabelCurFreq.setHorizontalAlignment(ctrl.jLabelCurFreq.LEFT);
                 ctrl.jLabelCurFreq.setPreferredSize(java.awt.Dimension(60, 22));
                 ctrl.jSliderCurFreq.setPaintTicks(1);
@@ -286,7 +286,7 @@ function FreqLabels = FormatFreqLabels(Freqs)
         FreqLabels = cell(1,size(Freqs,1));
         for i = 1:size(Freqs,1)
             BandBounds = process_tf_bands('GetBounds', Freqs(i,:));
-            FreqLabels{i} = [Freqs{i,1}, ': ' sprintf('%d-%d Hz', round(BandBounds))];
+            FreqLabels{i} = [Freqs{i,1}, ': ' sprintf('%g-%g Hz', BandBounds)];
         end
     end
 end
