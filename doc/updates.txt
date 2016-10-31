@@ -7,6 +7,7 @@ October 2016
 - Process: Hilbert: Using the new band-pass filters (slower but more accurate + documented transients)
 - Process: Extract values: Extracting one freq from a TF files creates a "matrix" or "results" file
 - Process: PSD: Full cross-validation with MNE-Python (removed the zero-padding in bst_psd)
+- New process: Events > Detect cHPI activity (Elekta)
 - GUI: Growing volume scouts can now be constrained to the current data threshold
 - Doc: Added full text search on the forum using Google
 - Distrib: Added support for compiled Matlab 2016b

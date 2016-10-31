@@ -1,10 +1,9 @@
 function varargout = process_evt_detect_threshold( varargin )
 % PROCESS_EVT_DETECT_THRESHOLD: Event detection based on a set threshold for a group of recordings file
 %
-% USAGE:  OutputFiles = process_evt_detect('Run', sProcess, sInputs)
-%                 evt = process_evt_detect('Compute', F, TimeVector, OPTIONS, Fmask)
-%                 evt = process_evt_detect('Compute', F, TimeVector, OPTIONS)
-%             OPTIONS = process_evt_detect('Compute')                                : Get the default options structure
+% USAGE:  OutputFiles = process_evt_detect_threshold('Run', sProcess, sInputs)
+%                 evt = process_evt_detect_threshold('Compute', F, TimeVector, OPTIONS)
+%             OPTIONS = process_evt_detect_threshold('Compute')                         % Get the default options structure
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -205,16 +204,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             continue;
         end
         
-        % ===== BAD SEGMENTS =====
-        % Include bad segments
-        Fmask = [];
-        
         % ===== DETECT PEAKS =====
         % Progress bar
         bst_progress('text', 'Detecting peaks...');
         bst_progress('set', progressPos + round(2 * iFile / length(sInputs) / 3 * 100));
         % Perform detection
-        detectedEvt = Compute(F, TimeVector, OPTIONS, Fmask);
+        detectedEvt = Compute(F, TimeVector, OPTIONS);
 
         % ===== CREATE EVENTS =====
         sEvent = [];
@@ -286,10 +281,9 @@ end
 
 
 %% ===== PERFORM DETECTION =====
-% USAGE:      evt = Compute(F, TimeVector, OPTIONS, Fmask)
-%             evt = Compute(F, TimeVector, OPTIONS)
-%         OPTIONS = Compute()                              : Get the default options structure
-function evt = Compute(F, TimeVector, OPTIONS, Fmask)
+% USAGE:      evt = Compute(F, TimeVector, OPTIONS=[])
+%         OPTIONS = Compute()                            % Get the default options structure
+function evt = Compute(F, TimeVector, OPTIONS)
     % Options structure
     defOptions = struct('thresholdMAX',  0, ...     % Maximum threshold value 
                         'bandpass', [], ...         % bandpass filter data before detection
@@ -299,9 +293,6 @@ function evt = Compute(F, TimeVector, OPTIONS, Fmask)
     if (nargin == 0)
         evt = defOptions;
         return;
-    end
-    if (nargin < 4)
-        Fmask = [];
     end
     % Copy the missing parameters
     OPTIONS = struct_copy_fields(OPTIONS, defOptions, 0);
