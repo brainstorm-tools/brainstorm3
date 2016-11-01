@@ -736,7 +736,8 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
                 newFileType = inFileType;
             end
         case 'timefreq'
-            if (length(iFreqs) == 1)
+            % Simplify output (not available for statistics)
+            if (length(FreqVector) == 1) && (OPTIONS.Dim ~= 0)
                 % TF of data or matrix
                 if iscell(OutNames)
                     newFileType = 'matrix';
