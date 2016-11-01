@@ -331,7 +331,7 @@ function evt = Compute(F, TimeVector, OPTIONS, Fmask)
     % ===== FILTER RECORDINGS =====
     % Filter recordings
     if ~isempty(OPTIONS.bandpass)
-        F = process_bandpass('Compute', F, sFreq, OPTIONS.bandpass(1), OPTIONS.bandpass(2), 'bst-fft-fir', 1);
+        F = process_bandpass('Compute', F, sFreq, OPTIONS.bandpass(1), OPTIONS.bandpass(2), 'bst-hfilter', 0);
     end
     % Absolute value
     Fabs = abs(F);
