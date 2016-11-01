@@ -627,7 +627,17 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
         OutValue{iInput} = MatValues;
         % Concatenating in dimension 1: Add the file name
         if (OPTIONS.Dim == 1) && ~isempty(Description)
-            Description = cellfun(@(c)cat(2, c, ' @ ', sInputs(iInput).FileName), Description, 'UniformOutput', 0);
+            % Sources maps: Cannot concatenate in dimension 1
+            if ~iscell(Description)
+                % If there are more than one file: error
+                if (length(sInputs) > 1)
+                    bst_report('Error', sProcess, sInputs, 'Cannot concatenate source files in dimension #1.');
+                    return;
+                end
+            % Other file types
+            else
+                Description = cellfun(@(c)cat(2, c, ' @ ', sInputs(iInput).FileName), Description, 'UniformOutput', 0);
+            end
         % No concatenation: Update the modified signals list
         elseif (OPTIONS.Dim == 0) && ~isempty(Description)
             switch (inFileType)

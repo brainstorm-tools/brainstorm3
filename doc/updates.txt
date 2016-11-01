@@ -1,10 +1,12 @@
 ---------------------------------------------------------------
+November 2016
+---------------------------------------------------------------
 October 2016
 - Compatibility: The default band-pass/low-pass/high-pass filters use a different implementation
   | For obtaining the same results as before, select the process option "Use old implementation"
-- API changes: Replaced "macro_methodcall" with "eval(macro_method)" because of changes in Matlab 2016b
+- API: Replaced "macro_methodcall" with "eval(macro_method)" (changes in Matlab 2016b)
 - Process: Band-pass filter: Main update of the filters used in the interface
-- Process: Hilbert: Using the new band-pass filters (slower but more accurate + documented transients)
+- Process: SSP, Hilbert: Using the new filters (slower but more accurate + documented transients)
 - Process: Extract values: Extracting one freq from a TF files creates a "matrix" or "results" file
 - Process: PSD: Full cross-validation with MNE-Python (removed the zero-padding in bst_psd)
 - New process: Events > Detect cHPI activity (Elekta)

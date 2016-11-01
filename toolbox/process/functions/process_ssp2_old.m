@@ -1,4 +1,4 @@
-function varargout = process_ssp2( varargin )
+function varargout = process_ssp2_old( varargin )
 % PROCESS_SSP2: Artifact rejection for a group of recordings file (calculates SSP from FilesA and applies them to FilesB)
 %
 % USAGE:  OutputFiles = process_ssp2('Run', sProcess, sInputsA, sInputsB)
@@ -33,10 +33,10 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'SSP: Generic';
+    sProcess.Comment     = 'SSP: Generic OLD';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Artifacts';
-    sProcess.Index       = 302;
+    sProcess.Index       = 303;
     sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsSsp?highlight=%28Process2%29#Troubleshooting';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
@@ -240,22 +240,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         return;
     end
 
-    % ===== COMPUTE BANDPASS FILTER =====
-    % Get the time vector for the first file
-    DataMat = in_bst_data(sInputsA(1).FileName, 'Time');
-    sfreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
-    % Design band-pass filter
-    if ~isempty(BandPass) && ~all(BandPass == 0)
-        isMirror = 0;
-        [tmp, FiltSpec] = process_bandpass('Compute', [], sfreq, BandPass(1), BandPass(2), 'bst-hfilter', isMirror);
-        nTransient = round(FiltSpec.transient * sfreq);
-        % Show warning when computing epoched files
-        if ~isRawA
-            bst_report('Warning', sProcess, sInputsA, sprintf('Removing %1.3fs at the beginning and the end of each input for filtering.', FiltSpec.transient));
-        end
-    else
-        nTransient = [];
-    end
 
     % ===== READ ARTIFACTS (FILES A) =====
     % Initialize progress bar
@@ -269,6 +253,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     nMaxSamples = 100000;
     projChan = [];
     projChanNames = [];
+    sfreq_prev = [];
     % Read together all the files in group A
     for iFile = 1:length(sInputsA)
         % ===== GET CHANNEL FILE =====
@@ -306,7 +291,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             % Load the raw file descriptor
             DataMat = in_bst_data(sInputsA(iFile).FileName, 'F', 'ChannelFlag');
             sFile = DataMat.F;
-            sfreq_file = sFile.prop.sfreq;
+            sfreq = sFile.prop.sfreq;
             if isempty(sFile.events)
                 bst_report('Error', sProcess, sInputsA(iFile), 'No events in the input file.');
                 return;
@@ -325,24 +310,36 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             isExtended = (size(events(iEvt).samples, 1) == 2);
             % Simple events: get the samples to read around each event
             if ~isExtended
+                % Window to process for the SSP
                 evtSmpRange = round(evtTimeWindow .* sFile.prop.sfreq);
+                % Minimum length for the bandpass filter to perform correctly
+                if ~isempty(BandPass) && (BandPass(1) > 0)
+                    minLength = 1 / BandPass(1) * sFile.prop.sfreq;
+                else
+                    minLength = 1;
+                end
+                % Window to read and filter
+                missingSmp = minLength - (evtSmpRange(2)-evtSmpRange(1)+1);
+                if (missingSmp <= 0)
+                    readSmpRange = evtSmpRange;
+                    iEvtSmpRange = [];
+                else
+                    readSmpRange = evtSmpRange + ceil(missingSmp/2) * [-1,1];
+                    iEvtSmpRange = ceil(missingSmp/2)+1 + (0:(evtSmpRange(2)-evtSmpRange(1)));
+                end
             % Extended: cannot work with "mean" option
             elseif strcmpi(Method, 'SSP_mean')
                 bst_report('Error', sProcess, sInputsA, 'Method "SSP_mean" cannot be used for extended events.');
                 return;
             % Extended: read the full block
             else
-                evtSmpRange = [0 0];
-            end
-            % Add transients for bandpass
-            if ~isempty(nTransient)
-                evtSmpRange = evtSmpRange + [-1 1] .* nTransient;
+                readSmpRange = [0 1];
             end
             % Reading options
             % NOTE: FORCE READING CLEAN DATA (Baseline correction + CTF compensators + Previous SSP)
             ImportOptions = db_template('ImportOptions');
             ImportOptions.ImportMode      = 'Event';
-            ImportOptions.EventsTimeRange = evtSmpRange ./ sFile.prop.sfreq;
+            ImportOptions.EventsTimeRange = readSmpRange ./ sFile.prop.sfreq;
             ImportOptions.UseCtfComp      = 1;
             ImportOptions.UseSsp          = UseSsp;    % ADDED OPTION (FT: 27-Jun-2014) - Before we were always applying the previous SSPs
             ImportOptions.RemoveBaseline  = 'all';
@@ -354,10 +351,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 bst_progress('set', progressPos + round(iOcc / nOcc * 50));
                 % Simple event: read a time window around the marker
                 if ~isExtended
-                    SamplesBounds = events(iEvt).samples(1,iOcc) + evtSmpRange;
+                    SamplesBounds = events(iEvt).samples(1,iOcc) + readSmpRange;
                 % Extended event: read the full event
                 else
-                    SamplesBounds = events(iEvt).samples(:,iOcc)' + evtSmpRange;
+                    SamplesBounds = events(iEvt).samples(:,iOcc)';
                 end
                 % Check that this epoch is within the segment of file to consider
                 TimeBounds = SamplesBounds ./ sFile.prop.sfreq;
@@ -375,6 +372,11 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 end
                 % Read block
                 [Fevt, TimeVector] = in_fread(sFile, ChannelMat, events(iEvt).epochs(iOcc), SamplesBounds, [], ImportOptions);
+                % Keep only the time window we want to process (remove what was read just for the filtering)
+                if ~isExtended && ~isempty(iEvtSmpRange)
+                    Fevt = Fevt(:,iEvtSmpRange);
+                    TimeVector = TimeVector(iEvtSmpRange);
+                end
                 % SSP_mean: Check that we can get a time zero
                 if strcmpi(Method, 'SSP_mean')
                     if ((TimeVector(1) > 0) || (TimeVector(end) < 0))
@@ -403,20 +405,14 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             % Load the raw file descriptor
             DataMat = in_bst_data(sInputsA(iFile).FileName, 'F', 'ChannelFlag');
             sFile = DataMat.F;
-            sfreq_file = sFile.prop.sfreq;
+            sfreq = sFile.prop.sfreq;
             % Options for LoadInputFile()
             LoadOptions.IgnoreBad      = isIgnoreBad;  % From raw files: ignore the bad segments
             LoadOptions.ProcessName    = func2str(sProcess.Function);
             LoadOptions.RemoveBaseline = 'all';
             LoadOptions.UseSsp         = UseSsp;
-            % Add transients for bandpass filter
-            if ~isempty(nTransient)
-                rawTime = TimeWindow + [-1 1] .* (nTransient / sfreq_file);
-            else
-                rawTime = TimeWindow;
-            end
-            % Load input signals
-            [sMat, nSignals, iRows] = bst_process('LoadInputFile', sInputsA(iFile).FileName, [], rawTime, LoadOptions);
+            % Load input signals 
+            [sMat, nSignals, iRows] = bst_process('LoadInputFile', sInputsA(iFile).FileName, [], TimeWindow, LoadOptions);
             if isempty(sMat.Data)
                 bst_report('Error', sProcess, [], 'No data could be read from the input file.');
                 return
@@ -434,7 +430,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             DataMat = in_bst_data(sInputsA(iFile).FileName, 'F', 'ChannelFlag', 'Time');
             % Sampling frquency
             TimeVector = DataMat.Time;
-            sfreq_file = 1 ./ (TimeVector(2) - TimeVector(1));
+            sfreq = 1 ./ (TimeVector(2) - TimeVector(1));
             % SSP_mean: Check that we can get a time zero
             if strcmpi(Method, 'SSP_mean')
                 if ((TimeVector(1) > 0) || (TimeVector(end) < 0))
@@ -454,10 +450,11 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             end
         end
         % Check that the sampling frequency is the same
-        if (abs(sfreq_file - sfreq) > 1e-3)
+        if ~isempty(sfreq_prev) && (abs(sfreq_prev - sfreq) > 1e-3)
             bst_report('Error', sProcess, sInputsA(iFile), 'Input files have different sampling rates.');
             break;
         end
+        sfreq_prev = sfreq;
         % Add bad channels in this file to the global list
         iBad = union(iBad, find(DataMat.ChannelFlag == -1));
     end
@@ -482,6 +479,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     
     
     % ===== PROCESS DATA =====
+%     % Design band-pass filter
+%     if ~isempty(BandPass) && ~all(BandPass == 0)
+%         [tmp, FiltSpec] = process_bandpass('Compute', [], sfreq, BandPass(1), BandPass(2), [], 0);
+%     end
     % Set the progress bar to 50%
     bst_progress('text', 'Processing recordings...');
     bst_progress('set', progressPos + 50);
@@ -497,12 +498,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         if ~isempty(iBad) && ~isempty(F{iBlock})
             iChannels(iChanRemove) = [];
         end
-        % Filter recordings: Modified 
+        % Filter recordings
         if ~isempty(BandPass) && ~all(BandPass == 0)
-            % F{iBlock}(iChannels,:) = process_bandpass('Compute', F{iBlock}(iChannels,:), sfreq, BandPass(1), BandPass(2), 'bst-fft-fir', 1);
-            F{iBlock}(iChannels,:) = process_bandpass('Compute', F{iBlock}(iChannels,:), sfreq, FiltSpec);
-            % Remove transients
-            F{iBlock} = F{iBlock}(:, (nTransient+1):(end-nTransient));
+            % F{iBlock}(iChannels,:) = process_bandpass('Compute', F{iBlock}(iChannels,:), sfreq, FiltSpec);
+            F{iBlock}(iChannels,:) = process_bandpass('Compute', F{iBlock}(iChannels,:), sfreq, BandPass(1), BandPass(2), 'bst-fft-fir', 1);
         end
         % Compute the average at time zero (filtered)
         if strcmpi(Method, 'SSP_mean')
@@ -752,11 +751,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         % Divide by number of average
         ChannelFlag = ones(size(Favg,1), 1);
         ChannelFlag(iBad) = -1;
-        % Remove transients
-        if ~isempty(nTransient)
-            Favg = Favg(:, (nTransient+1):(end-nTransient));
-            TimeVector = TimeVector((nTransient+1):(end-nTransient));
-        end
         
         % === BEFORE ===
         % Create new output structure
