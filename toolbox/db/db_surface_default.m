@@ -1,4 +1,4 @@
-function db_surface_default( iSubject, SurfaceType, iSurface, isUpdate )
+function sSubject = db_surface_default( iSubject, SurfaceType, iSurface, isUpdate )
 % DB_SURFACE_DEFAULT: Set a surface as default of its category for a given subject.
 %
 % USAGE:  db_surface_default( iSubject, SurfaceType, iSurface, isUpdate=1 );
