@@ -2325,8 +2325,8 @@ function sProcesses = OptimizePipeline(sProcesses)
         end
         % Merge processes
         iRemove(end+1) = iProcess;
-        % Issue warning in the report
-        bst_report('Warning', sProcesses(iProcess), [], ['Process "' sProcesses(iProcess).Comment '" has been merged with process "' sProcesses(iImport).Comment '".' strWarning]);
+        % Issue message in the report
+        bst_report('Info', sProcesses(iProcess), [], ['Process "' sProcesses(iProcess).Comment '" has been merged with process "' sProcesses(iImport).Comment '".' strWarning]);
     end
     % Remove the processes that were included somewhere else
     if ~isempty(iRemove)
