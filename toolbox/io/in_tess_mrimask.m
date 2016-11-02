@@ -1,5 +1,8 @@
 function TessMat = in_tess_mrimask(MriFile)
 % IN_TESS_MRIMASK: Import an MRI as a mask or atlas, and tesselate the volumes in it
+%
+% USAGE:  TessMat = in_tess_mrimask(MriFile)
+%         TessMat = in_tess_mrimask(sMri)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -19,10 +22,15 @@ function TessMat = in_tess_mrimask(MriFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2013
+% Authors: Francois Tadel, 2012-2016
 
 % Read MRI volume
-sMri = in_mri(MriFile);
+if ischar(MriFile)
+    sMri = in_mri(MriFile);
+else
+    sMri = MriFile;
+    MriFile = [];
+end
 sMri.Cube = double(sMri.Cube);
 % Get al the values in the MRI
 allValues = unique(sMri.Cube);
@@ -43,7 +51,7 @@ end
 
 
 % Default labels for FreeSurfer ASEG.MGZ
-if (length(allValues) > 10) && (~isempty(strfind(MriFile, 'aseg.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto_noCCseg.mgz')))
+if (length(allValues) > 10) && ~isempty(MriFile) && (~isempty(strfind(MriFile, 'aseg.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto_noCCseg.mgz')))
     Labels = {...
         ... 0,  'Unknown'; ...
         ... 1,  'Left_Cerebral_Exterior'; ...
@@ -138,7 +146,7 @@ for i = 1:length(allValues)
     % Create an isosurface
     [TessMat(i).Faces, TessMat(i).Vertices] = isosurface(mask, 0.5);
     % Skip empty surfaces
-    if isempty(TessMat(i).Vertices);
+    if isempty(TessMat(i).Vertices)
         iEmpty(end+1) = i;
         continue;
     end

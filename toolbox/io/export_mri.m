@@ -26,7 +26,7 @@ function export_mri( BstMriFile, OutputMriFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2016
 
 % ===== PARSE INPUTS =====
 if (nargin < 1) || isempty(BstMriFile)
@@ -61,6 +61,7 @@ if isempty(OutputMriFile)
         case 'Analyze', ExportExt = '.img';
         case 'CTF',     ExportExt = '.mri';
         case 'Nifti1',  ExportExt = '.nii';
+        case 'FT-MRI',  ExportExt = '.mat';
         otherwise,      ExportExt = '.nii';
     end
     % Build default output filename
@@ -103,6 +104,9 @@ switch lower(OutputExt)
         out_mri_nii(sMri, OutputMriFile);
     case '.mri'
         out_mri_ctf(sMri, OutputMriFile);
+    case '.mat'
+        ftMri = out_fieldtrip_mri(sMri);
+        bst_save(OutputMriFile, ftMri, 'v7');
     otherwise
         error(['Unsupported file extension : "' OutputExt '"']);
 end

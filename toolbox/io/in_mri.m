@@ -43,7 +43,7 @@ function MRI = in_mri(MriFile, FileFormat)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2016
 
 % Parse inputs
 if (nargin < 2) || isempty(FileFormat)
@@ -93,7 +93,7 @@ if strcmpi(FileFormat, 'ALL')
 end
 
 % ===== LOAD MRI =====
-% Switch between file extensions
+% Switch between file formats
 switch (FileFormat)   
     case 'CTF'
         MRI = in_mri_ctf(MriFile);  % Auto-detect file format
@@ -109,6 +109,8 @@ switch (FileFormat)
         error('Not supported yet');
     case 'MNI'
         MRI = in_mri_mnc(MriFile);
+    case 'FT-MRI'
+        MRI = in_mri_fieldtrip(MriFile);
     case 'BST'
         % Check that the filename contains the 'subjectimage' tag
         if ~isempty(strfind(lower(fileBase), 'subjectimage'))

@@ -1,5 +1,7 @@
 ---------------------------------------------------------------
 November 2016
+- IO: Import/export FieldTrip MRI volumes
+- New process: FieldTrip volume segmentation (ft_volumesegment)
 ---------------------------------------------------------------
 October 2016
 - Compatibility: The default band-pass/low-pass/high-pass filters use a different implementation
