@@ -70,9 +70,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.ismri.Type    = 'checkbox';
     sProcess.options.ismri.Value   = 1;
     % Save surface
-    sProcess.options.istess.Comment = 'Surface <FONT color="#999999">&nbsp;&nbsp;&nbsp;&nbsp;(for OpenMEEG BEM computation)</FONT>';
+    sProcess.options.istess.Comment = 'Surface <FONT color="#999999">&nbsp;&nbsp;&nbsp;&nbsp;(for OpenMEEG BEM)</FONT>';
     sProcess.options.istess.Type    = 'checkbox';
     sProcess.options.istess.Value   = 1;
+    % Number of vertices 
+    sProcess.options.nvertices.Comment = 'Number of vertices (default=1922, 0=original): ';
+    sProcess.options.nvertices.Type    = 'value';
+    sProcess.options.nvertices.Value   = {1922, '', 0};
 end
 
 
@@ -128,6 +132,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get output 
     isSaveTess = sProcess.options.istess.Value;
     isSaveMri  = sProcess.options.ismri.Value;
+    nVertices  = sProcess.options.nvertices.Value{1};
     
     % ===== LOOP ON SUBJECTS =====
     for isub = 1:length(SubjectNames)
@@ -217,6 +222,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Convert to SCS coordinates
                 if ~isempty(sMri) && isfield(sMri, 'SCS') && isfield(sMri.SCS, 'NAS') && ~isempty(sMri.SCS.NAS)
                     sTess.Vertices = cs_convert(sMri, 'mri', 'scs', sTess.Vertices);
+                end
+                % Remesh surface
+                if ~isempty(nVertices > 0)
+                    [sTess.Vertices, sTess.Faces] = tess_remesh(sTess.Vertices, nVertices);
                 end
                 % Set comment
                 sTess.Comment = file_unique(['bem_' bemName '_ft'], {sSubject.Surface.Comment});

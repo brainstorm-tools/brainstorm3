@@ -142,6 +142,10 @@ for i = 1:length(allValues)
     % Fill small holes
     mask = mri_dilate(mask, 1);
     mask = mask & ~mri_dilate(~mask, 1);
+    % Close the volumes by setting to zero all the edges
+    mask([1,end],:,:) = 0;
+    mask(:,[1,end],:) = 0;
+    mask(:,:,[1,end]) = 0;
     
     % Create an isosurface
     [TessMat(i).Faces, TessMat(i).Vertices] = isosurface(mask, 0.5);
