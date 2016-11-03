@@ -224,13 +224,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     sTess.Vertices = cs_convert(sMri, 'mri', 'scs', sTess.Vertices);
                 end
                 % Remesh surface
-                if ~isempty(nVertices > 0)
-                    [sTess.Vertices, sTess.Faces] = tess_remesh(sTess.Vertices, nVertices);
+                if (nVertices > 0)
+                    [sTess.Vertices, sTess.Faces] = tess_remesh(sTess.Vertices, nVertices, 1);
+                    fileTag = sprintf('_%dV', nVertices);
+                else
+                    fileTag = '';
                 end
                 % Set comment
                 sTess.Comment = file_unique(['bem_' bemName '_ft'], {sSubject.Surface.Comment});
                 % Output file name
-                NewTessFile = file_unique(bst_fullfile(bst_fileparts(NewMriFile), ['tess_' bemName 'bem_ft.mat']));
+                NewTessFile = file_unique(bst_fullfile(bst_fileparts(NewMriFile), ['tess_' bemName 'bem_ft' fileTag '.mat']));
                 % Save file
                 bst_save(NewTessFile, sTess, 'v7');
                 % Add to subject
