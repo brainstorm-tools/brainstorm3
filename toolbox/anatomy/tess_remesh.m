@@ -1,16 +1,15 @@
-function [sph_vert, sph_faces] = tess_remesh(vert, nvert)
+function [sph_vert, sph_faces] = tess_remesh(vert, nvert, isCenter)
 % TESS_REMESH: Remesh a closed and non-overlapping tesselation with regularly spaced points.
 %
-% USAGE:  [sph_vert, sph_faces] = tess_remesh(vert, nvert)        : Assume surface is centered on (0,0,0)
-%         [sph_vert, sph_faces] = tess_remesh(vert)
-%                    OutputFile = tess_remesh(SurfaceFile, nvert) : Set the center of the head to (0,0,0) before growing sphere
-%                    OutputFile = tess_remesh(SurfaceFile)
+% USAGE:  [sph_vert, sph_faces] = tess_remesh(SurfaceFile, nvert=[ask], isCenter=1)
+%         [sph_vert, sph_faces] = tess_remesh(vert,        nvert=[ask], isCenter=0)
 %
 % INPUTS: 
 %    - SurfaceFile : Absolute or relative path to the surface file to remesh
-%    - vert  : [nVertices x 3] matrix of xyz vertices
-%    - nvert : Number of vertices in the output mesh
-%              [12 32 42 92 122 162 273 362 482 642 812 1082 1442 1922 2432 2562 3242 4322 5762 7682 7292 9722 10242 12962]
+%    - vert        : [nVertices x 3] matrix of xyz vertices
+%    - nvert       : Number of vertices in the output mesh, possible values
+%                    [12 32 42 92 122 162 273 362 482 642 812 1082 1442 1922 2432 2562 3242 4322 5762 7682 7292 9722 10242 12962]
+%    - isCenter    : If 1, center the surface points on the center of mass first (average of all the points)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -30,9 +29,13 @@ function [sph_vert, sph_faces] = tess_remesh(vert, nvert)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011
+% Authors: Francois Tadel, 2011-2016
 
 %% ===== PARSE INPUTS =====
+% Center?
+if (nargin < 3) || isempty(isCenter)
+    isCenter = [];
+end
 % Number of vertices
 if (nargin < 2) || isempty(nvert)
     % Ask user the new number of vertices
@@ -58,17 +61,28 @@ if ischar(vert)
     % Load surface file
     SurfaceFile = vert;
     [SurfaceMat, SurfaceFile] = in_tess_bst(SurfaceFile);
-    % Center head on (0,0,0)
-    center = mean(SurfaceMat.Vertices);
-    vert = bst_bsxfun(@minus, SurfaceMat.Vertices, center);
+    vert = SurfaceMat.Vertices;
+    % By default: center on the average of the points
+    if isempty(isCenter)
+        isCenter = 1;
+    end
 else
     SurfaceFile = [];
+    % By default: Consider the files is already centered
+    if isempty(isCenter)
+        isCenter = 0;
+    end
 end
 
 
 %% ===== CREATE SPHERE =====
 if ~isProgress
     bst_progress('text', 'Remesh: Growing sphere...');
+end
+% Center surface on its center of mass
+if isCenter
+    center = mean(vert);
+    vert = bst_bsxfun(@minus, vert, center);
 end
 % Compute an apolar sphere
 [sph_vert, sph_faces] = tess_sphere(nvert);
@@ -113,14 +127,17 @@ sph_r(~isnan(sph_r_tmp)) = sph_r_tmp(~isnan(sph_r_tmp));
 % Convert back the sphere in xyz coordinates
 [sph_vert(iPhiLimit,3), sph_vert(iPhiLimit,2), sph_vert(iPhiLimit,1)] = sph2cart(sph_th, sph_phi, sph_r);
 
+% Restore center
+if isCenter
+    sph_vert = bst_bsxfun(@plus, sph_vert, center);
+end
+
 
 %% ===== SAVE RESULTS IN FILE =====
 if ~isempty(SurfaceFile)
     if ~isProgress
         bst_progress('text', 'Remesh: Saving new file...');
     end
-    % Restore center
-    sph_vert = bst_bsxfun(@plus, sph_vert, center);
     % Output structure
     tag = sprintf('_remesh%dV', length(sph_vert));
     OutputMat.Comment = [SurfaceMat.Comment, tag];
