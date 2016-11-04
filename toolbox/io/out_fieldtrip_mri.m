@@ -1,8 +1,8 @@
-function ftMri = out_fieldtrip_mri(MriFile)
+function ftMri = out_fieldtrip_mri(MriFile, FieldName)
 % OUT_FIELDTRIP_MRI: Converts a MRI file into a FieldTrip structure (ft_datatype_volume.m)
 % 
-% USAGE:  ftMri = out_fieldtrip_mri(MriFile)  % Filename in input
-%         ftMri = out_fieldtrip_mri(sMri)     % Loaded structure in input
+% USAGE:  ftMri = out_fieldtrip_mri(MriFile, FieldName='anatomy')     % Filename in input
+%         ftMri = out_fieldtrip_mri(sMri,    FieldName='anatomy')     % Loaded structure in input
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,6 +24,11 @@ function ftMri = out_fieldtrip_mri(MriFile)
 %
 % Authors: Francois Tadel, 2016
 
+% Parse inputs
+if (nargin < 2) || isempty(FieldName)
+    FieldName = 'anatomy';
+end
+
 % Load data file
 if ischar(MriFile)
     bstMri = in_mri_bst(MriFile);
@@ -32,10 +37,10 @@ else
 end
 
 % Convert to a FieldTrip MRI
-ftMri.dim      = size(bstMri.Cube);
-ftMri.anatomy  = bstMri.Cube(:, end:-1:1, end:-1:1);
-ftMri.unit     = 'mm';
-ftMri.coordsys = 'ctf';
+ftMri.dim         = size(bstMri.Cube);
+ftMri.(FieldName) = bstMri.Cube(:, end:-1:1, end:-1:1);
+ftMri.unit        = 'mm';
+ftMri.coordsys    = 'ctf';
 
 % Rough estimation of the original fieldtrip transformation (voxel=>head)
 ftMri.transform = [bstMri.SCS.R, bstMri.SCS.T; 0 0 0 1] * ...                        % Brainstorm transformation MRI(mm) => SCS(mm)

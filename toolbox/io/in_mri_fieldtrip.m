@@ -5,8 +5,9 @@ function sMri = in_mri_fieldtrip(MriFile, FieldName)
 %         sMri = in_mri_fieldtrip(ftMri,   FieldName='anatomy')
 %
 % INPUT: 
-%     - MriFile : Full path to a fieldtrip MRI file
-%     - ftMri   : FieldTrip MRI structure
+%     - MriFile   : Full path to a fieldtrip MRI file
+%     - ftMri     : FieldTrip MRI structure
+%     - FieldName : Name of the field that contains the volume of interest
 % OUTPUT:
 %     - sMri    :  Brainstorm MRI structure
 %

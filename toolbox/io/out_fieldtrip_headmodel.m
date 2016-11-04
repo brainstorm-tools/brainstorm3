@@ -44,6 +44,14 @@ elseif isstruct(HeadModelFile)
 else
     error('Failed to load head model.');
 end
+% If this file was computed with FieldTrip, it should include the original FieldTrip headmodel
+if isfield(HeadModelMat, 'ftVolMeg') && ~isempty(HeadModelMat.ftVolMeg)
+    ftHeadModel = HeadModelMat.ftVolMeg;
+    return;
+elseif isfield(HeadModelMat, 'ftVolEeg') && ~isempty(HeadModelMat.ftVolEeg)
+    ftHeadModel = HeadModelMat.ftVolEeg;
+    return;
+end
 % Load channel file
 if ischar(ChannelFile)
     ChannelMat = in_bst_channel(ChannelFile);
@@ -73,18 +81,18 @@ end
 % ===== CREATE FIELDTRIP STRUCTURE =====
 % Headmodel type
 switch (HeadModelMethod)
-    case 'meg_sphere'
+    case {'meg_sphere', 'singlesphere'}
         ftHeadModel.type = 'singlesphere';
         ftHeadModel.r = HeadModelMat.Param(iChannels(1)).Radii(1);
         ftHeadModel.o = HeadModelMat.Param(iChannels(1)).Center(:)';
-    case 'eeg_3sphereberg'
+    case {'eeg_3sphereberg', 'concentricspheres'}
         ftHeadModel.type = 'concentricspheres';
         ftHeadModel.r = HeadModelMat.Param(iChannels(1)).Radii(:)';
         ftHeadModel.o = HeadModelMat.Param(iChannels(1)).Center(:)';
         % Get default conductivities
         BFSProperties = bst_get('BFSProperties');
         ftHeadModel.c = BFSProperties(1:3);
-    case 'os_meg'
+    case {'os_meg', 'localspheres'}
         ftHeadModel.type = 'localspheres';
         ftHeadModel.r = [HeadModelMat.Param(iChannels).Radii]';
         ftHeadModel.o = [HeadModelMat.Param(iChannels).Center]';

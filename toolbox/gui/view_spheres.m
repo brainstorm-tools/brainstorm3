@@ -52,13 +52,13 @@ Channel = ChannelMat.Channel;
 iSel = [];
 if ~isempty(HeadModelMat.MEGMethod)
     iMeg = good_channel(Channel, [], 'MEG');
-    if strcmpi(HeadModelMat.MEGMethod, 'meg_sphere')
+    if ismember(HeadModelMat.MEGMethod, {'meg_sphere', 'singlesphere'})
         iSel = [iSel, iMeg(1)];
-    elseif strcmpi(HeadModelMat.MEGMethod, 'os_meg')
+    elseif ismember(HeadModelMat.MEGMethod, {'os_meg', 'localspheres'})
         iSel = [iSel, iMeg];
     end
 end
-if strcmpi(HeadModelMat.EEGMethod, 'eeg_3sphereberg')
+if ismember(HeadModelMat.EEGMethod, {'eeg_3sphereberg', 'singlesphere', 'concentricspheres'})
     iEeg = good_channel(Channel, [], 'EEG');
     iSel = [iSel, iEeg(1)];
     Channel(iEeg(1)).Name = 'EEG';

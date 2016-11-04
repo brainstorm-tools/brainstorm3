@@ -217,6 +217,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % If we want the surface in the database
             if isSaveTess
                 bst_progress('text', ['Saving surface: ' layers{i}]);
+                % Fill holes
+                sNewMri.Cube = (mri_fillholes(sNewMri.Cube, 1) & mri_fillholes(sNewMri.Cube, 2) & mri_fillholes(sNewMri.Cube, 3));
                 % Tesselate mask
                 sTess = in_tess_mrimask(sNewMri);
                 % Convert to SCS coordinates
@@ -231,7 +233,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     fileTag = '';
                 end
                 % Set comment
-                sTess.Comment = file_unique(['bem_' bemName '_ft'], {sSubject.Surface.Comment});
+                sTess.Comment = file_unique(['bem_' bemName '_ft' fileTag], {sSubject.Surface.Comment});
                 % Output file name
                 NewTessFile = file_unique(bst_fullfile(bst_fileparts(NewMriFile), ['tess_' bemName 'bem_ft' fileTag '.mat']));
                 % Save file

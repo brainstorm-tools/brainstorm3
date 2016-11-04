@@ -999,6 +999,20 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jCombo.setSelectedIndex(option.Value{1} - 1);
                     % Set validation callbacks
                     java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, {ev.getSource().getSelectedIndex()+1, option.Value{2}}));
+                case 'combobox_label'
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                    % Combo box
+                    cellValues = option.Value{2};
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {cellValues(1,:)}, [], [], FONT_SIZE);
+                    jCombo.setEditable(false);
+                    jPanelOpt.add(jCombo);
+                    % Select previously selected item
+                    iSel = find(strcmpi(option.Value{1}, cellValues(2,:)));
+                    if ~isempty(iSel)
+                        jCombo.setSelectedIndex(iSel-1);
+                    end
+                    % Set validation callbacks
+                    java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, {cellValues{2,ev.getSource().getSelectedIndex()+1}, option.Value{2}}));
                     
                 case 'freqsel'
                     % Load Freq field from the input file
@@ -1792,7 +1806,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         UpdateProcessesList();
         % Save option value for future uses
         optType = GlobalData.Processes.Current(iProcess).options.(optName).Type;
-        if ismember(optType, {'value', 'range', 'freqrange', 'checkbox', 'radio', 'radio_line', 'radio_label', 'radio_linelabel', 'combobox', 'text', 'textarea', 'channelname', 'subjectname', 'atlas', 'groupbands', 'montage', 'freqsel', 'scout', 'scout_confirm'}) ...
+        if ismember(optType, {'value', 'range', 'freqrange', 'checkbox', 'radio', 'radio_line', 'radio_label', 'radio_linelabel', 'combobox', 'combobox_label', 'text', 'textarea', 'channelname', 'subjectname', 'atlas', 'groupbands', 'montage', 'freqsel', 'scout', 'scout_confirm'}) ...
                 || (strcmpi(optType, 'filename') && (length(value)>=7) && strcmpi(value{7},'dirs') && strcmpi(value{3},'save'))
             % Get processing options
             ProcessOptions = bst_get('ProcessOptions');
@@ -2068,7 +2082,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Writing a line for the option
                     if isfield(opt, 'Value')
                         % For some options types: write only the value, not the selection parameters
-                        if isfield(opt, 'Type') && ismember(opt.Type, {'timewindow','baseline','poststim','value','range','freqrange','combobox'}) && iscell(opt.Value)
+                        if isfield(opt, 'Type') && ismember(opt.Type, {'timewindow','baseline','poststim','value','range','freqrange','combobox','combobox_label'}) && iscell(opt.Value)
                             optValue = opt.Value{1};
                         elseif isfield(opt, 'Type') && ismember(opt.Type, {'filename','datafile'}) && iscell(opt.Value)
                             optValue = opt.Value(1:2);
@@ -2117,7 +2131,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             if ~isempty(iVal)
                                 strComment = ['  % ' str_striptag(opt.Comment{1,iVal})];
                             end
-                        elseif isfield(opt, 'Type') && strcmpi(opt.Type, 'combobox')
+                        elseif isfield(opt, 'Type') && ismember(opt.Type, {'combobox','combobox_label'})
                             strComment = ['  % ' str_striptag(opt.Value{2}{opt.Value{1}})];
                         else
                             strComment = '';

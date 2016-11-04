@@ -1078,7 +1078,7 @@ switch (lower(action))
                 MEGMethod = sStudy.HeadModel(iHeadModel).MEGMethod;
                 EEGMethod = sStudy.HeadModel(iHeadModel).EEGMethod;
                 isSepGain = 0;
-                if ~isempty(ChannelFile) && ((~isempty(MEGMethod) && ismember(MEGMethod, {'os_meg', 'meg_sphere'})) || (~isempty(EEGMethod) && strcmpi(EEGMethod, 'eeg_3sphereberg')))
+                if ~isempty(ChannelFile) && ((~isempty(MEGMethod) && ismember(MEGMethod, {'os_meg', 'meg_sphere', 'singlesphere', 'localspheres'})) || (~isempty(EEGMethod) && ismember(EEGMethod, {'eeg_3sphereberg', 'singlesphere', 'concentricspheres'})))
                     if ~bst_get('ReadOnly')
                         isSepGain = 1;
                         AddSeparator(jPopup);
