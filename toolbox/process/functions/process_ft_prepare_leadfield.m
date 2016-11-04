@@ -40,7 +40,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Options: Source space
-    sProcess.options.label1.Comment = '<BR><B>Source space</B>:';
+    sProcess.options.label1.Comment = '<B>Source space</B>:';
     sProcess.options.label1.Type    = 'label';
     sProcess.options.sourcespace.Comment = {'Cortex surface', 'MRI volume'; 'surface', 'volume'};
     sProcess.options.sourcespace.Type    = 'radio_label';
@@ -96,7 +96,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get all methods
     allMethods = unique({MEGMethod, EEGMethod});
     allMethods(cellfun(@isempty, allMethods)) = [];
-    isBEM = any(ismember('openmeeg', 'bemcp', 'dipoli', allMethods));
+    isBEM = any(ismember({'openmeeg', 'bemcp', 'dipoli'}, allMethods));
     % Something must be selected
     if isempty(allMethods)
         bst_report('Error', sProcess, sInputs, 'Nothing to compute.');
@@ -171,7 +171,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Scalp
                 if ~isempty(iMaskScalp)
                     sMaskScalp = in_mri_bst(sSubject.Anatomy(iMaskScalp).FileName);
-                    ftMaskScalp = out_fieldtrip_mri(sMaskScalp, 'skull');
+                    ftMaskScalp = out_fieldtrip_mri(sMaskScalp, 'scalp');
                     ftMaskVol.scalp = ftMaskScalp.scalp;
                 end
             end
@@ -238,7 +238,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Initialize saved values
         Gain = nan(length(ChannelMat.Channel), 3*length(ftGrid.pos));
         % === MEG ===
-        if ~isempty(MEGMethod)
+        if ~isempty(MEGMethod) && ~isempty(ftGrad)
             % === MEG: FT_PREPARE_HEADMODEL ===
             bst_progress('text', 'Calling FieldTrip function: ft_prepare_headmodel... (MEG)');
             % Prepare FieldTrip cfg structure
@@ -282,7 +282,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
 
         % === EEG ===
-        if ~isempty(EEGMethod)
+        if ~isempty(EEGMethod) && ~isempty(ftElec)
             % === EEG: FT_PREPARE_HEADMODEL ===
             bst_progress('text', 'Calling FieldTrip function: ft_prepare_headmodel... (EEG)');
             % Prepare FieldTrip cfg structure
