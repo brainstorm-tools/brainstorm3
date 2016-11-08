@@ -1641,6 +1641,7 @@ function DisplayFigurePopup(hFig)
         % Is there a time window defined
         isTime = ~isempty(GlobalData) && ~isempty(GlobalData.UserTimeWindow.CurrentTime) && ~isempty(GlobalData.UserTimeWindow.Time) ...
                  && (~isempty(DataFile) || ~isempty(ResultsFile) || ~isempty(Dipoles) || ~isempty(TfFile));
+        isFreq = ~isempty(GlobalData) && ~isempty(GlobalData.UserFrequencies.iCurrentFreq) && ~isempty(TfFile);
         % === SAVE AS IMAGE ===
         jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)out_figure_image(hFig), []);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
@@ -1692,11 +1693,15 @@ function DisplayFigurePopup(hFig)
                 gui_component('MenuItem', jMenuSave, [], 'Movie (vertical)', IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'vertical'), []);
             end
         end
-        % === CONTACT SHEETS / TIME ===
+        % === CONTACT SHEETS ===
         % If time, and if not 2DLayout
         if isTime && ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, '2DLayout')
             jMenuSave.addSeparator();
             gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Figure', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'fig', DefaultOutputDir), []);
+        end
+        % If frequency
+        if isFreq && ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, '2DLayout')
+            gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Figure', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'fig', DefaultOutputDir), []);
         end
         % === CONTACT SHEET / SLICES ===
         if ismember('anatomy', ColormapInfo.AllTypes)

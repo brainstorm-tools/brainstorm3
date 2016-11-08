@@ -7,7 +7,7 @@ function [ hContactFig ] = view_contactsheet( hFig, inctype, orientation, Output
 %
 % INPUT: 
 %     - hFig        : handle to Matlab figure to export
-%     - inctype     : Incrementation type, {'volume', 'time'}
+%     - inctype     : Incrementation type, {'volume', 'time', 'freq'}
 %     - orientation : {'x','y','z','fig'} axis of the cuts; 'fig' gets the entire figure
 %     - OutputFile  : full path to a default file or directory to save the contact sheet image.
 %     - nImages     : number of slices in the contact sheet (default: 20)
@@ -34,7 +34,7 @@ function [ hContactFig ] = view_contactsheet( hFig, inctype, orientation, Output
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2011
+% Authors: Francois Tadel, 2008-2016
 
 global GlobalData;
 
@@ -81,7 +81,7 @@ switch lower(orientation)
     case 'y',    dim = 2;
     case 'z',    dim = 3;
 end
-% Time / volume
+% Time / volume / freq
 switch lower(inctype)
     case 'time'
         % Get figure description
@@ -131,12 +131,36 @@ switch lower(inctype)
         initPos = GlobalData.UserTimeWindow.CurrentTime;
         % Create the contact sheet time vector
         Samples = TimeVector(bst_closest(linspace(TimeRange(1), TimeRange(2), nImages), TimeVector));
-        % If readinf MRI slices: need to get the surface definition
+        % If reading MRI slices: need to get the surface definition
         if (dim ~= 0)
             [img, TessInfo, iTess] = GetImage(hFig, dim);
         end
         % Do not use progress bar
-        isTime = 1;
+        isProgress = 0;
+        
+    case 'freq'
+        % Get frequency vector
+        if iscell(GlobalData.UserFrequencies.Freqs)
+            BandBounds = process_tf_bands('GetBounds', GlobalData.UserFrequencies.Freqs);
+            FreqVector = mean(BandBounds,2);
+            FreqLabels = GlobalData.UserFrequencies.Freqs(:,1);
+        else
+            FreqVector = GlobalData.UserFrequencies.Freqs;
+            FreqLabels = {};
+            for i = 1:length(FreqVector)
+                FreqLabels{i} = sprintf('%g Hz', round(FreqVector(i) * 100) ./ 100);
+            end
+        end
+        % Plotting all the frequencies
+        nImages = length(FreqVector);
+        % Get current time
+        initPos = GlobalData.UserFrequencies.iCurrentFreq;
+        % If reading MRI slices: need to get the surface definition
+        if (dim ~= 0)
+            [img, TessInfo, iTess] = GetImage(hFig, dim);
+        end
+        % Do not use progress bar
+        isProgress = 0;
         
     case 'volume'
         % ===== CONTACT SHEET OPTIONS =====
@@ -163,18 +187,20 @@ switch lower(inctype)
             Samples = bst_flip(Samples,2);
         end
         % Use progress bar
-        isTime = 0;
+        isProgress = 1;
 end
 % Save new values to preferences
-ContactSheetOptions.nImages = nImages;
-bst_set('ContactSheetOptions', ContactSheetOptions);
+if ismember(inctype, {'time', 'volume'})
+    ContactSheetOptions.nImages = nImages;
+    bst_set('ContactSheetOptions', ContactSheetOptions);
+end
 % Get MRI display options
 MriOptions = bst_get('MriOptions');
 
 
 %% ===== BUILD IMAGE =====
 % Progress bar
-if ~isTime
+if isProgress
     bst_progress('start', 'Contact sheet: axial slice', 'Getting slices...', 0, nImages);
 end
 % Get test image, to build the output volume
@@ -191,24 +217,34 @@ AlphaSheet = zeros(nbRows * H, nbCols * W);
 % For each time instant
 for iSample = 1:nImages
     % Progress bar
-    if ~isTime
+    if isProgress
         bst_progress('inc', 1);
     end
     % Next sample
-    if isTime
-        % Set time
-        panel_time('SetCurrentTime', Samples(iSample));
-        drawnow
-    else
-        % Change cut position
-        slicesPos = [NaN NaN NaN];
-        slicesPos(dim) = Samples(iSample);
-        panel_surface('PlotMri', hFig, slicesPos);
+    switch lower(inctype)
+        case 'time'
+            % Set time
+            panel_time('SetCurrentTime', Samples(iSample));
+            drawnow;
+        case 'freq'
+            % Set frequency
+            panel_freq('SetCurrentFreq', iSample);
+            drawnow;
+        case 'volume'
+            % Change cut position
+            slicesPos = [NaN NaN NaN];
+            slicesPos(dim) = Samples(iSample);
+            panel_surface('PlotMri', hFig, slicesPos);
     end
     
     % Get full figure
     if (dim == 0)
-        img = out_figure_image(hFig);
+        % Screen capture
+        switch lower(inctype)
+            case 'time',    img = out_figure_image(hFig, [], 'time');
+            case 'freq',    img = out_figure_image(hFig, [], FreqLabels{iSample});
+            case 'volume',  img = out_figure_image(hFig);
+        end
         alpha = ones(size(img,1), size(img,2), 1);
     % Get one slice
     else
@@ -232,12 +268,15 @@ for iSample = 1:nImages
 end
 
 %% ===== RESTORE INITIAL POSITION =====
-if isTime
-    panel_time('SetCurrentTime', initPos);
-else
-    TessInfo(iTess).CutsPosition = initPos;
-    setappdata(hFig, 'Surface', TessInfo);
-    figure_3d('UpdateMriDisplay', hFig, dim, TessInfo, iTess);
+switch lower(inctype)
+    case 'time'
+        panel_time('SetCurrentTime', initPos);
+    case 'freq'
+        panel_freq('SetCurrentFreq', initPos);
+    case 'volume'
+        TessInfo(iTess).CutsPosition = initPos;
+        setappdata(hFig, 'Surface', TessInfo);
+        figure_3d('UpdateMriDisplay', hFig, dim, TessInfo, iTess);
 end
 
 
@@ -315,7 +354,7 @@ else
     hContactFig = view_image(ImgSheet, [], ['Contact sheet : ', get(hFig, 'Name')], OutputFile);
 end
 % Close progress bar
-if ~isTime
+if isProgress
     bst_progress('stop');
 end
 end
