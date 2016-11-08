@@ -302,8 +302,8 @@ function [jBstArea, FigArea, nbScreens, jFigArea] = GetScreenBrainstormAreas(jBs
                                       floor(FigArea(3) .* ZoomFactor), ...
                                       floor(FigArea(4) .* ZoomFactor));
 
-    % ===== TWO SCREENS =====
-    elseif (nbScreens > 2)
+    % ===== TWO SCREENS (OR MORE) =====
+    elseif (nbScreens >= 2)
         % If Brainstorm window is on screen 2
         if (jBstWindow.getBounds.getX() >= ScreenDef(2).javaPos.getX()) && (jBstWindow.getBounds.getX() <= ScreenDef(2).javaPos.getX() + ScreenDef(2).javaPos.getWidth())
             jBstArea = ScreenDef(2).javaPos;
