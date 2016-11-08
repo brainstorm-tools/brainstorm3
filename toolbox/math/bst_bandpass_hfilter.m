@@ -1,8 +1,8 @@
-function [x, FiltSpec, Messages] = bst_bandpass_hfilter(x, Fs, HighPass, LowPass, isMirror, isRelax, Function, StopBand)
+function [x, FiltSpec, Messages] = bst_bandpass_hfilter(x, Fs, HighPass, LowPass, isMirror, isRelax, Function, Rolloff)
 % BST_BANDPASS_HFILTER Linear phase FIR bandpass filter.
 % 
-% USAGE:  [x, FiltSpec, Messages] = bst_bandpass_hfilter(x,  Fs, HighPass, LowPass, isMirror=0, isRelax=0, Function=[detect], StopBand=[])
-%         [~, FiltSpec, Messages] = bst_bandpass_hfilter([], Fs, HighPass, LowPass, isMirror=0, isRelax=0, Function=[detect], StopBand=[])
+% USAGE:  [x, FiltSpec, Messages] = bst_bandpass_hfilter(x,  Fs, HighPass, LowPass, isMirror=0, isRelax=0, Function=[detect], Rolloff=[])
+%         [~, FiltSpec, Messages] = bst_bandpass_hfilter([], Fs, HighPass, LowPass, isMirror=0, isRelax=0, Function=[detect], Rolloff=[])
 %                               x = bst_bandpass_hfilter(x,  Fs, FiltSpec)
 %
 % DESCRIPTION:
@@ -15,14 +15,14 @@ function [x, FiltSpec, Messages] = bst_bandpass_hfilter(x, Fs, HighPass, LowPass
 % INPUT:
 %    - x        : [nChannels,nTime] input signal  (empty to only get the filter specs)
 %    - Fs       : Sampling frequency
-%    - HighPass : Frequency below this value are filtered (set to 0 for low-pass filter only)
-%    - LowPass  : Frequency above this value are filtered (set to 0 for high-pass filter only)
+%    - HighPass : Frequency below this value are filtered in Hz (set to 0 for low-pass filter only)
+%    - LowPass  : Frequency above this value are filtered in Hz (set to 0 for high-pass filter only)
 %    - isMirror : isMirror (default = 0 no mirroring) 
 %    - isRelax  : Change ripple and attenuation coefficients (default=0 no relaxation) 
 %    - Function : 'fftfilt', filtering in frequency domain (default) 
 %                 'filter', filtering in time domain
 %                 If not specified, detects automatically the fastest option based on the filter order
-%    - StopBand : [LowStop, HighStop] frequency range that defines the transition band for the band-pass
+%    - Rolloff  : Width of the transition band in Hz
 %
 % OUTPUT: 
 %    - x        : Filtered signals
@@ -56,8 +56,8 @@ if (nargin == 3)
     FiltSpec = HighPass;
 % Default filter options
 else
-    if (nargin < 8) || isempty(StopBand)
-        StopBand = [];
+    if (nargin < 8) || isempty(Rolloff)
+        Rolloff = [];
     end
     if (nargin < 7) || isempty(Function)
         Function = [];  % Auto-detection based on the filter order later in the code
@@ -81,7 +81,7 @@ if isempty(FiltSpec)
     if ~isempty(HighPass) && (HighPass ~= 0)
         f_highpass = HighPass / Nyquist;    % Change frequency from Hz to normalized scale (0-1)
         % Default transition band
-        if isempty(StopBand)
+        if isempty(Rolloff)
             if (HighPass <= 5)   % Relax the transition band if HighPass<5 Hz 
                 f_highstop = .5 * f_highpass;
             else
@@ -89,7 +89,7 @@ if isempty(FiltSpec)
             end
         % Specified manually
         else
-            f_highstop = max(0.2, Highpass-StopBand(1)) / Nyquist;
+            f_highstop = max(0.2, Highpass - Rolloff) / Nyquist;
         end
     else
         f_highpass = 0; 
@@ -99,7 +99,7 @@ if isempty(FiltSpec)
     if ~isempty(LowPass) && (LowPass ~= 0)
         f_lowpass = LowPass / Nyquist;
         % Default transition band
-        if isempty(StopBand)
+        if isempty(Rolloff)
             if f_highpass==0    % If this is a low-pass filter 
                 f_lowstop  = 1.05 * f_lowpass;
             else
@@ -107,7 +107,7 @@ if isempty(FiltSpec)
             end
         % Specified manually
         else
-            f_lowstop = min(Fs/2, Lowpass+StopBand(2)) / Nyquist;
+            f_lowstop = min(Fs/2 - 0.2, Lowpass + Rolloff) / Nyquist;
         end
     else
         f_lowpass  = 0;
