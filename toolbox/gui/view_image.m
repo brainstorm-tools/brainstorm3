@@ -303,6 +303,8 @@ isWindowInitialized = 1;
         elseif (ev.VerticalScrollCount > 0)
             % ZOOM OUT
             Factor = 1./(1 + double(ev.VerticalScrollCount) ./ 20);
+        else
+            return;
         end
 
         % ZOOM
