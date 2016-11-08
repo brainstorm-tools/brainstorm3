@@ -2215,7 +2215,7 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         end
         % Auto-detect if legend should be displayed
         if isempty(TsInfo.ShowLegend)
-            TsInfo.ShowLegend = (size(F{iAxes},1) <= 15);
+            TsInfo.ShowLegend = (size(F{iAxes},1) <= 15) && (~isempty(TsInfo.RowNames) || ~ismember(TsInfo.Modality, {'EEG','MEG','MEG MAG','MEG GRAD','SEEG','ECOG'}));
             setappdata(hFig, 'TsInfo', TsInfo);
         end
         % If there is Std data available
