@@ -4,6 +4,15 @@ November 2016
 - New process: FieldTrip volume segmentation (ft_volumesegment)
 - New process: FieldTrip head models (ft_prepare_headmodel, ft_prepare_leadfield)
 - GUI: Frequency contact sheets
+- Anatomy: New headmodel option for isotropic source grids: cortex/head
+- Anatomy: Import subject volume atlases as scouts for volume source models (eg. ASEG)
+- Anatomy: Import MNI volume atlases as scouts for volume source models (eg. AAL)
+- Anatomy: Import MNI volume atlases as surfaces (eg. AAL)
+- Anatomy: Import MNI-registered volumes with their "MNI transformation"
+- Anatomy: Export volume scouts as MRI masks
+- Anatomy: MRI Viewer: Added the value of the selected voxel in the top-right corner
+- Anatomy: Updated ICBM152 template: MNI transformation set manually instead of computed with SPM
+- Anatomy: Default AC position in MNI space is now [0 3 -4] instead of [0 2 -4]
 - Distrib: Converted the introduction tutorials dataset to match BIDS specifications
 ---------------------------------------------------------------
 October 2016
