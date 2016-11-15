@@ -78,7 +78,8 @@ end
 
                 
 %% ===== DETECT FILE FORMAT =====
-if strcmpi(FileFormat, 'ALL')
+isMni = strcmpi(FileFormat, 'ALL-MNI');
+if ismember(FileFormat, {'ALL', 'ALL-MNI'})
     % Switch between file extensions
     switch (lower(fileExt))
         case '.mri',                  FileFormat = 'CTF';
@@ -86,13 +87,14 @@ if strcmpi(FileFormat, 'ALL')
         case {'.img','.hdr','.nii'},  FileFormat = 'Nifti1';
         case '.fif',                  FileFormat = 'Neuromag';
         case {'.mgz','.mgh'},         FileFormat = 'MGH';
-        case {'.mnc','.mni'},         FileFormat = 'MNI';
+        case {'.mnc','.mni'},         FileFormat = 'MINC';
         case '.mat',                  FileFormat = 'BST';
         otherwise,                    error('File format could not be detected, please specify a file format.');
     end
 end
 
 % ===== LOAD MRI =====
+vox2ras = [];
 % Switch between file formats
 switch (FileFormat)   
     case 'CTF'
@@ -100,14 +102,14 @@ switch (FileFormat)
     case 'GIS'
         MRI = in_mri_gis(MriFile, ByteOrder);
     case {'Nifti1', 'Analyze'}
-        MRI = in_mri_nii(MriFile); % Function automatically detects right byte order
+        [MRI, vox2ras] = in_mri_nii(MriFile); % Function automatically detects right byte order
     case 'MGH'
         MRI = in_mri_mgh(MriFile);
     case 'KIT'
         error('Not supported yet');
     case 'Neuromag'
         error('Not supported yet');
-    case 'MNI'
+    case 'MINC'
         MRI = in_mri_mnc(MriFile);
     case 'FT-MRI'
         MRI = in_mri_fieldtrip(MriFile);
@@ -127,13 +129,15 @@ end
 
 
 %% ===== NORMALIZE VALUES =====
-% Convert to double for calculations
-MRI.Cube = double(MRI.Cube);
-% Start values at zeros
-MRI.Cube = MRI.Cube - min(MRI.Cube(:));
-% Normalize between 0 and 255 and save as uint8
-MRI.Cube = uint8(MRI.Cube ./ max(MRI.Cube(:)) .* 255);
-
+% Normalize if the cube is not already in uint8 (and if not loading an atlas)
+if ~strcmpi(FileFormat, 'ALL-MNI') && ~isa(MRI.Cube, 'uint8')
+    % Convert to double for calculations
+    MRI.Cube = double(MRI.Cube);
+    % Start values at zeros
+    MRI.Cube = MRI.Cube - min(MRI.Cube(:));
+    % Normalize between 0 and 255 and save as uint8
+    MRI.Cube = uint8(MRI.Cube ./ max(MRI.Cube(:)) .* 255);
+end
 
 %% ===== CONVERT OLD STRUCTURES TO NEW ONES =====
 % Apply a coordinates correction
@@ -182,7 +186,7 @@ if isfield(MRI, 'talCS') && isfield(MRI.talCS, 'FiducialName') && ~isempty(MRI.t
 end
 
 
-%% ===== COMPUTE TRANSFORMATION =====
+%% ===== COMPUTE SCS TRANSFORMATION =====
 % If SCS was defined but transformation not computed
 if isfield(MRI, 'SCS') && all(isfield(MRI.SCS, {'NAS','LPA','RPA'})) ...
                        && ~isempty(MRI.SCS.NAS) && ~isempty(MRI.SCS.RPA) && ~isempty(MRI.SCS.LPA) ...
@@ -202,6 +206,25 @@ if isfield(MRI, 'SCS') && all(isfield(MRI.SCS, {'NAS','LPA','RPA'})) ...
     catch
         bst_error('Impossible to identify the SCS coordinate system with the specified coordinates.', 'MRI Viewer', 0);
     end
+end
+
+%% ===== SAVE MNI TRANSFORMATION =====
+if isMni && ~isempty(vox2ras) && (~isfield(MRI, 'NCS') || ~isfield(MRI.NCS, 'R') || isempty(MRI.NCS.R))
+    % Copy MNI transformation to output structure
+    MRI.NCS.R = vox2ras(1:3,1:3);
+    MRI.NCS.T = vox2ras(1:3,4);
+    % Adjust for unknown reason (???)
+    MRI.NCS.T = MRI.NCS.T - [1; 1; 1];
+    % MNI coordinates for the AC/PC/IH fiducials
+    AC = [0,   3,  -4] ./ 1000;
+    PC = [0, -25,  -2] ./ 1000;
+    IH = [0, -10,  60] ./ 1000;
+    Origin = [0, 0, 0];
+    % Convert: MNI (meters) => MRI (millimeters)
+    MRI.NCS.AC     = cs_convert(MRI, 'mni', 'mri', AC) .* 1000;
+    MRI.NCS.PC     = cs_convert(MRI, 'mni', 'mri', PC) .* 1000;
+    MRI.NCS.IH     = cs_convert(MRI, 'mni', 'mri', IH) .* 1000;
+    MRI.NCS.Origin = cs_convert(MRI, 'mni', 'mri', Origin) .* 1000;
 end
 
 
