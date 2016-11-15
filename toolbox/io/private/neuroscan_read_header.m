@@ -271,28 +271,34 @@ h.datapos = ftell(fid);
 
 
 %% ===== DETECT DATA FORMAT =====
+% Compute the event table offset: prevfile contains high order bits of event table offset, eventtablepos contains the low order bits
+EVT_offset = (double(h.prevfile) * (2^32)) + double(h.eventtablepos);
 % Try to find something better: depends on the data format
 switch lower(fileFormat)
     case 'cnt'
         nbVal = h.nchannels * h.numsamples;
-        nbPos = h.eventtablepos - h.datapos;
+        nbPos = EVT_offset - h.datapos;
         h.bytes_per_samp = nbPos / nbVal;
-        switch(h.bytes_per_samp)
-            case 2,    h.dataformat = 'int16';
-            case 4,    h.dataformat = 'int32';
-            otherwise
-                warning(['Wrong number of samples in the header or unknown file format.' 10 ...
-                         'Assuming file is in int32...']);
-                h.bytes_per_samp = 4;
+        switch (h.bytes_per_samp)
+            case 2
+                h.dataformat = 'int16';
+            case 4
                 h.dataformat = 'int32';
-                h.numsamples = (h.eventtablepos - h.datapos) / h.bytes_per_samp / h.nchannels;
+            otherwise
+                % By default: 32bits
+                h.dataformat = 'int32';
+                h.bytes_per_samp = 4;
+                % Recompute the number of available samples
+                h.numsamples = floor((EVT_offset - h.datapos) / h.bytes_per_samp / h.nchannels);
+                % Display warning in the command window
+                warning(['Wrong number of samples in the header or unknown file format. Assuming file is in ' h.dataformat '...']);
         end
     case 'avg'
         h.bytes_per_samp = 2;
         h.dataformat = 'float';
     case 'eeg'
         sizeHeader = 13;
-        h.bytes_per_samp = ((h.eventtablepos - h.datapos) / h.compsweeps - sizeHeader) / h.pnts / h.nchannels;
+        h.bytes_per_samp = ((EVT_offset - h.datapos) / h.compsweeps - sizeHeader) / h.pnts / h.nchannels;
         switch(h.bytes_per_samp)
             case 2,    h.dataformat = 'int16';
             case 4,    h.dataformat = 'int32';
@@ -311,7 +317,7 @@ if strcmpi(fileFormat, 'eeg')
     % Read the headers of all the sweeps
     for i = 1:nEpochs
         % sizeEpoch = sizeHeader + nTime * nChannels * hdr.header.bytes_per_samp;
-        sizeEpoch = (h.eventtablepos - h.datapos) / nEpochs;
+        sizeEpoch = (EVT_offset - h.datapos) / nEpochs;
         % Position cursor in file to read this data block
         pos = h.datapos + (i - 1) * sizeEpoch;
         fseek(fid, double(pos), 'bof');
@@ -351,7 +357,6 @@ if isEvents
         error('Event files: Not supported yet.');
     elseif (h.numevents > 0)
         % Go at the beginning of events block
-        EVT_offset = (double(h.prevfile) * (2^32)) + double(h.eventtablepos);    % prevfile contains high order bits of event table offset, eventtablepos contains the low order bits
         fseek(fid, EVT_offset, 'bof');
         % Read events table header
         evtType   = fread(fid,1,'uchar');
