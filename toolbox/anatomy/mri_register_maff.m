@@ -367,17 +367,17 @@ end
 function tpm = bst_spm_load_priors8(tpmFile)
     % === NEW VERSION: BRAINSTORM ===
     % Read template volume
-    [sMri, hdr] = in_mri_nii(tpmFile, 1, 0);
+    sMri = in_mri_nii(tpmFile, 1, 0);
     sMri.Cube = double(sMri.Cube);
     % If first dimension is flipped: flip it back
-    if (hdr.nifti.vox2ras(1,1) < 1)
+    if (sMri.Header.nifti.vox2ras(1,1) < 1)
         sMri.Cube = bst_flip(sMri.Cube, 1);
-        hdr.nifti.vox2ras(1,:) = -hdr.nifti.vox2ras(1,:);
+        sMri.Header.nifti.vox2ras(1,:) = -sMri.Header.nifti.vox2ras(1,:);
     end
     % Constrain volume to be in the range [0,1]
     sMri.Cube = max(min(sMri.Cube, 1), 0);
     % Get reference change for this subject
-    tpm.M = hdr.nifti.vox2ras;
+    tpm.M = sMri.Header.nifti.vox2ras;
     tpm.M(1:3,4) = tpm.M(1:3,4) - sum(tpm.M(1:3,1:3),2);
     % Copy volume
     Nv = size(sMri.Cube,4);
