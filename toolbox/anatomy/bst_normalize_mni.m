@@ -105,7 +105,7 @@ bst_progress('start', 'Normalize anatomy', 'Saving results...');
 sMri.NCS.R = Tmni(1:3,1:3);
 sMri.NCS.T = Tmni(1:3,4);
 % MNI coordinates for the AC/PC/IH fiducials
-AC = [0,   2,  -4] ./ 1000;
+AC = [0,   3,  -4] ./ 1000;
 PC = [0, -25,  -2] ./ 1000;
 IH = [0, -10,  60] ./ 1000;
 Origin = [0, 0, 0];
