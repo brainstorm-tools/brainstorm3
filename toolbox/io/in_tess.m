@@ -158,7 +158,17 @@ switch (FileFormat)
         end
         
     case 'MRI-MASK'
-         TessMat = in_tess_mrimask(TessFile);
+        TessMat = in_tess_mrimask(TessFile, 0);
+        
+    case 'MRI-MASK-MNI'
+        TessMat = in_tess_mrimask(TessFile, 1);
+        % Convert from MNI coordinates back to SCS
+        if ~isempty(sMri) && isfield(sMri, 'SCS') && isfield(sMri.SCS, 'NAS') && ~isempty(sMri.SCS.NAS)
+            for iTess = 1:length(TessMat)
+                TessMat(iTess).Vertices = cs_convert(sMri, 'mni', 'scs', TessMat(iTess).Vertices);
+            end
+        end
+        isConvertScs = 0;
 end
 % If an error occurred: return
 if isempty(TessMat)
