@@ -1,14 +1,16 @@
-function [MRI, hdr] = in_mri_nii(MriFile, isReadMulti, isApply)
+function [MRI, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply)
 % IN_MRI_NII: Reads a structural NIfTI/Analyze MRI.
 %
-% USAGE:  [MRI, hdr] = in_mri_nii(MriFile, isReadMulti=0, isApply=[ask]);
+% USAGE:  [MRI, vox2ras] = in_mri_nii(MriFile, isReadMulti=0, isApply=[ask]);
 %
 % INPUT: 
 %    - MriFile     : name of file to open, WITH EXTENSION
 %    - isReadMulti : If 1, allow reading multiple volumes from the same file
 %
 % OUTPUT:
-%    - MRI : Brainstorm MRI structure
+%    - MRI     : Brainstorm MRI structure
+%    - vox2ras : [4x4] transformation matrix: voxels to RAS coordinates
+%                (corresponds to MNI coordinates if the volume is registered to the MNI space)
 %
 % FORMATS:
 %     - Analyze7.5 (.hdr/.img)
@@ -35,7 +37,7 @@ function [MRI, hdr] = in_mri_nii(MriFile, isReadMulti, isApply)
 % Authors: Francois Tadel, 2008-2012
 
 MRI = [];
-hdr = [];
+vox2ras = [];
 % Parse inputs
 if (nargin < 3) || isempty(isApply)
     isApply = [];
@@ -132,8 +134,9 @@ Voxsize = abs(hdr.dim.pixdim(2:4));
 
 % ===== NIFTI ORIENTATION =====
 if ~isempty(hdr.nifti) && ~isempty(hdr.nifti.vox2ras)
+    vox2ras = hdr.nifti.vox2ras;
     % Normalize rotation matrix
-    R = hdr.nifti.vox2ras(1:3,1:3);
+    R = vox2ras(1:3,1:3);
     R = bst_bsxfun(@rdivide, R, sqrt(sum(R.^2)));
     % Binarize rotation matrix
     for i = 1:3
@@ -145,6 +148,9 @@ if ~isempty(hdr.nifti) && ~isempty(hdr.nifti.vox2ras)
         if ~isequal(Pmat, [1 2 3]) || ~isequal(isFlip, [0 0 0])
             isApply = java_dialog('confirm', ['A transformation is available in the MRI file.' 10 10 ...
                                               'Do you want to apply it to the volume now?' 10 10], 'NIfTI MRI');
+            if ~isApply
+                vox2ras = [];
+            end
         else
             isApply = 0;
         end
@@ -158,16 +164,24 @@ if ~isempty(hdr.nifti) && ~isempty(hdr.nifti.vox2ras)
         for i = 1:3
             if isFlip(i)
                 data = bst_flip(data,i);
+                vox2ras(i,:) = -vox2ras(i,:);
+                R(i,:) = -R(i,:);
             end
         end
+        % Rotation to apply to obtain a correctly oriented MRI
+        vox2ras(1:3,1:3) = inv(R) * vox2ras(1:3,1:3);
+        % Permute translation
+        vox2ras(1:3,4) = permute(vox2ras(1:3,4), Pmat);
     end
+    % Scale transformation matrix
+    vox2ras(1:3,1:3) = bst_bsxfun(@rdivide, vox2ras(1:3,1:3), Voxsize(:));
 end
-
 
 % ===== CREATE BRAINSTORM STRUCTURE =====
 MRI = struct('Cube',    data, ...
              'Voxsize', Voxsize, ...
-             'Comment', 'MRI');
+             'Comment', 'MRI', ...
+             'Header',  hdr);
 end
 
 
@@ -354,6 +368,11 @@ function hdr = nifti_read_hdr(fid, isReadMulti)
         if (nifti.sform_code ~= 0) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3)) && ~isequal(nifti.sform(1:3,1:3),eye(3))
             nifti.vox2ras = nifti.sform;
         elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3)) && ~isequal(nifti.qform(1:3,1:3),eye(3))
+            nifti.vox2ras = nifti.qform;
+        % Same thing, but accept identity rotations
+        elseif (nifti.sform_code ~= 0) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3))
+            nifti.vox2ras = nifti.sform;
+        elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3))
             nifti.vox2ras = nifti.qform;
         else
             nifti.vox2ras = [];

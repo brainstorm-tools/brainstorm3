@@ -57,7 +57,11 @@ sMri.Cube    = FtMat.(FieldName);
 sMri.Voxsize = sqrt(sum(FtMat.transform(1:3,1:3) .^2, 1));
 % Flip axes to fit the Brainstorm standard
 sMri.Cube    = sMri.Cube(:, end:-1:1, end:-1:1);
-    
+
+% Transfer header
+if isfield(FtMat, 'hdr')
+    sMri.Header = FtMat.hdr;
+end
 % Try to read the CTF fiducials
 try
     sMri.SCS.NAS = ...

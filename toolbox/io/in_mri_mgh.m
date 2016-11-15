@@ -35,7 +35,8 @@ function MRI = in_mri_mgh(MriFile)
 % Output variable
 MRI = struct('Cube',    [], ...
              'Voxsize', [1 1 1], ...
-             'Comment', 'MRI');
+             'Comment', 'MRI', ...
+             'Header',  []);
 
 %% ===== UNZIP FILE =====
 [MRIpath, MRIbase, MRIext] = bst_fileparts(MriFile);
@@ -63,22 +64,22 @@ if (fid < 0)
 end
 
 % Read header
-version = fread(fid, 1, 'int');
-ndim1   = fread(fid, 1, 'int');
-ndim2   = fread(fid, 1, 'int');
-ndim3   = fread(fid, 1, 'int');
-nframes = fread(fid, 1, 'int');
-type    = fread(fid, 1, 'int');
-dof     = fread(fid, 1, 'int');
+hdr.version = fread(fid, 1, 'int');
+hdr.ndim1   = fread(fid, 1, 'int');
+hdr.ndim2   = fread(fid, 1, 'int');
+hdr.ndim3   = fread(fid, 1, 'int');
+hdr.nframes = fread(fid, 1, 'int');
+hdr.type    = fread(fid, 1, 'int');
+hdr.dof     = fread(fid, 1, 'int');
 
 unused_space_size = 256 - 2 ;
-ras_good_flag = fread(fid, 1, 'short') ;
+hdr.ras_good_flag = fread(fid, 1, 'short') ;
 
-if (ras_good_flag)
+if (hdr.ras_good_flag)
     MRI.Voxsize = fread(fid, 3, 'float32')' ;
-    Mdc         = fread(fid, 9, 'float32') ;
-    Mdc         = reshape(Mdc,[3 3]);
-    Pxyz_c      = fread(fid, 3, 'float32') ;
+    hdr.Mdc         = fread(fid, 9, 'float32') ;
+    hdr.Mdc         = reshape(hdr.Mdc,[3 3]);
+    hdr.Pxyz_c      = fread(fid, 3, 'float32') ;
     unused_space_size = unused_space_size - (3*4 + 4*3*4) ; % space for ras transform
 end
 
@@ -87,9 +88,9 @@ fseek(fid, unused_space_size, 'cof') ;
 
 
 %% ===== LOAD MRI VOLUME =====
-nv = ndim1 * ndim2 * ndim3 * nframes;
+nv = hdr.ndim1 * hdr.ndim2 * hdr.ndim3 * hdr.nframes;
 % Determine number of bytes per voxel
-switch type
+switch hdr.type
     case 0,  precision = 'uchar';
     case 1,  precision = 'int';
     case 3,  precision = 'float32';
@@ -105,7 +106,7 @@ if(numel(MRI.Cube) ~= nv)
 end
 % Load MR params
 if(~feof(fid))
-    [mr_parms count] = fread(fid,4,'float32');
+    [hdr.mr_parms, count] = fread(fid,4,'float32');
     if (count ~= 4)
         error('Error reading MR params.');
     end
@@ -116,9 +117,9 @@ fclose(fid) ;
 
 %% ===== RETURN DATA =====
 % Prepare volume
-MRI.Cube = reshape(MRI.Cube, [ndim1 ndim2 ndim3 nframes]);
+MRI.Cube = reshape(MRI.Cube, [hdr.ndim1 hdr.ndim2 hdr.ndim3 hdr.nframes]);
 % Keep only first time frame
-if (nframes > 1)
+if (hdr.nframes > 1)
     MRI.Cube = MRI.Cube(:,:,:,1);
 end
 
@@ -138,7 +139,7 @@ MRI.Voxsize = MRI.Voxsize([3 2 1]);
 % Flip / X
 MRI.Cube = bst_flip(MRI.Cube, 1);
 
-
+MRI.Header = hdr;
 
 
 

@@ -397,7 +397,8 @@ elseif(strncmp(Header.identifierversion,'CTF_MRI_FORMAT VER 2.2',22))
     MRI.Cube    = permute(MRI.Cube,permVect);
     MRI.Voxsize = MRI.Voxsize(permVect);
     MRI.Cube    = MRI.Cube(:, end:-1:1, end:-1:1);
-
+    MRI.Header  = Header;
+    
     % ===== FIDUCIALS =====
     % If defined, fill-out SCS information
     try
