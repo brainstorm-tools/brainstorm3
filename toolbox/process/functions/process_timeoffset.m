@@ -19,7 +19,7 @@ function varargout = process_timeoffset( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2015
+% Authors: Francois Tadel, 2010-2016
 
 eval(macro_method);
 end
@@ -35,8 +35,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 76;
     sProcess.Description = '';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'results', 'matrix'};
-    sProcess.OutputTypes = {'data', 'results', 'matrix'};
+    sProcess.InputTypes  = {'data', 'results', 'matrix', 'timefreq'};
+    sProcess.OutputTypes = {'data', 'results', 'matrix', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
 

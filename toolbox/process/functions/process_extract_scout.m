@@ -169,7 +169,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % ===== LOOP ON THE FILES =====
     for iInput = 1:length(sInputs)
         ScoutOrient = [];
-        SurfOrient  = [];
+%         SurfOrient  = [];
         SurfaceFile = [];
         sResults = [];
         ZScore = [];
@@ -342,10 +342,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, sInputs(iInput), ['Invalid surface file: ' SurfaceFile]);
             continue;
         end
-        % Get orientations
-        if strcmpi(sInputs(iInput).FileType, 'results')
-            SurfOrient = sSurf.VertNormals;
-        end
+%         % Get orientations
+%         if strcmpi(sInputs(iInput).FileType, 'results')
+%             SurfOrient = sSurf.VertNormals;
+%         end
                     
         % === TIME ===
         % Check time vectors
@@ -537,10 +537,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but the sources are calculated on a surface.']);
                         return;
                     end
-                    % Get the scout orientation
-                    if ~isempty(SurfOrient)
-                        ScoutOrient = SurfOrient(iVertices,:);
-                    end
+%                     % Get the scout orientation
+%                     if ~isVolumeAtlas && ~isempty(SurfOrient)
+%                         ScoutOrient = SurfOrient(iVertices,:);
+%                     end
                 end
 
                 % === GET SOURCES ===
