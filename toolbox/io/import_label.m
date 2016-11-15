@@ -1,8 +1,8 @@
-function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtlas)
+function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtlas, GridLoc)
 % IMPORT_LABEL: Import an atlas segmentation for a given surface
 % 
-% USAGE: import_label(SurfaceFile, LabelFiles, isNewAtlas=1) : Add label information to SurfaceFile
-%        import_label(SurfaceFile)                           : Ask the user for the label file to import
+% USAGE: import_label(SurfaceFile, LabelFiles, isNewAtlas=1, GridLoc=[]) : Add label information to SurfaceFile
+%        import_label(SurfaceFile)                                       : Ask the user for the label file to import
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,7 +22,7 @@ function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtla
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2016
 
 import sun.misc.BASE64Decoder;
 
@@ -31,6 +31,9 @@ import sun.misc.BASE64Decoder;
 sAllAtlas = repmat(db_template('Atlas'), 0);
 Messages = [];
 % Parse inputs
+if (nargin < 4) || isempty(GridLoc)
+    GridLoc = [];
+end
 if (nargin < 3) || isempty(isNewAtlas)
     isNewAtlas = 1;
 end
@@ -96,45 +99,73 @@ for iFile = 1:length(LabelFiles)
     if (iFile > 1)
         sSurf = bst_memory('LoadSurface', file_short(SurfaceFile));
     end
+    % Use the grid of points provided in input if available
+    if ~isempty(GridLoc)
+        Vertices = GridLoc;
+    % Otherwise, use the vertices of the cortex surface
+    else
+        Vertices = sSurf.Vertices;
+    end
     % Get filename
     [fPath, fBase, fExt] = bst_fileparts(LabelFiles{iFile});
     % New atlas structure: use filename as the atlas name
     if isNewAtlas || isempty(sSurf.Atlas) || isempty(sSurf.iAtlas)
         sAtlas = db_template('Atlas');
         iAtlas = 'Add';
-        % FreeSurfer Atlas names
-        switch (fBase)
-            case {'lh.pRF', 'rh.pRF'}
-                sAtlas.Name = 'Retinotopy';
-            case {'lh.aparc.a2009s', 'rh.aparc.a2009s'}
-                sAtlas.Name = 'Destrieux';
-            case {'lh.aparc', 'rh.aparc'}
-                sAtlas.Name = 'Desikan-Killiany';
-            case {'lh.BA', 'rh.BA'}
-                sAtlas.Name = 'Brodmann';
-            case {'lh.BA.thresh', 'rh.BA.thresh'}
-                sAtlas.Name = 'Brodmann-thresh';
-            case {'lh.aparc.DKTatlas40', 'rh.aparc.DKTatlas40'}
-                sAtlas.Name = 'Mindboggle';
-            case {'lh.PALS_B12_Brodmann', 'rh.PALS_B12_Brodmann'}
-                sAtlas.Name = 'PALS-B12 Brodmann';
-            case {'lh.PALS_B12_Lobes', 'rh.PALS_B12_Lobes'}
-                sAtlas.Name = 'PALS-B12 Lobes';
-            case {'lh.PALS_B12_OrbitoFrontal', 'rh.PALS_B12_OrbitoFrontal'}
-                sAtlas.Name = 'PALS-B12 Orbito-frontal';
-            case {'lh.PALS_B12_Visuotopic', 'rh.PALS_B12_Visuotopic'}
-                sAtlas.Name = 'PALS-B12 Visuotopic';
-            case {'lh.Yeo2011_7Networks_N1000', 'rh.Yeo2011_7Networks_N1000'}
-                sAtlas.Name = 'Yeo 7 Networks';
-            case {'lh.Yeo2011_17Networks_N1000', 'rh.Yeo2011_17Networks_N1000'}
-                sAtlas.Name = 'Yeo 17 Networks';
-            otherwise
-                sAtlas.Name = fBase;
+        % Volume sources file
+        if ~isempty(GridLoc)
+            sAtlas.Name = sprintf('Volume scouts %d', length(GridLoc));
+            sAtlas.Name = file_unique(sAtlas.Name, {sSurf.Atlas.Name});
+        % Surface sources file
+        else
+            % FreeSurfer Atlas names
+            switch (fBase)
+                case {'lh.pRF', 'rh.pRF'}
+                    sAtlas.Name = 'Retinotopy';
+                case {'lh.aparc.a2009s', 'rh.aparc.a2009s'}
+                    sAtlas.Name = 'Destrieux';
+                case {'lh.aparc', 'rh.aparc'}
+                    sAtlas.Name = 'Desikan-Killiany';
+                case {'lh.BA', 'rh.BA'}
+                    sAtlas.Name = 'Brodmann';
+                case {'lh.BA.thresh', 'rh.BA.thresh'}
+                    sAtlas.Name = 'Brodmann-thresh';
+                case {'lh.aparc.DKTatlas40', 'rh.aparc.DKTatlas40'}
+                    sAtlas.Name = 'Mindboggle';
+                case {'lh.PALS_B12_Brodmann', 'rh.PALS_B12_Brodmann'}
+                    sAtlas.Name = 'PALS-B12 Brodmann';
+                case {'lh.PALS_B12_Lobes', 'rh.PALS_B12_Lobes'}
+                    sAtlas.Name = 'PALS-B12 Lobes';
+                case {'lh.PALS_B12_OrbitoFrontal', 'rh.PALS_B12_OrbitoFrontal'}
+                    sAtlas.Name = 'PALS-B12 Orbito-frontal';
+                case {'lh.PALS_B12_Visuotopic', 'rh.PALS_B12_Visuotopic'}
+                    sAtlas.Name = 'PALS-B12 Visuotopic';
+                case {'lh.Yeo2011_7Networks_N1000', 'rh.Yeo2011_7Networks_N1000'}
+                    sAtlas.Name = 'Yeo 7 Networks';
+                case {'lh.Yeo2011_17Networks_N1000', 'rh.Yeo2011_17Networks_N1000'}
+                    sAtlas.Name = 'Yeo 17 Networks';
+                otherwise
+                    sAtlas.Name = fBase;
+            end
         end
     % Existing atlas structure
     else
         iAtlas = sSurf.iAtlas;
         sAtlas = sSurf.Atlas(iAtlas);
+        % For volume source files: Can only import volume scouts
+        if ~isempty(GridLoc)
+            % Can only work with volume scouts
+            if isempty(strfind(sAtlas.Name, 'Volume scouts'))
+                Messages = [Messages, 'Error: You can only load volume scouts for this sources file.'];
+                return;
+            end
+            % Check the number of sources
+            nAtlasGrid = sscanf(sAtlas.Name(length('Volume scouts')+2:end), '%d');
+            if (length(GridLoc) ~= nAtlasGrid)
+                Messages = [Messages, sprintf('Error: The number of grid points in this sources file (%d) does not match the selected atlas (%d).', length(GridLoc), nAtlasGrid)];
+                return;
+            end
+        end
     end
     % Check that atlas have the correct structure
     if isempty(sAtlas.Scouts)
@@ -148,8 +179,8 @@ for iFile = 1:length(LabelFiles)
             % Read label file
             [vertices, labels, colortable] = read_annotation(LabelFiles{iFile}, 0);
             % Check sizes
-            if (length(labels) ~= length(sSurf.Vertices))
-                Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, length(sSurf.Vertices), length(labels))];
+            if (length(labels) ~= length(Vertices))
+                Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, length(Vertices), length(labels))];
                 continue
             end
 
@@ -185,8 +216,8 @@ for iFile = 1:length(LabelFiles)
             % Convert indices from 0-based to 1-based
             LabelMat.vertices = LabelMat.vertices + 1;
             % Check sizes
-            if (max(LabelMat.vertices) > length(sSurf.Vertices))
-                Messages = [Messages, sprintf('%s:\nNumbers of vertices in the label file (%d) exceeds the number of vertices in the surface (%d)\n', fBase, max(LabelMat.vertices), length(sSurf.Vertices))];
+            if (max(LabelMat.vertices) > length(Vertices))
+                Messages = [Messages, sprintf('%s:\nNumbers of vertices in the label file (%d) exceeds the number of vertices in the surface (%d)\n', fBase, max(LabelMat.vertices), length(Vertices))];
                 continue
             end
             % === CONVERT TO SCOUTS ===
@@ -257,8 +288,8 @@ for iFile = 1:length(LabelFiles)
                         labels = typecast(labels, DataType);
                 end
                 % Check sizes
-                if (length(labels) ~= length(sSurf.Vertices))
-                    Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, length(sSurf.Vertices), length(labels))];
+                if (length(labels) ~= length(Vertices))
+                    Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, length(Vertices), length(labels))];
                     continue;
                 end
                 % Round the label values
@@ -287,18 +318,33 @@ for iFile = 1:length(LabelFiles)
             iAtlas = 'Add';
             
         % ===== MRI VOLUMES =====
-        case 'MRI-MASK'
+        case {'MRI-MASK', 'MRI-MASK-MNI'}
+            bst_progress('text', 'Reading atlas...');
+            % If the file that is loaded has to be interpreted in MNI space
+            isMni = strcmpi(FileFormat, 'MRI-MASK-MNI');
             % Read MRI volume
-            sMriMask = in_mri(LabelFiles{iFile});
+            if isMni
+                sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI');
+            else
+                sMriMask = in_mri(LabelFiles{iFile}, 'ALL');
+            end
+            if isempty(sMriMask)
+                return;
+            end
             sMriMask.Cube = double(sMriMask.Cube);
-            % Get al the values in the MRI
+            % Display warning when no MNI transformation available
+            if isMni && (~isfield(sMriMask, 'NCS') || ~isfield(sMriMask.NCS, 'R') || isempty(sMriMask.NCS.R))
+                isMni = 0;
+                disp('Error: No MNI transformation available in this file.');
+            end
+            % Get all the values in the MRI
+            bst_progress('text', 'Extract regions...');
             allValues = unique(sMriMask.Cube);
             % If values are not integers, it is not a mask or an atlas: it has to be binarized first
             if any(allValues ~= round(allValues))
                 % Warning: not a binary mask
                 isConfirm = java_dialog('confirm', ['Warning: This is not a binary mask.' 10 'Try to import this MRI as a surface anyway?'], 'Import binary mask');
                 if ~isConfirm
-                    TessMat = [];
                     return;
                 end
                 % Analyze MRI histogram
@@ -312,40 +358,99 @@ for iFile = 1:length(LabelFiles)
             % Load the subject SCS coordinates
             sSubject = bst_get('SurfaceFile', SurfaceFile);
             sMriSubj = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
-            % Check the compatibility of MRI sizes
-            if ~isequal(size(sMriSubj.Cube), size(sMriMask.Cube))
-                Messages = [Messages, 'Error: The selected MRI file does not match the size of the subject''s MRI.'];
-                return;
+            % Converting the sSurf vertices to the loaded MRI volume
+            if isMni
+                % The original volume is in subject space and and the atlas volume is in MNI space
+                vertMni = cs_convert(sMriSubj, 'scs', 'mni', Vertices);
+                vertMri = round(cs_convert(sMriMask, 'mni', 'voxel', vertMni));
+            else
+                % Check the compatibility of MRI sizes
+                if ~isequal(size(sMriSubj.Cube), size(sMriMask.Cube))
+                    Messages = [Messages, 'Error: The selected MRI file does not match the size of the subject''s MRI.' 10 10 ...
+                                          'If the MRI is an atlas in a normalized MNI space, use the file format ' 10 ...
+                                          '"Volume mask or atlas (MNI space)".' 10 10];
+                    return;
+                end
+                % Both the original volume and the atlas volume and in the same subject space
+                vertMri = round(cs_convert(sMriSubj, 'scs', 'voxel', Vertices));
             end
-            % Converting the sSurf vertices to MRI
-            vertMri = round(cs_convert(sMriSubj, 'scs', 'voxel', sSurf.Vertices));
-            indMri = sub2ind(size(sMriSubj.Cube), ...
-                        bst_saturate(vertMri(:,1), [1, size(sMriSubj.Cube,1)]), ...
-                        bst_saturate(vertMri(:,2), [1, size(sMriSubj.Cube,2)]), ...
-                        bst_saturate(vertMri(:,3), [1, size(sMriSubj.Cube,3)]));
-            % Generate a tesselation for all the others
+            % Get the corresponding MRI labels
+            indMri = sub2ind(size(sMriMask.Cube), ...
+                        bst_saturate(vertMri(:,1), [1, size(sMriMask.Cube,1)]), ...
+                        bst_saturate(vertMri(:,2), [1, size(sMriMask.Cube,2)]), ...
+                        bst_saturate(vertMri(:,3), [1, size(sMriMask.Cube,3)]));
+            % Try to get volume labels for this atlas
+            VolumeLabels = panel_scout('GetVolumeLabels', LabelFiles{iFile});
+            % Create one scout for each value in the volume
             for i = 1:length(allValues)
+                bst_progress('text', sprintf('Creating scouts... [%d/%d]', i, length(allValues)));
                 % Get the binary mask of the current region
                 mask = (sMriMask.Cube == allValues(i));
                 % Dilate mask
                 mask = mri_dilate(mask);
                 mask = mri_dilate(mask);
                 % Get the vertices in this mask
-                scoutVertices = find(mask(indMri));
-                if isempty(scoutVertices)
+                iScoutVert = find(mask(indMri));
+                if isempty(iScoutVert)
                     continue;
                 end
+                
                 % New scout index
                 iScout = length(sAtlas.Scouts) + 1;
-                % Get the vertices for this annotation
-                sAtlas.Scouts(iScout).Vertices = scoutVertices;
                 sAtlas.Scouts(iScout).Seed     = [];
-                sAtlas.Scouts(iScout).Label    = file_unique(num2str(allValues(i)), {sAtlas.Scouts.Label});
                 sAtlas.Scouts(iScout).Color    = [];
                 sAtlas.Scouts(iScout).Function = 'Mean';
                 sAtlas.Scouts(iScout).Region   = 'UU';
+                % Use an existing label for the loaded atlas
+                if ~isempty(VolumeLabels)
+                    iLabel = find([VolumeLabels{:,1}] == allValues(i));
+                    if ~isempty(iLabel)
+                        sAtlas.Scouts(iScout).Label = file_unique(VolumeLabels{iLabel,2}, {sAtlas.Scouts.Label});
+                        if (VolumeLabels{iLabel,2}(end-1:end) == ' L')
+                            sAtlas.Scouts(iScout).Region = 'LU';
+                        elseif (VolumeLabels{iLabel,2}(end-1:end) == ' R')
+                            sAtlas.Scouts(iScout).Region = 'RU';
+                        end
+                    else
+                        sAtlas.Scouts(iScout).Label = file_unique(num2str(allValues(i)), {sAtlas.Scouts.Label});
+                    end
+                else
+                    sAtlas.Scouts(iScout).Label = file_unique(num2str(allValues(i)), {sAtlas.Scouts.Label});
+                end
+                
+                % If importing an atlas in MNI coordinates
+                if isMni
+                    % Get the coordinates of all the points in the mask
+                    Pvox = [];
+                    [Pvox(:,1),Pvox(:,2),Pvox(:,3)] = ind2sub(size(mask), indMri(iScoutVert));
+                    % Convert to MNI coordinates
+                    Pmni = cs_convert(sMriMask, 'voxel', 'mni', Pvox);
+                    % Find left and right areas
+                    iL = find(Pmni(:,1) < 0);
+                    iR = find(Pmni(:,1) >= 0);
+                    % If this is a bilateral region: split in two
+                    if ~isempty(iL) && ~isempty(iR) && (length(iL) / length(iR) < 1.6) && (length(iL) / length(iR) > 0.4)
+                        % Duplicate scout
+                        sAtlas.Scouts(iScout+1) = sAtlas.Scouts(iScout);
+                        % Left scout
+                        sAtlas.Scouts(iScout).Vertices = iScoutVert(iL);
+                        sAtlas.Scouts(iScout).Label    = [sAtlas.Scouts(iScout).Label, ' L'];
+                        sAtlas.Scouts(iScout).Region   = 'LU';
+                        % Right scout
+                        sAtlas.Scouts(iScout+1).Vertices = iScoutVert(iR);
+                        sAtlas.Scouts(iScout+1).Label    = [sAtlas.Scouts(iScout+1).Label, ' R'];
+                        sAtlas.Scouts(iScout+1).Region   = 'RU';
+                    % Do not split
+                    else
+                        sAtlas.Scouts(iScout).Vertices = iScoutVert;
+                    end
+                % Importing regular subject volume: Select all the vertices
+                else
+                    sAtlas.Scouts(iScout).Vertices = iScoutVert;
+                end
             end
-
+            bst_progress('text', 'Saving atlas...');
+            
         % ===== BRAINSTORM SCOUTS =====
         case 'BST'
             % Load file
@@ -360,8 +465,8 @@ for iFile = 1:length(LabelFiles)
                 continue;
             end
             % Check the number of vertices
-            if (length(sSurf.Vertices) ~= ScoutMat.TessNbVertices)
-                Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the scout file (%d) do not match\n', fBase, length(sSurf.Vertices), ScoutMat.TessNbVertices)];
+            if (length(Vertices) ~= ScoutMat.TessNbVertices)
+                Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the scout file (%d) do not match\n', fBase, length(Vertices), ScoutMat.TessNbVertices)];
                 continue;
             end
             % If name is not defined: use the filename
@@ -451,7 +556,7 @@ for iFile = 1:length(LabelFiles)
         for i = 1:length(sAtlas(ia).Scouts)
             % Fix seed
             if isempty(sAtlas(ia).Scouts(i).Seed) || ~ismember(sAtlas(ia).Scouts(i).Seed, sAtlas(ia).Scouts(i).Vertices)
-                sAtlas(ia).Scouts(i) = panel_scout('SetScoutsSeed', sAtlas(ia).Scouts(i), sSurf.Vertices);
+                sAtlas(ia).Scouts(i) = panel_scout('SetScoutsSeed', sAtlas(ia).Scouts(i), Vertices);
             end
             % Fix regions
             if isempty(sAtlas(ia).Scouts(i).Region) || strcmpi(sAtlas(ia).Scouts(i).Region, 'UU')
@@ -483,4 +588,6 @@ if isLoadedHere
 end
 
 
+end
 
+    
