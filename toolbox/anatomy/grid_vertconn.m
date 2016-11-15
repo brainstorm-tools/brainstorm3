@@ -1,4 +1,4 @@
-function VertConn = grid_vertconn(GridLoc)
+function [VertConn, distance] = grid_vertconn(GridLoc)
 % GRID_VERTCONN: Compute a vertex adjacency matrix for a grid volume using Delaunay triangulations
 %
 % USAGE:  VertConn = grid_vertconn(GridLoc)
@@ -7,6 +7,7 @@ function VertConn = grid_vertconn(GridLoc)
 %    - GridLoc  : [Nx3] list of reference 3D points for the grid
 % OUTPUT:
 %    - VertConn : [NxN] vertex-vertex connectivity matrix (sparse)
+%    - distance : Distance for each pair of vertices in the vertconn matrix
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -56,7 +57,11 @@ distance = sqrt((GridLoc(connexion(:,1), 1) - GridLoc(connexion(:,2), 1)).^2 + .
                 (GridLoc(connexion(:,1), 2) - GridLoc(connexion(:,2), 2)).^2 + ...
                 (GridLoc(connexion(:,1), 3) - GridLoc(connexion(:,2), 3)).^2 );
 % Delete connections between points that are too far apart
-connexion(distance > distance_max, :) = [];
+isDistOk = (distance <= distance_max);
+connexion = connexion(isDistOk, :);
+if (nargout >= 2)
+    distance = distance(isDistOk, :);
+end
 
 % Compute connectivity matrix in sparse mode
 VertConn = sparse(connexion(:, 1), connexion(:, 2), ones(size(connexion(:,1))), size(GridLoc, 1), size(GridLoc, 1));
