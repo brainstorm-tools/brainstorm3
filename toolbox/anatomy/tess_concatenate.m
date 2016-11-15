@@ -31,7 +31,7 @@ function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, file
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2016
 
 % Parse inputs
 if (nargin < 3) || isempty(fileType)
@@ -75,6 +75,15 @@ for iFile = 1:length(TessFiles)
         scoutTag = ' R';
         scoutHemi = 'R';
         scoutComment = 'Cortex';
+    % Detect based on comment (tag ' L' or ' R' already present)
+    elseif (length(oldTess.Comment) > 2) && strcmpi(oldTess.Comment(end-1:end), ' L')
+        scoutTag = ' L';
+        scoutHemi = 'L';
+        scoutComment = oldTess.Comment;
+    elseif (length(oldTess.Comment) > 2) && strcmpi(oldTess.Comment(end-1:end), ' R')
+        scoutTag = ' R';
+        scoutHemi = 'R';
+        scoutComment = oldTess.Comment;
     % Guess based on the coordinates
     else
         if (nnz(oldTess.Vertices(:,2) > 0) > 5 * nnz(oldTess.Vertices(:,2) < 0))
