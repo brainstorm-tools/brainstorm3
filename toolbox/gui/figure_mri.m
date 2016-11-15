@@ -162,10 +162,14 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     Handles.jLabelTitleS = gui_component('label',  jPanelTitleSagittal, [], '<HTML>&nbsp;&nbsp;&nbsp;<B>Sagittal</B>', [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axs), []);
     Handles.jLabelTitleA = gui_component('label',  jPanelTitleAxial,    [], '<HTML>&nbsp;&nbsp;&nbsp;<B>Axial</B>',    [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axa), []);
     Handles.jLabelTitleC = gui_component('label',  jPanelTitleCoronal,  [], '<HTML>&nbsp;&nbsp;&nbsp;<B>Coronal</B>',  [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axc), []);
+    % Title: Value
+    Handles.jLabelValue = gui_component('label',  jPanelTitleSagittal, 'hfill', 'Value', [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axs), []);
+    Handles.jLabelValue.setHorizontalAlignment(Handles.jLabelValue.RIGHT);
     % Add panels to the figure
     [Handles.jPanelSagittal, Handles.panelTitleSagittal] = javacomponent(jPanelTitleSagittal, [0 0 1 1], hFig);
     [Handles.jPanelAxial,    Handles.panelTitleAxial]    = javacomponent(jPanelTitleAxial,    [0 0 1 1], hFig);
     [Handles.jPanelCoronal,  Handles.panelTitleCoronal]  = javacomponent(jPanelTitleCoronal,  [0 0 1 1], hFig);
+    
     
     % ===== OPTION PANELS =====
     jPanelOptions = java_create('javax.swing.JPanel');
@@ -307,7 +311,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     
     % ===== CONFIGURE OBJECTS =====
     % Set labels in white
-    jLabels = [Handles.jLabelTitleS, Handles.jLabelTitleA, Handles.jLabelTitleC, Handles.jTitleNAS, Handles.jTitleLPA, Handles.jTitleRPA, ...
+    jLabels = [Handles.jLabelTitleS, Handles.jLabelTitleA, Handles.jLabelTitleC, Handles.jLabelValue, Handles.jTitleNAS, Handles.jTitleLPA, Handles.jTitleRPA, ...
                Handles.jTitleAC, Handles.jTitlePC, Handles.jTitleIH, Handles.jCheckViewCrosshair, ...
                Handles.jCheckViewSliders, Handles.jCheckMipAnatomy, Handles.jCheckMipFunctional, Handles.jRadioNeurological, Handles.jRadioRadiological, ...
                Handles.jTitleMRI, Handles.jTitleSCS, Handles.jTitleMNI, Handles.jTextCoordMriX, Handles.jTextCoordMriY, Handles.jTextCoordMriZ, ...
@@ -317,6 +321,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
         jLabels(i).setForeground(Color(.9,.9,.9));
         jLabels(i).setOpaque(0);
     end
+    Handles.jLabelValue.setForeground(Color(.4,.4,.4));
     % Set text alignment to right
     jLabels = [Handles.jTitleNAS, Handles.jTitleLPA, Handles.jTitleRPA, Handles.jTitleAC, Handles.jTitlePC, Handles.jTitleIH, ...
                Handles.jTitleMRI, Handles.jTitleSCS, Handles.jTitleMNI];
@@ -1167,6 +1172,20 @@ function UpdateCoordinates(sMri, Handles)
     Handles.jLabelTitleS.setText(sprintf('<HTML>&nbsp;&nbsp;&nbsp;<B>Sagittal</B>:&nbsp;&nbsp;&nbsp;x=%d', voxXYZ(1)));
     Handles.jLabelTitleA.setText(sprintf('<HTML>&nbsp;&nbsp;&nbsp;<B>Axial</B>:&nbsp;&nbsp;&nbsp;z=%d', voxXYZ(3)));
     Handles.jLabelTitleC.setText(sprintf('<HTML>&nbsp;&nbsp;&nbsp;<B>Coronal</B>:&nbsp;&nbsp;&nbsp;y=%d', voxXYZ(2)));
+    % Display value of the selected voxel
+    if (all(voxXYZ >= 1) && all(voxXYZ <= size(sMri.Cube)))
+        % Try to get the values from the overlay mask
+        TessInfo = getappdata(Handles.hFig, 'Surface');
+        if ~isempty(TessInfo) && ~isempty(TessInfo.OverlayCube) && all(size(TessInfo.OverlayCube) == size(sMri.Cube))
+            value = TessInfo.OverlayCube(voxXYZ(1), voxXYZ(2), voxXYZ(3));
+        else
+            value = sMri.Cube(voxXYZ(1), voxXYZ(2), voxXYZ(3));
+        end
+        strValue = sprintf('value=%g', value);
+    else
+        strValue = '';
+    end
+    Handles.jLabelValue.setText(strValue);
     % === MRI (millimeters) ===
     Handles.jTextCoordMriX.setText(sprintf('x: %3.1f', mriXYZ(1) * 1000));
     Handles.jTextCoordMriY.setText(sprintf('y: %3.1f', mriXYZ(2) * 1000));
