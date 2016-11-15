@@ -394,7 +394,6 @@ end
 
 %% ===== MERGE SURFACES =====
 rmFiles = {};
-rmInd   = [];
 % Merge hemispheres: pial
 if ~isempty(TessLhFile) && ~isempty(TessRhFile)
     % Hi-resolution surface
@@ -451,17 +450,14 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isem
 %     CortexHiFile  = MidHiFile;
 %     CortexLowFile = MidLowFile;
 end
-% Delete intermediary files
+
+%% ===== DELETE INTERMEDIATE FILES =====
 if ~isempty(rmFiles)
     % Delete files
     file_delete(file_fullpath(rmFiles), 1);
     % Reload subject
     db_reload_subjects(iSubject);
-    % Refresh tree
-    panel_protocols('UpdateNode', 'Subject', iSubject);
-    panel_protocols('SelectNode', [], 'subject', iSubject, -1 );
 end
-
 
 %% ===== GENERATE HEAD =====
 % Generate head surface
@@ -471,9 +467,23 @@ HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 if ~isempty(AsegFile)
     % Import atlas
     [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
+    % Extract cerebellum only
+    BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum L', 'Cerebellum R'}, 'aseg | cerebellum');
+    % Downsample cerebllum
+    [BstCerebLowFile, iCerLow, xCerLow] = tess_downsize(BstCerebFile, 2000, 'reducepatch');
+    % Merge with low-resolution pial
+    BstMixedLowFile = tess_concatenate({CortexLowFile, BstCerebLowFile}, sprintf('cortex_cereb_%dV', length(xLhLow) + length(xRhLow) + length(xCerLow)), 'Cortex');
+    % Rename mixed file
+    oldBstMixedLowFile = file_fullpath(BstMixedLowFile);
+    BstMixedLowFile    = bst_fullfile(bst_fileparts(oldBstMixedLowFile), 'tess_cortex_pialcereb_low.mat');
+    movefile(oldBstMixedLowFile, BstMixedLowFile);
+    % Delete intermediate files
+    file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
+    db_reload_subjects(iSubject);
 else
     BstAsegFile = [];
 end
+
 
 %% ===== IMPORT THICKNESS MAPS =====
 if isExtraMaps && ~isempty(CortexHiFile) && ~isempty(ThickLhFile) && ~isempty(ThickLhFile)
@@ -486,16 +496,13 @@ end
 
 %% ===== UPDATE GUI =====
 % Set default cortex
-% if ~isempty(MidHiFile)
-%     [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', MidHiFile);
-%     db_surface_default(iSubject, 'Cortex', iSurface);
-% end
 if ~isempty(TessLhFile) && ~isempty(TessRhFile)
     [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', CortexLowFile);
     db_surface_default(iSubject, 'Cortex', iSurface);
 end
 % Update subject node
 panel_protocols('UpdateNode', 'Subject', iSubject);
+panel_protocols('SelectNode', [], 'subject', iSubject, -1 );
 % Save database
 db_save();
 % Unload everything
@@ -508,10 +515,6 @@ if isInteractive
     if ~isempty(CortexLowFile)
         view_surface(CortexLowFile);
     end
-%     % Display ASEG
-%     if ~isempty(BstAsegFile)
-%         view_surface(BstAsegFile);
-%     end
     % Set orientation
     figure_3d('SetStandardView', hFig, 'left');
 end

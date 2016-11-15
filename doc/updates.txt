@@ -13,6 +13,7 @@ November 2016
 - Anatomy: MRI Viewer: Added the value of the selected voxel in the top-right corner
 - Anatomy: Updated ICBM152 template: MNI transformation set manually instead of computed with SPM
 - Anatomy: Default AC position in MNI space is now [0 3 -4] instead of [0 2 -4]
+- Anatomy: Import FreeSurfer anatomy: Now creates a surface with the cerebellum by default
 - Distrib: Converted the introduction tutorials dataset to match BIDS specifications
 - Bug fix: Large Neuroscan .cnt files were truncated
 ---------------------------------------------------------------

@@ -47,6 +47,8 @@ NewTess = db_template('surfacemat');
 isLeft = 0;
 isRight = 0;
 isWhite = 0;
+isCortex = 0;
+isAseg = 0;
 isSave = 1;
 
 % Progress bar
@@ -98,8 +100,15 @@ for iFile = 1:length(TessFiles)
         end
         scoutComment = oldTess.Comment;
     end
+    % Detect some specific types of surfaces
     if ~isempty(strfind(oldTess.Comment, 'white'))
         isWhite = 1;
+    end
+    if ~isempty(strfind(oldTess.Comment, 'cortex_'))
+        isCortex = 1;
+    end
+    if ~isempty(strfind(oldTess.Comment, 'aseg'))
+        isAseg = 1;
     end
     % Concatenate current sub-tess to final tesselation structure
     offsetVertices   = size(NewTess.Vertices,1);
@@ -219,6 +228,14 @@ if isLeft && isRight
         if isempty(NewComment)
             NewComment = sprintf('cortex_%dV', length(NewTess.Vertices));
         end
+    end
+elseif isCortex && isAseg
+    fileTag = 'cortex_mixed';
+    if isempty(fileType)
+        fileType = 'Cortex';
+    end
+    if isempty(NewComment)
+        NewComment = sprintf('cortex_mixed_%dV', length(NewTess.Vertices));
     end
 else
     fileTag = 'concat';
