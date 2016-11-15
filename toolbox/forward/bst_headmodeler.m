@@ -30,6 +30,7 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %
 %     ======= HEAD DEFINITION =============================================
 %     .CortexFile     : Grey/white or grey/csf interface (also used as source space if source space not secified)
+%     .HeadFile       : Head surface (used for volume head models with full head volume)
 %     .InnerSkullFile : Surface used to estimate the overlapping spheres.
 %     .HeadCenter   : [x,y,z] coordinates of the center of the spheres in the sensors coordinate system
 %     .Radii        : [Rcsf, Routerskull, Rscalp], radii of the 3 spheres for EEG models (default: [.88 .93 1])
@@ -90,6 +91,7 @@ Def_OPTIONS = struct(...
     'Conductivity',       [.33 .0042 .33],...
     'SourceSpaceOptions', [], ...
     'CortexFile',         [], ...
+    'HeadFile',           [], ...
     'InnerSkullFile',     [], ...
     'OuterSkullFile',     [], ...
     'GridOptions',        [], ... 
@@ -227,6 +229,7 @@ end
 %% ===== DEFINE SOURCE SPACE =======================================================================
 %  =================================================================================================
 GridOptions = [];
+OutSurfaceFile = OPTIONS.CortexFile;
 % Source space type
 switch (OPTIONS.HeadModelType)
     case 'volume'
@@ -240,8 +243,17 @@ switch (OPTIONS.HeadModelType)
                 end
                 OPTIONS.GridLoc = sGrid.GridLoc;
                 GridOptions = sGrid.GridOptions;
+                % If using the full head volume: change the surface file that is used as a reference
+                if strcmpi(GridOptions.Method, 'isohead')
+                    OutSurfaceFile = OPTIONS.HeadFile;
+                end
             else
-                OPTIONS.GridLoc = panel_sourcegrid('GetGrid', OPTIONS.GridOptions, OPTIONS.CortexFile);
+                if strcmpi(OPTIONS.GridOptions.Method, 'isohead')
+                    OPTIONS.GridLoc = panel_sourcegrid('GetGrid', OPTIONS.GridOptions, OPTIONS.HeadFile);
+                    OutSurfaceFile = OPTIONS.HeadFile;
+                else
+                    OPTIONS.GridLoc = panel_sourcegrid('GetGrid', OPTIONS.GridOptions, OPTIONS.CortexFile);
+                end
                 GridOptions = OPTIONS.GridOptions;
             end
             if isempty(OPTIONS.GridLoc)
@@ -263,6 +275,7 @@ switch (OPTIONS.HeadModelType)
                 OPTIONS.GridOrient(iBad,:) = repmat([1 0 0], length(iBad), 1);
             end
         end
+        
     case 'mixed'
         % Read cortex file
         sCortex = in_tess_bst(OPTIONS.CortexFile);
@@ -583,7 +596,7 @@ SaveHeadModel = struct(...
     'GridOrient',    OPTIONS.GridOrient, ...
     'GridAtlas',     OPTIONS.GridAtlas, ...
     'GridOptions',   GridOptions, ...
-    'SurfaceFile',   file_win2unix(OPTIONS.CortexFile), ...
+    'SurfaceFile',   file_win2unix(OutSurfaceFile), ...
     'Param',         Param);
 % History: compute head model
 SaveHeadModel = bst_history('add', SaveHeadModel, 'compute', ['Compute head model: ' OPTIONS.Comment strHistory]);

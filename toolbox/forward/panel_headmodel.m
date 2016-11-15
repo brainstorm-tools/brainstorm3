@@ -546,6 +546,9 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         if ~isempty(sSubject.iInnerSkull)
             OPTIONS.InnerSkullFile = sSubject.Surface(sSubject.iInnerSkull(1)).FileName;
         end
+        if ~isempty(sSubject.iScalp)
+            OPTIONS.HeadFile = sSubject.Surface(sSubject.iScalp(1)).FileName;
+        end
         if ~isempty(sSubject.iCortex)
             OPTIONS.CortexFile = sSubject.Surface(sSubject.iCortex(1)).FileName;
         else
@@ -731,6 +734,7 @@ function OutputFile = GenerateSourceGrid(iStudy, isInteractive) %#ok<DEFNU>
     end
     % Get cortex surface
     CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
+    HeadFile = sSubject.Surface(sSubject.iScalp).FileName;
     
     % ===== GET GRID ====
     % Compute grid
@@ -747,7 +751,11 @@ function OutputFile = GenerateSourceGrid(iStudy, isInteractive) %#ok<DEFNU>
         % Get the saved options of the computation of the Grid
         GridOptions = bst_get('GridOptions_headmodel');
         % Compute the grid with these options
-        GridLoc = panel_sourcegrid('GetGrid', GridOptions, CortexFile);
+        if strcmpi(GridOptions.Method, 'isohead')
+            GridLoc = panel_sourcegrid('GetGrid', GridOptions, CortexFile);
+        else
+            GridLoc = panel_sourcegrid('GetGrid', GridOptions, HeadFile);
+        end
     end
     if isempty(GridLoc)
         return;
