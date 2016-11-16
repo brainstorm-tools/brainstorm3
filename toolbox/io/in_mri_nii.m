@@ -174,7 +174,9 @@ if ~isempty(hdr.nifti) && ~isempty(hdr.nifti.vox2ras)
         vox2ras(1:3,4) = permute(vox2ras(1:3,4), Pmat);
     end
     % Scale transformation matrix
-    vox2ras(1:3,1:3) = bst_bsxfun(@rdivide, vox2ras(1:3,1:3), Voxsize(:));
+    if ~isempty(vox2ras)
+        vox2ras(1:3,1:3) = bst_bsxfun(@rdivide, vox2ras(1:3,1:3), Voxsize(:));
+    end
 end
 
 % ===== CREATE BRAINSTORM STRUCTURE =====
