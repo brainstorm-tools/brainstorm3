@@ -154,6 +154,7 @@ if isRemoveFid
     ChannelMat.Channel(iDelChan) = [];
 end
 % If there are less than a certain number of "EEG" channels, let's consider it's not EEG
+iEEG = channel_find(ChannelMat.Channel, 'EEG');
 if (length(iEEG) < 5)
     [ChannelMat.Channel(iEEG).Type] = deal('Misc');
 end
