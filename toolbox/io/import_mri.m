@@ -206,7 +206,9 @@ if ~isfield(sMri, 'Comment')
 end
 % Add an index number 
 if (iAnatomy > 1)
-    sMri.Comment = [sMri.Comment, sprintf(' #%d', iAnatomy)];
+    %sMri.Comment = [sMri.Comment, sprintf(' #%d', iAnatomy)];
+    [fPath, fBase, fExt] = bst_fileparts(MriFile);
+    sMri.Comment = file_unique(fBase, {sSubject.Anatomy.Comment});
 end
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
