@@ -44,7 +44,6 @@ bst_startup(BrainstormHomeDir, 0, 0, BrainstormDbDir);
 
 % Initialize random generator
 rng('default');
-rng(1);
 
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
 ProtocolName = 'ProtocolTest';
