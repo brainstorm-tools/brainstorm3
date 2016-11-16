@@ -93,7 +93,7 @@ function Affine = bst_spm_maff8(sMri, MG,samp,fwhm,tpm,Affine)
 
     scrand = 1;
     if exist('rng', 'file')
-        rng(1);
+        rng('default');
     else
         rand('seed',1);
     end

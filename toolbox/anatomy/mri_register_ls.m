@@ -267,7 +267,7 @@ function [M,scal] = bst_spm_affreg(VG,VF,flags,M,scal)
     % make the cost function smoother.
     % ---------------------------------------------------------------
     if exist('rng', 'file')
-        rng(1);
+        rng('default');
     else
         rand('state',1);
     end
