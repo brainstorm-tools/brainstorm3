@@ -60,20 +60,28 @@ end
 
 % ===== COMPUTE MNI TRANSFORMATIONS =====
 % Source MRI
-if isfield(sMriSrc, 'NCS') && isfield(sMriSrc.NCS, 'R') && isfield(sMriSrc.NCS, 'T') && ~isempty(sMriSrc.NCS.R) && ~isempty(sMriSrc.NCS.T)
-    TransfSrc = [sMriSrc.NCS.R, sMriSrc.NCS.T; 0 0 0 1];
-else
-    TransfSrc = mri_register_maff(sMriSrc);
+if ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || ~isfield(sMriSrc.NCS, 'T') || isempty(sMriSrc.NCS.R) || isempty(sMriSrc.NCS.T)
+    [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc);
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'Compute MNI transformation', 0);
+        return;
+    end
 end
+TransfSrc = [sMriSrc.NCS.R, sMriSrc.NCS.T; 0 0 0 1];
 % Reference MRI
-if isfield(sMriRef, 'NCS') && isfield(sMriRef.NCS, 'R') && isfield(sMriRef.NCS, 'T') && ~isempty(sMriRef.NCS.R) && ~isempty(sMriRef.NCS.T)
-    TransfRef = [sMriRef.NCS.R, sMriRef.NCS.T; 0 0 0 1];
-else
-    TransfRef = mri_register_maff(sMriRef);
+if ~isfield(sMriRef, 'NCS') || ~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)
+    [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'Compute MNI transformation', 0);
+        return;
+    end
 end
+TransfRef = [sMriRef.NCS.R, sMriRef.NCS.T; 0 0 0 1];
 
 % ===== INTERPOLATE MRI VOLUME =====
-bst_progress('text', 'Interpolating volume...');
+nBlocks = 3;
+nTol = 5;
+bst_progress('start', 'MRI register', 'Interpolating volume...', 0, nBlocks^3+1);
 % Original position vectors
 X1 = ((0:size(sMriSrc.Cube,1)-1) + 0.5) .* sMriSrc.Voxsize(1);
 Y1 = ((0:size(sMriSrc.Cube,2)-1) + 0.5) .* sMriSrc.Voxsize(2);
@@ -90,8 +98,42 @@ allGrid = inv(TransfSrc) * TransfRef * allGrid;
 Xgrid2 = reshape(allGrid(2,:), size(Xgrid2));
 Ygrid2 = reshape(allGrid(1,:), size(Ygrid2));
 Zgrid2 = reshape(allGrid(3,:), size(Zgrid2));
-% Interpolate volume
-newCube = uint8(interp3(Y1, X1, Z1, double(sMriSrc.Cube), Xgrid2, Ygrid2, Zgrid2, 'spline', 0));
+% Old formulation: too memory intensive
+% newCube = uint8(interp3(Y1, X1, Z1, double(sMriSrc.Cube), Xgrid2, Ygrid2, Zgrid2, 'spline', 0));
+
+% Interpolate volume by blocks
+sizeCube = size(Xgrid2);
+xBlockSize = ceil(sizeCube(1) / nBlocks);
+yBlockSize = ceil(sizeCube(2) / nBlocks);
+zBlockSize = ceil(sizeCube(3) / nBlocks);
+% Inialize output cube
+newCube = zeros(sizeCube, 'uint8');
+bst_progress('inc', 1);
+% Loop on X axis
+for i = 1:nBlocks
+    iX2 = (((i-1)*xBlockSize)+1) : min(i*xBlockSize, sizeCube(1));
+    for j = 1:nBlocks
+        iY2 = (((j-1)*yBlockSize)+1) : min(j*yBlockSize, sizeCube(2));
+        for k = 1:nBlocks
+            iZ2 = (((k-1)*zBlockSize)+1) : min(k*zBlockSize, sizeCube(3));
+            % Get indices of the original cube to consider
+            iX1 = bst_closest(min(reshape(Ygrid2(iX2,iY2,iZ2),1,[])) - nTol, X1) : ...
+                  bst_closest(max(reshape(Ygrid2(iX2,iY2,iZ2),1,[])) + nTol, X1);
+            iY1 = bst_closest(min(reshape(Xgrid2(iX2,iY2,iZ2),1,[])) - nTol, Y1) : ...
+                  bst_closest(max(reshape(Xgrid2(iX2,iY2,iZ2),1,[])) + nTol, Y1);
+            iZ1 = bst_closest(min(reshape(Zgrid2(iX2,iY2,iZ2),1,[])) - nTol, Z1) : ...
+                  bst_closest(max(reshape(Zgrid2(iX2,iY2,iZ2),1,[])) + nTol, Z1);
+            % Interpolate block
+            newCube(iX2, iY2, iZ2) = uint8(interp3(...
+                Y1(iY1), X1(iX1), Z1(iZ1), ...            % Indices of the reference cube
+                double(sMriSrc.Cube(iX1, iY1, iZ1)), ...  % Values of the reference cube
+                Xgrid2(iX2, iY2, iZ2), ...                % Coordinates for which we want to estimate the values
+                Ygrid2(iX2, iY2, iZ2), ...
+                Zgrid2(iX2, iY2, iZ2), 'spline', 0));
+            bst_progress('inc', 1);
+        end
+    end
+end
 
 
 % ===== TRANSFORM COORDINATES =====
