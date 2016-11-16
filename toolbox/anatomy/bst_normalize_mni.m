@@ -3,6 +3,7 @@ function [sMri, errMsg] = bst_normalize_mni(MriFile)
 %                     using SPM mutual information algorithm (affine transform).
 % 
 % USAGE:  [sMri, errMsg] = bst_normalize_mni(MriFile)
+%         [sMri, errMsg] = bst_normalize_mni(sMri)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,11 +25,21 @@ function [sMri, errMsg] = bst_normalize_mni(MriFile)
 %
 % Authors: Francois Tadel, 2015-2016
 
-
-%% ===== GET SPM TEMPLATE =====
+%% ===== PARSE INPUTS =====
+% Inializations
 global GlobalData;
 errMsg = [];
-sMri = [];
+% Usage: bst_normalize_mni(sMri)
+if ~ischar(MriFile)
+    sMri = MriFile;
+    MriFile = [];
+% Usage: bst_normalize_mni(MriFile)
+else
+    sMri = [];
+end
+    
+
+%% ===== GET SPM TEMPLATE =====
 % Get template file
 tpmFile = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
 % If it does not exist: download
@@ -66,14 +77,20 @@ end
 
 
 %% ===== LOAD ANATOMY =====
-% Progress bar
-bst_progress('start', 'Normalize anatomy', 'Loading input MRI...');
-% Check if it is loaded in memory
-[sMri, iLoadedMri] = bst_memory('GetMri', MriFile);
-% If not: load it from the file
 if isempty(sMri)
-    sMri = in_mri_bst(MriFile);
+    % Progress bar
+    bst_progress('start', 'Normalize anatomy', 'Loading input MRI...');
+    % Check if it is loaded in memory
+    [sMri, iLoadedMri] = bst_memory('GetMri', MriFile);
+    % If not: load it from the file
+    if isempty(sMri)
+        sMri = in_mri_bst(MriFile);
+    end
+else
+    iLoadedMri = [];
 end
+% Progress bar
+bst_progress('start', 'Normalize anatomy', 'Resampling MRI...');
 % Resample volume if needed
 if any(abs(sMri.Voxsize - [1 1 1]) > 0.001)
     [sMriRes, Tres] = mri_resample(sMri, [256 256 256], [1 1 1]);
@@ -115,7 +132,9 @@ sMri.NCS.PC     = cs_convert(sMri, 'mni', 'mri', PC) .* 1000;
 sMri.NCS.IH     = cs_convert(sMri, 'mni', 'mri', IH) .* 1000;
 sMri.NCS.Origin = cs_convert(sMri, 'mni', 'mri', Origin) .* 1000;
 % Save modifications in the MRI file
-bst_save(file_fullpath(MriFile), sMri, 'v6');
+if ~isempty(MriFile)
+    bst_save(file_fullpath(MriFile), sMri, 'v6');
+end
 
 
 %% ===== UPDATE LOADED FIGURES =====
