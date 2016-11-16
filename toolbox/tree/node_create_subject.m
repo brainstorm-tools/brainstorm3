@@ -26,7 +26,7 @@ function node_create_subject(nodeSubject, sSubject, iSubject)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2010
+% Authors: Francois Tadel, 2008-2016
 
 % If iSubject=0 => default subject
 import org.brainstorm.tree.*;
@@ -49,8 +49,11 @@ if sSubject.UseDefaultAnat && (iSubject ~= 0)
 
 % ==== Individual anatomy ====
 else
+    % Create list of anat files (put the default at the top)
+    iAnatList = 1:length(sSubject.Anatomy);
+    iAnatList = [sSubject.iAnatomy, setdiff(iAnatList,sSubject.iAnatomy)];
     % Create and add anatomy nodes
-    for iAnatomy = 1:length(sSubject.Anatomy)
+    for iAnatomy = iAnatList
         nodeAnatomy = BstNode('anatomy', ...
                               char(sSubject.Anatomy(iAnatomy).Comment), ...
                               char(sSubject.Anatomy(iAnatomy).FileName), ...
