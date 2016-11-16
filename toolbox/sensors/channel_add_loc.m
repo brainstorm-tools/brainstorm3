@@ -78,6 +78,11 @@ for is = 1:length(iStudies)
             ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
             ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
             nUpdated = nUpdated + 1;
+            % Initialize list of head points as cell arrays (if not it concatenate as strings)
+            if isempty(ChannelMat.HeadPoints.Label)
+                ChannelMat.HeadPoints.Label = {};
+                ChannelMat.HeadPoints.Type = {};
+            end
             % Add as head points
             ChannelMat.HeadPoints.Loc   = [ChannelMat.HeadPoints.Loc,   ChannelMat.Channel(ic).Loc];
             ChannelMat.HeadPoints.Label = [ChannelMat.HeadPoints.Label, ChannelMat.Channel(ic).Name];
