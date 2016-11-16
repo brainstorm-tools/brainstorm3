@@ -162,14 +162,8 @@ switch (lower(action))
                 % Get subject
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
-                iAnatomy = bstNodes(1).getItemIndex();
-                % If item is not marked yet : mark it (and unmark all the other nodes)
-                if (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked())
-                    db_surface_default(iSubject, 'Anatomy', iAnatomy);
-                % Else, this item is already marked : display it in MRI Viewer
-                else
-                    view_mri(filenameRelative);
-                end
+                % Display it in MRI Viewer
+                view_mri(filenameRelative);
     
             % ===== SURFACE ===== 
             % Mark/unmark (items selected : 1/category)
@@ -878,6 +872,7 @@ switch (lower(action))
 %% ===== POPUP: ANATOMY =====
             case 'anatomy'
                 iSubject = bstNodes(1).getStudyIndex();
+                sSubject = bst_get('Subject', iSubject);
                 % MENU : DISPLAY
                 jMenuDisplay = gui_component('Menu', jPopup, [], 'Display', IconLoader.ICON_ANATOMY, [], [], []);
                     % Display
@@ -902,6 +897,11 @@ switch (lower(action))
                 % === MENU: EDIT MRI ===
                 if ~bst_get('ReadOnly')
                     gui_component('MenuItem', jPopup, [], 'Edit MRI...', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, 'EditMri'), []);
+                end
+                % === MENU: SET AS DEFAULT ===
+                iAnatomy = bstNodes(1).getItemIndex();
+                if ~bst_get('ReadOnly') && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked())
+                    gui_component('MenuItem', jPopup, [], 'Set as default MRI', IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, 'Anatomy', iAnatomy), []);
                 end
                 % === MENU: GENERATE HEAD SURFACE ===
                 if ~bst_get('ReadOnly')
@@ -963,7 +963,7 @@ switch (lower(action))
                     end
                     if (~ismember(iSurface, sSubject.(['i' SurfaceType])) || ~bstNodes(1).isMarked()) && ~strcmpi(nodeType, 'other')
                         gui_component('MenuItem', jPopup, [], ['Set as default ' lower(nodeType)], IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, SurfaceType, iSurface), []);
-                    end            
+                    end
                     % Separator
                     AddSeparator(jPopup);
                 end

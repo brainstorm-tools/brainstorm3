@@ -14,6 +14,7 @@ November 2016
 - Anatomy: Updated ICBM152 template: MNI transformation set manually instead of computed with SPM
 - Anatomy: Default AC position in MNI space is now [0 3 -4] instead of [0 2 -4]
 - Anatomy: Import FreeSurfer anatomy: Now creates a surface with the cerebellum by default
+- Anatomy: Fixed the co-registration of multiple volumes (faster, less memory, better workflow)
 - Distrib: Converted the introduction tutorials dataset to match BIDS specifications
 - Bug fix: Large Neuroscan .cnt files were truncated
 ---------------------------------------------------------------
