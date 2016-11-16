@@ -25,7 +25,7 @@ function varargout = process_evt_detect( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Elizabeth Bock, Francois Tadel, 2011-2015
+% Authors: Elizabeth Bock, Francois Tadel, 2011-2016
 
 eval(macro_method);
 end
@@ -331,7 +331,11 @@ function evt = Compute(F, TimeVector, OPTIONS, Fmask)
     % ===== FILTER RECORDINGS =====
     % Filter recordings
     if ~isempty(OPTIONS.bandpass)
-        F = process_bandpass('Compute', F, sFreq, OPTIONS.bandpass(1), OPTIONS.bandpass(2), 'bst-hfilter', 0);
+        [F, FiltSpec] = process_bandpass('Compute', F, sFreq, OPTIONS.bandpass(1), OPTIONS.bandpass(2), 'bst-hfilter', 0);
+        smpTransient = round(FiltSpec.transient * sFreq);
+    else
+        FiltSpec = [];
+        smpTransient = 0;
     end
     % Absolute value
     Fabs = abs(F);
@@ -341,8 +345,9 @@ function evt = Compute(F, TimeVector, OPTIONS, Fmask)
     else
         Fsig = F;
     end
-    % Ignore the first and last 5% of the signal (in case of artifacts)
-    nIgnore = round(size(Fsig,1) * 0.05) + 1;
+    % Ignore the first and last 2% of the signal (in case of artifacts): Max of 2s
+    nIgnore = round(size(Fsig,2) * 0.02) + smpTransient;
+    nIgnore = min(2*sFreq, nIgnore);
     Fsig = Fsig(nIgnore:end-nIgnore+1);
     % Compute standard deviation
     stdF = std(Fsig);
