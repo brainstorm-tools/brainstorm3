@@ -49,20 +49,26 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.volumegrid.Comment = {'panel_sourcegrid', 'MRI volume grid: '};
     sProcess.options.volumegrid.Type    = 'editpref';
     sProcess.options.volumegrid.Value   = [];
-    % Option: MEG headmodel
-    sProcess.options.label2.Comment = '<BR><B>Forward modeling methods</B>:';
+    % Option: Surfaces selection
+    sProcess.options.label2.Comment = '<BR><B>Surfaces used for the head model</B>:';
     sProcess.options.label2.Type    = 'label';
-    sProcess.options.meg.Comment = '   - MEG method:';
+    sProcess.options.surfaces.Comment = {'Brainstorm: Surfaces from the database (BEM or Single shell)', 'FieldTrip: ft_volumesegment + ft_prepare_headmodel'; 'brainstorm', 'fieldtrip'};
+    sProcess.options.surfaces.Type    = 'radio_label';
+    sProcess.options.surfaces.Value   = 'fieldtrip';
+    % Option: MEG headmodel
+    sProcess.options.label3.Comment = '<BR><B>Forward modeling methods</B>:';
+    sProcess.options.label3.Type    = 'label';
+    sProcess.options.meg.Comment = 'MEG method:';
     sProcess.options.meg.Type    = 'combobox_label';
     sProcess.options.meg.Value   = {'singleshell', {'<none>', 'Single sphere', 'Local spheres', 'Single shell', 'BEM OpenMEEG'; ...
                                                     '',       'singlesphere',  'localspheres',  'singleshell',  'openmeeg'}};
     % Option: EEG headmodel
-    sProcess.options.eeg.Comment = '   - EEG method:';
+    sProcess.options.eeg.Comment = 'EEG method:';
     sProcess.options.eeg.Type    = 'combobox_label';
     sProcess.options.eeg.Value   = {'concentricspheres', {'<none>', 'Single sphere', 'Concentric spheres', 'BEM OpenMEEG', 'BEM Christophe Phillips', 'BEM Thom Oostendorp'; ...
                                                           '',       'singlesphere',  'concentricspheres',  'openmeeg',     'bemcp',                   'dipoli'}};
     % Show options
-    sProcess.options.verbose.Comment = 'Display sensor/MRI registration';
+    sProcess.options.verbose.Comment = 'Display sensor/MRI registration &nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#777777"><I>(may crash)</I>';
     sProcess.options.verbose.Type    = 'checkbox';
     sProcess.options.verbose.Value   = 0;
 end
@@ -70,7 +76,7 @@ end
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
-    Comment = 'FieldTrip: ft_prepare_headmodel + ft_prepare_leadfield';
+    Comment = 'FieldTrip: ft_prepare_leadfield';
 end
 
 
@@ -117,6 +123,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         GridOptions = [];
     end
+    % Type of headmodel
+    SurfaceMethod = sProcess.options.surfaces.Value;
     % Display intermediate results
     isVerbose = sProcess.options.verbose.Value;
 
@@ -148,60 +156,100 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get default cortex surface
         CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
 
-        % ===== GET BRAIN MASK =====
-        % Get previously computed mri mask from the database
-        iMaskBrain = find(strcmpi({sSubject.Anatomy.Comment}, 'mask_innerskull'));
-        iMaskSkull = find(strcmpi({sSubject.Anatomy.Comment}, 'mask_outerskull'));
-        iMaskScalp = find(strcmpi({sSubject.Anatomy.Comment}, 'mask_scalp'));
-        % Mask exists: load it and convert it to FieldTrip
-        if ~isempty(iMaskBrain)
-            bst_progress('text', 'Loading brain mask...');
-            % Load saved brain mask
-            sMaskBrain = in_mri_bst(sSubject.Anatomy(iMaskBrain).FileName);
-            % Convert to FieldTrip structure
-            ftMaskVol = out_fieldtrip_mri(sMaskBrain, 'brain');
-            % For BEM models, load more compartments
-            if isBEM
-                % Skull
-                if ~isempty(iMaskSkull)
-                    sMaskSkull = in_mri_bst(sSubject.Anatomy(iMaskSkull).FileName);
-                    ftMaskSkull = out_fieldtrip_mri(sMaskSkull, 'skull');
-                    ftMaskVol.skull = ftMaskSkull.skull;
+        % ===== PREPARE HEAD MODEL =====
+        switch (SurfaceMethod)
+            % FieldTrip: Compute surfaces using ft_volumesegment and ft_prepare_headmodel
+            case 'fieldtrip'
+                % Get previously computed mri mask from the database
+                iMaskBrain = find(strcmpi({sSubject.Anatomy.Comment}, 'mask_innerskull'));
+                iMaskSkull = find(strcmpi({sSubject.Anatomy.Comment}, 'mask_outerskull'));
+                iMaskScalp = find(strcmpi({sSubject.Anatomy.Comment}, 'mask_scalp'));
+                % Mask exists: load it and convert it to FieldTrip
+                if ~isempty(iMaskBrain) && (~isBEM || (~isempty(iMaskSkull) && ~isempty(iMaskScalp)))
+                    bst_progress('text', 'Loading brain mask...');
+                    % Load saved brain mask
+                    sMaskBrain = in_mri_bst(sSubject.Anatomy(iMaskBrain).FileName);
+                    % Convert to FieldTrip structure
+                    ftGeometry = out_fieldtrip_mri(sMaskBrain, 'brain');
+                    % For BEM models, load more compartments
+                    if isBEM
+                        % Skull
+                        sMaskSkull = in_mri_bst(sSubject.Anatomy(iMaskSkull).FileName);
+                        ftMaskSkull = out_fieldtrip_mri(sMaskSkull, 'skull');
+                        ftGeometry.skull = ftMaskSkull.skull;
+                        % Scalp
+                        sMaskScalp = in_mri_bst(sSubject.Anatomy(iMaskScalp).FileName);
+                        ftMaskScalp = out_fieldtrip_mri(sMaskScalp, 'scalp');
+                        ftGeometry.scalp = ftMaskScalp.scalp;
+                    end
+                % Compute segmentation with ft_volumesegment
+                else
+                    % Messages
+                    bst_progress('text', 'Calling FieldTrip function: ft_volumesegment...');
+                    bst_report('Info', sProcess, [], 'To avoid the segmentation of the MRI volume every time you compute a head model with ft_prepare_leadfield, you can run the process "Import anatomy > FieldTrip: ft_volumesegment", it would save the intermediate results in the database.');
+                    % Load Brainstorm MRI
+                    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                    sMri = in_mri_bst(MriFile);
+                    % Convert to FieldTrip structure
+                    ftMri = out_fieldtrip_mri(sMri);
+                    % Prepare FieldTrip cfg structure
+                    cfg = [];
+                    if isBEM
+                        cfg.output = {'brain', 'skull', 'scalp'};
+                    else
+                        cfg.output = {'brain'};
+                    end
+                    % Run ft_volumesegment
+                    ftGeometry = ft_volumesegment(cfg, ftMri);
+                    % Check if something was returned
+                    if isempty(ftGeometry)
+                        bst_report('Error', sProcess, sInputs, 'Something went wrong during the execution of ft_volumesegment. Check the command window...');
+                        return;
+                    end
                 end
-                % Scalp
-                if ~isempty(iMaskScalp)
-                    sMaskScalp = in_mri_bst(sSubject.Anatomy(iMaskScalp).FileName);
-                    ftMaskScalp = out_fieldtrip_mri(sMaskScalp, 'scalp');
-                    ftMaskVol.scalp = ftMaskScalp.scalp;
+                % Convert to meters (same as the sensors)
+                ftGeometry = ft_convert_units(ftGeometry, 'm');
+                
+            % Brainstorm: Use the surfaces available in the database
+            case 'brainstorm'
+                % Check what is needed for the various models
+                if isempty(sSubject.iInnerSkull)
+                    bst_report('Error', sProcess, sInputs, 'No inner skull surface in the database. Use the menu "Generate BEM surfaces" or the process "ft_volumesegment" first.');
+                    return;
+                elseif isBEM && (isempty(sSubject.iOuterSkull) || isempty(sSubject.iScalp))
+                    bst_report('Error', sProcess, sInputs, 'No scalp or outer skull surface in the database. Use the menu "Generate BEM surfaces" or the process "ft_volumesegment" first.');
+                    return;
                 end
-            end
-        else
-            % Messages
-            bst_progress('text', 'Calling FieldTrip function: ft_volumesegment...');
-            bst_report('Info', sProcess, [], 'To avoid the segmentation of the MRI volume every time you compute a head model with ft_prepare_leadfield, you can run the process "Import anatomy > FieldTrip: ft_volumesegment", it would save the intermediate results in the database.');
-            % Load Brainstorm MRI
-            MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-            sMri = in_mri_bst(MriFile);
-            % Convert to FieldTrip structure
-            ftMri = out_fieldtrip_mri(sMri);
-            % Prepare FieldTrip cfg structure
-            cfg = [];
-            if isBEM
-                cfg.output = {'brain', 'skull', 'scalp'};
-            else
-                cfg.output = {'brain'};
-            end
-            % Run ft_volumesegment
-            ftMaskVol  = ft_volumesegment(cfg, ftMri);
-            % Check if something was returned
-            if isempty(ftMaskVol)
-                bst_report('Error', sProcess, sInputs, 'Something went wrong during the execution of ft_volumesegment. Check the command window...');
-                return;
-            end
+                % Read layer surfaces
+                ftGeometry = [];
+                if isBEM && ~isempty(sSubject.iScalp)
+                    % Read file from database (scalp)
+                    sSurf = in_tess_bst(sSubject.Surface(sSubject.iScalp).FileName);
+                    % Format it in FieldTrip format
+                    iLayer = length(ftGeometry) + 1;
+                    ftGeometry(iLayer).pos  = sSurf.Vertices;
+                    ftGeometry(iLayer).tri  = sSurf.Faces;
+                    ftGeometry(iLayer).unit = 'm';
+                end
+                if isBEM && ~isempty(sSubject.iOuterSkull)
+                    % Read file from database (skull)
+                    sSurf = in_tess_bst(sSubject.Surface(sSubject.iOuterSkull).FileName);
+                    % Format it in FieldTrip format
+                    iLayer = length(ftGeometry) + 1;
+                    ftGeometry(iLayer).pos  = sSurf.Vertices;
+                    ftGeometry(iLayer).tri  = sSurf.Faces;
+                    ftGeometry(iLayer).unit = 'm';
+                end
+                if ~isempty(sSubject.iInnerSkull)
+                    % Read file from database (brain)
+                    sSurf = in_tess_bst(sSubject.Surface(sSubject.iInnerSkull).FileName);
+                    % Format it in FieldTrip format
+                    iLayer = length(ftGeometry) + 1;
+                    ftGeometry(iLayer).pos  = sSurf.Vertices;
+                    ftGeometry(iLayer).tri  = sSurf.Faces;
+                    ftGeometry(iLayer).unit = 'm';
+                end
         end
-        % Convert to meters (same as the sensors)
-        ftMaskVol = ft_convert_units(ftMaskVol, 'm');
-
         % ===== GET SOURCE SPACE =====
         switch (HeadModelType)
             case 'surface'
@@ -246,7 +294,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             cfg.method = MEGMethod; 
             cfg.grad   = ftGrad;    % Sensor positions
             % Call FieldTrip function: ft_prepare_headmodel
-            ftVolMeg = ft_prepare_headmodel(cfg, ftMaskVol);
+            ftVolMeg = ft_prepare_headmodel(cfg, ftGeometry);
             % Convert to meters (same units as the sensors)
             ftVolMeg = ft_convert_units(ftVolMeg, 'm');
             % Display sensors/headmodel alignment
@@ -258,7 +306,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     ft_plot_mesh(struct('pos',GridLoc,'tri',Faces), 'edgecolor', 'none'); camlight;
                 end
             end
-            
+                    
             % === MEG: FT_PREPARE_LEADFIELD ===
             bst_progress('text', 'Calling FieldTrip function: ft_prepare_leadfield... (MEG)');
             % Prepare FieldTrip cfg structure
@@ -283,24 +331,30 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         % === EEG ===
         if ~isempty(EEGMethod) && ~isempty(ftElec)
-            % === EEG: FT_PREPARE_HEADMODEL ===
-            bst_progress('text', 'Calling FieldTrip function: ft_prepare_headmodel... (EEG)');
-            % Prepare FieldTrip cfg structure
-            cfg = [];
-            cfg.method = EEGMethod; 
-            cfg.elec   = ftElec;    % Sensor positions
-            % Call FieldTrip function: ft_prepare_headmodel
-            ftVolEeg = ft_prepare_headmodel(cfg, ftMaskVol);
-            % Convert to meters (same units as the sensors)
-            ftVolEeg = ft_convert_units(ftVolEeg, 'm');
-            % Display sensors/headmodel alignment
-            if isVerbose
-                figure; hold on;
-                ft_plot_sens(ftElec, 'style', '*b');
-                ft_plot_vol(ftVolEeg, 'facecolor', 'none'); alpha 0.5;
-                if ~isempty(Faces)
-                    ft_plot_mesh(struct('pos',GridLoc,'tri',Faces), 'edgecolor', 'none'); camlight;
-                end
+            % === EEG: HEAD MODEL ===
+            switch (SurfaceMethod)
+                case 'fieldtrip'
+                    % === EEG: FT_PREPARE_HEADMODEL ===
+                    bst_progress('text', 'Calling FieldTrip function: ft_prepare_headmodel... (EEG)');
+                    % Prepare FieldTrip cfg structure
+                    cfg = [];
+                    cfg.method = EEGMethod; 
+                    cfg.elec   = ftElec;    % Sensor positions
+                    % Call FieldTrip function: ft_prepare_headmodel
+                    ftVolEeg = ft_prepare_headmodel(cfg, ftGeometry);
+                    % Convert to meters (same units as the sensors)
+                    ftVolEeg = ft_convert_units(ftVolEeg, 'm');
+                    % Display sensors/headmodel alignment
+                    if isVerbose
+                        figure; hold on;
+                        ft_plot_sens(ftElec, 'style', '*b');
+                        ft_plot_vol(ftVolEeg, 'facecolor', 'none'); alpha 0.5;
+                        if ~isempty(Faces)
+                            ft_plot_mesh(struct('pos',GridLoc,'tri',Faces), 'edgecolor', 'none'); camlight;
+                        end
+                    end
+                case 'brainstorm'
+                    error('todo');
             end
             
             % === EEG: FT_PREPARE_LEADFIELD ===
