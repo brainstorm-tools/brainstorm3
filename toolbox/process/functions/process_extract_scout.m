@@ -399,7 +399,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             AtlasName = AtlasList{iAtlas,1};
             iAtlasSurf = find(strcmpi(AtlasList{iAtlas,1}, {sSurf.Atlas.Name}));
             % Is this a volume atlas?
-            isVolumeAtlas = ~isempty(strfind(AtlasName, 'Volume scouts'));
+            isVolumeAtlas = panel_scout('ParseVolumeAtlas', AtlasName);
             % Loop on the scouts selected for this atlas
             for iScout = 1:length(AtlasList{iAtlas,2})
                 % Get scout name

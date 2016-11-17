@@ -379,7 +379,7 @@ function UpdateMenus(sAtlas)
     end
     % Get atlas property
     isReadOnly = isAtlasReadOnly(sAtlas, 0);
-    isVolumeAtlas = ~isempty(strfind(sAtlas.Name, 'Volume scouts'));
+    isVolumeAtlas = ParseVolumeAtlas(sAtlas.Name);
     
     % === MENU: ATLAS ===
     jMenu = ctrl.jMenuAtlas;
@@ -828,7 +828,7 @@ function UpdateScoutProperties()
     if ~isempty(sScouts)
         % Get current atlas
         sAtlas = GetAtlas();
-        isVolumeAtlas = ~isempty(strfind(sAtlas.Name, 'Volume scouts'));
+        isVolumeAtlas = ParseVolumeAtlas(sAtlas.Name);
         % Concatenate all the selected scouts
         allVertices = unique([sScouts.Vertices]);
         % Print number of vertices
@@ -1838,6 +1838,10 @@ function iAtlas = SetAtlas(SurfaceFile, iAtlasIn, sAtlas)
         if isempty(newLabel)
             return;
         end
+        if ParseVolumeAtlas(newLabel)
+            java_dialog('warning', ['The name of a surface atlas cannot start with "Volume".' 10 'To create volume scouts, use the menu "Atlas > New atlas > Volume scouts".'], 'Create atlas');
+            return;
+        end
         sAtlas.Name = newLabel;
     end
     % Fix the structure of the file
@@ -1899,38 +1903,45 @@ end
 %% ===== CREATE ATLAS: VOLUME GRID =====
 function CreateAtlasVolumeGrid()
     global GlobalData;
-    % Atlas name
-    AtlasName = 'Volume scouts';
     % Get current 3D figure
     hFig = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
-        bst_error('No selected figure.', 'Create new atlas', 0);
+        bst_error('No selected figure.', 'New volume atlas', 0);
         return;
     end
     % Get current source files
     ResultsFile = getappdata(hFig, 'ResultsFile');
     if isempty(ResultsFile)
-        bst_error('No source results loaded in this figure.', 'Create new atlas', 0);
+        bst_error('No source results loaded in this figure.', 'New volume atlas', 0);
         return;
     end
     % Load results file
     [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
     if isempty(GlobalData.DataSet(iDS).Results(iResult).GridLoc) || strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
-        bst_error('No volume source grid loaded in this figure.', 'Create new atlas', 0);
+        bst_error('No volume source grid loaded in this figure.', 'New volume atlas', 0);
         return;
     end
     % Else: Create a new empty structure
     sAtlasVol = db_template('Atlas');
     % New atlas name: append number of grid points
-    sAtlasVol.Name = [AtlasName ' ' num2str(size(GlobalData.DataSet(iDS).Results(iResult).GridLoc, 1))];
+    sAtlasVol.Name = ['Volume ' num2str(size(GlobalData.DataSet(iDS).Results(iResult).GridLoc, 1))];
     % Find existing atlases
     [sAtlas, iAtlas, sSurf, iSurf] = GetAtlas();
     iAtlasVol = find(strcmpi(sAtlasVol.Name, {sSurf.Atlas.Name}));
     if ~isempty(iAtlasVol)
-%         java_dialog('warning', ['Atlas "' sAtlasVol.Name '" already exists.'], 'Create new atlas');
-%         return;
-        % Make atlas name unique
-        sAtlasVol.Name = file_unique(sAtlasVol.Name, {sSurf.Atlas.Name});
+        % Ask user for a name
+        newLabel = java_dialog('input', ['The atlas "' sAtlasVol.Name '" already exist.' 10 'Please enter a comment to add to the atlas name:'], 'New volume atlas', [], '');
+        if isempty(newLabel)
+            return;
+        end
+        % Assemble atlas name
+        sAtlasVol.Name = [sAtlasVol.Name ': ' newLabel];
+        % Find existing atlas
+        iAtlasVol = find(strcmpi(sAtlasVol.Name, {sSurf.Atlas.Name}));
+        if ~isempty(iAtlasVol)
+            java_dialog('warning', ['Atlas "' sAtlasVol.Name '" already exists.'], 'New volume atlas');
+            return;
+        end
     end
     % Create new atlas
     SetAtlas([], 'Add', sAtlasVol);
@@ -2501,24 +2512,31 @@ function EditAtlasLabel(varargin)
     if isempty(sAtlas)
         return;
     end
-    % Do not allow renaming Volume atlases
-    if ~isempty(strfind(sAtlas.Name, 'Volume scouts'))
-        java_dialog('warning', 'Volume atlases cannot be renamed.', 'Rename selected atlas');
-        return;
-    end
-    % Ask user for a new Atlas name
-    newLabel = java_dialog('input', 'Please enter a name for the atlas:', 'Rename selected atlas', [], sAtlas.Name);
-    if isempty(newLabel) || strcmpi(newLabel, sAtlas.Name)
-        return
+    % Volume atlases: change only the comment
+    [isVolumeAtlas, nGrid, Comment] = ParseVolumeAtlas(sAtlas.Name);
+    if isVolumeAtlas
+        % Ask user for a new Atlas comment
+        newComment = java_dialog('input', 'Please enter a comment for this volume atlas:', 'Rename atlas', [], Comment);
+        if isempty(newComment) || strcmpi(newComment, Comment)
+            return
+        end
+        % Assemble new label
+        newLabel = ['Volume ' num2str(nGrid) ': ' newComment];
+    else
+        % Ask user for a new Atlas name
+        newLabel = java_dialog('input', 'Please enter a name for the atlas:', 'Rename atlas', [], sAtlas.Name);
+        if isempty(newLabel) || strcmpi(newLabel, sAtlas.Name)
+            return
+        end
+        % Check if the new atlas name contains "volume scouts"
+        if ~isempty(strfind(lower(newLabel), 'volume'))
+            java_dialog('warning', 'Cannot convert a surface atlas into a volume atlas.', 'Rename atlas');
+            return;
+        end
     end
     % Check if name already exists
-    if any(strcmpi({sSurf.Name}, newLabel))
-        java_dialog('warning', 'Atlas name already exists.', 'Rename selected atlas');
-        return;
-    end
-    % Check if the new atlas name contains "volume scouts"
-    if ~isempty(strfind(lower(newLabel), 'volume'))
-        java_dialog('warning', 'Cannot convert a surface atlas into a volume atlas.', 'Rename selected atlas');
+    if any(strcmpi({sSurf.Atlas.Name}, newLabel))
+        java_dialog('warning', 'Atlas name already exists.', 'Rename atlas');
         return;
     end
     % Update Scout definition
@@ -2680,11 +2698,10 @@ function CreateScoutMouse(hFig) %#ok<DEFNU>
     sAtlas = GetAtlas();
     
     % ===== VOLUME SCOUTS =====
+    [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
     % Volume scouts: Get grid of points
-    if ~isempty(strfind(sAtlas.Name, 'Volume scouts'))
+    if isVolumeAtlas
         % === GET VOLUME GRID ===
-        % Get number of points for this atlas
-        nAtlasGrid = sscanf(sAtlas.Name(length('Volume scouts')+2:end), '%d');
         % Get ResultsFile and Surface
         ResultsFile = getappdata(hFig, 'ResultsFile');
         if isempty(ResultsFile)
@@ -3239,10 +3256,8 @@ function EditScoutsSize(action)
     % Get surface information
     [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
     % Volume scouts: Get number of points for this atlas
-    isVolumeAtlas = ~isempty(strfind(sAtlas.Name, 'Volume scouts'));
+    [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
     if isVolumeAtlas
-        % Get number of vertices
-        nAtlasGrid = sscanf(sAtlas.Name(length('Volume scouts')+2:end), '%d');
         % Get ResultsFile
         ResultsFile = getappdata(hFig, 'ResultsFile');
         if isempty(ResultsFile)
@@ -3610,7 +3625,7 @@ function ForwardModelForScout(varargin)
     end
     % Get current atlas, to check if it is a volume atlas
     sAtlas = GetAtlas();
-    isVolumeAtlas = ~isempty(strfind(sAtlas.Name, 'Volume scouts'));
+    isVolumeAtlas = ParseVolumeAtlas(sAtlas.Name);
     
     % ===== BUILD COMMENT =====
     % Get a string to represent scouts
@@ -3975,11 +3990,8 @@ function PlotScouts(iScouts, hFigSel)
     % Get anatomy file
     [sSubject, iSubject] = bst_get('SurfaceFile', sSurf.FileName);
     % Volume scouts: Get number of points for this atlas
-    isVolumeAtlas = ~isempty(strfind(sAtlas.Name, 'Volume scouts'));
+    [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
     isStructAtlas = ismember(sAtlas.Name, {'Structures', 'Source model'});
-    if isVolumeAtlas
-        nAtlasGrid = sscanf(sAtlas.Name(length('Volume scouts')+2:end), '%d');
-    end
     % Get cortex + anatomy
     SurfaceFiles = {sSurf.FileName, sSubject.Anatomy(sSubject.iAnatomy).FileName};
     % Get all the figures concerned with Scout cortex and/or MRI surface
@@ -4536,7 +4548,7 @@ function UpdateScoutsVertices(SurfaceFile) %#ok<DEFNU>
         return;
     end
     % For volume scouts: Do not do anything
-    isVolumeAtlas = ~isempty(strfind(sAtlas.Name, 'Volume scouts'));
+    isVolumeAtlas = ParseVolumeAtlas(sAtlas.Name);
     isStructAtlas = ismember(sAtlas.Name, {'Structures', 'Source model'});
     if isVolumeAtlas
         return;
@@ -5236,6 +5248,35 @@ function Labels = GetAsegLabels()
        254, 'CC_Mid_Anterior'; ...
        255, 'CC_Anterior'; ...
     };
+end
+
+
+%% ===== VOLUME ATLAS INFO =====
+% The name of a volume scout is supposed to be: "Volume 10000: Name"
+function [isVolumeAtlas, nGrid, Comment] = ParseVolumeAtlas(AtlasName)
+    % Initialize returned values
+    nGrid = 0;
+    Comment = '';
+    % Is it a volume atlas?
+    isVolumeAtlas = (length(AtlasName) > 6) &&  strcmpi(AtlasName(1:6), 'Volume');
+    if ~isVolumeAtlas
+        return;
+    end
+    % Parse the number of vertices
+    if (length(AtlasName) > 15) &&  strcmpi(AtlasName(1:13), 'Volume scouts')
+        nGrid = sscanf(AtlasName(15:end), '%d');
+    elseif (length(AtlasName) > 7)
+        nGrid = sscanf(AtlasName(7:end), '%d');
+    end
+    if isempty(nGrid)
+        nGrid = 0;
+        return;
+    end
+    % Get the comment: after a ":"
+    iColon = find(AtlasName == ':', 1);
+    if ~isempty(iColon) && (length(AtlasName) > iColon+2)
+        Comment = strtrim(AtlasName(iColon+2:end));
+    end
 end
 
 

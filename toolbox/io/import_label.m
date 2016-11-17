@@ -114,7 +114,7 @@ for iFile = 1:length(LabelFiles)
         iAtlas = 'Add';
         % Volume sources file
         if ~isempty(GridLoc)
-            sAtlas.Name = sprintf('Volume scouts %d', length(GridLoc));
+            sAtlas.Name = sprintf('Volume %d: %s', length(GridLoc), fBase);
             sAtlas.Name = file_unique(sAtlas.Name, {sSurf.Atlas.Name});
         % Surface sources file
         else
@@ -155,12 +155,12 @@ for iFile = 1:length(LabelFiles)
         % For volume source files: Can only import volume scouts
         if ~isempty(GridLoc)
             % Can only work with volume scouts
-            if isempty(strfind(sAtlas.Name, 'Volume scouts'))
+            [isVolumeAtlas, nAtlasGrid] = panel_scout('ParseVolumeAtlas', sAtlas.Name);
+            if ~isVolumeAtlas
                 Messages = [Messages, 'Error: You can only load volume scouts for this sources file.'];
                 return;
             end
             % Check the number of sources
-            nAtlasGrid = sscanf(sAtlas.Name(length('Volume scouts')+2:end), '%d');
             if (length(GridLoc) ~= nAtlasGrid)
                 Messages = [Messages, sprintf('Error: The number of grid points in this sources file (%d) does not match the selected atlas (%d).', length(GridLoc), nAtlasGrid)];
                 return;
