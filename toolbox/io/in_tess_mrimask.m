@@ -145,6 +145,11 @@ for i = 1:length(allValues)
         Comment = Labels{i,2};
     elseif (length(allValues) > 1)
         Comment = sprintf('%d', allValues(i));
+    elseif ~isempty(MriFile)
+        [fPath, fBase, fExt] = bst_fileparts(MriFile);
+        Comment = fBase;
+    else
+        Comment = 'mask';
     end
     
     % Add new tesselation
