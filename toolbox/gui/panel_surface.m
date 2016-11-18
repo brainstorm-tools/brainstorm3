@@ -243,11 +243,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     function SliderResectCallback(hObject, event, target)
         % Call the slider callback
         SliderCallback(hObject, event, target);
-        % Redraw all the scouts
-        hFig = bst_figures('GetCurrentFigure', '3D');
-        if ~isempty(hFig)
-            panel_scout('ReloadScouts', hFig);
-        end
+%         % Redraw all the scouts
+%         hFig = bst_figures('GetCurrentFigure', '3D');
+%         if ~isempty(hFig)
+%             panel_scout('ReloadScouts', hFig);
+%         end
     end
 
     %% ===== RESET RESECT CALLBACK =====
@@ -260,10 +260,17 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         SliderCallback([], MouseEvent(jSliderResectX, 0, 0, 0, 0, 0, 1, 0), 'ResectX');
         SliderCallback([], MouseEvent(jSliderResectY, 0, 0, 0, 0, 0, 1, 0), 'ResectY');
         SliderCallback([], MouseEvent(jSliderResectZ, 0, 0, 0, 0, 0, 1, 0), 'ResectZ');
-        % Redraw all the scouts
+        % Redraw all the scouts (for surfaces only)
         hFig = bst_figures('GetCurrentFigure', '3D');
         if ~isempty(hFig)
-            panel_scout('ReloadScouts', hFig);
+            iSurface = getappdata(hFig, 'iSurface');
+            TessInfo = getappdata(hFig, 'Surface');
+            if ~isempty(iSurface) && ~isempty(TessInfo) && (iSurface > length(TessInfo))
+                isAnatomy = strcmpi(TessInfo(iSurface).Name, 'Anatomy');
+                if ~isAnatomy
+                    panel_scout('ReloadScouts', hFig);
+                end
+            end
         end
     end
 
@@ -416,6 +423,9 @@ function SliderCallback(hObject, event, target)
                 figure_callback(hFig, 'UpdateMriDisplay', hFig, dim, TessInfo, iSurface);
             else
                 ResectSurface(hFig, iSurface, dim, jSlider.getValue() / 100);
+                if ~isempty(hFig)
+                    panel_scout('ReloadScouts', hFig);
+                end
             end
 
         otherwise
