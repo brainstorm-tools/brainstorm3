@@ -1,14 +1,17 @@
-function [ftHeadModel, HeadModelMat] = out_fieldtrip_headmodel(HeadModelFile, ChannelFile, iChannels, isIncludeRef)
+function [ftHeadmodel, ftLeadfield] = out_fieldtrip_headmodel(HeadModelFile, ChannelFile, iChannels, isIncludeRef)
 % OUT_FIELDTRIP_HEADMODEL: Converts a head model file into a FieldTrip structure (see ft_datatype_headmodel).
 % 
-% USAGE:  [ftHeadModel, HeadModelMat] = out_fieldtrip_headmodel(HeadModelFile, ChannelFile, isIncludeRef=1);
-%         [ftHeadModel, HeadModelMat] = out_fieldtrip_headmodel(HeadModelMat,  ChannelMat,  isIncludeRef=1);
+% USAGE:  [ftHeadmodel, ftLeadfield] = out_fieldtrip_headmodel(HeadModelFile, ChannelFile, isIncludeRef=1);
+%         [ftHeadmodel, ftLeadfield] = out_fieldtrip_headmodel(HeadModelMat,  ChannelMat,  isIncludeRef=1);
 %
 % INPUTS:
 %    - HeadModelFile  : Relative path to a head model file available in the database
 %    - HeadModelMat   : Brainstorm head model file structure
 %    - ChannelFile    : Relative path to a channel file available in the database
 %    - ChannelMat     : Brainstorm channel file structure
+% OUTPUTS:
+%    - ftHeadmodel    : Volume conductor model, typically returned by ft_prepare_headmodel
+%    - ftLeadfield    : Leadfield matrix, typically returned by ft_prepare_leadfield
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -34,6 +37,8 @@ function [ftHeadModel, HeadModelMat] = out_fieldtrip_headmodel(HeadModelFile, Ch
 if (nargin < 4) || isempty(isIncludeRef)
     isIncludeRef = 1;
 end
+ftHeadmodel = [];
+ftLeadfield = [];
 
 % ===== LOAD INPUTS =====
 % Load head model file
@@ -45,12 +50,10 @@ else
     error('Failed to load head model.');
 end
 % If this file was computed with FieldTrip, it should include the original FieldTrip headmodel
-if isfield(HeadModelMat, 'ftVolMeg') && ~isempty(HeadModelMat.ftVolMeg)
-    ftHeadModel = HeadModelMat.ftVolMeg;
-    return;
-elseif isfield(HeadModelMat, 'ftVolEeg') && ~isempty(HeadModelMat.ftVolEeg)
-    ftHeadModel = HeadModelMat.ftVolEeg;
-    return;
+if isfield(HeadModelMat, 'ftHeadmodelMeg') && ~isempty(HeadModelMat.ftHeadmodelMeg)
+    ftHeadmodel = HeadModelMat.ftHeadmodelMeg;
+elseif isfield(HeadModelMat, 'ftHeadmodelEeg') && ~isempty(HeadModelMat.ftHeadmodelEeg)
+    ftHeadmodel = HeadModelMat.ftHeadmodelEeg;
 end
 % Load channel file
 if ischar(ChannelFile)
@@ -78,31 +81,85 @@ if isIncludeRef && ismember(Modality, {'MEG','MEG MAG','MEG GRAD'})
     end
 end
 
-% ===== CREATE FIELDTRIP STRUCTURE =====
-% Headmodel type
-switch (HeadModelMethod)
-    case {'meg_sphere', 'singlesphere'}
-        ftHeadModel.type = 'singlesphere';
-        ftHeadModel.r = HeadModelMat.Param(iChannels(1)).Radii(1);
-        ftHeadModel.o = HeadModelMat.Param(iChannels(1)).Center(:)';
-    case {'eeg_3sphereberg', 'concentricspheres'}
-        ftHeadModel.type = 'concentricspheres';
-        ftHeadModel.r = HeadModelMat.Param(iChannels(1)).Radii(:)';
-        ftHeadModel.o = HeadModelMat.Param(iChannels(1)).Center(:)';
-        % Get default conductivities
-        BFSProperties = bst_get('BFSProperties');
-        ftHeadModel.c = BFSProperties(1:3);
-    case {'os_meg', 'localspheres'}
-        ftHeadModel.type = 'localspheres';
-        ftHeadModel.r = [HeadModelMat.Param(iChannels).Radii]';
-        ftHeadModel.o = [HeadModelMat.Param(iChannels).Center]';
-    otherwise
-        error('out_fieldtrip_headmodel does not support converting this type of head model.');
-end
-% Unit and labels
-ftHeadModel.unit  = 'm';
-ftHeadModel.label = {ChannelMat.Channel(iChannels).Name}';
 
+% ===== CREATE FIELDTRIP HEADMODEL =====
+if isempty(ftHeadmodel)
+    % Get subject
+    sSubject = bst_get('SurfaceFile', HeadModelMat.SurfaceFile);
+    % Headmodel type
+    switch (HeadModelMethod)
+        case {'meg_sphere', 'singlesphere'}
+            ftHeadmodel.type = 'singlesphere';
+            ftHeadmodel.r = HeadModelMat.Param(iChannels(1)).Radii(1);
+            ftHeadmodel.o = HeadModelMat.Param(iChannels(1)).Center(:)';
+            
+        case {'eeg_3sphereberg', 'concentricspheres'}
+            ftHeadmodel.type = 'concentricspheres';
+            ftHeadmodel.r = HeadModelMat.Param(iChannels(1)).Radii(:)';
+            ftHeadmodel.o = HeadModelMat.Param(iChannels(1)).Center(:)';
+            % Get default conductivities
+            BFSProperties = bst_get('BFSProperties');
+            ftHeadmodel.c = BFSProperties(1:3);
+            
+        case {'os_meg', 'localspheres'}
+            ftHeadmodel.type = 'localspheres';
+            ftHeadmodel.r = [HeadModelMat.Param(iChannels).Radii]';
+            ftHeadmodel.o = [HeadModelMat.Param(iChannels).Center]';
+            
+        case {'singleshell'}
+            ftHeadmodel.type = HeadModelMethod;
+            % Check if the surfaces are available
+            if isempty(sSubject.iInnerSkull)
+                error('No inner skull surface available for this subject.');
+            else
+                disp(['BST> ' HeadModelMethod ': Using the default inner skull surface available in the database.']);
+            end
+            % Load surfaces
+            SurfaceFiles = {sSubject.Surface(sSubject.iInnerSkull).FileName};
+            ftHeadmodel.bnd = out_fieldtrip_tess(SurfaceFiles);
+            
+        case {'openmeeg', 'dipoli', 'bemcp'}
+            ftHeadmodel.type = HeadModelMethod;
+            % Check if the surfaces are available
+            if isempty(sSubject.iInnerSkull) || isempty(sSubject.iOuterSkull) || isempty(sSubject.iScalp)
+                error('No BEM surfaces available for this subject.');
+            else
+                disp(['BST> ' HeadModelMethod ': Using the default surfaces available in the database (inner skull, outer skull, scalp).']);
+            end
+            % Load surfaces
+            SurfaceFiles = {sSubject.Surface(sSubject.iScalp).FileName, ...
+                            sSubject.Surface(sSubject.iOuterSkull).FileName, ...
+                            sSubject.Surface(sSubject.iInnerSkull).FileName};
+            ftHeadmodel.bnd = out_fieldtrip_tess(SurfaceFiles);
+            % Default OpenMEEG options
+            ftHeadmodel.cond         = [0.33, 0.004125, 0.33];
+            ftHeadmodel.skin_surface = 1;
+            ftHeadmodel.source       = 3;
+            % ERROR: MISSING .mat field??
+            
+        otherwise
+            error('out_fieldtrip_headmodel does not support converting this type of head model.');
+    end
+    % Unit and labels
+    ftHeadmodel.unit  = 'm';
+    ftHeadmodel.label = {ChannelMat.Channel(iChannels).Name}';
+end
+
+
+% ===== CREATE FIELDTRIP LEADFIELD =====
+if (nargout >= 2)
+    % Create FieldTrip structure
+    nSources = length(HeadModelMat.GridLoc);
+    ftLeadfield.pos             = HeadModelMat.GridLoc;
+    ftLeadfield.unit            = 'm';
+    ftLeadfield.inside          = true(nSources, 1);
+    ftLeadfield.leadfielddimord = '{pos}_chan_ori';
+    ftLeadfield.label           = {ChannelMat.Channel(iChannels).Name};
+    ftLeadfield.leadfield       = cell(1, nSources);
+    for i = 1:nSources
+        ftLeadfield.leadfield{i} = HeadModelMat.Gain(iChannels, 3*(i-1)+[1 2 3]);
+    end
+end
 
 
 

@@ -76,7 +76,7 @@ end
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
-    Comment = 'FieldTrip: ft_prepare_leadfield';
+    Comment = sProcess.Comment;
 end
 
 
@@ -127,6 +127,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     SurfaceMethod = sProcess.options.surfaces.Value;
     % Display intermediate results
     isVerbose = sProcess.options.verbose.Value;
+    
+    % ===== INSTALL OPENMEEG =====
+    if ismember('openmeeg', allMethods) && (system('om_assemble') ~= 0)
+        % Make sure that OpenMEEG is already installed
+        OpenmeegDir = bst_openmeeg('download');
+        % Add the OpenMEEG folder to the system path
+        setenv('path', [getenv('path') ';' OpenmeegDir ';']);
+    end
 
     % ===== GET STUDIES =====
     % Get channel studies
@@ -220,35 +228,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     bst_report('Error', sProcess, sInputs, 'No scalp or outer skull surface in the database. Use the menu "Generate BEM surfaces" or the process "ft_volumesegment" first.');
                     return;
                 end
-                % Read layer surfaces
-                ftGeometry = [];
-                if isBEM && ~isempty(sSubject.iScalp)
-                    % Read file from database (scalp)
-                    sSurf = in_tess_bst(sSubject.Surface(sSubject.iScalp).FileName);
-                    % Format it in FieldTrip format
-                    iLayer = length(ftGeometry) + 1;
-                    ftGeometry(iLayer).pos  = sSurf.Vertices;
-                    ftGeometry(iLayer).tri  = sSurf.Faces;
-                    ftGeometry(iLayer).unit = 'm';
+                % Get needed surfaces
+                if isBEM
+                    SurfaceFiles = {sSubject.Surface(sSubject.iScalp).FileName, ...
+                                    sSubject.Surface(sSubject.iOuterSkull).FileName, ...
+                                    sSubject.Surface(sSubject.iInnerSkull).FileName};
+                else
+                    SurfaceFiles = {sSubject.Surface(sSubject.iInnerSkull).FileName};
                 end
-                if isBEM && ~isempty(sSubject.iOuterSkull)
-                    % Read file from database (skull)
-                    sSurf = in_tess_bst(sSubject.Surface(sSubject.iOuterSkull).FileName);
-                    % Format it in FieldTrip format
-                    iLayer = length(ftGeometry) + 1;
-                    ftGeometry(iLayer).pos  = sSurf.Vertices;
-                    ftGeometry(iLayer).tri  = sSurf.Faces;
-                    ftGeometry(iLayer).unit = 'm';
-                end
-                if ~isempty(sSubject.iInnerSkull)
-                    % Read file from database (brain)
-                    sSurf = in_tess_bst(sSubject.Surface(sSubject.iInnerSkull).FileName);
-                    % Format it in FieldTrip format
-                    iLayer = length(ftGeometry) + 1;
-                    ftGeometry(iLayer).pos  = sSurf.Vertices;
-                    ftGeometry(iLayer).tri  = sSurf.Faces;
-                    ftGeometry(iLayer).unit = 'm';
-                end
+                % Convert layers to FieldTrip structures
+                ftGeometry = out_fieldtrip_tess(SurfaceFiles);
         end
         % ===== GET SOURCE SPACE =====
         switch (HeadModelType)
@@ -281,12 +270,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         ChannelMat = in_bst_channel(sStudy.Channel.FileName);
         % Convert to FieldTrip structure
         [ftElec, ftGrad] = out_fieldtrip_channel(ChannelMat);
+        % Cancel computation if there are not sensors
+        if isempty(ftElec)
+            EEGMethod = '';
+        end
+        if isempty(ftGrad)
+            MEGMethod = '';
+        end
         
         % ===== COMPUTE HEAD MODEL =====
         % Initialize saved values
         Gain = nan(length(ChannelMat.Channel), 3*length(ftGrid.pos));
         % === MEG ===
-        if ~isempty(MEGMethod) && ~isempty(ftGrad)
+        if ~isempty(MEGMethod)
             % === MEG: FT_PREPARE_HEADMODEL ===
             bst_progress('text', 'Calling FieldTrip function: ft_prepare_headmodel... (MEG)');
             % Prepare FieldTrip cfg structure
@@ -294,14 +290,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             cfg.method = MEGMethod; 
             cfg.grad   = ftGrad;    % Sensor positions
             % Call FieldTrip function: ft_prepare_headmodel
-            ftVolMeg = ft_prepare_headmodel(cfg, ftGeometry);
+            ftHeadmodelMeg = ft_prepare_headmodel(cfg, ftGeometry);
             % Convert to meters (same units as the sensors)
-            ftVolMeg = ft_convert_units(ftVolMeg, 'm');
+            ftHeadmodelMeg = ft_convert_units(ftHeadmodelMeg, 'm');
             % Display sensors/headmodel alignment
             if isVerbose
                 figure; hold on;
                 ft_plot_sens(ftGrad, 'style', '*b');
-                ft_plot_vol(ftVolMeg, 'facecolor', 'none'); alpha 0.5;
+                ft_plot_vol(ftHeadmodelMeg, 'facecolor', 'none'); alpha 0.5;
                 if ~isempty(Faces)
                     ft_plot_mesh(struct('pos',GridLoc,'tri',Faces), 'edgecolor', 'none'); camlight;
                 end
@@ -313,7 +309,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             cfg = [];
             cfg.grad      = ftGrad;    % Sensor positions
             cfg.grid      = ftGrid;    % Source grid
-            cfg.headmodel = ftVolMeg;  % Volume conduction model
+            cfg.headmodel = ftHeadmodelMeg;  % Volume conduction model
             % Call FieldTrip function: ft_prepare_leadfield
             ftLeadfieldMeg = ft_prepare_leadfield(cfg);
             
@@ -326,35 +322,30 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Convert leadfield values in Brainstorm format
             Gain(iChannelsMeg,:) = [ftLeadfieldMeg.leadfield{:}];
         else
-            ftVolMeg = [];
+            ftHeadmodelMeg = [];
+            iChannelsMeg = [];
         end
 
         % === EEG ===
-        if ~isempty(EEGMethod) && ~isempty(ftElec)
-            % === EEG: HEAD MODEL ===
-            switch (SurfaceMethod)
-                case 'fieldtrip'
-                    % === EEG: FT_PREPARE_HEADMODEL ===
-                    bst_progress('text', 'Calling FieldTrip function: ft_prepare_headmodel... (EEG)');
-                    % Prepare FieldTrip cfg structure
-                    cfg = [];
-                    cfg.method = EEGMethod; 
-                    cfg.elec   = ftElec;    % Sensor positions
-                    % Call FieldTrip function: ft_prepare_headmodel
-                    ftVolEeg = ft_prepare_headmodel(cfg, ftGeometry);
-                    % Convert to meters (same units as the sensors)
-                    ftVolEeg = ft_convert_units(ftVolEeg, 'm');
-                    % Display sensors/headmodel alignment
-                    if isVerbose
-                        figure; hold on;
-                        ft_plot_sens(ftElec, 'style', '*b');
-                        ft_plot_vol(ftVolEeg, 'facecolor', 'none'); alpha 0.5;
-                        if ~isempty(Faces)
-                            ft_plot_mesh(struct('pos',GridLoc,'tri',Faces), 'edgecolor', 'none'); camlight;
-                        end
-                    end
-                case 'brainstorm'
-                    error('todo');
+        if ~isempty(EEGMethod)
+            % === EEG: FT_PREPARE_HEADMODEL ===
+            bst_progress('text', 'Calling FieldTrip function: ft_prepare_headmodel... (EEG)');
+            % Prepare FieldTrip cfg structure
+            cfg = [];
+            cfg.method = EEGMethod; 
+            cfg.elec   = ftElec;    % Sensor positions
+            % Call FieldTrip function: ft_prepare_headmodel
+            ftHeadmodelEeg = ft_prepare_headmodel(cfg, ftGeometry);
+            % Convert to meters (same units as the sensors)
+            ftHeadmodelEeg = ft_convert_units(ftHeadmodelEeg, 'm');
+            % Display sensors/headmodel alignment
+            if isVerbose
+                figure; hold on;
+                ft_plot_sens(ftElec, 'style', '*b');
+                ft_plot_vol(ftHeadmodelEeg, 'facecolor', 'none'); alpha 0.5;
+                if ~isempty(Faces)
+                    ft_plot_mesh(struct('pos',GridLoc,'tri',Faces), 'edgecolor', 'none'); camlight;
+                end
             end
             
             % === EEG: FT_PREPARE_LEADFIELD ===
@@ -363,7 +354,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             cfg = [];
             cfg.elec      = ftElec;    % Sensor positions
             cfg.grid      = ftGrid;    % Source grid
-            cfg.headmodel = ftVolEeg;  % Volume conduction model
+            cfg.headmodel = ftHeadmodelEeg;  % Volume conduction model
             % Call FieldTrip function: ft_prepare_leadfield
             ftLeadfieldEeg = ft_prepare_leadfield(cfg);
             
@@ -376,7 +367,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Convert leadfield values in Brainstorm format
             Gain(iChannelsEeg,:) = [ftLeadfieldEeg.leadfield{:}];
         else
-            ftVolEeg = [];
+            ftHeadmodelEeg = [];
+            iChannelsEeg = [];
         end
         
         % ===== COPY PARAMETERS OF SPHERICAL MODELS =====
@@ -384,18 +376,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if ismember(MEGMethod, {'singlesphere', 'localspheres'}) || ismember(EEGMethod, {'singlesphere', 'concentricspheres'})
             Param = repmat(struct('Center', [], 'Radii',  []), 1, length(ChannelMat.Channel));
             if isequal(MEGMethod, 'singlesphere')
-                [Param(iChannelsMeg).Radii]  = deal(ftVolMeg.r);
-                [Param(iChannelsMeg).Center] = deal(ftVolMeg.o(:));
+                [Param(iChannelsMeg).Radii]  = deal(ftHeadmodelMeg.r);
+                [Param(iChannelsMeg).Center] = deal(ftHeadmodelMeg.o(:));
             end
             if isequal(MEGMethod, 'localspheres')
                 for i = 1:length(iChannelsMeg)
-                    Param(iChannelsMeg(i)).Radii  = ftVolMeg.r(i);
-                    Param(iChannelsMeg(i)).Center = ftVolMeg.o(i,:);
+                    Param(iChannelsMeg(i)).Radii  = ftHeadmodelMeg.r(i);
+                    Param(iChannelsMeg(i)).Center = ftHeadmodelMeg.o(i,:);
                 end
             end
             if isequal(EEGMethod, 'singlesphere') || isequal(EEGMethod, 'concentricspheres')
-                [Param(iChannelsEeg).Radii]  = deal(ftVolEeg.r);
-                [Param(iChannelsEeg).Center] = deal(ftVolEeg.o(:));
+                [Param(iChannelsEeg).Radii]  = deal(ftHeadmodelEeg.r);
+                [Param(iChannelsEeg).Center] = deal(ftHeadmodelEeg.o(:));
             end
         else
             Param = [];
@@ -405,21 +397,24 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_progress('text', 'Saving head model...');
         % Create structure
         HeadModelMat = db_template('headmodelmat');
-        HeadModelMat.MEGMethod     = MEGMethod;
-        HeadModelMat.EEGMethod     = EEGMethod;
-        HeadModelMat.Gain          = Gain;
-        HeadModelMat.HeadModelType = HeadModelType;
-        HeadModelMat.GridLoc       = GridLoc;
-        HeadModelMat.GridOrient    = GridOrient;
-        HeadModelMat.GridOptions   = GridOptions;
-        HeadModelMat.SurfaceFile   = CortexFile;
-        HeadModelMat.ftVolMeg      = ftVolMeg;
-        HeadModelMat.ftVolEeg      = ftVolEeg;
-        HeadModelMat.Param         = Param;
+        HeadModelMat.MEGMethod      = MEGMethod;
+        HeadModelMat.EEGMethod      = EEGMethod;
+        HeadModelMat.Gain           = Gain;
+        HeadModelMat.HeadModelType  = HeadModelType;
+        HeadModelMat.GridLoc        = GridLoc;
+        HeadModelMat.GridOrient     = GridOrient;
+        HeadModelMat.GridOptions    = GridOptions;
+        HeadModelMat.SurfaceFile    = CortexFile;
+        HeadModelMat.ftHeadmodelMeg = ftHeadmodelMeg;
+        HeadModelMat.ftHeadmodelEeg = ftHeadmodelEeg;
+        HeadModelMat.Param          = Param;
         % Build default comment
         methodComment = '';
-        for im = 1:length(allMethods)
-            methodComment = [' ft_', methodComment, allMethods{im}];
+        if ~isempty(MEGMethod)
+            methodComment = [methodComment, ' ft_', MEGMethod];
+        end
+        if ~isempty(EEGMethod)
+            methodComment = [methodComment, ' ft_', EEGMethod];
         end
         HeadModelMat.Comment = [methodComment(2:end), ' (', HeadModelType, ')'];
         % History: compute head model

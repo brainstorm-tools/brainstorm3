@@ -150,13 +150,6 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     if isempty(sHeadModel)
         bst_report('Error', sProcess, sInput, 'No head model available for this data file.');
         return;
-    % Error: Ensure that the correct head model has been selected
-    elseif strcmp(SensorTypes,'MEG') && ~(strcmp(sHeadModel.MEGMethod, 'meg_sphere') || strcmp(sHeadModel.MEGMethod, 'os_meg'))
-        bst_report('Error', sProcess, sInput, 'Only single sphere or overlapping spheres head models are supported for MEG dipole fitting.');
-        return;
-    elseif strcmp(SensorTypes,'EEG') && ~strcmp(sHeadModel.EEGMethod, 'eeg_3sphereberg')
-        bst_report('Error', sProcess, sInput, 'Only 3-shell spheres head models are supported for EEG dipole fitting.');
-        return;
     end
     
     % Load data
@@ -173,10 +166,12 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     
 
     % ===== CALL FIELDTRIP =====
-    % Convert head model and data
-    [ftHeadModel, HeadModelMat] = out_fieldtrip_headmodel(sHeadModel.FileName, ChannelMat, iChannels);
+    % Load head model
+    HeadModelMat = in_bst_headmodel(sHeadModel.FileName);
+    % Convert head model
+    ftHeadmodel = out_fieldtrip_headmodel(HeadModelMat, ChannelMat, iChannels);
     % Convert data file
-    ftData = out_fieldtrip_data(DataFile, ChannelMat, iChannels, 1);
+    ftData = out_fieldtrip_data(DataMat, ChannelMat, iChannels, 1);
     % Generate rough grid for first estimation
     GridLoc = bst_sourcegrid(GridOptions, HeadModelMat.SurfaceFile);
     
@@ -185,7 +180,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     % Prepare FieldTrip cfg structure
     cfg = [];
     cfg.channel     = {ChannelMat.Channel(iChannels).Name};
-    cfg.headmodel   = ftHeadModel;
+    cfg.headmodel   = ftHeadmodel;
     cfg.latency     = TimeWindow;
     cfg.numdipoles  = NumDipoles;
     cfg.model       = DipoleModel;

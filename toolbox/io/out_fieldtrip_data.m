@@ -109,8 +109,10 @@ else
 end
 
 % ===== CHANNEL INFO =====
+% Keep only the selected channels
+ChannelMat.Channel = ChannelMat.Channel(iChannels);
 % Initialize the channel-related fields
-ftData.label = {ChannelMat.Channel(iChannels).Name}';
+ftData.label = {ChannelMat.Channel.Name}';
 % Get channel structures
 [elec, grad] = out_fieldtrip_channel(ChannelMat, 1);
 % Add to data structure
