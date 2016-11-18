@@ -3,6 +3,7 @@ November 2016
 - IO: Import/export FieldTrip MRI volumes
 - New process: FieldTrip volume segmentation (ft_volumesegment)
 - New process: FieldTrip head models (ft_prepare_headmodel, ft_prepare_leadfield)
+- New process: FieldTrip inverse models (ft_sourceanalysis)
 - GUI: Frequency contact sheets
 - Anatomy: New headmodel option for isotropic source grids: cortex/head
 - Anatomy: Import subject volume atlases as scouts for volume source models (eg. ASEG)

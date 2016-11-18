@@ -2,7 +2,8 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 % BST_OPENMEEG: Call OpenMEEG to compute a BEM solution for Brainstorm.
 %
 % USAGE:  [Gain, errMsg] = bst_openmeeg(OPTIONS)
-%                          bst_openmeeg('update')
+%            OpenmeegDir = bst_openmeeg('update')
+%            OpenmeegDir = bst_openmeeg('download')
 %
 % INPUT: 
 %     - OPTIONS: structure with the following fields
@@ -44,7 +45,8 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 
 %% ===== PARSE INPUTS =====
 % Is trying to update the program
-isUpdate = isequal(OPTIONS, 'update');
+isUpdate   = isequal(OPTIONS, 'update');
+isDownload = isequal(OPTIONS, 'download');
 % Intialize variables
 Gain = [];
 errMsg = '';
@@ -104,7 +106,7 @@ if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) ||
     % Download file from URL if not done already by user
     if isempty(tgzFile)
         % Message
-        if OPTIONS.Interactive
+        if ~isDownload && OPTIONS.Interactive
             isOk = java_dialog('confirm', ...
                 ['OpenMEEG software is not installed on your computer (or out-of-date).' 10 10 ...
                  'Download and the latest version?'], 'OpenMEEG');
@@ -155,8 +157,9 @@ if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) ||
     fwrite(fid, url);
     fclose(fid);
 end
-% If only updating: exit
-if isUpdate
+% If only updating or downloading: exit
+if isUpdate || isDownload
+    Gain = OpenmeegDir;
     bst_progress('stop');
     return;
 end
