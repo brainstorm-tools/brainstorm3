@@ -23,7 +23,7 @@ function hFig = view_scouts(ResultsFiles, ScoutsArg, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2016
 
 global GlobalData;  
 %% ===== PARSE INPUTS =====
@@ -167,7 +167,8 @@ for iResFile = 1:length(ResultsFiles)
     if ~isTimefreq
         [iDS, iResult] = bst_memory('LoadResultsFileFull', ResultsFiles{iResFile});
     else
-        [iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', ResultsFiles{iResFile}, 1, 1);
+        %[iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', ResultsFiles{iResFile}, 1, 1);
+        [iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', ResultsFiles{iResFile}, 1, 0);
     end
     % If no DataSet is accessible : error
     if isempty(iDS)
@@ -374,7 +375,7 @@ for iResFile = 1:length(ResultsFiles)
             
         % === AXES LABELS ===
         % === SUBJECT NAME ===
-        % Format: SubjectName/Cond1/.../CondN/(DataComment)/(Sol#iResult)/(ScoutName)
+        % Format: SubjectName/CondName/(DataComment)/(Sol#iResult)/(ScoutName)
         strAxes = '';
         if ~isempty(sSubject) && (iSubject > 0)
             strAxes = sSubject.Name;
@@ -401,15 +402,23 @@ for iResFile = 1:length(ResultsFiles)
         end
         % === RESULTS COMMENT ===
         % If more than one results file in study : display indice
-        if ~isempty(DataFile) && ((~isStat && (length(sStudy.Result) > 1)) || (isStat && (length(sStudy.Stat) > 1)))
+        if ~isempty(DataFile) && isStat && (length(sStudy.Stat) > 1)   % Stat
             % Get list of results files for current data file
-            if isStat
-                [tmp__, tmp__, iResInStudy] = bst_get('StatForDataFile', DataFile, iStudy);
-                sRes = sStudy.Stat;
-            else
-                [tmp__, tmp__, iResInStudy] = bst_get('ResultsForDataFile', DataFile, iStudy);
-                sRes = sStudy.Result;
+            [tmp__, tmp__, iStatInStudy] = bst_get('StatForDataFile', DataFile, iStudy);
+            % More than one results file for this data file
+            if (length(iStatInStudy) > 1)
+                strAxes = [strAxes, '/', GlobalData.DataSet(iDS).Results(iResult).Comment];
             end
+        elseif ~isempty(DataFile) && isTimefreq && (length(sStudy.Timefreq) > 1)    % Time-frequency
+            % Get list of results files for current data file
+            [tmp__, tmp__, iTfInStudy] = bst_get('TimefreqForFile', DataFile, iStudy);
+            % More than one results file for this data file
+            if (length(iTfInStudy) > 1)
+                strAxes = [strAxes, '/', GlobalData.DataSet(iDS).Timefreq(iTimefreq).Comment];
+            end
+        elseif ~isempty(DataFile) && ~isTimefreq && (length(sStudy.Result) > 1)    % Source maps
+            % Get list of results files for current data file
+            [tmp__, tmp__, iResInStudy] = bst_get('ResultsForDataFile', DataFile, iStudy);
             % More than one results file for this data file
             if (length(iResInStudy) > 1)
                 strAxes = [strAxes, '/', GlobalData.DataSet(iDS).Results(iResult).Comment];
