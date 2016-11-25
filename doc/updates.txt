@@ -18,6 +18,8 @@ November 2016
 - Anatomy: Fixed the co-registration of multiple volumes (faster, less memory, better workflow)
 - Distrib: Converted the introduction tutorials dataset to match BIDS specifications
 - Bug fix: Large Neuroscan .cnt files were truncated
+- IO: Automated import of datasets following the BIDS specifications
+- Doc: OMEGA/resting state tutorial
 ---------------------------------------------------------------
 October 2016
 - Compatibility: The default band-pass/low-pass/high-pass filters use a different implementation
