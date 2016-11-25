@@ -38,7 +38,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'import'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
-    sProcess.isSeparator = 1;
     % File selection options
     SelectOptions = {...
         '', ...                                % Filename
