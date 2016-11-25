@@ -69,8 +69,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.identity.Type    = 'checkbox';
     sProcess.options.identity.Value   = 0;
     sProcess.options.identity.Group   = 'Output';
-    % Option: Copy to other conditions
-    sProcess.options.copycond.Comment = 'Copy to other conditions';
+    % Option: Copy to other folders
+    sProcess.options.copycond.Comment = 'Copy to other folders';
     sProcess.options.copycond.Type    = 'checkbox';
     sProcess.options.copycond.Value   = 0;
     sProcess.options.copycond.Group   = 'Output';
@@ -95,6 +95,19 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+    OutputFiles = {};
+    % If the inputs are multiple RAW files: compute one noise covariance for each one
+    if (length(sInputs) > 1) && strcmpi(sInputs(1).FileType, 'raw')
+        for i = 1:length(sInputs)
+            OutputFiles = [OutputFiles{:}, RunFile(sProcess, sInputs(i))];
+        end
+    else
+        OutputFiles = RunFile(sProcess, sInputs);
+    end
+end
+
+%% ===== RUN: ONE OUTPUT FILE =====
+function OutputFiles = RunFile(sProcess, sInputs)
     OutputFiles = {};
     
     % ===== GET OPTIONS =====
@@ -167,7 +180,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Only the input studies
     if ~isCopyCond && ~isCopySubj
         iCopyStudies = [];
-    % All the conditions of the selected subjects
+    % All the folders of the selected subjects
     elseif isCopyCond && ~isCopySubj
         iCopyStudies = [];
         AllSubjFile = unique({sInputs.SubjectFile});
@@ -175,7 +188,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             [tmp, iNew] = bst_get('StudyWithSubject', AllSubjFile{iSubj});
             iCopyStudies = [iCopyStudies, iNew];
         end
-    % The selected conditions for all the subjects
+    % The selected folders for all the subjects
     elseif ~isCopyCond && isCopySubj
         iCopyStudies = [];
         ProtocolSubjects = bst_get('ProtocolSubjects');
@@ -200,7 +213,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         [tmp, iCopyChanStudies] = bst_get('ChannelForStudy', iCopyStudies);
         % Remove studies that are already processed
         iCopyChanStudies = setdiff(unique(iCopyChanStudies), iChanStudies);
-        % Copy noise covariance to other subjects/conditions (overwrites)
+        % Copy noise covariance to other subjects/folders (overwrites)
         if ~isempty(iCopyChanStudies)
             db_set_noisecov(iChanStudies(1), iCopyChanStudies, isDataCov, OPTIONS.ReplaceFile);
         end
