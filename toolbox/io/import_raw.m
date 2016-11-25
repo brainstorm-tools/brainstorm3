@@ -1,10 +1,10 @@
-function OutputDataFile = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
+function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
 % IMPORT_RAW: Create a link to a raw file in the Brainstorm database.
 %
-% USAGE:  OutputDataFile = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
-%         OutputDataFile = import_raw(RawFiles, FileFormat, iSubject)
-%         OutputDataFile = import_raw(RawFiles, FileFormat)
-%         OutputDataFile = import_raw()
+% USAGE:  OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
+%         OutputFiles = import_raw(RawFiles, FileFormat, iSubject)
+%         OutputFiles = import_raw(RawFiles, FileFormat)
+%         OutputFiles = import_raw()
 %
 % INPUTS:
 %     - RawFiles      : Full path to the file to import in database
@@ -54,7 +54,7 @@ if ~isempty(RawFiles) && isempty(FileFormat)
 end
 % Get Protocol information
 ProtocolInfo = bst_get('ProtocolInfo');
-OutputDataFile = [];
+OutputFiles = {};
 
 
 %% ===== SELECT DATA FILE =====
@@ -185,7 +185,7 @@ for iFile = 1:length(RawFiles)
             minLength = min(length(LinkFile), length(RawFiles{iFile}));
             if file_compare(LinkFile(1:minLength), RawFiles{iFile}(1:minLength)) || strcmpi(FileFormat, 'BST-DATA')
                 panel_protocols('SelectNode', [], 'rawdata', iExistStudy, iRaw );
-                OutputDataFile = DataFile;
+                OutputFiles{end+1} = DataFile;
                 continue;
             % Else: Create a condition with a different name
             else
@@ -264,7 +264,7 @@ for iFile = 1:length(RawFiles)
     
     % ===== SAVE LINK FILE =====
     % Build output filename
-    OutputDataFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sOutputStudy.FileName), ['data_0raw_' fBase '.mat']);
+    NewBstFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sOutputStudy.FileName), ['data_0raw_' fBase '.mat']);
     % Build output structure
     DataMat = db_template('DataMat');
     DataMat.F           = sFile;
@@ -280,9 +280,11 @@ for iFile = 1:length(RawFiles)
     % Add history field
     DataMat = bst_history('add', DataMat, 'import', ['Link to raw file: ' RawFiles{iFile}]);
     % Save file on hard drive
-    bst_save(OutputDataFile, DataMat, 'v6');
+    bst_save(NewBstFile, DataMat, 'v6');
     % Add file to database
-    sOutputStudy = db_add_data(iOutputStudy, OutputDataFile, DataMat);
+    sOutputStudy = db_add_data(iOutputStudy, NewBstFile, DataMat);
+    % Return new file
+    OutputFiles{end+1} = NewBstFile;
 
     % ===== UPDATE DATABASE =====
     % Update links
