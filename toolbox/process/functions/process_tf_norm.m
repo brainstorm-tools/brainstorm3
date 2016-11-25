@@ -31,7 +31,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Spectral flattening';
+    sProcess.Comment     = 'Spectrum normalization';
     sProcess.FileTag     = @GetFileTag;
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Standardize';
