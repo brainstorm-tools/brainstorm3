@@ -3,7 +3,6 @@ function tutorial_epilepsy(tutorial_dir)
 %
 % CORRESPONDING ONLINE TUTORIALS:
 %     http://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/EpilepsyScript
 %
 % INPUTS: 
 %     tutorial_dir: Directory where the sample_epilepsy.zip file has been unzipped
