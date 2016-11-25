@@ -1,8 +1,8 @@
 function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, Comment)
 % TESS_GENERATE: Reconstruct a head surface based on the MRI, based on an isosurface
 %
-% USAGE:  [HeadFile, iSurface] = tess_isohead(iSubject, erodeFactor=2, nVertices=10000, fillFactor=2, Comment)
-%         [HeadFile, iSurface] = tess_isohead(MriFile,  erodeFactor=2, nVertices=10000, fillFactor=2, Comment)
+% USAGE:  [HeadFile, iSurface] = tess_isohead(iSubject, nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
+%         [HeadFile, iSurface] = tess_isohead(MriFile,  nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
