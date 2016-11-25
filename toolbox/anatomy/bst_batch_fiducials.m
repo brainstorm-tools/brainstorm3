@@ -166,7 +166,7 @@ for iMri = 1:length(MriFiles)
         FidFile = FidFile{1};
         if ~isUpdate
             disp(['Fiducials already set: ' FidFile]);
-            return;
+            continue;
         else
             % Overwrite the existing file
         end
@@ -192,19 +192,16 @@ for iMri = 1:length(MriFiles)
     % Delete MRI
     file_delete(file_fullpath({sSubject.Anatomy.FileName}), 1);
     sSubject.Anatomy(1:end) = [];
+    sSubject.iAnatomy = [];
     % Update subject structure
     bst_set('Subject', iSubject, sSubject);
     panel_protocols('UpdateNode', 'Subject', iSubject);
 
     % === CREATE FIDUCIALS FILE ===
-    % Compute MNI transform: FreeSurfer only
-    if strcmpi(MriFormats{iMri}, 'FS')
-        isComputeMni = 1;
-    else
-        isComputeMni = [];
-    end
+    % Compute MNI transform
+    isComputeMni = 1;
     % Save fiducials
-    figure_mri('SaveFiducialFile', sMRI, FidFile, isComputeMni);
+    figure_mri('SaveFiducialsFile', sMRI, FidFile, isComputeMni);
 
     % Add to the list of new files
     NewFidFiles{end+1} = FidFile;
