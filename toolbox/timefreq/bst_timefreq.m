@@ -197,6 +197,7 @@ for iData = 1:length(Data)
     GridAtlas     = [];
     Atlas         = [];
     HeadModelType = [];
+    HeadModelFile = [];
     BadSegments   = [];
     if isFile
         % Select subset of data
@@ -291,7 +292,7 @@ for iData = 1:length(Data)
                     isLoadFull = 0;
                 end
                 % Get inversion kernel
-                ResultsMat = in_bst_results(InitFile, isLoadFull, 'ImageGridAmp', 'ImagingKernel', 'GoodChannel', 'nComponents', 'DataFile', 'nAvg', 'Time', 'Atlas', 'SurfaceFile', 'GridLoc', 'GridAtlas', 'Atlas', 'HeadModelType');
+                ResultsMat = in_bst_results(InitFile, isLoadFull, 'ImageGridAmp', 'ImagingKernel', 'GoodChannel', 'nComponents', 'DataFile', 'nAvg', 'Time', 'Atlas', 'SurfaceFile', 'GridLoc', 'GridAtlas', 'Atlas', 'HeadModelType', 'HeadModelFile');
                 % Row "names" for sources: source indices
                 nComponents   = ResultsMat.nComponents;
                 SurfaceFile   = ResultsMat.SurfaceFile;
@@ -299,6 +300,7 @@ for iData = 1:length(Data)
                 GridAtlas     = ResultsMat.GridAtlas;
                 Atlas         = ResultsMat.Atlas;
                 HeadModelType = ResultsMat.HeadModelType;
+                HeadModelFile = ResultsMat.HeadModelFile;
                 if isempty(GridAtlas)
                     nSources = max(size(ResultsMat.ImageGridAmp,1), size(ResultsMat.ImagingKernel,1)) ./ ResultsMat.nComponents;
                 else
@@ -658,7 +660,7 @@ for iData = 1:length(Data)
     % Save all the time-frequency maps
     else
         % Save file
-        SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, nAvg, Atlas);
+        SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvg, Atlas);
     end
     bst_progress('inc', 1);
 end
@@ -690,13 +692,13 @@ if isAverage
         InitFile = '';
     end
     % Save file
-    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, nAvgTotal, Atlas);
+    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas);
 end
 
 
 
 %% ===== SAVE FILE =====
-    function SaveFile(iTargetStudy, DataFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, nAvgFile, Atlas)
+    function SaveFile(iTargetStudy, DataFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgFile, Atlas)
         % Create file structure
         FileMat = db_template('timefreqmat');
         FileMat.Comment   = OPTIONS.Comment;
@@ -713,6 +715,7 @@ end
         FileMat.GridLoc       = GridLoc;
         FileMat.GridAtlas     = GridAtlas;
         FileMat.HeadModelType = HeadModelType;
+        FileMat.HeadModelFile = HeadModelFile;
         FileMat.Atlas         = Atlas;
         % Parent file
         if ~isempty(DataFile)
