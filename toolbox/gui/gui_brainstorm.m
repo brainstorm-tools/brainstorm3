@@ -100,8 +100,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Load protocol', IconLoader.ICON_FOLDER_OPEN,[],[],[]);
             gui_component('MenuItem', jSubMenu, [], 'Load from folder',   IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@gui_edit_protocol, 'load'), []);
             gui_component('MenuItem', jSubMenu, [], 'Load from zip file', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@import_protocol), []);
-            jSubMenu.addSeparator();
             gui_component('MenuItem', jSubMenu, [], 'Import subject from zip', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@import_subject), []);
+            jSubMenu.addSeparator();
+            gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'), []);
             jSubMenu.addSeparator();
             gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), []);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[],[]);
