@@ -35,6 +35,13 @@ iEdge = find(any(tess2mri_interp,2));
 xBounds = [max(min(xEdge)-1, 1), min(max(xEdge)+1, cubeSize(1))];
 yBounds = [max(min(yEdge)-1, 1), min(max(yEdge)+1, cubeSize(2))];
 zBounds = [max(min(zEdge)-1, 1), min(max(zEdge)+1, cubeSize(3))];
+% If the bottom of the surface is not closed (ICBM152 head surface template for instance): Close it
+if (zBounds(1) == 1)
+    for i = xBounds(1):xBounds(2)
+        yedge = find(mrimask(i,:,1));
+        mrimask(i,min(yedge):max(yedge),1) = 1;
+    end
+end
 % Get cropped cube size
 cropSize = [xBounds(2)-xBounds(1), yBounds(2)-yBounds(1), zBounds(2)-zBounds(1)] + 1;
 % Crop brain mask
