@@ -217,13 +217,15 @@ for iRes = 1:length(ResultsFiles)
     ResultsMat.SurfaceFile = SurfaceFile;
 
     % === OUTPUT STUDY ===
+    % New condition name
+    NewCondition = strrep(sStudySrc.Condition{1}, '@raw', '');
     % Get condition
-    [sStudyDest, iStudyDest] = bst_get('StudyWithCondition', [sSubjectDest.Name '/' sStudySrc.Condition{1}]);
+    [sStudyDest, iStudyDest] = bst_get('StudyWithCondition', [sSubjectDest.Name '/' NewCondition]);
     % Create condition if doesnt exist
     if isempty(iStudyDest)
-        iStudyDest = db_add_condition(sSubjectDest.Name, sStudySrc.Condition{1}, 0);
+        iStudyDest = db_add_condition(sSubjectDest.Name, NewCondition, 0);
         if isempty(iStudyDest)
-            error(['Cannot create condition: "' sSubjectDest.Name  '/' sStudySrc.Condition{1} '".']);
+            error(['Cannot create condition: "' sSubjectDest.Name  '/' NewCondition '".']);
         end
         sStudyDest = bst_get('Study', iStudyDest);
     end

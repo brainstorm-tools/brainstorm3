@@ -197,13 +197,15 @@ for iGroup = 1:nGroup
         [sSrcStudy, iSrcStudy] = bst_get('AnyFile', ResultsFile);
         % If result has to be save in "group analysis" subject
         if ~isSameSubject
+            % New condition name
+            NewCondition = strrep(sSrcStudy.Condition{1}, '@raw', '');
             % Get condition
-            [sDestStudy, iDestStudy] = bst_get('StudyWithCondition', [sDestSubj.Name '/' sSrcStudy.Condition{1}]);
+            [sDestStudy, iDestStudy] = bst_get('StudyWithCondition', [sDestSubj.Name '/' NewCondition]);
             % Create condition if doesnt exist
             if isempty(iDestStudy)
-                iDestStudy = db_add_condition(sDestSubj.Name, sSrcStudy.Condition{1}, 0);
+                iDestStudy = db_add_condition(sDestSubj.Name, NewCondition, 0);
                 if isempty(iDestStudy)
-                    error(['Cannot create condition: "' normSubjName '/' sSrcStudy.Condition{1} '".']);
+                    error(['Cannot create condition: "' normSubjName '/' NewCondition '".']);
                 end
                 sDestStudy = bst_get('Study', iDestStudy);
             end

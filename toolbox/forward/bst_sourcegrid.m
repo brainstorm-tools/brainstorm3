@@ -76,17 +76,21 @@ end
 [brainmask, sMri] = bst_memory('GetSurfaceMask', CortexFile);
 % Convert coordinates: SCS->Voxels
 GridLocMri = round(cs_convert(sMri, 'scs', 'voxel', GridLoc));
-% Make sure all the points are inside the MRI volume
-GridLocMri = max(GridLocMri, 1);
-GridLocMri(:,1) = min(GridLocMri(:,1), size(brainmask,1));
-GridLocMri(:,2) = min(GridLocMri(:,2), size(brainmask,2));
-GridLocMri(:,3) = min(GridLocMri(:,3), size(brainmask,3));
+% Find all the points that are not inside the MRI volume
+isOutsideMri = any(GridLocMri < 1,2) | ...
+              (GridLocMri(:,1) > size(brainmask,1)) | ...
+              (GridLocMri(:,2) > size(brainmask,2)) | ...
+              (GridLocMri(:,3) > size(brainmask,3));
+% Remove the points that are outside of the MRI
+GridLoc(isOutsideMri,:) = [];
+GridLocMri(isOutsideMri,:) = [];
+
 % Convert in indices
 ind = sub2ind(size(brainmask), GridLocMri(:,1), GridLocMri(:,2), GridLocMri(:,3));
-% What is outside ?
-iOutside = (brainmask(ind) == 0);
+% What is outside of the brain ?
+isOutsideBrain = (brainmask(ind) == 0);
 
-% Show removed points
+% % Show removed points
 % if ~isempty(iOutside)
 %     % Show surface + removed points
 %     view_surface_matrix(sCortex.Vertices, sCortex.Faces, .4, [.6 .6 .6]);
@@ -97,8 +101,9 @@ iOutside = (brainmask(ind) == 0);
 %     line(GridLoc(~iOutside,1), GridLoc(~iOutside,2), GridLoc(~iOutside,3), 'LineStyle', 'none', ...
 %                 'MarkerFaceColor', [0 1 0], 'MarkerSize', 2, 'Marker', 'o');
 % end
+
 % Remove those points
-GridLoc(iOutside,:) = [];
+GridLoc(isOutsideBrain,:) = [];
 
 end
 
@@ -111,7 +116,6 @@ function GridLoc = SampleVolume(Vertices, Faces, scaleLayers, reduceLayers)
         error('Faces and Vertices must have 3 columns (X,Y,Z).');
     end
     GridLoc = [];
-    hFig = [];
 
     % Get center of the best fitting sphere
     center = bst_bfs(Vertices)';

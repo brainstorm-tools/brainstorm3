@@ -261,6 +261,13 @@ switch (OPTIONS.HeadModelType)
                 bst_progress('stop');
                 return;
             end
+            % For group grids: Check if the reference was a head surface
+            if strcmpi(GridOptions.Method, 'group') && ~isempty(GridOptions.FileName)
+                RefGrid = in_bst_headmodel(GridOptions.FileName, 0, 'SurfaceFile');
+                if ~isempty(RefGrid) && strcmpi(file_gettype(RefGrid.SurfaceFile), 'scalp')
+                    OutSurfaceFile = OPTIONS.HeadFile;
+                end
+            end
         end
     case 'surface'
         if isempty(OPTIONS.GridLoc)
