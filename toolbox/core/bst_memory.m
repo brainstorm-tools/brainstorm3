@@ -1377,14 +1377,14 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     isStat = strcmpi(FileType, 'ptimefreq');
     if ~isStat
         % Load .Mat
-        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'TF', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas');
+        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'TF', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas');
 %         % Load inverse kernel that goes with it if applicable
 %         if ~isempty(ParentFile) && strcmpi(TimefreqMat.DataType, 'results') % && (size(TimefreqMat.TF,1) < length(TimefreqMat.RowNames))
 %             [iDS, iResults] = LoadResultsFileFull(ParentFile);
 %         end
     else
         % Load stat matrix
-        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'pmap', 'tmap', 'df', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TF', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'Correction', 'StatClusters');
+        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'pmap', 'tmap', 'df', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TF', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'Correction', 'StatClusters');
         % Report thresholded maps
         TimefreqMat.TF = process_extract_pthresh('Compute', TimefreqMat);
         % Open the "Stat" tab
@@ -1483,6 +1483,8 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         GlobalData.DataSet(iDS).Results(iResults).SamplingRate    = (TimefreqMat.Time(2) - TimefreqMat.Time(1));
         GlobalData.DataSet(iDS).Results(iResults).NumberOfSamples = length(TimefreqMat.Time);
         GlobalData.DataSet(iDS).Results(iResults).HeadModelType   = 'volume';
+        GlobalData.DataSet(iDS).Results(iResults).HeadModelFile   = TimefreqMat.HeadModelFile;
+        GlobalData.DataSet(iDS).Results(iResults).SurfaceFile     = TimefreqMat.SurfaceFile;
         GlobalData.DataSet(iDS).Results(iResults).GridLoc         = TimefreqMat.GridLoc;
         GlobalData.DataSet(iDS).Results(iResults).GridAtlas       = TimefreqMat.GridAtlas;
         GlobalData.DataSet(iDS).Results(iResults).nComponents     = 3;
