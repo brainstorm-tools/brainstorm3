@@ -128,7 +128,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ImportOptions.EventsMode      = 'ignore';
     ImportOptions.EventsTrackMode = EventsTrackMode;
     % Import link to raw
-    OutputFiles{1} = import_raw(FileName, FileFormat, iSubject, ImportOptions);
+    OutputFiles = import_raw(FileName, FileFormat, iSubject, ImportOptions);
 end
 
 
