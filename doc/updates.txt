@@ -1,6 +1,5 @@
 ---------------------------------------------------------------
 November 2016
-- IO: Import/export FieldTrip MRI volumes
 - New process: FieldTrip volume segmentation (ft_volumesegment)
 - New process: FieldTrip head models (ft_prepare_headmodel, ft_prepare_leadfield)
 - New process: FieldTrip inverse models (ft_sourceanalysis)
@@ -16,10 +15,13 @@ November 2016
 - Anatomy: Default AC position in MNI space is now [0 3 -4] instead of [0 2 -4]
 - Anatomy: Import FreeSurfer anatomy: Now creates a surface with the cerebellum by default
 - Anatomy: Fixed the co-registration of multiple volumes (faster, less memory, better workflow)
-- Distrib: Converted the introduction tutorials dataset to match BIDS specifications
-- Bug fix: Large Neuroscan .cnt files were truncated
 - IO: Automated import of datasets following the BIDS specifications
+- IO: Import/export FieldTrip MRI volumes
+- Bug fix: Large Neuroscan .cnt files were truncated
 - Doc: OMEGA/resting state tutorial
+- IO: Load colormaps from LUT files (color lookup tables)
+- Anatomy: MRI Viewer: Added support for indexed colormaps (atlas labels)
+- GUI: Added colormaps from MRIcron
 ---------------------------------------------------------------
 October 2016
 - Compatibility: The default band-pass/low-pass/high-pass filters use a different implementation
@@ -31,11 +33,12 @@ October 2016
 - Process: PSD: Full cross-validation with MNE-Python (removed the zero-padding in bst_psd)
 - New process: Events > Detect cHPI activity (Elekta)
 - GUI: Growing volume scouts can now be constrained to the current data threshold
+- GUI: Redering of the volumes scouts improved
 - Doc: Added full text search on the forum using Google
 - Distrib: Added support for compiled Matlab 2016b
 - Distrib: Transferred the code base from private SVN to public GitHub
   | https://github.com/brainstorm-tools/brainstorm3
-- Distrib: Converted the tutorial datasets to BIDS specifications (introduction)
+- Distrib: Work on the BIDS specifications for the tutorials
 ---------------------------------------------------------------
 September 2016
 - Bug fix: Downsampling of the surfaces was not working well between Aug 26 and Sept 8 (obvious error)

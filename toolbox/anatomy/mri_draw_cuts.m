@@ -133,12 +133,12 @@ for iCoord = 1:3
     AlphaMap = ones(sliceSize) * (1 - OPTIONS.MriAlpha);
     AlphaMap(sliceMri < OPTIONS.MriThreshold) = alphaValue;
     % Apply colormap to slice
-    cmapSlice = ApplyColormap(sliceMri, OPTIONS.MriColormap, MriColormapBounds);
+    cmapSlice = ApplyColormap(sliceMri, OPTIONS.MriColormap, MriColormapBounds, OPTIONS.MriIndexed);
 
     % === Display overlay slice ===
     if isOverlay
         % Apply colormap to overlay slice
-        cmapOverlaySlice = ApplyColormap(sliceOverlay, OPTIONS.OverlayColormap, OPTIONS.OverlayBounds);
+        cmapOverlaySlice = ApplyColormap(sliceOverlay, OPTIONS.OverlayColormap, OPTIONS.OverlayBounds, OPTIONS.OverlayIndexed);
         % Build overlay mask
         overlayMask = (sliceOverlay ~= 0);
         % Threshold data values
@@ -182,7 +182,7 @@ end
 %  ================================================================================================
 %% ===== APPLY COLORMAP =====
 % APPLY_COLORMAP: Apply a colormap to an array : convert values from indexed colors to RGB.
-% USAGE:  cmapA = ApplyColormap( A, CMap, intensityBounds )
+% USAGE:  cmapA = ApplyColormap( A, CMap, intensityBounds, isIndexed )
 %         cmapA = ApplyColormap( A, CMap )
 % INPUT:
 %     - A    : Array [N,1]
@@ -190,8 +190,11 @@ end
 %     - intensityBounds : (minVal,maxVal) indicates to which values of A array the first and last
 %                         colors of colormap CMap are assigned.
 %                         If not specified: use [min(A), max(A)]
-function cmapA = ApplyColormap( A, CMap, intensityBounds )
+function cmapA = ApplyColormap( A, CMap, intensityBounds, isIndexed )
     % Parse inputs
+    if (nargin < 3) || isempty(isIndexed)
+        isIndexed = 0;
+    end
     if (nargin < 3) || isempty(intensityBounds)
         intensityBounds = [min(A(:)), max(A(:))];
     end
@@ -200,16 +203,22 @@ function cmapA = ApplyColormap( A, CMap, intensityBounds )
         cmapA = repmat(A, [1 1 3]);
         return
     end
-
-    % Convert everything to double, and force POSITIVE 
+    % Convert everything to double
     A = double(A);
     intensityBounds = double(intensityBounds);
-    % If some values are below (resp. above) the lower (resp. upper) bound => saturate
-    A(A < intensityBounds(1)) = intensityBounds(1);
-    A(A > intensityBounds(2)) = intensityBounds(2);
-
-    % Reduce array amplitude to the the colormap size
-    A = floor( (A - intensityBounds(1)) ./ (intensityBounds(2)-intensityBounds(1)) .* (size(CMap,1)-1) ) + 1;
+    
+    % Indexed colormap (integer values)
+    if isIndexed
+        % Consider that input values are indices in the lookup table
+        A = bst_saturate(round(A) + 1, [1, size(CMap,1)]);
+    % Linear mapping (real values)
+    else
+        % If some values are below (resp. above) the lower (resp. upper) bound => saturate
+        A(A < intensityBounds(1)) = intensityBounds(1);
+        A(A > intensityBounds(2)) = intensityBounds(2);
+        % Reduce array amplitude to the the colormap size
+        A = floor( (A - intensityBounds(1)) ./ (intensityBounds(2)-intensityBounds(1)) .* (size(CMap,1)-1) ) + 1;
+    end
     % Create RGB array
     cmapA = cat(3, reshape(CMap(A,1), size(A)), ...
                    reshape(CMap(A,2), size(A)), ...

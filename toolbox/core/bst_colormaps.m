@@ -598,11 +598,12 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     end
     
     % Colormap list: Standard
-    cmapList = {'cmap_rbw', 'hot', 'cmap_hot2', 'bone', 'gray', 'pink', 'copper', 'jet', 'cmap_jetinv', 'cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey', 'hsv', 'cool', 'cmap_parula', 'cmap_cluster'};
+    cmapList = {'cmap_rbw', 'hot', 'cmap_hot2', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_nih', 'jet', 'cmap_jetinv', 'cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_ge', 'cool', 'cmap_parula', 'cmap_cluster', 'cmap_atlas'};
     iconList = [IconLoader.ICON_COLORMAP_RBW, IconLoader.ICON_COLORMAP_HOT, IconLoader.ICON_COLORMAP_HOT2, IconLoader.ICON_COLORMAP_BONE, IconLoader.ICON_COLORMAP_GREY, ...
-                IconLoader.ICON_COLORMAP_PINK, IconLoader.ICON_COLORMAP_COPPER, IconLoader.ICON_COLORMAP_JET, IconLoader.ICON_COLORMAP_JETINV, ...
+                IconLoader.ICON_COLORMAP_PINK, IconLoader.ICON_COLORMAP_COPPER, IconLoader.ICON_COLORMAP_NIHFIRE, IconLoader.ICON_COLORMAP_NIH, IconLoader.ICON_COLORMAP_JET, IconLoader.ICON_COLORMAP_JETINV, ...
                 IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, ...
-                IconLoader.ICON_COLORMAP_HSV, IconLoader.ICON_COLORMAP_COOL, IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_RBW];
+                IconLoader.ICON_COLORMAP_HSV, IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_GE, ...
+                IconLoader.ICON_COLORMAP_COOL, IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_CLUSTER, IconLoader.ICON_COLORMAP_ATLAS];
     for i = 1:length(cmapList)
         % If the colormap #i is currently used for this surface : check the menu
         isSelected = strcmpi(cmapList{i}, sColormap.Name);
@@ -631,6 +632,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     % Colormap list: Add new colormap
     CreateSeparator(jMenuColormap, isPermanent);
     gui_component('MenuItem', jMenuColormap, [], 'New...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)NewCustomColormap(ColormapType), []);
+    gui_component('MenuItem', jMenuColormap, [], 'Load...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)LoadColormap(ColormapType), []);
     % Colormap list: Delete selected colormap
     jMenuDelete = gui_component('MenuItem', jMenuColormap, [], 'Delete', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)DeleteCustomColormap(ColormapType), []);
     if ~isCustom
@@ -1041,6 +1043,97 @@ function isModified = NewCustomColormap(ColormapType, Name, CMap)
         for i = 1:length(hFigAll)
             set(hFigAll(i), 'Visible', isVisible{i});
         end
+    end
+    % New custom colormaps
+    CustomColormaps(iColormap).Name = Name;
+    CustomColormaps(iColormap).CMap = CMap;
+    % Update custom colormaps list
+    bst_set('CustomColormaps', CustomColormaps);
+    % Update colormap selection
+    SetColormapName(ColormapType, Name);
+    isModified = 1;
+end
+
+
+
+%% ===== LOAD COLORMAP =====
+% USAGE:  LoadColormap(ColormapType, FileName)
+function isModified = LoadColormap(ColormapType, FileName)
+    % Parse inputs
+    if (nargin < 2) || isempty(FileName)
+        FileName = [];
+    end
+    isModified = 0;
+    % Get existing custom colormaps
+    CustomColormaps = bst_get('CustomColormaps');
+    
+    % Ask for filename
+    if isempty(FileName)
+        % Get default import directory and formats
+        LastUsedDirs = bst_get('LastUsedDirs');
+        % Get LUT files
+        FileName = java_getfile( 'open', ...
+           'Import colormap...', ...      % Window title
+           LastUsedDirs.ImportAnat, ...   % Default directory
+           'single', 'files', ...         % Selection mode
+           {{'.lut'}, 'Color lookup table (*.lut)', 'LUT'}, 'LUT');
+        % If no file was selected: exit
+        if isempty(FileName)
+            return
+        end
+        % Save default import directory
+        LastUsedDirs.ImportAnat = bst_fileparts(FileName);
+        bst_set('LastUsedDirs', LastUsedDirs);
+        isConfirm = 1;
+    else
+        isConfirm = 0;
+    end
+    
+    % Open file
+	fid = fopen(FileName, 'rb');
+    if (fid < 0)
+        error(['Cannot open LUT file:' FileName]);
+    end
+    % Read file
+    CMap = fread(fid, Inf, 'uint8');
+    if (length(CMap) < 6)
+        error('Not a valid LUT file.');
+    end
+    % Close file 
+    fclose(fid);
+    % Convert to Matlab format: [Ncolor x 3], values between 0 and 1
+    CMap = reshape(CMap ./ 255, [], 3);
+
+    % Read as a fixed list of colors
+    if isConfirm
+        if java_dialog('confirm', 'Does this file represent the colors of a labelled atlas?', 'Load colormap')
+            strType = 'atlas_';
+        else
+            strType = '';
+        end
+    else
+        strType = 'atlas_';
+    end
+    
+    % Colormap name: file name
+    [fPath, fBase, fExt] = bst_fileparts(FileName);
+    % Build full colormap name
+    Name = ['custom_' strType fBase];
+    % Check if colormap name already exists
+    if ~isempty(CustomColormaps) 
+        % Find colormap name
+        iColormap = find(strcmpi(Name, {CustomColormaps.Name}));
+        % Colormap exists: asks for overwriting confirmation
+        if ~isempty(iColormap)
+            if isConfirm && ~java_dialog('confirm', ['Overwrite existing colormap "' strrep(Name,'custom_','') '"?'], 'New colormap')
+                return;
+            end
+        % Else: new entry
+        else
+            iColormap = length(CustomColormaps) + 1;
+        end
+    else
+        iColormap = 1;
     end
     % New custom colormaps
     CustomColormaps(iColormap).Name = Name;
