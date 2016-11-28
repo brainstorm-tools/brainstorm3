@@ -582,9 +582,9 @@ switch (lower(action))
                 if ~bst_get('ReadOnly')
                     AddSeparator(jPopup);
                     if isDirNode
-                        gui_component('MenuItem', jPopup, [], 'Review raw file', IconLoader.ICON_RAW_DATA, [], @(h,ev)import_raw([], [], iSubject), []);
+                        gui_component('MenuItem', jPopup, [], 'Review raw file', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@import_raw, [], [], iSubject), []);
                     end
-                    gui_component('MenuItem', jPopup, [], 'Import MEG/EEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)import_data([], [], [], iStudy, iSubject), []);
+                    gui_component('MenuItem', jPopup, [], 'Import MEG/EEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@import_data, [], [], [], iStudy, iSubject), []);
                     AddSeparator(jPopup);
                 end
                 % === IMPORT CHANNEL / COMPUTE HEADMODEL ===
