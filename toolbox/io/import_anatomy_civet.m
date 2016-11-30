@@ -1,7 +1,7 @@
 function errorMsg = import_anatomy_civet(iSubject, CivetDir, nVertices, isInteractive, sFid, isExtraMaps)
-% IMPORT_ANATOMY_CIVET: Import a full FreeSurfer folder as the subject's anatomy.
+% IMPORT_ANATOMY_CIVET: Import a full CIVET folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_fs(iSubject, CivetDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0)
+% USAGE:  errorMsg = import_anatomy_civet(iSubject, CivetDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0)
 %
 % INPUT:
 %    - iSubject     : Indice of the subject where to import the MRI
