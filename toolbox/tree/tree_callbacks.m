@@ -517,9 +517,9 @@ switch (lower(action))
                 if ~bst_get('ReadOnly') && ((iSubject == 0) || ~sSubject.UseDefaultAnat)
                     AddSeparator(jPopup);
                     % === IMPORT ===
-                    gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)import_anatomy(iSubject), []);
-                    gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)import_mri(iSubject, [], [], 1), []);
-                    gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)import_surfaces(iSubject), []);
+                    gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject), []);
+                    gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1), []);
+                    gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject), []);
                     AddSeparator(jPopup);
                     % === USE DEFAULT ===
                     % Get registered Brainstorm anatomy defaults
