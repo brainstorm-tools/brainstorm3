@@ -124,12 +124,14 @@ for i = 1:nBlocks
             iZ1 = bst_closest(min(reshape(Zgrid2(iX2,iY2,iZ2),1,[])) - nTol, Z1) : ...
                   bst_closest(max(reshape(Zgrid2(iX2,iY2,iZ2),1,[])) + nTol, Z1);
             % Interpolate block
-            newCube(iX2, iY2, iZ2) = uint8(interp3(...
-                Y1(iY1), X1(iX1), Z1(iZ1), ...            % Indices of the reference cube
-                double(sMriSrc.Cube(iX1, iY1, iZ1)), ...  % Values of the reference cube
-                Xgrid2(iX2, iY2, iZ2), ...                % Coordinates for which we want to estimate the values
-                Ygrid2(iX2, iY2, iZ2), ...
-                Zgrid2(iX2, iY2, iZ2), 'spline', 0));
+            if (length(iX1) > 1) && (length(iY1) > 1) && (length(iZ1) > 1)
+                newCube(iX2, iY2, iZ2) = uint8(interp3(...
+                    Y1(iY1), X1(iX1), Z1(iZ1), ...            % Indices of the reference cube
+                    double(sMriSrc.Cube(iX1, iY1, iZ1)), ...  % Values of the reference cube
+                    Xgrid2(iX2, iY2, iZ2), ...                % Coordinates for which we want to estimate the values
+                    Ygrid2(iX2, iY2, iZ2), ...
+                    Zgrid2(iX2, iY2, iZ2), 'spline', 0));
+            end
             bst_progress('inc', 1);
         end
     end
