@@ -58,6 +58,8 @@ switch (FileFormat)
         import_anatomy_civet(iSubject, AnatDir, [], 1, [], 0);
     case 'CIVET+Thick'
         import_anatomy_civet(iSubject, AnatDir, [], 1, [], 1);
+    case 'HCPv3'
+        import_anatomy_hcp_v3(iSubject, AnatDir, 1);
 end
 
 

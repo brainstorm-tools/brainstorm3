@@ -1,4 +1,4 @@
-function MRI = in_mri(MriFile, FileFormat)
+function MRI = in_mri(MriFile, FileFormat, isInteractive)
 % IN_MRI: Detect file format and load MRI file.
 % 
 % USAGE:  in_mri(MriFile, FileFormat='ALL')
@@ -46,6 +46,9 @@ function MRI = in_mri(MriFile, FileFormat)
 % Authors: Francois Tadel, 2008-2016
 
 % Parse inputs
+if (nargin < 3) || isempty(isInteractive)
+    isInteractive = 1;
+end
 if (nargin < 2) || isempty(FileFormat)
     FileFormat = 'ALL';
 end
@@ -102,7 +105,11 @@ switch (FileFormat)
     case 'GIS'
         MRI = in_mri_gis(MriFile, ByteOrder);
     case {'Nifti1', 'Analyze'}
-        [MRI, vox2ras] = in_mri_nii(MriFile); % Function automatically detects right byte order
+        if isInteractive
+            [MRI, vox2ras] = in_mri_nii(MriFile, 0, []); % Function automatically detects right byte order
+        else
+            [MRI, vox2ras] = in_mri_nii(MriFile, 0, 1); % Function automatically detects right byte order
+        end
     case 'MGH'
         MRI = in_mri_mgh(MriFile);
     case 'KIT'

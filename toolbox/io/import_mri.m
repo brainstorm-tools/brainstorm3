@@ -88,7 +88,7 @@ end
 %% ===== LOAD MRI FILE =====
 bst_progress('start', 'Import MRI', ['Loading file "' MriFile '"...']);
 % Load MRI
-sMri = in_mri(MriFile, FileFormat);
+sMri = in_mri(MriFile, FileFormat, isInteractive);
 if isempty(sMri)
     bst_progress('stop');
     return
@@ -107,7 +107,7 @@ if (iAnatomy > 1)
     sMriRef = in_mri_bst(refMriFile);
     % If some transformation where made to the intial volume: apply them to the new one ?
     if isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf)
-        if java_dialog('confirm', ['A transformation was applied to the reference MRI.' 10 10 'Do you want to apply the same transformation to this new volume?' 10 10], 'Import MRI')
+        if ~isInteractive || java_dialog('confirm', ['A transformation was applied to the reference MRI.' 10 10 'Do you want to apply the same transformation to this new volume?' 10 10], 'Import MRI')
             % Apply step by step all the transformations that have been applied to the original MRI
             for it = 1:size(sMriRef.InitTransf,1)
                 ttype = sMriRef.InitTransf{it,1};

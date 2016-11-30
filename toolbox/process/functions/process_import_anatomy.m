@@ -183,6 +183,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             errorMsg = import_anatomy_civet(iSubject, AnatDir, nVertices, 0, sFid, 0);
         case 'CIVET+Thick'
             errorMsg = import_anatomy_civet(iSubject, AnatDir, nVertices, 0, sFid, 1);
+        case 'HCPv3'
+            errorMsg = import_anatomy_hcp_v3(iSubject, AnatDir, 0);
         otherwise
             errorMsg = ['Invalid file format: ' FileFormat];
     end
