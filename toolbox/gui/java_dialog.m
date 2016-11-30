@@ -92,7 +92,7 @@ if ~isempty(jBstFrame)
 end
 
 % Check that parent frame is visible
-if ~jParent.isVisible()
+if ~isempty(jParent) && ~jParent.isVisible()
     jParent = [];
 end
 
