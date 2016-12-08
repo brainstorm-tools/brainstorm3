@@ -131,7 +131,7 @@ TransFile  = bst_fullfile(MegAnatDir, transDir(1).name);
 
 %% ===== IMPORT MRI =====
 % Read MRI
-[BstMriFile, sMri] = import_mri(iSubject, MriFile, 'ALL', 0);
+[BstMriFile, sMri] = import_mri(iSubject, MriFile, 'ALL-MNI', 0);
 if isempty(BstMriFile)
     errorMsg = 'Could not import HCP folder: MRI was not imported properly';
     if isInteractive
@@ -163,40 +163,40 @@ if ~exist('transform', 'var') || ~isfield(transform, 'vox07mm2spm') || ~isfield(
 end
 
 
-%% ===== SET FIDUCIALS =====
-% Set the MRI=>SCS transformation in the MRI
-Tscs = cs_nii2bst(sMri, transform.vox07mm2bti, 1);
-sMri.SCS.R = Tscs(1:3,1:3);
-sMri.SCS.T = Tscs(1:3,4);
-% Set the MRI=>MNI transformation in the MRI
-Tmni = cs_nii2bst(sMri, transform.vox07mm2spm, 1);
+%% ===== MRI=>MNI TRANSFORMATION =====
+% Convert transformations from "Brainstorm MRI" to "FieldTrip voxel"
+Tbst2ft = [diag([-1, 1, 1] ./ sMri.Voxsize), [size(sMri.Cube,1); 0; 0]; 0 0 0 1];
+% Set the MNI=>SCS transformation in the MRI
+Tmni = transform.vox07mm2spm * Tbst2ft;
 sMri.NCS.R = Tmni(1:3,1:3);
 sMri.NCS.T = Tmni(1:3,4);
-
-
-% % Adjust for unknown reason (???)
-% sMri.NCS.T = sMri.NCS.T + [1; 1; 1];
-% sMri.SCS.T = sMri.SCS.T + [1; 1; 1];
-
-
-
-% Standard positions for the SCS fiducials
-NAS = [  0,  84, -44] ./ 1000;
-LPA = [-83, -24, -46] ./ 1000;
-RPA = [ 83, -24, -46] ./ 1000;
 % MNI coordinates for the AC/PC/IH fiducials
 AC = [0,   3,  -4] ./ 1000;
 PC = [0, -25,  -2] ./ 1000;
 IH = [0, -10,  60] ./ 1000;
 Origin = [0, 0, 0];
 % Convert: MNI (meters) => MRI (millimeters)
-sMri.SCS.NAS    = cs_convert(sMri, 'mni', 'mri', NAS) .* 1000;
-sMri.SCS.LPA    = cs_convert(sMri, 'mni', 'mri', LPA) .* 1000;
-sMri.SCS.RPA    = cs_convert(sMri, 'mni', 'mri', RPA) .* 1000;
 sMri.NCS.AC     = cs_convert(sMri, 'mni', 'mri', AC) .* 1000;
 sMri.NCS.PC     = cs_convert(sMri, 'mni', 'mri', PC) .* 1000;
 sMri.NCS.IH     = cs_convert(sMri, 'mni', 'mri', IH) .* 1000;
 sMri.NCS.Origin = cs_convert(sMri, 'mni', 'mri', Origin) .* 1000;
+
+
+%% ===== MRI=>SCS TRANSFORMATION =====
+% Set the MRI=>SCS transformation in the MRI
+Tscs = transform.vox07mm2bti * Tbst2ft;
+sMri.SCS.R = Tscs(1:3,1:3);
+sMri.SCS.T = Tscs(1:3,4);
+% Standard positions for the SCS fiducials
+NAS = [90,   0, 0] ./ 1000;
+LPA = [ 0,  75, 0] ./ 1000;
+RPA = [ 0, -75, 0] ./ 1000;
+Origin = [0, 0, 0];
+% Convert: SCS (meters) => MRI (millimeters)
+sMri.SCS.NAS    = cs_convert(sMri, 'scs', 'mri', NAS) .* 1000;
+sMri.SCS.LPA    = cs_convert(sMri, 'scs', 'mri', LPA) .* 1000;
+sMri.SCS.RPA    = cs_convert(sMri, 'scs', 'mri', RPA) .* 1000;
+sMri.SCS.Origin = cs_convert(sMri, 'scs', 'mri', Origin) .* 1000;
 % Save MRI structure (with fiducials)
 bst_save(BstMriFile, sMri, 'v7'); 
 
@@ -204,10 +204,10 @@ bst_save(BstMriFile, sMri, 'v7');
 %% ===== IMPORT SURFACES =====
 bst_progress('start', 'Import HCP MEG/anatomy folder', 'Importing surfaces...');
 % Left pial
-[iLh, BstTessLhFile, nVertOrigL] = import_surfaces(iSubject, TessLhFile, 'GII', 0);
+[iLh, BstTessLhFile, nVertOrigL] = import_surfaces(iSubject, TessLhFile, 'GII-MNI', 0);
 BstTessLhFile = BstTessLhFile{1};
 % Right pial
-[iRh, BstTessRhFile, nVertOrigR] = import_surfaces(iSubject, TessRhFile, 'GII', 0);
+[iRh, BstTessRhFile, nVertOrigR] = import_surfaces(iSubject, TessRhFile, 'GII-MNI', 0);
 BstTessRhFile = BstTessRhFile{1};
 
 
