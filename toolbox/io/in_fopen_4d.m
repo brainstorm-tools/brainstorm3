@@ -35,7 +35,7 @@ if (nargin < 2) || isempty(ImportOptions)
 end
 
 %% ===== GET FILES =====
-dir4d = bst_fileparts(DataFile);
+[dir4d, fBase, fExt] = bst_fileparts(DataFile);
 % Look for headshape file (hs_file)
 if file_exist(bst_fullfile(dir4d, 'hs_file'))
     HeadshapeFile = bst_fullfile(dir4d, 'hs_file');
@@ -52,6 +52,21 @@ else
            'please select the appropriate file format in the "Open file" dialog window.']);
 end
 
+
+%% ===== FOLDER NAME ====
+% Get a meaningful folder name for the database explorer
+[dirParent, name4d] = bst_fileparts(dir4d);
+if ~isequal(name4d, '4D')
+    Condition = dir4d;
+else
+    [dirParent, Condition] = bst_fileparts(dirParent);
+end
+% Add the file name if there are multiple in the same category
+baseName = [fBase, fExt];
+dirOthers = dir(bst_fullfile(dir4d, [baseName(1:2) '*']));
+if (length(dirOthers) > 1)
+    Condition = [Condition, '_', file_standardize(baseName)];
+end
 
 %% ===== READ HEADERS =====
 % Read config file
@@ -70,6 +85,7 @@ header.hs = hs;
 sFile = db_template('sfile');
 % Add information read from header
 sFile.filename   = DataFile;
+sFile.condition  = Condition;
 sFile.format     = '4D';
 sFile.device     = '4D';
 sFile.comment    = '';
