@@ -122,6 +122,14 @@ switch (FileFormat)
             mriSize = size(sMri.Cube) .* (sMri.Voxsize(:))' ./ 1000;
             TessMat.Vertices = bst_bsxfun(@minus, mriSize, TessMat.Vertices);
         end
+    case 'GII-MNI'
+        TessMat = in_tess_gii(TessFile);
+        % Convert from MNI to MRI coordinates
+        if ~isempty(sMri)
+            TessMat.Vertices = cs_convert(sMri, 'mni', 'mri', TessMat.Vertices);
+        end
+        % Swap faces
+        TessMat.Faces = TessMat.Faces(:,[2 1 3]);
     case 'FS'
         % Read file with MNE function
         [TessMat.Vertices, TessMat.Faces] = mne_read_surface(TessFile);
