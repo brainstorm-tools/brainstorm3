@@ -102,9 +102,11 @@ for iFile = 1:length(LabelFiles)
     % Use the grid of points provided in input if available
     if ~isempty(GridLoc)
         Vertices = GridLoc;
+        isVolumeAtlas = 1;
     % Otherwise, use the vertices of the cortex surface
     else
         Vertices = sSurf.Vertices;
+        isVolumeAtlas = 0;
     end
     % Get filename
     [fPath, fBase, fExt] = bst_fileparts(LabelFiles{iFile});
@@ -465,7 +467,7 @@ for iFile = 1:length(LabelFiles)
                 continue;
             end
             % Check the number of vertices
-            if (length(Vertices) ~= ScoutMat.TessNbVertices)
+            if ~isVolumeAtlas && (length(Vertices) ~= ScoutMat.TessNbVertices)
                 Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the scout file (%d) do not match\n', fBase, length(Vertices), ScoutMat.TessNbVertices)];
                 continue;
             end
