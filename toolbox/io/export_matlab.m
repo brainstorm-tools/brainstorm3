@@ -35,7 +35,8 @@ elseif iscell(values)
     nExport = length(filenames);
 elseif isstruct(values)
     filenames = {};
-    nExport = length(values);
+    %nExport = length(values);
+    nExport = 1;
 elseif isjava(values)
     nExport = length(values);
     for i = 1:nExport
@@ -61,6 +62,10 @@ for i = 1:nExport
         bst_progress('start', 'Export to workspace variable', 'Loading file...');
         val = load(file_fullpath(filenames{i}));
         bst_progress('stop');
+    elseif (nExport == 1)
+        val = values;
+    elseif iscell(values)
+        val = values{i};
     else
         val = values(i);
     end
