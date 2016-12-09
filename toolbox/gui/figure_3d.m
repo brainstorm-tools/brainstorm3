@@ -766,7 +766,7 @@ function FigureMouseUpCallback(hFig, varargin)
             % === SLICES WERE MOVED ===
             else
                 % Update "Surfaces" panel
-                panel_surface('UpdateSurfaceProperties');       
+                panel_surface('UpdateSurfaceProperties');
             end
         end
     end 
@@ -1012,6 +1012,29 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier) 
                         bst_figures('ViewTopography', hFig); 
                     end
+                    
+                % === SCROLL MRI CUTS ===
+                case {'x','y','z'}
+                    % Amount to scroll: +1 (no modifier) or -1 (shift key)
+                    if ismember('shift', keyEvent.Modifier)
+                        value = -1;
+                    else
+                        value = 1;
+                    end
+                    % Get dimension
+                    switch (keyEvent.Key)
+                        case 'x',  dim = 1;
+                        case 'y',  dim = 2;
+                        case 'z',  dim = 3;
+                    end
+                    % Get Mri and figure Handles
+                    [sMri, TessInfo, iTess, iMri] = panel_surface('GetSurfaceMri', hFig);
+                    % Draw a new X-cut according to the mouse motion
+                    posXYZ = [NaN, NaN, NaN];
+                    posXYZ(dim) = TessInfo(iTess).CutsPosition(dim) + value;
+                    panel_surface('PlotMri', hFig, posXYZ);
+                    % Update interface (Surface tab and MRI figure)
+                    panel_surface('UpdateSurfaceProperties');
                     
                 % === CHANNELS ===
                 % RETURN: VIEW SELECTED CHANNELS

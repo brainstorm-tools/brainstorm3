@@ -134,6 +134,10 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     java_setcb(Handles.jSliderSagittal, 'MouseClickedCallback', @(h,ev)set(hFig, 'CurrentAxes', Handles.axs));
     java_setcb(Handles.jSliderAxial,    'MouseClickedCallback', @(h,ev)set(hFig, 'CurrentAxes', Handles.axa));
     java_setcb(Handles.jSliderCoronal,  'MouseClickedCallback', @(h,ev)set(hFig, 'CurrentAxes', Handles.axc));
+    % Set tooltips
+    Handles.jSliderSagittal.setToolTipText('Keyboard shortcut: [X] / [SHIFT]+[X]');
+    Handles.jSliderCoronal.setToolTipText('Keyboard shortcut: [Y] / [SHIFT]+[Y]');
+    Handles.jSliderAxial.setToolTipText('Keyboard shortcut: [Z] / [SHIFT]+[Z]');
     
     % ===== TITLE BARS =====
     % Title: Panels
@@ -579,6 +583,27 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         SetLabelVisible(hFig, []);
                     end
+                % === SCROLL MRI CUTS ===
+                case {'x','y','z'}
+                    % Amount to scroll: +1 (no modifier) or -1 (shift key)
+                    if ismember('shift', keyEvent.Modifier)
+                        value = -1;
+                    else
+                        value = 1;
+                    end
+                    % Get dimension
+                    switch (keyEvent.Key)
+                        case 'x',  dim = 1;
+                        case 'y',  dim = 2;
+                        case 'z',  dim = 3;
+                    end
+                    % Get Mri and figure Handles
+                    [sMri, TessInfo, iTess, iMri] = panel_surface('GetSurfaceMri', hFig);
+                    Handles = bst_figures('GetFigureHandles', hFig);
+                    % Change position of slices
+                    TessInfo(iTess).CutsPosition(dim) = TessInfo(iTess).CutsPosition(dim) + value;
+                    % Update interface (Surface tab and MRI figure)
+                    figure_mri('SetLocation', 'voxel', sMri, Handles, TessInfo(iTess).CutsPosition);       
             end
     end
 end

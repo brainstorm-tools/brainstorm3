@@ -160,18 +160,21 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 % Resect X : Slider 
                 jSliderResectX = JSlider(-100, 100, 0);
                 jSliderResectX.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
+                jSliderResectX.setToolTipText('Keyboard shortcut: [X] / [SHIFT]+[X]');
                 java_setcb(jSliderResectX, 'MouseReleasedCallback', @(h,ev)SliderResectCallback(h, ev, 'ResectX'), ...
                                            'KeyPressedCallback',    @(h,ev)SliderResectCallback(h, ev, 'ResectX'));
-                panelResect.add('hfill', jSliderResectX);   
+                panelResect.add('hfill', jSliderResectX);
                 % Resect Y : Title and Slider 
                 jSliderResectY = JSlider(-100, 100, 0);
                 jSliderResectY.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
+                jSliderResectY.setToolTipText('Keyboard shortcut: [Y] / [SHIFT]+[Y]');
                 java_setcb(jSliderResectY, 'MouseReleasedCallback', @(h,ev)SliderResectCallback(h, ev, 'ResectY'), ...
                                            'KeyPressedCallback',    @(h,ev)SliderResectCallback(h, ev, 'ResectY'));
                 panelResect.add('hfill', jSliderResectY);     
                 % Resect Z : Title and Slider 
                 jSliderResectZ = JSlider(-100, 100, 0);
                 jSliderResectZ.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
+                jSliderResectZ.setToolTipText('Keyboard shortcut: [Z] / [SHIFT]+[Z]');
                 java_setcb(jSliderResectZ, 'MouseReleasedCallback', @(h,ev)SliderResectCallback(h, ev, 'ResectZ'), ...
                                            'KeyPressedCallback',    @(h,ev)SliderResectCallback(h, ev, 'ResectZ'));
                 panelResect.add('hfill', jSliderResectZ);   
@@ -437,19 +440,32 @@ end
 function sliderSizeVector = GetSliderSizeVector(nVertices)
     f = (nVertices / 15000);
     if (f < 2)
-        %f = 1;
         sliderSizeVector = [1:19, 20:2:58, 60:5:125, 130:10:200];
     elseif (f < 4)
-        %f = 2;
         sliderSizeVector = [1:19, 20:5:115, 120:10:250, 260:20:400];
     elseif (f <= 7)
-        %f = 5;
         sliderSizeVector = [1:19, 20:10:175, 200:25:650, 700:50:1000];
     else
-        %f = 10;
         sliderSizeVector = [1:19, 20:10:150, 200:50:1050, 1100:100:2000];
     end
-    %sliderSizeVector = [1, [2:19, 20:2:58, 60:5:125, 130:10:200] * f];
+end
+
+
+%% ===== SCROLL MRI CUTS =====
+function ScrollMriCuts(hFig, direction, value) %#ok<DEFNU>
+    % Get Mri and figure Handles
+    [sMri, TessInfo, iTess, iMri] = panel_surface('GetSurfaceMri', hFig);
+    Handles = bst_figures('GetFigureHandles', hFig);
+    % Get dimension
+    switch (direction)
+        case 'x',  dim = 1;
+        case 'y',  dim = 2;
+        case 'z',  dim = 3;
+    end
+    % Change position of slices
+    TessInfo(iTess).CutsPosition(dim) = TessInfo(iTess).CutsPosition(dim) + value;
+    % Update interface (Surface tab and MRI figure)
+    figure_mri('SetLocation', 'voxel', sMri, Handles, TessInfo(iTess).CutsPosition);
 end
 
 
@@ -477,7 +493,6 @@ function ButtonSurfColorCallback(varargin)
     SetSurfaceColor(hFig, iSurface, colorCortex);
 end
              
-
 
 %% ===== BUTTON "SULCI" CALLBACK =====
 function ButtonShowSulciCallback(hObject, event)
@@ -1271,7 +1286,6 @@ end
 % Usage:  UpdateSurfaceData(hFig, iSurfaces)
 %         UpdateSurfaceData(hFig)
 function isOk = UpdateSurfaceData(hFig, iSurfaces)
-% disp('=== panel_surface > UpdateSurfaceData ===');
     global GlobalData;
     isOk = 1;
     % Get surfaces list 
@@ -1561,7 +1575,6 @@ end
 
 %% ===== UPDATE SURFACE COLORMAP =====
 function UpdateSurfaceColormap(hFig, iSurfaces)
-% disp('=== panel_surface > UpdateSurfaceColormap ===');
     % Get surfaces list 
     TessInfo = getappdata(hFig, 'Surface');
     if isempty(TessInfo)
