@@ -21,7 +21,7 @@ function varargout = process_simulate_recordings( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2015
+% Authors: Francois Tadel, Guiomar Niso, 2013-2016
 
 eval(macro_method);
 end
@@ -42,6 +42,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 1;
 
     % === CLUSTERS
+    sProcess.options.label1.Comment = '<B><U>Simulation</U></B>:';
+    sProcess.options.label1.Type    = 'label';
     sProcess.options.scouts.Comment = '';
     sProcess.options.scouts.Type    = 'scout';
     sProcess.options.scouts.Value   = {};
@@ -49,6 +51,24 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.savesources.Comment = 'Save full sources';
     sProcess.options.savesources.Type    = 'checkbox';
     sProcess.options.savesources.Value   = 1;
+    % === ADD NOISE
+    sProcess.options.label2.Comment = '<BR><B><U>Noise</U></B>:';
+    sProcess.options.label2.Type    = 'label';
+    sProcess.options.isnoise.Comment = 'Add noise to the recordings';
+    sProcess.options.isnoise.Type    = 'checkbox';
+    sProcess.options.isnoise.Value   = 0;
+    % === LEVEL OF NOISE (SNR1)
+    sProcess.options.noise1.Comment = 'Level of random noise (SNR1):';
+    sProcess.options.noise1.Type    = 'value';
+    sProcess.options.noise1.Value   = {0, '', 2};
+    % === LEVEL OF SENSOR NOISE (SNR2)
+    sProcess.options.noise2.Comment = 'Level of sensor noise, based on noise covariance (SNR2):';
+    sProcess.options.noise2.Type    = 'value';
+    sProcess.options.noise2.Value   = {0, '', 2};
+    % Notice
+    sProcess.options.label3.Comment = ['<I>Src = Src + SNR1 .* (rand(size(Src))-0.5) .* max(abs(Src(:))); <BR>' ...
+                                       'Rec = Rec + SNR2 .* get_noise_signals(NoiseCov);</I>'];
+    sProcess.options.label3.Type    = 'label';
 end
 
 
@@ -67,9 +87,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'No scouts selected.');
         return;
     end
-    % Get other optinos
+    % Get other options
     SaveSources = sProcess.options.savesources.Value;
-
+    isNoise = sProcess.options.isnoise.Value;
+    SNR1 = sProcess.options.noise1.Value{1};
+    SNR2 = sProcess.options.noise2.Value{1};
+    
     % === LOAD CHANNEL FILE / HEAD MODEL===
     % Get condition
     sStudy = bst_get('Study', sInput.iStudy);
@@ -115,8 +138,6 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % === LOAD CORTEX ===
     % Get surface from the head model
     SurfaceFile = HeadModelMat.SurfaceFile;
-    % Load surface
-    SurfaceMat = in_tess_bst(SurfaceFile);
     % Get scout structures
     sScouts = process_extract_scout('GetScoutsInfo', sProcess, sInput, SurfaceFile, AtlasList);
     if isempty(sScouts)
@@ -164,13 +185,34 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % Replicate scout values into all the sources
         ImageGridAmp(iSourceRows,:) = repmat(sMatrix.Value(i,:), length(iSourceRows), 1);
     end
+    % Add noise SNR1 (random noise on the sources)
+    if isNoise && (SNR1 > 0)
+        ImageGridAmp = ImageGridAmp + SNR1 .* (rand(size(ImageGridAmp))-0.5) .* max(max(abs(ImageGridAmp)));
+        strNoise = [',Nsn=', num2str(SNR1)];
+    else
+        strNoise = '';
+    end
     % Set unit range to pAm
     ImageGridAmp = 1e-9 .* ImageGridAmp;
     
-    % === SAVE RECORDINGS ===
+    % === GENERATE DATA MATRIX ===
     % Generate data matrix
     F = zeros(length(ChannelMat.Channel), nTime);
     F(iChannels,:) = HeadModelMat.Gain(iChannels,:) * ImageGridAmp;
+    % Add noise SNR2 (sensor noise) 
+    if isNoise && (SNR2 > 0)
+        % Load the noise covariance matrix
+        NoiseCovMat = load(file_fullpath(sStudyChannel.NoiseCov(1).FileName));
+        % Compute noise signals from noise covariance matric
+        xn = get_noise_signals (NoiseCovMat.NoiseCov(iChannels,iChannels), nTime);
+        xnn = xn./max(max(xn)); % Noise signal between 0 and 1
+        xns = xnn.*max(max(F(iChannels,:))); % Make the noise of similar amplitude than the signal
+        % Add noise to recordings
+        F(iChannels,:) = F(iChannels,:) + SNR2*xns; % Apply the SNR2
+        strNoise = [strNoise, ',Nsc=', num2str(SNR2)];
+    end
+    
+    % === SAVE RECORDINGS ===
     % Create a new data file structure
     DataMat = db_template('datamat');
     DataMat.F           = F;
@@ -224,4 +266,52 @@ end
 
 
 
+%% ===== GET NOISE SIGNALS =====
+% GET_NOISE_SIGNALS: Generates noise signals from a noise covariance matrix
+%
+% INPUT:
+%    - COV: Noise covariance matrix (M x M)
+%    - Nsamples: Number of time points (length of noise signals)
+% OUTPUT:
+%    - xn: noise signals (M x Nsamples)
+%
+% DESCRIPTION: 
+%     White noise covariance:
+%     CXw = Xw * Xw' = Id
+%     Gaussian white uncorrelated noise (randn)
+%     Xw: (Nchannels x t)
+% 
+%     We have the following noise covariance matrix: C, and we decompose it into eigenvalues and eigenvectors:
+%     C = v * D * v' = v * D^(1/2) * D^(1/2) * v'
+%     Since C is symmetric, D is positive and D^(1/2) = D.^(1/2) (element by element)
+% 
+%     Therefore we define the noise signal we wanted to add as:
+%     X = v * D^(1/2) * Xw
+%     And obtain its covariance matrix as:
+%     CX = Xw * Xw' = v * D^(1/2) * Xw * (v * D^(1/2) * Xw)' = v * D^(1/2) * Xw * XwT * D^(1/2)' * v'
+%        = v * D^(1/2) * CXw * D^(1/2)' * v' = v * D^(1/2) * D^(1/2)' * v' = v * D * v' = C  
+%     => Cov = xn * xn’ ./( Nsamples- 1)
+%
+% Author: Guiomar Niso, 2014
+%
+function xn = get_noise_signals(COV, Nsamples)
+    [V,D] = eig(COV);
 
+    % xn = (1/SNR) * V * D.^(1/2) * randn(size(COV,1),Nsamples);
+    xn = V * D.^(1/2) * randn(size(COV,1),Nsamples);
+
+    %%%%%%
+    % Example:
+    % SNR = 0.3;
+    % Nsamples = 500;
+    % xn = get_noise_signals (n.NoiseCov, Nsamples);
+    % xnn = xn./max(max(xn));
+    % xns = xnn.*max(max(s.F));
+    % sn = s.F + SNR*xns;
+    % s.F=sn;
+
+    % figure(1); imagesc(n.NoiseCov); colorbar;
+    % figure(2); imagesc(xn*xn' ./ (size(xn,2) - 1)); colorbar;
+    % figure(3); imagesc(cov(xn)); colorbar;
+    % See also noise extracted from recordings
+end
