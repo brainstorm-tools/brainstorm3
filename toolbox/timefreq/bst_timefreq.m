@@ -209,7 +209,7 @@ for iData = 1:length(Data)
                     error('No channel definition available for this file.');
                 end
                 % Read file
-                sMat = in_bst_data(InitFile, 'F', 'Time', 'ChannelFlag', 'nAvg');
+                sMat = in_bst_data(InitFile, 'F', 'Time', 'ChannelFlag', 'nAvg', 'Events');
                 % Load channel file
                 ChannelMat  = in_bst_channel(ChannelFile);
                 ChannelFlag = sMat.ChannelFlag;
@@ -231,6 +231,10 @@ for iData = 1:length(Data)
                     if OPTIONS.RemoveEvoked
                         F = F - DataAvg;
                     end
+                    % Detect bad segments
+                    sMat.events = sMat.Events;
+                    sMat.prop.sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
+                    BadSegments = panel_record('GetBadSegments', sMat) - sMat.prop.sfreq * sMat.Time(1) + 1;
                 end
                 nAvg = sMat.nAvg;
                 OPTIONS.TimeVector = sMat.Time;
