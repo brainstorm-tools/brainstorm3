@@ -60,7 +60,7 @@ time_out = a;
 el       = a;
 isFigCreated = 0;
 % Loop on all the methods
-for i = 1:length(list_methods);
+for i = 1:length(list_methods)
     % Method selection
     method = list_methods{i};
     % Resample

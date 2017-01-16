@@ -26,7 +26,7 @@ function varargout = process_resample( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2017
 
 eval(macro_method);
 end
@@ -140,7 +140,8 @@ function [TFout, Time] = Compute(TF, Time, NewFreq, method)
             case 'fft-spline'
                 % Anti-alias filter
                 if (NewFreq < OldFreq)
-                    x = process_bandpass('Compute', x, 256, [], 128 * NewFreq / OldFreq, 'bst-fft-fir', 1);
+                    % x = process_bandpass('Compute', x, 256, [], 128 * NewFreq / OldFreq, 'bst-fft-fir', 1);
+                    x = process_bandpass('Compute', x, 256, [], 128 * NewFreq / OldFreq);  % Replaced by FT, 16-Jan-2016
                 end
                 % Spline interpolation
                 nbnewpoints  = size(x,2) * NewFreq / OldFreq;
