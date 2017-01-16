@@ -106,9 +106,9 @@ hFig(end+1) = fig_report(year, nPosts, 0, ...
 
 % ===== PUBLICATIONS =====
 % Hard coded list of publications
-year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015]; 
-nPubli = [   2    2    1    1    3    5    5   11   10   18   19   33   38   54   78   92];
-nPubliCurYear = 81;
+year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016]; 
+nPubli = [   2    2    1    1    3    5    5   11   10   18   19   33   38   54   78   92  131];
+nPubliCurYear = 2;
 % Plot figure
 hFig(end+1) = fig_report(year, nPubli, 1, ...
            [2000 max(year)], [], ...
@@ -243,7 +243,8 @@ function [hFig, hAxes] = fig_report(x, y, isMarkers, XLim, YLim, wTitle, xLabel,
     % Save figure
     drawnow;
     if isSave
-        frameGfx = getscreen(hFig);
-        out_image(filename, frameGfx.cdata);
+        % frameGfx = getscreen(hFig);
+        % out_image(filename, frameGfx.cdata);
+        out_figure_image(hFig, filename);
     end
 end
