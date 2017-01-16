@@ -487,8 +487,8 @@ switch (lower(action))
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'), []);
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Review raw file', IconLoader.ICON_RAW_DATA, [], @(h,ev)import_raw, []);
-                    gui_component('MenuItem', jPopup, [], 'Import MEG/EEG',  IconLoader.ICON_EEG_NEW,  [], @(h,ev)import_data, []);
+                    gui_component('MenuItem', jPopup, [], 'Review raw file', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@import_raw), []);
+                    gui_component('MenuItem', jPopup, [], 'Import MEG/EEG',  IconLoader.ICON_EEG_NEW,  [], @(h,ev)bst_call(@import_data), []);
                     AddSeparator(jPopup);
                     % === IMPORT CHANNEL / COMPUTE HEADMODEL ===
                     fcnPopupImportChannel(bstNodes, jPopup, 0);
@@ -622,8 +622,8 @@ switch (lower(action))
                         sSubject = bst_get('Subject', iSubject);
                         % === IMPORT DATA/DIPOLES ===
                         if (length(bstNodes) == 1) && ~isRaw
-                            gui_component('MenuItem', jPopup, [], 'Import MEG/EEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)import_data([], [], [], iStudy, iSubject), []);
-                            gui_component('MenuItem', jPopup, [], 'Import dipoles', IconLoader.ICON_DIPOLES, [], @(h,ev)import_dipoles(iStudy), []);
+                            gui_component('MenuItem', jPopup, [], 'Import MEG/EEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@import_data, [], [], [], iStudy, iSubject), []);
+                            gui_component('MenuItem', jPopup, [], 'Import dipoles', IconLoader.ICON_DIPOLES, [], @(h,ev)bst_call(@import_dipoles, iStudy), []);
                             AddSeparator(jPopup);
                         end
                         % If not Default Channel
@@ -688,7 +688,7 @@ switch (lower(action))
                     [sInterStudy, iInterStudy] = bst_get('AnalysisInterStudy');
                     % === IMPORT DATA ===
                     if ~isSpecialNode
-                        gui_component('MenuItem', jPopup, [], 'Import MEG/EEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)import_data([], [], [], iStudy, iSubject), []);
+                        gui_component('MenuItem', jPopup, [], 'Import MEG/EEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@import_data, [], [], [], iStudy, iSubject), []);
                     end
                     % If not Default Channel
                     if (sSubject.UseDefaultChannel == 0) && (iStudy ~= iInterStudy)
@@ -2674,7 +2674,7 @@ function selectHeadmodelAndComputeSources(bstNodes, is2014)
     % Select node
     tree_callbacks(bstNodes, 'doubleclick');
     % Compute sources
-    panel_protocols('TreeInverse', bstNodes, is2014);
+    bst_call(@panel_protocols, 'TreeInverse', bstNodes, is2014);
 end
 
 
