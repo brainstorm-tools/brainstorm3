@@ -21,7 +21,7 @@ function varargout = process_extract_scout( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2015
+% Authors: Francois Tadel, 2010-2017
 
 eval(macro_method);
 end
@@ -285,6 +285,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if isfield(sMat, 'ZScore') && ~isempty(sMat.ZScore)
                     ZScore = sMat.ZScore;
                 end
+                % Get GridAtlas/GridLoc/GridOrient parameter
+                if isfield(sMat, 'GridAtlas') && ~isempty(sMat.GridAtlas)
+                    GridAtlas = sMat.GridAtlas;
+                end
+                if isfield(sMat, 'GridLoc') && ~isempty(sMat.GridLoc)
+                    GridLoc = sMat.GridLoc;
+                end
                 % Copy surface filename
                 if isfield(sMat, 'SurfaceFile') && ~isempty(sMat.SurfaceFile)
                     SurfaceFile = sMat.SurfaceFile;
@@ -300,6 +307,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if isempty(sMat) || (isempty(matValues) && (isempty(sResults) || ~isfield(sResults, 'ImagingKernel') || isempty(sResults.ImagingKernel)))
             bst_report('Error', sProcess, sInputs(iInput), 'Could not load anything from the input file. Check the requested time window.');
             return;
+        end
+        % Do not accept time bands (unless there is only one)
+        if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands) && ~((size(matValues,2)==1) && (size(sMat.TimeBands,1)==1))
+            bst_report('Error', sProcess, sInputs(iInput), 'Time bands are not supported yet by this process.');
+            continue;
         end
         % Add possibly missing fields
         if ~isfield(sMat, 'ChannelFlag')
@@ -319,11 +331,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         elseif isfield(sMat, 'F') && (size(sMat.F,2) == 1)
             sMat.F = cat(2, sMat.F, sMat.F);
-        end
-        % Do not accecpt time bands
-        if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands)
-            bst_report('Error', sProcess, sInputs(iInput), 'Time bands are not supported yet by this process.');
-            continue;
         end
         
         % === LOAD SURFACE ===
@@ -488,6 +495,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Get the number of components per vertex
                 if strcmpi(sInputs(iInput).FileType, 'results')
                     nComponents = sResults.nComponents;
+                elseif ~isempty(GridAtlas)
+                    nComponents = 0;
                 else
                     nComponents = 1;
                 end
