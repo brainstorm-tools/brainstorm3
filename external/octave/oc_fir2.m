@@ -78,7 +78,8 @@ function b = oc_fir2(n, f, m, grid_n, ramp_n, window)
   if length(grid_n)>1, w=grid_n; grid_n=[]; end
   if length(ramp_n)>1, w=ramp_n; ramp_n=[]; end
   if nargin < 6, window=w; end
-  if isempty(window), window=hamming(n+1); end
+  %  f isempty(window), window=hamming(n+1); end
+  if isempty(window), window = bst_window('hamming', n+1); end  % Modified by F Tadel for use in Brainstorm (16-Jan-2017)
   if ~isreal(window) || ischar(window), window=feval(window, n+1); end
   if length(window) ~= n+1, error ('fir2: window must be of length n+1'); end
 
