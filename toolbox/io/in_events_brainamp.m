@@ -71,7 +71,11 @@ end
 fclose(fid);
 
 % List of events
-uniqueEvt = unique(Markers(:,1)');
+if isempty(Markers)
+    uniqueEvt = [];
+else
+    uniqueEvt = unique(Markers(:,1)');
+end
 % Initialize returned structure
 events = repmat(db_template('event'), [1, length(uniqueEvt)]);
 % Create events list
