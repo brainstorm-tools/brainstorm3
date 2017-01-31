@@ -2,6 +2,7 @@
 January 2017
 - IO: Added support for FreeSurfer 6.0 output
 - Doc: HCP tutorial
+- Doc: Changed date to 2017
 ---------------------------------------------------------------
 December 2016
 - Bug fix: Between 12-Nov-2016 and 12-Dec-2016: Process "Extract > Scout time series" was not correctly 
