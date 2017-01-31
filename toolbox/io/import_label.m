@@ -128,9 +128,9 @@ for iFile = 1:length(LabelFiles)
                     sAtlas.Name = 'Destrieux';
                 case {'lh.aparc', 'rh.aparc'}
                     sAtlas.Name = 'Desikan-Killiany';
-                case {'lh.BA', 'rh.BA'}
+                case {'lh.BA', 'rh.BA', 'lh.BA_exvivo', 'rh.BA_exvivo'}
                     sAtlas.Name = 'Brodmann';
-                case {'lh.BA.thresh', 'rh.BA.thresh'}
+                case {'lh.BA.thresh', 'rh.BA.thresh', 'lh.BA_exvivo.thresh', 'rh.BA_exvivo.thresh'}
                     sAtlas.Name = 'Brodmann-thresh';
                 case {'lh.aparc.DKTatlas40', 'rh.aparc.DKTatlas40'}
                     sAtlas.Name = 'Mindboggle';
