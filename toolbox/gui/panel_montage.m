@@ -731,6 +731,10 @@ function SaveModifications(hFig)
     if isempty(MontageName)
         return;
     end
+    % Remove the possible "[]" if the user is editing a hidden montage
+    if ((MontageName(1) == '[') && (MontageName(end) == ']'))
+        MontageName = MontageName(2:end-1);
+    end
     % Reset the modification
     ctrl.MontageModified.set(0, '');
     % Get montage structure
