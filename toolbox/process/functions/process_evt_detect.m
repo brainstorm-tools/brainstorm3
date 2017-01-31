@@ -346,8 +346,8 @@ function evt = Compute(F, TimeVector, OPTIONS, Fmask)
         Fsig = F;
     end
     % Ignore the first and last 2% of the signal (in case of artifacts): Max of 2s
-    nIgnore = round(size(Fsig,2) * 0.02) + smpTransient;
-    nIgnore = min(2*sFreq, nIgnore);
+    nIgnore = size(Fsig,2) * 0.02 + smpTransient;
+    nIgnore = round(min(2*sFreq, nIgnore));
     Fsig = Fsig(nIgnore:end-nIgnore+1);
     % Compute standard deviation
     stdF = std(Fsig);
