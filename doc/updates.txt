@@ -1,9 +1,12 @@
 ---------------------------------------------------------------
+January 2017
+- IO: Added support for FreeSurfer 6.0 output
+- Doc: HCP tutorial
+---------------------------------------------------------------
 December 2016
 - Bug fix: Between 12-Nov-2016 and 12-Dec-2016: Process "Extract > Scout time series" was not correctly 
   | flipping the sign of the sources with opposite directions, on constrained source models
 - Process: Simulate recordings: Added noise to the simulated recordings
-
 ---------------------------------------------------------------
 November 2016
 - New process: FieldTrip volume segmentation (ft_volumesegment)

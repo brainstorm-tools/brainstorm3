@@ -28,6 +28,7 @@ c = clock();
 % Create a new header structure
 sFileOut = sFileIn;
 sFileOut.filename  = OutputFile;
+sFileOut.condition = '';
 sFileOut.format    = 'EEG-EGI-RAW';
 sFileOut.byteorder = 'b';
 sFileOut.comment   = fBase;

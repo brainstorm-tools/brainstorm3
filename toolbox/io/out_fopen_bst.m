@@ -19,7 +19,7 @@ function sFileOut = out_fopen_bst(OutputFile, sFileIn, ChannelMat, EpochSize)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2015
+% Authors: Francois Tadel, 2014-2017
 
 % Get file comment
 [fPath, fBase, fExt] = bst_fileparts(OutputFile);
@@ -27,6 +27,7 @@ function sFileOut = out_fopen_bst(OutputFile, sFileIn, ChannelMat, EpochSize)
 % Create a new header structure
 sFileOut = sFileIn;
 sFileOut.filename  = OutputFile;
+sFileOut.condition = '';
 sFileOut.format    = 'BST-BIN';
 sFileOut.byteorder = 'l';
 sFileOut.comment   = fBase;
