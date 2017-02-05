@@ -126,7 +126,12 @@ nVertHemi = round(nVertices / 2);
 % Find MRI
 FilePrefix = get_fileprefix(BsDir);
 if isempty(FilePrefix)
-    errorMsg = [errorMsg 'Could not determine file prefix from BFC file' 10];
+    errorMsg = [errorMsg 'Could not determine file prefix from BFC file' 10 10 ...
+        'Make sure SVREG was executed in BrainSuite before importing the data in Brainstorm.'];
+    if isInteractive
+        bst_error(['Could not import BrainSuite folder: ' 10 10 errorMsg], 'Import BrainSuite folder', 0);        
+    end
+    return;
 end
 MriFile = {file_find(BsDir, [FilePrefix '.nii.gz']), ...
            file_find(BsDir, [FilePrefix '.nii']), ...
