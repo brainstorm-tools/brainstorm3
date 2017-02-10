@@ -1810,7 +1810,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         sInput.nAvg        = sMat.nAvg;
         % If only non-All scouts: use just the scouts labels, if not use the full description string
         sScouts = sMat.Atlas.Scouts;
-        if ~isequal(lower(OPTIONS.TargetFunc), 'all') && all(~strcmpi({sScouts.Function}, 'All'))
+        if ~isequal(lower(OPTIONS.TargetFunc), 'all') && ~isempty(sScouts) && all(~strcmpi({sScouts.Function}, 'All'))
             sInput.RowNames = {sScouts.Label}';
         else
             sInput.RowNames = sMat.Description;
