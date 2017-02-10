@@ -29,12 +29,12 @@ function [TimeUnits, precision] = gui_validate_text(jTextValid, jTextMin, jTextM
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2013
+% Authors: Francois Tadel, 2009-2017
 
 
 %% ===== PARSE INPUTS =====
 % Time type: full vector or bounds + frequency
-if (length(TimeVector) == 3)
+if (length(TimeVector) == 3) && ((TimeVector(3) <= TimeVector(2)) || ((TimeVector(2)-TimeVector(1))/(TimeVector(3)-TimeVector(2)) < 0.99))
     bounds = TimeVector(1:2);
     sfreq  = TimeVector(3);
     TimeVector = [];
