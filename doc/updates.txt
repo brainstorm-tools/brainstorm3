@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 January 2017
+- GUI: Reorganized the montage menus for SEEG contacts
 - IO: Added support for FreeSurfer 6.0 output
 - Doc: HCP tutorial
 - Doc: Changed date to 2017

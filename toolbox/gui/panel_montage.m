@@ -22,7 +22,7 @@ function varargout = panel_montage(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2016
+% Authors: Francois Tadel, 2009-2017
 
 eval(macro_method);
 end
@@ -1381,6 +1381,7 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
         jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A), KeyEvent.SHIFT_MASK));
     end
     % MENUS: List of available montages
+    subMenus = struct;
     for i = 1:length(sFigMontages)
         % Is it the selected one
         if ~isempty(TsInfo.MontageName)
@@ -1398,14 +1399,26 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
             else
                 DisplayName = 'Average reference';
             end
+            jSubMenu = jMenu;
         % Temporary montages:  Remove the [tmp] tag or display
         elseif ~isempty(strfind(sFigMontages(i).Name, '[tmp]'))
-            DisplayName = ['<HTML><I>' strrep(sFigMontages(i).Name, '[tmp]', '') '</I>'];
+            MontageName = strrep(sFigMontages(i).Name, '[tmp]', '');
+            DisplayName = ['<HTML><I>' MontageName '</I>'];
+            % Parse name for sub menus
+            GroupName = strtrim(str_remove_parenth(MontageName));
+            stdName = file_standardize(GroupName);
+            if isfield(subMenus, stdName)
+                jSubMenu = subMenus.(stdName);
+            else
+                jSubMenu = gui_component('Menu', jMenu, [], ['<HTML><I>' GroupName '</I>'], [], [], [], []);
+                subMenus.(stdName) = jSubMenu;
+            end
         else
             DisplayName = sFigMontages(i).Name;
+            jSubMenu = jMenu;
         end
         % Create menu
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], DisplayName, [], [], @(h,ev)SetCurrentMontage(hFig, sFigMontages(i).Name));
+        jItem = gui_component('CheckBoxMenuItem', jSubMenu, [], DisplayName, [], [], @(h,ev)SetCurrentMontage(hFig, sFigMontages(i).Name));
         jItem.setSelected(isSelected);
         if (i <= 25)
             jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A + i), KeyEvent.SHIFT_MASK));
