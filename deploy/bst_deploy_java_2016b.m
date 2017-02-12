@@ -218,8 +218,17 @@ disp(['DEPLOY>     Lines of comment : ' num2str(nComment)]);
 
 
 %% ===== COPY TO GIT FOLDER =====
+% Copy all the subfolders
 disp('DEPLOY> Copying to GIT folder...');
-!xcopy C:\Work\Dev\brainstorm3 C:\Work\Dev\brainstorm_git\brainstorm3 /s /e /y /q
+!xcopy C:\Work\Dev\brainstorm3\brainstorm.m C:\Work\Dev\brainstorm_git\brainstorm3\brainstorm.m /y /q
+!xcopy C:\Work\Dev\brainstorm3\defaults C:\Work\Dev\brainstorm_git\brainstorm3\defaults /s /e /y /q
+!xcopy C:\Work\Dev\brainstorm3\deploy   C:\Work\Dev\brainstorm_git\brainstorm3\deploy   /s /e /y /q
+!xcopy C:\Work\Dev\brainstorm3\doc      C:\Work\Dev\brainstorm_git\brainstorm3\doc      /s /e /y /q
+!xcopy C:\Work\Dev\brainstorm3\external C:\Work\Dev\brainstorm_git\brainstorm3\external /s /e /y /q
+!xcopy C:\Work\Dev\brainstorm3\java     C:\Work\Dev\brainstorm_git\brainstorm3\java     /s /e /y /q
+!xcopy C:\Work\Dev\brainstorm3\toolbox  C:\Work\Dev\brainstorm_git\brainstorm3\toolbox  /s /e /y /q
+% Start GIT GUI in the deployment folder
+system('start /b cmd /c ""C:\Program Files\Git\cmd\git-gui.exe" --working-dir "C:\Work\Dev\brainstorm_git\brainstorm3""');
 
 
 %% ===== MATLAB COMPILER =====
