@@ -1,5 +1,7 @@
 ---------------------------------------------------------------
 January 2017
+- U
+- Bug fix: Computation of time-frequency maps in folders that include the keyword "_trial"
 - GUI: Reorganized the montage menus for SEEG contacts
 - IO: Added support for FreeSurfer 6.0 output
 - Doc: HCP tutorial

@@ -216,6 +216,12 @@ disp(['DEPLOY>     Number of files  : ' num2str(nFiles)]);
 disp(['DEPLOY>     Lines of code    : ' num2str(nCode)]);
 disp(['DEPLOY>     Lines of comment : ' num2str(nComment)]);
 
+
+%% ===== COPY TO GIT FOLDER =====
+disp('DEPLOY> Copying to GIT folder...');
+!xcopy C:\Work\Dev\brainstorm3 C:\Work\Dev\brainstorm_git\brainstorm3 /s /e /y /q
+
+
 %% ===== MATLAB COMPILER =====
 if IS_BIN
     % === COMPILING ===
