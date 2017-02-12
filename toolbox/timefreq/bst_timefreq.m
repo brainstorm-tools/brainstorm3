@@ -50,7 +50,7 @@ function [OutputFiles, Messages, isError] = bst_timefreq(Data, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2017
 
 % ===== DEFAULT OPTIONS =====
 Def_OPTIONS.Comment         = '';
@@ -756,23 +756,26 @@ end
             % Get output study
             sTargetStudy = bst_get('Study', iTargetStudy);
             % Output filename
-            fileBase = 'timefreq';
+            fileName = 'timefreq';
             if strcmpi(OPTIONS.Output, 'all') && ~isempty(FileMat.DataFile)
+                % Get filename
+                [fPath, fBase, fExt] = bst_fileparts(FileMat.DataFile);
                 % Look for a trial tag in the filename
-                iTagStart = strfind(FileMat.DataFile, '_trial');
+                iTagStart = strfind(fBase, '_trial');
                 if ~isempty(iTagStart)
-                    iTagStop = iTagStart + min([find(FileMat.DataFile(iTagStart+6:end) == '_',1), find(FileMat.DataFile(iTagStart+6:end) == '.',1)]) + 4;
-                    if ~isempty(iTagStop)
-                        fileBase = [fileBase FileMat.DataFile(iTagStart:iTagStop)];
+                    iTagStop = iTagStart + find(fBase(iTagStart+6:end) == '_',1) + 4;
+                    if isempty(iTagStop)
+                        iTagStop = length(fBase);
                     end
+                    fileName = [fileName, fBase(iTagStart:iTagStop)];
                 end
             end
             if OPTIONS.SaveKernel
-                fileBase = [fileBase '_KERNEL_' OPTIONS.Method];
+                fileName = [fileName '_KERNEL_' OPTIONS.Method];
             else
-                fileBase = [fileBase '_' OPTIONS.Method];
+                fileName = [fileName '_' OPTIONS.Method];
             end
-            FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), fileBase);
+            FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), fileName);
             % Save file
             bst_save(FileName, FileMat, 'v6');
             % Add file to database structure
