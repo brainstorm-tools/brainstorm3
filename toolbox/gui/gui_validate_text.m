@@ -5,7 +5,7 @@ function [TimeUnits, precision] = gui_validate_text(jTextValid, jTextMin, jTextM
 %     - jTextValid     : Java pointer to a JTextField object
 %     - jTextMin       : Value in jTextValid must be superior to value in jTextMin (set to [] to ignore)
 %     - jTextMax       : Value in jTextValid must be inferior to value in jTextMax (set to [] to ignore)
-%     - TimeVector     : Either a full time vector or [start, stop, sfreq]
+%     - TimeVector     : Either a full time vector (matrix) or {start, stop, sfreq} (cell)
 %     - TimeUnits      : Units used to represent the values: {'ms','s','scalar','list'}; detected if not specified
 %     - dispPrecision  : Number of digits to display after the point (0=integer); detected if not specified
 %     - initValue      : Initial value of the control
@@ -33,12 +33,22 @@ function [TimeUnits, precision] = gui_validate_text(jTextValid, jTextMin, jTextM
 
 
 %% ===== PARSE INPUTS =====
+% Compatibility check with previous versions:
+if ~iscell(TimeVector) && (length(TimeVector) == 3) && (TimeVector(3) <= TimeVector(2))
+    TimeVector = {TimeVector(1), TimeVector(2), TimeVector(3)};
+end
 % Time type: full vector or bounds + frequency
-if (length(TimeVector) == 3) && ((TimeVector(3) <= TimeVector(2)) || ((TimeVector(2)-TimeVector(1))/(TimeVector(3)-TimeVector(2)) < 0.99))
-    bounds = TimeVector(1:2);
-    sfreq  = TimeVector(3);
+if iscell(TimeVector)
+    if (length(TimeVector) ~= 3)
+        error('When TimeVector is a cell, its length must be 3: {start, stop, sfreq}');
+    end
+    bounds = [TimeVector{1}, TimeVector{2}];
+    sfreq  = TimeVector{3};
     TimeVector = [];
 else
+    if (length(TimeVector) < 2)
+        error('When TimeVector is a matrix, its length must be >= 2');
+    end
     bounds = [TimeVector(1), TimeVector(end)];
     sfreq = 1 ./ (TimeVector(2) - TimeVector(1)); 
 end

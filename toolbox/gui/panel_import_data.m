@@ -210,7 +210,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             jTextEventsTimeStop.setFont(jFontText);
             jPanelEvents.add(jTextEventsTimeStop);
             % Set callbacks
-            TimeBoundsEvents = [-500, 500, sFile.prop.sfreq];
+            TimeBoundsEvents = {-500, 500, sFile.prop.sfreq};
             gui_validate_text(jTextEventsTimeStart, [], jTextEventsTimeStop, TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(1), @UpdateBaselineDefault);
             gui_validate_text(jTextEventsTimeStop, jTextEventsTimeStart, [], TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(2), @UpdateBaselineDefault);
             % Display units: ms
@@ -806,10 +806,10 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             BlTimeBoundsInit = BlTimeBounds;
         end
         % Add the frequency to the definition
-        BlTimeBounds = [BlTimeBounds, sFile.prop.sfreq];
+        BlTimeBoundsCell = {BlTimeBounds(1), BlTimeBounds(2), sFile.prop.sfreq};
         % Set time controls callbacks
-        gui_validate_text(jTextBlTimeStart, [], jTextBlTimeStop, BlTimeBounds, TimeUnitBl, [], BlTimeBoundsInit(1), []);
-        gui_validate_text(jTextBlTimeStop, jTextBlTimeStart, [], BlTimeBounds, TimeUnitBl, [], BlTimeBoundsInit(2), []);
+        gui_validate_text(jTextBlTimeStart, [], jTextBlTimeStop, BlTimeBoundsCell, TimeUnitBl, [], BlTimeBoundsInit(1), []);
+        gui_validate_text(jTextBlTimeStop, jTextBlTimeStart, [], BlTimeBoundsCell, TimeUnitBl, [], BlTimeBoundsInit(2), []);
         % Set time unit: ms
         jLabelBlUnit.setText([' ' TimeUnitBl]);
     end

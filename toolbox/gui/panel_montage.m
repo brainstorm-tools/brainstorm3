@@ -1735,7 +1735,7 @@ end
 
 
 %% ===== ADD AUTO MONTAGES: EEG =====
-function AddAutoMontagesEeg(iDS, ChannelMat)
+function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
     global GlobalData;
     % Get groups of electrodes
     [iEeg, GroupNames] = panel_montage('GetEegGroups', ChannelMat.Channel, [], 1);    

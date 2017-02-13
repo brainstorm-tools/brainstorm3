@@ -159,10 +159,10 @@ function TimeWindowChangedCallback() %#ok<DEFNU>
     ctrl.jTextLowpass.setEnabled(1);
     ctrl.jTextSinRem.setEnabled(1);
     % Compute min and max frequency cut for this time window
-    fBounds = [0, round(1/3 * 1/GlobalData.UserTimeWindow.SamplingRate), 100];
+    fBounds = {0, round(1/3 * 1/GlobalData.UserTimeWindow.SamplingRate), 100};
     % Bound current filters values
-    GlobalData.VisualizationFilters.HighPassValue = bst_saturate(GlobalData.VisualizationFilters.HighPassValue, fBounds);
-    GlobalData.VisualizationFilters.LowPassValue  = bst_saturate(GlobalData.VisualizationFilters.LowPassValue,  fBounds);
+    GlobalData.VisualizationFilters.HighPassValue = bst_saturate(GlobalData.VisualizationFilters.HighPassValue, [fBounds{1}, fBounds{2}]);
+    GlobalData.VisualizationFilters.LowPassValue  = bst_saturate(GlobalData.VisualizationFilters.LowPassValue,  [fBounds{1}, fBounds{2}]);
     % Set validating functions
     gui_validate_text(ctrl.jTextHighpass, [], [], fBounds, 'Hz',     [], GlobalData.VisualizationFilters.HighPassValue,   @(h,ev)ValidateFilters('highpass'));
     gui_validate_text(ctrl.jTextLowpass,  [], [], fBounds, 'Hz',     [], GlobalData.VisualizationFilters.LowPassValue,    @(h,ev)ValidateFilters('lowpass'));

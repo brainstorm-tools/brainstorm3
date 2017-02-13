@@ -305,11 +305,11 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
         % Fixed SNR
         jRadioSnrFix = gui_component('radio', jPanelSnr, [], 'Signal-to-noise ratio: ', jGroupSnr, '', @(h,ev)UpdatePanel(), []);
         jTextSnrFix  = gui_component('texttime', jPanelSnr, [], '', [], '', [], []);
-        gui_validate_text(jTextSnrFix, [], [], [0, 10000, 100], '', 2, OPTIONS.SnrFixed, []);
+        gui_validate_text(jTextSnrFix, [], [], {0, 10000, 100}, '', 2, OPTIONS.SnrFixed, []);
         % Maximum source amplitude
         jRadioSnrRms = gui_component('radio', jPanelSnr, 'br', 'RMS source amplitude: ', jGroupSnr, '', @(h,ev)UpdatePanel(), []);
         jTextSnrRms  = gui_component('texttime', jPanelSnr, [], '', [], '', [], []);
-        gui_validate_text(jTextSnrRms, [], [], [0, 1000000, 100], 'scalar', 2, OPTIONS.SnrRms, []);
+        gui_validate_text(jTextSnrRms, [], [], {0, 1000000, 100}, 'scalar', 2, OPTIONS.SnrRms, []);
         gui_component('label', jPanelSnr, [], 'nAm', [], '', [], []);
         % Default selection
         switch lower(OPTIONS.SnrMethod)

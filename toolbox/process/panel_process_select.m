@@ -809,14 +809,14 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 % Bounds
                 if ismember(option.Type, {'timewindow', 'baseline', 'poststim'})   % || ismember(valUnits, {'s', 'ms', 'time'})
                     if (length(curTimeVector) == 2)
-                        bounds = [curTimeVector(1), curTimeVector(2), 10000];
+                        bounds = {curTimeVector(1), curTimeVector(2), 10000};
                     else
                         bounds = curTimeVector;
                     end
                 elseif strcmpi(option.Type, 'value') && ~isempty(valUnits) && strcmpi(valUnits, 'Hz')
-                    bounds = [0, 100000, valFreq];
+                    bounds = {0, 100000, valFreq};
                 else
-                    bounds = [-1e30, 1e30, valFreq];
+                    bounds = {-1e30, 1e30, valFreq};
                 end
             end
             
@@ -843,8 +843,13 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         initStart = option.Value{1}(1);
                         initStop  = option.Value{1}(2);
                     elseif ~isempty(jCheck)
-                        initStart = bounds(1);
-                        initStop  = bounds(end);
+                        if iscell(bounds)
+                            initStart = bounds{1};
+                            initStop  = bounds{2};
+                        else
+                            initStart = bounds(1);
+                            initStop  = bounds(end);
+                        end
                         jCheck.setSelected(1);
                         jTextMin.setEnabled(0);
                         jTextMax.setEnabled(0);
@@ -892,7 +897,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Set controls callbacks
                     precision = 3;
                     if isempty(FreqList)
-                        bounds = [0, 10000, 1000];
+                        bounds = {0, 10000, 1000};
                         if ~isempty(option.Value) && iscell(option.Value) && ~isempty(option.Value{1})
                             initStart = option.Value{1}(1);
                             initStop  = option.Value{1}(2);
@@ -1045,6 +1050,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, ev.getSource().getSelectedIndex()+1));
                     
                 case 'montage'
+                    % If nothing is loaded: try to load the first data file
+%                     [iDS, ChannelFile] = bst_memory('LoadDataFile', DataFile)
                     % Get all the montage names
                     AllMontages = panel_montage('GetMontage',[]);
                     AllNames = {AllMontages.Name};
