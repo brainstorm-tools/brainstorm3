@@ -1051,10 +1051,23 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     
                 case 'montage'
                     % If nothing is loaded: try to load the first data file
-%                     [iDS, ChannelFile] = bst_memory('LoadDataFile', DataFile)
+                    if isempty(GlobalData.DataSet) && ~isempty(sFiles) && strcmpi(sFiles(1).FileType, 'data')
+                        [iDS, ChannelFile] = bst_memory('LoadDataFile', sFiles(1).FileName);
+                        if ~isempty(iDS)
+                            isLoaded = 1;
+                        else
+                            isLoaded = 0;
+                        end
+                    else
+                        isLoaded = 0;
+                    end
                     % Get all the montage names
                     AllMontages = panel_montage('GetMontage',[]);
                     AllNames = {AllMontages.Name};
+                    % Unload data file
+                    if isLoaded
+                        bst_memory('UnloadDataSets', iDS);
+                    end
                     % Remove some montages
                     iRemove = find(ismember(AllNames, {'Bad channels', 'EOG', 'EMG', 'ExG', 'MISC'}));
                     AllNames(iRemove) = [];
