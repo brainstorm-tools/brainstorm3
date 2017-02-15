@@ -346,6 +346,20 @@ switch (lower(nodeType{1}))
                 iTimefreqDel = iTimefreq(iStudies_timefreq == iStudy);
                 iDipolesDel  = iDipoles(iStudies_dipoles == iStudy);
                 sStudy = bst_get('Study', iStudy);
+                % Update list of bad trials
+                iBad = find([sStudy.Data(iDataDel).BadTrial]);
+                if ~isempty(iBad)
+                    % Load study file
+                    StudyFile = bst_fullfile(ProtocolInfo.STUDIES, sStudy.FileName);
+                    StudyMat = load(StudyFile);
+                    % Remove delete trials
+                    fPath = bst_fileparts(sStudy.FileName);
+                    badFiles = cellfun(@(c)bst_fullfile(fPath, c), StudyMat.BadTrials, 'UniformOutput', 0);
+                    iDel = find(ismember(badFiles, sStudy.Data(iDataDel(iBad)).FileName));
+                    StudyMat.BadTrials(iDel) = [];
+                    % Save list of bad trials in the study file
+                    bst_save(StudyFile, StudyMat, 'v7');
+                end
                 % Remove files descriptions from database
                 sStudy.Data(iDataDel)         = [];
                 sStudy.Result(iResultDel)     = [];

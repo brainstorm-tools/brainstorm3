@@ -60,6 +60,8 @@ end
 %% ===== LOOK FOR STUDY DEFINITION =====
 % List 'brainstormstudy*.mat' files in the studySubDir directory
 studyFiles = dir(bst_fullfile(studiesDir, studySubDir, 'brainstormstudy*.mat'));
+% List all '*.mat' files and subcondition directories in the studySubDir directory 
+allFiles = dir(bst_fullfile(studiesDir, studySubDir, '*'));
 % If there is no subject definition file : ignore the directory (but process subdirectories)
 if isempty(studyFiles)
     studyMat = [];
@@ -104,6 +106,15 @@ if ~isempty(studyMat)
     end
     % Bad trials
     if isfield(studyMat, 'BadTrials')
+        % Remove files that do not exist from the list of bad trials
+        if ~isempty(studyMat.BadTrials)
+            iRemove = find(~ismember(studyMat.BadTrials, {allFiles.name}));
+            if ~isempty(iRemove)
+                studyMat.BadTrials(iRemove) = [];
+                bst_save(bst_fullfile(studiesDir, sStudy(1).FileName), studyMat, 'v7');
+            end
+        end
+        % Keep list of bad trials for parsing the rest of the folder
         BadTrials = studyMat.BadTrials;
     end
     
@@ -119,8 +130,6 @@ end
 
 
 %% ===== READ ALL FILES IN FOLDER =====
-% List all '*.mat' files and subcondition directories in the studySubDir directory 
-allFiles = dir(bst_fullfile(studiesDir, studySubDir, '*'));
 % Exclude from the list of files:
 %    - Files starting with a '.' 
 %    - ANALYSIS INTER directory
