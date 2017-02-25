@@ -80,13 +80,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     for iChanFile = 1:length(AllChannelFiles)
         bst_progress('text', 'Loading input files...');
         % Get the study
-        [sStudy, iStudy] = bst_get('ChannelFile', AllChannelFiles{iChanFile});
+        [sStudyChan, iStudyChan] = bst_get('ChannelFile', AllChannelFiles{iChanFile});
         % Error if there is no head model available
-        if isempty(sStudy.iHeadModel)
-            bst_report('Error', sProcess, [], ['No head model available in folder: ' bst_fileparts(sStudy.FileName)]);
+        if isempty(sStudyChan.iHeadModel)
+            bst_report('Error', sProcess, [], ['No head model available in folder: ' bst_fileparts(sStudyChan.FileName)]);
             continue;
-        elseif isempty(sStudy.NoiseCov) || isempty(sStudy.NoiseCov(1).FileName)
-            bst_report('Error', sProcess, [], ['No noise covariance matrix available in folder: ' bst_fileparts(sStudy.FileName)]);
+        elseif isempty(sStudyChan.NoiseCov) || isempty(sStudyChan.NoiseCov(1).FileName)
+            bst_report('Error', sProcess, [], ['No noise covariance matrix available in folder: ' bst_fileparts(sStudyChan.FileName)]);
             continue;
         end
         % Load channel file
@@ -98,10 +98,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             return;
         end
         % Load head model
-        HeadModelFile = sStudy.HeadModel(sStudy.iHeadModel).FileName;
+        HeadModelFile = sStudyChan.HeadModel(sStudyChan.iHeadModel).FileName;
         HeadModelMat = in_bst_headmodel(HeadModelFile);
         % Load data covariance matrix
-        NoiseCovFile = sStudy.NoiseCov(1).FileName;
+        NoiseCovFile = sStudyChan.NoiseCov(1).FileName;
         NoiseCovMat = load(file_fullpath(NoiseCovFile));
 
         % ===== LOOP ON DATA FILES =====
@@ -114,6 +114,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Load data
             DataFile = sInputs(iChanInputs(iInput)).FileName;
             DataMat = in_bst_data(DataFile);
+            iStudyData = sInputs(iChanInputs(iInput)).iStudy;
             % Remove bad channels
             iBadChan = find(DataMat.ChannelFlag == -1);
             iChannelsData = setdiff(iChannels, iBadChan);
@@ -232,14 +233,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             ResultsMat.cfg           = ftSource.cfg;
             switch lower(ResultsMat.HeadModelType)
                 case 'volume'
-                    ResultsMat.GridLoc    = HeadModelInit.GridLoc;
+                    ResultsMat.GridLoc    = HeadModelMat.GridLoc;
                     % ResultsMat.GridOrient = [];
                 case 'surface'
                     ResultsMat.GridLoc    = [];
                     % ResultsMat.GridOrient = [];
                 case 'mixed'
-                    ResultsMat.GridLoc    = HeadModel.GridLoc;
-                    ResultsMat.GridOrient = HeadModel.GridOrient;
+                    ResultsMat.GridLoc    = HeadModelMat.GridLoc;
+                    ResultsMat.GridOrient = HeadModelMat.GridOrient;
             end
             ResultsMat = bst_history('add', ResultsMat, 'compute', ['ft_sourceanalysis: ' Method ' ' Modality]);
             
@@ -259,11 +260,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             newResult.DataFile      = DataFile;
             newResult.isLink        = 0;
             newResult.HeadModelType = ResultsMat.HeadModelType;
+            % Get output study
+            sStudyData = bst_get('Study', iStudyData);
             % Add new entry to the database
-            iResult = length(sStudy.Result) + 1;
-            sStudy.Result(iResult) = newResult;
+            iResult = length(sStudyData.Result) + 1;
+            sStudyData.Result(iResult) = newResult;
             % Update Brainstorm database
-            bst_set('Study', iStudy, sStudy);
+            bst_set('Study', iStudyData, sStudyData);
             % Store output filename
             OutputFiles{end+1} = newResult.FileName;
             % Expand data node
