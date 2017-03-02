@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+March 2017
+- IO: Add support for Micromed EEG TRC files
+---------------------------------------------------------------
 January 2017
 - Database: Improving the robustness of the list of bad trials
 - Bug fix: Computation of time-frequency maps in folders that include the keyword "_trial"

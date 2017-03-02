@@ -103,6 +103,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Load data covariance matrix
         NoiseCovFile = sStudyChan.NoiseCov(1).FileName;
         NoiseCovMat = load(file_fullpath(NoiseCovFile));
+%%% DATA OR NOISE COVARIANCE ????
 
         % ===== LOOP ON DATA FILES =====
         % Get data files for this channel file
