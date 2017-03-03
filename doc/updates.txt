@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 March 2017
+- GUI: Added option to filter files by the comment of their parents
 - IO: Add support for Micromed EEG TRC files
 ---------------------------------------------------------------
 January 2017

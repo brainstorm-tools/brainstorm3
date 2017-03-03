@@ -85,7 +85,6 @@ if ~isempty(NodelistOptions)
     else
         % Options
         NodelistOptions.isSelect  = strcmpi(NodelistOptions.Action, 'Select');
-        NodelistOptions.isComment = strcmpi(NodelistOptions.Target, 'Comment');
         % Split 
         NodelistOptions.Tags = str_split(NodelistOptions.String, ' ');
         % Convert to lower case
@@ -699,7 +698,7 @@ function isSelected = isFileSelected(FileNames, Comments, NodelistOptions, iStud
     % Default: all the files are selected
     isSelected = true(1, length(FileNames));
     % Results links: Add data comment
-    if NodelistOptions.isComment
+    if strcmpi(NodelistOptions.Target, 'Comment')
         for i = 1:length(FileNames)
             if (nnz(FileNames{i} == '|') == 2)
                 splitFile = str_split(FileNames{i}, '|');
@@ -713,9 +712,65 @@ function isSelected = isFileSelected(FileNames, Comments, NodelistOptions, iStud
                 end
             end
         end
+    % If searching for comment in parent nodes too
+    elseif strcmpi(NodelistOptions.Target, 'Parent')
+        for i = 1:length(FileNames)
+            switch (file_gettype(FileNames{i}))
+                case {'results', 'link'}
+                    % Find the file in database
+                    if ~isempty(iStudy)
+                        [sStudyFile, iStudyFile, iResult] = bst_get('ResultsFile', FileNames{i}, iStudy);
+                    else
+                        [sStudyFile, iStudyFile, iResult] = bst_get('ResultsFile', FileNames{i});
+                    end
+                    % Find the parent in the database
+                    if ~isempty(sStudyFile.Result(iResult).DataFile)
+                        [sStudyParent, iStudyParent, iData] = bst_get('DataFile', sStudyFile.Result(iResult).DataFile, iStudyFile);
+                        if ~isempty(sStudyParent)
+                            Comments{i} = [Comments{i} '|' sStudyParent.Data(iData).Comment];
+                        end
+                    end
+                case 'timefreq'
+                    % Find the file in database
+                    if ~isempty(iStudy)
+                        [sStudyFile, iStudyFile, iTf] = bst_get('TimefreqFile', FileNames{i}, iStudy);
+                    else
+                        [sStudyFile, iStudyFile, iTf] = bst_get('TimefreqFile', FileNames{i});
+                    end
+                    ParentFile = sStudyFile.Timefreq(iTf).DataFile;
+                    % Find the parent in the database
+                    if ~isempty(ParentFile)
+                        switch (file_gettype(ParentFile))
+                            case 'data'
+                                [sStudyParent, iStudyParent, iData] = bst_get('DataFile', ParentFile, iStudyFile);
+                                if ~isempty(sStudyParent)
+                                    Comments{i} = [Comments{i} '|' sStudyParent.Data(iData).Comment];
+                                end
+                            case {'results', 'link'}
+                                [sStudyParent, iStudyParent, iResult] = bst_get('ResultsFile', ParentFile, iStudyFile);
+                                if ~isempty(sStudyParent)
+                                    Comments{i} = [Comments{i} '|' sStudyParent.Result(iResult).Comment];
+                                end
+                                % Add parent of parent
+                                ParentFile = sStudyParent.Result(iResult).DataFile;
+                                if ~isempty(ParentFile)
+                                    [sStudyParent, iStudyParent, iData] = bst_get('DataFile', ParentFile, iStudyFile);
+                                    if ~isempty(sStudyParent)
+                                        Comments{i} = [Comments{i} '|' sStudyParent.Data(iData).Comment];
+                                    end
+                                end
+                            case 'matrix'
+                                [sStudyParent, iStudyParent, iMatrix] = bst_get('MatrixFile', ParentFile, iStudyFile);
+                                if ~isempty(sStudyParent)
+                                    Comments{i} = [Comments{i} '|' sStudyParent.Matrix(iMatrix).Comment];
+                                end
+                        end
+                    end
+            end
+        end
     end
     % Switch comments and file names
-    if NodelistOptions.isComment
+    if ismember(NodelistOptions.Target, {'Comment', 'Parent'})
         FileNames = Comments;
     end
     % Force file names to lower case

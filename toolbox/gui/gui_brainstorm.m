@@ -555,8 +555,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jPopup = java_create('javax.swing.JPopupMenu');
         % What field to search for: {'FileName', 'Comment'}
         groupTarget = java_create('javax.swing.ButtonGroup');
-        jRadioComment  = gui_component('RadioMenuItem', jPopup, [], 'Search comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Comment'));
         jRadioFilename = gui_component('RadioMenuItem', jPopup, [], 'Search file names', groupTarget, [], @(h,ev)SetFilterOption('Target', 'FileName'));
+        jRadioComment  = gui_component('RadioMenuItem', jPopup, [], 'Search comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Comment'));
+        jRadioParent   = gui_component('RadioMenuItem', jPopup, [], 'Search parent comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Parent'));
         jPopup.addSeparator();
         % What to do with the filtered files: {'Select', 'Exclude'}
         groupAction = java_create('javax.swing.ButtonGroup');
@@ -570,6 +571,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         switch (NodelistOptions.Target)
             case 'FileName', jRadioFilename.setSelected(1);
             case 'Comment',  jRadioComment.setSelected(1);
+            case 'Parent',   jRadioParent.setSelected(1);    
         end
         switch (NodelistOptions.Action)
             case 'Select',  jRadioSelect.setSelected(1);

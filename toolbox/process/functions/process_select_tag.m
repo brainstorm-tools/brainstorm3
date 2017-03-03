@@ -50,7 +50,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === FILENAME / COMMENT
     sProcess.options.label1.Comment = 'Where to look for:';
     sProcess.options.label1.Type    = 'label';
-    sProcess.options.search.Comment = {'Search the file names', 'Search the file comments'};
+    sProcess.options.search.Comment = {'Search the file names', 'Search the file comments', 'Search the comments of the parent file'};
     sProcess.options.search.Type    = 'radio';
     sProcess.options.search.Value   = 2;
     % === SELECT / IGNORE
@@ -71,9 +71,13 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
     end
     % Option: Filename/comment
     if isfield(sProcess.options, 'search') && isfield(sProcess.options.search, 'Value') && ~isempty(sProcess.options.search.Value)
-        isFilename = isequal(sProcess.options.search.Value, 1);
+        switch (sProcess.options.search.Value)
+            case 1,  Method = 'filename';
+            case 2,  Method = 'comment';
+            case 3,  Method = 'parent';
+        end
     else
-        isFilename = 0;
+        Method = 'comment';
     end
     % Option: Ignore/select
     if isfield(sProcess.options, 'select') && isfield(sProcess.options.select, 'Value') && ~isempty(sProcess.options.select.Value)
@@ -87,10 +91,10 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
     else
         Comment = 'Ignore';
     end
-    if isFilename
-        Comment = [Comment ' file names with tag: ' tag];
-    else
-        Comment = [Comment ' file comments with tag: ' tag];
+    switch (Method)
+        case 'filename',  Comment = [Comment ' file names with tag: ' tag];
+        case 'comment',   Comment = [Comment ' file comments with tag: ' tag];
+        case 'parent',    Comment = [Comment ' parent comment with tag: ' tag];   
     end
 end
 
@@ -112,9 +116,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Option: Filename/comment
     if isfield(sProcess.options, 'search') && isfield(sProcess.options.search, 'Value') && ~isempty(sProcess.options.search.Value)
-        isFilename = isequal(sProcess.options.search.Value, 1);
+        switch (sProcess.options.search.Value)
+            case 1,  Method = 'filename';
+            case 2,  Method = 'comment';
+            case 3,  Method = 'parent';
+        end
     else
-        isFilename = 0;
+        Method = 'comment';
     end
     % Option: Ignore/select
     if isfield(sProcess.options, 'select') && isfield(sProcess.options.select, 'Value') && ~isempty(sProcess.options.select.Value)
@@ -124,10 +132,44 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     % Search filenames/comments
-    if isFilename
-        isTag = ~cellfun(@(c)isempty(strfind(upper(c),upper(tag))), {sInputs.FileName});
-    else
-        isTag = ~cellfun(@(c)isempty(strfind(upper(c),upper(tag))), {sInputs.Comment});
+    switch (Method)
+        case 'filename'
+            isTag = ~cellfun(@(c)isempty(strfind(upper(c),upper(tag))), {sInputs.FileName});
+        case 'comment'
+            isTag = ~cellfun(@(c)isempty(strfind(upper(c),upper(tag))), {sInputs.Comment});
+        case 'parent'
+            isTag = zeros(1, length(sInputs));
+            upTag = upper(tag);
+            % Search all the parent files one by one
+            for i = 1:length(sInputs)
+                % Do not go further if there is no parent
+                if isempty(sInputs(i).DataFile)
+                    continue;
+                end
+                % What to check depends on the file type
+                switch (file_gettype(sInputs(i).DataFile))
+                    case 'data'
+                        % Find the file in database
+                        [sStudy, iStudy, iData] = bst_get('DataFile', sInputs(i).DataFile, sInputs(i).iStudy);
+                        % Check the comment
+                        isTag(i) = ~isempty(strfind(upper(sStudy.Data(iData).Comment), upTag));
+                    case {'results', 'link'}
+                        % Find the file in database
+                        [sStudy, iStudy, iResult] = bst_get('ResultsFile', sInputs(i).DataFile, sInputs(i).iStudy);
+                        % Check the comment
+                        isTag(i) = ~isempty(strfind(upper(sStudy.Result(iResult).Comment), upTag));
+                        % If the file is not found but there is another parent level
+                        if ~isTag(i) && ~isempty(sStudy.Result(iResult).DataFile) && strcmpi(file_gettype(sStudy.Result(iResult).DataFile), 'data')
+                            [sStudy, iStudy, iData] = bst_get('DataFile', sStudy.Result(iResult).DataFile, sInputs(i).iStudy);
+                            isTag(i) = ~isempty(strfind(upper(sStudy.Data(iData).Comment), upTag));
+                        end
+                    case 'matrix'
+                        % Find the file in database
+                        [sStudy, iStudy, iMatrix] = bst_get('MatrixFile', sInputs(i).DataFile, sInputs(i).iStudy);
+                        % Check the comment
+                        isTag(i) = ~isempty(strfind(upper(sStudy.Matrix(iMatrix).Comment), upTag));
+                end
+            end
     end
     % Ignore or select
     if isSelect
