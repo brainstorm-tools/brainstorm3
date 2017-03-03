@@ -82,6 +82,13 @@ end
 for i = 1:hdr.nsignal
     hdr.signal(i).unknown2 = fread(fid, [1 32], '*char');
 end
+% Unknown record size, determine correct nrec
+if (hdr.nrec == -1)
+    datapos = ftell(fid);
+    fseek(fid, 0, 'eof');
+    endpos = ftell(fid);
+    hdr.nrec = floor((endpos - datapos) / (sum([hdr.signal.nsamples]) * 2));
+end
 % Close file
 fclose(fid);
 
@@ -130,10 +137,6 @@ for i = 1:hdr.nsignal
         end
     end
     hdr.signal(i).sfreq = hdr.signal(i).nsamples ./ hdr.reclen;
-end
-% Preform some checks
-if (hdr.nrec == -1)
-    error('Cannot handle files where the number of recordings is unknown.');
 end
 % Find annotations channel
 iAnnotChans = find(strcmpi({hdr.signal.label}, 'EDF Annotations'));   % Mutliple "EDF Annotation" channels allowed in EDF+
