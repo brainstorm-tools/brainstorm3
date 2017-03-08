@@ -1680,7 +1680,7 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
     if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && isequal(GlobalData.DataSet(iDS).Measures.DataType, 'raw') && ~isempty(GlobalData.DataSet(iDS).Measures.sFile)
         sFile = GlobalData.DataSet(iDS).Measures.sFile;
         % EDF: Wall-clock time
-        if strcmpi(sFile.format, 'EEG-EDF') && isfield(sFile.header, 'startdate') && isfield(sFile.header, 'starttime') && ~isempty(sFile.header.startdate) && ~isempty(sFile.header.starttime)
+        if ismember(sFile.format, {'EEG-EDF', 'EEG-NK'}) && isfield(sFile.header, 'startdate') && isfield(sFile.header, 'starttime') && ~isempty(sFile.header.startdate) && ~isempty(sFile.header.starttime)
             % Read time and date from the fields in the header
             recdate = sFile.header.startdate;
             rectime = sFile.header.starttime;

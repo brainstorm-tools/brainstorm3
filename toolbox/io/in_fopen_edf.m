@@ -348,7 +348,7 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                     t = t(1,:);
                 end
                 % Set event
-                sFile.events(iEvt).label   = uniqueEvt{iEvt};
+                sFile.events(iEvt).label   = strtrim(uniqueEvt{iEvt});
                 sFile.events(iEvt).times   = t;
                 sFile.events(iEvt).samples = round(t .* sFile.prop.sfreq);
                 sFile.events(iEvt).epochs  = 1 + 0*t(1,:);

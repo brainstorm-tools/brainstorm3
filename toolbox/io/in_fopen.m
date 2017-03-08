@@ -91,6 +91,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_neuroscope(DataFile);
     case 'EEG-NEURALYNX'
         [sFile, ChannelMat] = in_fopen_neuralynx(DataFile);
+    case 'EEG-NK'
+        [sFile, ChannelMat] = in_fopen_nk(DataFile);
     case 'EYELINK'
         [sFile, ChannelMat] = in_fopen_eyelink(DataFile);
     case 'NIRS-BRS'
