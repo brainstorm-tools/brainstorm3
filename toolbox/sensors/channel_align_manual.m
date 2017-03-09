@@ -27,7 +27,7 @@ function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 global GlobalData;
 
@@ -643,7 +643,7 @@ end
 
 
 %% ===== GET CURRENT CHANNELMAT =====
-function ChannelMat = GetCurrentChannelMat(isAll)
+function [ChannelMat, newtransf, iChanModified] = GetCurrentChannelMat(isAll)
     global GlobalData gChanAlign;
     % Parse inputs
     if (nargin < 1) || isempty(isAll)
@@ -669,8 +669,10 @@ function ChannelMat = GetCurrentChannelMat(isAll)
     iNirs = good_channel(ChannelMat.Channel, [], 'NIRS');
     if gChanAlign.isMeg || gChanAlign.isNirs
         iEeg = sort([good_channel(ChannelMat.Channel, [], 'EEG'), good_channel(ChannelMat.Channel, [], 'SEEG'), good_channel(ChannelMat.Channel, [], 'ECOG')]);
+        iChanModified = [iMeg iRef iNirs];
     else
         iEeg = good_channel(ChannelMat.Channel, [], gChanAlign.Modality);
+        iChanModified = iEeg;
     end
     % Ask if needed to update also the other modalities
     if isempty(isAll)
@@ -707,6 +709,7 @@ function ChannelMat = GetCurrentChannelMat(isAll)
     else
         iChan = [];
     end
+    iChanModified = union(iChanModified, iChan);
 
     % Apply the rotation and translation to selected sensors
     for i=1:length(iChan)
@@ -793,7 +796,9 @@ function AlignClose_Callback(varargin)
             set(gChanAlign.hFig, 'CloseRequestFcn', gChanAlign.Figure3DCloseRequest_Bak);
             drawnow;
             % Get new positions
-            ChannelMat = GetCurrentChannelMat();
+            [ChannelMat, Transf, iChannels] = GetCurrentChannelMat();
+            % Load original channel file
+            ChannelMatOrig = in_bst_channel(gChanAlign.ChannelFile);
             % Save new electrodes positions in ChannelFile
             bst_save(gChanAlign.ChannelFile, ChannelMat, 'v7');
             % Get study associated with channel file
@@ -802,9 +807,81 @@ function AlignClose_Callback(varargin)
             db_reload_studies(iStudy);
         end
         bst_progress('stop');
+    else
+        SaveChanged = 0;
     end
     % Only close figure
-    gChanAlign.Figure3DCloseRequest_Bak(varargin{:});       
+    gChanAlign.Figure3DCloseRequest_Bak(varargin{:});
+    % Apply to other recordings in the same subject
+    if SaveChanged
+        CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
+    end
+end
+
+
+%% ===== COPY TO OTHER FOLDERS =====
+function CopyToOtherFolders(ChannelMatSrc, iStudySrc, Transf, iChannels)
+    % Confirmation: ask the first time
+    isConfirm = [];
+    % Get subject
+    sStudySrc = bst_get('Study', iStudySrc);
+    [sSubject, iSubject] = bst_get('Subject', sStudySrc.BrainStormSubject);
+    % If the subject is configured to share its channel files, nothing to do
+    if (sSubject.UseDefaultChannel >= 1)
+        return;
+    end
+    % Get positions of all the sensors
+    locSrc = [ChannelMatSrc.Channel.Loc];
+    % Get all the dependent studies
+    [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
+    % List of channel files to update
+    ChannelFiles = {};
+    strMsg = '';
+    % Loop on the other folders
+    for i = 1:length(sStudies)
+        % Skip original study
+        if (iStudies(i) == iStudySrc)
+            continue;
+        end
+        % Skip studies without channel files
+        if isempty(sStudies(i).Channel) || isempty(sStudies(i).Channel(1).FileName)
+            return;
+        end
+        % Load channel file
+        ChannelMatDest = in_bst_channel(sStudies(i).Channel(1).FileName);
+        % Get positions of all the sensors
+        locDest = [ChannelMatDest.Channel.Loc];
+        % Check if the channel files are similar
+        if (length(ChannelMatDest.Channel) ~= length(ChannelMatSrc.Channel)) || (size(locDest,2) ~= size(locSrc,2))
+            return;
+        end
+        % Check if the positions of the sensors are similar
+        distLoc = sqrt((locDest(1,:) - locSrc(1,:)).^2 + (locDest(2,:) - locSrc(2,:)).^2 + (locDest(3,:) - locSrc(3,:)).^2);
+        % If the sensors are more than 5mm apart in average: skip
+        if any(distLoc > 0.005) 
+            return;
+        end
+        % Ask confirmation to the user
+        if isempty(isConfirm)
+            isConfirm = java_dialog('confirm', 'Apply the same transformation to all the other datasets in the same subject?', 'Align sensors');
+            if ~isConfirm
+                return;
+            end
+        end
+        % Add channel file to list of files to process
+        ChannelFiles{end+1} = sStudies(i).Channel(1).FileName;
+        strMsg = [strMsg, sStudies(i).Channel(1).FileName, 10];
+    end
+    % Apply transformation
+    if ~isempty(ChannelFiles)
+        % Progress bar
+        bst_progress('start', 'Align sensors', 'Updating other datasets...');
+        % Update files
+        channel_apply_transf(ChannelFiles, Transf, iChannels, 1);
+        % Give report to the user
+        bst_progress('stop');
+        java_dialog('msgbox', sprintf('Updated %d additional file(s):\n%s', length(ChannelFiles), strMsg));
+    end
 end
 
 
