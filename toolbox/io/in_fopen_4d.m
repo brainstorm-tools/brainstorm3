@@ -57,7 +57,7 @@ end
 % Get a meaningful folder name for the database explorer
 [dirParent, name4d] = bst_fileparts(dir4d);
 if ~isequal(name4d, '4D')
-    Condition = dir4d;
+    Condition = name4d;
 else
     [dirParent, Condition] = bst_fileparts(dirParent);
 end
