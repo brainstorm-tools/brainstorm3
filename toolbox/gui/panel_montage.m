@@ -1771,6 +1771,9 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
         for iGroup = 1:length(iEeg)
             % Get the electrodes for this group
             iChan = iEeg{iGroup};
+            if isempty(iChan)
+                continue;
+            end
             ChanNames = {ChannelMat.Channel(iChan).Name};
             Mod = upper(ChannelMat.Channel(iChan(1)).Type);
 
