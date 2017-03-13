@@ -74,7 +74,7 @@ if (numel(F) < nReadTimes * nReadChannels)
     F = Ftmp;
 end
 % Apply gains
-chan = sFile.header.chanInFile(ChannelsRange(1):ChannelsRange(2));
+chan = sFile.header.electrode(ChannelsRange(1):ChannelsRange(2));
 F = bst_bsxfun(@minus,   F, [chan.logicGround]');
 F = bst_bsxfun(@rdivide, F, [chan.logicMax]' - [chan.logicMin]' + 1);
 F = bst_bsxfun(@times,   F, [chan.physicalMin]' - [chan.physicalMax]');

@@ -134,16 +134,16 @@ hdr.trigger_area.start  = fread(fid, 1, 'ulong');
 hdr.trigger_area.length = fread(fid, 1, 'ulong');
 % reserved_2 = fread(fid, 224, 'uchar');
 
-% Read channels
-fseek(fid, hdr.code_area.start, -1);
-MAX_CAN = 256; 
-for iChannel = 1:MAX_CAN
+% Read channel order
+fseek(fid, hdr.code_area.start, 'bof');
+for iChannel = 1:hdr.num_channels
     hdr.code(iChannel) = fread(fid, 1, 'ushort');
 end
-% Read electrode info
-MAX_LAB = 640; 
-for iChannel = 1:MAX_LAB
-    fseek(fid, hdr.electrode_area.start + 128 * (iChannel - 1), -1);
+
+% Read electrodes info
+for iChannel = 1:hdr.num_channels      % Instead of 1:MAX_LAB (MAX_LAB = 640)
+    % Read channel info (re-ordered by "code")
+    fseek(fid, hdr.electrode_area.start + 128 * (hdr.code(iChannel) - 1), -1);
     % Channel status
     hdr.electrode(iChannel).status = fread(fid, 1, 'uchar');  % 0=not acquired, 1=acquired
     % Channel type
@@ -155,8 +155,8 @@ for iChannel = 1:MAX_LAB
     hdr.electrode(iChannel).NIL = strtrim(fread(fid, [1 6], '*char'));
     % Reference
     if bitget(channelType, 1)
-        hdr.electrode(iChannel).reference = ['Bipolar ' hdr.electrode(iChannel).PIL '-' hdr.electrode(iChannel).NIL];
-        hdr.electrode(iChannel).label     = [hdr.electrode(iChannel).PIL '-' hdr.electrode(iChannel).NIL];
+        hdr.electrode(iChannel).reference = ['Bipolar ' hdr.electrode(iChannel).PIL '/' hdr.electrode(iChannel).NIL];
+        hdr.electrode(iChannel).label     = strrep(hdr.electrode(iChannel).PIL, '+', '');  % [hdr.electrode(iChannel).PIL '-' hdr.electrode(iChannel).NIL];
     else
         hdr.electrode(iChannel).reference = ['Referred to ' hdr.electrode(iChannel).NIL];
         hdr.electrode(iChannel).label     = hdr.electrode(iChannel).PIL;
@@ -177,6 +177,8 @@ for iChannel = 1:MAX_LAB
     end
     if ~isempty(hdr.electrode(iChannel).type)
         hdr.electrode(iChannel).type = hdr.electrode(iChannel).type(1:end-1);
+    elseif bitget(channelType, 1)
+        hdr.electrode(iChannel).type = 'BIP';
     end
     % Logic minimum
     hdr.electrode(iChannel).logicMin = fread(fid, 1, 'long');
@@ -219,22 +221,6 @@ for iChannel = 1:MAX_LAB
     hdr.electrode(iChannel).Coordinate_Type  = fread(fid, 1, 'short');
     hdr.electrode(iChannel).Free             = char(fread(fid, 24, 'char')');
 end
-% Get and reorder the channels in the file
-iChanInFile = 0;
-hdr.chanInFile = hdr.electrode;
-chanPos = zeros(MAX_LAB, 1);
-for iChannel = 1 : MAX_LAB
-    if hdr.electrode(iChannel).status == 1
-        iChanInFile = iChanInFile + 1;
-        hdr.chanInFile(iChanInFile) = hdr.electrode(iChannel);
-        chanPos(iChanInFile) = hdr.chanInFile(iChanInFile).Position;
-    end
-end
-nChanInFile = iChanInFile;
-chanPos = chanPos(1:nChanInFile);
-[tmp, IChanPos] = sort(chanPos);
-hdr.chanInFile  = hdr.chanInFile(IChanPos);
-hdr.nChanInFile = nChanInFile;
 
 % Notes
 fseek(fid, hdr.note_area.start, -1);
@@ -420,7 +406,7 @@ nChannels = hdr.num_channels;
 ChannelMat.Comment = [sFile.device ' channels'];
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
 % Separate channels with different amplitude ranges
-allGains = [sFile.header.chanInFile.unit_gain];
+allGains = [sFile.header.electrode.unit_gain];
 minGain = min(allGains);
 % For each channel
 for iChan = 1:nChannels
@@ -428,12 +414,12 @@ for iChan = 1:nChannels
     if ~isempty(hdr.electrode(iChan).type)
         ChannelMat.Channel(iChan).Type = hdr.electrode(iChan).type;
     else
-        if (sFile.header.chanInFile(iChan).unit_gain == minGain)
+        if (sFile.header.electrode(iChan).unit_gain == minGain)
             ChannelMat.Channel(iChan).Type = 'EEG';
-        elseif strcmp(sFile.header.chanInFile(iChan).units, '%')
+        elseif strcmp(sFile.header.electrode(iChan).units, '%')
             ChannelMat.Channel(iChan).Type = 'PERCENT';
         else
-            ChannelMat.Channel(iChan).Type = upper(sFile.header.chanInFile(iChan).units);
+            ChannelMat.Channel(iChan).Type = upper(sFile.header.electrode(iChan).units);
         end
     end
     % Name
@@ -448,9 +434,9 @@ for iChan = 1:nChannels
     % Group: useful for SEEG setups
     %%%% TODO
     % Position
-    ChannelMat.Channel(iChan).Loc = [sFile.header.chanInFile(iChan).x; ...
-                                     sFile.header.chanInFile(iChan).y; ...
-                                     sFile.header.chanInFile(iChan).z];
+    ChannelMat.Channel(iChan).Loc = [sFile.header.electrode(iChan).x; ...
+                                     sFile.header.electrode(iChan).y; ...
+                                     sFile.header.electrode(iChan).z];
     % Comment = reference
     ChannelMat.Channel(iChan).Comment = hdr.electrode(iChan).reference;
     % Fields that are not relevant here
