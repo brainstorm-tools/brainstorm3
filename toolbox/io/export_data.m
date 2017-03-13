@@ -119,6 +119,7 @@ if isempty(ExportFile)
     switch (DefaultFormats.DataOut)
         case {'', 'BST-BIN'},   DefaultExt = '.bst';
         case 'FT-TIMELOCK',     DefaultExt = '.mat';
+        case 'SPM-DAT',         DefaultExt = '.mat';
         case 'EEG-CARTOOL-EPH', DefaultExt = '.eph';
         case 'EEG-EGI-RAW',     DefaultExt = '.raw';
         case 'ASCII-CSV',       DefaultExt = '.csv';
@@ -191,7 +192,7 @@ if isRawIn
     ImportOptions.RemoveBaseline  = 'no';
 end
 % Output data as raw file (continuous writers routines)
-isRawOut = ismember(FileFormat, {'BST-BIN', 'EEG-EGI-RAW'});
+isRawOut = ismember(FileFormat, {'BST-BIN', 'EEG-EGI-RAW', 'SPM-DAT'});
 % Open output file 
 if isRawOut
     sFileOut = out_fopen(ExportFile, FileFormat, sFileIn, ChannelMat);

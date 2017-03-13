@@ -25,7 +25,7 @@ function [sFileOut, errMsg] = out_fopen(RawFile, FileFormat, sFileIn, ChannelMat
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2017
 
 % Output variables
 sFileOut = [];
@@ -41,6 +41,8 @@ try
             sFileOut = out_fopen_egi(RawFile, sFileIn, ChannelMat);
         case 'BST-BIN'
             sFileOut = out_fopen_bst(RawFile, sFileIn, ChannelMat, EpochSize);
+        case 'SPM-DAT'
+            sFileOut = out_fopen_spm(RawFile, sFileIn, ChannelMat);
         case 'FIF'
             error('copy input file');
         case 'CTF-CONTINUOUS'

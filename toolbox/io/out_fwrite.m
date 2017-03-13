@@ -45,7 +45,7 @@ if isChanRange
         ChannelRange = [];
     else
         ChannelRange = [iChannels(1), iChannels(end)];
-        if ~isequal(ChannelRange(1):ChannelRange(2), iChannels);
+        if ~isequal(ChannelRange(1):ChannelRange(2), iChannels)
             error('Cannot write non-consecutive channels.');
         end
     end
@@ -54,7 +54,7 @@ end
 
 %% ===== OPEN FILE =====
 % Except for CTF, because file is open in the out_fwrite_ctf function (to handle multiple .meg4 files)
-if ~strcmpi(sFile.format, 'CTF-CONTINUOUS')
+if ~ismember(sFile.format, {'CTF-CONTINUOUS', 'SPM-DAT'})
     % If file does not exist: Create it
     if ~file_exist(sFile.filename)
         sfid = fopen(sFile.filename, 'w', sFile.byteorder);
@@ -90,6 +90,8 @@ switch (sFile.format)
         out_fwrite_egi(sFile, sfid, SamplesBounds, ChannelRange, F);
     case 'BST-BIN'
         out_fwrite_bst(sFile, sfid, SamplesBounds, ChannelRange, F);
+    case 'SPM-DAT'
+        out_fwrite_spm(sFile, SamplesBounds, iChannels, F);
     case 'FIF'
         out_fwrite_fif(sFile, sfid, iEpoch, SamplesBounds, iChannels, F);
     case 'CTF-CONTINUOUS'

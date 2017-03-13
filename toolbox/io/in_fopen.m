@@ -99,6 +99,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile);
     case 'BST-BIN'
         [sFile, ChannelMat] = in_fopen_bst(DataFile);
+    case 'SPM-DAT'
+        [sFile, ChannelMat] = in_fopen_spm(DataFile);
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);

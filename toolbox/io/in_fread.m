@@ -160,6 +160,8 @@ switch (sFile.format)
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
+    case 'SPM-DAT'
+        F = in_fread_spm(sFile, SamplesBounds, iChannels);
     case 'BST-BIN'
         F = in_fread_bst(sFile, sfid, SamplesBounds, ChannelRange);
     case 'BST-DATA'
