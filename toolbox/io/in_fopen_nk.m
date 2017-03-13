@@ -159,7 +159,7 @@ if ~isempty(LogFile)
     for i = 1:n_logblocks
         % Read number of logs in this block
         fseek(fid, 146 + ((i-1) * 20) , 'bof');
-        logblock_address = fread(fid, 1, 'uint32'); % fread((char *)(&logblock_address), 4, 1, logfile)
+        logblock_address = fread(fid, 1, 'uint32');
         fseek(fid, logblock_address + 18, 'bof');
         n_logs = fread(fid, 1, 'uint8');
         % Initialization
@@ -169,28 +169,32 @@ if ~isempty(LogFile)
         % Read all the events
         for j = 1:n_logs
             hdr.logs(i).label{j} = strtrim(fread(fid, [1 20], '*char'));
-            evtTime = fread(fid, [1 6], 'uint8');
-            hdr.logs(i).time(j) = sum(evtTime .* [36000 3600 600 60 10 1]);
+            hdr.logs(i).label{j}(hdr.logs(i).label{j} == 0) = [];
+            timeH = str2double(fread(fid, [1 2], '*char'));
+            timeM = str2double(fread(fid, [1 2], '*char'));
+            timeS = str2double(fread(fid, [1 2], '*char'));
+            hdr.logs(i).time(j) = 60*60*timeH + 60*timeM + timeS;
+            hdr.logs(i).label2{j} = strtrim(fread(fid, [1 19], '*char'));
         end
             
-%         % Read logs
-%         fseek(fid, logblock_address + 20, 'bof');
-%         log_buf(total_logs * 45 + (1:n_logs * 45)) = fread(fid, n_logs * 45, 'uint8');
-%         % Read sub-events
-%         try
-%             % Read number of sub-logs
-%             fseek(fid, 146 + (((i-1) + 22) * 20) , 'bof');
-%             logblock_address = fread(fid, 1, 'uint32'); % fread((char *)(&logblock_address), 4, 1, logfile)
-%             fseek(fid, logblock_address + 18, 'bof');
-%             n_sublogs = fread(fid, 1, 'uint8');
-%             % Read sub-logs
-%             if (n_sublogs == n_logs)
-%                 fseek(fid, logblock_address + 20, 'bof');
-%                 sublog_buf(total_logs * 45 + (1:n_logs * 45)) = fread(fid, n_logs * 45, 'uint8');
-%             end
-%         catch
-%             disp('NK> Could not read sub-events.');
-%         end
+        % Read sub-events
+        try
+            % Read number of sub-logs
+            fseek(fid, 146 + (((i-1) + 22) * 20) , 'bof');
+            sublogblock_address = fread(fid, 1, 'uint32');
+            fseek(fid, sublogblock_address + 18, 'bof');
+            n_sublogs = fread(fid, 1, 'uint8');
+            % Read sub-logs
+            if (n_sublogs == n_logs)
+                fseek(fid, sublogblock_address + 20, 'bof');
+                for j = 1:n_logs
+                    hdr.logs(i).sublog{j} = strtrim(fread(fid, [1 45], '*char'));
+                    hdr.logs(i).time(j) = hdr.logs(i).time(j) + str2double(['0.' hdr.logs(i).sublog{j}(25:30)]);
+                end
+            end
+        catch
+            disp('NK> Could not read sub-events.');
+        end
         total_logs = total_logs + n_logs;
     end
     % Close file
@@ -277,6 +281,31 @@ sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.num_channels,1);
+
+
+%% ===== EVENTS =====
+% Get all the event types
+evtList = hdr.logs(1).label;
+% Events list
+[uniqueEvt, iUnique] = unique(evtList);
+uniqueEvt = evtList(sort(iUnique));
+% Initialize events list
+sFile.events = repmat(db_template('event'), 1, length(uniqueEvt));
+% Build events list
+for iEvt = 1:length(uniqueEvt)
+    % Find all the occurrences of this event
+    iOcc = find(strcmpi(uniqueEvt{iEvt}, evtList));
+    % Concatenate all times
+    t = hdr.logs(1).time(iOcc);
+    % Set event
+    sFile.events(iEvt).label   = strtrim(uniqueEvt{iEvt});
+    sFile.events(iEvt).times   = t;
+    sFile.events(iEvt).samples = round(t .* sFile.prop.sfreq);
+    sFile.events(iEvt).epochs  = 1 + 0*t(1,:);
+    sFile.events(iEvt).select  = 1;
+end
+
+
 
 
 end
