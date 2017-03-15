@@ -23,6 +23,11 @@ function F = in_fread_spm(sFile, SamplesBounds, iChannels)
 %
 % Authors: Francois Tadel, 2017
 
+% Check if SPM is in the path
+if ~exist('file_array', 'file')
+    error('SPM must be in the Matlab path to use this feature.');
+end
+
 % Parse inputs
 if (nargin < 3) || isempty(iChannels)
     iChannels = 1:sFile.header.nChannels;
