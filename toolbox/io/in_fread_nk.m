@@ -78,6 +78,7 @@ if (numel(F) < nReadTimes * nReadChannels)
 end
 
 % Apply channel gains
+F = F - 32768;
 F = bst_bsxfun(@times, F, sFile.header.channel_gains(ChannelsRange(1):ChannelsRange(2))');
 
 

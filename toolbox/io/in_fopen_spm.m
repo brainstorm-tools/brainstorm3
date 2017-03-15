@@ -75,7 +75,13 @@ ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
 % Loop on each channel
 for i = 1:nChannels
     sFile.channelflag(i) = D.channels(i).bad;
-    ChannelMat.Channel(i).Name = D.channels(i).label{1};
+    if iscell(D.channels(i).label) && ~isempty(D.channels(i).label)
+        ChannelMat.Channel(i).Name = D.channels(i).label{1};
+    elseif ischar(D.channels(i).label) && ~isempty(D.channels(i).label)
+        ChannelMat.Channel(i).Name = D.channels(i).label;
+    else
+        disp(sprintf('BST> Warning: No information avaible for channel #%d.', i));
+    end
     ChannelMat.Channel(i).Type = upper(D.channels(i).type);
     % Check if more details are available
     if isfield(D, 'sensors') && isfield(D.sensors, 'eeg') && isfield(D.sensors.eeg, 'label')
@@ -94,32 +100,33 @@ end
 
 
 %% ===== EVENTS =====
-% Get all the event types
-evtList = {D.trials.events.type};
-% Events list
-[uniqueEvt, iUnique] = unique(evtList);
-uniqueEvt = evtList(sort(iUnique));
-% Initialize events list
-sFile.events = repmat(db_template('event'), 1, length(uniqueEvt));
-% Build events list
-for iEvt = 1:length(uniqueEvt)
-    % Find all the occurrences of this event
-    iOcc = find(strcmpi(uniqueEvt{iEvt}, evtList));
-    % Concatenate all times
-    t = [D.trials.events(iOcc).time];
-    % If there is a duration: add it
-    occDuration = [D.trials.events(iOcc).duration];
-    if (length(occDuration) == length(t))
-        t(2,:) = t(1,:) + occDuration;
+if isfield(D, 'trials') && isfield(D.trials, 'events') && isfield(D.trials.events, 'type')
+    % Get all the event types
+    evtList = {D.trials.events.type};
+    % Events list
+    [uniqueEvt, iUnique] = unique(evtList);
+    uniqueEvt = evtList(sort(iUnique));
+    % Initialize events list
+    sFile.events = repmat(db_template('event'), 1, length(uniqueEvt));
+    % Build events list
+    for iEvt = 1:length(uniqueEvt)
+        % Find all the occurrences of this event
+        iOcc = find(strcmpi(uniqueEvt{iEvt}, evtList));
+        % Concatenate all times
+        t = [D.trials.events(iOcc).time];
+        % If there is a duration: add it
+        occDuration = [D.trials.events(iOcc).duration];
+        if (length(occDuration) == length(t))
+            t(2,:) = t(1,:) + occDuration;
+        end
+        % Set event
+        sFile.events(iEvt).label   = strtrim(uniqueEvt{iEvt});
+        sFile.events(iEvt).times   = t;
+        sFile.events(iEvt).samples = round(t .* sFile.prop.sfreq);
+        sFile.events(iEvt).epochs  = 1 + 0*t(1,:);
+        sFile.events(iEvt).select  = 1;
     end
-    % Set event
-    sFile.events(iEvt).label   = strtrim(uniqueEvt{iEvt});
-    sFile.events(iEvt).times   = t;
-    sFile.events(iEvt).samples = round(t .* sFile.prop.sfreq);
-    sFile.events(iEvt).epochs  = 1 + 0*t(1,:);
-    sFile.events(iEvt).select  = 1;
 end
-
 
 
 

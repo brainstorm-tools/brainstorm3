@@ -1690,7 +1690,12 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
             rectime = str2num(rectime);
             % Valid times where found
             if (length(recdate) == 3) && (length(rectime) == 3) && ~isequal(recdate, [1 1 1]) && ~isequal(recdate, [0 0 0])
-                dstart = datenum(2000 + recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
+                if strcmpi(sFile.format, 'EEG-EDF')
+                    yOffset = 2000;
+                else
+                    yOffset = 0;
+                end
+                dstart = datenum(yOffset + recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
                 dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
                 dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
             end

@@ -211,8 +211,8 @@ ChannelMat = in_channel_nk(ElecFile);
 %   - mV for all the others
 %   - Calibration = (Physical_max - Physical_min) ./ (Digital_max - Digital_min)
 iChanMicro = [1:42, 75, 76, 79:256];
-chanGains = 1e-3 * ones(1,256) * (24005.46 / 65535);
-chanGains(iChanMicro) = 1e-6 * (6399.902 / 65535);
+chanGains = 1e-3 * ones(1,256) * ((12002.56+12002.9) / (32767 + 32768));
+chanGains(iChanMicro) = 1e-6 * ((3199.902+3200) / (32767 + 32768));
 
 % Keep only the channels saved in the file
 iSelChannels = hdr.ctlblock(1).datablock(iBlock).channel_list;
