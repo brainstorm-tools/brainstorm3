@@ -77,7 +77,7 @@ if IS_BIN
     % Clear command window
     clc
     % JDK folder
-    jdkDir = 'C:\Program Files\Java\jdk1.8.0_121';
+    jdkDir = 'C:\Program Files\Java\jdk1.7.0_80';
     % Set JAVA_HOME environment variable
     setenv('JAVA_HOME', jdkDir);
     % Javabuilder output
