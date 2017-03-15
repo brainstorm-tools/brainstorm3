@@ -28,7 +28,7 @@ function varargout = gui_layout(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -981,5 +981,30 @@ function LoadSetup(iSetup)
 end
 
 
-
-
+%% ===== UPDATE MAXIMUM BST WINDOW SIZE =====
+function UpdateMaxBstSize() %#ok<DEFNU>
+    % Get screen definition
+    jBstFrame = bst_get('BstFrame');
+    ScreenDef = bst_get('ScreenDef');
+    sLayout   = bst_get('Layout');
+    nbScreens = length(ScreenDef);
+    
+    % Max size for Brainstorm window
+    if ~isempty(jBstFrame) && ~isempty(ScreenDef)
+        % Detect on which screen was Brainstorm window at the previous session
+        if (length(ScreenDef) > 1) && (sLayout.MainWindowPos(1) >= ScreenDef(2).javaPos.getX())
+            javaMax = ScreenDef(2).javaPos;
+        else
+            javaMax = ScreenDef(1).javaPos;
+        end
+        % One screen: Half size
+        if (nbScreens == 1)
+            jBstFrame.setMaximumSize(java.awt.Dimension(javaMax.getWidth() / 2, javaMax.getHeight()));
+            jBstFrame.setMaximizedBounds(java.awt.Rectangle(0,0,javaMax.getWidth() / 2, javaMax.getHeight()));
+        % More screens: No limit
+        else
+            jBstFrame.setMaximumSize([]);
+            jBstFrame.setMaximizedBounds([]);
+        end
+    end
+end

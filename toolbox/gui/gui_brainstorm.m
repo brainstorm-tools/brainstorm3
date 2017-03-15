@@ -387,9 +387,11 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Set window size and location
         jBstFrame.setLocation(defPos(1), defPos(2));
         jBstFrame.setSize(defPos(3), defPos(4));
-        % Max size for window: half size of the screen
-        jBstFrame.setMaximumSize(Dimension(javaMax.getWidth() / 2, javaMax.getHeight()));
-        jBstFrame.setMaximizedBounds(Rectangle(0,0,javaMax.getWidth() / 2, javaMax.getHeight()));
+% ===== SECTION MOVED TO GUI_LAYOUT =====
+%         % Max size for window: half size of the screen for one screen, no limit for two screens
+%         jBstFrame.setMaximumSize(Dimension(javaMax.getWidth() / 2, javaMax.getHeight()));
+%         jBstFrame.setMaximizedBounds(Rectangle(0,0,javaMax.getWidth() / 2, javaMax.getHeight()));
+% =======================================
         % Set Split panels divider location
         jSplitH.setDividerLocation(uint32(round(defPos(4) - 240)));
         jSplitV.setDividerLocation(uint32(round(defPos(3) - 260)));

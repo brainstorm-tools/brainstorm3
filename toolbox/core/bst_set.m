@@ -181,8 +181,10 @@ switch contextName
     case 'Layout'
         if (nargin == 2) && isstruct(contextValue)
             GlobalData.Preferences.Layout = contextValue;
+            isUpdateScreens = 0;
         elseif (nargin == 3) && ischar(contextValue) && isfield(GlobalData.Preferences, 'Layout') && isfield(GlobalData.Preferences.Layout, contextValue)
             GlobalData.Preferences.Layout.(contextValue) = varargin{3};
+            isUpdateScreens = strcmpi(contextValue, 'DoubleScreen');
         else
             error('Invalid call to bst_set.');
         end
@@ -190,6 +192,10 @@ switch contextName
         GlobalData.Program.ScreenDef = gui_layout('GetScreenClientArea');
         % Update layout right now
         gui_layout('Update');
+        % If the number of screen was changed: update the maximum size of the Brainstorm window
+        if isUpdateScreens
+            gui_layout('UpdateMaxBstSize');
+        end
         
     % USAGE: bst_set('FixedScaleY', [])
     %        bst_set('FixedScaleY', Modality, Value)

@@ -59,3 +59,7 @@ gui_show('panel_scout', 'BrainstormTab', 'tools');
 % Select first tools panel
 gui_brainstorm('SetSelectedTab', 'Record');
 
+% Update maximum brainstorm window size
+gui_layout('UpdateMaxBstSize');
+
+
