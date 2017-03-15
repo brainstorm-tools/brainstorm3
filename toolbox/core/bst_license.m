@@ -19,17 +19,26 @@ function isOk = bst_license()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2010
+% Authors: Francois Tadel, 2008-2017
 
 % Initializations
 import java.awt.*;
 import javax.swing.*;
+import javax.swing.text.*;
 import org.brainstorm.icon.*;
 isOk = 0;
-% Get images path
-img_path = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc');
+% Get doc path
+docPath = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc');
 % Background color
 bgColor = Color(0.2039, 0.3059, 0.4275);
+
+% ===== READ LICENSE FILE =====
+% Read license file
+fid = fopen(fullfile(docPath, 'license.html'), 'r');
+strLicense = char(fread(fid, Inf, 'char')');
+fclose(fid);
+% Add some attributes
+strLicense = strrep(strLicense, '<body', '<body style="color: rgb(190, 203, 149); background-color: rgb(52, 78, 109);"');
 
 % ===== DIALOG INITIALIZATION =====
 % Main JFrame
@@ -47,7 +56,7 @@ jPanelMain = jFrame.getContentPane();
 jPanelHeader = gui_component('Panel');
 jPanelHeader.setBackground(bgColor);
     % Get logo filename
-    logo_file = bst_fullfile(img_path, 'logo_license.gif');
+    logo_file = bst_fullfile(docPath, 'logo_license.gif');
     % Image in label
     jLabel = JLabel();
     jLabel.setIcon(javax.swing.ImageIcon(logo_file));
@@ -55,17 +64,16 @@ jPanelHeader.setBackground(bgColor);
 jPanelMain.add(jPanelHeader, BorderLayout.NORTH);
 
 % === LICENSE TEXT AREA ===
-% Get logo filename
-license_file = bst_fullfile(img_path, 'license.html');
 % Create HTML viewer component
 jTextLicense = JEditorPane();
-jTextLicense.setPage(java.net.URL(['file:///' license_file]));
+jTextLicense.setContentType('text/html');
+jTextLicense.setText(strLicense);
 jTextLicense.setEditable(false);
 jTextLicense.setBackground(bgColor);
 java_setcb(jTextLicense, 'HyperlinkUpdateCallback', @HyperTextUpdate);
 jScrollText = JScrollPane(jTextLicense);
 jPanelMain.add(jScrollText, BorderLayout.CENTER);
-        
+
 % === AGREE BUTTONS ===
 jPanelAgree = gui_river([10,10], [10,20,0,20]);
 jPanelAgree.setPreferredSize(Dimension(500, 60));
