@@ -283,8 +283,15 @@ if IS_BIN
     copyfile(fullfile(compilerDir, classFile), destFolder);
     % Copy application runner
     classFile = fullfile(deployDir, ReleaseName, 'brainstorm_run', 'org', 'brainstorm', 'RunCompiled.class');
-    destFolder = fullfile(jarDir, 'org', 'brainstorm');
-    copyfile(classFile, destFolder);
+    if file_exist(classFile)
+        destFolder = fullfile(jarDir, 'org', 'brainstorm');
+        copyfile(classFile, destFolder);
+    else
+        disp(['WARNING: Packaging without the installation runner, you must:' 10 ... 
+              ' - Create and compile the Java project brainstorm_run_2017a' 10 ...
+              ' - Copy RunCompiled.class to the packaging folder: ' 10 ...
+              '   brainstorm3_deploy\R2016b\brainstorm_run\org\brainstorm']);
+    end
     % Re-jar files together
     bstJar = fullfile(binDir, 'brainstorm3.jar');
     if file_exist(bstJar)

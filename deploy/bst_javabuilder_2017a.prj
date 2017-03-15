@@ -1,6 +1,6 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="805395868" file="C:\Work\Dev\brainstorm3\deploy\bst_javabuilder_2016b.prj" location="C:\Work\Dev\brainstorm3\deploy" name="bst_javabuilder_2016b" target="target.ezdeploy.library" target-name="Library Compiler">
-    <param.appname>bst_javabuilder_2016b</param.appname>
+  <configuration build-checksum="805395868" file="C:\Work\Dev\brainstorm3\deploy\bst_javabuilder_2017a.prj" location="C:\Work\Dev\brainstorm3\deploy" name="bst_javabuilder_2017a" target="target.ezdeploy.library" target-name="Library Compiler">
+    <param.appname>bst_javabuilder_2017a</param.appname>
     <param.icon />
     <param.icons />
     <param.version>1.0</param.version>
@@ -11,14 +11,14 @@
     <param.description />
     <param.screenshot />
     <param.guid />
-    <param.installpath.string>\McGill University\bst_javabuilder_2016b\</param.installpath.string>
+    <param.installpath.string>\McGill University\bst_javabuilder_2017a\</param.installpath.string>
     <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
     <param.logo />
     <param.install.notes />
     <param.target.install.notes />
-    <param.intermediate>C:\Work\Dev\brainstorm3_deploy\R2016b\bst_javabuilder\for_testing</param.intermediate>
-    <param.files.only>C:\Work\Dev\brainstorm3_deploy\R2016b\bst_javabuilder\for_redistribution_files_only</param.files.only>
-    <param.output>C:\Work\Dev\brainstorm3_deploy\R2016b\bst_javabuilder\for_redistribution</param.output>
+    <param.intermediate>C:\Work\Dev\brainstorm3_deploy\R2017a\bst_javabuilder\for_testing</param.intermediate>
+    <param.files.only>C:\Work\Dev\brainstorm3_deploy\R2017a\bst_javabuilder\for_redistribution_files_only</param.files.only>
+    <param.output>C:\Work\Dev\brainstorm3_deploy\R2017a\bst_javabuilder\for_redistribution</param.output>
     <param.enable.clean.build>false</param.enable.clean.build>
     <param.user.defined.mcr.options />
     <param.embed.ctf>true</param.embed.ctf>
@@ -112,18 +112,18 @@
       <file>C:\Work\Dev\brainstorm3\external</file>
       <file>C:\Work\Dev\brainstorm3\java</file>
       <file>C:\Work\Dev\brainstorm3\toolbox</file>
-      <file>C:\Work\Dev\brainstorm3_deploy\R2016b\sigproc</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\R2017a\sigproc</file>
     </fileset.resources>
     <fileset.depfun />
     <fileset.package />
     <build-deliverables>
-      <file location="C:\Work\Dev\brainstorm3_deploy\R2016b\bst_javabuilder\for_testing" name="bst_javabuilder_2016b.jar" optional="false">C:\Work\Dev\brainstorm3_deploy\R2016b\bst_javabuilder\for_testing\bst_javabuilder_2016b.jar</file>
-      <file location="C:\Work\Dev\brainstorm3_deploy\R2016b\bst_javabuilder\for_testing" name="doc" optional="false">C:\Work\Dev\brainstorm3_deploy\R2016b\bst_javabuilder\for_testing\doc</file>
-      <file location="C:\Work\Dev\brainstorm3_deploy\R2016b\bst_javabuilder\for_testing" name="readme.txt" optional="true">C:\Work\Dev\brainstorm3_deploy\R2016b\bst_javabuilder\for_testing\readme.txt</file>
+      <file location="C:\Work\Dev\brainstorm3_deploy\R2017a\bst_javabuilder\for_testing" name="bst_javabuilder_2017a.jar" optional="false">C:\Work\Dev\brainstorm3_deploy\R2017a\bst_javabuilder\for_testing\bst_javabuilder_2017a.jar</file>
+      <file location="C:\Work\Dev\brainstorm3_deploy\R2017a\bst_javabuilder\for_testing" name="doc" optional="false">C:\Work\Dev\brainstorm3_deploy\R2017a\bst_javabuilder\for_testing\doc</file>
+      <file location="C:\Work\Dev\brainstorm3_deploy\R2017a\bst_javabuilder\for_testing" name="readme.txt" optional="true">C:\Work\Dev\brainstorm3_deploy\R2017a\bst_javabuilder\for_testing\readme.txt</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\Program Files\MATLAB\R2016b</root>
+      <root>C:\Program Files\MATLAB\R2017a</root>
       <toolboxes />
     </matlab>
     <platform>

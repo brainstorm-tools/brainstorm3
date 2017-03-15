@@ -5,6 +5,7 @@ March 2017
 - IO: Add support for Nihon Kohden .EEG files
 - IO: Export/import continuous recordings with  SPM (.mat/.dat)
 - Anatomy: Apply manual registration on other datasets in the same subject
+- Distrib: Upgraded to Matlab 2017a
 ---------------------------------------------------------------
 January 2017
 - Database: Improving the robustness of the list of bad trials
