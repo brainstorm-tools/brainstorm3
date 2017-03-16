@@ -134,13 +134,15 @@ switch FileFormat
         ChannelMat = in_channel_megdraw(ChannelFile);
         FileUnits = 'cm';
         
-    case 'CURRY' % (*.res;*.rs3)
+    case 'CURRY' % (*.res;*.rs3;*.pom)
         switch (fExt)
             case 'res'
                 ChannelMat = in_channel_ascii(ChannelFile, {'%d','-Y','X','Z','%d','Name'}, 0, .001);
                 ChannelMat.Comment = 'Curry channels';
             case 'rs3'
                 ChannelMat = in_channel_curry_rs3(ChannelFile);
+            case 'pom'
+                ChannelMat = in_channel_curry_pom(ChannelFile);
         end
         FileUnits = 'mm';
         
