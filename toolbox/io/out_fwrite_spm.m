@@ -1,7 +1,7 @@
 function out_fwrite_spm(sFile, SamplesBounds, iChannels, F)
 % OUT_FWRITE_SPM: Write a block of data in SPM binary file (.dat).
 %
-% USAGE:  out_fwrite_spm(sFile, SamplesBounds, iChannels, F);
+% USAGE:  out_fwrite_spm(sFile, SamplesBounds=[All], iChannels=[All], F)
 %
 % INPUTS:
 %     - sFile         : Structure for importing files in Brainstorm. Created by in_fopen()

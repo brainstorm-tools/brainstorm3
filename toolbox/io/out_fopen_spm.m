@@ -82,14 +82,19 @@ if ~isempty(iMeg)
 end
 % Sensors
 for i = 1:length(iEeg)
-    D.sensors.eeg.balance = [];
-    D.sensors.eeg.chanpos(i,:) = ChannelMat.Channel(iEeg(i)).Loc(:,1)';
-    D.sensors.eeg.chantype{i}  = lower(ChannelMat.Channel(iEeg(i)).Type);
-    D.sensors.eeg.chanunit{i}  = 'V';
-    D.sensors.eeg.elecpos(i,:) = ChannelMat.Channel(iEeg(i)).Loc(:,1)';
-    D.sensors.eeg.label{i}     = ChannelMat.Channel(iEeg(i)).Name;
-    D.sensors.eeg.type         = 'ctf';
-    D.sensors.eeg.unit         = 'm';
+    if ~isempty(ChannelMat.Channel(iEeg(i)).Loc)
+        D.sensors.eeg.chanpos(i,:) = ChannelMat.Channel(iEeg(i)).Loc(:,1)';
+        D.sensors.eeg.elecpos(i,:) = ChannelMat.Channel(iEeg(i)).Loc(:,1)';
+    else
+        D.sensors.eeg.chanpos(i,:) = [NaN NaN NaN];
+        D.sensors.eeg.chanpos(i,:) = [NaN NaN NaN];
+    end
+    D.sensors.eeg.chantype{i} = lower(ChannelMat.Channel(iEeg(i)).Type);
+    D.sensors.eeg.chanunit{i} = 'V';
+    D.sensors.eeg.label{i}    = ChannelMat.Channel(iEeg(i)).Name;
+    D.sensors.eeg.type        = 'ctf';
+    D.sensors.eeg.unit        = 'm';
+    D.sensors.eeg.balance.current = 'none';
 end
 D.sensors.chantype = 'eeg';
 % Rest of the structure
