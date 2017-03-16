@@ -19,7 +19,7 @@ function varargout = process_import_data_epoch( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2017
 
 eval(macro_method);
 end
@@ -69,6 +69,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.eventtypes.Comment = 'EEGLAB event types (separated with comas):';
     sProcess.options.eventtypes.Type    = 'text';
     sProcess.options.eventtypes.Value   = '';
+    sProcess.options.eventhelp.Comment  = ['<HTML><I><FONT color="#777777">Enter one or more parameters available in the left list of the window<BR>' ...
+                                           '"Conditions selection", when loading this file interactively.</FONT></I>'];
+    sProcess.options.eventhelp.Type     = 'label';
     % Separator
     sProcess.options.separator.Type = 'separator';
     sProcess.options.separator.Comment = ' ';
