@@ -3,7 +3,7 @@ March 2017
 - GUI: Added option to filter files by the comment of their parents
 - IO: Add support for Micromed EEG TRC files
 - IO: Add support for Nihon Kohden .EEG files
-- IO: Export/import continuous recordings with  SPM (.mat/.dat)
+- IO: Export/import continuous recordings with  SPM (.mat/.dat) 
 - Anatomy: Apply manual registration on other datasets in the same subject
 - Distrib: Upgraded to Matlab 2017a
 - Anatomy: Added default positions for BrainProducts ActiCap 128
