@@ -428,27 +428,27 @@ for iFile = 1:length(FilesA)
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
 
-            % Intitialize returned matrix
+            % Initialize returned matrix
             R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
             % Loop on each frequency band
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
+                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                HA = hilbert_fcn(DataAband')';                
                 if isConnNN
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
-                    HA = hilbert_fcn(DataAband')';
                     HB = HA;
                 else
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
                     DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
-                    HA = hilbert_fcn(DataAband')';
                     HB = hilbert_fcn(DataBband')';
                 end
                 if OPTIONS.isOrth
                     if isConnNN
                         for iSeed = 1:size(HA,1)
                             % Orthogonalize complex coefficients, based on Hipp et al. 2012
+                            % HBo is the amplitude of the component orthogonal to HA                            
                             HBo = imag(bsxfun(@times, HB, conj(HA(iSeed,:))./abs(HA(iSeed,:))));
-%                             HBos = real(HBo .* ((1i*HA)./abs(HA))); % for generating the time-series
+                            % The orthogonalized signal can be computed like this (not necessary here):
+                            % HBos = real(HBo .* ((1i*HA)./abs(HA)));
                             % avoid rounding errors
                             HBo(abs(HBo./abs(HB))<2*eps)=0;
                             % Compute correlation coefficients
