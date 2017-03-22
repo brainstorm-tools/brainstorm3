@@ -44,6 +44,7 @@ if ~file_exist(PntFile)
     PntFile = [BaseFile '.PNT'];
     if ~file_exist(PntFile)
         disp('NK> Warning: Could not find .PNT file.');
+        PntFile = [];
     end
 end
 % LOG file (optional)
@@ -52,6 +53,7 @@ if ~file_exist(LogFile)
     LogFile = [BaseFile '.LOG'];
     if ~file_exist(LogFile)
         disp('NK> Warning: Could not find .LOG file.');
+        LogFile = [];
     end
 end
 % 21E file (optional)
@@ -60,6 +62,7 @@ if ~file_exist(ElecFile)
     ElecFile = [BaseFile '.21E'];
     if ~file_exist(ElecFile)
         disp('NK> Warning: Could not find .21E electrodes file.');
+        LogFile = [];
     end
 end
 
@@ -72,13 +75,14 @@ if (fid == -1)
 end
 % Get deviceblock signature
 hdr.device = fread(fid, [1 16], '*char');
-if (check_device(hdr.device))
+hdr.version = get_header_version(hdr.device);
+if (hdr.version == 0)
     error(['EEG deviceblock has unknown signature: "' hdr.device '"']);
 end
 % Get controlblock signature
 fseek(fid, 129, 'bof');
 hdr.control = fread(fid, [1 16], '*char');
-if (check_device(hdr.control))
+if (get_header_version(hdr.control) == 0)
     error(['EEG controlblock has unknown signature: "' hdr.control '"']);
 end
 % Get waveformdatablock signature
@@ -87,54 +91,137 @@ signature = fread(fid, [1 1], '*char');
 if (signature ~= 1)
     error('waveformdatablock has wrong signature.');
 end
-% Get number of blocks
-fseek(fid, 145, 'bof');
-hdr.ctlblock_cnt = fread(fid, [1 1], 'uint8');
+
+% Get number of control blocks
+fseek(fid, 145, 'bof');                        % Position:         0x0091
+hdr.ctl_cnt = fread(fid, [1 1], 'uint8');
+% Get a pointer to the extra block (only valid for newer file formats >= 1200 NK systems)
+fseek(fid, 1006, 'bof');                       % Position:         0x03EE
+hdr.ext_address = fread(fid, 1, 'uint32');     % extblock_address: VARIABLE
+% Consider blocks of 100ms everywhere
+hdr.record_duration = 0.1;
+
 % Get all the pointers to all the blocks
-for i = 1:hdr.ctlblock_cnt
-    fseek(fid, 146 + (i-1) * 20, 'bof');
-    hdr.ctlblock(i).address = fread(fid, 1, 'uint32');
-    fseek(fid, hdr.ctlblock(i).address + 23, 'bof');
-    hdr.ctlblock(i).datablock_cnt = fread(fid, [1 1], 'uint8');
-    hdr.ctlblock(i).datablock = repmat(struct('address', [], 'num_samples', []), 0);
-    for j = 1:hdr.ctlblock(i).datablock_cnt
-        fseek(fid, hdr.ctlblock(i).address + ((j-1) * 20) + 18, 'bof');
-        dataAddr = fread(fid, 1, 'uint32');
+for i = 1:hdr.ctl_cnt                               % Ctl block at:     0x0080
+    % Get pointer to this block
+    fseek(fid, 146 + (i-1) * 20, 'bof');            % Position:         0x0092   (1st ctl block)
+    hdr.ctl(i).address = fread(fid, 1, 'uint32');   % ctlblock_address: 0x0400
+    % Get number of data blocks   
+    fseek(fid, hdr.ctl(i).address + 23, 'bof');     % Position:         0x0417
+    hdr.ctl(i).data_cnt = fread(fid, [1 1], 'uint8');
+    hdr.ctl(i).data = repmat(struct(), 0);
+    % Loop on data blocks
+    for j = 1:hdr.ctl(i).data_cnt
+        % Read data address
+        fseek(fid, hdr.ctl(i).address + ((j-1) * 20) + 18, 'bof');            % Position:       0x0412   (1st ctl block)
+        dataAddr = fread(fid, 1, 'uint32');                                   % Data block at:  0x17FE
         % Add data block only if it points to a valid address in the file
-        if (dataAddr > 0)
-            iBlock = length(hdr.ctlblock(i).datablock) + 1;
-            hdr.ctlblock(i).datablock(iBlock).address = dataAddr;
+        if (dataAddr > 0)            
+            % Save address in structure
+            id = length(hdr.ctl(i).data) + 1;
+            hdr.ctl(i).data(id).address = dataAddr;
+            % Read block start timestamp
+            fseek(fid, dataAddr + 5, 'bof');
+            timeH = str2double(fread(fid, [1 2], '*char'));
+            timeM = str2double(fread(fid, [1 2], '*char'));
+            timeS = str2double(fread(fid, [1 2], '*char'));
+            hdr.ctl(i).data(id).timestamp = 60*60*timeH + 60*timeM + timeS;
             % Read the sampling rate
-            fseek(fid, hdr.ctlblock(i).datablock(iBlock).address + 26, 'bof');
-            hdr.ctlblock(i).datablock(iBlock).sample_rate = bitand(fread(fid, 1, 'uint16'), hex2dec('3fff'));    % Nihon-Kohden int16 format
-            % Read the block information: duration (samples)
-            fseek(fid, hdr.ctlblock(i).datablock(iBlock).address + 28, 'bof');
-            hdr.ctlblock(i).datablock(iBlock).num_records = fread(fid, 1, 'uint32');
-            % Read number of channels
-            fseek(fid, hdr.ctlblock(i).datablock(iBlock).address + 38, 'bof');
-            hdr.ctlblock(i).datablock(iBlock).num_channels = fread(fid, 1, 'uint8') + 1;
-            % Read channel order
-            for iChan = 1:hdr.ctlblock(i).datablock(iBlock).num_channels
-                fseek(fid, hdr.ctlblock(i).datablock(iBlock).address + 39 + (iChan - 1) * 10, 'bof');
-                hdr.ctlblock(i).datablock(iBlock).channel_list(iChan) = fread(fid, 1, 'uint8') + 1;
+            fseek(fid, dataAddr + 26, 'bof');              % Position:   0x1818
+            hdr.ctl(i).data(id).sample_rate = bitand(fread(fid, 1, 'uint16'), hex2dec('3fff'));    % Nihon-Kohden int16 format
+
+            % Get the channel order from here (older system)
+            switch (hdr.version)
+                case 1    % Older NK systems: 1100, 2100
+                    % Read the block information: number of records
+                    fseek(fid, dataAddr + 28, 'bof');      % Position:   0x181A
+                    hdr.ctl(i).data(id).num_records = fread(fid, 1, 'uint32');
+                    % Read number of channels
+                    fseek(fid, dataAddr + 38, 'bof');      % Position:   0x1824
+                    hdr.ctl(i).data(id).num_channels = fread(fid, 1, 'uint8') + 1;  % +1 for the STIM channel
+                    % Read channel order
+                    for iChan = 1:(hdr.ctl(i).data(id).num_channels - 1)    % -1 because the STIM channel is not listed here
+                        fseek(fid, dataAddr + 39 + (iChan - 1) * 10, 'bof');  % Position:   0x1825, 0x182F, 0x1839, ...
+                        hdr.ctl(i).data(id).channel_list(iChan) = fread(fid, 1, 'uint8') + 1;
+                    end
+                    % Define pointer to the beginning of the recordings
+                    hdr.ctl(i).data(id).rec_address = hdr.ctl(i).data(id).address + 39 + (hdr.ctl(i).data(id).num_channels - 1) * 10;   % -1 because the STIM channel is not listed here
+                    % Compute number of samples
+                    hdr.ctl(i).data(id).num_samples = hdr.ctl(i).data(id).num_records * hdr.ctl(i).data(id).sample_rate * hdr.record_duration;
+                case 2    % Newers NK systems: 1200
+                    % Channel order read in the extended blocks
+                    hdr.ctl(i).data(id).num_records = [];    % TODO: DON'T KNOW WHERE TO GET THIS FROM IN THE FILE
+                    hdr.ctl(i).data(id).num_samples = [];    % TODO: DON'T KNOW HOW TO COMPUTE THIS (NOW GUESSING IT FROM FILE SIZE)
             end
         end
     end
 end
+
+% Read information from additional blocks (newer systems)
+switch (hdr.version)
+    case 1    % Older NK systems: 1100, 2100
+        % Not needed here, corresponding pointer is 0x0000 in the file
+    case 2    % Newers NK systems: 1200
+        % Only supported for one control block + one data block
+        if (length(hdr.ctl) > 1) || (length(hdr.ctl(1).data) > 1)
+            error(['This reader supports only recordings file with one data segment.' 10 ...
+                   'If you are interested in reading files with multiple data segments,' 10 ...
+                   'please contact us through the Brainstorm user forum.']);
+        end
+        
+        % TODO: Probably needs a loop on control and data blocks here => Need example files
+        i = 1;
+        id = 1;
+        
+        % Reading the extended block address (2nd pointer)
+        % (hdr.ext_address + 17) = UINT8 Number of blocks ?
+        fseek(fid, hdr.ext_address + 18, 'bof');
+        hdr.ctl(i).extblock2_address = fread(fid, 1, 'uint32');
+
+        % Reading the extended block address (3rd pointer)
+        % (hdr.ext_address2 + 17) = UINT8 Number of blocks ?
+        fseek(fid, hdr.ctl(i).extblock2_address + 20, 'bof');
+        hdr.ctl(i).data(id).extblock3_address = fread(fid, 1, 'uint32');
+        
+        % Reading number of channels
+        fseek(fid, hdr.ctl(i).data(id).extblock3_address + 68, 'bof');
+        hdr.ctl(i).data(id).num_channels = fread(fid, 1, 'uint8') + 1;   % +1 for the STIM channel
+        % Read channel order
+        for iChan = 1:(hdr.ctl(i).data(id).num_channels - 1)  % -1 because the STIM channel is not listed here
+            fseek(fid, hdr.ctl(i).data(id).extblock3_address + 72 + (iChan-1) * 10, 'bof');
+            hdr.ctl(i).data(id).channel_list(iChan) = fread(fid, 1, 'uint16') + 1;
+        end
+        % Define pointer to the beginning of the recordings
+        hdr.ctl(i).data(id).rec_address = hdr.ctl(i).data(id).extblock3_address + 72 + (hdr.ctl(i).data(id).num_channels - 1) * 10;   % -1 because the STIM channel is not in this list
+end
+
+% Get last position in the file
+fseek(fid, 0, 'eof');
+lastpos = ftell(fid);
 % Close file
 fclose(fid);
 
-% Current limitation: allow only files with single segments
-if (length(hdr.ctlblock) ~= 1) || (length(hdr.ctlblock(1).datablock) ~= 1)
-    error(['Files with more than one segments are currently not supported.' 10 ...
+
+%% ===== GUESS FILE PROPERTIES =====
+% TODO: Current limitation: allow only files with single control blocks
+if (length(hdr.ctl) ~= 1)
+    error(['Files with more than one control block are currently not supported.' 10 ...
            'Please post a message on the Brainstorm forum if you need this feature to be enabled.']);
 end
-% Copy fields to the central header
-dataBlock = hdr.ctlblock(1).datablock(1);
-hdr.sample_rate     = dataBlock.sample_rate;
-hdr.record_duration = 0.1;   % Everything saved in blocks of 0.1ms
-hdr.num_samples     = dataBlock.num_records * dataBlock.sample_rate * hdr.record_duration;
-hdr.num_channels    = dataBlock.num_channels;
+% TODO: Current limitation: Multiple data blocks are not supported yet with the new file format (just need an example dataset)
+if (length(hdr.ctl(1).data) > 1) && (hdr.version == 2)
+    error(['Newer files with more than one data block are currently not supported yet (systems NK EEG-1200A V01.00)'.' 10 ...
+           'Please post a message on the Brainstorm forum if you need this feature to be enabled.']);
+end
+% TODO: Current limitation: Multiple data blocks must have the same properties
+if (length(hdr.ctl(1).data) > 1) && (...
+        any([hdr.ctl(1).data.num_channels] ~= hdr.ctl(1).data(1).num_channels) || ...
+        any([hdr.ctl(1).data.sample_rate] ~= hdr.ctl(1).data(1).sample_rate))
+    error('Files with more than one data block must have the same number of channels and the same sampling rate.');
+end
+% Copy shared fields to the central header
+hdr.sample_rate  = hdr.ctl(1).data(1).sample_rate;
+hdr.num_channels = hdr.ctl(1).data(1).num_channels;
 
 
 %% ===== READ LOG FILE =====
@@ -146,7 +233,7 @@ if ~isempty(LogFile)
     end
     % Get file signature
     device = fread(fid, [1 16], '*char');
-    if (check_device(device))
+    if (get_header_version(device) == 0)
         error(['LOG file has unknown signature: "' device '"']);
     end
     % Get log blocks 
@@ -168,13 +255,17 @@ if ~isempty(LogFile)
         hdr.logs(i).time  = zeros(1, n_logs);
         % Read all the events
         for j = 1:n_logs
-            hdr.logs(i).label{j} = strtrim(fread(fid, [1 20], '*char'));
-            hdr.logs(i).label{j}(hdr.logs(i).label{j} == 0) = [];
+            hdr.logs(i).label{j} = str_clean(fread(fid, [1 20], '*char'));
             timeH = str2double(fread(fid, [1 2], '*char'));
             timeM = str2double(fread(fid, [1 2], '*char'));
             timeS = str2double(fread(fid, [1 2], '*char'));
             hdr.logs(i).time(j) = 60*60*timeH + 60*timeM + timeS;
-            hdr.logs(i).label2{j} = strtrim(fread(fid, [1 19], '*char'));
+            hdr.logs(i).label2{j} = str_clean(fread(fid, [1 19], '*char'));
+            % Compute time stamp
+            timeH = str2double(hdr.logs(i).label2{j}(8:9));
+            timeM = str2double(hdr.logs(i).label2{j}(10:11));
+            timeS = str2double(hdr.logs(i).label2{j}(12:13));
+            hdr.logs(i).timestamp(j) = 60*60*timeH + 60*timeM + timeS;
         end
             
         % Read sub-events
@@ -188,7 +279,7 @@ if ~isempty(LogFile)
             if (n_sublogs == n_logs)
                 fseek(fid, sublogblock_address + 20, 'bof');
                 for j = 1:n_logs
-                    hdr.logs(i).sublog{j} = strtrim(fread(fid, [1 45], '*char'));
+                    hdr.logs(i).sublog{j} = fread(fid, [1 45], '*char');
                     hdr.logs(i).time(j) = hdr.logs(i).time(j) + str2double(['0.' hdr.logs(i).sublog{j}(25:30)]);
                 end
             end
@@ -199,31 +290,36 @@ if ~isempty(LogFile)
     end
     % Close file
     fclose(fid);
+else
+    hdr.logs = [];
 end
 
 
 %% ===== READ 21E FILE =====
 % Read the channel names 
-ChannelMat = in_channel_nk(ElecFile);
+ChannelMat = in_channel_nk(ElecFile, hdr.version);
 
 % Gains are fixed for the list of channels: 
-%   - uV for channels: 1-42, 75, 76, 79-256
+%   - uV for channels: 1-42, 75, 76, 79-256, 257:1096 (new systems)
 %   - mV for all the others
 %   - Calibration = (Physical_max - Physical_min) ./ (Digital_max - Digital_min)
-iChanMicro = [1:42, 75, 76, 79:256];
-chanGains = 1e-3 * ones(1,256) * ((12002.56+12002.9) / (32767 + 32768));
+iChanMicro = [1:42, 75, 76, 79:256, 257:1096];
+chanGains = 1e-3 * ones(1,1096) * ((12002.56+12002.9) / (32767 + 32768));
 chanGains(iChanMicro) = 1e-6 * ((3199.902+3200) / (32767 + 32768));
 
 % Keep only the channels saved in the file
-iSelChannels = hdr.ctlblock(1).datablock(iBlock).channel_list;
+iSelChannels = hdr.ctl(1).data(id).channel_list;
 ChannelMat.Channel = ChannelMat.Channel(iSelChannels);
 hdr.channel_gains  = chanGains(iSelChannels);
 
-% Last channel: markers/events
-ChannelMat.Channel(end).Name    = 'Events';
-ChannelMat.Channel(end).Type    = 'STIM';
-ChannelMat.Channel(end).Comment = '';
-hdr.channel_gains(end) = 1;
+% Add last channel: markers/events
+iChanStim = length(ChannelMat.Channel) + 1;
+ChannelMat.Channel(iChanStim).Name    = 'Events';
+ChannelMat.Channel(iChanStim).Type    = 'STIM';
+hdr.channel_gains(iChanStim) = 1;
+
+% Digital offset for the channel calibration (only the last one is a digital channel => no offset)
+hdr.channel_digoffset = [32768 .* ones(1, length(ChannelMat.Channel) - 1), 0];
 
 
 %% ===== READ PNT FILE =====
@@ -235,21 +331,18 @@ if ~isempty(PntFile)
     end
     % Get file signature
     device = fread(fid, [1 16], '*char');
-    if (check_device(device))
+    if (get_header_version(device) == 0)
         error(['PNT file has unknown signature: "' device '"']);
     end
     % Read patient info: Id
     fseek(fid, 1540, 'bof');
-    hdr.patient.Id = strtrim(fread(fid, [1 10], '*char'));
-    hdr.patient.Id(hdr.patient.Id == 0) = [];
+    hdr.patient.Id = str_clean(fread(fid, [1 10], '*char'));
     % Read patient info: Name
     fseek(fid, 1582, 'bof');
-    hdr.patient.Name = strtrim(fread(fid, [1 20], '*char'));
-    hdr.patient.Name(hdr.patient.Name == 0) = [];
+    hdr.patient.Name = str_clean(fread(fid, [1 20], '*char'));
     % Read patient info: Sex
     fseek(fid, 1610, 'bof');
-    hdr.patient.Sex = strtrim(fread(fid, [1 6], '*char'));
-    hdr.patient.Sex(hdr.patient.Sex == 0) = [];
+    hdr.patient.Sex = str_clean(fread(fid, [1 6], '*char'));
     % Read patient info: Birthday
     fseek(fid, 1632, 'bof');
     hdr.patient.Birthday = fread(fid, [1 10], '*char');
@@ -267,45 +360,84 @@ end
 % Initialize returned file structure
 sFile = db_template('sfile');
 % Add information read from header
-sFile.byteorder  = 'n';
-sFile.filename   = DataFile;
-sFile.format     = 'EEG-NK';
-sFile.device     = ['Nihon Kohden ' hdr.device];
-sFile.header     = hdr;
-% Comment: short filename
-[tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
+sFile.byteorder = 'n';
+sFile.filename  = DataFile;
+sFile.format    = 'EEG-NK';
+sFile.device    = ['Nihon Kohden ' hdr.device];
+sFile.comment   = fBase;
+sFile.condition = [];
+% Epochs
+nEpochs = length(hdr.ctl(1).data);
+sFile.epochs = repmat(db_template('epoch'), 1, nEpochs);
+for i = 1:nEpochs
+    % If the number of samples is not known (new format): guess it from the file or block size
+    if isempty(hdr.ctl(1).data(i).num_samples)
+        % There is a block after: use the address of the next block
+        if (i < nEpochs)
+            end_address = hdr.ctl(1).data(i+1).address - 1;
+        % Last block: use the file size
+        else
+            end_address = lastpos;
+        end
+        % Compute from the 
+        hdr.ctl(1).data(i).num_samples = floor((end_address - hdr.ctl(1).data(i).rec_address) / hdr.num_channels / 2);  % /2 because we are counting int16 values
+    end
+    sFile.epochs(i).samples = [0, hdr.ctl(1).data(i).num_samples - 1];
+    sFile.epochs(i).times   = sFile.epochs(i).samples ./ hdr.sample_rate;
+    sFile.epochs(i).label   = sprintf('Block #%d', i);
+    sFile.epochs(i).nAvg    = 1;
+    sFile.epochs(i).select  = 1;
+    sFile.epochs(i).bad     = 0;
+    % Cumulated time of the begginning of the epoch
+    if (i == 1)
+        cumTime = 0;
+    else
+        cumTime(i) = cumTime(i-1) + hdr.ctl(1).data(i).num_samples ./ hdr.sample_rate;
+    end
+end
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = hdr.sample_rate;
-sFile.prop.samples = [0, hdr.num_samples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.samples = [min([sFile.epochs.samples]), max([sFile.epochs.samples])];
+sFile.prop.times   = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.num_channels,1);
+% Save full header in the file link
+sFile.header = hdr;
 
 
 %% ===== EVENTS =====
-% Get all the event types
-evtList = hdr.logs(1).label;
-% Events list
-[uniqueEvt, iUnique] = unique(evtList);
-uniqueEvt = evtList(sort(iUnique));
-% Initialize events list
-sFile.events = repmat(db_template('event'), 1, length(uniqueEvt));
-% Build events list
-for iEvt = 1:length(uniqueEvt)
-    % Find all the occurrences of this event
-    iOcc = find(strcmpi(uniqueEvt{iEvt}, evtList));
-    % Concatenate all times
-    t = hdr.logs(1).time(iOcc);
-    % Set event
-    sFile.events(iEvt).label   = strtrim(uniqueEvt{iEvt});
-    sFile.events(iEvt).times   = t;
-    sFile.events(iEvt).samples = round(t .* sFile.prop.sfreq);
-    sFile.events(iEvt).epochs  = 1 + 0*t(1,:);
-    sFile.events(iEvt).select  = 1;
+if ~isempty(hdr.logs)
+    % Get all the event types
+    evtList = hdr.logs(1).label;
+    % Events list
+    [uniqueEvt, iUnique] = unique(evtList);
+    uniqueEvt = evtList(sort(iUnique));
+    % Initialize events list
+    sFile.events = repmat(db_template('event'), 1, length(uniqueEvt));
+    % Build events list
+    for iEvt = 1:length(uniqueEvt)
+        % Find all the occurrences of this event
+        iOcc = find(strcmpi(uniqueEvt{iEvt}, evtList));
+        % Concatenate all times
+        t = hdr.logs(1).time(iOcc);
+        % Detect epoch
+        sFile.events(iEvt).epochs = 1 + 0*t(1,:);
+        for k = 1:length(iOcc)
+            % iEpoch = find(hdr.logs(1).timestamp(iOcc(k)) <= [hdr.ctl(1).data.timestamp, Inf], 1) - 1;
+            iEpoch = find(t(k) <= [cumTime, Inf], 1) - 1;
+            if (iEpoch > 1)
+                sFile.events(iEvt).epochs(k) = iEpoch;
+                t(k) = t(k) - cumTime(iEpoch);
+            end
+        end
+        % Set event
+        sFile.events(iEvt).label   = str_clean(uniqueEvt{iEvt});
+        sFile.events(iEvt).select  = 1;
+        sFile.events(iEvt).times   = t;
+        sFile.events(iEvt).samples = round(t .* sFile.prop.sfreq);
+    end
 end
-
-
 
 
 end
@@ -313,8 +445,9 @@ end
 
 
 %% ===== CHECK DEVICE =====
-function isError = check_device(str)
-    isError = ~ismember(str, {...
+function ver = get_header_version(str)
+    % Older NK systems
+    if ismember(str, {...
         'EEG-1100A V01.00', ...
         'EEG-1100B V01.00', ...
         'EEG-1100C V01.00', ...
@@ -326,10 +459,30 @@ function isError = check_device(str)
         'DAE-2100D V02.00', ...
         'EEG-1100A V02.00', ...
         'EEG-1100B V02.00', ...
-        'EEG-1100C V02.00'});
-    % Issues with newer systems: 'EEG-1200A V01.00'
+        'EEG-1100C V02.00'})
+        ver = 1;
+        
+    % Newer NK systems (>= 2015)
+    elseif ismember(str, {...
+        'EEG-1200A V01.00'})
+        ver = 2;
+        
+    else
+        ver = 0;
+    end
 end
 
-    
+%% ===== CLEAN STRINGS =====
+function s = str_clean(s)
+    % Stop string at first termination
+    iNull = find(s == 0, 1);
+    if ~isempty(iNull)
+        s(iNull:end) = [];
+    end
+    % Remove weird characters
+    s(~ismember(s, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-.()[]/\_@ ')) = [];
+    % Remove useless spaces
+    s = strtrim(s);
+end
     
 

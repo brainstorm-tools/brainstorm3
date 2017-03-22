@@ -1,9 +1,9 @@
-function F = in_fread_nk(sFile, sfid, SamplesBounds, ChannelsRange)
+function F = in_fread_nk(sFile, sfid, iEpoch, SamplesBounds, ChannelsRange)
 % IN_FREAD_NK:  Read a block of recordings from a Nihon Kohden file (.EEG)
 %
-% USAGE:  F = in_fread_nk(sFile, sfid, SamplesBounds, ChannelsRange)
-%         F = in_fread_nk(sFile, sfid, SamplesBounds)               : Read all channels
-%         F = in_fread_nk(sFile, sfid)                              : Read all channels, all the times
+% USAGE:  F = in_fread_nk(sFile, sfid, iEpoch, SamplesBounds, ChannelsRange)
+%         F = in_fread_nk(sFile, sfid, iEpoch, SamplesBounds)               : Read all channels
+%         F = in_fread_nk(sFile, sfid)                                      : Read all channels, all samples
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -28,11 +28,14 @@ function F = in_fread_nk(sFile, sfid, SamplesBounds, ChannelsRange)
 %          and from the BIOSIG-toolbox http://biosig.sf.net/
 
 % Parse inputs
-if (nargin < 4) || isempty(ChannelsRange)
+if (nargin < 5) || isempty(ChannelsRange)
     ChannelsRange = [1, sFile.header.num_channels];
 end
-if (nargin < 3) || isempty(SamplesBounds)
+if (nargin < 4) || isempty(SamplesBounds)
     SamplesBounds = sFile.prop.samples;
+end
+if (nargin < 3) || isempty(iEpoch)
+    iEpoch = 1;
 end
 
 % ===== COMPUTE OFFSETS =====
@@ -43,9 +46,8 @@ nReadChannels = double(ChannelsRange(2) - ChannelsRange(1) + 1);
 bytesPerVal = 2;
 dataClass   = 'uint16';
 
-
-% Allow reading only from datablock #1
-offsetData = sFile.header.ctlblock(1).datablock(1).address + 39 + (sFile.header.num_channels - 1) * 10;
+% Data offset in the .EEG file for selected data block
+offsetData = sFile.header.ctl(1).data(iEpoch).rec_address;
 % Time offset
 offsetTime = round(SamplesBounds(1) * nChannels * bytesPerVal);
 % Channel offset at the beginning and end of each channel block
@@ -78,7 +80,7 @@ if (numel(F) < nReadTimes * nReadChannels)
 end
 
 % Apply channel gains
-F = F - 32768;
+F = bst_bsxfun(@minus, F, sFile.header.channel_digoffset(ChannelsRange(1):ChannelsRange(2))');
 F = bst_bsxfun(@times, F, sFile.header.channel_gains(ChannelsRange(1):ChannelsRange(2))');
 
 

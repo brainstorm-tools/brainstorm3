@@ -152,7 +152,7 @@ switch (sFile.format)
             F = F(iChannels,:);
         end
     case 'EEG-NK'
-        F = in_fread_nk(sFile, sfid, SamplesBounds, ChannelRange);
+        F = in_fread_nk(sFile, sfid, iEpoch, SamplesBounds, ChannelRange);
     case 'EYELINK'
         [F, TimeVector] = in_fread_eyelink(sFile, iEpoch, SamplesBounds, iChannels);
     case 'NIRS-BRS'

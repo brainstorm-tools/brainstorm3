@@ -1,7 +1,7 @@
-function ChannelMat = in_channel_nk(ChannelFile)
+function ChannelMat = in_channel_nk(ChannelFile, version)
 % IN_CHANNEL_NK:  Read channel names from a Nihon Kohden 21E file.
 %
-% USAGE:  ChannelMat = in_channel_nk(ChannelFile)
+% USAGE:  ChannelMat = in_channel_nk(ChannelFile, version=2)
 %         ChannelMat = in_channel_nk()             : Return default channel names
 
 % @=============================================================================
@@ -24,12 +24,23 @@ function ChannelMat = in_channel_nk(ChannelFile)
 %
 % Authors: Francois Tadel, 2017
 
+%% ===== PARSE INPUTS =====
+if (nargin < 2) || isempty(version)
+    version = 2;
+end
+
 
 %% ===== DEFAULTS =====
+% Default number of channels changes based on the header format
+switch (version)
+    case 1,  Nchan = 256;
+    case 2,  Nchan = 1096;
+end
 % Initialize output channel structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'Nihon Kohden';
-ChannelMat.Channel = repmat(db_template('channeldesc'), 1, 256);
+
+ChannelMat.Channel = repmat(db_template('channeldesc'), 1, Nchan);
 
 % Default electrode labels
 for i = 1:length(ChannelMat.Channel)
@@ -72,7 +83,8 @@ for i = 1:length(ChannelMat.Channel)
         case 104,  ChannelMat.Channel(i).Name = 'X15/BP4';                   ChannelMat.Channel(i).Type = 'EEG';
         case num2cell(105:255), ChannelMat.Channel(i).Name = sprintf('X%d', i - 89);   ChannelMat.Channel(i).Type = 'EEG';
         case 256,  ChannelMat.Channel(i).Name = 'Z';                         ChannelMat.Channel(i).Type = 'MISC';
-        case num2cell([38:42, 79:100]), ChannelMat.Channel(i).Name = sprintf('U%d',i); ChannelMat.Channel(i).Type = 'UNKNOWN';
+        case num2cell([38:42, 79:100]),  ChannelMat.Channel(i).Name = sprintf('U%d',i); ChannelMat.Channel(i).Type = 'UNKNOWN';
+        case num2cell(257:Nchan),        ChannelMat.Channel(i).Name = sprintf('EX%d', i);   ChannelMat.Channel(i).Type = 'EEG';
     end
 end
 
