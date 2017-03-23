@@ -389,12 +389,9 @@ for i = 1:nEpochs
     sFile.epochs(i).select  = 1;
     sFile.epochs(i).bad     = 0;
     % Cumulated time of the begginning of the epoch
-    if (i == 1)
-        cumTime = 0;
-    else
-        cumTime(i) = cumTime(i-1) + hdr.ctl(1).data(i).num_samples ./ hdr.sample_rate;
-    end
+    epochLength(i) = hdr.ctl(1).data(i).num_samples ./ hdr.sample_rate;
 end
+cumTime = [0, cumsum(epochLength(1:end-1))];
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = hdr.sample_rate;
 sFile.prop.samples = [min([sFile.epochs.samples]), max([sFile.epochs.samples])];
@@ -425,7 +422,7 @@ if ~isempty(hdr.logs)
         sFile.events(iEvt).epochs = 1 + 0*t(1,:);
         for k = 1:length(iOcc)
             % iEpoch = find(hdr.logs(1).timestamp(iOcc(k)) <= [hdr.ctl(1).data.timestamp, Inf], 1) - 1;
-            iEpoch = find(t(k) <= [cumTime, Inf], 1) - 1;
+            iEpoch = find(t(k) >= cumTime, 1, 'last');
             if (iEpoch > 1)
                 sFile.events(iEvt).epochs(k) = iEpoch;
                 t(k) = t(k) - cumTime(iEpoch);

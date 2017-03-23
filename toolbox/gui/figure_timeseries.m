@@ -34,7 +34,7 @@ function varargout = figure_timeseries( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -1680,7 +1680,7 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
     if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && isequal(GlobalData.DataSet(iDS).Measures.DataType, 'raw') && ~isempty(GlobalData.DataSet(iDS).Measures.sFile)
         sFile = GlobalData.DataSet(iDS).Measures.sFile;
         % EDF: Wall-clock time
-        if ismember(sFile.format, {'EEG-EDF', 'EEG-NK'}) && isfield(sFile.header, 'startdate') && isfield(sFile.header, 'starttime') && ~isempty(sFile.header.startdate) && ~isempty(sFile.header.starttime)
+        if strcmpi(sFile.format, 'EEG-EDF') && isfield(sFile.header, 'startdate') && isfield(sFile.header, 'starttime') && ~isempty(sFile.header.startdate) && ~isempty(sFile.header.starttime)
             % Read time and date from the fields in the header
             recdate = sFile.header.startdate;
             rectime = sFile.header.starttime;
@@ -1690,12 +1690,25 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
             rectime = str2num(rectime);
             % Valid times where found
             if (length(recdate) == 3) && (length(rectime) == 3) && ~isequal(recdate, [1 1 1]) && ~isequal(recdate, [0 0 0])
-                if strcmpi(sFile.format, 'EEG-EDF')
-                    yOffset = 2000;
-                else
-                    yOffset = 0;
-                end
-                dstart = datenum(yOffset + recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
+                dstart = datenum(2000 + recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
+                dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
+                dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
+            end
+        % Nihon Kohden: Wall clock time
+        elseif strcmpi(sFile.format, 'EEG-NK') && isfield(sFile.header, 'startdate') && ~isempty(sFile.header.startdate)
+            % Read date from the fields in the header
+            recdate = sFile.header.startdate;
+            recdate(~ismember(sFile.header.startdate, '1234567890')) = ' ';
+            recdate = str2num(recdate);
+            % Get timestamp of the current data block
+            iEpoch = GlobalData.FullTimeWindow.CurrentEpoch;
+            ts = sFile.header.ctl(1).data(iEpoch).timestamp;
+            rectime(3) = rem(ts, 60);
+            rectime(2) = rem(ts - rectime(3), 3600) / 60;
+            rectime(1) = (ts - rectime(2)*60 - rectime(3)) / 3600;
+            % Valid times where found
+            if (length(recdate) == 3) && (length(rectime) == 3) && ~isequal(recdate, [1 1 1]) && ~isequal(recdate, [0 0 0])
+                dstart = datenum(recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
                 dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
                 dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
             end
