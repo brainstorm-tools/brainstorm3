@@ -378,15 +378,14 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
                 return;
             end
             % Bad channels: For recordings, keep only the channels that are good in BOTH A and B sets
-            switch lower(sInputsA(1).FileType)
-                case 'data'
-                    ChannelFlag = StatA.ChannelFlag;
-                    ChannelFlag(StatB.ChannelFlag == -1) = -1;
-                    isGood = (ChannelFlag == 1);
-                case {'results', 'timefreq', 'matrix'}
-                    ChannelFlag = [];
-                    isGood = true(size(StatA.mean, 1), 1);
-                    isGood((StatA.nGoodSamples < 2) | (StatB.nGoodSamples < 2)) = 0;
+            if strcmpi(sInputsA(1).FileType, 'data') && ~isempty(StatA.ChannelFlag) && ~isempty(StatB.ChannelFlag)
+                ChannelFlag = StatA.ChannelFlag;
+                ChannelFlag(StatB.ChannelFlag == -1) = -1;
+                isGood = (ChannelFlag == 1);
+            else  % case {'results', 'timefreq', 'matrix'}
+                ChannelFlag = [];
+                isGood = true(size(StatA.mean, 1), 1);
+                isGood((StatA.nGoodSamples < 2) | (StatB.nGoodSamples < 2)) = 0;
             end
 
             % === COMPUTE TEST ===
