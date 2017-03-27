@@ -420,6 +420,64 @@ for iFile = 1:length(FilesA)
                 Comment = sprintf('SpGranger(%1.1fHz): ', OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
             end
             
+        % ==== AEC ====
+        case 'aec'
+            bst_progress('text', sprintf('Calculating: AEC [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
+            Comment = 'AEC: ';
+            % Get frequency bands
+            nFreqBands = size(OPTIONS.Freqs, 1);
+            BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
+
+            % Initialize returned matrix
+            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
+            % Loop on each frequency band
+            for iBand = 1:nFreqBands
+                % Band-pass filter in one frequency band + Apply Hilbert transform
+                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                HA = hilbert_fcn(DataAband')';                
+                if isConnNN
+                    HB = HA;
+                else
+                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                    HB = hilbert_fcn(DataBband')';
+                end
+                if OPTIONS.isOrth
+                    if isConnNN
+                        for iSeed = 1:size(HA,1)
+                            % Orthogonalize complex coefficients, based on Hipp et al. 2012
+                            % HBo is the amplitude of the component orthogonal to HA                            
+                            HBo = imag(bsxfun(@times, HB, conj(HA(iSeed,:))./abs(HA(iSeed,:))));
+                            % The orthogonalized signal can be computed like this (not necessary here):
+                            % HBos = real(HBo .* ((1i*HA)./abs(HA)));
+                            % avoid rounding errors
+                            HBo(abs(HBo./abs(HB))<2*eps)=0;
+                            % Compute correlation coefficients
+                            R(iSeed,:,iBand) = correlate_dims(abs(HBo), abs(HA(iSeed,:)), 2);
+                        end
+                        % average the two "directions"
+                        R(:,:,iBand) = (R(:,:,iBand)+R(:,:,iBand)')/2;
+                    else
+                        for iSeed = 1:size(HA,1)
+                            HAo = imag(bsxfun(@times, HA(iSeed,:), conj(HB)./abs(HB)));
+                            HBo = imag(bsxfun(@times, HB, conj(HA(iSeed,:))./abs(HA(iSeed,:))));
+                            % avoid rounding errors
+                            HAo(abs(bsxfun(@rdivide,HAo,abs(HA)))<2*eps)=0;
+                            HBo(abs(HBo./abs(HB))<2*eps)=0;
+                            % Compute correlation coefficients
+                            r1 = correlate_dims(abs(HA(iSeed,:)), abs(HBo), 2);
+                            r2 = correlate_dims(abs(HB), abs(HAo), 2);
+                            R(iSeed,:,iBand) = (r1+r2)/2;
+                        end
+                    end
+                else
+                    ampA = abs(HA);
+                    ampB = abs(HB);
+                    R(:,:,iBand) = corr(ampA',ampB');
+                end
+            end
+            % We don't want to compute again the frequency bands
+            FreqBands = [];            
+            
         % ==== PLV ====
         case 'plv'
             bst_progress('text', sprintf('Calculating: PLV [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
@@ -743,5 +801,16 @@ function [sConcat, sAverage] = LoadAll(FileNames, Target, TimeWindow, LoadOption
     end
 end
 
+function R = correlate_dims(A, B, dim)
+    A = bsxfun( @minus, A, mean( A, dim) );
+    B = bsxfun( @minus, B, mean( B, dim) );
+    A = normr(A);
+    B = normr(B);
+    R = sum(bsxfun(@times, A, B), dim);
+end
 
-
+function x = normr(x)
+    n = sqrt(sum(x.^2,2));
+    x(n~=0,:) = bst_bsxfun(@rdivide, x(n~=0,:), n(n~=0));
+    x(n==0,:) = 1 ./ sqrt(size(x,2));
+end
