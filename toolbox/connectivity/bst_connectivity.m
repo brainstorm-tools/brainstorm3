@@ -472,7 +472,7 @@ for iFile = 1:length(FilesA)
                 else
                     ampA = abs(HA);
                     ampB = abs(HB);
-                    R(:,:,iBand) = corr(ampA',ampB');
+                    R(:,:,iBand) = bst_corrn(ampA,ampB);
                 end
             end
             % We don't want to compute again the frequency bands
