@@ -64,7 +64,7 @@ for i = 1:length(ChannelMat.Channel)
         case 17,   ChannelMat.Channel(i).Name = 'FZ';                        ChannelMat.Channel(i).Type = 'EEG';
         case 18,   ChannelMat.Channel(i).Name = 'CZ';                        ChannelMat.Channel(i).Type = 'EEG';
         case 19,   ChannelMat.Channel(i).Name = 'PZ';                        ChannelMat.Channel(i).Type = 'EEG';
-        case 20,   ChannelMat.Channel(i).Name = 'E';                         ChannelMat.Channel(i).Type = 'EEG';
+        case 20,   ChannelMat.Channel(i).Name = 'E';                         ChannelMat.Channel(i).Type = 'MISC';
         case 21,   ChannelMat.Channel(i).Name = 'PG1';                       ChannelMat.Channel(i).Type = 'EEG';
         case 22,   ChannelMat.Channel(i).Name = 'PG2';                       ChannelMat.Channel(i).Type = 'EEG';
         case 23,   ChannelMat.Channel(i).Name = 'A1';                        ChannelMat.Channel(i).Type = 'EEG';
@@ -72,19 +72,36 @@ for i = 1:length(ChannelMat.Channel)
         case 25,   ChannelMat.Channel(i).Name = 'T1';                        ChannelMat.Channel(i).Type = 'EEG';
         case 26,   ChannelMat.Channel(i).Name = 'T2';                        ChannelMat.Channel(i).Type = 'EEG';
         case num2cell(27:37), ChannelMat.Channel(i).Name = sprintf('X%d', i - 26);     ChannelMat.Channel(i).Type = 'EEG';
-        case num2cell(43:74), ChannelMat.Channel(i).Name = sprintf('DC%02d', i - 42);  ChannelMat.Channel(i).Type = 'DC';
-        case 75,   ChannelMat.Channel(i).Name = 'BN1';                       ChannelMat.Channel(i).Type = 'MISC';
-        case 76,   ChannelMat.Channel(i).Name = 'BN2';                       ChannelMat.Channel(i).Type = 'MISC';
+        case 38,   ChannelMat.Channel(i).Name = 'BN';                        ChannelMat.Channel(i).Type = 'MISC';
+        case 39,   ChannelMat.Channel(i).Name = 'AV';                        ChannelMat.Channel(i).Type = 'MISC';
+        case 40,   ChannelMat.Channel(i).Name = 'SD';                        ChannelMat.Channel(i).Type = 'MISC';
+        case 41,   ChannelMat.Channel(i).Name = 'Aav';                       ChannelMat.Channel(i).Type = 'MISC';
+        case 42,   ChannelMat.Channel(i).Name = '0V';                        ChannelMat.Channel(i).Type = 'MISC';
+        case num2cell(43:70), ChannelMat.Channel(i).Name = sprintf('DC%02d', i - 42);  ChannelMat.Channel(i).Type = 'DC';
+        case 71,   ChannelMat.Channel(i).Name = 'SpO2';                      ChannelMat.Channel(i).Type = 'MISC';
+        case 72,   ChannelMat.Channel(i).Name = 'EtCO2';                     ChannelMat.Channel(i).Type = 'MISC';
+        case 73,   ChannelMat.Channel(i).Name = 'Pulse';                     ChannelMat.Channel(i).Type = 'MISC';
+        case 74,   ChannelMat.Channel(i).Name = 'CO2Wave';                   ChannelMat.Channel(i).Type = 'MISC';
+        case 75,   ChannelMat.Channel(i).Name = 'BN1';                       ChannelMat.Channel(i).Type = 'EEG';
+        case 76,   ChannelMat.Channel(i).Name = 'BN2';                       ChannelMat.Channel(i).Type = 'EEG';
         case 77,   ChannelMat.Channel(i).Name = 'Mark1';                     ChannelMat.Channel(i).Type = 'MISC';
         case 78,   ChannelMat.Channel(i).Name = 'Mark2';                     ChannelMat.Channel(i).Type = 'MISC';
+        case num2cell(79:93),  ChannelMat.Channel(i).Name = sprintf('U%d',i); ChannelMat.Channel(i).Type = 'UNKNOWN';
+        case 94,   ChannelMat.Channel(i).Name = 'RFU1';                      ChannelMat.Channel(i).Type = 'MISC';
+        case 95,   ChannelMat.Channel(i).Name = 'RFU2';                      ChannelMat.Channel(i).Type = 'MISC';
+        case 96,   ChannelMat.Channel(i).Name = 'RFU3';                      ChannelMat.Channel(i).Type = 'MISC';
+        case 97,   ChannelMat.Channel(i).Name = 'RFU4';                      ChannelMat.Channel(i).Type = 'MISC';
+        case 98,   ChannelMat.Channel(i).Name = 'RFU5';                      ChannelMat.Channel(i).Type = 'MISC';
+        case 99,   ChannelMat.Channel(i).Name = 'RFU6';                      ChannelMat.Channel(i).Type = 'MISC';
+        case 100,  ChannelMat.Channel(i).Name = 'COM';                       ChannelMat.Channel(i).Type = 'MISC';
         case 101,  ChannelMat.Channel(i).Name = 'X12/BP1';                   ChannelMat.Channel(i).Type = 'EEG';
         case 102,  ChannelMat.Channel(i).Name = 'X13/BP2';                   ChannelMat.Channel(i).Type = 'EEG';
         case 103,  ChannelMat.Channel(i).Name = 'X14/BP3';                   ChannelMat.Channel(i).Type = 'EEG';
         case 104,  ChannelMat.Channel(i).Name = 'X15/BP4';                   ChannelMat.Channel(i).Type = 'EEG';
         case num2cell(105:255), ChannelMat.Channel(i).Name = sprintf('X%d', i - 89);   ChannelMat.Channel(i).Type = 'EEG';
+        case 255,  ChannelMat.Channel(i).Name = 'AVG';                       ChannelMat.Channel(i).Type = 'MISC';   
         case 256,  ChannelMat.Channel(i).Name = 'Z';                         ChannelMat.Channel(i).Type = 'MISC';
-        case num2cell([38:42, 79:100]),  ChannelMat.Channel(i).Name = sprintf('U%d',i); ChannelMat.Channel(i).Type = 'UNKNOWN';
-        case num2cell(257:Nchan),        ChannelMat.Channel(i).Name = sprintf('EX%d', i);   ChannelMat.Channel(i).Type = 'EEG';
+        case num2cell(257:Nchan),  ChannelMat.Channel(i).Name = sprintf('EX%d', i);   ChannelMat.Channel(i).Type = 'EEG';
     end
 end
 
@@ -145,6 +162,13 @@ while 1
                     % Save channel name
                     if ~isempty(chName)
                         ChannelMat.Channel(iChannel).Name = chName;
+                        % Look for some special names
+                        if strcmpi(chName, 'E') && (iChannel ~= 20)
+                            ChannelMat.Channel(iChannel).Name = 'E_KG';
+                            ChannelMat.Channel(iChannel).Type = 'ECG';
+                        elseif strcmpi(chName, 'KG')
+                            ChannelMat.Channel(iChannel).Type = 'ECG';
+                        end
                     end
                 end
             case 'reference'
