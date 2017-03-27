@@ -2613,6 +2613,10 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     if isprop(hAxes, 'TickLabelInterpreter')
         set(hAxes, 'TickLabelInterpreter', 'none');
     end
+    % Set the axes label mode for the tick labels (never use exponential notation for time)
+    if (bst_get('MatlabVersion') >= 806)
+        hAxes.XAxis.Exponent = 0;
+    end
 end
 
 
