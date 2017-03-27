@@ -410,7 +410,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             LoadOptions.RemoveBaseline = 'all';
             LoadOptions.UseSsp         = UseSsp;
             % Add transients for bandpass filter
-            if ~isempty(nTransient)
+            if ~isempty(nTransient) && ~isempty(TimeWindow)
                 rawTime = TimeWindow + [-1 1] .* (nTransient / sfreq_file);
             else
                 rawTime = TimeWindow;
