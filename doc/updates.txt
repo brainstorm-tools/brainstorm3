@@ -1,13 +1,14 @@
 ---------------------------------------------------------------
 March 2017
+- New process: Amplitude envelope correlation (Peter D)
 - GUI: Added option to filter files by the comment of their parents
-- IO: Add support for Micromed EEG TRC files
-- IO: Add support for Nihon Kohden .EEG files (including newer 1200 systems)
+- IO: Support for Micromed EEG TRC files
+- IO: Support for Nihon Kohden .EEG files (including newer 1200 systems)
 - IO: Export/import continuous recordings with  SPM (.mat/.dat)
+- IO: Support for Presentation 
 - Anatomy: Apply manual registration on other datasets in the same subject
 - Distrib: Upgraded to Matlab 2017a
 - Anatomy: Added default positions for BrainProducts ActiCap 128
-- New process: Amplitude envelope correlation (Peter D)
 ---------------------------------------------------------------
 January 2017
 - Database: Improving the robustness of the list of bad trials
