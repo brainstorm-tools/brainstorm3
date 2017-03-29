@@ -43,6 +43,8 @@ try
             sFileOut = out_fopen_bst(RawFile, sFileIn, ChannelMat, EpochSize);
         case 'SPM-DAT'
             sFileOut = out_fopen_spm(RawFile, sFileIn, ChannelMat);
+        case 'EEG-EDF'
+            sFileOut = out_fopen_edf(RawFile, sFileIn, ChannelMat, EpochSize);
         case 'FIF'
             error('copy input file');
         case 'CTF-CONTINUOUS'
