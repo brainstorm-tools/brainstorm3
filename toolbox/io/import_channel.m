@@ -1,11 +1,19 @@
-function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign)
+function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave)
 % IMPORT_CHANNEL: Imports a channel file (definition of the sensors).
 % 
-% USAGE:  BstChannelFile = import_channel(iStudies=none, ChannelFile='ask', FileFormat)
+% USAGE:  BstChannelFile = import_channel(iStudies=none, ChannelFile=[ask], FileFormat, ChannelReplace=1, ChannelAlign=[ask], isSave=1)
 %
 % INPUT:
-%    - iStudies    : Indices of the studies where to import the ChannelFile
-%    - ChannelFile : Full filename of the channels list to import (default: asked to the user)
+%    - iStudies       : Indices of the studies where to import the ChannelFile
+%    - ChannelFile    : Full filename of the channels list to import (default: asked to the user)
+%    - FileFormat     : Format of the input file ChannelFile
+%    - ChannelReplace : 0, do not replace if channel file already exist
+%                       1, replace old channel file after user confirmation  (default)
+%                       2, replace old channel file without user confirmation
+%    - ChannelAlign   : 0, do not perform automatic headpoints-based alignment
+%                       1, perform automatic alignment after user confirmation  (default)
+%                       2, perform automatic alignment without user confirmation
+%    - isSave         : If 1, save the new channel file in the target study 
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -25,10 +33,13 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2017
 
 %% ===== PARSE INPUTS =====
 Output = [];
+if (nargin < 6) || isempty(isSave)
+    isSave = 1;
+end
 if (nargin < 5) || isempty(ChannelAlign)
     ChannelAlign = [];
 end
@@ -86,7 +97,7 @@ ImportOptions = db_template('ImportOptions');
 ImportOptions.EventsMode = 'ignore';
 ImportOptions.DisplayMessages = 0;
 % Load file
-switch FileFormat
+switch (FileFormat)
     % ===== MEG/EEG =====
     case 'CTF'
         ChannelMat = in_channel_ctf(ChannelFile);
@@ -204,33 +215,33 @@ switch FileFormat
                 FileUnits = 'mm';
         end
 
-    case 'ASCII_XYZ'  % (*.*)
+    case {'ASCII_XYZ', 'ASCII_XYZ_MNI'}  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z'}, 0, .01);
-        ChannelMat.Comment = 'ASCII channels';
+        ChannelMat.Comment = 'Channels';
         FileUnits = 'cm';
-    case 'ASCII_NXYZ'  % (*.*)
+    case {'ASCII_NXYZ', 'ASCII_NXYZ_MNI'}  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'Name','X','Y','Z'}, 0, .01);
-        ChannelMat.Comment = 'ASCII channels';
+        ChannelMat.Comment = 'Channels';
         FileUnits = 'cm';
-    case 'ASCII_XYZN'  % (*.*)
+    case {'ASCII_XYZN', 'ASCII_XYZN_MNI'}  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z','Name'}, 0, .01);
-        ChannelMat.Comment = 'ASCII channels';
+        ChannelMat.Comment = 'Channels';
         FileUnits = 'cm';
     case 'ASCII_NXY'  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'Name','X','Y'}, 0, .000875);
-        ChannelMat.Comment = 'ASCII channels';
+        ChannelMat.Comment = 'Channels';
         FileUnits = 'mm';
     case 'ASCII_XY'  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'X','Y'}, 0, .000875);
-        ChannelMat.Comment = 'ASCII channels';
+        ChannelMat.Comment = 'Channels';
         FileUnits = '';
     case 'ASCII_NTP'  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'Name','TH','PHI'}, 0, .0875);
-        ChannelMat.Comment = 'ASCII channels';
+        ChannelMat.Comment = 'Channels';
         FileUnits = '';
     case 'ASCII_TP'  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'TH','PHI'}, 0, .0875);
-        ChannelMat.Comment = 'ASCII channels';
+        ChannelMat.Comment = 'Channels';
         FileUnits = '';
 end
 % No data imported
@@ -274,16 +285,56 @@ if (length(iEEG) > 8)
         end
     end
 end
+
+
+%% ===== MNI TRANFORMATION ===== 
+if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI'})
+    % Warning for multiple studies
+    if (length(iStudies) > 1)
+        warning(['WARNING: When importing MNI positions for multiple subjects: the MNI transformation from the first subject is used for all of them.' 10 ...
+                 'Please consider importing your subjects seprately.']);
+    end
+    % If we know the destination study: convert from MNI to SCS coordinates
+    if ~isempty(iStudies)
+        % Get the subject for the first study
+        sStudy = bst_get('Study', iStudies(1));
+        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        % Get the subject's MRI
+        if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
+            error('You need the subject anatomy in order to load sensor positions in MNI coordinates.');
+        end
+        % Load the MRI
+        MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
+        sMri = load(MriFile, 'SCS', 'NCS');
+        if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R)
+            error(['The SCS and MNI transformations must be defined for this subject' 10 'in order to load sensor positions in MNI coordinates.']);
+        end
+        % Compute the transformation MNI => SCS
+        RTmni2mri = inv([sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1]);
+        RTmri2scs = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1];
+        RTmni2scs = RTmri2scs * RTmni2mri;
+        % Convert all the coordinates
+        AllChannelMats = channel_apply_transf(ChannelMat, RTmni2scs, [], 1);
+        ChannelMat = AllChannelMats{1};
+    end
+    % Do not convert the positions to SCS
+    isAlignScs = 0;
+else
+    isAlignScs = 1;
+end
+
+
+%% ===== DETECT CHANNEL TYPES =====
 % Remove fiducials only from polhemus and ascii files
 %isRemoveFid = ismember(FileFormat, {'MEGDRAW', 'POLHEMUS', 'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN', 'ASCII_NXY', 'ASCII_XY', 'ASCII_NTP', 'ASCII_TP'});
 isRemoveFid = 1;
 % Detect auxiliary EEG channels + align channel
-ChannelMat = channel_detect_type(ChannelMat, 1, isRemoveFid);
+ChannelMat = channel_detect_type(ChannelMat, isAlignScs, isRemoveFid);
 
 
 %% ===== APPLY NEW CHANNEL FILE =====
 % If some studies were defined
-if ~isempty(iStudies)
+if isSave && ~isempty(iStudies)
     if isempty(ChannelAlign)
         ChannelAlign = ~isempty(iMEG);
     end
@@ -298,7 +349,6 @@ if ~isempty(iStudies)
 else
     Output = ChannelMat;
 end
-
 
 % Progress bar
 if ~isProgressBar

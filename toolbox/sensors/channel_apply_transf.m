@@ -1,10 +1,11 @@
-function channel_apply_transf(ChannelFiles, Transf, iChannels, isHeadPoints)
+function ChannelMats = channel_apply_transf(ChannelFiles, Transf, iChannels, isHeadPoints)
 % CHANNEL_APPLY_TRANSF: Apply a transformation matrix to a list of channel files.
 % 
-% USAGE:  hFig = channel_align_manual(ChannelFiles, Transf, iChannels, isHeadPoints)
+% USAGE:  ChannelMats = channel_apply_transf(ChannelFiles, Transf, iChannels=[all], isHeadPoints=1)
+%         ChannelMats = channel_apply_transf(ChannelMats,  Transf, iChannels=[all], isHeadPoints=1)
 %
 % INPUT:
-%     - ChannelFiles : List of channel files to process
+%     - ChannelFiles : List of channel files to process (string or cell array of strings)
 %     - Transf       : [4x4] transformation matrix to apply to the sensors
 %     - iChannels    : List of sensor indices to update
 %     - isHeadPoints : Update the digitized head points
@@ -37,9 +38,11 @@ end
 if (nargin < 3) || isempty(iChannels)
     iChannels = [];
 end
-if ischar(ChannelFiles)
+if ~iscell(ChannelFiles)
     ChannelFiles = {ChannelFiles};
 end
+% Output variable
+ChannelMats = {};
 % Get the transformation rotation and translation
 R = Transf(1:3,1:3);
 T = Transf(1:3,4);
@@ -47,7 +50,13 @@ T = Transf(1:3,4);
 % Loop on input files
 for iFile = 1:length(ChannelFiles)
     % Load channel file
-    ChannelMat = in_bst_channel(ChannelFiles{iFile});
+    if ischar(ChannelFiles{iFile})
+        ChannelMat = in_bst_channel(ChannelFiles{iFile});
+        isSave = 1;
+    else
+        ChannelMat = ChannelFiles{iFile};
+        isSave = 0;
+    end
     % Get sensor types
     iMeg  = sort([good_channel(ChannelMat.Channel, [], 'MEG'), good_channel(ChannelMat.Channel, [], 'MEG REF')]);
     iNirs = good_channel(ChannelMat.Channel, [], 'NIRS');
@@ -113,7 +122,13 @@ for iFile = 1:length(ChannelFiles)
     ChannelMat = bst_history('add', ChannelMat, 'transform', sprintf('Translation: [%1.3f,%1.3f,%1.3f]', T));
     
     % Save new positions
-    bst_save(file_fullpath(ChannelFiles{iFile}), ChannelMat, 'v7');
+    if isSave
+        bst_save(file_fullpath(ChannelFiles{iFile}), ChannelMat, 'v7');
+    end
+    % Return output variable
+    if (nargout >= 1)
+        ChannelMats{iFile} = ChannelMat;
+    end
 end
 
 

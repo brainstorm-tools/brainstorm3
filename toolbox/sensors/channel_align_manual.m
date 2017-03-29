@@ -845,7 +845,7 @@ function CopyToOtherFolders(ChannelMatSrc, iStudySrc, Transf, iChannels)
         end
         % Skip studies without channel files
         if isempty(sStudies(i).Channel) || isempty(sStudies(i).Channel(1).FileName)
-            return;
+            continue;
         end
         % Load channel file
         ChannelMatDest = in_bst_channel(sStudies(i).Channel(1).FileName);
@@ -853,13 +853,13 @@ function CopyToOtherFolders(ChannelMatSrc, iStudySrc, Transf, iChannels)
         locDest = [ChannelMatDest.Channel.Loc];
         % Check if the channel files are similar
         if (length(ChannelMatDest.Channel) ~= length(ChannelMatSrc.Channel)) || (size(locDest,2) ~= size(locSrc,2))
-            return;
+            continue;
         end
         % Check if the positions of the sensors are similar
         distLoc = sqrt((locDest(1,:) - locSrc(1,:)).^2 + (locDest(2,:) - locSrc(2,:)).^2 + (locDest(3,:) - locSrc(3,:)).^2);
         % If the sensors are more than 5mm apart in average: skip
         if any(distLoc > 0.005) 
-            return;
+            continue;
         end
         % Ask confirmation to the user
         if isempty(isConfirm)

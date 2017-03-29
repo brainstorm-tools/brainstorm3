@@ -429,7 +429,7 @@ for iFile = 1:length(DataFiles)
             ChannelMat.Channel(i).Name = file_unique(ChannelMat.Channel(i).Name, {ChannelMat.Channel(iOther).Name});
         end
         % Remove fiducials only from polhemus and ascii files
-        isRemoveFid = ismember(FileFormat, {'MEGDRAW', 'POLHEMUS', 'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN', 'ASCII_NXY', 'ASCII_XY', 'ASCII_NTP', 'ASCII_TP'});
+        isRemoveFid = ismember(FileFormat, {'MEGDRAW', 'POLHEMUS', 'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN', 'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'ASCII_NXY', 'ASCII_XY', 'ASCII_NTP', 'ASCII_TP'});
         % Perform the NAS/LPA/RPA registration for some specific file formats
         isAlign = ismember(FileFormat, {'NIRS-BRS'});
         % Detect auxiliary EEG channels

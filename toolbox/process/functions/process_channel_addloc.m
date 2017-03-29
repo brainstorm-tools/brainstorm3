@@ -85,9 +85,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get filename to import
     ChannelFile = sProcess.options.channelfile.Value{1};
     FileFormat  = sProcess.options.channelfile.Value{2};
+    % Get channel studies
+    [tmp, iChanStudies] = bst_get('ChannelForStudy', [sInputs.iStudy]);
+    iChanStudies = unique(iChanStudies);
     % Load file
     if ~isempty(ChannelFile)
-        ChannelMat = import_channel([], ChannelFile, FileFormat);
+        ChannelMat = import_channel(iChanStudies, ChannelFile, FileFormat, [], [], 0);
     end
 
     % ===== USE DEFAULT =====
@@ -123,9 +126,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
 
     % ===== ADD POSITIONS =====
-    % Get channel studies
-    [tmp, iChanStudies] = bst_get('ChannelForStudy', [sInputs.iStudy]);
-    iChanStudies = unique(iChanStudies);
     % Add channel positions
     channel_add_loc(iChanStudies, ChannelMat, 0);
 end

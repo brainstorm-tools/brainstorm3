@@ -1,8 +1,7 @@
 function ChannelMat = channel_detect_type( ChannelMat, isAlign, isRemoveFid )
 % CHANNEL_DETECT_TYPE: Detect some auxiliary EEG channels in a channel structure.
 %
-% USAGE:  ChannelMat = channel_detect_type( ChannelMat, isAlign )
-%         ChannelMat = channel_detect_type( ChannelMat )            % isAlign = 0
+% USAGE:  ChannelMat = channel_detect_type( ChannelMat, isAlign=0, isRemoveFid=0 )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,7 +21,7 @@ function ChannelMat = channel_detect_type( ChannelMat, isAlign, isRemoveFid )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2016
+% Authors: Francois Tadel, 2009-2017
 
 % Parse inputs
 if (nargin < 2) || isempty(isAlign)
@@ -33,8 +32,6 @@ if (nargin < 3) || isempty(isRemoveFid)
 end
 
 %% ===== DETECT SENSOR TYPES =====
-% Detect EEG channels
-iEEG = channel_find(ChannelMat.Channel, 'EEG');
 % Add orientation fields
 if ~isfield(ChannelMat, 'SCS') || isempty(ChannelMat.SCS)
     ChannelMat.SCS = db_template('SCS');

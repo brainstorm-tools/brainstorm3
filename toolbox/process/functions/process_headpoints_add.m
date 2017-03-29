@@ -89,11 +89,14 @@ end
 %% ===== REMOVE HEAD POINTS =====
 function strMsg = AddHeadpoints(ChannelFile, HeadPointsFile, FileFormat)
     % ===== READ HEAD POINTS FILE =====
+    % Get channel studies
+    [tmp, iChanStudies] = bst_get('ChannelFile', ChannelFile); 
+    % Read new files
     HeadPoints = [];
     if (nargin < 3) || isempty(HeadPointsFile) || isempty(FileFormat)
-        [FileMat, HeadPointsFile, FileFormat] = import_channel();
+        [FileMat, HeadPointsFile, FileFormat] = import_channel(iChanStudies, [], [], [], [], 0);
     else
-        FileMat = import_channel([], HeadPointsFile, FileFormat);
+        FileMat = import_channel(iChanStudies, HeadPointsFile, FileFormat, [], [], 0);
     end
     if isempty(FileMat)
         strMsg = 'No file could be read.';

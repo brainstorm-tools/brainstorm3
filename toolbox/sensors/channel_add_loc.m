@@ -43,7 +43,7 @@ if ~isempty(LocChannelFile)
     end
 % Import positions from external file
 else
-    LocChannelMat = import_channel([], [], [], 0, 0);
+    LocChannelMat = import_channel(iStudies, [], [], 0, 0, 0);
 end
 % Nothing loaded: exit
 if isempty(LocChannelMat)
@@ -73,7 +73,10 @@ for is = 1:length(iStudies)
     for ic = 1:length(ChannelMat.Channel)
         idef = find(strcmpi(ChannelMat.Channel(ic).Name, {LocChannelMat.Channel.Name}));
         if ~isempty(idef) && (size(ChannelMat.Channel(ic).Loc,2) <= 1) && ~isequal(LocChannelMat.Channel(idef).Loc, [0;0;0])
-            ChannelMat.Channel(ic).Type   = 'EEG';
+            % If the channel is already considered as EEG, do not change its type, otherwise set it to EEG
+            if ~ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
+                ChannelMat.Channel(ic).Type = 'EEG';
+            end
             ChannelMat.Channel(ic).Loc    = LocChannelMat.Channel(idef).Loc;
             ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
             ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;

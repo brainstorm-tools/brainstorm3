@@ -30,7 +30,7 @@ function jPopup = tree_callbacks( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
@@ -791,6 +791,8 @@ switch (lower(action))
                 
                 % === ADD EEG POSITIONS ===
                 if ismember('EEG', AllMod)
+                    fcnPopupImportChannel(bstNodes, jPopup, 2);
+                elseif any(ismember({'SEEG','ECOG'}, AllMod))
                     fcnPopupImportChannel(bstNodes, jPopup, 1);
                 end  
                    
@@ -2288,10 +2290,15 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
     % Get all studies
     iAllStudies = tree_channel_studies( bstNodes );
     % === IMPORT CHANNEL ===
-    if isAddLoc
+    if (isAddLoc >= 1)  % isAddLoc=2 (EEG) or =1 (SEEG/ECOG)
         jMenu = gui_component('Menu', jMenu, [], 'Add EEG positions', IconLoader.ICON_CHANNEL, [], [], []);
         % Import from file
         gui_component('MenuItem', jMenu, [], 'Import from file', IconLoader.ICON_CHANNEL, [], @(h,ev)channel_add_loc(iAllStudies, [], 1), []);
+        % If only SEEG/ECOG, stop here (we do not want to offer the standard EEG caps, it doesn't make sense)
+        if (isAddLoc < 2)
+            return;
+        end
+        % Add separator before the menu with default EEGcaps
         AddSeparator(jMenu);
     else
         gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)import_channel(iAllStudies), []);

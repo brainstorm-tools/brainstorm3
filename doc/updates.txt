@@ -5,15 +5,16 @@ March 2017
 - IO: Support for Micromed EEG TRC files
 - IO: Support for Nihon Kohden .EEG files (including newer 1200 systems)
 - IO: Export/import continuous recordings with  SPM (.mat/.dat)
-- IO: Support for Presentation 
+- IO: Support for Presentation .log files
+- IO: Import SEEG/ECOG contact positions in MNI coordinates
 - Anatomy: Apply manual registration on other datasets in the same subject
 - Distrib: Upgraded to Matlab 2017a
 - Anatomy: Added default positions for BrainProducts ActiCap 128
 ---------------------------------------------------------------
 January 2017
-- Database: Improving the robustness of the list of bad trials
 - Bug fix: Computation of time-frequency maps in folders that include the keyword "_trial"
 - Bug fix: Epoch time could not be set in the "Import MEG/EEG" dialog window
+- Database: Improving the robustness of the list of bad trials
 - GUI: Reorganized the montage menus for SEEG contacts
 - IO: Added support for FreeSurfer 6.0 output
 - Doc: HCP tutorial
@@ -25,10 +26,10 @@ December 2016
 - Process: Simulate recordings: Added noise to the simulated recordings
 ---------------------------------------------------------------
 November 2016
+- Bug fix: Large Neuroscan .cnt files were truncated
 - New process: FieldTrip volume segmentation (ft_volumesegment)
 - New process: FieldTrip head models (ft_prepare_headmodel, ft_prepare_leadfield)
 - New process: FieldTrip inverse models (ft_sourceanalysis)
-- GUI: Frequency contact sheets
 - Anatomy: New headmodel option for isotropic source grids: cortex/head
 - Anatomy: Import subject volume atlases as scouts for volume source models (eg. ASEG)
 - Anatomy: Import MNI volume atlases as scouts for volume source models (eg. AAL)
@@ -40,14 +41,14 @@ November 2016
 - Anatomy: Default AC position in MNI space is now [0 3 -4] instead of [0 2 -4]
 - Anatomy: Import FreeSurfer anatomy: Now creates a surface with the cerebellum by default
 - Anatomy: Fixed the co-registration of multiple volumes (faster, less memory, better workflow)
-- IO: Automated import of datasets following the BIDS specifications
-- IO: Import/export FieldTrip MRI volumes
-- Bug fix: Large Neuroscan .cnt files were truncated
-- Doc: OMEGA/resting state tutorial
-- IO: Load colormaps from LUT files (color lookup tables)
 - Anatomy: MRI Viewer: Added support for indexed colormaps (atlas labels)
+- IO: Import of datasets following the BIDS specifications automatically
+- IO: Import HCP MEG/anatomy folders automatically
+- IO: Import/export FieldTrip MRI volumes
+- IO: Load colormaps from LUT files (color lookup tables)
+- Doc: OMEGA/resting state tutorial
+- GUI: Frequency contact sheets
 - GUI: Added colormaps from MRIcron
-- IO: Load HCP MEG/anatomy folders automatically
 ---------------------------------------------------------------
 October 2016
 - Compatibility: The default band-pass/low-pass/high-pass filters use a different implementation
