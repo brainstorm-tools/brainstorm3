@@ -21,4 +21,13 @@ function out_fwrite_edf(sFile, sfid, SamplesBounds, ChannelsRange, F)
 %
 % Authors: Martin Cousineau, 2017
 
-%TODO.
+dataClass = 'uint16';
+fseek(sfid, 0, 'eof');
+
+% Convert V to uV to avoid precision loss
+ncount = fwrite(sfid, F * 10e6, dataClass);
+
+% Check number of values written
+if (ncount ~= numel(F))
+    error('Error writing data to file.');
+end

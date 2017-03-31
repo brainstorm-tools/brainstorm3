@@ -42,20 +42,20 @@ header.starttime  = datestr(date, 'HH.MM.SS');
 header.nsignal    = length(ChannelMat.Channel);
 header.hdrlen     = 256 + 256 * header.nsignal;
 header.unknown1   = '';  %TODO: EDF+ stuff
-header.nrec       = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
-header.reclen     = EpochSize;
+header.reclen     = EpochSize / (1000 * header.nsignal);
+header.nrec       = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / header.nsignal * header.reclen;
 
 % Channel information
 for i = 1:header.nsignal
     header.signal(i).label        = ChannelMat.Channel(i).Name;
     header.signal(i).type         = ChannelMat.Channel(i).Type;
-    header.signal(i).unit         = 'V';
+    header.signal(i).unit         = 'uV';
     header.signal(i).physical_min = 0;  %TODO: how to determine this value?
     header.signal(i).physical_max = 1;  %TODO: see above
     header.signal(i).digital_min  = 0;  %TODO: see above
     header.signal(i).digital_max  = 1;  %TODO: see above
     header.signal(i).filters      = '';
-    header.signal(i).nsamples     = 1;  %TODO: see above
+    header.signal(i).nsamples     = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / header.nrec;
     header.signal(i).unknown2     = '';
 end
 
@@ -128,9 +128,6 @@ end
 % Sanity check on the written header
 assert(ftell(fid) == header.hdrlen);
 
-
-% Save beginning of the data block
-header.datapos = ftell(fid);
 % Close file
 fclose(fid);
 % Copy header to the sFile structure
