@@ -256,7 +256,7 @@ end
 %% ===== CHECK DISTANCE UNITS =====
 iEEG = good_channel(ChannelMat.Channel, [], {'EEG','SEEG','ECOG','Fiducial'});
 iMEG = good_channel(ChannelMat.Channel, [], 'MEG');
-if (length(iEEG) > 8)
+if (length(iEEG) > 8) || (length(iEEG) == length(ChannelMat.Channel))
     % Compute mean distance from head center
     meanNorm = 0;
     for k=1:length(iEEG)
@@ -281,6 +281,10 @@ if (length(iEEG) > 8)
             % Apply correction to location values
             for k = 1:length(iEEG)
                 ChannelMat.Channel(iEEG(k)).Loc = ChannelMat.Channel(iEEG(k)).Loc .* Factor;
+            end
+            % Apply correction to head points
+            if isHeadPoints
+                ChannelMat.HeadPoints.Loc = ChannelMat.HeadPoints.Loc .* Factor;
             end
         end
     end

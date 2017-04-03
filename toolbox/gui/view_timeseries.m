@@ -34,7 +34,7 @@ function [hFig, iDS, iFig] = view_timeseries(DataFile, Modality, RowNames, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2017
 
 %% ===== INITIALIZATION =====
 global GlobalData;
