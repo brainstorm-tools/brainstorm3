@@ -61,7 +61,6 @@ sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.channelflag  = ones(nChannels,1);
 sFile.device       = 'SPM';
 sFile.comment      = fBase;
-sFile.channelflag  = zeros(nChannels,1);
 sFile.header.file_array = D.data;
 sFile.header.nChannels  = nChannels;
 
@@ -74,7 +73,9 @@ ChannelMat.Comment = [sFile.device ' channels'];
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
 % Loop on each channel
 for i = 1:nChannels
-    sFile.channelflag(i) = D.channels(i).bad;
+    if (D.channels(i).bad)
+        sFile.channelflag(i) = -1;
+    end
     if iscell(D.channels(i).label) && ~isempty(D.channels(i).label)
         ChannelMat.Channel(i).Name = D.channels(i).label{1};
     elseif ischar(D.channels(i).label) && ~isempty(D.channels(i).label)

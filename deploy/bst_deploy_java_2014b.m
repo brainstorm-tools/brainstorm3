@@ -178,7 +178,7 @@ if isempty(autoComment)
     error('Auto-comment file not found.');
 end
 % Convert to Unix-like string
-autoComment = strrep(autoComment, char([13 10]), char(10));
+% autoComment = strrep(autoComment, char([13 10]), char(10));
 % Initialize line counts
 nFiles   = 0;
 nCode    = 0;
