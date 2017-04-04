@@ -50,7 +50,7 @@ hdr.acquisition.device   = fread(fid, 1, 'short');
 hdr.acquisition.filetype = fread(fid, 1, 'ushort');
 % Data
 hdr.data_offset   = fread(fid, 1, 'ulong');  % data_start_offset
-hdr.num_channels  = fread(fid, 1, 'ushort'); 
+hdr.num_channels  = fread(fid, 1, 'ushort');
 hdr.multiplexer   = fread(fid, 1, 'ushort'); % distance in bytes between successive samples
 hdr.sampling_freq = fread(fid, 1, 'ushort'); % Rate_min 64, 128, 256, 512, 1024
 hdr.num_bytes     = fread(fid, 1, 'ushort'); % Number of bytes to represent one data sample
@@ -143,7 +143,8 @@ end
 % Read electrodes info
 for iChannel = 1:hdr.num_channels      % Instead of 1:MAX_LAB (MAX_LAB = 640)
     % Read channel info (re-ordered by "code")
-    fseek(fid, hdr.electrode_area.start + 128 * (hdr.code(iChannel) - 1), -1);
+%     fseek(fid, hdr.electrode_area.start + 128 * (hdr.code(iChannel) - 1), -1);
+    fseek(fid, hdr.electrode_area.start + 128 * hdr.code(iChannel), -1);
     % Channel status
     hdr.electrode(iChannel).status = fread(fid, 1, 'uchar');  % 0=not acquired, 1=acquired
     % Channel type
