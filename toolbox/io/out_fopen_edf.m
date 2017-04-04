@@ -42,8 +42,23 @@ header.starttime  = datestr(date, 'HH.MM.SS');
 header.nsignal    = length(ChannelMat.Channel);
 header.hdrlen     = 256 + 256 * header.nsignal;
 header.unknown1   = '';  %TODO: EDF+ stuff
-header.reclen     = EpochSize / (1000 * header.nsignal);
-header.nrec       = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / header.nsignal * header.reclen;
+header.nrec       = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / EpochSize;
+
+% We need to choose a record length that produces a whole number of records
+header.reclen     = 1.0;
+for i = 1:10
+    remainder = mod(header.nrec / header.reclen, 1);
+    if remainder > 0 && abs(remainder - 1) > 1e-6
+        header.reclen = header.reclen / 10;
+    else
+        break;
+    end
+    
+    if i == 10
+        error('Could not find a valid record length for this data.');
+    end
+end
+header.nrec       = header.nrec / header.reclen;
 
 % Channel information
 for i = 1:header.nsignal

@@ -21,11 +21,17 @@ function out_fwrite_edf(sFile, sfid, SamplesBounds, ChannelsRange, F)
 %
 % Authors: Martin Cousineau, 2017
 
-dataClass = 'uint16';
 fseek(sfid, 0, 'eof');
 
 % Convert V to uV to avoid precision loss
-ncount = fwrite(sfid, F * 10e6, dataClass);
+F = F * 1e6;
+
+% Convert to 2-byte integer in 2's complement
+F = int16(F);
+F(F < 0) = bitcmp(F(F < 0)) + 1;
+
+% Write to file
+ncount = fwrite(sfid, F, 'int16');
 
 % Check number of values written
 if (ncount ~= numel(F))
