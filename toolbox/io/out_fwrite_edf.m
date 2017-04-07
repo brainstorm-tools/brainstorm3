@@ -28,7 +28,8 @@ F = F * 1e6;
 
 % Convert to 2-byte integer in 2's complement
 F = int16(F);
-F(F < 0) = bitcmp(F(F < 0)) + 1;
+negF = F < 0;
+F(negF) = bitcmp(abs(F(negF))) + 1;
 
 % Write to file
 ncount = fwrite(sfid, F, 'int16');
@@ -36,4 +37,33 @@ ncount = fwrite(sfid, F, 'int16');
 % Check number of values written
 if (ncount ~= numel(F))
     error('Error writing data to file.');
+end
+
+
+% Write annotations (events)
+if sFile.header.annotchan >= 0
+    nEvents = length(sFile.events);
+    nbytes = 0;
+    nbytesTotal = 2 * sFile.header.signal(sFile.header.annotchan).nsamples;
+
+    for iEvt = 1:nEvents
+        event = sFile.events(iEvt);
+        startTime = event.times(1);
+        nbytes = nbytes + fprintf(sfid, '+%f', startTime);
+
+        % Add duration if specified.
+        if length(event.times) > 1
+            duration = event.times(2) - startTime;
+            nbytes = nbytes + fprintf(sfid, '%c%f', char(21), duration);
+        end
+
+        nbytes = nbytes + fprintf(sfid, '%c%s%c%c', char(20), event.label, char(20), char(0));
+    end
+
+    % Add trailing number of 0-bytes until we've reached the number of bytes specified in the header.
+    if nbytes > nbytesTotal
+        error('Wrote too many bytes of annotations.');
+    else
+        fprintf(sfid, '%s', repmat(char(0), 1, nbytesTotal - nbytes));
+    end
 end

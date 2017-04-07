@@ -24,7 +24,7 @@ function sFileOut = out_fopen_edf(OutputFile, sFileIn, ChannelMat, EpochSize)
 % Get file comment
 [fPath, fBase, fExt] = bst_fileparts(OutputFile);
 
-% Create a new header structure
+% Initialize output file
 sFileOut = sFileIn;
 sFileOut.filename  = OutputFile;
 sFileOut.condition = '';
@@ -33,6 +33,7 @@ sFileOut.byteorder = 'l';
 sFileOut.comment   = fBase;
 date = datetime;
 
+% Create a new header structure
 header            = struct();
 header.version    = 0;
 header.patient_id = '';  %TODO: Try to get subject name from file to export?
@@ -40,15 +41,17 @@ header.rec_id     = '';  %TODO: see above
 header.startdate  = datestr(date, 'dd.mm.yy');
 header.starttime  = datestr(date, 'HH.MM.SS');
 header.nsignal    = length(ChannelMat.Channel);
-header.hdrlen     = 256 + 256 * header.nsignal;
-header.unknown1   = '';  %TODO: EDF+ stuff
 header.nrec       = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / EpochSize;
 
 % We need to choose a record length that produces a whole number of records
+% and a record size less than 61440 bytes (at 2 bytes per sample).
 header.reclen     = 1.0;
+epsilon           = 1e-8;
 for i = 1:10
-    remainder = mod(header.nrec / header.reclen, 1);
-    if remainder > 0 && abs(remainder - 1) > 1e-6
+    remainder     = mod(header.nrec / header.reclen, 1);
+    recordSize    = header.reclen * EpochSize * header.nsignal * 2;
+    
+    if (remainder > epsilon && abs(remainder - 1) > epsilon) || recordSize > 61440
         header.reclen = header.reclen / 10;
     else
         break;
@@ -60,18 +63,43 @@ for i = 1:10
 end
 header.nrec       = header.nrec / header.reclen;
 
+% Add an additional channel at the end to save events if necessary.
+if ~isempty(sFileIn.events)
+    header.nsignal     = header.nsignal + 1;
+    header.annotchan   = header.nsignal;
+    header.unknown1    = '';
+else
+    header.annotchan   = -1;
+    header.unknown1    = '';
+end
+header.hdrlen = 256 + 256 * header.nsignal;
+
 % Channel information
 for i = 1:header.nsignal
-    header.signal(i).label        = ChannelMat.Channel(i).Name;
-    header.signal(i).type         = ChannelMat.Channel(i).Type;
     header.signal(i).unit         = 'uV';
-    header.signal(i).physical_min = 0;  %TODO: how to determine this value?
-    header.signal(i).physical_max = 1;  %TODO: see above
-    header.signal(i).digital_min  = 0;  %TODO: see above
-    header.signal(i).digital_max  = 1;  %TODO: see above
+    header.signal(i).physical_min = -2^15;
+    header.signal(i).physical_max = 2^15 - 1;
+    header.signal(i).digital_min  = -2^15;
+    header.signal(i).digital_max  = 2^15 - 1;
     header.signal(i).filters      = '';
-    header.signal(i).nsamples     = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / header.nrec;
     header.signal(i).unknown2     = '';
+    
+    % Approximate size of annotation channel
+    if i == header.annotchan
+        header.signal(i).label    = 'EDF Annotations';
+        header.signal(i).type     = '';
+        header.signal(i).nsamples = 0;        
+        
+        for j = 1:length(sFileIn.events)
+            header.signal(i).nsamples = header.signal(i).nsamples + length(sFileIn.events(j).label) + 25;
+        end
+        header.signal(i).nsamples = int64(header.signal(i).nsamples / 2);
+    else
+        header.signal(i).label    = ChannelMat.Channel(i).Name;
+        header.signal(i).type     = ChannelMat.Channel(i).Type;
+        header.signal(i).nsamples = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / header.nrec;
+    end
+
 end
 
 % Copy some values from the original header if possible
@@ -82,11 +110,14 @@ if strcmpi(sFileIn.format, sFileOut.format) && ~isempty(sFileIn.header)
     header.starttime  = sFileIn.header.starttime;
     header.unknown1   = sFileIn.header.unknown1;
 
-    for i = 1:header.nsignal
-        header.signal(i).label    = sFileIn.header.signal(i).label;
-        header.signal(i).type     = sFileIn.header.signal(i).type;
-        header.signal(i).filters  = sFileIn.header.signal(i).filters;
-        header.signal(i).unknown2 = sFileIn.header.signal(i).unknown2;
+    for i = 1:sFileIn.header.nsignal
+        header.signal(i).label        = sFileIn.header.signal(i).label;
+        header.signal(i).type         = sFileIn.header.signal(i).type;
+        header.signal(i).filters      = sFileIn.header.signal(i).filters;
+        header.signal(i).unknown2     = sFileIn.header.signal(i).unknown2;
+        header.signal(i).physical_min = sFileIn.header.signal(i).physical_min;
+        header.signal(i).physical_max = sFileIn.header.signal(i).physical_max;
+        header.signal(i).digital_min  = sFileIn.header.signal(i).digital_max;
     end
 end
 
