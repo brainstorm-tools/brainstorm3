@@ -168,6 +168,8 @@ while 1
                             ChannelMat.Channel(iChannel).Type = 'ECG';
                         elseif strcmpi(chName, 'KG')
                             ChannelMat.Channel(iChannel).Type = 'ECG';
+                        elseif ismember(ChannelMat.Channel(iChannel).Name, {'0','1','L','R','DEL1','DEL2','DEL3','DEL4','MILO1','MILO2'})
+                            ChannelMat.Channel(iChannel).Type = 'MISC';
                         end
                     end
                 end

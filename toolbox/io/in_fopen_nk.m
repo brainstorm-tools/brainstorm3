@@ -185,7 +185,7 @@ switch (hdr.version)
         
         % Reading number of channels
         fseek(fid, hdr.ctl(i).data(id).extblock3_address + 68, 'bof');
-        hdr.ctl(i).data(id).num_channels = fread(fid, 1, 'uint8') + 1;   % +1 for the STIM channel
+        hdr.ctl(i).data(id).num_channels = fread(fid, 1, 'uint16') + 1;   % +1 for the STIM channel
         % Read channel order
         for iChan = 1:(hdr.ctl(i).data(id).num_channels - 1)  % -1 because the STIM channel is not listed here
             fseek(fid, hdr.ctl(i).data(id).extblock3_address + 72 + (iChan-1) * 10, 'bof');
@@ -260,7 +260,7 @@ if ~isempty(LogFile)
             timeM = str2double(fread(fid, [1 2], '*char'));
             timeS = str2double(fread(fid, [1 2], '*char'));
             hdr.logs(i).time(j) = 60*60*timeH + 60*timeM + timeS;
-            hdr.logs(i).label2{j} = str_clean(fread(fid, [1 19], '*char'));
+            hdr.logs(i).label2{j} = fread(fid, [1 19], '*char');
             % Compute time stamp
             timeH = str2double(hdr.logs(i).label2{j}(8:9));
             timeM = str2double(hdr.logs(i).label2{j}(10:11));
@@ -295,7 +295,7 @@ else
 end
 
 
-%% ===== READ 21E FILE =====
+%% ===== CHANNELS: READ 21E FILE =====
 % Read the channel names 
 ChannelMat = in_channel_nk(ElecFile, hdr.version);
 
@@ -319,7 +319,36 @@ ChannelMat.Channel(iChanStim).Type    = 'STIM';
 hdr.channel_gains(iChanStim) = 1;
 
 % Digital offset for the channel calibration (only the last one is a digital channel => no offset)
-hdr.channel_digoffset = [32768 .* ones(1, length(ChannelMat.Channel) - 1), 0];
+hdr.channel_digoffset = [32768 .* ones(1, length(ChannelMat.Channel)), 0];
+
+% Make sure the names of the channels are unique
+for i = length(ChannelMat.Channel):-1:2
+    if ismember(ChannelMat.Channel(i).Name, {ChannelMat.Channel(1:i-1).Name})
+        ChannelMat.Channel(i).Name = [ChannelMat.Channel(i).Name, '_', num2str(i)];
+        ChannelMat.Channel(i).Type = 'MISC';
+    end
+end
+% Detect what is EEG or SEEG
+iTypeEeg = find(strcmpi({ChannelMat.Channel.Type}, 'EEG'));
+iNameEeg = find(ismember({ChannelMat.Channel.Name}, {'FP1', 'FP2', 'CZ', 'FCZ', 'PZ', 'OZ'}));
+if ~ismember({ChannelMat.Channel.Name}, 'F1')
+    iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'F3', 'F4', 'F7', 'F8'}))];
+end
+if ~ismember({ChannelMat.Channel.Name}, 'C1')
+    iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'C3', 'C4'}))];
+end
+if ~ismember({ChannelMat.Channel.Name}, 'P1')
+    iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'P3', 'P4'}))];
+end
+if ~ismember({ChannelMat.Channel.Name}, 'O5')
+    iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'O1', 'O2', 'O3', 'O4'}))];
+end
+if ~ismember({ChannelMat.Channel.Name}, 'T1')
+    iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'T3', 'T4', 'T5', 'T6'}))];
+end
+% Mark all the other channels as SEEG
+iSeeg = setdiff(iTypeEeg, iNameEeg);
+[ChannelMat.Channel(iSeeg).Type] = deal('SEEG');
 
 
 %% ===== READ PNT FILE =====
