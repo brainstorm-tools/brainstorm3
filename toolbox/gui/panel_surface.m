@@ -33,7 +33,7 @@ function varargout = panel_surface(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -1558,8 +1558,8 @@ function TessInfo = ComputeScalpInterpolation(iDS, iFig, TessInfo)
             (size(TessInfo.DataWmat,1) ~= length(Vertices))
         switch lower(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
             case 'eeg',  excludeParam = .3;
-            case 'ecog', excludeParam = .3;
-            case 'seeg', excludeParam = .3;
+            case 'ecog', excludeParam = -.015;
+            case 'seeg', excludeParam = -.015;
             case 'meg',  excludeParam = .5;
             otherwise,   excludeParam = 0;
         end

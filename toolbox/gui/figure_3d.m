@@ -3208,6 +3208,10 @@ function [chan_loc, markers_loc, vertices] = GetChannelPositions(iDS, selChan)
     end
     % Loop on all the sensors
     for i = 1:length(Channel)
+        % If position is not defined
+        if isempty(Channel(i).Loc)
+            Channel(i).Loc = [0;0;0];
+        end
         % Get number of integration points or coils
         nIntegPoints = size(Channel(i).Loc, 2);
         % Switch depending on the device

@@ -155,6 +155,14 @@ setappdata(hFig, 'AllChannelsDisplayed', 1);
 bst_figures('SetCurrentFigure', hFig, '3D');
 % Get selected channels
 SelectedChannels = good_channel(ChannelMat.Channel, [], Modality);
+% Remove the channels with empty positions
+iNoLoc = find(cellfun(@isempty, {ChannelMat.Channel.Loc}));
+if ~isempty(iNoLoc)
+    SelectedChannels = setdiff(SelectedChannels, iNoLoc);
+end
+if isempty(SelectedChannels)
+    error('None of the channels have positions defined.');
+end
 % Set figure selected sensors
 GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = SelectedChannels;
 % Display sensors

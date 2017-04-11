@@ -36,7 +36,7 @@ function [hFig, iDS, iFig] = view_surface_data(SurfaceFile, OverlayFile, Modalit
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2017
 
 
 %% ===== PARSE INPUTS =====

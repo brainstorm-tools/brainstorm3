@@ -365,7 +365,7 @@ function FigureMouseDownCallback(hFig, ev)
             hAxes = hObj;
         case 'DataLine'
             % Time series lines: select
-            if (~strcmpi(MouseStatus, 'alt') || (get(hObj, 'LineWidth') > 1))
+            if ((~strcmpi(MouseStatus, 'alt') || 1) || (get(hObj, 'LineWidth') > 1))
                 noMoveAction = @()LineClickedCallback(hObj);
             end
         case 'AxesRawTimeBar'

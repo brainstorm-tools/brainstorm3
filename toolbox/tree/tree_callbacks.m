@@ -1167,6 +1167,12 @@ switch (lower(action))
                                 AddSeparator(jMenuModality);
                                 gui_component('MenuItem', jMenuModality, [], 'Display on scalp', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iScalp).FileName, filenameRelative, AllMod{iMod}), []);
                             end
+                            % === DISPLAY ON CORTEX ===
+                            % => ONLY for SEEG/ECOG, and if a cortex is defined
+                            if ismember(AllMod{iMod}, {'SEEG', 'ECOG'}) && ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
+                                AddSeparator(jMenuModality);
+                                gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, AllMod{iMod}), []);
+                            end
                         end
                                                 
                         % === GOOD/BAD CHANNELS===
@@ -1285,6 +1291,12 @@ switch (lower(action))
                             if strcmpi(AllMod{iMod}, 'EEG') && ~isempty(sSubject) && ~isempty(sSubject.iScalp) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
                                 AddSeparator(jMenuModality);
                                 gui_component('MenuItem', jMenuModality, [], 'Display on scalp', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iScalp).FileName, filenameRelative, AllMod{iMod}), []);
+                            end
+                            % === DISPLAY ON CORTEX ===
+                            % => ONLY for SEEG/ECOG, and if a cortex is defined
+                            if ismember(AllMod{iMod}, {'SEEG', 'ECOG'}) && ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
+                                AddSeparator(jMenuModality);
+                                gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, AllMod{iMod}), []);
                             end
                         end
                         
@@ -1715,6 +1727,15 @@ switch (lower(action))
                                     if ismember('EEG', DisplayMod) && ~isempty(sSubject) && ~isempty(sSubject.iScalp)
                                         AddSeparator(jPopup);
                                         gui_component('MenuItem', jPopup, [], 'Display on scalp', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iScalp).FileName, filenameRelative, 'EEG'), []);
+                                    end
+                                    % Display on cortex: Only for SEEG/ECOG, and if a cortex is defined
+                                    if ismember('SEEG', DisplayMod) && ~isempty(sSubject) && ~isempty(sSubject.iCortex)
+                                        AddSeparator(jPopup);
+                                        gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, 'SEEG'), []);
+                                    end
+                                    if ismember('ECOG', DisplayMod) && ~isempty(sSubject) && ~isempty(sSubject.iCortex)
+                                        AddSeparator(jPopup);
+                                        gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, 'ECOG'), []);
                                     end
                                 end
                                 
@@ -2384,8 +2405,8 @@ function fcnPopupDisplayTopography(jMenu, FileName, AllMod, Modality, isStat)
             gui_component('MenuItem', jMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, Modality, '2DSensorCap'), []);
             gui_component('MenuItem', jMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, Modality, '2DDisc'), []);
         end
-        gui_component('MenuItem', jMenu, [], '2D Layout',     IconLoader.ICON_2DLAYOUT,   [], @(h,ev)view_topography(FileName, Modality, '2DLayout'), []);
     end
+    gui_component('MenuItem', jMenu, [], '2D Layout',     IconLoader.ICON_2DLAYOUT,   [], @(h,ev)view_topography(FileName, Modality, '2DLayout'), []);
     % 3D Electrodes
     if ismember(Modality, {'EEG', 'ECOG'})
         gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes'), []);
@@ -2443,9 +2464,11 @@ function fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, isGradNorm, A
         else
             jSubMenu = jMenu;
         end
-        gui_component('MenuItem', jSubMenu, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DSensorCap', [], UseSmoothing, hFig), []);
-        gui_component('MenuItem', jSubMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DSensorCap', [], UseSmoothing, hFig), []);
-        gui_component('MenuItem', jSubMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DDisc',      [], UseSmoothing, hFig), []);
+        if ~strcmpi(AllMod{iMod}, 'SEEG')
+            gui_component('MenuItem', jSubMenu, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DSensorCap', [], UseSmoothing, hFig), []);
+            gui_component('MenuItem', jSubMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DSensorCap', [], UseSmoothing, hFig), []);
+            gui_component('MenuItem', jSubMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DDisc',      [], UseSmoothing, hFig), []);
+        end
         % 2D Layout
         if is2DLayout
             gui_component('MenuItem', jSubMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DLayout'), []);

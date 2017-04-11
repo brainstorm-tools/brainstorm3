@@ -1293,7 +1293,7 @@ switch contextName
             argout1 = {'MEG GRAD3'};
         % Keep only the modalities that can be displayed (as topography)
         else
-            argout1 = intersect(FileMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','NIRS'});
+            argout1 = intersect(FileMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','SEEG','NIRS'});
         end
         
         

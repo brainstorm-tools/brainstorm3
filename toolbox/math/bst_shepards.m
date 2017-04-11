@@ -10,6 +10,7 @@ function Wmat = bst_shepards(destLoc, srcLoc, nbNeighbors, excludeParam, expDist
 %    - excludeParam : If > 0, the source points that are two far away from the destination surface are ignored.
 %                     Excluded points #i that have: (minDist(i) > mean(minDist) + excludeParam * std(minDist))
 %                     where minDist represents the minimal distance between each source point and the destination surface
+%                     If < 0, exclude the vertices that are further from the absolute distance excludeParam  (in millimeters)
 %    - expDistance  : Distance exponent (if higher, influence of a value decreases faster)
 %    
 % OUTPUT:
@@ -33,7 +34,7 @@ function Wmat = bst_shepards(destLoc, srcLoc, nbNeighbors, excludeParam, expDist
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2013
+% Authors: Francois Tadel, 2010-2017
 
 %% ===== PARSE INPUTS =====
 % Check number of arguments
@@ -93,10 +94,17 @@ end
 
 
 %% ===== IGNORE VERTICES TOO FAR AWAY =====
-% Set to zero the weights of the vertices tht are too far away from the sources
+% Set to zero the weights of the vertices that are too far away from the sources
+% EEG: Distance relative to the mean distance between sensors
 if (excludeParam > 0)
-    % Find vertices that are too far from their nearest neighbor
+    % Find vertices that are too far from their nearest neighbors
     iTooFarVertices = (dist(:,1) > mean(dist(:,1)) + excludeParam * std(dist(:,1)));
+    % Remove them from the interpolation matrix
+    Wmat(iTooFarVertices, :) = 0;
+% SEEG/ECOG: Absolute distance
+elseif (excludeParam < 0)
+    % Find vertices that are too far from their nearest neighbors (in millimeters)
+    iTooFarVertices = (sqrt(dist(:,1)) >  abs(excludeParam));
     % Remove them from the interpolation matrix
     Wmat(iTooFarVertices, :) = 0;
 end

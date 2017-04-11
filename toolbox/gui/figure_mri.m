@@ -1564,7 +1564,13 @@ function Handles = PlotElectrodes(hFig, Handles, isReset)
     % Loop on all the channels to create the graphic objects
     for i = 1:length(Handles.iChannels)
         % Get electrode position
-        Handles.LocEEG(i,:) = cs_convert(sMri, 'scs', 'mri', Handles.ChannelMat.Channel(Handles.iChannels(i)).Loc(:,1)')' .* 1000;
+        chLoc = Handles.ChannelMat.Channel(Handles.iChannels(i)).Loc;
+        % Display electrode position
+        if ~isempty(chLoc)
+            Handles.LocEEG(i,:) = cs_convert(sMri, 'scs', 'mri', chLoc(:,1)')' .* 1000;
+        else
+            Handles.LocEEG(i,:) = [-500; -500; -500];
+        end
         % Plot electrode
         if (i <= size(Handles.hPointEEG,1)) && all(ishandle(Handles.hPointEEG(i,:))) && (i <= size(Handles.hTextEEG,1)) && all(ishandle(Handles.hTextEEG(i,:)))
             set(Handles.hPointEEG(i,1), 'XData', Handles.LocEEG(i,2), 'YData', Handles.LocEEG(i,3));
@@ -2322,12 +2328,24 @@ function Channels = AlignSeegElectrodes(Channels, Method)
         switch (Method)
             % Use first and last contacts: Calculate the positions for the middle electrodes
             case 'first_last'
+                % Stop in the first or second contacts are not defined
+                if (isempty(Channels(iChan(1)).Loc) || isempty(Channels(iChan(end)).Loc))
+                    disp(['BST> Warning: First or last contacts are not set for group "' GroupNames{iGroup} '".']);
+                    continue;
+                end
+                % Get the positions of the first and last contacts
                 EdgeLoc = [Channels(iChan(1)).Loc, Channels(iChan(end)).Loc];
+                % Set the position of the intermediate contacts
                 for i = 2:(length(iChan)-1)
                     Channels(iChan(i)).Loc(:,1) = ((length(iChan)-i)*EdgeLoc(:,1) + (i-1)*EdgeLoc(:,2)) / (length(iChan) - 1);
                 end
             % Use first and second contacts + inter-contact distance: Calculate the positions for all the other electrodes
             case 'first_second'
+                % Stop in the first or second contacts are not defined
+                if (isempty(Channels(iChan(1)).Loc) || isempty(Channels(iChan(2)).Loc))
+                    disp(['BST> Warning: First or second contacts are not set for group "' GroupNames{iGroup} '".']);
+                    continue;
+                end
                 % Get the direction of the electrode
                 direction = Channels(iChan(2)).Loc - Channels(iChan(1)).Loc;
                 direction = direction ./ sqrt(sum(direction.^2));
@@ -2337,6 +2355,12 @@ function Channels = AlignSeegElectrodes(Channels, Method)
                 end
             % Use Get the principal orientation for all the electrodes
             case 'all'
+                % Stop if one of the contacts are not set
+                if any(cellfun(@isempty, {Channels(iChan).Loc}))
+                    disp(['BST> Warning: At least one contact is not set for group "' GroupNames{iGroup} '".']);
+                    continue;
+                end
+                % Fix all the channels
                 [ChanOrient, StripOrient, StripStart, ChanLocFix] = figure_3d('GetSeegStrips', Channels, [], {iChan});
                 for i = iChan
                     Channels(i).Loc(:,1) = ChanLocFix(i,:)';
