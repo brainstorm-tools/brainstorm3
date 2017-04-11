@@ -36,8 +36,6 @@ date = datetime;
 % Create a new header structure
 header            = struct();
 header.version    = 0;
-header.patient_id = '';  %TODO: Try to get subject name from file to export?
-header.rec_id     = '';  %TODO: see above
 header.startdate  = datestr(date, 'dd.mm.yy');
 header.starttime  = datestr(date, 'HH.MM.SS');
 header.nsignal    = length(ChannelMat.Channel);
@@ -67,10 +65,17 @@ header.nrec       = header.nrec / header.reclen;
 if ~isempty(sFileIn.events)
     header.nsignal     = header.nsignal + 1;
     header.annotchan   = header.nsignal;
-    header.unknown1    = '';
+    
+    % Some EDF+ fields are required by strict viewers such as EDFbrowser
+    header.unknown1    = 'EDF+C';
+    header.patient_id  = 'UNKNOWN M 01-JAN-1900 Unknown_Patient';
+    header.rec_id      = ['Startdate ', upper(datestr(date, 'dd-mmm-yyyy')), ...
+                          ' Unknown_Hospital Unknown_Technician Unknown_Equipment'];
 else
     header.annotchan   = -1;
     header.unknown1    = '';
+    header.patient_id  = '';
+    header.rec_id      = '';
 end
 header.hdrlen = 256 + 256 * header.nsignal;
 
@@ -88,12 +93,27 @@ for i = 1:header.nsignal
     if i == header.annotchan
         header.signal(i).label    = 'EDF Annotations';
         header.signal(i).type     = '';
-        header.signal(i).nsamples = 0;        
+        header.signal(i).nsamples = 12 * header.nrec; % For first annotation of each record
+        maxEventSize              = 0;
         
         for j = 1:length(sFileIn.events)
-            header.signal(i).nsamples = header.signal(i).nsamples + length(sFileIn.events(j).label) + 25;
+            eventSize = length(sFileIn.events(j).label) + 25;
+            header.signal(i).nsamples = header.signal(i).nsamples + eventSize;
+            
+            if eventSize > maxEventSize
+                maxEventSize = eventSize;
+            end
         end
-        header.signal(i).nsamples = int64(header.signal(i).nsamples / 2);
+        header.signal(i).nsamples = int64(header.signal(i).nsamples / header.nrec);
+        
+        % The annotation record cannot be smaller than the largest event
+        % plus the first annotation (12 bytes) of the record
+        if header.signal(i).nsamples < maxEventSize + 12
+            header.signal(i).nsamples = maxEventSize + 12;
+        end
+        
+        % Convert chars (1-byte) to 2-byte integers, the size of a sample
+        header.signal(i).nsamples = int64((header.signal(i).nsamples + 1) / 2);
     else
         header.signal(i).label    = ChannelMat.Channel(i).Name;
         header.signal(i).type     = ChannelMat.Channel(i).Type;

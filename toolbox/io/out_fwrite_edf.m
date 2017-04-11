@@ -31,39 +31,73 @@ F = int16(F);
 negF = F < 0;
 F(negF) = bitcmp(abs(F(negF))) + 1;
 
-% Write to file
-ncount = fwrite(sfid, F, 'int16');
+% Prepare annotations if any.
+if sFile.header.annotchan >= 0
+    annotations    = 1;
+    nextEvent      = 1;
+    nextAnnot      = [];
+    nEvents        = length(sFile.events);
+    nSamplesAnnots = sFile.header.signal(sFile.header.annotchan).nsamples;
+else
+    annotations = 0;
+end
+
+% Write to file record per record
+nSamplesPerRecord    = sFile.prop.sfreq * sFile.header.reclen;
+nRecords             = sFile.header.nrec;
+[nSignals, nSamples] = size(F);
+ncount               = 0;
+bounds               = [1, nSamplesPerRecord];
+timeOffset           = 0.0;
+
+for iRec = 1:nRecords
+    for iSig = 1:nSignals
+        ncount = ncount + fwrite(sfid, F(iSig, bounds(1):bounds(2)), 'int16');
+    end
+    
+    % Write annotations if any, split by records
+    if annotations
+        bytesLeft = nSamplesAnnots * 2;
+        
+        % The first annotation specifies the time offset
+        bytesLeft = bytesLeft - fprintf(sfid, '+%f%c%c%c', timeOffset, char(20), char(20), char(0));
+        
+        % Write as many annotations as possible in current record
+        while bytesLeft >= length(nextAnnot)
+            if ~isempty(nextAnnot)
+                bytesLeft = bytesLeft - fprintf(sfid, '%s', nextAnnot);
+            end
+            
+            if nextEvent > nEvents
+                nextAnnot = [];
+                break;
+            end
+            
+            % Prepare the next annotation string
+            event = sFile.events(nextEvent);
+            startTime = event.times(1);
+            nextAnnot = sprintf('+%f', startTime);
+
+            % Add duration if specified.
+            if length(event.times) > 1
+                duration = event.times(2) - startTime;
+                nextAnnot = [nextAnnot sprintf('%c%f', char(21), duration)];
+            end
+
+            nextAnnot = [nextAnnot sprintf('%c%s%c%c', char(20), event.label, char(20), char(0))];
+            nextEvent = nextEvent + 1;
+        end
+        
+        % Fill remaining of record with 0-bytes.
+        fprintf(sfid, '%s', repmat(char(0), 1, bytesLeft));
+    end
+    
+    % Get ready for next record
+    bounds     = bounds + nSamplesPerRecord;
+    timeOffset = timeOffset + sFile.header.reclen;
+end
 
 % Check number of values written
 if (ncount ~= numel(F))
     error('Error writing data to file.');
-end
-
-
-% Write annotations (events)
-if sFile.header.annotchan >= 0
-    nEvents = length(sFile.events);
-    nbytes = 0;
-    nbytesTotal = 2 * sFile.header.signal(sFile.header.annotchan).nsamples;
-
-    for iEvt = 1:nEvents
-        event = sFile.events(iEvt);
-        startTime = event.times(1);
-        nbytes = nbytes + fprintf(sfid, '+%f', startTime);
-
-        % Add duration if specified.
-        if length(event.times) > 1
-            duration = event.times(2) - startTime;
-            nbytes = nbytes + fprintf(sfid, '%c%f', char(21), duration);
-        end
-
-        nbytes = nbytes + fprintf(sfid, '%c%s%c%c', char(20), event.label, char(20), char(0));
-    end
-
-    % Add trailing number of 0-bytes until we've reached the number of bytes specified in the header.
-    if nbytes > nbytesTotal
-        error('Wrote too many bytes of annotations.');
-    else
-        fprintf(sfid, '%s', repmat(char(0), 1, nbytesTotal - nbytes));
-    end
 end
