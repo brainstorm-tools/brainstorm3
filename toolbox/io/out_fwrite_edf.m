@@ -44,7 +44,7 @@ end
 
 % Write to file record per record
 nSamplesPerRecord    = sFile.prop.sfreq * sFile.header.reclen;
-nRecords             = sFile.header.nrec;
+nRecords             = int16(sFile.header.nrec);
 [nSignals, nSamples] = size(F);
 ncount               = 0;
 bounds               = [1, nSamplesPerRecord];
