@@ -1,13 +1,15 @@
-function grid2mri_interp = grid_interp_mri(GridLoc, MRI, SurfaceFile, isWait)
+function grid2mri_interp = grid_interp_mri(GridLoc, MRI, SurfaceFile, isWait, nDownsample, maxDist)
 % GRID_INTERP_MRI: Interpolate a grid of points into a MRI.
 %
-% USAGE:  grid2mri_interp = grid_interp_mri(GridLoc, MRI, SurfaceFile=[], isWait=1)
+% USAGE:  grid2mri_interp = grid_interp_mri(GridLoc, MRI, SurfaceFile=[], isWait=1, nDownsample=3, maxDist=2)
 %
 % INPUT: 
 %     - GridLoc     : [Nx3] matrix, 3D positions of the volume grid points
 %     - MRI         : Brainstorm MRI structure
 %     - SurfaceFile : Surface to use for the interpolation
 %     - isWait      : If 1, show a progress bar
+%     - nDownsample : Volume downsampling factor
+%     - maxDist     : Maximum distance between a colored voxel and a grid point (in mm)
 % OUTPUT:
 %     - grid2mri_interp : Sparse matrix [nVoxels, nGridLoc]
 
@@ -33,6 +35,12 @@ function grid2mri_interp = grid_interp_mri(GridLoc, MRI, SurfaceFile, isWait)
 %          Francois Tadel, 2008-2014 (USC/McGill)
 
 % Show progress bar
+if (nargin < 6) || isempty(maxDist)
+    maxDist = 2;
+end
+if (nargin < 5) || isempty(nDownsample)
+    nDownsample = 3;
+end
 if (nargin < 4) || isempty(isWait)
     isWait = 1;
 end
@@ -101,8 +109,6 @@ end
 distTol = .1;
 % Number of neighbors to consider
 nNeighbors = 3;
-% Downsampling factor in space
-nDownsample = 3;
 % Number of blocks along each dimension
 nBlocks = 9;
 
@@ -181,7 +187,7 @@ dist       = cat(1,dist{:});
 iNearest   = cat(1,iNearest{:});
 iBrainFull = cat(1,iBrainFull{:});
 % Remove all the distances that are two large
-iRemove = find(min(dist,[],2) > 2);
+iRemove = find(min(dist,[],2) > maxDist);
 dist(iRemove,:) = [];
 iNearest(iRemove,:) = [];
 iBrainFull(iRemove) = [];

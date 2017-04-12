@@ -1173,11 +1173,26 @@ switch (lower(action))
                                 AddSeparator(jMenuModality);
                                 gui_component('MenuItem', jMenuModality, [], 'Display on scalp', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iScalp).FileName, filenameRelative, AllMod{iMod}), []);
                             end
-                            % === DISPLAY ON CORTEX ===
-                            % => ONLY for SEEG/ECOG, and if a cortex is defined
-                            if ismember(AllMod{iMod}, {'SEEG', 'ECOG'}) && ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
+                            % === DISPLAY ON CORTEX/MRI ===
+                            % => ONLY for SEEG/ECOG, and if a cortex/MRI is defined
+                            if ismember(AllMod{iMod}, {'SEEG', 'ECOG'}) && ~isempty(sSubject) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
                                 AddSeparator(jMenuModality);
-                                gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, AllMod{iMod}), []);
+                                if ~isempty(sSubject.iCortex)
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, AllMod{iMod}), []);
+                                end
+                                if ~isempty(sSubject.iAnatomy)
+                                    if (length(sSubject.Anatomy) == 1)
+                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, AllMod{iMod}), []);
+                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, AllMod{iMod}), []);
+                                    else
+                                        for iAnat = 1:length(sSubject.Anatomy)
+                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, AllMod{iMod}), []);
+                                        end
+                                        for iAnat = 1:length(sSubject.Anatomy)
+                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, AllMod{iMod}), []);
+                                        end
+                                    end
+                                end
                             end
                         end
                                                 

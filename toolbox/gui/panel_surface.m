@@ -1323,8 +1323,13 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                 selChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
                 % Set data for current time frame
                 TessInfo(iTess).Data = GlobalData.DataSet(iDS).Measures.F(selChan, CurrentTimeIndex);
-                % Compute interpolation sensors => scalp vertices
-                TessInfo(iTess) = ComputeScalpInterpolation(iDS, iFig, TessInfo(iTess));
+                % Overlay on MRI: Reset Overlay cube
+                if strcmpi(TessInfo(iTess).Name, 'Anatomy')
+                    TessInfo(iTess).OverlayCube = [];
+                % Compute interpolation sensors => surface vertices
+                else
+                    TessInfo(iTess) = ComputeScalpInterpolation(iDS, iFig, TessInfo(iTess));
+                end
                 % Update "Static" status for this figure
                 setappdata(hFig, 'isStatic', (GlobalData.DataSet(iDS).Measures.NumberOfSamples <= 2));
 
@@ -1569,7 +1574,7 @@ function TessInfo = ComputeScalpInterpolation(iDS, iFig, TessInfo)
     % Set data for current time frame
     TessInfo.Data = TessInfo.DataWmat * TessInfo.Data;
     % Store minimum and maximum of displayed data
-    TessInfo.DataMinMax = [min(min(TessInfo.Data)),  max(max(TessInfo.Data))];
+    TessInfo.DataMinMax = [min(TessInfo.Data(:)),  max(TessInfo.Data(:))];
 end
 
 
@@ -1889,9 +1894,21 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
     isVolumeGrid = 0;
     % Process depend on overlay data file
     switch (TessInfo(iTess).DataSource.Type)
-       case 'Data'
-           % Get scalp surface
-           error('Not supported yet');
+        case 'Data'
+            % Get figure index (in DataSet structure)
+            [tmp__, iFig, iDS] = bst_figures('GetFigure', hFig);
+            % Get selected channels indices and location
+            selChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+            % Set data for current time frame
+            GridLoc = [GlobalData.DataSet(iDS).Channel(selChan).Loc]';
+            % Compute interpolation
+            if isempty(TessInfo(iTess).DataWmat) || (size(TessInfo(iTess).DataWmat,2) ~= size(GridLoc,1))
+                % TessInfo(iTess).DataWmat = grid_interp_mri(GridLoc, sMri, [], 1, 1, 3);
+                TessInfo(iTess).DataWmat = grid_interp_mri_seeg(GridLoc, sMri);
+            end
+            % Build interpolated cube
+            MriInterp = TessInfo(iTess).DataWmat;
+            OverlayCube = tess_interp_mri_data(MriInterp, size(sMri.Cube), TessInfo(iTess).Data, isVolumeGrid);
         case 'Source'
             % Get loaded results file
             [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(iTess).DataSource.FileName);

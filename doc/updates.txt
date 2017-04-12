@@ -3,8 +3,9 @@ April 2017
 - Bug fix: Nihon Kohden reader had many issues channel names and types
 - Bug fix: Micromed .trc channel names were incorrect
 - Bug fix: Fixed SEEG contact positioning in MRI viewer
-- GUI: New displays for SEEG/ECOG: Cortex surface, 2D Layout
+- GUI: New displays for SEEG/ECOG: Cortex surface, MRI Viewer, 2D Layout
 - GUI: Support for 2D/3D displays of time-frequency/PSD of SEEG/ECOG
+- Anatomy: Compute MNI transformation sets default NAS/LPA/RPA points
 - Workshop: Beijing
 ---------------------------------------------------------------
 March 2017

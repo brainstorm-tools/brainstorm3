@@ -1,13 +1,14 @@
-function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile)
+function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality)
 % VIEW_MRI: Display a MRI in a MriViewer figure.
 %
-% USAGE:  view_mri(MriFile, OverlayFile)
+% USAGE:  view_mri(MriFile, OverlayFile, Modality)
 %         view_mri(MriFile, 'EditMri')
 %         view_mri(MriFile, 'EditFiducials')
 %
 % INPUT:
 %     - MriFile         : Full path to the surface file to display 
 %     - OverlayFile     : Full or relative path to a file to display on top of the MRI
+%     - Modality        : Type of sensors to interpolate (if the overlay file is a data file)
 %     - 'EditMri'       : Show the control to modify the MRI and the fiducials
 %     - 'EditFiducials' : Show the control to modify the fiducials only
 %
@@ -35,10 +36,13 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2013
+% Authors: Francois Tadel, 2009-2017
 
 %% ===== PARSE INPUTS =====
 global GlobalData;
+if (nargin < 3) || isempty(Modality)
+    Modality = '';
+end
 if (nargin < 2) || isempty(OverlayFile)
     OverlayFile = '';
 end
@@ -65,6 +69,13 @@ end
 %% ===== LOAD OVERLAY FILE =====
 iDS = [];
 switch lower(FileType)
+    case {'data', 'pdata'}
+        % Load data file
+        iDS = bst_memory('LoadDataFile', OverlayFile);
+        bst_memory('LoadRecordingsMatrix', iDS);
+        % Get subject file
+        SubjectFile = GlobalData.DataSet(iDS).SubjectFile;
+        OverlayType = 'Data';
     case {'results', 'presults', 'link'}
         % Load Results file
         [iDS, iDSResult] = bst_memory('LoadResultsFile', OverlayFile);
@@ -133,7 +144,7 @@ elseif isempty(hFig)
     FigureId = db_template('FigureId');
     FigureId.Type     = 'MriViewer';
     FigureId.SubType  = '';
-    FigureId.Modality = '';
+    FigureId.Modality = Modality;
     % Create figure
     [hFig, iFig, isNewFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');
     if isempty(hFig)

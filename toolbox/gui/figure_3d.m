@@ -1621,7 +1621,7 @@ function DisplayFigurePopup(hFig)
         jItem = gui_component('CheckBoxMenuItem', jMenuMri, [], 'MIP: Anatomy', [], [], @(h,ev)MipAnatomy_Callback(hFig,ev), []);
         jItem.setSelected(MriOptions.isMipAnatomy);
         % MIP: Functional
-        isOverlay = any(ismember({'source','stat1','stat2','timefreq'}, ColormapInfo.AllTypes));
+        isOverlay = any(ismember({'source','stat1','stat2','timefreq','eeg','meg'}, ColormapInfo.AllTypes));
         if isOverlay
             jItem = gui_component('checkboxmenuitem', jMenuMri, [], 'MIP: Functional', [], [], @(h,ev)MipFunctional_Callback(hFig,ev), []);
             jItem.setSelected(MriOptions.isMipFunctional);
