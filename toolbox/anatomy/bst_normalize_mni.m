@@ -121,16 +121,29 @@ bst_progress('start', 'Normalize anatomy', 'Saving results...');
 % Save results into the MRI structure
 sMri.NCS.R = Tmni(1:3,1:3);
 sMri.NCS.T = Tmni(1:3,4);
-% MNI coordinates for the AC/PC/IH fiducials
-AC = [0,   3,  -4] ./ 1000;
-PC = [0, -25,  -2] ./ 1000;
-IH = [0, -10,  60] ./ 1000;
-Origin = [0, 0, 0];
+% MNI coordinates for all the fiducials
+AC  = [0,   3,  -4] ./ 1000;
+PC  = [0, -25,  -2] ./ 1000;
+IH  = [0, -10,  60] ./ 1000;
+Orig= [0,   0,   0];
 % Convert: MNI (meters) => MRI (millimeters)
 sMri.NCS.AC     = cs_convert(sMri, 'mni', 'mri', AC) .* 1000;
 sMri.NCS.PC     = cs_convert(sMri, 'mni', 'mri', PC) .* 1000;
 sMri.NCS.IH     = cs_convert(sMri, 'mni', 'mri', IH) .* 1000;
-sMri.NCS.Origin = cs_convert(sMri, 'mni', 'mri', Origin) .* 1000;
+sMri.NCS.Origin = cs_convert(sMri, 'mni', 'mri', Orig) .* 1000;
+% Compute default positions for NAS/LPA/RPA if not available yet
+if isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) 
+    NAS = [ 0,   84, -50] ./ 1000;
+    LPA = [-83, -19, -48] ./ 1000;
+    RPA = [ 83, -19, -48] ./ 1000;
+    sMri.SCS.NAS = cs_convert(sMri, 'mni', 'mri', NAS) .* 1000;
+    sMri.SCS.LPA = cs_convert(sMri, 'mni', 'mri', LPA) .* 1000;
+    sMri.SCS.RPA = cs_convert(sMri, 'mni', 'mri', RPA) .* 1000;
+    % Compute SCS transformation, if not available
+    if isempty(sMri.SCS.R) || isempty(sMri.SCS.T)
+        [Transf, sMri] = cs_compute(sMri, 'SCS');
+    end
+end
 % Save modifications in the MRI file
 if ~isempty(MriFile)
     bst_save(file_fullpath(MriFile), sMri, 'v6');
@@ -147,6 +160,12 @@ if ~isempty(iLoadedMri)
     GlobalData.Mri(iLoadedMri).NCS.PC = sMri.NCS.PC;
     GlobalData.Mri(iLoadedMri).NCS.IH = sMri.NCS.IH;
     GlobalData.Mri(iLoadedMri).NCS.Origin = sMri.NCS.Origin;
+    GlobalData.Mri(iLoadedMri).SCS.R   = sMri.SCS.R;
+    GlobalData.Mri(iLoadedMri).SCS.T   = sMri.SCS.T;
+    GlobalData.Mri(iLoadedMri).SCS.NAS = sMri.SCS.NAS;
+    GlobalData.Mri(iLoadedMri).SCS.LPA = sMri.SCS.LPA;
+    GlobalData.Mri(iLoadedMri).SCS.RPA = sMri.SCS.RPA;
+    GlobalData.Mri(iLoadedMri).SCS.Origin = sMri.SCS.Origin;
 end
 % Close progress bar
 bst_progress('stop');
