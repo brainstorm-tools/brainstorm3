@@ -170,6 +170,8 @@ while 1
                             ChannelMat.Channel(iChannel).Type = 'ECG';
                         elseif ismember(ChannelMat.Channel(iChannel).Name, {'0','1','L','R','DEL1','DEL2','DEL3','DEL4','MILO1','MILO2'})
                             ChannelMat.Channel(iChannel).Type = 'MISC';
+                        elseif (length(ChannelMat.Channel(iChannel).Name) >= 2) && ismember(ChannelMat.Channel(iChannel).Name(1:2), {'D0','D1','D2','D3','D4','D5','D6','D7','D8','D9'})
+                            ChannelMat.Channel(iChannel).Type = 'MISC';
                         end
                     end
                 end

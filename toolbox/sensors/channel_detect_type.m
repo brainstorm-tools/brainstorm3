@@ -44,7 +44,7 @@ HeadPoints.Type  = {};
 iDelChan = [];
 iEegNoLoc = [];
 iEegLoc = [];
-iCheck = channel_find(ChannelMat.Channel, 'EEG, Fiducial, SEEG');
+iCheck = channel_find(ChannelMat.Channel, 'EEG, Fiducial, SEEG, ECOG, MISC');
 for i = 1:length(iCheck)
     iChan = iCheck(i);
     if isempty(ChannelMat.Channel(iChan).Name)

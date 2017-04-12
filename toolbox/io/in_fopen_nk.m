@@ -328,27 +328,27 @@ for i = length(ChannelMat.Channel):-1:2
         ChannelMat.Channel(i).Type = 'MISC';
     end
 end
-% Detect what is EEG or SEEG
-iTypeEeg = find(strcmpi({ChannelMat.Channel.Type}, 'EEG'));
-iNameEeg = find(ismember({ChannelMat.Channel.Name}, {'FP1', 'FP2', 'CZ', 'FCZ', 'PZ', 'OZ'}));
-if ~ismember({ChannelMat.Channel.Name}, 'F1')
-    iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'F3', 'F4', 'F7', 'F8'}))];
-end
-if ~ismember({ChannelMat.Channel.Name}, 'C1')
-    iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'C3', 'C4'}))];
-end
-if ~ismember({ChannelMat.Channel.Name}, 'P1')
-    iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'P3', 'P4'}))];
-end
-if ~ismember({ChannelMat.Channel.Name}, 'O5')
-    iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'O1', 'O2', 'O3', 'O4'}))];
-end
-if ~ismember({ChannelMat.Channel.Name}, 'T1')
-    iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'T3', 'T4', 'T5', 'T6'}))];
-end
-% Mark all the other channels as SEEG
-iSeeg = setdiff(iTypeEeg, iNameEeg);
-[ChannelMat.Channel(iSeeg).Type] = deal('SEEG');
+% % Detect what is EEG or SEEG
+% iTypeEeg = find(strcmpi({ChannelMat.Channel.Type}, 'EEG'));
+% iNameEeg = find(ismember({ChannelMat.Channel.Name}, {'FP1', 'FP2', 'CZ', 'FCZ', 'PZ', 'OZ'}));
+% if ~ismember({ChannelMat.Channel.Name}, 'F1')
+%     iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'F3', 'F4', 'F7', 'F8'}))];
+% end
+% if ~ismember({ChannelMat.Channel.Name}, 'C1')
+%     iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'C3', 'C4'}))];
+% end
+% if ~ismember({ChannelMat.Channel.Name}, 'P1')
+%     iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'P3', 'P4'}))];
+% end
+% if ~ismember({ChannelMat.Channel.Name}, 'O5')
+%     iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'O1', 'O2', 'O3', 'O4'}))];
+% end
+% if ~ismember({ChannelMat.Channel.Name}, 'T1')
+%     iNameEeg = [iNameEeg, find(ismember({ChannelMat.Channel.Name}, {'T3', 'T4', 'T5', 'T6'}))];
+% end
+% % Mark all the other channels as SEEG
+% iSeeg = setdiff(iTypeEeg, iNameEeg);
+% [ChannelMat.Channel(iSeeg).Type] = deal('SEEG');
 
 
 %% ===== READ PNT FILE =====
