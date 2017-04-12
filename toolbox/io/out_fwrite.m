@@ -39,7 +39,7 @@ if isempty(iEpoch)
     iEpoch = 1;
 end
 % Write channel ranges for faster disk access
-isChanRange = ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS', 'EEG-EGI-RAW', 'BST-BIN'});
+isChanRange = ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS', 'EEG-EGI-RAW', 'BST-BIN', 'EEG-EDF'});
 if isChanRange
     if isempty(iChannels)
         ChannelRange = [];
@@ -97,6 +97,8 @@ switch (sFile.format)
     case 'CTF-CONTINUOUS'
         isContinuous = strcmpi(sFile.format, 'CTF-CONTINUOUS');
         out_fwrite_ctf(sFile, iEpoch, SamplesBounds, ChannelRange, isContinuous, F);
+    case 'EEG-EDF'
+        out_fwrite_edf(sFile, sfid, SamplesBounds, ChannelRange, F);
     otherwise
         error('Unsupported file format.');
 end

@@ -122,6 +122,7 @@ if isempty(ExportFile)
         case 'SPM-DAT',         DefaultExt = '.mat';
         case 'EEG-CARTOOL-EPH', DefaultExt = '.eph';
         case 'EEG-EGI-RAW',     DefaultExt = '.raw';
+        case 'EEG-EDF',         DefaultExt = '.edf';
         case 'ASCII-CSV',       DefaultExt = '.csv';
         case 'ASCII-CSV-HDR',   DefaultExt = '.csv';
         case 'ASCII-SPC',       DefaultExt = '.txt';  
@@ -173,6 +174,7 @@ elseif isempty(FileFormat)
         case '.bst',   FileFormat = 'BST-BIN';
         case '.eph',   FileFormat = 'EEG-CARTOOL-EPH';
         case '.raw',   FileFormat = 'EEG-EGI-RAW';
+        case '.edf',   FileFormat = 'EEG-EDF';
         case '.txt',   FileFormat = 'ASCII-CSV';
         case '.csv',   FileFormat = 'ASCII-SPC';
         case '.xlsx',  FileFormat = 'EXCEL';
@@ -192,7 +194,7 @@ if isRawIn
     ImportOptions.RemoveBaseline  = 'no';
 end
 % Output data as raw file (continuous writers routines)
-isRawOut = ismember(FileFormat, {'BST-BIN', 'EEG-EGI-RAW', 'SPM-DAT'});
+isRawOut = ismember(FileFormat, {'BST-BIN', 'EEG-EGI-RAW', 'SPM-DAT', 'EEG-EDF'});
 % Open output file 
 if isRawOut
     sFileOut = out_fopen(ExportFile, FileFormat, sFileIn, ChannelMat);

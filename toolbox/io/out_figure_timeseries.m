@@ -71,6 +71,7 @@ if (nargin < 2) || isempty(TSFile)
         case 'BST-BIN',         DefaultExt = '.bst';
         case 'EEG-CARTOOL-EPH', DefaultExt = '.eph';
         case 'EEG-EGI-RAW',     DefaultExt = '.raw';
+        case 'EEG-EDF',         DefaultExt = '.edf';
         case 'ASCII-CSV',       DefaultExt = '.csv';
         case 'ASCII-CSV-HDR',   DefaultExt = '.csv';
         case 'ASCII-SPC',       DefaultExt = '.txt';  
