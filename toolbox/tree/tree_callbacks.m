@@ -774,7 +774,7 @@ switch (lower(action))
                             end
                             if ~isempty(sSubject.iAnatomy)
                                 gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'],     IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', 1), []);
-                                gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannelsMri(filenameRelative, DisplayMod{iType}), []);
+                                gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannelsMri(filenameRelative, DisplayMod{iType}, sSubject.iAnatomy), []);
                             end
                         elseif ismember('NIRS', DisplayMod{iType})
                             gui_component('MenuItem', jMenuDisplay, [], 'NIRS (scalp)',    IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 0), []);
@@ -835,7 +835,13 @@ switch (lower(action))
                             end
                             % Allow edition in MRI even if there is not location available for any electrode
                             if ~isempty(sSubject.iAnatomy)
-                                gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer)'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)DisplayChannelsMri(filenameRelative, DisplayModReg{iMod}), []);
+                                if (length(sSubject.Anatomy) == 1)
+                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer)'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)DisplayChannelsMri(filenameRelative, DisplayModReg{iMod}, 1), []);
+                                else
+                                    for iAnat = 1:length(sSubject.Anatomy)
+                                        gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)DisplayChannelsMri(filenameRelative, DisplayModReg{iMod}, iAnat), []);
+                                    end
+                                end
                             end
                             AddSeparator(jMenuAlign);
                         end
@@ -2830,16 +2836,16 @@ end
 
 
 %% ===== DISPLAY CHANNELS (MRI VIEWER) =====
-function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality)
+function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
     % Get study
     sStudy = bst_get('ChannelFile', ChannelFile);
     % Get subject
     sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-    if isempty(sSubject) || isempty(sSubject.Anatomy) || isempty(sSubject.iAnatomy) || isempty(sSubject.Anatomy(sSubject.iAnatomy).FileName)
+    if isempty(sSubject) || isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(iAnatomy).FileName)
         bst_error('No MRI available for this subject.', 'Display electrodes', 0);
     end
     % View MRI
-    [hFig, iDS, iFig] = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    [hFig, iDS, iFig] = view_mri(sSubject.Anatomy(iAnatomy).FileName);
     if isempty(hFig)
         return;
     end

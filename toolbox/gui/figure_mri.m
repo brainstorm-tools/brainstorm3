@@ -2337,7 +2337,7 @@ function Channels = AlignSeegElectrodes(Channels, Method)
                 EdgeLoc = [Channels(iChan(1)).Loc, Channels(iChan(end)).Loc];
                 % Set the position of the intermediate contacts
                 for i = 2:(length(iChan)-1)
-                    Channels(iChan(i)).Loc(:,1) = ((length(iChan)-i)*EdgeLoc(:,1) + (i-1)*EdgeLoc(:,2)) / (length(iChan) - 1);
+                    Channels(iChan(i)).Loc = ((length(iChan)-i)*EdgeLoc(:,1) + (i-1)*EdgeLoc(:,2)) / (length(iChan) - 1);
                 end
             % Use first and second contacts + inter-contact distance: Calculate the positions for all the other electrodes
             case 'first_second'
@@ -2351,7 +2351,7 @@ function Channels = AlignSeegElectrodes(Channels, Method)
                 direction = direction ./ sqrt(sum(direction.^2));
                 % Complete the electrode with distance+orientation
                 for i = 2:length(iChan)
-                    Channels(iChan(i)).Loc(:,1) = Channels(iChan(1)).Loc(:,1) + (i-1) * direction * DistContact;
+                    Channels(iChan(i)).Loc = Channels(iChan(1)).Loc(:,1) + (i-1) * direction * DistContact;
                 end
             % Use Get the principal orientation for all the electrodes
             case 'all'
@@ -2363,7 +2363,7 @@ function Channels = AlignSeegElectrodes(Channels, Method)
                 % Fix all the channels
                 [ChanOrient, StripOrient, StripStart, ChanLocFix] = figure_3d('GetSeegStrips', Channels, [], {iChan});
                 for i = iChan
-                    Channels(i).Loc(:,1) = ChanLocFix(i,:)';
+                    Channels(i).Loc = ChanLocFix(i,:)';
                 end
         end
     end
