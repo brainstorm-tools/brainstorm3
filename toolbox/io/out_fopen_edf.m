@@ -41,16 +41,14 @@ header.starttime  = datestr(date, 'HH.MM.SS');
 header.nsignal    = length(ChannelMat.Channel);
 header.nrec       = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / EpochSize;
 
-% We need to choose a record length that produces a whole number of records
-% and a record size less than 61440 bytes (at 2 bytes per sample).
+% We need to choose a record length that produces a  record size less than
+% 61440 bytes (at 2 bytes per sample).
 header.reclen     = 1.0;
-epsilon           = 1e-8;
 for i = 1:10
-    remainder     = mod(header.nrec / header.reclen, 1);
     recordSize    = header.reclen * EpochSize * header.nsignal * 2;
     
-    if (remainder > epsilon && abs(remainder - 1) > epsilon) || recordSize > 61440
-        header.reclen = header.reclen / 10;
+    if recordSize > 61440
+        header.reclen = header.reclen / 2;
     else
         break;
     end
@@ -59,13 +57,16 @@ for i = 1:10
         error('Could not find a valid record length for this data.');
     end
 end
-header.nrec       = header.nrec / header.reclen;
+header.nrec       = ceil(header.nrec / header.reclen);
 
 % Add an additional channel at the end to save events if necessary.
 if ~isempty(sFileIn.events)
     header.nsignal     = header.nsignal + 1;
     header.annotchan   = header.nsignal;
     
+    global nextEdfEvent;
+    nextEdfEvent = struct('event', -1, 'annot', [], 'epoch', -1);
+
     % Some EDF+ fields are required by strict viewers such as EDFbrowser
     header.unknown1    = 'EDF+C';
     header.patient_id  = 'UNKNOWN M 01-JAN-1900 Unknown_Patient';
@@ -117,7 +118,7 @@ for i = 1:header.nsignal
     else
         header.signal(i).label    = ChannelMat.Channel(i).Name;
         header.signal(i).type     = ChannelMat.Channel(i).Type;
-        header.signal(i).nsamples = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / header.nrec;
+        header.signal(i).nsamples = header.reclen * EpochSize;
     end
 
 end
