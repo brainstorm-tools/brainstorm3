@@ -99,7 +99,7 @@ for i = 1:header.nsignal
         
         for j = 1:length(sFileIn.events)
             eventSize = length(sFileIn.events(j).label) + 25;
-            header.signal(i).nsamples = header.signal(i).nsamples + eventSize;
+            header.signal(i).nsamples = header.signal(i).nsamples + eventSize * numel(sFileIn.events(j).epochs);
             
             if eventSize > maxEventSize
                 maxEventSize = eventSize;
