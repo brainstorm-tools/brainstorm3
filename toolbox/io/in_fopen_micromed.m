@@ -143,7 +143,6 @@ end
 % Read electrodes info
 for iChannel = 1:hdr.num_channels      % Instead of 1:MAX_LAB (MAX_LAB = 640)
     % Read channel info (re-ordered by "code")
-%     fseek(fid, hdr.electrode_area.start + 128 * (hdr.code(iChannel) - 1), -1);
     fseek(fid, hdr.electrode_area.start + 128 * hdr.code(iChannel), -1);
     % Channel status
     hdr.electrode(iChannel).status = fread(fid, 1, 'uchar');  % 0=not acquired, 1=acquired

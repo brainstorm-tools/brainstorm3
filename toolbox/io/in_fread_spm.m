@@ -40,7 +40,14 @@ end
 SamplesBounds = SamplesBounds - sFile.prop.samples(1);
 iTimes = (SamplesBounds(1):SamplesBounds(2)) + 1;
 
-% Write data
+% Fix file link
+[fPath,fBase,fExt] = bst_fileparts(sFile.filename);
+sFile.header.file_array.fname = bst_fullfile(fPath, [fBase, '.dat']);
+% Check file link
+if ~file_exist(sFile.header.file_array.fname)
+    error(['File not found: ', sFile.header.file_array.fname]);
+end
+% Read data
 F = sFile.header.file_array(iChannels, iTimes);
 
 

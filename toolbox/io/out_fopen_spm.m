@@ -87,7 +87,7 @@ for i = 1:length(iEeg)
         D.sensors.eeg.elecpos(i,:) = ChannelMat.Channel(iEeg(i)).Loc(:,1)';
     else
         D.sensors.eeg.chanpos(i,:) = [NaN NaN NaN];
-        D.sensors.eeg.chanpos(i,:) = [NaN NaN NaN];
+        D.sensors.eeg.elecpos(i,:) = [NaN NaN NaN];
     end
     D.sensors.eeg.chantype{i} = lower(ChannelMat.Channel(iEeg(i)).Type);
     D.sensors.eeg.chanunit{i} = 'V';

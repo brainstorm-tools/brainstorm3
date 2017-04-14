@@ -90,8 +90,8 @@ for i = 1:nChannels
         iSens = find(strcmpi(ChannelMat.Channel(i).Name, D.sensors.eeg.label));
         if ~isempty(iSens)
             % 3D position
-            if ~any(isnan(D.sensors.eeg.elecpos(i,:))) && ~any(isinf(D.sensors.eeg.elecpos(i,:))) && ~all(D.sensors.eeg.elecpos(i,:) == 0)
-                ChannelMat.Channel(iEeg(i)).Loc(:,1) = D.sensors.eeg.elecpos(i,:);
+            if ~any(isnan(D.sensors.eeg.elecpos(iSens,:))) && ~any(isinf(D.sensors.eeg.elecpos(iSens,:))) && ~all(D.sensors.eeg.elecpos(iSens,:) == 0)
+                ChannelMat.Channel(iEeg(i)).Loc(:,1) = D.sensors.eeg.elecpos(iSens,:);
             end
             % Sensor type
             ChannelMat.Channel(i).Type = upper(D.channels(i).type);
