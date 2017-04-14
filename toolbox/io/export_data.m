@@ -88,7 +88,7 @@ if ischar(DataFile)
     % Get raw file structure
     if isRawIn
         sFileIn = DataMat.F;
-        if ~isempty(sFileIn.epochs)
+        if (length(sFileIn.epochs) > 1)
             error('Cannot export epoched files.');
         end
     else
