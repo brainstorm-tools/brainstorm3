@@ -21,7 +21,7 @@ function F = in_fread_ant(sFile, SamplesBounds)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel 2012-2015
+% Author: Francois Tadel 2012-2017
 
 % Use the full file if samples not specified
 if (nargin < 2) || isempty(SamplesBounds)
@@ -32,9 +32,9 @@ if (SamplesBounds(1) < 0) || (SamplesBounds(1) > SamplesBounds(2)) || (SamplesBo
     error('Invalid samples range.');
 end
 % Read file using EEGLAB plugin
-dat = read_eep_cnt(sFile.filename, SamplesBounds(1) + 1, SamplesBounds(2) + 1);
+dat = eepv4_read(sFile.filename, SamplesBounds(1) + 1, SamplesBounds(2) + 1);
 % Calibrate data (microV to V)
-F = dat.data * 1e-6;
+F = dat.samples * 1e-6;
 
 
 

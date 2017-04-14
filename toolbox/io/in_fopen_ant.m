@@ -21,12 +21,14 @@ function [sFile, ChannelMat] = in_fopen_ant(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2017
         
 
 %% ===== READ HEADER =====
 % Read a small block of data, to get all the extra information
-hdr = read_eep_cnt(DataFile, 1, 2);
+hdr = eepv4_read_info(DataFile);
+% Copy some fields for backward compatibility with previous versions of the library
+hdr.nsample = hdr.sample_count;
 
 % Initialize returned file structure
 sFile = db_template('sfile');
@@ -34,18 +36,18 @@ sFile = db_template('sfile');
 sFile.byteorder  = 'l';
 sFile.filename   = DataFile;
 sFile.format     = 'EEG-ANT-CNT';
-sFile.prop.sfreq = double(hdr.rate);
+sFile.prop.sfreq = double(hdr.sample_rate);
 sFile.device     = 'ANT';
 sFile.header     = hdr;
 % Comment: short filename
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
 % Time and samples indices
-sFile.prop.samples = [0, hdr.nsample - 1];
+sFile.prop.samples = [0, hdr.sample_count - 1];
 sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % Get bad channels
-sFile.channelflag = ones(hdr.nchan, 1);
+sFile.channelflag = ones(hdr.channel_count, 1);
 
 
 %% ===== EVENT FILE =====   
@@ -60,9 +62,9 @@ end
 
 %% ===== CREATE DEFAULT CHANNEL FILE =====
 % Create channel structure
-Channel = repmat(db_template('channeldesc'), [1 hdr.nchan]);
-for i = 1:hdr.nchan
-    Channel(i).Name    = hdr.label{i};
+Channel = repmat(db_template('channeldesc'), [1 hdr.channel_count]);
+for i = 1:hdr.channel_count
+    Channel(i).Name    = hdr.channels(i).label;
     Channel(i).Type    = 'EEG';
     Channel(i).Orient  = [];
     Channel(i).Weight  = 1;
