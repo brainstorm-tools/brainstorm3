@@ -416,8 +416,10 @@ end
 % === ECOG ===
 if isEcog
     % Compute ECOG leadfield
-    if ~om_call('om_gain -EEG', ['"' hminvfile '" "' dsmfile '" "' h2ecogmfile '"'], ecoggain_file, 'Assembling ECOG leadfield...')
-        return
+    if  OPTIONS.isAdjoint
+        res = om_call('om_gain -EEGadjoint', ['"' geomfile '" "' condfile '" "' dipfile '" "' hmfile '" "' h2ecogmfile '"'], ecoggain_file, 'Assembling ECOG leadfield...');
+    else
+        res = om_call('om_gain -EEG', ['"' hminvfile '" "' dsmfile '" "' h2ecogmfile '"'], eeggain_file, 'Assembling ECOG leadfield...');
     end
     % Read ECOG leadfield
     bst_progress('text', 'OpenMEEG: Reading ECOG leadfield...');
@@ -472,6 +474,7 @@ bst_progress('removeimage');
         bst_progress('text', ['OpenMEEG: ' strProgress]);
         % System call
         strCall = [omFunc ' ' omInput ' "' omOutput '"'];
+disp(strCall)
         [status, result] = bst_system(strCall);
         % Append to log file file
         if ~isempty(fid_log) && (fid_log >= 0) && ~isempty(fopen(fid_log))
