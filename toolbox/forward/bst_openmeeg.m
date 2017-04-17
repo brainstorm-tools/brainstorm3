@@ -421,6 +421,9 @@ if isEcog
     else
         res = om_call('om_gain -EEG', ['"' hminvfile '" "' dsmfile '" "' h2ecogmfile '"'], eeggain_file, 'Assembling ECOG leadfield...');
     end
+    if ~res
+        return
+    end
     % Read ECOG leadfield
     bst_progress('text', 'OpenMEEG: Reading ECOG leadfield...');
     Gain(OPTIONS.iEcog, :) = om_load_full(ecoggain_file);
@@ -432,7 +435,12 @@ if isSeeg
         return
     end
     % Compute SEEG leadfield
-    if ~om_call('om_gain -IP', ['"' hminvfile '" "' dsmfile '" "' h2ipmfile '" "' ds2ipmfile '"'], seeggain_file, 'Assembling SEEG leadfield...')
+    if  OPTIONS.isAdjoint
+        error('Option "Adjoint" not supported yet for SEEG');
+    else
+        res = om_call('om_gain -IP', ['"' hminvfile '" "' dsmfile '" "' h2ipmfile '" "' ds2ipmfile '"'], seeggain_file, 'Assembling SEEG leadfield...');
+    end
+    if ~res
         return
     end
     % Read SEEG leadfield
