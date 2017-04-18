@@ -23,7 +23,7 @@ function varargout = panel_openmeeg(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2013
+% Authors: Francois Tadel, 2011-2017
 
 eval(macro_method);
 end
@@ -85,11 +85,13 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jPanelNew.add('br hfill', jPanelLayers);
 
     % ===== OPENMEEG OPTIONS ======
+    isSeeg = strcmpi(OPTIONS.SEEGMethod, 'openmeeg') && ~isempty(OPTIONS.iSeeg);
     jPanelOpenmeeg = gui_river([3,3], [3,15,10,10], 'OpenMEEG options');
         % Adjoint
         jCheckAdjoint = gui_component('checkbox', jPanelOpenmeeg, [], '<HTML>Use adjoint formulation  <FONT COLOR="#808080"><I>(less memory, longer)</I></FONT>', [], [], @UpdatePanel, []);
-        jCheckAdjoint.setSelected(OPTIONS.isAdjoint);
-        % Adaptative
+        jCheckAdjoint.setSelected(OPTIONS.isAdjoint && ~isSeeg);
+        jCheckAdjoint.setEnabled(~isSeeg);
+        % Adaptive
         jCheckAdaptative = gui_component('checkbox', jPanelOpenmeeg, 'br', '<HTML>Use adaptive integration  <FONT COLOR="#808080"><I>(more accurate, 3x longer)</I></FONT>', [], [], @UpdatePanel, []);
         jCheckAdaptative.setSelected(OPTIONS.isAdaptative);
         % Split in blocks

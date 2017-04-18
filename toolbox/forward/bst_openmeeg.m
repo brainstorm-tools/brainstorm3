@@ -198,6 +198,11 @@ isEeg  = strcmpi(OPTIONS.EEGMethod, 'openmeeg')  && ~isempty(OPTIONS.iEeg);
 isMeg  = strcmpi(OPTIONS.MEGMethod, 'openmeeg')  && ~isempty(OPTIONS.iMeg);
 isEcog = strcmpi(OPTIONS.ECOGMethod, 'openmeeg') && ~isempty(OPTIONS.iEcog);
 isSeeg = strcmpi(OPTIONS.SEEGMethod, 'openmeeg') && ~isempty(OPTIONS.iSeeg);
+% SEEG and adjoint incompatible
+if isSeeg && OPTIONS.isAdjoint
+    errMsg = 'The option "Use adjoint formulation" is not available for SEEG sensors yet.';
+    return;
+end
 % Get temp folder
 TmpDir = bst_get('BrainstormTmpDir');
 % Open log file
@@ -482,7 +487,6 @@ bst_progress('removeimage');
         bst_progress('text', ['OpenMEEG: ' strProgress]);
         % System call
         strCall = [omFunc ' ' omInput ' "' omOutput '"'];
-disp(strCall)
         [status, result] = bst_system(strCall);
         % Append to log file file
         if ~isempty(fid_log) && (fid_log >= 0) && ~isempty(fopen(fid_log))
