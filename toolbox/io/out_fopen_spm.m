@@ -61,7 +61,7 @@ end
 % Channels
 for i = 1:length(ChannelMat.Channel)
     D.channels(i).bad      = (sFileIn.channelflag(i) == -1);
-    D.channels(i).label    = {ChannelMat.Channel(i).Name};
+    D.channels(i).label    = ChannelMat.Channel(i).Name;
     D.channels(i).type     = ChannelMat.Channel(i).Type;
     D.channels(i).X_plot2D = [];
     D.channels(i).Y_plot2D = [];
