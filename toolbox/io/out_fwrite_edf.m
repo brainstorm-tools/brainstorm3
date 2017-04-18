@@ -43,15 +43,31 @@ F(negF) = bitcmp(abs(F(negF))) + 1;
 % Prepare annotations if any.
 if sFile.header.annotchan >= 0
     annotations    = 1;
-    nEvents        = length(sFile.events);
+    nAnnots        = numel(sFile.header.annotations);
+    nSamplesReal   = sFile.prop.samples(2) - sFile.prop.samples(1);
     nSamplesAnnots = sFile.header.signal(sFile.header.annotchan).nsamples;
-
-    global nextEdfEvent;
-    if nextEdfEvent.event < 0
-        nextEdfEvent.event = 1;
-        nextEdfEvent.epoch = 1;
-        nextEdfEvent.annot = [];
+    annotThreshold = floor((1:nAnnots) / nAnnots * nSamplesReal);
+    annotBounds    = [0, 0];
+    
+    % Insert annotation in this record only if it contains the required
+    % cutoff sample threshold
+    for iThr = 1:nAnnots
+        if annotThreshold(iThr) >= SamplesBounds(1) && annotThreshold(iThr) <= SamplesBounds(2)
+            if annotBounds(1) < 1
+                annotBounds(1) = iThr;
+            end
+            annotBounds(2) = iThr;
+        end
     end
+    
+    if annotBounds(2) < 1
+        annotsList = [];
+    else
+        annotsList = sFile.header.annotations(annotBounds(1) : annotBounds(2));
+    end
+    
+    nAnnots     = numel(annotsList);
+    nextAnnot   = 1;
 else
     annotations = 0;
 end
@@ -93,38 +109,9 @@ for iRec = 1:nRecords
         bytesLeft = bytesLeft - fprintf(sfid, '+%f%c%c%c', timeOffset, char(20), char(20), char(0));
         
         % Write as many annotations as possible in current record
-        while bytesLeft >= length(nextEdfEvent.annot)
-            if ~isempty(nextEdfEvent.annot)
-                bytesLeft = bytesLeft - fprintf(sfid, '%s', nextEdfEvent.annot);
-            end
-            
-            if nextEdfEvent.event > nEvents
-                nextEdfEvent.annot = [];
-                break;
-            end
-            
-            % Prepare the next annotation string
-            event = sFile.events(nextEdfEvent.event);
-            startTime = event.times(nextEdfEvent.epoch);
-            nextEdfEvent.annot = sprintf('+%f', startTime);
-
-            % Add duration if specified.
-            if numel(event.epochs) ~= numel(event.times)
-                nextEdfEvent.epoch = nextEdfEvent.epoch + 1;
-                duration = event.times(nextEdfEvent.epoch) - startTime;
-                nextEdfEvent.annot = [nextEdfEvent.annot, ...
-                    sprintf('%c%f', char(21), duration)];
-            end
-
-            nextEdfEvent.epoch = nextEdfEvent.epoch + 1;
-            nextEdfEvent.annot = [nextEdfEvent.annot, ...
-                sprintf('%c%s%c%c', char(20), event.label, char(20), char(0))];
-
-            % If this is the last epoch of the event, go to next event
-            if nextEdfEvent.epoch > numel(event.times)
-                nextEdfEvent.event = nextEdfEvent.event + 1;
-                nextEdfEvent.epoch = 1;
-            end
+        while nextAnnot <= nAnnots && bytesLeft >= length(annotsList{nextAnnot})
+            bytesLeft = bytesLeft - fprintf(sfid, '%s', annotsList{nextAnnot});
+            nextAnnot = nextAnnot + 1;
         end
         
         % Fill remaining of record with 0-bytes.
