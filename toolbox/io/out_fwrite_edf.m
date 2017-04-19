@@ -77,7 +77,7 @@ nSamplesPerRecord = sFile.prop.sfreq * sFile.header.reclen;
 nRecords          = ceil((SamplesBounds(2) - SamplesBounds(1)) / nSamplesPerRecord);
 ncount            = 0;
 bounds            = [1, nSamplesPerRecord];
-timeOffset        = SamplesBounds(1) / nSamplesPerRecord;
+timeOffset        = SamplesBounds(1) / sFile.prop.sfreq;
 
 for iRec = 1:nRecords
     % Special case when we don't have enough data to fill the last record
