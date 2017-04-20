@@ -461,7 +461,7 @@ for iFile = 1:length(FilesA)
                             HAo = imag(bsxfun(@times, HA(iSeed,:), conj(HB)./abs(HB)));
                             HBo = imag(bsxfun(@times, HB, conj(HA(iSeed,:))./abs(HA(iSeed,:))));
                             % avoid rounding errors
-                            HAo(abs(bsxfun(@rdivide,HAo,abs(HA)))<2*eps)=0;
+                            HAo(abs(bsxfun(@rdivide,HAo,abs(HA(iSeed,:))))<2*eps)=0;
                             HBo(abs(HBo./abs(HB))<2*eps)=0;
                             % Compute correlation coefficients
                             r1 = correlate_dims(abs(HA(iSeed,:)), abs(HBo), 2);
