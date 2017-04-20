@@ -41,16 +41,14 @@ header.starttime  = datestr(date, 'HH.MM.SS');
 header.nsignal    = length(ChannelMat.Channel);
 header.nrec       = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / EpochSize;
 
-% We need to choose a record length that produces a whole number of records
-% and a record size less than 61440 bytes (at 2 bytes per sample).
+% We need to choose a record length that produces a  record size less than
+% 61440 bytes (at 2 bytes per sample).
 header.reclen     = 1.0;
-epsilon           = 1e-8;
 for i = 1:10
-    remainder     = mod(header.nrec / header.reclen, 1);
     recordSize    = header.reclen * EpochSize * header.nsignal * 2;
     
-    if (remainder > epsilon && abs(remainder - 1) > epsilon) || recordSize > 61440
-        header.reclen = header.reclen / 10;
+    if recordSize > 61440
+        header.reclen = header.reclen / 2;
     else
         break;
     end
@@ -59,18 +57,49 @@ for i = 1:10
         error('Could not find a valid record length for this data.');
     end
 end
-header.nrec       = header.nrec / header.reclen;
+header.nrec       = ceil(header.nrec / header.reclen);
 
 % Add an additional channel at the end to save events if necessary.
 if ~isempty(sFileIn.events)
     header.nsignal     = header.nsignal + 1;
     header.annotchan   = header.nsignal;
-    
+
     % Some EDF+ fields are required by strict viewers such as EDFbrowser
     header.unknown1    = 'EDF+C';
     header.patient_id  = 'UNKNOWN M 01-JAN-1900 Unknown_Patient';
     header.rec_id      = ['Startdate ', upper(datestr(date, 'dd-mmm-yyyy')), ...
                           ' Unknown_Hospital Unknown_Technician Unknown_Equipment'];
+
+    % Compute annotations
+    header.annotations = {};
+    maxAnnotLength     = 0;
+    
+    for iEvt = 1:numel(sFileIn.events)
+        event       = sFileIn.events(iEvt);
+        hasDuration = numel(event.epochs) ~= numel(event.times);
+        
+        for iEpc = 1:numel(event.epochs)
+            if hasDuration
+                startTime = event.times(2 * iEpc - 1);
+            else
+                startTime = event.times(iEpc);
+            end
+            
+            annot = sprintf('+%f', startTime);
+            
+            if hasDuration
+                duration = event.times(2 * iEpc) - startTime;
+                annot    = [annot, sprintf('%c%f', char(21), duration)];
+            end
+            
+            annot = [annot, sprintf('%c%s%c%c', char(20), event.label, char(20), char(0))];
+            header.annotations{end + 1} = annot;
+            
+            if length(annot) > maxAnnotLength
+                maxAnnotLength = length(annot);
+            end
+        end
+    end
 else
     header.annotchan   = -1;
     header.unknown1    = '';
@@ -93,31 +122,15 @@ for i = 1:header.nsignal
     if i == header.annotchan
         header.signal(i).label    = 'EDF Annotations';
         header.signal(i).type     = '';
-        header.signal(i).nsamples = 12 * header.nrec; % For first annotation of each record
-        maxEventSize              = 0;
-        
-        for j = 1:length(sFileIn.events)
-            eventSize = length(sFileIn.events(j).label) + 25;
-            header.signal(i).nsamples = header.signal(i).nsamples + eventSize;
-            
-            if eventSize > maxEventSize
-                maxEventSize = eventSize;
-            end
-        end
-        header.signal(i).nsamples = int64(header.signal(i).nsamples / header.nrec);
-        
-        % The annotation record cannot be smaller than the largest event
-        % plus the first annotation (12 bytes) of the record
-        if header.signal(i).nsamples < maxEventSize + 12
-            header.signal(i).nsamples = maxEventSize + 12;
-        end
+        eventsPerRecord           = ceil(numel(header.annotations) / header.nrec);
+        header.signal(i).nsamples = eventsPerRecord * maxAnnotLength + 15; % For first annotation of each record
         
         % Convert chars (1-byte) to 2-byte integers, the size of a sample
         header.signal(i).nsamples = int64((header.signal(i).nsamples + 1) / 2);
     else
         header.signal(i).label    = ChannelMat.Channel(i).Name;
         header.signal(i).type     = ChannelMat.Channel(i).Type;
-        header.signal(i).nsamples = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / header.nrec;
+        header.signal(i).nsamples = header.reclen * EpochSize;
     end
 
 end
