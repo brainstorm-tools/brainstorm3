@@ -298,7 +298,9 @@ if (~isempty(FileFormat) && strcmpi(FileFormat, 'FIG')) || strcmpi(imgFile, 'Fig
     
 % ===== SAVE IMAGE =====
 elseif strcmpi(FileFormat, 'SVG')
+    h = waitbar(0, 'Saving SVG file...');
     plot2svg(imgFile, hFig, 'png');
+    close(h);
 else
     % Get figure bitmap
     if (bst_get('MatlabVersion') >= 804)
