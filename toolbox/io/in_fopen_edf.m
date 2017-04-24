@@ -204,6 +204,10 @@ for i = 1:hdr.nsignal
     if (length(iSpace) == 1) && (iSpace >= 3)
         SplitName{i} = hdr.signal(i).label(iSpace+1:end);
         SplitType{i} = hdr.signal(i).label(1:iSpace-1);
+    % Accept also 2 spaces
+    elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
+        SplitName{i} = strrep(hdr.signal(i).label(iSpace(1)+1:end), ' ', '_');
+        SplitType{i} = hdr.signal(i).label(1:iSpace(1)-1);
     end
 end
 % Remove the classification if it makes some names non unique
