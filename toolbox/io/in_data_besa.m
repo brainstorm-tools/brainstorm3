@@ -69,7 +69,7 @@ switch lower(fExt)
         if any(ismember(double(hdr), double('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz()[]/\_@')))
             % Replace spaces in channel names with _ (eg. "TP 1" to "TP_1")
             for iDig = 0:9
-                hdr = strrep(hdr, sprintf(' %d)', iDig), sprintf('_%d)', iDig));
+                hdr = strrep(hdr, sprintf(' %d', iDig), sprintf('_%d', iDig));
             end
             % Try to get the channel names
             ChanNames = str_split(hdr, ' ');
