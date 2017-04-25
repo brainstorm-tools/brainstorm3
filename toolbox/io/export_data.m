@@ -29,7 +29,7 @@ function [ExportFile, sFileOut] = export_data(DataFile, ChannelMat, ExportFile, 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2017
 
 % ===== PARSE INPUTS =====
 if (nargin < 4) || isempty(FileFormat)
@@ -197,8 +197,23 @@ end
 isRawOut = ismember(FileFormat, {'BST-BIN', 'EEG-EGI-RAW', 'SPM-DAT', 'EEG-EDF'});
 % Open output file 
 if isRawOut
-    sFileOut = out_fopen(ExportFile, FileFormat, sFileIn, ChannelMat);
+    [sFileOut, errMsg] = out_fopen(ExportFile, FileFormat, sFileIn, ChannelMat);
+    % Error management
+    if isempty(sFileOut) && ~isempty(errMsg)
+        error(errMsg);
+    elseif ~isempty(errMsg)
+        disp(['BST> Warning: ' errMsg]);
+    end
 end
+% Remove EDF/BDF/KDF annotation channels
+iChannels = 1:length(ChannelMat.Channel);
+if ~isempty(ChannelMat)
+    iAnnot = channel_find(ChannelMat.Channel, {'EDF', 'BDF', 'KDF'});
+    iChannels = setdiff(iChannels, iAnnot);
+else
+    iAnnot = [];
+end
+
 
 % ===== RAW IN / RAW OUT =====
 if isRawIn && isRawOut
@@ -218,9 +233,9 @@ if isRawIn && isRawOut
         % Get sample indices
         SamplesBounds = sFileOut.prop.samples(1) + [(iBlock-1) * EpochSize, min(iBlock*EpochSize-1, nSamples-1)];
         % Read from input file
-        F = in_fread(sFileIn, ChannelMat, 1, SamplesBounds, [], ImportOptions);
+        F = in_fread(sFileIn, ChannelMat, 1, SamplesBounds, iChannels, ImportOptions);
         % Save to output file
-        sFileOut = out_fwrite(sFileOut, ChannelMat, 1, SamplesBounds, [], F);
+        sFileOut = out_fwrite(sFileOut, ChannelMat, 1, SamplesBounds, iChannels, F);
         % Increase progress bar
         bst_progress('inc', 1);
     end
@@ -229,10 +244,10 @@ if isRawIn && isRawOut
 else
     % Load full file
     if isRawIn
-        F = in_fread(sFileIn, ChannelMat, 1, [], [], ImportOptions);
+        F = in_fread(sFileIn, ChannelMat, 1, [],iChannels, ImportOptions);
     else
         if isfield(DataMat, 'F') && ~isempty(DataMat.F)
-            F = DataMat.F;
+            F = DataMat.F(iChannels,:);
         elseif isfield(DataMat, 'ImageGridAmp') && ~isempty(DataMat.ImageGridAmp)
             F = DataMat.ImageGridAmp;
         else
@@ -240,16 +255,11 @@ else
         end
     end
 
+    
     % Save full file
     if isRawOut
-        out_fwrite(sFileOut, ChannelMat, 1, [], [], F);
+        out_fwrite(sFileOut, ChannelMat, 1, [], iChannels, F);
     else
-        % Find EDF/BDF/KDF annotation channels
-        if ~isempty(ChannelMat)
-            iAnnot = channel_find(ChannelMat.Channel, {'EDF', 'BDF', 'KDF'});
-        else
-            iAnnot = [];
-        end
         % Switch between file formats
         switch FileFormat
             case 'BST'

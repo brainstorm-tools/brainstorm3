@@ -32,8 +32,13 @@ end
 
 fseek(sfid, 0, 'eof');
 
-% Convert V to uV to avoid precision loss
-F = F * 1e6;
+% Get the gains of the channels for all the non-Annotation channels
+iChanGain = setdiff(1:length(sFile.header.signal), sFile.header.annotchan);
+% Apply channel gains before converting to integer
+unit_gain = 1e6;
+chgain = unit_gain ./ ([sFile.header.signal(iChanGain).physical_max] - [sFile.header.signal(iChanGain).physical_min]) .* ...
+                      ([sFile.header.signal(iChanGain).digital_max]  - [sFile.header.signal(iChanGain).digital_min]);
+F = bst_bsxfun(@times, F, chgain');
 
 % Convert to 2-byte integer in 2's complement
 F = int16(F);
@@ -127,3 +132,5 @@ end
 if (ncount ~= numel(F))
     error('Error writing data to file.');
 end
+
+
