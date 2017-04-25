@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2017
         
 
 % Parse inputs
@@ -125,7 +125,8 @@ for i = 1:hdr.nsignal
         hdr.signal(i).physical_max = hdr.signal(i).digital_max;
     end
     % Calculate and save channel gain
-    hdr.signal(i).gain = unit_gain ./ (hdr.signal(i).physical_max - hdr.signal(i).physical_min) .* (hdr.signal(i).digital_max - hdr.signal(i).digital_min);
+    hdr.signal(i).gain   = unit_gain ./ (hdr.signal(i).physical_max - hdr.signal(i).physical_min) .* (hdr.signal(i).digital_max - hdr.signal(i).digital_min);
+    hdr.signal(i).offset = hdr.signal(i).physical_min ./ unit_gain - hdr.signal(i).digital_min ./ hdr.signal(i).gain;
     % Error: The number of samples is not specified
     if isempty(hdr.signal(i).nsamples)
         % If it is not the first electrode: try to use the previous one
@@ -287,6 +288,7 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
         for ichan = 1:length(iEvtChans)
             % Read annotation channel epoch by epoch
             for irec = 1:hdr.nrec
+                bst_progress('text', sprintf('Reading annotations [%d%%]', round(irec/hdr.nrec*100)));
                 % Sample indices for the current epoch (=record)
                 SampleBounds = [irec-1,irec] * sFile.header.signal(iEvtChans(ichan)).nsamples - [0,1];
                 % Read record
