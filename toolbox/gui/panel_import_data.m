@@ -51,7 +51,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
     jPanelNew.add(jPanelProcess, BorderLayout.EAST);
     % Events or markers selection ?
     isEvents = ~isempty(sFile.events);
-    isEpochs = ~isempty(sFile.epochs);
+    isEpochs = ~isempty(sFile.epochs) && (length(sFile.epochs) > 1);
     % Get number of time samples
     nSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
     % Propose to split the file the number of samples is big enough
@@ -1003,7 +1003,7 @@ function s = GetPanelContents() %#ok<DEFNU>
     s = bst_get('ImportDataOptions');
     % Get import type
     isEvents = ~isempty(ctrl.sFile.events);
-    isEpochs = ~isempty(ctrl.sFile.epochs);
+    isEpochs = ~isempty(ctrl.sFile.epochs) && (length(ctrl.sFile.epochs) > 1);
     
     % === RAW FILES ===
     if ~isEpochs
