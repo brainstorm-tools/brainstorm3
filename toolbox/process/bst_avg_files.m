@@ -370,7 +370,7 @@ for iFile = 1:nFiles
         isData = strcmpi(MeanMatName, 'F');
         % Good channels
         NbChannels = length(ChannelFlag);
-        if isData
+        if isData && ~isempty(ChannelFlag)
             nGoodSamples = zeros(NbChannels, 1);
         else
             nGoodSamples = zeros(size(matValues,1), 1);
