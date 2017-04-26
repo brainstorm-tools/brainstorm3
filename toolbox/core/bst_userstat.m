@@ -71,12 +71,14 @@ action = c{3};
 % Create histograms
 iUpdate = find(strcmpi(action, 'Auto-update') | strcmpi(action, 'Login'));
 [nUpdate,xUpdate] = hist(dates(iUpdate), length(unique(dates(iUpdate))));
-% Look for all dates in the current year
-iAvg = find(xUpdate >= 2016);
+% Look for all dates in the current year (exclude current month)
+cur = clock;
+iAvg = find((xUpdate >= 2017) & (xUpdate < (2017 + (cur(2)-2)./12)));
+
 % Plot number of downloads
 [hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
            [2005, max(xUpdate(1:end-1))], [], ...
-           sprintf('Downloads per month: Avg(2016)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
+           sprintf('Downloads per month: Avg(2017)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
            [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'download.png'));
        
 % % Create histograms
@@ -108,7 +110,7 @@ hFig(end+1) = fig_report(year, nPosts, 0, ...
 % Hard coded list of publications
 year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016]; 
 nPubli = [   2    2    1    1    3    5    5   11   10   18   19   33   38   54   78   92  131];
-nPubliCurYear = 26;
+nPubliCurYear = 40;
 % Plot figure
 hFig(end+1) = fig_report(year, nPubli, 1, ...
            [2000 max(year)], [], ...

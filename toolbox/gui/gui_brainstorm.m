@@ -162,15 +162,12 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % WEBSITE
         gui_component('MenuItem', jMenuSupport, [], 'Brainstorm website', [], [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/', '-browser'), []);
         gui_component('MenuItem', jMenuSupport, [], 'Brainstorm forum', [], [], @(h,ev)web('http://neuroimage.usc.edu/forums/', '-browser'), []);
-        gui_component('MenuItem', jMenuSupport, [], 'Report a bug', [], [], @(h,ev)web('http://neuroimage.usc.edu/forums/newthread.php?do=newthread&f=21', '-browser'), []);
-        gui_component('MenuItem', jMenuSupport, [], 'Ask a question', [], [], @(h,ev)web('http://neuroimage.usc.edu/forums/newthread.php?do=newthread&f=22', '-browser'), []);
         jMenuSupport.addSeparator();
         % USAGE STATS
         gui_component('MenuItem', jMenuSupport, [], 'Usage statistics', [], [], @(h,ev)bst_userstat, []);
         jMenuSupport.addSeparator();
         % LICENSE
         gui_component('MenuItem', jMenuSupport, [], 'License',       [], [], @(h,ev)bst_license(), []);
-        %gui_component('MenuItem', jMenuSupport, [], 'About Brainstorm', [], [], @(h,ev)bst_splash('show'), []);
         % RELEASE NOTES
         updatesfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'updates.txt');
         gui_component('MenuItem', jMenuSupport, [], 'Release notes', [], [], @(h,ev)view_text(updatesfile, 'Release notes', 1), []);
