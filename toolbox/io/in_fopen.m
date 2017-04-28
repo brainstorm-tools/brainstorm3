@@ -59,7 +59,7 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_itab(DataFile);
     case 'EEG-ANT-CNT'
         [sFile, ChannelMat] = in_fopen_ant(DataFile);
-    case 'EEG-BLACKROCK'
+    case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
         [sFile, ChannelMat] = in_fopen_blackrock(DataFile);
     case 'EEG-BRAINAMP'
         [sFile, ChannelMat] = in_fopen_brainamp(DataFile);
