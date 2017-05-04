@@ -3201,16 +3201,43 @@ switch contextName
         
     case 'Font'
         fontSize = varargin{2};
+        fontTypes = {};
+        foundFont = 0;
+        
         if (nargin >= 3)
-            fontType = varargin{3};
-        else
-            fontType = 'Arial';
+            fontTypes{end + 1} = varargin{3};
         end
-        % Get cached font
-        strCache = strrep(sprintf('%s%d', fontType, round(fontSize*100)), ' ', '_');
-        if ~isempty(GlobalData) && isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'FontCache') && isfield(GlobalData.Program.FontCache, strCache)
-            argout1 = GlobalData.Program.FontCache.(strCache);
-        else
+        
+        fontTypes{end + 1} = 'Arial';  % Default font
+        fontTypes{end + 1} = 'Liberation Sans';  % Free Arial substitute
+        
+        % Check for cached font
+        for iFont = 1 : length(fontTypes)
+            strCache = strrep(sprintf('%s%d', fontTypes{iFont}, round(fontSize*100)), ' ', '_');
+            if ~isempty(GlobalData) && isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'FontCache') && isfield(GlobalData.Program.FontCache, strCache)
+                argout1 = GlobalData.Program.FontCache.(strCache);
+                foundFont = 1;
+                break;
+            end
+        end
+            
+        % If font not cached, find first supported font
+        if ~foundFont
+            allFonts = cell(java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames());
+            
+            for iFont = 1 : length(fontTypes)
+                if any(strcmp(fontTypes{iFont}, allFonts))
+                    fontType = fontTypes{iFont};
+                    foundFont = 1;
+                    break;
+                end
+            end
+            
+            if ~foundFont
+                fontType = 'SansSerif';  % If nothing else works.
+            end
+            
+            strCache = strrep(sprintf('%s%d', fontType, round(fontSize*100)), ' ', '_');
             argout1 = java.awt.Font(fontType, java.awt.Font.PLAIN, fontSize);
             GlobalData.Program.FontCache.(strCache) = argout1;
         end
