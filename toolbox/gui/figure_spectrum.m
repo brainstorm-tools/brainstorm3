@@ -731,6 +731,17 @@ function SetShowLegend(iDS, iFig, ShowLegend)
     % Redraw figure
     UpdateFigurePlot(hFig, 1);
 end
+function ToggleGrid(hAxes, hFig, xy)
+    ToggleAxesProperty(hAxes, [xy 'Grid']);
+    ToggleAxesProperty(hAxes, [xy 'MinorGrid']);
+    
+    % Toggle selection of associated button if possible
+    buttonContainer = findobj(hFig, '-depth', 1, 'Tag', ['ButtonShowGrid' xy]);
+    if length(buttonContainer)
+        button = get(buttonContainer, 'UserData');
+        button.setSelected(mod(button.isSelected() + 1, 2));
+    end
+end
 
 
 %% ===== POPUP MENU =====
@@ -853,11 +864,11 @@ function DisplayFigurePopup(hFig, menuTitle)
         jItem.setSelected(TsInfo.ShowLegend);
         % XGrid
         isXGrid = strcmpi(get(hAxes(1), 'XGrid'), 'on');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleAxesProperty(hAxes, 'XGrid'), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleGrid(hAxes, hFig, 'X'), []);
         jItem.setSelected(isXGrid);
         % YGrid
         isYGrid = strcmpi(get(hAxes(1), 'YGrid'), 'on');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleAxesProperty(hAxes, 'YGrid'), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleGrid(hAxes, hFig, 'Y'), []);
         jItem.setSelected(isYGrid);
         % Change background color
         jMenuFigure.addSeparator();
@@ -1003,7 +1014,7 @@ function UpdateFigurePlot(hFig, isForced)
     % Plot data in the axes
     PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, sFig.Handles.DataMinMax, LinesLabels, DisplayUnits);
     hAxes = PlotHandles.hAxes;
-    % Store initial XLim and YLim
+    % Store initial XLim and YLimt
     setappdata(hAxes, 'XLimInit', get(hAxes, 'XLim'));
     setappdata(hAxes, 'YLimInit', get(hAxes, 'YLim'));
     % Update figure list of handles
