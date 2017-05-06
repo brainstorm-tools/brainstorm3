@@ -80,6 +80,10 @@ if ~isempty(iMeg)
     error(['MEG sensors are currently not supported by this function.' 10 ...
            'Please contact us through the Brainstorm user forum to request this feature.']);
 end
+% If all the channels have other types: consider it's all EEG
+if isempty(iEeg) && isempty(iMeg)
+    iEeg = 1:length(ChannelMat.Channel);
+end
 % Sensors
 for i = 1:length(iEeg)
     if ~isempty(ChannelMat.Channel(iEeg(i)).Loc) && ~all(ChannelMat.Channel(iEeg(i)).Loc(:) == 0)
