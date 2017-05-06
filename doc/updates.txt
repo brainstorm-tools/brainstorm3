@@ -10,7 +10,7 @@ April 2017
 - GUI: Support for 2D/3D displays of time-frequency/PSD of SEEG/ECOG
 - Anatomy: Compute MNI transformation sets default NAS/LPA/RPA points
 - Doc: New forum software (replaced VBulletin with Discourse)
-- Workshop: Beijing
+- Workshops: Beijing, Montreal
 ---------------------------------------------------------------
 March 2017
 - New process: Amplitude envelope correlation (Peter D)

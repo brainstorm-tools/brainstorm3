@@ -337,6 +337,10 @@ for iData = 1:length(Data)
                     % Imported recordings
                     else
                         F = sMat.F;
+                        % Detect bad segments
+                        sMat.events = sMat.Events;
+                        sMat.prop.sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
+                        BadSegments = panel_record('GetBadSegments', sMat) - sMat.prop.sfreq * sMat.Time(1) + 1;
                     end
                     % Get indices of channels for this results file
                     F = F(ResultsMat.GoodChannel, :);
