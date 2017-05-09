@@ -21,7 +21,7 @@ function varargout = figure_spectrum( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
