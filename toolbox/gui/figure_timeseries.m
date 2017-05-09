@@ -1036,8 +1036,7 @@ function ResizeCallback(hFig, ev)
     hButtonZoomTimePlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus');
     hButtonZoomTimeMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus');
     hButtonSetScaleLog   = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
-    hButtonShowGridX   = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGridX');
-    hButtonShowGridY   = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGridY');
+    hButtonShowGrids   = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
     
     % Update gain buttons
     butSize = 22;
@@ -1061,11 +1060,8 @@ function ResizeCallback(hFig, ev)
     if ~isempty(hButtonSetScaleLog)
         set(hButtonSetScaleLog,  'Position', [figPos(3)-butSize-1, 110, butSize, butSize]);
     end
-    if ~isempty(hButtonShowGridX)
-        set(hButtonShowGridX,  'Position', [figPos(3)-butSize-1, 160, butSize, butSize]);
-    end
-    if ~isempty(hButtonShowGridY)
-        set(hButtonShowGridY,  'Position', [figPos(3)-butSize-1, 135, butSize, butSize]);
+    if ~isempty(hButtonShowGrids)
+        set(hButtonShowGrids,  'Position', [figPos(3)-butSize-1, 135, butSize, butSize]);
     end
 
     % ===== REPOSITION SCALE BAR =====
@@ -3084,7 +3080,7 @@ function CreateScaleButtons(iDS, iFig)
     % Get figure background color
     bgColor = get(hFig, 'Color');
     % Create scale buttons
-    jButton = javaArray('java.awt.Component', 10);
+    jButton = javaArray('java.awt.Component', 9);
     jButton(1) = javax.swing.JButton('^');
     jButton(2) = javax.swing.JButton('v');
     jButton(3) = javax.swing.JButton('...');
@@ -3092,9 +3088,8 @@ function CreateScaleButtons(iDS, iFig)
     jButton(5) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_FLIPY);
     jButton(6) = javax.swing.JButton('<');
     jButton(7) = javax.swing.JButton('>');
-    jButton(8) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_GRID_X);  %TODO: log scale icon
-    jButton(9) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_GRID_X);
-    jButton(10) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_GRID_Y);
+    jButton(8) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_LOG);
+    jButton(9) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_MATRIX);
     
     % Configure buttons
     for i = 1:length(jButton)
@@ -3114,7 +3109,6 @@ function CreateScaleButtons(iDS, iFig)
     [j7, h7] = javacomponent(jButton(7), [0, 0, .01, .01], hFig);
     [j8, h8] = javacomponent(jButton(8), [0, 0, .01, .01], hFig);
     [j9, h9] = javacomponent(jButton(9), [0, 0, .01, .01], hFig);
-    [j10, h10] = javacomponent(jButton(10), [0, 0, .01, .01], hFig);
     
     % Configure Gain buttons
     set(h1, 'Tag', 'ButtonGainPlus',  'Units', 'pixels');
@@ -3125,8 +3119,7 @@ function CreateScaleButtons(iDS, iFig)
     set(h6, 'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
     set(h7, 'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
     set(h8, 'Tag', 'ButtonSetScaleLog',   'Units', 'pixels');
-    set(h9, 'Tag', 'ButtonShowGridX',   'Units', 'pixels');
-    set(h10, 'Tag', 'ButtonShowGridY',   'Units', 'pixels');
+    set(h9, 'Tag', 'ButtonShowGrids',   'Units', 'pixels');
     j1.setToolTipText('<HTML><TABLE><TR><TD>Increase gain (vertical zoom)</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B>');
     j2.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain (vertical unzoom)</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B>');
     j3.setToolTipText('Set scale manually');
@@ -3135,8 +3128,7 @@ function CreateScaleButtons(iDS, iFig)
     j6.setToolTipText('<HTML><TABLE><TR><TD>Horizontal unzoom</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]');
     j7.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]');
     j8.setToolTipText('Set X scale to log scale');
-    j9.setToolTipText('Show XGrid');
-    j10.setToolTipText('Show YGrid');
+    j9.setToolTipText('Show grids');
     java_setcb(j1, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1));
     java_setcb(j2, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, .9091));
     java_setcb(j3, 'ActionPerformedCallback', @(h,ev)SetScaleY(iDS, iFig));
@@ -3145,8 +3137,7 @@ function CreateScaleButtons(iDS, iFig)
     java_setcb(j6, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', .9091));
     java_setcb(j7, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', 1.1));
     java_setcb(j8, 'ActionPerformedCallback', @(h,ev)ToggleLogLinearScale(ev.getSource(), hFig));
-    java_setcb(j9, 'ActionPerformedCallback', @(h,ev)ShowGrid(ev.getSource(), hFig, 'X'));
-    java_setcb(j10, 'ActionPerformedCallback', @(h,ev)ShowGrid(ev.getSource(), hFig, 'Y'));
+    java_setcb(j9, 'ActionPerformedCallback', @(h,ev)ShowGrids(ev.getSource(), hFig));
     % Up button
     j1.setMargin(java.awt.Insets(3,0,0,0));
     j1.setFont(bst_get('Font', 12));    
@@ -3154,8 +3145,8 @@ function CreateScaleButtons(iDS, iFig)
     j4.setSelected(TsInfo.AutoScaleY);
     j5.setSelected(TsInfo.FlipYAxis);
     % Add associated button to container when needed
+    set(h8,  'UserData', j8);
     set(h9,  'UserData', j9);
-    set(h10, 'UserData', j10);
     % Visible / not visible
     if isRaw
         set([h6 h7], 'Visible', 'off');
@@ -3168,7 +3159,7 @@ function CreateScaleButtons(iDS, iFig)
         set([h3], 'Visible', 'off');
     end
     if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
-        set([h8 h9 h10], 'Visible', 'off');
+        set([h8 h9], 'Visible', 'off');
     end
 end
 
@@ -3324,8 +3315,8 @@ function ToggleLogLinearScale(jButton, hFig)
 end
 
 
-%% ===== SHOW X OR Y GRID =====
-function ShowGrid(jButton, hFig, xy)
+%% ===== SHOW X AND Y GRIDS =====
+function ShowGrids(jButton, hFig)
     isSel = jButton.isSelected();
     if isSel
         toggle = 'on';
@@ -3335,8 +3326,10 @@ function ShowGrid(jButton, hFig, xy)
     
     % Update figure structure
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
-    set(hAxes, [xy 'Grid'], toggle)
-    set(hAxes, [xy 'MinorGrid'], toggle)
+    set(hAxes, 'XGrid', toggle);
+    set(hAxes, 'XMinorGrid', toggle);
+    set(hAxes, 'YGrid', toggle);
+    set(hAxes, 'YMinorGrid', toggle);
 end
 
 

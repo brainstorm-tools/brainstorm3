@@ -736,10 +736,22 @@ function ToggleGrid(hAxes, hFig, xy)
     ToggleAxesProperty(hAxes, [xy 'MinorGrid']);
     
     % Toggle selection of associated button if possible
-    buttonContainer = findobj(hFig, '-depth', 1, 'Tag', ['ButtonShowGrid' xy]);
+    buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
     if length(buttonContainer)
         button = get(buttonContainer, 'UserData');
-        button.setSelected(mod(button.isSelected() + 1, 2));
+        select = strcmp(get(hAxes, 'XGrid'), 'on') && strcmp(get(hAxes, 'YGrid'), 'on');
+        button.setSelected(select);
+    end
+end
+function ToggleLogScale(hAxes, hFig, loglin)
+    set(hAxes, 'XScale', loglin);
+    
+    % Toggle selection of associated button if possible
+    buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
+    if length(buttonContainer)
+        button = get(buttonContainer, 'UserData');
+        select = strcmp(loglin, 'log');
+        button.setSelected(select);
     end
 end
 
@@ -853,9 +865,9 @@ function DisplayFigurePopup(hFig, menuTitle)
         % XGrid
         isXLog = strcmpi(get(hAxes, 'XScale'), 'log');
         if isXLog
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: linear', IconLoader.ICON_GRID_X, [], @(h,ev)set(hAxes, 'XScale', 'linear'), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: linear', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'linear'), []);
         else
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: log', IconLoader.ICON_GRID_X, [], @(h,ev)set(hAxes, 'XScale', 'log'), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: log', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'log'), []);
         end
         jMenuFigure.addSeparator();
         
