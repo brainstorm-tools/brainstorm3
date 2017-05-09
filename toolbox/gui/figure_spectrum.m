@@ -1026,7 +1026,7 @@ function UpdateFigurePlot(hFig, isForced)
     % Plot data in the axes
     PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, sFig.Handles.DataMinMax, LinesLabels, DisplayUnits);
     hAxes = PlotHandles.hAxes;
-    % Store initial XLim and YLimt
+    % Store initial XLim and YLim
     setappdata(hAxes, 'XLimInit', get(hAxes, 'XLim'));
     setappdata(hAxes, 'YLimInit', get(hAxes, 'YLim'));
     % Update figure list of handles
