@@ -151,6 +151,8 @@ switch (sFile.format)
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
+    case 'EEG-NICOLET'
+        F = in_fread_nicolet(sFile, SamplesBounds, iChannels);
     case 'EEG-NK'
         F = in_fread_nk(sFile, sfid, iEpoch, SamplesBounds, ChannelRange);
     case 'EYELINK'
