@@ -107,10 +107,19 @@ for i = 1:nChannels
         ichan = find(strcmpi(ftMat.label{i}, ftMat.grad.label));
         % Find corresponding coils
         icoils = find(ftMat.grad.tra(ichan,:));
-        % Locations
-        ChannelMat.Channel(i).Loc    = ftMat.grad.coilpos(icoils,:)';
-        ChannelMat.Channel(i).Orient = ftMat.grad.coilori(icoils,:)';
-        ChannelMat.Channel(i).Weight = ftMat.grad.tra(ichan,icoils);
+        % Error: Two many coils
+        if (length(icoils) > 2)
+            % TODO: This is wrong: not importing the correct coil positions, not importing the SSP/ICA projectors...
+            disp(['Error: Wrong number of coils for channel ', ftMat.label{i}, ': Cannot import this file correctly...']);
+            ChannelMat.Channel(i).Loc    = ftMat.grad.chanpos(ichan,:)';
+            ChannelMat.Channel(i).Orient = ftMat.grad.chanori(ichan,:)';
+            ChannelMat.Channel(i).Weight = 1;
+        else
+            % Locations
+            ChannelMat.Channel(i).Loc    = ftMat.grad.coilpos(icoils,:)';
+            ChannelMat.Channel(i).Orient = ftMat.grad.coilori(icoils,:)';
+            ChannelMat.Channel(i).Weight = ftMat.grad.tra(ichan,icoils);
+        end
         % Apply units
         if isfield(ftMat.grad, 'unit') && isequal(ftMat.grad.unit, 'cm')
             ChannelMat.Channel(i).Loc = ChannelMat.Channel(i).Loc ./ 100;
