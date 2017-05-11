@@ -194,7 +194,6 @@ sFile.channelflag = ones(hdr.nsignal,1);
 
 
 %% ===== PROCESS CHANNEL NAMES/TYPES =====
-% Remove "-Ref" 
 % Try to split the channel names in "TYPE NAME"
 SplitType = repmat({''}, 1, hdr.nsignal);
 SplitName = repmat({''}, 1, hdr.nsignal);
@@ -261,6 +260,8 @@ for i = 1:hdr.nsignal
         end
         % Remove the '-Ref' tag
         ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-Ref', '');
+        ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-ref', '');
+        ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-REF', '');
     end
     ChannelMat.Channel(i).Loc     = [0; 0; 0];
     ChannelMat.Channel(i).Orient  = [];
