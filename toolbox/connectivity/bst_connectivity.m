@@ -433,12 +433,12 @@ for iFile = 1:length(FilesA)
             % Loop on each frequency band
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
-                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), [], OPTIONS.isMirror);
+                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
                 HA = hilbert_fcn(DataAband')';                
                 if isConnNN
                     HB = HA;
                 else
-                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), [], OPTIONS.isMirror);
+                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
                     HB = hilbert_fcn(DataBband')';
                 end
                 if OPTIONS.isOrth
