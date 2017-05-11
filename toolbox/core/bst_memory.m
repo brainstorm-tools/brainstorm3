@@ -2094,6 +2094,9 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     elseif isequal(Function, 'pacfhigh')
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).sPAC.NestedFreq(iRow, iTime, iFreqs);
         isApplyFunction = 0;
+    elseif isempty(Function) || ~ismember(Function, {'power', 'magnitude', 'log', 'phase', 'none'}) || ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'power', 'magnitude', 'log', 'phase', 'none'})
+        Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs);
+        isApplyFunction = 0;
     else
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs);
         isApplyFunction = ~isempty(Function);
