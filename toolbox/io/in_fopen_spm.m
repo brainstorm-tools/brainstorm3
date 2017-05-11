@@ -88,7 +88,7 @@ for i = 1:nChannels
     if isfield(D, 'sensors') && isfield(D.sensors, 'eeg') && isfield(D.sensors.eeg, 'label')
         % Look for sensor name
         iSens = find(strcmpi(ChannelMat.Channel(i).Name, D.sensors.eeg.label));
-        if ~isempty(iSens)
+        if (length(iSens) == 1)
             % 3D position
             if ~any(isnan(D.sensors.eeg.elecpos(iSens,:))) && ~any(isinf(D.sensors.eeg.elecpos(iSens,:))) && ~all(D.sensors.eeg.elecpos(iSens,:) == 0)
                 ChannelMat.Channel(iEeg(i)).Loc(:,1) = D.sensors.eeg.elecpos(iSens,:);
