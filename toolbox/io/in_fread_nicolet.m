@@ -34,8 +34,8 @@ end
 % Read data block
 F = getdata(sFile.header.obj, 1, SamplesBounds + 1, sFile.header.selchan(iChannels))';
 
-% Apply gains
-F = bst_bsxfun(@times, F, sFile.header.gains(iChannels)');
+% Convert from uV to V
+F = F .* 1e-6;
 
 
 

@@ -33,7 +33,6 @@ end
 sfreq = max(hdr.obj.segments.samplingRate);
 hdr.selchan = find(hdr.obj.segments.samplingRate == sfreq);
 hdr.numchan = length(hdr.selchan);
-hdr.gains   = hdr.obj.segments.scale(hdr.selchan);
 % Display message to display ignored channels
 iIgnored = setdiff(1:length(hdr.obj.segments.samplingRate), hdr.selchan);
 if ~isempty(iIgnored)
