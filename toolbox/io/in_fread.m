@@ -61,15 +61,14 @@ end
 
 
 %% ===== OPEN FILE =====
-% % Check if file exists
-% if ~file_exist(sFile.filename)
-%     error(['The following file has been removed or is used by another program:' 10 sFile.filename]);
-% end
 % Open file (for some formats, it is open in the low-level function)
-if ismember(sFile.format, {'CTF', 'EEG-ANT-CNT', 'EEG-NEURALYNX', 'BST-DATA', 'EEG-NEURONE', 'EEG-RIPPLE', 'EEG-BLACKROCK', 'EYELINK'}) 
+if ismember(sFile.format, {'CTF', 'KIT', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS'}) 
     sfid = [];
 else
     sfid = fopen(sFile.filename, 'r', sFile.byteorder);
+%     if (sfid == -1)
+%         error(['The following file has been removed or is used by another program:' 10 sFile.filename]);
+%     end
 end
 
 %% ===== READ RECORDINGS BLOCK =====
@@ -89,6 +88,11 @@ switch (sFile.format)
         F = in_fread_itab(sFile, sfid, SamplesBounds, iChannels);
     case 'EEG-ANT-CNT'
         F = in_fread_ant(sFile, SamplesBounds);
+        if ~isempty(iChannels)
+            F = F(iChannels,:);
+        end
+    case 'EEG-ANT-MSR'
+        F = in_fread_msr(sFile, sfid, SamplesBounds);
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end

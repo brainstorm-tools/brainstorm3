@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 May 2017
 - IO: Support for Nicolet .e files
+- IO: Support for ANT ASA .msm/.msr files
 ---------------------------------------------------------------
 April 2017
 - Bug fix: Nihon Kohden reader had many issues channel names and types
