@@ -3225,7 +3225,8 @@ switch contextName
             
         % If font not cached, find first supported font
         if ~foundFont
-            allFonts = cell(java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames());
+            ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment();
+            allFonts = cell(ge.getAvailableFontFamilyNames());
             
             for iFont = 1 : length(fontTypes)
                 if any(strcmp(fontTypes{iFont}, allFonts))
