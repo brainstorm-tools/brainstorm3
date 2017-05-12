@@ -414,7 +414,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
             end
         end
         % Warning if no data is loaded at all (cannot set the maximum)
-        if isinf(estimMax) || isinf(estimMin)
+        if isequal(estimMax, -Inf) || isequal(estimMin, Inf)
             bst_error('You should load some data before setting the maximum value of the colormap.', 'Set colormap max value', 0);
             return;
         end
@@ -432,19 +432,24 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
         % Get the maximum value units
         amplitudeMax = max(abs([estimMin estimMax]));
         % If the units are percents: force to factor=1
-        if isequal(DisplayUnits, '%')
+        if isinf(amplitudeMax)
+            fFactor = 1;
+            fUnits = 'Inf';
+        elseif isequal(DisplayUnits, '%')
             fFactor = 1;
             fUnits = DisplayUnits;
         else
             % Guess the display units
-            [tmp, fFactor, fUnits ] = bst_getunits(amplitudeMax, DataType );
+            [tmp, fFactor, fUnits ] = bst_getunits(amplitudeMax, DataType);
             % For readability: replace '\sigma' with 'no units'
             fUnits = strrep(fUnits, '\sigma', 'no units');
             fUnits = strrep(fUnits, '{', '');
             fUnits = strrep(fUnits, '}', '');
         end
         % Format estimated value correctly
-        if (amplitudeMax * fFactor > 0.01) && (amplitudeMax * fFactor < 1e6)
+        if isinf(amplitudeMax)
+            strPrecision = '%g';
+        elseif (amplitudeMax * fFactor > 0.01) && (amplitudeMax * fFactor < 1e6)
             strPrecision = '%4.3f';
         else
             strPrecision = '%e';
