@@ -21,7 +21,7 @@ function varargout = figure_spectrum( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -731,6 +731,29 @@ function SetShowLegend(iDS, iFig, ShowLegend)
     % Redraw figure
     UpdateFigurePlot(hFig, 1);
 end
+function ToggleGrid(hAxes, hFig, xy)
+    ToggleAxesProperty(hAxes, [xy 'Grid']);
+    ToggleAxesProperty(hAxes, [xy 'MinorGrid']);
+    
+    % Toggle selection of associated button if possible
+    buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
+    if length(buttonContainer)
+        button = get(buttonContainer, 'UserData');
+        select = strcmp(get(hAxes, 'XGrid'), 'on') && strcmp(get(hAxes, 'YGrid'), 'on');
+        button.setSelected(select);
+    end
+end
+function ToggleLogScale(hAxes, hFig, loglin)
+    set(hAxes, 'XScale', loglin);
+    
+    % Toggle selection of associated button if possible
+    buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
+    if length(buttonContainer)
+        button = get(buttonContainer, 'UserData');
+        select = strcmp(loglin, 'log');
+        button.setSelected(select);
+    end
+end
 
 
 %% ===== POPUP MENU =====
@@ -842,9 +865,9 @@ function DisplayFigurePopup(hFig, menuTitle)
         % XGrid
         isXLog = strcmpi(get(hAxes, 'XScale'), 'log');
         if isXLog
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: linear', IconLoader.ICON_GRID_X, [], @(h,ev)set(hAxes, 'XScale', 'linear'), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: linear', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'linear'), []);
         else
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: log', IconLoader.ICON_GRID_X, [], @(h,ev)set(hAxes, 'XScale', 'log'), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: log', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'log'), []);
         end
         jMenuFigure.addSeparator();
         
@@ -853,11 +876,11 @@ function DisplayFigurePopup(hFig, menuTitle)
         jItem.setSelected(TsInfo.ShowLegend);
         % XGrid
         isXGrid = strcmpi(get(hAxes(1), 'XGrid'), 'on');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleAxesProperty(hAxes, 'XGrid'), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleGrid(hAxes, hFig, 'X'), []);
         jItem.setSelected(isXGrid);
         % YGrid
         isYGrid = strcmpi(get(hAxes(1), 'YGrid'), 'on');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleAxesProperty(hAxes, 'YGrid'), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleGrid(hAxes, hFig, 'Y'), []);
         jItem.setSelected(isYGrid);
         % Change background color
         jMenuFigure.addSeparator();
