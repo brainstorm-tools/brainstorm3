@@ -73,8 +73,11 @@ switch arguments
         endBlock=min(Info.blocks,varargin{2});
 end;
 
-NumberOfMarkers=sum(header(5,startBlock:endBlock)); % Sum of samples in required blocks      
-
+if ~isempty(header)   % FT,12-May-2017: Test for newer version of Matlab
+    NumberOfMarkers = sum(header(5,startBlock:endBlock)); % Sum of samples in required blocks
+else
+    NumberOfMarkers = 0;
+end
 
 
 if TickFlag==true && ~scverLessThan('MATLAB','7')

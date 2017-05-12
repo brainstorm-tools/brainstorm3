@@ -27,7 +27,7 @@ function [sFile, ChannelMat] = in_fopen_smr(DataFile)
 % Get file type
 [fPath, fBase, fExt]=fileparts(DataFile);
 if (strcmpi(fExt,'.smr') == 1)
-    byteorder = 'b';  % Spike2 for Windows source file: little-endian
+    byteorder = 'l';  % Spike2 for Windows source file: little-endian
 elseif strcmpi(fExt,'.son')==1
     byteorder = 'b';  % Spike2 for Mac file: Big-endian
 else
@@ -43,24 +43,32 @@ end
 hdr = SONFileHeader(fid);
 % Get list of channels
 iChan = 0;
+iMarkerChan = [];
 for i = 1:hdr.channels
     bst_progress('text', sprintf('Reading channel info... [%d%%]', round(i/hdr.channels*100)));
-    try
-        c = SONChannelInfo(fid, i);
-        if (c.kind >= 1) && (c.kind <= 9)   % Only look at channels that are active and useful
+    % Read channel information
+    c = SONChannelInfo(fid, i);
+    % Check type of the channel
+    switch c.kind
+        % ADC channels: read as signals
+        case {1,9}
             iChan = iChan + 1;
-            hdr.chaninfo(iChan).number  = i;
-            hdr.chaninfo(iChan).kind    = c.kind;
-            hdr.chaninfo(iChan).title   = c.title;
-            hdr.chaninfo(iChan).comment = c.comment;
-            hdr.chaninfo(iChan).phyChan = c.phyChan;
-        end
-    catch
-        disp(['No information for channel #' num2str(i)]);
+            hdr.chaninfo(iChan).number    = i;
+            hdr.chaninfo(iChan).kind      = c.kind;
+            hdr.chaninfo(iChan).title     = c.title;
+            hdr.chaninfo(iChan).comment   = c.comment;
+            hdr.chaninfo(iChan).phyChan   = c.phyChan;
+            hdr.chaninfo(iChan).idealRate = c.idealRate;
+            % Read blocks
+            hdr.chaninfo(iChan).blocks = SONGetBlockHeaders(fid, i);
+        % Markers and events
+        case {2,3,4,5,6,7,8}
+        	iMarkerChan(end+1) = i;
     end
 end
-% Close file
-fclose(fid);
+hdr.num_channels = length(hdr.chaninfo);
+% Get maximum sampling rate
+[sfreq, chMax] = max([hdr.chaninfo.idealRate]);
 
 
 %% ===== FILL STRUCTURE =====
@@ -70,18 +78,52 @@ sFile = db_template('sfile');
 sFile.byteorder    = byteorder;
 sFile.filename     = DataFile;
 sFile.format       = 'EEG-SMR';
-sFile.prop.sfreq   = double(hdr.sampling_freq);
-sFile.prop.samples = [0, hdr.num_samples - 1];
+sFile.prop.sfreq   = sfreq;
+sFile.prop.samples = [0, sum(hdr.chaninfo(chMax).blocks(5,:)) - 2];
 sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 sFile.channelflag  = ones(hdr.num_channels,1);
-sFile.device       = 'Micromed';
+sFile.device       = 'CED Spike2';
 sFile.header       = hdr;
 % Comment: short filename
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
 
 
+%% ===== CREATE EMPTY CHANNEL FILE =====
+ChannelMat.Comment = [sFile.device ' channels'];
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.num_channels]);
+% For each channel
+for iChan = 1:hdr.num_channels
+    ChannelMat.Channel(iChan).Type = 'EEG';
+    ChannelMat.Channel(iChan).Name = hdr.chaninfo(iChan).title;
+end
 
+
+%% ===== READ MARKER INFORMATION =====
+for iEvt = 1:length(iMarkerChan)
+    % Read channel
+    [d,header] = SONGetChannel(fid, iMarkerChan(iEvt));
+    if isempty(d) || isempty(header)
+        continue;
+    end
+    % Get timing
+    switch (header.kind)
+        case {2,3,4}
+            timeEvt = d(:)';
+        case {5,6,7,8}
+            timeEvt = d.timings(:)';
+    end
+    % Create event structure
+    sFile.events(iEvt).label   = header.title;
+    sFile.events(iEvt).times   = double(timeEvt);
+    sFile.events(iEvt).samples = round(timeEvt .* sFile.prop.sfreq);
+    sFile.events(iEvt).times   = sFile.events(iEvt).samples ./ sFile.prop.sfreq;
+    sFile.events(iEvt).epochs  = ones(size(sFile.events(iEvt).samples));
+    sFile.events(iEvt).select  = 1;
+end
+
+% Close file
+fclose(fid);
 
 
