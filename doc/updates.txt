@@ -2,6 +2,7 @@
 May 2017
 - IO: Support for Nicolet .e files
 - IO: Support for ANT ASA .msm/.msr files
+- IO: Support for CED Spike2 .smr
 - GUI: Added log XScale and XGrid/YGrid buttons to PSD plots
 ---------------------------------------------------------------
 April 2017

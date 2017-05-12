@@ -159,6 +159,8 @@ switch (sFile.format)
         F = in_fread_nicolet(sFile, SamplesBounds, iChannels);
     case 'EEG-NK'
         F = in_fread_nk(sFile, sfid, iEpoch, SamplesBounds, ChannelRange);
+    case 'EEG-SMR'
+        F = in_fread_smr(sFile, sfid, SamplesBounds, iChannels);
     case 'EYELINK'
         [F, TimeVector] = in_fread_eyelink(sFile, iEpoch, SamplesBounds, iChannels);
     case 'NIRS-BRS'
