@@ -28,6 +28,8 @@ function F = in_fread_edf(sFile, sfid, SamplesBounds, ChannelsRange)
 %% ===== PARSE INPUTS =====
 nChannels  = sFile.header.nsignal;
 iChanAnnot = find(strcmpi({sFile.header.signal.label}, 'EDF Annotations'));
+iChanLabel = find([sFile.header.signal.sfreq] == 1);
+iChanSkip  = union(iChanAnnot, iChanLabel);
 if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, nChannels];
 end
@@ -48,7 +50,7 @@ if isAnnotOnly
     iChanF = 1;
 else
     % Remove all the annotation channels from the list of channels to read
-    iChanF = setdiff(ChannelsRange(1):ChannelsRange(2), iChanAnnot) - ChannelsRange(1) + 1;
+    iChanF = setdiff(ChannelsRange(1):ChannelsRange(2), iChanSkip) - ChannelsRange(1) + 1;
     if any(diff(iChanF) ~= 1)
         error('All the data channels to read from the file must be contiguous (EDF Annotation channels must be at the end of the list).');
     end

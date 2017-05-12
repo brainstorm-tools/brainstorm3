@@ -140,9 +140,10 @@ for i = 1:hdr.nsignal
     hdr.signal(i).sfreq = hdr.signal(i).nsamples ./ hdr.reclen;
 end
 % Find annotations channel
-iAnnotChans = find(strcmpi({hdr.signal.label}, 'EDF Annotations'));   % Mutliple "EDF Annotation" channels allowed in EDF+
-iStatusChan = find(strcmpi({hdr.signal.label}, 'Status'), 1);         % Only one "Status" channel allowed in BDF
-iOtherChan = setdiff(1:hdr.nsignal, [iAnnotChans iStatusChan]);
+iAnnotChans = find(strcmpi({hdr.signal.label}, 'EDF Annotations'));  % Mutliple "EDF Annotation" channels allowed in EDF+
+iStatusChan = find(strcmpi({hdr.signal.label}, 'Status'), 1);        % Only one "Status" channel allowed in BDF
+iIgnoreChan = find([hdr.signal.sfreq] < max([hdr.signal.sfreq]));    % Ignore all the channels with lower sampling rate
+iOtherChan = setdiff(1:hdr.nsignal, [iAnnotChans iStatusChan iIgnoreChan]);
 % Get all the other channels
 if isempty(iOtherChan)
     error('This file does not contain any data channel.');
@@ -155,12 +156,12 @@ elseif ~isempty(iStatusChan)
 else
     iEvtChans = [];
 end
-% Detect channels with inconsistent sampling frenquency
-iErrChan = find([hdr.signal(iOtherChan).sfreq] ~= hdr.signal(iOtherChan(1)).sfreq);
-iErrChan = setdiff(iErrChan, iAnnotChans);
-if ~isempty(iErrChan)
-    error('Files with mixed sampling rates are not supported yet.');
-end
+% % Detect channels with inconsistent sampling frenquency
+% iErrChan = find([hdr.signal(iOtherChan).sfreq] ~= hdr.signal(iOtherChan(1)).sfreq);
+% iErrChan = setdiff(iErrChan, iAnnotChans);
+% if ~isempty(iErrChan)
+%     error('Files with mixed sampling rates are not supported yet.');
+% end
 % Detect interrupted signals (time non-linear)
 hdr.interrupted = ischar(hdr.unknown1) && (length(hdr.unknown1) >= 5) && isequal(hdr.unknown1(1:5), 'EDF+D');
 if hdr.interrupted
@@ -289,7 +290,7 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
         for ichan = 1:length(iEvtChans)
             % Read annotation channel epoch by epoch
             for irec = 1:hdr.nrec
-                bst_progress('text', sprintf('Reading annotations [%d%%]', round(irec/hdr.nrec*100)));
+                bst_progress('text', sprintf('Reading annotations... [%d%%]', round((irec + (ichan-1)*hdr.nrec)/length(iEvtChans)/hdr.nrec*100)));
                 % Sample indices for the current epoch (=record)
                 SampleBounds = [irec-1,irec] * sFile.header.signal(iEvtChans(ichan)).nsamples - [0,1];
                 % Read record
