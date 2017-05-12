@@ -23,7 +23,7 @@ function F = in_fread_edf(sFile, sfid, SamplesBounds, ChannelsRange)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2017
 
 %% ===== PARSE INPUTS =====
 nChannels  = sFile.header.nsignal;
