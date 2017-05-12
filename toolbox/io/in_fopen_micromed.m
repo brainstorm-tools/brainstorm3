@@ -1,5 +1,5 @@
 function [sFile, ChannelMat] = in_fopen_micromed(DataFile)
-% IN_FOPEN_TRC: Open a Micromed .TRC file (continuous recordings).
+% IN_FOPEN_MICROMED: Open a Micromed .TRC file (continuous recordings).
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
