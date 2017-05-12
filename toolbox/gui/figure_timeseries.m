@@ -1036,7 +1036,7 @@ function ResizeCallback(hFig, ev)
     hButtonZoomTimePlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus');
     hButtonZoomTimeMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus');
     hButtonSetScaleLog   = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
-    hButtonShowGrids   = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
+    hButtonShowGrids     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
     
     % Update gain buttons
     butSize = 22;
@@ -1045,23 +1045,23 @@ function ResizeCallback(hFig, ev)
         set(hButtonGainPlus,  'Position', [figPos(3)-butSize-1, 70, butSize, butSize]);
     end
     if ~isempty(hButtonAutoScale)
-        set(hButtonAutoScale, 'Position', [figPos(3)-butSize-1, 110, butSize, butSize]);
+        set(hButtonAutoScale, 'Position', [figPos(3)-butSize-1, 135, butSize, butSize]);
     end
     if ~isempty(hButtonSetScaleY)
-        set(hButtonSetScaleY, 'Position', [figPos(3)-butSize-1, 135, butSize, butSize]);
+        set(hButtonSetScaleY, 'Position', [figPos(3)-butSize-1, 160, butSize, butSize]);
     end
     if ~isempty(hButtonFlipY)
-        set(hButtonFlipY,  'Position', [figPos(3)-butSize-1, 160, butSize, butSize]);
+        set(hButtonFlipY,  'Position', [figPos(3)-butSize-1, 185, butSize, butSize]);
     end
     if ~isempty(hButtonZoomTimePlus)
         set(hButtonZoomTimePlus,   'Position', [figPos(3) - 65, 3, butSize, butSize]);
         set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 40, 3, butSize, butSize]);
     end
     if ~isempty(hButtonSetScaleLog)
-        set(hButtonSetScaleLog,  'Position', [figPos(3)-butSize-1, 110, butSize, butSize]);
+        set(hButtonSetScaleLog,  'Position', [figPos(3)-butSize-1, 135, butSize, butSize]);
     end
     if ~isempty(hButtonShowGrids)
-        set(hButtonShowGrids,  'Position', [figPos(3)-butSize-1, 135, butSize, butSize]);
+        set(hButtonShowGrids,  'Position', [figPos(3)-butSize-1, 110, butSize, butSize]);
     end
 
     % ===== REPOSITION SCALE BAR =====
@@ -3119,7 +3119,7 @@ function CreateScaleButtons(iDS, iFig)
     set(h6, 'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
     set(h7, 'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
     set(h8, 'Tag', 'ButtonSetScaleLog',   'Units', 'pixels');
-    set(h9, 'Tag', 'ButtonShowGrids',   'Units', 'pixels');
+    set(h9, 'Tag', 'ButtonShowGrids',     'Units', 'pixels');
     j1.setToolTipText('<HTML><TABLE><TR><TD>Increase gain (vertical zoom)</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B>');
     j2.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain (vertical unzoom)</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B>');
     j3.setToolTipText('Set scale manually');
@@ -3145,8 +3145,8 @@ function CreateScaleButtons(iDS, iFig)
     j4.setSelected(TsInfo.AutoScaleY);
     j5.setSelected(TsInfo.FlipYAxis);
     % Add associated button to container when needed
-    set(h8,  'UserData', j8);
-    set(h9,  'UserData', j9);
+    set(h8, 'UserData', j8);
+    set(h9, 'UserData', j9);
     % Visible / not visible
     if isRaw
         set([h6 h7], 'Visible', 'off');
@@ -3156,10 +3156,10 @@ function CreateScaleButtons(iDS, iFig)
         set([h4 h5], 'Visible', 'off');
     end
     if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries') || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
-        set([h3], 'Visible', 'off');
+        set(h3, 'Visible', 'off');
     end
     if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
-        set([h8 h9], 'Visible', 'off');
+        set(h8, 'Visible', 'off');
     end
 end
 

@@ -2,6 +2,7 @@
 May 2017
 - IO: Support for Nicolet .e files
 - IO: Support for ANT ASA .msm/.msr files
+- GUI: Added log XScale and XGrid/YGrid buttons to PSD plots
 ---------------------------------------------------------------
 April 2017
 - Bug fix: Nihon Kohden reader had many issues channel names and types

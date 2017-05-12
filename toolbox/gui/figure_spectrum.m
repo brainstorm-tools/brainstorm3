@@ -734,10 +734,9 @@ end
 function ToggleGrid(hAxes, hFig, xy)
     ToggleAxesProperty(hAxes, [xy 'Grid']);
     ToggleAxesProperty(hAxes, [xy 'MinorGrid']);
-    
     % Toggle selection of associated button if possible
     buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
-    if length(buttonContainer)
+    if ~isempty(buttonContainer)
         button = get(buttonContainer, 'UserData');
         select = strcmp(get(hAxes, 'XGrid'), 'on') && strcmp(get(hAxes, 'YGrid'), 'on');
         button.setSelected(select);
@@ -745,10 +744,9 @@ function ToggleGrid(hAxes, hFig, xy)
 end
 function ToggleLogScale(hAxes, hFig, loglin)
     set(hAxes, 'XScale', loglin);
-    
     % Toggle selection of associated button if possible
     buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
-    if length(buttonContainer)
+    if ~isempty(buttonContainer)
         button = get(buttonContainer, 'UserData');
         select = strcmp(loglin, 'log');
         button.setSelected(select);
