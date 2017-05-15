@@ -70,7 +70,10 @@ ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.numchan]);
 for iChan = hdr.selchan
     ChannelMat.Channel(iChan).Type    = 'EEG';
     ChannelMat.Channel(iChan).Name    = strrep(str_clean(hdr.obj.segments.chName{hdr.selchan(iChan)}), ' ', '');
-    ChannelMat.Channel(iChan).Comment = ['Reference: ', str_clean(hdr.obj.segments.refName{hdr.selchan(iChan)})];
+    strRef = str_clean(hdr.obj.segments.refName{hdr.selchan(iChan)});
+    if ~isempty(strRef)
+        ChannelMat.Channel(iChan).Comment = ['Reference: ', strRef];
+    end
 end
 
 
