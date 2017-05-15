@@ -1717,11 +1717,24 @@ function [AllGroups, AllTags, AllInd, isNoInd] = ParseSensorNames(Channels)
         AllNames = strrep(AllNames, 'G_L', 'G10');
     end
     AllNames = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), AllNames, 'UniformOutput', 0);
+    AllTags  = cell(size(AllNames));
+    AllInd   = cell(size(AllNames));
+    isNoInd  = 0;
     % Separate characters and numbers in the names
-    AllTags = cellfun(@(c)c(~ismember(c, '0123456789')), AllNames, 'UniformOutput', 0);
-    % Get indices
-    AllInd = cellfun(@(c)c(ismember(c, '0123456789')), AllNames, 'UniformOutput', 0);
-    isNoInd = any(cellfun(@isempty, AllInd));
+    for i = 1:length(AllNames)
+        iLastLetter = find(~ismember(AllNames{i}, '0123456789'), 1, 'last');
+        AllTags{i} = AllNames{i}(1:iLastLetter);
+        if (iLastLetter < length(AllNames{i}))
+            AllInd{i} = AllNames{i}(iLastLetter+1:end);
+        else
+            isNoInd = 1;
+        end
+    end
+    
+%     AllTags = cellfun(@(c)c(~ismember(c, '0123456789')), AllNames, 'UniformOutput', 0);
+%     % Get indices
+%     AllInd = cellfun(@(c)c(ismember(c, '0123456789')), AllNames, 'UniformOutput', 0);
+%     isNoInd = any(cellfun(@isempty, AllInd));
     if ~isNoInd
         AllInd = cellfun(@str2num, AllInd);
     end
