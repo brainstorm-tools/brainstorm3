@@ -1667,7 +1667,7 @@ function [iEEG, GroupNames, DisplayNames] = GetEegGroups(Channel, ChannelFlag, i
                     % Look for all the sensors belonging to this group
                     iTmp = find(strcmp({Channel(iMod).Group}, uniqueGroups{iGroup}));
                     % If the sensors can be split using the tag/index logic
-                    if ~isNoInd
+                    if ~any(isNoInd)
                         % Sort the sensors indices
                         [tmp_, I] = sort(AllInd(iTmp));
                         iTmp = iTmp(I);
@@ -1719,25 +1719,39 @@ function [AllGroups, AllTags, AllInd, isNoInd] = ParseSensorNames(Channels)
     AllNames = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), AllNames, 'UniformOutput', 0);
     AllTags  = cell(size(AllNames));
     AllInd   = cell(size(AllNames));
-    isNoInd  = 0;
+    isNoInd  = zeros(size(AllNames));
     % Separate characters and numbers in the names
     for i = 1:length(AllNames)
+        % Find the last letter in the name
         iLastLetter = find(~ismember(AllNames{i}, '0123456789'), 1, 'last');
         AllTags{i} = AllNames{i}(1:iLastLetter);
+        % If there are digits at the end of the name: use them as the index of the contact
         if (iLastLetter < length(AllNames{i}))
             AllInd{i} = AllNames{i}(iLastLetter+1:end);
         else
-            isNoInd = 1;
+            isNoInd(i) = 1;
+            AllInd{i} = '0';
         end
     end
-    
-%     AllTags = cellfun(@(c)c(~ismember(c, '0123456789')), AllNames, 'UniformOutput', 0);
-%     % Get indices
-%     AllInd = cellfun(@(c)c(ismember(c, '0123456789')), AllNames, 'UniformOutput', 0);
-%     isNoInd = any(cellfun(@isempty, AllInd));
-    if ~isNoInd
-        AllInd = cellfun(@str2num, AllInd);
+    % If some indices are defined: check if the first digits shouldn't be part of the channel name
+    iInd = find(~isNoInd);
+    if ~isempty(iInd)
+        % Get unique tags
+        uniqueTags = unique(AllTags(iInd));
+        % Check for each of them: if 11 is the first index, include the first digit in the group name
+        for iTag = 1:length(uniqueTags)
+            iChTag = find(strcmpi(AllTags(iInd), uniqueTags{iTag}));
+            chInd = cellfun(@str2num, AllInd(iInd(iChTag)));
+            if all(chInd >= 10) && all(chInd <= 49) && (length(chInd) > 4)
+                for i = iInd(iChTag)
+                    AllTags{i} = [AllTags{i}, AllInd{i}(1)];
+                    AllInd{i}  = AllInd{i}(2:end);
+                end
+            end
+        end
     end
+    % Convert indices to double values
+    AllInd = cellfun(@str2num, AllInd);
 end
 
 
