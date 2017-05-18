@@ -1177,8 +1177,11 @@ function [iChannels, iMatrixChan, iMatrixDisp] = GetMontageChannels(sMontage, Ch
             end
             % Look for for the montage channel names in the channel file
             iTmp = find(strcmpi(sMontage.ChanNames{i}, ChanNames));
+            % We may have some duplicates here, if there are both "C 4" and "c4" in the same file: use only the first one
+            if (length(iTmp) > 1)
+                iTmp = iTmp(1);
             % If channel was not found: skip
-            if isempty(iTmp)
+            elseif isempty(iTmp)
                 continue;
             end
             % Skip bad channel
