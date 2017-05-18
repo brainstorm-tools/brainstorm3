@@ -73,12 +73,8 @@ if (numel(F) < nReadTimes * nReadChannels)
     Ftmp(1:numel(F)) = F(:);
     F = Ftmp;
 end
-% Apply gains
+% Apply offset and gains
 chan = sFile.header.electrode(ChannelsRange(1):ChannelsRange(2));
-F = bst_bsxfun(@minus,   F, [chan.logicGround]');
-F = bst_bsxfun(@rdivide, F, [chan.logicMax]' - [chan.logicMin]' + 1);
-F = bst_bsxfun(@times,   F, [chan.physicalMin]' - [chan.physicalMax]');
-% Convert from to Volts
-F = bst_bsxfun(@times, F, [chan.unit_gain]');
-
+F = bst_bsxfun(@minus, F, [chan.logicGround]');
+F = bst_bsxfun(@times, F, ([chan.physicalMin]' - [chan.physicalMax]') ./ ([chan.logicMax]' - [chan.logicMin]' + 1) .* [chan.unit_gain]');
 
