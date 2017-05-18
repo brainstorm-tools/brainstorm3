@@ -501,7 +501,7 @@ for iData = 1:length(Data)
             % Calculate PSD/FFT
             [TF, OPTIONS.Freqs, Nwin, Messages] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel);
             if isempty(TF)
-                return;
+                continue;
             end
             % Imaging kernel is already applied: don't do it twice
             ImagingKernel = [];
