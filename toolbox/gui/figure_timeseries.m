@@ -2417,6 +2417,12 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         set(PlotHandles(1).hColumnScale, 'Visible', 'off');
         cla(PlotHandles(1).hColumnScale);
     end
+    if ~isfield(TsInfo, 'XScale')
+        TsInfo.XScale = 'linear';
+        setappdata(hFig, 'TsInfo', TsInfo);
+    else
+        set(hAxes, 'XScale', TsInfo.XScale);
+    end
     % Create scale buttons
     if ~isFastUpdate && isempty(findobj(hFig, 'Tag', 'ButtonGainPlus'))
         CreateScaleButtons(iDS, iFig);
@@ -2600,6 +2606,14 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     if TsInfo.ShowXGrid
         set(hAxes, 'XGrid',      'on', ...
                    'XMinorGrid', 'on');
+        
+        % No YGrid for Column mode, otherwise force YGrid
+        if strcmpi(TsInfo.DisplayMode, 'column')
+            TsInfo.ShowYGrid = 0;
+        else
+            TsInfo.ShowYGrid = 1;
+        end
+        setappdata(hAxes.Parent, 'TsInfo', TsInfo);
     end
     if TsInfo.ShowYGrid
         set(hAxes, 'YGrid',      'on', ...
@@ -3144,6 +3158,9 @@ function CreateScaleButtons(iDS, iFig)
     % Select buttons
     j4.setSelected(TsInfo.AutoScaleY);
     j5.setSelected(TsInfo.FlipYAxis);
+    j8.setSelected(strcmp(TsInfo.XScale, 'log'));
+    j9.setSelected((TsInfo.ShowXGrid & TsInfo.ShowYGrid) || ...
+        (strcmpi(TsInfo.DisplayMode, 'column') & TsInfo.ShowXGrid));
     % Add associated button to container when needed
     set(h8, 'UserData', j8);
     set(h9, 'UserData', j9);
@@ -3310,8 +3327,11 @@ function ToggleLogLinearScale(jButton, hFig)
     end
     
     % Update figure structure
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.XScale = scale;
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
-    set(hAxes, 'XScale', scale)
+    set(hAxes, 'XScale', scale);
+    setappdata(hFig, 'TsInfo', TsInfo);
 end
 
 
@@ -3325,11 +3345,20 @@ function ShowGrids(jButton, hFig)
     end
     
     % Update figure structure
+    TsInfo = getappdata(hFig, 'TsInfo');
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
+    TsInfo.ShowXGrid = isSel;
     set(hAxes, 'XGrid', toggle);
     set(hAxes, 'XMinorGrid', toggle);
-    set(hAxes, 'YGrid', toggle);
-    set(hAxes, 'YMinorGrid', toggle);
+    
+    % Only add XGrid for butterfly view.
+    if ~isSel || ~strcmpi(TsInfo.DisplayMode, 'column');
+        TsInfo.ShowYGrid = isSel;
+        set(hAxes, 'YGrid', toggle);
+        set(hAxes, 'YMinorGrid', toggle);
+    end
+    
+    setappdata(hFig, 'TsInfo', TsInfo);
 end
 
 

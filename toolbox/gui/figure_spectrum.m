@@ -713,12 +713,14 @@ end
 
 
 %% ===== HIDE/SHOW LEGENDS =====
-function ToggleAxesProperty(hAxes, propName)
+function newPropVal = ToggleAxesProperty(hAxes, propName)
     switch get(hAxes(1), propName)
         case 'on'
             set(hAxes, propName, 'off');
+            newPropVal = 0;
         case 'off'
             set(hAxes, propName, 'on');
+            newPropVal = 1;
     end
 end
 function SetShowLegend(iDS, iFig, ShowLegend)
@@ -732,24 +734,37 @@ function SetShowLegend(iDS, iFig, ShowLegend)
     UpdateFigurePlot(hFig, 1);
 end
 function ToggleGrid(hAxes, hFig, xy)
-    ToggleAxesProperty(hAxes, [xy 'Grid']);
+    isSel = ToggleAxesProperty(hAxes, [xy 'Grid']);
     ToggleAxesProperty(hAxes, [xy 'MinorGrid']);
-    % Toggle selection of associated button if possible
-    buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
-    if ~isempty(buttonContainer)
-        button = get(buttonContainer, 'UserData');
-        select = strcmp(get(hAxes, 'XGrid'), 'on') && strcmp(get(hAxes, 'YGrid'), 'on');
-        button.setSelected(select);
-    end
+
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo = setfield(TsInfo, ['Show' xy 'Grid'], isSel);
+    setappdata(hFig, 'TsInfo', TsInfo);
+
+    RefreshGridBtnDisplay(hFig, TsInfo);
 end
 function ToggleLogScale(hAxes, hFig, loglin)
     set(hAxes, 'XScale', loglin);
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.XScale = loglin;
+    setappdata(hFig, 'TsInfo', TsInfo);
+    RefreshLogScaleBtnDisplay(hFig, TsInfo);
+end
+function RefreshLogScaleBtnDisplay(hFig, TsInfo)
     % Toggle selection of associated button if possible
     buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
     if ~isempty(buttonContainer)
         button = get(buttonContainer, 'UserData');
-        select = strcmp(loglin, 'log');
-        button.setSelected(select);
+        button.setSelected(strcmp(TsInfo.XScale, 'log'));
+    end
+end
+function RefreshGridBtnDisplay(hFig, TsInfo)
+    % Toggle selection of associated button if possible
+    buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
+    if ~isempty(buttonContainer)
+        button = get(buttonContainer, 'UserData');
+        button.setSelected((TsInfo.ShowXGrid & TsInfo.ShowYGrid) || ...
+            (strcmpi(TsInfo.DisplayMode, 'column') & TsInfo.ShowXGrid));
     end
 end
 
@@ -1021,6 +1036,8 @@ function UpdateFigurePlot(hFig, isForced)
     end
         
     % ===== DISPLAY =====
+    % Clear figure
+    clf(hFig);
     % Plot data in the axes
     PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, sFig.Handles.DataMinMax, LinesLabels, DisplayUnits);
     hAxes = PlotHandles.hAxes;
@@ -1034,7 +1051,7 @@ function UpdateFigurePlot(hFig, isForced)
         'FontSize',    bst_get('FigFont'), ...
         'FontUnits',   'points', ...
         'Interpreter', 'none');
-    
+
     % ===== SCALE BAR =====
     % For column displays: add a scale display
     if strcmpi(TsInfo.DisplayMode, 'column')
@@ -1047,8 +1064,7 @@ function UpdateFigurePlot(hFig, isForced)
             'BusyAction',    'queue', ...
             'Tag',           'AxesColumnScale', ...
             'YGrid',      'off', ...
-            'XGrid',      'off', ...
-            'XMinorGrid', 'off', ...
+            'YMinorGrid', 'off', ...
             'XTick',      [], ...
             'YTick',      [], ...
             'TickLength', [0,0], ...
@@ -1059,8 +1075,38 @@ function UpdateFigurePlot(hFig, isForced)
         % Update figure list of handles
         GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotHandles;
     end
+    
+    % Update scale depending on settings
+    if TsInfo.ShowXGrid
+        set(hAxes, 'XGrid', 'on');
+        set(hAxes, 'XMinorGrid', 'on');
+        
+        % No YGrid for Column mode, otherwise force YGrid
+        if strcmpi(TsInfo.DisplayMode, 'column')
+            TsInfo.ShowYGrid = 0;
+        else
+            TsInfo.ShowYGrid = 1;
+        end
+        setappdata(hFig, 'TsInfo', TsInfo);
+    end
+    if TsInfo.ShowYGrid
+        set(hAxes, 'YGrid', 'on');
+        set(hAxes, 'YMinorGrid', 'on'); 
+    end
+    if ~isfield(TsInfo, 'XScale')
+        TsInfo.XScale = 'linear';
+        setappdata(hFig, 'TsInfo', TsInfo);
+    else
+        set(hAxes, 'XScale', TsInfo.XScale);
+    end
+
     % Create scale buttons
-    figure_timeseries('CreateScaleButtons', iDS, iFig);
+    if isempty(findobj(hFig, 'Tag', 'ButtonGainPlus'))
+        figure_timeseries('CreateScaleButtons', iDS, iFig);
+    else
+        RefreshGridBtnDisplay(hFig, TsInfo);
+        RefreshLogScaleBtnDisplay(hFig, TsInfo);
+    end
     % Update stat clusters
     if ~isempty(TfInfo) && ~isempty(TfInfo.FileName) && strcmpi(file_gettype(TfInfo.FileName), 'ptimefreq')
         ViewStatClusters(hFig);
@@ -1087,8 +1133,6 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
         set(hAxes, 'Interruptible', 'off', ...
                    'BusyAction',    'queue', ...
                    'Tag',           'AxesGraph', ...
-                   'YGrid',      'off', ...
-                   'XGrid',      'off', 'XMinorGrid', 'off', ...
                    'XLim',       XLim, ...
                    'Box',        'on', ...
                    'FontName',   'Default', ...
