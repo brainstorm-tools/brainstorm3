@@ -1080,16 +1080,8 @@ function UpdateFigurePlot(hFig, isForced)
     if TsInfo.ShowXGrid
         set(hAxes, 'XGrid', 'on');
         set(hAxes, 'XMinorGrid', 'on');
-        
-        % No YGrid for Column mode, otherwise force YGrid
-        if strcmpi(TsInfo.DisplayMode, 'column')
-            TsInfo.ShowYGrid = 0;
-        else
-            TsInfo.ShowYGrid = 1;
-        end
-        setappdata(hFig, 'TsInfo', TsInfo);
     end
-    if TsInfo.ShowYGrid
+    if TsInfo.ShowYGrid && ~strcmpi(TsInfo.DisplayMode, 'column')
         set(hAxes, 'YGrid', 'on');
         set(hAxes, 'YMinorGrid', 'on'); 
     end

@@ -2606,16 +2606,8 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     if TsInfo.ShowXGrid
         set(hAxes, 'XGrid',      'on', ...
                    'XMinorGrid', 'on');
-        
-        % No YGrid for Column mode, otherwise force YGrid
-        if strcmpi(TsInfo.DisplayMode, 'column')
-            TsInfo.ShowYGrid = 0;
-        else
-            TsInfo.ShowYGrid = 1;
-        end
-        setappdata(hAxes.Parent, 'TsInfo', TsInfo);
     end
-    if TsInfo.ShowYGrid
+    if TsInfo.ShowYGrid && ~strcmpi(TsInfo.DisplayMode, 'column')
         set(hAxes, 'YGrid',      'on', ...
                    'YMinorGrid', 'on');
     end
@@ -3348,12 +3340,12 @@ function ShowGrids(jButton, hFig)
     TsInfo = getappdata(hFig, 'TsInfo');
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
     TsInfo.ShowXGrid = isSel;
+    TsInfo.ShowYGrid = isSel;
     set(hAxes, 'XGrid', toggle);
     set(hAxes, 'XMinorGrid', toggle);
     
     % Only add XGrid for butterfly view.
     if ~isSel || ~strcmpi(TsInfo.DisplayMode, 'column');
-        TsInfo.ShowYGrid = isSel;
         set(hAxes, 'YGrid', toggle);
         set(hAxes, 'YMinorGrid', toggle);
     end
