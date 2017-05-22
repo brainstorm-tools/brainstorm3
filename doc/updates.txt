@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 May 2017
+- Bug fix: Some Neuroscan .cnt files with low accuracy (int16) were not read correctly
 - IO: Support for Nicolet .e files
 - IO: Support for ANT ASA .msm/.msr files
 - IO: Support for CED Spike2 .smr

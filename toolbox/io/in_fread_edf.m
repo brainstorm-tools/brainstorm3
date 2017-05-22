@@ -51,10 +51,16 @@ if isAnnotOnly
 else
     % Remove all the annotation channels from the list of channels to read
     iChanF = setdiff(ChannelsRange(1):ChannelsRange(2), iChanSkip) - ChannelsRange(1) + 1;
+%     if any(diff(iChanF) ~= 1)
+%         error('All the data channels to read from the file must be contiguous (EDF Annotation channels must be at the end of the list).');
+%     end
     if any(diff(iChanF) ~= 1)
-        error('All the data channels to read from the file must be contiguous (EDF Annotation channels must be at the end of the list).');
+        iChanLast = find(diff(iChanF) ~= 1, 1);
+        iChanF = iChanF(1:iChanLast);
+    else
+        iChanLast = length(iChanF);
     end
-    ChannelsRange = [iChanF(1), iChanF(end)] + ChannelsRange(1) - 1;
+    ChannelsRange = [iChanF(1), iChanF(iChanLast)] + ChannelsRange(1) - 1;
 end
 % Cannot read channels with different sampling rates at the same time
 if (ChannelsRange(1) ~= ChannelsRange(2))
