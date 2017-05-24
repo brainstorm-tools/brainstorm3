@@ -26,10 +26,11 @@ function F = in_fread_edf(sFile, sfid, SamplesBounds, ChannelsRange)
 % Authors: Francois Tadel, 2012-2017
 
 %% ===== PARSE INPUTS =====
-nChannels  = sFile.header.nsignal;
-iChanAnnot = find(strcmpi({sFile.header.signal.label}, 'EDF Annotations'));
-iChanLabel = find([sFile.header.signal.sfreq] < max([sFile.header.signal.sfreq]));
-iChanSkip  = union(iChanAnnot, iChanLabel);
+nChannels      = sFile.header.nsignal;
+iChanAnnot     = find(strcmpi({sFile.header.signal.label}, 'EDF Annotations'));
+iChanSignal    = setdiff(1:nChannels, iChanAnnot);
+iChanWrongRate = find([sFile.header.signal(iChanSignal).sfreq] < max([sFile.header.signal(iChanSignal).sfreq]));   
+iChanSkip      = union(iChanAnnot, iChanWrongRate);
 if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, nChannels];
 end

@@ -142,8 +142,12 @@ end
 % Find annotations channel
 iAnnotChans = find(strcmpi({hdr.signal.label}, 'EDF Annotations'));  % Mutliple "EDF Annotation" channels allowed in EDF+
 iStatusChan = find(strcmpi({hdr.signal.label}, 'Status'), 1);        % Only one "Status" channel allowed in BDF
-iIgnoreChan = find([hdr.signal.sfreq] < max([hdr.signal.sfreq]));    % Ignore all the channels with lower sampling rate
-iOtherChan = setdiff(1:hdr.nsignal, [iAnnotChans iStatusChan iIgnoreChan]);
+iOtherChan = setdiff(1:hdr.nsignal, [iAnnotChans iStatusChan]);
+% Remove channels with lower sampling rates
+iIgnoreChan = find([hdr.signal(iOtherChan).sfreq] < max([hdr.signal(iOtherChan).sfreq]));    % Ignore all the channels with lower sampling rate
+if ~isempty(iIgnoreChan)
+    iOtherChan = setdiff(iOtherChan, iIgnoreChan);
+end
 % Get all the other channels
 if isempty(iOtherChan)
     error('This file does not contain any data channel.');
@@ -228,6 +232,7 @@ end
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = [sFile.device ' channels'];
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.nsignal]);
+chRef = {};
 % For each channel
 for i = 1:hdr.nsignal
     % If is the annotation channel
@@ -259,16 +264,33 @@ for i = 1:hdr.nsignal
                 ChannelMat.Channel(i).Type = 'EEG';
             end
         end
-        % Remove the '-Ref' tag
-        ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-Ref', '');
-        ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-ref', '');
-        ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-REF', '');
+        % Extract reference name (at the end of the channel name, separated with a "-", eg. "-REF")
+        iDash = find(ChannelMat.Channel(i).Name == '-');
+        if ~isempty(iDash) && (iDash(end) < length(ChannelMat.Channel(i).Name))
+            chRef{end+1} = ChannelMat.Channel(i).Name(iDash(end):end);
+        end
     end
     ChannelMat.Channel(i).Loc     = [0; 0; 0];
     ChannelMat.Channel(i).Orient  = [];
     ChannelMat.Channel(i).Weight  = 1;
     % ChannelMat.Channel(i).Comment = hdr.signal(i).type;
 end
+
+% If the same reference is indicated for all the channels: remove it
+if (length(chRef) >= 2) 
+    % Get the shortest reference tag
+    lenRef = cellfun(@length, chRef);
+    minLen = min(lenRef);
+    % Check if all the ref names are equal (up to the max length - some might be cut because the channel name is too long)
+    if all(cellfun(@(c)strcmpi(c(1:minLen), chRef{1}(1:minLen)), chRef))
+        % Remove the reference tag from all the channel names
+        for i = 1:length(ChannelMat.Channel)
+            ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, chRef{1}, '');
+            ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, chRef{1}(1:minLen), '');
+        end
+    end
+end
+
 % If there are only "Misc" and no "EEG" channels: rename to "EEG"
 iMisc = find(strcmpi({ChannelMat.Channel.Type}, 'Misc'));
 iEeg  = find(strcmpi({ChannelMat.Channel.Type}, 'EEG'));
