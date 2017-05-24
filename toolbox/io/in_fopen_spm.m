@@ -91,7 +91,13 @@ for i = 1:nChannels
         if (length(iSens) == 1)
             % 3D position
             if ~any(isnan(D.sensors.eeg.elecpos(iSens,:))) && ~any(isinf(D.sensors.eeg.elecpos(iSens,:))) && ~all(D.sensors.eeg.elecpos(iSens,:) == 0)
-                ChannelMat.Channel(iEeg(i)).Loc(:,1) = D.sensors.eeg.elecpos(iSens,:);
+                ChannelMat.Channel(i).Loc(:,1) = D.sensors.eeg.elecpos(iSens,:);
+                % Apply units
+                if isequal(D.sensors.eeg.unit, 'mm')
+                    ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 1000;
+                elseif isequal(D.sensors.eeg.unit, 'cm')
+                    ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 100;
+                end
             end
             % Sensor type
             ChannelMat.Channel(i).Type = upper(D.channels(i).type);
