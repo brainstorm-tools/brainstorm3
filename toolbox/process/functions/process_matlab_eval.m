@@ -91,14 +91,22 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput = [];
         return;
     end
-    % Check if time was modified with only a few sensors selected 
-    if isfield(sProcess.options, 'sensortypes') && isfield(sProcess.options.sensortypes, 'Value') && ~isempty(sProcess.options.sensortypes.Value) && (length(TimeVector) ~= length(sInput.TimeVector))
-        sInput = [];
-        bst_report('Error', sProcess, sInput, ...
-            ['This process can modify the time definition only if all the channels are processed at once.' 10 ...
-             'Either you leave the option "Sensor types or names" empty to process all the channels at once,' 10 ... 
-             'or your keep the number of time points of the original file.']);
-        return;
+    % Check if time was modified
+    if (length(TimeVector) ~= length(sInput.TimeVector)) 
+        % Not allowed for only a few sensors
+        if strcmpi(sInput.FileType, 'data') && isfield(sProcess.options, 'sensortypes') && isfield(sProcess.options.sensortypes, 'Value') && ~isempty(sProcess.options.sensortypes.Value)
+            sInput = [];
+            bst_report('Error', sProcess, sInput, ...
+                ['This process can modify the time definition only if all the channels are processed at once.' 10 ...
+                 'Either leave the option "Sensor types or names" empty to process all the channels at once,' 10 ... 
+                 'or keep the number of time points of the original file.']);
+            return;
+        % Not allowed for raw files
+        elseif strcmpi(sInput.FileType, 'raw')
+            sInput = [];
+            bst_report('Error', sProcess, sInput, 'This process cannot modify the time definition of a continuous file.');
+            return;
+        end
     end
     % Report results
     sInput.A = Data;
