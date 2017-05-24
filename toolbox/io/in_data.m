@@ -261,7 +261,9 @@ if isRaw
     end
     % No SSP
     if ~ImportOptions.UseSsp && ~isempty(ChannelMat)
-        ChannelMat.Projector = [];
+        % Remove projectors that are not already applied
+        iProjDel = find([ChannelMat.Projector.Status] ~= 2);
+        ChannelMat.Projector(iProjDel) = [];
     end
 
     % ===== READING AND SAVING =====

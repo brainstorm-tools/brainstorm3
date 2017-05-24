@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 May 2017
 - Bug fix: Some Neuroscan .cnt files with low accuracy (int16) were not read correctly
+- Bug fix: Import to database: SSP already applied were not saved in the channel file
 - IO: Support for Nicolet .e files
 - IO: Support for ANT ASA .msm/.msr files
 - IO: Support for CED Spike2 .smr
