@@ -260,7 +260,7 @@ if isRaw
         sFile.prop.destCtfComp = sFile.prop.currCtfComp;
     end
     % No SSP
-    if ~ImportOptions.UseSsp && ~isempty(ChannelMat)
+    if ~ImportOptions.UseSsp && ~isempty(ChannelMat) && ~isempty(ChannelMat.Projector)
         % Remove projectors that are not already applied
         iProjDel = find([ChannelMat.Projector.Status] ~= 2);
         ChannelMat.Projector(iProjDel) = [];
