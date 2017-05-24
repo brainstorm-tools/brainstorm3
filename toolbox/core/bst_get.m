@@ -2373,7 +2373,7 @@ switch contextName
             argout1 = GlobalData.Preferences.ShowYGrid;
         else
             argout1 = 0;
-        end 
+        end
         
     case 'Resolution'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'Resolution')

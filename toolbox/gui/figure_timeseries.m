@@ -3151,8 +3151,7 @@ function CreateScaleButtons(iDS, iFig)
     j4.setSelected(TsInfo.AutoScaleY);
     j5.setSelected(TsInfo.FlipYAxis);
     j8.setSelected(strcmp(TsInfo.XScale, 'log'));
-    j9.setSelected((TsInfo.ShowXGrid & TsInfo.ShowYGrid) || ...
-        (strcmpi(TsInfo.DisplayMode, 'column') & TsInfo.ShowXGrid));
+    j9.setSelected(TsInfo.ShowXGrid || TsInfo.ShowYGrid);
     % Add associated button to container when needed
     set(h8, 'UserData', j8);
     set(h9, 'UserData', j9);
@@ -3335,22 +3334,23 @@ function ShowGrids(jButton, hFig)
     else
         toggle = 'off';
     end
-    
-    % Update figure structure
+    % Update figure information
     TsInfo = getappdata(hFig, 'TsInfo');
-    hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
     TsInfo.ShowXGrid = isSel;
     TsInfo.ShowYGrid = isSel;
+    setappdata(hFig, 'TsInfo', TsInfo);
+    % Update the axes properties
+    hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
     set(hAxes, 'XGrid', toggle);
     set(hAxes, 'XMinorGrid', toggle);
-    
     % Only add XGrid for butterfly view.
-    if ~isSel || ~strcmpi(TsInfo.DisplayMode, 'column');
+    if (~isSel || ~strcmpi(TsInfo.DisplayMode, 'column'))
         set(hAxes, 'YGrid', toggle);
         set(hAxes, 'YMinorGrid', toggle);
     end
-    
-    setappdata(hFig, 'TsInfo', TsInfo);
+    % Save in user preferences
+    bst_set('ShowXGrid', isSel);
+    bst_set('ShowYGrid', isSel);
 end
 
 

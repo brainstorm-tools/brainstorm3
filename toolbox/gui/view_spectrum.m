@@ -139,6 +139,8 @@ else
         TsInfo.DisplayMode = bst_get('TSDisplayMode');
     end
 end
+TsInfo.ShowXGrid = bst_get('ShowXGrid');
+TsInfo.ShowYGrid = bst_get('ShowYGrid');
 setappdata(hFig, 'TsInfo', TsInfo);
 
 % Display options panel

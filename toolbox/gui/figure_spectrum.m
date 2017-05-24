@@ -1083,7 +1083,7 @@ function UpdateFigurePlot(hFig, isForced)
     end
     if TsInfo.ShowYGrid && ~strcmpi(TsInfo.DisplayMode, 'column')
         set(hAxes, 'YGrid', 'on');
-        set(hAxes, 'YMinorGrid', 'on'); 
+        set(hAxes, 'YMinorGrid', 'on');
     end
     if ~isfield(TsInfo, 'XScale')
         TsInfo.XScale = 'linear';
