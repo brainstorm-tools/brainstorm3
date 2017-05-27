@@ -2114,7 +2114,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                                 case 'process_timefreq',   optValue = bst_get('TimefreqOptions_morlet');
                                 case 'process_hilbert',    optValue = bst_get('TimefreqOptions_hilbert');
                                 case 'process_psd',        optValue = bst_get('TimefreqOptions_psd');
-                            end                      
+                                case 'process_headmodel',  optValue = bst_get('GridOptions_headmodel');
+                            end
                         else
                             optValue = opt.Value;
                         end
