@@ -119,12 +119,15 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 %  =================================================================================
     %% ===== VALIDATION BUTTONS =====
     function ButtonCancel_Callback(varargin)
+        global EditSspPanel;
+        % Cancel current modifications
+        EditSspPanel.isSave = 0;
         % Close panel without saving
         gui_hide(panelName);
     end
     function ButtonSave_Callback(varargin)
         global EditSspPanel;
-        % Mark that modifications have to be saved permanently
+        % Mark that modifications have to be saved permanently (default)
         EditSspPanel.isSave = 1;
         % Close panel
         gui_hide(panelName);
@@ -633,7 +636,7 @@ function OpenRaw() %#ok<DEFNU>
     end
     EditSspPanel.InitProjector = EditSspPanel.Projector;
     EditSspPanel.isRaw         = 1;
-    EditSspPanel.isSave        = 0;
+    EditSspPanel.isSave        = 1;   % By default, save the modifications when the panel is hidden
     EditSspPanel.hFigTs        = [];
     EditSspPanel.hFigTopo      = [];
     % Display panel
