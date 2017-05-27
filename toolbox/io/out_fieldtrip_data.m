@@ -1,8 +1,8 @@
-function [ftData, DataMat, ChannelMat] = out_fieldtrip_data( DataFile, ChannelFile, SensorTypes, isTimelock )
+function [ftData, DataMat, ChannelMat, iChannels] = out_fieldtrip_data( DataFile, ChannelFile, SensorTypes, isTimelock )
 % OUT_FIELDTRIP_DATA: Converts a data file into a FieldTrip structure (ft_datatype_timelock.m / ft_datatype_raw.m)
 % 
-% USAGE:  [ftData, DataMat, ChannelMat] = out_fieldtrip_data( DataFile, ChannelFile=[], SensorTypes/iChannels=[], isTimelock=0 );
-%         [ftData, DataMat, ChannelMat] = out_fieldtrip_data( DataMat,  ChannelMat=[],  SensorTypes/iChannels=[], isTimelock=0 );
+% USAGE:  [ftData, DataMat, ChannelMat, iChannels] = out_fieldtrip_data( DataFile, ChannelFile=[], SensorTypes/iChannels=[], isTimelock=0 );
+%         [ftData, DataMat, ChannelMat, iChannels] = out_fieldtrip_data( DataMat,  ChannelMat=[],  SensorTypes/iChannels=[], isTimelock=0 );
 %
 % INPUTS:
 %    - DataFile     : Relative path to a recordings file available in the database
@@ -110,11 +110,12 @@ end
 
 % ===== CHANNEL INFO =====
 % Keep only the selected channels
-ChannelMat.Channel = ChannelMat.Channel(iChannels);
+ftChannelMat = ChannelMat;
+ftChannelMat.Channel = ftChannelMat.Channel(iChannels);
 % Initialize the channel-related fields
-ftData.label = {ChannelMat.Channel.Name}';
+ftData.label = {ftChannelMat.Channel.Name}';
 % Get channel structures
-[elec, grad] = out_fieldtrip_channel(ChannelMat, 1);
+[elec, grad] = out_fieldtrip_channel(ftChannelMat, 1);
 % Add to data structure
 if ~isempty(elec)
     ftData.elec = elec;

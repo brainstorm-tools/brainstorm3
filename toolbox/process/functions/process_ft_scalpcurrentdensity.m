@@ -103,7 +103,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
 
     % ===== CALL FIELDTRIP FUNCTION =====
     % Convert input to FieldTrip structure
-    [ftData, DataMat, ChannelMat] = out_fieldtrip_data(sInput.FileName, sInput.ChannelFile, SensorTypes, 0);
+    [ftData, DataMat, ChannelMat, iChannels] = out_fieldtrip_data(sInput.FileName, sInput.ChannelFile, SensorTypes, 0);
     
     % Prepare options according to method chosen
     scdcfg.method = Method;
@@ -113,7 +113,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             scdcfg.lambda       = Lambda;
             scdcfg.order        = Order;
             scdcfg.degree       = Degree;
-        case 'hjorth'            
+        case 'hjorth'
             % Prepare structure of neighbouring electrodes
             neicfg = struct();
             neicfg.method        = 'distance';
@@ -135,9 +135,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     
     % ===== GET RESULTS =====
     % Get indices of the channels that were updated
-    chans = find(ismember({ChannelMat.Channel(:).Type}, SensorTypes));
+%     chans = find(ismember({ChannelMat.Channel(:).Type}, SensorTypes));
     % Replace channels
-    DataMat.F(chans,:) = scdData.trial{1}(chans,:); 
+    DataMat.F(iChannels,:) = scdData.trial{1}; 
     % Add history comment
     switch Method
         case {'finite', 'spline'}
