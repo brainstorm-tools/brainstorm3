@@ -31,8 +31,6 @@ if (hdr.nSegments > 1)
     % Multiple segments are read as one
     if ~all(cellfun(@(c)isequal(hdr.obj.segments(1).chName, c), {hdr.obj.segments(2:end).chName})) || ~all(cellfun(@(c)isequal(hdr.obj.segments(1).samplingRate, c), {hdr.obj.segments(2:end).samplingRate}))
         error('Nicolet files with multiple segments must have a constant list of channels.');
-%     else
-%         disp('BST> Warning: Nicolet files with multiple segments are considered as continuous.');
     end
 end
 % Read only the channels with the maximum sampling frequency

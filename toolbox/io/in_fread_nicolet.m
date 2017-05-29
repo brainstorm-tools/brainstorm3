@@ -28,7 +28,11 @@ if (nargin < 4) || isempty(iChannels)
     iChannels = 1:sFile.header.numchan;
 end
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    if isempty(sFile.epochs)
+        SamplesBounds = sFile.prop.samples;
+    else
+        SamplesBounds = sFile.epochs(iEpoch).samples;
+    end
 end
 
 % Read data block
