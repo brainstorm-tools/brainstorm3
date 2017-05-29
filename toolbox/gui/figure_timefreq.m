@@ -23,7 +23,7 @@ function varargout = figure_timefreq( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -856,6 +856,9 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
     TfInfo = getappdata(hFig, 'Timefreq');
     if isempty(TfInfo)
         return
+    elseif ~isempty(bst_get('DisplayMeasure'))
+        TfInfo.Function = bst_get('DisplayMeasure');
+        setappdata(hFig, 'Timefreq', TfInfo);
     end
     % Get data description
     [iDS, iTimefreq] = bst_memory('GetDataSetTimefreq', TfInfo.FileName);

@@ -69,6 +69,7 @@ function bst_set( varargin )
 %    - bst_set('CustomColormaps',       CustomColormaps)
 %    - bst_set('DigitizeOptions',       DigitizeOptions)
 %    - bst_set('ReadOnly',              ReadOnly)
+%    - bst_set('DisplayMeasure',        DisplayMeasure)
 %
 % SEE ALSO bst_get
 
@@ -90,7 +91,7 @@ function bst_set( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2017
 
 global GlobalData;
 
@@ -239,7 +240,7 @@ switch contextName
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'GridOptions_headmodel', 'GridOptions_dipfit'}
+          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'GridOptions_headmodel', 'GridOptions_dipfit', 'DisplayMeasure'}
         GlobalData.Preferences.(contextName) = contextValue;
 
     case 'ReadOnly'
