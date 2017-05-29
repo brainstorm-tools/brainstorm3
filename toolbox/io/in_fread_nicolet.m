@@ -1,7 +1,7 @@
-function F = in_fread_nicolet(sFile, SamplesBounds, iChannels)
+function F = in_fread_nicolet(sFile, iEpoch, SamplesBounds, iChannels)
 % IN_FREAD_NICOLET:  Read a block of recordings from a Nicolet .e file
 %
-% USAGE:  F = in_fread_nicolet(sFile, SamplesBounds=[], iChannels=[])
+% USAGE:  F = in_fread_nicolet(sFile, iEpoch, SamplesBounds=[], iChannels=[])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,15 +24,15 @@ function F = in_fread_nicolet(sFile, SamplesBounds, iChannels)
 % Authors: Francois Tadel, 2017
 
 % Parse inputs
-if (nargin < 3) || isempty(iChannels)
+if (nargin < 4) || isempty(iChannels)
     iChannels = 1:sFile.header.numchan;
 end
-if (nargin < 2) || isempty(SamplesBounds)
+if (nargin < 3) || isempty(SamplesBounds)
     SamplesBounds = sFile.prop.samples;
 end
 
 % Read data block
-F = getdata(sFile.header.obj, 1, SamplesBounds + 1, sFile.header.selchan(iChannels))';
+F = getdata(sFile.header.obj, iEpoch, SamplesBounds + 1, sFile.header.selchan(iChannels))';
 
 % Convert from uV to V
 F = F .* 1e-6;

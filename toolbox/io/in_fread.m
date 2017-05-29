@@ -156,7 +156,7 @@ switch (sFile.format)
             F = F(iChannels,:);
         end
     case 'EEG-NICOLET'
-        F = in_fread_nicolet(sFile, SamplesBounds, iChannels);
+        F = in_fread_nicolet(sFile, iEpoch, SamplesBounds, iChannels);
     case 'EEG-NK'
         F = in_fread_nk(sFile, sfid, iEpoch, SamplesBounds, ChannelRange);
     case 'EEG-SMR'
