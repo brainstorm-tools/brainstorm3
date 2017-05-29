@@ -19,7 +19,7 @@ function varargout = process_extract_maxfreq( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -152,23 +152,24 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     
     % ===== FIND MAXIMUM =====
     % Preprocess values to detect the correct peaks
+    minmaxFunc = @max;
     switch (Method)
         case 'absmax'
             TimefreqMat.TF = abs(TimefreqMat.TF);
         case 'max'
             % nothing to change
         case 'min'
-            TimefreqMat.TF = -TimefreqMat.TF;
+            minmaxFunc = @min;
     end
     % Find maximum in frequency
-    [Max, iMax] = max(TimefreqMat.TF, [], 3);
+    [MinMax, iMinMax] = minmaxFunc(TimefreqMat.TF, [], 3);
     % Save the expected value
     switch (Output)
         case 'amplitude'
-            TimefreqMat.TF = Max;
+            TimefreqMat.TF = MinMax;
             strMethod = '';
         case 'frequency'
-            TimefreqMat.TF = reshape(FreqVector(iMax), size(iMax));
+            TimefreqMat.TF = reshape(FreqVector(iMinMax), size(iMinMax));
             strMethod = ', frequency';
             TimefreqMat.DisplayUnits = 'Hz';
             TimefreqMat.Measure = 'frequency';
