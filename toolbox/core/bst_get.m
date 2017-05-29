@@ -181,7 +181,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('ResizeFunction')          : Get the appropriate resize function
 %    - bst_get('groot')                   : Get the root graphic object
 %    - bst_get('JFrame', hFig)            : Get the underlying java frame for a Matlab figure
-%    - bst_get('DisplayMeasure')          : Display option of measure for time series (log, power, magnitude, etc.)
+%    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
 %
 % SEE ALSO bst_set
 
@@ -2893,9 +2893,9 @@ switch contextName
             argout1 = 0;
         end
         
-    case 'DisplayMeasure'
-        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'DisplayMeasure')
-            argout1 = GlobalData.Preferences.DisplayMeasure;
+    case 'LastPsdDisplayFunction'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'LastPsdDisplayFunction')
+            argout1 = GlobalData.Preferences.LastPsdDisplayFunction;
         else
             argout1 = [];
         end

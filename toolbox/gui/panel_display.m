@@ -589,7 +589,11 @@ function SetDisplayOptions(sOptions)
         end
         if ~strcmpi(TfInfo.Function, 'other')
             TfInfo.Function = sOptions.Function;
-            bst_set('DisplayMeasure', sOptions.Function);
+            
+            % Remember option for spectrum figures.
+            if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
+                bst_set('LastPsdDisplayFunction', sOptions.Function);
+            end
         end
         TfInfo.HideEdgeEffects = sOptions.HideEdgeEffects;
         TfInfo.HighResolution  = sOptions.HighResolution;

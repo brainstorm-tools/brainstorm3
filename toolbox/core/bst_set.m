@@ -69,7 +69,7 @@ function bst_set( varargin )
 %    - bst_set('CustomColormaps',       CustomColormaps)
 %    - bst_set('DigitizeOptions',       DigitizeOptions)
 %    - bst_set('ReadOnly',              ReadOnly)
-%    - bst_set('DisplayMeasure',        DisplayMeasure)
+%    - bst_set('LastPsdDisplayFunction', LastPsdDisplayFunction)
 %
 % SEE ALSO bst_get
 
@@ -240,7 +240,7 @@ switch contextName
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'GridOptions_headmodel', 'GridOptions_dipfit', 'DisplayMeasure'}
+          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction'}
         GlobalData.Preferences.(contextName) = contextValue;
 
     case 'ReadOnly'
