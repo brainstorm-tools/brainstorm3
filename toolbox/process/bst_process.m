@@ -1932,6 +1932,14 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
                     sInput.Atlas = [];
                     sInput.RowNames = AllRowNames(iRows);
                 end
+                % Copy head model if it exists
+                if isfield(sMat, 'HeadModelFile') && ~isempty(sMat.HeadModelFile)
+                    sInput.HeadModelFile = sMat.HeadModelFile;
+                    sInput.HeadModelType = sMat.HeadModelType;
+                else
+                    sInput.HeadModelFile = [];
+                    sInput.HeadModelType = [];
+                end
                 
             case 'timefreq'
                 % Find target rows
