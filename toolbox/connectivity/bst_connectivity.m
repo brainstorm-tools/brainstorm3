@@ -22,7 +22,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017
 
 
 %% ===== DEFAULT OPTIONS =====
