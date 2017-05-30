@@ -181,6 +181,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('ResizeFunction')          : Get the appropriate resize function
 %    - bst_get('groot')                   : Get the root graphic object
 %    - bst_get('JFrame', hFig)            : Get the underlying java frame for a Matlab figure
+%    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
 %
 % SEE ALSO bst_set
 
@@ -202,7 +203,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2017
 
 %% ==== PARSE INPUTS ====
 global GlobalData;
@@ -2890,7 +2891,14 @@ switch contextName
             argout1 = GlobalData.DataBase.isReadOnly;
         else
             argout1 = 0;
-        end 
+        end
+        
+    case 'LastPsdDisplayFunction'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'LastPsdDisplayFunction')
+            argout1 = GlobalData.Preferences.LastPsdDisplayFunction;
+        else
+            argout1 = [];
+        end
         
         
 %% ===== FILE FILTERS =====

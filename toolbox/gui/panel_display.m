@@ -26,7 +26,7 @@ function varargout = panel_display(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -589,6 +589,11 @@ function SetDisplayOptions(sOptions)
         end
         if ~strcmpi(TfInfo.Function, 'other')
             TfInfo.Function = sOptions.Function;
+            
+            % Remember option for spectrum figures.
+            if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
+                bst_set('LastPsdDisplayFunction', sOptions.Function);
+            end
         end
         TfInfo.HideEdgeEffects = sOptions.HideEdgeEffects;
         TfInfo.HighResolution  = sOptions.HighResolution;
