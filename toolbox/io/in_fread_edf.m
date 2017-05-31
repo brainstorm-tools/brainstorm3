@@ -213,10 +213,11 @@ function F = edf_read_epoch(sFile, sfid, iEpoch, iTimes, ChannelsRange, isAnnotO
         F = double(F);
         % Apply gains
         F = bst_bsxfun(@rdivide, F, [sFile.header.signal(iChannels).gain]');
-        % Add offset
-        if isfield(sFile.header.signal, 'offset') && ~isempty(sFile.header.signal(1).offset)
-            % ...
-        end
+% IN THEORY: THIS OFFSET SECTION IS USEFUL, BUT IN PRACTICE IT LOOKS LIKE THE VALUES IN ALL THE FILES ARE CENTERED ON ZERO
+%         % Add offset 
+%         if isfield(sFile.header.signal, 'offset') && ~isempty(sFile.header.signal(1).offset)
+%             % ...
+%         end
     end
 end
 
