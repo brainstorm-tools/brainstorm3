@@ -31,7 +31,7 @@ function varargout = bst_process( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -1931,6 +1931,14 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
                 else
                     sInput.Atlas = [];
                     sInput.RowNames = AllRowNames(iRows);
+                end
+                % Copy head model if it exists
+                if isfield(sMat, 'HeadModelFile') && ~isempty(sMat.HeadModelFile)
+                    sInput.HeadModelFile = sMat.HeadModelFile;
+                    sInput.HeadModelType = sMat.HeadModelType;
+                else
+                    sInput.HeadModelFile = [];
+                    sInput.HeadModelType = [];
                 end
                 
             case 'timefreq'

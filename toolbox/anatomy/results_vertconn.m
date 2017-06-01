@@ -41,17 +41,13 @@ switch (file_gettype(ResultsFile))
         HeadModelType = ResultsMat.HeadModelType;
     case 'timefreq'
         ResultsMat = in_bst_timefreq(ResultsFile, 0, 'SurfaceFile', 'GridLoc', 'GridAtlas');
-        HeadModelType = [];
-end
-
-if isempty(HeadModelType)
-    if ~isempty(ResultsMat.GridAtlas)
-        HeadModelType = 'mixed';
-    elseif ~isempty(ResultsMat.GridLoc)
-        HeadModelType = 'volume';
-    else
-        HeadModelType = 'surface';
-    end
+        if ~isempty(ResultsMat.GridAtlas)
+            HeadModelType = 'mixed';
+        elseif ~isempty(ResultsMat.GridLoc)
+            HeadModelType = 'volume';
+        else
+            HeadModelType = 'surface';
+        end
 end
 
 % Get grid points and vertex-vertex connectivity matrix

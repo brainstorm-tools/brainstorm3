@@ -22,7 +22,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017
 
 
 %% ===== DEFAULT OPTIONS =====
@@ -664,6 +664,14 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
     FileMat.Method    = OPTIONS.Method;
     FileMat.DataFile  = file_win2unix(DataFile);
     FileMat.nAvg      = nAvg;
+    % Head model
+    if isfield(sInputA, 'HeadModelFile') && ~isempty(sInputA.HeadModelFile)
+        FileMat.HeadModelFile = sInputA.HeadModelFile;
+        FileMat.HeadModelType = sInputA.HeadModelType;
+    elseif isfield(sInputB, 'HeadModelFile') && ~isempty(sInputB.HeadModelFile)
+        FileMat.HeadModelFile = sInputB.HeadModelFile;
+        FileMat.HeadModelType = sInputB.HeadModelType;
+    end
     % Time vector
     if strcmpi(OPTIONS.Method, 'plvt')
         FileMat.Time      = sInputB.Time;
