@@ -100,6 +100,10 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput = [];
         return;
     end
+    % If a single time point was requested, duplicate it
+    if length(iTime) == 1
+        iTime = [iTime, iTime];
+    end
     % Keep only those indices
     sInput.A          = sInput.A(:, iTime, :);
     sInput.TimeVector = sInput.TimeVector(iTime);
