@@ -102,7 +102,16 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Copy values to represent the time window
     sInput.A = [sInput.A, sInput.A];
     % Keep only first and last time values
-    sInput.TimeVector = [sInput.TimeVector(iTime(1)), sInput.TimeVector(iTime(end))];
+    if (length(iTime) >= 2)
+        sInput.TimeVector = [sInput.TimeVector(iTime(1)), sInput.TimeVector(iTime(end))];
+    % Only one time point: the duplicated time samples must have different time values
+    else
+        if (length(sInput.TimeVector) > 2)
+            sInput.TimeVector = sInput.TimeVector(iTime(1)) + [0, sInput.TimeVector(2)-sInput.TimeVector(1)];
+        else
+            sInput.TimeVector = sInput.TimeVector(iTime(1)) + [0, 1e-6];
+        end
+    end
     % Build file tag
     sInput.CommentTag = [GetFileTag(sProcess) '(' process_extract_time('GetTimeString',sProcess,sInput) ')'];
     % Do not keep the Std/TFmask fields in the output

@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+June 2017
+- IO: Added support for Blackrock .ns6 files
+---------------------------------------------------------------
 May 2017
 - Bug fix: Some Neuroscan .cnt files with low accuracy (int16) were not read correctly
 - Bug fix: Import to database: SSP already applied were not saved in the channel file
