@@ -331,6 +331,7 @@ switch(lower(msgType))
         
         % Create a dialog message
         jCombo = gui_component('ComboBox', [], [], [], {buttonList}, [], [], []);
+        jCombo.setMaximumRowCount(30);
         % Default selection
         if ~isempty(iSelect)
             jCombo.setSelectedIndex(iSelect - 1);
