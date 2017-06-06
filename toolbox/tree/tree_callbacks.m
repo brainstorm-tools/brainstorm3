@@ -774,7 +774,13 @@ switch (lower(action))
                             end
                             if ~isempty(sSubject.iAnatomy)
                                 gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'],     IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', 1), []);
-                                gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannelsMri(filenameRelative, DisplayMod{iType}, sSubject.iAnatomy), []);
+                                if (length(sSubject.Anatomy) == 1)
+                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannelsMri(filenameRelative, DisplayMod{iType}, sSubject.iAnatomy), []);
+                                else
+                                    for iAnat = 1:length(sSubject.Anatomy)
+                                        gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannelsMri(filenameRelative, DisplayMod{iType}, iAnat), []);
+                                    end
+                                end
                             end
                         elseif ismember('NIRS', DisplayMod{iType})
                             gui_component('MenuItem', jMenuDisplay, [], 'NIRS (scalp)',    IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 0), []);
