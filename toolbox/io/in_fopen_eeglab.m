@@ -28,7 +28,7 @@ function [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2012
+% Authors: Francois Tadel, 2008-2017
 
 % ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(ImportOptions)
@@ -111,13 +111,13 @@ if ~hdr.isRaw
     while (iParam <= length(listParam))
         % Get all the unique values
         tmpValues = {hdr.EEG.event.(listParam{iParam})};
-        % If all the values are not the same
-        if ~all(cellfun(@(c)isequal(c,tmpValues{1}), tmpValues))
+        % If not a cell and not all the values are the same
+        if ~iscell(tmpValues{1}) && ~all(cellfun(@(c)isequal(c,tmpValues{1}), tmpValues))
             % Latency: keep the native order
             if isequal(listParam{iParam}, 'latency')
                 [tmp,I,J] = unique(tmpValues);
                 paramValues{end + 1} = tmpValues(sort(I));
-            % Else: sort in alphabetical order
+            % Else: sort in alphabetical/numerical order
             else
                 paramValues{end + 1} = unique(tmpValues);
             end
