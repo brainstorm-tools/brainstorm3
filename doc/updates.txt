@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 June 2017
 - IO: Added support for Blackrock .ns6 files
+- Workshop: Cambridge
 ---------------------------------------------------------------
 May 2017
 - Bug fix: Some Neuroscan .cnt files with low accuracy (int16) were not read correctly

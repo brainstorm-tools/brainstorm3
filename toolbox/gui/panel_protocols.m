@@ -1134,6 +1134,18 @@ function OutputFiles = TreeHeadModel( bstNodes ) %#ok<DEFNU>
     if ~isempty(sSubject.Anatomy)
         figure_mri('FiducialsValidation', sSubject.Anatomy(sSubject.iAnatomy).FileName);
     end
+    % Check that the default cortex is not the high resolution one
+    if ~isempty(sSubject.iCortex) && ~isempty(sSubject.Surface) && (sSubject.iCortex <= length(sSubject.Surface))
+        nVertices = sscanf(sSubject.Surface(sSubject.iCortex).Comment, 'cortex_%dV');
+        if (length(nVertices) == 1) && (nVertices > 100000) && ~java_dialog('confirm', sprintf([...
+                    '<HTML>Warning: The selected cortex surface has <FONT COLOR="#FF0000">%d vertices</FONT>.\n' ...
+                    'This resolution is very high and may cause memory issues in the source analysis.\n\n' ...
+                    'To use a cortex surface with a lower resolution: Click "No", go to the anatomy view\n' ...
+                    'and double-click on a surface with a lower resolution (eg. 15000V).\n\n' ...
+                    'Proceed with the high-resolution cortex surface?'], nVertices), 'High-resolution cortex')
+            return;
+        end
+    end
     % Call head modeler
     [OutputFiles, errMessage] = panel_headmodel('ComputeHeadModel', iChanStudies);
     % Error
