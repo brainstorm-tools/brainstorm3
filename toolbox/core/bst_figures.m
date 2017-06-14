@@ -1246,7 +1246,7 @@ function hNewFig = CloneFigure(hFig)
     end
         
     % ===== 3D FIGURES =====
-    if strcmpi(FigureId.Type, '3DViz')
+    if strcmpi(FigureId.Type, '3DViz') || strcmpi(FigureId.Type, 'Topography')
         % Remove all children objects (axes are automatically created)
         delete(get(hNewFig, 'Children'));
         % Copy all the figure objects
@@ -1280,6 +1280,12 @@ function hNewFig = CloneFigure(hFig)
         % Update sensor markers and labels
         GlobalData.DataSet(iDS).Figure(iNewFig).Handles.hSensorMarkers = findobj(hNewAxes, 'tag', 'SensorMarker');
         GlobalData.DataSet(iDS).Figure(iNewFig).Handles.hSensorLabels  = findobj(hNewAxes, 'tag', 'SensorsLabels');
+        % Topography handles
+        if strcmpi(FigureId.Type, 'Topography')
+            GlobalData.DataSet(iDS).Figure(iNewFig).Handles.hSurf = findobj(hNewAxes, 'tag', get(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSurf, 'Tag'));
+            GlobalData.DataSet(iDS).Figure(iNewFig).Handles.Wmat        = GlobalData.DataSet(iDS).Figure(iFig).Handles.Wmat;
+            GlobalData.DataSet(iDS).Figure(iNewFig).Handles.DataMinMax  = GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax;
+        end
         % Delete scouts
         delete(findobj(hNewAxes, 'Tag', 'ScoutLabel'));
         delete(findobj(hNewAxes, 'Tag', 'ScoutMarker'));
