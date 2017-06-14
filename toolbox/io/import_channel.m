@@ -254,40 +254,8 @@ end
 
 
 %% ===== CHECK DISTANCE UNITS =====
-iEEG = good_channel(ChannelMat.Channel, [], {'EEG','SEEG','ECOG','Fiducial'});
-iMEG = good_channel(ChannelMat.Channel, [], 'MEG');
-if (length(iEEG) > 8) || (length(iEEG) == length(ChannelMat.Channel))
-    % Compute mean distance from head center
-    meanNorm = 0;
-    for k=1:length(iEEG)
-        if ~isempty(ChannelMat.Channel(iEEG(k)).Loc)
-            meanNorm = meanNorm + norm(ChannelMat.Channel(iEEG(k)).Loc(:,1)) ./ length(iEEG);
-        end
-    end
-    % If distances units do not seem to be in meters (if head mean radius > 200mm or < 30mm)
-    if ~isempty(FileUnits) && (meanNorm > 0) && ((meanNorm > 0.200) || (meanNorm < 0.030))            
-        % Detect the best factor possible
-        FactorTest = [0.001, 0.01, 0.1, 1, 10, 100, 1000];
-        iFactor = bst_closest(0.15, FactorTest .* meanNorm);
-        strFactor = num2str(FactorTest(iFactor));
-        % Ask user if we should scale the distances
-        strFactor = java_dialog('question', ...
-            ['Warning: The EEG electrodes locations do not seem to be in the expected units (' FileUnits ').' 10 ...
-             'Please select a scaling factor for the units (suggested: ' strFactor '):' 10 10], 'Import channel file', ...
-            [], {'0.001', '0.01', '0.1', '1', '10', '100' '1000'}, strFactor);
-        % If user accepted to scale
-        if ~isempty(strFactor) && ~isequal(strFactor, '1')
-            Factor = str2num(strFactor);
-            % Apply correction to location values
-            for k = 1:length(iEEG)
-                ChannelMat.Channel(iEEG(k)).Loc = ChannelMat.Channel(iEEG(k)).Loc .* Factor;
-            end
-            % Apply correction to head points
-            if isHeadPoints
-                ChannelMat.HeadPoints.Loc = ChannelMat.HeadPoints.Loc .* Factor;
-            end
-        end
-    end
+if ~isempty(FileUnits)
+    ChannelMat = channel_fixunits(ChannelMat, FileUnits);
 end
 
 
@@ -340,6 +308,7 @@ ChannelMat = channel_detect_type(ChannelMat, isAlignScs, isRemoveFid);
 % If some studies were defined
 if isSave && ~isempty(iStudies)
     if isempty(ChannelAlign)
+        iMEG = good_channel(ChannelMat.Channel, [], 'MEG');
         ChannelAlign = ~isempty(iMEG);
     end
     % History: Import channel file

@@ -27,7 +27,7 @@ function ChannelMat = in_channel_eeglab_set(ChannelFile, isConvert)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2012
+% Authors: Francois Tadel, 2009-2017
 
 % Parse inputs
 if (nargin < 2) || isempty(isConvert)
@@ -67,9 +67,13 @@ if isfield(SetFileMat.EEG, 'chanlocs') && ~isempty(SetFileMat.EEG.chanlocs) && i
             ChannelMat.Channel(iChan).Loc = [];
             ChannelMat.Channel(iChan).Type = 'Misc';
         elseif ~isNormalizedCs
-            ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X + 22; ...
+            ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X; ...
                                              SetFileMat.EEG.chanlocs(iChan).Y; ...
-                                             SetFileMat.EEG.chanlocs(iChan).Z + 57] ./ 1000;
+                                             SetFileMat.EEG.chanlocs(iChan).Z] ./ 1000;
+% FT 14-Jun-2017: Removed this weird translation... check why this was in there in the first place
+%             ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X + 22; ...
+%                                              SetFileMat.EEG.chanlocs(iChan).Y; ...
+%                                              SetFileMat.EEG.chanlocs(iChan).Z + 57] ./ 1000;
         elseif isConvert
             ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X / 9.4 + 0.007; ...
                                              SetFileMat.EEG.chanlocs(iChan).Y / 11.5; ...
@@ -82,6 +86,11 @@ if isfield(SetFileMat.EEG, 'chanlocs') && ~isempty(SetFileMat.EEG.chanlocs) && i
         ChannelMat.Channel(iChan).Orient  = [];
         ChannelMat.Channel(iChan).Comment = '';
         ChannelMat.Channel(iChan).Weight  = 1;
+    end
+    
+    % Check units units
+    if ~isNormalizedCs
+        ChannelMat = channel_fixunits(ChannelMat, 'mm');
     end
 else
     ChannelMat = [];
