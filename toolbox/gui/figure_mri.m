@@ -1571,14 +1571,19 @@ function Handles = PlotElectrodes(hFig, Handles, isReset)
         else
             Handles.LocEEG(i,:) = [-500; -500; -500];
         end
-        % Plot electrode
+        % Plot electrode: If already exists, just update the position and callbacks
         if (i <= size(Handles.hPointEEG,1)) && all(ishandle(Handles.hPointEEG(i,:))) && (i <= size(Handles.hTextEEG,1)) && all(ishandle(Handles.hTextEEG(i,:)))
+            % Update position
             set(Handles.hPointEEG(i,1), 'XData', Handles.LocEEG(i,2), 'YData', Handles.LocEEG(i,3));
             set(Handles.hPointEEG(i,2), 'XData', Handles.LocEEG(i,1), 'YData', Handles.LocEEG(i,3));
             set(Handles.hPointEEG(i,3), 'XData', Handles.LocEEG(i,1), 'YData', Handles.LocEEG(i,2));
             set(Handles.hTextEEG(i,1), 'Position', [Handles.LocEEG(i,2), Handles.LocEEG(i,3), 1.5]);
             set(Handles.hTextEEG(i,2), 'Position', [Handles.LocEEG(i,1), Handles.LocEEG(i,3), 1.5]);
             set(Handles.hTextEEG(i,3), 'Position', [Handles.LocEEG(i,1), Handles.LocEEG(i,2), 1.5]);
+            % Update callbacks
+            set(Handles.hPointEEG(i,1), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
+            set(Handles.hPointEEG(i,2), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
+            set(Handles.hPointEEG(i,3), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
         else
             markerColor = [1 1 0];
             textColor = [.4,1,.4];
