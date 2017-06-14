@@ -106,6 +106,7 @@ ChannelFlag      = [];
 RowNames         = [];
 InitTimeVector   = [];
 nRows            = [];
+strHistory       = [];
 % Number of frequency bands
 if iscell(OPTIONS.Freqs)
     FreqBands = OPTIONS.Freqs;
@@ -665,10 +666,12 @@ for iData = 1:length(Data)
         % Add block to accumulator
         TF_avg = TF_avg + TF * nAvg;
         nAvgTotal = nAvgTotal + nAvg;
+        % Add history message
+        strHistory = [strHistory, ' - Average TF: ', InitFile, 10];
     % Save all the time-frequency maps
     else
         % Save file
-        SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvg, Atlas);
+        SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvg, Atlas, strHistory);
     end
     bst_progress('inc', 1);
 end
@@ -700,13 +703,13 @@ if isAverage
         InitFile = '';
     end
     % Save file
-    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas);
+    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas, strHistory);
 end
 
 
 
 %% ===== SAVE FILE =====
-    function SaveFile(iTargetStudy, DataFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgFile, Atlas)
+    function SaveFile(iTargetStudy, DataFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgFile, Atlas, strHistory)
         % Create file structure
         FileMat = db_template('timefreqmat');
         FileMat.Comment   = OPTIONS.Comment;
@@ -745,6 +748,9 @@ end
         end
         % History: Computation
         FileMat = bst_history('add', FileMat, 'compute', 'Time-frequency decomposition');
+        if ~isempty(strHistory)
+            FileMat = bst_history('add', FileMat, 'compute', strHistory);
+        end
         
         % Apply time and frequency bands
         if ~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)
