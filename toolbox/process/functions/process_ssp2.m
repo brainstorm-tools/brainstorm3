@@ -150,6 +150,13 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     else
         evtTimeWindow = [];
     end
+    % Get downsampling value
+    if isfield(sProcess.options, 'resample') && isfield(sProcess.options.resample, 'Value') && ~isempty(sProcess.options.resample.Value)
+        resample = sProcess.options.resample.Value{1};
+        strOptions = [strOptions, 'resample=' num2str(resample) ', '];
+    else
+        resample = 0;
+    end
     % Get bandpass range
     BandPass = sProcess.options.bandpass.Value{1};
     if isempty(BandPass) || all(BandPass <= 0)
@@ -467,6 +474,14 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         return;
     end
     
+    % ===== DOWNSAMPLE =====
+    % Downsample data to specified rate.
+    if resample > 0
+        bst_progress('text', 'Downsampling recordings...');
+        bst_progress('set', progressPos + 25);
+        [F{:}, TimeVector] = process_resample('Compute', F{:}, TimeVector, resample);
+        sfreq = resample;
+    end
     
     % ===== COMPUTE AVERAGE =====
     % Compute the average of the data blocks (unfiltered)
