@@ -340,7 +340,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
 
         % === RESAMPLE ===
         % Resample checkbox
-        jCheckResample = JCheckBox('Resample recordings: ', 0);
+        jCheckResample = JCheckBox(['Resample recordings (sampling freq = ' num2str(sFile.prop.sfreq) ' Hz):'], 0);
         java_setcb(jCheckResample, 'ActionPerformedCallback', @ResampleCheckBox_Callback);
         jPanelPreprocess.add('p', jCheckResample);
         % New sampling rate 
