@@ -834,8 +834,6 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             iSelEpoch = find([sFile.epochs.select]);
             jListEpochs.setSelectedIndices(iSelEpoch - 1);
         end
-        % === RESAMPLE ===
-        jTextSampleRate.setText(sprintf('%1.2f', sFile.prop.sfreq));
         % Update panel
         UpdateBaselineDefault();
     end
@@ -885,6 +883,12 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         % === RESAMPLE ===
         jCheckResample.setSelected(ImportDataOptions.Resample);
         ResampleCheckBox_Callback();
+        if isfield(ImportDataOptions, 'ResampleRate')
+            resampleRate = ImportDataOptions.ResampleRate;
+        else
+            resampleRate = sFile.prop.sfreq;
+        end
+        jTextSampleRate.setText(sprintf('%1.2f', resampleRate));
         % === CTF COMPENSATORS ===
         if ~isempty(jCheckCtfComp)
             % jCheckCtfComp.setSelected(ImportDataOptions.UseCtfComp);
@@ -952,6 +956,9 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         % === OTHER DEFAULTS ===
         if jCheckResample.isEnabled()
             ImportDataOptions.Resample = jCheckResample.isSelected();
+            if ImportDataOptions.Resample
+                ImportDataOptions.ResampleRate = str2double(char(jTextSampleRate.getText()));
+            end
         end
         if ~isempty(jCheckCtfComp)
             ImportDataOptions.UseCtfComp = jCheckCtfComp.isSelected();
