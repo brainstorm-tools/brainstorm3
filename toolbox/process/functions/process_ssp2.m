@@ -476,11 +476,14 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     
     % ===== DOWNSAMPLE =====
     % Downsample data to specified rate.
-    if resample > 0
+    if (resample > 0)
         bst_progress('text', 'Downsampling recordings...');
         bst_progress('set', progressPos + 25);
-        [F{:}, TimeVector] = process_resample('Compute', F{:}, TimeVector, resample);
+        for iFile = 1:length(F)
+            [F{iFile}, TimeResample] = process_resample('Compute', F{iFile}, TimeVector, resample);
+        end
         sfreq = resample;
+        TimeVector = TimeResample;
     end
     
     % ===== COMPUTE AVERAGE =====
