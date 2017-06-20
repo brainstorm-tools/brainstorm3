@@ -549,7 +549,11 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     % ICA: Check that the number of time samples is sufficient
     % Recommended number of time samples (from S Makeig):  Ntime/Nchan^2 >> 10
     nTime = size(F,2);
-    nChan = size(F,1);
+    if (nIcaComp > 0)
+        nChan = nIcaComp;
+    else
+        nChan = size(F,1);
+    end
     if isICA && (nTime / nChan^2 < 10)
         % Warning message
         strWarning = ['There is probably not enough data for a correct ICA decomposition.' 10 ...
