@@ -55,8 +55,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.eventtime.Comment = 'Event window (ignore if no event): ';
     sProcess.options.eventtime.Type    = 'range';
     sProcess.options.eventtime.Value   = {[-.200, .200], 'ms', []};
-    % Downsampling
-    sProcess.options.resample.Comment = 'Downsample (0=disable): ';
+    % Resample
+    sProcess.options.resample.Comment = 'Resample input signals (0=disable): ';
     sProcess.options.resample.Type    = 'value';
     sProcess.options.resample.Value   = {0, 'Hz', 2};
     % Band-pass filter
