@@ -887,12 +887,12 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         % === RESAMPLE ===
         jCheckResample.setSelected(ImportDataOptions.Resample);
         ResampleCheckBox_Callback();
-        if isfield(ImportDataOptions, 'ResampleRate')
-            resampleRate = ImportDataOptions.ResampleRate;
+        if (ImportDataOptions.ResampleFreq > 0)
+            resampleFreq = ImportDataOptions.ResampleFreq;
         else
-            resampleRate = sFile.prop.sfreq;
+            resampleFreq = sFile.prop.sfreq;
         end
-        jTextSampleRate.setText(sprintf('%1.2f', resampleRate));
+        jTextSampleRate.setText(sprintf('%1.2f', resampleFreq));
         % === CTF COMPENSATORS ===
         if ~isempty(jCheckCtfComp)
             % jCheckCtfComp.setSelected(ImportDataOptions.UseCtfComp);
@@ -961,7 +961,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         if jCheckResample.isEnabled()
             ImportDataOptions.Resample = jCheckResample.isSelected();
             if ImportDataOptions.Resample
-                ImportDataOptions.ResampleRate = str2double(char(jTextSampleRate.getText()));
+                ImportDataOptions.ResampleFreq = str2double(char(jTextSampleRate.getText()));
             end
         end
         if ~isempty(jCheckCtfComp)
