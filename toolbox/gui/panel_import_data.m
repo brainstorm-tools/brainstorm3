@@ -340,7 +340,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
 
         % === RESAMPLE ===
         % Resample checkbox
-        jCheckResample = JCheckBox('Resample recordings: ', 0);
+        jCheckResample = JCheckBox('Resample recordings:', 0);
         java_setcb(jCheckResample, 'ActionPerformedCallback', @ResampleCheckBox_Callback);
         jPanelPreprocess.add('p', jCheckResample);
         % New sampling rate 
@@ -354,6 +354,10 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         % Label "Hz"
         jLabelHz = JLabel(' Hz');
         jPanelPreprocess.add(jLabelHz);
+        % Sampling frequency
+        jLabelResample = JLabel(['<HTML><FONT COLOR="#B0B0B0"> Sampling freq: ' num2str(sFile.prop.sfreq) ' Hz&nbsp;&nbsp;</FONT>']);
+        jLabelResample.setHorizontalAlignment(jLabelResample.RIGHT);
+        jPanelPreprocess.add('hfill', jLabelResample);
     jPanelProcess.add('br hfill', jPanelPreprocess);
     
     % ===== DATABASE =====
@@ -834,8 +838,6 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             iSelEpoch = find([sFile.epochs.select]);
             jListEpochs.setSelectedIndices(iSelEpoch - 1);
         end
-        % === RESAMPLE ===
-        jTextSampleRate.setText(sprintf('%1.2f', sFile.prop.sfreq));
         % Update panel
         UpdateBaselineDefault();
     end
@@ -885,6 +887,12 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         % === RESAMPLE ===
         jCheckResample.setSelected(ImportDataOptions.Resample);
         ResampleCheckBox_Callback();
+        if isfield(ImportDataOptions, 'ResampleRate')
+            resampleRate = ImportDataOptions.ResampleRate;
+        else
+            resampleRate = sFile.prop.sfreq;
+        end
+        jTextSampleRate.setText(sprintf('%1.2f', resampleRate));
         % === CTF COMPENSATORS ===
         if ~isempty(jCheckCtfComp)
             % jCheckCtfComp.setSelected(ImportDataOptions.UseCtfComp);
@@ -952,6 +960,9 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         % === OTHER DEFAULTS ===
         if jCheckResample.isEnabled()
             ImportDataOptions.Resample = jCheckResample.isSelected();
+            if ImportDataOptions.Resample
+                ImportDataOptions.ResampleRate = str2double(char(jTextSampleRate.getText()));
+            end
         end
         if ~isempty(jCheckCtfComp)
             ImportDataOptions.UseCtfComp = jCheckCtfComp.isSelected();
