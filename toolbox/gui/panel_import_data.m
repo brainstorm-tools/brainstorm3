@@ -355,7 +355,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         jLabelHz = JLabel(' Hz');
         jPanelPreprocess.add(jLabelHz);
         % Sampling frequency
-        jLabelResample = JLabel(['<HTML><FONT COLOR="#B0B0B0"> Sampling freq: ' num2str(sFile.prop.sfreq) ' Hz&nbsp;&nbsp;</FONT>']);
+        jLabelResample = JLabel(['<HTML><FONT COLOR="#B0B0B0"> Sampling: ' num2str(sFile.prop.sfreq) ' Hz&nbsp;&nbsp;</FONT>']);
         jLabelResample.setHorizontalAlignment(jLabelResample.RIGHT);
         jPanelPreprocess.add('hfill', jLabelResample);
     jPanelProcess.add('br hfill', jPanelPreprocess);
