@@ -21,7 +21,7 @@ function MRI = in_mri_mnc(MriFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013
+% Authors: Francois Tadel, 2013; Martin Cousineau, 2017
 
 % ===== DETECT FORMAT =====
 % Open file
