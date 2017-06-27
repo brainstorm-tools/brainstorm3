@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 June 2017
 - IO: Added support for Blackrock .ns6 files
+- IO: Added support for XLTEK event files
 - Workshop: Cambridge
 ---------------------------------------------------------------
 May 2017
