@@ -157,7 +157,7 @@ switch (FileFormat)
         % MNI MRI coord => MRI
         if ~isempty(sMri) && isfield(sMri, 'Header') && isfield(sMri.Header, 'info') && isfield(sMri.Header.info, 'mat') && ~isempty(sMri.Header.info.mat)
             % Check if rotation is the identity
-            if ~isequal(sMri.Header.info.mat(1:3,1:3), eye(3))
+            if ~isequal(sMri.Header.info.mat(1:3,1:3) / sMri.Header.info.mat(1,1), eye(3))
                 disp('MINC> Warning: cosine matrix is different from identity. Not supported yet...');
             end
             % Apply translation
