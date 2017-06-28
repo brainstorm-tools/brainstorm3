@@ -72,13 +72,13 @@ else
 end
 % Get default url
 switch(osType)
-    case 'linux32',  url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-Linux32.i386-gcc-4.3.2-static.tar.gz';
-    case 'linux64',  url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-Linux64.amd64-gcc-4.3.2-OpenMP-static.tar.gz';
-    case 'mac32',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-MacOSX-Intel-gcc-4.2.1-static.tar.gz';
-    case 'mac64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-MacOSX-Intel-gcc-4.2.1-static.tar.gz';
+    case 'linux32',  url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-Linux32.i386-gcc-4.3.2-static.tar.gz';
+    case 'linux64',  url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-Linux64.amd64-gcc-4.3.2-OpenMP-static.tar.gz';
+    case 'mac32',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-MacOSX-Intel-gcc-4.2.1-static.tar.gz';
+    case 'mac64',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-MacOSX-Intel-gcc-4.2.1-static.tar.gz';
     case 'sol64',    error('Solaris system is not supported');
-    case 'win32',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
-    case 'win64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-win64-x86_64-cl-OpenMP-shared.tar.gz';
+    case 'win32',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
+    case 'win64',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win64-x86_64-cl-OpenMP-shared.tar.gz';
     otherwise,       error('OpenMEEG software does not exist for your operating system.');
 end
 % Read the previous download url information
