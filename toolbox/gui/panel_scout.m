@@ -431,7 +431,9 @@ function UpdateMenus(sAtlas)
         gui_component('MenuItem', jMenu, [], 'New: coordinates',  IconLoader.ICON_EDIT_SCOUT_IN_MRI, [], @(h,ev)bst_call(@CreateScoutMni), []);
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Add vertices', IconLoader.ICON_SCOUT_NEW,         [], @(h,ev)bst_call(@EditScoutSurface), []);
-        gui_component('MenuItem', jMenu, [], 'Edit in MRI',  IconLoader.ICON_EDIT_SCOUT_IN_MRI, [], @(h,ev)bst_call(@EditScoutMri), []);
+        if ~isVolumeAtlas
+            gui_component('MenuItem', jMenu, [], 'Edit in MRI',  IconLoader.ICON_EDIT_SCOUT_IN_MRI, [], @(h,ev)bst_call(@EditScoutMri), []);
+        end
         jMenu.addSeparator();
     end
     % Menu: Set cluster function
