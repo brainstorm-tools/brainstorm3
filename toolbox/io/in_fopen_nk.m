@@ -183,6 +183,13 @@ switch (hdr.version)
         fseek(fid, hdr.ctl(i).extblock2_address + 20, 'bof');
         hdr.ctl(i).data(id).extblock3_address = fread(fid, 1, 'uint32');
         
+% Suggestion from V. Gnatkovsky: not working with some of the files...
+%         % Read the block information: number of records 
+%         fseek(fid, hdr.ctl(i).data(id).extblock3_address + 44, 'bof');
+%         hdr.ctl(i).data(id).num_records = fread(fid, 1, 'uint32');
+%         % Compute number of samples
+%         hdr.ctl(i).data(id).num_samples = hdr.ctl(i).data(id).num_records * hdr.ctl(i).data(id).sample_rate * hdr.record_duration;
+
         % Reading number of channels
         fseek(fid, hdr.ctl(i).data(id).extblock3_address + 68, 'bof');
         hdr.ctl(i).data(id).num_channels = fread(fid, 1, 'uint16') + 1;   % +1 for the STIM channel
