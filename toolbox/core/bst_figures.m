@@ -249,7 +249,7 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
         % Get the locations for all the channels
         chanLoc = {GlobalData.DataSet(iDS).Channel(selChan).Loc};
         % Detect the channels without location or at (0,0,0)
-        iChanZero = find(cellfun(@(c)(~isequal(size(c),[3,1]) | all(abs(c)<1e-5)), chanLoc));
+        iChanZero = find(~cellfun(@(c)(isequal(size(c),[3,1]) && any(abs(c)>=1e-5)), chanLoc));
         % Remove them from the list of available channels for this figure
         if ~isempty(iChanZero)
             % Display warning
