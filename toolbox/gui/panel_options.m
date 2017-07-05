@@ -30,7 +30,8 @@ end
 function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % Java initializations
     import java.awt.*;
-    import javax.swing.*;   
+    import javax.swing.*;
+    global GlobalData;
     % Constants
     panelName = 'Preferences';
     
@@ -95,10 +96,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelRight.add('br hfill', jPanelProc);
     
     % ===== RIGHT: RESET =====
-    jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
-        gui_component('Label',  jPanelReset, [], 'Reset database and options to defaults: ', [], [], [], []);
-        gui_component('Button', jPanelReset, [], 'Reset', [], [], @ButtonReset_Callback, []);
-    jPanelRight.add('br hfill', jPanelReset);
+    if (GlobalData.Program.GuiLevel == 1)
+        jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
+            gui_component('Label',  jPanelReset, [], 'Reset database and options to defaults: ', [], [], [], []);
+            gui_component('Button', jPanelReset, [], 'Reset', [], [], @ButtonReset_Callback, []);
+        jPanelRight.add('br hfill', jPanelReset);
+    end
     
     % ===== BOTTOM =====
     jPanelBottom = gui_river();

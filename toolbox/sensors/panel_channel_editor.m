@@ -764,6 +764,12 @@ function UpdateChannelFlag(DataFile, ChannelFlag, varargin)
     % Hide progress bar
     bst_progress('stop');
     
+    % ===== TRACK CHANGES FOR AUTO-PILOT =====
+    if (GlobalData.Program.GuiLevel == 2)
+        global BstAutoPilot;
+        BstAutoPilot.isBadModified = 1;
+    end
+    
     % ===== Update ChannelFlag in ChannelEditor panel =====
     if ~NoChannelEditorUpdate
         % Get panel handles

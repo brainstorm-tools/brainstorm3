@@ -42,8 +42,6 @@ function GUI = CreateWindow() %#ok<DEFNU>
     import javax.swing.BorderFactory;
     import javax.swing.UIManager;
     global GlobalData;
-    isGUI    = GlobalData.Program.isGUI;
-    isServer = GlobalData.Program.isServer;
     
     % ===== CREATE GLOBAL MUTEX =====
     % Clone control
@@ -57,7 +55,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     end
     % In order to catch when Matlab is closed with Brainstorm still running
     bst_mutex('create', 'Brainstorm');
-    if ~isServer
+    if (GlobalData.Program.GuiLevel >= 0)
         bst_mutex('setReleaseCallback', 'Brainstorm', @closeWindow_Callback);
     end
 
@@ -67,7 +65,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     % Set window icon
     jBstFrame.setIconImage(IconLoader.ICON_APP.getImage());
     % Set closing callback
-    if ~isServer
+    if (GlobalData.Program.GuiLevel >= 0)
         jBstFrame.setDefaultCloseOperation(jBstFrame.DO_NOTHING_ON_CLOSE);
         java_setcb(jBstFrame, 'WindowClosingCallback', @closeWindow_Callback);
     end
@@ -94,7 +92,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
     jMenuBar.setBorder([]);
     
     % ===== Menu: FILE =====
-    jMenuFile = gui_component('Menu', jMenuBar, [], 'File', [], [], [], menuSize);
+    if (GlobalData.Program.GuiLevel == 1)
+        jMenuFile = gui_component('Menu', jMenuBar, [], 'File', [], [], [], menuSize);
         % === PROTOCOL ===
         gui_component('MenuItem', jMenuFile, [], 'New protocol', IconLoader.ICON_FOLDER_NEW, [], @(h,ev)bst_call(@gui_edit_protocol, 'create'), []);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Load protocol', IconLoader.ICON_FOLDER_OPEN,[],[],[]);
@@ -135,7 +134,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jMenuFile.addSeparator();
         % === QUIT ===
         gui_component('MenuItem', jMenuFile, [], 'Quit', IconLoader.ICON_RESET, [], @closeWindow_Callback, []);
-
+    end
+    
     % ==== Menu COLORMAPS ====
     jMenuColormaps = gui_component('Menu', jMenuBar, [], 'Colormaps', [], [], [], menuSize);
         bst_colormaps('CreateAllMenus', jMenuColormaps, [], 1);
@@ -147,7 +147,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
             gui_component('MenuItem', jMenuSupport, [], 'Update Brainstorm', [], [], @(h,ev)bst_update(1), []);
         end
         % UPDATE OPENMEEG
-        jMenuOpenmeeg = gui_component('Menu', jMenuSupport, [], 'Update OpenMEEG', [], [], [], []);
+        if (GlobalData.Program.GuiLevel == 1)
+            jMenuOpenmeeg = gui_component('Menu', jMenuSupport, [], 'Update OpenMEEG', [], [], [], []);
             gui_component('MenuItem', jMenuOpenmeeg, [], 'Download', [], [], @(h,ev)bst_call(@DownloadOpenmeeg), []);
             gui_component('MenuItem', jMenuOpenmeeg, [], 'Install', [], [], @(h,ev)bst_call(@bst_openmeeg, 'update'), []);
             if strcmpi(bst_get('OsType',0), 'win64')
@@ -156,6 +157,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
             end
             jMenuOpenmeeg.addSeparator();
             gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), []);
+        end
         jMenuSupport.addSeparator();
         % BUG REPORTS
         % gui_component('MenuItem', jMenuSupport, [], 'Bug reporting...', [], [], @(h,ev)gui_show('panel_bug', 'JavaWindow', 'Bug reporting', [], 1, 0), []);
@@ -183,7 +185,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Button "Layout"
         gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_LAYOUT_SELECT, TB_MENU_DIM}, 'Window layout options', @(h,ev)ShowLayoutMenu(ev.getSource()), []);
         % Button: "Unload all"
-        gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_DELETE, TB_DIM}, 'Close all figures and clear memory', @(h,ev)GuiUnloadAll());
+        if (GlobalData.Program.GuiLevel == 1)
+            gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_DELETE, TB_DIM}, 'Close all figures and clear memory', @(h,ev)GuiUnloadAll());
+        end
     % Set colors and backgrounds
     jToolbar.setOpaque(0);
     
@@ -196,15 +200,20 @@ function GUI = CreateWindow() %#ok<DEFNU>
     jPanelExplorer = gui_component('Panel');
     jPanelExplorer.setBorder(BorderFactory.createTitledBorder(''));
         jPanelExplorerTop = gui_component('Panel');
-        % Combo box to select the current protocol
-        jComboBoxProtocols = gui_component('ComboBox', jPanelExplorerTop, java.awt.BorderLayout.NORTH, [], [], [], [], []);
-        jComboBoxProtocols.setMaximumSize(Dimension(TB_COMBOBOX_WIDTH, TB_COMBOBOX_HEIGHT));
-        jComboBoxProtocols.setPreferredSize(Dimension(TB_COMBOBOX_WIDTH, TB_COMBOBOX_HEIGHT));
-        jComboBoxProtocols.setMaximumRowCount(25);
-        jComboBoxProtocols.setFocusable(0);
-        % ComboBox change selection callback
-        jModel = jComboBoxProtocols.getModel();
-        java_setcb(jModel, 'ContentsChangedCallback', @protocolComboBoxChanged_Callback);
+        % Protocol list
+        if (GlobalData.Program.GuiLevel == 1)
+            % Combo box to select the current protocol
+            jComboBoxProtocols = gui_component('ComboBox', jPanelExplorerTop, java.awt.BorderLayout.NORTH, [], [], [], [], []);
+            jComboBoxProtocols.setMaximumSize(Dimension(TB_COMBOBOX_WIDTH, TB_COMBOBOX_HEIGHT));
+            jComboBoxProtocols.setPreferredSize(Dimension(TB_COMBOBOX_WIDTH, TB_COMBOBOX_HEIGHT));
+            jComboBoxProtocols.setMaximumRowCount(25);
+            jComboBoxProtocols.setFocusable(0);
+            % ComboBox change selection callback
+            jModel = jComboBoxProtocols.getModel();
+            java_setcb(jModel, 'ContentsChangedCallback', @protocolComboBoxChanged_Callback);
+        else
+            jComboBoxProtocols = [];
+        end
 
         % ==== Exploration mode toolbar ====
         jToolbarExpMode = gui_component('Toolbar', jPanelExplorerTop, [], [], {TB_DIM});
@@ -330,22 +339,27 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jPanelTopRightTop.add( jPanelFreq, java.awt.BorderLayout.SOUTH );
     jPanelTopRight.add(jPanelTopRightTop, java.awt.BorderLayout.NORTH);
     jPanelTopRight.add(jPanelTools, java.awt.BorderLayout.CENTER );
-
+    
+    % Vertical split panel
     jSplitV = java_create('javax.swing.JSplitPane', 'ILjava.awt.Component;Ljava.awt.Component;', javax.swing.JSplitPane.HORIZONTAL_SPLIT, jPanelExplorer, jPanelTopRight);
     jSplitV.setResizeWeight(1.0);
     jSplitV.setDividerSize(6);
     jSplitV.setBorder([]);
 
-    % Horizontal split panel 
-    % Top : EXPLORER/TOOLS/TIMEWINDOW, Bottom : MESSAGES
-    jSplitH = java_create('javax.swing.JSplitPane', 'ILjava.awt.Component;Ljava.awt.Component;', javax.swing.JSplitPane.VERTICAL_SPLIT, jSplitV, jLayeredProcess);
-    jSplitH.setResizeWeight(1.0);
-    jSplitH.setDividerSize(8);
-    jSplitH.setBorder([]);
-
-    % Add panel to main frame
-    jFramePanel.add(jSplitH, java.awt.BorderLayout.CENTER);
-
+    % Regular interface
+    if (GlobalData.Program.GuiLevel ~= 2)
+        % Horizontal split panel 
+        jSplitH = java_create('javax.swing.JSplitPane', 'ILjava.awt.Component;Ljava.awt.Component;', javax.swing.JSplitPane.VERTICAL_SPLIT, jSplitV, jLayeredProcess);
+        jSplitH.setResizeWeight(1.0);
+        jSplitH.setDividerSize(8);
+        jSplitH.setBorder([]);
+        % Add panel to main frame
+        jFramePanel.add(jSplitH, java.awt.BorderLayout.CENTER);
+    % Auto-pilot: No process tabs at the bottom
+    else
+        jSplitH = java_create('javax.swing.JSplitPane', 'ILjava.awt.Component;Ljava.awt.Component;', javax.swing.JSplitPane.VERTICAL_SPLIT, jSplitV, jLayeredProcess);
+        jFramePanel.add(jSplitV, java.awt.BorderLayout.CENTER);
+    end
     % Pack JFrame
     jBstFrame.pack();
 
@@ -357,7 +371,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     % Get position from previous session
     sLayout = bst_get('Layout');
     % If main window is visible
-    if isGUI
+    if (GlobalData.Program.GuiLevel >= 1)
         % Detect on which screen was Brainstorm window at the previous session
         if (length(ScreenDef) > 1) && (sLayout.MainWindowPos(1) >= ScreenDef(2).javaPos.getX())
             javaMax = ScreenDef(2).javaPos;
@@ -446,7 +460,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %% ===== CLOSE WINDOW =====
     function closeWindow_Callback(varargin)
         % If GUI was displayed: save current position
-        if isGUI
+        if (GlobalData.Program.GuiLevel >= 1)
             % Update main window size and position
             MainWindowPos = [jBstFrame.getLocation.getX(), ...
                              jBstFrame.getLocation.getY(), ...
@@ -797,6 +811,10 @@ function UpdateProtocolsList()
     [tmp__, indProtocols] = sort(lower({GlobalData.DataBase.ProtocolInfo.Comment}));
     % Get the ComboBox java handle
     ctrl = bst_get('BstControls');
+    % No protocol list
+    if isempty(ctrl.jComboBoxProtocols)
+        return;
+    end
     % Save combobox callback
     jModel = ctrl.jComboBoxProtocols.getModel();
     bakCallback = java_getcb(jModel, 'ContentsChangedCallback');
@@ -848,34 +866,36 @@ function SetCurrentProtocol(iProtocol)
         db_save();
     end
     
-    % Look for the indice of the protocol in the combo box
-    iItem = [];
-    if (iProtocol ~= 0)
-        for i = 1:jComboBoxProtocols.getItemCount()
-            iItemProt = jComboBoxProtocols.getItemAt(i-1).getUserData();
-            if ~isempty(iItemProt) && (iItemProt == iProtocol)
-                iItem = i;
-                break;
+    % If the protocol list is available
+    if ~isempty(jComboBoxProtocols)
+        % Look for the indice of the protocol in the combo box
+        iItem = [];
+        if (iProtocol ~= 0)
+            for i = 1:jComboBoxProtocols.getItemCount()
+                iItemProt = jComboBoxProtocols.getItemAt(i-1).getUserData();
+                if ~isempty(iItemProt) && (iItemProt == iProtocol)
+                    iItem = i;
+                    break;
+                end
             end
+        else
+            iItem = 0;
         end
-    else
-        iItem = 0;
+        % Save combobox callback
+        jModel = jComboBoxProtocols.getModel();
+        bakCallback = java_getcb(jModel, 'ContentsChangedCallback');
+        % Make sure that the right item is selected in the protocols combox box
+        if ~isempty(iItem) && (iItem-1 ~= jComboBoxProtocols.getSelectedIndex())
+            java_setcb(jModel, 'ContentsChangedCallback', []);
+            % Update list selection
+            jComboBoxProtocols.setSelectedIndex(iItem-1);
+            % Restore callback
+            java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
+        end
+        % Repaint box
+        jComboBoxProtocols.invalidate();
+        jComboBoxProtocols.repaint();
     end
-    % Save combobox callback
-    jModel = jComboBoxProtocols.getModel();
-    bakCallback = java_getcb(jModel, 'ContentsChangedCallback');
-    % Make sure that the right item is selected in the protocols combox box
-    if ~isempty(iItem) && (iItem-1 ~= jComboBoxProtocols.getSelectedIndex())
-        java_setcb(jModel, 'ContentsChangedCallback', []);
-        % Update list selection
-        jComboBoxProtocols.setSelectedIndex(iItem-1);
-        % Restore callback
-        java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
-    end
-    % Repaint box
-    jComboBoxProtocols.invalidate();
-    jComboBoxProtocols.repaint();
-
     % ===== UPDATE GUI =====
     % Update tree model
     panel_protocols('UpdateTree');

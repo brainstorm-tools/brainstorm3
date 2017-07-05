@@ -2756,8 +2756,9 @@ end
 %     - 'KeepSurface'    : Do not unload the surfaces
 %     - 'KeepRegSurface' : Unload only the anonymous surfaces (created with view_surface_matrix)
 %     - 'KeepChanEditor' : Do not close the channel editor
-function UnloadAll(varargin)
+function isCancel = UnloadAll(varargin)
     global GlobalData;
+    isCancel = 0;
     if isempty(GlobalData)
         return;
     end
@@ -2787,7 +2788,7 @@ function UnloadAll(varargin)
     end  
     drawnow;
     % Unload all marked datasets
-    UnloadDataSets(iDSToUnload);
+    isCancel = UnloadDataSets(iDSToUnload);
     
     % ===== UNLOAD ANATOMIES =====
     unloadedSurfaces = {};
@@ -2917,8 +2918,9 @@ end
 
 
 %% ===== UNLOAD DATASET =====
-function UnloadDataSets(iDataSets)
+function isCancel = UnloadDataSets(iDataSets)
     global GlobalData;
+    isCancel = 0;
     % Close all figures of each dataset
     for i = 1:length(iDataSets)
         iDS = iDataSets(i);
@@ -2943,13 +2945,22 @@ function UnloadDataSets(iDataSets)
                     else
                         strFile = '';
                     end
-                    % Ask user whether to save modifications
-                    res = java_dialog('question', ...
-                        ['Events were modified', strFile, '.' 10 10 'Save modifications ?'], ...
-                        'Save file', [], {'Yes', 'No', 'Cancel'});
-                    % User canceled operation
-                    if isempty(res) || strcmpi(res, 'Cancel')
-                        return
+                    % Regular interface: Ask user whether to save modifications
+                    if (GlobalData.Program.GuiLevel == 1)
+                        res = java_dialog('question', ...
+                            ['Events were modified', strFile, '.' 10 10 'Save modifications ?'], ...
+                            'Save file', [], {'Yes', 'No', 'Cancel'});
+                        % User canceled operation
+                        if isempty(res) || strcmpi(res, 'Cancel')
+                            isCancel = 1;
+                            return
+                        end
+                    % Auto-pilot: Accept modifications by default
+                    else
+                        res = 'Yes';
+                        % Track modifications for external usage
+                        global BstAutoPilot;
+                        BstAutoPilot.isEventsModified = 1;
                     end
                     % Save modifications
                     if strcmpi(res, 'Yes')

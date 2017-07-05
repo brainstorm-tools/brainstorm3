@@ -28,7 +28,7 @@ import org.brainstorm.icon.*;
 global GlobalData BrainstormSplash;
 
 % Do nothing in case of server mode
-if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && GlobalData.Program.isServer
+if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Program, 'GuiLevel') && (GlobalData.Program.GuiLevel == -1)
     jSplash = [];
     return;
 end

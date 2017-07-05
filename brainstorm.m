@@ -5,14 +5,16 @@ function varargout = brainstorm( varargin )
 %        brainstorm start         : Start Brainstorm
 %        brainstorm nogui         : Start Brainstorm without interface
 %        brainstorm server        : Start Brainstorm on a Matlab server (keeps the environment alive at the end of the execution)
-%        brainstorm stop          : Stop Brainstorm
+%        brainstorm ... local     : Start Brainstorm with a local database (in .brainstorm folder)
+%        brainstorm stop          : Quit Brainstorm
 %        brainstorm reset         : Re-inialize Brainstorm (delete preferences and database)
 %        brainstorm digitize      : Digitize points using a Polhemus system
+%        brainstorm update        : Download and install latest Brainstorm update
+%        brainstorm autopilot ... : Call bst_autopilot with the following arguments
 %        brainstorm setpath       : Add Brainstorm subdirectories to current path
 %        brainstorm startjava     : Add Brainstorm Java classes to dynamic classpath
 %        brainstorm info          : Open Brainstorm website
 %        brainstorm license       : Displays license agreement window
-%        brainstorm update        : Download and install latest Brainstorm update
 %        brainstorm tutorial name : Run the validation script attached to a tutorial (ctf, neuromag, raw, resting, yokogawa
 %        brainstorm tutorial all  : Run all the validation scripts
 %        brainstorm test          : Run a coverage test
@@ -38,7 +40,7 @@ function varargout = brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 % Make sure that "more" is off
 more off
@@ -115,21 +117,34 @@ end
 % Default action : start
 if (nargin == 0)
     action = 'start';
+    BrainstormDbDir = [];
 else
     action = lower(varargin{1});
+    % Local start
+    if ismember(action, {'start', 'nogui', 'server'}) && (nargin == 2) && strcmpi(varargin{2}, 'local')
+        BrainstormDbDir = 'local';
+    else
+        BrainstormDbDir = [];
+    end
 end
 
 res = 1;
 switch action
     case 'start'
         bst_set_path(BrainstormHomeDir);
-        bst_startup(BrainstormHomeDir, 1, 0);
+        bst_startup(BrainstormHomeDir, 1, BrainstormDbDir);
     case 'nogui'
         bst_set_path(BrainstormHomeDir);
-        bst_startup(BrainstormHomeDir, 0, 0);
+        bst_startup(BrainstormHomeDir, 0, BrainstormDbDir);
     case 'server'
         bst_set_path(BrainstormHomeDir);
-        bst_startup(BrainstormHomeDir, 0, 1);
+        bst_startup(BrainstormHomeDir, -1, BrainstormDbDir);
+    case 'autopilot'
+        if ~isappdata(0, 'BrainstormRunning')
+            bst_set_path(BrainstormHomeDir);
+            bst_startup(BrainstormHomeDir, 2, BrainstormDbDir);
+        end
+        res = bst_autopilot(varargin{2:end});
     case 'digitize'
         brainstorm nogui
         panel_digitize('Start');

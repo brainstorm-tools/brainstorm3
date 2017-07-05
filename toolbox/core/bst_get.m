@@ -114,7 +114,8 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % ====== GUI =================================================================
 %    - bst_get('BstControls')    : Return main Brainstorm GUI structure
 %    - bst_get('BstFrame')       : Return main Brainstorm JFrame
-%    - bst_get('isGUI')          : Return 1 if the Brainstorm is displayed
+%    - bst_get('isGUI')          : Return 1 if the Brainstorm interface is displayed
+%    - bst_get('GuiLevel')       : Return GUI level:  -1=server, 0=nogui, 1=normal, 2=autopilot
 %    - bst_get('ScreenDef')      : Get screens configuration
 %    - bst_get('Layout')         : Configuration of the main Brainstorm window
 %    - bst_get('Layout', prop)   : Get one property in the layout properties
@@ -2309,10 +2310,16 @@ switch contextName
             argout1 = GlobalData.Program.GUI.mainWindow;
         end
     case 'isGUI'
-        if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'isGUI')
+        if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'GuiLevel')
             argout1 = [];
         else
-            argout1 = GlobalData.Program.isGUI;
+            argout1 = (GlobalData.Program.GuiLevel >= 1);
+        end
+    case 'GuiLevel'
+        if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'GuiLevel')
+            argout1 = [];
+        else
+            argout1 = GlobalData.Program.GuiLevel;
         end
     case 'ScreenDef'
         if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'ScreenDef')

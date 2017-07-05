@@ -128,7 +128,7 @@ consoleMsg = [10 '**************************************************************
 % If no text output: display messages
 if (nargout == 0)
     % Do not display java dialog in case of server mode
-    if isempty(GlobalData) || ~isfield(GlobalData, 'Program') || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'isServer') || ~GlobalData.Program.isServer
+    if isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'GuiLevel') || (GlobalData.Program.GuiLevel >= 0)
         % Hide progress bar
         bst_progress('stop');
         % Display error message window

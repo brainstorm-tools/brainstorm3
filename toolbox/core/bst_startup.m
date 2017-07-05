@@ -1,7 +1,12 @@
-function bst_startup(BrainstormHomeDir, isGUI, isServer, BrainstormDbDir)
+function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % BST_STARTUP: Start a new Brainstorm Session.
 %
-% USAGE:  bst_startup(BrainstormHomeDir, isGUI=1, isServer=0, BrainstormDbDir=[])
+% USAGE:  bst_startup(BrainstormHomeDir, GuiLevel=1, BrainstormDbDir=[])
+%
+% INPUTS:
+%    - BrainstormHomeDir : Path to the brainstorm3 folder
+%    - GuiLevel          : -1=server, 0=nogui, 1=normal, 2=autopilot
+%    - BrainstormDbDir   : Database folder to use by default in this session
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,12 +27,12 @@ function bst_startup(BrainstormHomeDir, isGUI, isServer, BrainstormDbDir)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, John C. Mosher, 1999
-%          Francois Tadel, 2008-2015
+%          Francois Tadel, 2008-2017
 
 
 %% ===== MATLAB CHECK =====
 % Parse inputs
-if (nargin < 4) || isempty(BrainstormDbDir)
+if (nargin < 3) || isempty(BrainstormDbDir)
     BrainstormDbDir = [];
 end
 % If version is too old
@@ -61,13 +66,14 @@ end
 % Initialize shared structure
 global GlobalData;
 GlobalData = db_template('GlobalData');
-GlobalData.Program.isGUI    = isGUI;
-GlobalData.Program.isServer = isServer;
+GlobalData.Program.GuiLevel = GuiLevel;
 GlobalData.DataBase.LastSavedTime = tic();   % Save the current time, to know when to save the database
 % Save the software home directory
 bst_set('BrainstormHomeDir', BrainstormHomeDir);
 % Splash screen
-bst_splash('show');
+if (GuiLevel == 1)
+    bst_splash('show');
+end
 
 % === BRAINSTORM VERSION ===
 try
@@ -110,17 +116,19 @@ localRel.day   = str2num(Release(5:6));
 
 
 %% ===== FORCE COMPILATION OF SOME INTERFACE FILES =====
-disp('BST> Compiling main interface files...');
-tree_callbacks();
-bst_figures();
-figure_topo();
-figure_3d();
-figure_mri();
-figure_timeseries();
-figure_timefreq();
-bst_colormaps();
-bst_memory();
-bst_navigator();
+if (GuiLevel == 1)
+    disp('BST> Compiling main interface files...');
+    tree_callbacks();
+    bst_figures();
+    figure_topo();
+    figure_3d();
+    figure_mri();
+    figure_timeseries();
+    figure_timefreq();
+    bst_colormaps();
+    bst_memory();
+    bst_navigator();
+end
 
 
 %% ===== EMPTY TEMPORARY DIRECTORY =====
@@ -229,8 +237,9 @@ if ~isempty(bstOptions)
     if isfield(GlobalData.Preferences, 'NodelistOptions') && isfield(GlobalData.Preferences.NodelistOptions, 'String') && ~isempty(GlobalData.Preferences.NodelistOptions.String)
         GlobalData.Preferences.NodelistOptions.String = '';
     end
-    % Check database structure for updates 
-    db_update(CurrentDbVersion);
+    % Check database structure for updates
+    % => Disabled because the database structure was not modified since 2013
+    % db_update(CurrentDbVersion);
 else
     % Database version is not defined, so it up-to-date
     GlobalData.DataBase.DbVersion = CurrentDbVersion;
@@ -255,7 +264,7 @@ if ~bst_get('AutoUpdates')
     disp('BST> Warning: Automatic updates are disabled.');
     disp('BST> Warning: Make sure your version of Brainstorm is up to date.');
 % Matlab is running: check for updates
-elseif isMatlabRunning && isGUI
+elseif isMatlabRunning && (GuiLevel == 1)
     % Check internect connection
     fprintf(1, 'BST> Checking internet connectivity... ');
     [isInternet, onlineRel] = bst_check_internet();
@@ -331,7 +340,7 @@ else
     strProg = [];
 end
 if ~isempty(strProg)
-    if ~isGUI
+    if (GuiLevel <= 0)
         disp(['BST> Warning: Some ' strProg ' functions shadow Matlab''s standard functions.']);
         disp(['BST> Warning: Please remove ' strProg ' from your Matlab path.']);
     else
@@ -367,7 +376,7 @@ panel_process_select('ParseProcessFolder', 1);
 
 
 %% ===== LICENSE AGREEMENT =====
-if isGUI
+if (GuiLevel == 1)
     % Number of days to allow as grace period for renewing license
     GRACE = 15; 
     % Get previous agreement date (default: current date)
@@ -404,27 +413,25 @@ end
 
 
 %% ===== TEST MEMORY =====
-if ispc && (MatlabVersion >= 706)
+if ispc && (MatlabVersion >= 706) && (GuiLevel == 1)
     try
         % Get Matlab memory
         usermem = memory();
         % Minimum: 1Gb RAM contiguous
         maxsize = round(usermem.MaxPossibleArrayBytes / 1024 / 1024);
-        if (maxsize < 1024)
+        if (maxsize < 1024) && ~bst_get('IgnoreMemoryWarnings')
             disp(sprintf('BST> Warning: Maximum variable size: %d Mb', maxsize));
-            if isGUI && ~bst_get('IgnoreMemoryWarnings')
-                % Hide splash screen
-                bst_splash('hide');
-                % Display warning
-                java_dialog('msgbox', ...
-                    ['Your system reports to be short on memory.' 10 10 ...
-                     'The maximum block of memory that Matlab can allocate is: ' num2str(maxsize) ' Mb.' 10 ...
-                     'The recommended minimum for running Brainstorm is 1024 Mb.' 10 ...
-                     'Below this limit, you may experiment a lot of "out of memory" errors.' 10 10 ...
-                     'Close all the other applications running on this computer to free some memory.' 10 ...
-                     'To ignore this message permanently: File > Preferences > Ignore memory warnings.'], ...
-                    'Memory warning');
-            end
+            % Hide splash screen
+            bst_splash('hide');
+            % Display warning
+            java_dialog('msgbox', ...
+                ['Your system reports to be short on memory.' 10 10 ...
+                 'The maximum block of memory that Matlab can allocate is: ' num2str(maxsize) ' Mb.' 10 ...
+                 'The recommended minimum for running Brainstorm is 1024 Mb.' 10 ...
+                 'Below this limit, you may experiment a lot of "out of memory" errors.' 10 10 ...
+                 'Close all the other applications running on this computer to free some memory.' 10 ...
+                 'To ignore this message permanently: File > Preferences > Ignore memory warnings.'], ...
+                'Memory warning');
         end
     catch
         % Whatever...
@@ -437,6 +444,13 @@ isImportDb = 0;
 % Get database folder
 if isempty(BrainstormDbDir)
     BrainstormDbDir = bst_get('BrainstormDbDir');
+% If database folder was passed in input
+else
+    if isequal(BrainstormDbDir, 'local')
+        BrainstormDbDir = bst_fullfile(bst_get('BrainstormUserDir'), 'local_db');
+    end
+    % Save brainstorm directory
+    bst_set('BrainstormDbDir', BrainstormDbDir);
 end
 % If folder is not defined yet: ask user to set it
 if isempty(BrainstormDbDir)
@@ -473,7 +487,7 @@ disp('BST> Loading current protocol...');
 % Get handle to the main window
 jFrame = bst_get('BstFrame');
 % If the GUI is requested by the user
-if isGUI
+if (GuiLevel == 1)
     % Show main Brainstorm window
     jFrame.setVisible(1);
     % Weird thing with some macs: by default, window is "always on top"
@@ -512,7 +526,7 @@ if isImportDb
     disp('BST> Reloading database...');
     db_import(BrainstormDbDir);
 % Check if the program was closed unexpectedly
-elseif file_exist(StartFile)
+elseif file_exist(StartFile) && (GuiLevel == 1)
     % Delete this file
     if (file_delete(StartFile, 1) == 1) && ~file_exist(StartFile)
         isReloadCurrent = java_dialog('confirm', ...

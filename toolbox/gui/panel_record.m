@@ -24,7 +24,7 @@ function varargout = panel_record(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2017
 
 eval(macro_method);
 end
@@ -39,6 +39,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     import javax.swing.*;
     import org.brainstorm.icon.*;
     import org.brainstorm.list.*;
+    global GlobalData;
     % Create tools panel
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
@@ -60,14 +61,18 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jButtonDispMode.setSelected(isColumnDisplay);
         
         % BUTTON: UNIFORMIZE SCALES
-        jButtonUniform = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_TS_SYNCRO, TB_DIM}, ...
-              ['<HTML><B>Uniform amplitude scales</B>:<BR><BR>' ...
-               'Uncheck this button if you don''t want to display the time series <BR>' ...
-               'figures with the same y-axis scale.'], ...
-              @UniformTimeSeries_Callback);
-        % Select "Uniformize TS button"
-        isUniform = bst_get('UniformizeTimeSeriesScales');
-        jButtonUniform.setSelected(isUniform);        
+        if (GlobalData.Program.GuiLevel ~= 2)
+            jButtonUniform = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_TS_SYNCRO, TB_DIM}, ...
+                  ['<HTML><B>Uniform amplitude scales</B>:<BR><BR>' ...
+                   'Uncheck this button if you don''t want to display the time series <BR>' ...
+                   'figures with the same y-axis scale.'], ...
+                  @UniformTimeSeries_Callback);
+            % Select "Uniformize TS button"
+            isUniform = bst_get('UniformizeTimeSeriesScales');
+            jButtonUniform.setSelected(isUniform);
+        else
+            jButtonUniform = [];
+        end
         
         % MENU: MONTAGE
         jMenuMontage = gui_component('ToolbarButton', jToolbar, [], 'All', IconLoader.ICON_MENU, [], @(h,ev)ShowMontageMenu(ev.getSource()), 11);
@@ -124,10 +129,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jMenuBar  = gui_component('MenuBar', jPanelEvent, BorderLayout.NORTH);
         % FILE
         jMenu = gui_component('Menu', jMenuBar, [], 'File', IconLoader.ICON_MENU, [], [], 11);
-        gui_component('MenuItem', jMenu, [], 'Import in database...', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@ImportInDatabase), []);
-        jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Save modifications',     IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@SaveModifications), []);
-        jMenu.addSeparator();
+        if (GlobalData.Program.GuiLevel ~= 2)
+            gui_component('MenuItem', jMenu, [], 'Import in database...', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@ImportInDatabase), []);
+            jMenu.addSeparator();
+            gui_component('MenuItem', jMenu, [], 'Save modifications',     IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@SaveModifications), []);
+            jMenu.addSeparator();
+        end
         gui_component('MenuItem', jMenu, [], 'Add events from file...',     IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)bst_call(@ImportEvents), []);
         gui_component('MenuItem', jMenu, [], 'Read events from channel...', IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)CallProcessOnRaw('process_evt_read'), []);
         gui_component('MenuItem', jMenu, [], 'Detect analog triggers...',   IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)CallProcessOnRaw('process_evt_detect_analog'), []);
@@ -247,7 +254,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 %% ===== INTERNAL CALLBACKS =====
     %% ===== START: TEXT VALIDATION =====
     function TextValidationStart_Callback(h, event)
-        global GlobalData;
         % Get and check value
         value = str2double(char(jTextStart.getText()));
         if isnan(value) || isempty(value)
@@ -268,7 +274,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== DURATION: TEXT VALIDATION =====
     function TextValidationLength_Callback(h, event)
-        global GlobalData;
         % Skip if unloading
         if isempty(GlobalData.FullTimeWindow.Epochs)
             return
@@ -409,7 +414,7 @@ function UniformTimeSeries_Callback(hObject, ev)
     if isempty(ctrl)
         return;
     end
-    if (jButton ~= ctrl.jButtonUniform)
+    if ~isempty(ctrl.jButtonUniform) && (jButton ~= ctrl.jButtonUniform)
         ctrl.jButtonUniform.setSelected(isSel);
     end
 end
@@ -640,7 +645,9 @@ function UpdateDisplayOptions(hFig)
     isTopo = strcmpi(TsInfo.DisplayMode, 'topography') || strcmpi(TsInfo.DisplayMode, 'image');
     isNoModality = isempty(TsInfo.Modality);
     ctrl.jButtonDispMode.setEnabled(~isTopo);
-    ctrl.jButtonUniform.setEnabled(~isTopo);
+    if ~isempty(ctrl.jButtonUniform)
+        ctrl.jButtonUniform.setEnabled(~isTopo);
+    end
     ctrl.jMenuMontage.setEnabled(~isNoModality);
     % Update montage name
     if ismember(TsInfo.Modality, {'results', 'timefreq', 'stat', 'none'}) || ~isempty(TsInfo.RowNames)
@@ -2475,6 +2482,11 @@ function CallProcessOnRaw(ProcessName)
     % Select the event type that was processed
     if (length(iEvent) == 1)
         SetSelectedEvent(iEvent);
+    end
+    % Track changes for auto-pilot
+    if (GlobalData.Program.GuiLevel == 2)
+        global BstAutoPilot;
+        BstAutoPilot.isDataModified = 1;
     end
     bst_progress('stop');
 end

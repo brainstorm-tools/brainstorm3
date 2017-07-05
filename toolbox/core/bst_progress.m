@@ -58,7 +58,7 @@ end
 
 %% ===== GET OR CREATE PROGRESS BAR =====
 % Do nothing in case of server mode
-if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && GlobalData.Program.isServer
+if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Program, 'GuiLevel') && (GlobalData.Program.GuiLevel == -1)
     if ismember(lower(commandName), {'pos','isvisible'})
         pBar = 0;
     else
@@ -67,7 +67,7 @@ if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && GlobalData.Program.is
     return;
 end
 % If running in NOGUI mode: just display the message in the command window
-if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && ~GlobalData.Program.isGUI
+if ~bst_get('isGUI')
     switch lower(commandName)
         case 'start',     disp(['PROGRESS> ' varargin{2} ': ' varargin{3}]); pBar = [];
         case 'text',      disp(['PROGRESS> ' varargin{2}]); pBar = [];
