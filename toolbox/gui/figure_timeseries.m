@@ -1534,6 +1534,26 @@ function [RowNames, iRows] = GetFigSelectedRows(hFig, AllRows)
                 iRows = [iRows, find(strcmpi(RowNamesNoSpace{i}, AllRowsNoSpace))];
             end
         end
+        % If the sensors where not found: try to use the current montage
+        if isempty(iRows)
+            TsInfo = getappdata(hFig, 'TsInfo');
+            if ~isempty(TsInfo.MontageName)
+                % Get montage
+                sMontage = panel_montage('GetMontage', TsInfo.MontageName);
+                % Find rows in montage
+                iMontageChan = [];
+                for i = 1:length(RowNamesNoSpace)
+                    iMontageDisp = find(strcmpi(RowNamesNoSpace{i}, sMontage.DispNames));
+                    if ~isempty(iMontageDisp) && (nnz(sMontage.Matrix(iMontageDisp,:)) <= 3)
+                        iMontageChan = union(iMontageChan, find(sMontage.Matrix(iMontageDisp,:)));
+                    end
+                end
+                % Find montage channels in current dataset
+                for i = 1:length(iMontageChan)
+                    iRows = [iRows, find(strcmpi(sMontage.ChanNames{iMontageChan(i)}, AllRowsNoSpace))];
+                end
+            end
+        end
     end
 end
 
