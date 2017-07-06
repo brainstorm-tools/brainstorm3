@@ -66,6 +66,8 @@ function hFig = CreateFigure(FigureId)
                   'Color',         [.8 .8 .8], ...
                   'CloseRequestFcn',          @(h,ev)bst_figures('DeleteFigure',h,ev), ...
                   'KeyPressFcn',              @FigureKeyPressedCallback, ...
+                  'WindowKeyPressFcn',        @WindowKeyPressedCallback, ...
+                  'WindowKeyReleaseFcn',      @WindowKeyReleaseCallback, ...
                   'WindowButtonDownFcn',      @FigureMouseDownCallback, ...
                   'WindowButtonUpFcn',        @FigureMouseUpCallback, ...
                   bst_get('ResizeFunction'),  @ResizeCallback);
@@ -83,6 +85,7 @@ function hFig = CreateFigure(FigureId)
     setappdata(hFig, 'isStaticFreq', 1);
     setappdata(hFig, 'Colormap', db_template('ColormapInfo'));
     setappdata(hFig, 'MovingTimeBar', 0);
+    setappdata(hFig, 'MovingTimeBarAction', []);
 end
 
 
@@ -368,16 +371,28 @@ function FigureMouseDownCallback(hFig, ev)
             if ((~strcmpi(MouseStatus, 'alt') || 1) || (get(hObj, 'LineWidth') > 1))
                 noMoveAction = @()LineClickedCallback(hObj);
             end
-        case 'AxesRawTimeBar'
-            % Raw time bar: change time window
+        case 'AxesRawTimeBar'   % Raw time bar: change time window
             timePos = get(hObj, 'CurrentPoint');
             timePos = timePos(1,1) - (GlobalData.UserTimeWindow.Time(2)-GlobalData.UserTimeWindow.Time(1)) / 2;
             panel_record('SetStartTime', timePos);
             return;
-        case 'UserTime'
-            % Raw time marker patch: ignore click
-            setappdata(hFig, 'MovingTimeBar', hObj);
+        case 'UserTime'   % Raw time marker patch: start moving or resizing
+            % Get time
             hAxes = get(hObj, 'Parent');
+            timePos = get(hAxes, 'CurrentPoint');
+            rawTime = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
+            % If click is close to beginning of current page
+            if (abs(timePos(1) - GlobalData.UserTimeWindow.Time(1)) / (rawTime(2)-rawTime(1))) < 0.002
+                set(hFig, 'Pointer', 'left');
+                setappdata(hFig, 'MovingTimeBarAction', 'start');
+            elseif (abs(timePos(1) - GlobalData.UserTimeWindow.Time(2)) / (rawTime(2)-rawTime(1))) < 0.002
+                set(hFig, 'Pointer', 'right');
+                setappdata(hFig, 'MovingTimeBarAction', 'stop');
+            else
+                set(hFig, 'Pointer', 'fleur');
+                setappdata(hFig, 'MovingTimeBarAction', 'move');
+            end
+            setappdata(hFig, 'MovingTimeBar', hObj);
         case {'TimeSelectionPatch', 'TimeZeroLine', 'Cursor', 'TextCursor', 'GFP', 'GFPTitle'}
             hAxes = get(hObj, 'Parent');
         case 'legend'
@@ -435,12 +450,15 @@ function FigureMouseDownCallback(hFig, ev)
             else
                 setappdata(hFig, 'GraphSelection', []);
             end
+            % set(hFig, 'Pointer', 'ibeam');
         % CTRL+Mouse, or Mouse right
         case 'alt'
             clickAction = 'gzoom';
+            set(hFig, 'Pointer', 'top');
         % SHIFT+Mouse
         case 'extend'
             clickAction = 'pan';
+            set(hFig, 'Pointer', 'fleur');
         % DOUBLE CLICK
         case 'open'
             ResetViewLinked(hFig);
@@ -498,6 +516,14 @@ function FigureMouseMoveCallback(hFig, event)
             YLim = YLim - (YLim(2) - YLim(1)) * motionFigure(2);
             YLim = bst_saturate(YLim, YLimInit, 1);
             set(hAxes, 'YLim', YLim);
+            % Set the time cursor height to the maximum of the display
+            hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
+            set(hCursor, 'YData', YLim)
+            % Set the selection rectangle dimensions to the maximum of the display
+            hTimeSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'TimeSelectionPatch');
+            if ~isempty(hTimeSelectionPatch)
+                set(hTimeSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+            end
             % Update raw events bar xlim
             UpdateRawXlim(hFig, XLim);
             
@@ -517,15 +543,26 @@ function FigureMouseMoveCallback(hFig, event)
                 % Get current mouse time position
                 xMouse = get(hAxes, 'CurrentPoint');
                 xMouse = xMouse(1);
-                startBar = xMouse - (GraphSelection(1) - GlobalData.UserTimeWindow.Time(1));
-                % Get previous bar position
-                xBar = startBar + [0, 1, 1, 0] * (xBar(2)-xBar(1));
-                % Block in the XLim bounds
+                % Get axes limits
                 XLim = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
-                if (min(xBar) < XLim(1))
-                    xBar = xBar - min(xBar) + XLim(1);
-                elseif (max(xBar) > XLim(2))
-                    xBar = xBar - max(xBar) + XLim(2);
+                minLen = 50 .* GlobalData.UserTimeWindow.SamplingRate;
+                % Modification  depends on the action to perform
+                switch getappdata(hFig, 'MovingTimeBarAction')
+                    case 'move'
+                        startBar = xMouse - (GraphSelection(1) - GlobalData.UserTimeWindow.Time(1));
+                        xBar = startBar + [0, 1, 1, 0] * (xBar(2)-xBar(1));
+                        % Block in the XLim bounds
+                        if (min(xBar) < XLim(1))
+                            xBar = xBar - min(xBar) + XLim(1);
+                        elseif (max(xBar) > XLim(2))
+                            xBar = xBar - max(xBar) + XLim(2);
+                        end
+                    case 'start'
+                        xBar([1,4]) = max(XLim(1), xMouse);
+                        xBar([1,4]) = min(xBar(2)-minLen, xBar([1,4]));
+                    case 'stop'
+                        xBar([2,3]) = min(XLim(2), xMouse);
+                        xBar([2,3]) = max(xBar(1)+minLen, xBar([2,3]));
                 end
                 % Update bar
                 set(MovingTimeBar, 'XData', xBar);
@@ -545,11 +582,16 @@ function FigureMouseUpCallback(hFig, event)
     hasMoved    = getappdata(hFig, 'hasMoved');
     MouseStatus = get(hFig, 'SelectionType');
     MovingTimeBar = getappdata(hFig, 'MovingTimeBar');
+    MovingTimeBarAction = getappdata(hFig, 'MovingTimeBarAction');
     noMoveAction = getappdata(hFig, 'noMoveAction');
     % Reset figure mouse fields
     setappdata(hFig, 'clickAction', '');
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'MovingTimeBar', 0);
+    setappdata(hFig, 'MovingTimeBarAction', []);
+    % Restore mouse pointer
+    set(hFig, 'Pointer', 'arrow');
+    drawnow;
     % Get axes handles
     hAxes = getappdata(hFig, 'clickSource');
     if isempty(hAxes) || ~ishandle(hAxes)
@@ -583,8 +625,14 @@ function FigureMouseUpCallback(hFig, event)
     elseif hasMoved && ~isequal(MovingTimeBar, 0)
         % Get time bar patch
         xBar = get(MovingTimeBar, 'XData');
-        % Set new start time to the beginning of the bar
-        panel_record('SetStartTime', xBar(1));
+        % Update current page
+        switch (MovingTimeBarAction)
+            case 'move'
+                panel_record('SetStartTime', xBar(1));
+            case {'start', 'stop'}
+                panel_record('SetStartTime', xBar(1), [], 0);
+                panel_record('SetTimeLength', xBar(2)-xBar(1), 1);
+        end
     % If time selection was defined: check if its length is non-zero
     elseif hasMoved
         GraphSelection = getappdata(hFig, 'GraphSelection');
@@ -851,6 +899,8 @@ function FigureZoom(hFig, direction, Factor)
     % Possible directions
     switch lower(direction)
         case 'vertical'
+            % Get figure info
+            TsInfo = getappdata(hFig, 'TsInfo');
             % Process axes individually
             for i = 1:length(hAxes)
                 % Get current zoom factor
@@ -864,11 +914,21 @@ function FigureZoom(hFig, direction, Factor)
                     Ycenter = (YLim(2) + YLim(1)) / 2;
                     YLim = [Ycenter - Ylength/Factor/2, Ycenter + Ylength/Factor/2];
                 end
+                % Restrict zoom in 'columns' mode
+                if strcmpi(TsInfo.DisplayMode, 'column')
+                    YLim(1) = max(YLim(1), 0);
+                    YLim(2) = min(YLim(2), 1);
+                end
                 % Update zoom factor
                 set(hAxes(i), 'YLim', YLim);
                 % Set the time cursor height to the maximum of the display
                 hCursor = findobj(hAxes(i), '-depth', 1, 'Tag', 'Cursor');
-                set(hCursor, 'YData', YLim)
+                set(hCursor, 'YData', YLim);
+                % Set the selection rectangle dimensions to the maximum of the display
+                hTimeSelectionPatch = findobj(hAxes(i), '-depth', 1, 'Tag', 'TimeSelectionPatch');
+                if ~isempty(hTimeSelectionPatch)
+                    set(hTimeSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+                end
             end
         case 'horizontal'
             % Get current time frame
@@ -1278,6 +1338,19 @@ function FigureKeyPressedCallback(hFig, ev)
         hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph')';
         set([hFig hAxes], 'BusyAction', 'queue');
     end
+end
+
+%% ===== CHANGE CURSOR WITH MODIFIERS =====
+function WindowKeyPressedCallback(hFig, ev)
+    switch (ev.Key)
+        case 'shift'
+            set(hFig, 'Pointer', 'ibeam');
+        case 'control'
+            set(hFig, 'Pointer', 'top');
+    end
+end
+function WindowKeyReleaseCallback(hFig, ev)
+    set(hFig, 'Pointer', 'arrow');
 end
 
 
@@ -3668,19 +3741,18 @@ function UpdateRawTime(hFig)
         % EraseMode: Only for Matlab <= 2014a
         if (bst_get('MatlabVersion') <= 803)
             optErase = {'EraseMode',  'xor', ...   % INCOMPATIBLE WITH OPENGL RENDERER (BUG), REMOVED IN MATLAB 2014b
-                        'FaceAlpha',  1, ...
                         'EdgeColor', 'None'};
         else
-            optErase = {...'FaceAlpha',  0.4, ...
-                        'EdgeColor',  [1 0 0]};
+            optErase = {'EdgeColor',  [.8 0 0]};
         end
         % Create selection patch
         hUserTime = patch('XData', [Time(1), Time(2), Time(2), Time(1)], ...
                           'YData', [.01 .01 .99 .99], ...
                           'ZData', 1.1 * [1 1 1 1], ...
-                          'LineWidth', 1, ...
+                          'LineWidth', 0.5, ...
                           optErase{:}, ...
                           'FaceColor', [1 .3 .3], ...
+                          'FaceAlpha', 1, ...
                           'EdgeAlpha', 1, ...
                           'Tag',       'UserTime', ...
                           'Parent',    hRawTimeBar);

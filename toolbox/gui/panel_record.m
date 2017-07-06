@@ -514,8 +514,11 @@ end
 
 
 %% ===== SET START TIME =====
-function SetStartTime(startTime, iEpochNew)
+function SetStartTime(startTime, iEpochNew, isValidate)
     global GlobalData;
+    if (nargin < 3) || isempty(isValidate)
+        isValidate = 1;
+    end
     if (nargin < 2) || isempty(iEpochNew)
         iEpochNew = GlobalData.FullTimeWindow.CurrentEpoch;
     end
@@ -534,13 +537,18 @@ function SetStartTime(startTime, iEpochNew)
     if (iStartNew ~= double(ctrl.jSliderStart.getValue())) || (iEpochNew ~= iEpoch)
         ctrl.jSliderStart.setValue(iStartNew);
         ctrl.jSpinnerEpoch.setValue(iEpoch);
-        ValidateTimeWindow();
+        if isValidate
+            ValidateTimeWindow();
+        end
     end
 end
 
 
 %% ===== SET TIME LENGTH =====
-function SetTimeLength(timeLength) %#ok<DEFNU>
+function SetTimeLength(timeLength, isValidate) %#ok<DEFNU>
+    if (nargin < 2) || isempty(isValidate)
+        isValidate = 1;
+    end
     % Get panel controls
     ctrl = bst_get('PanelControls', 'Record');
     if isempty(ctrl)
@@ -549,7 +557,9 @@ function SetTimeLength(timeLength) %#ok<DEFNU>
     % Update control
     ctrl.jTextLength.setText(sprintf('%1.4f', timeLength));
     % Validate modification
-    ValidateTimeWindow();
+    if isValidate
+        ValidateTimeWindow();
+    end
 end
 
 
