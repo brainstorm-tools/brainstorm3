@@ -66,16 +66,17 @@ function hFig = CreateFigure(FigureId)
                   'Color',         [.8 .8 .8], ...
                   'CloseRequestFcn',          @(h,ev)bst_figures('DeleteFigure',h,ev), ...
                   'KeyPressFcn',              @FigureKeyPressedCallback, ...
-                  'WindowKeyPressFcn',        @WindowKeyPressedCallback, ...
-                  'WindowKeyReleaseFcn',      @WindowKeyReleaseCallback, ...
                   'WindowButtonDownFcn',      @FigureMouseDownCallback, ...
                   'WindowButtonUpFcn',        @FigureMouseUpCallback, ...
                   bst_get('ResizeFunction'),  @ResizeCallback);
-    % Define Mouse wheel callback separately (not supported by old versions of Matlab)
+    % Define some mouse callbacks separately (not supported by old versions of Matlab)
     if isprop(hFig, 'WindowScrollWheelFcn')
         set(hFig, 'WindowScrollWheelFcn',  @FigureMouseWheelCallback);
     end
-
+    if isprop(hFig, 'WindowKeyPressFcn') && isprop(hFig, 'WindowKeyReleaseFcn')
+        set(hFig, 'WindowKeyPressFcn',    @WindowKeyPressedCallback, ...
+                  'WindowKeyReleaseFcn',  @WindowKeyReleaseCallback);
+    end
     % Prepare figure appdata
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'isPlotEditToolbar', 0);
@@ -503,29 +504,7 @@ function FigureMouseMoveCallback(hFig, event)
     % Switch between different actions (Pan, Rotate, Contrast)
     switch(clickAction)                          
         case 'pan'
-            % Get initial XLim and YLim
-            XLimInit = getappdata(hAxes, 'XLimInit');
-            YLimInit = getappdata(hAxes, 'YLimInit');
-            % Move view along X axis
-            XLim = get(hAxes, 'XLim');
-            XLim = XLim - (XLim(2) - XLim(1)) * motionFigure(1);
-            XLim = bst_saturate(XLim, XLimInit, 1);
-            set(hAxes, 'XLim', XLim);
-            % Move view along Y axis
-            YLim = get(hAxes, 'YLim');
-            YLim = YLim - (YLim(2) - YLim(1)) * motionFigure(2);
-            YLim = bst_saturate(YLim, YLimInit, 1);
-            set(hAxes, 'YLim', YLim);
-            % Set the time cursor height to the maximum of the display
-            hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
-            set(hCursor, 'YData', YLim)
-            % Set the selection rectangle dimensions to the maximum of the display
-            hTimeSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'TimeSelectionPatch');
-            if ~isempty(hTimeSelectionPatch)
-                set(hTimeSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
-            end
-            % Update raw events bar xlim
-            UpdateRawXlim(hFig, XLim);
+            FigurePan(hFig, motionFigure);
             
         case 'selection'
             % Get time selection
@@ -856,7 +835,7 @@ end
 
 %% ===== FIGURE SCROLL =====
 function FigureScroll(hFig, ScrollCount, target)
-    % Convert scroll count to soom factor
+    % Convert scroll count to zoom factor
     if (ScrollCount < 0)
         Factor = 1 - ScrollCount ./ 10;   % ZOOM IN
     elseif (ScrollCount > 0)
@@ -893,7 +872,11 @@ end
 
 
 %% ===== FIGURE ZOOM =====
-function FigureZoom(hFig, direction, Factor)
+function FigureZoom(hFig, direction, Factor, center)
+    % Parse inputs
+    if (nargin < 4)
+        center = [];
+    end
     % Get list of axes in this figure
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
     % Possible directions
@@ -904,18 +887,43 @@ function FigureZoom(hFig, direction, Factor)
             % Process axes individually
             for i = 1:length(hAxes)
                 % Get current zoom factor
+                XLim = get(hAxes(i), 'XLim');
                 YLim = get(hAxes(i), 'YLim');
                 Ylength = YLim(2) - YLim(1);
-                % In case everything is positive: zoom from the bottom
-                if (YLim(1) >= 0)
-                    YLim = [YLim(1), YLim(1) + Ylength/Factor];
-                % Else: zoom from the middle
-                else
-                    Ycenter = (YLim(2) + YLim(1)) / 2;
-                    YLim = [Ycenter - Ylength/Factor/2, Ycenter + Ylength/Factor/2];
-                end
-                % Restrict zoom in 'columns' mode
-                if strcmpi(TsInfo.DisplayMode, 'column')
+                % Butterfly plot
+                if strcmpi(TsInfo.DisplayMode, 'butterfly')
+                    % In case everything is positive: zoom from the bottom
+                    if (YLim(1) >= 0)
+                        YLim = [YLim(1), YLim(1) + Ylength/Factor];
+                    % Else: zoom from the middle
+                    else
+                        Ycenter = (YLim(2) + YLim(1)) / 2;
+                        YLim = [Ycenter - Ylength/Factor/2, Ycenter + Ylength/Factor/2];
+                    end
+                % Column plot
+                elseif strcmpi(TsInfo.DisplayMode, 'column')
+                    % Get current point 
+                    curPt = get(hAxes(i), 'CurrentPoint');
+                    % If the cursor is in the image: Zoom from the cursor
+                    if ~isempty(center) || (curPt(1,1) >= XLim(1)) && (curPt(1,1) <= XLim(2)) && (curPt(1,2) >= YLim(1)) && (curPt(1,2) <= YLim(2))
+                        if ~isempty(center)
+                            Ycenter = center;
+                        else
+                            Ycenter = curPt(1,2);
+                        end
+                        Yratio = (Ycenter - YLim(1)) ./ Ylength;
+                        if (Ycenter - Ylength/Factor/2 < 0)
+                            YLim = [0, Ylength/Factor];
+                        elseif (Ycenter + Ylength/Factor/2 > 1)
+                            YLim = [1 - Ylength/Factor, 1];
+                        else
+                            YLim = [Ycenter - Ylength/Factor*Yratio, Ycenter + Ylength/Factor*(1-Yratio)];
+                        end
+                    % Otherwise: zoom from the bottom
+                    else
+                        YLim = [YLim(1), YLim(1) + Ylength/Factor];
+                    end
+                    % Restrict zoom
                     YLim(1) = max(YLim(1), 0);
                     YLim(2) = min(YLim(2), 1);
                 end
@@ -951,6 +959,43 @@ function FigureZoom(hFig, direction, Factor)
             set(hAxes, 'XLim', XLim);
             % RAW: Set the time limits of the events bar
             UpdateRawXlim(hFig, XLim);
+    end
+end
+
+
+%% ===== FIGURE PAN =====
+function FigurePan(hFig, motion)
+    % Get list of axes in this figure
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
+    % Displacement in X
+    if (motion(1) ~= 0)
+        % Get initial and current XLim
+        XLimInit = getappdata(hAxes, 'XLimInit');
+        XLim = get(hAxes, 'XLim');
+        % Move view along X axis
+        XLim = XLim - (XLim(2) - XLim(1)) * motion(1);
+        XLim = bst_saturate(XLim, XLimInit, 1);
+        set(hAxes, 'XLim', XLim);
+        % Update raw events bar xlim
+        UpdateRawXlim(hFig, XLim);
+    end
+    % Displacement in Y
+    if (motion(2) ~= 0)
+        % Get initial and current YLim
+        YLimInit = getappdata(hAxes, 'YLimInit');
+        YLim = get(hAxes, 'YLim');
+        % Move view along Y axis
+        YLim = YLim - (YLim(2) - YLim(1)) * motion(2);
+        YLim = bst_saturate(YLim, YLimInit, 1);
+        set(hAxes, 'YLim', YLim);
+        % Set the time cursor height to the maximum of the display
+        hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
+        set(hCursor, 'YData', YLim)
+        % Set the selection rectangle dimensions to the maximum of the display
+        hTimeSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'TimeSelectionPatch');
+        if ~isempty(hTimeSelectionPatch)
+            set(hTimeSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+        end
     end
 end
 
@@ -1097,33 +1142,42 @@ function ResizeCallback(hFig, ev)
     hButtonZoomTimeMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus');
     hButtonSetScaleLog   = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
     hButtonShowGrids     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
+    hButtonZoomUp        = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomUp');
+    hButtonZoomPlus      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomPlus');
+    hButtonZoomMinus     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomMinus');
+    hButtonZoomDown      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomDown');
     
     % Update gain buttons
     butSize = 22;
-    if ~isempty(hButtonGainMinus)
-        set(hButtonGainMinus, 'Position', [figPos(3)-butSize-1, 45, butSize, butSize]);
-        set(hButtonGainPlus,  'Position', [figPos(3)-butSize-1, 70, butSize, butSize]);
-    end
-    if ~isempty(hButtonAutoScale)
-        set(hButtonAutoScale, 'Position', [figPos(3)-butSize-1, 135, butSize, butSize]);
-    end
-    if ~isempty(hButtonSetScaleY)
-        set(hButtonSetScaleY, 'Position', [figPos(3)-butSize-1, 160, butSize, butSize]);
-    end
-    if ~isempty(hButtonFlipY)
-        set(hButtonFlipY,  'Position', [figPos(3)-butSize-1, 185, butSize, butSize]);
-    end
     if ~isempty(hButtonZoomTimePlus)
         set(hButtonZoomTimePlus,   'Position', [figPos(3) - 65, 3, butSize, butSize]);
         set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 40, 3, butSize, butSize]);
     end
-    if ~isempty(hButtonSetScaleLog)
-        set(hButtonSetScaleLog,  'Position', [figPos(3)-butSize-1, 135, butSize, butSize]);
+    if ~isempty(hButtonGainMinus)
+        set(hButtonGainMinus, 'Position', [figPos(3)-butSize-1, 45, butSize, butSize]);
+        set(hButtonGainPlus,  'Position', [figPos(3)-butSize-1, 67, butSize, butSize]);
     end
     if ~isempty(hButtonShowGrids)
-        set(hButtonShowGrids,  'Position', [figPos(3)-butSize-1, 110, butSize, butSize]);
+        set(hButtonShowGrids,  'Position', [figPos(3)-butSize-1, 116, butSize, butSize]);
     end
-
+    if ~isempty(hButtonAutoScale)
+        set(hButtonAutoScale, 'Position', [figPos(3)-butSize-1, 138, butSize, butSize]);
+    end
+    if ~isempty(hButtonSetScaleLog)
+        set(hButtonSetScaleLog,  'Position', [figPos(3)-butSize-1, 138, butSize, butSize]);
+    end
+    if ~isempty(hButtonSetScaleY)
+        set(hButtonSetScaleY, 'Position', [figPos(3)-butSize-1, 162, butSize, butSize]);
+    end
+    if ~isempty(hButtonFlipY)
+        set(hButtonFlipY,  'Position', [figPos(3)-butSize-1, 184, butSize, butSize]);
+    end
+    if ~isempty(hButtonZoomUp)
+        set(hButtonZoomUp,    'Position', [figPos(3)-butSize-1, 299, butSize, butSize]);
+        set(hButtonZoomPlus,  'Position', [figPos(3)-butSize-1, 277, butSize, butSize]);
+        set(hButtonZoomMinus, 'Position', [figPos(3)-butSize-1, 255, butSize, butSize]);
+        set(hButtonZoomDown,  'Position', [figPos(3)-butSize-1, 233, butSize, butSize]);
+    end
     % ===== REPOSITION SCALE BAR =====
     hColumnScale = findobj(hFig, '-depth', 1, 'Tag', 'AxesColumnScale');
     if ~isempty(hColumnScale)
@@ -2519,6 +2573,16 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
     % Create scale buttons
     if ~isFastUpdate && isempty(findobj(hFig, 'Tag', 'ButtonGainPlus'))
         CreateScaleButtons(iDS, iFig);
+    else
+        hButtonZoom = [findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomUp'), ...
+                       findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomPlus'), ...
+                       findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomMinus'), ...
+                       findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomDown')];
+        if ~isempty(hButtonZoom) && strcmpi(TsInfo.DisplayMode, 'column') && strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries')
+            set(hButtonZoom, 'Visible', 'on');
+        else
+            set(hButtonZoom, 'Visible', 'off');
+        end
     end
     % Update sensor selection
     SelectedRowChangedCallback(iDS, iFig)
@@ -3179,7 +3243,7 @@ function CreateScaleButtons(iDS, iFig)
     % Get figure background color
     bgColor = get(hFig, 'Color');
     % Create scale buttons
-    jButton = javaArray('java.awt.Component', 9);
+    jButton = javaArray('java.awt.Component', 13);
     jButton(1) = javax.swing.JButton('^');
     jButton(2) = javax.swing.JButton('v');
     jButton(3) = javax.swing.JButton('...');
@@ -3189,6 +3253,10 @@ function CreateScaleButtons(iDS, iFig)
     jButton(7) = javax.swing.JButton('>');
     jButton(8) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_LOG);
     jButton(9) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_MATRIX);
+    jButton(10) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_UP);
+    jButton(11) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_PLUS);
+    jButton(12) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_MINUS);
+    jButton(13) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_DOWN);
     
     % Configure buttons
     for i = 1:length(jButton)
@@ -3208,26 +3276,38 @@ function CreateScaleButtons(iDS, iFig)
     [j7, h7] = javacomponent(jButton(7), [0, 0, .01, .01], hFig);
     [j8, h8] = javacomponent(jButton(8), [0, 0, .01, .01], hFig);
     [j9, h9] = javacomponent(jButton(9), [0, 0, .01, .01], hFig);
+    [j10, h10] = javacomponent(jButton(10), [0, 0, .01, .01], hFig);
+    [j11, h11] = javacomponent(jButton(11), [0, 0, .01, .01], hFig);
+    [j12, h12] = javacomponent(jButton(12), [0, 0, .01, .01], hFig);
+    [j13, h13] = javacomponent(jButton(13), [0, 0, .01, .01], hFig);
     
     % Configure Gain buttons
-    set(h1, 'Tag', 'ButtonGainPlus',  'Units', 'pixels');
-    set(h2, 'Tag', 'ButtonGainMinus', 'Units', 'pixels');
-    set(h3, 'Tag', 'ButtonSetScaleY', 'Units', 'pixels');
-    set(h4, 'Tag', 'ButtonAutoScale', 'Units', 'pixels');
-    set(h5, 'Tag', 'ButtonFlipY',     'Units', 'pixels');
-    set(h6, 'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
-    set(h7, 'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
-    set(h8, 'Tag', 'ButtonSetScaleLog',   'Units', 'pixels');
-    set(h9, 'Tag', 'ButtonShowGrids',     'Units', 'pixels');
-    j1.setToolTipText('<HTML><TABLE><TR><TD>Increase gain (vertical zoom)</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B>');
-    j2.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain (vertical unzoom)</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B>');
+    set(h1,  'Tag', 'ButtonGainPlus',  'Units', 'pixels');
+    set(h2,  'Tag', 'ButtonGainMinus', 'Units', 'pixels');
+    set(h3,  'Tag', 'ButtonSetScaleY', 'Units', 'pixels');
+    set(h4,  'Tag', 'ButtonAutoScale', 'Units', 'pixels');
+    set(h5,  'Tag', 'ButtonFlipY',     'Units', 'pixels');
+    set(h6,  'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
+    set(h7,  'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
+    set(h8,  'Tag', 'ButtonSetScaleLog',   'Units', 'pixels');
+    set(h9,  'Tag', 'ButtonShowGrids',     'Units', 'pixels');
+    set(h10, 'Tag', 'ButtonZoomUp',        'Units', 'pixels');
+    set(h11, 'Tag', 'ButtonZoomPlus',      'Units', 'pixels');
+    set(h12, 'Tag', 'ButtonZoomMinus',     'Units', 'pixels');
+    set(h13, 'Tag', 'ButtonZoomDown',      'Units', 'pixels');
+    j1.setToolTipText('<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B></TD></TR></TABLE>');
+    j2.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B></TD></TR></TABLE>');
     j3.setToolTipText('Set scale manually');
     j4.setToolTipText('Auto-scale amplitude when changing page');
     j5.setToolTipText('<HTML><B>Flips the Y axis when displaying the recordings</B>:<BR><BR>Negative values are displayed oriented towards the top of the figures.');
-    j6.setToolTipText('<HTML><TABLE><TR><TD>Horizontal unzoom</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]');
-    j7.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]');
+    j6.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
+    j7.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
     j8.setToolTipText('Set X scale to log scale');
     j9.setToolTipText('Show grids');
+    j10.setToolTipText('<HTML><TABLE><TR><TD>Scroll up</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse up]<BR> &nbsp; [Middle click + Mouse up]</B></TD></TR></TABLE>');
+    j11.setToolTipText('<HTML><TABLE><TR><TD>Vertical zoom in</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>');
+    j12.setToolTipText('<HTML><TABLE><TR><TD>Vertical zoom out</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>');
+    j13.setToolTipText('<HTML><TABLE><TR><TD>Scroll down</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B></TD></TR></TABLE>');
     java_setcb(j1, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1));
     java_setcb(j2, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, .9091));
     java_setcb(j3, 'ActionPerformedCallback', @(h,ev)SetScaleY(iDS, iFig));
@@ -3237,6 +3317,10 @@ function CreateScaleButtons(iDS, iFig)
     java_setcb(j7, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', 1.1));
     java_setcb(j8, 'ActionPerformedCallback', @(h,ev)ToggleLogLinearScale(ev.getSource(), hFig));
     java_setcb(j9, 'ActionPerformedCallback', @(h,ev)ShowGrids(ev.getSource(), hFig));
+    java_setcb(j10, 'ActionPerformedCallback', @(h,ev)FigurePan(hFig, [0, -.9]));
+    java_setcb(j11, 'ActionPerformedCallback', @(h,ev)FigureZoom(hFig, 'vertical', 1.3, 0));
+    java_setcb(j12, 'ActionPerformedCallback', @(h,ev)FigureZoom(hFig, 'vertical', .7692, 0));
+    java_setcb(j13, 'ActionPerformedCallback', @(h,ev)FigurePan(hFig, [0, .9]));
     % Up button
     j1.setMargin(java.awt.Insets(3,0,0,0));
     j1.setFont(bst_get('Font', 12));    
@@ -3256,12 +3340,15 @@ function CreateScaleButtons(iDS, iFig)
     if isempty(TsInfo) || isempty(TsInfo.FileName) || ~ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
         set([h4 h5], 'Visible', 'off');
     end
+    if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'column') || ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries')
+        set([h10 h11 h12 h13], 'Visible', 'off');
+    end
     if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries') || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
         set(h3, 'Visible', 'off');
     end
     if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
         set(h8, 'Visible', 'off');
-    end
+        endb
 end
 
 

@@ -4,6 +4,7 @@ July 2017
 - GUI: Allow marking bad EEG/SEEG channels in bipolar montages
 - GUI: Raw viewer: Edit current page size by resizing the cursor at the bottom
 - GUI: Raw viewer: Different mouse cursors for different actions
+- GUI: Raw viewer: Added buttons to zoom along channels
 ---------------------------------------------------------------
 June 2017
 - IO: Added support for Blackrock .ns6 files
