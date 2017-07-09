@@ -3348,7 +3348,7 @@ function CreateScaleButtons(iDS, iFig)
     end
     if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
         set(h8, 'Visible', 'off');
-        endb
+    end
 end
 
 
