@@ -30,7 +30,7 @@ function jPanel = gui_river( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2009
+% Authors: Francois Tadel, 2008-2017
 
 % Parse inputs
 if (nargin == 0)
@@ -54,23 +54,25 @@ elseif (nargin == 3)
     extraInsets = varargin{2};
     title       = varargin{3};
 end
-    
+
+% Get interface scaling
+InterfaceScaling = bst_get('InterfaceScaling') / 100;
 % Configure RiverLayout
 jRiverLayout = java_create('se.datadosen.component.RiverLayout');
 if ~isempty(gaps)
-    jRiverLayout.setHgap(gaps(1));
-    jRiverLayout.setVgap(gaps(2));
+    jRiverLayout.setHgap(round(gaps(1) * InterfaceScaling));
+    jRiverLayout.setVgap(round(gaps(2) * InterfaceScaling));
 end
 if ~isempty(extraInsets)
-    jRiverLayout.setExtraInsets(java.awt.Insets(extraInsets(1), extraInsets(2), extraInsets(3), extraInsets(4))); 
+    %extraInsets = round(extraInsets * InterfaceScaling);
+    jRiverLayout.setExtraInsets(java_scaled('insets', extraInsets(1), extraInsets(2), extraInsets(3), extraInsets(4))); 
 end
 jPanel = java_create('javax.swing.JPanel');
 jPanel.setLayout(jRiverLayout)
 
 % If there is a panel title
 if ~isempty(title)
-    jBorder = javax.swing.BorderFactory.createTitledBorder(title);
-    jBorder.setTitleFont(bst_get('Font', 11));
+    jBorder = java_scaled('titledborder', title);
     jPanel.setBorder(jBorder);
 else
     jPanel.setBorder([]);

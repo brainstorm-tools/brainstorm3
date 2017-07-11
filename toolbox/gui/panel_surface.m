@@ -51,11 +51,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelTop = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
     % Constants
-    TB_DIM = Dimension(25, 25);
-    LABEL_WIDTH    = 30;
-    BUTTON_WIDTH   = 50;
-    SLIDER_WIDTH   = 20;
-    DEFAULT_HEIGHT = 22;
+    TB_DIM = java_scaled('dimension', 25, 25);
+    LABEL_WIDTH    = java_scaled('value', 30);
+    BUTTON_WIDTH   = java_scaled('value', 50);
+    SLIDER_WIDTH   = java_scaled('value', 20);
+    DEFAULT_HEIGHT = java_scaled('value', 22);
 
     % ===== TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
@@ -819,6 +819,8 @@ function nbSurfaces = CreateSurfaceList(jToolbar, hFig)
     end
     % Create a button group for Surfaces and "Add" button
     jButtonGroup = ButtonGroup();
+    % Get interface scaling
+    InterfaceScaling = bst_get('InterfaceScaling');
     
     % If a figure is defined 
     if ishandle(hFig)
@@ -844,10 +846,14 @@ function nbSurfaces = CreateSurfaceList(jToolbar, hFig)
                 case 'anatomy'
                     iconButton = IconLoader.ICON_ANATOMY;
             end
+            % Scale icon if needed
+            if (InterfaceScaling ~= 100)
+                iconButton = IconLoader.scaleIcon(iconButton, InterfaceScaling / 100);
+            end
             % Create surface button 
             jButtonSurf = JToggleButton(iconButton, isSelected);
-            jButtonSurf.setMaximumSize(Dimension(24,24));
-            jButtonSurf.setPreferredSize(Dimension(24,24));
+            jButtonSurf.setMaximumSize(java_scaled('dimension', 24,24));
+            jButtonSurf.setPreferredSize(java_scaled('dimension', 24,24));
             jButtonSurf.setToolTipText(TessInfo(iSurf).SurfaceFile);
             % Store the surface index as the button Name
             jButtonSurf.setName(sprintf('%d', iSurf));

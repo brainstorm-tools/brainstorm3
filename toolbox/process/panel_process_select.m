@@ -25,7 +25,7 @@ function varargout = panel_process_select(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2017
 
 eval(macro_method);
 end
@@ -101,8 +101,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     
     % Other initializations
     WarningMsg = '';
-    LIST_ELEMENT_HEIGHT = 28;
     isUpdatingPipeline = 0;
+    % Font size for the lists
+    InterfaceScaling = bst_get('InterfaceScaling') / 100;
+    fontSize = round(11 * InterfaceScaling);
     
     % Create main panel
     jPanelMain = java_create('javax.swing.JPanel');
@@ -115,21 +117,21 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     
     % ===== PROCESS SELECTION =====
     jPanelProcess = gui_component('Panel');
-    jPanelProcess.setBorder(BorderFactory.createTitledBorder('Process selection'));
+    jPanelProcess.setBorder(java_scaled('titledborder', 'Process selection'));
     % Toolbar
     jToolbar = gui_component('Toolbar', jPanelProcess, BorderLayout.NORTH);
-    jToolbar.setPreferredSize(Dimension(10, 25));
-    jButtonAdd = gui_component('ToolbarButton', jToolbar, [], '', IconLoader.ICON_PROCESS_SELECT,    'Add process', @(h,ev)ShowProcessMenu('insert'), []);
+    jToolbar.setPreferredSize(java_scaled('dimension', 10, 25));
+    jButtonAdd = gui_component('ToolbarButton', jToolbar, [], '', IconLoader.ICON_PROCESS_SELECT,    'Add process', @(h,ev)ShowProcessMenu('insert'));
     jToolbar.addSeparator();
-    jButtonUp     = gui_component('ToolbarButton', jToolbar, [], '', IconLoader.ICON_ARROW_UP,       'Move process up', @(h,ev)MoveSelectedProcess('up'), []);
-    jButtonDown   = gui_component('ToolbarButton', jToolbar, [], '', IconLoader.ICON_ARROW_DOWN,     'Move process down', @(h,ev)MoveSelectedProcess('down'), []);
-    jButtonRemove = gui_component('ToolbarButton', jToolbar, [], '', IconLoader.ICON_DELETE,         'Delete process', @(h,ev)RemoveSelectedProcess(), []);
+    jButtonUp     = gui_component('ToolbarButton', jToolbar, [], '', IconLoader.ICON_ARROW_UP,       'Move process up', @(h,ev)MoveSelectedProcess('up'));
+    jButtonDown   = gui_component('ToolbarButton', jToolbar, [], '', IconLoader.ICON_ARROW_DOWN,     'Move process down', @(h,ev)MoveSelectedProcess('down'));
+    jButtonRemove = gui_component('ToolbarButton', jToolbar, [], '', IconLoader.ICON_DELETE,         'Delete process', @(h,ev)RemoveSelectedProcess());
     jToolbar.addSeparator();
-    jButtonPipeline = gui_component('ToolbarButton', jToolbar, [], '', IconLoader.ICON_PIPELINE_LIST, 'Load/save processing pipeline', @(h,ev)ShowPipelineMenu(ev.getSource()), []);
-    jButtonWarning  = gui_component('ToolbarButton', jToolbar, [], 'Error', [], 'There are errors in the process pipeline.', @(h,ev)ShowWarningMsg(), []);
+    jButtonPipeline = gui_component('ToolbarButton', jToolbar, [], '', IconLoader.ICON_PIPELINE_LIST, 'Load/save processing pipeline', @(h,ev)ShowPipelineMenu(ev.getSource()));
+    jButtonWarning  = gui_component('ToolbarButton', jToolbar, [], 'Error', [], 'There are errors in the process pipeline.', @(h,ev)ShowWarningMsg());
     % Set sizes
-    dimLarge = Dimension(36,25);
-    dimSmall = Dimension(25,25);
+    dimLarge = java_scaled('dimension', 36,25);
+    dimSmall = java_scaled('dimension', 25,25);
     %jButtonSelect.setMaximumSize(dimLarge);
     jButtonAdd.setMaximumSize(dimLarge);
     jButtonUp.setMaximumSize(dimSmall);
@@ -141,7 +143,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     % Process list
     jListProcess = java_create('javax.swing.JList');
     jListProcess.setSelectionMode(jListProcess.getSelectionModel().SINGLE_SELECTION);
-    jListProcess.setCellRenderer(BstProcessListRenderer());
+    jListProcess.setCellRenderer(BstProcessListRenderer(fontSize, 28 * InterfaceScaling));
     java_setcb(jListProcess, 'ValueChangedCallback', @ListProcess_ValueChangedCallback, ...
                              'KeyTypedCallback',     @ListProcess_KeyTypedCallback);
     % Scroll panel
@@ -150,7 +152,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     jScrollProcess.setVisible(0);
     jPanelProcess.add(jScrollProcess);
     % Empty message
-    jLabelEmpty = JLabel('      [Please select a process]');
+    jLabelEmpty = gui_component('label', [], '', '      [Please select a process]');
     jLabelEmpty.setOpaque(1);
     jLabelEmpty.setBackground(Color(1,1,1));
     jLabelEmpty.setForeground(Color(.7,.7,.7));
@@ -162,11 +164,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     c.gridy = 0;
     c.weighty = 1;
     jPanelMain.add(jPanelProcess, c);
-    
+
     % ===== OPTIONS: INPUT =====
     jPanelInput = gui_component('Panel');
     jPanelInput.setLayout(BoxLayout(jPanelInput, BoxLayout.Y_AXIS));
-    jPanelInput.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder('Input options'), BorderFactory.createEmptyBorder(0,5,0,0)));
+    jPanelInput.setBorder(BorderFactory.createCompoundBorder(java_scaled('titledborder', 'Input options'), BorderFactory.createEmptyBorder(0,5,0,0)));
     jPanelInput.setVisible(0);
     % Add panel
     c.gridy = 2;
@@ -176,7 +178,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     % ===== OPTIONS: PROCESS =====
     jPanelOptions = gui_component('Panel');
     jPanelOptions.setLayout(BoxLayout(jPanelOptions, BoxLayout.Y_AXIS));
-    jPanelOptions.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder('Process options'), BorderFactory.createEmptyBorder(0,5,0,0)));
+    jPanelOptions.setBorder(BorderFactory.createCompoundBorder(java_scaled('titledborder', 'Process options'), BorderFactory.createEmptyBorder(0,5,0,0)));
     jPanelOptions.setVisible(0);
     % Add panel
     c.gridy = 3;
@@ -186,7 +188,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     % ===== OPTIONS: OUTPUT =====
     jPanelOutput = gui_component('Panel');
     jPanelOutput.setLayout(BoxLayout(jPanelOutput, BoxLayout.Y_AXIS));
-    jPanelOutput.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder('Output options'), BorderFactory.createEmptyBorder(0,5,0,0)));
+    jPanelOutput.setBorder(BorderFactory.createCompoundBorder(java_scaled('titledborder', 'Output options'), BorderFactory.createEmptyBorder(0,5,0,0)));
     jPanelOutput.setVisible(0);
     % Add panel
     c.gridy = 4;
@@ -195,11 +197,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     
     % ===== VALIDATION BUTTONS =====
     jPanelOk = gui_river([6,0], [3,3,3,12]);
-    jButtonHelp = gui_component('button', jPanelOk, 'left',  'Online tutorial', [], [], @ButtonHelp_Callback, []);
+    jButtonHelp = gui_component('button', jPanelOk, 'left',  'Online tutorial', [], [], @ButtonHelp_Callback);
     jButtonHelp.setVisible(0);
     gui_component('label',  jPanelOk, 'hfill', '  ');
-    gui_component('button', jPanelOk, 'right', 'Cancel', [], [], @ButtonCancel_Callback, []);
-    gui_component('button', jPanelOk, [],      'Run',    [], [], @ButtonOk_Callback, []);
+    gui_component('button', jPanelOk, 'right', 'Cancel', [], [], @ButtonCancel_Callback);
+    gui_component('button', jPanelOk, [],      'Run',    [], [], @ButtonOk_Callback);
     % Add panel
     c.gridy = 5;
     c.weighty = 0;
@@ -469,7 +471,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         jParent = hashGroups.(hashKey);
                     % Menu not created yet: create it
                     else
-                        jParent = gui_component('Menu', jPopup, [], sProcesses(iProc).SubGroup, [], [], [], []);
+                        jParent = gui_component('Menu', jPopup, [], sProcesses(iProc).SubGroup, [], []);
                         jParent.setMargin(Insets(5,0,4,0));
                         jParent.setForeground(Color(.6,.6,.6));
                         hashGroups.(hashKey) = jParent;
@@ -637,9 +639,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     %% ===== PANEL: UPDATE LIST SIZE =====
     function UpdateListSize()
         % Set size of the list
-        listHeight = bst_saturate(length(GlobalData.Processes.Current), [1,10]) * LIST_ELEMENT_HEIGHT;
-        jScrollProcess.setPreferredSize(java.awt.Dimension(350, listHeight));
-        jLabelEmpty.setPreferredSize(java.awt.Dimension(350, listHeight));
+        listHeight = bst_saturate(length(GlobalData.Processes.Current), [1,10]) * 28;
+        jScrollProcess.setPreferredSize(java_scaled('dimension', 350, listHeight));
+        jLabelEmpty.setPreferredSize(java_scaled('dimension', 350, listHeight));
     end
 
 
@@ -715,12 +717,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         % Starting the update
         isUpdatingPipeline = 1;
         % Font size for the options
-        if strncmp(computer,'MAC',3)
-            FONT_SIZE = 12;
-        else
-            FONT_SIZE = [];
-        end
-        TEXT_DIM = java.awt.Dimension(70, 20);
+        TEXT_DIM = java_scaled('dimension', 70, 20);
         % Empty options panels
         jPanelInput.removeAll();
         jPanelOptions.removeAll();
@@ -825,16 +822,16 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 % RANGE: {[start,stop], units, precision}
                 case {'range', 'timewindow', 'baseline', 'poststim'}
                     % Time range
-                    gui_component('label',    jPanelOpt, [], ['<HTML>', option.Comment], [],[],[],FONT_SIZE);
-                    jTextMin = gui_component('texttime', jPanelOpt, [], ' ', TEXT_DIM,[],[],FONT_SIZE);
-                    gui_component('label',    jPanelOpt, [], ' - ', [],[],[],FONT_SIZE);
-                    jTextMax = gui_component('texttime', jPanelOpt, [], ' ', TEXT_DIM,[],[],FONT_SIZE);
+                    gui_component('label',    jPanelOpt, [], ['<HTML>', option.Comment]);
+                    jTextMin = gui_component('texttime', jPanelOpt, [], ' ', TEXT_DIM,[],[]);
+                    gui_component('label',    jPanelOpt, [], ' - ');
+                    jTextMax = gui_component('texttime', jPanelOpt, [], ' ', TEXT_DIM,[],[]);
                     % Units
-                    jLabelText = gui_component('label', jPanelOpt, [], '', [],[],[],FONT_SIZE);
+                    jLabelText = gui_component('label', jPanelOpt, [], '');
                     % Add a checkbox
                     if strcmpi(option.Type, 'timewindow') || strcmpi(option.Type, 'baseline')
-                        gui_component('label', jPanelOpt, [], '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;', [],[],[],FONT_SIZE);
-                        jCheck = gui_component('checkbox', jPanelOpt, '', 'All file', [], [], @(h,ev)OptionTimeRangeAll_Callback(iProcess, optNames{iOpt}, ev.getSource(), jTextMin, jTextMax), FONT_SIZE);
+                        gui_component('label', jPanelOpt, [], '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;');
+                        jCheck = gui_component('checkbox', jPanelOpt, '', 'All file', [], [], @(h,ev)OptionTimeRangeAll_Callback(iProcess, optNames{iOpt}, ev.getSource(), jTextMin, jTextMax));
                     else
                         jCheck = [];
                     end
@@ -887,12 +884,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     end
                     
                     % Freq range
-                    gui_component('label',    jPanelOpt, [], ['<HTML>', option.Comment], [],[],[],FONT_SIZE);
-                    jTextMin = gui_component('texttime', jPanelOpt, [], ' ', TEXT_DIM,[],[],FONT_SIZE);
-                    gui_component('label',    jPanelOpt, [], ' - ', [],[],[],FONT_SIZE);
-                    jTextMax = gui_component('texttime', jPanelOpt, [], ' ', TEXT_DIM,[],[],FONT_SIZE);
+                    gui_component('label',    jPanelOpt, [], ['<HTML>', option.Comment]);
+                    jTextMin = gui_component('texttime', jPanelOpt, [], ' ', TEXT_DIM,[],[]);
+                    gui_component('label',    jPanelOpt, [], ' - ');
+                    jTextMax = gui_component('texttime', jPanelOpt, [], ' ', TEXT_DIM,[],[]);
                     % Units
-                    gui_component('label', jPanelOpt, [], 'Hz', [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], 'Hz');
                     
                     % Set controls callbacks
                     precision = 3;
@@ -917,18 +914,18 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 % VALUE: {value, units, precision}
                 case 'value'
                     % Label title
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment], [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment]);
                     % Constrain depends on the units: list fill the space horizontally
                     if strcmpi(valUnits, 'list')
-                        jText = gui_component('text', jPanelOpt, 'hfill', ' ', [],[],[],FONT_SIZE);
+                        jText = gui_component('text', jPanelOpt, 'hfill', ' ');
                     else
-                        jText = gui_component('texttime', jPanelOpt, [], ' ', [],[],[],FONT_SIZE);
+                        jText = gui_component('texttime', jPanelOpt, [], ' ');
                     end
                     % Set controls callbacks
                     valUnits = gui_validate_text(jText, [], [], bounds, valUnits, precision, option.Value{1}, @(h,ev)OptionValue_Callback(iProcess, optNames{iOpt}, jText));
                     % Add unit label
                     if ~strcmpi(valUnits, 'list')
-                        gui_component('label', jPanelOpt, [], [' ' valUnits], [],[],[],FONT_SIZE);
+                        gui_component('label', jPanelOpt, [], [' ' valUnits]);
                     else
                         jText.setHorizontalAlignment(javax.swing.JLabel.LEFT);
                     end
@@ -936,31 +933,31 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{2} = valUnits;
                     
                 case 'label'
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment], [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment]);
                 case 'text'
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment], [],[],[],FONT_SIZE);
-                    jText = gui_component('text', jPanelOpt, 'hfill', option.Value, [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment]);
+                    jText = gui_component('text', jPanelOpt, 'hfill', option.Value);
                     % Set validation callbacks
                     java_setcb(jText, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getText())), ...
                                       'FocusLostCallback',       @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getText())));
                 case 'textarea'
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment], [],[],[],FONT_SIZE);
-                    jText = gui_component('textfreq', jPanelOpt, 'br hfill', option.Value, [], [], [], FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment]);
+                    jText = gui_component('textfreq', jPanelOpt, 'br hfill', option.Value);
                     % Set validation callbacks
                     java_setcb(jText, 'FocusLostCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getText())));
                 case 'groupbands'
-                    gui_component('label', jPanelOpt, [], option.Comment, [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], option.Comment);
                     strBands = process_tf_bands('FormatBands', option.Value);
-                    gui_component('textfreq', jPanelOpt, 'br hfill', strBands, [], [], @(h,ev)OptionBands_Callback(iProcess, optNames{iOpt}, ev.getSource()), FONT_SIZE);
+                    gui_component('textfreq', jPanelOpt, 'br hfill', strBands, [], [], @(h,ev)OptionBands_Callback(iProcess, optNames{iOpt}, ev.getSource()));
 
                 case 'checkbox'
-                    jCheck = gui_component('checkbox', jPanelOpt, [], ['<HTML>', option.Comment], [], [], @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, double(ev.getSource().isSelected())), FONT_SIZE);
+                    jCheck = gui_component('checkbox', jPanelOpt, [], ['<HTML>', option.Comment], [], [], @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, double(ev.getSource().isSelected())));
                     jCheck.setSelected(logical(option.Value));
                 case 'radio'
                     jButtonGroup = javax.swing.ButtonGroup();
                     constr = [];
                     for iRadio = 1:length(option.Comment)
-                        jCheck = gui_component('radio', jPanelOpt, constr, ['<HTML>', option.Comment{iRadio}], [], [], @(h,ev)OptionRadio_Callback(iProcess, optNames{iOpt}, iRadio, ev.getSource().isSelected()), FONT_SIZE);
+                        jCheck = gui_component('radio', jPanelOpt, constr, ['<HTML>', option.Comment{iRadio}], [], [], @(h,ev)OptionRadio_Callback(iProcess, optNames{iOpt}, iRadio, ev.getSource().isSelected()));
                         jCheck.setSelected(option.Value == iRadio);
                         jButtonGroup.add(jCheck);
                         constr = 'br';
@@ -969,7 +966,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jButtonGroup = javax.swing.ButtonGroup();
                     constr = [];
                     for iRadio = 1:size(option.Comment, 2)
-                        jCheck = gui_component('radio', jPanelOpt, constr, ['<HTML>', option.Comment{1,iRadio}], [], [], @(h,ev)OptionRadio_Callback(iProcess, optNames{iOpt}, option.Comment{2,iRadio}, ev.getSource().isSelected()), FONT_SIZE);
+                        jCheck = gui_component('radio', jPanelOpt, constr, ['<HTML>', option.Comment{1,iRadio}], [], [], @(h,ev)OptionRadio_Callback(iProcess, optNames{iOpt}, option.Comment{2,iRadio}, ev.getSource().isSelected()));
                         jCheck.setSelected(strcmpi(option.Value, option.Comment{2,iRadio}));
                         jButtonGroup.add(jCheck);
                         constr = 'br';
@@ -977,27 +974,27 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 case 'radio_line'
                     jButtonGroup = javax.swing.ButtonGroup();
                     if ~isempty(option.Comment{end})
-                        gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment{end}, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                        gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment{end}, '&nbsp;&nbsp;']);
                     end
                     for iRadio = 1:length(option.Comment)-1
-                        jCheck = gui_component('radio', jPanelOpt, [], ['<HTML>', option.Comment{iRadio}], [], [], @(h,ev)OptionRadio_Callback(iProcess, optNames{iOpt}, iRadio, ev.getSource().isSelected()), FONT_SIZE);
+                        jCheck = gui_component('radio', jPanelOpt, [], ['<HTML>', option.Comment{iRadio}], [], [], @(h,ev)OptionRadio_Callback(iProcess, optNames{iOpt}, iRadio, ev.getSource().isSelected()));
                         jCheck.setSelected(option.Value == iRadio);
                         jButtonGroup.add(jCheck);
                     end
                 case 'radio_linelabel'
                     jButtonGroup = javax.swing.ButtonGroup();
                     if ~isempty(option.Comment{1,end})
-                        gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment{1,end}, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                        gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment{1,end}, '&nbsp;&nbsp;']);
                     end
                     for iRadio = 1:size(option.Comment, 2)-1
-                        jCheck = gui_component('radio', jPanelOpt, [], ['<HTML>', option.Comment{1,iRadio}], [], [], @(h,ev)OptionRadio_Callback(iProcess, optNames{iOpt}, option.Comment{2,iRadio}, ev.getSource().isSelected()), FONT_SIZE);
+                        jCheck = gui_component('radio', jPanelOpt, [], ['<HTML>', option.Comment{1,iRadio}], [], [], @(h,ev)OptionRadio_Callback(iProcess, optNames{iOpt}, option.Comment{2,iRadio}, ev.getSource().isSelected()));
                         jCheck.setSelected(strcmpi(option.Value, option.Comment{2,iRadio}));
                         jButtonGroup.add(jCheck);
                     end
                 case 'combobox'
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
-                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], option.Value(2), [], [], FONT_SIZE);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], option.Value(2));
                     jCombo.setEditable(false);
                     jPanelOpt.add(jCombo);
                     % Select previously selected item
@@ -1005,10 +1002,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Set validation callbacks
                     java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, {ev.getSource().getSelectedIndex()+1, option.Value{2}}));
                 case 'combobox_label'
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
                     cellValues = option.Value{2};
-                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {cellValues(1,:)}, [], [], FONT_SIZE);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {cellValues(1,:)});
                     jCombo.setEditable(false);
                     jPanelOpt.add(jCombo);
                     % Select previously selected item
@@ -1037,9 +1034,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         end
                     end
                     % Label
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
-                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {comboList}, [], [], FONT_SIZE);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {comboList});
                     jCombo.setEditable(false);
                     jPanelOpt.add(jCombo);
                     % Select previously selected item
@@ -1072,9 +1069,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     iRemove = find(ismember(AllNames, {'Bad channels', 'EOG', 'EMG', 'ExG', 'MISC'}));
                     AllNames(iRemove) = [];
                     % Label
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
-                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {AllNames}, [], [], FONT_SIZE);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {AllNames});
                     jCombo.setEditable(false);
                     jPanelOpt.add(jCombo);
                     % Select previously selected montage
@@ -1095,7 +1092,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     [jList, sClusters] = GetClusterList(iProcess, optNames{iOpt});
                     % If no clusters
                     if isempty(jList)
-                        gui_component('label', jPanelOpt, [], '<HTML>No cluster available.', [],[],[],FONT_SIZE);
+                        gui_component('label', jPanelOpt, [], '<HTML>No cluster available.');
                     else
                         % Confirm selection
                         if strcmpi(option.Type, 'cluster_confirm')
@@ -1104,7 +1101,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             else
                                 strCheck = 'Use cluster time series:';
                             end
-                            jCheckCluster = gui_component('checkbox', jPanelOpt, [], strCheck, [], [], [], FONT_SIZE);
+                            jCheckCluster = gui_component('checkbox', jPanelOpt, [], strCheck);
                             java_setcb(jCheckCluster, 'ActionPerformedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, sClusters, jList, jCheckCluster, []));
                             jCheckCluster.setSelected(1)
                             jList.setEnabled(1);
@@ -1119,7 +1116,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         jScroll = javax.swing.JScrollPane(jList);
                         jPanelOpt.add('br hfill vfill', jScroll);
                         % Set preferred size for the container
-                        prefPanelSize = java.awt.Dimension(250,120);
+                        prefPanelSize = java_scaled('dimension', 250,120);
                     end
                     
                 case {'scout', 'scout_confirm'}
@@ -1127,7 +1124,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     [AtlasList, iAtlasList] = GetAtlasList(sProcess, optNames{iOpt});
                     % If no scouts are available
                     if isempty(AtlasList)
-                        gui_component('label', jPanelOpt, [], '<HTML>No scouts available.', [],[],[],FONT_SIZE);
+                        gui_component('label', jPanelOpt, [], '<HTML>No scouts available.');
                     else
                         % Create list
                         jList = java_create('javax.swing.JList');
@@ -1140,7 +1137,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             else
                                 strCheck = 'Use scouts';
                             end
-                            jCheck = gui_component('checkbox', jPanelOpt, [], strCheck, [], [], [], FONT_SIZE);
+                            jCheck = gui_component('checkbox', jPanelOpt, [], strCheck);
                             if ~isempty(option.Value)
                                 jCheck.setSelected(1);
                                 isListEnable = 1;
@@ -1155,7 +1152,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         % Horizontal glue
                         gui_component('label', jPanelOpt, 'hfill', ' ', [],[],[],[]);
                         % Atlas selection box
-                        jCombo = gui_component('combobox', jPanelOpt, 'right', [], {AtlasList(:,1)}, [], [], []);
+                        jCombo = gui_component('combobox', jPanelOpt, 'right', [], {AtlasList(:,1)}, [], []);
                         % Try to re-use previously defined atlas
                         if ~isempty(option.Value) && iscell(option.Value) && (size(option.Value,2) >= 2) && ischar(option.Value{1,1}) && ~isempty(AtlasList)
                             iPrev = find(strcmpi(option.Value{1,1}, AtlasList(:,1)));
@@ -1184,13 +1181,13 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         jScroll = javax.swing.JScrollPane(jList);
                         jPanelOpt.add('br hfill vfill', jScroll);
                         % Set preferred size for the container
-                        prefPanelSize = java.awt.Dimension(250,180);
+                        prefPanelSize = java_scaled('dimension', 250,180);
                     end
                     
                 case 'channelname'
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
-                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {ChannelNames}, [], [], FONT_SIZE);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {ChannelNames});
                     jCombo.setEditable(true);
                     % Select previously selected channel
                     jCombo.setSelectedItem(option.Value);
@@ -1198,7 +1195,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getSelectedItem())));
                     
                 case 'subjectname'
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Default subject: current subject, or previous call
                     if ~isempty(curSubjectName)
                         defSubjectName = curSubjectName;
@@ -1215,7 +1212,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     if isempty(listSubj)
                         listSubj = {'NewSubject'};
                     end
-                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {listSubj}, [], [], FONT_SIZE);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {listSubj});
                     jCombo.setEditable(true);
                     % Select previously selected subject
                     if ~isempty(defSubjectName)
@@ -1233,7 +1230,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getSelectedItem())));
                     
                 case 'atlas'
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Get available atlases for target subject
                     atlasNames = {''};
                     iAtlas = [];
@@ -1252,7 +1249,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         end
                     end
                     % Create combo box
-                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {atlasNames}, [], [], FONT_SIZE);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {atlasNames});
                     jCombo.setEditable(true);
                     % Select previously selected subject
                     iDefault = [];
@@ -1289,15 +1286,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         end
                     end
                     % Create controls
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
-                    jText = gui_component('text', jPanelOpt, [], strFiles, [],[],[],FONT_SIZE);
+                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
+                    jText = gui_component('text', jPanelOpt, [], strFiles);
                     jText.setEditable(0);
-                    jText.setPreferredSize(Dimension(210, 20));
+                    jText.setPreferredSize(java_scaled('dimension', 210, 20));
                     isUpdateTime = strcmpi(option.Type, 'datafile');
                     gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)PickFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
                     
                 case 'editpref'
-                    gui_component('label',  jPanelOpt, [], ['<HTML>', option.Comment{2}, '&nbsp;&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                    gui_component('label',  jPanelOpt, [], ['<HTML>', option.Comment{2}, '&nbsp;&nbsp;&nbsp;']);
                     gui_component('button', jPanelOpt, [], 'Edit...', [],[], @(h,ev)EditProperties_Callback(iProcess, optNames{iOpt}));
                     
                 case 'button'
@@ -1305,7 +1302,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     strEval = option.Comment{1};
                     strEval = strrep(strEval, 'iProcess', num2str(iProcess));
                     strEval = strrep(strEval, 'sfreq',    sprintf('%0.3f', 1 ./ (curTimeVector(2)-curTimeVector(1))));
-                    gui_component('label',  jPanelOpt, [], ['<HTML>', option.Comment{2}, '&nbsp;&nbsp;&nbsp;'], [],[],[],FONT_SIZE);
+                    gui_component('label',  jPanelOpt, [], ['<HTML>', option.Comment{2}, '&nbsp;&nbsp;&nbsp;']);
                     gui_component('button', jPanelOpt, [], option.Comment{3}, [],[], @(h,ev)eval(strEval));
                     
                 case 'separator'
@@ -1313,7 +1310,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jsep = gui_component('label', jPanelOpt, 'br hfill', ' ');
                     jsep.setBackground(java.awt.Color(.4,.4,.4));
                     jsep.setOpaque(1);
-                    jsep.setPreferredSize(Dimension(1,1));
+                    jsep.setPreferredSize(java_scaled('dimension', 1,1));
                     gui_component('label', jPanelOpt, 'br', ' ');
             end
             jPanelOpt.setPreferredSize(prefPanelSize);
@@ -1327,7 +1324,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 strEmpty = '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#777777"> No process selected</FONT><BR>';
             end
             jPanelOpt = gui_river([2,2], [2,4,2,4]);
-            gui_component('label', jPanelOpt, 'hfill', strEmpty, [],[],[],FONT_SIZE);
+            gui_component('label', jPanelOpt, 'hfill', strEmpty);
             jPanelOptions.add(jPanelOpt);
         end
         % Hide/show other options panels
@@ -1913,7 +1910,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         jPopup = java_create('javax.swing.JPopupMenu');
         % === LOAD PIPELINE ===
         % Load pipeline
-        jMenuLoad = gui_component('Menu', jPopup, [], 'Load', IconLoader.ICON_FOLDER_OPEN, [], [], []);
+        jMenuLoad = gui_component('Menu', jPopup, [], 'Load', IconLoader.ICON_FOLDER_OPEN, [], []);
         % List all the pipelines
         for iPipe = 1:length(GlobalData.Processes.Pipelines)
             gui_component('MenuItem', jMenuLoad, [], GlobalData.Processes.Pipelines(iPipe).Name, IconLoader.ICON_CONDITION, [], @(h,ev)LoadPipeline(iPipe));
@@ -1926,7 +1923,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         % If some processes are defined
         if ~isempty(GlobalData.Processes.Current)
             % Save pipeline
-            jMenuSave = gui_component('Menu', jPopup, [], 'Save', IconLoader.ICON_SAVE, [], [], []);
+            jMenuSave = gui_component('Menu', jPopup, [], 'Save', IconLoader.ICON_SAVE, [], []);
             % List all the pipelines
             for iPipe = 1:length(GlobalData.Processes.Pipelines)
                 gui_component('MenuItem', jMenuSave, [], GlobalData.Processes.Pipelines(iPipe).Name, IconLoader.ICON_SAVE, [], @(h,ev)SavePipeline(iPipe));
@@ -1946,7 +1943,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
         
         % === DELETE PIPELINE ===
-        jMenuDel = gui_component('Menu', jPopup, [], 'Delete', IconLoader.ICON_DELETE, [], [], []);
+        jMenuDel = gui_component('Menu', jPopup, [], 'Delete', IconLoader.ICON_DELETE, [], []);
         % List all the pipelines
         for iPipe = 1:length(GlobalData.Processes.Pipelines)
             gui_component('MenuItem', jMenuDel, [], GlobalData.Processes.Pipelines(iPipe).Name, IconLoader.ICON_CONDITION, [], @(h,ev)DeletePipeline(iPipe));
@@ -1954,7 +1951,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         
         % === RESET OPTIONS ===
         jPopup.addSeparator();
-        gui_component('MenuItem', jPopup, [], 'Reset options', IconLoader.ICON_RELOAD, [], @(h,ev)ResetOptions, []);
+        gui_component('MenuItem', jPopup, [], 'Reset options', IconLoader.ICON_RELOAD, [], @(h,ev)ResetOptions);
         
         % Show popup menu
         jPopup.show(jButton, 0, jButton.getHeight());

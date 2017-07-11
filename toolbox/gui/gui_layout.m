@@ -698,24 +698,25 @@ function SetupMenu(jMenu) %#ok<DEFNU>
 %     if isempty(hAllFig)
 %         return;
 %     end
+    fontSize = [];
     % Get current setups
     UserSetups = bst_get('Layout', 'UserSetups');
     % List all the pipelines
     for iSetup = 1:length(UserSetups)
-        gui_component('MenuItem', jMenu, [], UserSetups(iSetup).Name, IconLoader.ICON_LAYOUT_CASCADE, [], @(h,ev)LoadSetup(iSetup), []);
+        gui_component('MenuItem', jMenu, [], UserSetups(iSetup).Name, IconLoader.ICON_LAYOUT_CASCADE, [], @(h,ev)LoadSetup(iSetup), fontSize);
     end
     % Separator
     if ~isempty(UserSetups)
         jMenu.addSeparator();
     end
     % Create new setup
-    gui_component('MenuItem', jMenu, [], 'New setup', IconLoader.ICON_SAVE, [], @(h,ev)CreateNewSetup(), []);
+    gui_component('MenuItem', jMenu, [], 'New setup', IconLoader.ICON_SAVE, [], @(h,ev)CreateNewSetup(), fontSize);
     % Delete entries
     if ~isempty(UserSetups)
-        jMenuDel = gui_component('Menu', jMenu, [], 'Delete setup', IconLoader.ICON_DELETE, [], [], []);
+        jMenuDel = gui_component('Menu', jMenu, [], 'Delete setup', IconLoader.ICON_DELETE, [], [], fontSize);
         % List all the pipelines
         for iSetup = 1:length(UserSetups)
-            gui_component('MenuItem', jMenuDel, [], UserSetups(iSetup).Name, IconLoader.ICON_DELETE, [], @(h,ev)DeleteSetup(iSetup), []);
+            gui_component('MenuItem', jMenuDel, [], UserSetups(iSetup).Name, IconLoader.ICON_DELETE, [], @(h,ev)DeleteSetup(iSetup), fontSize);
         end
     end
 end

@@ -38,7 +38,7 @@ function varargout = panel_protocols(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -48,12 +48,15 @@ end
 function bstPanelNew = CreatePanel() %#ok<DEFNU>
     panelName = 'Protocols';
 
+    % Get scaling factor
+    InterfaceScaling = bst_get('InterfaceScaling');
     % Creation of the exploration tree
-    jTreeProtocols = java_create('org.brainstorm.tree.BstTree');
+    jTreeProtocols = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100);
     jTreeProtocols.setEditable(1);
     jTreeProtocols.setToggleClickCount(3);
     jTreeProtocols.setBorder(javax.swing.BorderFactory.createEmptyBorder(5,5,5,0));
     jTreeProtocols.setLoading(1);
+    jTreeProtocols.setRowHeight(round(20 * InterfaceScaling / 100));
     % Configure selection model
     jTreeSelModel = jTreeProtocols.getSelectionModel();
     jTreeSelModel.setSelectionMode(jTreeSelModel.DISCONTIGUOUS_TREE_SELECTION);

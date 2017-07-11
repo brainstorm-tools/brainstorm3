@@ -799,7 +799,7 @@ function DisplayFigurePopup(hFig, menuTitle)
     jPopup = java_create('javax.swing.JPopupMenu');
     % Menu title
     if ~isempty(menuTitle)
-        jTitle = gui_component('Label', jPopup, [], ['<HTML><B>' menuTitle '</B>'], [], [], [], []);
+        jTitle = gui_component('Label', jPopup, [], ['<HTML><B>' menuTitle '</B>']);
         jTitle.setBorder(javax.swing.BorderFactory.createEmptyBorder(5,35,0,0));
         jPopup.addSeparator();
     end
@@ -809,20 +809,20 @@ function DisplayFigurePopup(hFig, menuTitle)
     if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType, 'data')       
         % === View RECORDINGS ===
         if ~isempty(GlobalData.DataSet(iDS).DataFile)
-            jItem = gui_component('MenuItem', jPopup, [], 'Recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(GlobalData.DataSet(iDS).DataFile, GlobalData.DataSet(iDS).Figure(iFig).Id.Modality), []);
+            jItem = gui_component('MenuItem', jPopup, [], 'Recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(GlobalData.DataSet(iDS).DataFile, GlobalData.DataSet(iDS).Figure(iFig).Id.Modality));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_MASK));
         end
         % === View TOPOGRAPHY ===
-        jItem = gui_component('MenuItem', jPopup, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, TfFile, [], '2DSensorCap', [], 0), []);
+        jItem = gui_component('MenuItem', jPopup, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, TfFile, [], '2DSensorCap', [], 0));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
         jPopup.addSeparator();
     end
 
     % === VIEW SELECTED ===
-    jItem = gui_component('MenuItem', jPopup, [], 'View selected', IconLoader.ICON_SPECTRUM, [], @(h,ev)DisplaySelectedRows(hFig), []);
+    jItem = gui_component('MenuItem', jPopup, [], 'View selected', IconLoader.ICON_SPECTRUM, [], @(h,ev)DisplaySelectedRows(hFig));
     jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)); % ENTER  
     % === RESET SELECTION ===
-    jItem = gui_component('MenuItem', jPopup, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h,ev)bst_figures('SetSelectedRows',[]), []);
+    jItem = gui_component('MenuItem', jPopup, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h,ev)bst_figures('SetSelectedRows',[]));
     jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0)); % ESCAPE
     jPopup.addSeparator();
 
@@ -834,9 +834,9 @@ function DisplayFigurePopup(hFig, menuTitle)
             case 'Spectrum',    strMenu = 'Frequency selection';
             case 'TimeSeries',  strMenu = 'Time selection';
         end
-        jMenuSelection = gui_component('Menu', jPopup, [], strMenu, IconLoader.ICON_TS_SELECTION, [], [], []);
+        jMenuSelection = gui_component('Menu', jPopup, [], strMenu, IconLoader.ICON_TS_SELECTION);
         % Set selection
-        gui_component('MenuItem', jMenuSelection, [], 'Set selection manually...', IconLoader.ICON_TS_SELECTION, [], @(h,ev)SetFreqSelection(hFig), []);
+        gui_component('MenuItem', jMenuSelection, [], 'Set selection manually...', IconLoader.ICON_TS_SELECTION, [], @(h,ev)SetFreqSelection(hFig));
         % Get current time selection
         GraphSelection = getappdata(hFig, 'GraphSelection');
         isSelection = ~isempty(GraphSelection) && ~any(isinf(GraphSelection(:)));
@@ -844,73 +844,73 @@ function DisplayFigurePopup(hFig, menuTitle)
             jMenuSelection.addSeparator();
             % === EXPORT TO DATABASE ===
             if ~strcmpi(TfInfo.DisplayMode, 'TimeSeries')
-                gui_component('MenuItem', jMenuSelection, [], 'Export to database', IconLoader.ICON_SPECTRUM, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Selection'), []);
+                gui_component('MenuItem', jMenuSelection, [], 'Export to database', IconLoader.ICON_SPECTRUM, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Selection'));
             end
             % === EXPORT TO FILE ===
-            gui_component('MenuItem', jMenuSelection, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, [], 'Selection'), []);
+            gui_component('MenuItem', jMenuSelection, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, [], 'Selection'));
             % === EXPORT TO MATLAB ===
-            gui_component('MenuItem', jMenuSelection, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable', 'Selection'), []);
+            gui_component('MenuItem', jMenuSelection, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable', 'Selection'));
         end
         jPopup.addSeparator();
     end
     
     % ==== MENU: SNAPSHOT ====
-    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT, [], [], []);
+    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT);
         % === SAVE AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
         % === OPEN AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Figure'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Figure'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_MASK));
         jMenuSave.addSeparator();
         % === EXPORT TO DATABASE ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to database (time-freq)', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database'), []);
-        gui_component('MenuItem', jMenuSave, [], 'Export to database (matrix)',    IconLoader.ICON_MATRIX, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Matrix'), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to database (time-freq)', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database'));
+        gui_component('MenuItem', jMenuSave, [], 'Export to database (matrix)',    IconLoader.ICON_MATRIX, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Matrix'));
         % === EXPORT TO FILE ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, []), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, []));
         % === EXPORT TO MATLAB ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable'), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable'));
 
     % ==== MENU: FIGURE ====    
-    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL, [], [], []);
+    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
         % XGrid
         isXLog = strcmpi(get(hAxes, 'XScale'), 'log');
         if isXLog
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: linear', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'linear'), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: linear', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'linear'));
         else
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: log', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'log'), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: log', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'log'));
         end
         jMenuFigure.addSeparator();
         
         % Legend
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend));
         jItem.setSelected(TsInfo.ShowLegend);
         % XGrid
         isXGrid = strcmpi(get(hAxes(1), 'XGrid'), 'on');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleGrid(hAxes, hFig, 'X'), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleGrid(hAxes, hFig, 'X'));
         jItem.setSelected(isXGrid);
         % YGrid
         isYGrid = strcmpi(get(hAxes(1), 'YGrid'), 'on');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleGrid(hAxes, hFig, 'Y'), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleGrid(hAxes, hFig, 'Y'));
         jItem.setSelected(isYGrid);
         % Change background color
         jMenuFigure.addSeparator();
-        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig), []);
+        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
         jMenuFigure.addSeparator();
         
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
         jItem.setSelected(isMatlabCtrl);
         % Show plot edit toolbar
         isPlotEditToolbar = getappdata(hFig, 'isPlotEditToolbar');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig));
         jItem.setSelected(isPlotEditToolbar);
         % Dock figure
         isDocked = strcmpi(get(hFig, 'WindowStyle'), 'docked');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked));
         jItem.setSelected(isDocked);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, KeyEvent.CTRL_MASK)); 
            

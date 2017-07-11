@@ -19,7 +19,7 @@ function varargout = panel_dipinfo(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2017
 
 eval(macro_method);
 end
@@ -33,15 +33,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     import javax.swing.*;
     import org.brainstorm.icon.*;
     % CONSTANTS 
-    TEXT_HEIGHT = 20;
-    TEXT_WIDTH  = 40;
+    TEXT_HEIGHT = java_scaled('value', 20);
+    TEXT_WIDTH  = java_scaled('value', 40);
     jFontText = bst_get('Font', 11);
     % Create tools panel
     jPanelNew = gui_component('Panel');
 
     % ===== CREATE TOOLBAR =====
     jToolbar = gui_component('Toolbar', jPanelNew, BorderLayout.NORTH);
-    jToolbar.setPreferredSize(Dimension(100,25));
+    jToolbar.setPreferredSize(java_scaled('dimension', 100,25));
         jToolbar.add(JLabel('     '));
         % Button "View in MRI Viewer"
         gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
@@ -52,14 +52,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelMain = gui_river();
         % ===== Coordinates =====
         jPanelCoordinates = gui_river('Coordinates (millimeters)');
-        jPanelCoordinates.setPreferredSize(Dimension(240,125));
+        jPanelCoordinates.setPreferredSize(java_scaled('dimension', 240,125));
             % Coordinates
-            jPanelCoordinates.add(JLabel('  '));
-            jPanelCoordinates.add('tab', JLabel('       X'));
-            jPanelCoordinates.add('tab', JLabel('       Y'));
-            jPanelCoordinates.add('tab', JLabel('       Z'));
+            gui_component('label', jPanelCoordinates, 'tab', '  ');
+            gui_component('label', jPanelCoordinates, 'tab', '       X');
+            gui_component('label', jPanelCoordinates, 'tab', '       Y');
+            gui_component('label', jPanelCoordinates, 'tab', '       Z');
             % === MRI ===
-            jPanelCoordinates.add('br', JLabel('MRI: '));
+            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'MRI: '));
             jLabelCoordMriX = JLabel('-');
             jLabelCoordMriY = JLabel('-');
             jLabelCoordMriZ = JLabel('-');
@@ -76,7 +76,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jPanelCoordinates.add('tab', jLabelCoordMriY);
             jPanelCoordinates.add('tab', jLabelCoordMriZ);
             % === SCS ===
-            jPanelCoordinates.add('br', JLabel('SCS: '));
+            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'SCS: '));
             jLabelCoordScsX = JLabel('-');
             jLabelCoordScsY = JLabel('-');
             jLabelCoordScsZ = JLabel('-');
@@ -93,7 +93,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jPanelCoordinates.add('tab', jLabelCoordScsY);
             jPanelCoordinates.add('tab', jLabelCoordScsZ);
             % === MNI ===
-            jPanelCoordinates.add('br', JLabel('MNI: '));
+            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'MNI: '));
             jLabelCoordMniX = JLabel('-');
             jLabelCoordMniY = JLabel('-');
             jLabelCoordMniZ = JLabel('-');

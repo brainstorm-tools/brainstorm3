@@ -5,6 +5,7 @@ July 2017
 - GUI: Raw viewer: Edit current page size by resizing the cursor at the bottom
 - GUI: Raw viewer: Different mouse cursors for different actions
 - GUI: Raw viewer: Added buttons to zoom along channels
+- GUI: Interface scaling option (for adapting to high DPI screens)
 ---------------------------------------------------------------
 June 2017
 - IO: Added support for Blackrock .ns6 files

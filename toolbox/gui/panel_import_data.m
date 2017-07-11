@@ -93,14 +93,14 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             % Time range : start
             jPanelTime.add('br', JLabel('Time window: '));
             jTextTimeStart = JTextField('');
-            jTextTimeStart.setPreferredSize(Dimension(TIME_WIDTH, DEFAULT_HEIGHT));
+            jTextTimeStart.setPreferredSize(java_scaled('dimension', TIME_WIDTH, DEFAULT_HEIGHT));
             jTextTimeStart.setHorizontalAlignment(JTextField.RIGHT);
             jTextTimeStart.setFont(jFontText);
             jPanelTime.add(jTextTimeStart);
             % Time range : stop
             jPanelTime.add(JLabel('-'));
             jTextTimeStop = JTextField('');
-            jTextTimeStop.setPreferredSize(Dimension(TIME_WIDTH, DEFAULT_HEIGHT));
+            jTextTimeStop.setPreferredSize(java_scaled('dimension', TIME_WIDTH, DEFAULT_HEIGHT));
             jTextTimeStop.setHorizontalAlignment(JTextField.RIGHT);
             jTextTimeStop.setFont(jFontText);
             jPanelTime.add('tab', jTextTimeStop);
@@ -121,7 +121,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             jPanelTimeSplit.add(jCheckSplit);
             % Split block length
             jTextBlockLength = JTextField('4');
-            jTextBlockLength.setPreferredSize(Dimension(TIME_WIDTH, DEFAULT_HEIGHT));
+            jTextBlockLength.setPreferredSize(java_scaled('dimension', TIME_WIDTH, DEFAULT_HEIGHT));
             jTextBlockLength.setHorizontalAlignment(JTextField.RIGHT);
             jTextBlockLength.setFont(jFontText);
             java_setcb(jTextBlockLength, 'ActionPerformedCallback', @TimeValidationSplit_Callback, ...
@@ -135,7 +135,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             jPanelTimeSplit.add('br', jLabelNbBlocksTitle);
             % Nb samples / block
             jLabelNbBlocks = JLabel('5');
-            jLabelNbBlocks.setPreferredSize(Dimension(35, DEFAULT_HEIGHT));
+            jLabelNbBlocks.setPreferredSize(java_scaled('dimension', 35, DEFAULT_HEIGHT));
             jLabelNbBlocks.setHorizontalAlignment(JTextField.LEFT);
             jPanelTimeSplit.add('tab hfill', jLabelNbBlocks);
             jPanelData.add('br hfill', jPanelTimeSplit);
@@ -179,12 +179,12 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             jPanelEvents.add('hfill', JLabel(' '));
             % Load events file button
             jButtonLoadEvents = JButton(IconLoader.ICON_FOLDER_OPEN);
-            jButtonLoadEvents.setPreferredSize(Dimension(23,23));
+            jButtonLoadEvents.setPreferredSize(java_scaled('dimension', 23,23));
             jButtonLoadEvents.setEnabled(0);
             jPanelEvents.add(jButtonLoadEvents);
             % Save events file button
             jButtonSaveEvents = JButton(IconLoader.ICON_SAVE);
-            jButtonSaveEvents.setPreferredSize(Dimension(23,23));
+            jButtonSaveEvents.setPreferredSize(java_scaled('dimension', 23,23));
             jButtonSaveEvents.setEnabled(0);
             jPanelEvents.add(jButtonSaveEvents);
             % List events
@@ -197,7 +197,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             jPanelEvents.add('br', jLabelEpoch);
             jTextEventsTimeStart = JTextField('');
             jTextEventsTimeStart.setToolTipText('Imported time window around the event (0 represents the event).');
-            jTextEventsTimeStart.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+            jTextEventsTimeStart.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
             jTextEventsTimeStart.setHorizontalAlignment(JTextField.RIGHT);
             jTextEventsTimeStart.setFont(jFontText);
             jPanelEvents.add(jTextEventsTimeStart);
@@ -205,7 +205,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             jPanelEvents.add(JLabel(' - '));
             jTextEventsTimeStop = JTextField('');
             jTextEventsTimeStop.setToolTipText('Imported time window around the event (0 represents the event).');
-            jTextEventsTimeStop.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+            jTextEventsTimeStop.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
             jTextEventsTimeStop.setHorizontalAlignment(JTextField.RIGHT);
             jTextEventsTimeStop.setFont(jFontText);
             jPanelEvents.add(jTextEventsTimeStop);
@@ -323,14 +323,14 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         jPanelPreprocess.add(jRadioBaselineTime);
         % Noise Normalization : Baseline START
         jTextBlTimeStart = JTextField('');
-        jTextBlTimeStart.setPreferredSize(Dimension(TIME_WIDTH, DEFAULT_HEIGHT));
+        jTextBlTimeStart.setPreferredSize(java_scaled('dimension', TIME_WIDTH, DEFAULT_HEIGHT));
         jTextBlTimeStart.setHorizontalAlignment(JTextField.RIGHT);
         jTextBlTimeStart.setFont(jFontText);
         jPanelPreprocess.add('tab', jTextBlTimeStart);
         % Noise Normalization : Baseline STOP
         jPanelPreprocess.add(JLabel(' - '));
         jTextBlTimeStop = JTextField('');
-        jTextBlTimeStop.setPreferredSize(Dimension(TIME_WIDTH, DEFAULT_HEIGHT));
+        jTextBlTimeStop.setPreferredSize(java_scaled('dimension', TIME_WIDTH, DEFAULT_HEIGHT));
         jTextBlTimeStop.setHorizontalAlignment(JTextField.RIGHT);
         jTextBlTimeStop.setFont(jFontText);
         jPanelPreprocess.add(jTextBlTimeStop);
@@ -345,7 +345,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         jPanelPreprocess.add('p', jCheckResample);
         % New sampling rate 
         jTextSampleRate = JTextField('1000');
-        jTextSampleRate.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+        jTextSampleRate.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
         jTextSampleRate.setHorizontalAlignment(JTextField.RIGHT);
         jTextSampleRate.setFont(jFontText);
         java_setcb(jTextSampleRate, 'ActionPerformedCallback', @SampleRateValidation_Callback, ...

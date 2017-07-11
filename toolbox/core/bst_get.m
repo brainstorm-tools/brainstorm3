@@ -143,6 +143,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('ExpertMode')            : {0,1} - If 1, show advanced options that regular user do not see
 %    - bst_get('DisplayGFP')            : {0,1} - If 1, the GFP is displayed on all the time series figures
 %    - bst_get('DisableOpenGL')         : {0,1,2} - If 1, do not use OpenGL renderer; if 2, use software OpenGL
+%    - bst_get('InterfaceScaling')      : {100,125,150,175,200} - Scales the Brainstorm GUI by a fixed factor
 %    - bst_get('GraphicsSmoothing')     : {0,1} - If 1, uses the graphics smoothing (Matlab >= 2014b)
 %    - bst_get('JOGLVersion')           : {0,1,2}, Detect the current version of JOGL available in Matlab
 %    - bst_get('DefaultFormats')        : Default formats for importing/exporting data, channels, ... (last used)
@@ -2446,6 +2447,13 @@ switch contextName
             argout1 = 0;
         end
 
+    case 'InterfaceScaling'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'InterfaceScaling')
+            argout1 = GlobalData.Preferences.InterfaceScaling;
+        else
+            argout1 = 100;
+        end
+        
     case 'JOGLVersion'
         % If JOGL1 is available
         if exist('javax.media.opengl.GLCanvas', 'class')
@@ -3222,18 +3230,30 @@ switch contextName
         end
         
     case 'Font'
-        fontSize = varargin{2};
-        fontTypes = {};
-        foundFont = 0;
+        % Default font size
+        if (nargin < 2)
+            if strncmp(computer,'MAC',3)
+                fontSize = 11.5;
+            else
+                fontSize = 11;
+            end
+        % Font size in input
+        else
+            fontSize = varargin{2};
+        end
+        % Adjust for interface scaling
+        fontSize = fontSize * bst_get('InterfaceScaling') / 100;
         
+        % Font types
+        fontTypes = {};
         if (nargin >= 3)
             fontTypes{end + 1} = varargin{3};
         end
-        
         fontTypes{end + 1} = 'Arial';  % Default font
         fontTypes{end + 1} = 'Liberation Sans';  % Free Arial substitute
         
         % Check for cached font
+        foundFont = 0;
         for iFont = 1 : length(fontTypes)
             strCache = strrep(sprintf('%s%d', fontTypes{iFont}, round(fontSize*100)), ' ', '_');
             if ~isempty(GlobalData) && isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'FontCache') && isfield(GlobalData.Program.FontCache, strCache)

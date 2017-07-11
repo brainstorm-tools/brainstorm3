@@ -91,7 +91,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
         jPanelOrient.add(jLabelLoose);
         % Amount of looseness (Text)
         jTextLoose = JTextField(num2str(OPTIONS.loose));
-        jTextLoose.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+        jTextLoose.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
         jTextLoose.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
         jPanelOrient.add(jTextLoose);
         % Source orientation : Unconstrained
@@ -118,7 +118,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
         jPanelSignal.add(JLabel('Signal-to-noise ratio (SNR): '));
         % Estimated SNR (Text)
         jTextSnr = JTextField(num2str(OPTIONS.SNR));
-        jTextSnr.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+        jTextSnr.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
         jTextSnr.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
         jPanelSignal.add('tab', jTextSnr);
         % Use PCA whitening
@@ -150,7 +150,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
             jPanelNoisecov.add('br', jLabelMagreg);
             % Text
             jTextMagreg = JTextField(num2str(OPTIONS.magreg));
-            jTextMagreg.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+            jTextMagreg.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
             jTextMagreg.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
             jPanelNoisecov.add('tab', jTextMagreg);
         else
@@ -165,7 +165,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
             jPanelNoisecov.add('br', jLabelGradreg);
             % Text
             jTextGradreg = JTextField(num2str(OPTIONS.gradreg));
-            jTextGradreg.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+            jTextGradreg.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
             jTextGradreg.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
             jPanelNoisecov.add('tab', jTextGradreg);
         else
@@ -180,7 +180,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
             jPanelNoisecov.add('br', jLabelMegreg);
             % Text
             jTextMegreg = JTextField(num2str(OPTIONS.gradreg));
-            jTextMegreg.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+            jTextMegreg.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
             jTextMegreg.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
             jPanelNoisecov.add('tab', jTextMegreg);
         else
@@ -195,7 +195,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
             jPanelNoisecov.add('br', jLabelEegreg);
             % Text
             jTextEegreg = JTextField(num2str(OPTIONS.eegreg));
-            jTextEegreg.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+            jTextEegreg.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
             jTextEegreg.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
             jPanelNoisecov.add('tab', jTextEegreg);
         else
@@ -210,7 +210,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
             jPanelNoisecov.add('br', jLabelEcogreg);
             % Text
             jTextEcogreg = JTextField(num2str(OPTIONS.ecogreg));
-            jTextEcogreg.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+            jTextEcogreg.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
             jTextEcogreg.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
             jPanelNoisecov.add('tab', jTextEcogreg);
         else
@@ -224,7 +224,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
             jPanelNoisecov.add('br', jLabelSeegreg);
             % Text
             jTextSeegreg = JTextField(num2str(OPTIONS.seegreg));
-            jTextSeegreg.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+            jTextSeegreg.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
             jTextSeegreg.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
             jPanelNoisecov.add('tab', jTextSeegreg);
         else
@@ -246,7 +246,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
         jPanelDepth.add('br', jLabelWeightexp);
         % weightexp (Text)
         jTextWeightexp = JTextField(num2str(OPTIONS.weightexp));
-        jTextWeightexp.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+        jTextWeightexp.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
         jTextWeightexp.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
         jPanelDepth.add('tab', jTextWeightexp);
 
@@ -255,7 +255,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
         jPanelDepth.add('br', jLabelWeightlimit);
         % weightexp (Text)
         jTextWeightlimit = JTextField(num2str(OPTIONS.weightlimit));
-        jTextWeightlimit.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+        jTextWeightlimit.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
         jTextWeightlimit.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
         jPanelDepth.add('tab', jTextWeightlimit);
     jPanelNew.add('br hfill', jPanelDepth);

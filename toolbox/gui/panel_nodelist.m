@@ -33,7 +33,7 @@ function varargout = panel_nodelist( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2013
+% Authors: Francois Tadel, 2010-2017
 
 eval(macro_method);
 end
@@ -48,6 +48,8 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
     if ~isempty(nodeList)
         error(['Nodelist "' nodelistName '" already exists.']);
     end
+    % Get scaling factor
+    InterfaceScaling = bst_get('InterfaceScaling');
     
     % Create panel
     jPanel = gui_component('Panel');
@@ -55,13 +57,13 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
     switch(listType)
         case 'tree'
             % Create border
-            jBorder = BorderFactory.createTitledBorder(nodelistComment);
-            jBorder.setTitleFont(bst_get('Font', 11));
+            jBorder = java_scaled('titledborder', nodelistComment);
             jPanel.setBorder(jBorder);
             % Create tree
-            jTree = java_create('org.brainstorm.tree.BstTree');
+            jTree = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100);
             jTree.setBorder(BorderFactory.createEmptyBorder(5,5,5,0));
             jTree.setEditable(0);
+            jTree.setRowHeight(round(20 * InterfaceScaling / 100));
             % Configure selection model
             jTreeSelModel = jTree.getSelectionModel();
             jTreeSelModel.setSelectionMode(jTreeSelModel.DISCONTIGUOUS_TREE_SELECTION);

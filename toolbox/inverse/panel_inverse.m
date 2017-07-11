@@ -48,7 +48,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
     jPanelTitle = gui_river([1,1], [0,6,6,6]);
         jPanelTitle.add('br', JLabel('Comment:'));
         jTextComment = JTextField('');
-        jTextComment.setPreferredSize(Dimension(HFILLED_WIDTH, DEFAULT_HEIGHT));
+        jTextComment.setPreferredSize(java_scaled('dimension', HFILLED_WIDTH, DEFAULT_HEIGHT));
         jPanelTitle.add('hfill', jTextComment);
     jPanelNew.add(jPanelTitle);
     

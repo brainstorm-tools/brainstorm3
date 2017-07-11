@@ -215,7 +215,7 @@ switch(lower(msgType))
                 % Box size
                 isLongText = (length(buttonList{i}) > 10);
                 if ~isLongText
-                    jCheck(i).setPreferredSize(java.awt.Dimension(80, 20));
+                    jCheck(i).setPreferredSize(java_scaled('dimension', 80, 20));
                 end
                 % Default value
                 if ~isempty(defaultVal)
@@ -282,7 +282,7 @@ switch(lower(msgType))
                 % Box size
                 isLongText = (length(buttonList{i}) > 10);
                 if ~isLongText
-                    jRadio(i).setPreferredSize(java.awt.Dimension(80, 20));
+                    jRadio(i).setPreferredSize(java_scaled('dimension', 80, 20));
                 end
                 % Default value
                 if ~isempty(defaultInd) && (i == defaultInd)

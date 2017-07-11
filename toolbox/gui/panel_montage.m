@@ -46,26 +46,27 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % PANEL: left panel (list of available montages)
     jPanelMontages = gui_component('Panel');
     jPanelMontages.setBorder(BorderFactory.createCompoundBorder(...
-                             BorderFactory.createTitledBorder('Montages'), ...
+                             java_scaled('titledborder', 'Montages'), ...
                              BorderFactory.createEmptyBorder(3, 10, 10, 10)));
         % ===== TOOLBAR =====
         jToolbar = gui_component('Toolbar', jPanelMontages, BorderLayout.NORTH);
-        jToolbar.setPreferredSize(Dimension(100,25));
-            TB_SIZE = Dimension(25,25);
-            jButtonNew      = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_MONTAGE_MENU, Dimension(35,25)}, 'New montage', []);
-            jButtonLoadFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_FOLDER_OPEN, TB_SIZE}, 'Load montage', []);
-            jButtonSaveFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SAVE, TB_SIZE}, 'Save montage', []);
+        jToolbar.setPreferredSize(java_scaled('dimension', 100,25));
+            TB_SIZE = java_scaled('dimension', 25,25);
+            jButtonNew      = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_MONTAGE_MENU, java_scaled('dimension', 35,25)}, 'New montage');
+            jButtonLoadFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_FOLDER_OPEN, TB_SIZE}, 'Load montage');
+            jButtonSaveFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SAVE, TB_SIZE}, 'Save montage');
             jToolbar.addSeparator();
-            jButtonAll = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SCOUT_ALL, TB_SIZE}, 'Display all the montages', []);
+            jButtonAll = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SCOUT_ALL, TB_SIZE}, 'Display all the montages');
         % LIST: Create list
         jListMontages = JList({' '});
+            jListMontages.setFont(bst_get('Font'));
             jListMontages.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
             java_setcb(jListMontages, 'ValueChangedCallback', [], ...
                                       'KeyTypedCallback',     [], ...
                                       'MouseClickedCallback', []);
             % Create scroll panel
             jScrollPanelSel = JScrollPane(jListMontages);
-            jScrollPanelSel.setPreferredSize(Dimension(150,200));
+            jScrollPanelSel.setPreferredSize(java_scaled('dimension', 150,200));
         jPanelMontages.add(jScrollPanelSel, BorderLayout.CENTER);
     jPanelNew.add(jPanelMontages, BorderLayout.WEST);
     
@@ -74,12 +75,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % === SENSOR SELECTION ===
         jPanelSelection = gui_component('Panel');
         jPanelSelection.setBorder(BorderFactory.createCompoundBorder(...
-                                  BorderFactory.createTitledBorder('Channel selection'), ...
+                                  java_scaled('titledborder', 'Channel selection'), ...
                                   BorderFactory.createEmptyBorder(10, 10, 10, 10)));
         % LABEL: Title
         jPanelSelection.add(JLabel('<HTML><DIV style="height:15px;">Available sensors:</DIV>'), BorderLayout.NORTH);
         % LIST: Create list (display labels of all clusters)
         jListSensors = JList({'Sensor #1', 'Sensor #2', 'Sensor #3','Sensor #4', 'Sensor #5', 'Sensor #6','Sensor #7', 'Sensor #8', 'Sensor #9','Sensor #10', 'Sensor #11', 'Sensor #12'});
+            jListSensors.setFont(bst_get('Font'));
             jListSensors.setLayoutOrientation(jListSensors.VERTICAL_WRAP);
             jListSensors.setVisibleRowCount(-1);
             jListSensors.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -90,11 +92,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % === TEXT VIEWER ===
         jPanelViewer = gui_component('Panel');
         jPanelViewer.setBorder(BorderFactory.createCompoundBorder(...
-                             BorderFactory.createTitledBorder('Channel selection [Read-only]'), ...
+                             java_scaled('titledborder', 'Channel selection [Read-only]'), ...
                              BorderFactory.createEmptyBorder(10, 10, 10, 10)));
         jTextViewer = JTextArea(6, 12);
-        jTextViewer.setFont(Font('Monospaced', Font.PLAIN, 11));
         jTextViewer.setEditable(0);
+        % Get font size
+        fontSize = round(11 * bst_get('InterfaceScaling') / 100);
+        jTextViewer.setFont(Font('Monospaced', Font.PLAIN, fontSize));
         % Create scroll panel
         jScrollPanel = JScrollPane(jTextViewer);
         jPanelViewer.add(jScrollPanel, BorderLayout.CENTER);
@@ -102,17 +106,17 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % === TEXT EDITOR ===
         jPanelText = gui_component('Panel');
         jPanelText.setBorder(BorderFactory.createCompoundBorder(...
-                             BorderFactory.createTitledBorder('Custom montage'), ...
+                             java_scaled('titledborder', 'Custom montage'), ...
                              BorderFactory.createEmptyBorder(10, 10, 10, 10)));
         % LABEL: Title
         strHelp = ['Examples:<BR>' ...
             '  Cz-C4 : Cz,-C4          % Difference Cz-C4<BR>' ...
             '  MC    : 0.5*M1, 0.5*M2  % Average of M1 and M2<BR>' ...
             '  EOG|00FF00 : EOG        % Display EOG in green<BR>'];
-        jPanelText.add(JLabel(['<HTML><PRE>' strHelp '</PRE>']), BorderLayout.NORTH);
+        gui_component('label', jPanelText, BorderLayout.NORTH, ['<HTML><PRE>' strHelp '</PRE>']);
         % TEXT: Create text editor
         jTextMontage = JTextArea(6, 12);
-        jTextMontage.setFont(Font('Monospaced', Font.PLAIN, 11));
+        jTextMontage.setFont(Font('Monospaced', Font.PLAIN, fontSize));
         % Create scroll panel
         jScrollPanel = JScrollPane(jTextMontage);
         jPanelText.add(jScrollPanel, BorderLayout.CENTER);
@@ -120,29 +124,30 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % === MATRIX EDITOR ===
         jPanelMatrix = gui_component('Panel');
         jPanelMatrix.setBorder(BorderFactory.createCompoundBorder(...
-                             BorderFactory.createTitledBorder('Matrix viewer'), ...
+                             java_scaled('titledborder', 'Matrix viewer'), ...
                              BorderFactory.createEmptyBorder(10, 10, 10, 10)));
         % Create JTable
         jTableMatrix = JTable();
+        jTableMatrix.setFont(bst_get('Font'));
         %jTableMatrix.setRowHeight(22);
         jTableMatrix.setEnabled(0);
         jTableMatrix.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
         jTableMatrix.getTableHeader.setReorderingAllowed(0);
-        jTableMatrix.setPreferredScrollableViewportSize(Dimension(5,5));
+        jTableMatrix.setPreferredScrollableViewportSize(java_scaled('dimension', 5,5));
         % Create scroll panel
         jScrollPanel = JScrollPane(jTableMatrix);
         jScrollPanel.setBorder([]);
         jPanelMatrix.add(jScrollPanel, BorderLayout.CENTER);          
         
-    jPanelRight.setPreferredSize(Dimension(400,550));
+    jPanelRight.setPreferredSize(java_scaled('dimension', 400,550));
     % PANEL: Selections buttons
     jPanelBottom = gui_component('Panel');
     jPanelBottomLeft = gui_river([10 0], [10 10 0 10]);
     jPanelBottomRight = gui_river([10 0], [10 10 0 10]);
-        jButtonValidate = gui_component('button', jPanelBottomLeft,  [], 'Validate', [], [], [], []);
+        jButtonValidate = gui_component('button', jPanelBottomLeft,  [], 'Validate');
         jButtonValidate.setVisible(0);
-        gui_component('button', jPanelBottomRight, [], 'Cancel', [], [], @(h,ev)ButtonCancel_Callback(), []);
-        jButtonSave = gui_component('button', jPanelBottomRight, [], 'Save', [], [], [], []);
+        gui_component('button', jPanelBottomRight, [], 'Cancel', [], [], @(h,ev)ButtonCancel_Callback());
+        jButtonSave = gui_component('button', jPanelBottomRight, [], 'Save');
     jPanelBottom.add(jPanelBottomLeft, BorderLayout.WEST);
     jPanelBottom.add(jPanelBottomRight, BorderLayout.EAST);
     jPanelRight.add(jPanelBottom, BorderLayout.SOUTH);
@@ -1414,7 +1419,7 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
             if isfield(subMenus, stdName)
                 jSubMenu = subMenus.(stdName);
             else
-                jSubMenu = gui_component('Menu', jMenu, [], ['<HTML><I>' GroupName '</I>'], [], [], [], []);
+                jSubMenu = gui_component('Menu', jMenu, [], ['<HTML><I>' GroupName '</I>']);
                 subMenus.(stdName) = jSubMenu;
             end
         else
@@ -1443,17 +1448,17 @@ function CreateMontageMenu(jButton, hFig)
     end
     % Create new montages
     if isempty(hFig) || ~strcmpi(TsInfo.DisplayMode, 'topography')
-        gui_component('MenuItem', jPopup, [], 'New channel selection', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('selection', [], hFig), []);
+        gui_component('MenuItem', jPopup, [], 'New channel selection', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('selection', [], hFig));
     end
     if ~isempty(hFig) 
-        gui_component('MenuItem', jPopup, [], 'New re-referencing montage (single ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('ref', [], hFig), []);
-        gui_component('MenuItem', jPopup, [], 'New re-referencing montage (linked ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('linkref', [], hFig), []);
+        gui_component('MenuItem', jPopup, [], 'New re-referencing montage (single ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('ref', [], hFig));
+        gui_component('MenuItem', jPopup, [], 'New re-referencing montage (linked ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('linkref', [], hFig));
     end
-    gui_component('MenuItem', jPopup, [], 'New custom montage',  IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('text', [], hFig), []);
+    gui_component('MenuItem', jPopup, [], 'New custom montage',  IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('text', [], hFig));
     jPopup.addSeparator();
-    gui_component('MenuItem', jPopup, [], 'Duplicate montage', IconLoader.ICON_COPY, [], @(h,ev)ButtonDuplicate_Callback(hFig), []);
-    gui_component('MenuItem', jPopup, [], 'Rename montage', IconLoader.ICON_EDIT, [], @(h,ev)ButtonRename_Callback(hFig), []);
-    gui_component('MenuItem', jPopup, [], 'Delete montage', IconLoader.ICON_DELETE, [], @(h,ev)ButtonDelete_Callback(hFig), []);
+    gui_component('MenuItem', jPopup, [], 'Duplicate montage', IconLoader.ICON_COPY, [], @(h,ev)ButtonDuplicate_Callback(hFig));
+    gui_component('MenuItem', jPopup, [], 'Rename montage', IconLoader.ICON_EDIT, [], @(h,ev)ButtonRename_Callback(hFig));
+    gui_component('MenuItem', jPopup, [], 'Delete montage', IconLoader.ICON_DELETE, [], @(h,ev)ButtonDelete_Callback(hFig));
     % Show popup menu
     jPopup.show(jButton, 0, jButton.getHeight());
 end

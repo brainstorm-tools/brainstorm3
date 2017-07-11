@@ -581,7 +581,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     if isempty(sColormap)
         return
     end
-    
+
     % Parent
     if isPermanent
         % Left panel
@@ -599,7 +599,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         % Output at the beginning: Left
         jMenuColormap = jMenuLeft;
     else
-        jMenuColormap = gui_component('Menu', jMenu, [], 'Colormap', [], [], [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], 'Colormap');
     end
     
     % Colormap list: Standard
@@ -636,10 +636,10 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     end
     % Colormap list: Add new colormap
     CreateSeparator(jMenuColormap, isPermanent);
-    gui_component('MenuItem', jMenuColormap, [], 'New...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)NewCustomColormap(ColormapType), []);
-    gui_component('MenuItem', jMenuColormap, [], 'Load...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)LoadColormap(ColormapType), []);
+    gui_component('MenuItem', jMenuColormap, [], 'New...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)NewCustomColormap(ColormapType));
+    gui_component('MenuItem', jMenuColormap, [], 'Load...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)LoadColormap(ColormapType));
     % Colormap list: Delete selected colormap
-    jMenuDelete = gui_component('MenuItem', jMenuColormap, [], 'Delete', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)DeleteCustomColormap(ColormapType), []);
+    jMenuDelete = gui_component('MenuItem', jMenuColormap, [], 'Delete', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)DeleteCustomColormap(ColormapType));
     if ~isCustom
         jMenuDelete.setEnabled(0);
     end
@@ -653,13 +653,13 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     % Not for anatomy or time colormap
     if ~strcmpi(ColormapType, 'Anatomy') && ~strcmpi(ColormapType, 'Time') && ~strcmpi(ColormapType, 'Overlay')
         % Options : Absolute values
-        jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Absolute values', [], [], @(h,ev)SetColormapAbsolute(ColormapType, ev.getSource.isSelected()), []);
+        jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Absolute values', [], [], @(h,ev)SetColormapAbsolute(ColormapType, ev.getSource.isSelected()));
         jCheck.setSelected(sColormap.isAbsoluteValues);
         CreateSeparator(jMenu, isPermanent);
         % Options : Maximum
-        jRadioGlobal = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Global',    [], [], @(h,ev)SetMaxMode(ColormapType, 'global', DisplayUnits), []);
-        jRadioLocal  = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Local',     [], [], @(h,ev)SetMaxMode(ColormapType, 'local', DisplayUnits), []);
-        jRadioCustom = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Custom...', [], [], @(h,ev)SetMaxMode(ColormapType, 'custom', DisplayUnits), []);
+        jRadioGlobal = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Global',    [], [], @(h,ev)SetMaxMode(ColormapType, 'global', DisplayUnits));
+        jRadioLocal  = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Local',     [], [], @(h,ev)SetMaxMode(ColormapType, 'local', DisplayUnits));
+        jRadioCustom = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Custom...', [], [], @(h,ev)SetMaxMode(ColormapType, 'custom', DisplayUnits));
         switch lower(sColormap.MaxMode)
             case 'local',  jRadioLocal.setSelected(1);
             case 'global', jRadioGlobal.setSelected(1);
@@ -676,9 +676,9 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         else
             strRange = 'Range: [-max,max]';
         end
-        jRadio1 = gui_component('RadioMenuItem', jMenu, [], strRange, [], [], @(h,ev)SetColormapRealMin(ColormapType, 0), []);
+        jRadio1 = gui_component('RadioMenuItem', jMenu, [], strRange, [], [], @(h,ev)SetColormapRealMin(ColormapType, 0));
         jRadio1.setSelected(~sColormap.isRealMin);
-        jRadio2 = gui_component('RadioMenuItem', jMenu, [], 'Range: [min,max]', [], [], @(h,ev)SetColormapRealMin(ColormapType, 1), []);
+        jRadio2 = gui_component('RadioMenuItem', jMenu, [], 'Range: [min,max]', [], [], @(h,ev)SetColormapRealMin(ColormapType, 1));
         jRadio2.setSelected(sColormap.isRealMin);
         jButtonGroup = ButtonGroup();
         jButtonGroup.add(jRadio1);
@@ -705,7 +705,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
     jMenu.add(jPanel);
     % Title
-    jLabel = JLabel('Contrast:  ');
+    jLabel = gui_component('label', [], '', 'Contrast:  ');
     jPanel.add(jLabel, BorderLayout.CENTER);
     % Spin button
     val = round(sColormap.Contrast * 100);
@@ -723,7 +723,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
     jMenu.add(jPanel);
     % Title
-    jLabel = JLabel('Brightness:  ');
+    jLabel = gui_component('label', [], '', 'Brightness:  ');
     jPanel.add(jLabel, BorderLayout.WEST);
     % Spin button
     val = -round(sColormap.Brightness * 100);
@@ -736,15 +736,20 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
 
     % Display/hide colorbar
     CreateSeparator(jMenu, isPermanent);
-    jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()), []);
+    jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
     jCheck.setSelected(sColormap.DisplayColorbar);
     % Open menu in a new window
     if ~isPermanent
-        gui_component('MenuItem', jMenu, [], 'Permanent menu', [], [], @(h,ev)CreatePermanentMenu(ColormapType), []);
+        gui_component('MenuItem', jMenu, [], 'Permanent menu', [], [], @(h,ev)CreatePermanentMenu(ColormapType));
     end
     CreateSeparator(jMenu, isPermanent);
     % Display/hide colorbar
-    gui_component('MenuItem', jMenu, [], 'Restore defaults', [], [], @(h,ev)RestoreDefaults(ColormapType), []);
+    gui_component('MenuItem', jMenu, [], 'Restore defaults', [], [], @(h,ev)RestoreDefaults(ColormapType));
+    
+    drawnow;
+    jMenu.getParent().pack();
+    jMenu.getParent().invalidate();
+    jMenu.getParent().repaint();
 end
 
 
@@ -786,7 +791,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
     end
     % Create all menus
     if isempty(hFig) || ismember('anatomy', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Anatomy'], IconLoader.ICON_COLORMAP_ANATOMY, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Anatomy'], IconLoader.ICON_COLORMAP_ANATOMY);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'anatomy', DisplayUnits));
         else
@@ -794,7 +799,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('eeg', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'EEG Recordings'], IconLoader.ICON_COLORMAP_RECORDINGS, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'EEG Recordings'], IconLoader.ICON_COLORMAP_RECORDINGS);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'eeg', DisplayUnits));
         else
@@ -802,7 +807,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('meg', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'MEG Recordings'], IconLoader.ICON_COLORMAP_RECORDINGS, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'MEG Recordings'], IconLoader.ICON_COLORMAP_RECORDINGS);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'meg', DisplayUnits));
         else
@@ -810,7 +815,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('source', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Sources'], IconLoader.ICON_COLORMAP_SOURCES, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Sources'], IconLoader.ICON_COLORMAP_SOURCES);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'source', DisplayUnits));
         else
@@ -818,7 +823,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('stat1', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Stat 1'], IconLoader.ICON_COLORMAP_STAT, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Stat 1'], IconLoader.ICON_COLORMAP_STAT);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'stat1', DisplayUnits));
         else
@@ -826,7 +831,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('stat2', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Stat 2'], IconLoader.ICON_COLORMAP_STAT, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Stat 2'], IconLoader.ICON_COLORMAP_STAT);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'stat2', DisplayUnits));
         else
@@ -834,7 +839,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('time', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Time'], IconLoader.ICON_COLORMAP_TIME, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Time'], IconLoader.ICON_COLORMAP_TIME);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'time', DisplayUnits));
         else
@@ -842,7 +847,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('timefreq', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Timefreq'], IconLoader.ICON_COLORMAP_TIMEFREQ, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Timefreq'], IconLoader.ICON_COLORMAP_TIMEFREQ);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'timefreq', DisplayUnits));
         else
@@ -850,7 +855,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('connect1', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Connect 1xN'], IconLoader.ICON_COLORMAP_CONNECT, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Connect 1xN'], IconLoader.ICON_COLORMAP_CONNECT);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'connect1', DisplayUnits));
         else
@@ -858,7 +863,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('connectn', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Connect NxN'], IconLoader.ICON_COLORMAP_CONNECT, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Connect NxN'], IconLoader.ICON_COLORMAP_CONNECT);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'connectn', DisplayUnits));
         else
@@ -866,7 +871,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('pac', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'PAC'], IconLoader.ICON_COLORMAP_PAC, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'PAC'], IconLoader.ICON_COLORMAP_PAC);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'pac', DisplayUnits));
         else
@@ -874,7 +879,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('image', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Image'], IconLoader.ICON_COLORMAP_TIMEFREQ, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Image'], IconLoader.ICON_COLORMAP_TIMEFREQ);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'image', DisplayUnits));
         else

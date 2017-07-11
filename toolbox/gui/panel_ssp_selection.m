@@ -35,6 +35,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     import org.brainstorm.icon.*;
     import org.brainstorm.list.*;
     panelName = 'EditSsp';
+    % Font size for the lists
+    fontSize = round(11 * bst_get('InterfaceScaling') / 100);
     
     % Create main panel
     jPanelNew = gui_component('Panel');
@@ -44,12 +46,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelLeft = gui_component('Panel');
     jPanelCat = gui_component('Panel');
     jPanelCat.setBorder(BorderFactory.createCompoundBorder(...
-                        BorderFactory.createTitledBorder('Projector categories'), ...
+                        java_scaled('titledborder', 'Projector categories'), ...
                         BorderFactory.createEmptyBorder(3, 6, 6, 6)));
         % ===== TOOLBAR =====
         jToolbar = gui_component('Toolbar', jPanelCat, BorderLayout.NORTH);
-        jToolbar.setPreferredSize(Dimension(100,25));
-            TB_SIZE = Dimension(25,25);
+        jToolbar.setPreferredSize(java_scaled('dimension', 100,25));
+            TB_SIZE = java_scaled('dimension', 25,25);
             gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_FOLDER_OPEN, TB_SIZE}, 'Load projectors', @(h,ev)bst_call(@ButtonLoadFile_Callback));
             gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SAVE, TB_SIZE}, 'Save active projectors', @(h,ev)bst_call(@ButtonSaveFile_Callback));
             jToolbar.addSeparator();
@@ -62,13 +64,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % LIST: Create list
         jListCat = JList([BstListItem('', '', 'Projector 1', int32(0)), BstListItem('', '', 'Projector 2', int32(1))]);
             jListCat.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-            jListCat.setCellRenderer(BstCheckListRenderer());
+            jListCat.setCellRenderer(BstCheckListRenderer(fontSize));
             java_setcb(jListCat, 'MouseClickedCallback', @ListCatClick_Callback, ...
                                  'KeyTypedCallback',     @ListCatKey_Callback, ...
                                  'ValueChangedCallback', []);
             % Create scroll panel
             jScrollPanelCat = JScrollPane(jListCat);
-            jScrollPanelCat.setPreferredSize(Dimension(205,200));
+            jScrollPanelCat.setPreferredSize(java_scaled('dimension', 205,200));
         jPanelCat.add(jScrollPanelCat, BorderLayout.CENTER);
     jPanelLeft.add(jPanelCat, BorderLayout.CENTER)
     jPanelNew.add(jPanelLeft, BorderLayout.CENTER);
@@ -77,30 +79,26 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelRight = gui_component('Panel');
     jPanelComp = gui_component('Panel');
     jPanelComp.setBorder(BorderFactory.createCompoundBorder(...
-                            BorderFactory.createTitledBorder('Projector components'), ...
+                            java_scaled('titledborder', 'Projector components'), ...
                             BorderFactory.createEmptyBorder(6, 6, 6, 6)));
         % LABEL: Title
-        jPanelComp.add(JLabel('<HTML><DIV style="height:15px;">Components to remove:</DIV>'), BorderLayout.NORTH);
+        gui_component('label', jPanelComp, BorderLayout.NORTH, '<HTML><DIV style="height:15px;">Components to remove:</DIV>');
         % LIST: Create list 
         jListComp = JList([BstListItem('', '', 'Component 1', int32(0)), BstListItem('', '', 'Component 2', int32(1))]);
-            jListComp.setCellRenderer(BstCheckListRenderer());
+            jListComp.setCellRenderer(BstCheckListRenderer(fontSize));
             java_setcb(jListComp, 'MouseClickedCallback', @ListCompClick_Callback);
             % Create scroll panel
             jScrollPanelComp = JScrollPane(jListComp);
-            jScrollPanelComp.setPreferredSize(Dimension(165,200));
+            jScrollPanelComp.setPreferredSize(java_scaled('dimension', 165,200));
         jPanelComp.add(jScrollPanelComp, BorderLayout.CENTER);
     jPanelRight.add(jPanelComp, BorderLayout.CENTER);
     
     % PANEL: Selections buttons
     jPanelValidation = gui_river([10 0], [6 10 0 10]);
         % Cancel
-        jButtonCancel = JButton('Cancel');
-        java_setcb(jButtonCancel, 'ActionPerformedCallback', @ButtonCancel_Callback);
-        jPanelValidation.add('center', jButtonCancel);
+        gui_component('button', jPanelValidation, 'center', 'Cancel', [], [], @ButtonCancel_Callback);
         % Save
-        jButtonSave = JButton('Save');
-        java_setcb(jButtonSave, 'ActionPerformedCallback', @ButtonSave_Callback);
-        jPanelValidation.add(jButtonSave);
+        gui_component('button', jPanelValidation, '', 'Save', [], [], @ButtonSave_Callback);
     jPanelLeft.add(jPanelValidation, BorderLayout.SOUTH);
     jPanelNew.add(jPanelRight, BorderLayout.EAST);
     

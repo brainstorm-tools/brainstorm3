@@ -158,7 +158,6 @@ end
 function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % Constants
     panelName = 'Digitize';
-    largeFontSize = 20;
     % Java initializations
     import java.awt.*;
     import javax.swing.*;
@@ -167,7 +166,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     import org.brainstorm.icon.*;
     % Create new panel
     jPanelNew = gui_component('Panel');
-
+    % Font size for the lists
+    largeFontSize = round(20 * bst_get('InterfaceScaling') / 100);
+    
     % ===== MENU BAR =====
     jMenuBar = java_create('javax.swing.JMenuBar');
     jPanelNew.add(jMenuBar, BorderLayout.NORTH);
@@ -283,10 +284,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                                
     % ===== Coordinate Display Panel =====
     jPanelDisplay = gui_component('Panel');
-    jPanelDisplay.setBorder(BorderFactory.createTitledBorder('Coordinates (cm)'));
+    jPanelDisplay.setBorder(java_scaled('titledborder', 'Coordinates (cm)'));
         % List of coordinates
-        jListCoord = JList();
-        jListCoord.setCellRenderer(BstStringListRenderer);   
+        jListCoord = JList(largeFontSize);
+        jListCoord.setCellRenderer(BstStringListRenderer(fontSize));
         % Size
         jPanelScrollList = JScrollPane();
         jPanelScrollList.getLayout.getViewport.setView(jListCoord);

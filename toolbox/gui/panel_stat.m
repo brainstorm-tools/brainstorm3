@@ -35,8 +35,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     import java.awt.*;
     import javax.swing.*;
     import org.brainstorm.icon.*;
-    TB_DIM = Dimension(25,25);
-
+    TB_DIM = java_scaled('dimension', 25,25);
+    % Font size for the lists
+    fontSize = round(11 * bst_get('InterfaceScaling') / 100);
+    
     % Create tools panel
     jPanelNew = gui_component('Panel');
     jPanelNew.setBorder(BorderFactory.createEmptyBorder(7,0,7,0));
@@ -51,7 +53,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Threshold p-value: Value
         jTextPThresh = gui_component('Text', jPanelThresh, [], '');
         jTextPThresh.setHorizontalAlignment(JLabel.RIGHT);
-        jTextPThresh.setPreferredSize(Dimension(60,23));
+        jTextPThresh.setPreferredSize(java_scaled('dimension', 60,23));
         java_setcb(jTextPThresh, 'ActionPerformedCallback', @(h,ev)SaveOptions(), ...
                                  'FocusLostCallback',       @(h,ev)SaveOptions());
     jPanelTop.add('hfill', jPanelThresh);
@@ -76,8 +78,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % ===== CLUSTER LIST =====
     jPanelClusterList = gui_component('Panel');
     jPanelClusterList.setVisible(0);
-        jBorder = BorderFactory.createTitledBorder('Clusters');
-        jBorder.setTitleFont(bst_get('Font', 11));
+        jBorder = java_scaled('titledborder', 'Clusters');
         jPanelClusterList.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(0,9,0,9),jBorder));
         % Toolbar
         jMenuBar = gui_component('MenuBar', jPanelClusterList, BorderLayout.NORTH);
@@ -96,7 +97,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jMenuJump.setBorder(BorderFactory.createEmptyBorder(0,2,0,2));
         % Clusters list
         jListClusters = java_create('org.brainstorm.list.BstClusterList');
-        jListClusters.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer'));
+        jListClusters.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer', 'I', fontSize));
         jListClusters.setBackground(Color(1,1,1));
         java_setcb(jListClusters, ...
             'ValueChangedCallback', @ClustersListValueChanged_Callback, ...

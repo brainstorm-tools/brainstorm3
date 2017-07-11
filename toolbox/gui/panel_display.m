@@ -49,6 +49,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelSelect.setVisible(0);
         % Combobox: list of the available rows of data
         jComboRows = JComboBox();
+        jComboRows.setFont(bst_get('Font'));
         java_setcb(jComboRows, 'ItemStateChangedCallback', @ComboRowsStateChange_Callback);
         jPanelSelect.add('hfill', jComboRows);
         % Checkbox: Hide edge effects / Resolution
@@ -84,10 +85,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jSliderThreshold = JSlider(0, 100, 0);
         java_setcb(jSliderThreshold, 'MouseReleasedCallback', @SliderConnect_Callback, ...
                                      'KeyPressedCallback',    @SliderConnect_Callback);
-        jSliderThreshold.setPreferredSize(Dimension(130, 22));
+        jSliderThreshold.setPreferredSize(java_scaled('dimension', 130, 22));
         jPanelThreshold.add('hfill', jSliderThreshold);
         % Threshold label
-        jLabelConnectThresh = gui_component('label', jPanelThreshold, [], '0.00 ', {JLabel.LEFT, Dimension(40, 22)});
+        jLabelConnectThresh = gui_component('label', jPanelThreshold, [], '0.00 ', {JLabel.LEFT, java_scaled('dimension', 40, 22)});
         % Quick preview
         % java_setcb(jSliderThreshold, 'StateChangedCallback',  @(h,ev)jLabelConnectThresh.setText(sprintf('%1.2d', double(ev.getSource().getValue()))));
     jPanelNew.add(jPanelThreshold);
@@ -95,16 +96,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     %% ===== CONNECT: DISTANCE THRESHOLD =====
     jPanelDistance = gui_river([0,0], [2,2,2,2], 'Distance Filtering (0 - 150 mm)');
         % Minimum Distance title
-        jLabelMinimumDistance = gui_component('label', [], [], 'Min.', {JLabel.LEFT, Dimension(25, 22)});
+        jLabelMinimumDistance = gui_component('label', [], [], 'Min.', {JLabel.LEFT, java_scaled('dimension', 25, 22)});
         jPanelDistance.add('br', jLabelMinimumDistance);
         % Distance slider
         jSliderMinimumDistance = JSlider(0, 150, 0);
         java_setcb(jSliderMinimumDistance,  'MouseReleasedCallback', @SliderConnect_Callback, ...
                                             'KeyPressedCallback',    @SliderConnect_Callback);
-        jSliderMinimumDistance.setPreferredSize(Dimension(100, 22));
+        jSliderMinimumDistance.setPreferredSize(java_scaled('dimension', 100, 22));
         jPanelDistance.add('', jSliderMinimumDistance);
         % Distance Threshold label
-        jLabelConnectMinimumDistance = gui_component('label', [], [], '0 mm', {JLabel.RIGHT, Dimension(40, 22)});
+        jLabelConnectMinimumDistance = gui_component('label', [], [], '0 mm', {JLabel.RIGHT, java_scaled('dimension', 40, 22)});
         jPanelDistance.add('', jLabelConnectMinimumDistance);
         % Quick preview
         java_setcb(jSliderMinimumDistance, 'StateChangedCallback',  @(h,ev)jLabelConnectMinimumDistance.setText(sprintf('%d mm', double(ev.getSource().getValue()))));

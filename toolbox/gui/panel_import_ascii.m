@@ -56,62 +56,60 @@ function [bstPanelNew, panelName] = CreatePanel(FileFormat) %#ok<DEFNU>
     jPanelNew = gui_river();
     jPanelOptions = gui_river([5 5], [0 15 15 15], 'EEG Options');
     % Matrix orientation
-    jPanelOptions.add(JLabel('Matrix orientation:'));
+    gui_component('label', jPanelOptions, '', 'Matrix orientation:');
     jButtonGroup = ButtonGroup();
     % [Channel x Time]
-    jRadioChannelTime = JRadioButton('[Channel x Time]');
+    jRadioChannelTime = gui_component('radio', jPanelOptions, 'tab', '[Channel x Time]');
     jButtonGroup.add(jRadioChannelTime);
-    jPanelOptions.add('tab', jRadioChannelTime);
     % [Time x Channel]
-    jRadioTimeChannel = JRadioButton('[Time x Channel]');
+    jRadioTimeChannel = gui_component('radio', jPanelOptions, 'br tab', '[Time x Channel]');
     jButtonGroup.add(jRadioTimeChannel);  
-    jPanelOptions.add('br tab', jRadioTimeChannel);
 
     % Number of lines to skip at the beginning of the file
-    jPanelOptions.add('br', JLabel('Skip header lines: '));
+    gui_component('label', jPanelOptions, 'br', 'Skip header lines: ');
     jTextSkipLines = JTextField('0');
-    jTextSkipLines.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+    jTextSkipLines.setFont(bst_get('Font'));
+    jTextSkipLines.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
     jTextSkipLines.setHorizontalAlignment(JTextField.RIGHT);
     jPanelOptions.add('tab', jTextSkipLines);
     % Sample duration
-    jPanelOptions.add('br', JLabel('Sampling frequency: '));
+    gui_component('label', jPanelOptions, 'br', 'Sampling frequency: ');
     jTextSamplingRate = JTextField('');
-    jTextSamplingRate.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+    jTextSamplingRate.setFont(bst_get('Font'));
+    jTextSamplingRate.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
     jTextSamplingRate.setHorizontalAlignment(JTextField.RIGHT);
     jPanelOptions.add('tab', jTextSamplingRate);
-    jPanelOptions.add(JLabel('Hz'));
+    gui_component('label', jPanelOptions, '', 'Hz');
     % Baseline duration
-    jPanelOptions.add('br', JLabel('Baseline duration: '));
+    gui_component('label', jPanelOptions, 'br', 'Baseline duration: ');
     jTextBaselineDuration = JTextField('');
-    jTextBaselineDuration.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+    jTextBaselineDuration.setFont(bst_get('Font'));
+    jTextBaselineDuration.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
     jTextBaselineDuration.setHorizontalAlignment(JTextField.RIGHT);
     jPanelOptions.add('tab', jTextBaselineDuration);
-    jPanelOptions.add(JLabel('ms'));
+    gui_component('label', jPanelOptions, '', 'ms');
     % Number of averages
-    jPanelOptions.add('br', JLabel('Number of trials averaged: '));
+    gui_component('label', jPanelOptions, 'br', 'Number of trials averaged: ');
     jTextNavg = JTextField('1');
-    jTextNavg.setPreferredSize(Dimension(TEXT_WIDTH, DEFAULT_HEIGHT));
+    jTextNavg.setFont(bst_get('Font'));
+    jTextNavg.setPreferredSize(java_scaled('dimension', TEXT_WIDTH, DEFAULT_HEIGHT));
     jTextNavg.setHorizontalAlignment(JTextField.RIGHT);
     jPanelOptions.add('tab', jTextNavg);
     
     % Amplitude units
-    jPanelOptions.add('br', JLabel('Amplitude units: '));
+    gui_component('label', jPanelOptions, 'br', 'Amplitude units: ');
     jButtonGroupUnits = ButtonGroup();
     % microV
-    jRadioUnitsMicroV = JRadioButton('<HTML>&micro;V</HTML>');
-    jPanelOptions.add('tab', jRadioUnitsMicroV);
+    jRadioUnitsMicroV = gui_component('radio', jPanelOptions, 'tab', '<HTML>&micro;V</HTML>');
     jButtonGroupUnits.add(jRadioUnitsMicroV);
     % mV
-    jRadioUnitsMiliV = JRadioButton('mV');
-    jPanelOptions.add('tab', jRadioUnitsMiliV);
+    jRadioUnitsMiliV = gui_component('radio', jPanelOptions, 'tab', 'mV');
     jButtonGroupUnits.add(jRadioUnitsMiliV);
     % V
-    jRadioUnitsV = JRadioButton('V');
-    jPanelOptions.add('tab', jRadioUnitsV);
+    jRadioUnitsV = gui_component('radio', jPanelOptions, 'tab', 'V');
     jButtonGroupUnits.add(jRadioUnitsV);
     % None
-    jRadioUnitsNone = JRadioButton('None');
-    jPanelOptions.add('tab', jRadioUnitsNone);
+    jRadioUnitsNone = gui_component('radio', jPanelOptions, 'tab', 'None');
     jButtonGroupUnits.add(jRadioUnitsNone);
     jPanelNew.add(jPanelOptions);
     

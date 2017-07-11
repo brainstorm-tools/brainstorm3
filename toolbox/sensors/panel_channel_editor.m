@@ -101,6 +101,7 @@ function bstPanelNew = CreatePanel(ChannelFile, DataFile) %#ok<DEFNU>
     % ===== INITIALIZE CHANNEL EDITOR =====
     % Create JTable
     jTableChannel = JTable();
+    jTableChannel.setFont(bst_get('Font'));
     jTableChannel.setModel(ChannelTableModel(jTableChannel, channelsData, columnNames));
     jTableChannel.setRowHeight(22);
     jTableChannel.setForeground(Color(.2, .2, .2));

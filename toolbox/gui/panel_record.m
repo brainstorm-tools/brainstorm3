@@ -44,7 +44,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
-    TB_DIM = Dimension(25, 25);
+    TB_DIM = java_scaled('dimension', 25, 25);
+    % Font size for the lists
+    fontSize = round(11 * bst_get('InterfaceScaling') / 100);
 
     % ===== TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
@@ -76,8 +78,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         
         % MENU: MONTAGE
         jMenuMontage = gui_component('ToolbarButton', jToolbar, [], 'All', IconLoader.ICON_MENU, [], @(h,ev)ShowMontageMenu(ev.getSource()), 11);
-        jMenuMontage.setMinimumSize(Dimension(25, 25));
-        jMenuMontage.setMaximumSize(Dimension(200, 25));
+        jMenuMontage.setMinimumSize(java_scaled('dimension', 25, 25));
+        jMenuMontage.setMaximumSize(java_scaled('dimension', 200, 25));
         jMenuMontage.setMargin(Insets(0,4,0,4));
         % BUTTONS: RAW VIEWER
         jButtonBaseline = gui_component('ToolbarToggle', jToolbar, [], 'DC',  TB_DIM, 'Remove DC offset',      @(h,ev)bst_call(@SetRawViewerOptions, 'RemoveBaseline', ev.getSource().isSelected()), 10);
@@ -95,8 +97,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         
     % ===== PANEL: TIME WINDOW =====
     jPanelTime = gui_river([4,5], [2,5,12,0]);
-    jBorder = BorderFactory.createTitledBorder('Page settings');
-    jBorder.setTitleFont(bst_get('Font', 11));
+    jBorder = java_scaled('titledborder', 'Page settings');
     jPanelTime.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(7,7,0,7), jBorder));
         % Titles
         jLabelEpoch = gui_component('Label',   jPanelTime, '', 'Epoch:');
@@ -122,80 +123,80 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     % ===== PANEL: EVENTS =====
     jPanelEvent = gui_component('Panel');
-    jBorder = BorderFactory.createTitledBorder('Events');
-    jBorder.setTitleFont(bst_get('Font', 11));
+    jBorder = java_scaled('titledborder', 'Events');
     jPanelEvent.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(0,7,7,7), jBorder));
         % === MENU BAR ===
-        jMenuBar  = gui_component('MenuBar', jPanelEvent, BorderLayout.NORTH);
+        jMenuBar = gui_component('MenuBar', jPanelEvent, BorderLayout.NORTH);
+        jMenuBar.setPreferredSize(java_scaled('dimension', 20, 20));
         % FILE
         jMenu = gui_component('Menu', jMenuBar, [], 'File', IconLoader.ICON_MENU, [], [], 11);
         if (GlobalData.Program.GuiLevel ~= 2)
-            gui_component('MenuItem', jMenu, [], 'Import in database...', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@ImportInDatabase), []);
+            gui_component('MenuItem', jMenu, [], 'Import in database...', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@ImportInDatabase));
             jMenu.addSeparator();
-            gui_component('MenuItem', jMenu, [], 'Save modifications',     IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@SaveModifications), []);
+            gui_component('MenuItem', jMenu, [], 'Save modifications',     IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@SaveModifications));
             jMenu.addSeparator();
         end
-        gui_component('MenuItem', jMenu, [], 'Add events from file...',     IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)bst_call(@ImportEvents), []);
-        gui_component('MenuItem', jMenu, [], 'Read events from channel...', IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)CallProcessOnRaw('process_evt_read'), []);
-        gui_component('MenuItem', jMenu, [], 'Detect analog triggers...',   IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)CallProcessOnRaw('process_evt_detect_analog'), []);
+        gui_component('MenuItem', jMenu, [], 'Add events from file...',     IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)bst_call(@ImportEvents));
+        gui_component('MenuItem', jMenu, [], 'Read events from channel...', IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)CallProcessOnRaw('process_evt_read'));
+        gui_component('MenuItem', jMenu, [], 'Detect analog triggers...',   IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)CallProcessOnRaw('process_evt_detect_analog'));
         jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Export all events',      IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_events), []);
-        gui_component('MenuItem', jMenu, [], 'Export selected events', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportSelectedEvents), []);
+        gui_component('MenuItem', jMenu, [], 'Export all events',      IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_events));
+        gui_component('MenuItem', jMenu, [], 'Export selected events', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportSelectedEvents));
 
         % EVENT TYPES
         jMenu = gui_component('Menu', jMenuBar, [], 'Events', IconLoader.ICON_MENU, [], [], 11);
-        gui_component('MenuItem', jMenu, [], 'Add group',    IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)bst_call(@EventTypeAdd), []);
-        gui_component('MenuItem', jMenu, [], 'Delete group', IconLoader.ICON_EVT_TYPE_DEL, [], @(h,ev)bst_call(@EventTypeDel), []);
-        gui_component('MenuItem', jMenu, [], 'Rename group', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EventTypeRename), []);
-        gui_component('MenuItem', jMenu, [], 'Set color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EventTypeSetColor), []);
-        gui_component('MenuItem', jMenu, [], 'Mark group as bad', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@EventTypeSetBad), []);
+        gui_component('MenuItem', jMenu, [], 'Add group',    IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)bst_call(@EventTypeAdd));
+        gui_component('MenuItem', jMenu, [], 'Delete group', IconLoader.ICON_EVT_TYPE_DEL, [], @(h,ev)bst_call(@EventTypeDel));
+        gui_component('MenuItem', jMenu, [], 'Rename group', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EventTypeRename));
+        gui_component('MenuItem', jMenu, [], 'Set color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EventTypeSetColor));
+        gui_component('MenuItem', jMenu, [], 'Mark group as bad', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@EventTypeSetBad));
         jMenu.addSeparator();
-        jMenuSort = gui_component('Menu', jMenu, [], 'Sort groups', IconLoader.ICON_EVT_TYPE, [], [], []);
-            gui_component('MenuItem', jMenuSort, [], 'By name', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('name')), []);
-            gui_component('MenuItem', jMenuSort, [], 'By time', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('time')), []);
-        gui_component('MenuItem', jMenu, [], 'Merge groups', IconLoader.ICON_FUSION, [], @(h,ev)bst_call(@EventTypesMerge), []);
-        gui_component('MenuItem', jMenu, [], 'Duplicate groups', IconLoader.ICON_COPY, [], @(h,ev)bst_call(@EventTypesDuplicate), []);
-        gui_component('MenuItem', jMenu, [], 'Convert to simple event', [], [], @(h,ev)bst_call(@EventConvertToSimple), []);
-        gui_component('MenuItem', jMenu, [], 'Convert to extended event', [], [], @(h,ev)bst_call(@EventConvertToExtended), []);
+        jMenuSort = gui_component('Menu', jMenu, [], 'Sort groups', IconLoader.ICON_EVT_TYPE, [], []);
+            gui_component('MenuItem', jMenuSort, [], 'By name', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('name')));
+            gui_component('MenuItem', jMenuSort, [], 'By time', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('time')));
+        gui_component('MenuItem', jMenu, [], 'Merge groups', IconLoader.ICON_FUSION, [], @(h,ev)bst_call(@EventTypesMerge));
+        gui_component('MenuItem', jMenu, [], 'Duplicate groups', IconLoader.ICON_COPY, [], @(h,ev)bst_call(@EventTypesDuplicate));
+        gui_component('MenuItem', jMenu, [], 'Convert to simple event', [], [], @(h,ev)bst_call(@EventConvertToSimple));
+        gui_component('MenuItem', jMenu, [], 'Convert to extended event', [], [], @(h,ev)bst_call(@EventConvertToExtended));
         jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Combine stim/response', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_combine'), []);
-        gui_component('MenuItem', jMenu, [], 'Detect multiple responses', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_multiresp'), []);
-        gui_component('MenuItem', jMenu, [], 'Group by name', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_groupname'), []);
-        gui_component('MenuItem', jMenu, [], 'Group by time', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_grouptime'), []);
-        gui_component('MenuItem', jMenu, [], 'Add time offset', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)CallProcessOnRaw('process_evt_timeoffset'), []);
+        gui_component('MenuItem', jMenu, [], 'Combine stim/response', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_combine'));
+        gui_component('MenuItem', jMenu, [], 'Detect multiple responses', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_multiresp'));
+        gui_component('MenuItem', jMenu, [], 'Group by name', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_groupname'));
+        gui_component('MenuItem', jMenu, [], 'Group by time', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_grouptime'));
+        gui_component('MenuItem', jMenu, [], 'Add time offset', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)CallProcessOnRaw('process_evt_timeoffset'));
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Edit keyboard shortcuts', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)gui_show('panel_raw_shortcuts', 'JavaWindow', 'Event keyboard shortcuts', [], 1, 0, 0));
         jMenu.addSeparator();
-        jItem = gui_component('MenuItem', jMenu, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)bst_call(@ToggleEvent), []);
+        jItem = gui_component('MenuItem', jMenu, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)bst_call(@ToggleEvent));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
-        jItem = gui_component('MenuItem', jMenu, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@RejectTimeSegment), []);
+        jItem = gui_component('MenuItem', jMenu, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@RejectTimeSegment));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_MASK));
         jMenu.addSeparator();
-        jItem = gui_component('MenuItem', jMenu, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)bst_call(@JumpToEvent, 'leftarrow'), []);
+        jItem = gui_component('MenuItem', jMenu, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)bst_call(@JumpToEvent, 'leftarrow'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, KeyEvent.SHIFT_MASK));
-        jItem = gui_component('MenuItem', jMenu, [], 'Jump to next event', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)bst_call(@JumpToEvent, 'rightarrow'), []);
+        jItem = gui_component('MenuItem', jMenu, [], 'Jump to next event', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)bst_call(@JumpToEvent, 'rightarrow'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, KeyEvent.SHIFT_MASK));
         % Artifacts
         jMenu = gui_component('Menu', jMenuBar, [], 'Artifacts', IconLoader.ICON_MENU, [], [], 11);
-        jItemEegref  = gui_component('MenuItem', jMenu, [], 'Re-reference EEG', IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_eegref'), []);
+        jItemEegref  = gui_component('MenuItem', jMenu, [], 'Re-reference EEG', IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_eegref'));
         jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Detect heartbeats',      IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_evt_detect_ecg'), []);
-        gui_component('MenuItem', jMenu, [], 'Detect eye blinks',      IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_evt_detect_eog'), []);
-        gui_component('MenuItem', jMenu, [], 'Detect custom events',   IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_evt_detect'), []);
-        gui_component('MenuItem', jMenu, [], 'Detect other artifacts', IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_evt_detect_badsegment'), []);
+        gui_component('MenuItem', jMenu, [], 'Detect heartbeats',      IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_evt_detect_ecg'));
+        gui_component('MenuItem', jMenu, [], 'Detect eye blinks',      IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_evt_detect_eog'));
+        gui_component('MenuItem', jMenu, [], 'Detect custom events',   IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_evt_detect'));
+        gui_component('MenuItem', jMenu, [], 'Detect other artifacts', IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_evt_detect_badsegment'));
         jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Remove simultaneous', IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_evt_remove_simult'), []);
+        gui_component('MenuItem', jMenu, [], 'Remove simultaneous', IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_evt_remove_simult'));
         jMenu.addSeparator();
-        jItemSspEcg  = gui_component('MenuItem', jMenu, [], 'SSP: Heartbeats', IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ssp_ecg'), []);
-        jItemSspEog  = gui_component('MenuItem', jMenu, [], 'SSP: Eye blinks', IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ssp_eog'), []);
-        jItemSsp     = gui_component('MenuItem', jMenu, [], 'SSP: Generic',    IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ssp'), []);
-        jItemIca     = gui_component('MenuItem', jMenu, [], 'ICA components',  IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ica'), []);
+        jItemSspEcg  = gui_component('MenuItem', jMenu, [], 'SSP: Heartbeats', IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ssp_ecg'));
+        jItemSspEog  = gui_component('MenuItem', jMenu, [], 'SSP: Eye blinks', IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ssp_eog'));
+        jItemSsp     = gui_component('MenuItem', jMenu, [], 'SSP: Generic',    IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ssp'));
+        jItemIca     = gui_component('MenuItem', jMenu, [], 'ICA components',  IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ica'));
         jMenu.addSeparator();
-        jItemSspSel  = gui_component('MenuItem', jMenu, [], 'Select active projectors', IconLoader.ICON_EMPTY, [], @(h,ev)panel_ssp_selection('OpenRaw'), []);
+        jItemSspSel  = gui_component('MenuItem', jMenu, [], 'Select active projectors', IconLoader.ICON_EMPTY, [], @(h,ev)panel_ssp_selection('OpenRaw'));
         
         % === EVENTS TYPES ===
         jListEvtType = JList();
-        jListEvtType.setCellRenderer(BstColorListRenderer);
+        jListEvtType.setCellRenderer(BstColorListRenderer(fontSize));
 
         java_setcb(jListEvtType, 'ValueChangedCallback', @ListType_ValueChangedCallback, ...
                                  'KeyPressedCallback',   @ListType_KeyPressedCallback, ...
@@ -207,7 +208,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         
         % === EVENTS OCCURRENCES ===
         jListEvtOccur = JList();
-        jListEvtOccur.setCellRenderer(BstStringListRenderer);
+        jListEvtOccur.setCellRenderer(BstStringListRenderer(fontSize));
         java_setcb(jListEvtOccur, 'KeyTypedCallback',     @ListOccur_KeyTypedCallback, ...
                                   'KeyPressedCallback',   @ListChangeTime_Callback, ...
                                   'MouseClickedCallback', @ListOccur_ClickCallback);

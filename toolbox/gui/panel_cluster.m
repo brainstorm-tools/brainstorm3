@@ -22,7 +22,7 @@ function varargout = panel_cluster(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2014
+% Authors: Francois Tadel, 2009-2017
 
 eval(macro_method);
 end
@@ -37,8 +37,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     import org.brainstorm.icon.*;
     % Create tools panel
     jPanelNew = gui_component('Panel');
-    TB_DIM = Dimension(25,25);
-
+    TB_DIM = java_scaled('dimension',25,25);
+    % Font size for the lists
+    fontSize = round(11 * bst_get('InterfaceScaling') / 100);
+    
     % ===== TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelNew, BorderLayout.NORTH);
         jToolbar = gui_component('Toolbar', jMenuBar);
@@ -52,29 +54,29 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 %         % === MENU NEW ===
 %         jMenu = gui_component('Menu', jMenuBar, [], 'New', IconLoader.ICON_MENU, [], [], 11);
 %         jMenu.setBorder(BorderFactory.createEmptyBorder(0,2,0,2));
-%             gui_component('MenuItem', jMenu, [], 'New cluster: Use selected sensors', IconLoader.ICON_NEW_SEL, [], @(h,ev)CreateNewCluster('Selection'), []);
-%             gui_component('MenuItem', jMenu, [], 'New cluster: List of indices or names', IconLoader.ICON_NEW_IND, [], @(h,ev)CreateNewCluster('Indices'), []);
+%             gui_component('MenuItem', jMenu, [], 'New cluster: Use selected sensors', IconLoader.ICON_NEW_SEL, [], @(h,ev)CreateNewCluster('Selection'));
+%             gui_component('MenuItem', jMenu, [], 'New cluster: List of indices or names', IconLoader.ICON_NEW_IND, [], @(h,ev)CreateNewCluster('Indices'));
 
         % === MENU EDIT ===
         jMenu = gui_component('Menu', jMenuBar, [], 'Edit', IconLoader.ICON_MENU, [], [], 11);
         jMenu.setBorder(BorderFactory.createEmptyBorder(0,2,0,2));
             % Menu: Set cluster function
-            jMenuTs = gui_component('Menu', jMenu, [], 'Set cluster function', IconLoader.ICON_PROPERTIES, [], [], []);
-                gui_component('MenuItem', jMenuTs, [], 'Mean',    [], [], @(h,ev)SetClusterFunction('Mean'), []);
-                gui_component('MenuItem', jMenuTs, [], 'PCA',     [], [], @(h,ev)SetClusterFunction('PCA'), []);
-                gui_component('MenuItem', jMenuTs, [], 'FastPCA', [], [], @(h,ev)SetClusterFunction('FastPCA'), []);
-                gui_component('MenuItem', jMenuTs, [], 'Max',     [], [], @(h,ev)SetClusterFunction('Max'), []);
-                gui_component('MenuItem', jMenuTs, [], 'Power',   [], [], @(h,ev)SetClusterFunction('Power'), []);
-                gui_component('MenuItem', jMenuTs, [], 'All',     [], [], @(h,ev)SetClusterFunction('All'), []);
+            jMenuTs = gui_component('Menu', jMenu, [], 'Set cluster function', IconLoader.ICON_PROPERTIES, [], []);
+                gui_component('MenuItem', jMenuTs, [], 'Mean',    [], [], @(h,ev)SetClusterFunction('Mean'));
+                gui_component('MenuItem', jMenuTs, [], 'PCA',     [], [], @(h,ev)SetClusterFunction('PCA'));
+                gui_component('MenuItem', jMenuTs, [], 'FastPCA', [], [], @(h,ev)SetClusterFunction('FastPCA'));
+                gui_component('MenuItem', jMenuTs, [], 'Max',     [], [], @(h,ev)SetClusterFunction('Max'));
+                gui_component('MenuItem', jMenuTs, [], 'Power',   [], [], @(h,ev)SetClusterFunction('Power'));
+                gui_component('MenuItem', jMenuTs, [], 'All',     [], [], @(h,ev)SetClusterFunction('All'));
             jMenu.addSeparator();
-            gui_component('MenuItem', jMenu, [], 'Rename   [Double-click]', IconLoader.ICON_EDIT,    [], @(h,ev)EditClusterLabel, []);
-            gui_component('MenuItem', jMenu, [], 'Remove   [DEL]',          IconLoader.ICON_DELETE,  [], @(h,ev)RemoveClusters, []);
-            gui_component('MenuItem', jMenu, [], 'Deselect all  [ESC]',     IconLoader.ICON_RELOAD,  [], @(h,ev)SetSelectedClusters(0), []);
+            gui_component('MenuItem', jMenu, [], 'Rename   [Double-click]', IconLoader.ICON_EDIT,    [], @(h,ev)EditClusterLabel);
+            gui_component('MenuItem', jMenu, [], 'Remove   [DEL]',          IconLoader.ICON_DELETE,  [], @(h,ev)RemoveClusters);
+            gui_component('MenuItem', jMenu, [], 'Deselect all  [ESC]',     IconLoader.ICON_RELOAD,  [], @(h,ev)SetSelectedClusters(0));
 
 %         % === MENU VIEW ===
 %         jMenu = gui_component('Menu', jMenuBar, [], 'View', IconLoader.ICON_MENU, [], [], 11);
 %         jMenu.setBorder(BorderFactory.createEmptyBorder(0,2,0,2));
-%             gui_component('MenuItem', jMenu, [], 'View time series', IconLoader.ICON_TS_DISPLAY, [], @DisplayClusters, []);
+%             gui_component('MenuItem', jMenu, [], 'View time series', IconLoader.ICON_TS_DISPLAY, [], @DisplayClusters);
 
     % ===== PANEL MAIN =====
     jPanelMain = java_create('javax.swing.JPanel');
@@ -82,8 +84,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelMain.setBorder(BorderFactory.createEmptyBorder(7,7,7,7));
         % ===== FIRST PART =====
         jPanelFirstPart = gui_component('Panel');
-        jPanelFirstPart.setPreferredSize(Dimension(100,180));
-        jPanelFirstPart.setMaximumSize(Dimension(500,180));
+        jPanelFirstPart.setPreferredSize(java_scaled('dimension', 100,180));
+        jPanelFirstPart.setMaximumSize(java_scaled('dimension', 500,180));
             % ===== Vertical Toolbar =====
             jToolbar2 = gui_component('Toolbar', jPanelFirstPart, BorderLayout.EAST);
             jToolbar2.setOrientation(jToolbar2.VERTICAL);
@@ -92,12 +94,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         
             % ===== Clusters list =====
              jPanelList = gui_component('Panel');
-                jBorder = BorderFactory.createTitledBorder('Available clusters');
-                jBorder.setTitleFont(bst_get('Font', 11));
+                jBorder = java_scaled('titledborder', 'Available clusters');
                 jPanelList.setBorder(jBorder);
                 
                 jListClusters = java_create('org.brainstorm.list.BstClusterList');
-                jListClusters.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer'));
+                jListClusters.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer', 'I', fontSize));
                 java_setcb(jListClusters, 'ValueChangedCallback', @ListValueChanged_Callback, ...
                                           'KeyTypedCallback',     @ListKeyTyped_Callback, ...
                                           'MouseClickedCallback', @ListClick_Callback);

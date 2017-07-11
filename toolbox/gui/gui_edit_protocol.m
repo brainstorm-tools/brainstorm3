@@ -23,7 +23,7 @@ function [ iProtocol ] = gui_edit_protocol(action, iProtocol)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2017
 
 global GlobalData;
 
@@ -112,7 +112,8 @@ java_setcb(ctrl.jButtonSave, 'ActionPerformedCallback', @updateProtocolModificia
 panelContainer = gui_show(panelProtocolEditor, 'JavaWindow', panelTitle, [], 1, 0, 0);
 drawnow;
 % Check that panel is not wider that 450px
-MAX_WIDTH = 450;
+InterfaceScaling = bst_get('InterfaceScaling');
+MAX_WIDTH = round(450 * InterfaceScaling / 100);
 if (panelContainer.handle{1}.getSize().getWidth() > MAX_WIDTH)
     newDim = java.awt.Dimension(MAX_WIDTH, panelContainer.handle{1}.getSize().getHeight());
     panelContainer.handle{1}.setSize(newDim);   

@@ -22,7 +22,7 @@ function varargout = panel_filter(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -38,7 +38,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
-    TB_DIM = Dimension(25,25);
+    TB_DIM = java_scaled('dimension', 25, 25);
         
     % ===== TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
@@ -56,8 +56,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     % ===== FREQUENCY FILTERING =====
     jPanelFilter = gui_river([0 6], [4 1 15 1]);
-    jBorder = BorderFactory.createTitledBorder('Frequency filtering');
-    jBorder.setTitleFont(bst_get('Font', 11));
+    jBorder = java_scaled('titledborder', 'Frequency filtering');
     jPanelFilter.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(7,7,7,7), jBorder));
         % === HIGH-PASS ===
         jCheckHighpass = gui_component('checkbox', jPanelFilter, [], 'High-pass:', [], [], @CheckHighPass_Callback);

@@ -89,7 +89,7 @@ if isempty(jBstFrame)
 end
 
 % Default window size
-DefaultSize = Dimension(350, 130);
+DefaultSize = java_scaled('dimension', 350, 130);
 % If progress bar was not created yet : create it
 if isempty(pBar)
     % If action=isvisible: no need to create the progress bar
@@ -129,6 +129,7 @@ if isempty(pBar)
     % Create objects
     pBar.jImage = java_create('javax.swing.JLabel');
     pBar.jLabel = java_create('javax.swing.JLabel', 'Ljava.lang.String;', '...');
+    pBar.jLabel.setFont(bst_get('Font'));
     pBar.jProgressBar = java_create('javax.swing.JProgressBar', 'II', 0, 99);
     % Update constraints
     UpdateConstraints(0);

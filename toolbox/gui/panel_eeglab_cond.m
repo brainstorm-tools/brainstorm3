@@ -23,7 +23,7 @@ function varargout = panel_eeglab_cond(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2012
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -43,13 +43,13 @@ function [bstPanelNew, panelName] = CreatePanel(paramNames, paramValues) %#ok<DE
     
     % ===== PARAMETERS LIST =====
     jPanelParams = gui_component('Panel');
-    jBorder = BorderFactory.createTitledBorder('Parameters');
-    jBorder.setTitleFont(bst_get('Font', 11));
+    jBorder = java_scaled('titledborder', 'Parameters');
     jPanelParams.setBorder(jBorder);
             
-    jPanelParams.setPreferredSize(Dimension(110, 200));
+    jPanelParams.setPreferredSize(java_scaled('dimension', 110, 200));
         % JList
         jListParams = JList(paramNames);
+        jListParams.setFont(bst_get('Font'));
         java_setcb(jListParams, 'ValueChangedCallback', @ParamSelectionChanged_Callback);
         % Create scroll panel
         jScrollPanelParams = JScrollPane(jListParams);
@@ -59,12 +59,12 @@ function [bstPanelNew, panelName] = CreatePanel(paramNames, paramValues) %#ok<DE
     
     % ===== CONDITIONS NAMES =====
     jPanelCond = gui_component('Panel');
-    jBorder = BorderFactory.createTitledBorder('Conditions');
-    jBorder.setTitleFont(bst_get('Font', 11));
+    jBorder = java_scaled('titledborder', 'Conditions');
     jPanelCond.setBorder(jBorder);
-    jPanelCond.setPreferredSize(Dimension(400, 200));
+    jPanelCond.setPreferredSize(java_scaled('dimension', 400, 200));
         % JTable 
         jTableCond = JTable(DefaultTableModel({'Parameters', 'Condition name'}, 0));
+        jTableCond.setFont(bst_get('Font'));
         jTableCond.getColumnModel.getColumn(0).setCellEditor(DisabledCellEditor());
         % Create scroll panel
         jScrollPanelCond = JScrollPane(jTableCond);
