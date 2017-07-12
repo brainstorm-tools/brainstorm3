@@ -33,7 +33,7 @@ if (nargin < 7),  compCallback = []; end
 % Default font size: depends on the system
 if (nargin < 8)
     if strncmp(computer,'MAC',3)
-        fontSize = 11.5;
+        fontSize = 12;
     else
         fontSize = 11;
     end

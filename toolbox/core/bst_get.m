@@ -3233,7 +3233,7 @@ switch contextName
         % Default font size
         if (nargin < 2)
             if strncmp(computer,'MAC',3)
-                fontSize = 11.5;
+                fontSize = 12;
             else
                 fontSize = 11;
             end
