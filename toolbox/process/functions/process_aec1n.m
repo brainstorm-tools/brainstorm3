@@ -80,7 +80,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.Method = 'aec';
     % Filtering bands options
     OPTIONS.Freqs = sProcess.options.freqbands.Value;
-    OPTIONS.isMirror = sProcess.options.mirror.Value;
     OPTIONS.isOrth = sProcess.options.isorth.Value;
     
     % Compute metric
