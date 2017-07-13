@@ -50,7 +50,9 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
     end
     % Get scaling factor
     InterfaceScaling = bst_get('InterfaceScaling');
-    
+    % Get standard font
+    stdFont = bst_get('Font');
+            
     % Create panel
     jPanel = gui_component('Panel');
     % Create list (tree or treetable)
@@ -60,7 +62,7 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
             jBorder = java_scaled('titledborder', nodelistComment);
             jPanel.setBorder(jBorder);
             % Create tree
-            jTree = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100);
+            jTree = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100, stdFont.getSize(), stdFont.getFontName());
             jTree.setBorder(BorderFactory.createEmptyBorder(5,5,5,0));
             jTree.setEditable(0);
             jTree.setRowHeight(round(20 * InterfaceScaling / 100));
@@ -80,7 +82,7 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
             java_setcb(jTree.getModel(), 'TreeStructureChangedCallback', @(h,ev)TreeStructureChanged_Callback(nodelistName));
         case 'table'
             % Create table
-            jTree = java_create('org.brainstorm.tree.BstTreeTable');
+            jTree = java_create('org.brainstorm.tree.BstTreeTable', stdFont.getSize(), stdFont.getFontName());
             jPanel.add(jTree.getContainer(), BorderLayout.CENTER);
             % Initialize other undefined variables
             jBorder = [];

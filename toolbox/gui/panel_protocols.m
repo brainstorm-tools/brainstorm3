@@ -50,8 +50,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     % Get scaling factor
     InterfaceScaling = bst_get('InterfaceScaling');
+    % Get standard font
+    stdFont = bst_get('Font');
     % Creation of the exploration tree
-    jTreeProtocols = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100);
+    jTreeProtocols = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100, stdFont.getSize(), stdFont.getFontName());
     jTreeProtocols.setEditable(1);
     jTreeProtocols.setToggleClickCount(3);
     jTreeProtocols.setBorder(javax.swing.BorderFactory.createEmptyBorder(5,5,5,0));
