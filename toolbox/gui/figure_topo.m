@@ -22,7 +22,7 @@ function varargout = figure_topo( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -875,7 +875,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         fUnits = strrep(fUnits, '\mu', 'u');
         fUnits = strrep(fUnits, '\Delta', 'd');
         % Create legend text
-        strLegend = sprintf(['Amplitude: %d %s\n' ...
+        strLegend = sprintf(['Max amplitude: %d %s\n' ...
                              'Time window: [%d, %d] ms'], ...
                             round(fScaled), fUnits, msTime(1), msTime(2));
         % Update legend

@@ -121,6 +121,8 @@ switch (FileFormat)
         DataMat = in_data_cartool(DataFile);
     case 'EEG-ERPCENTER'
         DataMat = in_data_erpcenter(DataFile);
+    case 'EEG-ERPLAB'
+        [DataMat, ChannelMat] = in_data_erplab(DataFile);
     case 'EEG-MAT'
         DataMat = in_data_mat(DataFile);
     case 'EEG-NEUROSCAN-DAT'
