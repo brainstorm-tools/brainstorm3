@@ -1821,6 +1821,8 @@ switch (lower(action))
                 iTimefreq = bstNodes(1).getItemIndex();
                 sStudy = bst_get('Study', iStudy);
                 DisplayMod = {};
+                % Get subject structure
+                sSubject = bst_get('Subject', sStudy.BrainStormSubject);
                 % Get data type
                 if strcmpi(nodeType, 'pspectrum')
                     TimefreqMat = in_bst_timefreq(filenameRelative, 0, 'DataType');
@@ -1847,6 +1849,37 @@ switch (lower(action))
                         % Topography
                         isGradNorm = strcmpi(nodeType, 'spectrum');
                         fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, isGradNorm, 0);
+                        % Interpolate SEEG/ECOG on the anatomy
+                        for iMod = 1:length(DisplayMod)
+                            if ~ismember(DisplayMod{iMod}, {'SEEG', 'ECOG'})
+                                continue;
+                            end
+                            % Create submenu if there are multiple modalities
+                            if (length(DisplayMod) > 1)
+                                dispMod = getChannelTypeDisplay(DisplayMod{iMod}, DisplayMod);
+                                jMenuModality = gui_component('Menu', jPopup, [], dispMod, IconLoader.ICON_TOPOGRAPHY, [], []);
+                            else
+                                jMenuModality = jPopup;
+                            end
+                            AddSeparator(jPopup);
+                            if ~isempty(sSubject.iCortex)
+                                gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, DisplayMod{iMod}));
+                            end
+                            if ~isempty(sSubject.iAnatomy)
+                                if (length(sSubject.Anatomy) == 1)
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
+                                else
+                                    for iAnat = 1:length(sSubject.Anatomy)
+                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
+                                    end
+                                    for iAnat = 1:length(sSubject.Anatomy)
+                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
+                                    end
+                                end
+                            end
+                        end
+
                     % ===== SOURCES =====
                     elseif strcmpi(DataType, 'results')
                         AddSeparator(jPopup);
@@ -1860,8 +1893,6 @@ switch (lower(action))
                             worient = whos('-file', filenameFull, 'GridAtlas');
                             isVolume = (prod(wloc.size) > 0) && (isempty(worient) || (prod(worient.size) == 0));
                         end
-                        % Get subject structure
-                        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
                         % Cortex / MRI
                         if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
                             gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
