@@ -31,7 +31,7 @@ function GridLoc = bst_sourcegrid(Options, CortexFile, sCortex, sEnvelope)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2015
+% Authors: Francois Tadel, 2010-2015; Martin Cousineau, 2017
 
 % ===== PARSE INPUTS =====
 if (nargin <= 2)
@@ -51,7 +51,7 @@ end
 
 % ===== SAMPLE VOLUME =====
 switch lower(Options.Method)
-    case 'adaptive'
+    case {'adaptive', 'atlas'}
         % Build scales for each layer
         scaleLayers = linspace(1, 0, Options.nLayers+1);
         scaleLayers = scaleLayers(1:end-1);

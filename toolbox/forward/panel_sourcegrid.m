@@ -25,7 +25,7 @@ function varargout = panel_sourcegrid(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2016
+% Authors: Francois Tadel, 2011-2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -37,6 +37,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     % Java initializations
     import java.awt.*;
     import javax.swing.*;
+    import org.brainstorm.list.*;
     % CALL: From GUI
     if (nargin == 1)
         isPreview = 1;
@@ -165,6 +166,19 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         java_setcb(jTextVar, 'ActionPerformedCallback', @(h,ev)UpdatePanel);
         java_setcb(jTextVar, 'FocusLostCallback', @(h,ev)UpdatePanel);
         
+        % RADIO: Generate from atlas
+        jRadioAtlas = gui_component('radio', jPanelOpt, 'br', 'Generate from atlas', jButtonGroup, [], @(h,ev)UpdatePanel, []);
+        gui_component('label', jPanelOpt, 'br', '     ');
+        jComboAtlas = gui_component('combobox', jPanelOpt, 'hfill', '', [], [], [], []);
+        [~, sSurf, ~] = panel_scout('GetScouts', CortexFile);
+        if ~isempty(sSurf) && isfield(sSurf, 'Atlas') && ~isempty(sSurf.Atlas)
+            for i = 1:length(sSurf.Atlas)
+                jComboAtlas.addItem(BstListItem('atlas', '', sSurf.Atlas(i).Name, i))
+            end
+            % Select current atlas
+            jComboAtlas.setSelectedIndex(sSurf.iAtlas - 1);
+        end
+        
         % RADIO: Use template grid for group analysis
         if isShowGroup
             jRadioGroup = gui_component('radio', jPanelOpt, 'br', 'Use template grid for group analysis', jButtonGroup, [], @(h,ev)UpdatePanel, []);
@@ -204,6 +218,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             jRadioVar.setSelected(1);
             jTextVar.setText(GridOptions.FileName);
             jRadioBrain.setSelected(1);
+        case 'atlas'
+            jRadioAtlas.setSelected(1);
+            jComboAtlas.setEnabled(1);
         case 'group'
             if ~isempty(jRadioGroup) && jRadioGroup.isEnabled()
                 jRadioGroup.setSelected(1);
@@ -242,13 +259,15 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                   'jRadioHead',       jRadioHead, ...
                   'jRadioFile',       jRadioFile, ...
                   'jRadioVar',        jRadioVar, ...
+                  'jRadioAtlas',      jRadioAtlas, ...
                   'jRadioGroup',      jRadioGroup, ...
                   'jTextLayers',      jTextLayers, ...
                   'jTextReduction',   jTextReduction, ...
                   'jTextVertInit',    jTextVertInit, ...
                   'jTextResolution',  jTextResolution, ...
                   'jTextFile',        jTextFile, ...
-                  'jTextVar',         jTextVar);
+                  'jTextVar',         jTextVar, ...
+                  'jComboAtlas',      jComboAtlas);
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
     % Update panel
@@ -322,6 +341,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         % RADIO: Variable
         isVar = jRadioVar.isSelected();
         jTextVar.setEnabled(isVar);
+        % RADIO: Atlas
+        isAtlas = jRadioAtlas.isSelected();
+        jComboAtlas.setEnabled(isAtlas);
         % Preview grid
         if isPreview
             % Get the options
@@ -417,6 +439,8 @@ function GridOptions = GetOptions(ctrl)
         GridOptions.Method = 'file';
     elseif ctrl.jRadioVar.isSelected()
         GridOptions.Method = 'var';
+    elseif ctrl.jRadioAtlas.isSelected()
+        GridOptions.Method = 'atlas';
     elseif isfield(ctrl, 'jRadioGroup') && ~isempty(ctrl.jRadioGroup) && ctrl.jRadioGroup.isSelected()
         GridOptions.Method = 'group';
     else
@@ -434,6 +458,8 @@ function GridOptions = GetOptions(ctrl)
     end
     % Isotropic options
     GridOptions.Resolution = str2double(char(ctrl.jTextResolution.getText())) / 1000;
+    % Atlas options
+    GridOptions.Atlas = ctrl.jComboAtlas.getSelectedIndex() + 1;
     % External inputs
     if strcmpi(GridOptions.Method, 'file')
         GridOptions.FileName = char(ctrl.jTextFile.getText());
@@ -480,6 +506,13 @@ function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope
             if ~isempty(GridOptions.FileName)
                 grid = ReadGrid(GridOptions.FileName, GridOptions.Method);
             end
+        case 'atlas'
+            % Compute centroids of scouts
+            sEnvelope.Vertices = ComputeScoutsCentroid(GridOptions.Atlas, CortexFile);
+            % Compute grid
+            GridOptions.nLayers = 1;
+            grid = bst_sourcegrid(GridOptions, CortexFile, sCortex, sEnvelope);
+            %TODO.
         case 'group'
             % === GET SUBJECT ===
             % Get subject using cortex surface
@@ -656,3 +689,18 @@ function ShowGrid()
          'Tag', 'ptCheckGrid', 'Parent', hAxes);
 end
 
+%% ===== COMPUTE SCOUT CENTROID =====
+function centroids = ComputeScoutsCentroid(chosenAtlas, CortexFile)
+    if (nargin < 2)
+        CortexFile = [];
+    end
+    
+    [~, sSurf, ~] = panel_scout('GetScouts', CortexFile);
+    scouts = sSurf.Atlas(chosenAtlas).Scouts;
+    numScouts = length(scouts);
+    centroids = zeros(numScouts, 3);
+    
+    for i = 1:numScouts
+        centroids(i, :) = mean(sSurf.Vertices(scouts(i).Vertices, :));
+    end
+end
