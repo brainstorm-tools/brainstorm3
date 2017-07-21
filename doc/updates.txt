@@ -7,6 +7,8 @@ July 2017
 - GUI: Raw viewer: Added buttons to zoom along channels
 - GUI: Interface scaling option (for adapting to high DPI screens)
 - IO: Support for ERPLab files
+- IO: New menu "Import texture" in the popup menus of the surface files
+- IO: Load .gii files as source maps/textures
 ---------------------------------------------------------------
 June 2017
 - IO: Added support for Blackrock .ns6 files

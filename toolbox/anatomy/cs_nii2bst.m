@@ -22,7 +22,7 @@ function [vox2ras, sMri] = cs_nii2bst(sMri, vox2ras, isApply)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2016
+% Author: Francois Tadel, 2016-2017
 
 % Parse inputs
 if (nargin < 3) || isempty(isApply)
@@ -71,6 +71,20 @@ if isApply
     vox2ras(1:3,1:3) = inv(R) * vox2ras(1:3,1:3);
     % Permute translation
     vox2ras(1:3,4) = permute(vox2ras(1:3,4), Pmat);
+    % Remove the sform/qform transformations from the nifti header
+    if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'}))
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'sform_code');
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'srow_x');
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'srow_y');
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'srow_z');
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'qform_code');
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'quatern_b');
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'quatern_c');
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'quatern_d');
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'qoffset_x');
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'qoffset_y');
+        sMri.Header.nifti = rmfield(sMri.Header.nifti, 'qoffset_z');
+    end
 end
 % Scale transformation matrix
 if ~isempty(vox2ras)
