@@ -251,48 +251,54 @@ dipdata = [kron(OPTIONS.GridLoc,ones(3,1)), kron(ones(nv,1), eye(3))];
 save(dipfile, 'dipdata', '-ASCII', '-double');  
 % Go to openmeeg folder
 cd(OpenmeegDir);
-%system(['cd "' OpenmeegDir '"']);
 
 
 %% ===== GET EXISTING HM FILE =====
-% Compute signature of current combination of files
-sig = [num2str(OPTIONS.isAdjoint), sprintf('_%1.07f',OPTIONS.BemCond)];
-for i = 1:length(OPTIONS.BemFiles)
-    fileinfo = dir(OPTIONS.BemFiles{i});
-    sig = [sig '_' fileinfo.name '_' num2str(nVert(i)), '_' num2str(nFaces(i))];
-end
-% Inner skull file
-InnerSkullFile = OPTIONS.BemFiles{end};
-% Load file
-warning off
-TessMat = load(InnerSkullFile, 'OpenMEEG');
-warning on
-% If HM-FILE file already exists and signature matches
-hminvfile = '';
-hmfile = '';
-if isfield(TessMat, 'OpenMEEG') && ~isempty(TessMat.OpenMEEG) && isfield(TessMat.OpenMEEG, 'HmFile') && ~isempty(TessMat.OpenMEEG.HmFile) && isequal(TessMat.OpenMEEG.Signature, sig)
-    tmpfile = bst_fullfile(bst_fileparts(InnerSkullFile), TessMat.OpenMEEG.HmFile);
-    if file_exist(tmpfile)
-        if OPTIONS.isAdjoint 
-            hmfile = tmpfile;
-        else
-            hminvfile = tmpfile;
-        end
-    end
-end
+% % % TEMPORARY STORAGE OF HM FILE IS DISABLED TO ALLOW UPGRADE OF OPENMEEG
+% % % % Compute signature of current combination of files
+% % % sig = [num2str(OPTIONS.isAdjoint), sprintf('_%1.07f',OPTIONS.BemCond)];
+% % % for i = 1:length(OPTIONS.BemFiles)
+% % %     fileinfo = dir(OPTIONS.BemFiles{i});
+% % %     sig = [sig '_' fileinfo.name '_' num2str(nVert(i)), '_' num2str(nFaces(i))];
+% % % end
+% % % 
+% % % % Inner skull file
+% % % InnerSkullFile = OPTIONS.BemFiles{end};
+% % % % Load file
+% % % warning off
+% % % TessMat = load(InnerSkullFile, 'OpenMEEG');
+% % % warning on
+% % % % If HM-FILE file already exists and signature matches
+% % % hminvfile = '';
+% % % hmfile = '';
+% % % if isfield(TessMat, 'OpenMEEG') && ~isempty(TessMat.OpenMEEG) && isfield(TessMat.OpenMEEG, 'HmFile') && ~isempty(TessMat.OpenMEEG.HmFile) && isequal(TessMat.OpenMEEG.Signature, sig)
+% % %     tmpfile = bst_fullfile(bst_fileparts(InnerSkullFile), TessMat.OpenMEEG.HmFile);
+% % %     if file_exist(tmpfile)
+% % %         if OPTIONS.isAdjoint 
+% % %             hmfile = tmpfile;
+% % %         else
+% % %             hminvfile = tmpfile;
+% % %         end
+% % %     end
+% % % end
+
+% % % REPLACED WITH HARD CODED HMINV FILES
+hmfile    = bst_fullfile(TmpDir, 'openmeeg_hm.mat');
+hminvfile = bst_fullfile(TmpDir, 'openmeeg_hminv.mat');
+
 
 
 %% ===== COMPUTE HM-INV FILE =====
-if isempty(hminvfile) && isempty(hmfile)
-    % Filenames
-    if OPTIONS.isAdjoint
-        hmfile = strrep(InnerSkullFile, '.mat', '_openmeeg.mat');
-        [tmp__, fBase, fExt] = bst_fileparts(hmfile);
-    else
-        hmfile = bst_fullfile(TmpDir, 'openmeeg_hm.mat');
-        hminvfile = strrep(InnerSkullFile, '.mat', '_openmeeg.mat');
-        [tmp__, fBase, fExt] = bst_fileparts(hminvfile);
-    end
+% % % if isempty(hminvfile) && isempty(hmfile)
+% % %     % Filenames
+% % %     if OPTIONS.isAdjoint
+% % %         hmfile = strrep(InnerSkullFile, '.mat', '_openmeeg.mat');
+% % %         [tmp__, fBase, fExt] = bst_fileparts(hmfile);
+% % %     else
+% % %         hmfile = bst_fullfile(TmpDir, 'openmeeg_hm.mat');
+% % %         hminvfile = strrep(InnerSkullFile, '.mat', '_openmeeg.mat');
+% % %         [tmp__, fBase, fExt] = bst_fileparts(hminvfile);
+% % %     end
     % === BUILD HM FILE ===
     % Build HM file
     if ~om_call('om_assemble -HM', ['"' geomfile '" "' condfile '"'], hmfile, 'Assembling head matrix...')
@@ -304,14 +310,14 @@ if isempty(hminvfile) && isempty(hmfile)
             return;
         end
     end
-    % === ADD REFERENCE IN INNER SKULL ===
-    % Build reference structure
-    OpenMEEG.HmFile = [fBase, fExt];
-    OpenMEEG.Signature = sig;
-    % Add it to inner skull file
-    s.OpenMEEG = OpenMEEG;
-    bst_save(InnerSkullFile, s, 'v7', 1);
-end
+% % %     % === ADD REFERENCE IN INNER SKULL ===
+% % %     % Build reference structure
+% % %     OpenMEEG.HmFile = [fBase, fExt];
+% % %     OpenMEEG.Signature = sig;
+% % %     % Add it to inner skull file
+% % %     s.OpenMEEG = OpenMEEG;
+% % %     bst_save(InnerSkullFile, s, 'v7', 1);
+% % % end
 
 
 %% ===== COMPUTE DSM =====
