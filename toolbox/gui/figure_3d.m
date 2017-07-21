@@ -2905,6 +2905,7 @@ function mixedRGB = BlendAnatomyData(SulciMap, AnatomyColor, Data, DataLimit, Da
     anatRGB = AnatomyColor(2-SulciMap, :);
     % === OVERLAY: DATA MAP ===
     if ~isempty(Data) && (length(DataLimit) == 2) && (DataLimit(2) ~= DataLimit(1)) && ~any(isnan(DataLimit)) && ~any(isinf(DataLimit))
+        Data(isnan(Data)) = 0;
         iDataCmap = round( ((size(sColormap.CMap,1)-1)/(DataLimit(2)-DataLimit(1))) * (Data - DataLimit(1))) + 1;
         iDataCmap(iDataCmap <= 0) = 1;
         iDataCmap(iDataCmap > size(sColormap.CMap,1)) = size(sColormap.CMap,1);

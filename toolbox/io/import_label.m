@@ -255,55 +255,33 @@ for iFile = 1:length(LabelFiles)
             AtlasName = sAtlas.Name;
             AtlasName = strrep(AtlasName, 'R', '');
             AtlasName = strrep(AtlasName, 'L', '');
-            % Read XML file
-            sXml = in_xml(LabelFiles{iFile});
+            % Read .gii file
+            [sXml, Values] = in_gii(LabelFiles{iFile});
             % If there is more than one entry: force adding
-            if (length(sXml.GIFTI.DataArray) > 1)
+            if (length(Values) > 1)
                 iAtlas = 'Add';
             end
             % Process all the entries
-            for ia = 1:length(sXml.GIFTI.DataArray)
+            for ia = 1:length(Values)
                 % Atlas name
-                if (length(sXml.GIFTI.DataArray) > 1) && isNewAtlas
+                if (length(Values) > 1) && isNewAtlas
                     sAtlas(ia).Name = sprintf('%s #%d', AtlasName, ia);
                 end
-                % Get data field
-                switch sXml.GIFTI.DataArray(ia).Encoding
-                    case 'ASCII'
-                        labels = str2num(sXml.GIFTI.DataArray(ia).Data.text);
-                    case {'Base64Binary', 'GZipBase64Binary'}
-                        % Base64 decoding
-                        decoder = BASE64Decoder();
-                        labels = decoder.decodeBuffer(sXml.GIFTI.DataArray(ia).Data.text);
-                        % Unpack gzipped stream
-                        if strcmpi(sXml.GIFTI.DataArray(ia).Encoding, 'GZipBase64Binary')
-                            labels = dunzip(labels);
-                        end
-                        % Cast to the required type of data
-                        switch (sXml.GIFTI.DataArray(ia).DataType)
-                            case 'NIFTI_TYPE_UINT8',   DataType = 'uint8';
-                            case 'NIFTI_TYPE_INT16',   DataType = 'int16';   
-                            case 'NIFTI_TYPE_INT32',   DataType = 'int32';
-                            case 'NIFTI_TYPE_FLOAT32', DataType = 'single';
-                            case 'NIFTI_TYPE_FLOAT64', DataType = 'double';
-                        end
-                        labels = typecast(labels, DataType);
-                end
                 % Check sizes
-                if (length(labels) ~= length(Vertices))
-                    Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, length(Vertices), length(labels))];
+                if (length(Values{ia}) ~= length(Vertices))
+                    Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, length(Vertices), length(Values{ia}))];
                     continue;
                 end
                 % Round the label values
-                labels = round(labels * 1e3) / 1e3;
+                Values{ia} = round(Values{ia} * 1e3) / 1e3;
                 % Convert to scouts structures
-                lablist = unique(labels);
+                lablist = unique(Values{ia});
                 % Loop on each label
                 for i = 1:length(lablist)
                     % New scout index
                     iScout = length(sAtlas(ia).Scouts) + 1;
                     % Get the vertices for this annotation
-                    sAtlas(ia).Scouts(iScout).Vertices = find(labels == lablist(i));
+                    sAtlas(ia).Scouts(iScout).Vertices = find(Values{ia} == lablist(i));
                     sAtlas(ia).Scouts(iScout).Seed     = [];
                     sAtlas(ia).Scouts(iScout).Label    = file_unique(num2str(lablist(i)), {sAtlas(ia).Scouts.Label});
                     sAtlas(ia).Scouts(iScout).Color    = [];

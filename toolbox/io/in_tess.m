@@ -120,16 +120,29 @@ switch (FileFormat)
         % Convert into local MRI coordinates
         if ~isempty(sMri)
             mriSize = size(sMri.Cube) .* (sMri.Voxsize(:))' ./ 1000;
-            TessMat.Vertices = bst_bsxfun(@minus, mriSize, TessMat.Vertices);
+            for iTess = 1:length(TessMat)
+                TessMat(iTess).Vertices = bst_bsxfun(@minus, mriSize, TessMat(iTess).Vertices);
+            end
+        else
+            % Swap faces
+            for iTess = 1:length(TessMat)
+                TessMat(iTess).Faces = TessMat(iTess).Faces(:,[2 1 3]);
+            end
         end
     case 'GII-MNI'
         TessMat = in_tess_gii(TessFile);
-        % Convert from MNI to MRI coordinates
-        if ~isempty(sMri)
-            TessMat.Vertices = cs_convert(sMri, 'mni', 'mri', TessMat.Vertices);
+        % Process all the surfaces
+        for iTess = 1:length(TessMat)
+            % Convert from MNI to MRI coordinates
+            if ~isempty(sMri)
+                TessMat(iTess).Vertices = cs_convert(sMri, 'mni', 'mri', TessMat(iTess).Vertices);
+                if isempty(TessMat(iTess).Vertices)
+                    error('You must compute the MNI transformation for the MRI first.');
+                end
+            end
+            % Swap faces
+            TessMat(iTess).Faces = TessMat(iTess).Faces(:,[2 1 3]);
         end
-        % Swap faces
-        TessMat.Faces = TessMat.Faces(:,[2 1 3]);
     case 'FS'
         % Read file with MNE function
         [TessMat.Vertices, TessMat.Faces] = mne_read_surface(TessFile);

@@ -204,9 +204,8 @@ end
 if ~isfield(sMri, 'Comment')
     sMri.Comment = 'MRI';
 end
-% Add an index number 
-if (iAnatomy > 1)
-    %sMri.Comment = [sMri.Comment, sprintf(' #%d', iAnatomy)];
+% Use filename as comment
+if (iAnatomy > 1) || isInteractive
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
     sMri.Comment = file_unique(fBase, {sSubject.Anatomy.Comment});
 end

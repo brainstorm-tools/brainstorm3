@@ -29,7 +29,7 @@ function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013
+% Authors: Francois Tadel, 2013-2017
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
@@ -74,8 +74,9 @@ if isempty(SourceFiles)
             'Import source maps...', ...   % Window title
             LastUsedDirs.ImportData, ...    % Last used directory
             'multiple', 'files', ...        % Selection mode
-            {{'*'}, 'FreeSurfer maps (*.*)', 'FS'; ...
-             {'*'}, 'CIVET maps (*.*)',      'CIVET'; ...
+            {{'*'}, 'FreeSurfer maps (*.*)',    'FS'; ...
+             {'*'}, 'CIVET maps (*.*)',         'CIVET'; ...
+             {'.gii'}, 'GIfTI texture (*.gii)', 'GII'; ...
             }, DefaultFormats.ResultsIn);
     % If no file was selected: exit
     if isempty(SourceFiles)
@@ -93,16 +94,41 @@ if isempty(SourceFiles)
 end
 
 
+%% ===== SELECT OUTPUT STUDY =====
+% If output folder not defined: Use a folder "Texture" in current subject
+if isempty(iStudy)
+    % The surface must be specified
+    if isempty(SurfaceFile)
+        error('Surface file must be specified.');
+    end
+    % Get subject
+    sSubject = bst_get('SurfaceFile', SurfaceFile);
+    % Get or create new folder "Texture"
+    Condition = 'Texture';
+    [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, Condition));
+    % If does not exist yet: Create the default study
+    if isempty(iStudy)
+        iStudy = db_add_condition(sSubject.Name, Condition);
+        if isempty(iStudy)
+            error('Study could not be created : "%s".', Condition);
+        end
+        sStudy = bst_get('Study', iStudy);
+    end
+% Use folder in input
+else
+    % Get study
+    sStudy = bst_get('Study', iStudy);
+    % Get subject
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+end
+
+
 %% ===== GET ANATOMY =====
 % Get various information
 isProgressBar = bst_progress('isVisible');
 if ~isProgressBar
     bst_progress('start', 'Import source maps', 'Importing source maps...');
 end
-% Get study
-sStudy = bst_get('Study', iStudy);
-% Get subject
-sSubject = bst_get('Subject', sStudy.BrainStormSubject);
 % If surface file not specified: get the default cortex
 if isempty(SurfaceFile) && ~isempty(sSubject.iCortex) && (sSubject.iCortex <= length(sSubject.Surface))
     SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
@@ -202,6 +228,23 @@ function map = in_sources(SourceFile, FileFormat)
             map = read_curv(SourceFile);
         case 'CIVET'
             map = load(SourceFile, '-ascii');
+        case 'GII'
+            % Load .gii information
+            [sXml, Values] = in_gii(SourceFile);
+            % Stack all the maps
+            for i = 1:length(Values)
+                % Transpose row vectors
+                if (size(Values{i},1) == 1)
+                    Values{i} = Values{i}';
+                end
+                % First map
+                if (i == 1)
+                    map = Values{i};
+                % Following maps: stack if same dimensions
+                elseif (size(map,2) == size(Values{i},2))
+                    map = [map, Values{i}];
+                end
+            end
         otherwise
             error('Unsupported file format.');
     end
