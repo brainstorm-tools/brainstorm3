@@ -1464,9 +1464,15 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
             end
             % Update factor value
             GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxes).DisplayFactor = Handles(iAxes).DisplayFactor * changeFactor;
-        % Else: Zoom/unzoom vertically in the graph
+        % Butterfly: Zoom/unzoom vertically in the graph
         else
             FigureZoom(hFig, 'vertical', changeFactor);
+            % If auto-scale is disabled: Update DataMinMax to keep it hen scrolling
+            if ~TsInfo.AutoScaleY
+                for iAxe = 1:length(GlobalData.DataSet(iDS).Figure(iFig).Handles)
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax = GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax ./ changeFactor;
+                end
+            end
         end
     end
     % Update default factor in the figure
