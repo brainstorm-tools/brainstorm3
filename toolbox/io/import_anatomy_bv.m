@@ -286,7 +286,7 @@ else
     jHelp.close();
 end
 % Load SCS and NCS field to make sure that all the points were defined
-sMri = load(BstMriFile, 'SCS', 'NCS');
+sMri = load(BstMriFile);
 if ~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R)
     errorMsg = ['Could not import BrainVISA folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive
@@ -378,7 +378,6 @@ if ~isempty(HeadFile)
     BstHeadHiFile = BstHeadHiFile{1};
     % Load MRI
     bst_progress('start', 'Import BrainVISA folder', 'Filling holes in the head surface...');
-    sMri = bst_memory('LoadMri', BstMriFile);
     % Load head surface
     sHead = load(BstHeadHiFile, 'Vertices', 'Faces', 'Comment');
     % Remove holes

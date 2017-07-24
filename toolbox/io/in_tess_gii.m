@@ -42,7 +42,17 @@ for iArray = 1:length(sXml.GIFTI.DataArray)
     % Identify type
     switch (sXml.GIFTI.DataArray(iArray).Intent)
         case 'NIFTI_INTENT_POINTSET'
-            Vertices{end+1} = double(Values{iArray}) ./ 1000;
+            Vertices{end+1} = double(Values{iArray});
+            % If there is a transformation available, apply it to the vertices
+            if isfield(sXml.GIFTI.DataArray(iArray), 'CoordinateSystemTransformMatrix') && isfield(sXml.GIFTI.DataArray(iArray).CoordinateSystemTransformMatrix, 'MatrixData')
+                Transf = str2num(sXml.GIFTI.DataArray(iArray).CoordinateSystemTransformMatrix.MatrixData.text);
+                if (length(Transf) == 16)
+                    Transf = reshape(Transf, 4, 4)';
+                    Vertices{end} = bst_bsxfun(@plus, Transf(1:3,1:3) * Vertices{end}', Transf(1:3,4))';
+                end
+            end
+            % Convert to meters
+            Vertices{end} = Vertices{end} ./ 1000;
         case 'NIFTI_INTENT_TRIANGLE'
             Faces{end+1} = double(Values{iArray}) + 1;
     end
