@@ -34,8 +34,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 1020;
     sProcess.Description = '';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix'};
-    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix'};
+    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix', 'raw'};
+    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Definition of the options
