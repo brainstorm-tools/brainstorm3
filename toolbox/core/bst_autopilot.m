@@ -66,7 +66,7 @@ function OutputFile = ReviewRaw(RawFile, FileFormat, isSeeg, OutputFile) %#ok<DE
     % If subject does not exist yet: create it
     if isempty(sSubject)
         [sSubject, iSubject] = db_add_subject(SubjectName);
-    end        
+    end
     
     % Import options
     ImportOptions = db_template('ImportOptions');
@@ -127,4 +127,8 @@ function OutputFile = ReviewRaw(RawFile, FileFormat, isSeeg, OutputFile) %#ok<DE
         brainstorm stop
     end
 end
+
+
+
+
 
