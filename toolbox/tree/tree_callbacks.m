@@ -2620,6 +2620,10 @@ function SurfaceSwapFaces_Callback(TessFile)
     TessMat = load(TessFile);
     % Swap vertex order
     TessMat.Faces = TessMat.Faces(:,[2 1 3]);
+    % Delete normals, which must be recomputed
+    TessMat.VertNormals = [];
+    TessMat.Curvature   = [];
+    TessMat.SulciMap    = [];
     % History: Swap faces
     TessMat = bst_history('add', TessMat, 'swap', 'Swap faces');
     % Save surface file
