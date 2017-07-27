@@ -3,9 +3,11 @@ function fid = out_mri_nii( sMri, OutputFile, typeMatlab, Nt )
 % 
 % USAGE:        out_mri_nii( sMri, OutputFile, typeMatlab)         : Write a full file
 %         fid = out_mri_nii( sMri, OutputFile, typeMatlab, Nt=1 )  : Write the header and do not close the file before returning
+%         ... = out_mri_nii( BstMriFile, ...)
 %
 % INPUT: 
 %    - sMri       : Brainstorm MRI structure
+%    - BstMriFile : Path to a MRI file in the Brainstorm database
 %    - OutputFile : full path to output file (with '.img' or '.nii' extension)
 %    - typeMatlab : string, type of data to write in the file: uint8, int16, int32, float32, double
 %    - Nt         : Number of time points to write in the file
@@ -50,6 +52,11 @@ byteOrder = 'l';
 [OutputPath, OutputBase, OutputExt] = bst_fileparts(OutputFile);
 
 % ===== LOAD BRAINSTORM MRI =====
+% If input is a filename
+if ischar(sMri)
+    BstMriFile = sMri;
+    sMri = in_mri_bst(BstMriFile);
+end
 % Get maximum
 MaxVal = max(abs(sMri.Cube(:)));
 % Check value range

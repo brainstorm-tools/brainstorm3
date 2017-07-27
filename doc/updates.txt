@@ -10,6 +10,7 @@ July 2017
 - IO: New menu "Import texture" in the popup menus of the surface files
 - IO: Load .gii files as source maps/textures
 - Anatomy: Added template USCBrain
+- Anatomy: Add computation of SPM canonical surfaces
 ---------------------------------------------------------------
 June 2017
 - IO: Added support for Blackrock .ns6 files

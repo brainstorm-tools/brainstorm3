@@ -93,9 +93,9 @@ if ischar(fileName)
                 fileType = 'cortex';
             elseif ~isempty(strfind(fileName, '_scalp')) || ~isempty(strfind(fileName, '_skin')) || ~isempty(strfind(fileName, '_head'))
                 fileType = 'scalp';
-            elseif ~isempty(strfind(fileName, '_outerskull')) || ~isempty(strfind(fileName, '_outer_skull'))
+            elseif ~isempty(strfind(fileName, '_outerskull')) || ~isempty(strfind(fileName, '_outer_skull')) || ~isempty(strfind(fileName, '_oskull'))
                 fileType = 'outerskull';
-            elseif ~isempty(strfind(fileName, '_innerskull')) || ~isempty(strfind(fileName, '_inner_skull'))
+            elseif ~isempty(strfind(fileName, '_innerskull')) || ~isempty(strfind(fileName, '_inner_skull')) || ~isempty(strfind(fileName, '_iskull'))
                 fileType = 'innerskull';
             elseif ~isempty(strfind(fileName, '_skull'))
                 fileType = 'outerskull';

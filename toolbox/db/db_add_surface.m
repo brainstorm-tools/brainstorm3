@@ -5,7 +5,7 @@ function [ iSurface ] = db_add_surface( iSubject, FileName, Comment, SurfaceType
 %
 % INPUT:
 %    - iSubject    : Indice of the subject where to add the surface
-%    - FileName    : Relative path to the file in which the tessalation is defined
+%    - FileName    : Relative path to the file in which the tesselation is defined
 %    - Comment     : Surface description
 %    - SurfaceType : String {'Cortex', 'Scalp', 'InnerSkull', 'OuterSkull', 'Other'}
 % OUTPUT:
