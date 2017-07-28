@@ -24,7 +24,14 @@ function sScouts = tess_detect_region(sScouts)
 % Loop on all the scouts
 for i = 1:length(sScouts)
     % Detect region based on the scout name
-    switch lower(sScouts(i).Label)
+    % USCBrain labels have subdivisions after ' - ', so remove part after
+    ind = strfind(sScouts(i).Label, ' - ');
+    if isempty(ind)
+        scout_name = sScouts(i).Label;
+    else
+        scout_name = sScouts(i).Label(1:ind-1);
+    end
+    switch lower(scout_name)
     % ==== FREESURFER: DESTRIEUX ====
         % Pre-frontal / Orbital
         case 's_orbital-h_shaped',          region = 'PF';
@@ -242,6 +249,7 @@ for i = 1:length(sScouts)
         case 'middle orbito-frontal gyrus',    region = 'PF';
         case 'posterior orbito-frontal gyrus', region = 'PF';
         case 'transvers frontal gyrus',        region = 'PF';
+        case 'transverse frontal gyrus',       region = 'PF';            
         case 'gyrus rectus',                   region = 'PF';
         case 'pars orbitalis',                 region = 'PF';
         % Frontal
@@ -252,7 +260,9 @@ for i = 1:length(sScouts)
         % Central
         case 'paracentral lobule',             region = 'C';
         case 'post-central gyrus',             region = 'C';
+        case 'postcentral gyrus',              region = 'C';            
         case 'pre-central gyrus',              region = 'C';
+        case 'precentral gyrus',               region = 'C';            
         % Parietal
         case 'pre-cuneus',                     region = 'P';
         case 'angular gyrus',                  region = 'P';
@@ -261,6 +271,7 @@ for i = 1:length(sScouts)
         % Temporal
         %case 'insula',                        region = 'T';
         case 'fusiforme gyrus',                region = 'T';
+        case 'fusiform gyrus',                region = 'T';            
         case 'inferior temporal gyrus',        region = 'T';
         case 'middle temporal gyrus',          region = 'T';
         case 'transverse temporal gyrus',      region = 'T';
@@ -276,7 +287,8 @@ for i = 1:length(sScouts)
         % Limbic
         case 'cingulate gyrus',                region = 'L'; 
         case 'subcallosal area',               region = 'L'; 
-        
+        case 'subcallosal gyrus',               region = 'L'; 
+
         % DEFAULT: Unknown
         otherwise
             if ~isempty(strfind(sScouts(i).Label, 'OngurEtAl'))
