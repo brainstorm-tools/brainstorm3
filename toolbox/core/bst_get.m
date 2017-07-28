@@ -2189,9 +2189,9 @@ switch contextName
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2016';
             sTemplates(end).Name = 'BCI-DNI_BrainSuite_2016';
         end
-        if ~ismember(lower({sTemplates.Name}), 'uscbrain')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain';
-            sTemplates(end).Name = 'USCBrain';
+        if ~ismember(lower({sTemplates.Name}), 'uscbrain_brainsuite_2017')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2017';
+            sTemplates(end).Name = 'USCBrain_BrainSuite_2017';
         end
         if ~ismember(lower({sTemplates.Name}), 'fsaverage_2016')
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2016';
