@@ -131,7 +131,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ChannelAlign = 2 * double(sProcess.options.channelalign.Value);
     % Import channel files
     ChannelReplace = 2;
-    import_channel(iChanStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign);
+    isSave = 1;
+    isFixUnits = 1;
+    import_channel(iChanStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits);
     % Return all the files in input
     OutputFiles = {sInputs.FileName};
 end

@@ -1,7 +1,7 @@
-function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave)
+function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits)
 % IMPORT_CHANNEL: Imports a channel file (definition of the sensors).
 % 
-% USAGE:  BstChannelFile = import_channel(iStudies=none, ChannelFile=[ask], FileFormat, ChannelReplace=1, ChannelAlign=[ask], isSave=1)
+% USAGE:  BstChannelFile = import_channel(iStudies=none, ChannelFile=[ask], FileFormat, ChannelReplace=1, ChannelAlign=[ask], isSave=1, isFixUnits=[ask])
 %
 % INPUT:
 %    - iStudies       : Indices of the studies where to import the ChannelFile
@@ -13,7 +13,10 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 %    - ChannelAlign   : 0, do not perform automatic headpoints-based alignment
 %                       1, perform automatic alignment after user confirmation  (default)
 %                       2, perform automatic alignment without user confirmation
-%    - isSave         : If 1, save the new channel file in the target study 
+%    - isSave         : If 1, save the new channel file in the target study
+%    - isFixUnits     : If 1, tries to convert the distance units to meters automatically
+%                       If 0, does not fix the distance units
+%                       If [], ask for the scaling to apply
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -37,6 +40,9 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 
 %% ===== PARSE INPUTS =====
 Output = [];
+if (nargin < 7) || isempty(isFixUnits)
+    isFixUnits = [];
+end
 if (nargin < 6) || isempty(isSave)
     isSave = 1;
 end
@@ -170,7 +176,7 @@ switch (FileFormat)
                 ChannelMat = in_channel_ascii(ChannelFile, {'indice','-Y','X','Z','Name'}, 0, .01);
                 ChannelMat.Comment = 'EEGLAB channels';
             case 'set'
-                ChannelMat = in_channel_eeglab_set(ChannelFile);
+                ChannelMat = in_channel_eeglab_set(ChannelFile, isFixUnits);
         end
         FileUnits = 'cm';
         
@@ -254,8 +260,13 @@ end
 
 
 %% ===== CHECK DISTANCE UNITS =====
-if ~isempty(FileUnits)
-    ChannelMat = channel_fixunits(ChannelMat, FileUnits);
+if ~isempty(FileUnits) && ~isequal(isFixUnits, 0)
+    if isempty(isFixUnits)
+        isConfirmFix = 1;
+    else
+        isConfirmFix = 0;
+    end
+    ChannelMat = channel_fixunits(ChannelMat, FileUnits, isConfirmFix);
 end
 
 

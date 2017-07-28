@@ -285,7 +285,14 @@ sFile.prop.samples = round(sFile.prop.times .* sFile.prop.sfreq);
 sFile.prop.nAvg    = 1;
 sFile.header = hdr;
 % Channel file
-ChannelMat = in_channel_eeglab_set(hdr, ImportOptions.ChannelAlign >= 1);
+if ImportOptions.DisplayMessages
+    isFixUnits = [];
+elseif (ImportOptions.ChannelAlign >= 1)
+    isFixUnits = 1;
+else
+    isFixUnits = 0;
+end
+ChannelMat = in_channel_eeglab_set(hdr, isFixUnits);
 
 % === EPOCHS ===
 for i = 1:nEpochs

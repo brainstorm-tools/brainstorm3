@@ -90,7 +90,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     iChanStudies = unique(iChanStudies);
     % Load file
     if ~isempty(ChannelFile)
-        ChannelMat = import_channel(iChanStudies, ChannelFile, FileFormat, [], [], 0);
+        ChannelMat = import_channel(iChanStudies, ChannelFile, FileFormat, [], [], 0, 1);
     end
 
     % ===== USE DEFAULT =====

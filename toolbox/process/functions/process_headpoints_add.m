@@ -94,9 +94,9 @@ function strMsg = AddHeadpoints(ChannelFile, HeadPointsFile, FileFormat)
     % Read new files
     HeadPoints = [];
     if (nargin < 3) || isempty(HeadPointsFile) || isempty(FileFormat)
-        [FileMat, HeadPointsFile, FileFormat] = import_channel(iChanStudies, [], [], [], [], 0);
+        [FileMat, HeadPointsFile, FileFormat] = import_channel(iChanStudies, [], [], [], [], 0, 0);
     else
-        FileMat = import_channel(iChanStudies, HeadPointsFile, FileFormat, [], [], 0);
+        FileMat = import_channel(iChanStudies, HeadPointsFile, FileFormat, [], [], 0, 1);
     end
     if isempty(FileMat)
         strMsg = 'No file could be read.';

@@ -43,7 +43,7 @@ if ~isempty(LocChannelFile)
     end
 % Import positions from external file
 else
-    LocChannelMat = import_channel(iStudies, [], [], 0, 0, 0);
+    LocChannelMat = import_channel(iStudies, [], [], 0, 0, 0, ~isInteractive);
 end
 % Nothing loaded: exit
 if isempty(LocChannelMat)
