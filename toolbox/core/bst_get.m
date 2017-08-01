@@ -143,7 +143,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('ExpertMode')            : {0,1} - If 1, show advanced options that regular user do not see
 %    - bst_get('DisplayGFP')            : {0,1} - If 1, the GFP is displayed on all the time series figures
 %    - bst_get('DisableOpenGL')         : {0,1,2} - If 1, do not use OpenGL renderer; if 2, use software OpenGL
-%    - bst_get('InterfaceScaling')      : {100,125,150,175,200} - Scales the Brainstorm GUI by a fixed factor
+%    - bst_get('InterfaceScaling')      : {100,125,150,...} - Scales the Brainstorm GUI by a fixed factor
 %    - bst_get('GraphicsSmoothing')     : {0,1} - If 1, uses the graphics smoothing (Matlab >= 2014b)
 %    - bst_get('JOGLVersion')           : {0,1,2}, Detect the current version of JOGL available in Matlab
 %    - bst_get('DefaultFormats')        : Default formats for importing/exporting data, channels, ... (last used)
@@ -2455,7 +2455,14 @@ switch contextName
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'InterfaceScaling')
             argout1 = GlobalData.Preferences.InterfaceScaling;
         else
-            argout1 = 100;
+            % Get screen resolution
+            if isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'ScreenDef') && isfield(GlobalData.Program.ScreenDef, 'javaPos') && isfield(GlobalData.Program.ScreenDef.javaPos, 'width')
+                AvailableRes = [100 125 150 200 250 300 400];
+                iRes = bst_closest(GlobalData.Program.ScreenDef.javaPos.width * 125 / 1920, AvailableRes);
+                argout1 = AvailableRes(iRes);
+            else
+                argout1 = 100;
+            end
         end
         
     case 'JOGLVersion'

@@ -69,16 +69,18 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
     jPanelLeft.add('br hfill', jPanelOpengl);
     % ===== LEFT: INTERFACE SCALING =====
-    jPanelScaling = gui_river([5 2], [0 0 5 0], 'Interface scaling');
+    jPanelScaling = gui_river([5 2], [0 0 5 0], 'Interface scaling (%)');
         % Slider labels
         labelTable = java.util.Hashtable();
-        labelTable.put(uint32(1), gui_component('label',[],'','100%'));
-        labelTable.put(uint32(2), gui_component('label',[],'','125%'));
-        labelTable.put(uint32(3), gui_component('label',[],'','150%'));
-        labelTable.put(uint32(4), gui_component('label',[],'','175%'));
-        labelTable.put(uint32(5), gui_component('label',[],'','200%'));
+        labelTable.put(uint32(1), gui_component('label',[],'','100'));
+        labelTable.put(uint32(2), gui_component('label',[],'','125'));
+        labelTable.put(uint32(3), gui_component('label',[],'','150'));
+        labelTable.put(uint32(4), gui_component('label',[],'','200'));
+        labelTable.put(uint32(5), gui_component('label',[],'','250'));
+        labelTable.put(uint32(6), gui_component('label',[],'','300'));
+        labelTable.put(uint32(7), gui_component('label',[],'','400'));
         % Slider config
-        jSliderScaling = JSlider(1,5,1);
+        jSliderScaling = JSlider(1,7,1);
         jSliderScaling.setLabelTable(labelTable);
         jSliderScaling.setPaintTicks(1);
         jSliderScaling.setMajorTickSpacing(1);
@@ -175,7 +177,15 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                 end
         end
         % Interface scaling
-        jSliderScaling.setValue(round((bst_get('InterfaceScaling') - 100) / 25) + 1);
+        switch (bst_get('InterfaceScaling'))
+            case 100,       jSliderScaling.setValue(1);
+            case 125,       jSliderScaling.setValue(2);
+            case 150,       jSliderScaling.setValue(3);
+            case {175,200}, jSliderScaling.setValue(4);
+            case 250,       jSliderScaling.setValue(5);
+            case 300,       jSliderScaling.setValue(6);
+            case 400,       jSliderScaling.setValue(7);
+        end    
         % Temporary directory
         jTextTempDir.setText(bst_get('BrainstormTmpDir'));
         % FieldTrip directory
@@ -232,7 +242,15 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         
         % ===== INTERFACE SCALING =====
         previousScaling = bst_get('InterfaceScaling');
-        InterfaceScaling = 100 + (jSliderScaling.getValue() - 1) * 25;
+        switch (jSliderScaling.getValue())
+            case 1,  InterfaceScaling = 100;
+            case 2,  InterfaceScaling = 125;
+            case 3,  InterfaceScaling = 150;
+            case 4,  InterfaceScaling = 200;
+            case 5,  InterfaceScaling = 250;
+            case 6,  InterfaceScaling = 300;
+            case 7,  InterfaceScaling = 400;
+        end
         bst_set('InterfaceScaling', InterfaceScaling);
         
         % ===== DATA IMPORT =====
