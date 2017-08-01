@@ -2456,7 +2456,7 @@ switch contextName
             argout1 = GlobalData.Preferences.InterfaceScaling;
         else
             % Get screen resolution
-            if isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'ScreenDef') && isfield(GlobalData.Program.ScreenDef, 'javaPos') && ~isempty(GlobalData.Program.ScreenDef.javaPos)
+            if isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'ScreenDef') && isfield(GlobalData.Program.ScreenDef, 'javaPos') && ~isempty(GlobalData.Program.ScreenDef(1).javaPos)
                 AvailableRes = [100 125 150 200 250 300 400];
                 iRes = bst_closest(GlobalData.Program.ScreenDef.javaPos.width * 125 / 1920, AvailableRes);
                 argout1 = AvailableRes(iRes);
