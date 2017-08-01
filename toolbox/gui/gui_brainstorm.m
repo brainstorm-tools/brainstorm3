@@ -92,7 +92,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     
     % ===== Menu: FILE =====
     if (GlobalData.Program.GuiLevel == 1)
-        jMenuFile = gui_component('Menu', jMenuBar, [], 'File', [], [], [], fontSize);
+        jMenuFile = gui_component('Menu', jMenuBar, [], ' File ', [], [], [], fontSize);
         
         % === PROTOCOL ===
         gui_component('MenuItem', jMenuFile, [], 'New protocol', IconLoader.ICON_FOLDER_NEW, [], @(h,ev)bst_call(@gui_edit_protocol, 'create'), fontSize);
@@ -140,15 +140,15 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %     jMenuColormaps = gui_component('Menu', jMenuBar, [], 'Colormaps', [], [], [], fontSize);
 %         bst_colormaps('CreateAllMenus', jMenuColormaps, [], 1);
 
-    % ==== Menu HELP ====
-    jMenuSupport = gui_component('Menu', jMenuBar, [], 'Help', [], [], [], fontSize);
+    % ==== Menu UPDATE ====
+    jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
         % UPDATE BRAINSTORM
         if ~(exist('isdeployed', 'builtin') && isdeployed)
-            gui_component('MenuItem', jMenuSupport, [], 'Update Brainstorm', [], [], @(h,ev)bst_update(1), fontSize);
+            gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);
         end
         % UPDATE OPENMEEG
         if (GlobalData.Program.GuiLevel == 1)
-            jMenuOpenmeeg = gui_component('Menu', jMenuSupport, [], 'Update OpenMEEG', [], [], [], fontSize);
+            jMenuOpenmeeg = gui_component('Menu', jMenuUpdate, [], 'Update OpenMEEG', IconLoader.ICON_RELOAD, [], [], fontSize);
             gui_component('MenuItem', jMenuOpenmeeg, [], 'Download', [], [], @(h,ev)bst_call(@DownloadOpenmeeg), fontSize);
             gui_component('MenuItem', jMenuOpenmeeg, [], 'Install', [], [], @(h,ev)bst_call(@bst_openmeeg, 'update'), fontSize);
             if strcmpi(bst_get('OsType',0), 'win64')
@@ -158,21 +158,23 @@ function GUI = CreateWindow() %#ok<DEFNU>
             jMenuOpenmeeg.addSeparator();
             gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
         end
-        jMenuSupport.addSeparator();
+        
+    % ==== Menu HELP ====
+    jMenuSupport = gui_component('Menu', jMenuBar, [], ' Help ', [], [], [], fontSize);
         % BUG REPORTS
         % gui_component('MenuItem', jMenuSupport, [], 'Bug reporting...', [], [], @(h,ev)gui_show('panel_bug', 'JavaWindow', 'Bug reporting', [], 1, 0), []);
         % WEBSITE
-        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm website', [], [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/', '-browser'), fontSize);
-        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm forum', [], [], @(h,ev)web('http://neuroimage.usc.edu/forums/', '-browser'), fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm website', IconLoader.ICON_EXPLORER, [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/', '-browser'), fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm forum', IconLoader.ICON_EXPLORER, [], @(h,ev)web('http://neuroimage.usc.edu/forums/', '-browser'), fontSize);
         jMenuSupport.addSeparator();
         % USAGE STATS
-        gui_component('MenuItem', jMenuSupport, [], 'Usage statistics', [], [], @(h,ev)bst_userstat, fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'Usage statistics', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_userstat, fontSize);
         jMenuSupport.addSeparator();
         % LICENSE
-        gui_component('MenuItem', jMenuSupport, [], 'License',       [], [], @(h,ev)bst_license(), fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'License',       IconLoader.ICON_EDIT, [], @(h,ev)bst_license(), fontSize);
         % RELEASE NOTES
         updatesfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'updates.txt');
-        gui_component('MenuItem', jMenuSupport, [], 'Release notes', [], [], @(h,ev)view_text(updatesfile, 'Release notes', 1), fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'Release notes', IconLoader.ICON_EDIT, [], @(h,ev)view_text(updatesfile, 'Release notes', 1), fontSize);
         
     % ===== TOOLBAR =====
     jToolbar = gui_component('Toolbar', jMenuBar);
