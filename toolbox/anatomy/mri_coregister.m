@@ -1,4 +1,4 @@
-function [sMriReg, errMsg] = mri_coregister(MriFileSrc, MriFileRef)
+function [sMriReg, errMsg] = mri_coregister(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
 % MRI_COREGISTER: Compute the MNI transformation on both input volumes, then register the first on the second.
 %
 % USAGE:  [MriFileReg, errMsg] = mri_coregister(MriFileSrc, MriFileRef)
@@ -9,6 +9,8 @@ function [sMriReg, errMsg] = mri_coregister(MriFileSrc, MriFileRef)
 %    - MriFileRef : Relative path to the Brainstorm MRI file used as a reference
 %    - sMriSrc    : Brainstorm MRI structure to register (fields Cube, Voxsize, SCS, NCS...)
 %    - sMriRef    : Brainstorm MRI structure used as a reference
+%    - TransfSrc  : Transformation for the MRI to register (if not available, use/compute the MNI transformation)
+%    - TransfRef  : Transformation for the reference MRI   (if not available, use/compute the MNI transformation)
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
@@ -33,7 +35,7 @@ function [sMriReg, errMsg] = mri_coregister(MriFileSrc, MriFileRef)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2017
 
 % ===== PARSE INPUTS =====
 sMriReg = [];
@@ -42,6 +44,11 @@ errMsg = [];
 isProgress = bst_progress('isVisible');
 if ~isProgress
     bst_progress('start', 'MRI register', 'Loading input volumes...');
+end
+% Transformations in input
+if (nargin < 4) || isempty(TransfSrc) || isempty(TransfRef)
+    TransfSrc = [];
+    TransfRef = [];
 end
 % USAGE: mri_coregister(sMriSrc, sMriRef)
 if isstruct(MriFileSrc)
@@ -60,28 +67,32 @@ end
 
 % ===== COMPUTE MNI TRANSFORMATIONS =====
 % Source MRI
-if ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || ~isfield(sMriSrc.NCS, 'T') || isempty(sMriSrc.NCS.R) || isempty(sMriSrc.NCS.T)
-    [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc);
-    if ~isempty(errMsg)
-        bst_error(errMsg, 'Compute MNI transformation', 0);
-        return;
+if isempty(TransfSrc)
+    if ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || ~isfield(sMriSrc.NCS, 'T') || isempty(sMriSrc.NCS.R) || isempty(sMriSrc.NCS.T)
+        [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc);
+        if ~isempty(errMsg)
+            bst_error(errMsg, 'Compute MNI transformation', 0);
+            return;
+        end
     end
+    TransfSrc = [sMriSrc.NCS.R, sMriSrc.NCS.T; 0 0 0 1];
 end
-TransfSrc = [sMriSrc.NCS.R, sMriSrc.NCS.T; 0 0 0 1];
 % Reference MRI
-if ~isfield(sMriRef, 'NCS') || ~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)
-    [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
-    if ~isempty(errMsg)
-        bst_error(errMsg, 'Compute MNI transformation', 0);
-        return;
+if isempty(TransfRef)
+    if ~isfield(sMriRef, 'NCS') || ~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)
+        [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
+        if ~isempty(errMsg)
+            bst_error(errMsg, 'Compute MNI transformation', 0);
+            return;
+        end
     end
+    TransfRef = [sMriRef.NCS.R, sMriRef.NCS.T; 0 0 0 1];
 end
-TransfRef = [sMriRef.NCS.R, sMriRef.NCS.T; 0 0 0 1];
 
 % ===== INTERPOLATE MRI VOLUME =====
 nBlocks = 3;
 nTol = 5;
-bst_progress('start', 'MRI register', 'Interpolating volume...', 0, nBlocks^3+1);
+bst_progress('start', 'MRI register', 'Reslicing volume...', 0, nBlocks^3+1);
 % Original position vectors
 X1 = ((0:size(sMriSrc.Cube,1)-1) + 0.5) .* sMriSrc.Voxsize(1);
 Y1 = ((0:size(sMriSrc.Cube,2)-1) + 0.5) .* sMriSrc.Voxsize(2);
@@ -180,7 +191,19 @@ if isfield(sMriSrc, 'NCS') && isfield(sMriSrc.NCS, 'R') && ~isempty(sMriSrc.NCS.
     sMriReg.NCS.R = Tncs(1:3,1:3);
     sMriReg.NCS.T = Tncs(1:3,4);
 end
-
+% Update the vox2mri transformation
+if isfield(sMriReg, 'InitTransf') && ~isempty(sMriReg.InitTransf) && ismember(sMriReg.InitTransf(:,1), 'vox2ras')
+    iTransf = find(strcmpi(sMriReg.InitTransf(:,1), 'vox2ras'));
+    sMriReg.InitTransf{iTransf,2} = sMriReg.InitTransf{iTransf,2} * inv(Transf);
+end
+if isfield(sMriReg, 'Header') && isfield(sMriReg.Header, 'nifti') && isfield(sMriReg.Header.nifti, 'vox2ras') && ~isempty(sMriReg.Header.nifti.vox2ras)
+    sMriReg.Header.nifti.vox2ras = sMriReg.Header.nifti.vox2ras * inv(Transf);
+    % Set sform to NIFTI_XFORM_ALIGNED_ANAT 
+    sMriReg.Header.nifti.sform_code = 2;
+    sMriReg.Header.nifti.srow_x     = sMriReg.Header.nifti.vox2ras(1,:);
+    sMriReg.Header.nifti.srow_y     = sMriReg.Header.nifti.vox2ras(2,:);
+    sMriReg.Header.nifti.srow_z     = sMriReg.Header.nifti.vox2ras(3,:);
+end
 
 % ===== SAVE NEW FILE =====
 % Save output

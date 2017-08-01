@@ -11,7 +11,9 @@ July 2017
 - IO: Load .gii files as source maps/textures
 - Anatomy: Added template USCBrain
 - Anatomy: Add computation of SPM canonical surfaces
+- Anatomy: Properly handle the the NIfTI sform/qform voxel=>subject transformations
 - Anatomy: Import sensors positions in subject coordinates (NIfTI sform/qform)
+- Anatomy: Added more options for importing multiple registered volumes
 ---------------------------------------------------------------
 June 2017
 - IO: Added support for Blackrock .ns6 files

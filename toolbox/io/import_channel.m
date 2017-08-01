@@ -67,7 +67,7 @@ if isempty(ChannelFile)
     DefaultFormats = bst_get('DefaultFormats');
     % Get MRI file
     [ChannelFile, FileFormat] = java_getfile('open', ...
-            'Import Channels...', ...              % Window title
+            'Import channel file...', ...              % Window title
             LastUsedDirs.ImportChannel, ...        % Last used directory
             'single', 'files_and_dirs', ...        % Selection mode
             bst_get('FileFilters', 'channel'), ... % File filters
@@ -257,6 +257,8 @@ if isempty(ChannelMat) || ((~isfield(ChannelMat, 'Channel') || isempty(ChannelMa
     bst_progress('stop');
     return
 end
+% Are the SCS coordinates defined for this file?
+isScsDefined = isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3);
 
 
 %% ===== CHECK DISTANCE UNITS =====
@@ -270,7 +272,7 @@ if ~isempty(FileUnits) && ~isequal(isFixUnits, 0)
 end
 
 
-%% ===== MNI TRANFORMATION ===== 
+%% ===== MNI TRANSFORMATION ===== 
 if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI'})
     % Warning for multiple studies
     if (length(iStudies) > 1)
@@ -302,6 +304,57 @@ if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI'})
     end
     % Do not convert the positions to SCS
     isAlignScs = 0;
+    
+%% ===== MRI/NII TRANSFORMATION =====
+% If the SCS coordinates are not defined (NAS/LPA/RPA fiducials), try to use the MRI=>subject transformation available in the MRI (eg. NIfTI sform/qform)
+% Only available if there is one study in output
+elseif ~isScsDefined && ~isequal(isFixUnits, 0)
+    % Warning for multiple studies
+    if (length(iStudies) > 1)
+        warning(['WARNING: When importing sensor positions for multiple subjects: the SCS transformation from the first subject is used for all of them.' 10 ...
+                 'Please consider importing your subjects seprately.']);
+    end
+    % Get the subject
+    sStudy = bst_get('Study', iStudies(1));
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    % If there is a MRI for this subject
+    if ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(1).FileName)
+        % Load the MRI
+        MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
+        sMri = load(MriFile, 'InitTransf', 'SCS', 'Voxsize');
+        % If there is a valid transformation
+        if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember(sMri.InitTransf(:,1), 'vox2ras')
+            % Ask user if necessary
+            if isempty(isFixUnits)
+                isApplyVox2mri = java_dialog('confirm', ['There is a transformation to subject coordinates available in the MRI.' 10 'Would you like to use it to align the sensors with the MRI?'], 'Apply MRI trannsformation');
+            else
+                isApplyVox2mri = isFixUnits;
+            end
+            % Apply transformation
+            if isApplyVox2mri
+                % Get the transformation
+                iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
+                vox2ras = sMri.InitTransf{iTransf,2};
+                % 2nd operation: Change reference from (0,0,0) to (1,1,1)
+                vox2ras = vox2ras * [1 0 0 -1; 0 1 0 -1; 0 0 1 -1; 0 0 0 1];
+                % 1st operation: Convert from MRI(mm) to voxels
+                vox2ras = vox2ras * [diag(1 ./ sMri.Voxsize), [0;0;0]; 0 0 0 1];
+                % Compute the transformation SUBJECT=>MRI (in meters)
+                Transf = inv(vox2ras);
+                Transf(1:3,4) = Transf(1:3,4) ./ 1000;
+                % Add the transformation MRI=>SCS
+                if isfield(sMri,'SCS') && isfield(sMri.SCS,'R') && ~isempty(sMri.SCS.R) && isfield(sMri.SCS,'T') && ~isempty(sMri.SCS.T)
+                    Transf = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1] * Transf;
+                else
+                    error(['The SCS coordinates are not defined for this subject, the sensors will not be aligned on the anatomy. ' 10 'Consider defining the NAS/LPA/RPA fiducials before importing the sensors positions.']);
+                end
+                % Convert all the coordinates
+                AllChannelMats = channel_apply_transf(ChannelMat, Transf, [], 1);
+                ChannelMat = AllChannelMats{1};
+            end
+        end
+    end
+    isAlignScs = 1;
 else
     isAlignScs = 1;
 end

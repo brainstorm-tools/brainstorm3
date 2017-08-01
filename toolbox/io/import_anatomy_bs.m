@@ -251,11 +251,11 @@ else
     drawnow;
     bst_progress('stop');
     % Display help message: ask user to select fiducial points
-    jHelp = bst_help('MriSetup.html', 0);
+    % jHelp = bst_help('MriSetup.html', 0);
     % Wait for the MRI Viewer to be closed
     waitfor(hFig);
     % Close help window
-    jHelp.close();
+    % jHelp.close();
 end
 % Load SCS and NCS field to make sure that all the points were defined
 sMri = load(BstMriFile, 'SCS', 'NCS');

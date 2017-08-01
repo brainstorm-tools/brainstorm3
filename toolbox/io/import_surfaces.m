@@ -229,6 +229,8 @@ function sSurf = applyMriTransf(MriTransf, sSurf)
                 end
             case 'permute'
                 pts = pts(:,val);
+            case 'vox2ras'
+                
         end
     end
     % Report changes in structure

@@ -119,19 +119,11 @@ else
     else
         Origin = volDim / 2;
     end
-    % if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC) 
-    %     if ~isempty(strfind(sMri.Comment, 'Colin27'))
-    %         Origin = sMri.NCS.AC + [-1 -6 2];   % Adapted to match the display in MRICron (overlay with default)
-    %     else
-    %         Origin = sMri.NCS.AC;
-    %     end
-    % end
-
     % sform matrix
     nifti.sform_code = 2;
-    nifti.srow_x     = [pixDim(1), 0, 0, -Origin(1)];
-    nifti.srow_y     = [0, pixDim(2), 0, -Origin(2)];
-    nifti.srow_z     = [0, 0, pixDim(3), -Origin(3)];
+    nifti.srow_x     = [1, 0, 0, -Origin(1)] * pixDim(1);
+    nifti.srow_y     = [0, 1, 0, -Origin(2)] * pixDim(2);
+    nifti.srow_z     = [0, 0, 1, -Origin(3)] * pixDim(3);
     % qform matrix
     nifti.qform_code = 0;
     nifti.quatern_b  = 0;

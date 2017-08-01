@@ -217,21 +217,15 @@ end
 
 %% ===== SAVE MNI TRANSFORMATION =====
 if isMni && ~isempty(vox2ras) && (~isfield(MRI, 'NCS') || ~isfield(MRI.NCS, 'R') || isempty(MRI.NCS.R))
+    % 2nd operation: Change reference from (0,0,0) to (1,1,1)
+    vox2ras = vox2ras * [1 0 0 -1; 0 1 0 -1; 0 0 1 -1; 0 0 0 1];
+    % 1st operation: Convert from MRI(mm) to voxels
+    vox2ras = vox2ras * [diag(1 ./ MRI.Voxsize), [0;0;0]; 0 0 0 1];
     % Copy MNI transformation to output structure
     MRI.NCS.R = vox2ras(1:3,1:3);
     MRI.NCS.T = vox2ras(1:3,4);
-    % Adjust for unknown reason (???)
-    MRI.NCS.T = MRI.NCS.T - [1; 1; 1];
-    % MNI coordinates for the AC/PC/IH fiducials
-    AC = [0,   3,  -4] ./ 1000;
-    PC = [0, -25,  -2] ./ 1000;
-    IH = [0, -10,  60] ./ 1000;
-    Origin = [0, 0, 0];
-    % Convert: MNI (meters) => MRI (millimeters)
-    MRI.NCS.AC     = cs_convert(MRI, 'mni', 'mri', AC) .* 1000;
-    MRI.NCS.PC     = cs_convert(MRI, 'mni', 'mri', PC) .* 1000;
-    MRI.NCS.IH     = cs_convert(MRI, 'mni', 'mri', IH) .* 1000;
-    MRI.NCS.Origin = cs_convert(MRI, 'mni', 'mri', Origin) .* 1000;
+    % Compute default fiducials positions based on MNI coordinates
+    MRI = mri_set_default_fid(MRI);
 end
 
 
