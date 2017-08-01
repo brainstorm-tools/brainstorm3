@@ -114,6 +114,10 @@ localRel.year  = str2num(Release(1:2));
 localRel.month = str2num(Release(3:4));
 localRel.day   = str2num(Release(5:6));
 
+% Check Matlab version
+if (bst_get('MatlabVersion') <= 803)
+    disp('BST> Warning: For better graphics, use Matlab >= 2014b');
+end
 
 %% ===== FORCE COMPILATION OF SOME INTERFACE FILES =====
 if (GuiLevel == 1)
