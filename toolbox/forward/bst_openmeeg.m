@@ -430,7 +430,7 @@ if isEcog
     if  OPTIONS.isAdjoint
         res = om_call('om_gain -EEGadjoint', ['"' geomfile '" "' condfile '" "' dipfile '" "' hmfile '" "' h2ecogmfile '"'], ecoggain_file, 'Assembling ECOG leadfield...');
     else
-        res = om_call('om_gain -EEG', ['"' hminvfile '" "' dsmfile '" "' h2ecogmfile '"'], eeggain_file, 'Assembling ECOG leadfield...');
+        res = om_call('om_gain -EEG', ['"' hminvfile '" "' dsmfile '" "' h2ecogmfile '"'], ecoggain_file, 'Assembling ECOG leadfield...');
     end
     if ~res
         return
