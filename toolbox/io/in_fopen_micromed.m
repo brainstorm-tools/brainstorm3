@@ -137,7 +137,12 @@ hdr.trigger_area.length = fread(fid, 1, 'ulong');
 % Read channel order
 fseek(fid, hdr.code_area.start, 'bof');
 for iChannel = 1:hdr.num_channels
-    hdr.code(iChannel) = fread(fid, 1, 'ushort');
+    switch (hdr.header_type)
+        case 3
+            hdr.code(iChannel) = fread(fid, 1, 'uint8');
+        otherwise
+            hdr.code(iChannel) = fread(fid, 1, 'ushort');
+    end
 end
 
 % Read electrodes info
@@ -151,8 +156,10 @@ for iChannel = 1:hdr.num_channels      % Instead of 1:MAX_LAB (MAX_LAB = 640)
     hdr.electrode(iChannel).type_value = channelType;
     % PIL : positive input label
     hdr.electrode(iChannel).PIL = strtrim(fread(fid, [1 6], '*char'));
+    hdr.electrode(iChannel).PIL = strtrim(hdr.electrode(iChannel).PIL(hdr.electrode(iChannel).PIL ~= 0));
     % NIL : positive input label
     hdr.electrode(iChannel).NIL = strtrim(fread(fid, [1 6], '*char'));
+    hdr.electrode(iChannel).NIL = strtrim(hdr.electrode(iChannel).NIL(hdr.electrode(iChannel).NIL ~= 0));
     % Reference
     if bitget(channelType, 1)
         hdr.electrode(iChannel).reference = ['Bipolar ' hdr.electrode(iChannel).PIL '/' hdr.electrode(iChannel).NIL];
