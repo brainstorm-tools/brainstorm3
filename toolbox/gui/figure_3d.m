@@ -4086,12 +4086,12 @@ function hPairs = PlotNirsCap(hFig, isDetails)
             'Tag',                 'NirsCapText', ...
             'Interpreter',         'none'};
         % Display text for sources
-        for i = 1:length(locSrc)
+        for i = 1:size(locSrc,1)
             txtLoc = locSrc(i,:) .* 1.08;
             text(txtLoc(1), txtLoc(2), txtLoc(3), Snames{i}, 'Color', [1,.8,0], textOpt{:});
         end
         % Display text for detectors
-        for i = 1:length(locDet)
+        for i = 1:size(locDet,1)
             txtLoc = locDet(i,:) .* 1.08;
             text(txtLoc(1), txtLoc(2), txtLoc(3), Dnames{i}, 'Color', [.8,1,0], textOpt{:});
         end
