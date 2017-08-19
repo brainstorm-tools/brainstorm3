@@ -2638,7 +2638,7 @@ switch contextName
         
     case 'RawViewerOptions'
         defPref =  struct(...
-            'MaxSamples',     2000, ...
+            'PageDuration',   3, ...
             'RemoveBaseline', 'all', ...
             'UseCtfComp',     1, ...
             'Shortcuts',      []);
@@ -2653,16 +2653,16 @@ switch contextName
             '8', 'event8'; ...
             '9', 'event9'};
         argout1 = FillMissingFields(contextName, defPref);
-        % If invalid MaxSamples: reset to default
-        if (argout1.MaxSamples <= 100)
-            argout1.MaxSamples = defPref.MaxSamples;
+        % If invalid PageDuration: reset to default
+        if (argout1.PageDuration <= 0.1)
+            argout1.PageDuration = defPref.PageDuration;
         end
         % Adapt to FIF block size
         if (nargin >= 2)
             sFile = varargin{2};
             if strcmpi(sFile.format, 'FIF') && isfield(sFile.header, 'raw') && isfield(sFile.header.raw, 'rawdir') && ~isempty(sFile.header.raw.rawdir)
                 fifBlockSize = min(double(sFile.header.raw.rawdir(1).nsamp), 5000);
-                argout1.MaxSamples = fifBlockSize * max(1, round(argout1.MaxSamples / fifBlockSize));
+                argout1.PageDuration = fifBlockSize * max(1, round(argout1.PageDuration / fifBlockSize)) / sFile.prop.sfreq;
             end
         end
         

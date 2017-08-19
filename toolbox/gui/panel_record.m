@@ -588,7 +588,7 @@ function ValidateTimeWindow()
     % Save length in user preferences
     if (smpLength <= length(Time))
         RawViewerOptions = bst_get('RawViewerOptions');
-        RawViewerOptions.MaxSamples = smpLength;
+        RawViewerOptions.PageDuration = smpLength / sfreq;
         bst_set('RawViewerOptions', RawViewerOptions);
     end
     % Reload recordings

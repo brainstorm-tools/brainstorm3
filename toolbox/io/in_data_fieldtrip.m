@@ -101,7 +101,7 @@ for i = 1:nChannels
         ChannelMat.Channel(i).Loc = ftMat.grad.elecpos(ichan,:)';
         
     % MEG sensors
-    elseif isfield(ftMat, 'grad') && ~isempty(ftMat.grad)  && isfield(ftMat.grad, 'tra') && isfield(ftMat.grad, 'label') && ~isempty(ftMat.grad.label) && ismember(ftMat.label{i}, ftMat.grad.label)
+    elseif isfield(ftMat, 'grad') && ~isempty(ftMat.grad) && isfield(ftMat.grad, 'tra') && isfield(ftMat.grad, 'label') && ~isempty(ftMat.grad.label) && ismember(ftMat.label{i}, ftMat.grad.label)
         ChannelMat.Channel(i).Type = 'MEG';
         % Find channel index
         ichan = find(strcmpi(ftMat.label{i}, ftMat.grad.label));

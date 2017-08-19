@@ -556,8 +556,8 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             % If current time window can be re-used
             if ~isempty(GlobalData.UserTimeWindow.Time) && (GlobalData.UserTimeWindow.NumberOfSamples > 2) && (GlobalData.UserTimeWindow.Time(1) >= Time(1)) && (GlobalData.UserTimeWindow.Time(2) <= Time(end))
                 iTime = bst_closest(GlobalData.UserTimeWindow.Time, Time);
-            elseif (length(Time) > RawViewerOptions.MaxSamples)
-                iTime = [1, RawViewerOptions.MaxSamples];
+            elseif (length(Time) > floor(RawViewerOptions.PageDuration * sFile.prop.sfreq))
+                iTime = [1, floor(RawViewerOptions.PageDuration * sFile.prop.sfreq)];
             end
         end
         Measures.Time            = double(Time([iTime(1), iTime(2)])); 

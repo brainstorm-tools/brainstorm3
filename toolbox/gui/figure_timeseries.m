@@ -3663,6 +3663,8 @@ function SetResolution(iDS, iFig, newResX, newResY)
         end
         % Save resolution modification
         Resolution(1) = newResX;
+    else
+        Resolution(1) = 0;
     end
     % Changing the amplitude resolution
     if (length(newResY) == 1) && (newResY ~= TsInfo.Resolution(2)) && (newResY > 0)
@@ -3689,6 +3691,8 @@ function SetResolution(iDS, iFig, newResX, newResY)
         end
         % Save resolution modification
         Resolution(2) = newResY;
+    else
+        Resolution(2) = 0;
     end
     % Save modifications in user preferences
     if ~isequal(Resolution, oldResolution)
