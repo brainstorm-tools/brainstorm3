@@ -2443,7 +2443,10 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         end
         % Store initial XLim and YLim
         setappdata(hAxes(iAxes), 'XLimInit', get(hAxes(iAxes), 'XLim'));
-        setappdata(hAxes(iAxes), 'YLimInit', get(hAxes(iAxes), 'YLim'));
+        % When updating the figure: Keep the same zoom factor
+        if ~isFastUpdate
+            setappdata(hAxes(iAxes), 'YLimInit', get(hAxes(iAxes), 'YLim'));
+        end
     end
     % Resize here FOR MAC ONLY (don't now why, if not the display flickers)
     if strncmp(computer,'MAC',3)
@@ -3127,8 +3130,10 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
                    'Yticklabel',     bst_flip(YtickLabel,1));
     end
     
-    % Set Y axis scale
-    set(hAxes, 'YLim', YLim);
+    % Set Y axis scale (updating: keeping the zoom factor)
+    if ~isFastUpdate
+        set(hAxes, 'YLim', YLim);
+    end
     % Set axis orientation
     set(hAxes, 'YDir', 'normal');
     % Remove axes legend for Y axis
