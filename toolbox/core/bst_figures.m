@@ -1698,6 +1698,7 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                         if TsInfo.AutoScaleY
                             GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax = [];
                         end
+                        GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor = [];
                         isOk = figure_timeseries('PlotFigure', iDS, iFig, [], [], isFastUpdate);
                         % The figure could not be refreshed: close it
                         if ~isOk

@@ -142,6 +142,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('IgnoreMemoryWarnings')  : {0,1} - If 1, do not display memory warnings at the Brainstorm startup
 %    - bst_get('ExpertMode')            : {0,1} - If 1, show advanced options that regular user do not see
 %    - bst_get('DisplayGFP')            : {0,1} - If 1, the GFP is displayed on all the time series figures
+%    - bst_get('DownsampleTimeSeries')  : {0,1} - If 1, downsample dense time series for faster display
 %    - bst_get('DisableOpenGL')         : {0,1,2} - If 1, do not use OpenGL renderer; if 2, use software OpenGL
 %    - bst_get('InterfaceScaling')      : {100,125,150,...} - Scales the Brainstorm GUI by a fixed factor
 %    - bst_get('GraphicsSmoothing')     : {0,1} - If 1, uses the graphics smoothing (Matlab >= 2014b)
@@ -2435,6 +2436,13 @@ switch contextName
             argout1 = GlobalData.Preferences.DisplayGFP;
         else
             argout1 = 1;
+        end
+        
+    case 'DownsampleTimeSeries'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'DownsampleTimeSeries')
+            argout1 = GlobalData.Preferences.DownsampleTimeSeries;
+        else
+            argout1 = 0;
         end
         
     case 'GraphicsSmoothing'

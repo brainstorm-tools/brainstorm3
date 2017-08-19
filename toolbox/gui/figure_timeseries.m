@@ -947,6 +947,15 @@ function FigureZoom(hFig, direction, Factor, center)
                 end
             end
         case 'horizontal'
+            % Start by displaying the full resolution if necessary
+            [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+            if (GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor > 1)
+                set(hFig, 'Pointer', 'watch');
+                drawnow;
+                GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor = 1;
+                figure_timeseries('PlotFigure', iDS, iFig, [], [], 1);
+                set(hFig, 'Pointer', 'arrow');
+            end
             % Get current time frame
             hCursor = findobj(hAxes(1), '-depth', 1, 'Tag', 'Cursor');
             Xcurrent = get(hCursor, 'XData');
@@ -2677,6 +2686,26 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
         % Replace plot colors if available
         if ~isempty(MontageColors) && isempty(LinesColor)
             LinesColor = MontageColors;
+        end
+    end
+
+    % ===== DOWNSAMPLE TIME SERIES =====
+    % If optimization is disabled
+    if ~bst_get('DownsampleTimeSeries')
+        PlotHandles.DownsampleFactor = 1;
+    % Detect optimal downsample factor
+    elseif ~isFastUpdate || isempty(PlotHandles.DownsampleFactor)
+        % Get number of pixels in the axes
+        figPos = get(get(hAxes,'Parent'), 'Position');
+        % Keep 5 values per pixel
+        PlotHandles.DownsampleFactor = max(1, floor(length(TimeVector) / (figPos(3) -50) / 5));
+    end
+    % Downsample time series
+    if (PlotHandles.DownsampleFactor > 1)
+        TimeVector = TimeVector(1:PlotHandles.DownsampleFactor:end);
+        F = F(:,1:PlotHandles.DownsampleFactor:end);
+        if ~isempty(Std)
+            Std = Std(:,1:PlotHandles.DownsampleFactor:end);
         end
     end
 

@@ -273,7 +273,8 @@ if ~isempty(ImportOptions) && ~isempty(ImportOptions.RemoveBaseline)
         % Compute baseline
         blValue = mean(F(iChanBl,iTimesBl), 2);
         % Remove from recordings
-        F(iChanBl,:) = F(iChanBl,:) - repmat(blValue, [1,size(F,2)]);
+        % F(iChanBl,:) = F(iChanBl,:) - repmat(blValue, [1,size(F,2)]);
+        F(iChanBl,:) = bst_bsxfun(@minus, F(iChanBl,:), blValue);
     end
 end
 

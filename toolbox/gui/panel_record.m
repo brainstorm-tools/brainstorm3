@@ -495,10 +495,10 @@ function RawKeyCallback(keyEvent) %#ok<DEFNU>
         % Update time window
         if (iEpochNew ~= iEpoch)
             ctrl.jSpinnerEpoch.setValue(iEpochNew);
-            ValidateTimeWindow();
+            ValidateTimeWindow(0);
         elseif (iStartNew ~= iStart)
             ctrl.jSliderStart.setValue(iStartNew);
-            ValidateTimeWindow();
+            ValidateTimeWindow(0);
         end
         drawnow;
         % Release mutex
@@ -565,8 +565,12 @@ end
 
 
 %% ===== VALIDATE TIME WINDOW =====
-function ValidateTimeWindow()
+function ValidateTimeWindow(isProgress)
     global GlobalData;
+    % Parse inputs
+    if (nargin < 1) || isempty(isProgress)
+        isProgress = 1;
+    end
     % Get panel controls
     ctrl = bst_get('PanelControls', 'Record');
     if isempty(ctrl)
@@ -591,8 +595,16 @@ function ValidateTimeWindow()
         RawViewerOptions.PageDuration = smpLength / sfreq;
         bst_set('RawViewerOptions', RawViewerOptions);
     end
+    % Progress bar
+    if isProgress
+        bst_progress('start', 'Update display', 'Loading recordings...');
+    end
     % Reload recordings
     ReloadRecordings();
+    % Close progress bar
+    if isProgress
+        bst_progress('stop');
+    end
 end
 
 
@@ -1077,7 +1089,9 @@ function ReloadRecordings(isForced)
         isEpochChanged = 0;
     end
     % Progress bar
-    bst_progress('start', 'Update display', 'Loading recordings...');
+    % bst_progress('start', 'Update display', 'Loading recordings...');
+    set(gcf, 'Pointer', 'watch');
+    drawnow;
     % Epoch changed: Update events list
     if isEpochChanged
         % Get selected events group
@@ -1100,7 +1114,8 @@ function ReloadRecordings(isForced)
     % Flushes the display updates
     drawnow;
     % Close progress bar
-    bst_progress('stop');
+    % bst_progress('stop');
+    set(gcf, 'Pointer', 'arrow');
 end
 
 

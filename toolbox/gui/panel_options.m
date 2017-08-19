@@ -49,6 +49,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         else
             jCheckSmooth = [];
         end
+        jCheckDownsample = gui_component('CheckBox', jPanelSystem, 'br', 'Downsample recordings for faster display', [], [], []);
         jCheckGfp        = gui_component('CheckBox', jPanelSystem, 'br', 'Display GFP over time series', [], [], []);
         jCheckForceComp  = gui_component('CheckBox', jPanelSystem, 'br', 'Force mat-files compression (slower)', [], [], []);
         jCheckIgnoreMem  = gui_component('CheckBox', jPanelSystem, 'br', 'Ignore memory warnings', [], [], []);
@@ -160,6 +161,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckForceComp.setSelected(bst_get('ForceMatCompression'));
         jCheckUpdates.setSelected(bst_get('AutoUpdates'));
         jCheckGfp.setSelected(bst_get('DisplayGFP'));
+        jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries'));
         jCheckIgnoreMem.setSelected(bst_get('IgnoreMemoryWarnings'));
         if ~isempty(jCheckSmooth)
             jCheckSmooth.setSelected(bst_get('GraphicsSmoothing'));
@@ -204,6 +206,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         bst_set('ForceMatCompression', jCheckForceComp.isSelected());
         bst_set('AutoUpdates', jCheckUpdates.isSelected());
         bst_set('DisplayGFP',  jCheckGfp.isSelected());
+        bst_set('DownsampleTimeSeries',  jCheckDownsample.isSelected());
         bst_set('IgnoreMemoryWarnings',  jCheckIgnoreMem.isSelected());
         if ~isempty(jCheckSmooth)
             % Update value
