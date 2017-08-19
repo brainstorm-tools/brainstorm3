@@ -54,7 +54,7 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -468,7 +468,11 @@ function UpdateFigureName(hFig)
                             figureName = ['Sources: ' figureName];
                             imageFile = ['/' sStudy.Results(iFile).Comment];
                         case {'timefreq'}
-                            figureName = ['Connect: ' figureName];
+                            if isequal(FigureId.SubType, 'trialimage')
+                                figureName = ['Image: ' figureName];
+                            else
+                                figureName = ['Connect: ' figureName];
+                            end
                             imageFile = ['/' sStudy.Timefreq(iFile).Comment];
                         case 'matrix'
                             figureName = ['Matrix: ' figureName];

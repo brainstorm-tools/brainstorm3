@@ -1335,43 +1335,52 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
         end
         
         % === DEFINE TICKS ===
-        % Try to find an easy to read scale for this data
-        possibleTickSpaces = reshape([1; 2; 5] * [0.0001 0.001 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000], 1, []);
-        possibleNbTicks = (dataBounds(2) - dataBounds(1)) .* fFactor ./ possibleTickSpaces ;
-        iTicks = find((possibleNbTicks >= 3) & (possibleNbTicks <= 500));
-        % If at least one scale is found
-        if ~isempty(iTicks)
-            % Take the one with the smallest number of ticks
-            tickSpace = possibleTickSpaces(iTicks(end));
-            YTick = unique([bst_flip(0:-tickSpace/fFactor:dataBounds(1), 2), 0, 0:tickSpace/fFactor:dataBounds(2)]);
-            YTickLabel = fFactor * YTick;
-            % Normalized YTicks
-            YLim = get(hColorbar, 'YLim');
-            YTickNorm = (YTick-dataBounds(1)) / (dataBounds(2)-dataBounds(1)) * (YLim(2)-YLim(1)) + YLim(1);
-            
-            % If displaying integer values (%d)
-            if (round(tickSpace) == tickSpace)
-                YTickLabel = num2str(round(YTickLabel)', '%d');
-            % Else : display fractional values
-            else
-                nbDecimal = 1;
-                while (tickSpace < power(10, -nbDecimal))
-                    nbDecimal = nbDecimal + 1;
-                end
-                YTickLabel = num2str(YTickLabel', sprintf('%%0.%df', nbDecimal));
-            end
-        % If no scale can be manually set
-        else
-            % Cannot find a valid number of ticks : do not display ticks
-            YTickNorm  = 0;
-            YTickLabel = [];
-            fUnits     = 'Invalid scale';
+        YLim = get(hColorbar, 'YLim');
+        % Guess the most reasonable ticks spacing
+        [YTickNorm, YTickLabel] = GetTicks(dataBounds, YLim, fFactor);
+        % Invalid scale
+        if isempty(YTickLabel)
+            fUnits = 'Invalid scale';
         end
         % Update ticks of the colorbar
         set(hColorbar, 'YTick',      YTickNorm, ...
                        'YTickLabel', YTickLabel);
         xlabel(hColorbar, fUnits);
     end    
+end
+
+
+%% ====== GET TICKS ======
+% Guess the most reasonable ticks spacing
+function [TickNorm, TickLabel] = GetTicks(dataBounds, axesLim, fFactor)
+    % Try to find an easy to read scale for this data
+    possibleTickSpaces = reshape([1; 2; 5] * [0.0001 0.001 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000], 1, []);
+    possibleNbTicks = (dataBounds(2) - dataBounds(1)) .* fFactor ./ possibleTickSpaces ;
+    iTicks = find((possibleNbTicks >= 3) & (possibleNbTicks <= 500));
+    % If at least one scale is found
+    if ~isempty(iTicks)
+        % Take the one with the smallest number of ticks
+        tickSpace = possibleTickSpaces(iTicks(end));
+        Tick = unique([bst_flip(0:-tickSpace/fFactor:dataBounds(1), 2), 0, 0:tickSpace/fFactor:dataBounds(2)]);
+        TickLabel = fFactor * Tick;
+        % Normalized Ticks
+        TickNorm = (Tick-dataBounds(1)) / (dataBounds(2)-dataBounds(1)) * (axesLim(2)-axesLim(1)) + axesLim(1);
+        % If displaying integer values (%d)
+        if (round(tickSpace) == tickSpace)
+            TickLabel = num2str(round(TickLabel)', '%d');
+        % Else : display fractional values
+        else
+            nbDecimal = 1;
+            while (tickSpace < power(10, -nbDecimal))
+                nbDecimal = nbDecimal + 1;
+            end
+            TickLabel = num2str(TickLabel', sprintf('%%0.%df', nbDecimal));
+        end
+    % Cannot find a valid number of ticks : do not display ticks
+    else
+        TickNorm  = 0;
+        TickLabel = [];
+    end
 end
 
 

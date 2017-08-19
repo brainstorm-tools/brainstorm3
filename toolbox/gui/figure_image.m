@@ -130,7 +130,14 @@ function ResizeCallback(hFig, ev)
     % Define constants
     colorbarWidth = 15;
     marginTop     = 10;
-    marginBottom  = 25;
+    
+    % Define the size of the bottom margin, function of the labels that have to be displayed
+    XTickLabel = get(hAxes, 'XTickLabel');
+    if isempty(XTickLabel)
+        marginBottom = 25;
+    else
+        marginBottom = 40;
+    end
     
     % Define the size of the left margin in function of the labels that have to be displayed
     YTickLabel = get(hAxes, 'YTickLabel');
@@ -820,7 +827,6 @@ function UpdateFigurePlot(hFig, isResetMax)
                'Color',      [.9 .9 .9], ...
                'XColor',     [0 0 0], ...
                'YColor',     [0 0 0], ...
-               'XTick',      [], ...
                'Visible',    'on');
     % No interpreter in the labels
     if isprop(hAxes, 'TickLabelInterpreter')
@@ -830,6 +836,22 @@ function UpdateFigurePlot(hFig, isResetMax)
     xlabel(hAxes, DimLabels{2});
     % Y Label
     strLabelY = DimLabels{1};
+    % X Ticks
+    if ShowLabels && ~isempty(strfind(DimLabels{2}, 'Time')) && isnumeric(Labels{2})
+        % Get limits (time values and axes limits)
+        TimeWindow = [Labels{2}(1), Labels{2}(end)];
+        XLim = get(hAxes, 'XLim');
+        % Get reasonable ticks spacing
+        [XTick, XTickLabel] = bst_colormaps('GetTicks', TimeWindow, XLim, 1);
+        % Set the axes ticks
+        set(hAxes, 'XTickMode',      'manual', ...
+                   'XTickLabelMode', 'manual', ...
+                   'XTick',          XTick, ...
+                   'XTickLabel',     XTickLabel);
+    else
+        set(hAxes, 'XTick',      [], ...
+                   'XTickLabel', []);
+    end
     % Y Ticks
     if ShowLabels && ~isempty(Labels)
         % Remove all the common parts of the labels
