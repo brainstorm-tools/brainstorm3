@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+August 2017
+- GUI: Raw viewer: Optimized scrolling speed with new option "Downsample recordings"
+---------------------------------------------------------------
 July 2017
 - GUI: Standalone file viewer ("brainstorm autopilot")
 - GUI: Allow marking bad EEG/SEEG channels in bipolar montages
