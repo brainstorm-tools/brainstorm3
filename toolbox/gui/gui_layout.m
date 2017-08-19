@@ -192,9 +192,10 @@ function ScreenDef = GetScreenClientArea()
         jBounds = jScreens(i).getDefaultConfiguration().getBounds();
         % Get the screen insets
         jInsets = tk.getScreenInsets(jScreens(i).getDefaultConfiguration());
+        ScreenDef(i).screenInsets = jInsets;
         % Maximum window size
         MaxWin = [jBounds.getX() + 1 + jInsets.left, ...
-                  jBounds.getY() + 1, ... % + jInsets.bottom, ...
+                  jBounds.getY() + 1 + jInsets.bottom, ...
                   jBounds.getWidth() - jInsets.left - jInsets.right, ...
                   jBounds.getHeight() - jInsets.top - jInsets.bottom];
         % Convert to a Java rectangle
@@ -234,7 +235,7 @@ end
 %      .---------------.           .---------------.
 %   1) | BST | Figures |   OR   2) | Figures | BST |
 %      '---------------'           '---------------'
-function [jBstArea, FigArea, nbScreens, jFigArea] = GetScreenBrainstormAreas(jBstWindow)
+function [jBstArea, FigArea, nbScreens, jFigArea, jInsets] = GetScreenBrainstormAreas(jBstWindow)
     % Jave window not provided
     if (nargin < 1) || isempty(jBstWindow)
         jBstWindow = bst_get('BstFrame');
@@ -248,11 +249,13 @@ function [jBstArea, FigArea, nbScreens, jFigArea] = GetScreenBrainstormAreas(jBs
         jBstArea = java.awt.Rectangle(0,0,0,0);
         FigArea  = ScreenDef(1).matlabPos;
         jFigArea = ScreenDef(1).javaPos;
+        jInsets  = ScreenDef(1).screenInsets;
         
     % ===== ONE SCREEN =====
     elseif (nbScreens == 1)
         javaArea   = ScreenDef.javaPos;
         matlabArea = ScreenDef.matlabPos;
+        jInsets    = ScreenDef.screenInsets;
         ZoomFactor = ScreenDef.zoomFactor;
         % Check that Brainstorm window is completely inside the client area
         jBstWindow.setBounds(jBstWindow.getBounds.intersection(javaArea));
@@ -309,11 +312,13 @@ function [jBstArea, FigArea, nbScreens, jFigArea] = GetScreenBrainstormAreas(jBs
             jBstArea = ScreenDef(2).javaPos;
             FigArea  = ScreenDef(1).matlabPos;
             jFigArea = ScreenDef(1).javaPos;
+            jInsets  = ScreenDef(1).screenInsets;
         % If Brainstorm window is on screen 1
         else
             jBstArea = ScreenDef(1).javaPos;
             FigArea  = ScreenDef(2).matlabPos;
             jFigArea = ScreenDef(2).javaPos;
+            jInsets  = ScreenDef(2).screenInsets;
         end
     end
 end
