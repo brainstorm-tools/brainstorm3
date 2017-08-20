@@ -58,6 +58,8 @@ end
 % Convert to MRI coordinates if available
 if nargin >= 3
     sMri = in_mri_bst(MriFile);
+    volDim = size(sMri.Cube);
+    pixDim = sMri.Voxsize;
     
     % Same code as in out_mri_nii.m to make sure exported coordinates have the
     % same origin as exported MRI
@@ -70,6 +72,7 @@ if nargin >= 3
     else
         Origin = volDim / 2;
     end
+    Origin = Origin .*  pixDim;
     
     src_coords = cs_convert(sMri, 'scs', 'mri', src_coords) * 1000 - repmat(Origin, size(src_coords, 1), 1);
     det_coords = cs_convert(sMri, 'scs', 'mri', det_coords) * 1000 - repmat(Origin, size(det_coords, 1), 1);
