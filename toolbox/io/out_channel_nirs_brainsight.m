@@ -76,7 +76,9 @@ if nargin >= 3
     
     src_coords = cs_convert(sMri, 'scs', 'mri', src_coords) * 1000 - repmat(Origin, size(src_coords, 1), 1);
     det_coords = cs_convert(sMri, 'scs', 'mri', det_coords) * 1000 - repmat(Origin, size(det_coords, 1), 1);
-    fidu_coords = cs_convert(sMri, 'scs', 'mri', fidu_coords) * 1000 - repmat(Origin, size(fidu_coords, 1), 1);
+    if ~isempty(fidu_coords)
+        fidu_coords = cs_convert(sMri, 'scs', 'mri', fidu_coords) * 1000 - repmat(Origin, size(fidu_coords, 1), 1);
+    end
 end
 
 
@@ -102,7 +104,7 @@ for idet=1:size(det_coords)
     ioptode = ioptode + 1;
 end
 
-if ~isempty(iCardinal)
+if ~isempty(fidu_coords) && ~isempty(iCardinal)
     for i = 1:length(iCardinal)
         coords{ioptode} = sprintf('%s\t%d\t%f\t%f\t%f\t0.0\n', ChannelMat.HeadPoints.Label{iCardinal(i)}, ...
                                    ioptode, fidu_coords(i, 1), fidu_coords(i, 2), fidu_coords(i, 3));
