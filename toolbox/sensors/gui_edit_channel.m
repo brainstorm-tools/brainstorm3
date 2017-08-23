@@ -1,4 +1,4 @@
-function gui_edit_channel( ChannelFile )
+function jFrame = gui_edit_channel( ChannelFile )
 % GUI_EDIT_CHANNEL: Load, edit and save a channel file.
 %
 % USAGE: gui_edit_channel( ChannelFile )

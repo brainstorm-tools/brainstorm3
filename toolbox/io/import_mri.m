@@ -1,7 +1,7 @@
-function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isInteractive)
+function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust)
 % IMPORT_MRI: Import a MRI file in a subject of the Brainstorm database
 % 
-% USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0)
+% USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1)
 %
 % INPUT:
 %    - iSubject  : Indice of the subject where to import the MRI
@@ -9,7 +9,8 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 %    - MriFile   : Full filename of the MRI to import (format is autodetected)
 %                  => if not specified : file to import is asked to the user
 %    - FileFormat : String, one on the file formats in in_mri
-%    - isInteractive : if 1, importation will be interactive (MRI is displayed after loading)
+%    - isInteractive : If 1, importation will be interactive (MRI is displayed after loading)
+%    - isAutoAdjust  : If isInteractive=0 and isAutoAdjust=1, relice/resample automatically without user confirmation
 % OUTPUT:
 %    - BstMriFile : Full path to the new file if success, [] if error
 
@@ -39,6 +40,9 @@ if (nargin < 3) || isempty(FileFormat)
 end
 if (nargin < 4) || isempty(isInteractive)
     isInteractive = 0;
+end
+if (nargin < 5) || isempty(isAutoAdjust)
+    isAutoAdjust = 1;
 end
 % Initialize returned variables
 BstMriFile = [];
@@ -101,7 +105,7 @@ sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
 % Add new anatomy
 iAnatomy = length(sSubject.Anatomy) + 1;
 % If add an extra MRI: read the first one to check that they are compatible
-if (iAnatomy > 1)
+if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     % Load the reference MRI (the first one)
     refMriFile = sSubject.Anatomy(1).FileName;
     sMriRef = in_mri_bst(refMriFile);
@@ -133,7 +137,7 @@ if (iAnatomy > 1)
     newSize = size(sMri.Cube);
     isSameSize = all(refSize == newSize) && all(sMriRef.Voxsize == sMriRef.Voxsize);
     % Initialize list of options to register this new MRI with the existing one
-    strOptions = ['<HTML>How to register the new volume with the previous one?<BR>'];
+    strOptions = '<HTML>How to register the new volume with the previous one?<BR>';
     cellOptions = {};
     % Use the NIfTI vox2ras transformation if available
     if isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && any(ismember(sMriRef.InitTransf(:,1), 'vox2ras')) && ...
@@ -207,7 +211,7 @@ if ~isfield(sMri, 'Comment')
     sMri.Comment = 'MRI';
 end
 % Use filename as comment
-if (iAnatomy > 1) || isInteractive
+if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
     sMri.Comment = file_unique(fBase, {sSubject.Anatomy.Comment});
 end

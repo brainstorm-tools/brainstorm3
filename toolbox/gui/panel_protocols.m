@@ -14,8 +14,9 @@ function varargout = panel_protocols(varargin)
 %        nodeFound = panel_protocols('SelectNode',          nodeRoot, FileName )
 %        nodeFound = panel_protocols('GetNode',             nodeType, iStudy, iFile )
 %        nodeFound = panel_protocols('GetNode',             FileName )
-%        nodeStudy = panel_protocols('SelectStudyNode',     nodeStudy ) % Select given 'study' tree node
-%        nodeStudy = panel_protocols('SelectStudyNode',     iStudy )    % Find 'study' tree node with studyIndex = iStudy and select it
+%        nodeStudy = panel_protocols('SelectStudyNode',     nodeStudy )  % Select given 'study' tree node
+%        nodeStudy = panel_protocols('SelectStudyNode',     iStudy )     % Find 'study' tree node with studyIndex = iStudy and select it
+%                    panel_protocols('SelectSubject',       SubjectName) % Select and expand subject node
 %                    panel_protocols('MarkUniqueNode',      bstNode)
 %      OutputFiles = panel_protocols('TreeHeadModel',       bstNode)
 %      OutputFiles = panel_protocols('TreeInverse',         bstNodes, is2014)
@@ -1223,6 +1224,38 @@ function OutputFiles = TreeInverse(bstNodes, is2014) %#ok<DEFNU>
 end
 
 
-
+%% ===== SELECT SUBJECT =====
+function SelectSubject(SubjectName) %#ok<DEFNU>
+    % Check input subject name
+    if ~ischar(SubjectName) || isempty(SubjectName)
+        return;
+    end
+    % Get subject 
+    [sSubject, iSubject] = bst_get('Subject', SubjectName);
+    if isempty(sSubject)
+        return;
+    end
+    % Get exploration mode
+    ExplorationMode = bst_get('Layout', 'ExplorationMode');
+    % Select different nodes depending on the exploration mode
+    switch (ExplorationMode)
+        case 'Subjects'
+            % Select first MRI
+            if ~isempty(sSubject.Anatomy)
+                SelectNode([], 'anatomy', iSubject, 1);
+            else
+                SelectNode([], 'subject', iSubject, -1);
+            end
+        case {'StudiesCond', 'StudiesSubj'}
+            % Get all the studies for this subject
+            [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
+            % Select first study
+            if ~isempty(iStudies)
+                SelectStudyNode(iStudies(1));
+            else
+                SelectNode([], 'studysubject', -1, iSubject);
+            end
+    end
+end
 
 

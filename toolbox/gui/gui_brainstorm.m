@@ -6,6 +6,7 @@ function varargout = gui_brainstorm( varargin )
 %                   gui_brainstorm('ShowToolTab',    TabName)
 %       iProtocol = gui_brainstorm('CreateProtocol', ProtocolName, UseDefaultAnat, UseDefaultChannel)
 %                   gui_brainstorm('DeleteProtocol', ProtocolName)
+%                   gui_brainstorm('SetExplorationMode', ExplorationMode)    % ExplorationMode = {'Subjects','StudiesSubj','StudiesCond'}
 % BrainstormDbDir = gui_brainstorm('SetDatabaseFolder')
 %  [keyEvent,...] = gui_brainstorm('ConvertKeyEvent', ev)
 
@@ -27,7 +28,7 @@ function varargout = gui_brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -175,6 +176,10 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % RELEASE NOTES
         updatesfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'updates.txt');
         gui_component('MenuItem', jMenuSupport, [], 'Release notes', IconLoader.ICON_EDIT, [], @(h,ev)view_text(updatesfile, 'Release notes', 1), fontSize);
+        jMenuSupport.addSeparator();
+        % Guidelines
+        jMenuGuidelines = gui_component('Menu', jMenuSupport, [], 'Guidelines', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
+        gui_component('MenuItem', jMenuGuidelines, [], 'Epileptogenicity maps', IconLoader.ICON_EDIT, [], @(h,ev)ShowGuidelines('epileptogenicity'), fontSize);
         
     % ===== TOOLBAR =====
     jToolbar = gui_component('Toolbar', jMenuBar);
@@ -348,19 +353,19 @@ function GUI = CreateWindow() %#ok<DEFNU>
     jSplitV.setResizeWeight(1.0);
     jSplitV.setDividerSize(round(6*InterfaceScaling));
     jSplitV.setBorder([]);
-
+    % Horizontal split panel 
+    jSplitH = java_create('javax.swing.JSplitPane', 'ILjava.awt.Component;Ljava.awt.Component;', javax.swing.JSplitPane.VERTICAL_SPLIT, jSplitV, jLayeredProcess);
+        
     % Regular interface
     if (GlobalData.Program.GuiLevel ~= 2)
-        % Horizontal split panel 
-        jSplitH = java_create('javax.swing.JSplitPane', 'ILjava.awt.Component;Ljava.awt.Component;', javax.swing.JSplitPane.VERTICAL_SPLIT, jSplitV, jLayeredProcess);
+        % Configure horizontal split pane
         jSplitH.setResizeWeight(1.0);
         jSplitH.setDividerSize(round(8*InterfaceScaling));
         jSplitH.setBorder([]);
         % Add panel to main frame
         jFramePanel.add(jSplitH, java.awt.BorderLayout.CENTER);
-    % Auto-pilot: No process tabs at the bottom
+    % Auto-pilot: No process tabs at the bottom (ignore horizontal split pane)
     else
-        jSplitH = java_create('javax.swing.JSplitPane', 'ILjava.awt.Component;Ljava.awt.Component;', javax.swing.JSplitPane.VERTICAL_SPLIT, jSplitV, jLayeredProcess);
         jFramePanel.add(jSplitV, java.awt.BorderLayout.CENTER);
     end
     % Pack JFrame
@@ -428,6 +433,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
     GUI = struct(... % ==== Attributes ====
          'mainWindow', struct(...
              'jBstFrame',              jBstFrame, ...
+             'jSplitH',                jSplitH, ...
+             'jSplitV',                jSplitV, ...
              'jToolButtonSubject',     jToolButtonSubject, ...
              'jToolButtonStudiesSubj', jToolButtonStudiesSubj, ...
              'jToolButtonStudiesCond', jToolButtonStudiesCond, ...
@@ -696,8 +703,10 @@ function GUI = CreateWindow() %#ok<DEFNU>
         end
         % Get panel title
         panelTitle = jTabpaneProcess.getTitleAt(iSelPanel);
-        % If no data type selected and it's not Process2: select recordings
+        % Hide the tooloars when not wanted
         jToolbarB.setVisible(strcmpi(panelTitle, 'Process2'));
+        jToolbarA.setVisible(~strcmpi(panelTitle, 'Guidelines'));
+        jToolbarFilter.setVisible(~strcmpi(panelTitle, 'Guidelines'));
     end
 
 %% ===== PROCESS: DATA TYPE CHANGED =====
@@ -1052,13 +1061,16 @@ end
 
 
 %% ===== SET SELECTED TAB =====
-function SetSelectedTab(tabTitle, isAutoSelect)
+function SetSelectedTab(tabTitle, isAutoSelect, containerName)
     % Parse inputs
+    if (nargin < 3) || isempty(containerName)
+        containerName = 'Tools';
+    end
     if (nargin < 2) || isempty(isAutoSelect)
         isAutoSelect = 1;
     end
     % Get Tools panel container
-    jTabpaneTools = bst_get('PanelContainer', 'Tools');
+    jTabpaneTools = bst_get('PanelContainer', containerName);
     % Check if the requirements are met to allow auto-select
     if isAutoSelect
         % If there are more than one figure: do not allow
@@ -1350,6 +1362,32 @@ function SetFilterOption(FieldName, Value)
 end
 
 
+%% ===== SET EXPLORATION MODE =====
+function SetExplorationMode(ExplorationMode) %#ok<DEFNU>
+    global GlobalData;
+    GUI = GlobalData.Program.GUI.mainWindow;
+    % If the mode didn't change: don't do anything
+    if strcmpi(ExplorationMode, bst_get('Layout', 'ExplorationMode'))
+        return;
+    end
+    % Select appropriate button
+    switch (ExplorationMode)
+        case 'Subjects'
+            GUI.jToolButtonSubject.setSelected(1);
+        case 'StudiesSubj'
+            GUI.jToolButtonStudiesSubj.setSelected(1);
+        case 'StudiesCond'
+            GUI.jToolButtonStudiesCond.setSelected(1);
+        otherwise
+            error('Invalid exploration mode.');
+    end
+    % Update the Layout structure
+    bst_set('Layout', 'ExplorationMode', ExplorationMode);
+    % Update tree display
+    panel_protocols('UpdateTree');
+end
+
+
 %% ===== DOWNLOAD OPENMEEG =====
 function DownloadOpenmeeg()
     % Display information message
@@ -1461,4 +1499,30 @@ end
 %     contentLength = connection.getContentLength();
 % end
 
+
+%% ===== SHOW GUIDELINES =====
+function ShowGuidelines(ScenarioName)
+    % Close tab if it already exists
+    panelName = 'Guidelines';
+    if isTabVisible(panelName)
+        gui_hide(panelName);
+    end
+    % Resize the bottom panel
+    GUI = bst_get('BstControls');
+    InterfaceScaling = bst_get('InterfaceScaling') / 100;
+    Hmin = round(300 * InterfaceScaling);
+    Hfig = GUI.jBstFrame.getHeight();
+    if (Hfig - GUI.jSplitH.getDividerLocation() < Hmin)
+        GUI.jSplitH.setDividerLocation(uint32(Hfig - Hmin));
+    end
+    % Create guidelines panel
+    bstPanel = panel_guidelines('CreatePanel', ScenarioName);
+    % Open tab new tab
+    gui_show(bstPanel, 'BrainstormTab', 'process');
+
+    % Initialize first tab
+    panel_guidelines('SwitchPanel', 'next');
+    % Select tab
+    SetSelectedTab(panelName, 0, 'Process');
+end
 

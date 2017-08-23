@@ -76,7 +76,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelOptions.setLayout(BoxLayout(jPanelOptions, BoxLayout.Y_AXIS));
     jPanelOptions.setBorder(BorderFactory.createEmptyBorder(7,7,0,7));
         % ===== SURFACE OPTIONS =====
-        jPanelSurfaceOptions = gui_river([1,1], [1,8,1,4], 'Surface options');              
+        jPanelSurfaceOptions = gui_river([1,1], [1,8,1,4], 'Surface options');
             % Alpha title 
             jLabelAlphaTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Transp.:');
             % Alpha slider

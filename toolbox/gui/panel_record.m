@@ -2182,22 +2182,6 @@ end
 
 %% ===== REJECT TIME SEGMENT =====
 function RejectTimeSegment()
-%     % Get raw time series figure
-%     [hFig,iFig,iDS] = bst_figures('GetCurrentFigure', '2D');
-%     if isempty(hFig)
-%         return
-%     end
-%     % Get time selection window
-%     GraphSelection = getappdata(hFig, 'GraphSelection');
-%     % Check time selection: if no selection, just returns
-%     isTimeSelection = ~isempty(GraphSelection) && ~isinf(GraphSelection(2));
-%     if ~isTimeSelection
-%         return;
-%     end
-%     % Create/Get event "BAD"
-%     iEvent = EventTypeAdd('BAD');
-%     % Add an occurrence (current time selection)
-%     EventOccurAdd(iEvent);
     ToggleEvent('BAD');
 end
 
