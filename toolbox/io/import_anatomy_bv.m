@@ -87,25 +87,8 @@ if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
         bst_progress('stop');
         return;
     end
-    % Delete MRI
-    if ~isempty(sSubject.Anatomy)
-        file_delete(file_fullpath({sSubject.Anatomy.FileName}), 1);
-        sSubject.Anatomy(1:end) = [];
-    end
-    % Delete surfaces
-    if ~isempty(sSubject.Surface)
-        file_delete(file_fullpath({sSubject.Surface.FileName}), 1);
-        sSubject.Surface(1:end) = [];
-    end
-    % Empty defaults lists
-    sSubject.iAnatomy = [];
-    sSubject.iCortex = [];
-    sSubject.iScalp = [];
-    sSubject.iInnerSkull = [];
-    sSubject.iOuterSkull = [];
-    % Update subject structure
-    bst_set('Subject', iSubject, sSubject);
-    panel_protocols('UpdateNode', 'Subject', iSubject);
+    % Delete anatomy
+    sSubject = db_delete_anatomy(iSubject);
 end
 
 
