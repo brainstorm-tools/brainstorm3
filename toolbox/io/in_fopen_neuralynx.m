@@ -86,7 +86,7 @@ for i = 1:length(ChanFiles)
     % Read full header
     newHeader = neuralynx_getheader(bst_fullfile(hdr.BaseFolder, ChanFiles{i}));
     % Check for some important fields
-    if ~isfield(newHeader, 'RecordSize') || ~isfield(newHeader, 'SamplingFrequency') || ~isfield(newHeader, 'HardwareSubSystemType') || ~isfield(newHeader, 'ADBitVolts')
+    if ~isfield(newHeader, 'RecordSize') || ~isfield(newHeader, 'SamplingFrequency') || ~isfield(newHeader, 'ADBitVolts')
         error(['Missing fields in the file header of file: ' ChanFiles{i}]);
     end
     % Compute number of records saved in the file
@@ -104,7 +104,9 @@ for i = 1:length(ChanFiles)
         hdr.LastTimeStamp         = newHeader.LastTimeStamp;
         hdr.NumSamples            = nRecordsFile * 512;
         hdr.SamplingFrequency     = newHeader.SamplingFrequency;
-        hdr.HardwareSubSystemType = newHeader.HardwareSubSystemType;
+        if isfield(newHeader, 'HardwareSubSystemType')
+            hdr.HardwareSubSystemType = newHeader.HardwareSubSystemType;
+        end
     % Make sure the values are the same across files
     elseif (hdr.SamplingFrequency ~= newHeader.SamplingFrequency)
         disp(['BST> Warning: Sampling frequency in "' ChanFiles{i} '" is incompatible with "' ChanFiles{1} '". Skipping file...']);
@@ -131,7 +133,11 @@ sFile = db_template('sfile');
 sFile.byteorder = 'l';
 sFile.filename  = hdr.BaseFolder;
 sFile.format    = 'EEG-NEURALYNX';
-sFile.device    = hdr.HardwareSubSystemType;
+if isfield(hdr, 'HardwareSubSystemType')
+    sFile.device = hdr.HardwareSubSystemType;
+else
+    sFile.device = 'Neuralynx';
+end
 sFile.header    = hdr;
 sFile.comment   = Comment;
 % Consider that the sampling rate of the file is the sampling rate of the first signal
