@@ -63,21 +63,37 @@ if nargin >= 3
     
     % Same code as in out_mri_nii.m to make sure exported coordinates have the
     % same origin as exported MRI
-    if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'Origin') && ~isempty(sMri.NCS.Origin)
-        Origin = sMri.NCS.Origin - [1 2 2];
-    elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
-        Origin = cs_convert(sMri, 'mni', 'mri', [0 0 0]) .* 1000;
-    elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC)
-        Origin = sMri.NCS.AC + [0, -3, 4];
-    else
-        Origin = volDim / 2;
+    % Use existing matrices (from the header)
+    if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && ...
+            all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'})) && ...
+            (any([sMri.Header.nifti.srow_x sMri.Header.nifti.srow_y sMri.Header.nifti.srow_z]~=0) || ...
+             any(sMri.Header.nifti.qform(:)~=0))
+         if any([sMri.Header.nifti.srow_x sMri.Header.nifti.srow_y sMri.Header.nifti.srow_z]~=0)
+             sform = [sMri.Header.nifti.srow_x ;  sMri.Header.nifti.srow_y ; sMri.Header.nifti.srow_z];
+         elseif any(sMri.Header.nifti.qform(:) ~= 0)
+             if ~all(sMri.Header.nifti.qform(4, :) == [0 0 0 1])
+                 bst_error('Scaling in qform is not handled.');
+                 return;
+             end
+             sform = sMri.Header.nifti.qform(1:3, :);
+         end 
+    else % Otherwise: Try to define from existing information in the database
+        if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'Origin') && ~isempty(sMri.NCS.Origin)
+            Origin = sMri.NCS.Origin - [1 2 2];
+        elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
+            Origin = cs_convert(sMri, 'mni', 'mri', [0 0 0]) .* 1000;
+        elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC)
+            Origin = sMri.NCS.AC + [0, -3, 4];
+        else
+            Origin = volDim / 2;
+        end
+        sform = [diag(pixDim) (-Origin.*pixDim)'];
     end
-    Origin = Origin .*  pixDim;
     
-    src_coords = cs_convert(sMri, 'scs', 'mri', src_coords) * 1000 - repmat(Origin, size(src_coords, 1), 1);
-    det_coords = cs_convert(sMri, 'scs', 'mri', det_coords) * 1000 - repmat(Origin, size(det_coords, 1), 1);
+    src_coords = (sform * [cs_convert(sMri, 'scs', 'mri', src_coords)*1000 ones(size(src_coords,1), 1)]')';
+    det_coords = (sform * [cs_convert(sMri, 'scs', 'mri', det_coords)*1000 ones(size(det_coords,1), 1)]')';
     if ~isempty(fidu_coords)
-        fidu_coords = cs_convert(sMri, 'scs', 'mri', fidu_coords) * 1000 - repmat(Origin, size(fidu_coords, 1), 1);
+        fidu_coords = (sform * [cs_convert(sMri, 'scs', 'mri', fidu_coords)*1000 ones(size(fidu_coords,1), 1)]')';
     end
 end
 
