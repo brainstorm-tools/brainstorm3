@@ -22,7 +22,7 @@ function [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile)
 %             If the file "optodes.txt" is found in the same directory,
 %             this field will be ignored.
 %     - ml (nb_channels x 4):
-%         So-called "measurement list" describing each channel.
+%         Measurement list describing each channel.
 %         Columns are:
 %           - col 1: source index in SD.SrcPos
 %           - col 2: detector index in SD.DetPos
@@ -67,7 +67,7 @@ function [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Thomas Vincent (2015), Alexis Machado (2012)
+% Authors: Thomas Vincent (2015-2017), Alexis Machado (2012)
 
 nirs = load(DataFile, '-mat');
 
@@ -87,7 +87,8 @@ sFile.device     = 'NIRS Brainsight system';
 sFile.byteorder  = 'l';
 
 % Properties of the recordings
-sFile.prop.sfreq   = 1 ./ (nirs.t(2) - nirs.t(1));
+% Round to microsec to avoid floating imprecision
+sFile.prop.sfreq   = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
 sFile.prop.samples = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq);
 sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
@@ -99,7 +100,6 @@ ChannelMat.Comment = 'NIRS-BRS channels';
 fiducial_file = fullfile(fileparts(DataFile), 'fiducials.txt');
 if exist(fiducial_file, 'file') == 2
     fiducial_coords = load_brainsight_coords(fiducial_file);
-    display(fiducial_coords)
     ChannelMat.HeadPoints.Loc = [];
      
     for ifid = 1:length(fiducial_coords)
@@ -122,8 +122,6 @@ if exist(fiducial_file, 'file') == 2
             ChannelMat.HeadPoints.Type{end+1}  = 'CARDINAL';
         %store additional fiducials as Head Points
         else %TOCHECK is Tip OK to be included in head points?
-            display(['Add headpoint:' fidu_name])
-            display(fidu_coords);
             ChannelMat.HeadPoints.Loc(:, end+1) = fidu_coords;
             ChannelMat.HeadPoints.Label{end+1} = fidu_name;
             ChannelMat.HeadPoints.Type{end+1}  = 'EXTRA';
@@ -136,44 +134,73 @@ optodes_file = fullfile(fileparts(DataFile), 'optodes.txt');
 if exist(optodes_file, 'file') == 2
     src_coords = zeros(nb_src, 3);
     det_coords = zeros(nb_det, 3);
-    optodes_coords = load_brainsight_coords(optodes_file);
-    display(optodes_coords)     
+    optodes_coords = load_brainsight_coords(optodes_file);   
     for iop = 1:length(optodes_coords)
         coords = optodes_coords(iop).coords';
         opt_toks = textscan(optodes_coords(iop).name, '%c%d');
+        % Could add source and detector positions as extra head points
+        % TODO: maybe in some cases, it's not preferable because it's only
+        %       valid if the optodes are actually *ON* the scalp which may
+        %       not be accurate when using a cap.
+        % So it should not be done silently here during importation, 
+        % but rather let the user do it afterwards if needed for mri 
+        % registration. 
         if strcmp(opt_toks{1}, 'S')
             src_coords(opt_toks{2}, :) = coords;
+%             ChannelMat.HeadPoints.Loc(:, end+1) = coords;
+%             ChannelMat.HeadPoints.Label{end+1} = opt_toks{1};
+%             ChannelMat.HeadPoints.Type{end+1}  = 'EXTRA';
         elseif strcmp(opt_toks{1}, 'D')
             det_coords(opt_toks{2}, :) = coords;
+%             ChannelMat.HeadPoints.Loc(:, end+1) = coords;   
+%             ChannelMat.HeadPoints.Label{end+1} = opt_toks{1};
+%             ChannelMat.HeadPoints.Type{end+1}  = 'EXTRA';
         else
             % TODO: raise invalid format exception
             display(['error unformating ' optodes_coords(iop).name]);
         end
     end
-else % take optotde coordinates from nirs data structure
+else % take optode coordinates from nirs data structure
     src_coords = nirs.SD.SrcPos;
     det_coords = nirs.SD.DetPos;
 end
 
-ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda;
+
+if iscell(nirs.SD.Lambda) % Hb measures
+    measure_type = 'Hb';
+    ChannelMat.Nirs.Hb = nirs.SD.Lambda;
+else
+    measure_type = 'WL';
+    ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda;
+end
 
 %% Channel information
+if ~isfield(nirs, 'aux')
+    nirs.aux = [];
+end
 sFile.channelflag = ones(nb_channels + size(nirs.aux,2), 1); % GOOD=1; BAD=-1;
+
 % NIRS data time-series
 for iChan = 1:nb_channels
     idx_src = nirs.ml(iChan, 1);
     idx_det = nirs.ml(iChan, 2);
-    idx_wl = nirs.ml(iChan, 4);
-    Channel(iChan).Name    = sprintf('S%dD%dWL%d', idx_src, idx_det, ...
-                                     ChannelMat.Nirs.Wavelengths(idx_wl));
-    Channel(iChan).Type    = 'NIRS'; % 'EEG';
+    idx_measure = nirs.ml(iChan, 4);
+    
+    if strcmp(measure_type, 'Hb')
+        measure_tag =  ChannelMat.Nirs.Hb{idx_measure};
+    else
+        measure_tag = sprintf('WL%d', round(ChannelMat.Nirs.Wavelengths(idx_measure)));
+    end
+    Channel(iChan).Name    = sprintf('S%dD%d%s', idx_src, idx_det, ...
+                                     measure_tag);
+    Channel(iChan).Type    = 'NIRS';
     
     Channel(iChan).Loc(:,1)  = src_coords(idx_src, :);
     Channel(iChan).Loc(:,2)  = det_coords(idx_det, :);
     Channel(iChan).Orient  = [];
     Channel(iChan).Weight  = 1;
     Channel(iChan).Comment = [];
-    Channel(iChan).Group = sprintf('WL%d', round(ChannelMat.Nirs.Wavelengths(idx_wl)));
+    Channel(iChan).Group = measure_tag;
 end
 
 % AUX signals
@@ -201,7 +228,7 @@ function [coords] = load_brainsight_coords(coords_file)
            toks = textscan(line{1}{1}, '%s\t%s\t%d\t%f\t%f\t%f%f', ...
                            'WhiteSpace', '\b\t');
            coords(ic).name = toks{1}{1};
-           coords(ic).coords = [toks{4} toks{5} toks{6}] ./ 1000;
+           coords(ic).coords = [toks{4} toks{5} toks{6}] ./ 1000; %Convert to meters
            ic = ic + 1;
        end
     end

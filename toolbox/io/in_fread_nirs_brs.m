@@ -38,7 +38,11 @@ end
     
 % Load file
 nirs = load(sFile.filename, '-mat');
-channel_data = [nirs.d nirs.aux];
+if isfield(nirs, 'aux')
+    channel_data = [nirs.d nirs.aux];
+else
+    channel_data = nirs.d;
+end
 
 % Select only a given time window
 if ~isempty(SamplesBounds)
