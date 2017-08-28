@@ -2,7 +2,9 @@
 August 2017
 - GUI: Raw viewer: Optimized scrolling speed with new option "Downsample recordings"
 - GUI: New menu "Guidelines" for computing epileptogenicity maps
+- GUI: Added colormap "tpac"
 - Process: Added dPAC processes
+- Process: Added Phase transfer entropy
 ---------------------------------------------------------------
 July 2017
 - GUI: Standalone file viewer ("brainstorm autopilot")
