@@ -35,7 +35,7 @@ function varargout = figure_3d( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -251,7 +251,15 @@ function FigureClickCallback(hFig, varargin)
             end
         % CTRL+Mouse, or Mouse right
         case 'alt'
-            clickAction = 'popup';
+            FigureId = getappdata(hFig, 'FigureId');
+            [sMri,TessInfo,iTess] = panel_surface('GetSurfaceMri', hFig);
+            
+            % If Topo or MRI, original popup action. Otherwise, rotate 2D
+            if (strcmpi(FigureId.Type, 'Topography') && ismember(FigureId.SubType, {'2DLayout', '2DDisc', '2DSensorCap'})) || ~isempty(iTess)
+                clickAction = 'popup';
+            else
+                clickAction = 'rotate2d';
+            end
         % SHIFT+Mouse, or Mouse middle
         case 'extend'
             clickAction = 'pan';
@@ -347,6 +355,10 @@ function FigureMouseMoveCallback(hFig, varargin)
                 camorbit(hAxes, -motionFigure(1),-motionFigure(2), 'camera');
             end
             camlight(findobj(hAxes, '-depth', 1, 'Tag', 'FrontLight'), 'headlight');
+        
+        case 'rotate2d'
+            % 2D rotation along the plane of the window
+            camroll(hAxes, motionFigure(2));
 
         case 'pan'
             % Get camera textProperties
