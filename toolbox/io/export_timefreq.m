@@ -1,8 +1,8 @@
 function export_timefreq( BstFile, OutputFile, FileFormat )
 % EXPORT_TIMEFREQ: Exports a timefreq file to one of the supported file formats.
 %
-% USAGE:  export_matrix( BstFile,    OutputFile=[ask], FileFormat=[detect] )
-%         export_matrix( ResultsMat, OutputFile=[ask], FileFormat=[detect] )
+% USAGE:  export_timefreq( BstFile,    OutputFile=[ask], FileFormat=[detect] )
+%         export_timefreq( ResultsMat, OutputFile=[ask], FileFormat=[detect] )
 %
 % INPUT: 
 %     - BstFile     : Full path to a Brainstorm file to be exported

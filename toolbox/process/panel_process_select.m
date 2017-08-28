@@ -465,13 +465,40 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jParent = jPopup;
                 % Else: create a sub-menu for the sub-group
                 else
-                    hashKey = strrep(file_standardize(sProcesses(iProc).SubGroup), '-', '_');
+                    % Create hash key
+                    if iscell(sProcesses(iProc).SubGroup)
+                        if (length(sProcesses(iProc).SubGroup) ~= 2)
+                            error('When SubGroup is a cell array, it must have two entries (menu and submenu).');
+                        end
+                        hashKey = sprintf('%s_%s', sProcesses(iProc).SubGroup{1}, sProcesses(iProc).SubGroup{2});
+                    else
+                        hashKey = sProcesses(iProc).SubGroup;
+                    end
+                    hashKey = strrep(file_standardize(hashKey), '-', '_');
                     % Get existing menu
                     if isfield(hashGroups, hashKey)
                         jParent = hashGroups.(hashKey);
                     % Menu not created yet: create it
                     else
-                        jParent = gui_component('Menu', jPopup, [], sProcesses(iProc).SubGroup, [], []);
+                        % Menu+submenu
+                        if iscell(sProcesses(iProc).SubGroup)
+                            hashParent = strrep(file_standardize(sProcesses(iProc).SubGroup{1}), '-', '_');
+                            if isfield(hashGroups, hashParent)
+                                jParentTop = hashGroups.(hashParent);
+                            else
+                                jParentTop = gui_component('Menu', jPopup, [], sProcesses(iProc).SubGroup{1}, [], []);
+                                jParentTop.setMargin(Insets(5,0,4,0));
+                                jParentTop.setForeground(Color(.6,.6,.6));
+                                hashGroups.(hashParent) = jParentTop;
+                            end
+                            menuName = sProcesses(iProc).SubGroup{2};
+                        % Simple menu
+                        else
+                            jParentTop = jPopup;
+                            menuName = sProcesses(iProc).SubGroup;
+                        end
+                        % Create subgroup menu
+                        jParent = gui_component('Menu', jParentTop, [], menuName, [], []);
                         jParent.setMargin(Insets(5,0,4,0));
                         jParent.setForeground(Color(.6,.6,.6));
                         hashGroups.(hashKey) = jParent;

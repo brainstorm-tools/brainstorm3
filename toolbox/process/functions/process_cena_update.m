@@ -35,8 +35,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'CENA : Install/Update';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Microstates';
-    sProcess.Index       = 850;
+    sProcess.SubGroup    = {'External', 'Microstates'};
+    sProcess.Index       = 2000;
     sProcess.isSeparator = 0;
     sProcess.Description = 'https://hpenlaboratory.uchicago.edu/page/cena';
     % Definition of the input accepted by this process
