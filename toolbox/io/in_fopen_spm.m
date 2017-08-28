@@ -20,7 +20,7 @@ function [sFile, ChannelMat] = in_fopen_spm(DataFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2017
-        
+
 
 %% ===== READ HEADER =====
 % Check if SPM is in the path
@@ -63,7 +63,7 @@ sFile.device       = 'SPM';
 sFile.comment      = fBase;
 sFile.header.file_array = D.data;
 sFile.header.nChannels  = nChannels;
-
+sFile.header.gain       = ones(nChannels,1);
 
 
 %% ===== CHANNEL FILE =====
@@ -83,25 +83,49 @@ for i = 1:nChannels
     else
         disp(sprintf('BST> Warning: No information avaible for channel #%d.', i));
     end
-    ChannelMat.Channel(i).Type = upper(D.channels(i).type);
-    % Check if more details are available
-    if isfield(D, 'sensors') && isfield(D.sensors, 'eeg') && isfield(D.sensors.eeg, 'label')
-        % Look for sensor name
-        iSens = find(strcmpi(ChannelMat.Channel(i).Name, D.sensors.eeg.label));
-        if (length(iSens) == 1)
-            % 3D position
-            if ~any(isnan(D.sensors.eeg.elecpos(iSens,:))) && ~any(isinf(D.sensors.eeg.elecpos(iSens,:))) && ~all(D.sensors.eeg.elecpos(iSens,:) == 0)
-                ChannelMat.Channel(i).Loc(:,1) = D.sensors.eeg.elecpos(iSens,:);
-                % Apply units
-                if isequal(D.sensors.eeg.unit, 'mm')
-                    ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 1000;
-                elseif isequal(D.sensors.eeg.unit, 'cm')
-                    ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 100;
-                end
-            end
-            % Sensor type
-            ChannelMat.Channel(i).Type = upper(D.channels(i).type);
+    % Convert channel types
+    switch upper(D.channels(i).type)
+        case 'MEGPLANAR',   ChannelMat.Channel(i).Type = 'MEG GRAD';
+        case 'MEGMAG',      ChannelMat.Channel(i).Type = 'MEG MAG';
+        otherwise,          ChannelMat.Channel(i).Type = upper(D.channels(i).type);
+    end
+    % Channel gains
+    if isfield(D.channels(i), 'units') && ~isempty(D.channels(i).units)
+        switch (D.channels(i).units)
+            case 'fT',        sFile.header.gain(i) = 1e-15;
+            case 'fT/mm',     sFile.header.gain(i) = 1e-12;
+            case 'mV',        sFile.header.gain(i) = 1e-3;
+            case {'uV','?V'}, sFile.header.gain(i) = 1e-6;
+            otherwise,        sFile.header.gain(i) = 1;
         end
+    end
+end
+% Read detailed information from .meg and .eeg fields
+ChannelMat = read_fieldtrip_chaninfo(ChannelMat, D.sensors);
+
+% Convert head points
+if isfield(D, 'fiducials') && isfield(D.fiducials, 'pnt') && isfield(D.fiducials, 'label')
+    for i = 1:length(D.fiducials.label)
+        ChannelMat.HeadPoints.Label = D.fiducials.label(:)';
+        ChannelMat.HeadPoints.Type  = repmat({'EXTRA'}, size(ChannelMat.HeadPoints.Label));
+        ChannelMat.HeadPoints.Loc   = scale_unit(D.fiducials.pnt', D.fiducials.unit);
+    end
+end
+% Convert fiducials
+if isfield(D, 'fiducials') && isfield(D.fiducials, 'fid') && isfield(D.fiducials.fid, 'label') && isfield(D.fiducials.fid, 'pnt')
+    for i = 1:length(D.fiducials.fid.label)
+        switch lower(D.fiducials.fid.label{i})
+            case {'nas', 'nasion', 'nz', 'fidnas', 'fidnz'}  % NASION
+                ChannelMat.SCS.NAS = scale_unit(D.fiducials.fid.pnt(i,:), D.fiducials.unit);
+            case {'lpa', 'pal', 'og', 'left', 'fidt9', 'leftear'} % LEFT EAR
+                ChannelMat.SCS.LPA = scale_unit(D.fiducials.fid.pnt(i,:), D.fiducials.unit);
+            case {'rpa', 'par', 'od', 'right', 'fidt10', 'rightear'} % RIGHT EAR
+                ChannelMat.SCS.RPA = scale_unit(D.fiducials.fid.pnt(i,:), D.fiducials.unit);
+        end
+    end
+    % Force re-alignment on the new set of NAS/LPA/RPA
+    if ~isempty(ChannelMat.SCS) && ~isempty(ChannelMat.SCS.NAS) && ~isempty(ChannelMat.SCS.LPA) && ~isempty(ChannelMat.SCS.RPA)
+        ChannelMat = channel_detect_type(ChannelMat, 1, 0);
     end
 end
 
@@ -135,6 +159,16 @@ if isfield(D, 'trials') && isfield(D.trials, 'events') && isfield(D.trials.event
     end
 end
 
+end
 
 
+
+%% ===== HELPER FUNCTIONS =====
+function pt = scale_unit(pt, unit)
+    if isequal(unit, 'cm')
+        pt = pt ./ 100;
+    elseif isequal(unit, 'mm')
+        pt = pt ./ 1000;
+    end
+end
 

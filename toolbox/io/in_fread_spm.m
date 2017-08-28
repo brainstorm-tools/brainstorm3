@@ -50,4 +50,8 @@ end
 % Read data
 F = sFile.header.file_array(iChannels, iTimes);
 
+% Apply gains
+if isfield(sFile.header, 'gain') && (size(sFile.header.gain,1) == sFile.header.nChannels)
+    F = bst_bsxfun(@times, F, sFile.header.gain(iChannels));
+end
 

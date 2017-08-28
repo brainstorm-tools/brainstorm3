@@ -2665,14 +2665,14 @@ switch contextName
         if (argout1.PageDuration <= 0.1)
             argout1.PageDuration = defPref.PageDuration;
         end
-        % Adapt to FIF block size
-        if (nargin >= 2)
-            sFile = varargin{2};
-            if strcmpi(sFile.format, 'FIF') && isfield(sFile.header, 'raw') && isfield(sFile.header.raw, 'rawdir') && ~isempty(sFile.header.raw.rawdir)
-                fifBlockSize = min(double(sFile.header.raw.rawdir(1).nsamp), 5000);
-                argout1.PageDuration = fifBlockSize * max(1, round(argout1.PageDuration / fifBlockSize)) / sFile.prop.sfreq;
-            end
-        end
+%         % Adapt to FIF block size
+%         if (nargin >= 2)
+%             sFile = varargin{2};
+%             if strcmpi(sFile.format, 'FIF') && isfield(sFile.header, 'raw') && isfield(sFile.header.raw, 'rawdir') && ~isempty(sFile.header.raw.rawdir)
+%                 fifBlockSize = min(double(sFile.header.raw.rawdir(1).nsamp), 5000);
+%                 argout1.PageDuration = fifBlockSize * max(1, round(argout1.PageDuration / fifBlockSize)) / sFile.prop.sfreq;
+%             end
+%         end
         
     case 'TopoLayoutOptions'
         defPref = struct(...
