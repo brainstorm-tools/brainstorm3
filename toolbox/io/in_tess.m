@@ -33,7 +33,7 @@ function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2017
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
@@ -146,8 +146,12 @@ switch (FileFormat)
     case 'FS'
         % Read file with MNE function
         [TessMat.Vertices, TessMat.Faces] = mne_read_surface(TessFile);
-        % FreeSurfer RAS coord => MRI  (NEW VERSION: 12-Jan-2016)
-        TessMat.Vertices = bst_bsxfun(@plus, TessMat.Vertices, [128 129 128] / 1000);
+        % FreeSurfer RAS coord => MRI  (NEW VERSION: 12-Jan-2016 / relative size: 28-Aug-2017)
+        if ~isempty(sMri)
+            TessMat.Vertices = bst_bsxfun(@plus, TessMat.Vertices, (size(sMri.Cube)/2 + [0 1 0]) .* sMri.Voxsize / 1000);
+        else
+            TessMat.Vertices = bst_bsxfun(@plus, TessMat.Vertices, [128 129 128] / 1000);
+        end
         % Swap faces
         TessMat.Faces = TessMat.Faces(:,[2 1 3]);
     case 'OFF'
