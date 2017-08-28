@@ -1,4 +1,5 @@
 function [dPTE, PTE] = PhaseTE_MF(data, delay, binsize);
+% From: https://figshare.com/articles/Phase_Transfer_Entropy/3847086
 %% function [dPTE, PTE] = PhaseTE_MF(data, delay, binsize);
 %%
 %% Input:
