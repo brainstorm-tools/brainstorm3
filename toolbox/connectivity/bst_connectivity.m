@@ -555,6 +555,26 @@ for iFile = 1:length(FilesA)
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
+        
+        % ==== PTE ====
+        case 'pte'
+            bst_progress('text', sprintf('Calculating: PTE [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
+            Comment = 'PTE: ';
+            % Get frequency bands
+            nFreqBands = size(OPTIONS.Freqs, 1);
+            BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
+            % Intitialize returned matrix
+            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
+            % Loop on each frequency band
+            for iBand = 1:nFreqBands
+                % Band-pass filter in one frequency band + Apply Hilbert transform
+                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                % Compute PTE
+                [R(:,:,iBand), ~] = PhaseTE_MF(permute(DataAband, [2 1]));
+                R(:,:,iBand) = R(:,:,iBand) - 0.5; % Center result around 0
+            end
+            % We don't want to compute again the frequency bands
+            FreqBands = [];
             
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
