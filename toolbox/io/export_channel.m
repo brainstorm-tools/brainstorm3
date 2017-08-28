@@ -53,6 +53,7 @@ if isempty(OutputChannelFile)
         case 'CURRY-RES',      DefaultExt = '.res';
         case 'EEGLAB-XYZ',     DefaultExt = '.xyz';
         case 'EGI',            DefaultExt = '.sfp';
+        case 'BRAINSIGHT-TXT', DefaultExt = '.txt';
         otherwise,             DefaultExt = '.txt';
     end
     % Build default output filename
@@ -122,8 +123,15 @@ switch FileFormat
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 1, 0, 0, .01);
     case 'ASCII_XYZN-EEG'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 1, 0, 0, .01);
-        
-
+    
+    % === NIRS ===
+    case 'BRAINSIGHT-TXT'
+        sSubject = bst_get('Subject');
+        if sSubject.iAnatomy > 0
+            out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile, sSubject.Anatomy(sSubject.iAnatomy).FileName); %ADDTV
+        else
+            out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile);
+        end
     otherwise
         error(['Unsupported file format : "' FileFormat '"']);
         
