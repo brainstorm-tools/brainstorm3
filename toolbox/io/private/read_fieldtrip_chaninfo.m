@@ -82,7 +82,7 @@ end
 
 %% ===== BUILD PROJECTOR LIST =====
 nChannels = length(ChannelMat.Channel);
-for iProj = 1:length(projList)
+for iProj = length(projList):-1:1
     % Initialize projector
     P = zeros(nChannels,nChannels);
     % Get list of channels: OLD
@@ -121,7 +121,7 @@ for iProj = 1:length(projList)
         iNewProj = length(ChannelMat.Projector)+1;
     end
     ChannelMat.Projector(iNewProj).Components = P;
-    ChannelMat.Projector(iNewProj).Comment    = mont;
+    ChannelMat.Projector(iNewProj).Comment    = projList{iProj};
     ChannelMat.Projector(iNewProj).Status     = 2;
 end
 
