@@ -92,6 +92,9 @@ for i = 1:nChannels
     ChannelMat.Channel(i).Loc     = [0; 0; 0];
     ChannelMat.Channel(i).Orient  = [];
     ChannelMat.Channel(i).Weight  = 1;
+    if isfield(ftMat, 'chantype') && ~isempty(ftMat.chantype)
+        ChannelMat.Channel(i).Type = upper(ftMat.chantype{i});
+    end
 end
 
 % Read detailed information from .grad and .elec fields

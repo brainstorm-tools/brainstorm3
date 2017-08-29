@@ -41,57 +41,93 @@ end
 
 
 %% ===== REBUILD COIL-CHANNEL CORRESPONDANCE =====
-% if ~isempty(grad)   
-%     % Fix glitches in the structure
-%     grad = ft_datatype_sens(grad);
+projList = {};
+if ~isempty(grad)
+    % Initialize fieldtrip
+    bst_ft_init();
+    % Fix glitches in the structure
+    grad = ft_datatype_sens(grad);
     
-%     % Get the list of montages to undo
-%     montageList = {grad.balance.current};
-%     if ~isempty(grad.balance.previous)
-%         montageList = cat(2, montageList, grad.balance.previous{:});
-%     end
-%     % Undo montages one by one
-%     for iMontage = 1:length(montageList)
-%         % Make sure the montage is defined in the structure
-%         mont = montageList{iMontage};
-%         if ~isfield(grad.balance, mont)
-%             continue;
-%         end
-%         % Fix units and types
-%         if isfield(grad.balance.(mont), 'chanunitnew') && strcmpi(grad.balance.(mont).chanunitnew{1}, 'unknown')
-%             if isfield(grad.balance.(mont), 'chanunitorg')
-%                 grad.balance.(mont).chanunitnew = grad.balance.(mont).chanunitorg;
-%             elseif isfield(grad.balance.(mont), 'chanunitold')
-%                 grad.balance.(mont).chanunitnew = grad.balance.(mont).chanunitold;
-%             end
-%         end
-%         if isfield(grad.balance.(mont), 'chantypenew') && strcmpi(grad.balance.(mont).chantypenew{1}, 'unknown')
-%             if isfield(grad.balance.(mont), 'chantypeorg')
-%                 grad.balance.(mont).chantypenew = grad.balance.(mont).chantypeorg;
-%             elseif isfield(grad.balance.(mont), 'chantypeold')
-%                 grad.balance.(mont).chantypenew = grad.balance.(mont).chantypeold;
-%             end
-%         end
-% %         if isfield(grad.balance.(mont), 'chantypenew') && (length(grad.balance.(mont).chantypenew) == length(grad.chantype))
-% %             grad.balance.(mont).chantypenew = grad.chantype;
-% %         end
-% %         if isfield(grad.balance.(mont), 'chantypeorg') && (length(grad.balance.(mont).chantypeorg) == length(grad.chantype))
-% %             grad.balance.(mont).chantypeorg = grad.chantype;
-% %         end
-% %         if isfield(grad.balance.(mont), 'chantypeold') && (length(grad.balance.(mont).chantypeold) == length(grad.chantype))
-% %             grad.balance.(mont).chantypeold = grad.chantype;
-% %         end
-%         % Reverse transformation
-%         grad = ft_apply_montage(grad, grad.balance.(mont), 'inverse', 'yes', 'keepunused', 'yes');
-%     end
-%     % Remove small values (to keep only the ones) 
-%     grad.tra(abs(grad.tra) < 0.1) = 0;
-% end
+    % Get the list of montages to undo
+    montageList = {grad.balance.current};
+    if isfield(grad.balance, 'previous') && ~isempty(grad.balance.previous)
+        montageList = cat(2, montageList, grad.balance.previous{:});
+    end
+    % Undo montages one by one
+    for iMontage = 1:length(montageList)
+        % Make sure the montage is defined in the structure
+        mont = montageList{iMontage};
+        if ~isfield(grad.balance, mont)
+            continue;
+        end
+        % Remove all the fields that may cause incompatibility issues
+        % Fix proposed by JMS for importing the HCP pre-processed files
+        for f = {'chanunitnew' 'chanunitold' 'chanunitorg' 'chantypenew' 'chantypeold' 'chantypeorg'}
+            if isfield(grad.balance.(mont), f{1})
+                grad.balance.(mont) = rmfield(grad.balance.(mont), f{1});
+            end
+        end
+        % Reverse transformation
+        grad = ft_apply_montage(grad, grad.balance.(mont), 'keepunused', 'yes', 'inverse', 'yes');
+        % Add to the list of projectors to process
+        projList{end+1} = mont;
+    end
+    % Remove small values to keep only the ones (diagonals can have different values when mixing GRAD and MAG)
+    diagVal = max(abs(grad.tra),[],2);
+    grad.tra = bst_bsxfun(@rdivide, grad.tra, diagVal);
+    grad.tra(abs(grad.tra) < 0.5) = 0;
+    grad.tra = round(grad.tra);
+    grad.tra = bst_bsxfun(@times, grad.tra, diagVal);
+end
 
+%% ===== BUILD PROJECTOR LIST =====
+nChannels = length(ChannelMat.Channel);
+for iProj = 1:length(projList)
+    % Initialize projector
+    P = zeros(nChannels,nChannels);
+    % Get list of channels: OLD
+    if isfield(grad.balance.(projList{iProj}), 'labelorg')
+        labelOld = grad.balance.(projList{iProj}).labelorg;
+    elseif isfield(grad.balance.(projList{iProj}), 'labelold')
+        labelOld = grad.balance.(projList{iProj}).labelold;
+    end
+    iChanOld = [];
+    iChanOldBst = [];
+    for i = 1:length(labelOld)
+        tmp = find(strcmpi(labelOld{i}, {ChannelMat.Channel.Name}));
+        if (length(tmp) == 1)
+            iChanOldBst(end+1) = tmp;
+            iChanOld(end+1) = i;
+        end
+    end
+    % Get list of channels: NEW
+    labelNew = grad.balance.(projList{iProj}).labelnew;
+    iChanNew = [];
+    iChanNewBst = [];
+    for i = 1:length(labelNew)
+        tmp = find(strcmpi(labelNew{i}, {ChannelMat.Channel.Name}));
+        if (length(tmp) == 1)
+            iChanNewBst(end+1) = tmp;
+            iChanNew(end+1) = i;
+        end
+    end
+    % Get values
+    P(iChanNewBst, iChanOldBst) = grad.balance.(projList{iProj}).tra(iChanNew, iChanOld);
+    % Build projector list
+    if isempty(ChannelMat.Projector)
+        ChannelMat.Projector = repmat(db_template('projector'), [1,0]);
+        iNewProj = 1;
+    else
+        iNewProj = length(ChannelMat.Projector)+1;
+    end
+    ChannelMat.Projector(iNewProj).Components = P;
+    ChannelMat.Projector(iNewProj).Comment    = mont;
+    ChannelMat.Projector(iNewProj).Status     = 2;
+end
 
 %% ===== GET SENSOR INFO =====
 % Process channel by channel
-for i = 1:length(ChannelMat.Channel)
+for i = 1:nChannels
     % Channel name
     chName = ChannelMat.Channel(i).Name;
     
@@ -148,11 +184,7 @@ for i = 1:length(ChannelMat.Channel)
         % Get type
         if isempty(ChannelMat.Channel(i).Type)
             if isfield(grad, 'chantype') && ~isempty(grad.chantype)
-                switch upper(grad.chantype{i})
-                    case 'MEGPLANAR',   ChannelMat.Channel(i).Type = 'MEG GRAD';
-                    case 'MEGMAG',      ChannelMat.Channel(i).Type = 'MEG MAG';
-                    otherwise,          ChannelMat.Channel(i).Type = upper(grad.chantype{ichan});
-                end
+                ChannelMat.Channel(i).Type = upper(grad.chantype{ichan});
             else
                 ChannelMat.Channel(i).Type = 'MEG';
             end
@@ -160,6 +192,13 @@ for i = 1:length(ChannelMat.Channel)
     end
 end
     
-
-
+%% ===== CONVERT CHANNEL TYPES =====
+for i = 1:length(ChannelMat.Channel)
+    switch upper(ChannelMat.Channel(i).Type)
+        case 'MEGPLANAR',   ChannelMat.Channel(i).Type = 'MEG GRAD';
+        case 'MEGMAG',      ChannelMat.Channel(i).Type = 'MEG MAG';
+        case 'REFGRAD',     ChannelMat.Channel(i).Type = 'MEG REF';
+        case 'REFMAG',      ChannelMat.Channel(i).Type = 'MEG REF';
+    end
+end
 
