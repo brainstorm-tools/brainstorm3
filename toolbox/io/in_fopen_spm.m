@@ -61,7 +61,13 @@ sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.channelflag  = ones(nChannels,1);
 sFile.device       = 'SPM';
 sFile.comment      = fBase;
-sFile.header.file_array = D.data;
+if isa(D.data, 'file_array')
+    sFile.header.file_array = D.data;
+elseif isstruct(D.data) && isfield(D.data, 'y') && isa(D.data.y, 'file_array')
+    sFile.header.file_array = D.data.y;
+else
+    error('Could not find the file_array object in the SPM structure.');
+end
 sFile.header.nChannels  = nChannels;
 sFile.header.gain       = ones(nChannels,1);
 
