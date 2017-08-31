@@ -1674,10 +1674,14 @@ end
 
 
 %% ===== EVENT TYPE: DELETE =====
-% USAGE:  EventTypeDel(iEvents)    : Delete by indices
-%         EventTypeDel(eventLabel) : Delete by name
-%         EventTypeDel()           : Delete selected event type
-function EventTypeDel(target)
+% USAGE:  EventTypeDel(iEvents,    isForced=0) : Delete by indices
+%         EventTypeDel(eventLabel, isForced=0) : Delete by name
+%         EventTypeDel()                       : Delete selected event type
+function EventTypeDel(target, isForced)
+    % Parse inputs
+    if (nargin < 2) || isempty(isForced)
+        isForced = 0;
+    end
     % Get ALL events (ignore current epoch)
     events = GetEvents([], 1);
     if isempty(events)
@@ -1700,7 +1704,7 @@ function EventTypeDel(target)
         nEvents = nEvents + size(events(iEvents(i)).times,2);
     end
     % If some events are going to be deleted: Ask user confirmation
-    if (nEvents > 0)
+    if (nEvents > 0) && ~isForced
         if ~java_dialog('confirm', sprintf('Delete %d events ?', nEvents), 'Delete events')
             return
         end

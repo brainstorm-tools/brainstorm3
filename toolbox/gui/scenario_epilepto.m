@@ -40,15 +40,14 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     GlobalData.Guidelines.MriPost      = [];
     GlobalData.Guidelines.RawLinks     = {};
     GlobalData.Guidelines.RawFiles     = {};
-    GlobalData.Guidelines.iStudies     = [];
-    GlobalData.Guidelines.iDatas       = [];
     GlobalData.Guidelines.ChannelFiles = {};
     GlobalData.Guidelines.ChannelMats  = {};
     GlobalData.Guidelines.Baselines    = {};
     GlobalData.Guidelines.Onsets       = {};
+    GlobalData.Guidelines.isPos        = {};
     
     % Initialize list of panels
-    nPanels = 7;
+    nPanels = 6;
     ctrl.jPanels = javaArray('javax.swing.JPanel', nPanels);
     ctrl.fcnValidate = cell(1, nPanels);
     ctrl.fcnReset    = cell(1, nPanels);
@@ -98,17 +97,17 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     
     % ===== PANEL: IMPORT RECORDINGS =====
     i = i + 1;
-    ctrl.jPanels(i) = gui_river([3,3], [8,10,-20,4], sprintf('Step #%d: Import recordings', i));
+    ctrl.jPanels(i) = gui_river([3,3], [8,10,-20,4], sprintf('Step #%d: Prepare recordings', i));
     % Toolbar
     buttonInsets = Insets(2,3,2,3);
     gui_component('button', ctrl.jPanels(i), '', '',  {buttonInsets, IconLoader.ICON_FOLDER_OPEN}, 'Add ictal recordings for this subject', @(h,ev)ButtonRawAdd());
     gui_component('button', ctrl.jPanels(i), '', '',  {buttonInsets, IconLoader.ICON_DELETE}, 'Remove recordings from this subject', @(h,ev)ButtonRawDel());
     gui_component('label', ctrl.jPanels(i), 'hfill', ' ');
     gui_component('button', ctrl.jPanels(i), '', 'Channels',    {buttonInsets, IconLoader.ICON_EDIT}, 'Edit the names and types of the data channels for the selected files', @(h,ev)ButtonRawEditChannel());
+    gui_component('button', ctrl.jPanels(i), '', '3D',          {buttonInsets, IconLoader.ICON_CHANNEL}, 'Set the 3D positions for the SEEG contacts', @(h,ev)ButtonRawPos());
     gui_component('button', ctrl.jPanels(i), '', 'Review',      {buttonInsets, IconLoader.ICON_DATA}, 'Edit the bad channels for the selected files', @(h,ev)ButtonRawReview());
-    gui_component('button', ctrl.jPanels(i), '', 'Onset',       {buttonInsets, IconLoader.ICON_EVT_OCCUR}, 'Identify the seizure onset with an event marker', @(h,ev)ButtonRawOnset());
-    gui_component('button', ctrl.jPanels(i), '', 'Baseline',    {buttonInsets, IconLoader.ICON_EVT_OCCUR}, 'Identify a baseline segment with an extended event marker', @(h,ev)ButtonRawBaseline());
-    gui_component('button', ctrl.jPanels(i), '', 'Position',    {buttonInsets, IconLoader.ICON_CHANNEL}, 'Set the 3D positions for the SEEG contacts', @(h,ev)ButtonRawPos());
+    gui_component('button', ctrl.jPanels(i), '', 'Onset',       {buttonInsets, IconLoader.ICON_EVT_OCCUR_ADD}, 'Identify the seizure onset with an event marker', @(h,ev)ButtonRawEvent('Onset'));
+    gui_component('button', ctrl.jPanels(i), '', 'Baseline',    {buttonInsets, IconLoader.ICON_EVT_OCCUR_ADD}, 'Identify a baseline segment with an extended event marker', @(h,ev)ButtonRawEvent('Baseline'));
     
     % Create JTable
     ctrl.jTableRaw = JTable();
@@ -127,21 +126,28 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     jPanelTable.setBorder([]);
     ctrl.jPanels(i).add('br hfill vfill', jPanelTable);
     % Callbacks
-    ctrl.fcnValidate{i} = @(c)ValidateImportRecordings();
-    ctrl.fcnReset{i}    = @(c)ResetImportRecordings();
-    ctrl.fcnUpdate{i}   = @(c)UpdateImportRecordings();
+    ctrl.fcnValidate{i} = @(c)ValidatePrepareRaw();
+    ctrl.fcnReset{i}    = @(c)ResetPrepareRaw();
+    ctrl.fcnUpdate{i}   = @(c)UpdatePrepareRaw();
     
-    % ===== PANEL: CONTACTS =====
+    % ===== PANEL: IMPORT EPOCHS =====
     i = i + 1;
-    ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Edit contact positions', i));
-    gui_component('Label', ctrl.jPanels(i), '', 'Edit contact positions: ');
-    
-    
-    % ===== PANEL: MARKERS =====
-    i = i + 1;
-    ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Edit event markers', i));
-    gui_component('Label', ctrl.jPanels(i), '', 'Edit markers ');
-    
+    ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Import epochs', i));
+    % Epoch window
+    gui_component('Label', ctrl.jPanels(i), '', 'Seizure onset evaluation window:');
+    % Time range : start
+    ctrl.jTextEpochStart = gui_component('texttime', ctrl.jPanels(i), '', ' ');
+    gui_component('label',  ctrl.jPanels(i), [], ' - ');
+    ctrl.jTextEpochStop = gui_component('texttime',  ctrl.jPanels(i), [], ' ');
+    % Set time controls callbacks
+    TimeUnit = gui_validate_text(ctrl.jTextEpochStart, [], ctrl.jTextEpochStop, {-100, 100, 1000}, 's', [], -10, []);
+    TimeUnit = gui_validate_text(ctrl.jTextEpochStop, ctrl.jTextEpochStart, [], {-100, 100, 1000}, 's', [], 10, []);
+    % Add unit label
+    gui_component('label',  ctrl.jPanels(i), [], [' ' TimeUnit]);
+    % Callbacks
+    ctrl.fcnValidate{i} = @(c)ValidateEpoch();
+    ctrl.fcnReset{i}    = @(c)ResetEpoch();
+    ctrl.fcnUpdate{i}   = @(c)UpdateEpoch();
     
     % ===== PANEL: TIME-FREQUENCY =====
     i = i + 1;
@@ -158,6 +164,11 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     GlobalData.Guidelines.ctrl = ctrl;
 end
 
+
+
+%% ==========================================================================================
+%  ===== INTRODUCTION =======================================================================
+%  ==========================================================================================
 
 %% ===== INTRODUCTION: VALIDATE =====
 function [isValidated, errMsg] = ValidateIntroduction()
@@ -177,6 +188,10 @@ function [isValidated, errMsg] = UpdateIntroduction()
     bst_memory('UnloadAll', 'Forced');
 end
 
+
+%% ==========================================================================================
+%  ===== IMPORT ANATOMY =====================================================================
+%  ==========================================================================================
 
 %% ===== IMPORT ANATOMY: VALIDATE =====
 function [isValidated, errMsg] = ValidateImportAnatomy()
@@ -346,15 +361,43 @@ function [isValidated, errMsg] = UpdateImportAnatomy()
 end
 
 
-%% ===== VALIDATE: IMPORT RECORDINGS =====
-function [isValidated, errMsg] = ValidateImportRecordings()
+
+%% ==========================================================================================
+%  ===== PREPARE RECORDINGS =================================================================
+%  ==========================================================================================
+
+%% ===== PREPARE RECORDINGS: VALIDATE =====
+function [isValidated, errMsg] = ValidatePrepareRaw()
+    global GlobalData;
     % Initialize returned variables
     isValidated = 0;
     errMsg = '';
+    % Unload everything
+    bst_memory('UnloadAll', 'Forced');
+    % Reload panel
+    UpdatePrepareRaw();
+    % Check that all the necessary data is available
+    if isempty(GlobalData.Guidelines.RawLinks)
+        errMsg = 'You must add at least one SEEG file.';
+        return;
+    elseif all(cellfun(@isempty, GlobalData.Guidelines.Baselines))
+        errMsg = 'You must identify at least one seizure with an "Onset" event.';
+        return;
+    elseif all(cellfun(@isempty, GlobalData.Guidelines.Onsets))
+        errMsg = 'You must identify at least one baseline period in the select files.';
+        return;
+    elseif any(cellfun(@isempty, GlobalData.Guidelines.Onsets) & cellfun(@isempty, GlobalData.Guidelines.Baselines))
+        errMsg = ['All the files must include an event of interest (seizure onset or baseline).' 10 'Remove the files that are not used.'];
+        return;
+    elseif ~all(GlobalData.Guidelines.isPos)
+        errMsg = 'You must set the 3D position of all the SEEG contacts in all the selected files.';
+        return;
+    end
+    isValidated = 1;
 end
 
-%% ===== RESET: IMPORT RECORDINGS =====
-function ResetImportRecordings()
+%% ===== PREPARE RECORDINGS: RESET =====
+function ResetPrepareRaw()
     global GlobalData;
     % Get subject name
     SubjectName = GlobalData.Guidelines.SubjectName;
@@ -378,11 +421,11 @@ function ResetImportRecordings()
         end
     end
     % Update list of files
-    UpdateImportRecordings();
+    UpdatePrepareRaw();
 end
 
-%% ===== UPDATE: IMPORT RECORDINGS =====
-function UpdateImportRecordings()
+%% ===== PREPARE RECORDINGS: UPDATE =====
+function UpdatePrepareRaw()
     import org.brainstorm.table.*;
     % Initialize global variables
     global GlobalData;
@@ -393,16 +436,13 @@ function UpdateImportRecordings()
     % Display the anatomy of the subjects
     gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Column names
-    columnNames = {'Path', 'File', 'SEEG', 'Bad', 'Baseline', 'Onset', 'Position'};
+    columnNames = {'Path', 'File', '#', '3D', 'Bad', 'Onset', 'Baseline'};
     % Progress bar
     bst_progress('start', 'Import recordings', 'Loading...');
     
     % === GET LIST OF RAW FILES ===
-    
     % Get list of raw files for this subject
     RawLinks = {};
-    GlobalData.Guidelines.iStudies     = [];
-    GlobalData.Guidelines.iDatas       = [];
     GlobalData.Guidelines.ChannelFiles = {};
     GlobalData.Guidelines.ChannelMats  = {};
     if ~isempty(GlobalData.Guidelines.iSubject)
@@ -417,9 +457,6 @@ function UpdateImportRecordings()
                 sDataStudy = bst_get('Study', iDataStudies(i));
                 if strcmpi(sDataStudy.Data(iDataFiles(i)).DataType, 'raw')
                     RawLinks{end+1} = sDataStudy.Data(iDataFiles(i)).FileName;
-                    % Save information for later
-                    GlobalData.Guidelines.iStudies(end+1) = iDataStudies(i);
-                    GlobalData.Guidelines.iDatas(end+1)   = iDataFiles(i);
                     % Load channel file
                     GlobalData.Guidelines.ChannelFiles{end+1} = sDataStudy.Channel(1).FileName;
                     GlobalData.Guidelines.ChannelMats{end+1}  = in_bst_channel(sDataStudy.Channel(1).FileName);
@@ -430,6 +467,7 @@ function UpdateImportRecordings()
     GlobalData.Guidelines.RawLinks  = RawLinks;
     GlobalData.Guidelines.Baselines = cell(size(RawLinks));
     GlobalData.Guidelines.Onsets    = cell(size(RawLinks));
+    GlobalData.Guidelines.isPos     = zeros(size(RawLinks));
 
     % === READ FILE INFO ===
     % Initialize data to represent
@@ -444,7 +482,19 @@ function UpdateImportRecordings()
         
         % Get list of EEG channels
         iSeeg = channel_find(GlobalData.Guidelines.ChannelMats{iFile}.Channel, 'SEEG,ECOG');
-        filesData{iFile,3} = java.lang.Integer(length(iSeeg));
+        filesData{iFile,3} = length(iSeeg);
+        
+        % Check positions
+        isPos = 1;
+        iSeeg = channel_find(GlobalData.Guidelines.ChannelMats{iFile}.Channel, 'SEEG,ECOG');
+        for i = 1:length(iSeeg)
+            if ~isequal(size(GlobalData.Guidelines.ChannelMats{iFile}.Channel(iSeeg(i)).Loc), [3,1]) || all(GlobalData.Guidelines.ChannelMats{iFile}.Channel(iSeeg(i)).Loc == 0)
+                isPos = 0;
+                break;
+            end
+        end
+        GlobalData.Guidelines.isPos(iFile) = isPos;
+        filesData{iFile,4} = java.lang.Boolean(isPos);
         
         % Get list of bad channels
         strBad = '';
@@ -455,10 +505,23 @@ function UpdateImportRecordings()
                 strBad = [strBad, ','];
             end
         end
-        filesData{iFile,4} = strBad;
+        filesData{iFile,5} = strBad;
+        
+        % Get Onset event
+        strOnset = ' ';
+        if isfield(sFile, 'events') && ~isempty(sFile.events)
+            iEvtOnset = find(strcmpi({sFile.events.label}, 'onset'));
+            % Event was found
+            if ~isempty(iEvtOnset)
+                strOnset = FormatEvent(sFile.events(iEvtOnset).times);
+                % Save in memory
+                GlobalData.Guidelines.Onsets{iFile} = sFile.events(iEvtOnset).times(1,:);
+            end
+        end
+        filesData{iFile,6} = strOnset;
         
         % Get Baseline event
-        strBaseline = '';
+        strBaseline = ' ';
         if isfield(sFile, 'events') && ~isempty(sFile.events)
             iEvtBaseline = find(strcmpi({sFile.events.label}, 'baseline'));
             % Skip baseline events that are not extended events
@@ -466,49 +529,13 @@ function UpdateImportRecordings()
                 disp(['Baseline must be an extended event: ' RawLinks{iFile}]);
             % Keep event 
             elseif ~isempty(iEvtBaseline)
-                for i = 1:length(size(sFile.events(iEvtBaseline).times,2))
-                    % Keep as a valid baseline segment
-                    strBaseline = [strBaseline, sprintf('[%0.2f,%0.2f]', sFile.events(iEvtBaseline).times(1,i), sFile.events(iEvtBaseline).times(2,i))];
-                    if (i < length(iEvtBaseline))
-                        strBaseline = [strBaseline, ','];
-                    end
-                end
+                strBaseline = FormatEvent(sFile.events(iEvtBaseline).times);
                 % Save in memory
                 GlobalData.Guidelines.Baselines{iFile} = sFile.events(iEvtBaseline).times;
             end
         end
-        filesData{iFile,5} = strBaseline;
-        
-        % Get Onset event
-        strOnset = '';
-        if isfield(sFile, 'events') && ~isempty(sFile.events)
-            iEvtOnset = find(strcmpi({sFile.events.label}, 'onset'));
-            % Event was found
-            if ~isempty(iEvtOnset)
-                for i = 1:length(size(sFile.events(iEvtOnset).times,2))
-                    % Keep as a valid baseline segment
-                    strOnset = [strOnset, sprintf('%0.2f', sFile.events(iEvtOnset).times(1,i))];
-                    if (i < length(iEvtOnset))
-                        strOnset = [strOnset, ','];
-                    end
-                end
-                % Save in memory
-                GlobalData.Guidelines.Onsets{iFile} = sFile.events(iEvtOnset).times(1,:);
-            end
-        end
-        filesData{iFile,6} = strOnset;
-        
-        % Check positions
-        isPos = java.lang.Boolean(1);
-        iSeeg = channel_find(GlobalData.Guidelines.ChannelMats{iFile}.Channel, 'SEEG,ECOG');
-        for i = 1:length(iSeeg)
-            if ~isequal(size(GlobalData.Guidelines.ChannelMats{iFile}.Channel(iSeeg(i)).Loc), [3,1]) || all(GlobalData.Guidelines.ChannelMats{iFile}.Channel(iSeeg(i)).Loc == 0)
-                isPos = java.lang.Boolean(0);
-                break;
-            end
-        end
-        filesData{iFile,7} = isPos;
-        
+        filesData{iFile,7} = strBaseline;
+ 
         % Save for later
         GlobalData.Guidelines.RawFiles{end+1} = sFile.filename;
     end
@@ -523,39 +550,21 @@ function UpdateImportRecordings()
     % COLUMN 1: FILENAME
     ctrl.jTableRaw.getColumnModel.getColumn(1).setPreferredWidth(100);
     % COLUMN 2: SEEG CHANNELS
-    ctrl.jTableRaw.getColumnModel.getColumn(2).setPreferredWidth(10);
-    ctrl.jTableRaw.getColumnModel.getColumn(2).setCellRenderer(IntegerCellRenderer());
-    % COLUMN 3: BAD CHANNELS
-    ctrl.jTableRaw.getColumnModel.getColumn(3).setPreferredWidth(40);
-    % COLUMN 4: BASELINE
-    ctrl.jTableRaw.getColumnModel.getColumn(4).setPreferredWidth(20);
+    ctrl.jTableRaw.getColumnModel.getColumn(2).setPreferredWidth(5);
+    % COLUMN 3: POSITION
+    ctrl.jTableRaw.getColumnModel.getColumn(3).setPreferredWidth(5);
+    ctrl.jTableRaw.getColumnModel.getColumn(3).setCellRenderer(BooleanCellRenderer());
+    % COLUMN 4: BAD CHANNELS
+    ctrl.jTableRaw.getColumnModel.getColumn(4).setPreferredWidth(70);
     % COLUMN 5: ONSET
-    ctrl.jTableRaw.getColumnModel.getColumn(5).setPreferredWidth(10);
-    % COLUMN 6: POSITION
-    ctrl.jTableRaw.getColumnModel.getColumn(6).setPreferredWidth(5);
-    ctrl.jTableRaw.getColumnModel.getColumn(6).setCellRenderer(BooleanCellRenderer());
-    
-%     % COLUMN 0 : CHANNEL FLAG (GOOD/BAD)
-%     if isChannelFlag
-%         jTableChannel.getColumnModel.getColumn(0).setPreferredWidth(15);
-%         jTableChannel.getColumnModel.getColumn(0).setCellRenderer(BooleanCellRenderer());
-%         jTableChannel.getColumnModel.getColumn(0).setCellEditor(BooleanCellEditor());
-%     end
-%     % COLUMN 1 : CHANNEL INDEX
-%     if isChannelFlag
-%         jTableChannel.getColumnModel.getColumn(0 + isChannelFlag).setCellEditor(DisabledCellEditor());
-%     else
-%         jTableChannel.getColumnModel.getColumn(0 + isChannelFlag).setCellEditor(IntegerCellEditor());
-%         jTableChannel.getColumnModel.getColumn(0 + isChannelFlag).setCellRenderer(IntegerCellRenderer());
-%     end
-%     % COLUMN 6-NbColumns : LOC, ORIENTATION
-%     if ~isChannelFlag
-%         for iCol = (5+isChannelFlag):nbColumns-1
-%             jTableChannel.getColumnModel.getColumn(iCol).setCellEditor(ArrayCellEditor());
-%             jTableChannel.getColumnModel.getColumn(iCol).setCellRenderer(ArrayCellRenderer());
-%         end     
-%     end
+    ctrl.jTableRaw.getColumnModel.getColumn(5).setPreferredWidth(40);
+    % COLUMN 6: BASELINE
+    ctrl.jTableRaw.getColumnModel.getColumn(6).setPreferredWidth(100);
 
+    % Force repaint of the table
+    drawnow;
+    ctrl.jTableRaw.invalidate();
+    ctrl.jTableRaw.repaint();
     % Close progress bar
     bst_progress('stop');
 end
@@ -563,13 +572,12 @@ end
 
 
 %% ==========================================================================================
-%  ===== IMPORT RECORDINGS CALLBACKS ========================================================
+%  ===== PREPARE RECORDINGS CALLBACKS =======================================================
 %  ==========================================================================================
 
 %% ===== RECORDINGS: ADD FILES =====
 function ButtonRawAdd()
     global GlobalData;
-    ctrl = GlobalData.Guidelines.ctrl;
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
     % Select files
@@ -608,7 +616,7 @@ function ButtonRawAdd()
         AllChannelFiles{end+1} = ChannelFile;
     end
     % Save file format
-    UpdateImportRecordings();
+    UpdatePrepareRaw();
     % Edit channel files
     ButtonRawEditChannel(OutputFiles);
 end
@@ -633,16 +641,22 @@ function ButtonRawDel()
     if ~java_dialog('confirm', 'Remove selected files from database?')
         return;
     end
+    % Get list of folders to delete
+    iStudiesDel = [];
+    for i = 1:length(iSelFiles)
+        [sStudy, iStudy] = bst_get('DataFile', GlobalData.Guidelines.RawLinks{iSelFiles(i)});
+        iStudiesDel = [iStudiesDel, iStudy];
+    end
     % Delete data
-    db_delete_studies(GlobalData.Guidelines.iStudies(iSelFiles));
+    db_delete_studies(iStudiesDel);
     % Update tree
     panel_protocols('UpdateTree');
     % Save file format
-    UpdateImportRecordings();
+    UpdatePrepareRaw();
 end
 
 %% ===== RECORDINGS: EDIT CHANNEL FILE =====
-function ButtonRawEditChannel(RawFiles)
+function ButtonRawEditChannel(RawLinks)
     global GlobalData;
     ctrl = GlobalData.Guidelines.ctrl;
     % If there are not files: exit
@@ -652,22 +666,22 @@ function ButtonRawEditChannel(RawFiles)
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
     % Parse inputs
-    if (nargin < 1) || isempty(RawFiles)
+    if (nargin < 1) || isempty(RawLinks)
         % Get selected files
         iSelFiles = ctrl.jTableRaw.getSelectedRows()' + 1;
         % If no files are selected: select them all
         if isempty(iSelFiles)
             iSelFiles = 1:length(GlobalData.Guidelines.RawLinks);
         end
-        RawFiles = GlobalData.Guidelines.RawLinks(iSelFiles);
+        RawLinks = GlobalData.Guidelines.RawLinks(iSelFiles);
     end
     
     % Read and compare all the corresponding channel files
     AllChannelFiles = {};
     AllChannelMats = {};
-    for iFile = 1:length(RawFiles)
+    for iFile = 1:length(RawLinks)
         % Get channel file
-        AllChannelFiles{iFile} = bst_get('ChannelFileForStudy', RawFiles{iFile});
+        AllChannelFiles{iFile} = bst_get('ChannelFileForStudy', RawLinks{iFile});
         % Read channel file
         AllChannelMats{iFile} = in_bst_channel(AllChannelFiles{iFile});
         % For multiple channel files: compare with the first one
@@ -689,7 +703,7 @@ function ButtonRawEditChannel(RawFiles)
         RefChannelMat = in_bst_channel(AllChannelFiles{1});
         % If there were modifications: Apply the same modifications to the other channel files
         if ~isequal({RefChannelMat.Channel.Name}, {AllChannelMats{1}.Channel.Name}) || ~isequal({RefChannelMat.Channel.Type}, {AllChannelMats{1}.Channel.Type})
-            for iFile = 2:length(RawFiles)
+            for iFile = 2:length(RawLinks)
                 % Replicate the modifications
                 [AllChannelMats{iFile}.Channel.Name] = deal(RefChannelMat.Channel.Name);
                 [AllChannelMats{iFile}.Channel.Type] = deal(RefChannelMat.Channel.Type);
@@ -698,10 +712,10 @@ function ButtonRawEditChannel(RawFiles)
             end
         end
         % Update panel
-        UpdateImportRecordings();
+        UpdatePrepareRaw();
     end
     % Add a hook to capture when the channel editor is closed
-    if (length(RawFiles) > 1)
+    if (length(RawLinks) > 1)
         java_setcb(jFrame, 'WindowClosingCallback', @(h,ev)ChannelEditorClosed_Callback());
     end
 end
@@ -727,8 +741,8 @@ function ButtonRawReview()
 end
 
 
-%% ===== RECORDINGS: REVIEW =====
-function ButtonRawOnset()
+%% ===== RECORDINGS: BUTTON EVENT =====
+function ButtonRawEvent(strEvent)
     global GlobalData;
     ctrl = GlobalData.Guidelines.ctrl;
     % Get the raw dataset (currently being reviewed)
@@ -739,7 +753,7 @@ function ButtonRawOnset()
         iSelFiles = ctrl.jTableRaw.getSelectedRows()' + 1;
         % If no or multiple files are selected: exit
         if (length(iSelFiles) ~= 1) 
-            bst_error('You must open a file before setting the seizure onset marker.', 'Set seizure onset', 0);
+            bst_error('You must open a file before setting the seizure onset marker or baseline.', 'Set event', 0);
         % Else: review file
         else
             ReviewFile(GlobalData.Guidelines.RawLinks{iSelFiles});
@@ -752,12 +766,91 @@ function ButtonRawOnset()
     if isempty(hFig)
         return
     end
-    % Time selection
-    figure_timeseries('SetTimeSelectionLinked', hFig, []);
-    % Get existing markers
-    error('Remove existing markers')
+    % Operations specific to the type of event
+    switch (strEvent)
+        case 'Onset'
+            % Reset time selection
+            figure_timeseries('SetTimeSelectionLinked', hFig, []);
+            % Delete existing markers
+            if ~isempty(panel_record('GetEvents', strEvent))
+                panel_record('EventTypeDel', strEvent, 1);
+            end
+        case 'Baseline'
+            % A time selection must be available
+            GraphSelection = getappdata(hFig, 'GraphSelection');
+            if isempty(GraphSelection) || any(isinf(GraphSelection))
+                bst_error('You must select a time segment before setting it as the baseline.', 'Set event', 0);
+                return;
+            end
+    end
     % Set new onset marker
-    panel_record('ToggleEvent', 'Onset');
+    panel_record('ToggleEvent', strEvent);
+    % Save modifcations
+    panel_record('SaveModifications', iDS);
+    
+%     % Get file index
+%     iFile = find(strcmpi(GlobalData.DataSet(iDS).DataFile, GlobalData.Guidelines.RawLinks));
+%     if isempty(iFile)
+%         disp('Error: File not found... Reload the Guidelines tab.');
+%         return;
+%     end
+%     % Format event times
+%     sEvt = panel_record('GetEvents', 'Onset');
+%     strEvent = FormatEvent(sEvt.times);
+%     % Update guidelines table
+%     ctrl.jTableRaw.getModel().setValueAt(java.lang.String(strEvent), iFile-1, 5);
+%     % DOESN'T WORK TWICE??? WHY???
+
+    % Update panel
+    UpdatePrepareRaw();
+end
+
+
+%% ===== RECORDINGS: SET POSITION =====
+function ButtonRawPos()
+    global GlobalData;
+    % If there are not files: exit
+    if isempty(GlobalData.Guidelines.RawLinks)
+        return;
+    end
+    % Unload everything
+    bst_memory('UnloadAll', 'Forced');
+    % Ask how to define the contact positions
+    res = java_dialog('question', [...
+        '<HTML>How do you want to define the 3D positions of the SEEG contacts?<BR><BR>', ...
+        '<B><U>Import</U></B>: &nbsp;&nbsp;Import from a file (subject or MNI coordinates)<BR>', ...
+        '<B><U>Edit</U></B>: &nbsp;&nbsp;Define manually using the MRI viewer<BR><BR>'], ...
+        'Set positions', [], {'Import', 'Edit'}, 'Edit');
+    if isempty(res)
+        return;
+    end
+
+    % Get list of files to edit
+    RawLinks = GlobalData.Guidelines.RawLinks;
+    iStudiesSet = [];
+    AllChanNames = {};
+    AllChannelMats = {};
+    for iFile = 1:length(RawLinks)
+        % Get file in the database
+        [sStudy, iStudy] = bst_get('DataFile', RawLinks{iFile});
+        iStudiesSet = [iStudiesSet, iStudy];
+        % Load channel file
+        AllChannelMats{iFile} = in_bst_channel(sStudy.Channel(1).FileName);
+        % Get channel names
+        AllChanNames = union(AllChanNames, {AllChannelMats{iFile}.Channel.Name});
+    end
+    
+    % Process request
+    switch (res)
+        case 'Import'
+            % Get 3D positions from an external file
+            channel_add_loc(iStudiesSet, [], 1);
+        case 'Edit'
+            
+    end
+    
+    % Update panel
+    UpdatePrepareRaw();
 end
 
 
@@ -811,7 +904,105 @@ function ReviewFile(RawLink)
     % Wait for the end of this session
     waitfor(hFig);
     % Update table
-    UpdateImportRecordings();
+    UpdatePrepareRaw();
+end
+
+
+
+%% ==========================================================================================
+%  ===== EPOCH ==============================================================================
+%  ==========================================================================================
+
+%% ===== EPOCH: VALIDATE =====
+function [isValidated, errMsg] = ValidateEpoch()
+    global GlobalData;
+    ctrl = GlobalData.Guidelines.ctrl;
+    % Initialize returned variables
+    isValidated = 0;
+    errMsg = '';
+    % Get onset time window
+    OnsetTimeRange = [str2double(char(ctrl.jTextEpochStart.getText())), ...
+                      str2double(char(ctrl.jTextEpochStop.getText()))];
+    % Import the baselines and seizures
+    nFiles = length(GlobalData.Guidelines.RawLinks);
+    GlobalData.Guidelines.OnsetFiles    = cell(1, nFiles);
+    GlobalData.Guidelines.BaselineFiles = cell(1, nFiles);
+    for iFile = 1:nFiles
+        % Get subject name
+        sFile = bst_process('GetInputStruct', GlobalData.Guidelines.RawLinks{iFile});
+        % Get corresponding imported folder
+        sStudyImport = bst_get('StudyWithCondition', strrep(bst_fileparts(sFile.FileName), '@raw', ''));
+        if ~isempty(sStudyImport)
+            iDataBaseline = find(~cellfun(@(c)isempty(strfind(c,'Baseline')), {sStudyImport.Data.FileName}));
+            iDataOnset    = find(~cellfun(@(c)isempty(strfind(c,'Onset')),    {sStudyImport.Data.FileName}));
+        else
+            iDataBaseline = [];
+            iDataOnset = [];
+        end
+        % Baseline files already imported
+        if (length(iDataBaseline) == size(GlobalData.Guidelines.Baselines{iFile},2))
+            GlobalData.Guidelines.BaselineFiles{iFile} = {sStudyImport.Data(iDataBaseline).FileName};
+        % Import baselines
+        elseif ~isempty(GlobalData.Guidelines.Baselines{iFile})
+            sFilesBaselines = bst_process('CallProcess', 'process_import_data_event', sFile, [], ...
+                'subjectname', sFile.SubjectName, ...
+                'eventname',   'Baseline', ...
+                'timewindow',  [], ...
+                'createcond',  0, ...
+                'ignoreshort', 0, ...
+                'usessp',      1);
+            GlobalData.Guidelines.BaselineFiles{iFile} = {sFilesBaselines.FileName};
+        end
+        % Onset files already imported
+        if (length(iDataOnset) == length(GlobalData.Guidelines.Onsets{iFile}))
+            GlobalData.Guidelines.OnsetFiles{iFile} = {sStudyImport.Data(iDataOnset).FileName};
+        % Import onsets
+        elseif ~isempty(GlobalData.Guidelines.Onsets{iFile})
+            sFilesOnsets = bst_process('CallProcess', 'process_import_data_event', sFile, [], ...
+                'subjectname', sFile.SubjectName, ...
+                'eventname',   'Onset', ...
+                'epochtime',   OnsetTimeRange, ...
+                'timewindow',  [], ...
+                'createcond',  0, ...
+                'ignoreshort', 0, ...
+                'usessp',      1);
+            GlobalData.Guidelines.OnsetFiles{iFile} = {sFilesOnsets.FileName};
+        end
+    end
+    isValidated = 1;
+end
+
+%% ===== PREPARE RECORDINGS: RESET =====
+function ResetEpoch()
+    global GlobalData;
+    % Get subject name
+    SubjectName = GlobalData.Guidelines.SubjectName;
+    iSubject    = GlobalData.Guidelines.iSubject;
+    % Delete all the imported data for this subject
+    if ~isempty(iSubject)
+        % Get subject
+        sSubject = bst_get('Subject', iSubject);
+        % Get all the studies for this subject
+        [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
+        % Remove all the continuous recordings
+        iDel = find(cellfun(@(c)isempty(strfind(c,'@raw')), {sStudies.FileName}));
+        % Delete studies
+        if ~isempty(iDel)
+            % Ask confirmation
+            if ~java_dialog('confirm', ['Remove all the epoched recordings from subject "' SubjectName '"?'])
+                return;
+            end
+            % Delete data
+            db_delete_studies(iStudies(iDel));
+            % Update tree
+            panel_protocols('UpdateTree');
+        end
+    end
+end
+
+%% ===== PREPARE RECORDINGS: UPDATE =====
+function UpdateEpoch()
+    
 end
 
 
@@ -837,6 +1028,22 @@ function SelectSubject()
     if file_exist(MriPre) && file_exist(MriPost)
         ctrl.jTextMriPre.setText(sSubject.Anatomy(1).Comment);
         ctrl.jTextMriPost.setText(sSubject.Anatomy(2).Comment);
+    end
+end
+
+%% ===== FORMAT BASELINE =====
+function strEvent = FormatEvent(evtTimes)
+    strEvent = '';
+    nEvt = size(evtTimes,2);
+    for i = 1:nEvt
+        if (size(evtTimes,1) == 1)
+            strEvent = [strEvent, sprintf('%0.2f', evtTimes(1,i))];
+        elseif (size(evtTimes,1) == 2)
+            strEvent = [strEvent, sprintf('[%0.2f,%0.2f]', evtTimes(1,i), evtTimes(2,i))];
+        end
+        if (i < nEvt)
+            strEvent = [strEvent, ','];
+        end
     end
 end
 
