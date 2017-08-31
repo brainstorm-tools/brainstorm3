@@ -100,6 +100,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         extract_phasePAC = 1;
     end
 
+    time = tPACMat.Time;
     if length(sInput)>1
         Nesting = tPACMat.sPAC.DynamicNesting;
         PAC = tPACMat.sPAC.DynamicPAC; 
@@ -335,7 +336,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             if doInterpolation
                 [X,Y] = meshgrid(time,fPcenters);
                 nx = time;
-                ny = OutputFp;[nX,nY] = meshgrid(nx,ny);
+                ny = OutputFp;
+                [nX,nY] = meshgrid(nx,ny);
                 tmp2(1,:,:) = interp2(X,Y,squeeze(tmp)',nX,nY,'linear',0)';
                 if extract_phasePAC
                     InterpPhase = interp2(X,Y,Phase',nX,nY,'linear',0);
@@ -356,9 +358,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         
     end
     tPACMat.sPAC.LowFreqs = fPcenters;
-    
-    faBand(1) = max(faBand(1),tPACMat2.sPAC.HighFreqs(1));
-    faBand(end) = min(faBand(end),tPACMat2.sPAC.HighFreqs(end));
+     
+    faBand(1) = max(faBand(1),highFreq(1));
+    faBand(end) = min(faBand(end),highFreq(end));
     
     tPACMat.sPAC.NewFaRange = faBand;
     
