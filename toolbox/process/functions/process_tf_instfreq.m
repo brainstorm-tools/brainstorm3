@@ -67,7 +67,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     % Load TF file
     TimefreqMat = in_bst_timefreq(sInput.FileName, 0);
     % Check method and measure applied on the data
-    if ~ismember(TimefreqMat.Method, {'hilbert', 'morlet'}) || ~strcmpi(TimefreqMat.Measure, 'none')
+    if ~ismember(TimefreqMat.Method, {'hilbert', 'morlet', 'mtmconvol'}) || ~strcmpi(TimefreqMat.Measure, 'none')
         bst_report('Error', sProcess, sInput, 'This function only applies to Hilbert or Morlet complex coefficients.');
         return;
     end

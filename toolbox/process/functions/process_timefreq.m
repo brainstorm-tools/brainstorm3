@@ -85,7 +85,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Initialize returned values
     OutputFiles = {};
     % Extract method name from the process name
-    strProcess = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    switch (func2str(sProcess.Function))
+        case 'process_timefreq',      strProcess = 'morlet';
+        case 'process_hilbert',       strProcess = 'hilbert';
+        case 'process_fft',           strProcess = 'fft';
+        case 'process_psd',           strProcess = 'psd';
+        case 'process_ft_mtmconvol',  strProcess = 'mtmconvol';
+        otherwise,                    error('Unsupported process.');
+    end
     % Get editable options (Edit... button)
     if isfield(sProcess.options, 'edit')
         tfOPTIONS = sProcess.options.edit.Value;
@@ -102,10 +109,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS = bst_timefreq();
         tfOPTIONS.Method = strProcess;
         switch tfOPTIONS.Method
-            case 'fft',     tfOPTIONS.Comment = 'FFT';
-            case 'psd',     tfOPTIONS.Comment = 'PSD';
-            case 'morlet',  tfOPTIONS.Comment = 'Wavelet';
-            case 'hilbert', tfOPTIONS.Comment = 'Hilbert';
+            case 'fft',       tfOPTIONS.Comment = 'FFT';
+            case 'psd',       tfOPTIONS.Comment = 'PSD';
+            case 'morlet',    tfOPTIONS.Comment = 'Wavelet';
+            case 'hilbert',   tfOPTIONS.Comment = 'Hilbert';
+            case 'mtmconvol', tfOPTIONS.Comment = 'Multitaper';
         end
     end
     
@@ -150,6 +158,34 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.WinLength  = sProcess.options.win_length.Value{1};
         tfOPTIONS.WinOverlap = sProcess.options.win_overlap.Value{1};
     end
+    
+    % Multitaper options
+    if isfield(sProcess.options, 'mt_taper') && ~isempty(sProcess.options.mt_taper) && ~isempty(sProcess.options.mt_taper.Value)
+        tfOPTIONS.ft_mtmconvol.taper = sProcess.options.mt_taper.Value{2}{sProcess.options.mt_taper.Value{1}};
+    end
+    if isfield(sProcess.options, 'mt_frequencies') && ~isempty(sProcess.options.mt_frequencies) && ~isempty(sProcess.options.mt_frequencies.Value)
+        tfOPTIONS.ft_mtmconvol.frequencies = eval(sProcess.options.mt_frequencies.Value);
+    end
+    if isfield(sProcess.options, 'mt_freqmod') && ~isempty(sProcess.options.mt_freqmod) && ~isempty(sProcess.options.mt_freqmod.Value)
+        tfOPTIONS.ft_mtmconvol.freqmod = sProcess.options.mt_freqmod.Value{1};
+    end
+    if isfield(sProcess.options, 'mt_timeres') && ~isempty(sProcess.options.mt_timeres) && ~isempty(sProcess.options.mt_timeres.Value)
+        tfOPTIONS.ft_mtmconvol.timeres = sProcess.options.mt_timeres.Value{1};
+    end
+    if isfield(sProcess.options, 'mt_timestep') && ~isempty(sProcess.options.mt_timestep) && ~isempty(sProcess.options.mt_timestep.Value)
+        tfOPTIONS.ft_mtmconvol.timestep = sProcess.options.mt_timestep.Value{1};
+    end
+    if isfield(sProcess.options, 'measure') && ~isempty(sProcess.options.measure) && ~isempty(sProcess.options.measure.Value)
+        tfOPTIONS.Measure = sProcess.options.measure.Value;
+        % Add measure to comment
+        if strcmpi(tfOPTIONS.Measure, 'none')
+            strMeasure = 'complex';
+        else
+            strMeasure = tfOPTIONS.Measure;
+        end
+        tfOPTIONS.Comment = [tfOPTIONS.Comment, ' ', strMeasure];
+    end
+    
     % Output
     if isfield(sProcess.options, 'avgoutput') && ~isempty(sProcess.options.avgoutput) && ~isempty(sProcess.options.avgoutput.Value)
         if sProcess.options.avgoutput.Value

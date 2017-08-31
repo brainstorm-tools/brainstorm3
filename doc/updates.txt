@@ -5,6 +5,7 @@ August 2017
 - GUI: Added colormap "tpac"
 - Process: Added dPAC processes
 - Process: Added Phase transfer entropy
+- Process: Added Multitaper time-frequency decomposition (FieldTrip: ft_mtmconvol)
 - NIRS: Distribution of Nirstorm toolbox and tutorial
 ---------------------------------------------------------------
 July 2017

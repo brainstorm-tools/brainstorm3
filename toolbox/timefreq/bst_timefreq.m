@@ -11,7 +11,7 @@ function [OutputFiles, Messages, isError] = bst_timefreq(Data, OPTIONS)
 %          - Matrix of time-series [nRow x nTime]
 %          - Cell-array of matrices of time series
 %     - OPTIONS: Structure with the following fields
-%          - Method       : {'morlet', 'fft', 'psd', 'hilbert'}
+%          - Method       : {'morlet', 'fft', 'psd', 'hilbert', 'mtmconvol'}
 %          - Output       : {'average', 'all'}
 %          - Comment      : Output file comment
 %          - ListFiles    : Cell array of filenames, used only if Data is a matrix of data (used to reference the "parent" file)
@@ -76,6 +76,8 @@ Def_OPTIONS.iTargetStudy    = [];
 Def_OPTIONS.SaveKernel      = 0;
 Def_OPTIONS.nComponents     = 1;
 Def_OPTIONS.NormalizeFunc   = 'none';
+Def_OPTIONS.ft_mtmconvol    = [];
+
 % Return the default options
 if (nargin == 0)
     OutputFiles = Def_OPTIONS;
@@ -125,10 +127,11 @@ end
         
 % Progress bar
 switch(OPTIONS.Method)
-    case 'morlet',   strMap = 'time-frequency maps';
-    case 'fft',      strMap = 'FFT values';
-    case 'psd',      strMap = 'PSD values';
-    case 'hilbert',  strMap = 'Hilbert maps';
+    case 'morlet',    strMap = 'time-frequency maps';
+    case 'fft',       strMap = 'FFT values';
+    case 'psd',       strMap = 'PSD values';
+    case 'hilbert',   strMap = 'Hilbert maps';
+    case 'mtmconvol', strMap = 'multitaper maps';
 end
 
 
@@ -541,6 +544,41 @@ for iData = 1:length(Data)
                     TF(:,:,iBand) = oc_hilbert(Fband')';
                 end
             end
+            
+        % Multitaper
+        case 'mtmconvol'
+            mt = OPTIONS.ft_mtmconvol;
+            % Configuration inspired from SPM function spm_eeg_specest_mtmconvol
+            dt = OPTIONS.TimeVector(end) - OPTIONS.TimeVector(1) + diff(OPTIONS.TimeVector(1:2));
+            fsample = 1 ./ diff(OPTIONS.TimeVector(1:2));
+            df = unique(diff(mt.frequencies));
+            if length(df) == 1  
+                pad = ceil(dt*df)/df;
+            else
+                pad = [];
+            end
+            % Correct the time step to the closest multiple of the sampling interval to keep the time axis uniform
+            mt.timestep = round(fsample * mt.timestep) / fsample;
+            % Time axis
+            timeoi = (OPTIONS.TimeVector(1) + mt.timeres/2) : mt.timestep : (OPTIONS.TimeVector(end) - mt.timeres/2 - 1/fsample); 
+            % Frequency resolution for each frequency
+            freqres = mt.frequencies / mt.freqmod;
+            freqres(find(freqres < 1/mt.timeres)) = 1/mt.timeres;
+            
+            % Call fieldtrip function
+            [TF, ntaper, OPTIONS.Freqs, OPTIONS.TimeVector] = ft_specest_mtmconvol(F, OPTIONS.TimeVector, ...
+                'taper',     mt.taper, ...
+                'timeoi',    timeoi, ...
+                'freqoi',    mt.frequencies,...
+                'timwin',    repmat(mt.timeres, 1, length(mt.frequencies)), ...
+                'tapsmofrq', freqres, ...
+                'pad',       pad, ...
+                'verbose',   0);
+            % Permute dimensions
+            TF = permute(TF, [2 4 3 1]);
+            % Compute power
+            % TF = TF .* conj(TF);
+            % TF = spm_squeeze(nanmean(spectrum.*conj(spectrum), 1), 1);
     end
     bst_progress('inc', 1);
     % Set to zero the bad channels
