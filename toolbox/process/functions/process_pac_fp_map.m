@@ -1,5 +1,5 @@
-function varargout = process_pac_fpMap( varargin )
-% process_pac_fpMap: Extract frequency for phase map from tPAC matrices.
+function varargout = process_pac_fp_map( varargin )
+% process_pac_fp_map: Extract frequency for phase map from tPAC matrices.
 %
 % @=============================================================================
 % This software is part of the Brainstorm software:
@@ -91,7 +91,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     tPACMat = in_bst_timefreq(sInput(1).FileName, 0);
     % Error
     if isempty(tPACMat)
-        bst_report('Error', 'process_pac_fpMap', sInput, Messages);
+        bst_report('Error', 'process_pac_fp_map', sInput, Messages);
         return;
     end
     
@@ -115,7 +115,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
            fa = tPACMat2.sPAC.HighFreqs;
            if ~isequal(time,tPACMat.Time) || ~isequal(fa,tPACMat.sPAC.HighFreqs)
                Message = ['Format of file#',num2str(iFile),' do not match the first file'];
-               bst_report('Error', 'process_pac_fpMap', sInput, Message);
+               bst_report('Error', 'process_pac_fp_map', sInput, Message);
                return;
            end
            

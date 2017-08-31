@@ -1,5 +1,5 @@
-function varargout = process_pac_semiComod( varargin )
-% process_pac_semiComod: Extract semi-comodulogram from tPAC maps.
+function varargout = process_pac_comod( varargin )
+% process_pac_comod: Extract Comodulogram from tPAC maps.
 %
 % @=============================================================================
 % This software is part of the Brainstorm software:
@@ -40,7 +40,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Extracting semi-comodulogram from tPAC maps';
+    sProcess.Comment     = 'Extracting comodulogram from tPAC maps';
     sProcess.FileTag     = '';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Frequency','Time-resolved Phase-Amplitude Coupling'};
@@ -110,7 +110,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     tPACMat = in_bst_timefreq(sInput(1).FileName, 0);
     % Error
     if isempty(tPACMat)
-        bst_report('Error', 'process_pac_semiComod', sInput, Messages);
+        bst_report('Error', 'process_pac_comod', sInput, Messages);
         return;
     end
 
@@ -137,16 +137,16 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 ind_time = (time>=inputTime(1) & time<= inputTime(2));
                 if ~isequal(fa,tPACMat.sPAC.HighFreqs) 
                     Message = ['File#',num2str(iFile),' is ignored because its format does not match the first file (fA definition)'];
-%                     bst_report('warning', 'process_pac_semiComod', sInput, Message);
+%                     bst_report('warning', 'process_pac_comod', sInput, Message);
 %                     return; 
                 elseif ~isequal(time(ind_time),tPACMat.Time(tPACMat.Time >= inputTime(1) & tPACMat.Time <= inputTime(2))) 
 %                     time(ind_time);
 %                     tPACMat.Time(tPACMat.Time >= inputTime(1) & tPACMat.Time <= inputTime(2));                    
                     Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (Time definition)'];
-                    bst_report('Warning', 'process_pac_semiComod', sInput, Message);                    
+                    bst_report('Warning', 'process_pac_comod', sInput, Message);                    
                 elseif ~isequal(size(Nesting,1),size(tPACMat2.sPAC.DynamicNesting,1)) && cat_dim~=1
                     Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (Number of channels)'];
-                    bst_report('Warning', 'process_pac_semiComod', sInput, Message);                   
+                    bst_report('Warning', 'process_pac_comod', sInput, Message);                   
                 else
                     Nesting = cat(cat_dim,Nesting,tPACMat2.sPAC.DynamicNesting(:,(ind_time),:));
                     PAC = cat(cat_dim,PAC,tPACMat2.sPAC.DynamicPAC(:,(ind_time),:));
@@ -210,7 +210,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             % Error
             Messages = 'Cannot load the file';
             if isempty(tPACMat)
-                bst_report('Error', 'process_pac_semiComod', sInput, Messages);
+                bst_report('Error', 'process_pac_comod', sInput, Messages);
                 return;
             end
             
