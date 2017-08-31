@@ -153,7 +153,7 @@ function [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat, usePhase)
                 tmp = in_bst_timefreq(sInput(iFile).FileName, 0);
                 if ~isequal(tmp.Time,tpacMat.Time) || ~isequal(tmp.sPAC.HighFreqs, tpacMat.sPAC.HighFreqs)
                     Message = ['Format of file#',num2str(iFile),' do not match the first file'];
-                    bst_report('Error', 'process_pac_fpMap', sInput, Message);
+                    bst_report('Error', 'process_pac_average', sInput, Message);
                     return;
                 end 
                 if usePhase
