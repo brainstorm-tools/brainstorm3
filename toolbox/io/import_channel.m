@@ -278,7 +278,8 @@ if ~isempty(FileUnits) && ~isequal(isFixUnits, 0)
 end
 
 
-%% ===== MNI TRANSFORMATION ===== 
+%% ===== MNI TRANSFORMATION =====
+prevSubject = [];
 if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI'})
     % Warning for multiple studies
     if (length(iStudies) > 1)
@@ -315,14 +316,15 @@ if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI'})
 % If the SCS coordinates are not defined (NAS/LPA/RPA fiducials), try to use the MRI=>subject transformation available in the MRI (eg. NIfTI sform/qform)
 % Only available if there is one study in output
 elseif ~isScsDefined && ~isequal(isFixUnits, 0)
-    % Warning for multiple studies
-    if (length(iStudies) > 1)
+    % Get the folders
+    sStudies = bst_get('Study', iStudies);
+    if (length(sStudies) > 1) && ~all(strcmpi(sStudies(1).BrainStormSubject, {sStudies.BrainStormSubject}))
         warning(['WARNING: When importing sensor positions for multiple subjects: the SCS transformation from the first subject is used for all of them.' 10 ...
                  'Please consider importing your subjects seprately.']);
     end
-    % Get the subject
-    sStudy = bst_get('Study', iStudies(1));
-    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    % Get subject for first file only
+    sSubject = bst_get('Subject', sStudies(1).BrainStormSubject);
+
     % If there is a MRI for this subject
     if ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(1).FileName)
         % Load the MRI
