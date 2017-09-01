@@ -31,6 +31,9 @@ end
 if (nargin < 3) || isempty(SurfaceType)
     SurfaceType = 'scalp';
 end
+if ischar(FileNames)
+    FileNames = {FileNames};
+end
 hFig = [];
 iDS = [];
 iFig = [];
