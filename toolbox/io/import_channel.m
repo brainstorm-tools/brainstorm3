@@ -1,7 +1,7 @@
-function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits)
+function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras)
 % IMPORT_CHANNEL: Imports a channel file (definition of the sensors).
 % 
-% USAGE:  BstChannelFile = import_channel(iStudies=none, ChannelFile=[ask], FileFormat, ChannelReplace=1, ChannelAlign=[ask], isSave=1, isFixUnits=[ask])
+% USAGE:  BstChannelFile = import_channel(iStudies=none, ChannelFile=[ask], FileFormat, ChannelReplace=1, ChannelAlign=[ask], isSave=1, isFixUnits=[ask], isApplyVox2ras=[ask])
 %
 % INPUT:
 %    - iStudies       : Indices of the studies where to import the ChannelFile
@@ -17,6 +17,9 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 %    - isFixUnits     : If 1, tries to convert the distance units to meters automatically
 %                       If 0, does not fix the distance units
 %                       If [], ask for the scaling to apply
+%    - isApplyVox2ras : If 1, uses the existing voxel=>subject transformation from the MRI file, if available
+%                       If 0, does not use the voxel=>subject transformation
+%                       If [], ask for user decision
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -40,6 +43,9 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 
 %% ===== PARSE INPUTS =====
 Output = [];
+if (nargin < 8) || isempty(isApplyVox2ras)
+    isApplyVox2ras = [];
+end
 if (nargin < 7) || isempty(isFixUnits)
     isFixUnits = [];
 end
@@ -325,13 +331,11 @@ elseif ~isScsDefined && ~isequal(isFixUnits, 0)
         % If there is a valid transformation
         if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember(sMri.InitTransf(:,1), 'vox2ras')
             % Ask user if necessary
-            if isempty(isFixUnits)
-                isApplyVox2mri = java_dialog('confirm', ['There is a transformation to subject coordinates available in the MRI.' 10 'Would you like to use it to align the sensors with the MRI?'], 'Apply MRI trannsformation');
-            else
-                isApplyVox2mri = isFixUnits;
+            if isempty(isApplyVox2ras)
+                isApplyVox2ras = java_dialog('confirm', ['There is a transformation to subject coordinates available in the MRI.' 10 'Would you like to use it to align the sensors with the MRI?'], 'Apply MRI transformation');
             end
             % Apply transformation
-            if isApplyVox2mri
+            if isApplyVox2ras
                 % Get the transformation
                 iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
                 vox2ras = sMri.InitTransf{iTransf,2};

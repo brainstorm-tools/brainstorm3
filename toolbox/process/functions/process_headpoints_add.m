@@ -50,6 +50,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'files_and_dirs', ...                  % Selection mode: {files,dirs,files_and_dirs}
         bst_get('FileFilters', 'channel'), ... % Get all the available file formats
         'ChannelIn'};                          % DefaultFormats
+    % Fix units
+    sProcess.options.fixunits.Comment = 'Fix distance units automatically';
+    sProcess.options.fixunits.Type    = 'checkbox';
+    sProcess.options.fixunits.Value   = 1;
+    % Fix units
+    sProcess.options.vox2ras.Comment = 'Apply voxel=>subject transformation from the MRI';
+    sProcess.options.vox2ras.Type    = 'checkbox';
+    sProcess.options.vox2ras.Value   = 1;
 end
 
 
@@ -65,6 +73,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get filename to import
     HeadPointsFile = sProcess.options.channelfile.Value{1};
     FileFormat     = sProcess.options.channelfile.Value{2};
+    % Other options
+    if isfield(sProcess.options, 'fixunits') && isfield(sProcess.options.fixunits, 'Value')
+        isFixUnits = sProcess.options.fixunits.Value;
+    else
+        isFixUnits = 1;
+    end
+    if isfield(sProcess.options, 'vox2ras') && isfield(sProcess.options.vox2ras, 'Value')
+        isApplyVox2ras = sProcess.options.vox2ras.Value;
+    else
+        isApplyVox2ras = 1;
+    end
     % Error: no file selected
     if isempty(HeadPointsFile)
         bst_report('Error', sProcess, sInputs, 'No file selected.');
@@ -75,7 +94,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Loop on all the channel files
     for i = 1:length(uniqueChan)
         % Get first input file for this subject
-        strMsg = AddHeadpoints(uniqueChan{i}, HeadPointsFile, FileFormat);
+        strMsg = AddHeadpoints(uniqueChan{i}, HeadPointsFile, FileFormat, isFixUnits, isApplyVox2ras);
         % Report message
         if ~isempty(strMsg)
             bst_report('Info', sProcess, sInputs, strMsg);
@@ -87,16 +106,23 @@ end
 
 
 %% ===== REMOVE HEAD POINTS =====
-function strMsg = AddHeadpoints(ChannelFile, HeadPointsFile, FileFormat)
+function strMsg = AddHeadpoints(ChannelFile, HeadPointsFile, FileFormat, isFixUnits, isApplyVox2ras)
     % ===== READ HEAD POINTS FILE =====
+    % Parse inputs
+    if (nargin < 5) || isempty(isApplyVox2ras)
+        isApplyVox2ras = 1;
+    end
+    if (nargin < 4) || isempty(isFixUnits)
+        isFixUnits = 1;
+    end
     % Get channel studies
     [tmp, iChanStudies] = bst_get('ChannelFile', ChannelFile); 
     % Read new files
     HeadPoints = [];
     if (nargin < 3) || isempty(HeadPointsFile) || isempty(FileFormat)
-        [FileMat, HeadPointsFile, FileFormat] = import_channel(iChanStudies, [], [], [], [], 0, 0);
+        [FileMat, HeadPointsFile, FileFormat] = import_channel(iChanStudies, [], [], [], [], 0, [], []);
     else
-        FileMat = import_channel(iChanStudies, HeadPointsFile, FileFormat, [], [], 0, 1);
+        FileMat = import_channel(iChanStudies, HeadPointsFile, FileFormat, [], [], 0, isFixUnits, isApplyVox2ras);
     end
     if isempty(FileMat)
         strMsg = 'No file could be read.';
