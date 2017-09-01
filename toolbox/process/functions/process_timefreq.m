@@ -161,10 +161,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % Multitaper options
     if isfield(sProcess.options, 'mt_taper') && ~isempty(sProcess.options.mt_taper) && ~isempty(sProcess.options.mt_taper.Value)
-        tfOPTIONS.ft_mtmconvol.taper = sProcess.options.mt_taper.Value{2}{sProcess.options.mt_taper.Value{1}};
+        tfOPTIONS.ft_mtmconvol.taper = sProcess.options.mt_taper.Value;
     end
     if isfield(sProcess.options, 'mt_frequencies') && ~isempty(sProcess.options.mt_frequencies) && ~isempty(sProcess.options.mt_frequencies.Value)
         tfOPTIONS.ft_mtmconvol.frequencies = eval(sProcess.options.mt_frequencies.Value);
+        % Add frequencies to comment
+        tfOPTIONS.Comment = [tfOPTIONS.Comment, ' ', sProcess.options.mt_frequencies.Value, 'Hz'];
     end
     if isfield(sProcess.options, 'mt_freqmod') && ~isempty(sProcess.options.mt_freqmod) && ~isempty(sProcess.options.mt_freqmod.Value)
         tfOPTIONS.ft_mtmconvol.freqmod = sProcess.options.mt_freqmod.Value{1};

@@ -67,8 +67,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
 
     % Options: Taper
     sProcess.options.mt_taper.Comment = 'Taper: ';
-    sProcess.options.mt_taper.Type    = 'combobox';
-    sProcess.options.mt_taper.Value   = {1, {'dpss', 'hanning', 'rectwin', 'sine'}};
+    sProcess.options.mt_taper.Type    = 'combobox_label';
+    sProcess.options.mt_taper.Value   = {'dpss', {'dpss', 'hanning', 'rectwin', 'sine'; ...
+                                                  'dpss', 'hanning', 'rectwin', 'sine'}};
     % Options: Frequencies
     sProcess.options.mt_frequencies.Comment = 'Frequencies (start:step:stop): ';
     sProcess.options.mt_frequencies.Type    = 'text';

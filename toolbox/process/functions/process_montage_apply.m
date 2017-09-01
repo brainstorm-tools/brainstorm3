@@ -21,7 +21,7 @@ function varargout = process_montage_apply( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2015
+% Authors: Francois Tadel, 2014-2017
 
 eval(macro_method);
 end
@@ -71,6 +71,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputs, ['Invalid montage name "' MontageName '".']);
         return;
     end
+    % Get a simpler montage name (for automatic SEEG montages)
+    strMontage = sMontage.Name;
+    strMontage = strrep(strMontage, '[tmp]', '');
+    strMontage = strrep(strMontage, 'SEEG (', '');
+    iColon = find(strMontage == ':');
+    if ~isempty(iColon)
+        strMontage = strMontage(iColon+1:end);
+    end
+    strMontage((strMontage == '(') | (strMontage == ')')) = [];
+    strMontage = strtrim(strrep(strMontage, '  ', ' '));
     % If not creating a new channel file: montage output has to be compatible with curent channel structure
     isCompatibleChan = ~strcmpi(sMontage.Type, 'selection') && (~strcmpi(sMontage.Type, 'text') || all(sum(sMontage.Matrix,2) == 0));
     if ~isCreateChan && ~isCompatibleChan
@@ -93,7 +103,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Load input file 
             DataMat = in_bst_data(sInputs(iInput).FileName);
             % Build average reference
-            if (strcmpi(sMontage.Name, 'Average reference'));
+            if (strcmpi(sMontage.Name, 'Average reference'))
                 sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel, DataMat.ChannelFlag, 1);
             end
             % Get channels indices for the montage
@@ -124,7 +134,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % If the subject has default channel: Create new subject
                 if (sSubject.UseDefaultChannel > 0)
                     % Output subject name
-                    SubjectNameOut = file_standardize([sSubject.Name '_' sMontage.Name]);
+                    SubjectNameOut = [sSubject.Name '_' file_standardize(strMontage)];
                     % Get output subject
                     sSubjectOut = bst_get('Subject', SubjectNameOut, 1);
                     % Create new output subject
@@ -144,7 +154,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     iStudyOut = db_add_condition(sSubjectOut.Name, sInputs(iInput).Condition, 1);
                 else
                     % Output condition name
-                    ConditionOut = file_standardize([sInputs(iInput).Condition, '_', sMontage.Name]);
+                    ConditionOut = [sInputs(iInput).Condition, '_', file_standardize(strMontage)];
                     % Get output condition
                     [sStudyOut, iStudyOut] = bst_get('StudyWithCondition', [sSubject.Name '/' ConditionOut]);
                     % Create condition
@@ -163,7 +173,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if isempty(sChannelOut)
                     % Create new channel file
                     ChannelMatOut = ChannelMat;
-                    ChannelMatOut.Comment = [ChannelMatOut.Comment ' | ' sMontage.Name];
+                    ChannelMatOut.Comment = [ChannelMatOut.Comment ' | ' strMontage];
                     ChannelMatOut.Channel = repmat(db_template('channeldesc'), 0);
                     % Create list of output channels
                     for iChanOut = 1:length(iMatrixDisp)
@@ -204,7 +214,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             sStudyOut = bst_get('Study', iStudyOut);
             
             % Edit data strcture
-            DataMat.Comment     = [DataMat.Comment ' | ' sMontage.Name];
+            DataMat.Comment     = [DataMat.Comment ' | ' strMontage];
             DataMat.ChannelFlag = ChannelFlag;
             DataMat = bst_history('add', DataMat, 'montage', ['Applied montage: ' sMontage.Name]);
             % New filename
