@@ -2176,8 +2176,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             if ~isempty(iVal)
                                 strComment = ['  % ' str_striptag(opt.Comment{1,iVal})];
                             end
-                        elseif isfield(opt, 'Type') && ismember(opt.Type, {'combobox','combobox_label'})
+                        elseif isfield(opt, 'Type') && strcmpi(opt.Type, 'combobox')
                             strComment = ['  % ' str_striptag(opt.Value{2}{opt.Value{1}})];
+                        elseif isfield(opt, 'Type') && strcmpi(opt.Type, 'combobox_label')
+                            iCombo = find(strcmpi(opt.Value{1}, opt.Value{2}(2,:)));
+                            if ~isempty(iCombo)
+                                strComment = ['  % ' str_striptag(opt.Value{2}{1,iCombo})];
+                            else
+                                strComment = '';
+                            end
                         else
                             strComment = '';
                         end
