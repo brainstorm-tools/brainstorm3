@@ -264,7 +264,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
             continue;
         end
         % Import -> import: Do not update the input
-        if isequal(OutputFiles, {'import'});
+        if isequal(OutputFiles, {'import'})
             continue;
         end
         % Get new inputs structures
