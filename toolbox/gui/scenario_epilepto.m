@@ -35,7 +35,6 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     % Initialize global variables
     global GlobalData;
     GlobalData.Guidelines.SubjectName  = [];
-    GlobalData.Guidelines.iSubject     = [];
     GlobalData.Guidelines.MriPre       = [];
     GlobalData.Guidelines.MriPost      = [];
     GlobalData.Guidelines.RawLinks     = {};
@@ -44,7 +43,8 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     GlobalData.Guidelines.ChannelMats  = {};
     GlobalData.Guidelines.Baselines    = {};
     GlobalData.Guidelines.Onsets       = {};
-    GlobalData.Guidelines.isPos        = {};
+    GlobalData.Guidelines.isPos        = [];
+    GlobalData.Guidelines.nSEEG        = [];
     
     % Initialize list of panels
     nPanels = 6;
@@ -134,26 +134,36 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     i = i + 1;
     ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Import epochs', i));
     % Epoch window
-    gui_component('Label', ctrl.jPanels(i), '', 'Seizure onset evaluation window:');
+    gui_component('label', ctrl.jPanels(i), '', 'Time window around seizure onset:');
     % Time range : start
     ctrl.jTextEpochStart = gui_component('texttime', ctrl.jPanels(i), '', ' ');
-    gui_component('label',  ctrl.jPanels(i), [], ' - ');
+    gui_component('label', ctrl.jPanels(i), [], ' - ');
     ctrl.jTextEpochStop = gui_component('texttime',  ctrl.jPanels(i), [], ' ');
     % Set time controls callbacks
     TimeUnit = gui_validate_text(ctrl.jTextEpochStart, [], ctrl.jTextEpochStop, {-100, 100, 1000}, 's', [], -10, []);
     TimeUnit = gui_validate_text(ctrl.jTextEpochStop, ctrl.jTextEpochStart, [], {-100, 100, 1000}, 's', [], 10, []);
     % Add unit label
-    gui_component('label',  ctrl.jPanels(i), [], [' ' TimeUnit]);
+    gui_component('label', ctrl.jPanels(i), [], [' ' TimeUnit]);
+    % Bipolar montage
+    gui_component('label', ctrl.jPanels(i), 'br', 'Electrode montage:');
+    jButtonGroupMontage = ButtonGroup();
+    ctrl.jRadioMontageBip1 = gui_component('Radio', ctrl.jPanels(i), 'tab', '<HTML>Bipolar 1 <FONT color="#808080"></I>(eg. a2-a1, a4-a3, ...)<I><FONT>', jButtonGroupMontage);
+    ctrl.jRadioMontageBip2 = gui_component('Radio', ctrl.jPanels(i), 'br tab', '<HTML>Bipolar 2 <FONT color="#808080"></I>(eg. a2-a1, a3-2, a4-a3, ...)<I><FONT>', jButtonGroupMontage);
+    ctrl.jRadioMontageNone = gui_component('Radio', ctrl.jPanels(i), 'br tab', '<HTML>None <FONT color="#808080"></I>(keep original montage)<I><FONT>', jButtonGroupMontage);
+    ctrl.jRadioMontageBip2.setSelected(1);
     % Callbacks
     ctrl.fcnValidate{i} = @(c)ValidateEpoch();
     ctrl.fcnReset{i}    = @(c)ResetEpoch();
-    ctrl.fcnUpdate{i}   = @(c)UpdateEpoch();
     
     % ===== PANEL: TIME-FREQUENCY =====
     i = i + 1;
-    ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Compute time-frequency', i));
-    gui_component('Label', ctrl.jPanels(i), '', 'Compute time-frequency');
-    
+    ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Time-frequency', i));
+    % Multitaper options
+    gui_component('label', ctrl.jPanels(i), '', 'Frequencies (start:stop:end): ');
+    ctrl.jTextFreq = gui_component('texttime', ctrl.jPanels(i), '', '10:3:220');
+    % Callbacks
+    ctrl.fcnValidate{i} = @(c)ValidateTimefreq();
+    ctrl.fcnReset{i}    = @(c)ResetTimefreq();
     
     % ===== PANEL: EPILEPTOGENICITY =====
     i = i + 1;
@@ -306,7 +316,6 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
     end
     % Save for later
     GlobalData.Guidelines.SubjectName = SubjectName;
-    GlobalData.Guidelines.iSubject    = iSubject;
     GlobalData.Guidelines.MriPre      = MriPre;
     GlobalData.Guidelines.MriPost     = MriPost;
     
@@ -330,7 +339,7 @@ function ResetImportAnatomy()
     ctrl = GlobalData.Guidelines.ctrl;
     % Get subject name
     SubjectName = GlobalData.Guidelines.SubjectName;
-    iSubject    = GlobalData.Guidelines.iSubject;
+    [sSubject, iSubject] = bst_get('Subject', SubjectName);
     if ~isempty(SubjectName)
         % Delete anatomy
         if ~isempty(iSubject) && ~isempty(sSubject.Anatomy)
@@ -380,14 +389,20 @@ function [isValidated, errMsg] = ValidatePrepareRaw()
     if isempty(GlobalData.Guidelines.RawLinks)
         errMsg = 'You must add at least one SEEG file.';
         return;
+    elseif any(GlobalData.Guidelines.nSEEG == 0)
+        errMsg = 'You must identify SEEG channels in all the files.';
+        return;
     elseif all(cellfun(@isempty, GlobalData.Guidelines.Baselines))
         errMsg = 'You must identify at least one seizure with an "Onset" event.';
         return;
-    elseif all(cellfun(@isempty, GlobalData.Guidelines.Onsets))
-        errMsg = 'You must identify at least one baseline period in the select files.';
-        return;
-    elseif any(cellfun(@isempty, GlobalData.Guidelines.Onsets) & cellfun(@isempty, GlobalData.Guidelines.Baselines))
-        errMsg = ['All the files must include an event of interest (seizure onset or baseline).' 10 'Remove the files that are not used.'];
+%     elseif all(cellfun(@isempty, GlobalData.Guidelines.Onsets))
+%         errMsg = 'You must identify at least one baseline period in the select files.';
+%         return;
+%     elseif any(cellfun(@isempty, GlobalData.Guidelines.Onsets) & cellfun(@isempty, GlobalData.Guidelines.Baselines))
+%         errMsg = ['All the files must include an event of interest (seizure onset or baseline).' 10 'Remove the files that are not used.'];
+%         return;
+    elseif (any(cellfun(@isempty, GlobalData.Guidelines.Onsets)) || any(cellfun(@isempty, GlobalData.Guidelines.Baselines)))
+        errMsg = 'You must define a baseline and a seizure onset for all the files.';
         return;
     elseif ~all(GlobalData.Guidelines.isPos)
         errMsg = 'You must set the 3D position of all the SEEG contacts in all the selected files.';
@@ -401,11 +416,10 @@ function ResetPrepareRaw()
     global GlobalData;
     % Get subject name
     SubjectName = GlobalData.Guidelines.SubjectName;
-    iSubject    = GlobalData.Guidelines.iSubject;
     % Delete all the data for this subject
     if ~isempty(iSubject)
         % Get subject
-        sSubject = bst_get('Subject', iSubject);
+        sSubject = bst_get('Subject', SubjectName);
         % Get all the studies for this subject
         [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
         % Delete studies
@@ -445,9 +459,9 @@ function UpdatePrepareRaw()
     RawLinks = {};
     GlobalData.Guidelines.ChannelFiles = {};
     GlobalData.Guidelines.ChannelMats  = {};
-    if ~isempty(GlobalData.Guidelines.iSubject)
+    if ~isempty(GlobalData.Guidelines.SubjectName)
         % Get subject index
-        sSubject = bst_get('Subject', GlobalData.Guidelines.iSubject);
+        sSubject = bst_get('Subject', GlobalData.Guidelines.SubjectName);
         % Get all the folders for this subject
         [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
         % Get all the raw files in this study
@@ -468,7 +482,8 @@ function UpdatePrepareRaw()
     GlobalData.Guidelines.Baselines = cell(size(RawLinks));
     GlobalData.Guidelines.Onsets    = cell(size(RawLinks));
     GlobalData.Guidelines.isPos     = zeros(size(RawLinks));
-
+    GlobalData.Guidelines.nSEEG     = zeros(size(RawLinks));
+    
     % === READ FILE INFO ===
     % Initialize data to represent
     filesData = cell(length(RawLinks), length(columnNames));
@@ -483,6 +498,7 @@ function UpdatePrepareRaw()
         % Get list of EEG channels
         iSeeg = channel_find(GlobalData.Guidelines.ChannelMats{iFile}.Channel, 'SEEG,ECOG');
         filesData{iFile,3} = length(iSeeg);
+        GlobalData.Guidelines.nSEEG(iFile) = length(iSeeg);
         
         % Check positions
         isPos = 1;
@@ -586,7 +602,8 @@ function ButtonRawAdd()
         return;
     end
     % Create raw links
-    OutputFiles = import_raw(RawFiles, FileFormat, GlobalData.Guidelines.iSubject);
+    [sSubject, iSubject] = bst_get('Subject', GlobalData.Guidelines.SubjectName);
+    OutputFiles = import_raw(RawFiles, FileFormat, iSubject);
     AllChannelFiles = {};
     % Edit output channel files: set the channels to SEEG
     for iFile = 1:length(OutputFiles)
@@ -829,15 +846,16 @@ function ButtonRawPos()
     RawLinks = GlobalData.Guidelines.RawLinks;
     iStudiesSet = [];
     AllChanNames = {};
-    AllChannelMats = {};
+    AllChannelFiles = {};
     for iFile = 1:length(RawLinks)
         % Get file in the database
         [sStudy, iStudy] = bst_get('DataFile', RawLinks{iFile});
         iStudiesSet = [iStudiesSet, iStudy];
         % Load channel file
-        AllChannelMats{iFile} = in_bst_channel(sStudy.Channel(1).FileName);
+        AllChannelFiles{iFile} = sStudy.Channel(1).FileName;
+        ChannelMat = in_bst_channel(AllChannelFiles{iFile});
         % Get channel names
-        AllChanNames = union(AllChanNames, {AllChannelMats{iFile}.Channel.Name});
+        AllChanNames = union(AllChanNames, {ChannelMat.Channel.Name});
     end
     
     % Process request
@@ -845,8 +863,10 @@ function ButtonRawPos()
         case 'Import'
             % Get 3D positions from an external file
             channel_add_loc(iStudiesSet, [], 1);
+            % Display 3D positions on the subject MRI
+            view_channels(AllChannelFiles{1}, 'SEEG', 1, 1, [], 1);
         case 'Edit'
-            
+            error('TODO');
     end
     
     % Update panel
@@ -923,6 +943,20 @@ function [isValidated, errMsg] = ValidateEpoch()
     % Get onset time window
     OnsetTimeRange = [str2double(char(ctrl.jTextEpochStart.getText())), ...
                       str2double(char(ctrl.jTextEpochStop.getText()))];
+    % Get montage name
+    if ctrl.jRadioMontageBip1.isSelected()
+        MontageName = [GlobalData.Guidelines.SubjectName, ': SEEG (bipolar 1)[tmp]'];
+    elseif ctrl.jRadioMontageBip2.isSelected()
+        MontageName = [GlobalData.Guidelines.SubjectName, ': SEEG (bipolar 2)[tmp]'];
+    else
+        MontageName = [];
+    end
+    % If montage does not exist, load data file
+    sMontage = panel_montage('GetMontage', MontageName);
+    if isempty(sMontage)
+         bst_memory('LoadDataFile', GlobalData.Guidelines.RawLinks{1});
+    end
+    
     % Import the baselines and seizures
     nFiles = length(GlobalData.Guidelines.RawLinks);
     GlobalData.Guidelines.OnsetFiles    = cell(1, nFiles);
@@ -931,17 +965,23 @@ function [isValidated, errMsg] = ValidateEpoch()
         % Get subject name
         sFile = bst_process('GetInputStruct', GlobalData.Guidelines.RawLinks{iFile});
         % Get corresponding imported folder
-        sStudyImport = bst_get('StudyWithCondition', strrep(bst_fileparts(sFile.FileName), '@raw', ''));
+        studyName = strrep(bst_fileparts(sFile.FileName), '@raw', '');
+        sStudyImport = [bst_get('StudyWithCondition', [studyName '_bipolar_2']), ...
+                        bst_get('StudyWithCondition', [studyName '_bipolar_1']), ...
+                        bst_get('StudyWithCondition', studyName)];
         if ~isempty(sStudyImport)
-            iDataBaseline = find(~cellfun(@(c)isempty(strfind(c,'Baseline')), {sStudyImport.Data.FileName}));
-            iDataOnset    = find(~cellfun(@(c)isempty(strfind(c,'Onset')),    {sStudyImport.Data.FileName}));
+            iDataBaseline = find(~cellfun(@(c)isempty(strfind(c,'Baseline')), {sStudyImport(1).Data.FileName}));
+            iDataOnset    = find(~cellfun(@(c)isempty(strfind(c,'Onset')),    {sStudyImport(1).Data.FileName}));
         else
             iDataBaseline = [];
             iDataOnset = [];
         end
+        
+        % === IMPORT BASELINE ===
         % Baseline files already imported
         if (length(iDataBaseline) == size(GlobalData.Guidelines.Baselines{iFile},2))
-            GlobalData.Guidelines.BaselineFiles{iFile} = {sStudyImport.Data(iDataBaseline).FileName};
+            GlobalData.Guidelines.BaselineFiles{iFile} = {sStudyImport(1).Data(iDataBaseline).FileName};
+            sFilesBaselines = [];
         % Import baselines
         elseif ~isempty(GlobalData.Guidelines.Baselines{iFile})
             sFilesBaselines = bst_process('CallProcess', 'process_import_data_event', sFile, [], ...
@@ -951,11 +991,13 @@ function [isValidated, errMsg] = ValidateEpoch()
                 'createcond',  0, ...
                 'ignoreshort', 0, ...
                 'usessp',      1);
-            GlobalData.Guidelines.BaselineFiles{iFile} = {sFilesBaselines.FileName};
         end
+        
+        % === IMPORT ONSET ===
         % Onset files already imported
         if (length(iDataOnset) == length(GlobalData.Guidelines.Onsets{iFile}))
-            GlobalData.Guidelines.OnsetFiles{iFile} = {sStudyImport.Data(iDataOnset).FileName};
+            GlobalData.Guidelines.OnsetFiles{iFile} = sStudyImport(1).Data(iDataOnset).FileName;
+            sFilesOnsets = [];
         % Import onsets
         elseif ~isempty(GlobalData.Guidelines.Onsets{iFile})
             sFilesOnsets = bst_process('CallProcess', 'process_import_data_event', sFile, [], ...
@@ -966,22 +1008,48 @@ function [isValidated, errMsg] = ValidateEpoch()
                 'createcond',  0, ...
                 'ignoreshort', 0, ...
                 'usessp',      1);
-            GlobalData.Guidelines.OnsetFiles{iFile} = {sFilesOnsets.FileName};
+        end
+        
+        % === BIPOLAR MONTAGE ===
+        % Apply montage if needed 
+        if ~isempty(MontageName) && (~isempty(sFilesOnsets) || ~isempty(sFilesBaselines))
+            % Apply montage (create new folders)
+            sFilesMontage = bst_process('CallProcess', 'process_montage_apply', [sFilesBaselines, sFilesOnsets], [], ...
+                'montage',    MontageName, ...
+                'createchan', 1);
+            % Delete original imported folder
+            bst_process('CallProcess', 'process_delete', [sFilesBaselines, sFilesOnsets], [], ...
+                'target', 2);  % Delete folders
+            % Replace files with bipolar versions
+            sFilesBaselines = sFilesMontage(1:length(sFilesBaselines));
+            sFilesOnsets = sFilesMontage(end-length(sFilesOnsets)+1:end);
+        end
+        % Save file names for laters
+        if ~isempty(sFilesBaselines)
+            GlobalData.Guidelines.BaselineFiles{iFile} = {sFilesBaselines.FileName};
+        end
+        if ~isempty(sFilesOnsets)
+            GlobalData.Guidelines.OnsetFiles{iFile} = sFilesOnsets.FileName;
         end
     end
+    % Select first imported file in the database explorer 
+    if ~isempty(GlobalData.Guidelines.OnsetFiles)
+        [sStudySel, iStudySel] = bst_get('DataFile', GlobalData.Guidelines.OnsetFiles{1});
+        panel_protocols('SelectStudyNode', iStudySel);
+    end
     isValidated = 1;
+    bst_progress('stop');
 end
 
-%% ===== PREPARE RECORDINGS: RESET =====
+%% ===== EPOCH: RESET =====
 function ResetEpoch()
     global GlobalData;
     % Get subject name
     SubjectName = GlobalData.Guidelines.SubjectName;
-    iSubject    = GlobalData.Guidelines.iSubject;
     % Delete all the imported data for this subject
-    if ~isempty(iSubject)
+    if ~isempty(SubjectName)
         % Get subject
-        sSubject = bst_get('Subject', iSubject);
+        sSubject = bst_get('Subject', SubjectName);
         % Get all the studies for this subject
         [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
         % Remove all the continuous recordings
@@ -998,12 +1066,142 @@ function ResetEpoch()
             panel_protocols('UpdateTree');
         end
     end
+    % Select first imported file in the database explorer
+    if ~isempty(GlobalData.Guidelines.RawLinks)
+        [sStudySel, iStudySel] = bst_get('DataFile', GlobalData.Guidelines.RawLinks{1});
+        panel_protocols('SelectStudyNode', iStudySel);
+    end
 end
 
-%% ===== PREPARE RECORDINGS: UPDATE =====
-function UpdateEpoch()
+
+
+%% ==========================================================================================
+%  ===== TIME-FREQ ==========================================================================
+%  ==========================================================================================
+
+%% ===== TIME-FREQ: VALIDATE =====
+function [isValidated, errMsg] = ValidateTimefreq()
+    global GlobalData;
+    ctrl = GlobalData.Guidelines.ctrl;
+    % Initialize returned variables
+    isValidated = 0;
+    errMsg = '';
+    % Get onset time window
+    strFreq = char(ctrl.jTextFreq.getText());
+    if isempty(eval(strFreq))
+        errMsg = 'Invalid frequency selection';
+        return;
+    end
+    % Unload everything
+    bst_memory('UnloadAll', 'Forced');
     
+    % Get the averages
+    iFileAvg = [];
+    iFileAvgChan = [];
+    if (length(GlobalData.Guidelines.OnsetFiles) == 1)
+        [sStudy,iStudy,iTf] = bst_get('TimefreqForFile', GlobalData.Guidelines.OnsetFiles{1});
+        if (length(iTf) >= 2)
+            iFileAvg     = find(~cellfun(@(c)isempty(strfind(c, 'Multitaper')), {sStudy.Timefreq.Comment}) &  cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+            iFileAvgChan = find(~cellfun(@(c)isempty(strfind(c, 'Multitaper')), {sStudy.Timefreq.Comment}) & ~cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+        end
+    else
+        % Get intra-subject folder
+        [sSubject, iSubject] = bst_get('Subject', GlobalData.Guidelines.SubjectName);
+        sStudy = bst_get('AnalysisIntraStudy', iSubject);
+        if (length(sStudy.Timefreq) >= 2)
+            iFileAvg     = find(~cellfun(@(c)isempty(strfind(c, 'Onset')), {sStudy.Timefreq.Comment}) &  cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+            iFileAvgChan = find(~cellfun(@(c)isempty(strfind(c, 'Onset')), {sStudy.Timefreq.Comment}) & ~cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+        end
+    end
+    % If the output files were found: use them
+    if ~isempty(iFileAvg) && ~isempty(iFileAvgChan)
+        TimefreqFileAvg = sStudy.Timefreq(iFileAvg).FileName;
+        TimefreqFileAvgChan = sStudy.Timefreq(iFileAvgChan).FileName;
+    % If files do not exist yet: compute them
+    else
+        % Process: FieldTrip: ft_mtmconvol (Multitaper)
+        sFilesTf = bst_process('CallProcess', 'process_ft_mtmconvol', GlobalData.Guidelines.OnsetFiles, [], ...
+            'sensortypes',    'SEEG', ...
+            'mt_taper',       'hanning', ...  % hanning
+            'mt_frequencies', strFreq, ...
+            'mt_freqmod',     10, ...
+            'mt_timeres',     1, ...
+            'mt_timestep',    0.1, ...
+            'measure',        'magnitude', ...  % Magnitude
+            'avgoutput',      0);
+        % Process: Z-score transformation: [Start, -1s]
+        sFilesTf = bst_process('CallProcess', 'process_baseline_norm', sFilesTf, [], ...
+            'baseline',  [-Inf, -1], ...
+            'method',    'zscore', ...  % Z-score transformation:    x_std = (x - &mu;) / &sigma;
+            'overwrite', 1);
+        % Process: Average: Everything
+        if (length(sFilesTf) > 1)
+            sFilesTfAvg = bst_process('CallProcess', 'process_average', sFilesTf, [], ...
+                'avgtype',   1, ...  % Everything
+                'avg_func',  1, ...  % Arithmetic average:  mean(x)
+                'weighted',  0, ...
+                'matchrows', 1, ...
+                'iszerobad', 1);
+        else
+            sFilesTfAvg = sFilesTf;
+        end
+        % Process: Average: All signals
+        sFilesTfAvgChan = bst_process('CallProcess', 'process_average_rows', sFilesTfAvg, [], ...
+            'avgtype',   1, ...  % Average all the signals together
+            'avgfunc',   1, ...  % Arithmetic average: mean(x)
+            'overwrite', 0);
+        % Return files
+        TimefreqFileAvg     = sFilesTfAvg.FileName;
+        TimefreqFileAvgChan = sFilesTfAvgChan.FileName;
+    end
+    % Set colormap
+    bst_colormaps('SetColormapName', 'stat2', 'cmap_gin');
+    % View average time-frequency file
+    hFig1 = view_timefreq(TimefreqFileAvgChan, 'SingleSensor');
+    hFig2 = view_timefreq(TimefreqFileAvg, 'AllSensors');
+    % Smooth display
+    panel_display('SetSmoothDisplay', 1);
+    isValidated = 1;
 end
+
+%% ===== TIME-FREQ: RESET =====
+function ResetTimefreq()
+    global GlobalData;
+    % Get subject name
+    SubjectName = GlobalData.Guidelines.SubjectName;
+    % Delete all the imported data for this subject
+    if ~isempty(SubjectName)
+        % Get subject
+        sSubject = bst_get('Subject', SubjectName);
+        % Get all the studies for this subject
+        [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName, 'intra_subject');
+        % Get all the time frequency files in all the folders
+        TimefreqFiles = {};
+        for i = 1:length(sStudies)
+            % Skip raw folders
+            if ~isempty(strfind(sStudies(i).FileName,'@raw'))
+                continue;
+            end
+            % Get all the TF files available in this folder
+            if ~isempty(sStudies(i).Timefreq)
+                TimefreqFiles = cat(2, TimefreqFiles, {sStudies(i).Timefreq.FileName});
+            end
+        end
+        % Delete files
+        if ~isempty(TimefreqFiles)
+            % Ask confirmation
+            if ~java_dialog('confirm', sprintf('Remove %d time-frequency files from subject "%s"?', length(TimefreqFiles), SubjectName))
+                return;
+            end
+            % Delete files
+            bst_process('CallProcess', 'process_delete', TimefreqFiles, [], ...
+                'target', 1);  % Delete data files
+            % Update tree
+            panel_protocols('UpdateTree');
+        end
+    end
+end
+
 
 
 
