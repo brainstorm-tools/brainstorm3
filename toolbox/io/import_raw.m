@@ -31,7 +31,7 @@ function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 % 
-% Authors: Francois Tadel, 2009-2016
+% Authors: Francois Tadel, 2009-2017
 
 %% ===== PARSE INPUT =====
 if (nargin < 4) || isempty(ImportOptions)
@@ -116,6 +116,7 @@ end
 
 %% ===== IMPORT =====
 iOutputStudy = [];
+isSSP = 0;
 % Loop on the files to import
 for iFile = 1:length(RawFiles)
     % ===== OPENING FILE =====
@@ -248,6 +249,10 @@ for iFile = 1:length(RawFiles)
             bst_memory('UnloadAll', 'Forced');
             channel_align_manual(ChannelFile, Modality, 0);
         end
+        % If there are existing SSP in this file: notice the user
+        if isfield(ChannelMat, 'Projector') && ~isempty(ChannelMat.Projector)
+            isSSP = 1;
+        end
     end
     
     % ===== EXPORT BST-BIN FILE =====
@@ -300,6 +305,25 @@ if ~isempty(iOutputStudy)
     panel_protocols('SelectStudyNode', iOutputStudy);
     % Save database
     db_save();
+end
+
+% If some SSP files where present in the imported files, give the user a notice
+if isSSP
+    strWarning = ['The files you imported include SSP/ICA projectors.' 10 10 ...
+                  'Review them before processing the files:' 10 ...
+                  'tab Record > menu Artifacts > Select active projectors.'];
+    % Non-iteractive: Display message in command window
+    if ~ImportOptions.DisplayMessages 
+        disp(['BST> ' strrep(strWarning, 10, [10, 'BST> '])]);
+    % Interactive, one file: Open the SSP selection window
+    elseif (length(OutputFiles) == 1)
+        java_dialog('msgbox', strWarning);
+        bst_memory('LoadDataFile', OutputFiles{1});
+        panel_ssp_selection('OpenRaw');
+    % Interactive, multiple file: Message box
+    else
+        java_dialog('msgbox', strWarning);
+    end
 end
 
 bst_progress('stop');

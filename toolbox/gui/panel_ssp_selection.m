@@ -137,6 +137,16 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % Double-click
         if (ev.getClickCount() == 2)
             ButtonRename_Callback();
+        % Right-click: Popup menu
+        elseif (ev.getButton() == ev.BUTTON3)
+            % Create popup menu
+            jPopup = java_create('javax.swing.JPopupMenu');
+            % Menu "Remove from list"
+            gui_component('MenuItem', jPopup, [], 'Select all',   [], [], @(h,ev)SelectAllComponents(1));
+            gui_component('MenuItem', jPopup, [], 'Deselect all', [], [], @(h,ev)SelectAllComponents(0));
+            % Show popup menu
+            jPopup.pack();
+            jPopup.show(jListCat, ev.getPoint.getX(), ev.getPoint.getY());
         % Single click
         else
             % Toggle checkbox status
@@ -801,3 +811,24 @@ function SaveFigureAsSsp(hFig, UseDirectly) %#ok<DEFNU>
         export_ssp(sProj, {GlobalData.DataSet(iDS).Channel.Name}, []);
     end
 end
+
+
+%% ===== SELECT ALL CATEGORIES =====
+function SelectAllComponents(Status)
+    global EditSspPanel;
+    % Nothing to do if there are no projectors
+    if isempty(EditSspPanel.Projector)
+        return;
+    end
+    % Change the status of all the components
+    iNonStatic = ([EditSspPanel.Projector.Status] < 2);
+    [EditSspPanel.Projector(iNonStatic).Status] = deal(Status);
+    % Update panel
+    UpdateCat();
+    UpdateComp();
+    % Update display of recordings
+    UpdateRaw();
+end
+
+
+
