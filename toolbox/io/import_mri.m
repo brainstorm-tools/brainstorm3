@@ -240,7 +240,7 @@ if isempty(sSubject.iAnatomy)
     sSubject.iAnatomy = iAnatomy;
 end
 
-% == Update database ==
+% === Update database ===
 % Default subject
 if (iSubject == 0)
 	ProtocolSubjects.DefaultSubject = sSubject;
@@ -249,6 +249,11 @@ else
     ProtocolSubjects.Subject(iSubject) = sSubject;
 end
 bst_set('ProtocolSubjects', ProtocolSubjects);
+
+% === Save first MRI as permanent default ===
+if (iAnatomy == 1)
+    db_surface_default(iSubject, 'Anatomy', iAnatomy, 0);
+end
 
 
 %% ===== UPDATE GUI =====
