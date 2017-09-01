@@ -1359,6 +1359,17 @@ function FigureKeyPressedCallback(hFig, ev)
                 elseif isMenuSelectedChannels && isFullDataFile
                     newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
                     newChannelFlag(iSelectedRows) = newValue;
+                    % Display warning for bipolar SEEG montages
+                    if ~isempty(TsInfo.MontageName) && ~isempty(strfind(TsInfo.MontageName, 'bipolar'))
+                        if ~java_dialog('confirm', [...
+                                'Marking one bad signal with a bipolar montage will mark two channels as bad.' 10 ...
+                                'This may cause more than one signal to disappear from this display.' 10 ...
+                                'To mark the bad channels individually, select the montage "All channels" first.' 10 10 ...
+                                'Mark ' num2str(length(iSelectedRows)) ' channels as bad?' 10 ...
+                                sprintf('%s ', GlobalData.DataSet(iDS).Channel(iSelectedRows).Name)], 'Bad channels')
+                            return;
+                        end
+                    end
                 end
                 % Save new channel flag
                 panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
