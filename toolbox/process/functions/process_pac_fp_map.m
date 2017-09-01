@@ -2,12 +2,12 @@ function varargout = process_pac_fp_map( varargin )
 % process_pac_fp_map: Extract frequency for phase map from tPAC matrices.
 %
 % @=============================================================================
-% This software is part of the Brainstorm software:
+% This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2014 University of Southern California & McGill University
+% Copyright (c)2000-2017 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
-% as published by the Free Software Foundation. Further details on the GPL
+% as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
 % 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
