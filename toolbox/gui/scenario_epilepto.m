@@ -52,9 +52,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.fcnValidate = cell(1, nPanels);
     ctrl.fcnReset    = cell(1, nPanels);
     ctrl.fcnUpdate   = cell(1, nPanels);
-    % Get subjects in this protocol
-    ProtocolSubjects = bst_get('ProtocolSubjects');
-    
+
     % ===== PANEL: INTRODUCTION =====
     i = 1;
     ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Introduction', i));
@@ -72,7 +70,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Import anatomy', i));
     % Set subject name
     gui_component('Label', ctrl.jPanels(i), '', 'Subject name: ');
-    ctrl.jComboSubj = gui_component('ComboBox', ctrl.jPanels(i), 'tab', [], {{'', ProtocolSubjects.Subject.Name}});
+    ctrl.jComboSubj = gui_component('ComboBox', ctrl.jPanels(i), 'tab', [], {' '});
     ctrl.jComboSubj.setEditable(1);
     % Select subject MRI/pre
     gui_component('label', ctrl.jPanels(i), 'br', 'Pre-implantation MRI: ');
@@ -235,6 +233,10 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
             errMsg = ['Could not create subject "' SubjectName '"'];
             return;
         end
+    % Else: Check that it does not use any default
+    elseif ((sSubject.UseDefaultChannel ~= 0) || (sSubject.UseDefaultAnat ~= 0))
+        errMsg = ['Subject "' SubjectName '" uses a default anatomy or channel file.' 10 'Change the configuration of the subject to use it.'];
+        return;
     end
     
     % === IMPORT MRI VOLUMES ===
@@ -360,9 +362,21 @@ end
 
 %% ===== IMPORT ANATOMY: UPDATE =====
 function [isValidated, errMsg] = UpdateImportAnatomy()
+    global GlobalData;
     % Initialize returned variables
     isValidated = 1;
     errMsg = '';
+    % Get subjects in this protocol
+    ProtocolSubjects = bst_get('ProtocolSubjects');
+    iNoCommon = find(([ProtocolSubjects.Subject.UseDefaultAnat] == 0) & ([ProtocolSubjects.Subject.UseDefaultChannel] == 0));
+    strItems = {ProtocolSubjects.Subject(iNoCommon).Name};
+    % Update combobox
+    jModel = GlobalData.Guidelines.ctrl.jComboSubj.getModel();
+    jModel.removeAllElements();
+    jModel.addElement('');
+    for i = 1:length(strItems)
+        jModel.addElement(strItems{i});
+    end
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
     % Display the anatomy of the subjects
@@ -864,7 +878,7 @@ function ButtonRawPos()
             % Get 3D positions from an external file
             channel_add_loc(iStudiesSet, [], 1);
             % Display 3D positions on the subject MRI
-            view_channels(AllChannelFiles{1}, 'SEEG', 1, 1, [], 1);
+            view_channels_3d(AllChannelFiles{1}, 'SEEG', 'anatomy', 1);
         case 'Edit'
             error('TODO');
     end
@@ -1216,6 +1230,9 @@ function SelectSubject()
     % Get subject
     SubjectName = char(ctrl.jComboSubj.getSelectedItem());
     sSubject = bst_get('Subject', SubjectName);
+    if isempty(sSubject)
+        return;
+    end
     % Select subject node in the database explorer 
     panel_protocols('SelectSubject', SubjectName);
     % Anatomy folder
