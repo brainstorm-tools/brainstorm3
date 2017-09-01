@@ -681,6 +681,26 @@ function SetDisplayOptions(sOptions)
 end
 
 
+%% ===== SET SMOOTH DISPLAY =====
+function SetSmoothDisplay(HighResolution, hFigs) %#ok<DEFNU>
+    % Get figures
+    if (nargin < 2) || isempty(hFigs)
+        [hFigs,iFig,iDS] = bst_figures('GetFiguresByType', 'timefreq');
+    end
+    % Update the display of all figures
+    for i = 1:length(hFigs)
+        % Update the figure configuration
+        TfInfo = getappdata(hFigs(i), 'Timefreq');
+        TfInfo.HighResolution = HighResolution;
+        setappdata(hFigs(i), 'Timefreq', TfInfo);
+        % Update display
+        figure_timefreq('UpdateFigurePlot', hFigs(i));
+    end
+    % Update panel
+    UpdatePanel(hFigs(end));
+end
+
+
 %% ===== GET PANEL FIGURE =====
 function [hFig,iFig,iDS] = GetPanelFigure()
     % Get current figure (ANY)

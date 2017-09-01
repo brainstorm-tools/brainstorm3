@@ -1174,12 +1174,12 @@ function PlotTimefreqSurfHigh(hAxes, Time, Freqs, TF, TFmask)
     [X1,Y1] = meshgrid(Time, linspace(d, 1-d, length(Y)-1));
     [X2,Y2] = meshgrid(linspace(TimeBounds(1), TimeBounds(2), res(1)), linspace(0, 1, res(2)));
     % Re-interpolate for high-resolution display: one value per pixel
-    TFhi = interp2(X1, Y1, TF, X2, Y2, 'spline');
+    TFhi = interp2(X1, Y1, TF, X2, Y2, 'linear');
     
     % If there are lots of strictly 0 values (thresholded stat): Enforce the zero values
     zeroMask = (TF == 0);
     if (nnz(zeroMask) > 0.10*numel(TF)) && (nnz(zeroMask) < numel(TF))
-        zeroMaskHi = interp2(X1, Y1, double(zeroMask), X2, Y2, 'spline');
+        zeroMaskHi = interp2(X1, Y1, double(zeroMask), X2, Y2, 'linear');
         TFhi(zeroMaskHi > 0.8) = 0;
     end
     
@@ -1484,7 +1484,11 @@ function ImageClicked_Callback(hFig, FileName, RowName)
             Function = [];
         end
         % View separate sensor
-        view_timefreq(FileName, 'SingleSensor', RowName, [], Function);
+        hFigNew = view_timefreq(FileName, 'SingleSensor', RowName, [], Function);
+        % Set smooth display
+        if TfInfo.HighResolution
+            panel_display('SetSmoothDisplay', TfInfo.HighResolution, hFigNew);
+        end
     end
 end
 
