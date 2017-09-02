@@ -119,10 +119,6 @@ function SwitchPanel(command)
     end
     
     % === MOVE TO NEXT PANEL ===
-    % Remove existing panel
-    if (iPanel >= 1)
-        ctrl.jPanelContainer.remove(ctrl.jPanels(iPanel));
-    end
     % Switch according to command
     switch (command)
         case 'next',  iPanel = iPanel + 1;
@@ -131,6 +127,10 @@ function SwitchPanel(command)
     % If invalid panel: stop
     if (iPanel < 1) || (iPanel > length(ctrl.jPanels))
         return;
+    end
+    % Remove existing panel
+    if (iPanel >= 1)
+        ctrl.jPanelContainer.remove(ctrl.jPanels(iPanel));
     end
     % Add new panel
     ctrl.jPanelContainer.add(ctrl.jPanels(iPanel), BorderLayout.CENTER);
@@ -145,12 +145,12 @@ function SwitchPanel(command)
     else
         ctrl.jButtonPrev.setEnabled(1);
     end
-    % Last panel: Disable next button
-    if (iPanel == length(ctrl.jPanels))
-        ctrl.jButtonNext.setEnabled(0);
-    else
-        ctrl.jButtonNext.setEnabled(1);
-    end
+%     % Last panel: Disable next button
+%     if (iPanel == length(ctrl.jPanels))
+%         ctrl.jButtonNext.setEnabled(0);
+%     else
+%         ctrl.jButtonNext.setEnabled(1);
+%     end
     
     % === UPDATE NEW PANEL ===
     % If there is an update callback for this panel
