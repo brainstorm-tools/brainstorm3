@@ -576,6 +576,19 @@ function FigureMouseUpCallback(hFig, varargin)
                 [sScout, iScout] = panel_scout('GetScoutWithHandle', clickObject);
                 % If a scout was found: select it in the list
                 if ~isempty(iScout)
+                    % If the SHIFT key is pressed, add/remove scout in extisting selection
+                    if strcmpi(get(hFig, 'SelectionType'), 'extend')
+                        [sPrevScouts, iPrevScouts] = panel_scout('GetSelectedScouts');
+                        % Already selected: remove from selection
+                        if ismember(iScout, iPrevScouts)
+                            iPrevScouts(iPrevScouts == iScout) = [];
+                            iScout = iPrevScouts;
+                        % Not selected yet: Add to selection
+                        else
+                            iScout = [iPrevScouts, iScout];
+                        end
+                    end
+                    % Set selection
                     panel_scout('SetSelectedScouts', iScout);
                 end
             end

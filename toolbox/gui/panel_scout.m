@@ -85,7 +85,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jButtonAddScout = gui_component('ToolbarToggle', jToolbar,[],[], IconLoader.ICON_SCOUT_NEW, ...
             ['<HTML><B>Create scout</B>:<BR><BLOCKQUOTE> - Select this button<BR> - Click on the cortex surface</BLOCKQUOTE>' ...
              '<B>Add vertex to scout</B>:<BR><BLOCKQUOTE> - Select this button<BR> - Select the scout to edit<BR> - Click on the vertex to add</BLOCKQUOTE>', ...
-             '<B>Remove vertex from scout</B>:<BR><BLOCKQUOTE> - Select this button<BR> - Select the scout to edit<BR> - Hold the <B>SHIFT</B> key<BR> - Click on the vertex to remove</BLOCKQUOTE>'], @(h,ev)bst_call(@ButtonAddScout,h,ev));
+             '<B>Remove vertex from scout</B>:<BR><BLOCKQUOTE> - Select this button<BR> - Select the scout to edit<BR> - Hold the <B>SHIFT</B> key<BR> - Click on the vertex to remove</BLOCKQUOTE>' ...
+             '<B>To select a scout</B>:<BR><BLOCKQUOTE> - Click on it the scout list below<BR> - Click on it in a 3D figure<BR> - Hold CTRL/SHIFT for multiple selection</BLOCKQUOTE>'], @(h,ev)bst_call(@ButtonAddScout,h,ev));
         gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_TS_DISPLAY, '<HTML><B>Display scouts time series</B>&nbsp;&nbsp;&nbsp;&nbsp;[ENTER]</HTML>', @(h,ev)bst_call(@ViewTimeSeries));        
         % Menu: Atlas
         jMenuAtlas = gui_component('Menu', jMenuBar, [], 'Atlas', IconLoader.ICON_MENU, [], [], 11);
@@ -1242,9 +1243,9 @@ function SetSelectedScouts(iSelScouts)
     java_setcb(ctrl.jListScouts, 'ValueChangedCallback', []);
     % Select items in JList
     ctrl.jListScouts.setSelectedIndices(iSelItem);
-    % Scroll to see the selected scout in the list
-    if (length(iSelItem) == 1) && ~isequal(iSelItem, -1)
-        selRect = ctrl.jListScouts.getCellBounds(iSelItem, iSelItem);
+    % Scroll to see the last selected scout in the list
+    if (length(iSelItem) >= 1) && ~isequal(iSelItem, -1)
+        selRect = ctrl.jListScouts.getCellBounds(iSelItem(end), iSelItem(end));
         ctrl.jListScouts.scrollRectToVisible(selRect);
         ctrl.jListScouts.repaint();
     end
