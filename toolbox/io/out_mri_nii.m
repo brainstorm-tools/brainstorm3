@@ -1,4 +1,4 @@
-function fid = out_mri_nii( sMri, OutputFile, typeMatlab, Nt )
+function [fid, nifti] = out_mri_nii( sMri, OutputFile, typeMatlab, Nt )
 % OUT_MRI_NII: Exports a MRI to a NIFTI-1 file (.NII or .HDR/.IMG)).
 % 
 % USAGE:        out_mri_nii( sMri, OutputFile, typeMatlab)         : Write a full file

@@ -1,10 +1,12 @@
-function MRI = in_mri(MriFile, FileFormat, isInteractive)
+function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize)
 % IN_MRI: Detect file format and load MRI file.
 % 
 % USAGE:  in_mri(MriFile, FileFormat='ALL')
 % INPUT:
-%     - MriFile    : full path to a MRI file
-%     - FileFormat : Format of the input file (default = 'ALL')
+%     - MriFile       : full path to a MRI file
+%     - FileFormat    : Format of the input file (default = 'ALL')
+%     - isInteractive : 0 or 1
+%     - isNormalize   : If 1, converts values to uint8 and scales between 0 and 1
 % OUTPUT:
 %     - MRI         : Standard brainstorm structure for MRI volumes
 
@@ -46,6 +48,9 @@ function MRI = in_mri(MriFile, FileFormat, isInteractive)
 % Authors: Francois Tadel, 2008-2016
 
 % Parse inputs
+if (nargin < 4) || isempty(isNormalize)
+    isNormalize = 1;
+end
 if (nargin < 3) || isempty(isInteractive)
     isInteractive = 1;
 end
@@ -59,6 +64,7 @@ if isempty(ByteOrder)
 end
 % Initialize returned variables
 MRI = [];
+vox2ras = [];
 
 % ===== GUNZIP FILE =====
 % Get file extension
@@ -97,7 +103,6 @@ if ismember(FileFormat, {'ALL', 'ALL-MNI'})
 end
 
 % ===== LOAD MRI =====
-vox2ras = [];
 % Switch between file formats
 switch (FileFormat)   
     case 'CTF'
@@ -137,7 +142,7 @@ end
 
 %% ===== NORMALIZE VALUES =====
 % Normalize if the cube is not already in uint8 (and if not loading an atlas)
-if ~strcmpi(FileFormat, 'ALL-MNI') && ~isa(MRI.Cube, 'uint8')
+if isNormalize && ~strcmpi(FileFormat, 'ALL-MNI') && ~isa(MRI.Cube, 'uint8')
     % Convert to double for calculations
     MRI.Cube = double(MRI.Cube);
     % Start values at zeros

@@ -163,7 +163,7 @@ if ismember('SurfaceFile', FieldsToRead)
             file_whos = whos('-file', bst_fullfile(ProtocolInfo.SUBJECTS, newSurfaceFile), 'Vertices');
             nVerticesSurf = max(file_whos.size);
             % If number of vertices match: change surface
-            if (nVerticesSurf == nVerticesRes)
+            if (nVerticesSurf == nVerticesRes) || (isfield(Results, 'HeadModelType') && strcmpi(Results.HeadModelType, 'volume'))
                 % Display warning
                 java_dialog('warning', ['The cortex file associated with these sources no longer exists.' 10 ...
                                         'Using instead: ' newSurfaceFile], 'Load results');
@@ -179,8 +179,12 @@ if ismember('SurfaceFile', FieldsToRead)
         end
         % If valid surface file was not found
         if ~isFound
-            error(['The cortex file associated with these sources no longer exists.' 10 ...
-                   'Please import the anatomy and compute the sources again.']);
+            if ~isempty(sCortexList)
+                error(['The cortex file associated with these sources no longer exists.' 10 ...
+                       'Please import the anatomy and compute the sources again.']);
+            else
+                Results.SurfaceFile = [];
+            end
         end
     end
 end

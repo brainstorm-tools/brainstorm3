@@ -1,7 +1,7 @@
 function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2, FileFormat)
 % IMPORT_SOURCES: Imports static source maps as results files.
 % 
-% USAGE:  iNewSources = import_dipoles(iStudy, SurfaceFile, SourceFiles, SourceFiles2=[], FileFormat)
+% USAGE:  iNewSources = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2=[], FileFormat)
 %
 % INPUT:
 %    - iStudy       : Index of the study where to import the SourceFiles
@@ -77,6 +77,8 @@ if isempty(SourceFiles)
             {{'*'}, 'FreeSurfer maps (*.*)',    'FS'; ...
              {'*'}, 'CIVET maps (*.*)',         'CIVET'; ...
              {'.gii'}, 'GIfTI texture (*.gii)', 'GII'; ...
+             {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume grids (subject space)', 'ALLMRI'; ...
+             {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume grids (MNI space)',     'ALLMRI-MNI'; ...
             }, DefaultFormats.ResultsIn);
     % If no file was selected: exit
     if isempty(SourceFiles)
@@ -134,7 +136,7 @@ if isempty(SurfaceFile) && ~isempty(sSubject.iCortex) && (sSubject.iCortex <= le
     SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
 end
 % If no cortex available: error
-if isempty(SurfaceFile)
+if isempty(SurfaceFile) && ~ismember(FileFormat, {'ALLMRI', 'ALLMRI-MNI'})
     errorMsg = 'No cortex file available for this subject.';
     if isInteractive
         bst_error(errorMsg, 'Import source maps', 0);
@@ -142,15 +144,27 @@ if isempty(SurfaceFile)
     return;
 end
 % Load cortex
-varVertices = whos('-file', file_fullpath(SurfaceFile), 'Vertices');
-nVertices = varVertices.size(1);
+if ~isempty(SurfaceFile)   
+    varVertices = whos('-file', file_fullpath(SurfaceFile), 'Vertices');
+    nVertices = varVertices.size(1);
+end
 
 
 %% ===== READ SOURCE FILES =====
+sMri = [];
 % Loop on each input file
 for iFile = 1:length(SourceFiles)
     % Read source file
-    map = in_sources(SourceFiles{iFile}, FileFormat);
+    [map, grid] = in_sources(SourceFiles{iFile}, FileFormat);
+    % In the case of a volume grid: convert from MRI coordinates to SCS
+    if ~isempty(grid)
+        % Load subject MRI
+        if isempty(sMri)
+            sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+        end
+        % Convert MRI=>SCS
+        grid = cs_convert(sMri, 'mri', 'scs', grid);
+    end
     % Read additional source file: simply concatenate to the previous one
     if ~isempty(SourceFiles2)
         map = [map; in_sources(SourceFiles2{iFile}, FileFormat)];
@@ -162,7 +176,7 @@ for iFile = 1:length(SourceFiles)
             bst_error(errorMsg, 'Import source maps', 0);
         end
         break;
-    elseif (size(map,1) ~= nVertices)
+    elseif isempty(grid) && (size(map,1) ~= nVertices)
         errorMsg = sprintf('The number of vertices in the surface (%d) and the source map (%d) do not match.', nVertices, size(map,1));
         if isInteractive
             bst_error(errorMsg, 'Import source maps', 0);
@@ -194,9 +208,16 @@ for iFile = 1:length(SourceFiles)
     ResultsMat.Comment       = baseName;
     ResultsMat.Time          = [0 1];
     ResultsMat.DataFile      = [];
-    ResultsMat.HeadModelFile = [];
-    ResultsMat.HeadModelType = 'surface';
     ResultsMat.SurfaceFile   = file_win2unix(file_short(SurfaceFile));
+    ResultsMat.HeadModelFile = [];
+    % Surface model
+    if isempty(grid)
+        ResultsMat.HeadModelType = 'surface';
+    % Volume model
+    else
+        ResultsMat.HeadModelType = 'volume';
+        ResultsMat.GridLoc = grid;
+    end
     % History
     ResultsMat = bst_history('add', ResultsMat, 'import', ['Imported from: ' SourceFiles{iFile}]);
     % Create output filename
@@ -222,7 +243,8 @@ end
 
 %% ====== SUPPORT FUNCTIONS =====
 % Load source map
-function map = in_sources(SourceFile, FileFormat)
+function [map, grid] = in_sources(SourceFile, FileFormat)
+    grid = [];
     switch (FileFormat)
         case 'FS'
             map = read_curv(SourceFile);
@@ -245,6 +267,24 @@ function map = in_sources(SourceFile, FileFormat)
                     map = [map, Values{i}];
                 end
             end
+        case 'ALLMRI'
+            % Read MRI volume
+            [sMriSrc, vox2ras] = in_mri(SourceFile, 'ALL', 0, 0);
+            % Get position of non-zero points
+            iNonZero = find(sMriSrc.Cube);
+            [X,Y,Z] = ind2sub(size(sMriSrc.Cube), iNonZero);
+            grid = [X .* sMriSrc.Voxsize(1), Y .* sMriSrc.Voxsize(2), Z .* sMriSrc.Voxsize(3)];
+%             grid = [X,Y,Z];
+%             % Apply vox2raw transformation
+%             if ~isempty(vox2ras)
+%                 grid = bst_bsxfun(@plus, vox2ras(1:3,1:3) * grid', vox2ras(1:3,4))';
+%             end
+            % Convert to meters
+            grid = grid ./ 1000;
+            % Get values of non-zero points
+            map = double(sMriSrc.Cube(iNonZero));
+        case 'ALLMRI-MNI'
+            error('Not supported yet.');
         otherwise
             error('Unsupported file format.');
     end
