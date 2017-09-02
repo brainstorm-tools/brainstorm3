@@ -1959,13 +1959,6 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
         TessInfo(iTess).OverlayCube = OverlayCube;
     % ===== DISPLAY SURFACE/GRIDS =====
     else
-        % === INTERPOLATION MRI<->SURFACE ===
-        [sSurf, iSurf] = bst_memory('LoadSurface', SurfaceFile);
-        tess2mri_interp = bst_memory('GetTess2MriInterp', iSurf);
-        % If no interpolation tess<->mri accessible : exit
-        if isempty(tess2mri_interp)
-           return 
-        end
         % Progress bar
         isProgressBar = bst_progress('isVisible');
         bst_progress('start', 'Display MRI', 'Updating values...');
@@ -1973,7 +1966,14 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
         if isVolumeGrid
             % Compute interpolation
             MriInterp = bst_memory('GetGrid2MriInterp', iDS, iResult);
+        % === INTERPOLATION MRI<->SURFACE ===
         else
+            [sSurf, iSurf] = bst_memory('LoadSurface', SurfaceFile);
+            tess2mri_interp = bst_memory('GetTess2MriInterp', iSurf);
+            % If no interpolation tess<->mri accessible : exit
+            if isempty(tess2mri_interp)
+               return 
+            end
             % Only surface interpolation is needed
             MriInterp = tess2mri_interp;
         end
