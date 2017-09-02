@@ -133,15 +133,15 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Import epochs', i));
     % Epoch window
     gui_component('label', ctrl.jPanels(i), '', 'Time window around seizure onset:');
-    % Time range : start
     ctrl.jTextEpochStart = gui_component('texttime', ctrl.jPanels(i), '', ' ');
     gui_component('label', ctrl.jPanels(i), [], ' - ');
     ctrl.jTextEpochStop = gui_component('texttime',  ctrl.jPanels(i), [], ' ');
     % Set time controls callbacks
     TimeUnit = gui_validate_text(ctrl.jTextEpochStart, [], ctrl.jTextEpochStop, {-100, 100, 1000}, 's', [], -10, []);
-    TimeUnit = gui_validate_text(ctrl.jTextEpochStop, ctrl.jTextEpochStart, [], {-100, 100, 1000}, 's', [], 10, []);
-    % Add unit label
+    TimeUnit = gui_validate_text(ctrl.jTextEpochStop, ctrl.jTextEpochStart, [], {-100, 100, 1000}, 's', [], 40, []);
     gui_component('label', ctrl.jPanels(i), [], [' ' TimeUnit]);
+    gui_component('label', ctrl.jPanels(i), 'br', ['<HTML><FONT color="#808080"><I>This window must be long enough to include both a baseline for the time-frequency analysis<BR>' ...
+                                                                                  'and the full time window for the computation of the epileptogenicity/latency maps.</I></FONT>']);
     % Bipolar montage
     gui_component('label', ctrl.jPanels(i), 'br', 'Electrode montage:');
     jButtonGroupMontage = ButtonGroup();
@@ -156,8 +156,11 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     % ===== PANEL: TIME-FREQUENCY =====
     i = i + 1;
     ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Time-frequency', i));
-    % Multitaper options
-    gui_component('label', ctrl.jPanels(i), '', 'Frequencies (start:stop:end): ');
+    % Taper
+    gui_component('Label', ctrl.jPanels(i), '', 'Taper: ');
+    ctrl.jComboTaper = gui_component('combobox', ctrl.jPanels(i), '', [], {{'Hanning','DPSS'}});
+    % Frequencies
+    gui_component('label', ctrl.jPanels(i), 'br', 'Frequencies (start:stop:end): ');
     ctrl.jTextFreq = gui_component('texttime', ctrl.jPanels(i), '', '10:3:220');
     % Callbacks
     ctrl.fcnValidate{i} = @(c)ValidateTimefreq();
@@ -165,9 +168,35 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     
     % ===== PANEL: EPILEPTOGENICITY =====
     i = i + 1;
-    ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Compute epileptogenicity', i));
-    gui_component('Label', ctrl.jPanels(i), '', 'Epileptogenicity maps');
+    ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Epileptogenicity index', i));
+    % Epileptogenicity options
+    gui_component('label', ctrl.jPanels(i), '', 'Frequency band [start stop] (Hz): ');
+    ctrl.jTextFreqBand = gui_component('text', ctrl.jPanels(i), 'tab', '[120 200]');
+    gui_component('label', ctrl.jPanels(i), 'br', 'Time constant (s): ');
+    ctrl.jTextTimeConstant = gui_component('texttime', ctrl.jPanels(i), 'tab', '3');
+    gui_component('label', ctrl.jPanels(i), 'br', 'Latency, one or multiple time points (s): ');
+    ctrl.jTextLatency = gui_component('text', ctrl.jPanels(i), 'tab', '0:2:20');
+    gui_component('label', ctrl.jPanels(i), 'br', 'Time resolution (s): ');
+    ctrl.jTextTimeResolution = gui_component('texttime', ctrl.jPanels(i), 'tab', '0.2');
+    gui_component('label', ctrl.jPanels(i), 'br', 'Propagation threshold (p-value): ');
+    ctrl.jTextThDelay = gui_component('texttime', ctrl.jPanels(i), 'tab', '0.05');
+   
     
+% Patient{I}.FreqBand     = [120 200];  % Defined by looking at the TF maps (using the same for the three seizures)
+% Patient{I}.TimeConstant = 3;          % Duration of the sliding window of interest: 3s
+% Patient{I}.Latency      = 0:2:20;     % For files #2 and #3, will compute delay maps with sliding windows of 3s between 0s and 20s post-seizure
+% Patient{I}.Prefix       = '';
+% ThDelay = 0.05;
+% 
+% S.TimeWindow     = (0 : 0.01 : Patient{i0}.TimeConstant+1+max(Patient{i0}.Latency));
+% S.FreqBand       = Patient{i0}.FreqBand;
+% S.HorizonT       = Patient{i0}.TimeConstant;
+% S.Latency        = 0;        % No propagation: Study only the first 3s (TimeConstant) after the Onset marker
+% S.TimeResolution = 0.2;
+% S.ThDelay        = ThDelay;
+% S.AR             = 0;
+% S.FileName       = Patient{i0}.Prefix;
+% S.OutputType     = OutputType;
     % Save references to all the controls
     GlobalData.Guidelines.ctrl = ctrl;
 end
@@ -1100,7 +1129,9 @@ function [isValidated, errMsg] = ValidateTimefreq()
     % Initialize returned variables
     isValidated = 0;
     errMsg = '';
-    % Get onset time window
+    % Get taper
+    Taper = lower(char(ctrl.jComboTaper.getSelectedItem()));
+    % Get frequencies
     strFreq = char(ctrl.jTextFreq.getText());
     if isempty(eval(strFreq))
         errMsg = 'Invalid frequency selection';
@@ -1135,8 +1166,9 @@ function [isValidated, errMsg] = ValidateTimefreq()
     else
         % Process: FieldTrip: ft_mtmconvol (Multitaper)
         sFilesTf = bst_process('CallProcess', 'process_ft_mtmconvol', GlobalData.Guidelines.OnsetFiles, [], ...
+            'timewindow',     [-10, 10], ...
             'sensortypes',    'SEEG', ...
-            'mt_taper',       'hanning', ...  % hanning
+            'mt_taper',       Taper, ... 
             'mt_frequencies', strFreq, ...
             'mt_freqmod',     10, ...
             'mt_timeres',     1, ...
