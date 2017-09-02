@@ -574,11 +574,15 @@ for iData = 1:length(Data)
                 'tapsmofrq', freqres, ...
                 'pad',       pad, ...
                 'verbose',   0);
-            % Permute dimensions
+            % Compute power, average across tapers
+            TF = nanmean(TF .* conj(TF), 1);
+            % Permute dimensions to get [nChannels x nTime x nFreq]
             TF = permute(TF, [2 4 3 1]);
-            % Compute power
-            % TF = TF .* conj(TF);
-            % TF = spm_squeeze(nanmean(spectrum.*conj(spectrum), 1), 1);
+            % Apply measure here
+            if strcmpi(OPTIONS.Measure, 'magnitude')
+                TF = sqrt(TF);
+            end
+            isMeasureApplied = 1;
     end
     bst_progress('inc', 1);
     % Set to zero the bad channels

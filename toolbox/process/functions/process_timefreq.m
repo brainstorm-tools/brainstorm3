@@ -161,7 +161,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % Multitaper options
     if isfield(sProcess.options, 'mt_taper') && ~isempty(sProcess.options.mt_taper) && ~isempty(sProcess.options.mt_taper.Value)
-        tfOPTIONS.ft_mtmconvol.taper = sProcess.options.mt_taper.Value;
+        if iscell(sProcess.options.mt_taper.Value)
+            tfOPTIONS.ft_mtmconvol.taper = sProcess.options.mt_taper.Value{1};
+        else
+            tfOPTIONS.ft_mtmconvol.taper = sProcess.options.mt_taper.Value;
+        end
     end
     if isfield(sProcess.options, 'mt_frequencies') && ~isempty(sProcess.options.mt_frequencies) && ~isempty(sProcess.options.mt_frequencies.Value)
         tfOPTIONS.ft_mtmconvol.frequencies = eval(sProcess.options.mt_frequencies.Value);

@@ -46,6 +46,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    % Options: Time window
+    sProcess.options.timewindow.Comment = 'Time window:';
+    sProcess.options.timewindow.Type    = 'timewindow';
+    sProcess.options.timewindow.Value   = [];
+    sProcess.options.timewindow.Group   = 'input';
     % Options: Sensor types
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
@@ -88,8 +93,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mt_timestep.Value   = {0.1, 'ms', []};
 
     % === MEASURE
-    sProcess.options.measure.Comment = {'Power', 'Magnitude', 'None (save complex values)', 'Measure: '; ...
-                                        'power', 'magnitude', 'none', ''};
+    sProcess.options.measure.Comment = {'Power', 'Magnitude', 'Measure: '; ...
+                                        'power', 'magnitude', ''};
     sProcess.options.measure.Type    = 'radio_linelabel';
     sProcess.options.measure.Value   = 'power';
     sProcess.options.measure.Group   = 'output';
