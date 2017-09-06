@@ -125,13 +125,20 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     
     % ===== READ SUBJECT MRI =====
     % Get subject structure
-    sSubject = bst_get('Subject', sInputsA(1).SubjectName);
+    SubjectName = sInputsA(1).SubjectName;
+    [sSubject, iSubject] = bst_get('Subject', SubjectName);
     % Load subjet MRI
     sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
 
     % ===== EXPORT INPUT FILES =====
     % Work in Brainstorm's temporary folder
     workDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'ImaGIN_epileptogenicity');
+    % Make sure Matlab is not currently in the work directory
+    curDir = pwd;
+    if strfind(pwd, workDir)
+        curDir = bst_fileparts(workDir);
+        cd(curDir);
+    end
     % Erase if it already exists
     if file_exist(workDir)
         file_delete(workDir, 1, 3);
@@ -148,13 +155,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         DataMatBaseline = in_bst_data(sInputsA(iInput).FileName);
         DataMatOnset    = in_bst_data(sInputsB(iInput).FileName);
         ChannelMat      = in_bst_channel(sInputsB(iInput).ChannelFile);
-        % Convert channel positions to MRI coordinates (for surface export, keep in everything in SCS)
-        if strcmpi(OPTIONS.OutputType, 'volume')
-            error('TODO => CONVERT TO MRI, INCLUDING VOX2RAS')
-            Tscs2mri = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
-
-            ChannelMat = channel_apply_transf(ChannelMat, Transf, iChannels, isHeadPoints);
-        end
         % Select channels
         if ~isempty(SensorTypes)
             % Find channel indices
@@ -169,10 +169,43 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             DataMatOnset.F = DataMatOnset.F(iChan,:);
             DataMatOnset.ChannelFlag = DataMatOnset.ChannelFlag(iChan);
             ChannelMat.Channel = ChannelMat.Channel(iChan);
+        else
+            iChan = 1:length(ChannelMat.Channel);
         end
+
+        % Convert channel positions to MRI coordinates (for surface export, keep in everything in SCS)
+        if strcmpi(OPTIONS.OutputType, 'volume')
+            Tscs2mri = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
+            % If there is a transformation MRI=>RAS from a .nii file 
+            if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && isfield(sMri.Header.nifti, 'sform_code') && isfield(sMri.Header.nifti, 'qform_code')
+                nifti = sMri.Header.nifti;
+                if isfield(nifti, 'vox2ras') && ~isempty(nifti.vox2ras)
+                    vox2ras = nifti.vox2ras;
+                elseif (nifti.sform_code ~= 0) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3))
+                    vox2ras = nifti.sform;
+                elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3))
+                    vox2ras = nifti.qform;
+                else
+                    vox2ras = [];
+                end
+                if ~isempty(vox2ras)
+                    % Convert millimeters=>meters
+                    vox2ras(1:3,4) = vox2ras(1:3,4) ./ 1000;
+                    % Add this transformation
+                    Tscs2mri = vox2ras * Tscs2mri;
+                end
+            end
+            ChannelMat = channel_apply_transf(ChannelMat, Tscs2mri, iChan, 1);
+            ChannelMat = ChannelMat{1};
+        end
+        % File tag
+        [fPath,fBase] = bst_fileparts(sInputsB(iInput).FileName);
+        [fPath, fileTag] = bst_fileparts(fPath);
+        fileTag = strrep(fileTag, '_bipolar_1', '');
+        fileTag = strrep(fileTag, '_bipolar_2', '');
         % Export file names
-        BaselineFiles{iInput} = bst_fullfile(workDir, sprintf('baseline_%03d.mat', iInput));
-        OnsetFiles{iInput}    = bst_fullfile(workDir, sprintf('onset_%03d.mat',    iInput));
+        BaselineFiles{iInput} = file_unique(bst_fullfile(workDir, ['baseline_' fileTag '.mat']));
+        OnsetFiles{iInput}    = file_unique(bst_fullfile(workDir, [fileTag '.mat']));
         % Export to SPM .mat/.dat format
         BaselineFiles{iInput} = export_data(DataMatBaseline, ChannelMat, BaselineFiles{iInput}, 'SPM-DAT');
         OnsetFiles{iInput}    = export_data(DataMatOnset,    ChannelMat, OnsetFiles{iInput},    'SPM-DAT');
@@ -192,31 +225,76 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             OPTIONS.Atlas        = 'Human';
             OPTIONS.CorticalMesh = 1;
             OPTIONS.sMRI         = MriFile;
+            % Output format: NII surface
+            fileFormat = 'ALLMRI';
+            fileExt = '.nii';
         case 'surface'
-            % Load MRI structure
-            sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+            % Compute SPM canonical surfaces if necessary
+            if isempty(sSubject.iCortex)
+                isOk = process_generate_canonical('Compute', iSubject);
+                if ~isOk
+                    bst_report('Error', sProcess, sInputsB, 'Could not compute SPM canonical surfaces...');
+                    return;
+                end
+                sSubject = bst_get('Subject', SubjectName);
+            end
             % Export cortex mesh
             MeshFile = bst_fullfile(workDir, 'cortex.gii');
-            export_surfaces(sSubject.Surface(sSubject.iCortex).FileName, MeshFile, 'GII', sMri);
+            out_tess_gii(sSubject.Surface(sSubject.iCortex).FileName, MeshFile, 0);
             % Additional options
             OPTIONS.SmoothIterations = 5;
             OPTIONS.MeshFile         = MeshFile;
+            % Output format: GII surface
+            fileFormat = 'GII';
+            fileExt = '.gii';
     end
 
     % ===== CALL EPILEPTOGENICITY SCRIPT =====
-    % Make sure Matlab is not currently in the work directory
-    curDir = pwd;
-    if strfind(pwd, workDir)
-        cd(bst_fileparts(workDir));
-    end
     % Run script
     ImaGIN_Epileptogenicity(OPTIONS);
-    
     % Restore initial directory
     cd(curDir);
     
+    % ===== OUTPUT FOLDER =====
+    % Default condition name
+    Condition = 'Epileptogenicity';
+    % Get condition asked by user
+    [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
+    % Condition does not exist: create it
+    if isempty(sStudy)
+        % Add new folder
+        iStudy = db_add_condition(SubjectName, Condition, 1);
+        % Copy channel file from first file
+        db_set_channel(iStudy, sInputsB(1).ChannelFile, 1, 0);
+    end
+    
+    % ===== READ EPILEPTOGENICITY MAPS =====
+    % List all the epileptogenicity maps in output
+    listFiles = dir(bst_fullfile(workDir, 'SPM_*', ['spmT_0001', fileExt]));
+    % Import all the stat files
+    for i = 1:length(listFiles)
+        % File comment = SPM folder
+        [tmp, Comment] = bst_fileparts(listFiles(i).folder);
+        Comment = strrep(Comment, 'SPM_', '');
+        % Import file
+        tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment);
+        OutputFiles = cat(2, OutputFiles, tmpFiles);
+    end
+    
+    % ===== READ DELAY MAPS =====
+    % List all the epileptogenicity maps in output
+    listFiles = dir(bst_fullfile(workDir, ['Delay_*', fileExt]));
+    % Import all the stat files
+    for i = 1:length(listFiles)
+        % File comment = File name
+        Comment = listFiles(i).name;
+        % Import file
+        tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment);
+        % OutputFiles = cat(2, OutputFiles, tmpFiles);
+    end
 end
 
     
+
 
 

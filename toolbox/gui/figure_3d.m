@@ -1654,6 +1654,13 @@ function DisplayFigurePopup(hFig)
             jItem3.setSelected(MriOptions.OverlaySmooth == 3);
             jItem4.setSelected(MriOptions.OverlaySmooth == 4);
             jItem5.setSelected(MriOptions.OverlaySmooth == 5);
+%             jMenuMri = gui_component('Menu', jPopup, [], 'Sources resolution', IconLoader.ICON_ANATOMY);
+%             jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1mm',    [], [], @(h,ev)SetMriResolution(hFig, 1));
+%             jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2mm',    [], [], @(h,ev)SetMriResolution(hFig, 2));
+%             jItem3 = gui_component('radiomenuitem', jMenuMri, [], '3mm',    [], [], @(h,ev)SetMriResolution(hFig, 3));
+%             jItem1.setSelected(MriOptions.InterpDownsample == 1);
+%             jItem2.setSelected(MriOptions.InterpDownsample == 2);
+%             jItem3.setSelected(MriOptions.InterpDownsample == 3);
         end
     end
     
@@ -1870,6 +1877,23 @@ function SetMriSmooth(hFig, OverlaySmooth)
     MriOptions.OverlaySmooth = OverlaySmooth;
     bst_set('MriOptions', MriOptions);
     bst_figures('FireCurrentTimeChanged', 1);
+end
+% RADIO: MRI RESOLUTION
+function SetMriResolution(hFig, InterpDownsample)
+    global GlobalData;
+    % Update MRI display options
+    MriOptions = bst_get('MriOptions');
+    MriOptions.InterpDownsample = InterpDownsample;
+    bst_set('MriOptions', MriOptions);
+    % Get displayed 
+    TessInfo = getappdata(hFig, 'Surface');
+    if ~isempty(TessInfo.DataSource.FileName)
+        [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo.DataSource.FileName);
+        if ~isempty(iDS)
+            GlobalData.DataSet(1).Results(1).grid2mri_interp = [];
+            bst_figures('FireCurrentTimeChanged', 1);
+        end
+    end
 end
 
 

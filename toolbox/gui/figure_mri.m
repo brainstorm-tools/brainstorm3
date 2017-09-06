@@ -812,8 +812,8 @@ function DisplayFigurePopup(hFig)
     % === MRI Options ===
     % Smooth factor
     if isOverlay 
-        jMenuMri = gui_component('Menu', jPopup, [], 'Smooth sources', IconLoader.ICON_ANATOMY);
         MriOptions = bst_get('MriOptions');
+        jMenuMri = gui_component('Menu', jPopup, [], 'Smooth sources', IconLoader.ICON_ANATOMY);
         jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'None', [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 0));
         jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 1));
         jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 2));
@@ -826,6 +826,13 @@ function DisplayFigurePopup(hFig)
         jItem3.setSelected(MriOptions.OverlaySmooth == 3);
         jItem4.setSelected(MriOptions.OverlaySmooth == 4);
         jItem5.setSelected(MriOptions.OverlaySmooth == 5);
+%         jMenuMri = gui_component('Menu', jPopup, [], 'Sources resolution', IconLoader.ICON_ANATOMY);
+%         jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 1));
+%         jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 2));
+%         jItem3 = gui_component('radiomenuitem', jMenuMri, [], '3mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 3));
+%         jItem1.setSelected(MriOptions.InterpDownsample == 1);
+%         jItem2.setSelected(MriOptions.InterpDownsample == 2);
+%         jItem3.setSelected(MriOptions.InterpDownsample == 3);
     end
     jPopup.addSeparator();
     % Set fiducials

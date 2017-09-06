@@ -1,7 +1,7 @@
-function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2, FileFormat)
+function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2, FileFormat, Comment)
 % IMPORT_SOURCES: Imports static source maps as results files.
 % 
-% USAGE:  iNewSources = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2=[], FileFormat)
+% USAGE:  iNewSources = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2=[], FileFormat=[], Comment=[])
 %
 % INPUT:
 %    - iStudy       : Index of the study where to import the SourceFiles
@@ -10,6 +10,7 @@ function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFil
 %                     => if not specified : file to import is asked to the user
 %    - SourceFiles2 : In the case of left/right files to import as one joined matrix (FreeSurfer import)
 %    - FileFormat   : One of the available file formats ('FS')
+%    - Comment      : Comment of the output file
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -36,6 +37,9 @@ function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFil
 OutputFiles = {};
 errorMsg = [];
 % Get default for all the inputs
+if (nargin < 6) || isempty(Comment)
+    Comment = [];
+end
 if (nargin < 5) || isempty(FileFormat)
     FileFormat = [];
 end
@@ -155,15 +159,21 @@ sMri = [];
 % Loop on each input file
 for iFile = 1:length(SourceFiles)
     % Read source file
-    [map, grid] = in_sources(SourceFiles{iFile}, FileFormat);
+    [map, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat);
     % In the case of a volume grid: convert from MRI coordinates to SCS
     if ~isempty(grid)
         % Load subject MRI
         if isempty(sMri)
             sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
         end
+        % Convert from RAS(source files) to RAS(subject anat)
+        if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember(sMri.InitTransf(:,1), 'vox2ras')
+            iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
+            ras2vox = inv(sMri.InitTransf{iTransf,2});
+            grid = bst_bsxfun(@plus, ras2vox(1:3,1:3) * grid', ras2vox(1:3,4))';
+        end
         % Convert MRI=>SCS
-        grid = cs_convert(sMri, 'mri', 'scs', grid);
+        grid = cs_convert(sMri, 'voxel', 'scs', grid);
     end
     % Read additional source file: simply concatenate to the previous one
     if ~isempty(SourceFiles2)
@@ -183,33 +193,59 @@ for iFile = 1:length(SourceFiles)
         end
         break;
     end
-    % Comment: Use the base filename
+    % Comment: Use the base filename (if not defined in input)
     [fPath, fBase, fExt] = bst_fileparts(SourceFiles{iFile});
-    if strcmpi(FileFormat, 'FS')
-        baseName = [fBase, fExt];
-    else
-        baseName = fBase;
+    if isempty(Comment)
+        if strcmpi(FileFormat, 'FS')
+            Comment = [fBase, fExt];
+        else
+            Comment = fBase;
+        end
+        Comment = strrep(Comment, 'results_', '');
+        Comment = strrep(Comment, '_results', '');
+        % If the two files are imported: remove .lh and .rh
+        if ~isempty(SourceFiles2)
+            Comment = strrep(Comment, 'rh.', '');
+            Comment = strrep(Comment, 'lh.', '');
+            Comment = strrep(Comment, '_left', '');
+            Comment = strrep(Comment, '_right', '');
+        end
     end
-    baseName = strrep(baseName, 'results_', '');
-    baseName = strrep(baseName, '_results', '');
-    % If the two files are imported: remove .lh and .rh
-    if ~isempty(SourceFiles2)
-        baseName = strrep(baseName, 'rh.', '');
-        baseName = strrep(baseName, 'lh.', '');
-        baseName = strrep(baseName, '_left', '');
-        baseName = strrep(baseName, '_right', '');
+    
+    % === STATISTICAL THRESHOLD (SPM) ===
+    if ~isempty(strfind(fBase, 'spmT')) && file_exist(bst_fullfile(fPath, 'SPM.mat'))
+        % Load SPM.mat
+        SpmMat = load(fullfile(fPath, 'SPM.mat'));
+        % New stat/results structure
+        ResultsMat = db_template('statmat');
+        ResultsMat.tmap       = map;
+        ResultsMat.pmap       = [];
+        ResultsMat.df         = [];
+        ResultsMat.SPM        = SpmMat.SPM;
+        ResultsMat.Correction = 'no';
+        ResultsMat.Type       = 'results';
+        ResultsMat.Time       = 0;
+        FileType = 'presults';
+        % Add sorted T values in the file if importing from a volume (not keeping the full distribution otherwise)
+        if ~isempty(grid)
+            ResultsMat.SPM.SortedT = sort(sMriSrc.Cube(:));
+        end
+    % === REGULAR SOURCE FILE ===
+    else
+        % New results structure
+        ResultsMat = db_template('resultsmat');
+        ResultsMat.ImageGridAmp  = [map, map];
+        ResultsMat.ImagingKernel = [];
+        ResultsMat.Time          = [0 1];
+        FileType = 'results';
     end
     
     % === SAVE NEW FILE ===
-    % New results structure
-    ResultsMat = db_template('resultsmat');
-    ResultsMat.ImageGridAmp  = [map, map];
-    ResultsMat.ImagingKernel = [];
-    ResultsMat.Comment       = baseName;
-    ResultsMat.Time          = [0 1];
+    ResultsMat.Comment       = Comment;
     ResultsMat.DataFile      = [];
     ResultsMat.SurfaceFile   = file_win2unix(file_short(SurfaceFile));
     ResultsMat.HeadModelFile = [];
+    ResultsMat.nComponents   = 1;
     % Surface model
     if isempty(grid)
         ResultsMat.HeadModelType = 'surface';
@@ -221,7 +257,7 @@ for iFile = 1:length(SourceFiles)
     % History
     ResultsMat = bst_history('add', ResultsMat, 'import', ['Imported from: ' SourceFiles{iFile}]);
     % Create output filename
-    OutputFiles{iFile} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), ['results_', baseName]);
+    OutputFiles{iFile} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType '_', file_standardize(Comment)]);
     % Save new file
     bst_save(OutputFiles{iFile}, ResultsMat, 'v7');
     % Update database
@@ -243,8 +279,9 @@ end
 
 %% ====== SUPPORT FUNCTIONS =====
 % Load source map
-function [map, grid] = in_sources(SourceFile, FileFormat)
+function [map, grid, sMriSrc] = in_sources(SourceFile, FileFormat)
     grid = [];
+    sMriSrc = [];
     switch (FileFormat)
         case 'FS'
             map = read_curv(SourceFile);
@@ -273,14 +310,15 @@ function [map, grid] = in_sources(SourceFile, FileFormat)
             % Get position of non-zero points
             iNonZero = find(sMriSrc.Cube);
             [X,Y,Z] = ind2sub(size(sMriSrc.Cube), iNonZero);
-            grid = [X .* sMriSrc.Voxsize(1), Y .* sMriSrc.Voxsize(2), Z .* sMriSrc.Voxsize(3)];
-%             grid = [X,Y,Z];
-%             % Apply vox2raw transformation
-%             if ~isempty(vox2ras)
-%                 grid = bst_bsxfun(@plus, vox2ras(1:3,1:3) * grid', vox2ras(1:3,4))';
-%             end
+            % Apply vox2ras transformation
+            if ~isempty(vox2ras)
+                grid = [X,Y,Z];
+                grid = bst_bsxfun(@plus, vox2ras(1:3,1:3) * grid', vox2ras(1:3,4))';
+            else
+                grid = [X .* sMriSrc.Voxsize(1), Y .* sMriSrc.Voxsize(2), Z .* sMriSrc.Voxsize(3)];
+            end
             % Convert to meters
-            grid = grid ./ 1000;
+%             grid = grid ./ 1000;
             % Get values of non-zero points
             map = double(sMriSrc.Cube(iNonZero));
         case 'ALLMRI-MNI'

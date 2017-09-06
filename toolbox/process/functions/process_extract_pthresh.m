@@ -257,13 +257,47 @@ function threshmap = Compute(StatMat, StatThreshOptions)
     % Get or calculate p-values map
     if isfield(StatMat, 'pmap') && ~isempty(StatMat.pmap)
         pmap = StatMat.pmap;
+        % Correction for multiple comparisons
+        pmask = bst_stat_thresh(pmap, StatThreshOptions);
     elseif isfield(StatMat, 'df') && ~isempty(StatMat.df)
         pmap = process_test_parametric2('ComputePvalues', StatMat.tmap, StatMat.df, 't', 'two');
+        % Correction for multiple comparisons
+        pmask = bst_stat_thresh(pmap, StatThreshOptions);
+    elseif isfield(StatMat, 'SPM') && ~isempty(StatMat.SPM)
+        % SPM must be installed
+        if ~exist('spm_uc', 'file')
+            warning('SPM must be in the Matlab path to compute the statistical thresold for this file.');
+            pmask = ones(size(StatMat.tmap));
+        else
+            % Compute threshold for statistical map
+            df = [StatMat.SPM.xCon(1).eidf, StatMat.SPM.xX.erdf];
+            S = StatMat.SPM.xVol.S;    %-search Volume {voxels}
+            R = StatMat.SPM.xVol.R;    %-search Volume {resels}
+            % FDR correction: not supported yet
+            if strcmpi(StatThreshOptions.Correction, 'fdr')
+                StatThreshOptions.Correction = 'no';
+                bst_error('FDR correction not supported yet.', 'Stat', 0);
+            end
+            % Correction
+            switch (StatThreshOptions.Correction)
+                case {'none', 'no'}
+                    u = spm_uc(StatThreshOptions.pThreshold, df, 'T', R, 1, S);
+                case 'bonferroni'
+                    u = spm_uc_Bonf(StatThreshOptions.pThreshold, df, 'T', S, 1);
+                case 'fdr'
+                    error('Not supported yet');
+%                     if isfield(StatMat.SPM, 'SortedT') && ~isempty(StatMat.SPM.SortedT)
+%                         u = spm_uc_FDR(StatThreshOptions.pThreshold, df, 'T', 1, flipud(StatMat.SPM.SortedT(:)));
+%                     else
+%                         u = spm_uc_FDR(StatThreshOptions.pThreshold, df, 'T', 1, sort(StatMat.tmap(:)));
+%                     end
+            end
+            % Activated voxels
+            pmask = (StatMat.tmap >= u);
+        end
     else
         error('Missing information to apply a statistical threshold.');
     end
-    % Correction for multiple comparisons
-    pmask = bst_stat_thresh(pmap, StatThreshOptions);
     % Compute pseudo-recordings file : Threshold tmap with pmask
     threshmap = zeros(size(StatMat.tmap));
     threshmap(pmask) = StatMat.tmap(pmask);

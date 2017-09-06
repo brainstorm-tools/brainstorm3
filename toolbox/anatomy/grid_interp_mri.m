@@ -39,7 +39,8 @@ if (nargin < 6) || isempty(maxDist)
     maxDist = 2;
 end
 if (nargin < 5) || isempty(nDownsample)
-    nDownsample = 3;
+    MriOptions = bst_get('MriOptions');
+    nDownsample = MriOptions.InterpDownsample;
 end
 if (nargin < 4) || isempty(isWait)
     isWait = 1;
@@ -100,7 +101,7 @@ if ~isempty(SurfaceFile)
     % Get brain mask
     mrimask = bst_memory('GetSurfaceMask', SurfaceFile);
 else
-    mrimask = [];
+    mrimask = (MRI.Cube ~= 0);
 end
 
 

@@ -681,7 +681,7 @@ function LoadRecordingsMatrix(iDS)
     % Load F Matrix
     if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
         % Load stat file
-        StatMat = in_bst_data(DataFile, 'pmap', 'tmap', 'df', 'ChannelFlag', 'Correction', 'StatClusters');
+        StatMat = in_bst_data(DataFile, 'pmap', 'tmap', 'df', 'SPM', 'ChannelFlag', 'Correction', 'StatClusters');
         % Get only relevant sensors as multiple tests
         iChannels = good_channel(GlobalData.DataSet(iDS).Channel, StatMat.ChannelFlag, {'MEG', 'EEG', 'SEEG', 'ECOG', 'NIRS'});
         if isfield(StatMat, 'pmap') && ~isempty(StatMat.pmap)
@@ -1105,7 +1105,7 @@ function LoadResultsMatrix(iDS, iResult)
     else
         % Load stat matrix
         StatFile = GlobalData.DataSet(iDS).Results(iResult).FileName;
-        FileMat = in_bst_results(StatFile, 0, 'pmap', 'tmap', 'df', 'nComponents', 'GridLoc', 'GridOrient', 'GridAtlas', 'Correction', 'StatClusters');
+        FileMat = in_bst_results(StatFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'nComponents', 'GridLoc', 'GridOrient', 'GridAtlas', 'Correction', 'StatClusters');
         % For stat with more than one components: take the maximum t-value
         if (FileMat.nComponents ~= 1)
             % Extract one value at each grid point
@@ -1393,7 +1393,7 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
 %         end
     else
         % Load stat matrix
-        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'pmap', 'tmap', 'df', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TF', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'Correction', 'StatClusters');
+        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TF', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'Correction', 'StatClusters');
         % Report thresholded maps
         TimefreqMat.TF = process_extract_pthresh('Compute', TimefreqMat);
         % Open the "Stat" tab

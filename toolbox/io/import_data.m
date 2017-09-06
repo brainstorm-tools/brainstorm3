@@ -131,15 +131,8 @@ end
 
 
 %% ===== EMPTY TEMPORARY DIRECTORY =====
-% Get temporary directory
-tmpDir = bst_get('BrainstormTmpDir');
-% If directory exists
-if isdir(tmpDir)
-    bst_progress('start', 'Import MEG/EEG recordings', 'Emptying temporary directory...');
-    % Delete contents of directory
-    file_delete(bst_fullfile(tmpDir, '*.*'), 1);
-    bst_progress('stop');
-end
+bst_progress('start', 'Import MEG/EEG recordings', 'Emptying temporary directory...');
+gui_brainstorm('EmptyTempFolder');
 
 
 %% ===== IMPORT SELECTED DATA =====

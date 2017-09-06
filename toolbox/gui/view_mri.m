@@ -38,6 +38,7 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality)
 %
 % Authors: Francois Tadel, 2009-2017
 
+
 %% ===== PARSE INPUTS =====
 global GlobalData;
 if (nargin < 3) || isempty(Modality)

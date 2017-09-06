@@ -77,7 +77,8 @@ end
 
 
 %% ===== COMPUTE CANONICAL SURFACES =====
-function Compute(iSubject, iAnatomy)
+function isOk = Compute(iSubject, iAnatomy)
+    isOk = 0;
     % Parse inputs
     if (nargin < 2) || isempty(iAnatomy)
         iAnatomy = [];
@@ -106,7 +107,12 @@ function Compute(iSubject, iAnatomy)
     if isempty(iAnatomy)
         iAnatomy = sSubject.iAnatomy;
     end
-    
+    % Progress bar
+    isProgress = bst_progress('IsVisible');
+    if ~isProgress
+        bst_progress('start', 'SPM', 'Generating canonical surfaces...');
+    end
+
     % ===== VERIFY FIDUCIALS IN MRI =====
     % Load MRI file
     MriFileBst = sSubject.Anatomy(iAnatomy).FileName;
@@ -128,7 +134,7 @@ function Compute(iSubject, iAnatomy)
 
     % ===== CALL SPM FUNCTIONS =====
     % Save MRI in .nii format
-    NiiFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_.nii');
+    NiiFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_canonical.nii');
     out_mri_nii(sMri, NiiFile);
     % Call SPM function
     spmMesh = spm_eeg_inv_mesh(NiiFile, 3);
@@ -164,6 +170,11 @@ function Compute(iSubject, iAnatomy)
     
     % Empty temporary folder
     gui_brainstorm('EmptyTempFolder');
+    % Close progress bar
+    if ~isProgress
+        bst_progress('stop');
+    end
+    isOk = 1;
 end
 
 
