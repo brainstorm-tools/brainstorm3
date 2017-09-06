@@ -81,6 +81,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     strMontage((strMontage == '(') | (strMontage == ')')) = [];
     strMontage = strtrim(strrep(strMontage, '  ', ' '));
+    % Bipolar montage?
+    isBipolar = ~isempty(strfind(strMontage, 'bipolar'));
     % If not creating a new channel file: montage output has to be compatible with curent channel structure
     isCompatibleChan = ~strcmpi(sMontage.Type, 'selection') && (~strcmpi(sMontage.Type, 'text') || all(sum(sMontage.Matrix,2) == 0));
     if ~isCreateChan && ~isCompatibleChan
@@ -134,7 +136,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % If the subject has default channel: Create new subject
                 if (sSubject.UseDefaultChannel > 0)
                     % Output subject name
-                    SubjectNameOut = [sSubject.Name '_' file_standardize(strMontage)];
+                    SubjectNameOut = [sSubject.Name '_' file_standardize(strrep(strMontage, '''', 'p'))];
                     % Get output subject
                     sSubjectOut = bst_get('Subject', SubjectNameOut, 1);
                     % Create new output subject
@@ -154,7 +156,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     iStudyOut = db_add_condition(sSubjectOut.Name, sInputs(iInput).Condition, 1);
                 else
                     % Output condition name
-                    ConditionOut = [sInputs(iInput).Condition, '_', file_standardize(strMontage)];
+                    ConditionOut = [sInputs(iInput).Condition, '_', file_standardize(strrep(strMontage, '''', 'p'))];
                     % Get output condition
                     [sStudyOut, iStudyOut] = bst_get('StudyWithCondition', [sSubject.Name '/' ConditionOut]);
                     % Create condition
@@ -177,15 +179,26 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     ChannelMatOut.Channel = repmat(db_template('channeldesc'), 0);
                     % Create list of output channels
                     for iChanOut = 1:length(iMatrixDisp)
+                        Loc = [];
                         % Name of the output channel
                         ChanNameOut = sMontage.DispNames{iMatrixDisp(iChanOut)};
                         % Try to look for it directly in the input file names
                         iInputChan = find(strcmpi({ChannelMat.Channel.Name}, ChanNameOut));
                         % If not: get the first sensor involved
                         if isempty(iInputChan)
-                            iTmp = find(sMontage.Matrix(iMatrixDisp(iChanOut),:) > 0);
-                            if ~isempty(iTmp)
-                                iInputChan = find(strcmpi({ChannelMat.Channel.Name}, sMontage.ChanNames{iTmp}));
+                            iTmpPos = find(sMontage.Matrix(iMatrixDisp(iChanOut),:) > 0);
+                            if (length(iTmpPos) == 1)
+                                iInputChan = find(strcmpi({ChannelMat.Channel.Name}, sMontage.ChanNames{iTmpPos}));
+                            end
+                            % For bipolar montages: Compute average position between the two contacts
+                            if isBipolar 
+                                iTmpNeg = find(sMontage.Matrix(iMatrixDisp(iChanOut),:) < 0);
+                                if (length(iTmpNeg) == 1)
+                                    iInputRef = find(strcmpi({ChannelMat.Channel.Name}, sMontage.ChanNames{iTmpNeg}));
+                                    if ~isempty(iInputRef)
+                                        Loc = (ChannelMat.Channel(iInputChan).Loc + ChannelMat.Channel(iInputRef).Loc) ./ 2;
+                                    end
+                                end
                             end
                         end
                         % Channel still not found: set to defaults
@@ -199,9 +212,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                             ChannelMatOut.Channel(iChanOut).Comment = ChannelMat.Channel(iInputChan).Comment;
                             ChannelMatOut.Channel(iChanOut).Type    = ChannelMat.Channel(iInputChan).Type;
                             ChannelMatOut.Channel(iChanOut).Group   = ChannelMat.Channel(iInputChan).Group;
-                            ChannelMatOut.Channel(iChanOut).Loc     = ChannelMat.Channel(iInputChan).Loc;
                             ChannelMatOut.Channel(iChanOut).Orient  = ChannelMat.Channel(iInputChan).Orient;
                             ChannelMatOut.Channel(iChanOut).Weight  = ChannelMat.Channel(iInputChan).Weight;
+                            % Set location (one channel, or average of two SEEG contacts)
+                            if ~isempty(Loc)
+                                ChannelMatOut.Channel(iChanOut).Loc = Loc;
+                            else
+                                ChannelMatOut.Channel(iChanOut).Loc = ChannelMat.Channel(iInputChan).Loc;
+                            end
                         end
                     end
                     % Save to channel study

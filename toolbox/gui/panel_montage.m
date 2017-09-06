@@ -1811,6 +1811,7 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
             end
             ChanNames = {ChannelMat.Channel(iChan).Name};
             Mod = upper(ChannelMat.Channel(iChan(1)).Type);
+            [AllGroups, AllTags, AllInd] = ParseSensorNames(ChannelMat.Channel(iChan));
 
             % === MONTAGE: ORIG ===
             % Create montage
@@ -1839,20 +1840,26 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
             sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (bipolar 1)[tmp]'];
             sMontage.Type      = 'text';
             sMontage.ChanNames = ChanNames;
-            sMontage.Matrix    = zeros(ceil(length(iChan)/2), length(iChan));
+            sMontage.Matrix    = zeros(0, length(iChan));
             iDisp = 1;
             for i = 1:2:length(ChanNames)
                 % Last pair is not complete: A1-A2, A3-A4, A4-A5
                 if (i == length(ChanNames))
-                    sMontage.DispNames{iDisp} = [ChanNames{i-1} '-' ChanNames{i}];
-                    sMontage.Matrix(iDisp, i-1) =  1;
-                    sMontage.Matrix(iDisp, i)   = -1;
+                    i1 = i-1;
+                    i2 = i;
                 % Last pair is complete: A1-A2, A3-A4, A5-A6
                 else
-                    sMontage.DispNames{iDisp} = [ChanNames{i} '-' ChanNames{i+1}];
-                    sMontage.Matrix(iDisp, i)   =  1;
-                    sMontage.Matrix(iDisp, i+1) = -1;
+                    i1 = i;
+                    i2 = i+1;
                 end
+                % SEEG: Skip if the two channels are not consecutive
+                if strcmpi(Mod, 'SEEG') && ~ismember(AllInd(i1) - AllInd(i2), [1,-1])
+                    continue;
+                end
+                % Create entry
+                sMontage.DispNames{iDisp} = [ChanNames{i1} '-' ChanNames{i2}];
+                sMontage.Matrix(iDisp, i1) =  1;
+                sMontage.Matrix(iDisp, i2) = -1;
                 iDisp = iDisp + 1;
             end
             % Add montage: orig
@@ -1869,9 +1876,14 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
             sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (bipolar 2)[tmp]'];
             sMontage.Type      = 'text';
             sMontage.ChanNames = ChanNames;
-            sMontage.Matrix    = zeros(length(iChan)-1, length(iChan));
+            sMontage.Matrix    = zeros(0, length(iChan));
             iDisp = 1;
             for i = 1:length(ChanNames)-1
+                % SEEG: Skip if the two channels are not consecutive
+                if strcmpi(Mod, 'SEEG') && ~ismember(AllInd(i) - AllInd(i+1), [1,-1])
+                    continue;
+                end
+                % Create entry
                 sMontage.DispNames{iDisp} = [ChanNames{i} '-' ChanNames{i+1}];
                 sMontage.Matrix(iDisp, i)   =  1;
                 sMontage.Matrix(iDisp, i+1) = -1;
