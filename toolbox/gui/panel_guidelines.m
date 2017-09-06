@@ -119,6 +119,10 @@ function SwitchPanel(command)
     end
     
     % === MOVE TO NEXT PANEL ===
+    % Remove existing panel
+    if (iPanel >= 1)
+        ctrl.jPanelContainer.remove(ctrl.jPanels(iPanel));
+    end
     % Switch according to command
     switch (command)
         case 'next',  iPanel = iPanel + 1;
@@ -127,10 +131,6 @@ function SwitchPanel(command)
     % If invalid panel: stop
     if (iPanel < 1) || (iPanel > length(ctrl.jPanels))
         return;
-    end
-    % Remove existing panel
-    if (iPanel >= 1)
-        ctrl.jPanelContainer.remove(ctrl.jPanels(iPanel));
     end
     % Add new panel
     ctrl.jPanelContainer.add(ctrl.jPanels(iPanel), BorderLayout.CENTER);

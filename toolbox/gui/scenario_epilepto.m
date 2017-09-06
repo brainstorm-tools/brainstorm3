@@ -70,7 +70,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Import anatomy', i));
     % Set subject name
     gui_component('Label', ctrl.jPanels(i), '', 'Subject name: ');
-    ctrl.jComboSubj = gui_component('ComboBox', ctrl.jPanels(i), 'tab', [], {' '});
+    ctrl.jComboSubj = gui_component('ComboBox', ctrl.jPanels(i), 'tab', [], {{' '}});
     ctrl.jComboSubj.setEditable(1);
     % Select subject MRI/pre
     gui_component('label', ctrl.jPanels(i), 'br', 'Pre-implantation MRI: ');
@@ -145,8 +145,8 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     % Bipolar montage
     gui_component('label', ctrl.jPanels(i), 'br', 'Electrode montage:');
     jButtonGroupMontage = ButtonGroup();
-    ctrl.jRadioMontageBip1 = gui_component('Radio', ctrl.jPanels(i), 'tab', '<HTML>Bipolar 1 <FONT color="#808080"></I>(eg. a2-a1, a4-a3, ...)<I><FONT>', jButtonGroupMontage);
-    ctrl.jRadioMontageBip2 = gui_component('Radio', ctrl.jPanels(i), 'br tab', '<HTML>Bipolar 2 <FONT color="#808080"></I>(eg. a2-a1, a3-2, a4-a3, ...)<I><FONT>', jButtonGroupMontage);
+    ctrl.jRadioMontageBip1 = gui_component('Radio', ctrl.jPanels(i), 'tab', '<HTML>Bipolar 1 <FONT color="#808080"></I>(eg. a1-a2, a3-a4, ...)<I><FONT>', jButtonGroupMontage);
+    ctrl.jRadioMontageBip2 = gui_component('Radio', ctrl.jPanels(i), 'br tab', '<HTML>Bipolar 2 <FONT color="#808080"></I>(eg. a1-a2, a2-a3, a3-a4, ...)<I><FONT>', jButtonGroupMontage);
     ctrl.jRadioMontageNone = gui_component('Radio', ctrl.jPanels(i), 'br tab', '<HTML>None <FONT color="#808080"></I>(keep original montage)<I><FONT>', jButtonGroupMontage);
     ctrl.jRadioMontageBip2.setSelected(1);
     % Callbacks
@@ -344,6 +344,8 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
         % Update database
         bst_set('Subject', iSubject, sSubject);
         panel_protocols('UpdateNode', 'Subject', iSubject);
+        % Save MRI pre as permanent default
+        db_surface_default(iSubject, 'Anatomy', 1, 0);
     end
     % Save for later
     GlobalData.Guidelines.SubjectName = SubjectName;
@@ -369,9 +371,11 @@ function ResetImportAnatomy()
     global GlobalData;
     ctrl = GlobalData.Guidelines.ctrl;
     % Get subject name
-    SubjectName = GlobalData.Guidelines.SubjectName;
-    [sSubject, iSubject] = bst_get('Subject', SubjectName);
+    SubjectName = char(ctrl.jComboSubj.getSelectedItem());
+    % Subject is found: delete its anatomy
     if ~isempty(SubjectName)
+        % Get subject
+        [sSubject, iSubject] = bst_get('Subject', SubjectName);
         % Delete anatomy
         if ~isempty(iSubject) && ~isempty(sSubject.Anatomy)
             % Ask confirmation
@@ -829,6 +833,10 @@ function ButtonRawEvent(strEvent)
     % Operations specific to the type of event
     switch (strEvent)
         case 'Onset'
+            % Current time point should not be zero
+            if isempty(GlobalData.UserTimeWindow.CurrentTime) || (GlobalData.UserTimeWindow.CurrentTime == 0)
+                return;
+            end
             % Reset time selection
             figure_timeseries('SetTimeSelectionLinked', hFig, []);
             % Delete existing markers
