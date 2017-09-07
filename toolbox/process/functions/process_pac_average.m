@@ -22,6 +22,10 @@ function varargout = process_pac_average( varargin )
 % Authors: Soheila Samiee, 2015-2017
 %   - 2.0: SS. Aug. 2017 
 %                - Imported in public brainstorm rep
+%   - 2.1: SS Sep. 2017
+%                - Bug fix for averaging multiple files with different 
+%                number of sources
+%
 
 eval(macro_method);
 end
@@ -152,7 +156,12 @@ function [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat, usePhase)
             for iFile = 2:N
                 tmp = in_bst_timefreq(sInput(iFile).FileName, 0);
                 if ~isequal(tmp.Time,tpacMat.Time) || ~isequal(tmp.sPAC.HighFreqs, tpacMat.sPAC.HighFreqs)
-                    Message = ['Format of file#',num2str(iFile),' do not match the first file'];
+                    Message = ['Format of file#',num2str(iFile),' does not match the first file'];
+                    bst_report('Error', 'process_pac_average', sInput, Message);
+                    return;
+                end 
+                if ~isequal(size(tpac,1), size(tmp.sPAC.DynamicPhase,1))
+                    Message = ['Number of sources in File #',num2str(iFile),' is not the same as previous files -- average on sources before averaging files'];
                     bst_report('Error', 'process_pac_average', sInput, Message);
                     return;
                 end 
@@ -161,7 +170,6 @@ function [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat, usePhase)
                 else
                     tpac = tpac + tmp.sPAC.DynamicPAC/N;
                 end
-%               sample(:,:,iFile) = tmp.sPAC.DynamicPAC;
                 Nesting = cat(5,Nesting,tmp.sPAC.DynamicNesting);
             end
             tpacMat.sPAC.DynamicPAC = abs(tpac);
@@ -179,12 +187,6 @@ function OutputFiles = save_pac_files(sProcess, sInput, FileTag, tag, tpacMat, i
 
     % Comment
     tpacMat.Comment = [tpacMat.Comment, ' ', tag];
-    %     % Output filename: add file tag
-    %     FileTag = strtrim(strrep(tag, '|', ''));
-    %     pathName = file_fullpath(sInput(1).FileName);
-    %
-    %     % Preparing the output file
-    %     OutputFiles{1} = strrep(pathName, '.mat', ['_' FileTag '.mat']);
 
     % Preparing the output file
     OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sOutputStudy.FileName), FileTag); 
