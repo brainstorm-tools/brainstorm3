@@ -2,12 +2,12 @@ function varargout = process_pac_average( varargin )
 % PROCESS_PAC_AVERAGE: average pac maps.
 %
 % @=============================================================================
-% This software is part of the Brainstorm software:
+% This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2014 University of Southern California & McGill University
+% Copyright (c)2000-2017 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
-% as published by the Free Software Foundation. Further details on the GPL
+% as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
 % 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
@@ -22,6 +22,10 @@ function varargout = process_pac_average( varargin )
 % Authors: Soheila Samiee, 2015-2017
 %   - 2.0: SS. Aug. 2017 
 %                - Imported in public brainstorm rep
+%   - 2.1: SS Sep. 2017
+%                - Bug fix for averaging multiple files with different 
+%                number of sources
+%
 
 eval(macro_method);
 end
