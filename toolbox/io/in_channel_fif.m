@@ -345,6 +345,13 @@ ChannelMat.MegRefCoef = MegRefCoef;
 % Signal Space Projectors
 if isfield(info, 'projs') && ~isempty(info.projs)
     ChannelMat.Projector = in_projector_fif(info.projs, {ChannelMat.Channel.Name});
+    % Disable projectors by default
+    if ~isempty(ChannelMat.Projector)
+        iProjNotApplied = find([ChannelMat.Projector.Status] == 1);
+        if ~isempty(iProjNotApplied)
+            [ChannelMat.Projector(iProjNotApplied).Status] = deal(0);
+        end
+    end
 end
 
 
