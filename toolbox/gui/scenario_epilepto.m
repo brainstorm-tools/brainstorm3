@@ -180,23 +180,10 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jTextTimeResolution = gui_component('texttime', ctrl.jPanels(i), 'tab', '0.2');
     gui_component('label', ctrl.jPanels(i), 'br', 'Propagation threshold (p-value): ');
     ctrl.jTextThDelay = gui_component('texttime', ctrl.jPanels(i), 'tab', '0.05');
-   
+    % Callbacks
+    ctrl.fcnValidate{i} = @(c)ValidateEpileptogenicity();
+    ctrl.fcnReset{i}    = @(c)ResetEpileptogenicity();
     
-% Patient{I}.FreqBand     = [120 200];  % Defined by looking at the TF maps (using the same for the three seizures)
-% Patient{I}.TimeConstant = 3;          % Duration of the sliding window of interest: 3s
-% Patient{I}.Latency      = 0:2:20;     % For files #2 and #3, will compute delay maps with sliding windows of 3s between 0s and 20s post-seizure
-% Patient{I}.Prefix       = '';
-% ThDelay = 0.05;
-% 
-% S.TimeWindow     = (0 : 0.01 : Patient{i0}.TimeConstant+1+max(Patient{i0}.Latency));
-% S.FreqBand       = Patient{i0}.FreqBand;
-% S.HorizonT       = Patient{i0}.TimeConstant;
-% S.Latency        = 0;        % No propagation: Study only the first 3s (TimeConstant) after the Onset marker
-% S.TimeResolution = 0.2;
-% S.ThDelay        = ThDelay;
-% S.AR             = 0;
-% S.FileName       = Patient{i0}.Prefix;
-% S.OutputType     = OutputType;
     % Save references to all the controls
     GlobalData.Guidelines.ctrl = ctrl;
 end
@@ -1257,6 +1244,96 @@ function ResetTimefreq()
 end
 
 
+%% ==========================================================================================
+%  ===== TIME-FREQ ==========================================================================
+%  ==========================================================================================
+
+%% ===== EPILEPTOGENICIY: VALIDATE =====
+function [isValidated, errMsg] = ValidateEpileptogenicity()
+    global GlobalData;
+    ctrl = GlobalData.Guidelines.ctrl;
+    % Initialize returned variables
+    isValidated = 0;
+    errMsg = '';
+    % Get options
+    FreqBand       = num2str(char(ctrl.jTextFreqBand.getSelectedItem()));
+    TimeConstant   = num2str(char(ctrl.jTextTimeConstant.getSelectedItem()));
+    Latency        = eval(char(ctrl.jTextLatency.getSelectedItem()));
+    TimeResolution = num2str(char(ctrl.jTextTimeResolution.getSelectedItem()));
+    ThDelay        = num2str(char(ctrl.jTextThDelay.getSelectedItem()));
+    % Check inputs
+    if (length(FreqBand) < 2)
+        errMsg = 'Invalid frequency band.';
+        return;
+    elseif isempty(TimeConstant) || (TimeConstant <= 0)
+        errMsg = 'Invalid time constant.';
+        return;
+    elseif isempty(Latency)
+        errMsg = 'Invalid list of latencies.';
+        return;
+    elseif isempty(TimeResolution) || (TimeResolution <= 0)
+        errMsg = 'Invalid time resolution.';
+        return;
+    elseif isempty(ThDelay) || (ThDelay <= 0) || (ThDelay >= 1)
+        errMsg = 'Invalid propagation threshold.';
+        return;
+    end
+    % Get output type
+    OutputType
+    % Get subject name
+    SubjectName = GlobalData.Guidelines.SubjectName;
+    if isempty(SubjectName)
+        return
+    end
+    % Get the folder "Epileptogenicity" for this subject
+    Condition = 'Epileptogenicity';
+    [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
+    % Condition does not exist or does not contain any of the files of interest: run computation
+    if isempty(sStudy) || (isempty(sStudy.Stat) && isempty(sStudy.Result))
+        % Process: Epileptogenicity index (A=Baseline,B=Seizure)
+        sFiles = bst_process('CallProcess', 'process_epilepsy_index2', GlobalData.Guidelines.BaselineFiles{iFile}, GlobalData.Guidelines.OnsetFiles{iFile} , ...
+            'sensortypes',    'SEEG', ...
+            'freqband',       [120, 200], ...
+            'latency',        '0:2:20', ...
+            'timeconstant',   3, ...
+            'timeresolution', 0.199, ...
+            'thdelay',        0.05, ...
+            'type',           OutputType);  % Surface
+        
+        % Add new folder
+        iStudy = db_add_condition(SubjectName, Condition, 1);
+        % Copy channel file from first file
+        db_set_channel(iStudy, sInputsB(1).ChannelFile, 1, 0);
+    end
+    
+    % Unload everything
+    bst_memory('UnloadAll', 'Forced');
+end
+
+
+%% ===== EPILEPTOGENICIY: RESET =====
+function ResetEpileptogenicity()
+    global GlobalData;
+    % Get subject name
+    SubjectName = GlobalData.Guidelines.SubjectName;
+    % Delete the folder "Epileptogenicity" for this subject
+    if ~isempty(SubjectName)
+        % Default condition name
+        Condition = 'Epileptogenicity';
+        % Get condition asked by user
+        [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
+        % If there are no files: nothing to do
+        if isempty(iStudy) || (isempty(sStudy.Stat) && isempty(sStudy.Result))
+            return;
+        end
+        % User confirmation
+        if ~java_dialog('confirm', sprintf('Remove all the epileptogenicity maps (%d files)?', length(sStudy.Stat) + length(sStudy.Result)))
+            return;
+        end
+        % Delete folder
+        db_delete_studies(iStudy);
+    end
+end
 
 
 %% ==========================================================================================

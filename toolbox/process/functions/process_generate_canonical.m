@@ -1,8 +1,9 @@
 function varargout = process_generate_canonical( varargin )
 % PROCESS_GENERATE_CANONICAL: Generate SPM canonical surface.
 %
-% USAGE:  OutputFiles = process_generate_canonical('Run',     sProcess, sInputs)
-%                       process_generate_canonical('Compute', iSubject)
+% USAGE:     OutputFiles = process_generate_canonical('Run',     sProcess, sInputs)
+%         [isOk, errMsg] = process_generate_canonical('Compute', iSubject, iAnatomy=[default])
+%                          process_generate_canonical('ComputeInteractive', iSubject, iAnatomy=[default])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -70,47 +71,51 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     % Call processing function
-    Compute(iSubject);
+    [isOk, errMsg] = Compute(iSubject);
+    % Handling errors
+    if ~isOk
+        bst_report('Error', sProcess, [], errMsg);
+    elseif ~isempty(errMsg)
+        bst_report('Warning', sProcess, [], errMsg);
+    end
     % Return an empty structure
     OutputFiles = {'import'};
 end
 
 
 %% ===== COMPUTE CANONICAL SURFACES =====
-function isOk = Compute(iSubject, iAnatomy)
+function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     isOk = 0;
+    errMsg = '';
     % Parse inputs
     if (nargin < 2) || isempty(iAnatomy)
         iAnatomy = [];
     end
     % Check if SPM is in the path
     if ~exist('spm_eeg_inv_mesh', 'file')
-        error('SPM must be in the Matlab path to use this feature.');
+        errMsg = 'SPM must be in the Matlab path to use this feature.';
+        return;
     end
     if ~exist('ft_read_headshape', 'file')
-        error('SPM subfolders must be in the Matlab path to use this feature (missing: spm12/external/fieldtrip/fileio).');
+        errMsg = 'SPM subfolders must be in the Matlab path to use this feature (missing: spm12/external/fieldtrip/fileio).';
+        return;
     end
     
     % ===== GET SUBJECT =====
     % Get subject 
     [sSubject, iSubject] = bst_get('Subject', iSubject);
     if isempty(sSubject)
-        bst_report('Error', sProcess, [], 'Subject does not exist.');
+        errMsg = 'Subject does not exist.';
         return
     end
     % Check if a MRI is available for the subject
     if isempty(sSubject.Anatomy)
-        bst_report('Error', sProcess, [], ['No MRI available for subject "' SubjectName '".']);
+        errMsg = ['No MRI available for subject "' SubjectName '".'];
         return
     end
     % Get default MRI if not specified
     if isempty(iAnatomy)
         iAnatomy = sSubject.iAnatomy;
-    end
-    % Progress bar
-    isProgress = bst_progress('IsVisible');
-    if ~isProgress
-        bst_progress('start', 'SPM', 'Generating canonical surfaces...');
     end
 
     % ===== VERIFY FIDUCIALS IN MRI =====
@@ -120,17 +125,15 @@ function isOk = Compute(iSubject, iAnatomy)
     % If the SCS transformation is not defined: compute MNI transformation to get a default one
     if isempty(sMri) || ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'NAS') || ~isfield(sMri.SCS, 'LPA') || ~isfield(sMri.SCS, 'RPA') || (length(sMri.SCS.NAS)~=3) || (length(sMri.SCS.LPA)~=3) || (length(sMri.SCS.RPA)~=3) || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri.SCS, 'T') || isempty(sMri.SCS.T)
         % Issue warning
-        bst_report('Warning', 'process_generate_canonical', [], 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.'); 
+        errMsg = 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.'; 
         % Compute MNI transformation
-        [sMri, errMsg] = bst_normalize_mni(MriFileBst);
+        [sMri, errNorm] = bst_normalize_mni(MriFileBst);
         % Handle errors
-        if ~isempty(errMsg)
-            bst_report('Warning', 'process_generate_canonical', [], ['Error trying to compute the MNI transformation: ' 10 errMsg 10 ...
-                'The surfaces will not be properly aligned with the MRI.']);
+        if ~isempty(errNorm)
+            errMsg = [errMsg 10 'Error trying to compute the MNI transformation: ' 10 errNorm 10 ...
+                'The surfaces will not be properly aligned with the MRI.'];
         end
     end
-%     % Delete any leftover NIFTI header (we are not trying to save a .nii file with a correct subject transformation)
-%     sMri.Header = [];
 
     % ===== CALL SPM FUNCTIONS =====
     % Save MRI in .nii format
@@ -170,11 +173,24 @@ function isOk = Compute(iSubject, iAnatomy)
     
     % Empty temporary folder
     gui_brainstorm('EmptyTempFolder');
-    % Close progress bar
-    if ~isProgress
-        bst_progress('stop');
-    end
     isOk = 1;
+end
+
+
+%% ===== COMPUTE/INTERACTIVE =====
+function ComputeInteractive(varargin) %#ok<DEFNU>
+    % Open progress bar
+    bst_progress('start', 'SPM', 'Generating canonical surfaces...');
+    % Compute surfaces
+    [isOk, errMsg] = Compute(varargin{:});
+    % Error handling
+    if ~isOk
+        bst_error(errMsg, 'SPM canonincal surfaces', 0);
+    elseif ~isempty(errMsg)
+        java_dialog('msgbox', ['Warning: ' errMsg]);
+    end
+    % Close progress bar
+    bst_progress('stop');
 end
 
 

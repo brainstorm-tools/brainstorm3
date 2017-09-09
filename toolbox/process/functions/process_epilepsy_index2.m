@@ -254,6 +254,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     ImaGIN_Epileptogenicity(OPTIONS);
     % Restore initial directory
     cd(curDir);
+    % Close all SPM figures
+    close([spm_figure('FindWin','Menu'), spm_figure('FindWin','Graphics'), spm_figure('FindWin','Interactive')]);
     
     % ===== OUTPUT FOLDER =====
     % Default condition name
@@ -287,10 +289,9 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % Import all the stat files
     for i = 1:length(listFiles)
         % File comment = File name
-        Comment = listFiles(i).name;
+        [tmp, Comment] = bst_fileparts(listFiles(i).name);
         % Import file
         tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment);
-        % OutputFiles = cat(2, OutputFiles, tmpFiles);
     end
 end
 

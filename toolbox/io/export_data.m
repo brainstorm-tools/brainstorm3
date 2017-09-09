@@ -183,7 +183,10 @@ elseif isempty(FileFormat)
     end
 end
 % Show progress bar
-bst_progress('start', 'Export EEG/MEG recordings', 'Exporting file...');
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'Export EEG/MEG recordings', 'Exporting file...');
+end
 % Option for input raw file
 if isRawIn
     ImportOptions = db_template('ImportOptions');
@@ -227,7 +230,9 @@ if isRawIn && isRawOut
     nSamples = sFileOut.prop.samples(2) - sFileOut.prop.samples(1) + 1;
     nBlocks = ceil(nSamples / EpochSize);
     % Show progress bar
-    bst_progress('start', 'Export EEG/MEG recordings', 'Exporting file...', 0, nBlocks);
+    if ~isProgress
+        bst_progress('start', 'Export EEG/MEG recordings', 'Exporting file...', 0, nBlocks);
+    end
     % Copy files by block
     for iBlock = 1:nBlocks
         % Get sample indices
@@ -237,7 +242,9 @@ if isRawIn && isRawOut
         % Save to output file
         sFileOut = out_fwrite(sFileOut, ChannelMat, 1, SamplesBounds, iChannels, F);
         % Increase progress bar
-        bst_progress('inc', 1);
+        if ~isProgress
+            bst_progress('inc', 1);
+        end
     end
 
 % ===== SAVE FULL FILES =====
@@ -294,7 +301,9 @@ else
 end
     
 % Hide progress bar
-bst_progress('stop');
+if ~isProgress
+    bst_progress('stop');
+end
 
 end
 

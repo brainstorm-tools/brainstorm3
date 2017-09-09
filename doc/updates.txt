@@ -1,12 +1,14 @@
 ---------------------------------------------------------------
 September 2017
 - IO: Elekta recordings: Default acquisition SSP are not applied by default anymore
+- New process: Epilepsy > Epileptogenicity index
+- New process: Undo 4D/CTF noise compensation
 ---------------------------------------------------------------
 August 2017
 - GUI: Raw viewer: Optimized scrolling speed with new option "Downsample recordings"
 - GUI: New menu "Guidelines" for computing epileptogenicity maps
 - GUI: Added colormaps "tpac" and "gin"
-- Process: Added dPAC processes
+- Process: Added tPAC processes
 - Process: Added Phase transfer entropy
 - Process: Added Multitaper time-frequency decomposition (FieldTrip: ft_mtmconvol)
 - NIRS: Distribution of Nirstorm toolbox and tutorial
