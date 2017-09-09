@@ -100,11 +100,13 @@ end
 % Read detailed information from .grad and .elec fields
 ChannelMat = read_fieldtrip_chaninfo(ChannelMat, ftMat);
 
-% Check that all the channel types are set
-for i = 1:nChannels
-    if isempty(ChannelMat.Channel(i).Type)
-        ChannelMat.Channel(i).Type = 'OTHER';
-    end
+% If none of the channels are set, make it all "EEG"
+isEmptyType = cellfun(@isempty, {ChannelMat.Channel.Type});
+if all(isEmptyType)
+    [ChannelMat.Channel.Type] = deal('EEG');
+% If only a few are empty: tag them as "OTHER"
+elseif any(isEmptyType)
+    [ChannelMat.Channel(isEmptyType).Type] = deal('OTHER');
 end
 
 
