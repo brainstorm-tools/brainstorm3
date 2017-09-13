@@ -668,13 +668,24 @@ end
 % USAGE:  SetTimeSelectionManual(hFig, newSelection)
 %         SetTimeSelectionManual(hFig)
 function SetTimeSelectionManual(hFig, newSelection)
+    global GlobalData;
+    % If raw viewer: allow redimensioning of current page
+    if ~isempty(GlobalData.FullTimeWindow) && ~isempty(GlobalData.FullTimeWindow.Epochs) && ~isempty(GlobalData.FullTimeWindow.CurrentEpoch)
+        rawTimeWindow = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
+    else
+        rawTimeWindow = [];
+    end
     % Get the time vector for this figure
     TimeVector = getappdata(hFig, 'TimeVector');
     % Ask for a time window
     if (nargin < 2) || isempty(newSelection)
-        newSelection = panel_time('InputTimeWindow', TimeVector([1,end]), 'Set time selection');
+        [newSelection, isUpdatedTime] = panel_time('InputTimeWindow', TimeVector([1,end]), 'Set time selection', [], [], rawTimeWindow);
         if isempty(newSelection)
             return
+        end
+        % Get the updated time vector
+        if isUpdatedTime
+            TimeVector = getappdata(hFig, 'TimeVector');
         end
     end
     % Select the closest point in time vector
