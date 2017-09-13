@@ -1267,6 +1267,10 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
             TessInfo(iTess).Data = [];
             TessInfo(iTess).DataWmat = [];
     end
+    % Grid smoothing: enable by default, except for time units
+    if isAnatomy
+        TessInfo(iTess).DataSource.GridSmooth = isempty(DisplayUnits) || ~ismember(DisplayUnits, {'s','ms'});
+    end
     % Add colormap of the surface to the figure
     if ~isempty(ColormapType)
         TessInfo(iTess).ColormapType = ColormapType;
@@ -1965,7 +1969,7 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
         % === INTERPOLATION MRI<->GRID ===
         if isVolumeGrid
             % Compute interpolation
-            MriInterp = bst_memory('GetGrid2MriInterp', iDS, iResult);
+            MriInterp = bst_memory('GetGrid2MriInterp', iDS, iResult, TessInfo.DataSource.GridSmooth);
         % === INTERPOLATION MRI<->SURFACE ===
         else
             [sSurf, iSurf] = bst_memory('LoadSurface', SurfaceFile);

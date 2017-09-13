@@ -12,6 +12,7 @@ function varargout = figure_mri(varargin)
 %[hI,hCH,hCV] = figure_mri('SetupView',               hAxes, xySize, imgSize, orientLabels)
 %         XYZ = figure_mri('GetLocation',             cs, sMri, Handles)
 %               figure_mri('SetLocation',             cs, sMri, Handles, XYZ)
+%               figure_mri('JumpMaximum',             hFig)
 %               figure_mri('MriTransform',            hButton, Transf, iDim)
 %               figure_mri('UpdateMriDisplay',        hFig, dims)
 %               figure_mri('UpdateSurfaceColor',      hFig)
@@ -583,6 +584,10 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         SetLabelVisible(hFig, []);
                     end
+                % M : Jump to maximum
+                case 'm'
+                    JumpMaximum(hFig);
+                    
                 % === SCROLL MRI CUTS ===
                 case {'x','y','z'}
                     % Amount to scroll: +1 (no modifier) or -1 (shift key)
@@ -804,7 +809,8 @@ function DisplayFigurePopup(hFig)
     ColormapInfo = getappdata(hFig, 'Colormap');
     isOverlay = any(ismember({'source','stat1','stat2','timefreq'}, ColormapInfo.AllTypes));
     Handles = bst_figures('GetFigureHandles', hFig);
-        
+    TessInfo = getappdata(hFig, 'Surface');
+    
     % ==== Menu colormaps ====
     % Create the colormaps menus
     bst_colormaps('CreateAllMenus', jPopup, hFig, 0);
@@ -814,18 +820,21 @@ function DisplayFigurePopup(hFig)
     if isOverlay 
         MriOptions = bst_get('MriOptions');
         jMenuMri = gui_component('Menu', jPopup, [], 'Smooth sources', IconLoader.ICON_ANATOMY);
-        jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'None', [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 0));
-        jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 1));
-        jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 2));
-        jItem3 = gui_component('radiomenuitem', jMenuMri, [], '3',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 3));
-        jItem4 = gui_component('radiomenuitem', jMenuMri, [], '4',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 4));
-        jItem5 = gui_component('radiomenuitem', jMenuMri, [], '5',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 5));
+        jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: None', [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 0));
+        jItem1 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 1',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 1));
+        jItem2 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 2',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 2));
+        jItem3 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 3',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 3));
+        jItem4 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 4',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 4));
+        jItem5 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 5',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 5));
         jItem0.setSelected(MriOptions.OverlaySmooth == 0);
         jItem1.setSelected(MriOptions.OverlaySmooth == 1);
         jItem2.setSelected(MriOptions.OverlaySmooth == 2);
         jItem3.setSelected(MriOptions.OverlaySmooth == 3);
         jItem4.setSelected(MriOptions.OverlaySmooth == 4);
         jItem5.setSelected(MriOptions.OverlaySmooth == 5);
+        jMenuMri.addSeparator();
+        jCheck = gui_component('checkboxmenuitem', jMenuMri, [], 'Grid interpolation', [], [], @(h,ev)figure_3d('SetGridSmooth', hFig, ~TessInfo.DataSource.GridSmooth));
+        jCheck.setSelected(TessInfo.DataSource.GridSmooth);
 %         jMenuMri = gui_component('Menu', jPopup, [], 'Sources resolution', IconLoader.ICON_ANATOMY);
 %         jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 1));
 %         jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 2));
@@ -874,6 +883,10 @@ function DisplayFigurePopup(hFig)
         jItem.setAccelerator(KeyStroke.getKeyStroke('=', 0));
         jItem = gui_component('MenuItem', jMenuView, [], 'Apply SCS coordinates to all figures', [], [], @(h,ev)ApplyCoordsToAllFigures(hFig, 'scs'));
         jItem.setAccelerator(KeyStroke.getKeyStroke('*', 0));
+        if isOverlay
+            jItem = gui_component('MenuItem', jMenuView, [], 'Find maximum', [], [], @(h,ev)JumpMaximum(hFig));
+            jItem.setAccelerator(KeyStroke.getKeyStroke('m', 0));
+        end
     
     % ==== Menu SNAPSHOT ====
     jMenuSave = gui_component('Menu', jPopup, [], 'Snapshot', IconLoader.ICON_SNAPSHOT);
@@ -1054,6 +1067,25 @@ function SetLocation(cs, sMri, Handles, XYZ)
     Handles.jSliderSagittal.setValue(XYZ(1));
     Handles.jSliderCoronal.setValue(XYZ(2));
     Handles.jSliderAxial.setValue(XYZ(3));
+end
+
+
+%% ===== JUMP TO MAXIMUM =====
+function JumpMaximum(hFig)
+    % Get figure data
+    TessInfo = getappdata(hFig, 'Surface');
+    if isempty(TessInfo) || ~isfield(TessInfo, 'OverlayCube') || isempty(TessInfo.OverlayCube)
+        return;
+    end
+    % Find maximum
+    [valMax, iMax] = max(TessInfo.OverlayCube(:));
+    if isempty(iMax)
+        return;
+    end
+    % Convert index to voxel indices
+    [XYZ(1), XYZ(2), XYZ(3)] = ind2sub(size(TessInfo.OverlayCube), iMax(1));
+    % Set new location to maximum
+    SetLocation('voxel', hFig, [], XYZ);  
 end
 
 
