@@ -25,7 +25,7 @@ function varargout = panel_time(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -406,12 +406,14 @@ end
 
 
 %% ===== INPUT TIME WINDOW =====
-% USAGE:  TimeWindow = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow, timeUnit)
-%         TimeWindow = InputTimeWindow(maxTimeWindow, Comment)
-function TimeWindow = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow, timeUnit) %#ok<DEFNU>
-    % No default time window: offer the whole time
-    if (nargin < 3) || isempty(defTimeWindow)
-        defTimeWindow = maxTimeWindow;
+% USAGE:  [TimeWindow, isUpdatedTime] = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow=[maxTimeWindow], timeUnit=[detect], rawTimeWindow=[])
+%         [TimeWindow, isUpdatedTime] = InputTimeWindow(maxTimeWindow, Comment)
+function [TimeWindow, isUpdatedTime] = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow, timeUnit, rawTimeWindow) %#ok<DEFNU>
+    % Initialize returned value
+    isUpdatedTime = 0;
+    % No expandable time window
+    if (nargin < 5) || isempty(rawTimeWindow)
+        rawTimeWindow = [];
     end
     % No time units: use the maximum time window to define it
     if (nargin < 4) || isempty(timeUnit)
@@ -420,6 +422,10 @@ function TimeWindow = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow, tim
         else
             timeUnit = 'ms';
         end
+    end
+    % No default time window: offer the whole time
+    if (nargin < 3) || isempty(defTimeWindow)
+        defTimeWindow = maxTimeWindow;
     end
     % Get time factor
     if strcmpi(timeUnit, 's')
@@ -442,8 +448,26 @@ function TimeWindow = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow, tim
         % Check values
         tStart = str2num(res{1}) ./ timeFactor;
         tStop = str2num(res{2}) ./ timeFactor;
+        % If the requested selection is not available in the current page
         if isempty(tStart) || isempty(tStop) || (tStart >= tStop) || (tStart < maxTimeWindow(1)-1e-6) || (tStop > maxTimeWindow(end)+1e-6)
-            java_dialog('warning', 'Invalid time window');
+            % If the requested selection is available in the file: adjust current page
+            if ~isempty(rawTimeWindow) && (tStart >= rawTimeWindow(1)-1e-6) && (tStop <= rawTimeWindow(end)+1e-6)
+                timeLength = tStop - tStart;
+                newWindow = [max(tStart - 0.1 * timeLength, rawTimeWindow(1)), ...
+                             min(tStop  + 0.1 * timeLength, rawTimeWindow(end))];
+                % Change time start AND duration
+                if (timeLength > maxTimeWindow(end) - maxTimeWindow(1))
+                    panel_record('SetStartTime', newWindow(1), [], 0);
+                    panel_record('SetTimeLength', newWindow(2)-newWindow(1), 1);
+                % Change time start only
+                else
+                    panel_record('SetStartTime', newWindow(1), [], 1);
+                end
+                validTime = 1;
+                isUpdatedTime = 1;
+            else
+                java_dialog('warning', 'Invalid time window.');
+            end
         else
             validTime = 1;
         end
