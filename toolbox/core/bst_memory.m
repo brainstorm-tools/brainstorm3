@@ -267,8 +267,12 @@ end
 
 
 %% ===== GET INTERPOLATION GRID-MRI =====
-function grid2mri_interp = GetGrid2MriInterp(iDS, iResult) %#ok<DEFNU>
+function grid2mri_interp = GetGrid2MriInterp(iDS, iResult, GridSmooth) %#ok<DEFNU>
     global GlobalData;
+    % Default grid smooth: yes
+    if (nargin < 3) || isempty(GridSmooth)
+        GridSmooth = 1;
+    end
     % If matrix was already computed: return it
     if ~isempty(GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp)
         grid2mri_interp = GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp;
@@ -284,7 +288,7 @@ function grid2mri_interp = GetGrid2MriInterp(iDS, iResult) %#ok<DEFNU>
             case 'volume'
                 GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
                 % Compute interpolation
-                grid2mri_interp = grid_interp_mri(GridLoc, sMri, SurfaceFile, 1);
+                grid2mri_interp = grid_interp_mri(GridLoc, sMri, SurfaceFile, 1, [], [], GridSmooth);
             case 'mixed'
                 % Compute the surface interpolation
                 tess2mri_interp = tess_interp_mri(SurfaceFile, sMri);
@@ -302,7 +306,7 @@ function grid2mri_interp = GetGrid2MriInterp(iDS, iResult) %#ok<DEFNU>
                     switch (sScouts(i).Region(2))
                         case 'V'
                             GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc(sScouts(i).GridRows,:);
-                            grid2mri_interp(:,iGrid) = grid_interp_mri(GridLoc, sMri, SurfaceFile, 1);
+                            grid2mri_interp(:,iGrid) = grid_interp_mri(GridLoc, sMri, SurfaceFile, 1, [], [], GridSmooth);
                         case 'S'
                             grid2mri_interp(:,iGrid) = tess2mri_interp(:, sScouts(i).Vertices);
                     end

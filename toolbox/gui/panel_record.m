@@ -2130,7 +2130,6 @@ function EventOccurAdd(iEvent)
     % Select event
     SetSelectedEvent(iEvent, iOccur);
     % Update figures
-    %ReplotFigures();
     ReplotEvents();
 end
 

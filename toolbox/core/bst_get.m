@@ -1247,14 +1247,14 @@ switch contextName
             % Remove EDF and BDF from the default list
             defList = setdiff(defList, {'EDF','BDF','KDF'});
             % Get default modality
-            if any(ismember({'MEG','MEG GRAD','MEG MAG'}, defList))
+            if ismember('SEEG', defList)
+                argout3 = 'SEEG';
+            elseif ismember('ECOG', defList)
+                argout3 = 'ECOG';
+            elseif any(ismember({'MEG','MEG GRAD','MEG MAG'}, defList))
                 argout3 = 'MEG';
             elseif ismember('EEG', defList)
                 argout3 = 'EEG';
-            elseif ismember('ECOG', defList)
-                argout3 = 'ECOG';
-            elseif ismember('SEEG', defList)
-                argout3 = 'SEEG';
             elseif ismember('NIRS', defList)
                 argout3 = 'NIRS';
             else

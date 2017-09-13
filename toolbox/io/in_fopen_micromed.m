@@ -444,6 +444,9 @@ for iChan = 1:nChannels
     ChannelMat.Channel(iChan).Loc = [sFile.header.electrode(iChan).x; ...
                                      sFile.header.electrode(iChan).y; ...
                                      sFile.header.electrode(iChan).z];
+    if isequal(ChannelMat.Channel(iChan).Loc, [0;0;0])
+        ChannelMat.Channel(iChan).Loc = [];
+    end
     % Comment = reference
     ChannelMat.Channel(iChan).Comment = hdr.electrode(iChan).reference;
     % Fields that are not relevant here

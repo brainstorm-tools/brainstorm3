@@ -56,6 +56,8 @@ function [bstPanelNew, panelName] = CreatePanel(ScenarioName) %#ok<DEFNU>
     ctrl.jButtonNext = gui_component('button', jPanelControl, 'br', '>>', buttonFormat, [], @(h,ev)SwitchPanel('next'));
     ctrl.jLabelStep  = gui_component('label', jPanelControl, 'br hfill', sprintf('0 / %d', length(ctrl.jPanels)));
     ctrl.jLabelStep.setHorizontalAlignment(JTextField.CENTER);
+    gui_component('label', jPanelControl, 'br', ' ');
+    ctrl.jButtonSkip = gui_component('button', jPanelControl, 'br', '<HTML><FONT COLOR="#808080"><I>Skip</I></FONT>', buttonFormat, [], @(h,ev)SwitchPanel('skip'));
     
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, ...
@@ -117,15 +119,20 @@ function SwitchPanel(command)
             return;
         end
     end
+    % If this is the last panel and moving forward: stop
+    if (iPanel == length(ctrl.jPanels)) && strcmpi(command, 'next')
+        return;
+    end
     
     % === MOVE TO NEXT PANEL ===
     % Remove existing panel
-    if (iPanel >= 1)
+    if (iPanel >= 1) && (iPanel <= length(ctrl.jPanels))
         ctrl.jPanelContainer.remove(ctrl.jPanels(iPanel));
     end
     % Switch according to command
     switch (command)
         case 'next',  iPanel = iPanel + 1;
+        case 'skip',  iPanel = iPanel + 1;
         case 'prev',  iPanel = iPanel - 1;
     end
     % If invalid panel: stop
@@ -145,6 +152,8 @@ function SwitchPanel(command)
     else
         ctrl.jButtonPrev.setEnabled(1);
     end
+    % Show/Hide Skip button
+    ctrl.jButtonSkip.setVisible(ctrl.isSkip(iPanel));
 %     % Last panel: Disable next button
 %     if (iPanel == length(ctrl.jPanels))
 %         ctrl.jButtonNext.setEnabled(0);

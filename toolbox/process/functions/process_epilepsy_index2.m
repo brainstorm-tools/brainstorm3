@@ -259,7 +259,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     
     % ===== OUTPUT FOLDER =====
     % Default condition name
-    Condition = 'Epileptogenicity';
+    Condition = ['Epileptogenicity_' OPTIONS.OutputType];
     % Get condition asked by user
     [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
     % Condition does not exist: create it
@@ -279,7 +279,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         [tmp, Comment] = bst_fileparts(listFiles(i).folder);
         Comment = strrep(Comment, 'SPM_', '');
         % Import file
-        tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment);
+        tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment, 't');
         OutputFiles = cat(2, OutputFiles, tmpFiles);
     end
     
@@ -291,7 +291,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % File comment = File name
         [tmp, Comment] = bst_fileparts(listFiles(i).name);
         % Import file
-        tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment);
+        tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment, 's');
     end
 end
 

@@ -209,35 +209,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
     end
 
-    %% ===== TOGGLE CHECKBOX ======
-    function [i, newStatus] = ToggleCheck(ev)
-        i = [];
-        newStatus = [];
-        % Ignore all the clicks if the JList is disabled
-        if ~ev.getSource().isEnabled()
-            return
-        end
-        % Only consider that it was selected if it was clicked next to the left of the component
-        if (ev.getPoint().getX() > 17)
-            return;
-        end
-        % Get selected element
-        jList = ev.getSource();
-        i    = jList.locationToIndex(ev.getPoint());
-        item = jList.getModel().getElementAt(i);
-        status = item.getUserData();
-        % Process click (0:Not selected, 1:Selected, 2:Forced selected)
-        switch(status)
-            case 0,  newStatus = 1;
-            case 1,  newStatus = 0;
-            case 2,  newStatus = 2;
-        end
-        item.setUserData(int32(newStatus));
-        jList.repaint(jList.getCellBounds(i, i));
-        % Convert index to 1-based
-        i = i + 1;
-    end
-
     %% ===== LIST: KEY TYPED CALLBACK =====
     function ListCatKey_Callback(h, ev)
         switch(uint8(ev.getKeyChar()))
@@ -251,6 +222,36 @@ end
 %% =================================================================================
 %  === INTERFACE CALLBACKS =========================================================
 %  =================================================================================
+%%  ===== TOGGLE CHECKBOX ======
+function [i, newStatus] = ToggleCheck(ev)
+    i = [];
+    newStatus = [];
+    % Ignore all the clicks if the JList is disabled
+    if ~ev.getSource().isEnabled()
+        return
+    end
+    % Only consider that it was selected if it was clicked next to the left of the component
+    if (ev.getPoint().getX() > 17)
+        return;
+    end
+    % Get selected element
+    jList = ev.getSource();
+    i    = jList.locationToIndex(ev.getPoint());
+    item = jList.getModel().getElementAt(i);
+    status = item.getUserData();
+    % Process click (0:Not selected, 1:Selected, 2:Forced selected)
+    switch(status)
+        case 0,  newStatus = 1;
+        case 1,  newStatus = 0;
+        case 2,  newStatus = 2;
+    end
+    item.setUserData(int32(newStatus));
+    jList.repaint(jList.getCellBounds(i, i));
+    % Convert index to 1-based
+    i = i + 1;
+end
+
+
 %% ===== CLOSING CALLBACK =====
 function PanelHidingCallback(varargin) %#ok<DEFNU>
     global EditSspPanel;

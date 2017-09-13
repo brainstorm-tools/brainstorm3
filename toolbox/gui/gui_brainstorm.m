@@ -180,6 +180,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Guidelines
         jMenuGuidelines = gui_component('Menu', jMenuSupport, [], 'Guidelines', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
         gui_component('MenuItem', jMenuGuidelines, [], 'Epileptogenicity maps', IconLoader.ICON_EDIT, [], @(h,ev)ShowGuidelines('epileptogenicity'), fontSize);
+        jMenuGuidelines.addSeparator();
+        gui_component('MenuItem', jMenuGuidelines, [], 'Close panel', IconLoader.ICON_EDIT, [], @(h,ev)gui_hide('Guidelines'));
         
     % ===== TOOLBAR =====
     jToolbar = gui_component('Toolbar', jMenuBar);
@@ -911,12 +913,14 @@ function SetCurrentProtocol(iProtocol)
     % ===== UPDATE GUI =====
     % Update tree model
     panel_protocols('UpdateTree');
-    %Update "Time Window" 
+    % Update "Time Window" 
     panel_time('UpdatePanel');
     % Reset processes and stat panels
     panel_nodelist('ResetAllLists');
     % Empty the clipboard
     bst_set('Clipboard', []);
+    % Close guidelines panel
+    gui_hide('Guidelines');
     
     % ===== CHECK FOLDERS =====
     % Check protocol folders

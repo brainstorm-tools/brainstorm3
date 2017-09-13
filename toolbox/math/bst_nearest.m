@@ -7,6 +7,7 @@ function [I, dist, dt] = bst_nearest(refVert, testVert, K, isProgress, dt)
 %    - refVert    : [Nx3] list of reference 3D points 
 %    - testVert   : [Mx3] list of 3D points for which we want the nearest vertex in refVert
 %    - K          : Number of nearest neighbors we want, default=1
+%                   -1, force the use of the full algorithm for K=1
 %    - isProgress : If 1, show a progress bar
 %    - dt         : Delaunay triangulation returned by previous call
 % OUTPUT:
@@ -58,9 +59,16 @@ if isProgress
         bst_progress('start', 'Nearest neighbor', 'Nearest neighbor search...');
     end
 end
+% Force full algorithm
+if (K == -1)
+    isForceFull = 1;
+    K = 1;
+else
+    isForceFull = 0;
+end
 
 % ===== K>1 =====
-if (K > 1)
+if (K > 1) || isForceFull
     % Intialize matrices
     nTest = size(testVert,1);
     I = zeros(nTest, K);
@@ -150,6 +158,11 @@ else
     if exist('delaunayTriangulation', 'file')
         if isempty(dt)
             dt = delaunayTriangulation(refVert);
+            % Cannot compute triangulation: run the full algo
+            if isempty(dt.ConnectivityList)
+                [I, dist, dt] = bst_nearest(refVert, testVert, -1, isProgress);
+                return;
+            end
         end
         if isDist
             [I,dist] = dt.nearestNeighbor(testVert);

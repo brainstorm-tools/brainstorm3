@@ -1,4 +1,4 @@
-function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2, FileFormat, Comment)
+function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2, FileFormat, Comment, DisplayUnits)
 % IMPORT_SOURCES: Imports static source maps as results files.
 % 
 % USAGE:  iNewSources = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2=[], FileFormat=[], Comment=[])
@@ -11,6 +11,7 @@ function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFil
 %    - SourceFiles2 : In the case of left/right files to import as one joined matrix (FreeSurfer import)
 %    - FileFormat   : One of the available file formats ('FS')
 %    - Comment      : Comment of the output file
+%    - DisplayUnits : What to save in the field DisplayUnits of the new files
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -37,6 +38,9 @@ function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFil
 OutputFiles = {};
 errorMsg = [];
 % Get default for all the inputs
+if (nargin < 7) || isempty(DisplayUnits)
+    DisplayUnits = [];
+end
 if (nargin < 6) || isempty(Comment)
     Comment = [];
 end
@@ -135,9 +139,21 @@ isProgressBar = bst_progress('isVisible');
 if ~isProgressBar
     bst_progress('start', 'Import source maps', 'Importing source maps...');
 end
-% If surface file not specified: get the default cortex
-if isempty(SurfaceFile) && ~isempty(sSubject.iCortex) && (sSubject.iCortex <= length(sSubject.Surface))
-    SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+% If surface file not specified: get a default surface
+if isempty(SurfaceFile)
+    % Volume: Inner skull, Head, Cortex
+    if ismember(FileFormat, {'ALLMRI', 'ALLMRI-MNI'})
+        if ~isempty(sSubject.iInnerSkull) && (sSubject.iInnerSkull <= length(sSubject.Surface))
+            SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+        elseif ~isempty(sSubject.iScalp) && (sSubject.iScalp <= length(sSubject.Surface))
+            SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+        elseif ~isempty(sSubject.iCortex) && (sSubject.iCortex <= length(sSubject.Surface))
+            SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+        end
+    % Surface: Cortex only
+    elseif ~isempty(sSubject.iCortex) && (sSubject.iCortex <= length(sSubject.Surface))
+        SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+    end
 end
 % If no cortex available: error
 if isempty(SurfaceFile) && ~ismember(FileFormat, {'ALLMRI', 'ALLMRI-MNI'})
@@ -158,41 +174,7 @@ end
 sMri = [];
 % Loop on each input file
 for iFile = 1:length(SourceFiles)
-    % Read source file
-    [map, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat);
-    % In the case of a volume grid: convert from MRI coordinates to SCS
-    if ~isempty(grid)
-        % Load subject MRI
-        if isempty(sMri)
-            sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
-        end
-        % Convert from RAS(source files) to RAS(subject anat)
-        if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember(sMri.InitTransf(:,1), 'vox2ras')
-            iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
-            ras2vox = inv(sMri.InitTransf{iTransf,2});
-            grid = bst_bsxfun(@plus, ras2vox(1:3,1:3) * grid', ras2vox(1:3,4))';
-        end
-        % Convert MRI=>SCS
-        grid = cs_convert(sMri, 'voxel', 'scs', grid);
-    end
-    % Read additional source file: simply concatenate to the previous one
-    if ~isempty(SourceFiles2)
-        map = [map; in_sources(SourceFiles2{iFile}, FileFormat)];
-    end
-    % Check the number of sources
-    if isempty(map)
-        errorMsg = ['File could not be read: ', SourceFiles{iFile}];
-        if isInteractive
-            bst_error(errorMsg, 'Import source maps', 0);
-        end
-        break;
-    elseif isempty(grid) && (size(map,1) ~= nVertices)
-        errorMsg = sprintf('The number of vertices in the surface (%d) and the source map (%d) do not match.', nVertices, size(map,1));
-        if isInteractive
-            bst_error(errorMsg, 'Import source maps', 0);
-        end
-        break;
-    end
+    % === GET FILE TYPE ===  
     % Comment: Use the base filename (if not defined in input)
     [fPath, fBase, fExt] = bst_fileparts(SourceFiles{iFile});
     if isempty(Comment)
@@ -211,9 +193,53 @@ for iFile = 1:length(SourceFiles)
             Comment = strrep(Comment, '_right', '');
         end
     end
-    
+    % Stat file or regular map
+    isStat = ~isempty(strfind(fBase, 'spmT')) && file_exist(bst_fullfile(fPath, 'SPM.mat'));
+    if isStat
+        bgValue = 0;
+    else
+        bgValue = NaN;
+    end
+
+    % === LOAD FILE ===
+    % Read source file
+    [map, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat, bgValue);
+    % In the case of a volume grid: convert from MRI coordinates to SCS
+    if ~isempty(grid)
+        % Load subject MRI
+        if isempty(sMri)
+            sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+        end
+        % Convert from RAS(source files) to RAS(subject anat)
+        if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember(sMri.InitTransf(:,1), 'vox2ras')
+            iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
+            ras2vox = inv(sMri.InitTransf{iTransf,2});
+            grid = bst_bsxfun(@plus, ras2vox(1:3,1:3) * grid', ras2vox(1:3,4))';
+        end
+        % Convert MRI=>SCS
+        grid = cs_convert(sMri, 'voxel', 'scs', grid);
+    end
+    % Read additional source file: simply concatenate to the previous one
+    if ~isempty(SourceFiles2)
+        map = [map; in_sources(SourceFiles2{iFile}, FileFormat), bgValue];
+    end
+    % Check the number of sources
+    if isempty(map)
+        errorMsg = ['File could not be read: ', SourceFiles{iFile}];
+        if isInteractive
+            bst_error(errorMsg, 'Import source maps', 0);
+        end
+        break;
+    elseif isempty(grid) && (size(map,1) ~= nVertices)
+        errorMsg = sprintf('The number of vertices in the surface (%d) and the source map (%d) do not match.', nVertices, size(map,1));
+        if isInteractive
+            bst_error(errorMsg, 'Import source maps', 0);
+        end
+        break;
+    end
+
     % === STATISTICAL THRESHOLD (SPM) ===
-    if ~isempty(strfind(fBase, 'spmT')) && file_exist(bst_fullfile(fPath, 'SPM.mat'))
+    if isStat
         % Load SPM.mat
         SpmMat = load(fullfile(fPath, 'SPM.mat'));
         % New stat/results structure
@@ -246,6 +272,7 @@ for iFile = 1:length(SourceFiles)
     ResultsMat.SurfaceFile   = file_win2unix(file_short(SurfaceFile));
     ResultsMat.HeadModelFile = [];
     ResultsMat.nComponents   = 1;
+    ResultsMat.DisplayUnits  = DisplayUnits;
     % Surface model
     if isempty(grid)
         ResultsMat.HeadModelType = 'surface';
@@ -279,7 +306,7 @@ end
 
 %% ====== SUPPORT FUNCTIONS =====
 % Load source map
-function [map, grid, sMriSrc] = in_sources(SourceFile, FileFormat)
+function [map, grid, sMriSrc] = in_sources(SourceFile, FileFormat, bgValue)
     grid = [];
     sMriSrc = [];
     switch (FileFormat)
@@ -308,8 +335,12 @@ function [map, grid, sMriSrc] = in_sources(SourceFile, FileFormat)
             % Read MRI volume
             [sMriSrc, vox2ras] = in_mri(SourceFile, 'ALL', 0, 0);
             % Get position of non-zero points
-            iNonZero = find(sMriSrc.Cube);
-            [X,Y,Z] = ind2sub(size(sMriSrc.Cube), iNonZero);
+            if isnan(bgValue)
+                iForeground = find(~isnan(sMriSrc.Cube));
+            else
+                iForeground = find(sMriSrc.Cube ~= bgValue);
+            end
+            [X,Y,Z] = ind2sub(size(sMriSrc.Cube), iForeground);
             % Apply vox2ras transformation
             if ~isempty(vox2ras)
                 grid = [X,Y,Z];
@@ -317,14 +348,27 @@ function [map, grid, sMriSrc] = in_sources(SourceFile, FileFormat)
             else
                 grid = [X .* sMriSrc.Voxsize(1), Y .* sMriSrc.Voxsize(2), Z .* sMriSrc.Voxsize(3)];
             end
-            % Convert to meters
-%             grid = grid ./ 1000;
             % Get values of non-zero points
-            map = double(sMriSrc.Cube(iNonZero));
+            map = double(sMriSrc.Cube(iForeground));
+            % Replace 0 values with small values
+            if isnan(bgValue)
+                map(map == 0) = eps;
+            end
         case 'ALLMRI-MNI'
             error('Not supported yet.');
         otherwise
             error('Unsupported file format.');
+    end
+    % Get rid of NaN values
+    isNan = isnan(map);
+    if any(isNan(:))
+        % If there are zero values: replace them with a small value
+        isZero = (map == 0);
+        if any(isZero(:))
+            map(isZero) = eps;
+        end
+        % Remove NaN values
+        map(isNan) = 0;
     end
 end
 

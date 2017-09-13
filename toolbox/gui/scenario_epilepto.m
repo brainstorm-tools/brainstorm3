@@ -28,9 +28,10 @@ end
 %% ===== CREATE PANEL =====
 function ctrl = CreatePanels() %#ok<DEFNU>
     % Java initializations
-    import org.brainstorm.icon.*;
     import java.awt.*;
     import javax.swing.*;
+    import org.brainstorm.icon.*;
+    import org.brainstorm.list.*;
 
     % Initialize global variables
     global GlobalData;
@@ -52,6 +53,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.fcnValidate = cell(1, nPanels);
     ctrl.fcnReset    = cell(1, nPanels);
     ctrl.fcnUpdate   = cell(1, nPanels);
+    ctrl.isSkip      = zeros(1, nPanels);
 
     % ===== PANEL: INTRODUCTION =====
     i = 1;
@@ -140,8 +142,9 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     TimeUnit = gui_validate_text(ctrl.jTextEpochStart, [], ctrl.jTextEpochStop, {-100, 100, 1000}, 's', [], -10, []);
     TimeUnit = gui_validate_text(ctrl.jTextEpochStop, ctrl.jTextEpochStart, [], {-100, 100, 1000}, 's', [], 40, []);
     gui_component('label', ctrl.jPanels(i), [], [' ' TimeUnit]);
-    gui_component('label', ctrl.jPanels(i), 'br', ['<HTML><FONT color="#808080"><I>This window must be long enough to include both a baseline for the time-frequency analysis<BR>' ...
-                                                                                  'and the full time window for the computation of the epileptogenicity/latency maps.</I></FONT>']);
+    gui_component('label', ctrl.jPanels(i), 'br', ['<HTML><FONT color="#808080"><I>This window must be long enough to include both a baseline for<BR>' ...
+                                                                                  'the time-frequency analysis and the full time window for the<BR>' ...
+                                                                                  'computation of the epileptogenicity/latency maps.</I></FONT>']);
     % Bipolar montage
     gui_component('label', ctrl.jPanels(i), 'br', 'Electrode montage:');
     jButtonGroupMontage = ButtonGroup();
@@ -165,24 +168,49 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     % Callbacks
     ctrl.fcnValidate{i} = @(c)ValidateTimefreq();
     ctrl.fcnReset{i}    = @(c)ResetTimefreq();
+    ctrl.isSkip(i)      = 1;
     
     % ===== PANEL: EPILEPTOGENICITY =====
     i = i + 1;
-    ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Epileptogenicity index', i));
     % Epileptogenicity options
-    gui_component('label', ctrl.jPanels(i), '', 'Frequency band [start stop] (Hz): ');
-    ctrl.jTextFreqBand = gui_component('text', ctrl.jPanels(i), 'tab', '[120 200]');
-    gui_component('label', ctrl.jPanels(i), 'br', 'Time constant (s): ');
-    ctrl.jTextTimeConstant = gui_component('texttime', ctrl.jPanels(i), 'tab', '3');
-    gui_component('label', ctrl.jPanels(i), 'br', 'Latency, one or multiple time points (s): ');
-    ctrl.jTextLatency = gui_component('text', ctrl.jPanels(i), 'tab', '0:2:20');
-    gui_component('label', ctrl.jPanels(i), 'br', 'Time resolution (s): ');
-    ctrl.jTextTimeResolution = gui_component('texttime', ctrl.jPanels(i), 'tab', '0.2');
-    gui_component('label', ctrl.jPanels(i), 'br', 'Propagation threshold (p-value): ');
-    ctrl.jTextThDelay = gui_component('texttime', ctrl.jPanels(i), 'tab', '0.05');
+    jPanelEpilOptions = gui_river([3,3], [0,0,0,0]);
+    gui_component('label', jPanelEpilOptions, '', 'Frequency band (Hz): ');
+    ctrl.jTextFreqBand = gui_component('text', jPanelEpilOptions, 'tab', '[120 200]');
+    gui_component('button', jPanelEpilOptions, 'tab', 'Get', {Insets(2,4,2,4)}, [], @(h,ev)GetFreqBand(ctrl.jTextFreqBand));
+    gui_component('label', jPanelEpilOptions, '', '  ');
+    gui_component('label', jPanelEpilOptions, 'br', 'Latency list (s): ');
+    ctrl.jTextLatency = gui_component('text', jPanelEpilOptions, 'tab', '0:2:20');
+    gui_component('label', jPanelEpilOptions, 'br', 'Time constant (s): ');
+    ctrl.jTextTimeConstant = gui_component('texttime', jPanelEpilOptions, 'tab', '3');
+    gui_component('label', jPanelEpilOptions, 'br', 'Time resolution (s): ');
+    ctrl.jTextTimeResolution = gui_component('texttime', jPanelEpilOptions, 'tab', '0.2');
+    gui_component('label', jPanelEpilOptions, 'br', 'Propagation threshold (p): ');
+    ctrl.jTextThDelay = gui_component('texttime', jPanelEpilOptions, 'tab', '0.05');
+    % Output type
+    gui_component('label', jPanelEpilOptions, 'br', 'Output type:');
+    jButtonGroupOutput = ButtonGroup();
+    ctrl.jRadioOutputVolume = gui_component('radio', jPanelEpilOptions, '', 'Volume', jButtonGroupOutput);
+    ctrl.jRadioOutputSurface = gui_component('radio', jPanelEpilOptions, '', 'Surface', jButtonGroupOutput);
+    ctrl.jRadioOutputVolume.setSelected(1);
+    % File list
+    ctrl.jListFiles = JList([BstListItem('', '', 'Component 1', int32(0)), BstListItem('', '', 'Component 2', int32(1))]);
+        fontSize = round(11 * bst_get('InterfaceScaling') / 100);
+        jCellRenderer = BstCheckListRenderer(fontSize);
+        jCellRenderer.setRenderSelection(0);
+        ctrl.jListFiles.setCellRenderer(jCellRenderer);
+        ctrl.jListFiles.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        java_setcb(ctrl.jListFiles, 'MouseClickedCallback', @ListFilesClick_Callback);
+%         java_setcb(ctrl.jListFiles, 'MouseClickedCallback', @(h,ev)panel_ssp_selection('ToggleCheck', ev));
+        jScrollFiles = JScrollPane(ctrl.jListFiles);
+    % Assemble panel
+    ctrl.jPanels(i) = gui_river([0,0], [5,10,0,4], sprintf('Step #%d: Epileptogenicity index', i));
+    ctrl.jPanels(i).add('vtop', jPanelEpilOptions);
+    ctrl.jPanels(i).add('hfill vfill', jScrollFiles);
+    
     % Callbacks
     ctrl.fcnValidate{i} = @(c)ValidateEpileptogenicity();
     ctrl.fcnReset{i}    = @(c)ResetEpileptogenicity();
+    ctrl.fcnUpdate{i}   = @(c)UpdateEpileptogenicity();
     
     % Save references to all the controls
     GlobalData.Guidelines.ctrl = ctrl;
@@ -383,6 +411,7 @@ end
 %% ===== IMPORT ANATOMY: UPDATE =====
 function [isValidated, errMsg] = UpdateImportAnatomy()
     global GlobalData;
+    ctrl = GlobalData.Guidelines.ctrl;
     % Initialize returned variables
     isValidated = 1;
     errMsg = '';
@@ -391,12 +420,15 @@ function [isValidated, errMsg] = UpdateImportAnatomy()
     iNoCommon = find(([ProtocolSubjects.Subject.UseDefaultAnat] == 0) & ([ProtocolSubjects.Subject.UseDefaultChannel] == 0));
     strItems = {ProtocolSubjects.Subject(iNoCommon).Name};
     % Update combobox
-    jModel = GlobalData.Guidelines.ctrl.jComboSubj.getModel();
+    jModel = ctrl.jComboSubj.getModel();
     jModel.removeAllElements();
     jModel.addElement('');
     for i = 1:length(strItems)
         jModel.addElement(strItems{i});
     end
+    % Empty other boxes
+    ctrl.jTextMriPre.setText('');
+    ctrl.jTextMriPost.setText('');
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
     % Display the anatomy of the subjects
@@ -450,24 +482,50 @@ function ResetPrepareRaw()
     global GlobalData;
     % Get subject name
     SubjectName = GlobalData.Guidelines.SubjectName;
-    % Delete all the data for this subject
-    if ~isempty(iSubject)
-        % Get subject
-        sSubject = bst_get('Subject', SubjectName);
-        % Get all the studies for this subject
-        [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
-        % Delete studies
-        if ~isempty(iStudies)
-            % Ask confirmation
-            if ~java_dialog('confirm', ['Remove all the recordings from subject "' SubjectName '"?'])
-                return;
-            end
-            % Delete data
-            db_delete_studies(iStudies);
-            % Update tree
-            panel_protocols('UpdateTree');
-        end
+    % Get subject
+    [sSubject, iSubject] = bst_get('Subject', SubjectName);
+    if isempty(iSubject)
+        return;
     end
+    % Get all the studies for this subject
+    [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
+    % Get files in intra folder
+    [sStudyIntra, iStudyIntra] = bst_get('AnalysisIntraStudy', iSubject);
+    FilesToDelete = {};
+    if ~isempty(sStudyIntra.Data)
+        FilesToDelete = cat(2, FilesToDelete, sStudyIntra.Data.FileName);
+    end
+    if ~isempty(sStudyIntra.Timefreq)
+        FilesToDelete = cat(2, FilesToDelete, sStudyIntra.Timefreq.FileName);
+    end
+    if ~isempty(sStudyIntra.Channel) && ~isempty(sStudyIntra.Channel.FileName)
+        FilesToDelete = cat(2, FilesToDelete, sStudyIntra.Channel.FileName);
+    end
+    % Nothing to remove
+    if isempty(iStudies) && isempty(FilesToDelete)
+        return;
+    end
+    % Ask confirmation
+    if ~java_dialog('confirm', ['Remove all the recordings from subject "' SubjectName '"?'])
+        return;
+    end
+    % Delete folders
+    if ~isempty(iStudies)
+        db_delete_studies(iStudies);
+    end
+    % Empty intra folder
+    if ~isempty(FilesToDelete)
+        % Delete files
+        FilesToDelete = cellfun(@file_fullpath, FilesToDelete, 'UniformOutput', 0);
+        file_delete(FilesToDelete, 1);
+        % Update study
+        sStudyIntra.Channel(:) = [];
+        sStudyIntra.Data(:) = [];
+        sStudyIntra.Timefreq(:) = [];
+        bst_set('Study', iStudyIntra, sStudyIntra);
+    end
+    % Update tree
+    panel_protocols('UpdateTree');
     % Update list of files
     UpdatePrepareRaw();
 end
@@ -642,7 +700,8 @@ function ButtonRawAdd()
     % Edit output channel files: set the channels to SEEG
     for iFile = 1:length(OutputFiles)
         % Get channel file
-        ChannelFile = bst_get('ChannelFileForStudy', OutputFiles{iFile});
+        [sStudy, iStudy] = bst_get('DataFile', OutputFiles{iFile});
+        ChannelFile = file_fullpath(sStudy.Channel.FileName);
         % Load channel file
         ChannelMat = in_bst_channel(ChannelFile);        
         % Get channels classified as EEG
@@ -662,9 +721,12 @@ function ButtonRawAdd()
             [ChannelMat.Channel(iEEG(iEcg)).Type] = deal('ECG');
         end
         % Save modified file
-        bst_save(file_fullpath(ChannelFile), ChannelMat, 'v7');
+        bst_save(ChannelFile, ChannelMat, 'v7');
         % Save channel files
         AllChannelFiles{end+1} = ChannelFile;
+        % Update database reference
+        [sStudy.Channel.Modalities, sStudy.Channel.DisplayableSensorTypes] = channel_get_modalities(ChannelMat.Channel);
+        bst_set('Study', iStudy, sStudy);
     end
     % Save file format
     UpdatePrepareRaw();
@@ -861,6 +923,93 @@ function ButtonRawEvent(strEvent)
 end
 
 
+%% ===== RECORDINGS: INPUT EVENT =====
+function RawInputEvents()
+    global GlobalData;
+    ctrl = GlobalData.Guidelines.ctrl;
+    % Get selected files
+    iFile = ctrl.jTableRaw.getSelectedRows()' + 1;
+    if isempty(iFile)
+        return;
+    elseif (length(iFile) >= 2)
+        iFile = iFile(1);
+        ctrl.jTableRaw.getSelectionModel().setSelectionInterval(iFile - 1, iFile - 1);
+    end
+    % Close everything
+    bst_memory('UnloadAll', 'Forced');
+    % Load file
+    LinkMat = in_bst_data(GlobalData.Guidelines.RawLinks{iFile});
+    sFile = LinkMat.F;
+    % Get existing event: Onset
+    iEvtOnset = find(strcmpi({sFile.events.label}, 'onset'));
+    if ~isempty(iEvtOnset) && ~isempty(sFile.events(iEvtOnset).times)
+        strOnset = sprintf('%1.4f', sFile.events(iEvtOnset).times(1));
+    else
+        strOnset = '';
+    end
+    % Get existing event: Baseline
+    iEvtBaseline = find(strcmpi({sFile.events.label}, 'baseline'));
+    if ~isempty(iEvtBaseline) && ~isempty(sFile.events(iEvtBaseline).times)
+        strBaseline1 = sprintf('%1.4f', sFile.events(iEvtBaseline).times(1,1));
+        strBaseline2 = sprintf('%1.4f', sFile.events(iEvtBaseline).times(2,1));
+    else
+        strBaseline1 = '';
+        strBaseline2 = '';
+    end
+
+    % Ask new values
+    res = java_dialog('input', {'Onset (s):', 'Baseline begin (s):', 'Baseline end (s):'} , 'Fill holes', [], {strOnset, strBaseline1, strBaseline2});
+    if isempty(res) || isequal(res, {strOnset, strBaseline1, strBaseline2})
+        return;
+    end
+    % Get new values
+    newOnset = str2num(res{1});
+    newBaseline = [str2num(res{2}); str2num(res{3})];
+    if (~isempty(res{1}) && (length(newOnset) ~= 1)) || (~isempty(res{2}) && ~isempty(res{3}) && (length(newBaseline) ~= 2))
+        bst_error('Invalid entries.', 'Set events', 0);
+        return;
+    elseif any([newOnset;newBaseline] < sFile.prop.times(1)) || any([newOnset;newBaseline] > sFile.prop.times(2))
+        bst_error('Times are not available for the selected file.', 'Set events', 0);
+        return;
+    end
+    % If the structure of events is not available
+    if ~isstruct(sFile.events)
+        sFile.events = repmat(db_template('event'), 0);
+    end
+    % Add Onset event
+    if (length(newOnset) == 1)
+        if isempty(iEvtOnset)
+            iEvtOnset = length(sFile.events) + 1;
+            sFile.events(iEvtOnset).label      = 'Onset';
+            sFile.events(iEvtOnset).color      = [125 27 126] / 255;
+            sFile.events(iEvtOnset).reactTimes = [];
+            sFile.events(iEvtOnset).select     = 1;
+        end
+        sFile.events(iEvtOnset).samples = round(newOnset * sFile.prop.sfreq);
+        sFile.events(iEvtOnset).times   = sFile.events(iEvtOnset).samples ./ sFile.prop.sfreq;
+        sFile.events(iEvtOnset).epochs  = ones(size(sFile.events(iEvtOnset).samples));
+    end
+    % Add Baseline event
+    if (length(newBaseline) == 2)
+        if isempty(iEvtBaseline)
+            iEvtBaseline = length(sFile.events) + 1;
+            sFile.events(iEvtBaseline).label      = 'Baseline';
+            sFile.events(iEvtBaseline).color      = [0 89 255] / 255;
+            sFile.events(iEvtBaseline).reactTimes = [];
+            sFile.events(iEvtBaseline).select     = 1;
+        end
+        sFile.events(iEvtBaseline).samples = round(newBaseline * sFile.prop.sfreq);
+        sFile.events(iEvtBaseline).times   = sFile.events(iEvtBaseline).samples ./ sFile.prop.sfreq;
+        sFile.events(iEvtBaseline).epochs  = ones(size(sFile.events(iEvtBaseline).samples));
+    end
+    % Save modification
+    LinkMat.F = sFile;
+    bst_save(file_fullpath(GlobalData.Guidelines.RawLinks{iFile}), LinkMat, 'v7');
+    % Update panel
+    UpdatePrepareRaw();
+end
+
+
 %% ===== RECORDINGS: SET POSITION =====
 function ButtonRawPos()
     global GlobalData;
@@ -904,7 +1053,19 @@ function ButtonRawPos()
             % Display 3D positions on the subject MRI
             view_channels_3d(AllChannelFiles{1}, 'SEEG', 'anatomy', 1);
         case 'Edit'
-            error('TODO');
+            % View MRI
+            [hFig, iDS, iFig] = view_mri(GlobalData.Guidelines.MriPost);
+            if isempty(hFig)
+                return;
+            end
+            % Add channels to the figure
+            figure_mri('LoadElectrodes', hFig, AllChannelFiles{1}, 'SEEG');
+            % Wait for the editor to be closed
+            waitfor(hFig);
+            % Copy positions to the other files
+            if (length(RawLinks) > 1)
+                channel_add_loc(iStudiesSet(2:end), AllChannelFiles{1}, 1);
+            end
     end
     
     % Update panel
@@ -923,7 +1084,7 @@ end
 
 %% ===== RECORDINGS: JTABLE CLICKED =====
 function RawTableClick(hObj, ev)
-%     import org.brainstorm.icon.*;
+    import org.brainstorm.icon.*;
     global GlobalData;
     ctrl = GlobalData.Guidelines.ctrl;
     % Get selected files
@@ -934,21 +1095,23 @@ function RawTableClick(hObj, ev)
     % Double-click: Open recordings
     if (ev.getClickCount() > 1)
         ReviewFile(GlobalData.Guidelines.RawLinks{iSelFiles});
-    elseif (ev.getButton() > 1)
-%         % Create popup menu
-%         jPopup = java_create('javax.swing.JPopupMenu');
-%         % Add menus
-%         gui_component('MenuItem', jPopup, [], 'Set channel type', IconLoader.ICON_CHANNEL, [], @(h,ev)SetChannelsField('type'), []);
-%         gui_component('MenuItem', jPopup, [], 'Set channel group', IconLoader.ICON_CHANNEL, [], @(h,ev)SetChannelsField('group'), []);
-%         gui_component('MenuItem', jPopup, [], 'Set channel comment', IconLoader.ICON_CHANNEL, [], @(h,ev)SetChannelsField('comment'), []);
-%         % Show popup menu
-%         jPopup.pack();
-%         jPopup.show(jTableChannel, ev.getPoint.getX(), ev.getPoint.getY());
+    % Right-click: Popup menu
+    elseif (ev.getButton() == ev.BUTTON3)
+        % Create popup menu
+        jPopup = java_create('javax.swing.JPopupMenu');
+        gui_component('MenuItem', jPopup, [], 'Set onset and baseline', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)RawInputEvents());
+        % Show popup menu
+        jPopup.pack();
+        jPopup.show(ctrl.jTableRaw, ev.getPoint.getX(), ev.getPoint.getY());
     end
 end
 
 %% ===== RECORDINGS: REVIEW FILE =====
-function ReviewFile(RawLink)
+function ReviewFile(RawLink, isWait)
+    % Parse inputs
+    if (nargin < 2) || isempty(isWait)
+        isWait = 1;
+    end
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
     % Open recordings
@@ -959,10 +1122,13 @@ function ReviewFile(RawLink)
     if ~isempty(iSelMontage)
         panel_montage('SetCurrentMontage', hFig, sAllMontages(iSelMontage).Name);
     end
-    % Wait for the end of this session
-    waitfor(hFig);
-    % Update table
-    UpdatePrepareRaw();
+    % Blocking call
+    if isWait
+        % Wait for the end of this session
+        waitfor(hFig);
+        % Update table
+        UpdatePrepareRaw();
+    end
 end
 
 
@@ -1056,8 +1222,7 @@ function [isValidated, errMsg] = ValidateEpoch()
                 'montage',    MontageName, ...
                 'createchan', 1);
             % Delete original imported folder
-            bst_process('CallProcess', 'process_delete', [sFilesBaselines, sFilesOnsets], [], ...
-                'target', 2);  % Delete folders
+            bst_process('CallProcess', 'process_delete', [sFilesBaselines, sFilesOnsets], [], 'target', 2);  % Delete folders
             % Replace files with bipolar versions
             sFilesBaselines = sFilesMontage(1:length(sFilesBaselines));
             sFilesOnsets = sFilesMontage(end-length(sFilesOnsets)+1:end);
@@ -1243,9 +1408,37 @@ function ResetTimefreq()
     end
 end
 
+%% ===== TIME-FREQ: GET FREQ BAND =====
+function GetFreqBand(jText)
+    global GlobalData;
+    % Get all time-frequency figures
+    hFigs = bst_figures('GetFiguresByType', 'timefreq');
+    if isempty(hFigs)
+        bst_error('No time-frequency figure available.', 'Get frequency band', 0);
+        return;
+    end
+    % Look for frequency selection
+    iFreq = [];
+    for i = 1:length(hFigs)
+        GraphSelection = getappdata(hFigs(i), 'GraphSelection');
+        if isequal(size(GraphSelection), [2 2]) && ~any(isnan(GraphSelection(:)))
+            iFreq = GraphSelection(2,:);
+            break;
+        end
+    end
+    % Nothing was found
+    if isempty(iFreq)
+        bst_error('No time-frequency selection found in the figures.', 'Get frequency band', 0);
+        return;
+    end
+    % Set corresponding field
+    jText.setText(sprintf('[%d %d]', sort(round(GlobalData.UserFrequencies.Freqs(iFreq)))));
+end
+
+
 
 %% ==========================================================================================
-%  ===== TIME-FREQ ==========================================================================
+%  ===== EPILEPTOGENICITY ===================================================================
 %  ==========================================================================================
 
 %% ===== EPILEPTOGENICIY: VALIDATE =====
@@ -1256,20 +1449,20 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
     isValidated = 0;
     errMsg = '';
     % Get options
-    FreqBand       = num2str(char(ctrl.jTextFreqBand.getSelectedItem()));
-    TimeConstant   = num2str(char(ctrl.jTextTimeConstant.getSelectedItem()));
-    Latency        = eval(char(ctrl.jTextLatency.getSelectedItem()));
-    TimeResolution = num2str(char(ctrl.jTextTimeResolution.getSelectedItem()));
-    ThDelay        = num2str(char(ctrl.jTextThDelay.getSelectedItem()));
+    FreqBand       = str2num(char(ctrl.jTextFreqBand.getText()));
+    Latency        = char(ctrl.jTextLatency.getText());
+    TimeConstant   = str2num(char(ctrl.jTextTimeConstant.getText()));
+    TimeResolution = str2num(char(ctrl.jTextTimeResolution.getText()));
+    ThDelay        = str2num(char(ctrl.jTextThDelay.getText()));
     % Check inputs
     if (length(FreqBand) < 2)
         errMsg = 'Invalid frequency band.';
         return;
+    elseif isempty(eval(Latency))
+        errMsg = 'Invalid list of latencies.';
+        return;
     elseif isempty(TimeConstant) || (TimeConstant <= 0)
         errMsg = 'Invalid time constant.';
-        return;
-    elseif isempty(Latency)
-        errMsg = 'Invalid list of latencies.';
         return;
     elseif isempty(TimeResolution) || (TimeResolution <= 0)
         errMsg = 'Invalid time resolution.';
@@ -1279,35 +1472,88 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
         return;
     end
     % Get output type
-    OutputType
+    if ctrl.jRadioOutputVolume.isSelected()
+        OutputType = 'volume';
+    elseif ctrl.jRadioOutputSurface.isSelected()
+        OutputType = 'surface';
+    end
     % Get subject name
     SubjectName = GlobalData.Guidelines.SubjectName;
     if isempty(SubjectName)
         return
     end
-    % Get the folder "Epileptogenicity" for this subject
-    Condition = 'Epileptogenicity';
-    [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
-    % Condition does not exist or does not contain any of the files of interest: run computation
-    if isempty(sStudy) || (isempty(sStudy.Stat) && isempty(sStudy.Result))
-        % Process: Epileptogenicity index (A=Baseline,B=Seizure)
-        sFiles = bst_process('CallProcess', 'process_epilepsy_index2', GlobalData.Guidelines.BaselineFiles{iFile}, GlobalData.Guidelines.OnsetFiles{iFile} , ...
-            'sensortypes',    'SEEG', ...
-            'freqband',       [120, 200], ...
-            'latency',        '0:2:20', ...
-            'timeconstant',   3, ...
-            'timeresolution', 0.199, ...
-            'thdelay',        0.05, ...
-            'type',           OutputType);  % Surface
-        
-        % Add new folder
-        iStudy = db_add_condition(SubjectName, Condition, 1);
-        % Copy channel file from first file
-        db_set_channel(iStudy, sInputsB(1).ChannelFile, 1, 0);
-    end
-    
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
+    
+    % Get the folder "Epileptogenicity" for this subject
+    Condition = ['Epileptogenicity_' OutputType];
+    sStudy = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
+    % Condition does not exist or does not contain any of the files of interest: run computation
+    if isempty(sStudy) || (isempty(sStudy.Stat) && isempty(sStudy.Result))
+        % Get selected files
+        iFiles = find(GlobalData.Guidelines.ctrl.isFileSelected);
+        % Get input files
+        BaselineFiles = cat(2, GlobalData.Guidelines.BaselineFiles{iFiles});
+        OnsetFiles = GlobalData.Guidelines.OnsetFiles(iFiles);
+        % Process: Epileptogenicity index (A=Baseline,B=Seizure)
+        bst_report('Start', BaselineFiles);
+        sFiles = bst_process('CallProcess', 'process_epilepsy_index2', BaselineFiles, OnsetFiles, ...
+            'sensortypes',    'SEEG', ...
+            'freqband',       FreqBand, ...
+            'latency',        Latency, ...
+            'timeconstant',   TimeConstant, ...
+            'timeresolution', TimeResolution, ...
+            'thdelay',        ThDelay, ...
+            'type',           OutputType);
+        % Error handling
+        if isempty(sFiles)
+            errMsg = 'Could not compute epileptogenicity maps.';
+            bst_report('Open', 'current');
+            return;
+        end
+    end
+    
+    % Get updated folder structure
+    sStudy = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
+    % Get epileptogenicity maps
+    if ~isempty(sStudy.Stat)
+        iStat = find(cellfun(@(c)and((length(c)>2) && strcmpi(c(end-1:end), '_0'), ~isempty(strfind(c, '_Group_'))), {sStudy.Stat.Comment}));
+        if isempty(iStat)
+            iStat = find(cellfun(@(c)and((length(c)>2) && strcmpi(c(end-1:end), '_0'), 1), {sStudy.Stat.Comment}));
+        end
+    else
+        iStat = [];
+    end
+    % Get delay maps
+    if ~isempty(sStudy.Stat)
+        iResult = find(cellfun(@(c)and((length(c)>6) && strcmpi(c(1:6), 'Delay_'), ~isempty(strfind(c, '_Group_'))), {sStudy.Result.Comment}));
+        if isempty(iResult)
+            iResult = find(cellfun(@(c)and((length(c)>6) && strcmpi(c(1:6), 'Delay_'), 1), {sStudy.Result.Comment}));
+        end
+    else
+        iResult = [];
+    end
+    % View epileptogenicity maps
+    for i = 1:length(iStat)
+        if strcmpi(OutputType, 'surface')
+            view_surface_data([], sStudy.Stat(iStat(i)).FileName);
+        else
+            sSubject = bst_get('Subject', SubjectName);
+            hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sStudy.Stat(iStat(i)).FileName);
+            figure_mri('JumpMaximum', hFig);
+        end
+    end
+    % View delay maps
+    for i = 1:length(iResult)
+        if strcmpi(OutputType, 'surface')
+            hFig = view_surface_data([], sStudy.Result(iResult(i)).FileName);
+        else
+            sSubject = bst_get('Subject', SubjectName);
+            hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sStudy.Result(iResult(i)).FileName);
+        end
+        % Set the data threshold to 0
+        panel_surface('SetDataThreshold', hFig, 1, 0);
+    end
 end
 
 
@@ -1316,10 +1562,17 @@ function ResetEpileptogenicity()
     global GlobalData;
     % Get subject name
     SubjectName = GlobalData.Guidelines.SubjectName;
+    ctrl = GlobalData.Guidelines.ctrl;
+    % Get output type
+    if ctrl.jRadioOutputVolume.isSelected()
+        OutputType = 'volume';
+    elseif ctrl.jRadioOutputSurface.isSelected()
+        OutputType = 'surface';
+    end
     % Delete the folder "Epileptogenicity" for this subject
     if ~isempty(SubjectName)
         % Default condition name
-        Condition = 'Epileptogenicity';
+        Condition = ['Epileptogenicity_' OutputType];
         % Get condition asked by user
         [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
         % If there are no files: nothing to do
@@ -1332,7 +1585,38 @@ function ResetEpileptogenicity()
         end
         % Delete folder
         db_delete_studies(iStudy);
+        % Update tree
+        panel_protocols('UpdateTree');
     end
+end
+
+%% ===== EPILEPTOGENICIY: UPDATE =====
+function UpdateEpileptogenicity()
+    global GlobalData;
+    % Initialize new list
+    listModel = javax.swing.DefaultListModel();
+    % All files selected by default
+    GlobalData.Guidelines.ctrl.isFileSelected = ones(1, length(GlobalData.Guidelines.OnsetFiles));
+    % Get list of file names
+    for i = 1:length(GlobalData.Guidelines.OnsetFiles)
+        [fPath, strFile] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{i}));
+        strFile = strrep(strFile, '_bipolar_2', '');
+        strFile = strrep(strFile, '_bipolar_1', '');
+        listModel.addElement(org.brainstorm.list.BstListItem('', '', strFile, int32(GlobalData.Guidelines.ctrl.isFileSelected(i))));
+    end
+    % Update JList
+    GlobalData.Guidelines.ctrl.jListFiles.setModel(listModel);
+    GlobalData.Guidelines.ctrl.jListFiles.repaint();
+end
+
+
+%% ===== EPILEPTOGENICITY: LIST CLICK CALLBACKS =====
+function ListFilesClick_Callback(h,ev)
+    global GlobalData;
+    % Toggle checkbox status
+    [iFile,Status] = panel_ssp_selection('ToggleCheck', ev);
+    % Save list of selections
+    GlobalData.Guidelines.ctrl.isFileSelected(iFile) = Status;
 end
 
 
