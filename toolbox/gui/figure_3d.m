@@ -1010,6 +1010,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         out_figure_image(hFig, 'Figure');
                     end
+                % M : Jump to maximum
+                case 'm'
+                    JumpMaximum(hFig);
                 % CTRL+R : Recordings time series
                 case 'r'
                     if ismember('control', keyEvent.Modifier) && ~isempty(GlobalData.DataSet(iDS).DataFile) && ~strcmpi(FigureId.Modality, 'MEG GRADNORM')
@@ -1841,6 +1844,11 @@ function DisplayFigurePopup(hFig)
             % SET SAME VIEW FOR ALL FIGURES
             jItem = gui_component('MenuItem', jMenuView, [], 'Apply this view to all figures', [], [], @(h,ev)ApplyViewToAllFigures(hFig, 1, 1));
             jItem.setAccelerator(KeyStroke.getKeyStroke('=', 0));
+            % JUMP TO MAXIMUM
+            if ismember('anatomy', ColormapInfo.AllTypes) && isOverlay
+                jItem = gui_component('MenuItem', jMenuView, [], 'Find maximum', [], [], @(h,ev)JumpMaximum(hFig));
+                jItem.setAccelerator(KeyStroke.getKeyStroke('m', 0));
+            end
             % CLONE FIGURE
             jMenuView.addSeparator();
             gui_component('MenuItem', jMenuView, [], 'Clone figure', [], [], @(h,ev)bst_figures('CloneFigure', hFig));
@@ -1893,6 +1901,24 @@ function SetMriResolution(hFig, InterpDownsample)
             GlobalData.DataSet(1).Results(1).grid2mri_interp = [];
             bst_figures('FireCurrentTimeChanged', 1);
         end
+    end
+end
+% CHECKBOX: GRID SMOOTH
+function SetGridSmooth(hFig, GridSmooth)
+    global GlobalData;
+    % Get figure configuration
+    TessInfo = getappdata(hFig, 'Surface');
+    if isempty(TessInfo.DataSource.FileName)
+        return;
+    end
+    % Update figure configuration 
+    TessInfo.DataSource.GridSmooth = GridSmooth;
+    setappdata(hFig, 'Surface', TessInfo);
+    % Update display
+    [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo.DataSource.FileName);
+    if ~isempty(iDS)
+        GlobalData.DataSet(1).Results(1).grid2mri_interp = [];
+        bst_figures('FireCurrentTimeChanged', 1);
     end
 end
 
@@ -4364,6 +4390,25 @@ function SetElecGroupVisible(hFig, GroupName, isVisible)
     end
 end
 
+
+%% ===== JUMP TO MAXIMUM =====
+function JumpMaximum(hFig)
+    % Get figure data
+    [sMri, TessInfo, iAnatomy] = panel_surface('GetSurfaceMri', hFig);
+    if isempty(TessInfo) || isempty(iAnatomy) || ~isfield(TessInfo(iAnatomy), 'OverlayCube') || isempty(TessInfo(iAnatomy).OverlayCube)
+        return;
+    end
+    % Find maximum
+    [valMax, iMax] = max(TessInfo(iAnatomy).OverlayCube(:));
+    if isempty(iMax)
+        return;
+    end
+    % Convert index to voxel indices
+    [XYZ(1), XYZ(2), XYZ(3)] = ind2sub(size(TessInfo(iAnatomy).OverlayCube), iMax(1));
+    % Set new position
+    TessInfo(iAnatomy).CutsPosition = XYZ;
+    figure_3d('UpdateMriDisplay', hFig, [1 2 3], TessInfo, iAnatomy);
+end
 
 
 
