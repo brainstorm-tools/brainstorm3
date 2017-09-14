@@ -41,7 +41,7 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2017
 
 
 %% ===== PARSE INPUTS =====
@@ -111,7 +111,7 @@ if isempty(DataFiles)
     % Process the selected directories :
     %    1) If they are .ds/ directory with .meg4 and .res4 files : keep them as "files to open"
     %    2) Else : add all the data files they contains (subdirectories included)
-    DataFiles = io_expand_filenames(FileFilter, DataFiles);
+    DataFiles = file_expand_selection(FileFilter, DataFiles);
     if isempty(DataFiles)
         error(['No data ' FileFormat ' file in the selected directories.']);
     end

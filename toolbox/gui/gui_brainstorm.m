@@ -1318,6 +1318,10 @@ end
 function isDeleted = EmptyTempFolder()
     % Get temporary directory
     tmpDir = bst_get('BrainstormTmpDir');
+    % Make sure Matlab is not currently in a subfolder of the temp directory
+    if ~isempty(strfind(pwd, tmpDir)) && ~file_compare(pwd, tmpDir)
+        cd(tmpDir);
+    end
     % If directory exists
     if isdir(tmpDir)
         disp('BST> Emptying temporary directory...');

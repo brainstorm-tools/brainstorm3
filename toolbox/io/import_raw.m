@@ -83,7 +83,7 @@ if isempty(RawFiles)
     % Process the selected directories :
     %    1) If they are .ds/ directory with .meg4 and .res4 files : keep them as "files to open"
     %    2) Else : add all the data files they contains (subdirectories included)
-    RawFiles = io_expand_filenames(FileFilter, RawFiles);
+    RawFiles = file_expand_selection(FileFilter, RawFiles);
     if isempty(RawFiles)
         error(['No data ' FileFormat ' file in the selected directories.']);
     end
@@ -194,6 +194,8 @@ for iFile = 1:length(RawFiles)
                 curPath = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sExistStudy.FileName));
                 curPath = file_unique(curPath);
                 [tmp__, ConditionName] = bst_fileparts(curPath, 1);
+                % Save it in the updated name in the "condition" field
+                sFile.condition = strrep(ConditionName, '@raw', '');
             end
         end
     end

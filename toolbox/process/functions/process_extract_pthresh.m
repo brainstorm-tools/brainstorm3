@@ -273,24 +273,14 @@ function threshmap = Compute(StatMat, StatThreshOptions)
             df = [StatMat.SPM.xCon(1).eidf, StatMat.SPM.xX.erdf];
             S = StatMat.SPM.xVol.S;    %-search Volume {voxels}
             R = StatMat.SPM.xVol.R;    %-search Volume {resels}
-            % FDR correction: not supported yet
-            if strcmpi(StatThreshOptions.Correction, 'fdr')
-                StatThreshOptions.Correction = 'no';
-                bst_error('FDR correction not supported yet.', 'Stat', 0);
-            end
             % Correction
             switch (StatThreshOptions.Correction)
                 case {'none', 'no'}
-                    u = spm_uc(StatThreshOptions.pThreshold, df, 'T', R, 1, S);
+                    u = spm_u(StatThreshOptions.pThreshold, df, 'T');
                 case 'bonferroni'
                     u = spm_uc_Bonf(StatThreshOptions.pThreshold, df, 'T', S, 1);
                 case 'fdr'
-                    error('Not supported yet');
-%                     if isfield(StatMat.SPM, 'SortedT') && ~isempty(StatMat.SPM.SortedT)
-%                         u = spm_uc_FDR(StatThreshOptions.pThreshold, df, 'T', 1, flipud(StatMat.SPM.SortedT(:)));
-%                     else
-%                         u = spm_uc_FDR(StatThreshOptions.pThreshold, df, 'T', 1, sort(StatMat.tmap(:)));
-%                     end
+                    u = spm_uc(StatThreshOptions.pThreshold, df, 'T', R, 1, S);
             end
             % Activated voxels
             pmask = (StatMat.tmap >= u);

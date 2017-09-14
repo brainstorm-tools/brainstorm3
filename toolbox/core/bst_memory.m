@@ -413,7 +413,8 @@ function LoadChannelFile(iDS, ChannelFile)
         end
         % If there are some ECOG/SEEG channels: Create new temporary montages automatically
         if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
-            panel_montage('AddAutoMontagesEeg', iDS, ChannelMat);
+            SubjectName = bst_fileparts(GlobalData.DataSet(iDS).SubjectFile);
+            panel_montage('AddAutoMontagesEeg', SubjectName, ChannelMat);
         end
         % If there are some NIRS channels: Create new temporary montages automatically
         if ismember('NIRS', {ChannelMat.Channel.Type})

@@ -1771,14 +1771,12 @@ end
 
 
 %% ===== ADD AUTO MONTAGES: EEG =====
-function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
+function AddAutoMontagesEeg(Comment, ChannelMat) %#ok<DEFNU>
     global GlobalData;
     % Get groups of electrodes
     [iEeg, GroupNames] = panel_montage('GetEegGroups', ChannelMat.Channel, [], 1);    
     % If there is more than one EEG group
     if (length(iEeg) > 2)
-        % Get subject name
-        SubjectName = bst_fileparts(GlobalData.DataSet(iDS).SubjectFile);
         % Get all the modalities available
         AllModalities = unique(upper({ChannelMat.Channel([iEeg{:}]).Type}));
     
@@ -1787,17 +1785,17 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
             Mod = AllModalities{iMod};
             % All (orig)
             sMontageAllOrig.(Mod) = db_template('Montage');
-            sMontageAllOrig.(Mod).Name   = [SubjectName ': ' Mod ' (orig)[tmp]'];
+            sMontageAllOrig.(Mod).Name   = [Comment ': ' Mod ' (orig)[tmp]'];
             sMontageAllOrig.(Mod).Type   = 'selection';
             SetMontage(sMontageAllOrig.(Mod).Name, sMontageAllOrig.(Mod));
             % All (bipolar 1)
             sMontageAllBip1.(Mod) = db_template('Montage');
-            sMontageAllBip1.(Mod).Name   = [SubjectName ': ' Mod ' (bipolar 1)[tmp]'];
+            sMontageAllBip1.(Mod).Name   = [Comment ': ' Mod ' (bipolar 1)[tmp]'];
             sMontageAllBip1.(Mod).Type   = 'text';
             SetMontage(sMontageAllBip1.(Mod).Name, sMontageAllBip1.(Mod));
             % All (bipolar 2)
             sMontageAllBip2.(Mod) = db_template('Montage');
-            sMontageAllBip2.(Mod).Name   = [SubjectName ': ' Mod ' (bipolar 2)[tmp]'];
+            sMontageAllBip2.(Mod).Name   = [Comment ': ' Mod ' (bipolar 2)[tmp]'];
             sMontageAllBip2.(Mod).Type   = 'text';
             SetMontage(sMontageAllBip2.(Mod).Name, sMontageAllBip2.(Mod));
         end
@@ -1816,7 +1814,7 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
             % === MONTAGE: ORIG ===
             % Create montage
             sMontage = db_template('Montage');
-            sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (orig)[tmp]'];
+            sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (orig)[tmp]'];
             sMontage.Type      = 'selection';
             sMontage.ChanNames = ChanNames;
             sMontage.DispNames = ChanNames;
@@ -1837,7 +1835,7 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
             % Example: A1-A2, A3-A4, ...
             % Create montage
             sMontage = db_template('Montage');
-            sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (bipolar 1)[tmp]'];
+            sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (bipolar 1)[tmp]'];
             sMontage.Type      = 'text';
             sMontage.ChanNames = ChanNames;
             sMontage.Matrix    = zeros(0, length(iChan));
@@ -1873,7 +1871,7 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
             % Example: A1-A2, A2-A3, ...
             % Create montage
             sMontage = db_template('Montage');
-            sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (bipolar 2)[tmp]'];
+            sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (bipolar 2)[tmp]'];
             sMontage.Type      = 'text';
             sMontage.ChanNames = ChanNames;
             sMontage.Matrix    = zeros(0, length(iChan));
@@ -1990,7 +1988,7 @@ end
 
 
 %% ===== UNLOAD AUTO MONTAGES =====
-function UnloadAutoMontages()
+function UnloadAutoMontages() %#ok<DEFNU>
     global GlobalData;
     % Exist in no montages loaded
     if isempty(GlobalData) || isempty(GlobalData.ChannelMontages) || isempty(GlobalData.ChannelMontages.Montages)

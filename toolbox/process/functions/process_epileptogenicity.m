@@ -1,5 +1,5 @@
-function varargout = process_epilepsy_index2( varargin )
-% PROCESS_EPILEPSY_INDEX2: Computes maps of epileptogenicity index for SEEG/ECOG recordings.
+function varargout = process_epileptogenicity( varargin )
+% PROCESS_EPILEPTOGENICITY: Computes epileptogenicity maps for SEEG/ECOG ictal recordings.
 %
 % REFERENCES: 
 %     This function is the Brainstorm wrapper for function IMAGIN_Epileptogenicity.m
@@ -44,6 +44,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.isPaired    = 1;
     sProcess.Description = 'https://f-tract.eu/tutorials';
 
+    % === HELP
+    sProcess.options.help.Comment = [ ...
+        'This process computes epileptogenicity maps based on<BR>' ...
+        'SEEG ictal recordings. The methodology is described in:<BR>' ...
+        '<FONT COLOR="#808080"><I>David O, Blauwblomme T, Job AS, Chabardès S, Hoffmann D, <BR>' ...
+        'Minotti L, Kahane P. Imaging the seizure onset zone with <BR>' ...
+        'stereo-electroencephalography. Brain (2011).</I></FONT><BR><BR>'];
+    sProcess.options.help.Type    = 'label';
     % === SENSOR SELECTION
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
@@ -135,7 +143,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     workDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'ImaGIN_epileptogenicity');
     % Make sure Matlab is not currently in the work directory
     curDir = pwd;
-    if strfind(pwd, workDir)
+    if ~isempty(strfind(pwd, workDir))
         curDir = bst_fileparts(workDir);
         cd(curDir);
     end

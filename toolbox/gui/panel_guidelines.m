@@ -203,10 +203,15 @@ function [OutputFiles, FileFormat] = PickFile(jControl, DefaultDir, SelectionMod
         DefaultFormat = [];
     end
     % Pick a file
-    [OutputFiles, FileFormat] = java_getfile('open', 'Select file', DefaultFile, SelectionMode, FilesOrDir, Filters, defaultFilter);
+    [OutputFiles, FileFormat, FileFilter] = java_getfile('open', 'Select file', DefaultFile, SelectionMode, FilesOrDir, Filters, defaultFilter);
     % If nothing selected
     if isempty(OutputFiles)
         return
+    end
+    % Get the files
+    OutputFiles = file_expand_selection(FileFilter, OutputFiles);
+    if isempty(OutputFiles)
+        error(['No ' FileFormat ' file in the selected directories.']);
     end
     % Save default import directory
     if ischar(OutputFiles)
@@ -220,12 +225,12 @@ function [OutputFiles, FileFormat] = PickFile(jControl, DefaultDir, SelectionMod
     end
     LastUsedDirs.(DefaultDir) = newDir;
     bst_set('LastUsedDirs', LastUsedDirs);
-        
     % Save default import format
     if ~isempty(DefaultFormat)
         DefaultFormats.(DefaultFormat) = FileFormat;
         bst_set('DefaultFormats',  DefaultFormats);
     end
+    
     % Get file descriptions (one/many)
     if ischar(OutputFiles)
         strFiles = OutputFiles;

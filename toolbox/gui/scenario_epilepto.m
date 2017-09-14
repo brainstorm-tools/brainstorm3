@@ -1,5 +1,5 @@
 function varargout = scenario_epilepto( varargin )
-% SCENARIO_EPILEPTO: Compute maps of epileptogenicity index with O David procedure.
+% SCENARIO_EPILEPTO: Compute epileptogenicity maps with O David procedure.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -59,7 +59,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     i = 1;
     ctrl.jPanels(i) = gui_river([3,3], [8,10,1,4], sprintf('Step #%d: Introduction', i));
     % Introduction
-    gui_component('Label', ctrl.jPanels(i), 'hfill', ['<HTML>This pipeline is designed to help you compute maps of epileptogenicity index based on SEEG ictal recordings.<BR><BR>' ...
+    gui_component('Label', ctrl.jPanels(i), 'hfill', ['<HTML>This pipeline is designed to help you compute epileptogenicity maps based on SEEG ictal recordings.<BR><BR>' ...
         'David O, Blauwblomme T, Job AS, Chabardès S, Hoffmann D, Minotti L, Kahane P. ' ...
         'Imaging the seizure onset zone with stereo-electroencephalography. Brain (2011)']);
     gui_component('Label', ctrl.jPanels(i), 'br', '<HTML><FONT COLOR="#0000C0">https://f-tract.eu/index.php/tutorials/</FONT>', [], [], @(h,ev)web('https://f-tract.eu/index.php/tutorials/', '-browser'));
@@ -696,38 +696,8 @@ function ButtonRawAdd()
     % Create raw links
     [sSubject, iSubject] = bst_get('Subject', GlobalData.Guidelines.SubjectName);
     OutputFiles = import_raw(RawFiles, FileFormat, iSubject);
-    AllChannelFiles = {};
-    % Edit output channel files: set the channels to SEEG
-    for iFile = 1:length(OutputFiles)
-        % Get channel file
-        [sStudy, iStudy] = bst_get('DataFile', OutputFiles{iFile});
-        ChannelFile = file_fullpath(sStudy.Channel.FileName);
-        % Load channel file
-        ChannelMat = in_bst_channel(ChannelFile);        
-        % Get channels classified as EEG
-        iEEG = channel_find(ChannelMat.Channel, 'EEG,SEEG,ECOG,ECG,EKG');
-        % If there are no channels classified at EEG, take all the channels
-        if isempty(iEEG)
-            disp('Warning: No EEG channels identified, trying to use all the channels...');
-            iEEG = 1:length(ChannelMat.Channel);
-        end
-        % Detect channels of interest
-        [iSelEeg, iEcg] = ImaGIN_select_channels({ChannelMat.Channel(iEEG).Name}, 1);
-        % Set channels as SEEG
-        if ~isempty(iSelEeg)
-            [ChannelMat.Channel(iEEG(iSelEeg)).Type] = deal('SEEG');
-        end
-        if ~isempty(iEcg)
-            [ChannelMat.Channel(iEEG(iEcg)).Type] = deal('ECG');
-        end
-        % Save modified file
-        bst_save(ChannelFile, ChannelMat, 'v7');
-        % Save channel files
-        AllChannelFiles{end+1} = ChannelFile;
-        % Update database reference
-        [sStudy.Channel.Modalities, sStudy.Channel.DisplayableSensorTypes] = channel_get_modalities(ChannelMat.Channel);
-        bst_set('Study', iStudy, sStudy);
-    end
+    % Process: Consider as SEEG/ECOG
+    bst_process('CallProcess', 'process_channel_setseeg', OutputFiles, [], 'newtype', 'SEEG');
     % Save file format
     UpdatePrepareRaw();
     % Edit channel files
@@ -812,25 +782,26 @@ function ButtonRawEditChannel(RawLinks)
     function ChannelEditorClosed_Callback()
         % Call default callback to save the first file
         fcnCallback();
-        % Load the first channel file again
-        RefChannelMat = in_bst_channel(AllChannelFiles{1});
-        % If there were modifications: Apply the same modifications to the other channel files
-        if ~isequal({RefChannelMat.Channel.Name}, {AllChannelMats{1}.Channel.Name}) || ~isequal({RefChannelMat.Channel.Type}, {AllChannelMats{1}.Channel.Type})
-            for iFile = 2:length(RawLinks)
-                % Replicate the modifications
-                [AllChannelMats{iFile}.Channel.Name] = deal(RefChannelMat.Channel.Name);
-                [AllChannelMats{iFile}.Channel.Type] = deal(RefChannelMat.Channel.Type);
-                % Save modifications
-                bst_save(file_fullpath(AllChannelFiles{iFile}), AllChannelMats{iFile}, 'v7');
+        % Copy changes to others
+        if (length(RawLinks) > 1)
+            % Load the first channel file again
+            RefChannelMat = in_bst_channel(AllChannelFiles{1});
+            % If there were modifications: Apply the same modifications to the other channel files
+            if ~isequal({RefChannelMat.Channel.Name}, {AllChannelMats{1}.Channel.Name}) || ~isequal({RefChannelMat.Channel.Type}, {AllChannelMats{1}.Channel.Type})
+                for iFile = 2:length(RawLinks)
+                    % Replicate the modifications
+                    [AllChannelMats{iFile}.Channel.Name] = deal(RefChannelMat.Channel.Name);
+                    [AllChannelMats{iFile}.Channel.Type] = deal(RefChannelMat.Channel.Type);
+                    % Save modifications
+                    bst_save(file_fullpath(AllChannelFiles{iFile}), AllChannelMats{iFile}, 'v7');
+                end
             end
         end
         % Update panel
         UpdatePrepareRaw();
     end
     % Add a hook to capture when the channel editor is closed
-    if (length(RawLinks) > 1)
-        java_setcb(jFrame, 'WindowClosingCallback', @(h,ev)ChannelEditorClosed_Callback());
-    end
+    java_setcb(jFrame, 'WindowClosingCallback', @(h,ev)ChannelEditorClosed_Callback());
 end
 
 %% ===== RECORDINGS: REVIEW =====
@@ -888,10 +859,10 @@ function ButtonRawEvent(strEvent)
             end
             % Reset time selection
             figure_timeseries('SetTimeSelectionLinked', hFig, []);
-            % Delete existing markers
-            if ~isempty(panel_record('GetEvents', strEvent))
-                panel_record('EventTypeDel', strEvent, 1);
-            end
+%             % Delete existing markers
+%             if ~isempty(panel_record('GetEvents', strEvent))
+%                 panel_record('EventTypeDel', strEvent, 1);
+%             end
         case 'Baseline'
             % A time selection must be available
             GraphSelection = getappdata(hFig, 'GraphSelection');
@@ -987,7 +958,7 @@ function RawInputEvents()
         end
         sFile.events(iEvtOnset).samples = round(newOnset * sFile.prop.sfreq);
         sFile.events(iEvtOnset).times   = sFile.events(iEvtOnset).samples ./ sFile.prop.sfreq;
-        sFile.events(iEvtOnset).epochs  = ones(size(sFile.events(iEvtOnset).samples));
+        sFile.events(iEvtOnset).epochs  = ones(1, size(sFile.events(iEvtOnset).samples, 2));
     end
     % Add Baseline event
     if (length(newBaseline) == 2)
@@ -1000,7 +971,7 @@ function RawInputEvents()
         end
         sFile.events(iEvtBaseline).samples = round(newBaseline * sFile.prop.sfreq);
         sFile.events(iEvtBaseline).times   = sFile.events(iEvtBaseline).samples ./ sFile.prop.sfreq;
-        sFile.events(iEvtBaseline).epochs  = ones(size(sFile.events(iEvtBaseline).samples));
+        sFile.events(iEvtBaseline).epochs  = ones(1, size(sFile.events(iEvtBaseline).samples, 2));
     end
     % Save modification
     LinkMat.F = sFile;
@@ -1144,6 +1115,8 @@ function [isValidated, errMsg] = ValidateEpoch()
     % Initialize returned variables
     isValidated = 0;
     errMsg = '';
+    % Unload everything
+    bst_memory('UnloadAll', 'Forced');
     % Get onset time window
     OnsetTimeRange = [str2double(char(ctrl.jTextEpochStart.getText())), ...
                       str2double(char(ctrl.jTextEpochStop.getText()))];
@@ -1155,11 +1128,6 @@ function [isValidated, errMsg] = ValidateEpoch()
     else
         MontageName = [];
     end
-    % If montage does not exist, load data file
-    sMontage = panel_montage('GetMontage', MontageName);
-    if isempty(sMontage)
-         bst_memory('LoadDataFile', GlobalData.Guidelines.RawLinks{1});
-    end
     
     % Import the baselines and seizures
     nFiles = length(GlobalData.Guidelines.RawLinks);
@@ -1168,6 +1136,7 @@ function [isValidated, errMsg] = ValidateEpoch()
     for iFile = 1:nFiles
         % Get subject name
         sFile = bst_process('GetInputStruct', GlobalData.Guidelines.RawLinks{iFile});
+        bst_report('Start', GlobalData.Guidelines.RawLinks{iFile});
         % Get corresponding imported folder
         studyName = strrep(bst_fileparts(sFile.FileName), '@raw', '');
         sStudyImport = [bst_get('StudyWithCondition', [studyName '_bipolar_2']), ...
@@ -1199,8 +1168,8 @@ function [isValidated, errMsg] = ValidateEpoch()
         
         % === IMPORT ONSET ===
         % Onset files already imported
-        if (length(iDataOnset) == length(GlobalData.Guidelines.Onsets{iFile}))
-            GlobalData.Guidelines.OnsetFiles{iFile} = sStudyImport(1).Data(iDataOnset).FileName;
+        if (length(iDataOnset) == size(GlobalData.Guidelines.Onsets{iFile},2))
+            GlobalData.Guidelines.OnsetFiles{iFile} = {sStudyImport(1).Data(iDataOnset).FileName};
             sFilesOnsets = [];
         % Import onsets
         elseif ~isempty(GlobalData.Guidelines.Onsets{iFile})
@@ -1232,12 +1201,12 @@ function [isValidated, errMsg] = ValidateEpoch()
             GlobalData.Guidelines.BaselineFiles{iFile} = {sFilesBaselines.FileName};
         end
         if ~isempty(sFilesOnsets)
-            GlobalData.Guidelines.OnsetFiles{iFile} = sFilesOnsets.FileName;
+            GlobalData.Guidelines.OnsetFiles{iFile} = {sFilesOnsets.FileName};
         end
     end
     % Select first imported file in the database explorer 
     if ~isempty(GlobalData.Guidelines.OnsetFiles)
-        [sStudySel, iStudySel] = bst_get('DataFile', GlobalData.Guidelines.OnsetFiles{1});
+        [sStudySel, iStudySel] = bst_get('DataFile', GlobalData.Guidelines.OnsetFiles{1}{1});
         panel_protocols('SelectStudyNode', iStudySel);
     end
     isValidated = 1;
@@ -1299,12 +1268,13 @@ function [isValidated, errMsg] = ValidateTimefreq()
     end
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
+    bst_report('Start', cat(2,GlobalData.Guidelines.OnsetFiles{:}));
     
     % Get the averages
     iFileAvg = [];
     iFileAvgChan = [];
     if (length(GlobalData.Guidelines.OnsetFiles) == 1)
-        [sStudy,iStudy,iTf] = bst_get('TimefreqForFile', GlobalData.Guidelines.OnsetFiles{1});
+        [sStudy,iStudy,iTf] = bst_get('TimefreqForFile', GlobalData.Guidelines.OnsetFiles{1}{1});
         if (length(iTf) >= 2)
             iFileAvg     = find(~cellfun(@(c)isempty(strfind(c, 'Multitaper')), {sStudy.Timefreq.Comment}) &  cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
             iFileAvgChan = find(~cellfun(@(c)isempty(strfind(c, 'Multitaper')), {sStudy.Timefreq.Comment}) & ~cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
@@ -1325,7 +1295,7 @@ function [isValidated, errMsg] = ValidateTimefreq()
     % If files do not exist yet: compute them
     else
         % Process: FieldTrip: ft_mtmconvol (Multitaper)
-        sFilesTf = bst_process('CallProcess', 'process_ft_mtmconvol', GlobalData.Guidelines.OnsetFiles, [], ...
+        sFilesTf = bst_process('CallProcess', 'process_ft_mtmconvol', cat(2,GlobalData.Guidelines.OnsetFiles{:}), [], ...
             'timewindow',     [-10, 10], ...
             'sensortypes',    'SEEG', ...
             'mt_taper',       Taper, ... 
@@ -1400,6 +1370,7 @@ function ResetTimefreq()
                 return;
             end
             % Delete files
+            bst_report('Start', TimefreqFiles);
             bst_process('CallProcess', 'process_delete', TimefreqFiles, [], ...
                 'target', 1);  % Delete data files
             % Update tree
@@ -1492,12 +1463,25 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
     if isempty(sStudy) || (isempty(sStudy.Stat) && isempty(sStudy.Result))
         % Get selected files
         iFiles = find(GlobalData.Guidelines.ctrl.isFileSelected);
+        % Number of baselines/onsets is not the same
+        for i = 1:length(iFiles)
+            nBaselines = length(cat(2,GlobalData.Guidelines.BaselineFiles{iFiles(i)}));
+            nOnsets    = length(cat(2,GlobalData.Guidelines.OnsetFiles{iFiles(i)}));
+            if (nBaselines ~= nOnsets)
+                [tmp,strFolder] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{iFiles(i)}{1}));
+                errMsg = ['Folder "' strFolder '" contains:' 10 ...
+                          num2str(nBaselines) ' baseline(s) and ' num2str(nOnsets) ' seizure(s).' 10 10 ...
+                          'To specify one baseline for each seizure, use the Process2 tab:' 10 ...
+                          'Select all the baselines on the left and all the seizures on the right.'];
+                return;
+            end
+        end
         % Get input files
         BaselineFiles = cat(2, GlobalData.Guidelines.BaselineFiles{iFiles});
-        OnsetFiles = GlobalData.Guidelines.OnsetFiles(iFiles);
+        OnsetFiles    = cat(2, GlobalData.Guidelines.OnsetFiles{iFiles});
         % Process: Epileptogenicity index (A=Baseline,B=Seizure)
         bst_report('Start', BaselineFiles);
-        sFiles = bst_process('CallProcess', 'process_epilepsy_index2', BaselineFiles, OnsetFiles, ...
+        sFiles = bst_process('CallProcess', 'process_epileptogenicity', BaselineFiles, OnsetFiles, ...
             'sensortypes',    'SEEG', ...
             'freqband',       FreqBand, ...
             'latency',        Latency, ...
@@ -1536,20 +1520,20 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
     % View epileptogenicity maps
     for i = 1:length(iStat)
         if strcmpi(OutputType, 'surface')
-            view_surface_data([], sStudy.Stat(iStat(i)).FileName);
+            view_surface_data([], sStudy.Stat(iStat(i)).FileName, 'SEEG');
         else
             sSubject = bst_get('Subject', SubjectName);
-            hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sStudy.Stat(iStat(i)).FileName);
+            hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sStudy.Stat(iStat(i)).FileName, 'SEEG');
             figure_mri('JumpMaximum', hFig);
         end
     end
     % View delay maps
     for i = 1:length(iResult)
         if strcmpi(OutputType, 'surface')
-            hFig = view_surface_data([], sStudy.Result(iResult(i)).FileName);
+            hFig = view_surface_data([], sStudy.Result(iResult(i)).FileName, 'SEEG');
         else
             sSubject = bst_get('Subject', SubjectName);
-            hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sStudy.Result(iResult(i)).FileName);
+            hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sStudy.Result(iResult(i)).FileName, 'SEEG');
         end
         % Set the data threshold to 0
         panel_surface('SetDataThreshold', hFig, 1, 0);
@@ -1599,7 +1583,7 @@ function UpdateEpileptogenicity()
     GlobalData.Guidelines.ctrl.isFileSelected = ones(1, length(GlobalData.Guidelines.OnsetFiles));
     % Get list of file names
     for i = 1:length(GlobalData.Guidelines.OnsetFiles)
-        [fPath, strFile] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{i}));
+        [fPath, strFile] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{i}{1}));
         strFile = strrep(strFile, '_bipolar_2', '');
         strFile = strrep(strFile, '_bipolar_1', '');
         listModel.addElement(org.brainstorm.list.BstListItem('', '', strFile, int32(GlobalData.Guidelines.ctrl.isFileSelected(i))));

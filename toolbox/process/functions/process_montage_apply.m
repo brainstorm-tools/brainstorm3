@@ -65,14 +65,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Options
     isCreateChan = (sProcess.options.createchan.Value == 1);
     MontageName  = sProcess.options.montage.Value;
-    % Get loaded montage
-    sMontage = panel_montage('GetMontage',MontageName);
-    if isempty(sMontage) || (length(sMontage) > 1)
-        bst_report('Error', sProcess, sInputs, ['Invalid montage name "' MontageName '".']);
-        return;
-    end
     % Get a simpler montage name (for automatic SEEG montages)
-    strMontage = sMontage.Name;
+    strMontage = MontageName;
     strMontage = strrep(strMontage, '[tmp]', '');
     strMontage = strrep(strMontage, 'SEEG (', '');
     iColon = find(strMontage == ':');
@@ -83,25 +77,41 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     strMontage = strtrim(strrep(strMontage, '  ', ' '));
     % Bipolar montage?
     isBipolar = ~isempty(strfind(strMontage, 'bipolar'));
-    % If not creating a new channel file: montage output has to be compatible with curent channel structure
-    isCompatibleChan = ~strcmpi(sMontage.Type, 'selection') && (~strcmpi(sMontage.Type, 'text') || all(sum(sMontage.Matrix,2) == 0));
-    if ~isCreateChan && ~isCompatibleChan
-        bst_report('Error', sProcess, [], ['The montage "' sMontage.Name '" cannot be applied without writing a new folders.']);
-        return;
-    end
 
     % Get all the channel files from the list of files
     allChanFiles = unique({sInputs.ChannelFile});
     for iChan = 1:length(allChanFiles)
+        % Get subject for the channel file
+        sStudyChan = bst_get('ChannelFile', allChanFiles{iChan});
+        sSubject = bst_get('Subject', sStudyChan.BrainStormSubject, 1);
+        % Load channel file 
+        ChannelMat = in_bst_channel(allChanFiles{iChan});
+        % Update automatic montages
+        panel_montage('UnloadAutoMontages');
+        if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
+            panel_montage('AddAutoMontagesEeg', sSubject.Name, ChannelMat);
+        end
+        if ismember('NIRS', {ChannelMat.Channel.Type})
+            panel_montage('AddAutoMontagesNirs', ChannelMat);
+        end
+        
+        % Get montage
+        sMontage = panel_montage('GetMontage', MontageName);
+        if isempty(sMontage) || (length(sMontage) > 1)
+            bst_report('Error', sProcess, sInputs, ['Invalid montage name "' MontageName '".']);
+            return;
+        end
+        % If not creating a new channel file: montage output has to be compatible with curent channel structure
+        isCompatibleChan = ~strcmpi(sMontage.Type, 'selection') && (~strcmpi(sMontage.Type, 'text') || all(sum(sMontage.Matrix,2) == 0));
+        if ~isCreateChan && ~isCompatibleChan
+            bst_report('Error', sProcess, [], ['The montage "' sMontage.Name '" cannot be applied without writing a new folders.']);
+            return;
+        end
+        
         % Process each data file
         iDataFile = find(strcmpi(allChanFiles{iChan}, {sInputs.ChannelFile}));
         for ik = 1:length(iDataFile)
             iInput = iDataFile(ik);
-            % Get subject for the channel file
-            sSubject = bst_get('Subject', sInputs(iInput).SubjectFile, 1);
-            % Load channel file 
-            ChannelMat = in_bst_channel(allChanFiles{iChan});
-        
             % Load input file 
             DataMat = in_bst_data(sInputs(iInput).FileName);
             % Build average reference
