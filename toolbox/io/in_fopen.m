@@ -112,7 +112,7 @@ switch (FileFormat)
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);
     % ===== CONVERT TO CONTINUOUS =====
     case 'EEG-ASCII'
-        DataMat = in_data_ascii(DataFile);
+        [DataMat, ChannelMat] = in_data_ascii(DataFile);
     case 'EEG-BESA'
         [DataMat, ChannelMat] = in_data_besa(DataFile);
     case 'EEG-BRAINVISION'
