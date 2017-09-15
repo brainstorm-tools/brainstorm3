@@ -289,6 +289,26 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % Import file
         tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment, 't');
         OutputFiles = cat(2, OutputFiles, tmpFiles);
+        % Read corresponding contact maps
+        contactFile = bst_fullfile(listFiles(i).folder, [Comment, '.txt']);
+        if file_exist(contactFile)
+            % Prepare options structure
+            ImportOptions = db_template('ImportOptions');
+            ImportOptions.DisplayMessages = 0;
+            ImportOptions.ChannelReplace  = 0;
+            ImportOptions.ChannelAlign    = 0;
+            % Prepare ASCII import options
+            ImportEegRawOptions = bst_get('ImportEegRawOptions');
+            ImportEegRawOptions.BaselineDuration  = 0;
+            ImportEegRawOptions.SamplingRate      = 1000;
+            ImportEegRawOptions.MatrixOrientation = 'channelXtime';
+            ImportEegRawOptions.VoltageUnits      = 'None';
+            ImportEegRawOptions.SkipLines         = 2;
+            ImportEegRawOptions.nAvg              = 1;
+            ImportEegRawOptions.isChannelName     = 1;
+            % Import file
+            import_data(contactFile, [], 'EEG-ASCII', iStudy, [], ImportOptions);
+        end
     end
     
     % ===== READ DELAY MAPS =====
@@ -300,6 +320,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         [tmp, Comment] = bst_fileparts(listFiles(i).name);
         % Import file
         tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment, 's');
+    end
+    
+    % ===== READ CONTACT VALUES =====
+    % List all the epileptogenicity index files in output
+    listFiles = dir(bst_fullfile(workDir, 'EI_*.txt'));
+    % Import all the data files
+    for i = 1:length(listFiles)
+        % File comment = File name
+        [tmp, Comment] = bst_fileparts(listFiles(i).name);
     end
 end
 

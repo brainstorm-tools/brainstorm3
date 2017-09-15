@@ -284,7 +284,7 @@ for iFile = 1:length(SourceFiles)
     % History
     ResultsMat = bst_history('add', ResultsMat, 'import', ['Imported from: ' SourceFiles{iFile}]);
     % Create output filename
-    OutputFiles{iFile} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType '_', file_standardize(Comment)]);
+    OutputFiles{iFile} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType, '_', ResultsMat.HeadModelType, '_', file_standardize(Comment)]);
     % Save new file
     bst_save(OutputFiles{iFile}, ResultsMat, 'v7');
     % Update database

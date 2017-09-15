@@ -174,7 +174,16 @@ for iFile = 1:length(DataFiles)
         ImportOptions.ChannelReplace = 0;
         ImportOptions.ChannelAlign = 0;
     else
-        [ImportedDataMat, ChannelMat, nChannels, nTime, ImportOptions] = in_data(DataFile, [], FileFormat, ImportOptions, nbCall);
+        % If importing files in an existing folder: adapt to the existing channel file
+        if ~isempty(iStudyInit) && ~isnan(iStudyInit) && (iStudyInit > 0)
+            sStudyInit = bst_get('Study', iStudyInit);
+            if ~isempty(sStudyInit) && ~isempty(sStudyInit.Channel) && ~isempty(sStudyInit.Channel(1).FileName)
+                ChannelMatInit = in_bst_channel(sStudyInit.Channel(1).FileName);
+            else
+                ChannelMatInit = [];
+            end
+        end
+        [ImportedDataMat, ChannelMat, nChannels, nTime, ImportOptions] = in_data(DataFile, ChannelMatInit, FileFormat, ImportOptions, nbCall);
     end
     if isempty(ImportedDataMat)
         break;

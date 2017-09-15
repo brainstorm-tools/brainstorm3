@@ -2719,7 +2719,8 @@ switch contextName
             'MatrixOrientation', 'channelXtime', ... % {'channelXtime', 'timeXchannel'}
             'VoltageUnits',      'V', ...            % {'\muV', 'mV', 'V'}
             'SkipLines',         0, ...
-            'nAvg',              1);
+            'nAvg',              1, ...
+            'isChannelName',     0);                 % 1 if the first entry contains the channel name
         argout1 = FillMissingFields(contextName, defPref);
         
     case 'BugReportOptions'

@@ -181,7 +181,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jMenuGuidelines = gui_component('Menu', jMenuSupport, [], 'Guidelines', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
         gui_component('MenuItem', jMenuGuidelines, [], 'Epileptogenicity maps', IconLoader.ICON_EDIT, [], @(h,ev)ShowGuidelines('epileptogenicity'), fontSize);
         jMenuGuidelines.addSeparator();
-        gui_component('MenuItem', jMenuGuidelines, [], 'Close panel', IconLoader.ICON_EDIT, [], @(h,ev)gui_hide('Guidelines'));
+        gui_component('MenuItem', jMenuGuidelines, [], 'Close panel', IconLoader.ICON_EDIT, [], @(h,ev)gui_hide('Guidelines'), fontSize);
         
     % ===== TOOLBAR =====
     jToolbar = gui_component('Toolbar', jMenuBar);

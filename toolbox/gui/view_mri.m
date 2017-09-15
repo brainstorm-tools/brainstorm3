@@ -140,7 +140,14 @@ if (length(hFig) > 1)
     iDS   = iOldDataSet(1);
     iSurface = iSurface(1);
 % Else: Figure was not found
-elseif isempty(hFig) 
+elseif isempty(hFig)
+    % Try to get a default modality from the channel file
+    if isempty(Modality) && ~isempty(GlobalData.DataSet(iDS).Channel)
+        [tmp, Modality] = channel_get_modalities(GlobalData.DataSet(iDS).Channel);
+        if ~isempty(Modality) && iscell(Modality)
+            Modality = Modality{1};
+        end
+    end
     % Prepare FigureId structure
     FigureId = db_template('FigureId');
     FigureId.Type     = 'MriViewer';

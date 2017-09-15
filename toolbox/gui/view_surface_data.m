@@ -186,7 +186,7 @@ if isempty(Modality)
             end
         end
         if isempty(AllModalities)
-            AllModalities = intersect(unique({GlobalData.DataSet(iDS).Channel.Type}), {'MEG','EEG','MEG MAG','MEG GRAD','NIRS'});
+            AllModalities = intersect(unique({GlobalData.DataSet(iDS).Channel.Type}), {'SEEG','ECOG','MEG','EEG','MEG MAG','MEG GRAD','NIRS'});
         end
         % Replace MEG GRAD+MEG MAG with "MEG"
         if all(ismember({'MEG GRAD', 'MEG MAG'}, AllModalities))

@@ -1517,7 +1517,7 @@ switch (lower(action))
                     sStudy = bst_get('Study', iStudy);
                     % Get associated subject and surfaces, if it exists
                     sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-                    isVolumeGrid = 0;
+                    isVolumeGrid = ~isempty(strfind(filenameRelative, '_volume_'));
 
                     % === MENU: CORTICAL ACTIVATIONS ===
                     jMenuActivations = gui_component('Menu', jPopup, [], 'Cortical activations', IconLoader.ICON_RESULTS, [], []);

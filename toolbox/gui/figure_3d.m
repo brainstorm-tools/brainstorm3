@@ -975,7 +975,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                             % Cycle between three modes : Nothing, Sensors, Sensors+labels
                             else
                                 % SEEG/ECOG: Display 3D Electrodes
-                                if ismember(FigureId.Modality, {'SEEG','ECOG'})
+                                if ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'SEEG','ECOG'})
                                     view_channels(GlobalData.DataSet(iDS).ChannelFile, FigureId.Modality, 1, 0, hFig, 1);
                                 elseif isMarkers && isLabels
                                     ViewSensors(hFig, 0, 0);

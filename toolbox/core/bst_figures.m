@@ -165,7 +165,7 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
         % ==== CREATE FIGURE ====
         switch(FigureId.Type)
             case {'DataTimeSeries', 'ResultsTimeSeries'}
-                hFig =figure_timeseries ('CreateFigure', FigureId);
+                hFig = figure_timeseries ('CreateFigure', FigureId);
                 FigHandles = db_template('DisplayHandlesTimeSeries');
             case 'Topography'
                 hFig = figure_3d('CreateFigure', FigureId);
@@ -237,15 +237,23 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
     errMsg = [];
     selChan = [];
     % If no modality for the figure: return empty list of channels
-    if isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
+    Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+    if isempty(Modality)
         return;
+    end
+    % If "stat" modality: replace with the first display modality
+    if strcmpi(Modality, 'stat')
+        [tmp, dispMod] = channel_get_modalities(GlobalData.DataSet(iDS).Channel);
+        if ~isempty(dispMod)
+            Modality = dispMod{1};
+        end
     end
     % Get selected channels
     selChan = good_channel(GlobalData.DataSet(iDS).Channel, ...
                            GlobalData.DataSet(iDS).Measures.ChannelFlag, ...
-                           GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
+                           Modality);
     % If opening EEG/SEEG/ECOG topography or 3D view: exclude (0,0,0) points
-    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'EEG','SEEG','ECOG'})
+    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(Modality, {'EEG','SEEG','ECOG'})
         % Get the locations for all the channels
         chanLoc = {GlobalData.DataSet(iDS).Channel(selChan).Loc};
         % Detect the channels without location or at (0,0,0)
@@ -262,10 +270,10 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
     % Make sure that something can be displayed in this figure
     if isempty(selChan) && ~isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
         % Get the channels again, but ignoring the bad channels
-        selChanAll = good_channel(GlobalData.DataSet(iDS).Channel, [], GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
+        selChanAll = good_channel(GlobalData.DataSet(iDS).Channel, [], Modality);
         % Display an error message, depending on the results of this request
         if ~isempty(selChanAll)
-            errMsg = ['Nothing to display: All the "' GlobalData.DataSet(iDS).Figure(iFig).Id.Modality '" channels are marked as bad or do not have 3D positions.'];
+            errMsg = ['Nothing to display: All the "' Modality '" channels are marked as bad or do not have 3D positions.'];
         else
             % THAT IS FINE TO SHOW DATA WITHOUT ANY CHANNEL
             %error(['There are no "' GlobalData.DataSet(iDS).Figure(iFig).Id.Modality '" channel in this channel file']);

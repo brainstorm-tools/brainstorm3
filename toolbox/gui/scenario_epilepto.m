@@ -200,7 +200,6 @@ function ctrl = CreatePanels() %#ok<DEFNU>
         ctrl.jListFiles.setCellRenderer(jCellRenderer);
         ctrl.jListFiles.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         java_setcb(ctrl.jListFiles, 'MouseClickedCallback', @ListFilesClick_Callback);
-%         java_setcb(ctrl.jListFiles, 'MouseClickedCallback', @(h,ev)panel_ssp_selection('ToggleCheck', ev));
         jScrollFiles = JScrollPane(ctrl.jListFiles);
     % Assemble panel
     ctrl.jPanels(i) = gui_river([0,0], [5,10,0,4], sprintf('Step #%d: Epileptogenicity index', i));
