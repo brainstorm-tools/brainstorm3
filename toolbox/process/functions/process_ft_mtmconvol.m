@@ -82,7 +82,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Options: Frequency resolution
     sProcess.options.mt_freqmod.Comment = 'Modulation factor: ';
     sProcess.options.mt_freqmod.Type    = 'value';
-    sProcess.options.mt_freqmod.Value   = {10, ' (freqres=frequencies/modfactor)', 0};
+    sProcess.options.mt_freqmod.Value   = {10, ' ', 0};
     % Options: Time resolution
     sProcess.options.mt_timeres.Comment = 'Time resolution: ';
     sProcess.options.mt_timeres.Type    = 'value';
@@ -91,7 +91,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mt_timestep.Comment = 'Time step: ';
     sProcess.options.mt_timestep.Type    = 'value';
     sProcess.options.mt_timestep.Value   = {0.1, 'ms', []};
-
+    % === CORRESPONDANCE WITH FIELDTRIP
+    sProcess.options.mt_timestep.Comment = ['<HTML><BR><FONT color="#808080">' ...
+        'Correspondance with FieldTrip inputs:<BR>' ...
+        ' - timeoi = tw(1)+tr/2 : time_step : tw(2)-tr/2-1/sfreq<BR>' ...
+        '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tr=time_resolution, tw=time_window<BR>' ...
+        ' - tapsmofrq = frequencies / modulation_factor<BR>' ...
+        ' - timwin = repmat(time_resolution, 1, length(frequencies))</FONT>'];
+    sProcess.options.mt_timestep.Type    = 'label';
+    
     % === MEASURE
     sProcess.options.measure.Comment = {'Power', 'Magnitude', 'Measure: '; ...
                                         'power', 'magnitude', ''};

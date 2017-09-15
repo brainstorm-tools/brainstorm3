@@ -23,7 +23,7 @@ function varargout = process_timefreq( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2017
 
 eval(macro_method);
 end
