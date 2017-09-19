@@ -157,6 +157,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputsB, ['Cannot create temporary directory: "' workDir '".']);
         return;
     end
+    % Initialize file counter
+    fileCounter = ones(1, max([sInputsB.iStudy]));
     % Export all the files
     for iInput = 1:length(sInputsB)
         % Load files
@@ -211,6 +213,12 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         [fPath, fileTag] = bst_fileparts(fPath);
         fileTag = strrep(fileTag, '_bipolar_1', '');
         fileTag = strrep(fileTag, '_bipolar_2', '');
+        % If this file is not the only one in this folder: Add a file number
+        iStudyFile = sInputsB(iInput).iStudy;
+        if (nnz(iStudyFile == [sInputsB.iStudy]) > 1)
+            fileTag = [fileTag '-' num2str(fileCounter(iStudyFile))];
+            fileCounter(iStudyFile) = fileCounter(iStudyFile) + 1;
+        end
         % Export file names
         BaselineFiles{iInput} = file_unique(bst_fullfile(workDir, ['baseline_' fileTag '.mat']));
         OnsetFiles{iInput}    = file_unique(bst_fullfile(workDir, [fileTag '.mat']));
@@ -281,34 +289,30 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % ===== READ EPILEPTOGENICITY MAPS =====
     % List all the epileptogenicity maps in output
     listFiles = dir(bst_fullfile(workDir, 'SPM_*', ['spmT_0001', fileExt]));
-    % Import all the stat files
+    strGoup = cell(1,length(listFiles));
+    fileLatency = zeros(1,length(listFiles));
+    % Get the list of groups (one group = all the latencies for a file or group)
     for i = 1:length(listFiles)
+        [tmp, strGoup{i}] = bst_fileparts(listFiles(i).folder);
+        iLastSep = find(strGoup{i} == '_', 1, 'last');
+        fileLatency(i) = str2num(strGoup{i}(iLastSep+1:end));
+        strGoup{i} = strGoup{i}(1:iLastSep-1);
+    end
+    strGoupUnique = unique(strGoup);
+    % Import all the stat files, group by group
+    for iGroup = 1:length(strGoupUnique)
+        % Get file indices
+        iFiles = find(strcmpi(strGoup, strGoupUnique{iGroup}));
+        % Sort based on latency
+        [tmp,I] = sort(fileLatency(iFiles));
+        iFiles = iFiles(I);
         % File comment = SPM folder
-        [tmp, Comment] = bst_fileparts(listFiles(i).folder);
-        Comment = strrep(Comment, 'SPM_', '');
+        Comment = strrep(strGoupUnique{iGroup}, 'SPM_', '');
+        % Full file names, sorted by latency
+        groupFiles = cellfun(@(c)bst_fullfile(c, ['spmT_0001', fileExt]), {listFiles(iFiles).folder}, 'UniformOutput', 0);
         % Import file
-        tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment, 't');
+        tmpFiles = import_sources(iStudy, [], groupFiles, [], fileFormat, Comment, 't', fileLatency(iFiles));
         OutputFiles = cat(2, OutputFiles, tmpFiles);
-        % Read corresponding contact maps
-        contactFile = bst_fullfile(listFiles(i).folder, [Comment, '.txt']);
-        if file_exist(contactFile)
-            % Prepare options structure
-            ImportOptions = db_template('ImportOptions');
-            ImportOptions.DisplayMessages = 0;
-            ImportOptions.ChannelReplace  = 0;
-            ImportOptions.ChannelAlign    = 0;
-            % Prepare ASCII import options
-            ImportEegRawOptions = bst_get('ImportEegRawOptions');
-            ImportEegRawOptions.BaselineDuration  = 0;
-            ImportEegRawOptions.SamplingRate      = 1000;
-            ImportEegRawOptions.MatrixOrientation = 'channelXtime';
-            ImportEegRawOptions.VoltageUnits      = 'None';
-            ImportEegRawOptions.SkipLines         = 2;
-            ImportEegRawOptions.nAvg              = 1;
-            ImportEegRawOptions.isChannelName     = 1;
-            % Import file
-            import_data(contactFile, [], 'EEG-ASCII', iStudy, [], ImportOptions);
-        end
     end
     
     % ===== READ DELAY MAPS =====
@@ -325,10 +329,63 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % ===== READ CONTACT VALUES =====
     % List all the epileptogenicity index files in output
     listFiles = dir(bst_fullfile(workDir, 'EI_*.txt'));
-    % Import all the data files
+    strGoup = cell(1,length(listFiles));
+    fileLatency = zeros(1,length(listFiles));
+    % Get the list of groups (one group = all the latencies for a file or group)
     for i = 1:length(listFiles)
-        % File comment = File name
-        [tmp, Comment] = bst_fileparts(listFiles(i).name);
+        [tmp, strGoup{i}] = bst_fileparts(listFiles(i).name);
+        iLastSep = find(strGoup{i} == '_', 1, 'last');
+        fileLatency(i) = str2num(strGoup{i}(iLastSep+1:end));
+        strGoup{i} = strGoup{i}(1:iLastSep-1);
+    end
+    strGoupUnique = unique(strGoup);
+    % Get channel file
+    sStudy = bst_get('Study', iStudy);
+    ChannelMat = in_bst_channel(sStudy.Channel(1).FileName);
+    % Prepare options structure
+    ImportOptions = db_template('ImportOptions');
+    ImportOptions.DisplayMessages = 0;
+    ImportOptions.ChannelReplace  = 0;
+    ImportOptions.ChannelAlign    = 0;
+    % Prepare ASCII import options
+    ImportEegRawOptions = bst_get('ImportEegRawOptions');
+    ImportEegRawOptions.BaselineDuration  = 0;
+    ImportEegRawOptions.SamplingRate      = 1000;
+    ImportEegRawOptions.MatrixOrientation = 'channelXtime';
+    ImportEegRawOptions.VoltageUnits      = 'None';
+    ImportEegRawOptions.SkipLines         = 2;
+    ImportEegRawOptions.nAvg              = 1;
+    ImportEegRawOptions.isChannelName     = 1;
+    % Import all the txt files, group by group
+    for iGroup = 1:length(strGoupUnique)
+        % Get file indices
+        iFiles = find(strcmpi(strGoup, strGoupUnique{iGroup}));
+        % Sort based on latency
+        [tmp,I] = sort(fileLatency(iFiles));
+        iFiles = iFiles(I);
+        % Full file names, sorted by latency
+        groupFiles = cellfun(@(c)bst_fullfile(workDir, c), {listFiles(iFiles).name}, 'UniformOutput', 0);
+        % Import files
+        DataMat = [];
+        for i = 1:length(groupFiles)
+            % Import and load file
+            ImportedDataMat = in_data(groupFiles{i}, ChannelMat, 'EEG-ASCII', ImportOptions);
+            fileMat = load(ImportedDataMat.FileName);
+            % Concatenate with previous files
+            if isempty(DataMat)
+                DataMat = fileMat;
+            else
+                DataMat.F = [DataMat.F, fileMat.F];
+            end
+        end
+        % Final time vector
+        DataMat.Time = fileLatency(iFiles);
+        DataMat.Comment = strGoupUnique{iGroup};
+        % Save file
+        OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), ['data_', strGoupUnique{iGroup}]);
+        bst_save(OutputFile, DataMat, 'v7');
+        db_add_data(iStudy, OutputFile, DataMat);
+        panel_protocols('UpdateNode', 'Study', iStudy);
     end
 end
 

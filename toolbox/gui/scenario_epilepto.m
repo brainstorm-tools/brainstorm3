@@ -46,6 +46,8 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     GlobalData.Guidelines.Onsets       = {};
     GlobalData.Guidelines.isPos        = [];
     GlobalData.Guidelines.nSEEG        = [];
+    GlobalData.Guidelines.strOnset     = '';
+    GlobalData.Guidelines.strBaseline  = '';
     
     % Initialize list of panels
     nPanels = 6;
@@ -88,8 +90,15 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     java_setcb(ctrl.jComboSubj, 'ItemStateChangedCallback', @(h,ev)SelectSubject());
     % MRI are already registered
     ctrl.jCheckRegistered = gui_component('checkbox', ctrl.jPanels(i), 'br', 'MRI volumes are already registered (.nii format only)');
-    % Help
-    gui_component('Label', ctrl.jPanels(i), 'br', '<HTML><FONT color="#a0a0a0"><I>MRI or CT in DICOM format: Convert them to .nii with MRIcron.</I></FONT>');
+%     % Help
+%     gui_component('Label', ctrl.jPanels(i), 'br', '<HTML><FONT color="#a0a0a0"><I>MRI or CT in DICOM format: Convert them to .nii with MRIcron.</I></FONT>');
+    % Event names
+    gui_component('label', ctrl.jPanels(i), 'br', '<HTML><FONT color="#a0a0a0">Onset event name: </FONT>');
+    ctrl.jTextEvtOnset = gui_component('text', ctrl.jPanels(i), '', 'Onset');
+    ctrl.jTextEvtOnset.setForeground(java.awt.Color(0.63,0.63,0.63));
+    gui_component('label', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">&nbsp;&nbsp;&nbsp;&nbsp;Baseline event name: </FONT>');
+    ctrl.jTextEvtBaseline = gui_component('text', ctrl.jPanels(i), '', 'Baseline');
+    ctrl.jTextEvtBaseline.setForeground(java.awt.Color(0.63,0.63,0.63));
     % Callbacks
     ctrl.fcnValidate{i} = @(c)ValidateImportAnatomy();
     ctrl.fcnReset{i}    = @(c)ResetImportAnatomy();
@@ -142,9 +151,8 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     TimeUnit = gui_validate_text(ctrl.jTextEpochStart, [], ctrl.jTextEpochStop, {-100, 100, 1000}, 's', [], -10, []);
     TimeUnit = gui_validate_text(ctrl.jTextEpochStop, ctrl.jTextEpochStart, [], {-100, 100, 1000}, 's', [], 40, []);
     gui_component('label', ctrl.jPanels(i), [], [' ' TimeUnit]);
-    gui_component('label', ctrl.jPanels(i), 'br', ['<HTML><FONT color="#808080"><I>This window must be long enough to include both a baseline for<BR>' ...
-                                                                                  'the time-frequency analysis and the full time window for the<BR>' ...
-                                                                                  'computation of the epileptogenicity/latency maps.</I></FONT>']);
+    gui_component('label', ctrl.jPanels(i), 'br', ['<HTML><FONT color="#808080"><I>Includes the baseline for the time-frequency analysis and<BR>' ...
+                                                                                  'the full time window for the epileptogenicity/latency maps.</I></FONT>']);
     % Bipolar montage
     gui_component('label', ctrl.jPanels(i), 'br', 'Electrode montage:');
     jButtonGroupMontage = ButtonGroup();
@@ -182,10 +190,10 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jTextLatency = gui_component('text', jPanelEpilOptions, 'tab', '0:2:20');
     gui_component('label', jPanelEpilOptions, 'br', 'Time constant (s): ');
     ctrl.jTextTimeConstant = gui_component('texttime', jPanelEpilOptions, 'tab', '3');
-    gui_component('label', jPanelEpilOptions, 'br', 'Time resolution (s): ');
-    ctrl.jTextTimeResolution = gui_component('texttime', jPanelEpilOptions, 'tab', '0.2');
-    gui_component('label', jPanelEpilOptions, 'br', 'Propagation threshold (p): ');
-    ctrl.jTextThDelay = gui_component('texttime', jPanelEpilOptions, 'tab', '0.05');
+%     gui_component('label', jPanelEpilOptions, 'br', 'Time resolution (s): ');
+%     ctrl.jTextTimeResolution = gui_component('texttime', jPanelEpilOptions, 'tab', '0.2');
+%     gui_component('label', jPanelEpilOptions, 'br', 'Propagation threshold (p): ');
+%     ctrl.jTextThDelay = gui_component('texttime', jPanelEpilOptions, 'tab', '0.05');
     % Output type
     gui_component('label', jPanelEpilOptions, 'br', 'Output type:');
     jButtonGroupOutput = ButtonGroup();
@@ -259,7 +267,14 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
     MriFilePre  = char(ctrl.jTextMriPre.getText());
     MriFilePost = char(ctrl.jTextMriPost.getText());
     isRegistered = ctrl.jCheckRegistered.isSelected();
-
+    % Get event names
+    GlobalData.Guidelines.strOnset = char(ctrl.jTextEvtOnset.getText());
+    GlobalData.Guidelines.strBaseline = char(ctrl.jTextEvtBaseline.getText());
+    if isempty(GlobalData.Guidelines.strOnset) || isempty(GlobalData.Guidelines.strBaseline) || strcmpi(GlobalData.Guidelines.strOnset, GlobalData.Guidelines.strBaseline)
+        errMsg = 'Invalid event names.';
+        return;
+    end
+    
     % === GET SUBJECT ===
     % Subject name
     if isempty(SubjectName)
@@ -434,6 +449,34 @@ function [isValidated, errMsg] = UpdateImportAnatomy()
     gui_brainstorm('SetExplorationMode', 'Subjects');
 end
 
+%% ===== SELECT SUBJECT =====
+function SelectSubject()
+    global GlobalData;
+    ctrl = GlobalData.Guidelines.ctrl;
+    % Get subject
+    SubjectName = char(ctrl.jComboSubj.getSelectedItem());
+    sSubject = bst_get('Subject', SubjectName);
+    if isempty(sSubject)
+        return;
+    end
+    % Select subject node in the database explorer 
+    panel_protocols('SelectSubject', SubjectName);
+    % Anatomy folder
+    AnatDir = bst_fileparts(file_fullpath(sSubject.FileName));
+    MriPre  = fullfile(AnatDir, 'subjectimage_pre.mat');
+    MriPost = fullfile(AnatDir, 'subjectimage_post.mat');
+    % Check if there are already two volumes in the subject
+    if file_exist(MriPre) && file_exist(MriPost)
+        [sSubject, iSubject, iPre]  = bst_get('MriFile', MriPre);
+        [sSubject, iSubject, iPost] = bst_get('MriFile', MriPost);
+        ctrl.jTextMriPre.setText(sSubject.Anatomy(iPre).Comment);
+        ctrl.jTextMriPost.setText(sSubject.Anatomy(iPost).Comment);
+    else
+        ctrl.jTextMriPre.setText('');
+        ctrl.jTextMriPost.setText('');
+    end
+end
+
 
 
 %% ==========================================================================================
@@ -457,21 +500,21 @@ function [isValidated, errMsg] = ValidatePrepareRaw()
     elseif any(GlobalData.Guidelines.nSEEG == 0)
         errMsg = 'You must identify SEEG channels in all the files.';
         return;
-    elseif all(cellfun(@isempty, GlobalData.Guidelines.Baselines))
+    elseif all(cellfun(@isempty, GlobalData.Guidelines.Onsets))
         errMsg = 'You must identify at least one seizure with an "Onset" event.';
         return;
-%     elseif all(cellfun(@isempty, GlobalData.Guidelines.Onsets))
-%         errMsg = 'You must identify at least one baseline period in the select files.';
-%         return;
+    elseif all(cellfun(@isempty, GlobalData.Guidelines.Baselines))
+        errMsg = 'You must identify at least one baseline period in the select files.';
+        return;
 %     elseif any(cellfun(@isempty, GlobalData.Guidelines.Onsets) & cellfun(@isempty, GlobalData.Guidelines.Baselines))
 %         errMsg = ['All the files must include an event of interest (seizure onset or baseline).' 10 'Remove the files that are not used.'];
 %         return;
-    elseif (any(cellfun(@isempty, GlobalData.Guidelines.Onsets)) || any(cellfun(@isempty, GlobalData.Guidelines.Baselines)))
-        errMsg = 'You must define a baseline and a seizure onset for all the files.';
-        return;
-    elseif ~all(GlobalData.Guidelines.isPos)
-        errMsg = 'You must set the 3D position of all the SEEG contacts in all the selected files.';
-        return;
+%     elseif (any(cellfun(@isempty, GlobalData.Guidelines.Onsets)) || any(cellfun(@isempty, GlobalData.Guidelines.Baselines)))
+%         errMsg = 'You must define a baseline and a seizure onset for all the files.';
+%         return;
+%     elseif ~all(GlobalData.Guidelines.isPos)
+%         errMsg = 'You must set the 3D position of all the SEEG contacts in all the selected files.';
+%         return;
     end
     isValidated = 1;
 end
@@ -541,7 +584,7 @@ function UpdatePrepareRaw()
     % Display the anatomy of the subjects
     gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Column names
-    columnNames = {'Path', 'File', '#', '3D', 'Bad', 'Onset', 'Baseline'};
+    columnNames = {'Path', 'File', '#', '3D', 'Bad', GlobalData.Guidelines.strOnset, GlobalData.Guidelines.strBaseline};
     % Progress bar
     bst_progress('start', 'Import recordings', 'Loading...');
     
@@ -617,7 +660,7 @@ function UpdatePrepareRaw()
         % Get Onset event
         strOnset = ' ';
         if isfield(sFile, 'events') && ~isempty(sFile.events)
-            iEvtOnset = find(strcmpi({sFile.events.label}, 'onset'));
+            iEvtOnset = find(strcmpi({sFile.events.label}, GlobalData.Guidelines.strOnset));
             % Event was found
             if ~isempty(iEvtOnset)
                 strOnset = FormatEvent(sFile.events(iEvtOnset).times);
@@ -630,7 +673,7 @@ function UpdatePrepareRaw()
         % Get Baseline event
         strBaseline = ' ';
         if isfield(sFile, 'events') && ~isempty(sFile.events)
-            iEvtBaseline = find(strcmpi({sFile.events.label}, 'baseline'));
+            iEvtBaseline = find(strcmpi({sFile.events.label}, GlobalData.Guidelines.strBaseline));
             % Skip baseline events that are not extended events
             if ~isempty(iEvtBaseline) && (size(sFile.events(iEvtBaseline).times,1) == 1)
                 disp(['Baseline must be an extended event: ' RawLinks{iFile}]);
@@ -825,7 +868,7 @@ end
 
 
 %% ===== RECORDINGS: BUTTON EVENT =====
-function ButtonRawEvent(strEvent)
+function ButtonRawEvent(evtType)
     global GlobalData;
     ctrl = GlobalData.Guidelines.ctrl;
     % Get the raw dataset (currently being reviewed)
@@ -850,7 +893,7 @@ function ButtonRawEvent(strEvent)
         return
     end
     % Operations specific to the type of event
-    switch (strEvent)
+    switch (evtType)
         case 'Onset'
             % Current time point should not be zero
             if isempty(GlobalData.UserTimeWindow.CurrentTime) || (GlobalData.UserTimeWindow.CurrentTime == 0)
@@ -862,6 +905,7 @@ function ButtonRawEvent(strEvent)
 %             if ~isempty(panel_record('GetEvents', strEvent))
 %                 panel_record('EventTypeDel', strEvent, 1);
 %             end
+            strEvent = GlobalData.Guidelines.strOnset;
         case 'Baseline'
             % A time selection must be available
             GraphSelection = getappdata(hFig, 'GraphSelection');
@@ -869,6 +913,7 @@ function ButtonRawEvent(strEvent)
                 bst_error('You must select a time segment before setting it as the baseline.', 'Set event', 0);
                 return;
             end
+            strEvent = GlobalData.Guidelines.strBaseline;
     end
     % Set new onset marker
     panel_record('ToggleEvent', strEvent);
@@ -882,7 +927,7 @@ function ButtonRawEvent(strEvent)
 %         return;
 %     end
 %     % Format event times
-%     sEvt = panel_record('GetEvents', 'Onset');
+%     sEvt = panel_record('GetEvents', GlobalData.Guidelines.strOnset);
 %     strEvent = FormatEvent(sEvt.times);
 %     % Update guidelines table
 %     ctrl.jTableRaw.getModel().setValueAt(java.lang.String(strEvent), iFile-1, 5);
@@ -890,6 +935,39 @@ function ButtonRawEvent(strEvent)
 
     % Update panel
     UpdatePrepareRaw();
+end
+
+
+%% ===== RECORDINGS =====
+function RawInputBadChannels()
+    global GlobalData;
+    ctrl = GlobalData.Guidelines.ctrl;
+    % Get selected files
+    iFile = ctrl.jTableRaw.getSelectedRows()' + 1;
+    if isempty(iFile)
+        return;
+    end
+    
+error('todo')
+    % Display list of existing bad channels
+    for i = 1:length(iFile)
+        % Load file
+        LinkMat = in_bst_data(RawLinks{iFile});
+        sFile = LinkMat.F;
+        
+        % Get list of bad channels
+        strBad = '';
+        iBad = find(LinkMat.ChannelFlag == -1);
+        for iChan = 1:length(iBad)
+            strBad = [strBad, GlobalData.Guidelines.ChannelMats{iFile}.Channel(iBad(iChan)).Name];
+            if (iChan < length(iBad))
+                strBad = [strBad, ','];
+            end
+        end
+        filesData{iFile,5} = strBad;
+    end
+    
+    tree_set_channelflag(GlobalData.Guidelines.RawLinks{iFile}, action, strChan)
 end
 
 
@@ -911,14 +989,14 @@ function RawInputEvents()
     LinkMat = in_bst_data(GlobalData.Guidelines.RawLinks{iFile});
     sFile = LinkMat.F;
     % Get existing event: Onset
-    iEvtOnset = find(strcmpi({sFile.events.label}, 'onset'));
+    iEvtOnset = find(strcmpi({sFile.events.label}, GlobalData.Guidelines.strOnset));
     if ~isempty(iEvtOnset) && ~isempty(sFile.events(iEvtOnset).times)
         strOnset = sprintf('%1.4f', sFile.events(iEvtOnset).times(1));
     else
         strOnset = '';
     end
     % Get existing event: Baseline
-    iEvtBaseline = find(strcmpi({sFile.events.label}, 'baseline'));
+    iEvtBaseline = find(strcmpi({sFile.events.label}, GlobalData.Guidelines.strBaseline));
     if ~isempty(iEvtBaseline) && ~isempty(sFile.events(iEvtBaseline).times)
         strBaseline1 = sprintf('%1.4f', sFile.events(iEvtBaseline).times(1,1));
         strBaseline2 = sprintf('%1.4f', sFile.events(iEvtBaseline).times(2,1));
@@ -950,7 +1028,7 @@ function RawInputEvents()
     if (length(newOnset) == 1)
         if isempty(iEvtOnset)
             iEvtOnset = length(sFile.events) + 1;
-            sFile.events(iEvtOnset).label      = 'Onset';
+            sFile.events(iEvtOnset).label      = GlobalData.Guidelines.strOnset;
             sFile.events(iEvtOnset).color      = [125 27 126] / 255;
             sFile.events(iEvtOnset).reactTimes = [];
             sFile.events(iEvtOnset).select     = 1;
@@ -963,7 +1041,7 @@ function RawInputEvents()
     if (length(newBaseline) == 2)
         if isempty(iEvtBaseline)
             iEvtBaseline = length(sFile.events) + 1;
-            sFile.events(iEvtBaseline).label      = 'Baseline';
+            sFile.events(iEvtBaseline).label      = GlobalData.Guidelines.strBaseline;
             sFile.events(iEvtBaseline).color      = [0 89 255] / 255;
             sFile.events(iEvtBaseline).reactTimes = [];
             sFile.events(iEvtBaseline).select     = 1;
@@ -1069,6 +1147,7 @@ function RawTableClick(hObj, ev)
     elseif (ev.getButton() == ev.BUTTON3)
         % Create popup menu
         jPopup = java_create('javax.swing.JPopupMenu');
+        gui_component('MenuItem', jPopup, [], 'Set bad channels',       IconLoader.ICON_GOODBAD,       [], @(h,ev)RawInputBadChannels());
         gui_component('MenuItem', jPopup, [], 'Set onset and baseline', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)RawInputEvents());
         % Show popup menu
         jPopup.pack();
@@ -1142,44 +1221,48 @@ function [isValidated, errMsg] = ValidateEpoch()
                         bst_get('StudyWithCondition', [studyName '_bipolar_1']), ...
                         bst_get('StudyWithCondition', studyName)];
         if ~isempty(sStudyImport)
-            iDataBaseline = find(~cellfun(@(c)isempty(strfind(c,'Baseline')), {sStudyImport(1).Data.FileName}));
-            iDataOnset    = find(~cellfun(@(c)isempty(strfind(c,'Onset')),    {sStudyImport(1).Data.FileName}));
+            iDataBaseline = find(~cellfun(@(c)isempty(strfind(c,GlobalData.Guidelines.strBaseline)), {sStudyImport(1).Data.FileName}));
+            iDataOnset    = find(~cellfun(@(c)isempty(strfind(c,GlobalData.Guidelines.strOnset)),    {sStudyImport(1).Data.FileName}));
         else
             iDataBaseline = [];
             iDataOnset = [];
         end
         
         % === IMPORT BASELINE ===
-        % Baseline files already imported
-        if (length(iDataBaseline) == size(GlobalData.Guidelines.Baselines{iFile},2))
-            GlobalData.Guidelines.BaselineFiles{iFile} = {sStudyImport(1).Data(iDataBaseline).FileName};
-            sFilesBaselines = [];
-        % Import baselines
-        elseif ~isempty(GlobalData.Guidelines.Baselines{iFile})
-            sFilesBaselines = bst_process('CallProcess', 'process_import_data_event', sFile, [], ...
-                'subjectname', sFile.SubjectName, ...
-                'eventname',   'Baseline', ...
-                'timewindow',  [], ...
-                'createcond',  0, ...
-                'ignoreshort', 0, ...
-                'usessp',      1);
+        sFilesBaselines = [];
+        if ~isempty(GlobalData.Guidelines.Baselines{iFile})
+            % Baseline files already imported
+            if (length(iDataBaseline) == size(GlobalData.Guidelines.Baselines{iFile},2))
+                GlobalData.Guidelines.BaselineFiles{iFile} = {sStudyImport(1).Data(iDataBaseline).FileName};
+            % Import baselines
+            else
+                sFilesBaselines = bst_process('CallProcess', 'process_import_data_event', sFile, [], ...
+                    'subjectname', sFile.SubjectName, ...
+                    'eventname',   GlobalData.Guidelines.strBaseline, ...
+                    'timewindow',  [], ...
+                    'createcond',  0, ...
+                    'ignoreshort', 0, ...
+                    'usessp',      1);
+            end
         end
         
         % === IMPORT ONSET ===
-        % Onset files already imported
-        if (length(iDataOnset) == size(GlobalData.Guidelines.Onsets{iFile},2))
-            GlobalData.Guidelines.OnsetFiles{iFile} = {sStudyImport(1).Data(iDataOnset).FileName};
-            sFilesOnsets = [];
-        % Import onsets
-        elseif ~isempty(GlobalData.Guidelines.Onsets{iFile})
-            sFilesOnsets = bst_process('CallProcess', 'process_import_data_event', sFile, [], ...
-                'subjectname', sFile.SubjectName, ...
-                'eventname',   'Onset', ...
-                'epochtime',   OnsetTimeRange, ...
-                'timewindow',  [], ...
-                'createcond',  0, ...
-                'ignoreshort', 0, ...
-                'usessp',      1);
+        sFilesOnsets = [];
+        if ~isempty(GlobalData.Guidelines.Onsets{iFile})
+            % Onset files already imported
+            if (length(iDataOnset) == size(GlobalData.Guidelines.Onsets{iFile},2))
+                GlobalData.Guidelines.OnsetFiles{iFile} = {sStudyImport(1).Data(iDataOnset).FileName};
+            % Import onsets
+            else
+                sFilesOnsets = bst_process('CallProcess', 'process_import_data_event', sFile, [], ...
+                    'subjectname', sFile.SubjectName, ...
+                    'eventname',   GlobalData.Guidelines.strOnset, ...
+                    'epochtime',   OnsetTimeRange, ...
+                    'timewindow',  [], ...
+                    'createcond',  0, ...
+                    'ignoreshort', 0, ...
+                    'usessp',      1);
+            end
         end
         
         % === BIPOLAR MONTAGE ===
@@ -1265,6 +1348,10 @@ function [isValidated, errMsg] = ValidateTimefreq()
         errMsg = 'Invalid frequency selection';
         return;
     end
+    % Get the list of all input files
+    OnsetFiles = cat(2, GlobalData.Guidelines.OnsetFiles{:});
+    allFolders = cellfun(@bst_fileparts, OnsetFiles, 'UniformOutput', 0);
+    isOneFolder = all(strcmpi(allFolders(2:end), allFolders{1}));
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
     bst_report('Start', cat(2,GlobalData.Guidelines.OnsetFiles{:}));
@@ -1272,19 +1359,26 @@ function [isValidated, errMsg] = ValidateTimefreq()
     % Get the averages
     iFileAvg = [];
     iFileAvgChan = [];
-    if (length(GlobalData.Guidelines.OnsetFiles) == 1)
+    % Single file OR Multiple files in the same folder
+    if (length(OnsetFiles) == 1) || isOneFolder
         [sStudy,iStudy,iTf] = bst_get('TimefreqForFile', GlobalData.Guidelines.OnsetFiles{1}{1});
-        if (length(iTf) >= 2)
-            iFileAvg     = find(~cellfun(@(c)isempty(strfind(c, 'Multitaper')), {sStudy.Timefreq.Comment}) &  cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
-            iFileAvgChan = find(~cellfun(@(c)isempty(strfind(c, 'Multitaper')), {sStudy.Timefreq.Comment}) & ~cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+        if ~isempty(iTf) && (length(sStudy.Timefreq) >= 2)
+            if ~isOneFolder
+                iFileAvg     = find(~cellfun(@(c)isempty(strfind(c, 'Multitaper')), {sStudy.Timefreq.Comment}) &  cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+                iFileAvgChan = find(~cellfun(@(c)isempty(strfind(c, 'Multitaper')), {sStudy.Timefreq.Comment}) & ~cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+            else
+                iFileAvg     = find(~cellfun(@(c)isempty(strfind(c, GlobalData.Guidelines.strOnset)), {sStudy.Timefreq.Comment}) &  cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+                iFileAvgChan = find(~cellfun(@(c)isempty(strfind(c, GlobalData.Guidelines.strOnset)), {sStudy.Timefreq.Comment}) & ~cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+            end
         end
+    % Mutliple files in different folders
     else
         % Get intra-subject folder
         [sSubject, iSubject] = bst_get('Subject', GlobalData.Guidelines.SubjectName);
         sStudy = bst_get('AnalysisIntraStudy', iSubject);
         if (length(sStudy.Timefreq) >= 2)
-            iFileAvg     = find(~cellfun(@(c)isempty(strfind(c, 'Onset')), {sStudy.Timefreq.Comment}) &  cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
-            iFileAvgChan = find(~cellfun(@(c)isempty(strfind(c, 'Onset')), {sStudy.Timefreq.Comment}) & ~cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+            iFileAvg     = find(~cellfun(@(c)isempty(strfind(c, GlobalData.Guidelines.strOnset)), {sStudy.Timefreq.Comment}) &  cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
+            iFileAvgChan = find(~cellfun(@(c)isempty(strfind(c, GlobalData.Guidelines.strOnset)), {sStudy.Timefreq.Comment}) & ~cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
         end
     end
     % If the output files were found: use them
@@ -1422,8 +1516,10 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
     FreqBand       = str2num(char(ctrl.jTextFreqBand.getText()));
     Latency        = char(ctrl.jTextLatency.getText());
     TimeConstant   = str2num(char(ctrl.jTextTimeConstant.getText()));
-    TimeResolution = str2num(char(ctrl.jTextTimeResolution.getText()));
-    ThDelay        = str2num(char(ctrl.jTextThDelay.getText()));
+%     TimeResolution = str2num(char(ctrl.jTextTimeResolution.getText()));
+%     ThDelay        = str2num(char(ctrl.jTextThDelay.getText()));
+    TimeResolution = .2;
+    ThDelay        = 0.05;
     % Check inputs
     if (length(FreqBand) < 2)
         errMsg = 'Invalid frequency band.';
@@ -1462,12 +1558,16 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
     if isempty(sStudy) || (isempty(sStudy.Stat) && isempty(sStudy.Result))
         % Get selected files
         iFiles = find(GlobalData.Guidelines.ctrl.isFileSelected);
+        % Get input files
+        BaselineFiles = cat(2, GlobalData.Guidelines.BaselineFiles{:});
+        OnsetFiles    = cat(2, GlobalData.Guidelines.OnsetFiles{:});
+        
         % Number of baselines/onsets is not the same
-        for i = 1:length(iFiles)
-            nBaselines = length(cat(2,GlobalData.Guidelines.BaselineFiles{iFiles(i)}));
-            nOnsets    = length(cat(2,GlobalData.Guidelines.OnsetFiles{iFiles(i)}));
+        for i = 1:length(GlobalData.Guidelines.OnsetFiles)
+            nBaselines = length(cat(2,GlobalData.Guidelines.BaselineFiles{i}));
+            nOnsets    = length(cat(2,GlobalData.Guidelines.OnsetFiles{i}));
             if (nBaselines ~= nOnsets)
-                [tmp,strFolder] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{iFiles(i)}{1}));
+                [tmp,strFolder] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{i}{1}));
                 errMsg = ['Folder "' strFolder '" contains:' 10 ...
                           num2str(nBaselines) ' baseline(s) and ' num2str(nOnsets) ' seizure(s).' 10 10 ...
                           'To specify one baseline for each seizure, use the Process2 tab:' 10 ...
@@ -1475,12 +1575,10 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
                 return;
             end
         end
-        % Get input files
-        BaselineFiles = cat(2, GlobalData.Guidelines.BaselineFiles{iFiles});
-        OnsetFiles    = cat(2, GlobalData.Guidelines.OnsetFiles{iFiles});
+profile on
         % Process: Epileptogenicity index (A=Baseline,B=Seizure)
-        bst_report('Start', BaselineFiles);
-        sFiles = bst_process('CallProcess', 'process_epileptogenicity', BaselineFiles, OnsetFiles, ...
+        bst_report('Start', BaselineFiles(iFiles));
+        sFiles = bst_process('CallProcess', 'process_epileptogenicity', BaselineFiles(iFiles), OnsetFiles(iFiles), ...
             'sensortypes',    'SEEG', ...
             'freqband',       FreqBand, ...
             'latency',        Latency, ...
@@ -1488,6 +1586,7 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
             'timeresolution', TimeResolution, ...
             'thdelay',        ThDelay, ...
             'type',           OutputType);
+profile viewer
         % Error handling
         if isempty(sFiles)
             errMsg = 'Could not compute epileptogenicity maps.';
@@ -1579,13 +1678,25 @@ function UpdateEpileptogenicity()
     % Initialize new list
     listModel = javax.swing.DefaultListModel();
     % All files selected by default
-    GlobalData.Guidelines.ctrl.isFileSelected = ones(1, length(GlobalData.Guidelines.OnsetFiles));
+    GlobalData.Guidelines.ctrl.isFileSelected = ones(1, length(cat(2, GlobalData.Guidelines.OnsetFiles)));
     % Get list of file names
-    for i = 1:length(GlobalData.Guidelines.OnsetFiles)
-        [fPath, strFile] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{i}{1}));
-        strFile = strrep(strFile, '_bipolar_2', '');
-        strFile = strrep(strFile, '_bipolar_1', '');
-        listModel.addElement(org.brainstorm.list.BstListItem('', '', strFile, int32(GlobalData.Guidelines.ctrl.isFileSelected(i))));
+    for iRaw = 1:length(GlobalData.Guidelines.OnsetFiles)
+        % Skip if nothing is imported
+        if isempty(GlobalData.Guidelines.OnsetFiles{iRaw})
+            continue;
+        end
+        % Get the folder comment
+        [tmp, strFolder] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{iRaw}{1}));
+        strFolder = strrep(strFolder, '_bipolar_2', '');
+        strFolder = strrep(strFolder, '_bipolar_1', '');
+        % Only one file
+        if (length(GlobalData.Guidelines.OnsetFiles{iRaw}) == 1)
+            listModel.addElement(org.brainstorm.list.BstListItem('', '', strFolder, int32(1)));
+        else
+            for iFile = 1:length(GlobalData.Guidelines.OnsetFiles{iRaw})
+                listModel.addElement(org.brainstorm.list.BstListItem('', '', sprintf('%s #%d', strFolder, iFile), int32(1)));
+            end
+        end
     end
     % Update JList
     GlobalData.Guidelines.ctrl.jListFiles.setModel(listModel);
@@ -1606,29 +1717,6 @@ end
 %% ==========================================================================================
 %  ===== HELPER FUNCTIONS ===================================================================
 %  ==========================================================================================
-
-%% ===== SELECT SUBJECT =====
-function SelectSubject()
-    global GlobalData;
-    ctrl = GlobalData.Guidelines.ctrl;
-    % Get subject
-    SubjectName = char(ctrl.jComboSubj.getSelectedItem());
-    sSubject = bst_get('Subject', SubjectName);
-    if isempty(sSubject)
-        return;
-    end
-    % Select subject node in the database explorer 
-    panel_protocols('SelectSubject', SubjectName);
-    % Anatomy folder
-    AnatDir = bst_fileparts(file_fullpath(sSubject.FileName));
-    MriPre  = fullfile(AnatDir, 'subjectimage_pre.mat');
-    MriPost = fullfile(AnatDir, 'subjectimage_post.mat');
-    % Check if there are already two volumes in the subject
-    if file_exist(MriPre) && file_exist(MriPost)
-        ctrl.jTextMriPre.setText(sSubject.Anatomy(1).Comment);
-        ctrl.jTextMriPost.setText(sSubject.Anatomy(2).Comment);
-    end
-end
 
 %% ===== FORMAT BASELINE =====
 function strEvent = FormatEvent(evtTimes)

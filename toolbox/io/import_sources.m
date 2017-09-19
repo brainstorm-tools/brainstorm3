@@ -1,7 +1,7 @@
-function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2, FileFormat, Comment, DisplayUnits)
+function [OutputFile, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2, FileFormat, Comment, DisplayUnits, TimeVector)
 % IMPORT_SOURCES: Imports static source maps as results files.
 % 
-% USAGE:  iNewSources = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2=[], FileFormat=[], Comment=[])
+% USAGE:  OutputFile = import_sources(iStudy, SurfaceFile, SourceFiles, SourceFiles2=[], FileFormat=[], Comment=[], DisplayUnits=[], TimeVector=[])
 %
 % INPUT:
 %    - iStudy       : Index of the study where to import the SourceFiles
@@ -35,9 +35,12 @@ function [OutputFiles, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFil
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
-OutputFiles = {};
+OutputFile = [];
 errorMsg = [];
 % Get default for all the inputs
+if (nargin < 8) || isempty(TimeVector)
+    TimeVector = [];
+end
 if (nargin < 7) || isempty(DisplayUnits)
     DisplayUnits = [];
 end
@@ -172,6 +175,7 @@ end
 
 %% ===== READ SOURCE FILES =====
 sMri = [];
+maps = cell(1, length(SourceFiles));
 % Loop on each input file
 for iFile = 1:length(SourceFiles)
     % === GET FILE TYPE ===  
@@ -203,7 +207,7 @@ for iFile = 1:length(SourceFiles)
 
     % === LOAD FILE ===
     % Read source file
-    [map, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat, bgValue);
+    [maps{iFile}, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat, bgValue);
     % In the case of a volume grid: convert from MRI coordinates to SCS
     if ~isempty(grid)
         % Load subject MRI
@@ -221,75 +225,81 @@ for iFile = 1:length(SourceFiles)
     end
     % Read additional source file: simply concatenate to the previous one
     if ~isempty(SourceFiles2)
-        map = [map; in_sources(SourceFiles2{iFile}, FileFormat), bgValue];
+        maps{iFile} = [maps{iFile}; in_sources(SourceFiles2{iFile}, FileFormat), bgValue];
     end
     % Check the number of sources
-    if isempty(map)
+    if isempty(maps{iFile})
         errorMsg = ['File could not be read: ', SourceFiles{iFile}];
         if isInteractive
             bst_error(errorMsg, 'Import source maps', 0);
         end
         break;
-    elseif isempty(grid) && (size(map,1) ~= nVertices)
-        errorMsg = sprintf('The number of vertices in the surface (%d) and the source map (%d) do not match.', nVertices, size(map,1));
+    elseif isempty(grid) && (size(maps{iFile},1) ~= nVertices)
+        errorMsg = sprintf('The number of vertices in the surface (%d) and the source map (%d) do not match.', nVertices, size(maps{iFile},1));
         if isInteractive
             bst_error(errorMsg, 'Import source maps', 0);
         end
         break;
     end
-
-    % === STATISTICAL THRESHOLD (SPM) ===
-    if isStat
-        % Load SPM.mat
-        SpmMat = load(fullfile(fPath, 'SPM.mat'));
-        % New stat/results structure
-        ResultsMat = db_template('statmat');
-        ResultsMat.tmap       = map;
-        ResultsMat.pmap       = [];
-        ResultsMat.df         = [];
-        ResultsMat.SPM        = SpmMat.SPM;
-        ResultsMat.Correction = 'no';
-        ResultsMat.Type       = 'results';
-        ResultsMat.Time       = 0;
-        FileType = 'presults';
-        % Add sorted T values in the file if importing from a volume (not keeping the full distribution otherwise)
-        if ~isempty(grid)
-            ResultsMat.SPM.SortedT = sort(sMriSrc.Cube(:));
-        end
-    % === REGULAR SOURCE FILE ===
-    else
-        % New results structure
-        ResultsMat = db_template('resultsmat');
-        ResultsMat.ImageGridAmp  = [map, map];
-        ResultsMat.ImagingKernel = [];
-        ResultsMat.Time          = [0 1];
-        FileType = 'results';
-    end
-    
-    % === SAVE NEW FILE ===
-    ResultsMat.Comment       = Comment;
-    ResultsMat.DataFile      = [];
-    ResultsMat.SurfaceFile   = file_win2unix(file_short(SurfaceFile));
-    ResultsMat.HeadModelFile = [];
-    ResultsMat.nComponents   = 1;
-    ResultsMat.DisplayUnits  = DisplayUnits;
-    % Surface model
-    if isempty(grid)
-        ResultsMat.HeadModelType = 'surface';
-    % Volume model
-    else
-        ResultsMat.HeadModelType = 'volume';
-        ResultsMat.GridLoc = grid;
-    end
-    % History
-    ResultsMat = bst_history('add', ResultsMat, 'import', ['Imported from: ' SourceFiles{iFile}]);
-    % Create output filename
-    OutputFiles{iFile} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType, '_', ResultsMat.HeadModelType, '_', file_standardize(Comment)]);
-    % Save new file
-    bst_save(OutputFiles{iFile}, ResultsMat, 'v7');
-    % Update database
-    sStudy = db_add_data(iStudy, OutputFiles{iFile}, ResultsMat);
 end
+% Concatenate in time all the selected files
+map = cat(2, maps{:});
+
+% === STATISTICAL THRESHOLD (SPM) ===
+if isStat
+    % Load SPM.mat
+    SpmMat = load(fullfile(fPath, 'SPM.mat'));
+    % New stat/results structure
+    ResultsMat = db_template('statmat');
+    ResultsMat.tmap       = map;
+    ResultsMat.pmap       = [];
+    ResultsMat.df         = [];
+    ResultsMat.SPM        = SpmMat.SPM;
+    ResultsMat.Correction = 'no';
+    ResultsMat.Type       = 'results';
+    FileType = 'presults';
+    % Add sorted T values in the file if importing from a volume (not keeping the full distribution otherwise)
+    if ~isempty(grid)
+        ResultsMat.SPM.SortedT = sort(sMriSrc.Cube(:));
+    end
+% === REGULAR SOURCE FILE ===
+else
+    % New results structure
+    ResultsMat = db_template('resultsmat');
+    ResultsMat.ImageGridAmp  = [map, map];
+    ResultsMat.ImagingKernel = [];
+    FileType = 'results';
+end
+
+% === SAVE NEW FILE ===
+ResultsMat.Comment       = Comment;
+ResultsMat.DataFile      = [];
+ResultsMat.SurfaceFile   = file_win2unix(file_short(SurfaceFile));
+ResultsMat.HeadModelFile = [];
+ResultsMat.nComponents   = 1;
+ResultsMat.DisplayUnits  = DisplayUnits;
+% Time vector
+if isempty(TimeVector) || (length(TimeVector) ~= size(map,2))
+    ResultsMat.Time = 0:(size(map,2)-1);
+else
+    ResultsMat.Time = TimeVector;
+end
+% Surface model
+if isempty(grid)
+    ResultsMat.HeadModelType = 'surface';
+% Volume model
+else
+    ResultsMat.HeadModelType = 'volume';
+    ResultsMat.GridLoc = grid;
+end
+% History
+ResultsMat = bst_history('add', ResultsMat, 'import', ['Imported from: ' SourceFiles{iFile}]);
+% Create output filename
+OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType, '_', ResultsMat.HeadModelType, '_', file_standardize(Comment)]);
+% Save new file
+bst_save(OutputFile, ResultsMat, 'v7');
+% Update database
+db_add_data(iStudy, OutputFile, ResultsMat);
 
 % Update tree
 panel_protocols('UpdateNode', 'Study', iStudy);
