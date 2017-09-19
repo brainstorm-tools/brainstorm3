@@ -182,6 +182,8 @@ for iFile = 1:length(DataFiles)
             else
                 ChannelMatInit = [];
             end
+        else
+            ChannelMatInit = [];
         end
         [ImportedDataMat, ChannelMat, nChannels, nTime, ImportOptions] = in_data(DataFile, ChannelMatInit, FileFormat, ImportOptions, nbCall);
     end
