@@ -90,8 +90,6 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     java_setcb(ctrl.jComboSubj, 'ItemStateChangedCallback', @(h,ev)SelectSubject());
     % MRI are already registered
     ctrl.jCheckRegistered = gui_component('checkbox', ctrl.jPanels(i), 'br', 'MRI volumes are already registered (.nii format only)');
-%     % Help
-%     gui_component('Label', ctrl.jPanels(i), 'br', '<HTML><FONT color="#a0a0a0"><I>MRI or CT in DICOM format: Convert them to .nii with MRIcron.</I></FONT>');
     % Event names
     gui_component('label', ctrl.jPanels(i), 'br', '<HTML><FONT color="#a0a0a0">Onset event name: </FONT>');
     ctrl.jTextEvtOnset = gui_component('text', ctrl.jPanels(i), '', 'Onset');
@@ -190,10 +188,6 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jTextLatency = gui_component('text', jPanelEpilOptions, 'tab', '0:2:20');
     gui_component('label', jPanelEpilOptions, 'br', 'Time constant (s): ');
     ctrl.jTextTimeConstant = gui_component('texttime', jPanelEpilOptions, 'tab', '3');
-%     gui_component('label', jPanelEpilOptions, 'br', 'Time resolution (s): ');
-%     ctrl.jTextTimeResolution = gui_component('texttime', jPanelEpilOptions, 'tab', '0.2');
-%     gui_component('label', jPanelEpilOptions, 'br', 'Propagation threshold (p): ');
-%     ctrl.jTextThDelay = gui_component('texttime', jPanelEpilOptions, 'tab', '0.05');
     % Output type
     gui_component('label', jPanelEpilOptions, 'br', 'Output type:');
     jButtonGroupOutput = ButtonGroup();
@@ -213,7 +207,6 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jPanels(i) = gui_river([0,0], [5,10,0,4], sprintf('Step #%d: Epileptogenicity index', i));
     ctrl.jPanels(i).add('vtop', jPanelEpilOptions);
     ctrl.jPanels(i).add('hfill vfill', jScrollFiles);
-    
     % Callbacks
     ctrl.fcnValidate{i} = @(c)ValidateEpileptogenicity();
     ctrl.fcnReset{i}    = @(c)ResetEpileptogenicity();
@@ -459,7 +452,9 @@ function SelectSubject()
     if isempty(sSubject)
         return;
     end
-    % Select subject node in the database explorer 
+    % Select subject node in the database explorer
+    % panel_protocols('UpdateTree');
+    panel_protocols('ExpandAll', 0);
     panel_protocols('SelectSubject', SubjectName);
     % Anatomy folder
     AnatDir = bst_fileparts(file_fullpath(sSubject.FileName));
@@ -506,15 +501,6 @@ function [isValidated, errMsg] = ValidatePrepareRaw()
     elseif all(cellfun(@isempty, GlobalData.Guidelines.Baselines))
         errMsg = 'You must identify at least one baseline period in the select files.';
         return;
-%     elseif any(cellfun(@isempty, GlobalData.Guidelines.Onsets) & cellfun(@isempty, GlobalData.Guidelines.Baselines))
-%         errMsg = ['All the files must include an event of interest (seizure onset or baseline).' 10 'Remove the files that are not used.'];
-%         return;
-%     elseif (any(cellfun(@isempty, GlobalData.Guidelines.Onsets)) || any(cellfun(@isempty, GlobalData.Guidelines.Baselines)))
-%         errMsg = 'You must define a baseline and a seizure onset for all the files.';
-%         return;
-%     elseif ~all(GlobalData.Guidelines.isPos)
-%         errMsg = 'You must set the 3D position of all the SEEG contacts in all the selected files.';
-%         return;
     end
     isValidated = 1;
 end
@@ -581,8 +567,6 @@ function UpdatePrepareRaw()
         return;
     end
     ctrl = GlobalData.Guidelines.ctrl;
-    % Display the anatomy of the subjects
-    gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Column names
     columnNames = {'Path', 'File', '#', '3D', 'Bad', GlobalData.Guidelines.strOnset, GlobalData.Guidelines.strBaseline};
     % Progress bar
@@ -608,6 +592,14 @@ function UpdatePrepareRaw()
                     % Load channel file
                     GlobalData.Guidelines.ChannelFiles{end+1} = sDataStudy.Channel(1).FileName;
                     GlobalData.Guidelines.ChannelMats{end+1}  = in_bst_channel(sDataStudy.Channel(1).FileName);
+                    % Select first file in database explorer
+                    if (length(RawLinks) == 1)
+                        % Update selected study in ProtocolInfo
+                        ProtocolInfo = bst_get('ProtocolInfo');
+                        ProtocolInfo.iStudy = iDataStudies(i);
+                        bst_set('ProtocolInfo', ProtocolInfo);
+                        % panel_protocols('SelectStudyNode', iDataStudies(i));
+                    end
                 end
             end
         end
@@ -617,6 +609,8 @@ function UpdatePrepareRaw()
     GlobalData.Guidelines.Onsets    = cell(size(RawLinks));
     GlobalData.Guidelines.isPos     = zeros(size(RawLinks));
     GlobalData.Guidelines.nSEEG     = zeros(size(RawLinks));
+    % Display the anatomy of the subjects
+    gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     
     % === READ FILE INFO ===
     % Initialize data to represent
@@ -738,12 +732,63 @@ function ButtonRawAdd()
     % Create raw links
     [sSubject, iSubject] = bst_get('Subject', GlobalData.Guidelines.SubjectName);
     OutputFiles = import_raw(RawFiles, FileFormat, iSubject);
+    % Replace events start/stop with continuous events
+    RawContinuousEvt(OutputFiles);
     % Process: Consider as SEEG/ECOG
     bst_process('CallProcess', 'process_channel_setseeg', OutputFiles, [], 'newtype', 'SEEG');
     % Save file format
     UpdatePrepareRaw();
     % Edit channel files
     ButtonRawEditChannel(OutputFiles);
+end
+
+
+%% ===== RECORDINGS: GET CONTINUOUS EVENTS =====
+function RawContinuousEvt(OutputFiles)
+    % Replace events start/stop with continuous events
+    for iFile = 1:length(OutputFiles)
+        % Load file
+        LinkMat = in_bst_data(OutputFiles{iFile});
+        events = LinkMat.F.events;
+        if isempty(events)
+            continue;
+        end
+        % Look for events with "start" in the name
+        iEvtStart = find(~cellfun(@(c)isempty(strfind(lower(c), 'start')), {events.label}));
+        if isempty(iEvtStart)
+            continue;
+        end
+        % Process the start events
+        iEvtDel = [];
+        for i = 1:length(iEvtStart)
+            % Look for stop event
+            iEvtStop = find(strcmpi({events.label}, strrep(lower(events(iEvtStart(i)).label), 'start', 'stop')));
+            if isempty(iEvtStop) || ~all(size(events(iEvtStop).times) == size(events(iEvtStart(i)).times)) || (size(events(iEvtStop).times,1) ~= 1) || ~all(events(iEvtStart(i)).times < events(iEvtStop).times)
+                continue;
+            end
+            % New label
+            if strcmpi(events(iEvtStart(i)).label, 'start')
+                newLabel = 'ext';
+            else
+                newLabel = strrep(lower(events(iEvtStart(i)).label), 'start', '');
+            end
+            newLabel = file_unique(newLabel, {events.label});
+            % Create new extended event
+            iEvtNew = length(events) + 1;
+            events(iEvtNew) = events(iEvtStart(i));
+            events(iEvtNew).label   = newLabel;
+            events(iEvtNew).times   = [events(iEvtStart(i)).times;   events(iEvtStop).times];
+            events(iEvtNew).samples = [events(iEvtStart(i)).samples; events(iEvtStop).samples];
+            % Save modifications
+            iEvtDel = [iEvtDel, iEvtStart(i), iEvtStop];
+        end
+        % Save modification
+        if ~isempty(iEvtDel)
+            events(iEvtDel) = [];
+            LinkMat.F.events = events;
+            bst_save(file_fullpath(OutputFiles{iFile}), LinkMat, 'v7');
+        end
+    end
 end
 
 
@@ -901,10 +946,6 @@ function ButtonRawEvent(evtType)
             end
             % Reset time selection
             figure_timeseries('SetTimeSelectionLinked', hFig, []);
-%             % Delete existing markers
-%             if ~isempty(panel_record('GetEvents', strEvent))
-%                 panel_record('EventTypeDel', strEvent, 1);
-%             end
             strEvent = GlobalData.Guidelines.strOnset;
         case 'Baseline'
             % A time selection must be available
@@ -919,55 +960,24 @@ function ButtonRawEvent(evtType)
     panel_record('ToggleEvent', strEvent);
     % Save modifcations
     panel_record('SaveModifications', iDS);
-    
-%     % Get file index
-%     iFile = find(strcmpi(GlobalData.DataSet(iDS).DataFile, GlobalData.Guidelines.RawLinks));
-%     if isempty(iFile)
-%         disp('Error: File not found... Reload the Guidelines tab.');
-%         return;
-%     end
-%     % Format event times
-%     sEvt = panel_record('GetEvents', GlobalData.Guidelines.strOnset);
-%     strEvent = FormatEvent(sEvt.times);
-%     % Update guidelines table
-%     ctrl.jTableRaw.getModel().setValueAt(java.lang.String(strEvent), iFile-1, 5);
-%     % DOESN'T WORK TWICE??? WHY???
-
     % Update panel
     UpdatePrepareRaw();
 end
 
 
-%% ===== RECORDINGS =====
-function RawInputBadChannels()
+%% ===== RECORDINGS: SET BAD CHANNELS =====
+function RawInputBadChannels(action)
     global GlobalData;
     ctrl = GlobalData.Guidelines.ctrl;
     % Get selected files
-    iFile = ctrl.jTableRaw.getSelectedRows()' + 1;
-    if isempty(iFile)
+    iFiles = ctrl.jTableRaw.getSelectedRows()' + 1;
+    if isempty(iFiles)
         return;
     end
-    
-error('todo')
-    % Display list of existing bad channels
-    for i = 1:length(iFile)
-        % Load file
-        LinkMat = in_bst_data(RawLinks{iFile});
-        sFile = LinkMat.F;
-        
-        % Get list of bad channels
-        strBad = '';
-        iBad = find(LinkMat.ChannelFlag == -1);
-        for iChan = 1:length(iBad)
-            strBad = [strBad, GlobalData.Guidelines.ChannelMats{iFile}.Channel(iBad(iChan)).Name];
-            if (iChan < length(iBad))
-                strBad = [strBad, ','];
-            end
-        end
-        filesData{iFile,5} = strBad;
-    end
-    
-    tree_set_channelflag(GlobalData.Guidelines.RawLinks{iFile}, action, strChan)
+    % Update the channel flags
+    tree_set_channelflag(GlobalData.Guidelines.RawLinks(iFiles), action);
+    % Update panel
+    UpdatePrepareRaw();
 end
 
 
@@ -1115,7 +1125,6 @@ function ButtonRawPos()
                 channel_add_loc(iStudiesSet(2:end), AllChannelFiles{1}, 1);
             end
     end
-    
     % Update panel
     UpdatePrepareRaw();
 end
@@ -1147,7 +1156,11 @@ function RawTableClick(hObj, ev)
     elseif (ev.getButton() == ev.BUTTON3)
         % Create popup menu
         jPopup = java_create('javax.swing.JPopupMenu');
-        gui_component('MenuItem', jPopup, [], 'Set bad channels',       IconLoader.ICON_GOODBAD,       [], @(h,ev)RawInputBadChannels());
+        gui_component('MenuItem', jPopup, [], 'Mark some channels as bad...',  IconLoader.ICON_BAD,  [], @(h,ev)RawInputBadChannels('AddBad'));
+        gui_component('MenuItem', jPopup, [], 'Mark some channels as good...', IconLoader.ICON_GOOD, [], @(h,ev)RawInputBadChannels('ClearBad'));
+        gui_component('MenuItem', jPopup, [], 'Mark all channels as good',     IconLoader.ICON_GOOD, [], @(h,ev)RawInputBadChannels('ClearAllBad'));
+        jPopup.addSeparator();
+        % gui_component('MenuItem', jPopup, [], 'Set bad channels',       IconLoader.ICON_GOODBAD,       [], @(h,ev)RawInputBadChannels());
         gui_component('MenuItem', jPopup, [], 'Set onset and baseline', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)RawInputEvents());
         % Show popup menu
         jPopup.pack();
@@ -1516,8 +1529,6 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
     FreqBand       = str2num(char(ctrl.jTextFreqBand.getText()));
     Latency        = char(ctrl.jTextLatency.getText());
     TimeConstant   = str2num(char(ctrl.jTextTimeConstant.getText()));
-%     TimeResolution = str2num(char(ctrl.jTextTimeResolution.getText()));
-%     ThDelay        = str2num(char(ctrl.jTextThDelay.getText()));
     TimeResolution = .2;
     ThDelay        = 0.05;
     % Check inputs
