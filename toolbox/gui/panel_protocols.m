@@ -1259,3 +1259,38 @@ function SelectSubject(SubjectName) %#ok<DEFNU>
 end
 
 
+%% ===== EXPAND/COLLAPSE ALL =====
+function ExpandAll(isExpand) %#ok<DEFNU>
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+%     % Get node path
+%     treeModel = ctrl.jTreeProtocols.getModel();
+%     nodes = treeModel.getPathToRoot(bstNode);
+%     % Create path
+%     jPath = java_create('javax.swing.tree.TreePath', 'Ljava.lang.Object;', nodes);
+    
+    jPath = java_create('javax.swing.tree.TreePath', 'Ljava.lang.Object;', ctrl.jTreeProtocols.getModel().getRoot());
+    ExpandAllRecursive(jPath);
+
+    function ExpandAllRecursive(parent)
+        % Traverse children
+        node = parent.getLastPathComponent();
+        e = node.children();
+        if (node.getChildCount() >= 0)
+            while (e.hasMoreElements())
+                n = e.nextElement();
+                ExpandAllRecursive(parent.pathByAddingChild(n));
+            end
+        end
+        % Expansion or collapse must be done bottom-up
+        if (isExpand)
+            ctrl.jTreeProtocols.expandPath(parent);
+        elseif ~ctrl.jTreeProtocols.isCollapsed(parent) && (parent.getPathCount() > 2)
+            ctrl.jTreeProtocols.collapsePath(parent);
+        end
+    end
+end
+
