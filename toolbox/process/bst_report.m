@@ -699,7 +699,16 @@ function html = PrintToHtml(Reports, isFullReport)
             % Get error description
             if isstruct(Reports{iErrors(1),2}) && ~isempty(Reports{iErrors(1),2})
                 ProcName    = func2str(Reports{iErrors(1),2}.Function);
-                ProcComment = [Reports{iErrors(1),2}.SubGroup, ' > ', Reports{iErrors(1),2}.Comment];
+                subGroups   = Reports{iErrors(1),2}.SubGroup;
+                if iscellstr(subGroups)
+                    groupComment = subGroups{1};
+                    for iGroup = 2:length(subGroups)
+                        groupComment = [groupComment ' > ' subGroups{iGroup}];
+                    end
+                else
+                    groupComment = subGroups;
+                end
+                ProcComment = [groupComment, ' > ', Reports{iErrors(1),2}.Comment];
             else
                 ProcName    = 'Unknown';
                 ProcComment = 'Unknown';
