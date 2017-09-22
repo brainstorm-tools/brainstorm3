@@ -58,7 +58,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timewindow.Value   = [];
 
     % === TIME WINDOW
-    sProcess.options.windowChunck.Comment = 'If you are interested in having multiple windows(??),enter the length of each/otherwise: 0';
+    sProcess.options.windowChunck.Comment = 'If you are interested in having time-resolved comod enter the length of each (sec)/otherwise: 0';
     sProcess.options.windowChunck.Type    = 'value';
     sProcess.options.windowChunck.Value   =  {0, '', 2};
 
@@ -147,6 +147,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 elseif ~isequal(size(Nesting,1),size(tPACMat2.sPAC.DynamicNesting,1)) && cat_dim~=1
                     Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (Number of channels)'];
                     bst_report('Warning', 'process_pac_comod', sInput, Message);                   
+                elseif ~isequal(size(Nesting,3), size(tPACMat2.sPAC.DynamicNesting(:,(ind_time),:),3)) || ~isequal(size(Nesting,4), size(tPACMat2.sPAC.DynamicNesting(:,(ind_time),:),4))
+                    Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (fA)'];
+                    bst_report('Warning', 'process_pac_comod', sInput, Message);   
                 else
                     Nesting = cat(cat_dim,Nesting,tPACMat2.sPAC.DynamicNesting(:,(ind_time),:));
                     PAC = cat(cat_dim,PAC,tPACMat2.sPAC.DynamicPAC(:,(ind_time),:));
@@ -172,11 +175,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % === PLAYING THE RESULTS ===
         if tPACMat.time_resolved_comod
             limits = [min(tPACMat.sPAC.DirectPAC(:)), max(tPACMat.sPAC.DirectPAC(:))];
-            handle = implay(squeeze(permute(tPACMat.sPAC.DirectPAC(1,:,:,:), [3,4,2,1])),.5);
+            handle = implay(squeeze(permute(tPACMat.sPAC.DirectPAC(1,:,:,:), [3,4,2,1])),.3);
             handle.Visual.ColorMap.UserRangeMin = limits(1);
             handle.Visual.ColorMap.UserRangeMax = limits(2)*1.2;
             handle.Visual.ColorMap.UserRange = 1;
             handle.Visual.ColorMap.MapExpression = 'jet';
+%             handle.Parent.Position = [100 100 700 550];
         end
 
         % === SAVING THE DATA IN BRAINSTORM ===
