@@ -4,6 +4,7 @@ September 2017
 - New process: Epilepsy > Epileptogenicity maps
 - New process: Undo 4D/CTF noise compensation
 - GUI: MRI viewer and MRI-3D: New menu Jump to maximum (shortcut "M")
+- Distrib: Upgraded to Matlab 2017b
 ---------------------------------------------------------------
 August 2017
 - GUI: Raw viewer: Optimized scrolling speed with new option "Downsample recordings"
