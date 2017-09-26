@@ -74,7 +74,7 @@ end
 if ~isempty(threshAngle) && (threshAngle > 0)
     % Compute the angle between all the vectors
     maxAngle = zeros(size(Vertices,1),1);
-    for i = 1:length(v1)
+    for i = 1:size(v1,1)
         maxAngle(i) = max([atan2(norm(cross(v1(i,:),v2(i,:))), dot(v1(i,:),v2(i,:))), ...
                         atan2(norm(cross(v1(i,:),v3(i,:))), dot(v1(i,:),v3(i,:))), ...
                         atan2(norm(cross(v2(i,:),v3(i,:))), dot(v2(i,:),v3(i,:)))]);
