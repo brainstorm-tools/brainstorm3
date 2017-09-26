@@ -26,7 +26,8 @@ function varargout = process_pac_average( varargin )
 %                - Bug fix for averaging multiple files with different 
 %                number of sources
 %
-
+%   - 2.2: SS Sep 2017
+%                - Bug fix - donot store f_nesting information 
 eval(macro_method);
 end
 
@@ -152,7 +153,7 @@ function [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat, usePhase)
             else
                 tpac = tpacMat.sPAC.DynamicPAC/N;
             end
-            Nesting = tpacMat.sPAC.DynamicNesting;
+%             Nesting = tpacMat.sPAC.DynamicNesting;
             for iFile = 2:N
                 tmp = in_bst_timefreq(sInput(iFile).FileName, 0);
                 if ~isequal(tmp.Time,tpacMat.Time) || ~isequal(tmp.sPAC.HighFreqs, tpacMat.sPAC.HighFreqs)
@@ -160,20 +161,24 @@ function [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat, usePhase)
                     bst_report('Error', 'process_pac_average', sInput, Message);
                     return;
                 end 
-                if ~isequal(size(tpac,1), size(tmp.sPAC.DynamicPhase,1))
+                if ~isequal(size(tpac,1), size(tmp.sPAC.DynamicPAC,1))
                     Message = ['Number of sources in File #',num2str(iFile),' is not the same as previous files -- average on sources before averaging files'];
                     bst_report('Error', 'process_pac_average', sInput, Message);
                     return;
                 end 
-                if usePhase
+                if usePhase && isequal(size(tpac,1), size(tmp.sPAC.DynamicPhase,1))
                     tpac = tpac + tmp.sPAC.DynamicPAC.*tmp.sPAC.DynamicPhase/N;
+                elseif ~isequal(size(tpac,1), size(tmp.sPAC.DynamicPAC,1))                    
+                    Message = ['Number of sources for phase in File #',num2str(iFile),' is not the same as previous files -- You cannot use phase in averaging'];
+                    bst_report('Error', 'process_pac_average', sInput, Message);
+                    return;
                 else
                     tpac = tpac + tmp.sPAC.DynamicPAC/N;
                 end
-                Nesting = cat(5,Nesting,tmp.sPAC.DynamicNesting);
+%                 Nesting = cat(5,Nesting,tmp.sPAC.DynamicNesting);
             end
             tpacMat.sPAC.DynamicPAC = abs(tpac);
-            tpacMat.sPAC.DynamicNesting = Nesting;
+            tpacMat.sPAC.DynamicNesting = [];%Nesting;
             FileTag = 'timefreq_dpac_fullmaps';
         end                
 end
