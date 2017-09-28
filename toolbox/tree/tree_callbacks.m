@@ -555,7 +555,7 @@ switch (lower(action))
                         jItem.setEnabled(0);
                     end
                     % === GENERATE SPM CANONICAL ===
-                    jItem = gui_component('MenuItem', jPopup, [], 'SPM canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject));
+                    jItem = gui_component('MenuItem', jPopup, [], 'SPM canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, []));
                     if isempty(sSubject.Anatomy)
                         jItem.setEnabled(0);
                     end

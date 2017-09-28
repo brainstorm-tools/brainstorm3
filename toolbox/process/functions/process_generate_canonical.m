@@ -2,8 +2,8 @@ function varargout = process_generate_canonical( varargin )
 % PROCESS_GENERATE_CANONICAL: Generate SPM canonical surface.
 %
 % USAGE:     OutputFiles = process_generate_canonical('Run',     sProcess, sInputs)
-%         [isOk, errMsg] = process_generate_canonical('Compute', iSubject, iAnatomy=[default])
-%                          process_generate_canonical('ComputeInteractive', iSubject, iAnatomy=[default])
+%         [isOk, errMsg] = process_generate_canonical('Compute', iSubject, iAnatomy=[default], Resolution)
+%                          process_generate_canonical('ComputeInteractive', iSubject, iAnatomy=[default], Resolution)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -46,6 +46,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
     sProcess.options.subjectname.Value   = '';
+    % Option: Cortex resolution
+    sProcess.options.resolution.Comment = {'5124', '8196', '20484', 'Cortex surface resolution:'};
+    sProcess.options.resolution.Type    = 'radio_line';
+    sProcess.options.resolution.Value   = 3;
 end
 
 
@@ -58,6 +62,8 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
+    % Get resolution
+    Resolution = sProcess.options.resolution.Value;
     % Get subject name
     SubjectName = file_standardize(sProcess.options.subjectname.Value);
     if isempty(SubjectName)
@@ -71,7 +77,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     % Call processing function
-    [isOk, errMsg] = Compute(iSubject);
+    [isOk, errMsg] = Compute(iSubject, [], Resolution);
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -84,13 +90,9 @@ end
 
 
 %% ===== COMPUTE CANONICAL SURFACES =====
-function [isOk, errMsg] = Compute(iSubject, iAnatomy)
+function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution)
     isOk = 0;
     errMsg = '';
-    % Parse inputs
-    if (nargin < 2) || isempty(iAnatomy)
-        iAnatomy = [];
-    end
     % Check if SPM is in the path
     if ~exist('spm_eeg_inv_mesh', 'file')
         errMsg = 'SPM must be in the Matlab path to use this feature.';
@@ -140,16 +142,22 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     NiiFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_canonical.nii');
     out_mri_nii(sMri, NiiFile);
     % Call SPM function
-    spmMesh = spm_eeg_inv_mesh(NiiFile, 3);
-
+    switch (Resolution)
+        case {1,2,3}
+            spmMesh = spm_eeg_inv_mesh(NiiFile, Resolution);
+        case 4
+            spmMesh = ImaGIN_spm_eeg_inv_mesh(NiiFile, Resolution);
+        otherwise
+            error('Unsupported resolution.');
+    end
     % ===== READ OUTPUT SURFACES =====
     % Read transformation from temporary .nii
     niiMri = in_mri_nii(NiiFile);
     % Create surfaces
-    sHead   = CreateSurface(sMri, niiMri, export(gifti(spmMesh.tess_scalp),'patch'),  'spm_head_');
-    sOuter  = CreateSurface(sMri, niiMri, export(gifti(spmMesh.tess_oskull),'patch'), 'spm_outerskull_');
-    sInner  = CreateSurface(sMri, niiMri, export(gifti(spmMesh.tess_iskull),'patch'), 'spm_innerskull_');
-    sCortex = CreateSurface(sMri, niiMri, export(gifti(spmMesh.tess_ctx),'patch'),    'spm_cortex_');
+    sHead   = CreateSurface(sMri, niiMri, export(gifti(spmMesh.tess_scalp),'patch'),  'spm_head');
+    sOuter  = CreateSurface(sMri, niiMri, export(gifti(spmMesh.tess_oskull),'patch'), 'spm_outerskull');
+    sInner  = CreateSurface(sMri, niiMri, export(gifti(spmMesh.tess_iskull),'patch'), 'spm_innerskull');
+    sCortex = CreateSurface(sMri, niiMri, export(gifti(spmMesh.tess_ctx),'patch'),    'spm_cortex');
     
     % ===== SAVE NEW SURFACES =====
     % Create output filenames
@@ -178,11 +186,26 @@ end
 
 
 %% ===== COMPUTE/INTERACTIVE =====
-function ComputeInteractive(varargin) %#ok<DEFNU>
+function ComputeInteractive(iSubject, iAnatomy, Resolution) %#ok<DEFNU>
+    % Get inputs
+    if (nargin < 2) || isempty(iAnatomy)
+        iAnatomy = [];
+    end
+    if (nargin < 3) || isempty(Resolution)
+        strRes = java_dialog('question', 'Cortex surface resolution:', 'SPM canonical mesh', [], {'5124', '8196', '20484'}, '20484');
+        if isempty(strRes)
+            return;
+        end
+        switch (strRes)
+            case '5124',  Resolution = 1;
+            case '8196',  Resolution = 2;
+            case '20484', Resolution = 3;
+        end
+    end
     % Open progress bar
     bst_progress('start', 'SPM', 'Generating canonical surfaces...');
     % Compute surfaces
-    [isOk, errMsg] = Compute(varargin{:});
+    [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution);
     % Error handling
     if ~isOk
         bst_error(errMsg, 'SPM canonincal surfaces', 0);
