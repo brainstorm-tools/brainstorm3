@@ -1,4 +1,4 @@
-function isOk = bst_spm_init(isInteractive)
+function isOk = bst_spm_init(isInteractive, SpmFunction)
 % BST_SPM_INIT: Check SPM installation.
 
 % @=============================================================================
@@ -31,6 +31,9 @@ end
 if (nargin < 1) || isempty(isInteractive)
     isInteractive = 0;
 end
+if (nargin < 2) || isempty(SpmFunction)
+    SpmFunction = [];
+end
 % Get the saved SPM path
 SpmDir = bst_get('SpmDir');
 % Display the SPM folder 
@@ -43,12 +46,12 @@ end
 %     return;
 % end
 isOk = 0;
-% If FieldTrip is not accessible in the path
+% If SPM is not accessible in the path
 if ~exist('spm.m', 'file')
     % If defined, add to the folder
     if ~isempty(SpmDir)
         addpath(SpmDir);
-    % Else: Ask where is FieldTrip installed
+    % Else: Ask where is SPM installed
     elseif isInteractive
         % Warning message
         if ~java_dialog('confirm', [...
@@ -79,7 +82,7 @@ if ~exist('spm.m', 'file')
             return;
         end
         % Add selected folder to Matlab path
-        addpath(genpath(SpmDir));
+        addpath(SpmDir);
         % Save this folder for future use
         bst_set('SpmDir', SpmDir);
         % Display folder
@@ -90,8 +93,14 @@ if ~exist('spm.m', 'file')
                'Then add the installation path in Brainstorm (File > Edit preferences).']);
     end
 end
-% ft_defaults;
 isOk = 1;
 
-
+% Add subfolders needed for a specific function
+if ~isempty(SpmFunction) && ~exist(SpmFunction, 'file')
+    switch (SpmFunction)
+        case 'ft_read_headshape'
+            addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'fileio'));
+            addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'utilities'));
+    end
+end
     
