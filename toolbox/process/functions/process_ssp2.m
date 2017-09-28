@@ -515,16 +515,17 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         if ~isempty(iBad) && ~isempty(F{iBlock})
             iChannels(iChanRemove) = [];
         end
-        % Filter recordings: Modified 
+        % Filter recordings 
         if ~isempty(BandPass) && ~all(BandPass == 0)
-            % F{iBlock}(iChannels,:) = process_bandpass('Compute', F{iBlock}(iChannels,:), sfreq, BandPass(1), BandPass(2), 'bst-fft-fir', 1);
             F{iBlock}(iChannels,:) = process_bandpass('Compute', F{iBlock}(iChannels,:), sfreq, FiltSpec);
-            % Remove transients
-            F{iBlock} = F{iBlock}(:, (nTransient+1):(end-nTransient));
         end
         % Compute the average at time zero (filtered)
         if strcmpi(Method, 'SSP_mean')
             Fzero = Fzero + F{iBlock}(:,iTimeZero{iBlock});
+        end
+        % Filter recordings: Remove transients
+        if ~isempty(BandPass) && ~all(BandPass == 0)
+            F{iBlock} = F{iBlock}(:, (nTransient+1):(end-nTransient));
         end
         % Keep only the needed channels
         F{iBlock} = F{iBlock}(iChannels,:);

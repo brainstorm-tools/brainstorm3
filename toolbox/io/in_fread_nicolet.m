@@ -35,6 +35,13 @@ if (nargin < 3) || isempty(SamplesBounds)
     end
 end
 
+% % PATCH FOR UNKNOWN ERROR:
+% % A user reported the obj structure not being saved correctly in the file link on MacOS, trying to reopen the Nicolet file
+% % http://neuroimage.usc.edu/forums/t/error-in-loading-the-nicolet-eeg-data/4093/6
+% if isempty(sFile.header.obj)
+%     sFile.header.obj = NicoletFile(sFile.filename);
+% end
+
 % Read data block
 F = getdata(sFile.header.obj, iEpoch, SamplesBounds + 1, sFile.header.selchan(iChannels))';
 
