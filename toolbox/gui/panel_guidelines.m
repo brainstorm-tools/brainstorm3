@@ -208,6 +208,10 @@ function [OutputFiles, FileFormat] = PickFile(jControl, DefaultDir, SelectionMod
     if isempty(OutputFiles)
         return
     end
+    % If only one file selected
+    if ~iscell(OutputFiles)
+        OutputFiles = {OutputFiles};
+    end
     % Get the files
     OutputFiles = file_expand_selection(FileFilter, OutputFiles);
     if isempty(OutputFiles)

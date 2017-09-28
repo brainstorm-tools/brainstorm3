@@ -90,6 +90,14 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     java_setcb(ctrl.jComboSubj, 'ItemStateChangedCallback', @(h,ev)SelectSubject());
     % MRI are already registered
     ctrl.jCheckRegistered = gui_component('checkbox', ctrl.jPanels(i), 'br', 'MRI volumes are already registered (.nii format only)');
+    % Radio: Surface resolution
+    gui_component('label', ctrl.jPanels(i), 'br', '<HTML><FONT color="#a0a0a0">Cortex resolution:</FONT>');
+    jButtonGroupSurf = ButtonGroup();
+    ctrl.jRadioSurf1 = gui_component('radio', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">5124V</FONT>', jButtonGroupSurf);
+    ctrl.jRadioSurf2 = gui_component('radio', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">8196V</FONT>', jButtonGroupSurf);
+    ctrl.jRadioSurf3 = gui_component('radio', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">20484V</FONT>', jButtonGroupSurf);
+    ctrl.jRadioSurf4 = gui_component('radio', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">7861V+hip+amyg</FONT>', jButtonGroupSurf);
+    ctrl.jRadioSurf4.setSelected(1);
     % Event names
     gui_component('label', ctrl.jPanels(i), 'br', '<HTML><FONT color="#a0a0a0">Onset event name: </FONT>');
     ctrl.jTextEvtOnset = gui_component('text', ctrl.jPanels(i), '', 'Onset');
@@ -154,9 +162,9 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     % Bipolar montage
     gui_component('label', ctrl.jPanels(i), 'br', 'Electrode montage:');
     jButtonGroupMontage = ButtonGroup();
-    ctrl.jRadioMontageBip1 = gui_component('Radio', ctrl.jPanels(i), 'tab', '<HTML>Bipolar 1 <FONT color="#808080"></I>(eg. a1-a2, a3-a4, ...)<I><FONT>', jButtonGroupMontage);
-    ctrl.jRadioMontageBip2 = gui_component('Radio', ctrl.jPanels(i), 'br tab', '<HTML>Bipolar 2 <FONT color="#808080"></I>(eg. a1-a2, a2-a3, a3-a4, ...)<I><FONT>', jButtonGroupMontage);
-    ctrl.jRadioMontageNone = gui_component('Radio', ctrl.jPanels(i), 'br tab', '<HTML>None <FONT color="#808080"></I>(keep original montage)<I><FONT>', jButtonGroupMontage);
+    ctrl.jRadioMontageBip1 = gui_component('radio', ctrl.jPanels(i), 'tab', '<HTML>Bipolar 1 <FONT color="#808080"></I>(eg. a1-a2, a3-a4, ...)<I><FONT>', jButtonGroupMontage);
+    ctrl.jRadioMontageBip2 = gui_component('radio', ctrl.jPanels(i), 'br tab', '<HTML>Bipolar 2 <FONT color="#808080"></I>(eg. a1-a2, a2-a3, a3-a4, ...)<I><FONT>', jButtonGroupMontage);
+    ctrl.jRadioMontageNone = gui_component('radio', ctrl.jPanels(i), 'br tab', '<HTML>None <FONT color="#808080"></I>(keep original montage)<I><FONT>', jButtonGroupMontage);
     ctrl.jRadioMontageBip2.setSelected(1);
     % Callbacks
     ctrl.fcnValidate{i} = @(c)ValidateEpoch();
@@ -204,7 +212,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
         java_setcb(ctrl.jListFiles, 'MouseClickedCallback', @ListFilesClick_Callback);
         jScrollFiles = JScrollPane(ctrl.jListFiles);
     % Assemble panel
-    ctrl.jPanels(i) = gui_river([0,0], [5,10,0,4], sprintf('Step #%d: Epileptogenicity index', i));
+    ctrl.jPanels(i) = gui_river([0,0], [5,10,0,4], sprintf('Step #%d: Epileptogenicity', i));
     ctrl.jPanels(i).add('vtop', jPanelEpilOptions);
     ctrl.jPanels(i).add('hfill vfill', jScrollFiles);
     % Callbacks
@@ -260,6 +268,16 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
     MriFilePre  = char(ctrl.jTextMriPre.getText());
     MriFilePost = char(ctrl.jTextMriPost.getText());
     isRegistered = ctrl.jCheckRegistered.isSelected();
+    % Get surface resolution
+    if ctrl.jRadioSurf1.isSelected()
+        SurfResolution = 1;
+    elseif ctrl.jRadioSurf2.isSelected()
+        SurfResolution = 2;
+    elseif ctrl.jRadioSurf3.isSelected()
+        SurfResolution = 3;
+    elseif ctrl.jRadioSurf4.isSelected()
+        SurfResolution = 4;
+    end
     % Get event names
     GlobalData.Guidelines.strOnset = char(ctrl.jTextEvtOnset.getText());
     GlobalData.Guidelines.strBaseline = char(ctrl.jTextEvtBaseline.getText());
@@ -368,6 +386,8 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
         panel_protocols('UpdateNode', 'Subject', iSubject);
         % Save MRI pre as permanent default
         db_surface_default(iSubject, 'Anatomy', 1, 0);
+        % Compute SPM canonical surfaces
+        process_generate_canonical('ComputeInteractive', iSubject, 1, SurfResolution);
     end
     % Save for later
     GlobalData.Guidelines.SubjectName = SubjectName;

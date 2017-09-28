@@ -32,7 +32,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Epileptogenicity index (A=Baseline,B=Seizure)';
+    sProcess.Comment     = 'Epileptogenicity maps (A=Baseline,B=Seizure)';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Epilepsy';
     sProcess.Index       = 750;
@@ -183,7 +183,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             iChan = 1:length(ChannelMat.Channel);
         end
 
-        % Convert channel positions to MRI coordinates (for surface export, keep in everything in SCS)
+        % Convert channel positions to MRI coordinates (for surface export, keep everything in SCS)
         if strcmpi(OPTIONS.OutputType, 'volume')
             Tscs2mri = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
             % If there is a transformation MRI=>RAS from a .nii file 
@@ -199,6 +199,12 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
                     vox2ras = [];
                 end
                 if ~isempty(vox2ras)
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    % NOT UNDERSTOOD: 
+                    % Apply a [-1,-1,-1] translation to compensation the translation in process_generate_canonical,
+                    % so that we get the same coordinates directly with the SPM segmentation or through the Brainstorm database
+                    Tscs2mri = [1 0 0 -1/1000; 0 1 0 -1/1000; 0 0 1 -1/1000; 0 0 0 1] * Tscs2mri;
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     % Convert millimeters=>meters
                     vox2ras(1:3,4) = vox2ras(1:3,4) ./ 1000;
                     % Add this transformation
@@ -207,6 +213,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             end
             ChannelMat = channel_apply_transf(ChannelMat, Tscs2mri, iChan, 1);
             ChannelMat = ChannelMat{1};
+        else
+            Tscs2mri = [];
         end
         % File tag
         [fPath,fBase] = bst_fileparts(sInputsB(iInput).FileName);
@@ -229,8 +237,28 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % Convert to ImaGIN filenames
     OPTIONS.D = char(OnsetFiles{:}); 
     OPTIONS.B = char(BaselineFiles{:});
-    
+
     % ===== EXPORT ANATOMY =====
+    % Compute SPM canonical surfaces if necessary
+    if isempty(sSubject.iCortex)
+        isOk = process_generate_canonical('Compute', iSubject, [], 4);
+        if ~isOk
+            bst_report('Error', sProcess, sInputsB, 'Could not compute SPM canonical surfaces...');
+            return;
+        end
+        sSubject = bst_get('Subject', SubjectName);
+    end
+    % Load cortex mesh
+    MeshFile = bst_fullfile(workDir, 'cortex.gii');
+    MeshMat = in_tess_bst(sSubject.Surface(sSubject.iCortex).FileName);
+    % Apply same transformation as the sensors
+    if ~isempty(Tscs2mri)
+        MeshMat.Vertices = bst_bsxfun(@plus, Tscs2mri(1:3,1:3)*MeshMat.Vertices', Tscs2mri(1:3,4))';
+        MeshMat.Faces    = MeshMat.Faces(:,[2 1 3]);
+    end
+    % Export cortex mesh
+    out_tess_gii(MeshMat, MeshFile, 0);
+    OPTIONS.MeshFile = MeshFile;
     % Output options
     switch lower(OPTIONS.OutputType)
         case 'volume'
@@ -245,21 +273,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             fileFormat = 'ALLMRI';
             fileExt = '.nii';
         case 'surface'
-            % Compute SPM canonical surfaces if necessary
-            if isempty(sSubject.iCortex)
-                isOk = process_generate_canonical('Compute', iSubject);
-                if ~isOk
-                    bst_report('Error', sProcess, sInputsB, 'Could not compute SPM canonical surfaces...');
-                    return;
-                end
-                sSubject = bst_get('Subject', SubjectName);
-            end
-            % Export cortex mesh
-            MeshFile = bst_fullfile(workDir, 'cortex.gii');
-            out_tess_gii(sSubject.Surface(sSubject.iCortex).FileName, MeshFile, 0);
             % Additional options
             OPTIONS.SmoothIterations = 5;
-            OPTIONS.MeshFile         = MeshFile;
             % Output format: GII surface
             fileFormat = 'GII';
             fileExt = '.gii';
