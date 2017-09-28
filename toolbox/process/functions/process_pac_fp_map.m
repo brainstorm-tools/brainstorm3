@@ -31,6 +31,8 @@ function varargout = process_pac_fp_map( varargin )
 % v 4.1: SS, new way of normalizing the maps, May 2017
 % v 4.2: SS, Previous version of normalizing, Aug 2017
 % v 5.0: SS, tPAC package, Aug 2017
+% v 6.0: SS, Check for file format before using it for fp estimation, Sep
+%            2017
 
 eval(macro_method);
 end
@@ -82,10 +84,17 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Get options
     faBand = sProcess.options.fawindow.Value;
     anal_type = sProcess.options.analyze_type.Value;
-    doInterpolation = sProcess.options.doInterp.Value; 
+    doInterpolation = sProcess.options.doInterp.Value;
+    
+    if anal_type == 1
+        cat_dim = 1;
+    else
+        cat_dim = 5;
+    end
+    
 
     % Set the tag
-    tag = 'PhaseMap';
+    tag = 'fpMap';
 
     % Load TF file
     tPACMat = in_bst_timefreq(sInput(1).FileName, 0);
@@ -95,37 +104,60 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         return;
     end
     
+    PAC = [];    
     extract_phasePAC = 0;
-    if isfield(tPACMat.sPAC, 'DynamicPhase')
-        extract_phasePAC = 1;
-    end
-
-    time = tPACMat.Time;
-    if length(sInput)>1
-        Nesting = tPACMat.sPAC.DynamicNesting;
-        PAC = tPACMat.sPAC.DynamicPAC; 
-        if isfield(tPACMat.sPAC, 'DynamicPhase')
-            Phase_mat = tPACMat.sPAC.DynamicPhase;
+    
+    if length(sInput)>1        
+        for iFile=1:length(sInput)
+            % check the file format
+            indices = [];
+            tPACMat = in_bst_timefreq(sInput(iFile).FileName, 0);
+            str = tPACMat.Comment;
+            tags = {'avg';'mean';'median';'fpMap';'CoMod';'zscore'};
+            for itag=1:length(tags)
+                k = strfind(str,tags{itag});
+                indices = [indices,k];
+            end
+            if ~isempty(indices) % Ignore file because it is a processed tpac map (e.g. comod or fp_map)                
+                Message = ['File#',num2str(iFile),' is ignored becauase it is not a raw tPAC file'];
+                bst_report('Warning', 'process_pac_fp_map', sInput, Message);
+                
+            elseif isempty(PAC)  % filling the variables based on the first file               
+                time = tPACMat.Time;
+                Nesting = tPACMat.sPAC.DynamicNesting;
+                PAC = tPACMat.sPAC.DynamicPAC;
+                if isfield(tPACMat.sPAC, 'DynamicPhase')
+                    extract_phasePAC = 1;
+                    Phase_mat = tPACMat.sPAC.DynamicPhase;
+                end
+                
+            else                
+               tPACMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
+               % Check if time and frequency definition of the current file
+               % matches the first file
+               time = tPACMat2.Time;
+               fa = tPACMat2.sPAC.HighFreqs;
+               if ~isequal(time,tPACMat.Time) || ~isequal(fa,tPACMat.sPAC.HighFreqs)
+                   Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (time)'];
+                   bst_report('Warning', 'process_pac_fp_map', sInput, Message);
+               elseif ~isequal(size(Nesting,1),size(tPACMat2.sPAC.DynamicNesting,1)) && cat_dim~=1
+                   Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (Number of channels)'];
+                   bst_report('Warning', 'process_pac_fp_map', sInput, Message);
+               elseif ~isequal(size(Nesting,3), size(tPACMat2.sPAC.DynamicNesting,3)) || ~isequal(size(Nesting,4), size(tPACMat2.sPAC.DynamicNesting,4))
+                   Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file'];
+                   bst_report('Warning', 'process_pac_fp_map', sInput, Message);
+               elseif ~isequal(size(Nesting,5), size(tPACMat2.sPAC.DynamicNesting,5)) && cat_dim~=5
+                   Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file'];
+                   bst_report('Warning', 'process_pac_fp_map', sInput, Message);
+               else
+                   Nesting = cat(cat_dim,Nesting,tPACMat2.sPAC.DynamicNesting);
+                   PAC = cat(cat_dim,PAC,tPACMat2.sPAC.DynamicPAC);
+                   if extract_phasePAC
+                       Phase_mat = cat(cat_dim,Phase_mat,tPACMat2.sPAC.DynamicPhase);
+                   end
+               end
+           end
         end
-        for iFile=2:length(sInput)
-           tPACMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
-           % Check if time and frequency definition of the current file
-           % matches the first file
-           time = tPACMat2.Time;
-           fa = tPACMat2.sPAC.HighFreqs;
-           if ~isequal(time,tPACMat.Time) || ~isequal(fa,tPACMat.sPAC.HighFreqs)
-               Message = ['Format of file#',num2str(iFile),' do not match the first file'];
-               bst_report('Error', 'process_pac_fp_map', sInput, Message);
-               return;
-           end
-           
-           Nesting = cat(5,Nesting,tPACMat2.sPAC.DynamicNesting);
-           PAC = cat(5,PAC,tPACMat2.sPAC.DynamicPAC);
-           if extract_phasePAC
-               Phase_mat = cat(5,Phase_mat,tPACMat2.sPAC.DynamicPhase);
-           end
-
-       end
        tPACMat.sPAC.DynamicNesting = Nesting;
        tPACMat.sPAC.DynamicPAC = PAC;
        if extract_phasePAC

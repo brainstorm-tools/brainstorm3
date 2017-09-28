@@ -32,7 +32,9 @@ function varargout = process_pac_comod( varargin )
 % v 2.0:   SS, Change in normalizing the maps, May 2017
 % v 2.1:   SS, Return to previous version for normalizing (incorrect change) - July 2017
 % v 2.2:   SS, tPAC, Aug 2017
-%
+% v 3.0:   SS, Check for file format before using it for fp estimation, Sep
+%          2017
+
 eval(macro_method);
 end
 
@@ -114,47 +116,66 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         return;
     end
 
+    PAC = [];
     extract_phasePAC = 0;
     
     if length(sInput)==1 || output_type==1
-        
+
         if length(sInput)>1
-            time = tPACMat.Time;
-            ind_time = (time>=inputTime(1) & time<= inputTime(2));
-            Nesting = tPACMat.sPAC.DynamicNesting(:,ind_time,:);
-            PAC = tPACMat.sPAC.DynamicPAC(:,ind_time,:);
-            if isfield(tPACMat.sPAC, 'DynamicPhase')
-                Phase_mat = tPACMat.sPAC.DynamicPhase(:,ind_time,:);
-                extract_phasePAC = 1;
-            end
-             
-            for iFile=2:length(sInput)
-                tPACMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
-                % Check if time and frequency definition of the current file
-                % matches the first file
-                time = tPACMat2.Time;
-                fa = tPACMat2.sPAC.HighFreqs;
-                ind_time = (time>=inputTime(1) & time<= inputTime(2));
-                if ~isequal(fa,tPACMat.sPAC.HighFreqs) 
-                    Message = ['File#',num2str(iFile),' is ignored because its format does not match the first file (fA definition)'];
-%                     bst_report('warning', 'process_pac_comod', sInput, Message);
-%                     return; 
-                elseif ~isequal(time(ind_time),tPACMat.Time(tPACMat.Time >= inputTime(1) & tPACMat.Time <= inputTime(2))) 
-%                     time(ind_time);
-%                     tPACMat.Time(tPACMat.Time >= inputTime(1) & tPACMat.Time <= inputTime(2));                    
-                    Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (Time definition)'];
-                    bst_report('Warning', 'process_pac_comod', sInput, Message);                    
-                elseif ~isequal(size(Nesting,1),size(tPACMat2.sPAC.DynamicNesting,1)) && cat_dim~=1
-                    Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (Number of channels)'];
-                    bst_report('Warning', 'process_pac_comod', sInput, Message);                   
-                elseif ~isequal(size(Nesting,3), size(tPACMat2.sPAC.DynamicNesting(:,(ind_time),:),3)) || ~isequal(size(Nesting,4), size(tPACMat2.sPAC.DynamicNesting(:,(ind_time),:),4))
-                    Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (fA)'];
-                    bst_report('Warning', 'process_pac_comod', sInput, Message);   
+            
+            for iFile=1:length(sInput)
+                % check the file format
+                indices = [];
+                tPACMat = in_bst_timefreq(sInput(iFile).FileName, 0);
+                str = tPACMat.Comment;
+                tags = {'avg';'mean';'median';'fpMap';'CoMod';'zscore'};
+                for itag=1:length(tags)
+                    k = strfind(str,tags{itag});
+                    indices = [indices,k];
+                end
+                
+                if ~isempty(indices) % ignore file because it is a processed tpac map (e.g. comod or fp_map)
+                    Message = ['File#',num2str(iFile),' is ignored becauase it is not a raw tPAC file'];
+                    bst_report('Warning', 'process_pac_comod', sInput, Message); 
+                    
+                elseif isempty(PAC)   % filling the variables based on the first file  
+                    time = tPACMat.Time;
+                    ind_time = (time>=inputTime(1) & time<= inputTime(2));
+                    Nesting = tPACMat.sPAC.DynamicNesting(:,ind_time,:);
+                    PAC = tPACMat.sPAC.DynamicPAC(:,ind_time,:);
+                    if isfield(tPACMat.sPAC, 'DynamicPhase')
+                        Phase_mat = tPACMat.sPAC.DynamicPhase(:,ind_time,:);
+                        extract_phasePAC = 1;
+                    end
+                    
                 else
-                    Nesting = cat(cat_dim,Nesting,tPACMat2.sPAC.DynamicNesting(:,(ind_time),:));
-                    PAC = cat(cat_dim,PAC,tPACMat2.sPAC.DynamicPAC(:,(ind_time),:));
-                    if extract_phasePAC
-                        Phase_mat = cat(cat_dim,Phase_mat,tPACMat2.sPAC.DynamicPhase(:,(ind_time),:));
+                    tPACMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
+                    % Check if time and frequency definition of the current file
+                    % matches the first file
+                    time = tPACMat2.Time;
+                    fa = tPACMat2.sPAC.HighFreqs;
+                    ind_time = (time>=inputTime(1) & time<= inputTime(2));
+                    if ~isequal(fa,tPACMat.sPAC.HighFreqs)
+                        Message = ['File#',num2str(iFile),' is ignored because its format does not match the first file (fA definition)'];
+                        bst_report('Warning', 'process_pac_comod', sInput, Message);
+                    elseif ~isequal(time(ind_time),tPACMat.Time(tPACMat.Time >= inputTime(1) & tPACMat.Time <= inputTime(2)))
+                        Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (Time definition)'];
+                        bst_report('Warning', 'process_pac_comod', sInput, Message);
+                    elseif ~isequal(size(Nesting,1),size(tPACMat2.sPAC.DynamicNesting,1)) && cat_dim~=1
+                        Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (Number of channels)'];
+                        bst_report('Warning', 'process_pac_comod', sInput, Message);
+                    elseif ~isequal(size(Nesting,3), size(tPACMat2.sPAC.DynamicNesting,3)) || ~isequal(size(Nesting,4), size(tPACMat2.sPAC.DynamicNesting,4))
+                        Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file (fA)'];
+                        bst_report('Warning', 'process_pac_comod', sInput, Message);
+                    elseif ~isequal(size(Nesting,5), size(tPACMat2.sPAC.DynamicNesting,5)) && cat_dim~=5
+                        Message = ['File#',num2str(iFile),' is ignored becauase its format does not match the first file'];
+                        bst_report('Warning', 'process_pac_fp_map', sInput, Message);
+                    else
+                        Nesting = cat(cat_dim,Nesting,tPACMat2.sPAC.DynamicNesting(:,(ind_time),:));
+                        PAC = cat(cat_dim,PAC,tPACMat2.sPAC.DynamicPAC(:,(ind_time),:));
+                        if extract_phasePAC
+                            Phase_mat = cat(cat_dim,Phase_mat,tPACMat2.sPAC.DynamicPhase(:,(ind_time),:));
+                        end
                     end
                 end
             end
@@ -175,12 +196,11 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % === PLAYING THE RESULTS ===
         if tPACMat.time_resolved_comod
             limits = [min(tPACMat.sPAC.DirectPAC(:)), max(tPACMat.sPAC.DirectPAC(:))];
-            handle = implay(squeeze(permute(tPACMat.sPAC.DirectPAC(1,:,:,:), [3,4,2,1])),.3);
+            handle = implay(squeeze(permute(tPACMat.sPAC.DirectPAC(1,:,:,:), [3,4,2,1])),5);
             handle.Visual.ColorMap.UserRangeMin = limits(1);
             handle.Visual.ColorMap.UserRangeMax = limits(2)*1.2;
             handle.Visual.ColorMap.UserRange = 1;
             handle.Visual.ColorMap.MapExpression = 'jet';
-%             handle.Parent.Position = [100 100 700 550];
         end
 
         % === SAVING THE DATA IN BRAINSTORM ===
@@ -218,40 +238,54 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 return;
             end
             
-            % == EXTRACTING COMODULOGRAM ==
-            tPACMat = Compute(tPACMat, t, window_length, anal_type, doInterpolation);
-            
-            % === PLAYING THE RESULTS ===
-            if tPACMat.time_resolved_comod
-                limits = [min(tPACMat.sPAC.DirectPAC(:)), max(tPACMat.sPAC.DirectPAC(:))];
-                handle = implay(squeeze(permute(tPACMat.sPAC.DirectPAC(1,:,:,:), [3,4,2,1])),.5);
-                handle.Visual.ColorMap.UserRangeMin = limits(1);
-                handle.Visual.ColorMap.UserRangeMax = limits(2)*1.2;
-                handle.Visual.ColorMap.UserRange = 1;
-                handle.Visual.ColorMap.MapExpression = 'jet';
+                        % check the file format
+            indices = [];
+            str = tPACMat.Comment;
+            tags = {'avg';'mean';'median';'fpMap';'CoMod';'zscore'};
+            for itag=1:length(tags)
+                k = strfind(str,tags{itag});
+                indices = [indices,k];
             end
-            
-            % === SAVING THE DATA IN BRAINSTORM ===
-            % Comment
-            inputTime = t{1};
-            if isequal(inputTime,tPACMat.Time)
-                tPACMat.Comment = [tPACMat.Comment, ' | ',tag];
+            if ~isempty(indices) % it is a processed tpac map (e.g. comod or fp_map)                
+                Message = ['File#',num2str(iFile),' is ignored becauase it is not a raw tPAC file'];
+                bst_report('Warning', 'process_pac_fp_map', sInput, Message);
             else
-                tPACMat.Comment = [tPACMat.Comment, ' | ',tag,' | t=[', num2str(inputTime(1)), ',',  num2str(inputTime(2)),']'];
-            end
-            tPACMat.FunctionVersion = sProcess.Comment;
             
-        % Get output study
-        [sStudy, iStudy] = bst_process('GetOutputStudy', sProcess, sInput(iFile));        
-        % Output filename: add file tag
-        FileTag = strtrim(strrep(tag, '|', ''));        
-        OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), 'timefreq_pac_fullmaps');
-        OutputFiles{1} = file_unique(OutputFiles{1});
+                % == EXTRACTING COMODULOGRAM ==
+                tPACMat = Compute(tPACMat, t, window_length, anal_type, doInterpolation);
                 
-        % Save file
-        bst_save(OutputFiles{1}, tPACMat, 'v6');
-        % Add file to database structure
-        db_add_data(iStudy, OutputFiles{1}, tPACMat);            
+                % === PLAYING THE RESULTS ===
+                if tPACMat.time_resolved_comod
+                    limits = [min(tPACMat.sPAC.DirectPAC(:)), max(tPACMat.sPAC.DirectPAC(:))];
+                    handle = implay(squeeze(permute(tPACMat.sPAC.DirectPAC(1,:,:,:), [3,4,2,1])),5);
+                    handle.Visual.ColorMap.UserRangeMin = limits(1);
+                    handle.Visual.ColorMap.UserRangeMax = limits(2)*1.2;
+                    handle.Visual.ColorMap.UserRange = 1;
+                    handle.Visual.ColorMap.MapExpression = 'jet';
+                end
+                
+                % === SAVING THE DATA IN BRAINSTORM ===
+                % Comment
+                inputTime = t{1};
+                if isequal(inputTime,tPACMat.Time)
+                    tPACMat.Comment = [tPACMat.Comment, ' | ',tag];
+                else
+                    tPACMat.Comment = [tPACMat.Comment, ' | ',tag,' | t=[', num2str(inputTime(1)), ',',  num2str(inputTime(2)),']'];
+                end
+                tPACMat.FunctionVersion = sProcess.Comment;
+                
+                % Get output study
+                [sStudy, iStudy] = bst_process('GetOutputStudy', sProcess, sInput(iFile));
+                % Output filename: add file tag
+                FileTag = strtrim(strrep(tag, '|', ''));
+                OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), 'timefreq_pac_fullmaps');
+                OutputFiles{1} = file_unique(OutputFiles{1});
+                
+                % Save file
+                bst_save(OutputFiles{1}, tPACMat, 'v6');
+                % Add file to database structure
+                db_add_data(iStudy, OutputFiles{1}, tPACMat);
+            end
         end
     end
 end
