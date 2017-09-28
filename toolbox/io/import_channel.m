@@ -226,7 +226,13 @@ switch (FileFormat)
                 ChannelMat = in_channel_emse_elp(ChannelFile);
                 FileUnits = 'mm';
         end
-
+        
+    case 'PTS'
+        ChannelMat = in_channel_ascii(ChannelFile, {'name','X','Y','Z'}, 3, .001);
+        ChannelMat.Comment = 'Contacts';
+        FileUnits = 'mm';
+        [ChannelMat.Channel.Type] = deal('SEEG');
+                
     case {'ASCII_XYZ', 'ASCII_XYZ_MNI'}  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z'}, 0, .01);
         ChannelMat.Comment = 'Channels';

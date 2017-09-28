@@ -22,7 +22,7 @@ function channel_add_loc(iStudies, LocChannelFile, isInteractive)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2019
 
 % Parse inputs
 if (nargin < 3) || isempty(isInteractive)
@@ -50,12 +50,16 @@ else
         isFixUnits = 0;
         isApplyVox2ras = 1;
     end
-    LocChannelMat = import_channel(iStudies, [], [], 0, 0, 0, isFixUnits, isApplyVox2ras);
+    [LocChannelMat, ChannelFile, FileFormat] = import_channel(iStudies, [], [], 0, 0, 0, isFixUnits, isApplyVox2ras);
 end
 % Nothing loaded: exit
 if isempty(LocChannelMat)
     return;
 end
+% Get new channel names
+locChanNames = {LocChannelMat.Channel.Name};
+% Replace "'" with "p"
+locChanNames = strrep(locChanNames, '''', 'p');
 
 % Process all the studies in input
 for is = 1:length(iStudies)
@@ -78,11 +82,28 @@ for is = 1:length(iStudies)
     nNotFound = 0;
     % For all the channels, look for its definition in the LOC EEG cap
     for ic = 1:length(ChannelMat.Channel)
-        idef = find(strcmpi(ChannelMat.Channel(ic).Name, {LocChannelMat.Channel.Name}));
+        chName = ChannelMat.Channel(ic).Name;
+        % Replace "'" with "p"
+        chName = strrep(chName, '''', 'p');
+        % Look for the exact channel name
+        idef = find(strcmpi(chName, locChanNames));
+        % If not found, look for an alternate version (with or without trailing zeros...)
+        if isempty(idef) && ismember(lower(chName(1)), 'abcdefghijklmnopqrstuvwxyz') && ismember(lower(chName(end)), '0123456789')
+            [chGroup, chTag, chInd] = panel_montage('ParseSensorNames', ChannelMat.Channel(ic));
+            % Look for "A01"
+            idef = find(strcmpi(sprintf('%s%02d',chTag{1},chInd(1)), locChanNames));
+            if isempty(idef)
+                % Look for "A1"
+                idef = find(strcmpi(sprintf('%s%d',chTag{1},chInd(1)), locChanNames));
+            end
+        end
+        % If the channel is found has a valid 3D position
         if ~isempty(idef) && (size(ChannelMat.Channel(ic).Loc,2) <= 1) && ~isequal(LocChannelMat.Channel(idef).Loc, [0;0;0])
             % If the channel is already considered as EEG, do not change its type, otherwise set it to EEG
             if ~ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
                 ChannelMat.Channel(ic).Type = 'EEG';
+            elseif ismember(LocChannelMat.Channel(idef).Type, {'SEEG','ECOG'})
+                ChannelMat.Channel(ic).Type = LocChannelMat.Channel(idef).Type;
             end
             ChannelMat.Channel(ic).Loc    = LocChannelMat.Channel(idef).Loc;
             ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
