@@ -110,6 +110,11 @@ try
 catch
     FileOut=[];
 end
+try
+    MeshFile=S.MeshFile;
+catch
+    MeshFile=[];
+end
 
 
 if length(n) > 1
@@ -147,56 +152,47 @@ for k = 1:Nsub
         TimeWindow=D{k}.time;
     end
     
-    Ctf=sensors(D{k},'EEG');
-    
+    % Select SEEG channels
+    Dsensors = sensors(D{k},'EEG');
+        
     if CorticalMesh
-        mesh = ImaGIN_spm_eeg_inv_mesh(sMRI, 4);
-        mm        = export(gifti(mesh.tess_ctx),'patch');
-        mm_mni        = export(gifti(mesh.tess_mni),'patch');
-        GL      = spm_mesh_smooth(mm);
-
-        Bad=badchannels(D{k});
-        Good=setdiff(setdiff(1:nchannels(D{k}),indchantype(D{k},'ECG')),Bad);
-        
-        Index=cell(1,nchannels(D{k})-length(indchantype(D{k},'ECG')));
-        Distance=cell(1,nchannels(D{k})-length(indchantype(D{k},'ECG')));
-        for i1=Good
-            d=sqrt(sum((mm.vertices-ones(size(mm.vertices,1),1)*Ctf.elecpos(i1,:)).^2,2));
-            Distance{i1}=min(d);
-            if Distance{i1}<=SizeHorizon
-                Index{i1}=find(d==min(d))';
-                Distance{i1}=Distance{i1}*ones(1,length(Index{i1}));
-            end
+        % If the cortex surface is already available (and output is not requested in MNI coordinates), use it
+        if ~isempty(MeshFile) && ~SaveMNI
+            mm = export(gifti(MeshFile),'patch');
+            GL = spm_mesh_smooth(mm);
+        % Compute SPM canonical mesh
+        else
+            mesh   = ImaGIN_spm_eeg_inv_mesh(sMRI, 4);
+            mm     = export(gifti(mesh.tess_ctx),'patch');
+            mm_mni = export(gifti(mesh.tess_mni),'patch');
+            GL     = spm_mesh_smooth(mm);
         end
-        
-        ok=1;
-        while ok
-            ok=0;
-            IndexConn=cell(1,length(Index));
-            IndexNew=cell(1,length(Index));
-            DistanceNew=cell(1,length(Index));
-            %Croissance dans un volume
-            for i1=Good
-                for i2=1:length(Index{i1})
-                    IndexConn{i1}=unique([IndexConn{i1} find(GL(Index{i1}(i2),:))]);
-                end
-                IndexNew{i1}=setdiff(IndexConn{i1},Index{i1});
-                d=sqrt(sum((mm.vertices(IndexNew{i1},:)-ones(length(IndexNew{i1}),1)*Ctf.elecpos(i1,:)).^2,2));
-                DistanceNew{i1}=d';
-                DistanceNew{i1}=DistanceNew{i1}(find(d<=SizeHorizon));
-                IndexNew{i1}=IndexNew{i1}(find(d<=SizeHorizon));
-                if ~isempty(IndexNew{i1})
-                    ok=1;
-                    Index{i1}=[Index{i1} IndexNew{i1}];
-                    Distance{i1}=[Distance{i1} DistanceNew{i1}];
-                end
-            end
+        % Get positions of good channels
+        iGood = setdiff(1:nchannels(D{k}), [indchantype(D{k},'ECG'), badchannels(D{k})]);
+        elecpos = Dsensors.elecpos;
+        nChan = size(elecpos,1);
+        % Get vertices in the neighborhood of each contact
+        Index = cell(1, nChan);
+        Distance = cell(1, nChan);
+        for iChan = iGood
+            % Compute distance contact/vertices
+            d2 = sum(bsxfun(@minus, mm.vertices, elecpos(iChan,:)) .^ 2, 2);
+            [tmp, iVertMin] = min(d2);
+            % Get connectivity matrix around the electrodes
+            VertConn = (GL > 0);
+            iVertFar = find(d2 > SizeHorizon .^ 2);
+            VertConn(iVertFar,:) = 0;
+            VertConn(:,iVertFar) = 0;
+            % Propagate connections
+            VertConn = (VertConn ^ 20);
+            % Get vertices in the neighborhood of each vertex
+            Index{iChan} = find(VertConn(iVertMin,:));
+            Distance{iChan} = sqrt(d2(Index{iChan})');
         end
-        Cind=Good;
-
+        Cind=iGood;
     else
-        [Cel, Cind, x, y, z, Index] = ImaGIN_spm_eeg_locate_channels(D{k}, n, interpolate_bad,SizeHorizon,Ctf,Atlas);
-        [Cel2, Cind2, x2, y2, z2, Index2] = ImaGIN_spm_eeg_locate_channels(D{k}, n, interpolate_bad,SizeSphere,Ctf,Atlas);
+        [Cel, Cind, x, y, z, Index] = ImaGIN_spm_eeg_locate_channels(D{k}, n, interpolate_bad,SizeHorizon,Dsensors,Atlas);
+        [Cel2, Cind2, x2, y2, z2, Index2] = ImaGIN_spm_eeg_locate_channels(D{k}, n, interpolate_bad,SizeSphere,Dsensors,Atlas);
     end
 
     if isfield(D{k},'time')

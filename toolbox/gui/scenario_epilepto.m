@@ -1102,7 +1102,7 @@ function ButtonRawPos()
         '<HTML>How do you want to define the 3D positions of the SEEG contacts?<BR><BR>', ...
         '<B><U>Import</U></B>: &nbsp;&nbsp;Import from a file (subject or MNI coordinates)<BR>', ...
         '<B><U>Edit</U></B>: &nbsp;&nbsp;Define manually using the MRI viewer<BR><BR>'], ...
-        'Set positions', [], {'Import', 'Edit'}, 'Edit');
+        'Set positions', [], {'Import', 'Edit'}, 'Import');
     if isempty(res)
         return;
     end
@@ -1129,7 +1129,9 @@ function ButtonRawPos()
             % Get 3D positions from an external file
             channel_add_loc(iStudiesSet, [], 1);
             % Display 3D positions on the subject MRI
-            view_channels_3d(AllChannelFiles{1}, 'SEEG', 'anatomy', 1);
+            hFig = view_mri_3d(GlobalData.Guidelines.MriPost, [], .1, 'NewFigure');
+            view_channels(AllChannelFiles{1}, 'SEEG', 0, 0, hFig, 1);
+            figure_3d('ViewSensors', hFig, 0, 1);
         case 'Edit'
             % View MRI
             [hFig, iDS, iFig] = view_mri(GlobalData.Guidelines.MriPost);
@@ -1606,7 +1608,6 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
                 return;
             end
         end
-profile on
         % Process: Epileptogenicity index (A=Baseline,B=Seizure)
         bst_report('Start', BaselineFiles(iFiles));
         sFiles = bst_process('CallProcess', 'process_epileptogenicity', BaselineFiles(iFiles), OnsetFiles(iFiles), ...
@@ -1617,7 +1618,6 @@ profile on
             'timeresolution', TimeResolution, ...
             'thdelay',        ThDelay, ...
             'type',           OutputType);
-profile viewer
         % Error handling
         if isempty(sFiles)
             errMsg = 'Could not compute epileptogenicity maps.';

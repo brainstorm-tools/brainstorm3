@@ -24,6 +24,7 @@ function ImaGIN_Epileptogenicity(S)
 %% ===== INPUTS =====
 warning off
 NameEpileptogenicity='EI';
+spm('defaults', 'EEG');
 
 try
     DD = S.D;
@@ -82,11 +83,18 @@ switch lower(OutputType)
             catch
                 sMRI = spm_select(Inf, 'image', 'Select MRI');
             end
+            % Surface: If not in input, will compute it (SPM canonical)
+            try 
+                MeshFile = S.MeshFile;
+            catch
+                MeshFile = [];
+            end
+        else
+            MeshFile = [];
         end
         % Output extension
         outExt = '.nii';
         strSelectVol = ',1';
-        MeshFile = [];
         SmoothIterations = [];
         
     case 'surface'
@@ -300,6 +308,7 @@ for i00 = 1:size(latency, 2)
         catch
             SS.TimeWindow = Latency + (0:TimeResolution:Horizon);
         end
+        SS.MeshFile = MeshFile;
         SS.TimeWindowWidth = 0;
         SS.SizeHorizon = 10;
         dirSeizure  = fullfile(P,[FileName spm_str_manip(D.fname,'s') '_' NameEpileptogenicity '_' num2str(min(FreqBand)) '_' num2str(max(FreqBand)) '_' num2str(round(mean(Horizon))) '_' num2str(round(mean(Latency)))]);
@@ -344,7 +353,7 @@ for i00 = 1:size(latency, 2)
                     matlabbatch{1}.spm.spatial.smooth.dtype = 0;
                     matlabbatch{1}.spm.spatial.smooth.im = 1;
                     matlabbatch{1}.spm.spatial.smooth.prefix = 's';
-                    spm('defaults', 'EEG');
+                    % spm('defaults', 'EEG');
                     spm_jobman('run', matlabbatch);
                     movefile(fullfile(dirSeizure, ['s' tmp]), fullfile(dirSeizure,tmp));
                 end
@@ -358,14 +367,13 @@ for i00 = 1:size(latency, 2)
                     matlabbatch{1}.spm.spatial.smooth.dtype = 0;
                     matlabbatch{1}.spm.spatial.smooth.im = 1;
                     matlabbatch{1}.spm.spatial.smooth.prefix = 's';
-                    spm('defaults', 'EEG');
+                    % spm('defaults', 'EEG');
                     spm_jobman('run', matlabbatch);
                     movefile(fullfile(dirBaseline, ['s' tmp]), fullfile(dirBaseline,tmp));
                 end
                 
             case 'surface'
                 % Copy surface options
-                SS.MeshFile = MeshFile;
                 SS.SmoothIterations = SmoothIterations;
                 % Save seizure files
                 if isdir(dirSeizure)
@@ -667,7 +675,7 @@ function WriteDelay(dirStat, latency, ThDelay, SmoothIterations, OutputFile, Out
             matlabbatch{1}.spm.spatial.smooth.dtype = 0;
             matlabbatch{1}.spm.spatial.smooth.im = 1;
             matlabbatch{1}.spm.spatial.smooth.prefix = 's';
-            spm('defaults', 'EEG');
+            % spm('defaults', 'EEG');
             spm_jobman('run', matlabbatch);
             % Remove all the voxels for which there is no value
             Q = strrep(OutputFile, 'Delay_', 'sDelay_');

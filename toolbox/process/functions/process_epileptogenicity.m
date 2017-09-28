@@ -241,7 +241,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % ===== EXPORT ANATOMY =====
     % Compute SPM canonical surfaces if necessary
     if isempty(sSubject.iCortex)
-        isOk = process_generate_canonical('Compute', iSubject, [], 4);
+        isOk = process_generate_canonical('Compute', iSubject, [], 4, 0);
         if ~isOk
             bst_report('Error', sProcess, sInputsB, 'Could not compute SPM canonical surfaces...');
             return;
