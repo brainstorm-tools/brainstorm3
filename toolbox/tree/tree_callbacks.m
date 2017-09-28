@@ -1495,7 +1495,7 @@ switch (lower(action))
                 % === MENU: EXPORT ===
                 % Added later...
                 jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_result(filenameFull));
-                if ~isRaw && (length(bstNodes) == 1) && ~isStat
+                if ~isRaw && (length(bstNodes) == 1)
                     jMenuExport{2} = gui_component('MenuItem', [], [], 'Export as 4D matrix', IconLoader.ICON_SAVE, [], @(h,ev)panel_process_select('ShowPanelForFile', {filenameFull}, 'process_export_spmvol'));
 %                     if ~isVolumeGrid
 %                         jMenuExport{3} = gui_component('MenuItem', [], [], 'Export to SPM12', IconLoader.ICON_SAVE, [], @(h,ev)panel_process_select('ShowPanelForFile', {filenameFull}, 'process_export_spmsurf'));
@@ -1538,6 +1538,10 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuCluster, [], 'Cluster size', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_statcluster(filenameRelative, 'clustsize_time', []));
                         gui_component('MenuItem', jMenuCluster, [], 'Longest significance', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_statcluster(filenameRelative, 'longest'));
                     end
+                    % === MENU: EXPORT ===
+                    % Added later...
+                    jMenuExport{1} = gui_component('MenuItem', [], [], 'Export as 4D matrix', IconLoader.ICON_SAVE, [], @(h,ev)panel_process_select('ShowPanelForFile', {filenameFull}, 'process_export_spmvol'));
+
                 end
                 % === VIEW SCOUTS ===
                 fcnPopupScoutTimeSeries(jMenuActivations, 1);

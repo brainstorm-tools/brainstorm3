@@ -201,7 +201,9 @@ if ~isempty(subjMat)
     if (isfield(subjMat, 'Anatomy') && ~isempty(subjMat.Anatomy))
         ind = find(file_compare({sSubject(1).Anatomy.FileName}, subjMat.Anatomy), 1);
         if ~isempty(ind)
-            sSubject(1).iAnatomy = ind;
+            % Reorder anatomy entries
+            sSubject(1).Anatomy = sSubject(1).Anatomy([ind, setdiff(1:length(sSubject(1).Anatomy), ind)]);
+            sSubject(1).iAnatomy = 1;
         end
     end
 

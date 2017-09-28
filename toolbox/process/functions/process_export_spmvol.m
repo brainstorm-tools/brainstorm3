@@ -22,7 +22,7 @@ function varargout = process_export_spmvol( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2016
+% Authors: Francois Tadel, 2013-2017
 
 eval(macro_method);
 end
@@ -37,8 +37,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 980;
     sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/ExportSpm8';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'results', 'timefreq'};
-    sProcess.OutputTypes = {'results', 'timefreq'};
+    sProcess.InputTypes  = {'results', 'timefreq', 'presults'};
+    sProcess.OutputTypes = {'results', 'timefreq', 'presults'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Definition of the options
@@ -199,8 +199,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Load additional fields
         strFreq = '';
         switch (sInputs(iFile).FileType)
-            case 'results'
-                ResultsMat = in_bst_results(sInputs(iFile).FileName, 0, 'HeadModelType', 'SurfaceFile', 'Atlas', 'GridLoc', 'GridAtlas');
+            case {'results', 'presults'}
+                ResultsMat = in_bst_results(sInputs(iFile).FileName, 0, 'HeadModelType', 'SurfaceFile', 'Atlas', 'GridLoc', 'GridAtlas', 'DisplayUnits');
                 isVolumeGrid = ismember(ResultsMat.HeadModelType, {'volume', 'mixed'});
             case 'timefreq'
                 % Check that a measure was applied to the data
@@ -209,7 +209,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     return;
                 end
                 % Load additional fields
-                ResultsMat = in_bst_timefreq(sInputs(iFile).FileName, 0, 'SurfaceFile', 'Atlas', 'GridLoc', 'GridAtlas', 'Freqs');
+                ResultsMat = in_bst_timefreq(sInputs(iFile).FileName, 0, 'SurfaceFile', 'Atlas', 'GridLoc', 'GridAtlas', 'Freqs', 'DisplayUnits');
                 % Guess some missing modeling properties
                 isVolumeGrid = ~isempty(ResultsMat.GridLoc);
                 if isVolumeGrid
@@ -285,7 +285,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Else: Compute interpolation matrix grid points => MRI voxels
                     else
                         sMri.FileName = MriFile;
-                        MriInterp = grid_interp_mri(ResultsMat.GridLoc, sMri, ResultsMat.SurfaceFile, 0);
+                        GridSmooth = isempty(ResultsMat.DisplayUnits) || ~ismember(ResultsMat.DisplayUnits, {'s','ms'});
+                        MriInterp = grid_interp_mri(ResultsMat.GridLoc, sMri, ResultsMat.SurfaceFile, 0, [], [], GridSmooth);
                         % Save values for next iteration
                         prevInterp  = MriInterp;
                         prevGridLoc = ResultsMat.GridLoc;

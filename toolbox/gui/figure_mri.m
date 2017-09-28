@@ -2647,12 +2647,12 @@ function ExportOverlay(hFig)
     sMriOverlay = bst_memory('LoadMri', MriFile);
     % Replace the values with the current overlay
     sMriOverlay.Cube = double(TessInfo.OverlayCube);
-    % Normalize the values to fit in int16
-    sMriOverlay.Cube = (sMriOverlay.Cube - min(sMriOverlay.Cube(:))) / max(sMriOverlay.Cube(:)) * double(intmax('int16'));
-    % Convert volume to int16
-    sMriOverlay.Cube = int16(sMriOverlay.Cube);
-    % Enforce the original zero values
-    sMriOverlay.Cube(sMriOverlay.Cube == 0) = 0;
+%     % Normalize the values to fit in int16
+%     sMriOverlay.Cube = (sMriOverlay.Cube - min(sMriOverlay.Cube(:))) / max(sMriOverlay.Cube(:)) * double(intmax('int16'));
+%     % Convert volume to int16
+%     sMriOverlay.Cube = int16(sMriOverlay.Cube);
+%     % Enforce the original zero values
+%     sMriOverlay.Cube(sMriOverlay.Cube == 0) = 0;
     % Save volume
     export_mri(sMriOverlay);
 end

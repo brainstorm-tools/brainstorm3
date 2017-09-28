@@ -779,7 +779,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             curTimeVector = GetProcessFileVector(GlobalData.Processes.Current(1:iProcess-1), FileTimeVector, nFiles);
         end
         % Sampling frequency 
-        curSampleFreq = 1 / (curTimeVector(2) - curTimeVector(1));
+        if (length(curTimeVector) > 2)
+            curSampleFreq = 1 / (curTimeVector(2) - curTimeVector(1));
+        else
+            curSampleFreq = 1000;
+        end
         % Set list tooltip
         jListProcess.setToolTipText(pathProcess);
         
@@ -834,6 +838,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 if ismember(option.Type, {'timewindow', 'baseline', 'poststim'})   % || ismember(valUnits, {'s', 'ms', 'time'})
                     if (length(curTimeVector) == 2)
                         bounds = {curTimeVector(1), curTimeVector(2), 10000};
+                    elseif (length(curTimeVector) == 1)
+                        bounds = [0, 1];
                     else
                         bounds = curTimeVector;
                     end
@@ -2524,6 +2530,9 @@ function [sOutputs, sProcesses] = ShowPanelForFile(FileNames, ProcessNames) %#ok
     panel_nodelist('AddFiles', 'Process1', FileNames);
     % Load Time vector
     FileTimeVector = in_bst(FileNames{1}, 'Time');
+    if (length(FileTimeVector) < 2)
+        FileTimeVector = [0, 1];
+    end
     % Load the processes in the pipeline editor
     [sOutputs, sProcesses] = panel_process_select('ShowPanel', FileNames, ProcessNames, FileTimeVector);
 end

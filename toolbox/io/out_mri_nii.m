@@ -59,9 +59,12 @@ if ischar(sMri)
 end
 % Get maximum
 MaxVal = max(abs(sMri.Cube(:)));
+MinVal = min(sMri.Cube(:));
 % Check value range
 if isempty(typeMatlab)
-    if (MaxVal <= 255)
+    if (MinVal < 0) || any(sMri.Cube(:) ~= round(sMri.Cube(:)))
+        typeMatlab   = 'float32';
+    elseif (MaxVal <= 255)
         typeMatlab   = 'uint8';
     elseif all(MaxVal < 32767)
         typeMatlab   = 'int16';

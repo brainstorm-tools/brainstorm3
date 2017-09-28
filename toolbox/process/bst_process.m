@@ -1875,7 +1875,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
                 % Get the row names
                 sInput.RowNames = {ChannelMat.Channel(iRows).Name};
 
-            case {'results', 'link'}
+            case {'results', 'link', 'presults'}
                 % Norm/absolue values of the sources 
                 if OPTIONS.isNorm && isfield(sMat, 'ImageGridAmp') && ~isempty(sMat.ImageGridAmp)
                     sMat = process_source_flat('Compute', sMat, 'rms');
@@ -2024,7 +2024,11 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
     % Other values to return
     sInput.Time    = sMat.Time;
     sInput.Comment = sMat.Comment;
-    sInput.nAvg    = sMat.nAvg;
+    if isfield(sMat, 'nAvg') && ~isempty(sMat.nAvg)
+        sInput.nAvg = sMat.nAvg;
+    else
+        sInput.nAvg = 1;
+    end
     % Count output signals
     if ~isempty(sInput.ImagingKernel) 
         nSignals = size(sInput.ImagingKernel, 1);

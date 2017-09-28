@@ -284,7 +284,9 @@ end
 %% ===== HELPER FUNCTIONS =====
 function iTime = GetTimeIndices(TimeBounds, TimeVector)
     % Get file time indices
-    if isempty(TimeBounds)
+    if (length(TimeVector) == 1)
+        iTime = 1;
+    elseif isempty(TimeBounds)
         iTime = 1:length(TimeVector);
     elseif (TimeBounds(1) > TimeVector(end)) || (TimeBounds(2) < TimeVector(1))
         iTime = [];

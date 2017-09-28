@@ -34,7 +34,7 @@ function grid2mri_interp = grid_interp_mri(GridLoc, MRI, SurfaceFile, isWait, nD
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2006 (University of Geneva)
-%          Francois Tadel, 2008-2014 (USC/McGill)
+%          Francois Tadel, 2008-2017 (USC/McGill)
 
 % Show progress bar
 if (nargin < 7) || isempty(GridSmooth)
