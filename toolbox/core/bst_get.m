@@ -25,6 +25,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('OsType', isMatlab=1)    : Get a string that describes the operating system (if isMatlab=1 return the Matlab/JVM platform, else return the real host system)
 %    - bst_get('FileFilters', DataType) : Get the list of import filters for a specific data type
 %    - bst_get('FieldTripDir')          : Full path to a local installation of FieldTrip
+%    - bst_get('SpmDir')                : Full path to a local installation of SPM
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_get('iProtocol')             : Indice of current protocol 
@@ -2501,7 +2502,18 @@ switch contextName
             end
         else
             argout1 = [];
-        end 
+        end
+        
+    case 'SpmDir'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'SpmDir') && ~isempty(GlobalData.Preferences.SpmDir)
+            if isdir(GlobalData.Preferences.SpmDir) && file_exist(bst_fullfile(GlobalData.Preferences.SpmDir, 'spm.m'))
+                argout1 = GlobalData.Preferences.SpmDir;
+            else
+                argout1 = [];
+            end
+        else
+            argout1 = [];
+        end
         
     case 'ElectrodeConfig'
         % Get modality
@@ -3159,6 +3171,7 @@ switch contextName
                     {'.elp'},                      'EEG: EMSE (*.elp)',                   'EMSE'; ...
                     {'.dat','.tri','.txt','.asc'}, 'EEG: Neuroscan (*.dat;*.tri;*.txt;*.asc)',  'NEUROSCAN'; ...
                     {'.pos','.pol','.elp','.txt'}, 'EEG: Polhemus (*.pos;*.pol;*.elp;*.txt)',   'POLHEMUS'; ...
+                    {'.pts'},                      'EEG: PTS file (*.pts)',            'PTS'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ (*.*)',       'ASCII_NXYZ'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ_MNI (*.*)',   'ASCII_NXYZ_MNI'; ...
                     {'*'},                         'EEG: ASCII: Name,XY (*.*)',        'ASCII_NXY'; ...

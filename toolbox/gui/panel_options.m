@@ -106,6 +106,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jButtonFtDir = gui_component('Button', jPanelImport, [], '...', [], [], @FtDirectory_Callback);
         jButtonFtDir.setMargin(Insets(2,2,2,2));
         jButtonFtDir.setFocusable(0);
+        % SPM folder
+        gui_component('Label', jPanelImport, 'br', 'SPM toolbox: ', [], [], []);
+        jTextSpmDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
+        jButtonSpmDir = gui_component('Button', jPanelImport, [], '...', [], [], @SpmDirectory_Callback);
+        jButtonSpmDir.setMargin(Insets(2,2,2,2));
+        jButtonSpmDir.setFocusable(0);
     jPanelRight.add('br hfill', jPanelImport);
     
     % ===== RIGHT: SIGNAL PROCESSING =====
@@ -188,10 +194,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             case 300,       jSliderScaling.setValue(6);
             case 400,       jSliderScaling.setValue(7);
         end    
-        % Temporary directory
+        % Directory
         jTextTempDir.setText(bst_get('BrainstormTmpDir'));
-        % FieldTrip directory
         jTextFtDir.setText(bst_get('FieldTripDir'));
+        jTextSpmDir.setText(bst_get('SpmDir'));
         % Use signal processing toolbox
         isToolboxInstalled = (exist('fir2', 'file') > 0);
         jCheckUseSigProc.setEnabled(isToolboxInstalled);
@@ -271,7 +277,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % FieldTrip directory
         oldFtDir = bst_get('FieldTripDir');
         newFtDir = char(jTextFtDir.getText());
-        % If directory changed
         if ~file_compare(oldFtDir, newFtDir)
             % Folder doesn't exist
             if ~isempty(newFtDir) && ~file_exist(newFtDir)
@@ -280,6 +285,19 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                 java_dialog('warning', 'Selected folder does not contain a valid FieldTrip install. Ignoring...');
             else
                 bst_set('FieldTripDir', newFtDir);
+            end
+        end
+        % SPM directory
+        oldSpmDir = bst_get('SpmDir');
+        newSpmDir = char(jTextSpmDir.getText());
+        if ~file_compare(oldSpmDir, newSpmDir)
+            % Folder doesn't exist
+            if ~isempty(newSpmDir) && ~file_exist(newSpmDir)
+                java_dialog('warning', 'Selected SPM folder doesn''t exist. Ignoring...');
+            elseif ~isempty(newSpmDir) && ~file_exist(bst_fullfile(newSpmDir, 'spm.m'))
+                java_dialog('warning', 'Selected folder does not contain a valid SPM install. Ignoring...');
+            else
+                bst_set('SpmDir', newSpmDir);
             end
         end
         
@@ -356,6 +374,35 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             warning('off', 'MATLAB:rmpath:DirNotFound');
             allFtPath = genpath(initDir);
             rmpath(allFtPath);
+            warning('on', 'MATLAB:rmpath:DirNotFound');
+        end
+    end
+
+%% ===== SPM DIRECTORY SELECTION =====
+    % Callback for '...' button
+    function SpmDirectory_Callback(varargin)
+        % Get the initial path
+        initDir = bst_get('SpmDir', 1);
+        % Open 'Select directory' dialog
+        spmDir = uigetdir(initDir, 'Select SPM directory.');
+        % If no directory was selected : return without doing anything
+        if (isempty(spmDir) || (spmDir(1) == 0) || (~isempty(initDir) && file_compare(initDir, spmDir)))
+            return;
+        % Directory is not avalid SPM folder
+        elseif ~file_exist(bst_fullfile(spmDir, 'spm.m'))
+            java_dialog('warning', 'Selected folder does not contain a valid SPM install.');
+            return;
+        end
+        % Else : update control text
+        jTextSpmDir.setText(spmDir);
+        % Focus main brainstorm figure
+        jBstFrame = bst_get('BstFrame');
+        jBstFrame.setVisible(1);
+        % Remove all the previous SPM folders from the path
+        if ~isempty(initDir) && isdir(initDir)
+            warning('off', 'MATLAB:rmpath:DirNotFound');
+            allSpmPath = genpath(initDir);
+            rmpath(allSpmPath);
             warning('on', 'MATLAB:rmpath:DirNotFound');
         end
     end

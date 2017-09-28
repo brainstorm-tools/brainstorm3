@@ -1,6 +1,5 @@
 function isOk = bst_ft_init(isInteractive)
-% PROCESS_FT_CHANNELREPAIR: Call FieldTrip function ft_channelrepair.
-% Replace bad channels with interpolations of neighboring values.
+% BST_FT_INIT: Check FieldTrip installation and call ft_defaults.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -20,7 +19,7 @@ function isOk = bst_ft_init(isInteractive)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2016
+% Authors: Francois Tadel, 2015-2017
 
 % Deployed: does not work
 if exist('isdeployed', 'builtin') && isdeployed
@@ -88,7 +87,8 @@ if ~exist('ft_defaults', 'file')
         disp(['BST> New FieldTrip folder: ' FieldTripDir]);
     % Just return an error
     else
-        error('Please download FieldTrip and add it to your matlab path.');
+        error(['Please download FieldTrip: http://www.fieldtriptoolbox.org/download' 10 ...
+               'Then add the installation path in Brainstorm (File > Edit preferences).']);
     end
 end
 ft_defaults;

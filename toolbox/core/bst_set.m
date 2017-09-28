@@ -10,6 +10,7 @@ function bst_set( varargin )
 %    - bst_set('BrainstormDbDir',   BrainstormDbDir)
 %    - bst_set('LastUsedDirs',      sDirectories)
 %    - bst_set('FieldTripDir',      FieldTripDir)
+%    - bst_set('SpmDir',            SpmDir)
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_set('iProtocol',         iProtocol)
@@ -242,7 +243,7 @@ switch contextName
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction'}
+          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction'}
         GlobalData.Preferences.(contextName) = contextValue;
 
     case 'ReadOnly'

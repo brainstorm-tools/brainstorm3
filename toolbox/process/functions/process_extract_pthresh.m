@@ -264,6 +264,8 @@ function threshmap = Compute(StatMat, StatThreshOptions)
         % Correction for multiple comparisons
         pmask = bst_stat_thresh(pmap, StatThreshOptions);
     elseif isfield(StatMat, 'SPM') && ~isempty(StatMat.SPM)
+        % Initialize SPM
+        bst_spm_init();
         % SPM must be installed
         if ~exist('spm_uc', 'file')
             warning('SPM must be in the Matlab path to compute the statistical thresold for this file.');

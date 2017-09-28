@@ -77,7 +77,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     % Call processing function
-    [isOk, errMsg] = Compute(iSubject, [], Resolution);
+    [isOk, errMsg] = Compute(iSubject, [], Resolution, 0);
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -90,9 +90,11 @@ end
 
 
 %% ===== COMPUTE CANONICAL SURFACES =====
-function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution)
+function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     isOk = 0;
     errMsg = '';
+    % Initialize SPM
+    bst_spm_init(isInteractive);
     % Check if SPM is in the path
     if ~exist('spm_eeg_inv_mesh', 'file')
         errMsg = 'SPM must be in the Matlab path to use this feature.';
@@ -205,7 +207,7 @@ function ComputeInteractive(iSubject, iAnatomy, Resolution) %#ok<DEFNU>
     % Open progress bar
     bst_progress('start', 'SPM', 'Generating canonical surfaces...');
     % Compute surfaces
-    [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution);
+    [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, 1);
     % Error handling
     if ~isOk
         bst_error(errMsg, 'SPM canonincal surfaces', 0);
