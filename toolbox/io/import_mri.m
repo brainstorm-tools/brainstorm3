@@ -2,6 +2,7 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 % IMPORT_MRI: Import a MRI file in a subject of the Brainstorm database
 % 
 % USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1)
+%               BstMriFiles = import_mri(iSubject, MriFiles, ...)   % Import multiple volumes at once
 %
 % INPUT:
 %    - iSubject  : Indice of the subject where to import the MRI
@@ -70,22 +71,61 @@ if isempty(MriFile)
         DefaultFormats.MriIn = 'ALL';
     end
     % Get MRI file
-    [MriFile, FileFormat] = java_getfile( 'open', ...
+    [MriFile, FileFormat, FileFilter] = java_getfile( 'open', ...
         'Import MRI...', ...              % Window title
         LastUsedDirs.ImportAnat, ...      % Default directory
-        'single', 'files', ...            % Selection mode
+        'multiple', 'files_and_dirs', ... % Selection mode
         bst_get('FileFilters', 'mri'), ...
         DefaultFormats.MriIn);
     % If no file was selected: exit
     if isempty(MriFile)
         return
     end
+    % Expand file selection (if inputs are folders)
+    MriFile = file_expand_selection(FileFilter, MriFile);
+    if isempty(MriFile)
+        error(['No ' FileFormat ' file in the selected directories.']);
+    end
     % Save default import directory
-    LastUsedDirs.ImportAnat = bst_fileparts(MriFile);
+    LastUsedDirs.ImportAnat = bst_fileparts(MriFile{1});
     bst_set('LastUsedDirs', LastUsedDirs);
     % Save default import format
     DefaultFormats.MriIn = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
+end
+
+
+%% ===== DICOM CONVERTER =====
+if strcmpi(FileFormat, 'DICOM-SPM')
+    % Convert DICOM to NII
+    DicomFiles = MriFile;
+    MriFile = in_mri_dicom_spm(DicomFiles, bst_get('BrainstormTmpDir'), isInteractive);
+    if isempty(MriFile)
+        return;
+    end
+    FileFormat = 'Nifti1';
+end
+
+
+%% ===== LOOP ON MULTIPLE MRI =====
+if iscell(MriFile) && (length(MriFile) == 1)
+    MriFile = MriFile{1};
+elseif iscell(MriFile)
+    % Only allow multiple import if there is already a MRI
+    if isempty(sSubject.Anatomy)
+        error(['You must import the first MRI in the subject folder separately.' 10 'Please select only one volume at a time.']);
+    end
+    % Initialize returned values
+    nFiles = length(MriFile);
+    BstMriFile = cell(1, nFiles);
+    sMri = cell(1, nFiles);
+    % Import all volumes without supervision
+    for i = 1:nFiles
+        [BstMriFile{i}, sMri{i}] = import_mri(iSubject, MriFile{i}, FileFormat, isInteractive, isAutoAdjust);
+        
+    end
+    % All the files are imported: exit
+    return;
 end
     
     

@@ -131,7 +131,7 @@ switch (FileFormat)
             MRI = load(MriFile);
         end
     otherwise
-        error('RAW format not yet supported');
+        error(['Unknown format: ' FileFormat]);
 end
 
 % If nothing was loaded

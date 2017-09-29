@@ -1,6 +1,8 @@
 ---------------------------------------------------------------
 September 2017
+- IO: DICOM converter (SPM-based)
 - IO: Elekta recordings: Default acquisition SSP are not applied by default anymore
+- IO: Export volume grids as .nii
 - New process: Epilepsy > Epileptogenicity maps
 - New process: Undo 4D/CTF noise compensation
 - GUI: MRI viewer and MRI-3D: New menu Jump to maximum (shortcut "M")

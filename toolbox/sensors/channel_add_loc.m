@@ -22,7 +22,7 @@ function channel_add_loc(iStudies, LocChannelFile, isInteractive)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2019
+% Authors: Francois Tadel, 2014-2017
 
 % Parse inputs
 if (nargin < 3) || isempty(isInteractive)
