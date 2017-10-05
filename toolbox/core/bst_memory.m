@@ -1655,8 +1655,8 @@ function R = GetConnectMatrix(Timefreq) %#ok<DEFNU>
     R = reshape(Timefreq.TF, [length(Timefreq.RefRowNames), length(Timefreq.RowNames), nTime, nFreq]);
 end
 
-%% ===== GET STD MATRIX =====
-function R = GetStdMatrix(Timefreq) %#ok<DEFNU>
+%% ===== GET CONNECT MATRIX (STD) =====
+function R = GetConnectMatrixStd(Timefreq) %#ok<DEFNU>
     % Expand symmetric matrix
     %if isfield(Timefreq.Options, 'isSymmetric') && Timefreq.Options.isSymmetric
     if (length(Timefreq.RowNames) == length(Timefreq.RefRowNames)) && (size(Timefreq.Std,1) < length(Timefreq.RowNames)^2)
