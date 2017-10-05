@@ -78,7 +78,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     end
 
     OPTIONS.Method = 'pte';
-    OPTIONS.FileType = sInputA.FileType;
+    OPTIONS.FileType = sInputA(1).FileType;
     % Filtering bands options
     OPTIONS.Freqs = sProcess.options.freqbands.Value;
     OPTIONS.isMirror = sProcess.options.mirror.Value;

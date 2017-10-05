@@ -1655,6 +1655,19 @@ function R = GetConnectMatrix(Timefreq) %#ok<DEFNU>
     R = reshape(Timefreq.TF, [length(Timefreq.RefRowNames), length(Timefreq.RowNames), nTime, nFreq]);
 end
 
+%% ===== GET CONNECT MATRIX (STD) =====
+function R = GetConnectMatrixStd(Timefreq) %#ok<DEFNU>
+    % Expand symmetric matrix
+    %if isfield(Timefreq.Options, 'isSymmetric') && Timefreq.Options.isSymmetric
+    if (length(Timefreq.RowNames) == length(Timefreq.RefRowNames)) && (size(Timefreq.Std,1) < length(Timefreq.RowNames)^2)
+        Timefreq.Std = process_compress_sym('Expand', Timefreq.Std, length(Timefreq.RowNames));
+    end
+    % Reshape Std matrix: [Nrow x Ncol x Ntime x nFreq]
+    nTime = size(Timefreq.Std, 2);
+    nFreq = size(Timefreq.Std, 3);
+    R = reshape(Timefreq.Std, [length(Timefreq.RefRowNames), length(Timefreq.RowNames), nTime, nFreq]);
+end
+
 
 %% ===== LOAD MATRIX FILE =====
 function [iDS, iMatrix] = LoadMatrixFile(MatFile, iDS, iMatrix) %#ok<DEFNU>
