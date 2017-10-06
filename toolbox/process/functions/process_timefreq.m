@@ -158,7 +158,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.WinLength  = sProcess.options.win_length.Value{1};
         tfOPTIONS.WinOverlap = sProcess.options.win_overlap.Value{1};
     end
-    
+    if isfield(sProcess.options, 'win_std') && ~isempty(sProcess.options.win_std) && ~isempty(sProcess.options.win_std.Value)
+        tfOPTIONS.WinStd = sProcess.options.win_std.Value;
+        if tfOPTIONS.WinStd
+            tfOPTIONS.Comment = [tfOPTIONS.Comment ' std'];
+        end
+    end
     % Multitaper options
     if isfield(sProcess.options, 'mt_taper') && ~isempty(sProcess.options.mt_taper) && ~isempty(sProcess.options.mt_taper.Value)
         if iscell(sProcess.options.mt_taper.Value)

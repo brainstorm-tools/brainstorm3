@@ -67,6 +67,7 @@ Def_OPTIONS.MorletFc        = 1;
 Def_OPTIONS.MorletFwhmTc    = 3;
 Def_OPTIONS.WinLength       = [];
 Def_OPTIONS.WinOverlap      = 50;
+Def_OPTIONS.WinStd          = 0;
 Def_OPTIONS.isMirror        = 0;
 Def_OPTIONS.SensorTypes     = 'MEG, EEG';
 Def_OPTIONS.Clusters        = {};
@@ -203,6 +204,7 @@ for iData = 1:length(Data)
     HeadModelType = [];
     HeadModelFile = [];
     BadSegments   = [];
+%     Std           = [];
     if isFile
         % Select subset of data
         switch (DataType)
@@ -503,7 +505,7 @@ for iData = 1:length(Data)
         % PSD: Homemade computation based on Matlab's FFT
         case 'psd'
             % Calculate PSD/FFT
-            [TF, OPTIONS.Freqs, Nwin, Messages] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel);
+            [TF, OPTIONS.Freqs, Nwin, Messages] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel, OPTIONS.WinStd);
             if isempty(TF)
                 continue;
             end
@@ -745,7 +747,7 @@ if isAverage
         InitFile = '';
     end
     % Save file
-    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas, strHistory);
+    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas, strHistory, []);
 end
 
 
@@ -757,6 +759,7 @@ end
         FileMat.Comment   = OPTIONS.Comment;
         FileMat.DataType  = DataType;
         FileMat.TF        = TF;
+%         FileMat.Std       = Std;
         FileMat.Time      = OPTIONS.TimeVector;
         FileMat.TimeBands = [];
         FileMat.Freqs     = OPTIONS.Freqs;

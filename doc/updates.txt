@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+October 2017
+- Process: PSD process now saves the standard deviation across time
+---------------------------------------------------------------
 September 2017
 - IO: DICOM converter (SPM-based)
 - IO: Elekta recordings: Default acquisition SSP are not applied by default anymore
