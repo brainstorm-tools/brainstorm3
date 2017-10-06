@@ -332,8 +332,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         iFiles = iFiles(I);
         % File comment = SPM folder
         Comment = strrep(strGoupUnique{iGroup}, 'SPM_', '');
-        % Full file names, sorted by latency
-%         groupFiles = cellfun(@(c)bst_fullfile(c, ['spmT_0001', fileExt]), {listFiles(iFiles).folder}, 'UniformOutput', 0);
         % Import file
         tmpFiles = import_sources(iStudy, [], spmFiles(iFiles), [], fileFormat, Comment, 't', fileLatency(iFiles));
         OutputFiles = cat(2, OutputFiles, tmpFiles);
@@ -347,7 +345,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % File comment = File name
         [tmp, Comment] = bst_fileparts(listFiles(i).name);
         % Import file
-        tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment, 's');
+        tmpFiles = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's');
     end
     
     % ===== READ CONTACT VALUES =====
