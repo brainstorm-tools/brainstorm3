@@ -137,9 +137,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         gui_component('MenuItem', jMenuFile, [], 'Quit', IconLoader.ICON_RESET, [], @closeWindow_Callback, fontSize);
     end
     
-%     % ==== Menu COLORMAPS ====
-%     jMenuColormaps = gui_component('Menu', jMenuBar, [], 'Colormaps', [], [], [], fontSize);
-%         bst_colormaps('CreateAllMenus', jMenuColormaps, [], 1);
+    % ==== Menu COLORMAPS ====
+    jMenuColormaps = gui_component('Menu', jMenuBar, [], 'Colormaps', [], [], [], fontSize);
+        bst_colormaps('CreateAllMenus', jMenuColormaps, [], 1);
 
     % ==== Menu UPDATE ====
     jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);

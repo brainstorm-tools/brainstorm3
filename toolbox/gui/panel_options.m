@@ -45,7 +45,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelSystem = gui_river([5 2], [0 15 8 15], 'System');
         jCheckUpdates    = gui_component('CheckBox', jPanelSystem, 'br', 'Automatic updates', [], [], []);
         if (bst_get('MatlabVersion') >= 804)
-            jCheckSmooth = gui_component('CheckBox', jPanelSystem, 'br', 'Use smooth graphics', [], [], []);
+            jCheckSmooth = gui_component('CheckBox', jPanelSystem, 'br', 'Use smooth Matlab graphics', [], [], []);
         else
             jCheckSmooth = [];
         end
@@ -147,7 +147,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     gui_component('Label', jPanelBottom, '', labelBottom, [], [], []);
     gui_component('Label', jPanelBottom, 'hfill', ' ');
     gui_component('Button', jPanelBottom, 'right', 'Cancel', [], [], @ButtonCancel_Callback);
-    gui_component('Button', jPanelBottom, [],         'Save',   [], [], @ButtonSave_Callback);
+    gui_component('Button', jPanelBottom, [], 'Save', [], [], @ButtonSave_Callback);
 
     % ===== LOAD OPTIONS =====
     LoadOptions();
