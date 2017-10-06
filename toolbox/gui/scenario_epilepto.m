@@ -1398,7 +1398,7 @@ function [isValidated, errMsg] = ValidateTimefreq()
     if (length(OnsetFiles) == 1) || isOneFolder
         [sStudy,iStudy,iTf] = bst_get('TimefreqForFile', GlobalData.Guidelines.OnsetFiles{1}{1});
         if ~isempty(iTf) && (length(sStudy.Timefreq) >= 2)
-            if ~isOneFolder
+            if isOneFolder
                 iFileAvg     = find(~cellfun(@(c)isempty(strfind(c, 'Multitaper')), {sStudy.Timefreq.Comment}) &  cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
                 iFileAvgChan = find(~cellfun(@(c)isempty(strfind(c, 'Multitaper')), {sStudy.Timefreq.Comment}) & ~cellfun(@(c)isempty(strfind(c, 'row_mean')), {sStudy.Timefreq.Comment}), 1);
             else
@@ -1709,7 +1709,7 @@ function UpdateEpileptogenicity()
     % Initialize new list
     listModel = javax.swing.DefaultListModel();
     % All files selected by default
-    GlobalData.Guidelines.ctrl.isFileSelected = ones(1, length(cat(2, GlobalData.Guidelines.OnsetFiles)));
+    GlobalData.Guidelines.ctrl.isFileSelected = ones(1, length(cat(2, GlobalData.Guidelines.OnsetFiles{:})));
     % Get list of file names
     for iRaw = 1:length(GlobalData.Guidelines.OnsetFiles)
         % Skip if nothing is imported

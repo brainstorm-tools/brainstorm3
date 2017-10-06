@@ -95,6 +95,8 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     OutputFiles = {};
+    % Initialize SPM
+    bst_spm_init(0);
     
     % ===== GET OPTIONS =====
     % Get all the options
@@ -303,12 +305,19 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     
     % ===== READ EPILEPTOGENICITY MAPS =====
     % List all the epileptogenicity maps in output
-    listFiles = dir(bst_fullfile(workDir, 'SPM_*', ['spmT_0001', fileExt]));
-    strGoup = cell(1,length(listFiles));
-    fileLatency = zeros(1,length(listFiles));
+    listSpmDir = dir(bst_fullfile(workDir, 'SPM_*'));
+    spmFiles = {};
+    for i = 1:length(listSpmDir)
+        tFile = bst_fullfile(workDir, listSpmDir(i).name, ['spmT_0001', fileExt]);
+        if file_exist(tFile)
+            spmFiles{end+1} = tFile;
+        end
+    end
+    strGoup = cell(1,length(spmFiles));
+    fileLatency = zeros(1,length(spmFiles));
     % Get the list of groups (one group = all the latencies for a file or group)
-    for i = 1:length(listFiles)
-        [tmp, strGoup{i}] = bst_fileparts(listFiles(i).folder);
+    for i = 1:length(spmFiles)
+        [tmp, strGoup{i}] = bst_fileparts(bst_fileparts(spmFiles{i}));
         iLastSep = find(strGoup{i} == '_', 1, 'last');
         fileLatency(i) = str2num(strGoup{i}(iLastSep+1:end));
         strGoup{i} = strGoup{i}(1:iLastSep-1);
@@ -324,9 +333,9 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % File comment = SPM folder
         Comment = strrep(strGoupUnique{iGroup}, 'SPM_', '');
         % Full file names, sorted by latency
-        groupFiles = cellfun(@(c)bst_fullfile(c, ['spmT_0001', fileExt]), {listFiles(iFiles).folder}, 'UniformOutput', 0);
+%         groupFiles = cellfun(@(c)bst_fullfile(c, ['spmT_0001', fileExt]), {listFiles(iFiles).folder}, 'UniformOutput', 0);
         % Import file
-        tmpFiles = import_sources(iStudy, [], groupFiles, [], fileFormat, Comment, 't', fileLatency(iFiles));
+        tmpFiles = import_sources(iStudy, [], spmFiles(iFiles), [], fileFormat, Comment, 't', fileLatency(iFiles));
         OutputFiles = cat(2, OutputFiles, tmpFiles);
     end
     
@@ -371,6 +380,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     ImportEegRawOptions.SkipLines         = 2;
     ImportEegRawOptions.nAvg              = 1;
     ImportEegRawOptions.isChannelName     = 1;
+    bst_set('ImportEegRawOptions', ImportEegRawOptions);
     % Import all the txt files, group by group
     for iGroup = 1:length(strGoupUnique)
         % Get file indices
