@@ -82,7 +82,9 @@ ChannelMat.Comment = 'Blackrock channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.ChannelCount]);
 % For each channel
 for i = 1:hdr.ChannelCount
-    ChannelMat.Channel(i).Name    = strtrim(rec.ElectrodesInfo(i).Label);
+    chname = rec.ElectrodesInfo(i).Label;
+    chname(chname == 0) = [];
+    ChannelMat.Channel(i).Name    = strtrim(chname);
     ChannelMat.Channel(i).Loc     = [0; 0; 0];
     ChannelMat.Channel(i).Type    = 'EEG';
     ChannelMat.Channel(i).Orient  = [];
