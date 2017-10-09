@@ -2392,7 +2392,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         % Add separator before the menu with default EEGcaps
         AddSeparator(jMenu);
     else
-        gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)import_channel(iAllStudies));
+        gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)ImportChannelCheck(iAllStudies));
         jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], []);
     end
     % === USE DEFAULT CHANNEL FILE ===
@@ -3124,6 +3124,31 @@ function ProjectGridAll(ResultFiles)
     bst_project_grid(ResultFiles, iSubject, 1);
 end
 
+
+%% ===== IMPORT CHANNEL WITH VERIFICATIONS =====
+function ImportChannelCheck(iAllStudies)
+    % Check only if importing a single file
+    if (length(iAllStudies) == 1)
+        % Get study folder
+        sStudyChan = bst_get('Study', iAllStudies(1));
+        sStudyData = bst_get('DataForStudy', iAllStudies(1));
+        % If there is already a channel file defined
+        if ~isempty(sStudyChan.Channel) && ~isempty(sStudyChan.Channel.FileName) && ~isempty(sStudyData)
+            res = java_dialog('confirm', [...
+                '<HTML><B>Warning</B>: There are existing channel files and data files in this folder.<BR>', ...
+                'Importing a list of channels that does not match exactly the recordings<BR>' ...
+                'may damage the database and make the data inacessible.<BR><BR>' ...
+                'To add 3D positions for EEG electrodes in existing recordings,<BR>' ...
+                'right-click on the channel file > <B>Add EEG positions > Import from file</B>.<BR><BR>' ...
+                'Do you really want to overwrite the existing channel file?'], 'Import new channel file');
+            if ~res
+                return;
+            end
+        end
+    end
+    % Import channels
+    import_channel(iAllStudies);
+end
 
 
 

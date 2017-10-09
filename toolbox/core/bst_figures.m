@@ -1425,8 +1425,11 @@ end
 
 
 %% ===== VIEW TOPOGRAPHY =====
-function ViewTopography(hFig)
+function ViewTopography(hFig, UseSmoothing)
     global GlobalData;
+    if (nargin < 2) || isempty(UseSmoothing)
+        UseSmoothing = 1;
+    end
     % Get figure description
     [hFig, iFig, iDS] = GetFigure(hFig);
     if isempty(iDS) || isempty(GlobalData.DataSet(iDS).ChannelFile)
@@ -1503,7 +1506,7 @@ function ViewTopography(hFig)
                 % Open topography figure
                 view_topography(DataFile, Modalities{i}, '3DOptodes');
             else
-                view_topography(DataFile, Modalities{i}, '2DSensorCap');
+                view_topography(DataFile, Modalities{i}, '2DSensorCap', [], UseSmoothing);
             end
         end
     end

@@ -1336,9 +1336,14 @@ function FigureKeyPressedCallback(hFig, ev)
                 bst_figures('ViewResults', hFig);
             end
         % CTRL+T : Default topography
-        case 't'           
+        case 't'        
             if isControl && isFullDataFile
-                bst_figures('ViewTopography', hFig);
+                bst_figures('ViewTopography', hFig, 1);
+            end
+        % CTRL+G : Default topography (no interpolation)
+        case 'g'           
+            if isControl && isFullDataFile
+                bst_figures('ViewTopography', hFig, 0);
             end
         % CTRL+V : Set video time
         case 'v'           
@@ -1985,8 +1990,12 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
     isSource = ismember(Modality, {'results', 'timefreq', 'stat', 'none'});
     if ~isempty(Modality) && (Modality(1) ~= '$') && ~isSource
         % === View TOPOGRAPHY ===
-        jItem = gui_component('MenuItem', jPopup, [], 'View topography', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_figures('ViewTopography', hFig));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));   
+        jItem = gui_component('MenuItem', jPopup, [], 'View topography', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_figures('ViewTopography', hFig, 1));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
+        if strcmpi(Modality, 'EEG')
+            jItem = gui_component('MenuItem', jPopup, [], 'View topography (no smoothing)', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_figures('ViewTopography', hFig, 0));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, KeyEvent.CTRL_MASK));
+        end
         % === View SOURCES ===
         if ~isempty(sStudy.Result)
             jItem = gui_component('MenuItem', jPopup, [], 'View sources', IconLoader.ICON_RESULTS, [], @(h,ev)bst_figures('ViewResults', hFig));

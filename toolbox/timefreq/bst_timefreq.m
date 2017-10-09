@@ -204,7 +204,6 @@ for iData = 1:length(Data)
     HeadModelType = [];
     HeadModelFile = [];
     BadSegments   = [];
-%     Std           = [];
     if isFile
         % Select subset of data
         switch (DataType)
@@ -759,7 +758,6 @@ end
         FileMat.Comment   = OPTIONS.Comment;
         FileMat.DataType  = DataType;
         FileMat.TF        = TF;
-%         FileMat.Std       = Std;
         FileMat.Time      = OPTIONS.TimeVector;
         FileMat.TimeBands = [];
         FileMat.Freqs     = OPTIONS.Freqs;
