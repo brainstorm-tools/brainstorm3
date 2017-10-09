@@ -747,7 +747,7 @@ if isAverage
         InitFile = '';
     end
     % Save file
-    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas, strHistory, []);
+    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas, strHistory);
 end
 
 
