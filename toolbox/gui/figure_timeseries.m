@@ -1283,7 +1283,7 @@ function FigureKeyPressedCallback(hFig, ev)
         % === DATA FILES ===
         % CTRL+E : Add/delete event (raw viewer only)
         case 'e'
-            if isControl && ~isempty(GlobalData.DataSet(iDS).Measures.sFile) % && isFullDataFile 
+            if ~isempty(GlobalData.DataSet(iDS).Measures.sFile) % && isFullDataFile 
                 panel_record('ToggleEvent');
             end
         % CTRL+B : Accept/reject trial or time segment
