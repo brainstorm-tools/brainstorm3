@@ -3,6 +3,7 @@ October 2017
 - Process: PSD process now saves the standard deviation across time
 - Process: Cut stimulation artifact: Extend to support continuous files
 - Process: Uniform epoch time: Reinterpolates epochs with different durations
+- Doc: New tutorial "SEEG epileptogenicity maps"
 ---------------------------------------------------------------
 September 2017
 - IO: DICOM converter (SPM-based)

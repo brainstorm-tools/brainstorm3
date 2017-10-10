@@ -188,30 +188,26 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % Convert channel positions to MRI coordinates (for surface export, keep everything in SCS)
         if strcmpi(OPTIONS.OutputType, 'volume')
             Tscs2mri = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
+            % Get the MRI=>RAS transformation
+            iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
             % If there is a transformation MRI=>RAS from a .nii file 
-            if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && isfield(sMri.Header.nifti, 'sform_code') && isfield(sMri.Header.nifti, 'qform_code')
-                nifti = sMri.Header.nifti;
-                if isfield(nifti, 'vox2ras') && ~isempty(nifti.vox2ras)
-                    vox2ras = nifti.vox2ras;
-                elseif (nifti.sform_code ~= 0) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3))
-                    vox2ras = nifti.sform;
-                elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3))
-                    vox2ras = nifti.qform;
-                else
-                    vox2ras = [];
-                end
-                if ~isempty(vox2ras)
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    % NOT UNDERSTOOD: 
-                    % Apply a [-1,-1,-1] translation to compensation the translation in process_generate_canonical,
-                    % so that we get the same coordinates directly with the SPM segmentation or through the Brainstorm database
-                    Tscs2mri = [1 0 0 -1/1000; 0 1 0 -1/1000; 0 0 1 -1/1000; 0 0 0 1] * Tscs2mri;
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    % Convert millimeters=>meters
-                    vox2ras(1:3,4) = vox2ras(1:3,4) ./ 1000;
-                    % Add this transformation
-                    Tscs2mri = vox2ras * Tscs2mri;
-                end
+            if ~isempty(iTransf)
+                vox2ras = sMri.InitTransf{iTransf,2};
+                % 2nd operation: Change reference from (0,0,0) to (1,1,1)
+                vox2ras = vox2ras * [1 0 0 -1; 0 1 0 -1; 0 0 1 -1; 0 0 0 1];
+                % 1st operation: Convert from MRI(mm) to voxels
+                vox2ras = vox2ras * [diag(1 ./ sMri.Voxsize), [0;0;0]; 0 0 0 1];
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % Change reference from (1,1,1) to (0,0,0):
+                % Apply a [-1,-1,-1] translation to compensate the translation in process_generate_canonical and import_channel,
+                % so that we get the same coordinates directly with the SPM segmentation or through the Brainstorm database
+%                 Tscs2mri = [1 0 0 -1/1000; 0 1 0 -1/1000; 0 0 1 -1/1000; 0 0 0 1] * Tscs2mri;
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % Convert millimeters=>meters
+                vox2ras(1:3,4) = vox2ras(1:3,4) ./ 1000;
+                % Add this transformation
+                Tscs2mri = vox2ras * Tscs2mri;
             end
             ChannelMat = channel_apply_transf(ChannelMat, Tscs2mri, iChan, 1);
             ChannelMat = ChannelMat{1};
@@ -333,8 +329,12 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % File comment = SPM folder
         Comment = strrep(strGoupUnique{iGroup}, 'SPM_', '');
         % Import file
-        tmpFiles = import_sources(iStudy, [], spmFiles(iFiles), [], fileFormat, Comment, 't', fileLatency(iFiles));
-        OutputFiles = cat(2, OutputFiles, tmpFiles);
+        tmpFile = import_sources(iStudy, [], spmFiles(iFiles), [], fileFormat, Comment, 't', fileLatency(iFiles));
+        OutputFiles = cat(2, OutputFiles, tmpFile);
+        % Remove negative values in the maps
+        tmpMat = load(tmpFile);
+        tmpMat.tmap(tmpMat.tmap < 0) = 0;
+        bst_save(tmpFile, tmpMat, 'v6');
     end
     
     % ===== READ DELAY MAPS =====
