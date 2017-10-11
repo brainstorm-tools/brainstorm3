@@ -559,7 +559,11 @@ for iFile = 1:length(FilesA)
         % ==== PTE ====
         case 'pte'
             bst_progress('text', sprintf('Calculating: PTE [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
-            Comment = 'PTE: ';
+            Comment = 'PTE';
+            if OPTIONS.isNormalized
+                Comment = [Comment, ' [Normalized]'];
+            end
+            Comment = [Comment, ': '];
             % Get frequency bands
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
@@ -570,8 +574,13 @@ for iFile = 1:length(FilesA)
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
                 % Compute PTE
-                [R(:,:,iBand), ~] = PhaseTE_MF(permute(DataAband, [2 1]));
-                R(:,:,iBand) = R(:,:,iBand) - 0.5; % Center result around 0
+                [dPTE, PTE] = PhaseTE_MF(permute(DataAband, [2 1]));
+                if OPTIONS.isNormalized
+                    R(:,:,iBand) = dPTE;
+                    R(:,:,iBand) = R(:,:,iBand) - 0.5; % Center result around 0
+                else
+                    R(:,:,iBand) = PTE;
+                end
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];

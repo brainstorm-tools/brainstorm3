@@ -52,6 +52,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mirror.Comment = 'Mirror signal before filtering (not recommended)';
     sProcess.options.mirror.Type    = 'checkbox';
     sProcess.options.mirror.Value   = 0;
+    % === Normalize
+    sProcess.options.normalized.Comment = 'Return normalized phase transfer entropy';
+    sProcess.options.normalized.Type    = 'checkbox';
+    sProcess.options.normalized.Value   = 1;
     % === OUTPUT
     sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
     sProcess.options.label3.Type    = 'label';
@@ -59,6 +63,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
+
 end
 
 
@@ -82,6 +87,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Filtering bands options
     OPTIONS.Freqs = sProcess.options.freqbands.Value;
     OPTIONS.isMirror = sProcess.options.mirror.Value;
+    OPTIONS.isNormalized = sProcess.options.normalized.Value;
 
     % Compute metric
     OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);
