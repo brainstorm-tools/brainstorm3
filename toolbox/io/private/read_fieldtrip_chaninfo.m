@@ -141,7 +141,7 @@ for i = 1:nChannels
             % Apply units
             if isequal(elec.unit, 'mm')
                 ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 1000;
-            elseif isequal(D.sensors.eeg.unit, 'cm')
+            elseif isequal(elec.unit, 'cm')
                 ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 100;
             end
         end

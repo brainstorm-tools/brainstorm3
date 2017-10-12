@@ -1304,14 +1304,17 @@ function [isValidated, errMsg] = ValidateEpoch()
         % Apply montage if needed 
         if ~isempty(MontageName) && (~isempty(sFilesOnsets) || ~isempty(sFilesBaselines))
             % Apply montage (create new folders)
-            sFilesMontage = bst_process('CallProcess', 'process_montage_apply', [sFilesBaselines, sFilesOnsets], [], ...
+            sFilesBaselinesBip = bst_process('CallProcess', 'process_montage_apply', sFilesBaselines, [], ...
+                'montage',    MontageName, ...
+                'createchan', 1);
+            sFilesOnsetsBip = bst_process('CallProcess', 'process_montage_apply', sFilesOnsets, [], ...
                 'montage',    MontageName, ...
                 'createchan', 1);
             % Delete original imported folder
             bst_process('CallProcess', 'process_delete', [sFilesBaselines, sFilesOnsets], [], 'target', 2);  % Delete folders
             % Replace files with bipolar versions
-            sFilesBaselines = sFilesMontage(1:length(sFilesBaselines));
-            sFilesOnsets = sFilesMontage(end-length(sFilesOnsets)+1:end);
+            sFilesBaselines = sFilesBaselinesBip;
+            sFilesOnsets = sFilesOnsetsBip;
         end
         % Save file names for laters
         if ~isempty(sFilesBaselines)

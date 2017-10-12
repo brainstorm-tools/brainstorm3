@@ -2144,6 +2144,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         else
                             optValue = opt.Value;
                         end
+                        % For string, replace ' with ''
+                        if ischar(optValue) && ~isempty(optValue)
+                            optValue = strrep(optValue, '''', '''''');
+                        end
                         % Pad with spaces after the option name so that all the values line up nicely
                         strPad = repmat(' ', 1, maxLength - length(optNames{iOpt}));
                         % Create final string

@@ -32,7 +32,7 @@ if (nargin < 5) || isempty(EventName)
     EventName = [];
 end
 % CALL:  import_events(sFile, [], EventMat)
-if (nargin == 3) && isstruct(EventFile)
+if isstruct(EventFile)
     newEvents = EventFile;
     EventFile = [];
     FileFormat = [];
