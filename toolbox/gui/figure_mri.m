@@ -819,13 +819,13 @@ function DisplayFigurePopup(hFig)
     % Smooth factor
     if isOverlay 
         MriOptions = bst_get('MriOptions');
-        jMenuMri = gui_component('Menu', jPopup, [], 'Smooth sources', IconLoader.ICON_ANATOMY);
-        jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: None', [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 0));
-        jItem1 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 1',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 1));
-        jItem2 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 2',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 2));
-        jItem3 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 3',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 3));
-        jItem4 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 4',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 4));
-        jItem5 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 5',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 5));
+        jMenuMri = gui_component('Menu', jPopup, [], 'Overlay options', IconLoader.ICON_ANATOMY);
+        jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: None', [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 0));
+        jItem1 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 1',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 1));
+        jItem2 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 2',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 2));
+        jItem3 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 3',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 3));
+        jItem4 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 4',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 4));
+        jItem5 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 5',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 5));
         jItem0.setSelected(MriOptions.OverlaySmooth == 0);
         jItem1.setSelected(MriOptions.OverlaySmooth == 1);
         jItem2.setSelected(MriOptions.OverlaySmooth == 2);
@@ -833,12 +833,25 @@ function DisplayFigurePopup(hFig)
         jItem4.setSelected(MriOptions.OverlaySmooth == 4);
         jItem5.setSelected(MriOptions.OverlaySmooth == 5);
         jMenuMri.addSeparator();
-        jCheck = gui_component('checkboxmenuitem', jMenuMri, [], 'Grid interpolation', [], [], @(h,ev)figure_3d('SetGridSmooth', hFig, ~TessInfo.DataSource.GridSmooth));
+        % MENU: Interpolation MRI/sources
+        % Interpolate values
+        jMenuInterp = gui_component('Menu', jMenuMri, [], 'Interpolation sources>MRI', IconLoader.ICON_ANATOMY);
+        jCheck = gui_component('checkboxmenuitem', jMenuInterp, [], 'Interpolate values', [], [], @(h,ev)figure_3d('SetGridSmooth', hFig, ~TessInfo.DataSource.GridSmooth));
         jCheck.setSelected(TessInfo.DataSource.GridSmooth);
-%         jMenuMri = gui_component('Menu', jPopup, [], 'Sources resolution', IconLoader.ICON_ANATOMY);
-%         jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 1));
-%         jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 2));
-%         jItem3 = gui_component('radiomenuitem', jMenuMri, [], '3mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 3));
+        % Distance threshold
+        jMenuInterp.addSeparator();
+        jItem1 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 2mm', [], [], @(h,ev)figure_3d('SetDistanceThresh', hFig, 2));
+        jItem2 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 4mm', [], [], @(h,ev)figure_3d('SetDistanceThresh', hFig, 4));
+        jItem3 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 6mm', [], [], @(h,ev)figure_3d('SetDistanceThresh', hFig, 6));
+        jItem4 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 9mm', [], [], @(h,ev)figure_3d('SetDistanceThresh', hFig, 9));
+        jItem1.setSelected(MriOptions.DistanceThresh == 2);
+        jItem2.setSelected(MriOptions.DistanceThresh == 4);
+        jItem3.setSelected(MriOptions.DistanceThresh == 6);
+        jItem4.setSelected(MriOptions.DistanceThresh == 9);
+        % Interpolated grid resolution
+%         jItem1 = gui_component('radiomenuitem', jMenuInterp, [], 'Grid resolution: 1mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 1));
+%         jItem2 = gui_component('radiomenuitem', jMenuInterp, [], 'Grid resolution: 2mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 2));
+%         jItem3 = gui_component('radiomenuitem', jMenuInterp, [], 'Grid resolution: 3mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 3));
 %         jItem1.setSelected(MriOptions.InterpDownsample == 1);
 %         jItem2.setSelected(MriOptions.InterpDownsample == 2);
 %         jItem3.setSelected(MriOptions.InterpDownsample == 3);

@@ -1269,7 +1269,7 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
     end
     % Grid smoothing: enable by default, except for time units
     if isAnatomy
-        TessInfo(iTess).DataSource.GridSmooth = isempty(DisplayUnits) || ~ismember(DisplayUnits, {'s','ms'});
+        TessInfo(iTess).DataSource.GridSmooth = isempty(DisplayUnits) || ~ismember(DisplayUnits, {'s','ms','t'});
     end
     % Add colormap of the surface to the figure
     if ~isempty(ColormapType)

@@ -1657,6 +1657,22 @@ function DisplayFigurePopup(hFig)
             jItem3.setSelected(MriOptions.OverlaySmooth == 3);
             jItem4.setSelected(MriOptions.OverlaySmooth == 4);
             jItem5.setSelected(MriOptions.OverlaySmooth == 5);
+            jMenuMri.addSeparator();
+            % MENU: Interpolation MRI/sources
+            % Interpolate values
+            jMenuInterp = gui_component('Menu', jMenuMri, [], 'Interpolation sources>MRI', IconLoader.ICON_ANATOMY);
+            jCheck = gui_component('checkboxmenuitem', jMenuInterp, [], 'Grid interpolation', [], [], @(h,ev)SetGridSmooth(hFig, ~TessInfo(1).DataSource.GridSmooth));
+            jCheck.setSelected(TessInfo(1).DataSource.GridSmooth);
+            % Distance threshold
+            jMenuInterp.addSeparator();
+            jItem1 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 2mm', [], [], @(h,ev)SetDistanceThresh(hFig, 2));
+            jItem2 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 4mm', [], [], @(h,ev)SetDistanceThresh(hFig, 4));
+            jItem3 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 6mm', [], [], @(h,ev)SetDistanceThresh(hFig, 6));
+            jItem4 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 9mm', [], [], @(h,ev)SetDistanceThresh(hFig, 9));
+            jItem1.setSelected(MriOptions.DistanceThresh == 2);
+            jItem2.setSelected(MriOptions.DistanceThresh == 4);
+            jItem3.setSelected(MriOptions.DistanceThresh == 6);
+            jItem4.setSelected(MriOptions.DistanceThresh == 9);
 %             jMenuMri = gui_component('Menu', jPopup, [], 'Sources resolution', IconLoader.ICON_ANATOMY);
 %             jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1mm',    [], [], @(h,ev)SetMriResolution(hFig, 1));
 %             jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2mm',    [], [], @(h,ev)SetMriResolution(hFig, 2));
@@ -1886,6 +1902,23 @@ function SetMriSmooth(hFig, OverlaySmooth)
     bst_set('MriOptions', MriOptions);
     bst_figures('FireCurrentTimeChanged', 1);
 end
+% RADIO: DISTANCE THRESHOLD
+function SetDistanceThresh(hFig, DistanceThresh)
+    global GlobalData;
+    % Update MRI display options
+    MriOptions = bst_get('MriOptions');
+    MriOptions.DistanceThresh = DistanceThresh;
+    bst_set('MriOptions', MriOptions);
+    % Update display
+    TessInfo = getappdata(hFig, 'Surface');
+    if ~isempty(TessInfo(1).DataSource.FileName)
+        [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(1).DataSource.FileName);
+        if ~isempty(iDS)
+            GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp = [];
+            bst_figures('FireCurrentTimeChanged', 1);
+        end
+    end
+end
 % RADIO: MRI RESOLUTION
 function SetMriResolution(hFig, InterpDownsample)
     global GlobalData;
@@ -1893,12 +1926,12 @@ function SetMriResolution(hFig, InterpDownsample)
     MriOptions = bst_get('MriOptions');
     MriOptions.InterpDownsample = InterpDownsample;
     bst_set('MriOptions', MriOptions);
-    % Get displayed 
+    % Update display
     TessInfo = getappdata(hFig, 'Surface');
-    if ~isempty(TessInfo.DataSource.FileName)
-        [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo.DataSource.FileName);
+    if ~isempty(TessInfo(1).DataSource.FileName)
+        [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(1).DataSource.FileName);
         if ~isempty(iDS)
-            GlobalData.DataSet(1).Results(1).grid2mri_interp = [];
+            GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp = [];
             bst_figures('FireCurrentTimeChanged', 1);
         end
     end
@@ -1908,17 +1941,19 @@ function SetGridSmooth(hFig, GridSmooth)
     global GlobalData;
     % Get figure configuration
     TessInfo = getappdata(hFig, 'Surface');
-    if isempty(TessInfo.DataSource.FileName)
+    if isempty(TessInfo(1).DataSource.FileName)
         return;
     end
     % Update figure configuration 
-    TessInfo.DataSource.GridSmooth = GridSmooth;
+    TessInfo(1).DataSource.GridSmooth = GridSmooth;
     setappdata(hFig, 'Surface', TessInfo);
     % Update display
-    [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo.DataSource.FileName);
-    if ~isempty(iDS)
-        GlobalData.DataSet(1).Results(1).grid2mri_interp = [];
-        bst_figures('FireCurrentTimeChanged', 1);
+    if ~isempty(TessInfo(1).DataSource.FileName)
+        [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(1).DataSource.FileName);
+        if ~isempty(iDS)
+            GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp = [];
+            bst_figures('FireCurrentTimeChanged', 1);
+        end
     end
 end
 
@@ -4407,7 +4442,7 @@ function JumpMaximum(hFig)
     [XYZ(1), XYZ(2), XYZ(3)] = ind2sub(size(TessInfo(iAnatomy).OverlayCube), iMax(1));
     % Set new position
     TessInfo(iAnatomy).CutsPosition = XYZ;
-    figure_3d('UpdateMriDisplay', hFig, [1 2 3], TessInfo, iAnatomy);
+    UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
 end
 
 
