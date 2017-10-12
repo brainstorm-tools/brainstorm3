@@ -320,74 +320,81 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
             errMsg = ['You must select the pre- and post-implantation scans for subject "' SubjectName '".'];
             return;
         end
-        if ~file_exist(MriFilePre)
-            errMsg = 'The pre-implantation MRI file you selected does not exist.';
-            return;
-        end
-        if ~file_exist(MriFilePost)
-            errMsg = 'The post-implantation MRI/CT file you selected does not exist.';
-            return;
-        end
-
-        % Delete existing anatomy
-        sSubject = db_delete_anatomy(iSubject);
-        % Import both volumes
-        DbMriFilePre = import_mri(iSubject, MriFilePre, 'ALL', 0, 0);
-        if isempty(DbMriFilePre)
-            errMsg = ['Cannot import pre-implantation volume: "' 10 MriFilePre '".'];
-            return
-        end
-        DbMriFilePost = import_mri(iSubject, MriFilePost, 'ALL', 0, 0);
-        if isempty(DbMriFilePost)
-            errMsg = ['Cannot import pre-implantation volume: "' 10 MriFilePost '".'];
-            return
-        end
-        % Compute the MNI coordinates for both volumes
-        [sMriPre, errMsg] = bst_normalize_mni(DbMriFilePre);
-        if ~isempty(errMsg)
-            errMsg = ['Cannot normalize pre-implantation volume: "' 10 errMsg '".'];
-            return;
-        end
-        [sMriPost, errMsg] = bst_normalize_mni(DbMriFilePost);
-        if ~isempty(errMsg)
-            errMsg = ['Cannot normalize post-implantation volume: "' 10 errMsg '".'];
-            return;
-        end
-        % Volumes are not registered: Register and reslice
-        if ~isRegistered
-            % Register and reslice
-            [DbMriFilePostReg, errMsg] = mri_coregister(DbMriFilePost, DbMriFilePre);
-        % Volumes are registered: Reslice only
+        % If using an anatomy template (one MRI only)
+        if (length(sSubject.Anatomy) == 1) && strcmpi(MriFilePre, sSubject.Anatomy(1).Comment) && strcmpi(MriFilePost, sSubject.Anatomy(1).Comment)
+            MriPre = file_fullpath(sSubject.Anatomy(1).FileName);
+            MriPost = MriPre;
+        % Otherwise: Import selected files
         else
-            % Get the .nii transformation in both volumes
-            iTransfPre  = find(strcmpi(sMriPre.InitTransf(:,1),  'vox2ras'));
-            iTransfPost = find(strcmpi(sMriPost.InitTransf(:,1), 'vox2ras'));
-            if (isempty(iTransfPre) || isempty(iTransfPost)) && (~isequal(size(sMriPre.Cube), size(sMriPost.Cube)) || ~isequal(sMriPre.Voxsize, sMriPost.Voxsize))
-                errMsg = 'The pre and post volumes are not registered or were not initially in .nii format.';
+            if ~file_exist(MriFilePre)
+                errMsg = 'The pre-implantation MRI file you selected does not exist.';
                 return;
             end
-            % Reslice the "post" volume
-            [DbMriFilePostReg, errMsg] = mri_coregister(DbMriFilePost, DbMriFilePre, sMriPost.InitTransf{iTransfPost(1),2}, sMriPre.InitTransf{iTransfPre(1),2});
-        end
+            if ~file_exist(MriFilePost)
+                errMsg = 'The post-implantation MRI/CT file you selected does not exist.';
+                return;
+            end
 
-        % === RE-ORGANIZE FILES ===
-        % Get updated subject structure
-        [sSubject, iSubject] = bst_get('Subject', SubjectName);
-        % Delete non-registered post MRI
-        file_delete(DbMriFilePost, 1);
-        sSubject.Anatomy(2) = [];
-        % Rename imported volumes
-        movefile(file_fullpath(DbMriFilePre), MriPre);
-        movefile(file_fullpath(DbMriFilePostReg), MriPost);
-        sSubject.Anatomy(1).FileName = file_short(MriPre);
-        sSubject.Anatomy(2).FileName = file_short(MriPost);
-        % Update database
-        bst_set('Subject', iSubject, sSubject);
-        panel_protocols('UpdateNode', 'Subject', iSubject);
-        % Save MRI pre as permanent default
-        db_surface_default(iSubject, 'Anatomy', 1, 0);
-        % Compute SPM canonical surfaces
-        process_generate_canonical('ComputeInteractive', iSubject, 1, SurfResolution);
+            % Delete existing anatomy
+            sSubject = db_delete_anatomy(iSubject);
+            % Import both volumes
+            DbMriFilePre = import_mri(iSubject, MriFilePre, 'ALL', 0, 0);
+            if isempty(DbMriFilePre)
+                errMsg = ['Cannot import pre-implantation volume: "' 10 MriFilePre '".'];
+                return
+            end
+            DbMriFilePost = import_mri(iSubject, MriFilePost, 'ALL', 0, 0);
+            if isempty(DbMriFilePost)
+                errMsg = ['Cannot import pre-implantation volume: "' 10 MriFilePost '".'];
+                return
+            end
+            % Compute the MNI coordinates for both volumes
+            [sMriPre, errMsg] = bst_normalize_mni(DbMriFilePre);
+            if ~isempty(errMsg)
+                errMsg = ['Cannot normalize pre-implantation volume: "' 10 errMsg '".'];
+                return;
+            end
+            [sMriPost, errMsg] = bst_normalize_mni(DbMriFilePost);
+            if ~isempty(errMsg)
+                errMsg = ['Cannot normalize post-implantation volume: "' 10 errMsg '".'];
+                return;
+            end
+            % Volumes are not registered: Register and reslice
+            if ~isRegistered
+                % Register and reslice
+                [DbMriFilePostReg, errMsg] = mri_coregister(DbMriFilePost, DbMriFilePre);
+            % Volumes are registered: Reslice only
+            else
+                % Get the .nii transformation in both volumes
+                iTransfPre  = find(strcmpi(sMriPre.InitTransf(:,1),  'vox2ras'));
+                iTransfPost = find(strcmpi(sMriPost.InitTransf(:,1), 'vox2ras'));
+                if (isempty(iTransfPre) || isempty(iTransfPost)) && (~isequal(size(sMriPre.Cube), size(sMriPost.Cube)) || ~isequal(sMriPre.Voxsize, sMriPost.Voxsize))
+                    errMsg = 'The pre and post volumes are not registered or were not initially in .nii format.';
+                    return;
+                end
+                % Reslice the "post" volume
+                [DbMriFilePostReg, errMsg] = mri_coregister(DbMriFilePost, DbMriFilePre, sMriPost.InitTransf{iTransfPost(1),2}, sMriPre.InitTransf{iTransfPre(1),2});
+            end
+
+            % === RE-ORGANIZE FILES ===
+            % Get updated subject structure
+            [sSubject, iSubject] = bst_get('Subject', SubjectName);
+            % Delete non-registered post MRI
+            file_delete(DbMriFilePost, 1);
+            sSubject.Anatomy(2) = [];
+            % Rename imported volumes
+            movefile(file_fullpath(DbMriFilePre), MriPre);
+            movefile(file_fullpath(DbMriFilePostReg), MriPost);
+            sSubject.Anatomy(1).FileName = file_short(MriPre);
+            sSubject.Anatomy(2).FileName = file_short(MriPost);
+            % Update database
+            bst_set('Subject', iSubject, sSubject);
+            panel_protocols('UpdateNode', 'Subject', iSubject);
+            % Save MRI pre as permanent default
+            db_surface_default(iSubject, 'Anatomy', 1, 0);
+            % Compute SPM canonical surfaces
+            process_generate_canonical('ComputeInteractive', iSubject, 1, SurfResolution);
+        end
     end
     % Save for later
     GlobalData.Guidelines.SubjectName = SubjectName;
@@ -397,12 +404,15 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
     % === DISPLAY RESULT ===
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
-    % Open the post volume as an overlay of the pre volume
-    hFig = view_mri(MriPre, MriPost);
-    % Set the amplitude threshold to 50%
-    panel_surface('SetDataThreshold', hFig, 1, 0.3);
-    % Select surface tab
-    gui_brainstorm('SetSelectedTab', 'Surface');
+    % Only if the two volumes are not the same
+    if ~strcmpi(MriPre, MriPost)
+        % Open the post volume as an overlay of the pre volume
+        hFig = view_mri(MriPre, MriPost);
+        % Set the amplitude threshold to 50%
+        panel_surface('SetDataThreshold', hFig, 1, 0.3);
+        % Select surface tab
+        gui_brainstorm('SetSelectedTab', 'Surface');
+    end
     
     % Panel is validated
     isValidated = 1;
@@ -468,8 +478,15 @@ function SelectSubject()
     ctrl = GlobalData.Guidelines.ctrl;
     % Get subject
     SubjectName = char(ctrl.jComboSubj.getSelectedItem());
+    if isempty(SubjectName)
+        ctrl.jTextMriPre.setText('');
+        ctrl.jTextMriPost.setText('');
+        return;
+    end
     sSubject = bst_get('Subject', SubjectName);
     if isempty(sSubject)
+        ctrl.jTextMriPre.setText('');
+        ctrl.jTextMriPost.setText('');
         return;
     end
     % Select subject node in the database explorer
@@ -486,6 +503,10 @@ function SelectSubject()
         [sSubject, iSubject, iPost] = bst_get('MriFile', MriPost);
         ctrl.jTextMriPre.setText(sSubject.Anatomy(iPre).Comment);
         ctrl.jTextMriPost.setText(sSubject.Anatomy(iPost).Comment);
+    % Otherwise, if there is one volume only: use it twice
+    elseif (length(sSubject.Anatomy) == 1)
+        ctrl.jTextMriPre.setText(sSubject.Anatomy(1).Comment);
+        ctrl.jTextMriPost.setText(sSubject.Anatomy(1).Comment);
     else
         ctrl.jTextMriPre.setText('');
         ctrl.jTextMriPost.setText('');
@@ -1586,65 +1607,58 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
     end
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
-    
-    % Get the folder "Epileptogenicity" for this subject
-    Condition = ['Epileptogenicity_' OutputType];
-    sStudy = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
-    % Condition does not exist or does not contain any of the files of interest: run computation
-    if isempty(sStudy) || (isempty(sStudy.Stat) && isempty(sStudy.Result))
-        % Get selected files
-        iFiles = find(GlobalData.Guidelines.ctrl.isFileSelected);
-        % Get input files
-        BaselineFiles = cat(2, GlobalData.Guidelines.BaselineFiles{:});
-        OnsetFiles    = cat(2, GlobalData.Guidelines.OnsetFiles{:});
-        
-        % Number of baselines/onsets is not the same
-        for i = 1:length(GlobalData.Guidelines.OnsetFiles)
-            nBaselines = length(cat(2,GlobalData.Guidelines.BaselineFiles{i}));
-            nOnsets    = length(cat(2,GlobalData.Guidelines.OnsetFiles{i}));
-            if (nBaselines ~= nOnsets)
-                [tmp,strFolder] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{i}{1}));
-                errMsg = ['Folder "' strFolder '" contains:' 10 ...
-                          num2str(nBaselines) ' baseline(s) and ' num2str(nOnsets) ' seizure(s).' 10 10 ...
-                          'To specify one baseline for each seizure, use the Process2 tab:' 10 ...
-                          'Select all the baselines on the left and all the seizures on the right.'];
-                return;
-            end
-        end
-        % Process: Epileptogenicity index (A=Baseline,B=Seizure)
-        bst_report('Start', BaselineFiles(iFiles));
-        sFiles = bst_process('CallProcess', 'process_epileptogenicity', BaselineFiles(iFiles), OnsetFiles(iFiles), ...
-            'sensortypes',    'SEEG', ...
-            'freqband',       FreqBand, ...
-            'latency',        Latency, ...
-            'timeconstant',   TimeConstant, ...
-            'timeresolution', TimeResolution, ...
-            'thdelay',        ThDelay, ...
-            'type',           OutputType);
-        % Error handling
-        if isempty(sFiles)
-            errMsg = 'Could not compute epileptogenicity maps.';
-            bst_report('Open', 'current');
+
+    % Get selected files
+    iFiles = find(GlobalData.Guidelines.ctrl.isFileSelected);
+    % Get input files
+    BaselineFiles = cat(2, GlobalData.Guidelines.BaselineFiles{:});
+    OnsetFiles    = cat(2, GlobalData.Guidelines.OnsetFiles{:});
+    % Number of baselines/onsets is not the same
+    for i = 1:length(GlobalData.Guidelines.OnsetFiles)
+        nBaselines = length(cat(2,GlobalData.Guidelines.BaselineFiles{i}));
+        nOnsets    = length(cat(2,GlobalData.Guidelines.OnsetFiles{i}));
+        if (nBaselines ~= nOnsets)
+            [tmp,strFolder] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{i}{1}));
+            errMsg = ['Folder "' strFolder '" contains:' 10 ...
+                      num2str(nBaselines) ' baseline(s) and ' num2str(nOnsets) ' seizure(s).' 10 10 ...
+                      'To specify one baseline for each seizure, use the Process2 tab:' 10 ...
+                      'Select all the baselines on the left and all the seizures on the right.'];
             return;
         end
     end
+    % Process: Epileptogenicity index (A=Baseline,B=Seizure)
+    bst_report('Start', BaselineFiles(iFiles));
+    sFiles = bst_process('CallProcess', 'process_epileptogenicity', BaselineFiles(iFiles), OnsetFiles(iFiles), ...
+        'sensortypes',    'SEEG', ...
+        'freqband',       FreqBand, ...
+        'latency',        Latency, ...
+        'timeconstant',   TimeConstant, ...
+        'timeresolution', TimeResolution, ...
+        'thdelay',        ThDelay, ...
+        'type',           OutputType);
+    % Error handling
+    if isempty(sFiles)
+        errMsg = 'Could not compute epileptogenicity maps.';
+        bst_report('Open', 'current');
+        return;
+    end
     
     % Get updated folder structure
-    sStudy = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
+    sStudy = bst_get('AnyFile', sFiles(1).FileName);
     % Get epileptogenicity maps
     if ~isempty(sStudy.Stat)
         iStat = find(cellfun(@(c)and((length(c)>2) && strcmpi(c(end-1:end), '_0'), ~isempty(strfind(c, '_Group_'))), {sStudy.Stat.Comment}));
         if isempty(iStat)
-            iStat = find(cellfun(@(c)and((length(c)>2) && strcmpi(c(end-1:end), '_0'), 1), {sStudy.Stat.Comment}));
+            iStat = 1:length(sStudy.Stat);
         end
     else
         iStat = [];
     end
     % Get delay maps
-    if ~isempty(sStudy.Stat)
+    if ~isempty(sStudy.Result)
         iResult = find(cellfun(@(c)and((length(c)>6) && strcmpi(c(1:6), 'Delay_'), ~isempty(strfind(c, '_Group_'))), {sStudy.Result.Comment}));
         if isempty(iResult)
-            iResult = find(cellfun(@(c)and((length(c)>6) && strcmpi(c(1:6), 'Delay_'), 1), {sStudy.Result.Comment}));
+            iResult = 1:length(sStudy.Result);
         end
     else
         iResult = [];

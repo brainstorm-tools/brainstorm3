@@ -213,7 +213,7 @@ sFilesEpilepto1 = bst_process('CallProcess', 'process_epileptogenicity', sFilesB
     'thdelay',        ThDelay, ...
     'type',           OutputType);
 
-% ===== EPILEPTOGENICITY: SEIZURE #1 =====
+% ===== EPILEPTOGENICITY: SEIZURE #2-3 =====
 % Get options
 FreqBand       = [120 200];
 Latency        = '0:2:20';

@@ -189,7 +189,11 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         if strcmpi(OPTIONS.OutputType, 'volume')
             Tscs2mri = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
             % Get the MRI=>RAS transformation
-            iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
+            if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf)
+                iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
+            else
+                iTransf = [];
+            end
             % If there is a transformation MRI=>RAS from a .nii file 
             if ~isempty(iTransf)
                 vox2ras = sMri.InitTransf{iTransf,2};
@@ -280,18 +284,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     close([spm_figure('FindWin','Menu'), spm_figure('FindWin','Graphics'), spm_figure('FindWin','Interactive')]);
     
     % ===== OUTPUT FOLDER =====
-    % Default condition name
-    Condition = ['Epileptogenicity_' OPTIONS.OutputType];
-    % Get condition asked by user
-    [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
-    % Condition does not exist: create it
-    if isempty(sStudy)
-        % Add new folder
-        iStudy = db_add_condition(SubjectName, Condition, 1);
-        % Copy channel file from first file
-        db_set_channel(iStudy, sInputsB(1).ChannelFile, 1, 0);
-    end
-    
+    % Get new folder "Epileptogenicity"
+    ProtocolInfo = bst_get('ProtocolInfo');
+    EpiFolder = file_unique(bst_fullfile(ProtocolInfo.STUDIES, SubjectName, ['Epileptogenicity_' OPTIONS.OutputType]));
+    [tmp, Condition] = bst_fileparts(EpiFolder);
+    % Create new folder
+    iStudy = db_add_condition(SubjectName, Condition, 1);
+    % Copy channel file from first file
+    db_set_channel(iStudy, sInputsB(1).ChannelFile, 1, 0);
+
     % ===== READ EPILEPTOGENICITY MAPS =====
     % List all the epileptogenicity maps in output
     listSpmDir = dir(bst_fullfile(workDir, 'SPM_*'));
