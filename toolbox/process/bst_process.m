@@ -2113,7 +2113,7 @@ function [OutputFiles, OutputFiles2] = CallProcess(sProcess, sInputs, sInputs2, 
             continue;
         elseif ismember(sInputs(1).FileType, sProcess.options.(optNames{iOpt}).InputTypes)
             continue;
-        elseif isempty(sInputs2) && ismember(sInputs2(1).FileType, sProcess.options.(optNames{iOpt}).InputTypes)
+        elseif ~isempty(sInputs2) && ismember(sInputs2(1).FileType, sProcess.options.(optNames{iOpt}).InputTypes)
             continue;
         else
             sProcess.options = rmfield(sProcess.options, optNames{iOpt});
