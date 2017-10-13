@@ -2660,7 +2660,9 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         ViewStatClusters(hFig);
     end
     % Set current object/axes
-    set(hFig, 'CurrentAxes', hAxes(1), 'CurrentObject', hAxes(1));
+    if ishandle(hAxes(1))
+        set(hFig, 'CurrentAxes', hAxes(1), 'CurrentObject', hAxes(1));
+    end
     isOk = 1;
 end
 

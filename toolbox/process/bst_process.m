@@ -2107,16 +2107,18 @@ function [OutputFiles, OutputFiles2] = CallProcess(sProcess, sInputs, sInputs2, 
         sInputs2 = GetInputStruct(sInputs2);
     end
     % Remove the options that are not matching the type of the inputs
-    optNames = fieldnames(sProcess.options);
-    for iOpt = 1:length(optNames)
-        if ~isfield(sProcess.options.(optNames{iOpt}), 'InputTypes')
-            continue;
-        elseif ismember(sInputs(1).FileType, sProcess.options.(optNames{iOpt}).InputTypes)
-            continue;
-        elseif ~isempty(sInputs2) && ismember(sInputs2(1).FileType, sProcess.options.(optNames{iOpt}).InputTypes)
-            continue;
-        else
-            sProcess.options = rmfield(sProcess.options, optNames{iOpt});
+    if isfield(sProcess, 'options') && ~isempty(sProcess.options) && isstruct(sProcess.options)
+        optNames = fieldnames(sProcess.options);
+        for iOpt = 1:length(optNames)
+            if ~isfield(sProcess.options.(optNames{iOpt}), 'InputTypes')
+                continue;
+            elseif ismember(sInputs(1).FileType, sProcess.options.(optNames{iOpt}).InputTypes)
+                continue;
+            elseif ~isempty(sInputs2) && ismember(sInputs2(1).FileType, sProcess.options.(optNames{iOpt}).InputTypes)
+                continue;
+            else
+                sProcess.options = rmfield(sProcess.options, optNames{iOpt});
+            end
         end
     end
     % Get options
