@@ -25,14 +25,14 @@ function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFo
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2014
+% Authors: Francois Tadel, 2010-2017
 
 %% ===== PARSE INPUTS =====
 if (nargin < 5) || isempty(EventName)
     EventName = [];
 end
 % CALL:  import_events(sFile, [], EventMat)
-if isstruct(EventFile)
+if (nargin >= 3) && isstruct(EventFile)
     newEvents = EventFile;
     EventFile = [];
     FileFormat = [];
