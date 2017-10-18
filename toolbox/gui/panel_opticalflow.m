@@ -978,7 +978,7 @@ function hMovieButton = button_movie(hFig, hRotated, flowInterval)
             movieStep : ... % Go this fast
             (str2double(get(hMovieEnd,'String'))/1000)+2*eps; % End here
         
-        while strcmp(get(hMoviePause, 'Enable'), 'on') % Pause only when pause button is enabled
+        while ishandle(hMoviePause) && strcmp(get(hMoviePause, 'Enable'), 'on') % Pause only when pause button is enabled
             
             currentTimeIdx = get(hMovieButton, 'Value'); % HACK ALERT: current time index stored here
             if currentTimeIdx == 0
@@ -991,8 +991,9 @@ function hMovieButton = button_movie(hFig, hRotated, flowInterval)
                 currentTimeIdx = 1;
             end
             
-            set(hMovieButton, 'Value', currentTimeIdx); % HACK ALERT: current time index stored here after pausing
-            
+            if ishandle(hMovieButton)
+                set(hMovieButton, 'Value', currentTimeIdx); % HACK ALERT: current time index stored here after pausing
+            end
         end
         
     end
