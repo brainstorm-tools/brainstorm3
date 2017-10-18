@@ -53,7 +53,15 @@ dimension = 3; % 2 for projected maps
 Faces = FV.Faces; Vertices = FV.Vertices; VertNormals = FV.VertNormals;
 nVertices = size(Vertices,1); % VertNormals = FV.VertNormals';
 tStartIndex = find(Time < tStart-eps, 1, 'last')+1; % Index of first time point for flow calculation
+if isempty(tStartIndex)
+    [~, tStartIndex] = min(Time);
+    tStartIndex = tStartIndex + 1;
+end
 tEndIndex = find(Time < tEnd-eps, 1, 'last')+1; % Index of last time point for flow calculation
+if isempty(tEndIndex)
+    [~, tEndIndex] = max(Time);
+    tEndIndex = tEndIndex + 1;
+end
 interval = Time(tStartIndex:tEndIndex); % Interval of flow calculations
 intervalLength = tEndIndex-tStartIndex+1; % Length of time interval for calculations
 M = max(max(abs(F(:,tStartIndex-1:tEndIndex)))); F = F/M; % Scale values to avoid precision error
