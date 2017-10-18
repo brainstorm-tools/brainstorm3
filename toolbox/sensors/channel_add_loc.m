@@ -91,10 +91,10 @@ for is = 1:length(iStudies)
         if isempty(idef) && ismember(lower(chName(1)), 'abcdefghijklmnopqrstuvwxyz') && ismember(lower(chName(end)), '0123456789')
             [chGroup, chTag, chInd] = panel_montage('ParseSensorNames', ChannelMat.Channel(ic));
             % Look for "A01"
-            idef = find(strcmpi(sprintf('%s%02d',chTag{1},chInd(1)), locChanNames));
+            idef = find(strcmpi(sprintf('%s%02d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
             if isempty(idef)
                 % Look for "A1"
-                idef = find(strcmpi(sprintf('%s%d',chTag{1},chInd(1)), locChanNames));
+                idef = find(strcmpi(sprintf('%s%d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
             end
         end
         % If the channel is found has a valid 3D position
@@ -118,8 +118,8 @@ for is = 1:length(iStudies)
             ChannelMat.HeadPoints.Loc   = [ChannelMat.HeadPoints.Loc,   ChannelMat.Channel(ic).Loc];
             ChannelMat.HeadPoints.Label = [ChannelMat.HeadPoints.Label, ChannelMat.Channel(ic).Name];
             ChannelMat.HeadPoints.Type  = [ChannelMat.HeadPoints.Type,  'EXTRA'];
-        elseif strcmpi(ChannelMat.Channel(ic).Type, 'EEG')
-            ChannelMat.Channel(ic).Type = 'EEG_NO_LOC';
+        elseif ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
+            ChannelMat.Channel(ic).Type = [ChannelMat.Channel(ic).Type, '_NO_LOC'];
             nNotFound = nNotFound + 1;
         end
     end

@@ -1647,7 +1647,7 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
     sStudy = bst_get('AnyFile', sFiles(1).FileName);
     % Get epileptogenicity maps
     if ~isempty(sStudy.Stat)
-        iStat = find(cellfun(@(c)and((length(c)>2) && strcmpi(c(end-1:end), '_0'), ~isempty(strfind(c, '_Group_'))), {sStudy.Stat.Comment}));
+        iStat = find(~cellfun(@(c)isempty(strfind(c, '_Group_')), {sStudy.Stat.Comment}));
         if isempty(iStat)
             iStat = 1:length(sStudy.Stat);
         end
