@@ -800,20 +800,27 @@ function [ax, currentName] = process_surface(hFig)
     % OUTPUTS:
     %   ax            - axis containing surface (for plotting flow)
     %   currentName   - name on title of figure
+    
     % Get axis handle for surface
-    ax = get(hFig, 'children');
-    test = get(ax, 'CLim');
-    for n = 1:length(test)
-        if iscell(test) && isnumeric(test{n}) && (test{n}(1) ~= 1 || test{n}(2) ~= 256)
-            ax = ax(n);
+    axes = get(hFig, 'children');
+    ax = [];
+    for n = 1:length(axes)
+        if isprop(axes(n), 'CLim')
+            cLim = get(axes(n), 'CLim');
+            if cLim(1) ~= 1 || cLim(2) ~= 256
+                ax = axes(n);
+                break;
+            end
         end
     end
 
     % Clean off previous vector fields
-    hOld = get(ax, 'Children');
-    for n = 1:length(hOld)
-        if strcmp(get(hOld(n), 'Type'), 'hggroup') % hggroup is type name for quiver plot
-            delete(hOld(n));
+    if ~isempty(ax)
+        hOld = get(ax, 'Children');
+        for n = 1:length(hOld)
+            if strcmp(get(hOld(n), 'Type'), 'hggroup') % hggroup is type name for quiver plot
+                delete(hOld(n));
+            end
         end
     end
 
