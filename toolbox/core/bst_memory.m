@@ -1092,6 +1092,7 @@ function LoadResultsMatrix(iDS, iResult)
         elseif isfield(FileMat, 'ImagingKernel') && ~isempty(FileMat.ImagingKernel)
             GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp  = [];
             GlobalData.DataSet(iDS).Results(iResult).ImagingKernel = FileMat.ImagingKernel; % FT 11-Jan-10: Remove "single"
+            GlobalData.DataSet(iDS).Results(iResult).OpticalFlow   = FileMat.OpticalFlow;
             GlobalData.DataSet(iDS).Results(iResult).ZScore        = FileMat.ZScore;
             % Make sure that recordings matrix is loaded
             if isempty(GlobalData.DataSet(iDS).Measures.F)
