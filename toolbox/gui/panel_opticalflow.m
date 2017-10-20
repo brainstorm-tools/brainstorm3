@@ -758,6 +758,12 @@ function PlotOpticalFlow(hFig, opticalFlow, currentTime, sSurf)
     if timeIdx > size(opticalFlow.flowField, 3)
         return
     end
+    
+    % Remove old quivers (arrows)
+    oldQuivers = findobj(ax, 'Type', 'quiver');
+    for iQuiver = 1:length(oldQuivers)
+        delete(oldQuivers(iQuiver));
+    end
 
     % Hold axes to plot on top of surface
     hold(ax,'on');
