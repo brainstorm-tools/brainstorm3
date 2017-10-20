@@ -565,7 +565,7 @@ function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, Vo
     EIGamma = zeros(size(PosElec,2),1);
     for i1 = 1:size(PosElec,2)
         dist = (x(:)-PosElec(1,i1)).^2+(y(:)-PosElec(2,i1)).^2+(z(:)-PosElec(3,i1)).^2;
-        tmp1 = Tvalues((dist < 100) & (Tvalues ~= 0));
+        tmp1 = Tvalues((dist < 100) & (Tvalues(:) ~= 0));
         if ~isempty(tmp1)
             EIGamma(i1) = mean(tmp1);
         end
