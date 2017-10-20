@@ -179,7 +179,7 @@ function RegisterSubject_Callback(h, ev)
     ctrl = bst_get('PanelControls', 'Realtime');
     % Get subject
     SubjectName = char(ctrl.jTextCurSubject.getText());
-    [~, iSubject] = bst_get('Subject', SubjectName);
+    [tmp, iSubject] = bst_get('Subject', SubjectName);
 
     % Check if subject exists
     if ~isempty(iSubject)
@@ -203,7 +203,7 @@ function RegisterSubject_Callback(h, ev)
     end
     
     % ===== Create new subject
-    [~, iSubject] = db_add_subject(SubjectName, [], 1, 0);
+    [tmp, iSubject] = db_add_subject(SubjectName, [], 1, 0);
     sTemplate = bst_get('AnatomyDefaults', 'ICBM152');
     db_set_template( iSubject, sTemplate(1), 0 )
     

@@ -54,12 +54,12 @@ Faces = FV.Faces; Vertices = FV.Vertices; VertNormals = FV.VertNormals;
 nVertices = size(Vertices,1); % VertNormals = FV.VertNormals';
 tStartIndex = find(Time < tStart-eps, 1, 'last')+1; % Index of first time point for flow calculation
 if isempty(tStartIndex)
-    [~, tStartIndex] = min(Time);
+    [tmp, tStartIndex] = min(Time);
     tStartIndex = tStartIndex + 1;
 end
 tEndIndex = find(Time < tEnd-eps, 1, 'last')+1; % Index of last time point for flow calculation
 if isempty(tEndIndex)
-    [~, tEndIndex] = max(Time);
+    [tmp, tEndIndex] = max(Time);
     tEndIndex = tEndIndex + 1;
 end
 interval = Time(tStartIndex:tEndIndex); % Interval of flow calculations

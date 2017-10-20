@@ -407,7 +407,7 @@ while (1)
     
     if isSaveAlignChannelFile
         % Check for RealtimeAlign condition
-        [~, iStudyAlign] = bst_get('StudyWithCondition', [SubjectName '/' ConditionRealtimeAlign]);
+        [tmp, iStudyAlign] = bst_get('StudyWithCondition', [SubjectName '/' ConditionRealtimeAlign]);
         if isempty(iStudyAlign)
             % create the condition and channel file with the current sensor positions for subsequent alignment
             iStudyAlign = db_add_condition(SubjectName, ConditionRealtimeAlign);
