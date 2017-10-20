@@ -62,6 +62,9 @@ if isempty(tEndIndex)
     [tmp, tEndIndex] = max(Time);
     tEndIndex = tEndIndex + 1;
 end
+if tEndIndex > size(Time, 2)
+    tEndIndex = size(Time, 2);
+end
 interval = Time(tStartIndex:tEndIndex); % Interval of flow calculations
 intervalLength = tEndIndex-tStartIndex+1; % Length of time interval for calculations
 M = max(max(abs(F(:,tStartIndex-1:tEndIndex)))); F = F/M; % Scale values to avoid precision error
