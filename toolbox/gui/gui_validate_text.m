@@ -149,12 +149,17 @@ java_setcb(jTextValid, 'ActionPerformedCallback', @(h,ev)TextValidation_Callback
 %% ===== GET VALUES =====
     function val = GetValue(jText)
         % Get and check value
-        val = str2num(char(jText.getText()));
-        if isempty(val)
+        strVal = char(jText.getText());
+        if isempty(strVal)
             val = [];
-        % Convert back to ms
-        elseif strcmpi(TimeUnits, 'ms')
-            val = val / 1000; 
+        else
+            val = str2num(strVal);
+            if isempty(val)
+                val = [];
+            % Convert back to ms
+            elseif strcmpi(TimeUnits, 'ms')
+                val = val / 1000; 
+            end
         end
     end
 
