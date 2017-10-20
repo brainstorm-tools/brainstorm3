@@ -788,6 +788,9 @@ end
         % Compute edge effects mask
         if ismember(OPTIONS.Method, {'hilbert', 'morlet'})
             FileMat.TFmask = process_timefreq('GetEdgeEffectMask', FileMat.Time, FileMat.Freqs, FileMat.Options);
+        elseif ismember(OPTIONS.Method, 'mtmconvol')
+            % FileMat.TFmask = permute(~any(isnan(FileMat.TF),1), [3,2,1]);
+            FileMat.TF(isnan(FileMat.TF)) = 0;
         end
         % History: Computation
         FileMat = bst_history('add', FileMat, 'compute', 'Time-frequency decomposition');
