@@ -37,12 +37,7 @@ FieldTripDir = bst_get('FieldTripDir');
 if ~isempty(FieldTripDir) && ~isInteractive
     disp(['BST> FieldTrip install: ' FieldTripDir]);
 end
-% Check if FieldTrip is already initialized
-global ft_default;
-if ~isempty(ft_default) && exist('ft_defaults', 'file')
-    isOk = 1;
-    return;
-end
+
 isOk = 0;
 % If FieldTrip is not accessible in the path
 if ~exist('ft_defaults', 'file')
@@ -91,8 +86,19 @@ if ~exist('ft_defaults', 'file')
                'Then add the installation path in Brainstorm (File > Edit preferences).']);
     end
 end
-ft_defaults;
+
+% Check if FieldTrip is already initialized
+global ft_default;
+if isempty(ft_default)
+    ft_defaults;
+end
 isOk = 1;
+
+% Add some subfolders
+addpath(fullfile(FieldTripDir, 'specest'));
+addpath(fullfile(FieldTripDir, 'preproc'));
+addpath(fullfile(FieldTripDir, 'forward'));
+addpath(fullfile(FieldTripDir, 'src'));
 
 
     

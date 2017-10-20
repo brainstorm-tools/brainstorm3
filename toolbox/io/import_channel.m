@@ -227,7 +227,7 @@ switch (FileFormat)
                 FileUnits = 'mm';
         end
         
-    case 'PTS'
+    case {'PTS', 'PTS_MNI'}
         ChannelMat = in_channel_ascii(ChannelFile, {'name','X','Y','Z'}, 3, .001);
         ChannelMat.Comment = 'Contacts';
         FileUnits = 'mm';
@@ -286,7 +286,7 @@ end
 
 %% ===== MNI TRANSFORMATION =====
 prevSubject = [];
-if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI'})
+if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'PTS_MNI'})
     % Warning for multiple studies
     if (length(iStudies) > 1)
         warning(['WARNING: When importing MNI positions for multiple subjects: the MNI transformation from the first subject is used for all of them.' 10 ...

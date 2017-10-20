@@ -3,6 +3,7 @@ October 2017
 - Process: PSD process now saves the standard deviation across time
 - Process: Cut stimulation artifact: Extend to support continuous files
 - Process: Uniform epoch time: Reinterpolates epochs with different durations
+- Anatomy: New options for co-registration of various volumes from the same subject
 - GUI: New interface for placing SEEG/ECOG contacts in the MRI Viewer
 - Doc: New tutorial "SEEG epileptogenicity maps"
 ---------------------------------------------------------------

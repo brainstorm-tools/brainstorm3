@@ -439,7 +439,7 @@ function ResetImportAnatomy()
         end
     end
     % Reset all fields
-    ctrl.jComboSubj.setSelectedItem([]);
+    % ctrl.jComboSubj.setSelectedItem([]);
     ctrl.jTextMriPre.setText('');
     ctrl.jTextMriPost.setText('');
     ctrl.jCheckRegistered.setSelected(0);
@@ -455,7 +455,7 @@ function [isValidated, errMsg] = UpdateImportAnatomy()
     % Get subjects in this protocol
     ProtocolSubjects = bst_get('ProtocolSubjects');
     iNoCommon = find(([ProtocolSubjects.Subject.UseDefaultAnat] == 0) & ([ProtocolSubjects.Subject.UseDefaultChannel] == 0));
-    strItems = {ProtocolSubjects.Subject(iNoCommon).Name};
+    strItems = sort({ProtocolSubjects.Subject(iNoCommon).Name});
     % Update combobox
     jModel = ctrl.jComboSubj.getModel();
     jModel.removeAllElements();
@@ -1112,6 +1112,7 @@ end
 %% ===== RECORDINGS: SET POSITION =====
 function ButtonRawPos()
     global GlobalData;
+    ctrl = GlobalData.Guidelines.ctrl;
     % If there are not files: exit
     if isempty(GlobalData.Guidelines.RawLinks)
         return;
@@ -1127,21 +1128,34 @@ function ButtonRawPos()
     if isempty(res)
         return;
     end
-
     % Get list of files to edit
     RawLinks = GlobalData.Guidelines.RawLinks;
+    % Get selected files
+    iSelFiles = ctrl.jTableRaw.getSelectedRows()' + 1;
+    % If no or multiple files are selected: exit
+    if isempty(iSelFiles) || (length(iSelFiles) == length(RawLinks))
+        iRawFiles = 1:length(RawLinks);
+    else
+        iRawFiles = [iSelFiles, setdiff(1:length(RawLinks), iSelFiles)];
+    end
+    % Get the files that have the same list of channels as the first file in the selection
     iStudiesSet = [];
-    AllChanNames = {};
+    ChanNames = {};
     AllChannelFiles = {};
-    for iFile = 1:length(RawLinks)
+    for iFile = iRawFiles
         % Get file in the database
         [sStudy, iStudy] = bst_get('DataFile', RawLinks{iFile});
-        iStudiesSet = [iStudiesSet, iStudy];
         % Load channel file
-        AllChannelFiles{iFile} = sStudy.Channel(1).FileName;
-        ChannelMat = in_bst_channel(AllChannelFiles{iFile});
-        % Get channel names
-        AllChanNames = union(AllChanNames, {ChannelMat.Channel.Name});
+        ChannelMat = in_bst_channel(sStudy.Channel(1).FileName);
+        % Skip file if it has a different list of channel names
+        if isempty(ChanNames)
+            ChanNames = {ChannelMat.Channel.Name};
+        elseif ~isequal(ChanNames, {ChannelMat.Channel.Name})
+            continue;
+        end
+        % Add files to the process list
+        AllChannelFiles{end+1} = sStudy.Channel(1).FileName;
+        iStudiesSet = [iStudiesSet, iStudy];
     end
     
     % Process request
@@ -1277,8 +1291,8 @@ function [isValidated, errMsg] = ValidateEpoch()
                         bst_get('StudyWithCondition', [studyName '_bipolar_1']), ...
                         bst_get('StudyWithCondition', studyName)];
         if ~isempty(sStudyImport)
-            iDataBaseline = find(~cellfun(@(c)isempty(strfind(c,GlobalData.Guidelines.strBaseline)), {sStudyImport(1).Data.FileName}));
-            iDataOnset    = find(~cellfun(@(c)isempty(strfind(c,GlobalData.Guidelines.strOnset)),    {sStudyImport(1).Data.FileName}));
+            iDataBaseline = find(~cellfun(@(c)isempty(strfind(lower(c),lower(GlobalData.Guidelines.strBaseline))), {sStudyImport(1).Data.FileName}));
+            iDataOnset    = find(~cellfun(@(c)isempty(strfind(lower(c),lower(GlobalData.Guidelines.strOnset))),    {sStudyImport(1).Data.FileName}));
         else
             iDataBaseline = [];
             iDataOnset = [];
@@ -1345,6 +1359,32 @@ function [isValidated, errMsg] = ValidateEpoch()
             GlobalData.Guidelines.OnsetFiles{iFile} = {sFilesOnsets.FileName};
         end
     end
+    
+    % === UNIFORM LIST OF CHANNELS ===
+    % Check if all the files have the same list of channels
+    isEqualChanList = 1;
+    AllFiles = cat(2, GlobalData.Guidelines.OnsetFiles{:}, GlobalData.Guidelines.BaselineFiles{:});
+    ChanNames = {};
+    for iFile = 1:length(AllFiles)
+        % Get file in the database
+        [sStudy, iStudy] = bst_get('DataFile', AllFiles{iFile});
+        % Load channel file
+        ChannelMat = in_bst_channel(sStudy.Channel(1).FileName);
+        % Skip file if it has a different list of channel names
+        if isempty(ChanNames)
+            ChanNames = {ChannelMat.Channel.Name};
+        elseif ~isequal(ChanNames, {ChannelMat.Channel.Name})
+            isEqualChanList = 0;
+            break;
+        end
+    end
+    % If the channes are not the same: normalize them
+    if ~isEqualChanList
+        % Process: Uniform list of channels (add missing)
+        bst_process('CallProcess', 'process_stdchan', AllFiles, [], ...
+            'method',  2);  % Keep all the channel names=> Fill the missing channels with zeros
+    end
+    
     % Select first imported file in the database explorer 
     if ~isempty(GlobalData.Guidelines.OnsetFiles)
         [sStudySel, iStudySel] = bst_get('DataFile', GlobalData.Guidelines.OnsetFiles{1}{1});

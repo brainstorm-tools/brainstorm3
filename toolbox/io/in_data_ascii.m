@@ -71,6 +71,8 @@ if OPTIONS.isChannelName
     [ChannelMat.Channel.Type] = deal('EEG');
     [ChannelMat.Channel.Name] = deal(chNames{:});
 end
+% Replace NaN with 0
+DataMat.F(isnan(DataMat.F)) = 0;
 
 % Apply voltage units (in Brainstorm: recordings are stored in Volts)
 switch (OPTIONS.VoltageUnits)

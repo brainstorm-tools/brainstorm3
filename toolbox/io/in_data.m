@@ -473,12 +473,12 @@ else
     if ~isempty(ChannelMat) && ~isempty(ChannelMatData) && ~isequal({ChannelMat.Channel.Name}, {ChannelMatData.Channel.Name})
         % Get list of channels in the format of the existing channel file 
         DataMatReorder = DataMat;
-        DataMatReorder.F = size(length(ChannelMat.Channel), size(DataMat.F,2));
+        DataMatReorder.F = zeros(length(ChannelMat.Channel), size(DataMat.F,2));
         DataMatReorder.ChannelFlag = -1 * ones(length(ChannelMat.Channel),1);
         for i = 1:length(ChannelMat.Channel)
             iCh = find(strcmpi(ChannelMat.Channel(i).Name, {ChannelMatData.Channel.Name}));
             % If the channel is not found: try a different convention if it is a bipolar channel
-            if any(ChannelMat.Channel(i).Name == '-')
+            if isempty(iCh) && any(ChannelMat.Channel(i).Name == '-')
                 iDash = find(ChannelMat.Channel(i).Name == '-',1);
                 chNameBip = [ChannelMat.Channel(i).Name(iDash+1:end), ChannelMat.Channel(i).Name(1:iDash-1)];
                 iCh = find(strcmpi(chNameBip, {ChannelMatData.Channel.Name}));
