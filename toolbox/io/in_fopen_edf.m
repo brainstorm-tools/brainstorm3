@@ -251,11 +251,16 @@ for i = 1:hdr.nsignal
         else
             % Channel name
             ChannelMat.Channel(i).Name = hdr.signal(i).label(hdr.signal(i).label ~= ' ');
+            if length(hdr.signal(i).label) > 3 && strcmpi(hdr.signal(i).label(1:4), 'EEG ')
+                % Remove EEG prefix if present.
+                ChannelMat.Channel(i).Name = ChannelMat.Channel(i).Name(4:end);
+            end
+            
             % Channel type
             if ~isempty(hdr.signal(i).type)
                 if (length(hdr.signal(i).type) == 3)
                     ChannelMat.Channel(i).Type = hdr.signal(i).type(hdr.signal(i).type ~= ' ');
-                elseif isequal(hdr.signal(i).type, 'Active Electrode')
+                elseif isequal(hdr.signal(i).type, 'Active Electrode') || strcmpi(hdr.signal(i).label(1:3), 'EEG')
                     ChannelMat.Channel(i).Type = 'EEG';
                 else
                     ChannelMat.Channel(i).Type = 'Misc';
