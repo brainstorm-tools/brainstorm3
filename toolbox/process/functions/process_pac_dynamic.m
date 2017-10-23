@@ -634,6 +634,9 @@ PAC = zeros(nFa,nTime,nSources);                              % PAC measure
 nestingFreq = zeros(nFa,nTime,nSources);
 DynamicPhase= zeros(nFa,nTime,nSources);         
 
+if nTime <2
+	doInterpolation = 0;
+end 
 
 % ===== MAIN LOOP ON FA ===== %
 % Filtering in Fa band before cutting into smaller time windows
