@@ -134,7 +134,7 @@ bst_progress('start', 'View surface', 'Loading MRI file...');
 [hFig, iFig, iOldDataSet, iSurface] = bst_figures('GetFigureWithSurface', MriFile, OverlayFile, 'MriViewer', '');
 isNewFig = 0;
 % Make sure that only one figure was found
-if (length(hFig) > 1)
+if ~isempty(hFig)
     hFig  = hFig(1);
     iFig  = iFig(1);
     iDS   = iOldDataSet(1);

@@ -616,6 +616,7 @@ function UpdatePrepareRaw()
     % === GET LIST OF RAW FILES ===
     % Get list of raw files for this subject
     RawLinks = {};
+    RawFolders = {};
     GlobalData.Guidelines.ChannelFiles = {};
     GlobalData.Guidelines.ChannelMats  = {};
     if ~isempty(GlobalData.Guidelines.SubjectName)
@@ -630,6 +631,7 @@ function UpdatePrepareRaw()
                 sDataStudy = bst_get('Study', iDataStudies(i));
                 if strcmpi(sDataStudy.Data(iDataFiles(i)).DataType, 'raw')
                     RawLinks{end+1} = sDataStudy.Data(iDataFiles(i)).FileName;
+                    [tmp,RawFolders{end+1}] = bst_fileparts(bst_fileparts(RawLinks{end}));
                     % Load channel file
                     GlobalData.Guidelines.ChannelFiles{end+1} = sDataStudy.Channel(1).FileName;
                     GlobalData.Guidelines.ChannelMats{end+1}  = in_bst_channel(sDataStudy.Channel(1).FileName);
@@ -645,6 +647,14 @@ function UpdatePrepareRaw()
             end
         end
     end
+    % Sort selected files by folder names (so it matches the order in the database explorer) 
+    if ~isempty(RawLinks)
+        [RawFolders, I] = sort(RawFolders);
+        RawLinks = RawLinks(I);
+        GlobalData.Guidelines.ChannelFiles = GlobalData.Guidelines.ChannelFiles(I);
+        GlobalData.Guidelines.ChannelMats  = GlobalData.Guidelines.ChannelMats(I);
+    end
+    % Save in Brainstorm global variable
     GlobalData.Guidelines.RawLinks  = RawLinks;
     GlobalData.Guidelines.Baselines = cell(size(RawLinks));
     GlobalData.Guidelines.Onsets    = cell(size(RawLinks));
@@ -1383,6 +1393,14 @@ function [isValidated, errMsg] = ValidateEpoch()
         % Process: Uniform list of channels (add missing)
         bst_process('CallProcess', 'process_stdchan', AllFiles, [], ...
             'method',  2);  % Keep all the channel names=> Fill the missing channels with zeros
+        % Warning
+        java_dialog('warning', [...
+            'The files you imported do not have the same list of contacts.' 10 10 ...
+            'When computing the epileptogenicity maps using all the files, ' 10 ...
+            'only the contacts common to all the files will be used.' 10 ... 
+            'This may lead to a wrong interpretation of the results.' 10 10 ...
+            'In order to use all the contacts for a given file, compute the', 10 ...
+            'epileptogenicity maps separately for this file (no group results).'], 'Different channel files');
     end
     
     % Select first imported file in the database explorer 

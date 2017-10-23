@@ -90,7 +90,11 @@ if isempty(TransfRef)
 end
 
 % ===== INTERPOLATE MRI VOLUME =====
-nBlocks = 3;
+if any(size(sMriSrc.Cube) > 256)
+    nBlocks = 5;
+else
+    nBlocks = 3;
+end
 nTol = 5;
 bst_progress('start', 'MRI register', 'Reslicing volume...', 0, nBlocks^3+1);
 % Original position vectors

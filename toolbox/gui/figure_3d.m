@@ -3532,8 +3532,10 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
                 GridFaceVertexAlphaData = get(hElectrodeGrid, 'FaceVertexAlphaData');
                 % For each one, check if they are visible
                 for iGroup = 1:length(iGroupEeg)
-                    isVisible = any(GridFaceVertexAlphaData(GridUserData == iGroupEeg{iGroup}(1)) > 0);
-                    isLabelVisible(iGroupEeg{iGroup}) = isVisible;
+                    if ~isempty(iGroupEeg{iGroup})
+                        isVisible = any(GridFaceVertexAlphaData(GridUserData == iGroupEeg{iGroup}(1)) > 0);
+                        isLabelVisible(iGroupEeg{iGroup}) = isVisible;
+                    end
                 end
             end
             % Add user data to save the channel indices

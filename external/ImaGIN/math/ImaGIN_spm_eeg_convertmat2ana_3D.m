@@ -210,10 +210,15 @@ for k = 1:Nsub
     
     switch Atlas
         case{'Human'}
-            tmp=spm('Defaults','EEG');
-            bb=tmp.normalise.write.bb;
-            V = fullfile(spm('dir'), 'toolbox', 'OldNorm', 'T1.nii');
-            V=spm_vol(V);
+            if CorticalMesh && ~SaveMNI
+                bb = round([min(mm.vertices) - SizeHorizon;
+                            max(mm.vertices) + SizeHorizon]);
+            else
+                tmp=spm('Defaults','EEG');
+                bb=tmp.normalise.write.bb;
+                V = fullfile(spm('dir'), 'toolbox', 'OldNorm', 'T1.nii');
+                V=spm_vol(V);
+            end
         case{'PPN'}
             bb = [[-8 -5 -20];[8 6 2]];     %Brainstem full
             V = '/Users/odavid/Documents/Data/Goetz/IRM/MRI_PPN_Small2.img';

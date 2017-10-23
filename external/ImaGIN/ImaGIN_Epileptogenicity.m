@@ -150,6 +150,7 @@ end
 
 % Volume resolution
 VolRes = 3;
+SaveMNI = 0;
 
 % Find common Channels and define as bad the missing ones over files
 N = zeros(1,size(DD,1));
@@ -421,7 +422,7 @@ for i00 = 1:size(latency, 2)
         WriteTvalues(deblank(DD(i0,:)), ...  % Reference recordings
                      fullfile(matlabbatch{1}.spm.stats.fmri_spec.dir{1}, ['spmT_0001' outExt]), ...  % T-values
                      fullfile(P, [NameEpileptogenicity '_' spm_str_manip(D.fname,'s') '_' FileName '_' num2str(min(FreqBand)) '_' num2str(max(FreqBand)) '_' num2str(round(mean(Horizon))) '_' num2str(round(mean(Latency)))]), ... % Output file name (without the extension)
-                     OutputType, giiCortex, VolRes);   % 'volume' or 'surface'
+                     OutputType, giiCortex, SaveMNI, VolRes);   % 'volume' or 'surface'
     end
     
     % ===== GROUP ANALYSIS =====
@@ -487,7 +488,7 @@ for i00 = 1:size(latency, 2)
         WriteTvalues(deblank(DD(1,:)), ...  % Reference recordings
                      fullfile(matlabbatch{1}.spm.stats.fmri_spec.dir{1}, ['spmT_0001' outExt]), ...  % T-values
                      fullfile(P, [NameEpileptogenicity '_Group_' FileName '_' num2str(min(FreqBand)) '_' num2str(max(FreqBand)) '_' num2str(round(mean(Horizon))) '_' num2str(round(mean(Latency)))]), ... % Output file name (without the extension)
-                     OutputType, giiCortex, VolRes);   % 'volume' or 'surface'
+                     OutputType, giiCortex, SaveMNI, VolRes);   % 'volume' or 'surface'
     end
     
     % ===== DELETE TEMP FILES =====
@@ -531,7 +532,7 @@ end
 %  ===================================================================================================
 
 %% ===== WRITE T-VALUES FOR EACH ELECTRODE =====
-function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, VolRes)
+function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, SaveMNI, VolRes)
     NameEpileptogenicity = 'EI';
     % Load reference recordings
     D = spm_eeg_load(RecFile);
@@ -540,18 +541,24 @@ function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, Vo
         case 'volume'
             V = spm_vol(TvalueFile);
             VV = spm_read_vols(V);
-            tmp = spm('Defaults','EEG');
-            bb = tmp.normalise.write.bb;
-            [x,y,z] = meshgrid(bb(1,1):VolRes:bb(2,1),...
-                bb(1,2):VolRes:bb(2,2),...
-                bb(1,3):VolRes:bb(2,3));
+            % Use standard positions from SPM template
+            if SaveMNI
+                tmp = spm('Defaults','EEG');
+                bb = tmp.normalise.write.bb;
+                [x,y,z] = meshgrid(bb(1,1):VolRes:bb(2,1),...
+                    bb(1,2):VolRes:bb(2,2),...
+                    bb(1,3):VolRes:bb(2,3));
+                P = [x(:),y(:),z(:)];
+            % Use real coordinates from volume (considering first voxel is (1,1,1))
+            else
+                [x,y,z] = meshgrid(1:V.dim(1), 1:V.dim(2), 1:V.dim(3));
+                P = (V.mat(1:3,1:3) * [x(:),y(:),z(:)]' + V.mat(1:3,4))';
+            end
             Tvalues = permute(VV,[2 1 3]);
         case 'surface'
             giiT = gifti(TvalueFile);
             Tvalues = giiT.cdata(:,:,:);
-            x = giiCortex.vertices(:,1);
-            y = giiCortex.vertices(:,2);
-            z = giiCortex.vertices(:,3);
+            P = giiCortex.vertices;
     end
     
     % Get sensor positions
@@ -564,7 +571,7 @@ function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, Vo
     % Average the T values in a neighborhood of 10 mm around each contact (SizeHorizon when creating images)
     EIGamma = zeros(size(PosElec,2),1);
     for i1 = 1:size(PosElec,2)
-        dist = (x(:)-PosElec(1,i1)).^2+(y(:)-PosElec(2,i1)).^2+(z(:)-PosElec(3,i1)).^2;
+        dist = (P(:,1)-PosElec(1,i1)).^2+(P(:,2)-PosElec(2,i1)).^2+(P(:,3)-PosElec(3,i1)).^2;
         tmp1 = Tvalues((dist < 100) & (Tvalues(:) ~= 0));
         if ~isempty(tmp1)
             EIGamma(i1) = mean(tmp1);
