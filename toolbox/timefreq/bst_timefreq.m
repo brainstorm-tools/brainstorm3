@@ -575,22 +575,15 @@ for iData = 1:length(Data)
                 'tapsmofrq', freqres, ...
                 'pad',       pad, ...
                 'verbose',   0);
-            % Compute power, average across tapers
-            TF = nanmean(TF .* conj(TF), 1);
-            % Permute dimensions to get [nChannels x nTime x nFreq]
+            % Permute dimensions to get [nChannels x nTime x nFreq x nTapers]
             TF = permute(TF, [2 4 3 1]);
-            % Apply measure here
-            if strcmpi(OPTIONS.Measure, 'magnitude')
-                TF = sqrt(TF);
-            end
-            isMeasureApplied = 1;
     end
     bst_progress('inc', 1);
     % Set to zero the bad channels
     if ~isempty(iGoodChannels)
         iBadChannels = setdiff(1:size(F,1), iGoodChannels);
         if ~isempty(iBadChannels)
-            TF(iBadChannels, :, :) = 0;
+            TF(iBadChannels, :, :, :) = 0;
         end
     end
     % Clean memory
@@ -600,10 +593,12 @@ for iData = 1:length(Data)
     % Kernel => Full results
     if strcmpi(DataType, 'results') && ~isempty(ImagingKernel) && ~OPTIONS.SaveKernel
         % Initialize full time-frequency matrix
-        TF_full = zeros(size(ImagingKernel,1), size(TF,2), size(TF,3));
-        % Loop on the frequencies
-        for ifreq = 1:size(TF,3)
-            TF_full(:,:,ifreq) = ImagingKernel * TF(:,:,ifreq);
+        TF_full = zeros(size(ImagingKernel,1), size(TF,2), size(TF,3), size(TF,4));
+        % Loop on the frequencies and tapers
+        for itaper = 1:size(TF,4)
+            for ifreq = 1:size(TF,3)
+                TF_full(:,:,ifreq,itaper) = ImagingKernel * TF(:,:,ifreq,itaper);
+            end
         end
         % Replace previous values with new ones
         TF = TF_full;
@@ -619,11 +614,21 @@ for iData = 1:length(Data)
     
     % ===== APPLY MEASURE =====
     if ~isMeasureApplied
-        switch lower(OPTIONS.Measure)
-            case 'none'       % Nothing to do
-            case 'power',     TF = abs(TF) .^ 2;
-            case 'magnitude', TF = abs(TF);
-            otherwise,        error('Unknown measure.');
+        % Multitaper: average power across tapers
+        if strcmpi(OPTIONS.Method, 'mtmconvol')
+            TF = nanmean(TF .* conj(TF), 4);
+            % Power or magnitude
+            if strcmpi(OPTIONS.Measure, 'magnitude')
+                TF = sqrt(TF);
+            end
+        % Other measures: Apply the expected measure
+        else
+            switch lower(OPTIONS.Measure)
+                case 'none'       % Nothing to do
+                case 'power',     TF = abs(TF) .^ 2;
+                case 'magnitude', TF = abs(TF);
+                otherwise,        error('Unknown measure.');
+            end
         end
     end
     
