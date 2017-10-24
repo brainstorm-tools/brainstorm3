@@ -203,16 +203,17 @@ sFile.channelflag = ones(hdr.nsignal,1);
 SplitType = repmat({''}, 1, hdr.nsignal);
 SplitName = repmat({''}, 1, hdr.nsignal);
 for i = 1:hdr.nsignal
+    signalLabel = strrep(hdr.signal(i).label, ' - ', '-');
     % Find space chars (label format "Type Name")
-    iSpace = find(hdr.signal(i).label == ' ');
+    iSpace = find(signalLabel == ' ');
     % Only if there is one space only
     if (length(iSpace) == 1) && (iSpace >= 3)
-        SplitName{i} = hdr.signal(i).label(iSpace+1:end);
-        SplitType{i} = hdr.signal(i).label(1:iSpace-1);
+        SplitName{i} = signalLabel(iSpace+1:end);
+        SplitType{i} = signalLabel(1:iSpace-1);
     % Accept also 2 spaces
     elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
-        SplitName{i} = strrep(hdr.signal(i).label(iSpace(1)+1:end), ' ', '_');
-        SplitType{i} = hdr.signal(i).label(1:iSpace(1)-1);
+        SplitName{i} = strrep(signalLabel(iSpace(1)+1:end), ' ', '_');
+        SplitType{i} = signalLabel(1:iSpace(1)-1);
     end
 end
 % Remove the classification if it makes some names non unique
