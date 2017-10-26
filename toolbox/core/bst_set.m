@@ -254,8 +254,20 @@ switch contextName
         if length(varargin) ~= 4
             error('Invalid call to bst_set.');
         end
-        saveplotlycredentials(varargin{2}, varargin{3});
-        saveplotlyconfig(varargin{4});
+        [username, apiKey, domain] = varargin{2:4};
+        
+        % Plotly needs a URL with HTTP and no trailing slash.
+        if strcmpi(domain, 'https://')
+            domain = strrep(domain, 'https://', 'http://');
+        elseif ~strcmpi(domain, 'http://')
+            domain = ['http://', domain];
+        end
+        if domain(end) == '/'
+            domain = domain(1:end-1);
+        end
+        
+        saveplotlycredentials(username, apiKey);
+        saveplotlyconfig(domain);
         
 %% ==== ERROR ====
     otherwise
