@@ -186,6 +186,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('groot')                   : Get the root graphic object
 %    - bst_get('JFrame', hFig)            : Get the underlying java frame for a Matlab figure
 %    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
+%    - bst_get('PlotlyCredentials')       : Get the credentials and URL to connect to plot.ly server
 %
 % SEE ALSO bst_set
 
@@ -2947,6 +2948,28 @@ switch contextName
             argout1 = GlobalData.Preferences.LastPsdDisplayFunction;
         else
             argout1 = [];
+        end
+
+    case 'PlotlyCredentials'
+        try
+            creds = loadplotlycredentials();
+            argout1 = creds.username;
+            argout2 = creds.api_key;
+        catch
+            argout1 = '';
+            argout2 = '';
+        end
+        
+        try
+            config = loadplotlyconfig();
+            argout3 = config.plotly_domain;
+        catch
+            argout3 = '';
+        end
+        
+        if isempty(argout3)
+            % Default Plot.ly server
+            argout3 = 'https://plot.ly';
         end
         
         

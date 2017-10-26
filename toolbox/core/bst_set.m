@@ -73,6 +73,7 @@ function bst_set( varargin )
 %    - bst_set('DigitizeOptions',       DigitizeOptions)
 %    - bst_set('ReadOnly',              ReadOnly)
 %    - bst_set('LastPsdDisplayFunction', LastPsdDisplayFunction)
+%    - bst_set('PlotlyCredentials',     Username, ApiKey, Domain)
 %
 % SEE ALSO bst_get
 
@@ -248,6 +249,13 @@ switch contextName
 
     case 'ReadOnly'
         GlobalData.DataBase.isReadOnly = contextValue;
+    
+    case 'PlotlyCredentials'
+        if length(varargin) ~= 4
+            error('Invalid call to bst_set.');
+        end
+        saveplotlycredentials(varargin{2}, varargin{3});
+        saveplotlyconfig(varargin{4});
         
 %% ==== ERROR ====
     otherwise
