@@ -1,0 +1,13 @@
+=====================
+Version 1.1
+3/25/2012
+
+Summary: Bug fixes related to Matlab throwing errors when it shouldn't have been. Thanks to Shane Lin for pointing out the problems.
+
+Bug Fix: Modified code so that http status errors wouldn't throw errors in the code, but rather would be passed on to the user to process
+
+Bug Fix: Provided GET example code apparently doesn't work for all users, changed to a different example.
+
+=====================
+Version 1
+3/17/2012

@@ -20,7 +20,7 @@ function varargout = panel_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2017; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -89,6 +89,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jPanelScaling.add('hfill', jSliderScaling);
     jPanelLeft.add('br hfill', jPanelScaling);
     
+    % ===== LEFT: SIGNAL PROCESSING =====
+    jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
+        jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', []);
+        % jCheckOrigFolder = gui_component('CheckBox', jPanelProc, 'br', 'Store continuous files in original folder', [], '<HTML>If selected, the continuous files processed with the Process1 tab are stored in the same folder as the input raw files. <BR>Else, they are stored directly in the Brainstorm database.', @UpdateProcessOptions_Callback);
+        % jCheckOrigFormat = gui_component('CheckBox', jPanelProc, 'br', 'Save continuous files in original format',  [], '<HTML>If selected, the continuous files processed with the Process1 tab are saved in the same data format as the input raw files.<BR>Else, they are saved in the Brainstorm binary format.<BR>This option is available only for FIF and CTF files.', []);
+    jPanelLeft.add('br hfill', jPanelProc);
+    
     % ===== RIGHT =====
     jPanelRight = gui_river();
     jPanelNew.add(jPanelRight);
@@ -114,12 +121,15 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jButtonSpmDir.setFocusable(0);
     jPanelRight.add('br hfill', jPanelImport);
     
-    % ===== RIGHT: SIGNAL PROCESSING =====
-    jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
-        jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', []);
-        % jCheckOrigFolder = gui_component('CheckBox', jPanelProc, 'br', 'Store continuous files in original folder', [], '<HTML>If selected, the continuous files processed with the Process1 tab are stored in the same folder as the input raw files. <BR>Else, they are stored directly in the Brainstorm database.', @UpdateProcessOptions_Callback);
-        % jCheckOrigFormat = gui_component('CheckBox', jPanelProc, 'br', 'Save continuous files in original format',  [], '<HTML>If selected, the continuous files processed with the Process1 tab are saved in the same data format as the input raw files.<BR>Else, they are saved in the Brainstorm binary format.<BR>This option is available only for FIF and CTF files.', []);
-    jPanelRight.add('br hfill', jPanelProc);
+    % ===== RIGHT: PLOTLY =====
+    jPanelPlotly = gui_river([5 5], [0 15 15 15], 'Plotly');
+        gui_component('Label', jPanelPlotly, '', 'Username: ', [], [], []);
+        jTextPlotlyUsername = gui_component('Text', jPanelPlotly, 'hfill', '', [], [], []);
+        gui_component('Label', jPanelPlotly, 'br', 'API key: ', [], [], []);
+        jTextPlotlyApikey = gui_component('Text', jPanelPlotly, 'hfill', '', [], [], []);
+        gui_component('Label', jPanelPlotly, 'br', 'Domain: ', [], [], []);
+        jTextPlotlyDomain = gui_component('Text', jPanelPlotly, 'hfill', '', [], [], []);
+    jPanelRight.add('br hfill', jPanelPlotly);
     
     % ===== RIGHT: RESET =====
     if (GlobalData.Program.GuiLevel == 1)
@@ -202,6 +212,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         isToolboxInstalled = (exist('fir2', 'file') > 0);
         jCheckUseSigProc.setEnabled(isToolboxInstalled);
         jCheckUseSigProc.setSelected(bst_get('UseSigProcToolbox'));
+        % Plotly credentials
+        [plyUser, plyApi, plyDomain] = bst_get('PlotlyCredentials');
+        jTextPlotlyUsername.setText(plyUser);
+        jTextPlotlyApikey.setText(plyApi);
+        jTextPlotlyDomain.setText(plyDomain);
     end
 
 
@@ -304,6 +319,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % ===== PROCESSING OPTIONS =====
         % Use signal processing toolbox
         bst_set('UseSigProcToolbox', jCheckUseSigProc.isSelected());
+        
+        % ===== PLOTLY CREDENTIALS =====
+        bst_set('PlotlyCredentials', char(jTextPlotlyUsername.getText()), ...
+            char(jTextPlotlyApikey.getText()), char(jTextPlotlyDomain.getText()));
         
         bst_progress('stop');
         
