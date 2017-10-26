@@ -1,0 +1,13 @@
+==========================================================================
+                            IMPROVEMENTS
+==========================================================================
+1) The function could be improved to support file streaming both in sending
+and in receiving (saving) to reduce memory usage but this is very low priority
+
+2) Implement better casing handling
+
+3) Choose a better function name than urlread2 -> sorry Chris :)
+
+4) Support multipart/form-data, this ideally would be handled by a helper function
+
+5) Allow for throwing an error if the HTTP status code is an error (400) and 500 as well?
