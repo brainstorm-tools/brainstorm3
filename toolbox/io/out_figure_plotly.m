@@ -153,6 +153,6 @@ function downloadAndInstallPlotly()
     % Delete unnecessary files
     file_delete(plotlyTmpDir, 1, 3);
     % Add Plotly to Matlab path
-    addpath(plotlyDir);
+    addpath(genpath(plotlyDir));
 end
 
