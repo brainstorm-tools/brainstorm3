@@ -2967,11 +2967,6 @@ switch contextName
             argout3 = '';
         end
         
-        if isempty(argout3)
-            % Default Plot.ly server
-            argout3 = 'https://plot.ly';
-        end
-        
         
 %% ===== FILE FILTERS =====
     case 'FileFilters'

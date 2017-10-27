@@ -256,10 +256,15 @@ switch contextName
         end
         [username, apiKey, domain] = varargin{2:4};
         
+        if isempty(domain)
+            % Default Plot.ly server
+            domain = 'http://plot.ly';
+        end
+        
         % Plotly needs a URL with HTTP and no trailing slash.
         if strcmpi(domain, 'https://')
             domain = strrep(domain, 'https://', 'http://');
-        elseif ~strcmpi(domain, 'http://')
+        elseif ~strfind(domain, 'http://')
             domain = ['http://', domain];
         end
         if domain(end) == '/'

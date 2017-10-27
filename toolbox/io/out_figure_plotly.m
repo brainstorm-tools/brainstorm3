@@ -39,21 +39,17 @@ if ~exist('plotlyfig', 'file')
     downloadAndInstallPlotly();
 end
 
-% Make sure the Plotly credentials exist
-[username, apikey] = bst_get('PlotlyCredentials');
-if isempty(username) || isempty(apikey)
-    % Ask for credentials if they are missing
-    java_dialog('msgbox', ['No Plotly credentials saved. ', ...
-        'Please enter them in the Brainstorm preferences.']);
-    gui_show('panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0);
-    
-    % If credentials are still missing, cancel
-    [username, apikey] = bst_get('PlotlyCredentials');
-    if isempty(username) || isempty(apikey)
-        bst_progress('stop');
-        return;
-    end
+% Confirm Plotly credentials
+[username, apikey, domain] = bst_get('PlotlyCredentials');
+[res, isCancel] = java_dialog('input', ...
+    {['<html><body><p>Please enter your Plotly credentials</p><br>', ...
+    '<p>Username:</p></body></html>'], 'API Key:', 'Domain:'}, ...
+    'Plotly Credentials', [], {username, apikey, domain});
+if isCancel || isempty(res{1}) || isempty(res{2})
+    bst_progress('stop');
+    return;
 end
+bst_set('PlotlyCredentials', res{1}, res{2}, res{3});
 
 % Clone figure
 hTempFig = bst_figures('CloneFigure', hFig);
