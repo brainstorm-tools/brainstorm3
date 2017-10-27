@@ -262,9 +262,9 @@ switch contextName
         end
         
         % Plotly needs a URL with HTTP and no trailing slash.
-        if strcmpi(domain, 'https://')
+        if strfind(domain, 'https://')
             domain = strrep(domain, 'https://', 'http://');
-        elseif ~strfind(domain, 'http://')
+        elseif isempty(strfind(domain, 'http://'))
             domain = ['http://', domain];
         end
         if domain(end) == '/'
