@@ -43,7 +43,7 @@ end
 [username, apikey, domain] = bst_get('PlotlyCredentials');
 [res, isCancel] = java_dialog('input', ...
     {['<html><body><p>Please enter your Plotly credentials</p><br>', ...
-    '<p>Username:</p></body></html>'], 'API Key:', 'Domain:'}, ...
+    '<p>Username:</p></body></html>'], 'API Key:', 'Domain (optional):'}, ...
     'Plotly Credentials', [], {username, apikey, domain});
 if isCancel || isempty(res{1}) || isempty(res{2})
     bst_progress('stop');
@@ -85,11 +85,16 @@ for iAx = 1:length(axes)
     end
 end
 
+% Plotly treats slashes in figure name as folders, but does not support
+% creating folders with free accounts on its default domain (http://plot.ly).
+% Therefore, slashes will be removed for now.
+figName = strrep(hTempFig.Name, '/', ' - ');
+
 % Send figure to Plotly
 bst_progress('text', 'Sending figure...');
 PlotlyException = [];
 try
-    p = plotlyfig(hTempFig, 'filename', hTempFig.Name);
+    p = plotlyfig(hTempFig, 'filename', figName);
     response = p.plotly;
 catch PlotlyException
 end
