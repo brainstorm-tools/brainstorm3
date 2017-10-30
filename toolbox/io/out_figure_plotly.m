@@ -85,7 +85,9 @@ for iAx = 1:length(axes)
         plot_data = get(plots(iPlot));
         
         % Remove line breaks in names
-        plots(iPlot).DisplayName = strrep(plot_data.DisplayName, char(10), ' ');
+        if isfield(plot_data,'DisplayName') && ~isempty(plot_data.DisplayName)
+            plots(iPlot).DisplayName = strrep(plot_data.DisplayName, char(10), ' ');
+        end
         
         % If all Z positions are the same, remove Z information to force 2D
         if isfield(plot_data,'ZData') && ~isempty(plot_data.ZData) && all(all(plot_data.ZData == plot_data.ZData(1)))
