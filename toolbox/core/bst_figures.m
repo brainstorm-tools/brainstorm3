@@ -1231,9 +1231,15 @@ end
 function hNewFig = CloneFigure(hFig)
     global GlobalData;
     % Get figure description in GlobalData
-    [hFig, iFig, iDS] = GetFigure(hFig);
+    [tmp, iFig, iDS] = GetFigure(hFig);
     if isempty(iFig)
-        warning('Brainstorm:FigureNotRegistered','Figure is not registered in Brainstorm.');
+        if strcmpi(get(hFig, 'Tag'), 'FigHistograms')
+            % Histograms are not registered figures but can still be cloned
+            % using their UserData
+            hNewFig = view_histogram(hFig.UserData.FileNames, hFig.UserData.forceOld);
+        else
+            warning('Brainstorm:FigureNotRegistered','Figure is not registered in Brainstorm.');
+        end
         return;
     end
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
