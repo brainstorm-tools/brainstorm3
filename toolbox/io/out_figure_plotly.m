@@ -66,7 +66,11 @@ drawnow;
 
 % Prepare ax(es) to send to Plotly
 bst_progress('start', 'Export figure to Plotly', 'Preparing figure...');
-axes = findobj(hTempFig,'Type','axes','-and',{'Tag','AxesGraph','-or','Tag',''});
+axes = findobj(hTempFig, 'Type', 'axes', '-and', ...
+    {'Tag', 'AxesGraph', ...
+     '-or', 'Tag', 'AxesTimefreq', ...
+     '-or', 'Tag', '', ...
+    });
 
 for iAx = 1:length(axes)
     % Plotly includes axes without tags
@@ -84,7 +88,7 @@ for iAx = 1:length(axes)
         plots(iPlot).DisplayName = strrep(plot_data.DisplayName, char(10), ' ');
         
         % If all Z positions are the same, remove Z information to force 2D
-        if isfield(plot_data,'ZData') && ~isempty(plot_data.ZData) && all(plot_data.ZData == plot_data.ZData(1))
+        if isfield(plot_data,'ZData') && ~isempty(plot_data.ZData) && all(all(plot_data.ZData == plot_data.ZData(1)))
             plots(iPlot).ZData = [];
         end
         
@@ -100,6 +104,11 @@ end
 % creating folders with free accounts on its default domain (http://plot.ly).
 % Therefore, slashes will be removed for now.
 figName = strrep(hTempFig.Name, '/', ' - ');
+
+% Max length of figure name
+if length(figName) > 100
+    figName = figName(1:100);
+end
 
 % Send figure to Plotly
 bst_progress('text', 'Sending figure...');
