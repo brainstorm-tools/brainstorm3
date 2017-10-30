@@ -51,6 +51,14 @@ if isCancel || isempty(res{1}) || isempty(res{2})
 end
 bst_set('PlotlyCredentials', res{1}, res{2}, res{3});
 
+% For histogram plots, we need to use the old Matlab histogram objects as
+% the newer ones are not supported by Plotly
+if strcmpi(get(hFig, 'Tag'), 'FigHistograms')
+    figData = get(hFig, 'UserData');
+    figData.forceOld = 1;
+    set(hFig, 'UserData', figData);
+end
+
 % Clone figure
 hTempFig = bst_figures('CloneFigure', hFig);
 set(hTempFig, 'Visible', 'off');
@@ -58,7 +66,7 @@ drawnow;
 
 % Prepare ax(es) to send to Plotly
 bst_progress('start', 'Export figure to Plotly', 'Preparing figure...');
-axes = findobj(hTempFig,'Type','axes','-and','Tag','AxesGraph');
+axes = findobj(hTempFig,'Type','axes','-and',{'Tag','AxesGraph','-or','Tag',''});
 
 for iAx = 1:length(axes)
     % Plotly includes axes without tags
@@ -71,6 +79,9 @@ for iAx = 1:length(axes)
     plots = findobj(axes(iAx),'-not','Type','Text','-not','Type','axes','-depth',1);
     for iPlot = 1:length(plots)
         plot_data = get(plots(iPlot));
+        
+        % Remove line breaks in names
+        plots(iPlot).DisplayName = strrep(plot_data.DisplayName, char(10), ' ');
         
         % If all Z positions are the same, remove Z information to force 2D
         if isfield(plot_data,'ZData') && ~isempty(plot_data.ZData) && all(plot_data.ZData == plot_data.ZData(1))

@@ -88,6 +88,7 @@ jButtonEqual = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON
 jButtonGauss = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_FIND_MAX, TB_DIM},  'Display the corresponding normal distribution', @(h,ev)PlotGaussian, []);
 jButtonEqual.setSelected(1);
 jButtonGauss.setSelected(1);
+jButtonPlotly = gui_component('ToolbarButton', jToolbar, [], [], IconLoader.ICON_PLOTLY,  'Export to Plotly', @(h,ev)bst_call(@out_figure_plotly, hFig), []);
 jToolbar.addSeparator();
 % Edit number of bins
 nBins = 9;
