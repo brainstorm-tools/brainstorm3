@@ -90,7 +90,7 @@ for i = 1:length(AllNames)
     elseif isSEEG && ~any(ismember(lower(AllNames{i}), 'abcdefghijklmnopqrstuvwxyz'))
         continue;
     % Unwanted labels
-    elseif ismember(lower(AllTags{i}), {'xxxxx', 'mark', 'dc', 'emg', 'eog', 'veo', 'heo', 'veog', 'heog', 'myo', 'dd', 'dg', 'el', 'ref', 'eegref', 'eref', 'vref', 'ref', 'pulse', 'mast', 'spo2', 'lpar', 'rpar','tib'})
+    elseif ismember(lower(AllTags{i}), {'xxxxx', 'mark', 'dc', 'emg', 'eog', 'veo', 'heo', 'veog', 'heog', 'myo', 'myog', 'myod', 'dd', 'dg', 'el', 'ref', 'eegref', 'eref', 'vref', 'ref', 'pulse', 'mast', 'spo2', 'lpar', 'rpar','tib'})
         % MAYBE ADD 'oc' ??
         continue;
     % Unwanted labels

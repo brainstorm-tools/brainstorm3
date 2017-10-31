@@ -2810,6 +2810,10 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
     end
     % Add channels to the figure
     figure_mri('LoadElectrodes', hFig, ChannelFile, Modality);
+    % SEEG and ECOG: Open tab "iEEG"
+    if ismember(Modality, {'SEEG', 'ECOG'})
+        gui_brainstorm('ShowToolTab', 'iEEG');
+    end
 end
 
 

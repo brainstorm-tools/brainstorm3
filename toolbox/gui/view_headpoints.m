@@ -67,12 +67,13 @@ ChannelMat = in_bst_channel(ChannelFile);
 [hFig, iDS, iFig] = view_surface(ScalpFile, .2);
 
 % Extend figure and dataset for this particular channel file
-GlobalData.DataSet(iDS).StudyFile   = sStudy.FileName;
-GlobalData.DataSet(iDS).ChannelFile = ChannelFile;
-GlobalData.DataSet(iDS).Channel     = ChannelMat.Channel;
-GlobalData.DataSet(iDS).MegRefCoef  = ChannelMat.MegRefCoef; 
-GlobalData.DataSet(iDS).Projector   = ChannelMat.Projector; 
-GlobalData.DataSet(iDS).HeadPoints  = ChannelMat.HeadPoints;
+GlobalData.DataSet(iDS).StudyFile       = sStudy.FileName;
+GlobalData.DataSet(iDS).ChannelFile     = ChannelFile;
+GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
+GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
+GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
+GlobalData.DataSet(iDS).HeadPoints      = ChannelMat.HeadPoints;
 
 % View HeadPoints
 figure_3d('ViewHeadPoints', hFig, 1);

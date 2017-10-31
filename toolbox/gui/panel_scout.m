@@ -137,7 +137,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % ===== Atlas list =====
             jPanelAtlas = gui_component('Panel');
                 % Combo box to select the current protocol
-                jComboAtlas = gui_component('ComboBox', jPanelAtlas, BorderLayout.NORTH, [], [], [], []);
+                jComboAtlas = gui_component('ComboBox', jPanelAtlas, BorderLayout.NORTH, [], [], [], [], []);
                 jComboAtlas.setFocusable(0);
                 jComboAtlas.setMaximumRowCount(15);
                 % ComboBox change selection callback

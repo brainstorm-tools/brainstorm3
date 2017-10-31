@@ -118,6 +118,10 @@ if (length(FileNames) == 1)
     end
     isMarkers = ~isShowCoils || isDetails;
     [hFig, iDS, iFig] = view_channels(FileNames{1}, Modality, isMarkers, isLabels, hFig, is3DElectrodes);
+    % SEEG and ECOG: Open tab "iEEG"
+    if ismember(Modality, {'SEEG', 'ECOG'})
+        gui_brainstorm('ShowToolTab', 'iEEG');
+    end
 % Multiple: Markers only
 else
     ColorTable = [1,0,0; 0,1,0; 0,0,1];

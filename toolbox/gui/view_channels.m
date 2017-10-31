@@ -114,11 +114,12 @@ else
 end
 
 % ===== CONFIGURE DATASET =====
-GlobalData.DataSet(iDS).ChannelFile = ChannelFile;
-GlobalData.DataSet(iDS).Channel     = ChannelMat.Channel;
-GlobalData.DataSet(iDS).MegRefCoef  = ChannelMat.MegRefCoef; 
-GlobalData.DataSet(iDS).Projector   = ChannelMat.Projector; 
-GlobalData.DataSet(iDS).HeadPoints  = ChannelMat.HeadPoints;
+GlobalData.DataSet(iDS).ChannelFile     = ChannelFile;
+GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
+GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
+GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
+GlobalData.DataSet(iDS).HeadPoints      = ChannelMat.HeadPoints;
 
 % ===== CREATE 3DVIZ FIGURE =====
 % Progress bar

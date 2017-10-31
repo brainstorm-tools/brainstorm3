@@ -33,7 +33,7 @@ function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, I
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2016
+% Authors: Francois Tadel, 2009-2017
 
 if (nargin < 3) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
@@ -42,6 +42,20 @@ sFile = [];
 ChannelMat = [];
 DataMat = [];
 errMsg = [];
+
+% SEEG: Detect file format
+if ismember(FileFormat, {'SEEG-ALL', 'ECOG-ALL'})
+    [fPath,fBase,fExt] = bst_fileparts(DataFile);
+    switch lower(fExt)
+        case '.trc',  FileFormat = 'EEG-MICROMED';
+        case '.eeg',  FileFormat = 'EEG-NK';
+        case '.e',    FileFormat = 'EEG-NICOLET';
+        case '.bin',  FileFormat = 'EEG-DELTAMED';
+        case '.rda',  FileFormat = 'EEG-COMPUMEDICS-PFS';
+        case '.edf',  FileFormat = 'EEG-EDF';
+        case '.bdf',  FileFormat = 'EEG-BDF';
+    end
+end
 
 switch (FileFormat)
     % ===== SUPPORTED AS CONTINUOUS FILES =====
@@ -69,7 +83,7 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_deltamed(DataFile);
     case 'EEG-COMPUMEDICS-PFS'
         [sFile, ChannelMat] = in_fopen_compumedics_pfs(DataFile);
-    case {'EEG-EDF', 'EEG-BDF'}
+    case 'EEG-EDF', 'EEG-BDF'
         [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions);
     case 'EEG-EEGLAB'
         [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions);

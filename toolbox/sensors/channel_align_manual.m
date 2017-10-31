@@ -339,13 +339,13 @@ else
     gChanAlign.hButtonAdd = [];
     gChanAlign.hButtonDelete = [];
 end
-if strcmpi(Modality, 'ECOG')
-    gChanAlign.hButtonAlign = uipushtool(hToolbar, 'CData', java_geticon('ICON_ECOG'), 'TooltipString', ['Operations specific to ' Modality ' electrodes'], 'ClickedCallback', @(h,ev)ShowElectrodeMenu(hFig, Modality), 'separator', 'on');
-elseif strcmpi(Modality, 'SEEG') 
-    gChanAlign.hButtonAlign = uipushtool(hToolbar, 'CData', java_geticon('ICON_SEEG'), 'TooltipString', ['Operations specific to ' Modality ' electrodes'], 'ClickedCallback', @(h,ev)ShowElectrodeMenu(hFig, Modality), 'separator', 'on');
-else
+% if strcmpi(Modality, 'ECOG')
+%     gChanAlign.hButtonAlign = uipushtool(hToolbar, 'CData', java_geticon('ICON_ECOG'), 'TooltipString', ['Operations specific to ' Modality ' electrodes'], 'ClickedCallback', @(h,ev)ShowElectrodeMenu(hFig, Modality), 'separator', 'on');
+% elseif strcmpi(Modality, 'SEEG') 
+%     gChanAlign.hButtonAlign = uipushtool(hToolbar, 'CData', java_geticon('ICON_SEEG'), 'TooltipString', ['Operations specific to ' Modality ' electrodes'], 'ClickedCallback', @(h,ev)ShowElectrodeMenu(hFig, Modality), 'separator', 'on');
+% else
     gChanAlign.hButtonAlign = [];
-end
+% end
 gChanAlign.hButtonOk = uipushtool(  hToolbar, 'CData', java_geticon( 'ICON_OK'), 'separator', 'on', 'ClickedCallback', @buttonOk_Callback);% Update figure localization
 gui_layout('Update');
 % Move a bit the figure to refresh it on all systems
@@ -1268,67 +1268,67 @@ function SetSensorsVertices(hSensorsPatch, hSensorsMarkers, SensorsVertices)
 end
 
 
-%% ===== CREATE MONTAGE MENU =====
-function ShowElectrodeMenu(hFig, Modality)
-    import org.brainstorm.icon.*;
-    % Create popup menu    
-    jPopup = java_create('javax.swing.JPopupMenu');
-    % Align SEEG electrodes
-    if strcmpi(Modality, 'SEEG')
-        jItem = gui_component('MenuItem', jPopup, [], 'Align all contacts in a group',              IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback('all'), []);
-        jItem = gui_component('MenuItem', jPopup, [], 'Define group with first and second contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback('first_second'), []);
-        jItem = gui_component('MenuItem', jPopup, [], 'Define group with first and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback('first_last'), []);
-    elseif strcmpi(Modality, 'ECOG')
-        jItem = gui_component('MenuItem', jPopup, [], 'Define strip: First and last contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback(1), []);
-        jItem = gui_component('MenuItem', jPopup, [], 'Define grid: First and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback(2), []);
-        jItem = gui_component('MenuItem', jPopup, [], 'Define grid: 4 corner contacts',        IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback(4), []);
-    else
-        return;
-    end
-    % Display Popup menu
-    gui_popup(jPopup, hFig);
-end
+% %% ===== CREATE MONTAGE MENU =====
+% function ShowElectrodeMenu(hFig, Modality)
+%     import org.brainstorm.icon.*;
+%     % Create popup menu    
+%     jPopup = java_create('javax.swing.JPopupMenu');
+%     % Align SEEG electrodes
+%     if strcmpi(Modality, 'SEEG')
+%         jItem = gui_component('MenuItem', jPopup, [], 'Align all contacts in a group',              IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback('all'), []);
+%         jItem = gui_component('MenuItem', jPopup, [], 'Define group with first and second contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback('first_second'), []);
+%         jItem = gui_component('MenuItem', jPopup, [], 'Define group with first and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback('first_last'), []);
+%     elseif strcmpi(Modality, 'ECOG')
+%         jItem = gui_component('MenuItem', jPopup, [], 'Define strip: First and last contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback(1), []);
+%         jItem = gui_component('MenuItem', jPopup, [], 'Define grid: First and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback(2), []);
+%         jItem = gui_component('MenuItem', jPopup, [], 'Define grid: 4 corner contacts',        IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback(4), []);
+%     else
+%         return;
+%     end
+%     % Display Popup menu
+%     gui_popup(jPopup, hFig);
+% end
 
-
-%% ===== FIX INTRA ELECTRODES =====
-% SEEG:  FixIntraElectrodes_Callback(Method)     : Method={first_last, first_second, all}
-% ECOG:  FixIntraElectrodes_Callback(nCorners)   : nCorners={1,2,4}
-function FixIntraElectrodes_Callback(Method)
-    global gChanAlign;
-    % Parse inputs
-    if (nargin < 1) || isempty(Method)
-        error('Invalid call.');
-    end
-    % Progress bar
-    bst_progress('start', 'Align electrode contacts', 'Updating electrode positions...');
-    % Get channels to modify 
-    ChannelMat = GetCurrentChannelMat(0);
-    % Get modality channels
-    iChannels = good_channel(ChannelMat.Channel, [], gChanAlign.Modality);
-    Channels = ChannelMat.Channel(iChannels);
-    % Call the function to align electodes
-    switch (gChanAlign.Modality)
-        case 'SEEG'
-            Channels = figure_mri('AlignSeegElectrodes', Channels, Method);
-        case 'ECOG'
-            sSubject = bst_get('Subject', getappdata(gChanAlign.hFig, 'SubjectFile'));
-            Channels = figure_mri('AlignEcogElectrodes', Channels, sSubject, Method);
-        otherwise
-            error('Unsupported modality.');
-    end
-    if isempty(Channels)
-        bst_progress('stop');
-        return;
-    end
-    % Process each sensor
-    gChanAlign.SensorsVertices = [Channels.Loc]';
-    % Update display 
-    UpdatePoints(1:length(gChanAlign.hSensorsLabels));
-    % Set modified flag
-    gChanAlign.isChanged = 1;
-    % Progress bar
-    bst_progress('stop');
-end
+% 
+% %% ===== FIX INTRA ELECTRODES =====
+% % SEEG:  FixIntraElectrodes_Callback(Method)     : Method={first_last, first_second, all}
+% % ECOG:  FixIntraElectrodes_Callback(nCorners)   : nCorners={1,2,4}
+% function FixIntraElectrodes_Callback(Method)
+%     global gChanAlign;
+%     % Parse inputs
+%     if (nargin < 1) || isempty(Method)
+%         error('Invalid call.');
+%     end
+%     % Progress bar
+%     bst_progress('start', 'Align electrode contacts', 'Updating electrode positions...');
+%     % Get channels to modify 
+%     ChannelMat = GetCurrentChannelMat(0);
+%     % Get modality channels
+%     iChannels = good_channel(ChannelMat.Channel, [], gChanAlign.Modality);
+%     Channels = ChannelMat.Channel(iChannels);
+%     % Call the function to align electodes
+%     switch (gChanAlign.Modality)
+%         case 'SEEG'
+%             Channels = panel_ieeg('AlignSeegElectrodes', Channels, Method);
+%         case 'ECOG'
+%             sSubject = bst_get('Subject', getappdata(gChanAlign.hFig, 'SubjectFile'));
+%             Channels = panel_ieeg('AlignEcogElectrodes', Channels, sSubject, Method);
+%         otherwise
+%             error('Unsupported modality.');
+%     end
+%     if isempty(Channels)
+%         bst_progress('stop');
+%         return;
+%     end
+%     % Process each sensor
+%     gChanAlign.SensorsVertices = [Channels.Loc]';
+%     % Update display 
+%     UpdatePoints(1:length(gChanAlign.hSensorsLabels));
+%     % Set modified flag
+%     gChanAlign.isChanged = 1;
+%     % Progress bar
+%     bst_progress('stop');
+% end
 
 
 

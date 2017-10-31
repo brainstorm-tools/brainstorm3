@@ -120,7 +120,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'isStatic', 0);
     setappdata(hFig, 'isStaticFreq', 1);
     setappdata(hFig, 'Colormap', db_template('ColormapInfo'));
-    setappdata(hFig, 'ElectrodeInfo', []);
+    setappdata(hFig, 'ElectrodeDisplay', struct('DisplayMode', 'depth'));
 
     % === LIGHTING ===
     hl = [];
@@ -226,8 +226,6 @@ function FigureClickCallback(hFig, varargin)
     end
     % Check if MouseUp was executed before MouseDown
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig,'clickAction'), 'MouseDownNotConsumed')
-        % Should ignore this MouseDown event
-        setappdata(hFig,'clickAction','MouseDownOk');
         return;
     end
    
@@ -378,7 +376,7 @@ function FigureMouseMoveCallback(hFig, varargin)
         case {'moveSlices', 'popup'}
             FigureId = getappdata(hFig, 'FigureId');
             % TOPO: Select channels
-            if strcmpi(FigureId.Type, 'Topography') && ismember(FigureId.SubType, {'2DLayout', '2DDisc', '2DSensorCap'});
+            if strcmpi(FigureId.Type, 'Topography') && ismember(FigureId.SubType, {'2DLayout', '2DDisc', '2DSensorCap'})
                 % Get current point
                 curPt = curptAxes(1,:);
                 % Limit selection to current display
@@ -1575,22 +1573,6 @@ function DisplayFigurePopup(hFig)
             jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)ViewSensors(hFig, [], ~isLabels));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
             jItem.setSelected(isLabels);
-            % Get the groups available in this file
-            Channel = GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels);
-            [iGroupEeg, GroupNames] = panel_montage('GetEegGroups', Channel, [], 1);
-            % Display the groups separately
-            if (length(iGroupEeg) >= 2)
-                jMenuChannels.addSeparator();
-                % Detect which groups are displayed
-                FaceVertexAlphaData = get(hElectrodeGrid, 'FaceVertexAlphaData');
-                UserData  = get(hElectrodeGrid, 'UserData');
-                % Add a menu for each group
-                for iGroup = 1:length(iGroupEeg)
-                    isVisible = any(FaceVertexAlphaData(UserData == iGroupEeg{iGroup}(1)) > 0);
-                    jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], ['Display: ' GroupNames{iGroup}], IconLoader.ICON_CHANNEL, [], @(h,ev)SetElecGroupVisible(hFig, GroupNames{iGroup}, ~isVisible));
-                    jItem.setSelected(isVisible);
-                end
-            end
             % Configure 3D electrode display
             jMenuChannels.addSeparator();
             gui_component('MenuItem', jMenuChannels, [], 'Configure display', IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodesConfig(hFig));
@@ -1886,7 +1868,8 @@ function MipAnatomy_Callback(hFig, ev)
     MriOptions = bst_get('MriOptions');
     MriOptions.isMipAnatomy = ev.getSource().isSelected();
     bst_set('MriOptions', MriOptions);
-    bst_figures('FireCurrentTimeChanged', 1);
+    % bst_figures('FireCurrentTimeChanged', 1);
+    UpdateMriDisplay(hFig);
 end
 % CHECKBOX: MIP FUNCTIONAL
 function MipFunctional_Callback(hFig, ev)
@@ -2489,9 +2472,8 @@ function hGrid = PlotGrid(hFig, GridLoc, GridValues, GridInd, DataAlpha, DataLim
 end
 
 
-
 %% ===== PLOT 3D ELECTRODES =====
-function [hElectrodeGrid, nVert] = PlotSensors3D(iDS, iFig, Channel, ChanLoc) %#ok<DEFNU>
+function hElectrodeGrid = PlotSensors3D(iDS, iFig, Channel, ChanLoc) %#ok<DEFNU>
     global GlobalData;
     % Get current electrodes positions
     if (nargin < 3) || isempty(Channel) || isempty(ChanLoc)
@@ -2502,452 +2484,144 @@ function [hElectrodeGrid, nVert] = PlotSensors3D(iDS, iFig, Channel, ChanLoc) %#
     % Get axes
     hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
-    Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
-    % Get subject
-    sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
-    % Get electrode configuration
-    ElectrodeInfo = getappdata(hFig, 'ElectrodeInfo');
-    % If not defined: Use default electrodes configuration
-    if isempty(ElectrodeInfo)
-        % Get the saved display defaults for this modality
-        ElectrodeInfo = bst_get('ElectrodeConfig', Modality);
-        % Cannot display in 'ecog' mode without the scalp
-        if ismember(ElectrodeInfo.ElecType, {'ecog','eeg'}) && (isempty(sSubject) || (isempty(sSubject.iInnerSkull) && isempty(sSubject.iScalp) && isempty(sSubject.iCortex)))
-            ElectrodeInfo.ElecType = 'sphere';
-        end
-        % Save those values in the figure
-        setappdata(hFig, 'ElectrodeInfo', ElectrodeInfo);
-    end
+    % Get font size
+    fontSize = bst_get('FigFont') + 2;
     % Delete previously created electrodes
     delete(findobj(hFig, 'Tag', 'ElectrodeGrid'));
     delete(findobj(hFig, 'Tag', 'ElectrodeSelect'));
-    delete(findobj(hFig, 'Tag', 'ElectrodeStrip'));
+    delete(findobj(hFig, 'Tag', 'ElectrodeDepth'));
     delete(findobj(hFig, 'Tag', 'ElectrodeWire'));
-    % Create one electrode
-    switch (ElectrodeInfo.ElecType)
-        case 'sphere'
-            % Define electrode geometry
-            nVert = 32;
-            [elecVertex, elecFace] = tess_sphere(nVert);
-            % Electrode size
-            elecSize = [ElectrodeInfo.ElecDiameter ./ 2, ElectrodeInfo.ElecDiameter ./ 2, ElectrodeInfo.ElecDiameter ./ 2];
-            % No specific orientation of the contacts
-            ChanOrient = [];
-            % No strip
-            StripOrient = [];
-            StripStart = [];
-            Wires = [];
-            WireNames = [];
-        case {'ecog', 'eeg'}
-            % Define electrode geometry (double-layer for Matlav < 2014b)
-            if (bst_get('MatlabVersion') < 804)
-                nVert = 66;
-                [elecVertex, elecFace] = tess_cylinder(nVert, 0.8, [], [], 1);
-            else
-                nVert = 34;
-                [elecVertex, elecFace] = tess_cylinder(nVert, 0.8, [], [], 0);
-            end
-            % Electrode size
-            elecSize = [ElectrodeInfo.ElecDiameter ./ 2, ElectrodeInfo.ElecDiameter ./ 2, ElectrodeInfo.ElecHeight];
-            % Get the orientation of the contact (based on the inner skull surface) 
-            ChanOrient = GetChannelNormal(sSubject, ChanLoc, Modality);
-            % No strip
-            StripOrient = [];
-            StripStart = [];
-            % Get ECOG wires
-            [Wires, WireNames] = GetEcogWires(Channel, ChanLoc);
-        case 'seeg'
-            % Get strips of electrodes
-            [ChanOrient, StripOrient, StripStart, ChanFix, StripNames] = GetSeegStrips(Channel, ChanLoc);
-            % Define electrode geometry
-            if ~isempty(ChanOrient)
-                nVert = 34;
-                [elecVertex, elecFace] = tess_cylinder(nVert, 0.8);
-            else
-                nVert = 12;
-                [elecVertex, elecFace] = tess_sphere(nVert);
-            end
-            % Electrode size
-            elecSize = [ElectrodeInfo.ElecDiameter ./ 2, ElectrodeInfo.ElecDiameter ./ 2, ElectrodeInfo.ElecHeight];
-            % No wires
-            Wires = [];
-            WireNames = [];
-    end
-    % Apply electrode size
-    elecVertex = bst_bsxfun(@times, elecVertex, elecSize);
-    % Duplicate this electrode
-    nChan  = size(ChanLoc,1);
-    nFace  = size(elecFace,1);
-    Vertex = zeros(nChan*nVert, 3);
-    Faces  = zeros(nChan*nFace, 3);
-    for iChan = 1:nChan
-        % Apply orientation
-        if ~isempty(ChanOrient) && ~isequal(ChanOrient(iChan,:), [0 0 1])
-            v1 = [0;0;1];
-            v2 = ChanOrient(iChan,:)';
-            % Rotation matrix (Rodrigues formula)
-            angle = acos(v1'*v2);
-            axis  = cross(v1,v2) / norm(cross(v1,v2));
-            axis_skewed = [ 0 -axis(3) axis(2) ; axis(3) 0 -axis(1) ; -axis(2) axis(1) 0];
-            R = eye(3) + sin(angle)*axis_skewed + (1-cos(angle))*axis_skewed*axis_skewed;
-            % Apply rotation to the vertices of the electrode
-            elecVertexOrient = elecVertex * R';
-        else
-            elecVertexOrient = elecVertex;
-        end
-        % Set electrode position
-        elecVertexOrient = bst_bsxfun(@plus, ChanLoc(iChan,:), elecVertexOrient);
-        % Report in final patch
-        iVert  = (iChan-1) * nVert + (1:nVert);
-        iFace = (iChan-1) * nFace + (1:nFace);
-        Vertex(iVert,:) = elecVertexOrient;
-        Faces(iFace,:)  = elecFace + nVert*(iChan-1);
-    end
-    % Save the channel index in the UserData
-    UserData = reshape(repmat(1:nChan, nVert, 1), [], 1);
-    % Default color: yellow, no transparency
-    VertexAlpha = ones(nChan * nVert, 1);
-    VertexRGB = repmat([.9,.9,0], nChan * nVert, 1);
+    delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
     
-    % Optimal lighting depends on Matlab version
-    if (bst_get('MatlabVersion') < 804) || strcmpi(ElectrodeInfo.ElecType, 'sphere')
-        FaceLighting = 'gouraud';
-    else
-        FaceLighting = 'flat';
+    % Create objects geometry
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc);
+    % Plot depth electrodes
+    for iElec = 1:length(ElectrodeDepth)
+        hElectrodeDepth = patch(...
+            'Faces',     ElectrodeDepth(iElec).Faces, ...
+            'Vertices',  ElectrodeDepth(iElec).Vertices,...
+            'FaceColor', ElectrodeDepth(iElec).FaceColor, ...
+            'FaceAlpha', ElectrodeDepth(iElec).FaceAlpha, ...
+            'Parent',    hAxes, ...
+            ElectrodeDepth(iElec).Options{:});
     end
-    % Create patch
+    % Plot electrode labels
+    for iElec = 1:length(ElectrodeLabel)
+        hElectrodeLabel = text(...
+            ElectrodeLabel(iElec).Loc(1), ElectrodeLabel(iElec).Loc(2), ElectrodeLabel(iElec).Loc(3), ...
+            ElectrodeLabel(iElec).Name, ...
+            'Parent',              hAxes, ...
+            'HorizontalAlignment', 'center', ...
+            'FontSize',            fontSize, ...
+            'FontWeight',          'bold', ...
+            'Color',               ElectrodeLabel(iElec).Color, ...
+            ElectrodeLabel(iElec).Options{:});
+    end
+    % Plot ECOG wires
+    for iElec = 1:length(ElectrodeWire)
+        hElectrodeWire = line(...
+            ElectrodeWire(iElec).Loc(:,1), ElectrodeWire(iElec).Loc(:,2), ElectrodeWire(iElec).Loc(:,3), ...           
+            'LineWidth',  ElectrodeWire(iElec).LineWidth, ...
+            'Color',      ElectrodeWire(iElec).Color, ...
+            'Parent',     hAxes, ...
+            ElectrodeWire(iElec).Options{:});
+    end
+    % Plot grid of contacts
     hElectrodeGrid = patch(...
-        'Faces',               Faces, ...
-        'Vertices',            Vertex,...
+        'Faces',               ElectrodeGrid.Faces, ...
+        'Vertices',            ElectrodeGrid.Vertices,...
+        'FaceVertexCData',     ElectrodeGrid.FaceVertexCData, ...
+        'FaceVertexAlphaData', ElectrodeGrid.FaceVertexAlphaData, ...
         'FaceColor',           'interp', ...
-        'FaceVertexCData',     VertexRGB, ...
         'FaceAlpha',           'interp', ...
-        'FaceVertexAlphaData', VertexAlpha, ...
-        'EdgeColor',           'none', ...
-        'BackfaceLighting',    'unlit', ...
-        'AmbientStrength',     0.5, ...
-        'DiffuseStrength',     0.6, ...
-        'SpecularStrength',    0, ...
-        'FaceLighting',        FaceLighting, ...
-        'Tag',                 'ElectrodeGrid', ...
-        'UserData',            UserData, ...
-        'Parent',              hAxes);
-
-    % Display electrode strips
-    if ~isempty(StripOrient) && ~isempty(StripStart)
-        for iStrip = 1:size(StripOrient,1)
-            % Create cylinder
-            stripSize = [ElectrodeInfo.StripDiameter ./ 2, ElectrodeInfo.StripDiameter ./ 2, ElectrodeInfo.StripLength];
-            stripSize = stripSize - 0.00002;  % Make it slightly smaller than the contacts, so it doesn't cover them when they are the same size
-            [stripVertex, stripFace] = tess_cylinder(24, 1, stripSize, StripOrient(iStrip,:));
-            % Set strip position
-            stripVertex = bst_bsxfun(@plus, stripVertex, StripStart(iStrip,:));
-            % Create patch object
-            hElectrodeStrip = patch(...
-                'Faces',            stripFace, ...
-                'Vertices',         stripVertex,...
-                'FaceColor',        [.5 .5 .5], ...
-                'EdgeColor',        'none', ...
-                'FaceAlpha',        1, ...
-                'BackfaceLighting', 'unlit', ...
-                'AmbientStrength',  0.5, ...
-                'DiffuseStrength',  0.5, ...
-                'SpecularStrength', 0.2, ...
-                'SpecularExponent', 1, ...
-                'SpecularColorReflectance', 0, ...
-                'FaceLighting',     'gouraud', ...
-                'EdgeLighting',     'gouraud', ...
-                'Tag',              'ElectrodeStrip', ...
-                'UserData',         StripNames{iStrip}, ...
-                'Parent',           hAxes);
-        end
-    end
-    
-    % Display ECOG wires
-    if ~isempty(Wires) && ~isempty(WireNames) && ~isempty(ElectrodeInfo.WireWidth) && (ElectrodeInfo.WireWidth > 0)
-        for iWire = 1:length(Wires)
-            hElectrodeWire = line(Wires{iWire}(:,1), Wires{iWire}(:,2), Wires{iWire}(:,3), ...
-                'LineStyle',   '-', ...
-                'LineWidth',   ElectrodeInfo.WireWidth, ...
-                'Color',       [0, 0.4470, 0.7410], ...
-                'Tag',         'ElectrodeWire', ...
-                'UserData',    WireNames{iWire}, ...
-                'Parent',      hAxes);
-        end
-    end
+        'AlphaDataMapping',    'none', ...
+        'Parent',              hAxes, ...
+        ElectrodeGrid.Options{:});
     
     % Repaint selected sensors for this figure
     UpdateFigSelectedRows(iDS, iFig);
 end
 
 
-%% ===== GET SEEG STRIPS =====
-function [ChanOrient, StripOrient, StripStart, ChanLocFix, StripNames] = GetSeegStrips(Channel, ChanLoc, iEeg)
-    % initialize returned variables
-    ChanOrient = [];
-    ChanLocFix = [];
-    StripOrient = [];
-    StripStart = [];
-    % If positions are not passed: get them
-    if (nargin < 2) || isempty(ChanLoc)
-        ChanLoc = zeros(length(Channel), 3);
-        for i = 1:length(Channel)
-            if ~isempty(Channel(i).Loc)
-                ChanLoc(i,:) = Channel(i).Loc(:,1)';
-            end
-        end
-    end
-    % Get groups of electrodes (supposed to represent the strips)
-    if (nargin < 3) || isempty(iEeg)
-        [iEeg, GroupNames] = panel_montage('GetEegGroups', Channel, [], 1);
-        StripNames  = cell(1, length(iEeg));
-    else
-        GroupNames = [];
-        StripNames = [];
-    end
-    % No groups defined
-    if isempty(iEeg)
-        return;
-    end
-    % Initialize returned variable
-    ChanOrient  = repmat([0 0 1], length(Channel), 1);
-    ChanLocFix  = ChanLoc;
-    StripOrient = zeros(length(iEeg), 3);
-    StripStart  = zeros(length(iEeg), 3);
-    % For each group: get the representation of the strip
-    for i = 1:length(iEeg)
-        % Only one electrode: skip
-        if (length(iEeg{i}) < 2)
-            continue;
-        end
-        % Electrodes for this strip
-        StripLoc = ChanLoc(iEeg{i},:);
-        % Center of the electrodes
-        M = mean(StripLoc);
-        % Get the principal orientation between all the vertices
-        W = bst_bsxfun(@minus, StripLoc, M); 
-        [U,D,V] = svd(W' * W);
-        orient = U(:,1)';
-        % Project the electrodes on the line passing through M with orientation "orient"
-        StripLocFix = sum(bst_bsxfun(@times, W, orient), 2);
-        StripLocFix = bst_bsxfun(@times, StripLocFix, orient);
-        StripLocFix = bst_bsxfun(@plus, StripLocFix, M);
-        % First electrode is always the deeper one
-        %[tmp,iStart] = min(sum(StripLocFix.^2,2));
-        iStart = 1;
-        StripStart(i,:) = StripLocFix(iStart,:);
-        % Orient the direction vector in the correct direction (from the tip to the handle of the strip)
-        if (sum(orient .* (M - StripStart(i,:))) < 0)
-            orient = -orient;
-        end
-        StripOrient(i,:) = orient;
-        % Duplicate to set orientation and fixed orientation for all the channels of the strip
-        ChanOrient(iEeg{i},:) = repmat(orient, length(iEeg{i}), 1);
-        ChanLocFix(iEeg{i},:) = StripLocFix;
-        % Report name of group
-        if ~isempty(GroupNames)
-            StripNames{i} = GroupNames{i};
-        end
-    end
-end
-
-
-%% ===== GET ECOG STRIPS =====
-function [Wires, WireNames] = GetEcogWires(Channel, ChanLoc)
-    % Initialize returned variables
-    Wires = {};
-    WireNames = {};
-    % If positions are not passed: get them
-    if (nargin < 2) || isempty(ChanLoc)
-        ChanLoc = zeros(length(Channel), 3);
-        for i = 1:length(Channel)
-            if ~isempty(Channel(i).Loc)
-                ChanLoc(i,:) = Channel(i).Loc(:,1)';
-            end
-        end
-    end
-    % Get all groups
-    [iEeg, GroupNames] = panel_montage('GetEegGroups', Channel, [], 1);
-    if isempty(iEeg)
-        return;
-    end
-    % Check each group
-    for iGroup = 1:length(iEeg)
-        iChan = iEeg{iGroup};
-        isAligned = 1;
-        % Check if all the electrodes are aligned
-        for i = 2:(length(iChan)-1)
-            % Calculate dot product of vectors (i-1,i) and (i,i+1)
-            d = sum((ChanLoc(iChan(i),:) - ChanLoc(iChan(i-1),:)) .* (ChanLoc(iChan(i+1),:) - ChanLoc(iChan(i),:)));
-            % If negative skip this group
-            if (d < 0)
-                isAligned = 0;
-                break;
-            end
-        end
-        % If all the electrodes of this group are aligned: display wire
-        if isAligned
-            Wires{end+1} = ChanLoc(iChan,:);
-            WireNames{end+1} = GroupNames{iGroup};
-        end
-    end
-end
-    
-
-
-%% ===== GET CHANNEL NORMALS =====
-function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Modality)
-    % Default modality: ECOG
-    if (nargin < 3) || isempty(Modality)
-        Modality = 'ECOG';
-    end
-    % Get surface
-    if strcmpi(Modality, 'EEG') || strcmpi(Modality, 'NIRS')
-        if ~isempty(sSubject.iScalp)
-            SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
-            isEnvelope = 0;
-        else
-            error('No scalp surface for this subject.');
-        end
-    else
-        if ~isempty(sSubject.iInnerSkull)
-            SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
-            isEnvelope = 0;
-        elseif ~isempty(sSubject.iScalp)
-            SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
-            isEnvelope = 0;
-        elseif ~isempty(sSubject.iCortex)
-            SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
-            isEnvelope = 1;
-        else
-            error('No inner skull or scalp surface for this subject.');
-        end
-    end
-    % Load surface (or get from memory)
-    sSurf = bst_memory('LoadSurface', SurfaceFile);
-    % Use all the surface
-    if ~isEnvelope
-        Vertices = sSurf.Vertices;
-        VertNormals = sSurf.VertNormals;
-    % Get the envelope only
-    else
-        disp('BST> Warning: For a better orientation of the ECOG electrodes, please import a head or inner skull surface for this subject.');
-        Faces = convhulln(sSurf.Vertices);
-        iVertices = unique(Faces(:));
-        Vertices = sSurf.Vertices(iVertices, :);
-        VertNormals = sSurf.VertNormals(iVertices, :);
-    end
-    % Project electrodes on the surface 
-    ChanLocProj = channel_project_scalp(Vertices, ChanLoc);
-    % Get the closest vertex for each channel
-    iChanVert = bst_nearest(Vertices, ChanLocProj);
-    % Get the normals at those points
-    ChanOrient = VertNormals(iChanVert, :);
-end
-
-
 %% ===== SET ELECTRODES CONFIGURATION =====
-function SetElectrodesConfig(hFig, newInfo)
-    % Parse inputs 
-    if (nargin < 2) || isempty(newInfo)
-        newInfo = [];
-    end
-    % Get current configuration
-    curInfo = getappdata(hFig, 'ElectrodeInfo');
-    % Ask user to type the new values
-    if isempty(newInfo)
-        % Fields to edit in the saved displayed properties
-        addFields = struct();
-        % Configuration for SEEG electrodes
-        if strcmpi(curInfo.ElecType, 'seeg')
-            res = java_dialog('input', {'Contact diameter (mm):', 'Contact height (mm):', 'Depth electrode diameter (mm):', 'Depth electrode length (mm):'}, 'Electrode display', [], ...
-                                  {num2str(1000 * curInfo.ElecDiameter), num2str(1000 * curInfo.ElecHeight), num2str(1000 * curInfo.StripDiameter), num2str(1000 * curInfo.StripLength)});
-            if isempty(res) || (length(res) < 2)
-                return
-            end
-            if ~isnan(str2double(res{1})) && ~isempty(str2double(res{1})) && (str2double(res{1}) >= 0)
-                addFields.ElecDiameter = str2double(res{1}) / 1000;
-            end
-            if ~isnan(str2double(res{2})) && ~isempty(str2double(res{2})) && (str2double(res{2}) >= 0)
-                addFields.ElecHeight = str2double(res{2}) / 1000;
-            end
-            if ~isnan(str2double(res{3})) && ~isempty(str2double(res{3})) && (str2double(res{3}) >= 0)
-                addFields.StripDiameter = str2double(res{3}) / 1000;
-            end
-            if ~isnan(str2double(res{4})) && ~isempty(str2double(res{4})) && (str2double(res{4}) >= 0)
-                addFields.StripLength = str2double(res{4}) / 1000;
-            end
-            Modality = 'SEEG';
-        % Configuration for ECOG electrodes
-        elseif strcmpi(curInfo.ElecType, 'ecog')
-            res = java_dialog('input', {'Contact diameter (mm):', 'Contact height (mm):', 'Width of the wires:'}, 'Electrode display', [], ...
-                                  {num2str(1000 * curInfo.ElecDiameter), num2str(1000 * curInfo.ElecHeight), num2str(curInfo.WireWidth)});
-            if isempty(res) || (length(res) < 3)
-                return
-            end
-            if ~isnan(str2double(res{1})) && ~isempty(str2double(res{1})) && (str2double(res{1}) >= 0)
-                addFields.ElecDiameter = str2double(res{1}) / 1000;
-            end
-            if ~isnan(str2double(res{2})) && ~isempty(str2double(res{2})) && (str2double(res{2}) >= 0)
-                addFields.ElecHeight = str2double(res{2}) / 1000;
-            end
-            if ~isnan(str2double(res{3})) && ~isempty(str2double(res{3})) && (str2double(res{3}) >= 0)
-                addFields.WireWidth = str2double(res{3});
-            end
-            Modality = 'ECOG';
-        % Configuration for other types of electrodes electrodes
-        else
-            res = java_dialog('input', {'Contact diameter (mm):', 'Contact height (mm):'}, 'Electrode display', [], ...
-                                  {num2str(1000 * curInfo.ElecDiameter), num2str(1000 * curInfo.ElecHeight)});
-            if isempty(res) || (length(res) < 2)
-                return
-            end
-            if ~isnan(str2double(res{1})) && ~isempty(str2double(res{1})) && (str2double(res{1}) >= 0)
-                addFields.ElecDiameter = str2double(res{1}) / 1000;
-            end
-            if ~isnan(str2double(res{2})) && ~isempty(str2double(res{2})) && (str2double(res{2}) >= 0)
-                addFields.ElecHeight = str2double(res{2}) / 1000;
-            end
-            Modality = 'EEG';
+function SetElectrodesConfig(hFig)
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+    % Get modality
+    Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+    % Get saved user properties
+    ElectrodeConfig = bst_get('ElectrodeConfig', Modality);
+
+    % Fields to edit in the saved displayed properties
+    addFields = struct();
+    % Configuration for SEEG electrodes
+    if strcmpi(ElectrodeConfig.Type, 'seeg')
+        res = java_dialog('input', {'Contact diameter (mm):', 'Contact length (mm):', 'Depth electrode diameter (mm):', 'Depth electrode length (mm):'}, 'Electrode display', [], ...
+                              {num2str(1000 * ElectrodeConfig.ContactDiameter), num2str(1000 * ElectrodeConfig.ContactLength), num2str(1000 * ElectrodeConfig.ElecDiameter), num2str(1000 * ElectrodeConfig.ElecLength)});
+        if isempty(res) || (length(res) < 2)
+            return
         end
-        % Save new values in user properties
-        if ~isempty(fieldnames(addFields))
-            % Get saved user properties
-            ElectrodeConfig = bst_get('ElectrodeConfig', Modality);
-            % Update fields
-            ElectrodeConfig = struct_copy_fields(ElectrodeConfig, addFields, 1);
-            % Save modifications
-            bst_set('ElectrodeConfig', Modality, ElectrodeConfig);
-            % Update the current figure as well
-            curInfo = struct_copy_fields(curInfo, addFields, 1);
+        if ~isnan(str2double(res{1})) && ~isempty(str2double(res{1})) && (str2double(res{1}) >= 0)
+            addFields.ContactDiameter = str2double(res{1}) / 1000;
         end
-    % Use the values passed in argument
+        if ~isnan(str2double(res{2})) && ~isempty(str2double(res{2})) && (str2double(res{2}) >= 0)
+            addFields.ContactLength = str2double(res{2}) / 1000;
+        end
+        if ~isnan(str2double(res{3})) && ~isempty(str2double(res{3})) && (str2double(res{3}) >= 0)
+            addFields.ElecDiameter = str2double(res{3}) / 1000;
+        end
+        if ~isnan(str2double(res{4})) && ~isempty(str2double(res{4})) && (str2double(res{4}) >= 0)
+            addFields.ElecLength = str2double(res{4}) / 1000;
+        end
+        Modality = 'SEEG';
+    % Configuration for ECOG electrodes
+    elseif strcmpi(ElectrodeConfig.Type, 'ecog')
+        res = java_dialog('input', {'Contact diameter (mm):', 'Contact height (mm):', 'Width of the wires:'}, 'Electrode display', [], ...
+                              {num2str(1000 * ElectrodeConfig.ContactDiameter), num2str(1000 * ElectrodeConfig.ContactLength), num2str(ElectrodeConfig.ElecDiameter)});
+        if isempty(res) || (length(res) < 3)
+            return
+        end
+        if ~isnan(str2double(res{1})) && ~isempty(str2double(res{1})) && (str2double(res{1}) >= 0)
+            addFields.ContactDiameter = str2double(res{1}) / 1000;
+        end
+        if ~isnan(str2double(res{2})) && ~isempty(str2double(res{2})) && (str2double(res{2}) >= 0)
+            addFields.ContactLength = str2double(res{2}) / 1000;
+        end
+        if ~isnan(str2double(res{3})) && ~isempty(str2double(res{3})) && (str2double(res{3}) >= 0)
+            addFields.ElecDiameter = str2double(res{3});
+        end
+        Modality = 'ECOG';
+    % Configuration for other types of electrodes electrodes
     else
-        if isfield(newInfo, 'ElecType') && ~isempty(newInfo.ElecType)
-            curInfo.ElecType = newInfo.ElecType;
+        res = java_dialog('input', {'Contact diameter (mm):', 'Contact height (mm):'}, 'Electrode display', [], ...
+                              {num2str(1000 * ElectrodeConfig.ContactDiameter), num2str(1000 * ElectrodeConfig.ContactLength)});
+        if isempty(res) || (length(res) < 2)
+            return
         end
-        if isfield(newInfo, 'ElecDiameter') && ~isempty(newInfo.ElecDiameter)
-            curInfo.ElecDiameter = newInfo.ElecDiameter;
+        if ~isnan(str2double(res{1})) && ~isempty(str2double(res{1})) && (str2double(res{1}) >= 0)
+            addFields.ContactDiameter = str2double(res{1}) / 1000;
         end
-        if isfield(newInfo, 'ElecHeight') && ~isempty(newInfo.ElecHeight)
-            curInfo.ElecHeight = newInfo.ElecHeight;
+        if ~isnan(str2double(res{2})) && ~isempty(str2double(res{2})) && (str2double(res{2}) >= 0)
+            addFields.ContactLength = str2double(res{2}) / 1000;
         end
-        if isfield(newInfo, 'StripDiameter') && ~isempty(newInfo.StripDiameter)
-            curInfo.StripDiameter = newInfo.StripDiameter;
-        end
-        if isfield(newInfo, 'StripLength') && ~isempty(newInfo.StripLength)
-            curInfo.StripLength = newInfo.StripLength;
-        end
-        if isfield(newInfo, 'WireWidth') && ~isempty(newInfo.WireWidth)
-            curInfo.WireWidth = newInfo.WireWidth;
-        end
+        Modality = 'EEG';
     end
-    % Update the figure configuration
-    setappdata(hFig, 'ElectrodeInfo', curInfo);
+    % Save new values in user properties
+    if ~isempty(fieldnames(addFields))
+        % Get saved user properties
+        ElectrodeConfig = bst_get('ElectrodeConfig', Modality);
+        % Update fields
+        ElectrodeConfig = struct_copy_fields(ElectrodeConfig, addFields, 1);
+        % Save modifications
+        bst_set('ElectrodeConfig', Modality, ElectrodeConfig);
+        % Update the current figure as well
+        ElectrodeConfig = struct_copy_fields(ElectrodeConfig, addFields, 1);
+    end
+    % Update the electrodes configuration
+    bst_set('ElectrodeConfig', Modality, ElectrodeConfig);
     % Redraw figure
-    bst_progress('start', 'Set electrodes size', 'Updating figure...');
-    bst_figures('ReloadFigures', hFig, 0);
-    bst_progress('stop');
+    panel_ieeg('UpdateFigures');
 end
 
 
@@ -3494,8 +3168,8 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
             % Check if the channels are ECOG/SEEG
             isIntraEEG = ismember(upper(GlobalData.DataSet(iDS).Channel(selChan(1)).Type), {'SEEG', 'ECOG'});
             % 3DElectrodes: Bright green for higher readability
-            ElectrodeInfo  = getappdata(Figure.hFigure, 'ElectrodeInfo');
-            if ~isempty(ElectrodeInfo)
+            hElectrodeObjects = [findobj(Figure.hFigure, 'Tag', 'ElectrodeGrid'); findobj(Figure.hFigure, 'Tag', 'ElectrodeDepth'); findobj(Figure.hFigure, 'Tag', 'ElectrodeWire')];
+            if ~isempty(hElectrodeObjects)
                 markerColor = [.4,1,.4];
             % Default color for sensors text: bright yellow
             else
@@ -4359,73 +4033,6 @@ function SaveSurface(TessInfo)
     bst_progress('stop');
 end
 
-
-%% ===== SET ELECTRODE GROUP VISIBLE =====
-function SetElecGroupVisible(hFig, GroupName, isVisible)
-    global GlobalData;
-    % Get figure description
-    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
-    if isempty(iDS)
-        return
-    end    
-    % Get the groups available in this file
-    Channel = GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels);
-    [iGroupEeg, GroupNames] = panel_montage('GetEegGroups', Channel, [], 1);
-    % Find group name
-    iGroup = find(strcmpi(GroupNames, GroupName));
-    if isempty(iGroup)
-        return;
-    end
-    
-    % === ELECTRODES PATCH ===
-    % Get electrodes patch
-    hElectrodeGrid = findobj(hFig, 'Tag', 'ElectrodeGrid');
-    FaceVertexAlphaData = get(hElectrodeGrid, 'FaceVertexAlphaData');
-    UserData  = get(hElectrodeGrid, 'UserData');
-    % Update the alpha map for the surface
-    if isVisible
-        AlphaValue = 1;
-    else
-        AlphaValue = 0;
-    end
-    FaceVertexAlphaData(ismember(UserData, iGroupEeg{iGroup})) = AlphaValue;
-    set(hElectrodeGrid, 'FaceVertexAlphaData', FaceVertexAlphaData);
-    
-    % === ELECTRODES STRIP ===
-    hElectrodeStrip = findobj(hFig, 'Tag', 'ElectrodeStrip', 'UserData', GroupName);
-    if ~isempty(hElectrodeStrip)
-        set(hElectrodeStrip, 'FaceAlpha', AlphaValue);
-    end
-    
-    % === ELECTRODES WIRE ===
-    hElectrodeWire = findobj(hFig, 'Tag', 'ElectrodeWire', 'UserData', GroupName);
-    if ~isempty(hElectrodeWire)
-        if isVisible
-            set(hElectrodeWire, 'Visible', 'on');
-        else
-            set(hElectrodeWire, 'Visible', 'off');
-        end
-    end
-    
-    % === ELECTRODE LABEL ===
-    % Get all labels
-    hSensorsLabels = findobj(hFig, 'Tag', 'SensorsLabels');
-    if ~isempty(hSensorsLabels)
-        % Get the indices of all the labels
-        iChanLabel = get(hSensorsLabels, 'UserData');
-        iChanLabel = [iChanLabel{:}];
-        % Get the indices for the selected group
-        iLabelGroup = find(ismember(iChanLabel, iGroupEeg{iGroup}));
-        % Set visible or invisible
-        if ~isempty(iLabelGroup)
-            if isVisible
-                set(hSensorsLabels(iLabelGroup), 'Visible', 'on');
-            else
-                set(hSensorsLabels(iLabelGroup), 'Visible', 'off');
-            end
-        end
-    end
-end
 
 
 %% ===== JUMP TO MAXIMUM =====

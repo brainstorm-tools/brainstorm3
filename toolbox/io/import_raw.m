@@ -246,6 +246,11 @@ for iFile = 1:length(RawFiles)
         end
         % Add channel file to database
         [ChannelFile, ChannelMat, ImportOptions.ChannelReplace, ImportOptions.ChannelAlign, Modality] = db_set_channel(iChannelStudy, ChannelMat, ImportOptions.ChannelReplace, ImportOptions.ChannelAlign);
+        % If loading SEEG or ECOG data: change the sensor type
+        if ismember(FileFormat, {'SEEG-ALL', 'ECOG-ALL'})
+            Mod = strrep(FileFormat, '-ALL', '');
+            process_channel_setseeg('Compute', ChannelFile, Mod);
+        end
         % Display the registration if this was skipped in db_set_channel
         if (ImportOptions.ChannelAlign == 0) && (ImportOptions.DisplayMessages) && ~isempty(Modality)
             bst_memory('UnloadAll', 'Forced');

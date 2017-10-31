@@ -387,6 +387,10 @@ end
 if strcmpi(FileType, 'Timefreq')
     bst_figures('SetCurrentFigure', hFig, 'TF');
 end
+% 3DElectrodes: Open tab "iEEG"
+if strcmpi(TopoType, '3DElectrodes')
+    gui_brainstorm('ShowToolTab', 'iEEG');
+end
 % Set figure visible
 set(hFig, 'Visible', 'on');
 bst_progress('stop');

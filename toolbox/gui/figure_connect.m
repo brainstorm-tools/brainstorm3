@@ -399,7 +399,6 @@ end
 function FigureMouseDownCallback(hFig, ev)   
     % Check if MouseUp was executed before MouseDown: Should ignore this MouseDown event
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig,'clickAction'), 'MouseDownNotConsumed')
-        setappdata(hFig,'clickAction','MouseDownOk');
         return;
     end
     % Click on the Java canvas

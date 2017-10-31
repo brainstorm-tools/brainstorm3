@@ -390,9 +390,10 @@ function DbNavigation( action, iDataSets )
                 GlobalData.DataSet(iDS).ChannelFile = newChannelFile;
                 % Load new channel file
                 ChannelMat = in_bst_channel(newChannelFile);
-                GlobalData.DataSet(iDS).Channel     = ChannelMat.Channel;
-                GlobalData.DataSet(iDS).MegRefCoef  = ChannelMat.MegRefCoef; 
-                GlobalData.DataSet(iDS).Projector   = ChannelMat.Projector; 
+                GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+                GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef; 
+                GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
+                GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
             end
         end
 

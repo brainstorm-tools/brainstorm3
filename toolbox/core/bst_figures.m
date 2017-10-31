@@ -764,23 +764,13 @@ function DeleteFigure(hFigure, varargin)
 
     % ===== MRI VIEWER =====
     % Check for modifications of the MRI (MRI Viewer figures only)
-    if strcmpi(Figure.Id.Type, 'MriViewer') && (Figure.Handles.isModifiedMri || Figure.Handles.isModifiedEeg)
-        % If MRI was modified : ask to save the changes
-        if Figure.Handles.isModifiedMri
-            if java_dialog('confirm', ['The MRI volume was modified.' 10 'Save changes ?'], 'MRI Viewer')
-                % Save MRI
-                isCloseAccepted = figure_mri('SaveMri', hFig);
-                % If the save function refused to close the window
-                if ~isCloseAccepted
-                    return
-                end
-            end
-        end
-        % If EEG was modified: ask to save the changes
-        if Figure.Handles.isModifiedEeg
-            if java_dialog('confirm', ['The channel file was modified.' 10 'Save changes ?'], 'MRI Viewer')
-                % Save channel file modifications
-                figure_mri('SaveEeg', hFig);
+    if strcmpi(Figure.Id.Type, 'MriViewer') && Figure.Handles.isModifiedMri
+        if java_dialog('confirm', ['The MRI volume was modified.' 10 'Save changes ?'], 'MRI Viewer')
+            % Save MRI
+            isCloseAccepted = figure_mri('SaveMri', hFig);
+            % If the save function refused to close the window
+            if ~isCloseAccepted
+                return
             end
         end
         % Unload anatomy
@@ -1048,6 +1038,9 @@ function SetCurrentFigure(hFig, Type)
                 end
                 if gui_brainstorm('isTabVisible', 'Dipoles')
                     panel_dipoles('CurrentFigureChanged_Callback', hFig);
+                end
+                if gui_brainstorm('isTabVisible', 'iEEG')
+                    panel_ieeg('CurrentFigureChanged_Callback', hFig);
                 end
             end
         case 'TypeTF'
@@ -1789,9 +1782,9 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                     if ~isempty(ChannelFile)
                         isMarkers = ~isempty(Figure.Handles.hSensorMarkers) && ishandle(Figure.Handles.hSensorMarkers(1)) && strcmpi(get(Figure.Handles.hSensorMarkers(1), 'Visible'), 'on');
                         isLabels  = ~isempty(Figure.Handles.hSensorLabels) && ishandle(Figure.Handles.hSensorLabels(1)) && strcmpi(get(Figure.Handles.hSensorLabels(1), 'Visible'), 'on');
-                        ElectrodeInfo  = getappdata(Figure.hFigure, 'ElectrodeInfo');
+                        hElectrodeObjects = [findobj(hFig, 'Tag', 'ElectrodeGrid'); findobj(hFig, 'Tag', 'ElectrodeDepth'); findobj(hFig, 'Tag', 'ElectrodeWire')];
                         % Update 3D electrodes
-                        if ~isempty(ElectrodeInfo)
+                        if ~isempty(hElectrodeObjects)
                             figure_3d('PlotSensors3D', iDS, iFig);
                         % Update channels display
                         elseif isMarkers || isLabels

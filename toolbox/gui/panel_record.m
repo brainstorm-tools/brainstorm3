@@ -2452,9 +2452,10 @@ function CallProcessOnRaw(ProcessName)
         GlobalData.DataSet(iDS).Measures.sFile = DataMat.F;
         % Update channel mat
         ChannelMat = in_bst_channel(GlobalData.DataSet(iDS).ChannelFile);
-        GlobalData.DataSet(iDS).Channel    = ChannelMat.Channel;
-        GlobalData.DataSet(iDS).MegRefCoef = ChannelMat.MegRefCoef;
-        GlobalData.DataSet(iDS).Projector  = ChannelMat.Projector;
+        GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+        GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
+        GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
+        GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
     else
         DataMat = in_bst_data(DataFile, 'Events');
         GlobalData.DataSet(iDS).Measures.sFile.events = DataMat.Events;

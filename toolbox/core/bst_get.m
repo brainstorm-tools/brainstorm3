@@ -2523,32 +2523,29 @@ switch contextName
             Modality = 'EEG';
         end
         % Value was saved previously
-        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ElectrodeConfig') && isfield(GlobalData.Preferences.ElectrodeConfig, Modality)
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ElectrodeConfig') && isfield(GlobalData.Preferences.ElectrodeConfig, Modality) && isfield(GlobalData.Preferences.ElectrodeConfig.(Modality), 'ContactDiameter')
             argout1 = GlobalData.Preferences.ElectrodeConfig.(Modality);
         % Get default value
         else
             switch (Modality)
                 case 'EEG'
-                    ElectrodeConfig.ElecType      = 'eeg';
-                    ElectrodeConfig.ElecDiameter  = 0.010;
-                    ElectrodeConfig.ElecHeight    = 0.002;
-                    ElectrodeConfig.StripDiameter = [];
-                    ElectrodeConfig.StripLength   = [];
-                    ElectrodeConfig.WireWidth     = [];
+                    ElectrodeConfig.Type            = 'eeg';
+                    ElectrodeConfig.ContactDiameter = 0.010;
+                    ElectrodeConfig.ContactLength   = 0.002;
+                    ElectrodeConfig.ElecDiameter    = [];
+                    ElectrodeConfig.ElecLength      = [];
                 case 'ECOG'
-                    ElectrodeConfig.ElecType      = 'ecog';
-                    ElectrodeConfig.ElecDiameter  = 0.004;
-                    ElectrodeConfig.ElecHeight    = 0.001;
-                    ElectrodeConfig.StripDiameter = [];
-                    ElectrodeConfig.StripLength   = [];
-                    ElectrodeConfig.WireWidth     = 0.5;
+                    ElectrodeConfig.Type            = 'ecog';
+                    ElectrodeConfig.ContactDiameter = 0.004;
+                    ElectrodeConfig.ContactLength   = 0.001;
+                    ElectrodeConfig.ElecDiameter    = 0.0005;
+                    ElectrodeConfig.ElecLength      = [];
                 case 'SEEG'
-                    ElectrodeConfig.ElecType      = 'seeg';
-                    ElectrodeConfig.ElecDiameter  = 0.0008;
-                    ElectrodeConfig.ElecHeight    = 0.002;
-                    ElectrodeConfig.StripDiameter = 0.0007;
-                    ElectrodeConfig.StripLength   = 0.070;
-                    ElectrodeConfig.WireWidth     = [];
+                    ElectrodeConfig.Type            = 'seeg';
+                    ElectrodeConfig.ContactDiameter = 0.0008;
+                    ElectrodeConfig.ContactLength   = 0.002;
+                    ElectrodeConfig.ElecDiameter    = 0.0007;
+                    ElectrodeConfig.ElecLength      = 0.070;
             end
             argout1 = ElectrodeConfig;
         end
@@ -3104,6 +3101,8 @@ switch contextName
                      {'.e'},                 'EEG: Nicolet (*.e)',                   'EEG-NICOLET'; ...
                      {'.eeg'},               'EEG: Nihon Kohden (*.eeg)',            'EEG-NK'; ...
                      {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Ripple Trellis (*.nsX/*.nev)', 'EEG-RIPPLE'; ...
+                     {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'SEEG: Deltamed/Micromed/Nihon Kohden/Nicolet/EDF', 'SEEG-ALL'; ...
+                     {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'ECOG: Deltamed/Micromed/Nihon Kohden/Nicolet/EDF', 'ECOG-ALL'; ...
                      {'.nirs'},              'NIRS: Brainsight (*.nirs)',            'NIRS-BRS'; ...
                      {'.edf'},               'EyeLink eye tracker (*.edf)',          'EYELINK'; ...
                     };

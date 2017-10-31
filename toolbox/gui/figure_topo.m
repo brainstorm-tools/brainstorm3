@@ -947,11 +947,12 @@ function CreateTopo3dElectrodes(iDS, iFig, Channel, ChanLoc)
     % Get figure handles
     PlotHandles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
     % Display the electrodes
-    [PlotHandles.hSurf, N] = figure_3d('PlotSensors3D', iDS, iFig, Channel, ChanLoc);
-    % Create interpolation matrix [Nchannels*Npoints x Nchannels]
-    Wi = 1:(N*size(ChanLoc,1));
-    Wj = reshape(repmat(1:size(ChanLoc,1), N, 1), 1, []);
-    PlotHandles.Wmat = sparse(Wi, Wj, ones(size(Wi)));
+    PlotHandles.hSurf = figure_3d('PlotSensors3D', iDS, iFig, Channel, ChanLoc);
+    % Create interpolation matrix [Nvertices x Nchannels]
+    vert2chan = get(PlotHandles.hSurf, 'UserData');
+    Wi = 1:length(vert2chan);
+    Wj = vert2chan;
+    PlotHandles.Wmat = sparse(Wi, Wj, ones(size(Wi)), length(vert2chan), size(ChanLoc,1));
     % Set plot handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotHandles;
     % Update display
