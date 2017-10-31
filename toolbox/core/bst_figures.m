@@ -54,7 +54,7 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2017; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -1236,6 +1236,12 @@ function hNewFig = CloneFigure(hFig)
     % ===== COPY TF FIGURE =====
     if strcmpi(FigureId.Type, 'Timefreq')       
         hNewFig = view_timefreq(AppData.Timefreq.FileName, AppData.Timefreq.DisplayMode, AppData.Timefreq.RowName, 1);
+        return;
+    end
+    
+    % ===== COPY SPECTRUM FIGURE =====
+    if strcmpi(FigureId.Type, 'Spectrum')       
+        hNewFig = view_spectrum(AppData.Timefreq.FileName, AppData.Timefreq.DisplayMode, AppData.Timefreq.RowName, 1);
         return;
     end
     
