@@ -1234,14 +1234,11 @@ function hNewFig = CloneFigure(hFig)
     AppData = getappdata(hFig);
     
     % ===== COPY TF FIGURE =====
-    if strcmpi(FigureId.Type, 'Timefreq')       
-        hNewFig = view_timefreq(AppData.Timefreq.FileName, AppData.Timefreq.DisplayMode, AppData.Timefreq.RowName, 1);
-        return;
-    end
-    
-    % ===== COPY SPECTRUM FIGURE =====
-    if strcmpi(FigureId.Type, 'Spectrum')       
+    if strcmpi(FigureId.Type, 'Spectrum')
         hNewFig = view_spectrum(AppData.Timefreq.FileName, AppData.Timefreq.DisplayMode, AppData.Timefreq.RowName, 1);
+        return;
+    elseif strcmpi(FigureId.Type, 'Timefreq')
+        hNewFig = view_timefreq(AppData.Timefreq.FileName, AppData.Timefreq.DisplayMode, AppData.Timefreq.RowName, 1);
         return;
     end
     
@@ -1265,7 +1262,7 @@ function hNewFig = CloneFigure(hFig)
         copyobj(hChild, hNewFig);
         % Copy figure colormap
         set(hNewFig, 'Colormap', get(hFig, 'Colormap'));
-        % Copy Figure UsageData
+        % Copy Figure UserData
         set(hNewFig, 'UserData', get(hFig, 'UserData'));
 
         % === Copy and update figure AppData ===

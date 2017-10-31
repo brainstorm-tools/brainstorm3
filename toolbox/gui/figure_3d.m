@@ -1851,12 +1851,11 @@ function DisplayFigurePopup(hFig)
             jMenuView.addSeparator();
             gui_component('MenuItem', jMenuView, [], 'Clone figure', [], [], @(h,ev)bst_figures('CloneFigure', hFig));
         end
-    % Only for '3D Electrode'
-    elseif strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, '3DElectrodes')
-        % CLONE FIGURE
-        jMenuFigure.addSeparator();
-        gui_component('MenuItem', jMenuFigure, [], 'Clone figure', [], [], @(h,ev)bst_figures('CloneFigure', hFig));
     end
+    % CLONE FIGURE
+    jMenuFigure.addSeparator();
+    gui_component('MenuItem', jMenuFigure, [], 'Clone figure', [], [], @(h,ev)bst_figures('CloneFigure', hFig));
+
     % ==== Display menu ====
     gui_popup(jPopup, hFig);
 end
