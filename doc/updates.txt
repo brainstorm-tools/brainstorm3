@@ -8,6 +8,7 @@ October 2017
 - Anatomy: New options for co-registration of various volumes from the same subject
 - GUI: New interface for placing SEEG/ECOG contacts in the MRI Viewer
 - GUI: Various improvements for handling SEEG/ECOG data
+- GUI: Export to Plotly
 - Doc: New tutorial "SEEG epileptogenicity maps"
 ---------------------------------------------------------------
 September 2017

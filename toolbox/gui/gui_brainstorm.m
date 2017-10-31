@@ -968,12 +968,12 @@ function SetCurrentProtocol(iProtocol)
                 % Update protocol
                 bst_set('ProtocolInfo', ProtocolInfo);
                 % Redrawing tree
-                UpdateProtocolsList();
+%                 UpdateProtocolsList();
                 panel_protocols('UpdateTree');
-                %%%%% DONT'T KNOW WHY WE HAVE TO RESTORE CALLBACK ON LINUX SYSTEMS ??? 
-                if ~ispc
-                    java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
-                end
+%                 %%%%% DONT'T KNOW WHY WE HAVE TO RESTORE CALLBACK ON LINUX SYSTEMS ??? 
+%                 if ~ispc
+%                     java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
+%                 end
             end
         else
             isRetry = 0;
