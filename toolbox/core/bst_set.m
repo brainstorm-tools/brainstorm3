@@ -73,6 +73,7 @@ function bst_set( varargin )
 %    - bst_set('DigitizeOptions',       DigitizeOptions)
 %    - bst_set('ReadOnly',              ReadOnly)
 %    - bst_set('LastPsdDisplayFunction', LastPsdDisplayFunction)
+%    - bst_set('PlotlyCredentials',     Username, ApiKey, Domain)
 %
 % SEE ALSO bst_get
 
@@ -248,6 +249,30 @@ switch contextName
 
     case 'ReadOnly'
         GlobalData.DataBase.isReadOnly = contextValue;
+    
+    case 'PlotlyCredentials'
+        if length(varargin) ~= 4
+            error('Invalid call to bst_set.');
+        end
+        [username, apiKey, domain] = varargin{2:4};
+        
+        if isempty(domain)
+            % Default Plot.ly server
+            domain = 'http://plot.ly';
+        end
+        
+        % Plotly needs a URL with HTTP and no trailing slash.
+        if strfind(domain, 'https://')
+            domain = strrep(domain, 'https://', 'http://');
+        elseif isempty(strfind(domain, 'http://'))
+            domain = ['http://', domain];
+        end
+        if domain(end) == '/'
+            domain = domain(1:end-1);
+        end
+        
+        saveplotlycredentials(username, apiKey);
+        saveplotlyconfig(domain);
         
 %% ==== ERROR ====
     otherwise
