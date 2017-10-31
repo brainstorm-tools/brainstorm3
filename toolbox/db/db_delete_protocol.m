@@ -27,7 +27,7 @@ function isRemoved = db_delete_protocol(isUserConfirm, isRemoveFiles)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2017
 
 global GlobalData;
 
@@ -54,7 +54,8 @@ if isUserConfirm
     if ~isRemoveFiles
         strWarn = '(Subjects and datasets directories will not be deleted)';
     else
-        strWarn = '<BR><FONT color="#CC0000"><U>WARNING</U>: All the files will be permanently deleted from your hard drive.</FONT>';
+        strWarn = ['<BR><FONT color="#CC0000"><U>WARNING</U>: All the files will be permanently deleted from your hard drive.<BR>' ...
+                   bst_fileparts(sProtocolsListInfo(iProtocol).STUDIES) '</FONT>'];
     end
     % Display dialog box
     isConfirmed = java_dialog('confirm', ['<HTML>Remove protocol ''' sProtocolsListInfo(iProtocol).Comment ''' from Brainstorm database ? <BR>' ...
@@ -70,10 +71,13 @@ if isRemoveFiles
     % Remove all the contents of STUDIES and SUBJECTS folders
     file_delete( {sProtocolsListInfo(iProtocol).STUDIES, sProtocolsListInfo(iProtocol).SUBJECTS}, 1, 2);
     % If the parent folder (protocol folder) is empty: remove it
-    try
-        file_delete( bst_fileparts(sProtocolsListInfo(iProtocol).STUDIES), 1, 0);
-    catch
-        % If an error was thrown, it is just because the folder is not empty.
+    ProtocolDir = bst_fileparts(sProtocolsListInfo(iProtocol).STUDIES);
+    listFiles = dir(fullfile(ProtocolDir, '*'));
+    listFiles = setdiff({listFiles.name}, {'..','.'});
+    if isempty(listFiles)
+        rmdir(ProtocolDir);
+    else
+        warning(['Protocol folder is not empty, cannot be deleted:' ProtocolDir]);
     end
 end
     
