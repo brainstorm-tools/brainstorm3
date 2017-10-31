@@ -134,6 +134,7 @@ end
 
 % Convert variance to standard deviation
 if isVariance
+    Var = Var ./ (Nwin - 1);
     TF = sqrt(Var);
 end
 
