@@ -116,7 +116,17 @@ end
 bst_progress('text', 'Sending figure...');
 PlotlyException = [];
 try
+    % Prepare figure
     p = plotlyfig(hTempFig, 'filename', figName);
+    
+    % ===== Last minute tweaking =====
+    % Remove height and width so that Plotly automatically resizes the fig
+    p.layout = rmfield(p.layout, {'width', 'height'});
+    % Add margins so that X axis label and title are readable
+    p.layout.margin.t = 10;
+    p.layout.margin.b = 20;
+    
+    % Send figure
     response = p.plotly;
 catch PlotlyException
 end
