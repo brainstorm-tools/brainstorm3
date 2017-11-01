@@ -111,11 +111,15 @@ TfInfo.InputTarget = RowName;
 TfInfo.RowName     = RowName;
 % Get function to apply
 TfMethod = lower(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method);
-if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'other')
+TfMeasure = lower(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure);
+if strcmp(TfMeasure, 'other')
     TfInfo.Function = 'other';
 elseif ismember(TfMethod, {'fft', 'psd'})
-    if ~isempty(bst_get('LastPsdDisplayFunction'))
-        TfInfo.Function = bst_get('LastPsdDisplayFunction');
+    % Use last chosen display function, but only if supported by this measure
+    lastDisplayFun = lower(bst_get('LastPsdDisplayFunction'));
+    if ~isempty(lastDisplayFun) && ...
+            ~(strcmp(lastDisplayFun, 'phase') && ismember(TfMeasure, {'power', 'magnitude', 'log'}))
+        TfInfo.Function = lastDisplayFun;
     else
         TfInfo.Function = 'log';
     end
