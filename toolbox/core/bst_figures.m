@@ -1246,6 +1246,9 @@ function hNewFig = CloneFigure(hFig)
     elseif strcmpi(FigureId.Type, 'Timefreq')
         hNewFig = view_timefreq(AppData.Timefreq.FileName, AppData.Timefreq.DisplayMode, AppData.Timefreq.RowName, 1);
         return;
+    elseif strcmpi(FigureId.Type, 'ResultsTimeSeries')
+        hNewFig = view_matrix(AppData.TsInfo.FileName, 'timeseries');
+        return;
     end
     
     % ===== CREATE FIGURE =====
