@@ -1246,9 +1246,6 @@ function hNewFig = CloneFigure(hFig)
     elseif strcmpi(FigureId.Type, 'Timefreq')
         hNewFig = view_timefreq(AppData.Timefreq.FileName, AppData.Timefreq.DisplayMode, AppData.Timefreq.RowName, 1);
         return;
-    elseif strcmpi(FigureId.Type, 'ResultsTimeSeries')
-        hNewFig = view_matrix(AppData.TsInfo.FileName, 'timeseries');
-        return;
     end
     
     % ===== CREATE FIGURE =====
@@ -1342,6 +1339,19 @@ function hNewFig = CloneFigure(hFig)
         SetCurrentFigure(hNewFig, '2D');
         % Update figure
         figure_timeseries('PlotFigure', iDS, iNewFig);
+        
+    % ===== MATRIX =====
+    elseif strcmpi(FigureId.Type, 'ResultsTimeSeries')
+        % Update new figure appdata
+        fieldList = fieldnames(AppData);
+        for iField = 1:length(fieldList)
+            setappdata(hNewFig, fieldList{iField}, AppData.(fieldList{iField}));
+        end
+        GlobalData.DataSet(iDS).Figure(iNewFig).SelectedChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+        % Update figure selection
+        SetCurrentFigure(hNewFig, '2D');
+        % Update figure
+        ReloadFigures(hNewFig);
     end
     % Copy figure name
     set(hNewFig, 'Name', get(hFig, 'Name'));
@@ -1794,7 +1804,7 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                     if ~isempty(ChannelFile)
                         isMarkers = ~isempty(Figure.Handles.hSensorMarkers) && ishandle(Figure.Handles.hSensorMarkers(1)) && strcmpi(get(Figure.Handles.hSensorMarkers(1), 'Visible'), 'on');
                         isLabels  = ~isempty(Figure.Handles.hSensorLabels) && ishandle(Figure.Handles.hSensorLabels(1)) && strcmpi(get(Figure.Handles.hSensorLabels(1), 'Visible'), 'on');
-                        hElectrodeObjects = [findobj(hFig, 'Tag', 'ElectrodeGrid'); findobj(hFig, 'Tag', 'ElectrodeDepth'); findobj(hFig, 'Tag', 'ElectrodeWire')];
+                        hElectrodeObjects = [findobj(Figure.hFigure, 'Tag', 'ElectrodeGrid'); findobj(Figure.hFigure, 'Tag', 'ElectrodeDepth'); findobj(Figure.hFigure, 'Tag', 'ElectrodeWire')];
                         % Update 3D electrodes
                         if ~isempty(hElectrodeObjects)
                             figure_3d('PlotSensors3D', iDS, iFig);

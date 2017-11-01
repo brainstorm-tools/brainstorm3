@@ -2194,10 +2194,10 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
             jItem.setAccelerator(KeyStroke.getKeyStroke('=', 0));
             jItem = gui_component('MenuItem', jMenuFigure, [], 'Apply montage to all figures', IconLoader.ICON_TS_SYNCRO, [], @(h,ev)CopyDisplayOptions(hFig, 1, 0));
             jItem.setAccelerator(KeyStroke.getKeyStroke('*', 0));
-            % Clone figure
-            jMenuFigure.addSeparator();
-            gui_component('MenuItem', jMenuFigure, [], 'Clone figure', IconLoader.ICON_COPY, [], @(h,ev)bst_figures('CloneFigure', hFig));
         end
+        % Clone figure
+        jMenuFigure.addSeparator();
+        gui_component('MenuItem', jMenuFigure, [], 'Clone figure', IconLoader.ICON_COPY, [], @(h,ev)bst_figures('CloneFigure', hFig));
     % Display Popup menu
     gui_popup(jPopup, hFig);
 end
