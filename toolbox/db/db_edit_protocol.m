@@ -75,6 +75,11 @@ if ~isdir(sProtocol.SUBJECTS)
         iProtocol = -1;
         return
     end
+elseif strcmpi(action, 'create') && (length(dir(sProtocol.SUBJECTS)) > 2)
+    % Folder must be empty
+    bst_error(['Folder "' sProtocol.SUBJECTS '" is not empty.'], 'Protocol editor', 0);
+    iProtocol = -1;
+    return
 end
 % Check the existence of the STUDIES directory
 if ~isdir(sProtocol.STUDIES)
@@ -84,6 +89,10 @@ if ~isdir(sProtocol.STUDIES)
         iProtocol = -1;
         return
     end
+elseif strcmpi(action, 'create') && (length(dir(sProtocol.STUDIES)) > 2)
+    bst_error(['Folder "' sProtocol.STUDIES '" is not empty.'], 'Protocol editor', 0);
+    iProtocol = -1;
+    return
 end
 % If currently edited protocol is a NEW protocol :
 if strcmpi(action, 'load') || strcmpi(action, 'create')
