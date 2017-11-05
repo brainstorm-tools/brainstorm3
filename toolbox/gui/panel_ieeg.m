@@ -150,10 +150,24 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jTextElecLength  = gui_component('texttime', jPanelElecOptions, 'tab', '');
                 jLabelElecLengthUnits = gui_component('label', jPanelElecOptions, '', 'mm');
                 % Set electrode position
-                jButtonSet1 = gui_component('button', jPanelElecOptions, 'br center', 'Set tip',   [], 'Set electrode tip (MRI Viewer)', @(h,ev)bst_call(@SetElectrodeLoc, 1));
-                jButtonSet2 = gui_component('button', jPanelElecOptions, 'center', 'Set skull entry', [], 'Set electrode entry point in the skull (MRI Viewer)', @(h,ev)bst_call(@SetElectrodeLoc, 2));
-            jPanelBottom.add('hfill', jPanelElecOptions);
-        jPanelMain.add(jPanelBottom, BorderLayout.SOUTH)
+                jPanelButtons = gui_component('panel');
+                    jCardLayout = java.awt.CardLayout;
+                    jPanelButtons.setLayout(jCardLayout);
+                    jPanelButtons.add(gui_component('panel'), 'none');
+                    jPanelButtonsSeeg = gui_river([0,0], [0,0,0,0]);
+                        jButtonSeegSet1 = gui_component('button', jPanelButtonsSeeg, 'center', 'Set tip',   [], '<HTML>Set electrode tip: contact #1<BR>(MRI Viewer must be open)', @(h,ev)bst_call(@SetElectrodeLoc, 1, ev.getSource()));
+                        jButtonSeegSet2 = gui_component('button', jPanelButtonsSeeg, 'center', 'Set skull entry', [], '<HTML>Set entry point in the skull (does not match the position of a contact)<BR>(MRI Viewer must be open)', @(h,ev)bst_call(@SetElectrodeLoc, 2, ev.getSource()));
+                    jPanelButtons.add(jPanelButtonsSeeg, 'seeg');
+                    jPanelButtonsEcog = gui_river([0,0], [0,0,0,0]);
+                        jButtonEcogSet1 = gui_component('button', jPanelButtonsEcog, 'center', '#1', [], '<HTML>Set contact #1 of the ECOG grid/strip<BR>(MRI Viewer must be open)', @(h,ev)bst_call(@SetElectrodeLoc, 1, ev.getSource()));
+                        jButtonEcogSet2 = gui_component('button', jPanelButtonsEcog, 'center', '#2', [], '<HTML>ECOG strip: Set the last contact of the strip.<BR>ECOG grid: Set the second corner in the list of contacts.<BR>(MRI Viewer must be open)', @(h,ev)bst_call(@SetElectrodeLoc, 2, ev.getSource()));
+                        jButtonEcogSet3 = gui_component('button', jPanelButtonsEcog, 'center', '#3', [], '<HTML>ECOG strip: N/A.<BR>ECOG grid: Set third corner of the grid (last contact, opposite to contact #1).<BR>(MRI Viewer must be open)', @(h,ev)bst_call(@SetElectrodeLoc, 3, ev.getSource()));
+                        jButtonEcogSet4 = gui_component('button', jPanelButtonsEcog, 'center', '#4', [], '<HTML>ECOG strip: N/A.<BR>ECOG grid: Set third corner of the grid (opposite to contact #2).<BR>(MRI Viewer must be open)', @(h,ev)bst_call(@SetElectrodeLoc, 4, ev.getSource()));
+                    jPanelButtons.add(jPanelButtonsEcog, 'ecog');
+                    jCardLayout.show(jPanelButtons, 'seeg');
+                jPanelElecOptions.add('br hfill', jPanelButtons);
+                jPanelBottom.add('hfill', jPanelElecOptions);
+                jPanelMain.add(jPanelBottom, BorderLayout.SOUTH)
     jPanelNew.add(jPanelMain, BorderLayout.CENTER);
     
     % Store electrode selection
@@ -161,7 +175,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, ...
                            jPanelNew, ...
-                           struct('jPanelElecList',      jPanelElecList, ...
+                           struct('jPanelMain',          jPanelMain, ...
+                                  'jPanelElecList',      jPanelElecList, ...
                                   'jToolbar',            jToolbar, ...
                                   'jPanelElecOptions',   jPanelElecOptions, ...
                                   'jButtonShow',         jButtonShow, ...
@@ -183,7 +198,17 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jLabelElecDiameter',  jLabelElecDiameter, ...
                                   'jTextElecDiameter',   jTextElecDiameter, ...
                                   'jLabelElecDiamUnits', jLabelElecDiamUnits, ...
-                                  'jLabelSelectElec',    jLabelSelectElec));
+                                  'jLabelSelectElec',    jLabelSelectElec, ...
+                                  'jPanelButtonsSeeg',   jPanelButtonsSeeg, ...
+                                  'jPanelButtonsEcog',   jPanelButtonsEcog, ...
+                                  'jPanelButtons',       jPanelButtons, ...
+                                  'jCardLayout',         jCardLayout, ...
+                                  'jButtonSeegSet1',     jButtonSeegSet1, ...
+                                  'jButtonSeegSet2',     jButtonSeegSet2, ...
+                                  'jButtonEcogSet1',     jButtonEcogSet1, ...
+                                  'jButtonEcogSet2',     jButtonEcogSet2, ...
+                                  'jButtonEcogSet3',     jButtonEcogSet3, ...
+                                  'jButtonEcogSet4',     jButtonEcogSet4));
                               
     
                               
@@ -228,6 +253,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         SetElectrodes(iSelElec, sSelElec);
         % Update display
         UpdateElecProperties(0);
+        % Update figures
+        UpdateFigures();
     end
 
     %% ===== LIST SELECTION CHANGED CALLBACK =====
@@ -278,10 +305,10 @@ function UpdatePanel()
     % Get current electrodes
     [sElectrodes, iDS, iFig, hFig] = GetElectrodes();
     % If a surface is available for current figure
-    if ~isempty(sElectrodes)
+    if ~isempty(hFig)
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
-    % Else : no figure associated with the panel : disable all controls
+    % Else: no figure associated with the panel : disable all controls
     else
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
@@ -439,7 +466,6 @@ function UpdateElecProperties(isUpdateModelList)
         ctrl.jLabelElecDiameter.setText('Wire width: ');
         ctrl.jLabelElecDiamUnits.setText('points');
     end
-    
     % Number of contacts
     if (length(sSelElec) == 1) || ((length(sSelElec) > 1) && all(cellfun(@(c)isequal(c,sSelElec(1).ContactNumber), {sSelElec.ContactNumber})))
         valContacts = sSelElec(1).ContactNumber;
@@ -483,6 +509,58 @@ function UpdateElecProperties(isUpdateModelList)
     gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,10},  'optional', 1, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
     gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,10},  'optional', 1, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
     gui_validate_text(ctrl.jTextElecLength,    [], [], {0,200,10}, 'optional', 1, valElecLength,    @(h,ev)ValidateOptions('ElecLength', ctrl.jTextElecLength));
+    % Update button list
+    if (length(sSelElec) == 1)
+        colorOn  = java.awt.Color(0, 0.8, 0);
+        colorOff = java.awt.Color(0, 0, 0);
+        colorNone= java.awt.Color(.4, .4, .4);
+        if strcmpi(sSelElec(1).Type, 'SEEG')
+            ctrl.jCardLayout.show(ctrl.jPanelButtons, 'seeg');
+            if (size(sSelElec.Loc,2) >= 1)
+                ctrl.jButtonSeegSet1.setForeground(colorOn);
+            else
+                ctrl.jButtonSeegSet1.setForeground(colorOff);
+            end
+            if (size(sSelElec.Loc,2) >= 2)
+                ctrl.jButtonSeegSet2.setForeground(colorOn);
+            else
+                ctrl.jButtonSeegSet2.setForeground(colorOff);
+            end
+        else
+            ctrl.jCardLayout.show(ctrl.jPanelButtons, 'ecog');
+            if (size(sSelElec.Loc,2) >= 1)
+                ctrl.jButtonEcogSet1.setForeground(colorOn);
+            else
+                ctrl.jButtonEcogSet1.setForeground(colorOff);
+            end
+            if (size(sSelElec.Loc,2) >= 2)
+                ctrl.jButtonEcogSet2.setForeground(colorOn);
+            else
+                ctrl.jButtonEcogSet2.setForeground(colorOff);
+            end
+            if (length(valContacts) >= 2)
+                ctrl.jButtonEcogSet3.setEnabled(1);
+                ctrl.jButtonEcogSet4.setEnabled(1);
+                if (size(sSelElec.Loc,2) >= 3)
+                    ctrl.jButtonEcogSet3.setForeground(colorOn);
+                else
+                    ctrl.jButtonEcogSet3.setForeground(colorOff);
+                end
+                if (size(sSelElec.Loc,2) >= 4)
+                    ctrl.jButtonEcogSet4.setForeground(colorOn);
+                else
+                    ctrl.jButtonEcogSet4.setForeground(colorOff);
+                end
+            else
+                ctrl.jButtonEcogSet3.setEnabled(0);
+                ctrl.jButtonEcogSet4.setEnabled(0);
+                ctrl.jButtonEcogSet3.setForeground(colorNone);
+                ctrl.jButtonEcogSet4.setForeground(colorNone);
+            end
+        end
+    else
+        ctrl.jCardLayout.show(ctrl.jPanelButtons, 'none');
+    end
     % Select show button
     isSelected = ~isempty(sSelElec) && all([sSelElec.Visible] == 1);
     ctrl.jButtonShow.setSelected(isSelected);
@@ -573,10 +651,14 @@ function UpdateMenus(iDS, iFig)
     gui_component('MenuItem', jMenu, [], 'Set default positions', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'default'));
     % Menu: Export select atlas
     if strcmpi(Modality, 'ECOG')
-        
+        gui_component('MenuItem', jMenu, [], 'Project on inner skull', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS, iFig, 'innerskull'));
+        gui_component('MenuItem', jMenu, [], 'Project on cortex',      IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS, iFig, 'cortexmask'));
     elseif strcmpi(Modality, 'SEEG')
         gui_component('MenuItem', jMenu, [], 'Project on electrode', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'project'));
     end
+    % Menu: Save modifications
+    jMenu.addSeparator();
+    gui_component('MenuItem', jMenu, [], 'Save modifications', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_memory, 'SaveChannelFile', iDS));
     % Menu: Export positions
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Export selected contacts', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportChannelFile, 'selected'));            
@@ -634,6 +716,8 @@ function EditElectrodeLabel(varargin)
     UpdateElecList();
     % Select again electrode
     SetSelectedElectrodes(iSelElec);
+    % Update figures
+    UpdateFigures();
 end
 
 
@@ -664,6 +748,8 @@ function EditElectrodeColor(newColor)
     UpdateElecList();
     % Select again electrode
     SetSelectedElectrodes(iSelElec);
+    % Update figures
+    UpdateFigures();
 end
 
 
@@ -708,6 +794,8 @@ function ValidateOptions(optName, jControl)
     % Save electrodes
     if isModified
         SetElectrodes(iSelElec, sSelElec);
+        % Update figures
+        UpdateFigures();
     end
 end
     
@@ -730,6 +818,8 @@ function SetElectrodeVisible(isVisible)
     UpdateElecList();
     % Select again electrode
     SetSelectedElectrodes(iSelElec);
+    % Update figures
+    UpdateFigures();
 end
     
 
@@ -763,7 +853,7 @@ function iElec = SetElectrodes(iElec, sElect)
     end
     % Replace all the electrodes
     if isempty(iElec) || isempty(GlobalData.DataSet(iDS).IntraElectrodes)
-        GlobalData.DataSet(iDS).IntraElectrodes = sElecOld;
+        GlobalData.DataSet(iDS).IntraElectrodes = sElect;
         iElec = 1:length(sElect);
     % Set specific electrodes
     else
@@ -794,8 +884,6 @@ function iElec = SetElectrodes(iElec, sElect)
     end
     % Mark channel file as modified
     GlobalData.DataSet(iDS).isChannelModified = 1;
-    % Update all the displays
-    UpdateFigures();
 end
 
 
@@ -805,32 +893,25 @@ function AddElectrode()
     % Get available electrodes
     [sAllElec, iDS, iFig] = GetElectrodes();
     % Get modality
-    if ~isempty(iFig)
+    if ~isempty(iFig) && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
         Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
     else
         Modality = 'SEEG';
     end
     % Ask user for a new label
-    res = java_dialog('input', {'Electrode label:', 'Modality (SEEG or ECOG):'}, 'Add electrode', [], {'',Modality});
-    if isempty(res) || (length(res) < 2) || isempty(res{1})
+    newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
+    if isempty(newLabel)
         return;
     end
-    newLabel = res{1};
-    newModality = res{2};
     % Check if label already exists
-    if any(strcmpi({sAllElec.Name}, newLabel))
+    if ~isempty(sAllElec) && any(strcmpi({sAllElec.Name}, newLabel))
         java_dialog('warning', ['Electrode "' newLabel '" already exists.'], 'New electrode');
-        return;
-    end
-    % Check modality
-    if isempty(newModality) || ~ismember(newModality, {'SEEG','ECOG','EEG'})
-        java_dialog('warning', ['Invalid modality "' newModality '".'], 'New electrode');
         return;
     end
     % Create new electrode structure
     sElect = db_template('intraelectrode');
     sElect.Name = newLabel;
-    sElect.Type = newModality;
+    sElect.Type = Modality;
     % Add new electrode
     iElec = SetElectrodes('Add', sElect);
     % Update JList
@@ -1088,12 +1169,13 @@ function UpdateFigures(hFigTarget)
                     bst_figures('ReloadFigures', Figure.hFigure, 0);
                 case '3DViz'
                     hElectrodeObjects = [findobj(Figure.hFigure, 'Tag', 'ElectrodeGrid'); findobj(Figure.hFigure, 'Tag', 'ElectrodeDepth'); findobj(Figure.hFigure, 'Tag', 'ElectrodeWire')];
-                    if ~isempty(hElectrodeObjects)
-                        figure_3d('PlotSensors3D', iDS, iFig);
+                    if ~isempty(hElectrodeObjects) || ismember(Figure.Id.Modality, {'ECOG','SEEG'})
+                        % figure_3d('PlotSensors3D', iDS, iFig);
+                        view_channels(GlobalData.DataSet(iDS).ChannelFile, Figure.Id.Modality, 1, 0, Figure.hFigure, 1);
                     end
                 case 'MriViewer'
                     hElectrodeObjects = [findobj(Figure.hFigure, 'Tag', 'ElectrodeGrid'); findobj(Figure.hFigure, 'Tag', 'ElectrodeDepth'); findobj(Figure.hFigure, 'Tag', 'ElectrodeWire')];
-                    if ~isempty(hElectrodeObjects)
+                    if ~isempty(hElectrodeObjects) || ismember(Figure.Id.Modality, {'ECOG','SEEG'})
                         figure_mri('PlotSensors3D', iDS, iFig);
                         GlobalData.DataSet(iDS).Figure(iFig).Handles = figure_mri('PlotElectrodes', iDS, iFig, GlobalData.DataSet(iDS).Figure(iFig).Handles);
                         figure_mri('UpdateVisibleSensors3D', Figure.hFigure);
@@ -1126,7 +1208,7 @@ end
 
 
 %% ===== DETECT ELETRODES =====
-function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Modality, AllInd)
+function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Modality, AllInd) %#ok<DEFNU>
     % Get channels for modality
     iMod = good_channel(ChannelMat.Channel, [], Modality);
     if isempty(iMod)
@@ -1164,7 +1246,6 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         newElec.Name          = uniqueGroups{iGroup};
         newElec.Type          = Modality;
         newElec.Model         = '';
-        newElec.ContactNumber = max(AllInd(iGroupChan));
         newElec.Visible       = 1;
         % Default display options
         ElectrodeConfig = bst_get('ElectrodeConfig', Modality);
@@ -1177,6 +1258,8 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         newElec.Color = ColorTable(iColor,:);
         % Try to get positions of the electrode: 2 contacts minimum with positions
         if strcmpi(Modality, 'SEEG') && (length(iGroupChan) >= 2) && all(cellfun(@(c)size(c,2), {ChannelMat.Channel(iMod(iGroupChan)).Loc}) == 1)
+            % Number of contacts: maximum contact index found in the file
+            newElec.ContactNumber = max(AllInd(iGroupChan));
             % Get all channels locations for this electrode
             ElecLoc = [ChannelMat.Channel(iMod(iGroupChan)).Loc]';
             % Get distance between available contacts (in number of contacts)
@@ -1207,6 +1290,19 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             % Duplicate to set orientation and fixed position for all the channels of the strip
             ChanOrient(iMod(iGroupChan),:) = repmat(orient, length(iGroupChan), 1);
             ChanLocFix(iMod(iGroupChan),:) = ElecLocFix;
+        % SEEG with no locations
+        elseif strcmpi(Modality, 'SEEG')
+            % Number of contacts: maximum contact index found in the file
+            newElec.ContactNumber = max(AllInd(iGroupChan));
+        elseif strcmpi(Modality, 'ECOG')
+            % Guess format of the ECOG device
+            switch (length(iGroupChan))
+                case 12,   newElec.ContactNumber = [6, 2];
+                case 16,   newElec.ContactNumber = [8, 2];
+                case 32,   newElec.ContactNumber = [8, 4];
+                case 64,   newElec.ContactNumber = [8, 8];
+                otherwise, newElec.ContactNumber = length(iGroupChan);
+            end
         end
         % Add to existing list of electrodes
         if ~isfield(ChannelMat, 'IntraElectrodes') || isempty(ChannelMat.IntraElectrodes)
@@ -1224,13 +1320,14 @@ end
 %  =================================================================================
 
 %% ===== CREATE 3D ELECTRODE GEOMETRY =====
-function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = CreateGeometry3DElectrode(iDS, iFig, Channel, ChanLoc) %#ok<DEFNU>
+function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = CreateGeometry3DElectrode(iDS, iFig, Channel, ChanLoc) %#ok<DEFNU>
     global GlobalData;
     % Initialize returned values
     ElectrodeDepth = [];
     ElectrodeLabel = [];
     ElectrodeWire  = [];
     ElectrodeGrid  = [];
+    HiddenChannels = [];
     % Get subject
     sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
     isSurface = ~isempty(sSubject) && (~isempty(sSubject.iInnerSkull) || ~isempty(sSubject.iScalp) || ~isempty(sSubject.iCortex));
@@ -1273,7 +1370,6 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = Create
     Faces       = [];
     VertexAlpha = [];
     VertexRGB   = [];
-    ctVertex    = [];
     % Get electrode configuration
     if ~isempty(GlobalData.DataSet(iDS).IntraElectrodes)
         % Get electrode groups
@@ -1294,10 +1390,14 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = Create
                 elecAlpha = 1;
             else
                 elecAlpha = 0;
+                HiddenChannels = [HiddenChannels, iElecChan];
             end
+            % Do we have valid locations for this channel
+            isValidLoc = ~any(all(ChanLoc(iElecChan,:)==0,2),1);
+            ctVertex = [];
             
             % === SPHERE ===
-            if (strcmpi(ElectrodeDisplay.DisplayMode, 'sphere') || (strcmpi(sElec.Type, 'ECOG') && ~isSurface)) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0)
+            if (strcmpi(ElectrodeDisplay.DisplayMode, 'sphere') || (strcmpi(sElec.Type, 'ECOG') && ~isSurface)) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0) && isValidLoc
                 % Contact size and orientation
                 if strcmpi(sElec.Type, 'SEEG')
                     ctSize = [1 1 1] .* sElec.ContactLength;
@@ -1350,9 +1450,10 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = Create
                         'UserData',         sElec.Name};
                     % Add text at the tip of the electrode
                     locLabel = sElec.Loc(:,1)' + elecOrient * (sElec.ElecLength + 0.005);
-                    ElectrodeLabel(iElec).Loc   = locLabel;
-                    ElectrodeLabel(iElec).Name  = sElec.Name;
-                    ElectrodeLabel(iElec).Color = sElec.Color;
+                    ElectrodeLabel(iElec).Type    = 'SEEG';
+                    ElectrodeLabel(iElec).Loc     = locLabel;
+                    ElectrodeLabel(iElec).Name    = sElec.Name;
+                    ElectrodeLabel(iElec).Color   = sElec.Color;
                     ElectrodeLabel(iElec).Options = {...
                         'FontUnits',   'points', ...
                         'Tag',         'ElectrodeLabel', ...
@@ -1360,7 +1461,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = Create
                         'UserData',    sElec.Name};
                 end
                 % Plot contacts
-                if ~isempty(iElecChan) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0)
+                if ~isempty(iElecChan) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0) && ~any(all(ChanLoc(iElecChan,:)==0,2),1) && isValidLoc
                     % Contact size and orientation
                     ctSize   = [sElec.ContactDiameter ./ 2, sElec.ContactDiameter ./ 2, sElec.ContactLength];
                     ctOrient = repmat(elecOrient, length(iElecChan), 1);
@@ -1398,6 +1499,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = Create
                     % Add text on top of the 1st contact
                     locLabel = 1.1 * ChanLoc(iElecChan(1),:);
                     iElec = length(ElectrodeLabel) + 1;
+                    ElectrodeLabel(iElec).Type    = 'ECOG';
                     ElectrodeLabel(iElec).Loc     = locLabel;
                     ElectrodeLabel(iElec).Name    = sElec.Name;
                     ElectrodeLabel(iElec).Color   = sElec.Color;
@@ -1408,7 +1510,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = Create
                         'UserData',    sElec.Name};
                 end
                 % Plot contacts
-                if ~isempty(iElecChan) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0)
+                if ~isempty(iElecChan) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0) && isValidLoc
                     % Contact size and orientation
                     ctSize   = [sElec.ContactDiameter ./ 2, sElec.ContactDiameter ./ 2, sElec.ContactLength];
                     ctOrient = ChanNormal(iElecChan,:);
@@ -1437,7 +1539,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = Create
     % Get the sensors that haven't been displayed yet
     iChanOther = setdiff(1:length(Channel), iChanProcessed);
     % Display spheres
-    if ~isempty(iChanOther)
+    if ~isempty(iChanOther) && isValidLoc
         % Get the saved display defaults for this modality
         ElectrodeConfig = bst_get('ElectrodeConfig', Modality);
         % SEEG: Sphere
@@ -1522,46 +1624,69 @@ end
 
 
 %% ===== GET CHANNEL NORMALS =====
-function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Modality)
-    % Default modality: ECOG
-    if (nargin < 3) || isempty(Modality)
-        Modality = 'ECOG';
-    end
-    % Get surface
-    if strcmpi(Modality, 'EEG') || strcmpi(Modality, 'NIRS')
-        if ~isempty(sSubject.iScalp)
-            SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
-            isEnvelope = 0;
-        else
-            error('No scalp surface for this subject.');
-        end
-    else
-        if ~isempty(sSubject.iInnerSkull)
-            SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
-            isEnvelope = 0;
+% USAGE: GetChannelNormal(sSubject, ChanLoc, Modality)
+%        GetChannelNormal(sSubject, ChanLoc, SurfaceType)   % SurfaceType={'scalp','innerskull','cortex','cortexhull','cortexmask'}
+function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, SurfaceType)
+    % CALL: GetChannelNormal(sSubject, ChanLoc, Modality)
+    if ismember(SurfaceType, {'EEG','NIRS'})
+        SurfaceType = 'scalp';
+    elseif ismember(SurfaceType, {'SEEG','ECOG'})
+        if ~isempty(sSubject.iCortex)
+            SurfaceType = 'cortexmask';
+        elseif ~isempty(sSubject.iInnerSkull)
+            SurfaceType = 'innerskull';
         elseif ~isempty(sSubject.iScalp)
-            SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
-            isEnvelope = 0;
-        elseif ~isempty(sSubject.iCortex)
-            SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
-            isEnvelope = 1;
+            SurfaceType = 'scalp';
         else
             error('No inner skull or scalp surface for this subject.');
         end
     end
+    % Get surface
+    isConvhull = 0;
+    isMask = 0;
+    if strcmpi(SurfaceType, 'innerskull')
+        if ~isempty(sSubject.iInnerSkull)
+            SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+        else
+            error('No innerskull surface for this subject.');
+        end
+    elseif strcmpi(SurfaceType, 'scalp')
+        if ~isempty(sSubject.iScalp)
+            SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+        else
+            error('No innerskull surface for this subject.');
+        end
+    elseif ismember(SurfaceType, {'cortex','cortexhull','cortexmask'})
+        if ~isempty(sSubject.iCortex)
+            SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+            if strcmpi(SurfaceType, 'cortexhull')
+            	isConvhull = 1;
+            elseif strcmpi(SurfaceType, 'cortexmask')
+                isMask = 1;
+            end
+        else
+            error('No cortex surface for this subject.');
+        end
+    end
     % Load surface (or get from memory)
-    sSurf = bst_memory('LoadSurface', SurfaceFile);
-    % Use all the surface
-    if ~isEnvelope
-        Vertices = sSurf.Vertices;
-        VertNormals = sSurf.VertNormals;
-    % Get the envelope only
+    if isMask
+        % Compute surface based on MRI mask
+        % [sSurf, sOrig] = tess_envelope(SurfaceFile, 'mask_cortex', 5000);
+        sSurf = bst_memory('GetSurfaceEnvelope', SurfaceFile, 5000); 
+        Vertices    = sSurf.Vertices;
+        VertNormals = tess_normals(sSurf.Vertices, sSurf.Faces);
     else
-        disp('BST> Warning: For a better orientation of the ECOG electrodes, please import a head or inner skull surface for this subject.');
-        Faces = convhulln(sSurf.Vertices);
-        iVertices = unique(Faces(:));
-        Vertices = sSurf.Vertices(iVertices, :);
-        VertNormals = sSurf.VertNormals(iVertices, :);
+        % Load surface
+        sSurf = bst_memory('LoadSurface', SurfaceFile);
+        Vertices    = sSurf.Vertices;
+        VertNormals = sSurf.VertNormals;
+        % Get convex hull
+        if isConvhull
+            Faces = convhulln(Vertices);
+            iVertices = unique(Faces(:));
+            Vertices    = Vertices(iVertices, :);
+            VertNormals = VertNormals(iVertices, :);
+        end
     end
     
     % Project electrodes on the surface 
@@ -1583,11 +1708,14 @@ end
 
 
 %% ===== ALIGN CONTACTS =====
-function AlignContacts(iDS, iFig, Method)
+function AlignContacts(iDS, iFig, Method, isImplantation)
     global GlobalData;
+    % Check if this is an new implantation folder
+    [fPath, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS).ChannelFile));
+    isImplantation = ~isempty(strfind(folderName, 'Implantation'));
     % Check if there are channels available
     Channels = GlobalData.DataSet(iDS).Channel;
-    if isempty(Channels) || isempty(GlobalData.DataSet(iDS).IntraElectrodes)
+    if isempty(GlobalData.DataSet(iDS).IntraElectrodes)
         return;
     end
     % Get MRI and figure handles
@@ -1598,234 +1726,149 @@ function AlignContacts(iDS, iFig, Method)
         java_dialog('warning', 'No electrode selected.', 'Align contacts');
         return
     end
+    % Get subject description
+    sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
     % Process all the electrodes
     for iElec = 1:length(sSelElec)
+        % Number of landmarks that have been set
+        nPoints = size(sSelElec(iElec).Loc,2);
         % Check all the electrodes properties are defined
-        if isempty(sSelElec(iElec).ContactSpacing)
-            disp(['BST> Warning: Contact spacing is not defined for electrode "' sSelElec(iElec).Name '".']);
-            continue;
-        elseif isempty(sSelElec(iElec).ContactNumber)
+        if isempty(sSelElec(iElec).ContactNumber)
             disp(['BST> Warning: Number of contacts is not defined for electrode "' sSelElec(iElec).Name '".']);
-            continue;
-        elseif (size(sSelElec(iElec).Loc,2) < 2)
-            disp(['BST> Warning: Positions are not defined for electrode "' sSelElec(iElec).Name '".']);
             continue;
         end
         % Get contacts for this electrode
         iChan = find(strcmpi({Channels.Group}, sSelElec(iElec).Name));
         if isempty(iChan)
-            disp(['BST> Warning: No contact for electrode "' sSelElec(iElec).Name '".']);
-            continue;
+            % Add new channels
+            if isImplantation
+                sChannel = db_template('channeldesc');
+                sChannel.Type  = sSelElec(iElec).Type;
+                sChannel.Group = sSelElec(iElec).Name;
+                for i = 1:prod(sSelElec(iElec).ContactNumber)
+                    sChannel.Name = sprintf('%s%d', sSelElec(iElec).Name, i);
+                    Channels(end+1) = sChannel;
+                    iChan(end+1) = length(Channels);
+                end
+                GlobalData.DataSet(iDS).Channel = Channels;
+                GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = [GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan];
+            else
+                disp(['BST> Warning: No contact for electrode "' sSelElec(iElec).Name '".']);
+                continue;
+            end
         end
         % Parse sensor names
         [AllGroups, AllTags, AllInd, isNoInd] = panel_montage('ParseSensorNames', Channels(iChan));
         % Call the function to align electodes
         Modality = Channels(iChan(1)).Type;
-        switch (Modality)
-            case 'SEEG'
-                % Get electrode orientation
-                elecTip = sSelElec(iElec).Loc(:,1);
-                orient = (sSelElec(iElec).Loc(:,2) - elecTip);
-                orient = orient ./ sqrt(sum(orient .^ 2));
-                % Process each contact
-                for i = 1:length(iChan)
-                    switch (Method)
-                        case 'default'
-                            % Compute the default position of the contact
-                            Channels(iChan(i)).Loc = elecTip + (AllInd(i) - 1) * sSelElec(iElec).ContactSpacing * orient;
-                        case 'project'
-                            % Project the existing contact on the depth electrode
-                            Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
-                    end
+        % Remove dimension "1" if any
+        if (length(sSelElec(iElec).ContactNumber) > 1)
+            sSelElec(iElec).ContactNumber(sSelElec(iElec).ContactNumber == 1) = [];
+        end
+        
+        % === SEEG ===
+        if strcmpi(Modality, 'SEEG')
+            % Check number of available points
+            if (nPoints < 2)
+                disp(['BST> Warning: Positions are not defined for electrode "' sSelElec(iElec).Name '".']);
+                continue;
+            % Contact spacing must be available for default positions
+            elseif strcmpi(Method, 'default') && isempty(sSelElec(iElec).ContactSpacing)
+                disp(['BST> Warning: Contact spacing is not defined for electrode "' sSelElec(iElec).Name '".']);
+                continue;
+            end
+            % Get electrode orientation
+            elecTip = sSelElec(iElec).Loc(:,1);
+            orient = (sSelElec(iElec).Loc(:,2) - elecTip);
+            orient = orient ./ sqrt(sum(orient .^ 2));
+            % Process each contact
+            for i = 1:length(iChan)
+                switch (Method)
+                    case 'default'
+                        % Compute the default position of the contact
+                        Channels(iChan(i)).Loc = elecTip + (AllInd(i) - 1) * sSelElec(iElec).ContactSpacing * orient;
+                    case 'project'
+                        % Project the existing contact on the depth electrode
+                        Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
                 end
-            case 'ECOG'
-                sSubject = bst_get('Subject', getappdata(hFig, 'SubjectFile'));
-                Channels = panel_ieeg('AlignEcogElectrodes', Channels, sSubject, Method);
-            otherwise
-                error('Unsupported modality.');
-        end
-        % Mark channel file as modified
-        GlobalData.DataSet(iDS).isChannelModified = 1;
-    end
-
-    % Update electrode position
-    GlobalData.DataSet(iDS).Channel = Channels;
-    % Update figures
-    UpdateFigures(hFig);
-end
-
-
-%% ===== ALIGN ECOG ELECTRODES =====
-% Two different representations for the same grid (U=rows, V=cols)
-%                             |              V ->
-%    Q ___________ S          |        P ___________ T
-%     |__|__|__|__|           |         |__|__|__|__| 
-%     |__|__|__|__|   ^       |     U   |__|__|__|__| 
-%     |__|__|__|__|   U       |     |   |__|__|__|__| 
-%     |__|__|__|__|           |         |__|__|__|__| 
-%    T             P          |        S             Q
-%         <- V                |
-%
-function Channels = AlignEcogElectrodes(Channels, sSubject, nCorners)
-    % Parse inputs
-    if (nargin < 3) || isempty(nCorners)
-        nCorners = 2;
-    end
-    % This can be performed only with the inner skull
-    if isempty(sSubject.iInnerSkull) || (sSubject.iInnerSkull > length(sSubject.Surface))
-        bst_error('You need to define the inner skull surface of the subject before using this function.', 'Align electrode contacts', 0);
-        Channels = [];
-        return;
-    end
-    % Get groups of electrodes
-    [iGroupEeg, GroupNames] = panel_montage('GetEegGroups', Channels, [], 1);
-    if isempty(iGroupEeg)
-        bst_error(['No groups of electrodes are defined. ' 10 'Please edit the channel file and set the Name or Comment fields of the ECOG electrodes.'], 'Align electrode contacts', 0);
-        Channels = [];
-        return;
-    end
-    % Select groups of electrodes to align
-    SelGroup = java_dialog('combo', 'Select the group of contacts to align:', 'Align electrode contacts', [], GroupNames);
-    if isempty(SelGroup)
-        Channels = [];
-        return;
-    end
-    % Get electrodes in the selected group
-    iSelGroup = find(strcmpi(SelGroup, GroupNames));
-    iChan = iGroupEeg{iSelGroup};
-    % Default dimensions
-    nElec = length(iChan);
-    % ECOG strip
-    if (nCorners == 1)
-        nRows = 1;
-        nCols = nElec;
-    % ECOG grid
-    else
-        switch(nElec)
-            case 4,    nRows = 1;   nCols = 4;
-            case 6,    nRows = 1;   nCols = 6;
-            case 8,    nRows = 1;   nCols = 8;
-            case 12,   nRows = 2;   nCols = 6;
-            case 16,   nRows = 2;   nCols = 8;
-            case 32,   nRows = 4;   nCols = 8;
-            case 64,   nRows = 8;   nCols = 8;
-            otherwise, nRows = 1;   nCols = nElec;
-        end
-    end
-    
-    % Ask for number of rows and colums of the grid
-    switch (nCorners)
-        % Strips: two edges
-        case 1
-            orient = 0;
-        % Grids: two corners
-        case 2
-            % Get default width for the grid (isotropic scaling)
-            P = Channels(iChan(1)).Loc';
-            Q = Channels(iChan(end)).Loc';
-            PQ = sqrt(sum((Q-P).^2, 2));
-            unitX = PQ / sqrt((nCols-1).^2 + (nRows-1).^2);
-            % Ask user the confirmation
-            res = java_dialog('input', ...
-                {['<HTML>Number of contacts in this group: <B>', num2str(nElec), '</B><BR><BR>'...
-                  'Number of rows:'], ...
-                  'Number of columns:', ...
-                  'Space between two rows (mm):', ...
-                  '<HTML>Orientation of the grid:<BR>0=Rows first, 1=Columns first'}, 'Define ECOG grid', [], ...
-                 {num2str(nRows), num2str(nCols), num2str(unitX * 1000), '0'});
-            if isempty(res) || (length(res) < 4) || isnan(str2double(res{1})) || isempty(str2double(res{1})) || isnan(str2double(res{2})) || isempty(str2double(res{2})) || isnan(str2double(res{3})) || isempty(str2double(res{3})) || isnan(str2double(res{4})) || isempty(str2double(res{4}))
-                return
             end
-            nRows = str2double(res{1});
-            nCols = str2double(res{2});
-            unitX = str2double(res{3}) / 1000;
-            orient = str2double(res{4});
-        % Grids: four corners
-        case 4
-            res = java_dialog('input', ...
-                {['<HTML>Number of contacts in this group: <B>', num2str(nElec), '</B><BR><BR>'...
-                  'Number of rows:'], 'Number of columns:'}, 'Define ECOG grid', [], ...
-                 {num2str(nRows), num2str(nCols)});
-            if isempty(res) || (length(res) < 2) || isnan(str2double(res{1})) || isempty(str2double(res{1})) || isnan(str2double(res{2})) || isempty(str2double(res{2}))
-                return
+         
+        % === ECOG STRIPS ===
+        elseif (strcmpi(Modality, 'ECOG') && (length(sSelElec(iElec).ContactNumber) == 1))
+            % Check number of available points
+            if (nPoints < 2)
+                disp(['BST> Warning: Positions are not defined for ECOG strip "' sSelElec(iElec).Name '".']);
+                continue;
             end
-            nRows = str2double(res{1});
-            nCols = str2double(res{2});
+            % Compute contacts positions
+            Loc1 = sSelElec(iElec).Loc(:,1);
+            Loc2 = sSelElec(iElec).Loc(:,2);
+            w1 = sSelElec(iElec).ContactNumber-1:-1:0;
+            w2 = 0:sSelElec(iElec).ContactNumber-1;
+            NewLoc = ((sSelElec(iElec).Loc(:,1) * w1 + sSelElec(iElec).Loc(:,2) * w2) ./ (w1 + w2))';
+
+            % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
+            % Project all points on the surface
+            [tmp, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG');
+            [tmp, ProjElecLoc] = GetChannelNormal(sSubject, sSelElec(iElec).Loc', 'ECOG');
+            % Compute the distance between the original points and the projection 
+            dChan = sqrt(sum((ProjLoc - NewLoc) .^2, 2));
+            dElec = sqrt(sum((sSelElec(iElec).Loc' - ProjElecLoc) .^2, 2));
+            % Get distance associated with each corner
+            d1 = dElec(1,:);
+            d2 = dElec(2,:);
+            % Compute the distance to the surface we want for each contact
+            dChanTarget = ((w1*d1 + w2*d2) ./ (w1 + w2))';
+            % Project the channels in the direction of the cortex, so that they are at the expected distance
+            NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+            % Get the list of channels in the channel file
+            if (all(AllInd) <= sSelElec(iElec).ContactNumber) && (length(unique(AllInd)) == length(AllInd))
+                iChanList = AllInd;
+            else
+                iChanList = 1:length(iChan);
+            end
+            % Copy channel positions
+            for i = 1:length(iChanList)
+                Channels(iChan(i)).Loc = NewLoc(iChanList(i),:)';
+            end
+
+        % === ECOG GRIDS ===
+        elseif strcmpi(Modality, 'ECOG')
+            % Two different representations for the same grid (U=rows, V=cols)
+            %                             |              V ->
+            %    Q ___________ S          |        P ___________ T
+            %     |__|__|__|__|           |         |__|__|__|__| 
+            %     |__|__|__|__|   ^       |     U   |__|__|__|__| 
+            %     |__|__|__|__|   U       |     |   |__|__|__|__| 
+            %     |__|__|__|__|           |         |__|__|__|__| 
+            %    T             P          |        S             Q
+            %         <- V                |
+            
+            % Check number of available points
+            if (nPoints < 4)
+                disp(['BST> Warning: Positions are not defined for electrode "' sSelElec(iElec).Name '".']);
+                continue;
+            end
+            % Get grid dimensions
+            nRows = sSelElec(iElec).ContactNumber(1);
+            nCols = sSelElec(iElec).ContactNumber(2);
+            % Get the electrodes indices
+            [I,J] = meshgrid(1:nRows, 1:nCols);
+            % Get list of indices, for the approriate orientation
             orient = 0;
-    end
-    % Check dimensions
-    if (nCols*nRows ~= nElec)
-        bst_error('The number of contacts of the grid does not match the group defined in the channel file.', 'Align electrode contacts', 0);
-        Channels = [];
-        return;
-    elseif (nCols < 2) || (nRows < 2)
-        nCorners = 1;
-    end
-
-    % Get the coordinates of the four corners
-    P = Channels(iChan(1)).Loc';
-    S = Channels(iChan(nRows)).Loc';
-    T = Channels(iChan(end-nRows+1)).Loc';
-    Q = Channels(iChan(end)).Loc';
-    % Project those points on the inner skull
-    [EdgeOrient, EdgeLoc] = figure_3d('GetChannelNormal', sSubject, [P;S;T;Q]);
-    % Retreive coordinates
-    P = EdgeLoc(1,:); 
-    S = EdgeLoc(2,:); 
-    T = EdgeLoc(3,:); 
-    Q = EdgeLoc(4,:); 
-    
-    % Define all the electrodes
-    NewLoc = zeros(nElec, 3);
-    % Get the electrodes indices
-    [I,J] = meshgrid(1:nRows, 1:nCols);
-    % Get list of indices, for the approriate orientation
-    switch (orient)
-        case 0,    I = I'; J = J'; 
-        case 1,    I = I(:);   J = J(:);
-        otherwise, error('Unsupported orientation');
-    end
-    I = I(:);
-    J = J(:);
-
-    % Reconstruct grid from different number of points
-    switch (nCorners)
-        % Strip: two edges
-        case 1
-            I = (1:nElec)';
-            NewLoc = ((nElec-I) * P + (I-1) * Q) ./ (nElec - 1);
+            switch (orient)
+                case 0,    I = I';     J = J'; 
+                case 1,    I = I(:);   J = J(:);
+                otherwise, error('Unsupported orientation');
+            end
+            I = I(:);
+            J = J(:);
             
-        % Grids: two corners
-        case 2
-            % Get the average normal
-            GridNormal = (EdgeOrient(1,:) + EdgeOrient(4,:)) ./ 2;
-            % Get the distances between P/S   (S = third corner)
-            PS = (nRows-1) * unitX;
-            % Alpha = angle between PQ and PS
-            alpha = acos(PS/PQ);
-            % S1=projection of S on PQ;   S2=projection of S on w
-            S1 = cos(alpha) * PS;
-            S2 = sin(alpha) * PS;
-            % Calculate w1/w2, a base of vectors for the grid
-            w1 = Q - P;
-            w1 = w1 ./ sqrt(sum(w1.^2,2));
-            w2 = cross(w1, GridNormal);
-            w2 = w2 ./ sqrt(sum(w2.^2,2));
-            % Position of the third corner (S)
-            S = P + S1 * w1 + S2 * w2;
-            % Base U and V of vectors to define the grid
-            U = S-P;
-            N = cross(U, Q-P);
-            V = - cross(U, N);
-            % Normalize base vectors to the unit of the grid
-            unitY = sqrt(sum((Q-S).^2,2)) ./ (nCols - 1);
-            U = U ./ sqrt(sum(U.^2,2)) .* unitX;   % Rows
-            V = V ./ sqrt(sum(V.^2,2)) .* unitY;   % Cols
-            % Position of the realigned electrodes
-            NewLoc = bst_bsxfun(@plus, P, (I-1) * U + (J-1)*V);
-            
-        % Grids: four corners
-        case 4
+            % Get four corners of the grid
+            P = sSelElec(iElec).Loc(:,1)';
+            S = sSelElec(iElec).Loc(:,2)';
+            Q = sSelElec(iElec).Loc(:,3)';
+            T = sSelElec(iElec).Loc(:,4)';
             % Get 4 possible coordinates for the point, from the four corners
             Xp = bst_bsxfun(@plus, P,     (I-1)/(nRows-1)*(S-P) +     (J-1)/(nCols-1)*(T-P));
             Xt = bst_bsxfun(@plus, T,     (I-1)/(nRows-1)*(Q-T) + (nCols-J)/(nCols-1)*(P-T));
@@ -1841,19 +1884,111 @@ function Channels = AlignEcogElectrodes(Channels, sSubject, nCorners)
                       bst_bsxfun(@times, wt, Xt) + ...
                       bst_bsxfun(@times, ws, Xs) + ...
                       bst_bsxfun(@times, wq, Xq));
-            NewLoc = bst_bsxfun(@rdivide, NewLoc, wp + wt + ws + wq);                    
+            NewLoc = bst_bsxfun(@rdivide, NewLoc, wp + wt + ws + wq);
+
+            % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
+            % Project all points on the surface
+            [tmp, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG');
+            [tmp, ProjElecLoc] = GetChannelNormal(sSubject, sSelElec(iElec).Loc', 'ECOG');
+            % Compute the distance between the original points and the projection 
+            dChan = sqrt(sum((ProjLoc - NewLoc) .^2, 2));
+            dElec = sqrt(sum((sSelElec(iElec).Loc' - ProjElecLoc) .^2, 2));
+            % Get distance associated with each corner
+            dp = dElec(1,:);
+            dt = dElec(2,:);
+            ds = dElec(3,:);
+            dq = dElec(4,:);
+            % Compute the distance to the surface we want for each contact
+            dChanTarget = (wp*dp + wt*dt + ws*ds + wq*dq) ./ (wp + wt + ws + wq);
+            % Project the channels in the direction of the cortex, so that they are at the expected distance
+            NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+            
+            % === MATCH GRID POINTS AND DATA CHANNELS ===
+            % If all the electrodes are defined: direct mapping
+            if (nCols*nRows == length(iChan))
+                for i = 1:length(iChan)
+                    Channels(iChan(i)).Loc = NewLoc(i,:)';
+                end
+            % Else: Match contact names with indices
+            else
+                error('todo.');
+            end
+        end
+
+%         % === PROJECT ON CORTEX SURFACE ===
+%         % Only possible if surface is available
+%         if strcmpi(Modality, 'ECOG') && (~isempty(sSubject.iCortex) || ~isempty(sSubject.iInnerSkull) || ~isempty(sSubject.iScalp))
+%             % Project on the surface
+%             [NewOrient, NewLoc] = GetChannelNormal(sSubject, [Channels(iChan).Loc]', 'ECOG');
+%             % Replace original channel positions
+%             for i = 1:length(iChan)
+%                 Channels(iChan(i)).Loc = NewLoc(i,:)';
+%             end
+%         elseif strcmpi(Modality, 'ECOG')
+%             disp('Warning: No inner skull surface available for this subject, cannot project the contacts on the skull.');
+%         end
+        % Mark channel file as modified
+        GlobalData.DataSet(iDS).isChannelModified = 1;
     end
-    % Project on the inner skull
-    [NewOrient, NewLoc] = figure_3d('GetChannelNormal', sSubject, NewLoc);
-    % Replace original channel positions
-    for i = 1:nElec
-        Channels(iChan(i)).Loc(:,1) = NewLoc(i,:)';
-    end
+    % Update electrode position
+    GlobalData.DataSet(iDS).Channel = Channels;
+    % Update figures
+    UpdateFigures(hFig);
 end
 
 
-%% ===== SET ELECTRODE TIP =====
-function SetElectrodeLoc(iLoc)
+%% ===== PROJECT CONTACTS ON SURFACE =====
+function ProjectContacts(iDS, iFig, SurfaceType)
+    global GlobalData;
+    % Check if there are channels available
+    Channels = GlobalData.DataSet(iDS).Channel;
+    if isempty(Channels) || isempty(GlobalData.DataSet(iDS).IntraElectrodes)
+        return;
+    end
+    % Get selected electrode
+    [sSelElec, iSelElec] = GetSelectedElectrodes();
+    if isempty(iSelElec)
+        java_dialog('warning', 'No electrode selected.', 'Align contacts');
+        return
+    end
+    % Get subject description
+    sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
+    % Check that the appropriate surfaces are available
+    if strcmpi(SurfaceType, 'innerskull') && (isempty(sSubject.iInnerSkull) || (sSubject.iInnerSkull > length(sSubject.Surface)))
+        bst_error('No inner skull surface available for this subject.', 'Project contacts', 0);
+    elseif ismember(SurfaceType, {'cortex','cortexhull','cortexmask'}) && (isempty(sSubject.iCortex) || (sSubject.iCortex > length(sSubject.Surface)))
+        bst_error('No inner cortex available for this subject.', 'Project contacts', 0);
+    end
+    % Process all the electrodes
+    for iElec = 1:length(sSelElec)
+        % Skip non-ECOG entries
+        if ~strcmpi(sSelElec(iElec).Type, 'ECOG')
+            disp(['Electrode "' sSelElec(iElec).Name '" is not set as ECOG. Skipping...']);
+            continue;
+        end
+        % Get contacts for this electrode
+        iChan = find(strcmpi({Channels.Group}, sSelElec(iElec).Name));
+        if isempty(iChan)
+            disp(['BST> Warning: No contact for electrode "' sSelElec(iElec).Name '".']);
+            continue;
+        end
+        % Project on the targe surface
+        [NewOrient, NewLoc] = GetChannelNormal(sSubject, [Channels(iChan).Loc]', SurfaceType);
+        % Replace original channel positions
+        for i = 1:length(iChan)
+            Channels(iChan(i)).Loc = NewLoc(i,:)';
+        end
+    end
+    % Update electrode position
+    GlobalData.DataSet(iDS).Channel = Channels;
+    % Update figures
+    hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+    UpdateFigures(hFig);
+end
+
+
+%% ===== SET ELECTRODE LOCATION =====
+function SetElectrodeLoc(iLoc, jButton)
     global GlobalData;
     % Get selected electrodes
     [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
@@ -1867,15 +2002,15 @@ function SetElectrodeLoc(iLoc)
         bst_error('Position must be set from the MRI viewer.', 'Set electrode position', 0);
         return;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
-        bst_error('Set the first contact of the electrode first.', 'Set electrode position', 0);
+        bst_error('Set the previous reference point first.', 'Set electrode position', 0);
         return;
     end
     % Get selected coordinates
     sMri = panel_surface('GetSurfaceMri', hFig);
     XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS).Figure(iFig).Handles);
-    % Make sure the two points of the electrode are more than 1cm apart
-    if ((size(sSelElec.Loc,2) >= 1) && (iLoc == 2) && (sqrt(sum((sSelElec.Loc(:,1) - XYZ(:)).^2)) < 0.01)) || ...
-       ((size(sSelElec.Loc,2) >= 2) && (iLoc == 1) && (sqrt(sum((sSelElec.Loc(:,2) - XYZ(:)).^2)) < 0.01))
+    % Make sure the points of the electrode are more than 1cm apart
+    iOther = setdiff(1:size(sSelElec.Loc,2), iLoc);
+    if ((size(sSelElec.Loc,2) >= 1) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.01))
         bst_error('The two points you selected are less than 1cm away.', 'Set electrode position', 0);
         return;
     end
@@ -1883,29 +2018,102 @@ function SetElectrodeLoc(iLoc)
     sSelElec.Loc(:,iLoc) = XYZ(:);
     % Save electrode modification
     SetElectrodes(iSelElec, sSelElec);
-    % If the electrode is incomplete, nothing else to do
-    if (size(sSelElec.Loc,2) == 1)
-        return;
-    end
+    % Paint the button in green
+    jButton.setForeground(java.awt.Color(0, 0.8, 0));
     % Get the contact for this electrode
     iChan = find(strcmpi({GlobalData.DataSet(iDS).Channel.Group}, sSelElec.Name));
+    % Check if this is an new implantation folder
+    [fPath, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS).ChannelFile));
+    isImplantation = ~isempty(strfind(folderName, 'Implantation'));
     % Update contact positions
-    if ~isempty(iChan)
+    if (~isempty(iChan) || isImplantation) && ...
+            ((strcmpi(sSelElec.Type, 'SEEG') && (size(sSelElec.Loc,2) >= 2)) || ...
+             (strcmpi(sSelElec.Type, 'ECOG') && (length(sSelElec.ContactNumber) == 1) && (size(sSelElec.Loc,2) >= 2)) || ...
+             (strcmpi(sSelElec.Type, 'ECOG') && (size(sSelElec.Loc,2) >= 4)))
+        % Warnings and checks
+        if strcmpi(sSelElec.Type, 'SEEG') && isempty(sSelElec.ContactSpacing)
+            bst_error(['Contact spacing is not defined for electrode "' sSelElec.Name '".'], 'Set electrode position', 0);
+            return;
+        end
         % If the positions are not set, set positions automatically
-        if any(cellfun(@(c)or(isempty(c), isequal(c,[0;0;0])), {GlobalData.DataSet(iDS).Channel(iChan).Loc}))
+        if isempty(iChan) || any(cellfun(@(c)or(isempty(c), isequal(c,[0;0;0])), {GlobalData.DataSet(iDS).Channel(iChan).Loc}))
             isAlign = 1;
         % Otherwise, ask for confirmation to the user
         else
             isAlign = java_dialog('confirm', 'Update the positions of the contacts?', 'Set electrode position');
         end
-        % Set contact position
+        % Align contacts
         if isAlign
+            % Set default contacts positions
             AlignContacts(iDS, iFig, 'default');
+            % Update display
+            UpdateFigures(); 
         end
     end
-    % Update display
-    UpdateFigures();        
- 
 end
 
+
+%% ===== CREATE NEW IMPLANTATION =====
+function CreateNewImplantation(MriFile) %#ok<DEFNU>
+    % Find subject
+    [sSubject,iSubject,iAnatomy] = bst_get('MriFile', MriFile);
+    % Get study for the new channel file
+    switch (sSubject.UseDefaultChannel)
+        case 0
+            % Get new folder "Implantation"
+            ProtocolInfo = bst_get('ProtocolInfo');
+            ImplantFolder = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sSubject.Name, 'Implantation'));
+            [tmp, Condition] = bst_fileparts(ImplantFolder);
+            % Create new folder
+            iStudy = db_add_condition(sSubject.Name, Condition, 1);
+        case 1
+            % Use default channel file
+            [sStudy, iStudy] = bst_get('AnalysisIntraStudy', iSubject);
+            % The @intra study must not contain an existing channel file
+            if ~isempty(sStudy.Channel) && ~isempty(sStudy.Channel(1).FileName)
+                error(['There is already a channel file for this subject:' 10 sStudy.Channel(1).FileName]);
+            end
+        case 2
+            error('The subject uses a shared channel file, it should not be edited in this way.');
+    end
+    % Progress bar
+    bst_progress('start', 'Implantation', 'Updating display...');
+    % Create empty channel file structure
+    ChannelMat = db_template('channelmat');
+    ChannelMat.Comment = 'SEEG/ECOG';
+    ChannelMat.Channel = repmat(db_template('channeldesc'), 1, 0);
+    % Save new channel in the database
+    ChannelFile = db_set_channel(iStudy, ChannelMat, 0, 0);
+    % Switch to functional data
+    gui_brainstorm('SetExplorationMode', 'StudiesSubj');
+    % Select new file
+    panel_protocols('SelectNode', [], ChannelFile);
+    % Display channels
+    DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy);
+    % Close progress bar
+    bst_progress('stop');
+end
+
+
+%% ===== DISPLAY CHANNELS (MRI VIEWER) =====
+function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
+    % Get study
+    sStudy = bst_get('ChannelFile', ChannelFile);
+    % Get subject
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    if isempty(sSubject) || isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(iAnatomy).FileName)
+        bst_error('No MRI available for this subject.', 'Display electrodes', 0);
+    end
+    % View MRI
+    [hFig, iDS, iFig] = view_mri(sSubject.Anatomy(iAnatomy).FileName);
+    if isempty(hFig)
+        return;
+    end
+    % Add channels to the figure
+    figure_mri('LoadElectrodes', hFig, ChannelFile, Modality);
+    % SEEG and ECOG: Open tab "iEEG"
+    if ismember(Modality, {'SEEG', 'ECOG'})
+        gui_brainstorm('ShowToolTab', 'iEEG');
+    end
+end
 

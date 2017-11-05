@@ -4,6 +4,7 @@ function [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, hFi
 % USAGE:  [hFig, iDS, iFig] = view_surface(SurfaceFile)
 %         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, 'NewFigure')
 %         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, hFig)
+%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, iDS)
 %
 % INPUT:
 %     - SurfaceFile : full path to the surface file to display 
@@ -11,6 +12,7 @@ function [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, hFi
 %     - SurfColor   : Surface color [r,g,b] (optional)
 %     - "NewFigure" : force new figure creation (do not re-use a previously created figure)
 %     - hFig        : Specify the figure in which to display the surface
+%     - iDS         : Specify which loaded dataset to use
 %
 % OUTPUT : 
 %     - hFig : Matlab handle to the 3DViz figure that was created or updated
@@ -38,6 +40,8 @@ function [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, hFi
 %
 % Authors: Francois Tadel, 2008-2011
 
+global GlobalData;
+
 %% ===== PARSE INPUTS =====
 iDS  = [];
 iFig = [];
@@ -50,6 +54,9 @@ elseif ischar(hFig) && strcmpi(hFig, 'NewFigure')
     NewFigure = 1;
 elseif ishandle(hFig)
     [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+elseif (round(hFig) == hFig) && (hFig <= length(GlobalData.DataSet))
+    iDS = hFig;
+    hFig = [];
 else
     error('Invalid figure handle.');
 end
@@ -65,21 +72,23 @@ end
 % Get Subject that holds this surface
 [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', SurfaceFile);
 % If this surface does not belong to any subject
-if isempty(sSubject)
-    % Check that the SurfaceFile really exist as an absolute file path
-    if ~file_exist(SurfaceFile)
-        bst_error(['File not found : "', SurfaceFile, '"'], 'Display surface');
-        return
+if isempty(iDS)
+    if isempty(sSubject)
+        % Check that the SurfaceFile really exist as an absolute file path
+        if ~file_exist(SurfaceFile)
+            bst_error(['File not found : "', SurfaceFile, '"'], 'Display surface');
+            return
+        end
+        % Create an empty DataSet
+        SubjectFile = '';
+        iDS = bst_memory('GetDataSetEmpty');
+    else
+        % Get GlobalData DataSet associated with subjectfile (create if does not exist)
+        SubjectFile = sSubject.FileName;
+        iDS = bst_memory('GetDataSetSubject', SubjectFile, 1);
     end
-    % Create an empty DataSet
-    SubjectFile = '';
-    iDS = bst_memory('GetDataSetEmpty');
-else
-    % Get GlobalData DataSet associated with subjectfile (create if does not exist)
-    SubjectFile = sSubject.FileName;
-    iDS = bst_memory('GetDataSetSubject', SubjectFile, 1);
+    iDS = iDS(1);
 end
-iDS = iDS(1);
 
 %% ===== CREATE NEW FIGURE =====
 % Display progress bar

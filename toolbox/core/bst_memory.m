@@ -33,7 +33,6 @@ function [ varargout ] = bst_memory( varargin )
 %             iResult = bst_memory('GetDipolesInDataSet',  iDS, DipolesFile)
 %           iTimefreq = bst_memory('GetTimefreqInDataSet', iDS, TimefreqFile)
 %                 iDS = bst_memory('GetRawDataSet');
-%
 % [TimeVector, iTime] = bst_memory('GetTimeVector', ...) 
 %                isOk = bst_memory('CheckTimeWindows')
 %                isOk = bst_memory('CheckFrequencies')
@@ -363,6 +362,25 @@ function [sSurf, iSurf] = GetSurface(SurfaceFile)
         sSurf = GlobalData.Surface(iSurf);
     else
         sSurf = [];
+    end
+end
+
+
+%% ===== GET SURFACE ENVELOPE =====
+function [sEnvelope, sSurf] = GetSurfaceEnvelope(SurfaceFile, nVertices)
+    global GlobalData;
+    % Load surface
+    [sSurf, iSurf] = LoadSurface(SurfaceFile);
+    % Get an existing mrimask
+    fieldName = sprintf('v%d', nVertices);
+    if ~isempty(sSurf.envelope) && isfield(sSurf.envelope, fieldName) && ~isempty(sSurf.envelope.(fieldName))
+        sEnvelope = sSurf.envelope.(fieldName);
+    % MRI mask do not exist yet
+    else
+        % Compute mrimask
+        sEnvelope = tess_envelope(SurfaceFile, 'mask_cortex', nVertices);
+        % Add it to loaded structure
+        GlobalData.Surface(iSurf).envelope.(fieldName) = sEnvelope;
     end
 end
 
@@ -3192,6 +3210,11 @@ function SaveChannelFile(iDS)
     end
     % Load channel file
     ChannelMat = in_bst_channel(GlobalData.DataSet(iDS).ChannelFile);
+    % Update comment if number of channels changed
+    isNumChanged = (length(ChannelMat.Channel) ~= length(GlobalData.DataSet(iDS).Channel));
+    if isNumChanged
+        ChannelMat.Comment = sprintf('%s (%d)', str_remove_parenth(ChannelMat.Comment), length(GlobalData.DataSet(iDS).Channel));
+    end
     % Get modified fields
     ChannelMat.Channel         = GlobalData.DataSet(iDS).Channel;
     ChannelMat.IntraElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
@@ -3203,8 +3226,13 @@ function SaveChannelFile(iDS)
     GlobalData.DataSet(iDS).isChannelModified = 0;
     % Update database reference
     [sStudy, iStudy] = bst_get('ChannelFile', GlobalData.DataSet(iDS).ChannelFile);
-    [sStudy.Channel.Modalities, sStudy.Channel.DisplayableSensorTypes] = channel_get_modalities(ChannelMat.Channel);
+    [sStudy.Channel(1).Modalities, sStudy.Channel(1).DisplayableSensorTypes] = channel_get_modalities(ChannelMat.Channel);
+    sStudy.Channel(1).Comment = ChannelMat.Comment;
     bst_set('Study', iStudy, sStudy);
+    % Update tree
+    if isNumChanged
+        panel_protocols('UpdateNode', 'Study', iStudy);
+    end
 end
 
 

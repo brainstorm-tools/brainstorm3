@@ -382,6 +382,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     Handles.hPointEEG  = [];
     Handles.hTextEEG   = [];
     Handles.LocEEG     = [];
+    Handles.HiddenChannels  = [];
     Handles.isEditFiducials = 1;
     Handles.isEditVolume    = 1;
     Handles.isOverlay       = 1;
@@ -876,30 +877,16 @@ function DisplayFigurePopup(hFig)
 
     % ==== MENU ELECTRODES ====
     if Handles.isEeg && ~isempty(iDS) && ~isempty(GlobalData.DataSet(iDS).ChannelFile) || ~isempty(GlobalData.DataSet(iDS).Channel)
-        jMenu = gui_component('Menu', jPopup, [], 'Electrodes', IconLoader.ICON_CHANNEL);
+        % Add 3D views
+        gui_component('MenuItem', jPopup, [], 'Add 3D view', IconLoader.ICON_AXES, [], @(h,ev)Add3DView(hFig));
+        % Display labels
+        jItem = gui_component('CheckBoxMenuItem', jPopup, [], 'Display labels',  IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)SetLabelVisible(hFig, ~Handles.isEegLabels));
+        jItem.setSelected(Handles.isEegLabels);
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
         % Set position
-        jItem = gui_component('MenuItem', jMenu, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
+        jItem = gui_component('MenuItem', jPopup, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
         jPopup.addSeparator();
-%         % Align SEEG electrodes
-%         iChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
-%         Modality = GlobalData.DataSet(iDS).Channel(iChannels(1)).Type;
-%         if strcmpi(Modality, 'SEEG')
-%             jMenu.addSeparator();
-%             jItem = gui_component('MenuItem', jMenu, [], 'Align all contacts in a group',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'all'));
-%             jItem = gui_component('MenuItem', jMenu, [], 'Define group with first and second contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'first_second'));
-%             jItem = gui_component('MenuItem', jMenu, [], 'Define group with first and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'first_last'));
-%         elseif strcmpi(Modality, 'ECOG')
-%             jMenu.addSeparator();
-%             jItem = gui_component('MenuItem', jMenu, [], 'Define strip: First and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 1));
-%             jItem = gui_component('MenuItem', jMenu, [], 'Define grid: First and last contacts',   IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 2));
-%             jItem = gui_component('MenuItem', jMenu, [], 'Define grid: 4 corner contacts',         IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 4));
-%         end
-        % Display labels
-        jMenu.addSeparator();
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Display labels',  IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)SetLabelVisible(hFig, ~Handles.isEegLabels));
-        jItem.setSelected(Handles.isEegLabels);
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK)); 
     end
     
     jMenuView = gui_component('Menu', jPopup, [], 'Views', IconLoader.ICON_AXES);
@@ -1644,16 +1631,14 @@ function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
     bst_memory('LoadChannelFile', iDS, ChannelFile);
     % Load the channel file
     iChannels = channel_find(GlobalData.DataSet(iDS).Channel, Modality);
-    if isempty(iChannels)
-        disp(['BST> Error: No "' Modality '" channels to display.']);
-        return;
-    end
     % Set the list of selected sensors
     GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = iChannels;
     GlobalData.DataSet(iDS).Figure(iFig).Id.Modality      = Modality;
     % Plot electrodes
-    GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotElectrodes(iDS, iFig, GlobalData.DataSet(iDS).Figure(iFig).Handles);
-    PlotSensors3D(iDS, iFig);
+    if ~isempty(iChannels)
+        GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotElectrodes(iDS, iFig, GlobalData.DataSet(iDS).Figure(iFig).Handles);
+        PlotSensors3D(iDS, iFig);
+    end
     % Set EEG flag
     SetFigureStatus(hFig, [], [], [], 1, 1);
 end
@@ -1684,7 +1669,7 @@ function PlotSensors3D(iDS, iFig, Channel, ChanLoc)
     
     % === DEPTH ELECTRODES ===
     % Create objects geometry
-    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc);
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc);
     % Plot depth electrodes
     for iElec = 1:length(ElectrodeDepth)
         % Get coordinates
@@ -1714,6 +1699,10 @@ function PlotSensors3D(iDS, iFig, Channel, ChanLoc)
     
     % === ELECTRODES LABELS ===
     for iElec = 1:length(ElectrodeLabel)
+        % Do not add label for ECOG
+        if strcmpi(ElectrodeLabel(iElec).Type, 'ECOG')
+            continue;
+        end
         % Get coordinates
         Z = 3 + 0.01*iElec;
         LocMri = cs_convert(sMri, 'scs', 'mri', ElectrodeLabel(iElec).Loc) .* 1000;
@@ -1754,7 +1743,7 @@ function PlotSensors3D(iDS, iFig, Channel, ChanLoc)
     end
     
     % === GRID OF CONTACTS ===
-    if ~isempty(ElectrodeGrid)
+    if ~isempty(ElectrodeGrid) && ~isempty(ElectrodeGrid.Vertices)
         % Get coordinates
         VertMri = cs_convert(sMri, 'scs', 'mri', ElectrodeGrid.Vertices) .* 1000;
         Z = repmat(5, size(VertMri,1), 1);
@@ -1780,6 +1769,9 @@ function PlotSensors3D(iDS, iFig, Channel, ChanLoc)
         % setappdata(hElectrodeGridC, 'Z', VertMri(:,2));
         % setappdata(hElectrodeGridA, 'Z', VertMri(:,3));
     end
+    
+    % === HIDE SENSORS ===
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.HiddenChannels = HiddenChannels;
     
     % Repaint selected sensors for this figure
 %     UpdateFigSelectedRows(iDS, iFig);
@@ -1807,10 +1799,14 @@ function Handles = PlotElectrodes(iDS, iFig, Handles, isReset)
     % SEEG/ECOG: Get the sensor groups available and simplify the names of the sensors
     selChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
     Channels = GlobalData.DataSet(iDS).Channel(selChan);
-    if ismember(upper(Channels(selChan(1)).Type), {'SEEG', 'ECOG'})
-        [iGroupEeg, GroupNames, sensorNames] = panel_montage('GetEegGroups', Channels, [], 1);
-    else
-        sensorNames = {Channels.Name}';
+    % Define display names for the channels
+    if ~isempty(Channels)
+        % if ismember(upper(Channels(selChan(1)).Type), {'SEEG', 'ECOG'})
+        if strcmpi(upper(Channels(selChan(1)).Type), 'SEEG')
+            [iGroupEeg, GroupNames, sensorNames] = panel_montage('GetEegGroups', Channels, [], 1);
+        else
+            sensorNames = {Channels.Name}';
+        end
     end
     % Loop on all the channels to create the graphic objects
     for i = 1:length(Channels)
@@ -1989,11 +1985,17 @@ function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
     MriOptions = bst_get('MriOptions');
     % Show electrodes
     if Handles.isEeg
+        % Hide all the points that we will never show
+        iEegHide = Handles.HiddenChannels;
+        iEegShow = setdiff(1:length(Handles.hPointEEG), iEegHide);
+        if ~isempty(iEegHide)
+            set(Handles.hPointEEG(iEegHide(:),:), 'Visible', 'off');
+        end
         % If MIP:Functional is on, then display all the electrodes
         if MriOptions.isMipFunctional
-            set(Handles.hPointEEG(:), 'Visible', 'on');
+            set(Handles.hPointEEG(iEegShow(:),:), 'Visible', 'on');
         else
-            for i = 1:size(Handles.hPointEEG,1)
+            for i = iEegShow
                 showPt(Handles.hPointEEG(i,:), Handles.LocEEG(i,:));
             end
         end
@@ -2003,11 +2005,15 @@ function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
     
     % Show electrodes labels
     if Handles.isEeg && Handles.isEegLabels
+        % Hide all the points that we will never show
+        if ~isempty(iEegHide)
+            set(Handles.hTextEEG(iEegHide(:),:), 'Visible', 'off');
+        end
         % If MIP:Functional is on, then display all the electrodes
         if MriOptions.isMipFunctional
-            set(Handles.hTextEEG(:),  'Visible', 'on');
+            set(Handles.hTextEEG(iEegShow(:),:),  'Visible', 'on');
         else
-            for i = 1:size(Handles.hTextEEG,1)
+            for i = iEegShow
                 showPt(Handles.hTextEEG(i,:), Handles.LocEEG(i,:));
             end
         end
@@ -2062,29 +2068,24 @@ function UpdateVisibleSensors3D(hFig, slicesToUpdate)
                 Visible = 'on';
             % Otherwise: Check if any contact of this electrode is close to the current slices
             else
+                % Get contacts for this electrode
                 iChan = find(strcmpi({GlobalData.DataSet(iDS).Channel.Group}, groupName));
-                if ~isempty(iChan)
-                    % Get position of contacts
-                    ChanLoc = [GlobalData.DataSet(iDS).Channel(iChan).Loc]';
-                    % If contacts are not defined: use the electrode position
-                    if isempty(ChanLoc)
-                        iEl = find(strcmpi({GlobalData.DataSet(iDS).IntraElectrodes.Name}, groupName));
-                        if ~isempty(iEl) && (size(GlobalData.DataSet(iDS).IntraElectrodes(iEl).Loc,2) >= 2)
-                            ChanLoc = GlobalData.DataSet(iDS).IntraElectrodes(iEl).Loc(:,1) * (0:.05:1) + GlobalData.DataSet(iDS).IntraElectrodes(iEl).Loc(:,2) * (1:-.05:0);
-                        end
+                % Get position of contacts
+                ChanLoc = [GlobalData.DataSet(iDS).Channel(iChan).Loc]';
+                % If contacts are not defined: use the electrode position
+                if isempty(ChanLoc)
+                    iEl = find(strcmpi({GlobalData.DataSet(iDS).IntraElectrodes.Name}, groupName));
+                    if ~isempty(iEl) && (size(GlobalData.DataSet(iDS).IntraElectrodes(iEl).Loc,2) >= 2)
+                        ChanLoc = GlobalData.DataSet(iDS).IntraElectrodes(iEl).Loc(:,1) * (0:.05:1) + GlobalData.DataSet(iDS).IntraElectrodes(iEl).Loc(:,2) * (1:-.05:0);
                     end
-                    % 
-                    if isempty(ChanLoc)
-                        Visible = 'on';
-                    end
-                    % Convert positions to MRI coordinates
-                    ChanMri = cs_convert(sMri, 'scs', 'mri', ChanLoc) .* 1000;
-                    % Is there any point close to the current slices
-                    if any(abs(ChanMri(:,iDim) - slicesLoc(iDim)) <= nTol)
-                        Visible = 'on';
-                    else
-                        Visible = 'off';
-                    end
+                end
+                % Convert positions to MRI coordinates
+                ChanMri = cs_convert(sMri, 'scs', 'mri', ChanLoc) .* 1000;
+                % Is there any point close to the current slices
+                if any(abs(ChanMri(:,iDim) - slicesLoc(iDim)) <= nTol)
+                    Visible = 'on';
+                else
+                    Visible = 'off';
                 end
             end
             set(hElectrodeDepth(iElec), 'Visible', Visible);
@@ -2737,3 +2738,39 @@ function ApplyCoordsToAllFigures(hSrcFig, cs)
         SetLocation(cs, destMri, destHandles, XYZ);
     end
 end
+
+
+%% ===== ADD 3D VIEW =====
+function Add3DView(hFig)
+    global GlobalData;
+    % Get figure and dataset
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+    % Get the MRI in this figure
+    TessInfo = getappdata(hFig, 'Surface');
+    MriFile = TessInfo(1).SurfaceFile;
+    % Get subject
+    sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
+    % Get figure modality
+    Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+    % Open a 3D figure
+    if ~isempty(Modality) && strcmpi(Modality, 'ECOG')
+        % SEEG or nothing: Display cortex, scalp or MRI
+        if ~isempty(sSubject.iCortex)
+            hFid3d = view_surface(sSubject.Surface(sSubject.iCortex).FileName);
+        elseif ~isempty(sSubject.iScalp)
+            hFid3d = view_surface(sSubject.Surface(sSubject.iScalp).FileName);
+        else
+            hFid3d = view_mri_3d(MriFile, [], [], iDS);
+        end
+    % SEEG: Only 3D MRI
+    else
+        hFid3d = view_mri_3d(MriFile, [], [], iDS);
+    end
+    % Add 3D contacts
+    if ~isempty(GlobalData.DataSet(iDS).ChannelFile) && ~isempty(Modality)
+        view_channels(GlobalData.DataSet(iDS).ChannelFile, Modality, 1, 0, hFid3d, 1);
+    end
+end
+
+
+

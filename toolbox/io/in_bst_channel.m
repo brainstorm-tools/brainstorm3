@@ -115,7 +115,7 @@ if ismember('Channel', FieldsToRead) && isstruct(sMat.Channel) && ~isempty(sMat.
             continue;
         end
         % If the groups are all defined: skip
-        if all(~cellfun(@isempty, {sMat.Channel(iMod).Group})) && ~isempty(sMat.IntraElectrodes)
+        if all(~cellfun(@isempty, {sMat.Channel(iMod).Group})) && ~isempty(sMat.IntraElectrodes) && all(ismember(unique({sMat.Channel(iMod).Group}), {sMat.IntraElectrodes.Name}))
             continue;
         end
         % Parse sensor names

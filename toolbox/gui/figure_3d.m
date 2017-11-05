@@ -1043,12 +1043,15 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     end
                     % Get Mri and figure Handles
                     [sMri, TessInfo, iTess, iMri] = panel_surface('GetSurfaceMri', hFig);
-                    % Draw a new X-cut according to the mouse motion
-                    posXYZ = [NaN, NaN, NaN];
-                    posXYZ(dim) = TessInfo(iTess).CutsPosition(dim) + value;
-                    panel_surface('PlotMri', hFig, posXYZ);
-                    % Update interface (Surface tab and MRI figure)
-                    panel_surface('UpdateSurfaceProperties');
+                    % If there are anatomical slices in the figure
+                    if ~isempty(iTess)
+                        % Draw a new X-cut according to the mouse motion
+                        posXYZ = [NaN, NaN, NaN];
+                        posXYZ(dim) = TessInfo(iTess).CutsPosition(dim) + value;
+                        panel_surface('PlotMri', hFig, posXYZ);
+                        % Update interface (Surface tab and MRI figure)
+                        panel_surface('UpdateSurfaceProperties');
+                    end
                     
                 % === CHANNELS ===
                 % RETURN: VIEW SELECTED CHANNELS
@@ -2496,10 +2499,15 @@ function hElectrodeGrid = PlotSensors3D(iDS, iFig, Channel, ChanLoc) %#ok<DEFNU>
     [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc);
     % Plot depth electrodes
     for iElec = 1:length(ElectrodeDepth)
+        if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Topography')
+            faceColor = [.5 .5 .5];
+        else
+            faceColor = ElectrodeDepth(iElec).FaceColor;
+        end
         hElectrodeDepth = patch(...
             'Faces',     ElectrodeDepth(iElec).Faces, ...
             'Vertices',  ElectrodeDepth(iElec).Vertices,...
-            'FaceColor', ElectrodeDepth(iElec).FaceColor, ...
+            'FaceColor', faceColor, ...
             'FaceAlpha', ElectrodeDepth(iElec).FaceAlpha, ...
             'Parent',    hAxes, ...
             ElectrodeDepth(iElec).Options{:});
