@@ -1,4 +1,4 @@
-function ChannelMat = in_channel_tsv(ChannelFile, nSkipLines, LabelChannel, LabelPos, Factor)
+function ChannelMat = in_channel_tsv(ChannelFile, LabelChannel, LabelPos, Factor)
 % IN_CHANNEL_TSV:  Read 3D positions from a .tsv file with named columns.
 
 % @=============================================================================
@@ -25,12 +25,23 @@ function ChannelMat = in_channel_tsv(ChannelFile, nSkipLines, LabelChannel, Labe
 %% ===== READ FILE =====
 % Open file
 fid = fopen(ChannelFile, 'r');
-% Skip the header lines
-for i = 1:nSkipLines
-    fgetl(fid);
+% Search for the header line with the column names
+stop = 0;
+while ~stop
+    % Read line
+    strLine = fgetl(fid);
+    % If we reached the end of the file
+    if isequal(strLine, -1)
+        error(['Could not find header line with column names: "' LabelChannel '" and "' LabelPos '".']);
+    end
+    % If the line includes the two requested column names
+    if ~isempty(strfind(strLine, LabelChannel)) && ~isempty(strfind(strLine, LabelPos))
+        % Keep this line as the column labels and move on
+        ColumnLabels = str_split(strLine, sprintf('\t'));
+        stop = 1;
+    end
 end
-% Get column labels
-ColumnLabels = str_split(fgetl(fid), sprintf('\t'));
+
 % Read values
 read_data = textscan(fid, '%s', 'Delimiter', '\t');
 read_data = reshape(read_data{1}, length(ColumnLabels), [])';
@@ -53,10 +64,16 @@ ChannelMat.Channel = repmat(db_template('channeldesc'), 1, nChannels);
 for i = 1:nChannels
     ChannelMat.Channel(i).Type    = 'EEG';
     ChannelMat.Channel(i).Name    = read_data{i,iColLabel};
-    ChannelMat.Channel(i).Loc     = eval(read_data{i,iColPos})' .* Factor;
     ChannelMat.Channel(i).Orient  = [];
     ChannelMat.Channel(i).Comment = '';
     ChannelMat.Channel(i).Weight  = 1;
+    % Get location
+    try
+        Loc = eval(read_data{i,iColPos});
+        ChannelMat.Channel(i).Loc  = Loc' .* Factor;
+    catch
+        disp(['Invalid position for contact "' ChannelMat.Channel(i).Name '": ' read_data{i,iColPos}]);
+    end
 end
 
 

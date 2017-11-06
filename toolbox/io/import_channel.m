@@ -233,9 +233,9 @@ switch (FileFormat)
                 ChannelMat = in_channel_ascii(ChannelFile, {'name','X','Y','Z'}, 3, .001);
             case 'csv'
                 if strcmpi(FileFormat, 'INTRANAT_MNI')
-                    ChannelMat = in_channel_tsv(ChannelFile, 2, 'contact', 'MNI', .001);
+                    ChannelMat = in_channel_tsv(ChannelFile, 'contact', 'MNI', .001);
                 else
-                    ChannelMat = in_channel_tsv(ChannelFile, 2, 'contact', 'T1pre Scanner Based', .001);
+                    ChannelMat = in_channel_tsv(ChannelFile, 'contact', 'T1pre Scanner Based', .001);
                 end
         end
         ChannelMat.Comment = 'Contacts';

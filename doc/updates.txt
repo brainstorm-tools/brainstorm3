@@ -2,6 +2,7 @@
 November 2017
 - Bug identified: Changes in isosurface in Matlab 2017b cause some weird
 - GUI: More guided protocol creation to avoid massive deletions of user folders
+- IO: Added import of channel files in .tsv format (IntrAnat)
 ---------------------------------------------------------------
 October 2017
 - Process: PSD process now saves the standard deviation across time
