@@ -593,21 +593,42 @@ end
 
 
 %% ===== SET SELECTED ELECTRODES =====
+% USAGE:  SetSelectedElectrodes(iSelElec)      % array of indices
+%         SetSelectedElectrodes(SelElecNames)  % cell array of names
 function SetSelectedElectrodes(iSelElec)
     % === GET ELECTRODE INDICES ===
-    % No selection
-    if isempty(iSelElec) || (any(iSelElec == 0))
-        iSelItem = -1;
-    % Find the selected electrode in the JList
-    else
-        iSelItem = iSelElec - 1;
-    end
-    % === CHECK FOR MODIFICATIONS ===
     % Get figure controls
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl) || isempty(ctrl.jListElec)
         return
     end
+    % No selection
+    if isempty(iSelElec) || (isnumeric(iSelElec) && any(iSelElec == 0))
+        iSelItem = -1;
+    % Select by name
+    elseif iscell(iSelElec) || ischar(iSelElec)
+        % Get list of electrode names
+        if iscell(iSelElec)
+            SelElecNames = iSelElec;
+        else
+            SelElecNames = {iSelElec};
+        end
+        % Find the requested channels in the JList
+        listModel = ctrl.jListElec.getModel();
+        iSelItem = [];
+        for i = 1:listModel.getSize()
+            if ismember(char(listModel.getElementAt(i-1)), SelElecNames)
+                iSelItem(end+1) = i - 1;
+            end
+        end
+        if isempty(iSelItem)
+            iSelItem = -1;
+        end
+    % Find the selected electrode in the JList
+    else
+        iSelItem = iSelElec - 1;
+    end
+    % === CHECK FOR MODIFICATIONS ===
     % Get previous selection
     iPrevItems = ctrl.jListElec.getSelectedIndices();
     % If selection did not change: exit
@@ -661,8 +682,7 @@ function UpdateMenus(iDS, iFig)
     gui_component('MenuItem', jMenu, [], 'Save modifications', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_memory, 'SaveChannelFile', iDS));
     % Menu: Export positions
     jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'Export selected contacts', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportChannelFile, 'selected'));            
-    gui_component('MenuItem', jMenu, [], 'Export all contacts', IconLoader.ICON_SAVE, [],      @(h,ev)bst_call(@ExportChannelFile, 'all'));      
+    gui_component('MenuItem', jMenu, [], 'Export contacts positions', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportChannelFile));            
 end
 
 
@@ -2117,3 +2137,25 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
     end
 end
 
+
+%% ===== EXPORT CONTACT POSITIONS =====
+function ExportChannelFile()
+    global GlobalData;
+    % Get electrodes to save
+    [sElec, iElec, iDS, iFig, hFig] = GetSelectedElectrodes();
+    % If there are no electrodes to export
+    if isempty(sElec)
+        bst_error('No electrodes to export.', 'Export contacts', 0);
+        return;
+    end
+    % Get the channels corresponding to these contacts
+    iChannels = find(ismember({GlobalData.DataSet(iDS).Channel.Group}, {sElec.Name}));
+    if isempty(iChannels)
+        bst_error('No contact positions to export.', 'Export contacts', 0);
+        return;
+    end
+    % Force saving the modifications
+    bst_memory('SaveChannelFile', iDS);
+    % Export the file
+    export_channel(GlobalData.DataSet(iDS).ChannelFile);
+end

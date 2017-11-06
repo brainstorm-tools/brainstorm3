@@ -609,6 +609,13 @@ function FigureMouseUpCallback(hFig, varargin)
             % Select only the last sensor
             bst_figures('ToggleSelectedRow', SelChan);
             
+        % === SELECTING DEPTH ELECTRODE ===
+        elseif ~isempty(clickObject) && ismember(get(clickObject,'Tag'), {'ElectrodeDepth', 'ElectrodeLabel'})
+            % Get electrode name
+            elecName = get(clickObject, 'UserData');
+            % Select it in panel iEEG
+            panel_ieeg('SetSelectedElectrodes', elecName);
+            
         % === SELECTING SENSORS ===
         else
             iSelChan = [];
@@ -725,6 +732,11 @@ function FigureMouseUpCallback(hFig, varargin)
                         bst_figures('SetSelectedRows', SelChan);
                     else
                         bst_figures('ToggleSelectedRow', SelChan);
+                    end
+                    % If there are intra electrodes defined, and if the channels are SEEG/ECOG: try to select the electrode in panel_ieeg
+                    if ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
+                        selGroup = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
+                        panel_ieeg('SetSelectedElectrodes', selGroup);
                     end
                 end
             end
@@ -2039,7 +2051,7 @@ function UpdateFigSelectedRows(iDS, iFig)
         % Get copy of spheres patch
         hElectrodeSelect = findobj(hFig, 'Tag', 'ElectrodeSelect');
         % If the selection doesn't exist yet: copy initial patch
-        if isempty(hElectrodeSelect)
+        if isempty(hElectrodeSelect) && ~isempty(iSelChan)
             % Extend the size of all the electrodes
             iAllChan = unique(sphUserData);
             for i = 1:length(iAllChan)
@@ -2057,23 +2069,33 @@ function UpdateFigSelectedRows(iDS, iFig)
             set(hElectrodeSelect, ...
                 'FaceColor', [1 0 0], ...
                 'EdgeColor', 'none', ...
-                'FaceAlpha', 'interp', ...
+                'FaceAlpha', 'flat', ...
                 'FaceVertexAlphaData', 0.1*zeros(size(sphVertices,1),1), ...
                 'Vertices', sphVertices, ...
                 'Tag',      'ElectrodeSelect');
         end
-        % Get current list of visible vertices
-        AlphaData = get(hElectrodeSelect, 'FaceVertexAlphaData');
-        % Selected channels: Make visible
-        for i = 1:length(iSelChan)
-            AlphaData(sphUserData == iSelChan(i)) = 0.6;
+        % If there is something to update
+        if ~isempty(hElectrodeSelect)
+            % Get current list of visible vertices
+            AlphaData = get(hElectrodeSelect, 'FaceVertexAlphaData');
+            % Selected channels: Make visible
+            for i = 1:length(iSelChan)
+                AlphaData(sphUserData == iSelChan(i)) = 0.6;
+            end
+            % Deselected channels: Hide them
+            for i = 1:length(iUnselChan)
+                AlphaData(sphUserData == iUnselChan(i)) = 0;
+            end
+            % Hide completely the object
+            if all(AlphaData == 0)
+                Visible = 'off';
+            else
+                Visible = 'on';
+            end
+            % Update Alpha vector
+            set(hElectrodeSelect, 'FaceVertexAlphaData', AlphaData, ...
+                                  'Visible', Visible);
         end
-        % Deselected channels: Hide them
-        for i = 1:length(iUnselChan)
-            AlphaData(sphUserData == iUnselChan(i)) = 0;
-        end
-        % Update Alpha vector
-        set(hElectrodeSelect, 'FaceVertexAlphaData', AlphaData);
         
     % All other 2D/3D figures
     else
@@ -2540,7 +2562,7 @@ function hElectrodeGrid = PlotSensors3D(iDS, iFig, Channel, ChanLoc) %#ok<DEFNU>
         'FaceVertexCData',     ElectrodeGrid.FaceVertexCData, ...
         'FaceVertexAlphaData', ElectrodeGrid.FaceVertexAlphaData, ...
         'FaceColor',           'interp', ...
-        'FaceAlpha',           'interp', ...
+        'FaceAlpha',           'flat', ...
         'AlphaDataMapping',    'none', ...
         'Parent',              hAxes, ...
         ElectrodeGrid.Options{:});
