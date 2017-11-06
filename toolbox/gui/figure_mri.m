@@ -103,7 +103,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     Handles.axs = axes(...
         'Parent',        hFig, ...
         'Units',         'pixels', ...
-        'Color',         [1 0 0],...
+        'DataAspectRatio', [1 1 1], ...
         'Tag',           'axs', ...
         'BusyAction',    'cancel', ...
         'Interruptible', 'off');
@@ -111,7 +111,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     Handles.axa = axes(...
         'Parent',        hFig, ...
         'Units',         'pixels', ...
-        'Color',         [1 0 0],...
+        'DataAspectRatio', [1 1 1], ...
         'Tag',           'axa', ...
         'BusyAction',    'cancel', ...
         'Interruptible', 'off');
@@ -119,12 +119,13 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     Handles.axc = axes(...
         'Parent',        hFig, ...
         'Units',         'pixels', ...
-        'Color',         [1 0 0],...
+        'DataAspectRatio', [1 1 1], ...
         'Tag',           'axc', ...
         'BusyAction',    'cancel', ...
         'Interruptible', 'off');
     % Configure axes
-    axis([Handles.axs, Handles.axa, Handles.axc], 'image', 'off');
+    %axis([Handles.axs, Handles.axa, Handles.axc], 'image', 'off');
+    axis([Handles.axs, Handles.axa, Handles.axc], 'off');
 
     % ===== SLIDERS =====
     [Handles.jSliderSagittal, Handles.sliderSagittal] = javacomponent(javax.swing.JSlider(0,10,0), [0 0 1 1], hFig);
@@ -309,8 +310,8 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.fill    = GridBagConstraints.BOTH;
     c.insets  = Insets(2,4,2,4);
     % Buttons: Zoom-, Zoom+, Cancel, Save
-    c.gridx = 1;  c.weightx = 0.1;  Handles.jButtonZoomMinus = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_MINUS, '<HTML><B>Zoom out   [-]</B><BR><BR>Double-click to reset view', @(h,ev)ButtonZoom_Callback(hFig, '-'));
-    c.gridx = 2;  c.weightx = 0.1;  Handles.jButtonZoomPlus  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_PLUS,  '<HTML><B>Zoom in   [+]</B><BR><BR>Double-click to reset view',  @(h,ev)ButtonZoom_Callback(hFig, '+'));
+    c.gridx = 1;  c.weightx = 0.1;  Handles.jButtonZoomMinus = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_MINUS, '<HTML><B>Zoom out<BR>[-] or [CTRL + Mouse scroll]</B><BR>Double-click to reset view', @(h,ev)ButtonZoom_Callback(hFig, '-'));
+    c.gridx = 2;  c.weightx = 0.1;  Handles.jButtonZoomPlus  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_PLUS,  '<HTML><B>Zoom in<BR>[+] or [CTRL + Mouse scroll]</B><BR>Double-click to reset view',  @(h,ev)ButtonZoom_Callback(hFig, '+'));
     c.gridx = 3;  c.weightx = 0.1;  Handles.jButtonSetCoord  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_VIEW_SCOUT_IN_MRI,  'Set the current coordinates',  @(h,ev)ButtonSetCoordinates_Callback(hFig));
     c.gridx = 4;  c.weightx = 0.7;  gui_component('label', Handles.jPanelValidate, c, '');
     c.gridx = 5;  c.weightx = 0.4;  Handles.jButtonCancel = gui_component('button', Handles.jPanelValidate, c, 'Cancel', [], '', @(h,ev)ButtonCancel_Callback(hFig));
@@ -440,7 +441,7 @@ function ResizeCallback(hFig, varargin)
     set(Handles.sliderSagittal, 'Position', max([1 1 1 1], [posS(1), posS(2), posS(3), sliderH]));
     set(Handles.sliderAxial,    'Position', max([1 1 1 1], [posA(1), posA(2), posA(3), sliderH]));
     set(Handles.sliderCoronal,  'Position', max([1 1 1 1], [posC(1), posC(2), posC(3), sliderH]));
-
+    
     % Resize colorbar
     if ~isempty(hColorbar)
         colorbarWidth = 15;
@@ -452,6 +453,15 @@ function ResizeCallback(hFig, varargin)
         % Reposition the colorbar
         set(hColorbar, 'Units', 'pixels', 'Position', max([1 1 1 1], posColor));
     end
+    
+    % === UPDATE IMAGE RATIOS ===
+    % Get MRI display size
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    FOV = size(sMri.Cube) .* sMri.Voxsize;
+    % Update views
+    SetupView(Handles.axs, [FOV(2),FOV(3)], [], []);
+    SetupView(Handles.axc, [FOV(1),FOV(3)], [], []);
+    SetupView(Handles.axa, [FOV(1),FOV(2)], [], []);
 end
 
 
@@ -694,7 +704,11 @@ end
 
 
 %% ===== BUTTON ZOOM =====
-function ButtonZoom_Callback(hFig, action)
+function ButtonZoom_Callback(hFig, action, param)
+    % Parse inputs
+    if (nargin < 3) || isempty(param)
+        param = 1.5;
+    end
     % Get figure Handles
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
@@ -702,8 +716,8 @@ function ButtonZoom_Callback(hFig, action)
     mmCoord = GetLocation('mri', sMri, Handles) .* 1000;
     % Zoom factor
     switch (action)
-        case '+',     Factor = 1 ./ 1.5;
-        case '-',     Factor = 1.5;
+        case '+',     Factor = 1 ./ param;
+        case '-',     Factor = param;
         case 'reset', Factor = 0;
     end
     % Prepare list to process
@@ -730,7 +744,7 @@ function ButtonZoom_Callback(hFig, action)
             XLim = XLimInit;
             YLim = YLimInit;
             % Restore orientation labels
-            %set(hLabelOrient, 'Visible', 'on');
+            set([hLabelOrientL, hLabelOrientR], 'Visible', 'on');
         else
             % Move view to have a full image (X)
             if (XLim(1) < XLimInit(1))
@@ -745,14 +759,26 @@ function ButtonZoom_Callback(hFig, action)
                 YLim = YLimInit(2) + [-Len(2), 0];
             end
             % Hide orientation labels
-            %set(hLabelOrient, 'Visible', 'off');
+            set([hLabelOrientL, hLabelOrientR], 'Visible', 'off');
         end
-        % Update zoom factor
         set(hAxes, 'XLim', XLim, 'YLim', YLim);
-        % Move orientation labels
-        set(hLabelOrientL, 'Position', [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 1]);
-        set(hLabelOrientR, 'Position', [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 1]);
+        
+        
+%         % Update zoom factor
+%         Xratio = axesLen(i,1) ./ AxesPos(3);
+%         Yratio = axesLen(i,2) ./ AxesPos(4);
+%         if (Yratio > Xratio)
+%             set(hAxes, 'YLim', YLim);
+%         else
+%             set(hAxes, 'XLim', XLim);
+%         end
+        
+        % % Move orientation labels
+        % set(hLabelOrientL, 'Position', [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 1]);
+        % set(hLabelOrientR, 'Position', [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 1]);
+        
     end
+    
 end
 
 %% ===== BUTTON SET COORDINATES =====
@@ -1018,22 +1044,57 @@ end
 %% ===== SETUP A VIEW =====
 function [hImgMri, hCrossH, hCrossV] = SetupView(hAxes, xySize, imgSize, orientLabels)
     % MRI image
-    hImgMri = image('XData',        [1, xySize(1)], ...
-                    'YData',        [1, xySize(2)], ...
-                    'CData',        zeros(imgSize(1), imgSize(2)), ...
-                    'CDataMapping', 'scaled', ...
-                    'Parent',       hAxes);
-    % Define axes limits
+    hImgMri = findobj(hAxes, '-depth', 1, 'Tag', 'ImageMriSlice');
+    if isempty(hImgMri) && ~isempty(imgSize)
+        hImgMri = image('XData',        [1, xySize(1)], ...
+                        'YData',        [1, xySize(2)], ...
+                        'CData',        zeros(imgSize(1), imgSize(2)), ...
+                        'CDataMapping', 'scaled', ...
+                        'Parent',       hAxes, ...
+                        'Tag',          'ImageMriSlice');
+    end
+    
+    % Get axes dimensions
+    AxesPos = get(hAxes, 'Position');
+    % Get default axis limits
     XLim = [0 xySize(1)] + 0.5;
     YLim = [0 xySize(2)] + 0.5;
+    % Adapt display to the limiting axis (for full width display when zooming in)
+    Xr = xySize(1) / AxesPos(3);
+    Yr = xySize(2) / AxesPos(4);
+    if (Yr > Xr)
+        XLim = XLim + [-1,1] * (Yr * AxesPos(3) - xySize(1)) / 2;
+    else
+        YLim = YLim + [-1,1] * (Xr * AxesPos(4) - xySize(2)) / 2;
+    end
+    % Define axes limits
     set(hAxes, 'XLim', XLim, 'YLim', YLim);
+    
     % Crosshair
-    hCrossH = line(XLim, [1 1], [2, 2], 'Color', [.8 .8 .8], 'Parent', hAxes);
-    hCrossV = line([1,1], YLim, [2, 2], 'Color', [.8 .8 .8], 'Parent', hAxes);
+    hCrossH = findobj(hAxes, '-depth', 1, 'Tag', 'LineCrossH');
+    hCrossV = findobj(hAxes, '-depth', 1, 'Tag', 'LineCrossV');
+    if isempty(hCrossH) || isempty(hCrossV)
+        hCrossH = line(XLim, [1 1], [2, 2], 'Color', [.8 .8 .8], 'Parent', hAxes, 'Tag', 'LineCrossH');
+        hCrossV = line([1,1], YLim, [2, 2], 'Color', [.8 .8 .8], 'Parent', hAxes, 'Tag', 'LineCrossV');
+    else
+        set(hCrossH, 'XData', XLim);
+        set(hCrossV, 'YData', YLim);
+    end
     % Orientation markers
-    fontSize = bst_get('FigFont');
-    text(XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), orientLabels{1}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientL');
-    text(XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), orientLabels{2}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientR');
+    if ~isempty(orientLabels)
+        hLabelOrientL = findobj(hAxes, '-depth', 1, 'Tag', 'LabelOrientL');
+        hLabelOrientR = findobj(hAxes, '-depth', 1, 'Tag', 'LabelOrientR');
+        posL = [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        posR = [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        if isempty(hLabelOrientL) || isempty(hLabelOrientR)
+            fontSize = bst_get('FigFont');
+            text(posL(1), posL(2), orientLabels{1}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientL');
+            text(posR(1), posR(2), orientLabels{2}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientR');
+        else
+            set(hLabelOrientL, 'Position', posL);
+            set(hLabelOrientR, 'Position', posR);
+        end
+    end
     % Save initial axis limits
     setappdata(hAxes, 'XLimInit', XLim);
     setappdata(hAxes, 'YLimInit', YLim);
@@ -1489,34 +1550,44 @@ function MouseWheel_Callback(hFig, sMri, Handles, event)
     if isempty(event)
         return;
     elseif isnumeric(event)
-        scrollCout = event;
+        scrollCount = event;
     else
-        scrollCout = event.VerticalScrollCount;
+        scrollCount = event.VerticalScrollCount;
     end
-    % Get which axis is selected
-    hAxes = get(hFig, 'CurrentAxes');
-    if isempty(hAxes)
-        return
+    % CTRL + Scroll: Zoom in/out
+    if ismember('control', get(hFig,'CurrentModifier'))
+        if (scrollCount > 0)
+            ButtonZoom_Callback(hFig, '-', 1.3);
+        else
+            ButtonZoom_Callback(hFig, '+', 1.3);
+        end
+    % Regular scroll: Change slices
+    else
+        % Get which axis is selected
+        hAxes = get(hFig, 'CurrentAxes');
+        if isempty(hAxes)
+            return
+        end
+        % Get handles and MRI
+        if isempty(sMri)
+            sMri = panel_surface('GetSurfaceMri', hFig);
+        end
+        if isempty(Handles)
+            Handles = bst_figures('GetFigureHandles', hFig);
+        end
+        % Get dimension corresponding to this axes
+        switch (hAxes)
+            case Handles.axs,  dim = 1;
+            case Handles.axc,  dim = 2;  
+            case Handles.axa,  dim = 3; 
+            otherwise,         return;
+        end
+        % Get current position
+        XYZ = GetLocation('voxel', sMri, Handles);
+        % Update location
+        XYZ(dim) = XYZ(dim) - double(scrollCount);
+        SetLocation('voxel', sMri, Handles, XYZ);
     end
-    % Get handles and MRI
-    if isempty(sMri)
-        sMri = panel_surface('GetSurfaceMri', hFig);
-    end
-    if isempty(Handles)
-        Handles = bst_figures('GetFigureHandles', hFig);
-    end
-    % Get dimension corresponding to this axes
-    switch (hAxes)
-        case Handles.axs,  dim = 1;
-        case Handles.axc,  dim = 2;  
-        case Handles.axa,  dim = 3; 
-        otherwise,         return;
-    end
-    % Get current position
-    XYZ = GetLocation('voxel', sMri, Handles);
-    % Update location
-    XYZ(dim) = XYZ(dim) - double(scrollCout);
-    SetLocation('voxel', sMri, Handles, XYZ);
 end
     
 %% ===== MOVE CROSSHAIR =====
