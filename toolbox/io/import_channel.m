@@ -227,12 +227,20 @@ switch (FileFormat)
                 FileUnits = 'mm';
         end
         
-    case {'PTS', 'PTS_MNI'}
-        ChannelMat = in_channel_ascii(ChannelFile, {'name','X','Y','Z'}, 3, .001);
+    case {'INTRANAT', 'INTRANAT_MNI'}
+        switch (fExt)
+            case 'pts'
+                ChannelMat = in_channel_ascii(ChannelFile, {'name','X','Y','Z'}, 3, .001);
+            case 'csv'
+                if strcmpi(FileFormat, 'INTRANAT_MNI')
+                    ChannelMat = in_channel_tsv(ChannelFile, 2, 'contact', 'MNI', .001);
+                else
+                    ChannelMat = in_channel_tsv(ChannelFile, 2, 'contact', 'T1pre Scanner Based', .001);
+                end
+        end
         ChannelMat.Comment = 'Contacts';
         FileUnits = 'mm';
         [ChannelMat.Channel.Type] = deal('SEEG');
-                
     case {'ASCII_XYZ', 'ASCII_XYZ_MNI'}  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z'}, 0, .01);
         ChannelMat.Comment = 'Channels';
@@ -286,7 +294,7 @@ end
 
 %% ===== MNI TRANSFORMATION =====
 prevSubject = [];
-if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'PTS_MNI'})
+if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'INTRANAT_MNI'})
     % Warning for multiple studies
     if (length(iStudies) > 1)
         warning(['WARNING: When importing MNI positions for multiple subjects: the MNI transformation from the first subject is used for all of them.' 10 ...
