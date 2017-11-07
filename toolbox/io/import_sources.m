@@ -225,7 +225,7 @@ for iFile = 1:length(SourceFiles)
     end
     % Read additional source file: simply concatenate to the previous one
     if ~isempty(SourceFiles2)
-        maps{iFile} = [maps{iFile}; in_sources(SourceFiles2{iFile}, FileFormat), bgValue];
+        maps{iFile} = [maps{iFile}; in_sources(SourceFiles2{iFile}, FileFormat, bgValue)];
     end
     % Check the number of sources
     if isempty(maps{iFile})
