@@ -33,6 +33,7 @@ function varargout = process_pac_fp_map( varargin )
 % v 5.0: SS, tPAC package, Aug 2017
 % v 6.0: SS, Check for file format before using it for fp estimation, Sep
 %            2017
+% v 6.1: SS, Bug fix in time definition, Nov. 2017
 
 eval(macro_method);
 end
@@ -103,7 +104,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         bst_report('Error', 'process_pac_fp_map', sInput, Messages);
         return;
     end
-    
+    time = tPACMat.Time;
     PAC = [];    
     extract_phasePAC = 0;
     
