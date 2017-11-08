@@ -1414,7 +1414,7 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
             DisplayName = ['<HTML><I>' MontageName '</I>'];
             % Parse name for sub menus
             GroupName = strtrim(str_remove_parenth(MontageName));
-            stdName = file_standardize(GroupName, 0, '_', 1);
+            stdName = ['m', file_standardize(GroupName, 0, '_', 1)];
             stdName((stdName == '.') | (stdName == '-') | (stdName == '@')) = '_';
             if isfield(subMenus, stdName)
                 jSubMenu = subMenus.(stdName);

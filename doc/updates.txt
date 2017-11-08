@@ -2,7 +2,8 @@
 November 2017
 - Bug identified: Changes in isosurface in Matlab 2017b cause some weird
 - GUI: More guided protocol creation to avoid massive deletions of user folders
-- GUI: Various improvements of the MRI viewer (zoom, shortcuts)
+- GUI: MRI viewer: Various interface improvements (zoom, shortcuts)
+- GUI: MRI import: Allow volumes of different sizes in the database (register/no reslice)
 - IO: Added import of channel files in .tsv format (IntrAnat)
 ---------------------------------------------------------------
 October 2017
