@@ -56,11 +56,20 @@ if ~isempty(sSubject)
     else
         opaqueAlpha = .1;
     end
+    % If passing a filename
+    if ~isempty(strfind(SurfaceType, '.mat'))
+        SurfaceFile = SurfaceType;
+        SurfaceType = file_gettype(SurfaceFile);
+    else
+        SurfaceFile = [];
+    end
     % Display surface
     switch lower(SurfaceType)
         case 'cortex'
             if ~isempty(sSubject.iCortex) && (sSubject.iCortex <= length(sSubject.Surface))
-                SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+                if isempty(SurfaceFile)
+                    SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+                end
                 switch (Modality)
                     case 'SEEG',  SurfAlpha = .8;
                     case 'ECOG',  SurfAlpha = .2;
@@ -70,7 +79,9 @@ if ~isempty(sSubject)
             end
         case 'innerskull'
             if ~isempty(sSubject.iInnerSkull) && (sSubject.iInnerSkull <= length(sSubject.Surface))
-                SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+                if isempty(SurfaceFile)
+                    SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+                end
                 switch (Modality)
                     case 'SEEG',  SurfAlpha = .5;
                     case 'ECOG',  SurfAlpha = .2;
@@ -80,7 +91,9 @@ if ~isempty(sSubject)
             end
         case 'scalp'
             if ~isempty(sSubject.iScalp) && (sSubject.iScalp <= length(sSubject.Surface))
-                SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+                if isempty(SurfaceFile)
+                    SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+                end
                 switch (Modality)
                     case 'SEEG',  SurfAlpha = .8;
                     case 'ECOG',  SurfAlpha = .8;
@@ -95,11 +108,13 @@ if ~isempty(sSubject)
                 end
                 hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
             end
-        case 'anatomy'
+        case {'anatomy', 'subjectimage'}
             if ~isempty(sSubject.iAnatomy) && (sSubject.iAnatomy <= length(sSubject.Anatomy))
-                MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                if isempty(SurfaceFile)
+                    SurfaceFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                end
                 SurfAlpha = .1;
-                hFig = view_mri_3d(MriFile, [], SurfAlpha, 'NewFigure');
+                hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
             end
     end
 end

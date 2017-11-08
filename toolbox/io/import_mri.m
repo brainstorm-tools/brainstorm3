@@ -177,7 +177,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     newSize = size(sMri.Cube);
     isSameSize = all(refSize == newSize) && all(sMriRef.Voxsize == sMriRef.Voxsize);
     % Initialize list of options to register this new MRI with the existing one
-    strOptions = '<HTML>How to register the new volume with the previous one?<BR>';
+    strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
     cellOptions = {};
     % Use the NIfTI vox2ras transformation if available
     if isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && any(ismember(sMriRef.InitTransf(:,1), 'vox2ras')) && ...
@@ -187,8 +187,11 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         cellOptions{end+1} = 'Reslice';
     end
     % Register with the MNI transformation
-    strOptions = [strOptions, '<BR>- <U><B>Register</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes, then register the new one.'];
-    cellOptions{end+1} = 'Register';
+    strOptions = [strOptions, '<BR>- <U><B>Reg+reslice</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes, then reslice the new one.'];
+    cellOptions{end+1} = 'Reg+reslice';
+    % Register with the MNI transformation
+    strOptions = [strOptions, '<BR>- <U><B>Reg only</B></U>:&nbsp;&nbsp;&nbsp;Register but do not reslice, volumes cannot be displayed together.'];
+    cellOptions{end+1} = 'Reg only';
     % Resample the new volume
     if ~isSameSize
         strOptions = [strOptions, '<BR>- <U><B>Resample</B></U>:&nbsp;&nbsp;&nbsp;Change the size and resolution of the new volume to match the previous one.'];
@@ -197,52 +200,70 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     % If the dimensions are the same: allow to keep the volume with no modifications
     if isSameSize
         strOptions = [strOptions, '<BR>- <U><B>Ignore</B></U>:&nbsp;&nbsp;&nbsp;The two volumes are already registered and resliced, do not edit the new volume.'];
-        cellOptions{end+1} = 'Ignore';
+    else
+        strOptions = [strOptions, '<BR>- <U><B>Ignore</B></U>:&nbsp;&nbsp;&nbsp;The two volumes will keep different dimensions and cannot be displayed together.'];
     end
-    
+    cellOptions{end+1} = 'Ignore';
+
     % Ask what operation to perform with this MRI
     if isInteractive
-        res = java_dialog('question', [strOptions '<BR><BR></HTML>'], 'Import MRI', [], cellOptions, 'Register');
+        RegMethod = java_dialog('question', [strOptions '<BR><BR></HTML>'], 'Import MRI', [], cellOptions, 'Reg+reslice');
     % In non-interactive mode: ignore if possible, or use the first option available
     else
         if ismember('Ignore', cellOptions)
-            res = 'Ignore';
+            RegMethod = 'Ignore';
         else
-            res = cellOptions{1};
+            RegMethod = cellOptions{1};
         end
     end
     % User aborted the import
-    if isempty(res)
+    if isempty(RegMethod)
         sMri = [];
         bst_progress('stop');
         return;
     end
     % Registration
-    switch (res)
+    switch (RegMethod)
         case 'Reslice'
             % Register the new MRI on the existing one using the transformation in the input files (files already registered)
             iTransfRef = find(strcmpi(sMriRef.InitTransf(:,1), 'vox2ras'));
             iTransf    = find(strcmpi(sMri.InitTransf(:,1),    'vox2ras'));
             [sMri, errMsg] = mri_coregister(sMri, sMriRef, sMri.InitTransf{iTransf(1),2}, sMriRef.InitTransf{iTransfRef(1),2});
-        case 'Register'
-            % Register the new MRI on the existing one using the MNI transformation
-            [sMri, errMsg] = mri_coregister(sMri, sMriRef);
+            fileTag = '_reslice';
+            isResliced = 1;
+        case 'Reg+reslice'
+            % Register the new MRI on the existing one using the MNI transformation + RESLICE
+            [sMri, errMsg] = mri_coregister(sMri, sMriRef, [], [], 1);
+            fileTag = '_coreg_reslice';
+            isResliced = 1;
+        case 'Reg only'
+            % Register the new MRI on the existing one using the MNI transformation + NO RESLICE
+            [sMri, errMsg] = mri_coregister(sMri, sMriRef, [], [], 0);
+            isResliced = 0;
+            fileTag = '_coreg';
         case 'Resample'
             % Resample the new MRI using the properties of the old one
             [sMri, Transf, errMsg] = mri_resample(sMri, size(sMriRef.Cube), sMriRef.Voxsize);
+            isResliced = 1;
+            fileTag = '_resample';
         case 'Ignore'
             errMsg = [];
+            isResliced = 0;
     end
     % Stop in case of error
     if ~isempty(errMsg)
-        bst_error(errMsg, [res ' MRI'], 0);
+        bst_error(errMsg, [RegMethod ' MRI'], 0);
         sMri = [];
         bst_progress('stop');
         return;
     end
-    % Copy the old SCS and NCS fields to the new file
-    sMri.SCS = sMriRef.SCS;
-    sMri.NCS = sMriRef.NCS;
+    % Copy the old SCS and NCS fields to the new file (only if registered)
+    if isSameSize || isResliced
+        sMri.SCS = sMriRef.SCS;
+        sMri.NCS = sMriRef.NCS;
+    end
+else
+    fileTag = [];
 end
 
 %% ===== SAVE MRI IN BRAINSTORM FORMAT =====
@@ -254,6 +275,7 @@ end
 if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
     sMri.Comment = file_unique(fBase, {sSubject.Anatomy.Comment});
+    sMri.Comment = [sMri.Comment, fileTag];
 end
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
@@ -330,10 +352,15 @@ if isInteractive
 %         end
     % Other volumes: Display registration
     else
-        % Open the second volume as an overlay of the first one
-        hFig = view_mri(refMriFile, BstMriFile);
-        % Set the amplitude threshold to 50%
-        panel_surface('SetDataThreshold', hFig, 1, 0.3);
+        % If volumes are registered
+        if isSameSize || isResliced
+            % Open the second volume as an overlay of the first one
+            hFig = view_mri(refMriFile, BstMriFile);
+            % Set the amplitude threshold to 50%
+            panel_surface('SetDataThreshold', hFig, 1, 0.3);
+        else
+            hFig = view_mri(BstMriFile);
+        end
     end
 else
     bst_progress('stop');

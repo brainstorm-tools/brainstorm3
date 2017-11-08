@@ -435,27 +435,32 @@ function FigureMouseMoveCallback(hFig, varargin)
                                     sign(motionAxes(1,moveAxis)) .* ...
                                     moveDirection(1);
                     % Save the detected movement direction and orientation
-                    setappdata(hFig, 'moveAxis',      moveAxis);
-                    setappdata(hFig, 'moveDirection', moveDirection);
-
+                    if ismember(moveDirection, [1 2 3])
+                        setappdata(hFig, 'moveAxis',      moveAxis);
+                        setappdata(hFig, 'moveDirection', moveDirection);
+                    end
+                    
                 % === MOVE SLICE ===
                 else                
                     % Get saved information about current motion
                     moveAxis      = getappdata(hFig, 'moveAxis');
                     moveDirection = getappdata(hFig, 'moveDirection');
-                    % Get the motion value
-                    val = sign(moveDirection) .* motionFigure(abs(moveDirection));
-                    % Get the new position of the slice
-                    oldPos = TessInfo(iTess).CutsPosition(moveAxis);
-                    newPos = round(bst_saturate(oldPos + val, [1 size(sMri.Cube, moveAxis)]));
+                    % If a valid direction is available
+                    if ~isempty(moveDirection) && ~isequal(moveDirection, 0)
+                        % Get the motion value
+                        val = sign(moveDirection) .* motionFigure(abs(moveDirection));
+                        % Get the new position of the slice
+                        oldPos = TessInfo(iTess).CutsPosition(moveAxis);
+                        newPos = round(bst_saturate(oldPos + val, [1 size(sMri.Cube, moveAxis)]));
 
-                    % Plot a patch that indicates the location of the cut
-                    PlotSquareCut(hFig, TessInfo(iTess), moveAxis, newPos);
+                        % Plot a patch that indicates the location of the cut
+                        PlotSquareCut(hFig, TessInfo(iTess), moveAxis, newPos);
 
-                    % Draw a new X-cut according to the mouse motion
-                    posXYZ = [NaN, NaN, NaN];
-                    posXYZ(moveAxis) = newPos;
-                    panel_surface('PlotMri', hFig, posXYZ);
+                        % Draw a new X-cut according to the mouse motion
+                        posXYZ = [NaN, NaN, NaN];
+                        posXYZ(moveAxis) = newPos;
+                        panel_surface('PlotMri', hFig, posXYZ);
+                    end
                 end
             end
     

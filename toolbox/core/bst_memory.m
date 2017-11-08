@@ -115,12 +115,12 @@ function [sMri,iMri] = LoadMri(MriFile)
         end
         % Set filename
         sMri.FileName = file_win2unix(MriFile);
-        % If loading an MRI that is not the primary one: load the transformations from the first imported one
-        if (iAnatomy >= 2) && (isempty(sMri.SCS) || isempty(sMri.SCS.R) || isempty(sMri.SCS.T))
-            sPrimaryMri = load(file_fullpath(sSubject.Anatomy(1).FileName), 'SCS', 'NCS');
-            sMri.SCS = sPrimaryMri.SCS;
-            sMri.NCS = sPrimaryMri.NCS;
-        end
+%         % If loading an MRI that is not the primary one: load the transformations from the first imported one
+%         if (iAnatomy >= 2) && (isempty(sMri.SCS) || isempty(sMri.SCS.R) || isempty(sMri.SCS.T))
+%             sPrimaryMri = load(file_fullpath(sSubject.Anatomy(1).FileName), 'SCS', 'NCS');
+%             sMri.SCS = sPrimaryMri.SCS;
+%             sMri.NCS = sPrimaryMri.NCS;
+%         end
         % Add MRI to loaded MRIs in this protocol
         iMri = length(GlobalData.Mri) + 1;
         % Save MRI in memory

@@ -3964,6 +3964,8 @@ function ExportScoutsToMri()
     end
     % Save new MRI file
     export_mri(sMri);
+    % Close progress bar
+    bst_progress('stop');
 end
 
 

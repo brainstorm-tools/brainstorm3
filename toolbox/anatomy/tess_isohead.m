@@ -36,6 +36,10 @@ end
 if ischar(iSubject)
     MriFile = iSubject;
     [sSubject, iSubject] = bst_get('MriFile', MriFile);
+else
+    % Get subject
+    sSubject = bst_get('Subject', iSubject);
+    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 end
 % Ask user to set the parameters if they are not set
 if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
@@ -57,8 +61,6 @@ end
 
 % Save current scouts modifications
 panel_scout('SaveModifications');
-% Get subject
-sSubject = bst_get('Subject', iSubject);
 % If subject is using the default anatomy: use the default subject instead
 if sSubject.UseDefaultAnat
     iSubject = 0;
@@ -75,7 +77,7 @@ bst_progress('start', 'Generate head surface', 'Initialization...', 0, 100);
 %% ===== CREATE HEAD MASK =====
 bst_progress('text', 'Creating head mask...');
 % Get MRI 
-sMri = bst_memory('LoadMri', sSubject.Anatomy(sSubject.iAnatomy).FileName);
+sMri = bst_memory('LoadMri', MriFile);
 % Check that everything is there
 if ~isfield(sMri, 'Histogram') || isempty(sMri.Histogram) || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA)
     bst_error('You need to set the fiducial points in the MRI first.', 'Head surface', 0);
@@ -146,7 +148,7 @@ erodeFinal = 3;
 bst_progress('text', 'Saving new file...');
 % Create output filenames
 ProtocolInfo = bst_get('ProtocolInfo');
-SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(sSubject.Anatomy(sSubject.iAnatomy).FileName));
+SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
 HeadFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_head_mask.mat'));
 % Save head
 if ~isempty(Comment)

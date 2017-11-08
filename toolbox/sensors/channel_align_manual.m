@@ -1,7 +1,8 @@
 function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType )
 % CHANNEL_ALIGN_MANUAL: Align manually an electrodes net on the scalp surface of the subject.
 % 
-% USAGE:  hFig = channel_align_manual( ChannelFile, Modality, isEdit )
+% USAGE:  hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType='cortex')
+%         hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceFile)
 %
 % INPUT:
 %     - ChannelFile : full path to channel file
@@ -39,6 +40,15 @@ if (nargin < 4) || isempty(SurfaceType)
     else 
         SurfaceType = 'scalp';
     end
+    SurfaceFile = [];
+% If passing a filename
+else
+    if ~isempty(strfind(SurfaceType, '.mat'))
+        SurfaceFile = SurfaceType;
+        SurfaceType = file_gettype(SurfaceFile);
+    else
+        SurfaceFile = [];
+    end
 end
 if (nargin < 3) || isempty(isEdit)
     isEdit = 0;
@@ -68,7 +78,9 @@ end
 switch lower(SurfaceType)
     case 'cortex'
         if ~isempty(sSubject.iCortex) && (sSubject.iCortex <= length(sSubject.Surface))
-            SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+            if isempty(SurfaceFile)
+                SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+            end
             switch (Modality)
                 case 'SEEG',  SurfAlpha = .8;
                 case 'ECOG',  SurfAlpha = .2;
@@ -79,7 +91,9 @@ switch lower(SurfaceType)
         isSurface = 1;
     case 'innerskull'
         if ~isempty(sSubject.iInnerSkull) && (sSubject.iInnerSkull <= length(sSubject.Surface))
-            SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+            if isempty(SurfaceFile)
+                SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+            end
             switch (Modality)
                 case 'SEEG',  SurfAlpha = .5;
                 case 'ECOG',  SurfAlpha = .2;
@@ -90,7 +104,9 @@ switch lower(SurfaceType)
         isSurface = 1;
     case 'scalp'
         if ~isempty(sSubject.iScalp) && (sSubject.iScalp <= length(sSubject.Surface))
-            SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+            if isempty(SurfaceFile)
+                SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+            end
             switch (Modality)
                 case 'SEEG',  SurfAlpha = .8;
                 case 'ECOG',  SurfAlpha = .8;
@@ -99,11 +115,13 @@ switch lower(SurfaceType)
             hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
         end
         isSurface = 1;
-    case 'anatomy'
+    case {'anatomy', 'subjectimage'}
         if ~isempty(sSubject.iAnatomy) && (sSubject.iAnatomy <= length(sSubject.Anatomy))
-            MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+            if isempty(SurfaceFile)
+                SurfaceFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+            end
             SurfAlpha = .1;
-            hFig = view_mri_3d(MriFile, [], SurfAlpha, 'NewFigure');
+            hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
         end
         isSurface = 0;
     otherwise

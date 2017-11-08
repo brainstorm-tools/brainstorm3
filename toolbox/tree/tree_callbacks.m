@@ -778,7 +778,16 @@ switch (lower(action))
                                 gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (Cortex)'],   IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'cortex', 1));
                             end
                             if ~isempty(sSubject.iAnatomy)
-                                gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'],     IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', 1));
+                                % MRI 3D
+                               % gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'],     IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', 1));
+                                if (length(sSubject.Anatomy) == 1)
+                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', 1));
+                                else
+                                    for iAnat = 1:length(sSubject.Anatomy)
+                                        gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, sSubject.Anatomy(iAnat).FileName, 1));
+                                    end
+                                end
+                                % MRI Viewer
                                 if (length(sSubject.Anatomy) == 1)
                                     gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, sSubject.iAnatomy));
                                 else
@@ -843,8 +852,15 @@ switch (lower(action))
                                 if ~isempty(sSubject.iCortex)
                                     gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (Cortex)'],     IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, 'cortex'));
                                 end
-                                if ~isempty(sSubject.iAnatomy)
-                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D)'],     IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, 'anatomy'));
+%                                 if ~isempty(sSubject.iAnatomy)
+%                                     gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D)'],     IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, 'anatomy'));
+%                                 end
+                                if (length(sSubject.Anatomy) == 1)
+                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, sSubject.Anatomy(1).FileName));
+                                else
+                                    for iAnat = 1:length(sSubject.Anatomy)
+                                        gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, sSubject.Anatomy(iAnat).FileName));  
+                                    end
                                 end
                             end
                             % Allow edition in MRI even if there is not location available for any electrode
@@ -934,7 +950,7 @@ switch (lower(action))
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Compute MNI transformation', IconLoader.ICON_ANATOMY, [], @(h,ev)NormalizeMri(filenameRelative));
                     if ~bstNodes(1).isMarked()
-                        gui_component('MenuItem', jPopup, [], 'Register on default MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)RegisterMri(filenameRelative));
+                        gui_component('MenuItem', jPopup, [], 'Register on default MRI (reslice)', IconLoader.ICON_ANATOMY, [], @(h,ev)RegisterMri(filenameRelative));
                     end
                     gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
                     AddSeparator(jPopup);
@@ -1998,7 +2014,7 @@ switch (lower(action))
                 gui_component('MenuItem', jMenuFile, [], 'View file history', IconLoader.ICON_MATLAB, [], @(h,ev)bst_history('view', filenameFull));
             end
             % ===== VIEW HISTOGRAM =====
-            if isfile && ~ismember(nodeType, {'subject', 'study', 'studysubject', 'condition', 'rawcondition', 'datalist', 'matrixlist', 'image', 'channel', 'rawdata', 'dipoles', 'mri', 'surface', 'cortex', 'head', 'innerskull', 'outerskull', 'other'})
+            if isfile && ~ismember(nodeType, {'subject', 'study', 'studysubject', 'condition', 'rawcondition', 'datalist', 'matrixlist', 'image', 'channel', 'rawdata', 'dipoles', 'mri', 'surface', 'cortex', 'anatomy', 'head', 'innerskull', 'outerskull', 'other'})
                 gui_component('MenuItem', jMenuFile, [], 'View histogram', IconLoader.ICON_HISTOGRAM, [], @(h,ev)view_histogram(GetAllFilenames(bstNodes)));
             end
             if (jMenuFile.getMenuComponentCount() > 0)

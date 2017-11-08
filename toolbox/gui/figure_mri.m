@@ -457,11 +457,13 @@ function ResizeCallback(hFig, varargin)
     % === UPDATE IMAGE RATIOS ===
     % Get MRI display size
     sMri = panel_surface('GetSurfaceMri', hFig);
-    FOV = size(sMri.Cube) .* sMri.Voxsize;
-    % Update views
-    SetupView(Handles.axs, [FOV(2),FOV(3)], [], []);
-    SetupView(Handles.axc, [FOV(1),FOV(3)], [], []);
-    SetupView(Handles.axa, [FOV(1),FOV(2)], [], []);
+    if ~isempty(sMri)
+        FOV = size(sMri.Cube) .* sMri.Voxsize;
+        % Update views
+        SetupView(Handles.axs, [FOV(2),FOV(3)], [], []);
+        SetupView(Handles.axc, [FOV(1),FOV(3)], [], []);
+        SetupView(Handles.axa, [FOV(1),FOV(2)], [], []);
+    end
 end
 
 
@@ -1002,10 +1004,6 @@ function [sMri, Handles] = SetupMri(hFig)
     setappdata(hFig, 'Surface', TessInfo);
 
     % === SET MOUSE CALLBACKS ===
-%     set(hFig, 'ButtonDownFcn', @(h,ev)MouseButtonDownAxes_Callback(hFig,[],sMri,Handles));
-%     set([Handles.axa, Handles.imga_mri, Handles.crosshairAxialH,    Handles.crosshairAxialV],    'ButtonDownFcn', @(h,ev)MouseButtonDownAxes_Callback(hFig,Handles.axa, sMri, Handles));
-%     set([Handles.axs, Handles.imgs_mri, Handles.crosshairSagittalH, Handles.crosshairSagittalV], 'ButtonDownFcn', @(h,ev)MouseButtonDownAxes_Callback(hFig,Handles.axs, sMri, Handles));
-%     set([Handles.axc, Handles.imgc_mri, Handles.crosshairCoronalH,  Handles.crosshairCoronalV],  'ButtonDownFcn', @(h,ev)MouseButtonDownAxes_Callback(hFig,Handles.axc, sMri, Handles));
     % Register MouseMoved and MouseButtonUp callbacks for current figure
     set(hFig, 'WindowButtonDownFcn',   @(h,ev)MouseButtonDownFigure_Callback(hFig, sMri, Handles), ...
               'WindowButtonMotionFcn', @(h,ev)MouseMove_Callback(hFig, sMri, Handles), ...
@@ -1354,50 +1352,9 @@ end
 %% =======================================================================================
 %  ===== MOUSE CALLBACKS =================================================================
 %  =======================================================================================
-% %% ===== MOUSE CLICK: AXES =====       
-% function MouseButtonDownAxes_Callback(hFig, hAxes, sMri, Handles)
-%     % Double-click: Reset view
-%     if strcmpi(get(hFig, 'SelectionType'), 'open')
-%         ButtonZoom_Callback(hFig, 'reset');
-%         return;
-%     end
-%     % Check if MouseUp was executed before MouseDown
-%     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig,'clickAction'), 'MouseDownNotConsumed')
-%         return;
-%     end
-%     % Switch between different types of mouse actions
-%     clickAction = '';
-%     switch(get(hFig, 'SelectionType'))
-%         % Left click
-%         case 'normal'
-%             clickAction = 'LeftClick';
-%             % Move crosshair according to mouse position
-%             if ~isempty(hAxes)
-%                 MouseMoveCrosshair(hAxes, sMri, Handles);
-%             end
-%         % CTRL+Mouse, or Mouse right
-%         case 'alt'
-%             clickAction = 'RightClick';
-%         % SHIFT+Mouse
-%         case 'extend'
-%             clickAction = 'ShiftClick';
-%     end
-%     % If no action was defined : nothing to do more
-%     if isempty(clickAction)
-%         return
-%     end
-%     
-%     % Reset the motion flag
-%     setappdata(hFig, 'hasMoved', 0);
-%     % Record mouse location in the figure coordinates system
-%     setappdata(hFig, 'clickAction', clickAction);
-%     setappdata(hFig, 'clickSource', hAxes);
-%     setappdata(hFig, 'clickPositionFigure', get(hFig, 'CurrentPoint'));
-% end
-
-
 %% ===== MOUSE CLICK: FIGURE =====
 function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
+    global GlobalData;
     % Get clicked axes
     hObj = get(hFig,'CurrentObject');
     if isempty(hObj)
@@ -1405,9 +1362,9 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
     elseif strcmpi(get(hObj, 'Type'), 'axes')
         hAxes = hObj(1);
     else
-        hObj = get(hObj(1), 'Parent');
-        if strcmpi(get(hObj, 'Type'), 'axes')
-            hAxes = hObj(1);
+        hParent = get(hObj(1), 'Parent');
+        if strcmpi(get(hParent, 'Type'), 'axes')
+            hAxes = hParent;
         else
             hAxes = [];
         end
@@ -1423,20 +1380,35 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
     end
     % Switch between different types of mouse actions
     clickAction = '';
-    switch(get(hFig, 'SelectionType'))
-        % Left click
-        case 'normal'
-            clickAction = 'LeftClick';
-            % Move crosshair according to mouse position
-            if ~isempty(hAxes)
-                MouseMoveCrosshair(hAxes, sMri, Handles);
-            end
-        % CTRL+Mouse, or Mouse right
-        case 'alt'
-            clickAction = 'RightClick';
-        % SHIFT+Mouse
-        case 'extend'
-            clickAction = 'ShiftClick';
+    % Clicked on a sensor marker
+    if ~isempty(hObj) && strcmpi(get(hObj, 'Tag'), 'PointMarker')
+        % Get point name
+        PointLabel = get(hObj, 'UserData');
+        % Get channels displayed in this figure
+        [hFig, iDS, iFig] = bst_figures('GetFigure', hFig);
+        if ~isempty(PointLabel) && ~isempty(iDS) && ~isempty(GlobalData.DataSet(iDS).Channel) && ismember(PointLabel, {GlobalData.DataSet(iDS).Channel.Name})
+            clickAction = 'MovePoint';
+            clickSource = hObj;
+        end
+    end
+    % Otherwise: no particular object was clicked
+    if isempty(clickAction)
+        switch(get(hFig, 'SelectionType'))
+            % Left click
+            case 'normal'
+                clickAction = 'LeftClick';
+                % Move crosshair according to mouse position
+                if ~isempty(hAxes)
+                    MouseMoveCrosshair(hAxes, sMri, Handles);
+                end
+            % CTRL+Mouse, or Mouse right
+            case 'alt'
+                clickAction = 'RightClick';
+            % SHIFT+Mouse
+            case 'extend'
+                clickAction = 'ShiftClick';
+        end
+        clickSource = hAxes;
     end
     % If no action was defined : nothing to do more
     if isempty(clickAction)
@@ -1447,7 +1419,7 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
     setappdata(hFig, 'hasMoved', 0);
     % Record mouse location in the figure coordinates system
     setappdata(hFig, 'clickAction', clickAction);
-    setappdata(hFig, 'clickSource', hAxes);
+    setappdata(hFig, 'clickSource', clickSource);
     setappdata(hFig, 'clickPositionFigure', get(hFig, 'CurrentPoint'));
 end
 
@@ -1497,20 +1469,39 @@ function MouseMove_Callback(hFig, sMri, Handles)
             ColormapInfo = getappdata(hFig, 'Colormap');
             sColormap = bst_colormaps('ColormapChangeModifiers', ColormapInfo.Type, [motionFigure(1), motionFigure(2)] ./ 100, 0);
             set(hFig, 'Colormap', sColormap.CMap);
+        case 'MovePoint'
+            if isempty(clickSource)
+                return
+            end
+            % Get all graphics handles
+            hAxes = get(clickSource, 'Parent');
+            Handles = bst_figures('GetFigureHandles', hFig);
+            iChannel = find(any(Handles.hPointEEG == clickSource, 2));
+            % Move slices according to mouse position
+            if ~isempty(iChannel)
+                MouseMovePoint(hAxes, sMri, Handles, iChannel);
+            end
     end
 end
 
 %% ===== MOUSE BUTTON UP =====       
-function MouseButtonUp_Callback(hFig, varargin) 
-    hasMoved = getappdata(hFig, 'hasMoved');
+function MouseButtonUp_Callback(hFig, varargin)
+    % Get saved properties
+    hasMoved    = getappdata(hFig, 'hasMoved');
     clickAction = getappdata(hFig, 'clickAction');
-    
+    clickSource = getappdata(hFig, 'clickSource');
     % Mouse was not moved during click
     if ~isempty(clickAction)
         if ~hasMoved
             switch (clickAction)
                 case 'RightClick'
                     DisplayFigurePopup(hFig);
+                case 'MovePoint'
+                    % Point was not moved: Move crosshair according to mouse position
+                    hAxes = get(clickSource, 'Parent');
+                    Handles = bst_figures('GetFigureHandles', hFig);
+                    sMri = panel_surface('GetSurfaceMri', hFig);
+                    MouseMoveCrosshair(hAxes, sMri, Handles);
             end
         % Mouse was moved
         else
@@ -1519,6 +1510,19 @@ function MouseButtonUp_Callback(hFig, varargin)
                     % Apply new colormap to all figures
                     ColormapInfo = getappdata(hFig, 'Colormap');
                     bst_colormaps('FireColormapChanged', ColormapInfo.Type);
+                case 'MovePoint'
+                    % Get all graphics handles
+                    hAxes = get(clickSource, 'Parent');
+                    Handles = bst_figures('GetFigureHandles', hFig);
+                    sMri = panel_surface('GetSurfaceMri', hFig);
+                    % Get channel name
+                    ChannelName = get(clickSource, 'UserData');
+                    % Get mouse position
+                    mouse3DPos = GetMouseLocation(hAxes, sMri, Handles);
+                    % Convert to SCS coordinates
+                    scsXYZ = cs_convert(sMri, 'mri', 'scs', mouse3DPos ./ 1000)';
+                    % Save new positions
+                    SetElectrodePosition(hFig, ChannelName, scsXYZ);
             end
         end
     end
@@ -1624,7 +1628,56 @@ function MouseMoveCrosshair(hAxes, sMri, Handles)
     SetLocation('voxel', sMri, Handles, voxPos);
 end
 
-    
+%% ===== MOVE ELECTRODE POINT =====
+function MouseMovePoint(hAxes, sMri, Handles, iChannel)
+    % Get mouse location
+    mouse3DPos = GetMouseLocation(hAxes, sMri, Handles);
+    % Update positions of the points
+    switch hAxes
+        case Handles.axs
+            set(Handles.hPointEEG(iChannel,1), 'XData', mouse3DPos(2));
+            set(Handles.hPointEEG(iChannel,1), 'YData', mouse3DPos(3));
+        case Handles.axc
+            set(Handles.hPointEEG(iChannel,2), 'XData', mouse3DPos(1));
+            set(Handles.hPointEEG(iChannel,2), 'YData', mouse3DPos(3));
+        case Handles.axa
+            set(Handles.hPointEEG(iChannel,3), 'XData', mouse3DPos(1));
+            set(Handles.hPointEEG(iChannel,3), 'YData', mouse3DPos(2));
+    end
+end
+
+%% ===== GET MOUSE LOCATION =====
+function mouse3DPos = GetMouseLocation(hAxes, sMri, Handles)
+    % Get mouse 2D position
+    mouse2DPos = get(hAxes, 'CurrentPoint');
+    mouse2DPos = [mouse2DPos(1,1), mouse2DPos(1,2)];
+    % Get current slices
+    slicesXYZ = GetLocation('mri', sMri, Handles) .* 1000;
+    % Get 3D mouse position 
+    mouse3DPos = [0 0 0];
+    switch hAxes
+        case Handles.axs
+            mouse3DPos(1) = slicesXYZ(1);
+            mouse3DPos(2) = mouse2DPos(1);
+            mouse3DPos(3) = mouse2DPos(2);
+        case Handles.axc
+            mouse3DPos(2) = slicesXYZ(2);
+            mouse3DPos(1) = mouse2DPos(1);
+            mouse3DPos(3) = mouse2DPos(2);
+        case Handles.axa
+            mouse3DPos(3) = slicesXYZ(3);
+            mouse3DPos(1) = mouse2DPos(1);
+            mouse3DPos(2) = mouse2DPos(2);
+    end
+    % Limit values to MRI cube
+    mriSize = size(sMri.Cube) .* sMri.Voxsize;
+    mouse3DPos(1) = min(max(mouse3DPos(1), sMri.Voxsize(1)), mriSize(1));
+    mouse3DPos(2) = min(max(mouse3DPos(2), sMri.Voxsize(2)), mriSize(2));
+    mouse3DPos(3) = min(max(mouse3DPos(3), sMri.Voxsize(3)), mriSize(3));
+end
+
+
+
 %% =======================================================================================
 %  ===== LANDMARKS SELECTION =============================================================
 %  =======================================================================================
@@ -1896,10 +1949,6 @@ function Handles = PlotElectrodes(iDS, iFig, Handles, isReset)
             set(Handles.hTextEEG(i,1), 'Position', [Handles.LocEEG(i,2), Handles.LocEEG(i,3), 1.5]);
             set(Handles.hTextEEG(i,2), 'Position', [Handles.LocEEG(i,1), Handles.LocEEG(i,3), 1.5]);
             set(Handles.hTextEEG(i,3), 'Position', [Handles.LocEEG(i,1), Handles.LocEEG(i,2), 1.5]);
-            % Update callbacks
-            set(Handles.hPointEEG(i,1), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
-            set(Handles.hPointEEG(i,2), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
-            set(Handles.hPointEEG(i,3), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
         else
             markerColor = [1 1 0];
             textColor = [.4,1,.4];
@@ -1932,7 +1981,6 @@ function hPt = PlotPoint(sMri, Handles, ptLocVox, ptColor, ptSize, UserData)
                   'MarkerEdgeColor', [.4 .4 .4], ...
                   'MarkerSize',      ptSize, ...
                   'Parent',          Handles.axs, ...
-                  ... 'ButtonDownFcn',   clickFcnS, ...
                   'Visible',         'off', ...
                   'UserData',        UserData, ...
                   'Tag',             'PointMarker');
@@ -1942,7 +1990,6 @@ function hPt = PlotPoint(sMri, Handles, ptLocVox, ptColor, ptSize, UserData)
                   'MarkerEdgeColor', [.4 .4 .4], ...
                   'MarkerSize',      ptSize, ...
                   'Parent',          Handles.axc, ...
-                  ... 'ButtonDownFcn',   clickFcnC, ...
                   'Visible',         'off', ...
                   'UserData',        UserData, ...
                   'Tag',             'PointMarker');
@@ -1952,7 +1999,6 @@ function hPt = PlotPoint(sMri, Handles, ptLocVox, ptColor, ptSize, UserData)
                   'MarkerEdgeColor', [.4 .4 .4], ...
                   'MarkerSize',      ptSize, ...
                   'Parent',          Handles.axa, ...
-                  ... 'ButtonDownFcn',   clickFcnA, ...
                   'Visible',         'off', ...
                   'UserData',        UserData, ...
                   'Tag',             'PointMarker');
@@ -1970,7 +2016,6 @@ function hPt = PlotText(sMri, Handles, ptLocVox, ptColor, ptLabel, UserData)
                   'color',               ptColor, ...
                   'Tag',                 'LabelEEG', ...
                   'Parent',              Handles.axs, ...
-                  ... 'ButtonDownFcn',       @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axs, sMri, Handles), ...
                   'UserData',            UserData, ...
                   'Visible',             'off', ...
                   'Tag',                 'TextMarker');
@@ -1983,7 +2028,6 @@ function hPt = PlotText(sMri, Handles, ptLocVox, ptColor, ptLabel, UserData)
                   'color',               ptColor, ...
                   'Tag',                 'LabelEEG', ...
                   'Parent',              Handles.axc, ...
-                  ... 'ButtonDownFcn',       @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axc, sMri, Handles), ...
                   'UserData',            UserData, ...
                   'Visible',             'off', ...
                   'Tag',                 'TextMarker');
@@ -1996,7 +2040,6 @@ function hPt = PlotText(sMri, Handles, ptLocVox, ptColor, ptLabel, UserData)
                   'Color',               ptColor, ...
                   'Tag',                 'LabelEEG', ...
                   'Parent',              Handles.axa, ...
-                  ... 'ButtonDownFcn',       @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axa, sMri, Handles), ...
                   'UserData',            UserData, ...
                   'Visible',             'off', ...
                   'Tag',                 'TextMarker');
@@ -2673,8 +2716,16 @@ end
 
 
 %% ===== SET ELECTRODE POSITION =====
-function SetElectrodePosition(hFig)
+% USAGE:  SetElectrodePosition(hFig, ChannelName=[ask], scsXYZ=[get from MRI viewer])
+function SetElectrodePosition(hFig, ChannelName, scsXYZ)
     global GlobalData;
+    % Parse inputs
+    if (nargin < 3) || isempty(scsXYZ)
+        scsXYZ = [];
+    end
+    if (nargin < 2) || isempty(ChannelName)
+        ChannelName = [];
+    end
     % Get MRI and figure handles
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
@@ -2690,10 +2741,12 @@ function SetElectrodePosition(hFig)
     % Get selected sensors
     iChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
     % Channel name
-    AllNames = {GlobalData.DataSet(iDS).Channel(iChannels).Name};
-    ChannelName = java_dialog('combo', 'Select the electrode:', 'Set electrode position', [], AllNames);
     if isempty(ChannelName)
-        return
+        AllNames = {GlobalData.DataSet(iDS).Channel(iChannels).Name};
+        ChannelName = java_dialog('combo', 'Select the electrode:', 'Set electrode position', [], AllNames);
+        if isempty(ChannelName)
+            return
+        end
     end
     % Get channel index
     iChan = channel_find(GlobalData.DataSet(iDS).Channel(iChannels), ChannelName);
@@ -2702,7 +2755,9 @@ function SetElectrodePosition(hFig)
         return;
     end
     % Get current position (MRI)
-    scsXYZ = GetLocation('scs', sMri, Handles);
+    if isempty(scsXYZ)
+        scsXYZ = GetLocation('scs', sMri, Handles);
+    end
     % Update electrode position
     GlobalData.DataSet(iDS).Channel(iChannels(iChan)).Loc = scsXYZ(:);
     % Plot electrodes again
