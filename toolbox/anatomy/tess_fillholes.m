@@ -77,7 +77,7 @@ if (erodeFinal >= 1)
 end
 % Compute isosurface
 bst_progress('text', 'Fill: Creating isosurface...');
-[Faces, Vertices] = isosurface(mrimask);
+[Faces, Vertices] = mri_isosurface(mrimask, 0.5);
 % Smooth isosurface
 bst_progress('text', 'Fill: Smoothing surface...');
 VertConn = tess_vertconn(Vertices, Faces);

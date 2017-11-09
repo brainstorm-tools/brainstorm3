@@ -109,7 +109,7 @@ bst_progress('inc', 10);
 %% ===== CREATE SURFACE =====
 % Compute isosurface
 bst_progress('text', 'Creating isosurface...');
-[sHead.Faces, sHead.Vertices] = isosurface(headmask);
+[sHead.Faces, sHead.Vertices] = mri_isosurface(headmask, 0.5);
 bst_progress('inc', 10);
 % Downsample to a maximum number of vertices
 maxIsoVert = 60000;

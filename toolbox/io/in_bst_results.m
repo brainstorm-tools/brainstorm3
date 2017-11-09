@@ -147,7 +147,7 @@ if ismember('SurfaceFile', FieldsToRead)
         end
         % Error for mixed head models
         if isfield(resMat, 'nComponents') && (resMat.nComponents == 0)
-            bst_error(['The cortex file associated with these sources no longer exists.' 10 'Please recalculate the source file.'], 'Load results', 0); 
+            bst_error(['The cortex file associated with these sources no longer exists.' 10 'Please recalculate the source file.'], 'Load results', 0);
         end
         % Divide by the number of components for each vertex
         if isfield(resMat, 'nComponents') && ~isempty(resMat.nComponents)

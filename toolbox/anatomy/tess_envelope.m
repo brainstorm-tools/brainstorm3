@@ -136,9 +136,9 @@ switch lower(method)
 %         end
         % Compute isosurface
         bst_progress('text', 'Envelope: Creating isosurface...');
-        fv = isosurface(mrimask);
-        env_vert = fv.vertices;
-        env_faces = fv.faces(:,[2 1 3]);
+        [env_faces, env_vert] = mri_isosurface(mrimask, 0.5);
+        % Swap faces
+        env_faces = env_faces(:,[2 1 3]);
         % Smooth isosurface
         bst_progress('text', 'Envelope: Smoothing surface...');
         env_vertconn = tess_vertconn(env_vert, env_faces);

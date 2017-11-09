@@ -211,7 +211,7 @@ end
 %% ===== FINALIZE SURFACE =====
 function [Vertices, Faces] = TesselateMask(sMri, mask, isMni)
     % Create an isosurface
-    [Faces, Vertices] = isosurface(mask, 0.5);
+    [Faces, Vertices] = mri_isosurface(mask, 0.5);
     % Convert to Brainstorm format
     Vertices = Vertices(:, [2 1 3]);
     Faces    = Faces(:, [2 1 3]);
