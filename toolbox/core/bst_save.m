@@ -73,7 +73,7 @@ while ~isStop
         % If file could not be saved
         catch
             % Try again without specifying the file format
-            if ~isAppend
+            if ~isAppend && isSetFormat
                 isSetFormat = 0;
                 continue;
             end
@@ -102,7 +102,6 @@ while ~isStop
             else
                 error(['Could not save file: ' FileName 10 'Disk full, disconnected or read-only.']);
             end
-    end
     end
 end
 
