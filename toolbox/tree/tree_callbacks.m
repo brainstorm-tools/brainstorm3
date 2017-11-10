@@ -949,10 +949,16 @@ switch (lower(action))
                 if ~bst_get('ReadOnly')
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Compute MNI transformation', IconLoader.ICON_ANATOMY, [], @(h,ev)NormalizeMri(filenameRelative));
-                    if ~bstNodes(1).isMarked()
-                        gui_component('MenuItem', jPopup, [], 'Register on default MRI (reslice)', IconLoader.ICON_ANATOMY, [], @(h,ev)RegisterMri(filenameRelative));
-                    end
                     gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
+                    if ~bstNodes(1).isMarked()
+                        jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
+                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister_spm(filenameRelative, [], 1));
+                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister_spm(filenameRelative, [], 0));
+                            AddSeparator(jMenuRegister);
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'ncs', 'ncs'));
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'scs', 'scs'));
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / .nii vox2ras transform',       IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
+                    end
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'SPM canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, iAnatomy));
@@ -3012,20 +3018,6 @@ function ResampleMri(MriFile)
     end
 end
 
-%% ===== REGISTER MRI =====
-function RegisterMri(MriFile)
-    % Unloading everything
-    bst_memory('UnloadAll', 'Forced');
-    % Get the default MRI for this subject
-    sSubject = bst_get('MriFile', MriFile);
-    MriFileRef = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    % Call registration function
-    [newMriFile, errMsg] = mri_coregister(MriFile, MriFileRef);
-    % Error handling
-    if ~isempty(errMsg)
-        bst_error(errMsg, 'Register MRI', 0);
-    end
-end
 
 %% ===== CHANNEL: ADD HEADPOINTS =====
 function ChannelAddHeadpoints(ChannelFile)
