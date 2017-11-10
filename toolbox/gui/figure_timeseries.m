@@ -1476,6 +1476,14 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
     for iAxes = 1:length(Handles)
         % Column plot: update the gain of the lines plotted
         if isColumn
+            % Get events dots
+            hEventDotsChannel = findobj(Handles(iAxes).hAxes, '-depth', 1, 'Tag', 'EventDotsChannel');
+            if ~isempty(hEventDotsChannel)
+                iLineDots = get(hEventDotsChannel, 'UserData');
+                if iscell(iLineDots)
+                    iLineDots = [iLineDots{:}];
+                end
+            end
             % Update figure lines
             for iLine = 1:length(Handles(iAxes).hLines)
                 % Skip the channels that are not visible
@@ -1496,6 +1504,18 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
                     YData = (YData - Handles(iAxes).ChannelOffsets(iLine)) * changeFactor + Handles(iAxes).ChannelOffsets(iLine);
                     % Update value
                     set(Handles(iAxes).hLinePatches(iLine), 'YData', YData);
+                end
+                % Update event dots for this line
+                if ~isempty(hEventDotsChannel)
+                    iDot = find(iLineDots == iLine);
+                    if ~isempty(iLine)
+                        % Get values
+                        YData = get(hEventDotsChannel(iDot), 'YData');
+                        % Re-center them on zero, and change the factor
+                        YData = (YData - Handles(iAxes).ChannelOffsets(iLine)) * changeFactor + Handles(iAxes).ChannelOffsets(iLine);
+                        % Update value
+                        set(hEventDotsChannel(iDot), 'YData', YData);
+                    end
                 end
             end
             % Update factor value
@@ -4006,6 +4026,7 @@ end
 
 %% ===== PLOT EVENTS DOTS: EVENTS BAR =====
 function PlotEventsDots_EventsBar(hFig)
+    global GlobalData;
     % Get events bar
     hEventsBar = findobj(hFig, '-depth', 1, 'Tag', 'AxesEventsBar');
     if isempty(hEventsBar)
@@ -4013,6 +4034,20 @@ function PlotEventsDots_EventsBar(hFig)
     end
     % Clear axes from previous objects
     cla(hEventsBar);
+    
+    % Get time series axes
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
+    % Get previous channel markers
+    hEventDotsChannel = findobj(hAxes, '-depth', 1, 'Tag', 'EventDotsChannel');
+    if ~isempty(hEventDotsChannel)
+        delete(hEventDotsChannel);
+    end
+    % Get figure handles
+    [hFig,iDS,iFig] = bst_figures('GetFigure', hFig);
+    Handles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
+%     selChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+%     GlobalData.DataSet(iDS).Channel
+    
     % Get the raw events and time axes
     events = panel_record('GetEventsInTimeWindow', hFig);
     % Loop on all the events types
@@ -4068,6 +4103,31 @@ function PlotEventsDots_EventsBar(hFig)
                              'Tag',                 'EventLabels', ...
                              'UserData',            iEvt, ...
                              'Parent',              hEventsBar);
+        end
+        % Plot marker on top of signal lines (only for simple events)
+        if (size(events(iEvt).times, 1) == 1)
+            % Look for event name in the labels of the data lines
+            iLine = find(strcmpi(events(iEvt).label, Handles.LinesLabels));
+            if ~isempty(iLine)
+                % Get line positions
+                XData = get(Handles.hLines(iLine(1)), 'XData');
+                YData = get(Handles.hLines(iLine(1)), 'YData');
+                % Get the closest Y coordinates at the time of the event
+                iTime = bst_closest(events(iEvt).times, XData);
+                % Plot markers on top of the lines
+                hEvtChan = line(...
+                    events(iEvt).times, ...  % X
+                    YData(iTime), ..., ...   % Y
+                    4 * ones(1,nOccur), ...  % Z=4
+                    'LineStyle',       'none', ...
+                    'MarkerFaceColor', color, ...
+                    'MarkerEdgeColor', color .* .8, ...
+                    'MarkerSize',      5, ...
+                    'Marker',          'o', ...
+                    'Tag',             'EventDotsChannel', ...
+                    'UserData',        iLine(1), ...
+                    'Parent',          hAxes);
+            end
         end
     end
 end

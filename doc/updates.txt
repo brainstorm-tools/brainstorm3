@@ -2,8 +2,10 @@
 November 2017
 - Bug identified: Changes in isosurface in Matlab 2017b cause some weird
 - GUI: More guided protocol creation to avoid massive deletions of user folders
-- GUI: MRI viewer: Various interface improvements (zoom, shortcuts)
-- GUI: MRI import: Allow volumes of different sizes in the database (register/no reslice)
+- GUI: Add event markers on the signals when the event names match the channel names
+- Anatomy: MRI viewer: Various interface improvements (zoom, shortcuts)
+- Anatomy: Allow volumes of different sizes in the database (register/no reslice)
+- Anatomy: Separating volume coregistration and reslicing (similar to SPM)
 - Anatomy: Allow direct registration of volumes with SPM (without going through the MNI transformation)
 - IO: Added import of channel files in .tsv format (IntrAnat)
 ---------------------------------------------------------------
