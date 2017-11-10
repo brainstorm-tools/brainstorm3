@@ -106,7 +106,7 @@ if ischar(TransfRef)
             TransfRef = [sMriRef.NCS.R, sMriRef.NCS.T; 0 0 0 1];
         end
     elseif strcmpi(TransfRef, 'scs')
-        if ~isfield(sMriRef, 'SCS') || ~isfield(sMriRef.SCS, 'R') || ~isfield(sMriRef.SCS, 'T') || ~isempty(sMriRef.SCS.R) || ~isempty(sMriRef.SCS.T)
+        if ~isfield(sMriRef, 'SCS') || ~isfield(sMriRef.SCS, 'R') || ~isfield(sMriRef.SCS, 'T') || isempty(sMriRef.SCS.R) || isempty(sMriRef.SCS.T)
             errMsg = 'No SCS transformation available for the reference volume. Set the fiducials first.';
         else
             TransfRef = [sMriRef.SCS.R, sMriRef.SCS.T; 0 0 0 1];

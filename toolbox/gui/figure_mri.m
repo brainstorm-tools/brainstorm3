@@ -2387,22 +2387,22 @@ function [isCloseAccepted, MriFile] = SaveMri(hFig)
     end
     bst_progress('stop');
  
-    % ==== UPDATE OTHER MRI FILES ====
-    if ~isempty(sMriOld) && (length(sSubject.Anatomy) > 1)
-        % New fiducials
-        s.SCS = sMri.SCS;
-        s.NCS = sMri.NCS;
-        % Update each MRI file
-        for iAnat = 1:length(sSubject.Anatomy)
-            % Skip the current one
-            if (iAnat == iAnatomy)
-                continue;
-            end
-            % Save NCS and SCS structures
-            updateMriFile = file_fullpath(sSubject.Anatomy(iAnat).FileName);
-            bst_save(updateMriFile, s, 'v7', 1);
-        end
-    end
+%     % ==== UPDATE OTHER MRI FILES ====
+%     if ~isempty(sMriOld) && (length(sSubject.Anatomy) > 1)
+%         % New fiducials
+%         s.SCS = sMri.SCS;
+%         s.NCS = sMri.NCS;
+%         % Update each MRI file
+%         for iAnat = 1:length(sSubject.Anatomy)
+%             % Skip the current one
+%             if (iAnat == iAnatomy)
+%                 continue;
+%             end
+%             % Save NCS and SCS structures
+%             updateMriFile = file_fullpath(sSubject.Anatomy(iAnat).FileName);
+%             bst_save(updateMriFile, s, 'v7', 1);
+%         end
+%     end
     
     % ==== REALIGN SURFACES ====
     if ~isempty(sMriOld)
