@@ -1254,7 +1254,8 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
     % Get color table
     ColorTable = GetElectrodeColorTable();
     % Get all groups
-    uniqueGroups = unique({ChannelMat.Channel(iMod).Group});
+    allGroups = {ChannelMat.Channel(iMod).Group};
+    uniqueGroups = unique(allGroups(~cellfun(@isempty, allGroups)));
     for iGroup = 1:length(uniqueGroups)
         % If electrode already exists (or no group)
         if any(strcmpi({ChannelMat.IntraElectrodes.Name}, uniqueGroups{iGroup})) || isempty(uniqueGroups{iGroup})
@@ -2076,9 +2077,9 @@ function SetElectrodeLoc(iLoc, jButton)
         if isAlign
             % Set default contacts positions
             AlignContacts(iDS, iFig, 'default');
-            % Update display
-            UpdateFigures(); 
         end
+        % Update display
+        UpdateFigures();
     end
 end
 
