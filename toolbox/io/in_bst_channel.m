@@ -135,7 +135,7 @@ if ismember('Channel', FieldsToRead) && isstruct(sMat.Channel) && ~isempty(sMat.
         end
         % Detect electrodes
         if isempty(sMat.IntraElectrodes) || ~all(ismember(uniqueTags, {sMat.IntraElectrodes.Name}))
-            sMat = panel_ieeg('DetectElectrodes', sMat, Modality{1}, AllInd);
+            sMat = panel_ieeg('DetectElectrodes', sMat, Modality{1}, AllInd, 0);
         end
     end
 end

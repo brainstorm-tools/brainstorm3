@@ -1228,7 +1228,11 @@ end
 
 
 %% ===== DETECT ELETRODES =====
-function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Modality, AllInd) %#ok<DEFNU>
+function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Modality, AllInd, isUpdate) %#ok<DEFNU>
+    % Parse inputs
+    if (nargin < 4) || isempty(isUpdate)
+        isUpdate = 0;
+    end
     % Get channels for modality
     iMod = good_channel(ChannelMat.Channel, [], Modality);
     if isempty(iMod)
@@ -1252,27 +1256,37 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
     % Get all groups
     uniqueGroups = unique({ChannelMat.Channel(iMod).Group});
     for iGroup = 1:length(uniqueGroups)
-        % If electrode already exists (or no group): skip
+        % If electrode already exists (or no group)
         if any(strcmpi({ChannelMat.IntraElectrodes.Name}, uniqueGroups{iGroup})) || isempty(uniqueGroups{iGroup})
-            continue;
+            % Force updating existing electrode
+            if isUpdate
+                iNewElec = find(strcmpi({ChannelMat.IntraElectrodes.Name}, uniqueGroups{iGroup}));
+                newElec = ChannelMat.IntraElectrodes(iNewElec);
+            % Do not modify existing electrodes
+            else
+                continue;
+            end
+        % Create new electrode
+        else
+            iNewElec = length(ChannelMat.IntraElectrodes) + 1;
+            % Create electrode structure
+            newElec = db_template('intraelectrode');
+            newElec.Name          = uniqueGroups{iGroup};
+            newElec.Type          = Modality;
+            newElec.Model         = '';
+            newElec.Visible       = 1;
+            % Default display options
+            ElectrodeConfig = bst_get('ElectrodeConfig', Modality);
+            newElec.ContactDiameter = ElectrodeConfig.ContactDiameter;
+            newElec.ContactLength   = ElectrodeConfig.ContactLength;
+            newElec.ElecDiameter    = ElectrodeConfig.ElecDiameter;
+            newElec.ElecLength      = ElectrodeConfig.ElecLength;
         end
         % Get electrodes in group
         iGroupChan = find(strcmpi({ChannelMat.Channel(iMod).Group}, uniqueGroups{iGroup}));
         % Sort electrodes by index number
         [IndMod, I] = sort(AllInd(iGroupChan));
         iGroupChan = iGroupChan(I);
-        % Create electrode structure
-        newElec = db_template('intraelectrode');
-        newElec.Name          = uniqueGroups{iGroup};
-        newElec.Type          = Modality;
-        newElec.Model         = '';
-        newElec.Visible       = 1;
-        % Default display options
-        ElectrodeConfig = bst_get('ElectrodeConfig', Modality);
-        newElec.ContactDiameter = ElectrodeConfig.ContactDiameter;
-        newElec.ContactLength   = ElectrodeConfig.ContactLength;
-        newElec.ElecDiameter    = ElectrodeConfig.ElecDiameter;
-        newElec.ElecLength      = ElectrodeConfig.ElecLength;
         % Default color
         iColor = mod(iGroup-1, length(ColorTable)) + 1;
         newElec.Color = ColorTable(iColor,:);
@@ -1325,11 +1339,7 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             end
         end
         % Add to existing list of electrodes
-        if ~isfield(ChannelMat, 'IntraElectrodes') || isempty(ChannelMat.IntraElectrodes)
-            ChannelMat.IntraElectrodes = newElec;
-        else
-            ChannelMat.IntraElectrodes(end+1) = newElec;
-        end
+        ChannelMat.IntraElectrodes(iNewElec) = newElec;
     end
 end
 

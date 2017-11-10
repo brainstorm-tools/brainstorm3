@@ -139,6 +139,12 @@ for is = 1:length(iStudies)
         ChannelMat.HeadPoints = LocChannelMat.HeadPoints;
         Messages = [Messages, sprintf('%d head points added.\n', size(LocChannelMat.HeadPoints.Loc,2))];
     end
+    % Force updating SEEG/ECOG electrodes
+    for Modality = {'SEEG', 'ECOG'}
+        if ismember(Modality{1}, {ChannelMat.Channel.Type})
+            ChannelMat = panel_ieeg('DetectElectrodes', ChannelMat, Modality{1}, [], 1);
+        end
+    end
     % History: Added channel locations
     ChannelMat = bst_history('add', ChannelMat, 'addloc', ['Added EEG positions from "' LocChannelMat.Comment '"']);
     % Save modified file
