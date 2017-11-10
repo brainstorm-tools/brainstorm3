@@ -1599,20 +1599,43 @@ function LineClickedCallback(hLine, ev)
     if isempty(iFig)
         return;
     end
-    sFig = GlobalData.DataSet(iDS).Figure(iFig);
     % Ignore figures with multiple graphs
-    if (length(sFig.Handles) > 1)
+    if (length(GlobalData.DataSet(iDS).Figure(iFig).Handles) > 1)
         return;
     end
     % Get channel indice (relative to montage display rows)
-    iClickChan = find(sFig.Handles(1).hLines == hLine);
+    iClickChan = find(GlobalData.DataSet(iDS).Figure(iFig).Handles(1).hLines == hLine);
     if isempty(iClickChan)
         return
     end
+    % Get channel name
+    [ChannelName, ChannelLabel] = GetChannelName(iDS, iFig, iClickChan);
+    % Get click type
+    isRightClick = strcmpi(get(hFig, 'SelectionType'), 'alt');
+    % Right click : display popup menu
+    if isRightClick
+        % Display popup menu (with the channel name as a title)
+        setappdata(hFig, 'clickSource', hAxes);
+        DisplayFigurePopup(hFig, ChannelLabel);   
+        setappdata(hFig, 'clickSource', []);
+    % Left click: Select/unselect line
+    else
+        bst_figures('ToggleSelectedRow', ChannelName);
+    end             
+    % Update figure selection
+    bst_figures('SetCurrentFigure', hFig, '2D');
+end
+
+
+%% ===== GET CHANNEL NAME =====
+function [ChannelName, ChannelLabel] = GetChannelName(iDS, iFig, iLine)
+    global GlobalData;
+    % Get figure handles
+    sFig = GlobalData.DataSet(iDS).Figure(iFig);
     % Accept channel mouse selection for DataTimeSeries AND real recordings
     if strcmpi(sFig.Id.Type, 'DataTimeSeries') && ~isempty(sFig.Id.Modality)
         % Get figure montage
-        TsInfo = getappdata(hFig, 'TsInfo');
+        TsInfo = getappdata(sFig.hFigure, 'TsInfo');
         % Get channels selected in the figure (relative to Channel structure)
         if isequal(TsInfo.MontageName, 'Bad channels')
             iFigChannels = find(GlobalData.DataSet(iDS).Measures.ChannelFlag == -1);
@@ -1641,17 +1664,17 @@ function LineClickedCallback(hLine, ev)
             % Get montage indices
             [iMontageChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, {GlobalData.DataSet(iDS).Channel.Name}, ChannelFlag);
             % Get the entry corresponding to the clicked channel in the montage
-            ChannelName = sMontage.DispNames{iMatrixDisp(iClickChan)};
+            ChannelName = sMontage.DispNames{iMatrixDisp(iLine)};
             % Remove possible color tag "NAME|COLOR"
             iTag = find(ChannelName == '|');
             if ~isempty(iTag) && (iTag > 1)
                 ChannelName = ChannelName(1:iTag-1);
             end
-            channelLabel = ['Channel: ' ChannelName];
+            ChannelLabel = ['Channel: ' ChannelName];
         else
-            iChannel = iFigChannels(iClickChan);
+            iChannel = iFigChannels(iLine);
             ChannelName = char(GlobalData.DataSet(iDS).Channel(iChannel).Name);
-            channelLabel = sprintf('Channel #%d: %s', iChannel, ChannelName);
+            ChannelLabel = sprintf('Channel #%d: %s', iChannel, ChannelName);
         end
         % NIRS sensors: Add related channel names
         if strcmpi(sFig.Id.Modality, 'NIRS')
@@ -1659,27 +1682,13 @@ function LineClickedCallback(hLine, ev)
             ChannelName = panel_montage('GetRelatedNirsChannels', GlobalData.DataSet(iDS).Channel, ChannelName);
         end
     else
-        if (iClickChan <= length(sFig.Handles(1).LinesLabels))
+        if (iLine <= length(sFig.Handles(1).LinesLabels))
             ChannelName = sFig.Handles(1).LinesLabels{iClickChan};
         else
             ChannelName = 'noname';
         end
-        channelLabel = ['Channel: ' ChannelName];
+        ChannelLabel = ['Channel: ' ChannelName];
     end
-    % Get click type
-    isRightClick = strcmpi(get(hFig, 'SelectionType'), 'alt');
-    % Right click : display popup menu
-    if isRightClick
-        % Display popup menu (with the channel name as a title)
-        setappdata(hFig, 'clickSource', hAxes);
-        DisplayFigurePopup(hFig, channelLabel);   
-        setappdata(hFig, 'clickSource', []);
-    % Left click: Select/unselect line
-    else
-        bst_figures('ToggleSelectedRow', ChannelName);
-    end             
-    % Update figure selection
-    bst_figures('SetCurrentFigure', hFig, '2D');
 end
 
 
@@ -4045,9 +4054,14 @@ function PlotEventsDots_EventsBar(hFig)
     % Get figure handles
     [hFig,iDS,iFig] = bst_figures('GetFigure', hFig);
     Handles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
-%     selChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
-%     GlobalData.DataSet(iDS).Channel
-    
+    % Get selected montage
+    TsInfo = getappdata(hFig, 'TsInfo');
+    if ~isempty(TsInfo.MontageName)
+        sMontage = panel_montage('GetMontage', TsInfo.MontageName, hFig);
+    else
+        sMontage = [];
+    end
+
     % Get the raw events and time axes
     events = panel_record('GetEventsInTimeWindow', hFig);
     % Loop on all the events types
@@ -4104,10 +4118,22 @@ function PlotEventsDots_EventsBar(hFig)
                              'UserData',            iEvt, ...
                              'Parent',              hEventsBar);
         end
+
         % Plot marker on top of signal lines (only for simple events)
         if (size(events(iEvt).times, 1) == 1)
             % Look for event name in the labels of the data lines
             iLine = find(strcmpi(events(iEvt).label, Handles.LinesLabels));
+            % If not found and there is a montage, try to look in the montage display names
+            if isempty(iLine) && ~isempty(sMontage)
+                iChan = find(strcmpi(events(iEvt).label, sMontage.ChanNames));
+                if ~isempty(iChan)
+                    iDispName = find(sMontage.Matrix(:,iChan));
+                    if ~isempty(iDispName)
+                        iLine = find(strcmpi(sMontage.DispNames{iDispName(1)}, Handles.LinesLabels));
+                    end
+                end
+            end
+            % If a line is found: plot a dot on it
             if ~isempty(iLine)
                 % Get line positions
                 XData = get(Handles.hLines(iLine(1)), 'XData');
