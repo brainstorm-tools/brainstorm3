@@ -362,7 +362,7 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
             % Volumes are not registered: Register and reslice
             if ~isRegistered
                 % Register and reslice
-                [DbMriFilePostReg, errMsg] = mri_coregister(DbMriFilePost, DbMriFilePre);
+                [DbMriFilePostReg, errMsg] = mri_coregister_spm(DbMriFilePost, DbMriFilePre);
             % Volumes are registered: Reslice only
             else
                 % Get the .nii transformation in both volumes
@@ -373,7 +373,7 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
                     return;
                 end
                 % Reslice the "post" volume
-                [DbMriFilePostReg, errMsg] = mri_coregister(DbMriFilePost, DbMriFilePre, sMriPost.InitTransf{iTransfPost(1),2}, sMriPre.InitTransf{iTransfPre(1),2});
+                [DbMriFilePostReg, errMsg] = mri_reslice(DbMriFilePost, DbMriFilePre, sMriPost.InitTransf{iTransfPost(1),2}, sMriPre.InitTransf{iTransfPre(1),2});
             end
 
             % === RE-ORGANIZE FILES ===
@@ -1173,10 +1173,12 @@ function ButtonRawPos()
         case 'Import'
             % Get 3D positions from an external file
             channel_add_loc(iStudiesSet, [], 1);
+%             % Display 3D positions on the subject MRI
+%             hFig = view_mri_3d(GlobalData.Guidelines.MriPost, [], .1, 'NewFigure');
+%             view_channels(AllChannelFiles{1}, 'SEEG', 0, 0, hFig, 1);
+%             figure_3d('ViewSensors', hFig, 0, 1);
             % Display 3D positions on the subject MRI
-            hFig = view_mri_3d(GlobalData.Guidelines.MriPost, [], .1, 'NewFigure');
-            view_channels(AllChannelFiles{1}, 'SEEG', 0, 0, hFig, 1);
-            figure_3d('ViewSensors', hFig, 0, 1);
+            view_channels_3d(AllChannelFiles{1}, 'SEEG', GlobalData.Guidelines.MriPost, 1);
         case 'Edit'
             % View MRI
             [hFig, iDS, iFig] = view_mri(GlobalData.Guidelines.MriPost);
