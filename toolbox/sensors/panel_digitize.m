@@ -25,7 +25,7 @@ function varargout = panel_digitize(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Elizabeth Bock & Francois Tadel, 2012
+% Authors: Elizabeth Bock & Francois Tadel, 2012-2017
 
 eval(macro_method);
 end
@@ -168,6 +168,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelNew = gui_component('Panel');
     % Font size for the lists
     largeFontSize = round(20 * bst_get('InterfaceScaling') / 100);
+    fontSize      = round(11 * bst_get('InterfaceScaling') / 100);
     
     % ===== MENU BAR =====
     jMenuBar = java_create('javax.swing.JMenuBar');
