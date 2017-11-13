@@ -24,15 +24,15 @@ function [Faces, Vertices] = mri_isosurface(mrimask, tol)
 % Workaround for bug in Matlab 2017b
 if (bst_get('MatlabVersion') == 903)
     % Run a simplied version of the isosurface algorithm, that does not collapse the shared vertices
-    %[Faces, Vertices] = isosurface(mrimask, tol, 'noshare');
-    [Faces, Vertices] = isosurface(mrimask, tol);
+    [Faces, Vertices] = isosurface(mrimask, tol, 'noshare');
     % Share the vertices manually
     relative_tolerance = 1e-12;
     sz = size(Vertices);
     [C, ~, IC] = uniquetol(Vertices, relative_tolerance);
     Vertices = reshape(C(IC),sz);
-%     % Call reducepatch to remove the duplicate vertices
-%     [Faces, Vertices] = reducepatch(Faces, Vertices, 1);
+    % Collapse duplicate vertices.
+    [Vertices, ~, IC] = unique(Vertices, 'rows', 'stable');
+    Faces = IC(Faces);
 else
     [Faces, Vertices] = isosurface(mrimask, tol);
 end
