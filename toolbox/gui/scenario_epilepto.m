@@ -377,7 +377,7 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
                 return;
             end
             % Reslice the "post" volume
-            [DbMriFilePostReslice, errMsg, fileTag, sMriPostReslice] = mri_reslice(DbMriFilePostReg, DbMriFilePre, sMriPostReg.InitTransf{iTransfPost(1),2}, sMriPre.InitTransf{iTransfPre(1),2});
+            [DbMriFilePostReslice, errMsg, fileTag, sMriPostReslice] = mri_reslice(DbMriFilePostReg, DbMriFilePre, 'vox2ras', 'vox2ras');
 
             % === RE-ORGANIZE FILES ===
             % Get updated subject structure
