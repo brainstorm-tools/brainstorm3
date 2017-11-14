@@ -140,6 +140,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     end
 
     % ===== CALL SPM FUNCTIONS =====
+    % Empty temporary folder, otherwise it reuses previous files in the folder
+    gui_brainstorm('EmptyTempFolder');
     % Save MRI in .nii format
     NiiFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_canonical.nii');
     out_mri_nii(sMri, NiiFile);
