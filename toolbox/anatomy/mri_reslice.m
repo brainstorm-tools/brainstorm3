@@ -138,18 +138,21 @@ end
 
 
 % ===== INTERPOLATE MRI VOLUME =====
-% Original position vectors
-X1 = ((0:size(sMriSrc.Cube,1)-1) + 0.5) .* sMriSrc.Voxsize(1);
-Y1 = ((0:size(sMriSrc.Cube,2)-1) + 0.5) .* sMriSrc.Voxsize(2);
-Z1 = ((0:size(sMriSrc.Cube,3)-1) + 0.5) .* sMriSrc.Voxsize(3);
+% Original position vectors (WHATCH OUT FOR THE X/Y PERMUTATION OF MESHGRID!)
+X1 = ((0:size(sMriSrc.Cube,1)-1) + 0.5);
+Y1 = ((0:size(sMriSrc.Cube,2)-1) + 0.5);
+Z1 = ((0:size(sMriSrc.Cube,3)-1) + 0.5);
 % Reference position vectors
-X2 = ((0:size(sMriRef.Cube,1)-1) + 0.5) .* sMriRef.Voxsize(1);
-Y2 = ((0:size(sMriRef.Cube,2)-1) + 0.5) .* sMriRef.Voxsize(2);
-Z2 = ((0:size(sMriRef.Cube,3)-1) + 0.5) .* sMriRef.Voxsize(3);
+X2 = ((0:size(sMriRef.Cube,1)-1) + 0.5);
+Y2 = ((0:size(sMriRef.Cube,2)-1) + 0.5);
+Z2 = ((0:size(sMriRef.Cube,3)-1) + 0.5);
 % Mesh grids
 [Xgrid2, Ygrid2, Zgrid2] = meshgrid(Y2, X2, Z2);
 % Apply final transformation: reference MRI => common space => original MRI
-allGrid = [Ygrid2(:)'; Xgrid2(:)'; Zgrid2(:)'; ones(size(Xgrid2(:)))'];
+allGrid = [Ygrid2(:)' .* sMriRef.Voxsize(1); ...
+           Xgrid2(:)' .* sMriRef.Voxsize(2); ...
+           Zgrid2(:)' .* sMriRef.Voxsize(3); ...
+           ones(size(Xgrid2(:)))'];
 allGrid = inv(TransfSrc) * TransfRef * allGrid;
 Xgrid2 = reshape(allGrid(2,:), size(Xgrid2));
 Ygrid2 = reshape(allGrid(1,:), size(Ygrid2));
@@ -159,7 +162,10 @@ Zgrid2 = reshape(allGrid(3,:), size(Zgrid2));
 % newCube = uint8(interp3(Y1, X1, Z1, double(sMriSrc.Cube), Xgrid2, Ygrid2, Zgrid2, 'spline', 0));
 
 % OPTION #2: Cubic interp, very similar results, much faster
-newCube = uint8(interp3(Y1, X1, Z1, double(sMriSrc.Cube), Xgrid2, Ygrid2, Zgrid2, 'cubic', 0));
+newCube = uint8(interp3(Y1 .* sMriSrc.Voxsize(2), ...
+                        X1 .* sMriSrc.Voxsize(1), ...
+                        Z1 .* sMriSrc.Voxsize(3), ...
+                        double(sMriSrc.Cube), Xgrid2, Ygrid2, Zgrid2, 'cubic', 0));
 
 %     % OPTION #3: Spline interp by block, too slow, but ok for memory usage
 %     if any(size(sMriSrc.Cube) > 256)
