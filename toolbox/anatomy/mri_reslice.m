@@ -1,4 +1,4 @@
-function [sMriReg, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
 % MRI_RESLICE: Use the MNI transformation to .
 %
 % USAGE:  [MriFileReg, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
@@ -92,8 +92,12 @@ if ischar(TransfSrc)
         else
             iTransfSrc = find(strcmpi(sMriSrc.InitTransf(:,1), 'vox2ras'));
             TransfSrc = sMriSrc.InitTransf{iTransfSrc(1),2};
+            % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
+            TransfSrc = TransfSrc * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
+            % 1st operation: Convert from MRI(mm) to voxels
+            TransfSrc = TransfSrc * diag(1 ./ [sMriSrc.Voxsize, 1]);
         end
-        fileTag = '_vox2ras';
+        fileTag = '';
     end
 end
 % Reference MRI
@@ -117,6 +121,10 @@ if ischar(TransfRef)
         else
             iTransfRef = find(strcmpi(sMriRef.InitTransf(:,1), 'vox2ras'));
             TransfRef = sMriRef.InitTransf{iTransfRef(1),2};
+            % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
+            TransfRef = TransfRef * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
+            % 1st operation: Convert from MRI(mm) to voxels
+            TransfRef = TransfRef * diag(1 ./ [sMriRef.Voxsize, 1]);
         end
     end
 end
@@ -247,15 +255,15 @@ if ~isempty(MriFileSrc)
     % Add history entry
     sMriReg = bst_history('add', sMriReg, 'resample', ['MRI co-registered on default file: ' MriFileRef]);
     % Save new file
-    newMriFile = file_unique(strrep(file_fullpath(MriFileSrc), '.mat', [fileTag '.mat']));
-    shorMriFile = file_short(newMriFile);
+    MriFileRegFull = file_unique(strrep(file_fullpath(MriFileSrc), '.mat', [fileTag '.mat']));
+    MriFileReg = file_short(MriFileRegFull);
     % Save new MRI in Brainstorm format
-    sMriReg = out_mri_bst(sMriReg, newMriFile);
+    sMriReg = out_mri_bst(sMriReg, MriFileRegFull);
 
     % Register new MRI
     iAnatomy = length(sSubject.Anatomy) + 1;
     sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
-    sSubject.Anatomy(iAnatomy).FileName = shorMriFile;
+    sSubject.Anatomy(iAnatomy).FileName = MriFileReg;
     sSubject.Anatomy(iAnatomy).Comment  = sMriReg.Comment;
     % Update subject structure
     bst_set('Subject', iSubject, sSubject);
@@ -264,8 +272,9 @@ if ~isempty(MriFileSrc)
     panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
     % Save database
     db_save();
-    % Return output filename
-    sMriReg = shorMriFile;
+else
+    % Return output structure
+    MriFileReg = sMriReg;
 end
 % Close progress bar
 if ~isProgress

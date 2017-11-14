@@ -427,13 +427,22 @@ function UpdateFigureName(hFig)
                     figureName = [figureName '/' sStudy.Matrix(iMatrix).Comment];
                 end
             end
-            
         case 'Topography'
             figureName = [figureNameModality  'TP: ' figureName];
         case '3DViz'
             figureName = [figureNameModality  '3D: ' figureName];
         case 'MriViewer'
-            figureName = [figureNameModality  'MriViewer: ' figureName];
+            TessInfo = getappdata(hFig, 'Surface');
+            if isempty(TessInfo) || ~isempty(TessInfo.OverlayCube) || ~isempty(TessInfo.DataSource.FileName)
+                figureName = [figureNameModality  'MriViewer: ' figureName];
+            else
+                [sSubject, iSubject, iAnatomy] = bst_get('MriFile', TessInfo.SurfaceFile);
+                if ~isempty(iAnatomy)
+                    figureName = [figureNameModality  'MriViewer: ' figureName, '/', sSubject.Anatomy(iAnatomy).Comment];
+                else
+                    figureName = [figureNameModality  'MriViewer: ' figureName];
+                end
+            end
         case 'Timefreq'
             figureName = [figureNameModality  'TF: ' figureName];
         case 'Spectrum'

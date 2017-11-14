@@ -75,7 +75,7 @@ DbMriFilePost = import_mri(iSubject, MriFilePost, 'ALL', 0, 0);
 % Reslice the "post" volume (volumes are already registered)
 iTransfPre  = find(strcmpi(sMriPre.InitTransf(:,1),  'vox2ras'));
 iTransfPost = find(strcmpi(sMriPost.InitTransf(:,1), 'vox2ras'));
-[DbMriFilePostReg, errMsg] = mri_coregister_spm(DbMriFilePost, DbMriFilePre, sMriPost.InitTransf{iTransfPost(1),2}, sMriPre.InitTransf{iTransfPre(1),2});
+[DbMriFilePostReg, errMsg] = mri_coregister(DbMriFilePost, DbMriFilePre, sMriPost.InitTransf{iTransfPost(1),2}, sMriPre.InitTransf{iTransfPre(1),2}, 'spm', 1);
 
 % ===== SORT ANATOMY FOLDER =====
 % Get updated subject structure

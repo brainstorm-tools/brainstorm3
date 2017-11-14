@@ -312,9 +312,10 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
     % Anatomy folder
     AnatDir = bst_fileparts(file_fullpath(sSubject.FileName));
     MriPre  = fullfile(AnatDir, 'subjectimage_pre.mat');
-    MriPost = fullfile(AnatDir, 'subjectimage_post.mat');
+    MriPostOrig = fullfile(AnatDir, 'subjectimage_post_orig.mat');
+    MriPostReslice = fullfile(AnatDir, 'subjectimage_post.mat');
     % Check if there are already two volumes in the subject
-    if ~file_exist(MriPre) || ~file_exist(MriPost)
+    if ~file_exist(MriPre) || ~file_exist(MriPostReslice)
         % MRI files
         if isempty(MriFilePre) || isempty(MriFilePost)
             errMsg = ['You must select the pre- and post-implantation scans for subject "' SubjectName '".'];
@@ -323,7 +324,8 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
         % If using an anatomy template (one MRI only)
         if (length(sSubject.Anatomy) == 1) && strcmpi(MriFilePre, sSubject.Anatomy(1).Comment) && strcmpi(MriFilePost, sSubject.Anatomy(1).Comment)
             MriPre = file_fullpath(sSubject.Anatomy(1).FileName);
-            MriPost = MriPre;
+            MriPostOrig = MriPre;
+            MriPostReslice = MriPre;
         % Otherwise: Import selected files
         else
             if ~file_exist(MriFilePre)
@@ -334,9 +336,10 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
                 errMsg = 'The post-implantation MRI/CT file you selected does not exist.';
                 return;
             end
-
             % Delete existing anatomy
             sSubject = db_delete_anatomy(iSubject);
+            
+            % === REGISTER ===
             % Import both volumes
             DbMriFilePre = import_mri(iSubject, MriFilePre, 'ALL', 0, 0);
             if isempty(DbMriFilePre)
@@ -354,27 +357,27 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
                 errMsg = ['Cannot normalize pre-implantation volume: "' 10 errMsg '".'];
                 return;
             end
-            [sMriPost, errMsg] = bst_normalize_mni(DbMriFilePost);
+            % Volumes are not registered: Register with SPM
+            if ~isRegistered
+                [DbMriFilePostReg, errMsg, fileTag, sMriPostReg] = mri_coregister(DbMriFilePost, DbMriFilePre, 'spm', 0);
+            % Volumes are registered: Copy SCS and NCS fiducials to post volume
+            else
+                [DbMriFilePostReg, errMsg, fileTag, sMriPostReg] = mri_coregister(DbMriFilePost, DbMriFilePre, 'vox2ras', 0);
+            end
             if ~isempty(errMsg)
-                errMsg = ['Cannot normalize post-implantation volume: "' 10 errMsg '".'];
                 return;
             end
-            % Volumes are not registered: Register and reslice
-            if ~isRegistered
-                % Register and reslice
-                [DbMriFilePostReg, errMsg] = mri_coregister_spm(DbMriFilePost, DbMriFilePre);
-            % Volumes are registered: Reslice only
-            else
-                % Get the .nii transformation in both volumes
-                iTransfPre  = find(strcmpi(sMriPre.InitTransf(:,1),  'vox2ras'));
-                iTransfPost = find(strcmpi(sMriPost.InitTransf(:,1), 'vox2ras'));
-                if (isempty(iTransfPre) || isempty(iTransfPost)) && (~isequal(size(sMriPre.Cube), size(sMriPost.Cube)) || ~isequal(sMriPre.Voxsize, sMriPost.Voxsize))
-                    errMsg = 'The pre and post volumes are not registered or were not initially in .nii format.';
-                    return;
-                end
-                % Reslice the "post" volume
-                [DbMriFilePostReg, errMsg] = mri_reslice(DbMriFilePost, DbMriFilePre, sMriPost.InitTransf{iTransfPost(1),2}, sMriPre.InitTransf{iTransfPre(1),2});
+            
+            % === RESLICE ===
+            % Get the .nii transformation in both volumes
+            iTransfPre  = find(strcmpi(sMriPre.InitTransf(:,1),  'vox2ras'));
+            iTransfPost = find(strcmpi(sMriPostReg.InitTransf(:,1), 'vox2ras'));
+            if (isempty(iTransfPre) || isempty(iTransfPost)) && (~isequal(size(sMriPre.Cube), size(sMriPost.Cube)) || ~isequal(sMriPre.Voxsize, sMriPostReg.Voxsize))
+                errMsg = 'The pre and post volumes are not registered or were not initially in .nii format.';
+                return;
             end
+            % Reslice the "post" volume
+            [DbMriFilePostReslice, errMsg, fileTag, sMriPostReslice] = mri_reslice(DbMriFilePostReg, DbMriFilePre, sMriPostReg.InitTransf{iTransfPost(1),2}, sMriPre.InitTransf{iTransfPre(1),2});
 
             % === RE-ORGANIZE FILES ===
             % Get updated subject structure
@@ -384,9 +387,11 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
             sSubject.Anatomy(2) = [];
             % Rename imported volumes
             movefile(file_fullpath(DbMriFilePre), MriPre);
-            movefile(file_fullpath(DbMriFilePostReg), MriPost);
+            movefile(file_fullpath(DbMriFilePostReg), MriPostOrig);
+            movefile(file_fullpath(DbMriFilePostReslice), MriPostReslice);
             sSubject.Anatomy(1).FileName = file_short(MriPre);
-            sSubject.Anatomy(2).FileName = file_short(MriPost);
+            sSubject.Anatomy(2).FileName = file_short(MriPostOrig);
+            sSubject.Anatomy(3).FileName = file_short(MriPostReslice);
             % Update database
             bst_set('Subject', iSubject, sSubject);
             panel_protocols('UpdateNode', 'Subject', iSubject);
@@ -399,15 +404,15 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
     % Save for later
     GlobalData.Guidelines.SubjectName = SubjectName;
     GlobalData.Guidelines.MriPre      = MriPre;
-    GlobalData.Guidelines.MriPost     = MriPost;
+    GlobalData.Guidelines.MriPost     = MriPostOrig;
     
     % === DISPLAY RESULT ===
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
     % Only if the two volumes are not the same
-    if ~strcmpi(MriPre, MriPost)
+    if ~strcmpi(MriPre, MriPostOrig)
         % Open the post volume as an overlay of the pre volume
-        hFig = view_mri(MriPre, MriPost);
+        hFig = view_mri(MriPre, MriPostReslice);
         % Set the amplitude threshold to 50%
         panel_surface('SetDataThreshold', hFig, 1, 0.3);
         % Select surface tab

@@ -1,6 +1,6 @@
 ---------------------------------------------------------------
 November 2017
-- Bug identified: Changes in isosurface in Matlab 2017b cause some weird
+- Bug fixed: Changes in isosurface in Matlab 2017b caused irregularities in head surfaces
 - GUI: More guided protocol creation to avoid massive deletions of user folders
 - GUI: Add event markers on the signals when the event names match the channel names
 - Anatomy: MRI viewer: Various interface improvements (zoom, shortcuts)

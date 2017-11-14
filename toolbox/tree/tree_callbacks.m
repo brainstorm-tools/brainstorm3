@@ -952,12 +952,14 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
                     if ~bstNodes(1).isMarked()
                         jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
-                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister_spm(filenameRelative, [], 1));
-                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister_spm(filenameRelative, [], 0));
-                            AddSeparator(jMenuRegister);
-                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'ncs', 'ncs'));
-                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'scs', 'scs'));
-                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / .nii vox2ras transform',       IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
+                        gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 1));
+                        gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 0));
+                        AddSeparator(jMenuRegister);
+                        gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'ncs', 'ncs'));
+                        gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'scs', 'scs'));
+                        gui_component('MenuItem', jMenuRegister, [], 'Reslice / vox2ras transform (.nii)',     IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
+                        AddSeparator(jMenuRegister);
+                        gui_component('MenuItem', jMenuRegister, [], 'Copy fiducials from default MRI',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'vox2ras', 0));
                     end
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(filenameRelative));

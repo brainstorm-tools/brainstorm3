@@ -231,16 +231,17 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     switch (RegMethod)
         case 'MNI'
             % Register the new MRI on the existing one using the MNI transformation (+ RESLICE)
-            [sMri, errMsg, fileTag] = mri_coregister_mni(sMri, sMriRef, isReslice);
+            [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'mni', isReslice);
         case 'SPM'
             % Register the new MRI on the existing one using SPM + RESLICE
-            [sMri, errMsg, fileTag] = mri_coregister_spm(sMri, sMriRef, isReslice);
+            [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice);
         case 'Ignore'
             if isReslice
                 % Register the new MRI on the existing one using the transformation in the input files (files already registered)
                 [sMri, errMsg, fileTag] = mri_reslice(sMri, sMriRef, 'vox2ras', 'vox2ras');
             else
-                errMsg = [];
+                % Just copy the fiducials from the reference MRI
+                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'vox2ras', isReslice);
             end
             % Copy the old SCS and NCS fields to the new file (only if registered)
             if isSameSize || isReslice

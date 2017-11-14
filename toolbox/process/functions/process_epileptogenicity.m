@@ -197,10 +197,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             % If there is a transformation MRI=>RAS from a .nii file 
             if ~isempty(iTransf)
                 vox2ras = sMri.InitTransf{iTransf,2};
-                % 2nd operation: Change reference from (0,0,0) to (1,1,1)
-                vox2ras = vox2ras * [1 0 0 -1; 0 1 0 -1; 0 0 1 -1; 0 0 0 1];
+                % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
+                vox2ras = vox2ras * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
                 % 1st operation: Convert from MRI(mm) to voxels
-                vox2ras = vox2ras * [diag(1 ./ sMri.Voxsize), [0;0;0]; 0 0 0 1];
+                vox2ras = vox2ras * diag(1 ./ [sMri.Voxsize, 1]);
                 % Convert millimeters=>meters
                 vox2ras(1:3,4) = vox2ras(1:3,4) ./ 1000;
                 % Add this transformation
