@@ -4052,7 +4052,7 @@ function PlotEventsDots_EventsBar(hFig)
         delete(hEventDotsChannel);
     end
     % Get figure handles
-    [hFig,iDS,iFig] = bst_figures('GetFigure', hFig);
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
     Handles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
     % Get selected montage
     TsInfo = getappdata(hFig, 'TsInfo');

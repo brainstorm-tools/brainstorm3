@@ -1569,6 +1569,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
     % ===== ADD SPHERE CONTACTS ======
     % Get the sensors that haven't been displayed yet
     iChanOther = setdiff(1:length(Channel), iChanProcessed);
+    isValidLoc = ~any(all(ChanLoc(iChanOther,:)==0,2),1);
     % Display spheres
     if ~isempty(iChanOther) && isValidLoc
         % Get the saved display defaults for this modality

@@ -1385,7 +1385,7 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
         % Get point name
         PointLabel = get(hObj, 'UserData');
         % Get channels displayed in this figure
-        [hFig, iDS, iFig] = bst_figures('GetFigure', hFig);
+        [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
         if ~isempty(PointLabel) && ~isempty(iDS) && ~isempty(GlobalData.DataSet(iDS).Channel) && ismember(PointLabel, {GlobalData.DataSet(iDS).Channel.Name})
             clickAction = 'MovePoint';
             clickSource = hObj;
