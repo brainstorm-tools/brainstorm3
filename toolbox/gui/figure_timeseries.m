@@ -1647,7 +1647,7 @@ function [ChannelName, ChannelLabel] = GetChannelName(iDS, iFig, iLine)
         % If there is a montage selected
         if ~isempty(TsInfo.MontageName)
             % Get selected montage
-            sMontage = panel_montage('GetMontage', TsInfo.MontageName, hFig);
+            sMontage = panel_montage('GetMontage', TsInfo.MontageName, sFig.hFigure);
             if isempty(sMontage)
                 disp(['BST> Error: Invalid montage name "' TsInfo.MontageName '".']);
                 return;
