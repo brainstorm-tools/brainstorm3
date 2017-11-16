@@ -1397,9 +1397,9 @@ function [isValidated, errMsg] = ValidateEpoch()
     end
     % If the channes are not the same: normalize them
     if ~isEqualChanList
-        % Process: Uniform list of channels (add missing)
+        % Process: Uniform list of channels (remove extra)
         bst_process('CallProcess', 'process_stdchan', AllFiles, [], ...
-            'method',  2);  % Keep all the channel names=> Fill the missing channels with zeros
+            'method',  1);  % Keep only the common channel names=> Remove all the others
         % Warning
         java_dialog('warning', [...
             'The files you imported do not have the same list of contacts.' 10 10 ...

@@ -122,7 +122,7 @@ sFilesRaw = bst_process('CallProcess', 'process_channel_settype', sFilesRaw, [],
 % Process: Set bad channels
 bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(1), [], 'sensortypes', 'v''1, f''1');
 bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(2), [], 'sensortypes', 'v''1');
-bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(3), [], 'sensortypes', 'o''1');
+bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(3), [], 'sensortypes', 'o''1, t''8');
 % Define events
 sfreq = 512;
 sEvt1 = db_template('event');
@@ -144,7 +144,7 @@ sEvt2(2).samples = sEvt2(2).times .* sfreq;
 % SZ3
 sEvt3 = sEvt1;
 sEvt3(1).times   = 120.287;
-sEvt3(2).times   = [45.2870; 50.2870];
+sEvt3(2).times   = [45.287; 50.287];
 sEvt3(1).samples = sEvt3(1).times .* sfreq;
 sEvt3(2).samples = sEvt3(2).times .* sfreq;
 % Process: Events: Import from file
