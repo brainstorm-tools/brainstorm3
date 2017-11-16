@@ -115,7 +115,7 @@ if ismember('Channel', FieldsToRead) && isstruct(sMat.Channel) && ~isempty(sMat.
             continue;
         end
         % If the groups are all defined: skip
-        if all(~cellfun(@isempty, {sMat.Channel(iMod).Group})) && ~isempty(sMat.IntraElectrodes) && all(ismember(unique({sMat.Channel(iMod).Group}), {sMat.IntraElectrodes.Name}))
+        if all(~cellfun(@isempty, {sMat.Channel(iMod).Group})) && isfield(sMat, 'IntraElectrodes') && ~isempty(sMat.IntraElectrodes) && all(ismember(unique({sMat.Channel(iMod).Group}), {sMat.IntraElectrodes.Name}))
             continue;
         end
         % Parse sensor names
@@ -134,7 +134,7 @@ if ismember('Channel', FieldsToRead) && isstruct(sMat.Channel) && ~isempty(sMat.
             end
         end
         % Detect electrodes
-        if isempty(sMat.IntraElectrodes) || ~all(ismember(uniqueTags, {sMat.IntraElectrodes.Name}))
+        if ~isfield(sMat, 'IntraElectrodes') || isempty(sMat.IntraElectrodes) || ~all(ismember(uniqueTags, {sMat.IntraElectrodes.Name}))
             sMat = panel_ieeg('DetectElectrodes', sMat, Modality{1}, AllInd, 0);
         end
     end
