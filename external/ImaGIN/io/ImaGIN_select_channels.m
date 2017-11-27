@@ -66,7 +66,7 @@ if isSEEG
     for i = 1:length(uniqueTags)
         % Get channels of this tag
         iTag = find(strcmpi(uniqueTags{i}, AllTags));
-        % Remove if more than 18 (except for Salpetriere electrodes with digits in the name)
+        % Remove if more than 18 (except for Salpetriere electrodes with digits in the name, and except 'X' used by )
         if ((length(iTag) > 18) && (any(iTag < 10) || any(iTag >= 30)))
             AllNames(iTag) = {'XXXXX'};
             AllTags(iTag) = {'XXXXX'};
@@ -90,7 +90,7 @@ for i = 1:length(AllNames)
     elseif isSEEG && ~any(ismember(lower(AllNames{i}), 'abcdefghijklmnopqrstuvwxyz'))
         continue;
     % Unwanted labels
-    elseif ismember(lower(AllTags{i}), {'xxxxx', 'mark', 'dc', 'emg', 'eog', 'veo', 'heo', 'veog', 'heog', 'myo', 'myog', 'myod', 'dd', 'dg', 'el', 'ref', 'eegref', 'eref', 'vref', 'ref', 'pulse', 'mast', 'spo2', 'lpar', 'rpar','tib'})
+    elseif ismember(lower(AllTags{i}), {'xxxxx', 'mark', 'dc', 'emg', 'eog', 'veo', 'heo', 'veog', 'heog', 'myo', 'myog', 'myod', 'dd', 'dg', 'el', 'ref', 'eegref', 'eref', 'vref', 'ref', 'pulse', 'mast', 'spo2', 'lpar', 'rpar', 'tib', '/'})
         % MAYBE ADD 'oc' ??
         continue;
     % Unwanted labels
