@@ -396,8 +396,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             end
         end
         % Final time vector
-        DataMat.Time = fileLatency(iFiles);
-        DataMat.Comment = strGoupUnique{iGroup};
+        DataMat.Time         = fileLatency(iFiles);
+        DataMat.Comment      = strGoupUnique{iGroup};
+        DataMat.DataType     = 'ei';
+        DataMat.DisplayUnits = 't';
         % Save file
         OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), ['data_', strGoupUnique{iGroup}]);
         bst_save(OutputFile, DataMat, 'v7');

@@ -156,10 +156,12 @@ end
 %% ===== CONFIGURE FIGURE =====
 % Static dataset ?
 setappdata(hFig, 'isStatic', (GlobalData.DataSet(iDS).Measures.NumberOfSamples <= 2));
-% Statistics?
-isStat = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat');
 % Raw file
 isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+% Statistics?
+% isStat = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat');
+isStat = ~ismember(GlobalData.DataSet(iDS).Measures.DataType, {'recordings', 'raw'});
+
 % Create time-series information structure
 if isNewFig
     % Create figure structure
