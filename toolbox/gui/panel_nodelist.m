@@ -124,6 +124,9 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
         if (ev.getButton() == ev.BUTTON3) && ev.getSource().isEnabled()
             % Create popup menu
             jPopup = java_create('javax.swing.JPopupMenu');
+            % Menu "Copy file list"
+            gui_component('MenuItem', jPopup, [], 'Copy list to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopyPathList());
+            jPopup.addSeparator();
             % Menu "Remove from list"
             gui_component('MenuItem', jPopup, [], 'Clear list', IconLoader.ICON_DELETE, [], @(h,ev)ResetAllLists());
             % Show popup menu
@@ -248,6 +251,29 @@ function ResetAllLists()
     for i = 1:length(GlobalData.Program.GUI.nodelists)
         GlobalData.Program.GUI.nodelists(i).jTree.removeAllNodes();
     end
+end
+
+
+%% ===== COPY PATH LIST TO CLIPBOARD  =====
+function CopyPathList()
+     % Get selected process panel
+    jTabProcess = bst_get('PanelContainer', 'process');
+    selPanel = char(jTabProcess.getTitleAt(jTabProcess.getSelectedIndex()));
+    if strcmpi(selPanel, 'Process1')
+        % Get files
+        sFiles = panel_nodelist('GetFiles', selPanel);
+        % Concatenate file paths in one multiline string
+        str = panel_process_select('WriteFileNames', sFiles, 'sFiles', 1);
+    else
+        % Get files
+        sFilesA = panel_nodelist('GetFiles', [selPanel 'A']);
+        sFilesB = panel_nodelist('GetFiles', [selPanel 'B']);
+        strA = panel_process_select('WriteFileNames', sFilesA, 'sFiles', 1);
+        strB = panel_process_select('WriteFileNames', sFilesB, 'sFiles2', 1);
+        str = [strA 10 strB];
+    end
+    % Copy to clipboard
+    clipboard('copy', str);
 end
 
 
