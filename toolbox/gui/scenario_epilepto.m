@@ -196,6 +196,8 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jTextLatency = gui_component('text', jPanelEpilOptions, 'tab', '0:2:20');
     gui_component('label', jPanelEpilOptions, 'br', 'Time constant (s): ');
     ctrl.jTextTimeConstant = gui_component('texttime', jPanelEpilOptions, 'tab', '3');
+    gui_component('label', jPanelEpilOptions, 'br', 'Propagation threshold (p): ');
+    ctrl.jTextThDelay = gui_component('texttime', jPanelEpilOptions, 'tab', '0.05');
     % Output type
     gui_component('label', jPanelEpilOptions, 'br', 'Output type:');
     jButtonGroupOutput = ButtonGroup();
@@ -1641,7 +1643,8 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
     Latency        = char(ctrl.jTextLatency.getText());
     TimeConstant   = str2num(char(ctrl.jTextTimeConstant.getText()));
     TimeResolution = .2;
-    ThDelay        = 0.05;
+    % ThDelay        = 0.05;
+    ThDelay        = str2num(char(ctrl.jTextThDelay.getText()));
     % Check inputs
     if (length(FreqBand) < 2)
         errMsg = 'Invalid frequency band.';
