@@ -1276,6 +1276,10 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
         TessInfo(iTess).ColormapType = ColormapType;
         bst_colormaps('AddColormapToFigure', hFig, ColormapType, DisplayUnits);
     end
+    % If the display units are in time: do not threshold the surface by default
+    if isequal(DisplayUnits, 's')
+        TessInfo(iTess).DataThreshold = 0;
+    end
     % Update figure appdata
     setappdata(hFig, 'Surface', TessInfo);
     % Plot surface
