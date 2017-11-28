@@ -125,7 +125,8 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
             % Create popup menu
             jPopup = java_create('javax.swing.JPopupMenu');
             % Menu "Copy file list"
-            gui_component('MenuItem', jPopup, [], 'Copy to clipboard as input list', IconLoader.ICON_COPY, [], @(h,ev)CopyPathList());
+            gui_component('MenuItem', jPopup, [], 'Copy list to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopyPathList());
+            jPopup.addSeparator();
             % Menu "Remove from list"
             gui_component('MenuItem', jPopup, [], 'Clear list', IconLoader.ICON_DELETE, [], @(h,ev)ResetAllLists());
             % Show popup menu
