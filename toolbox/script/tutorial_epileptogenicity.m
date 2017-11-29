@@ -70,13 +70,17 @@ bst_report('Start');
 DbMriFilePre = import_mri(iSubject, MriFilePre, 'ALL', 0, 0);
 DbMriFilePost = import_mri(iSubject, MriFilePost, 'ALL', 0, 0);
 % Compute the MNI coordinates for both volumes
-[sMriPre, errMsg] = bst_normalize_mni(DbMriFilePre);
+[sMriPre, errMsg]  = bst_normalize_mni(DbMriFilePre);
 [sMriPost, errMsg] = bst_normalize_mni(DbMriFilePost);
-% Reslice the "post" volume (volumes are already registered)
-iTransfPre  = find(strcmpi(sMriPre.InitTransf(:,1),  'vox2ras'));
-iTransfPost = find(strcmpi(sMriPost.InitTransf(:,1), 'vox2ras'));
-[DbMriFilePostReg, errMsg] = mri_coregister(DbMriFilePost, DbMriFilePre, sMriPost.InitTransf{iTransfPost(1),2}, sMriPre.InitTransf{iTransfPre(1),2}, 'spm', 1);
-
+% Volumes are not registered: Register with SPM
+isRegistered = 1;
+if ~isRegistered
+    [DbMriFilePostReg, errMsg, fileTag, sMriPostReg] = mri_coregister(DbMriFilePost, DbMriFilePre, 'spm', 0);
+% Volumes are registered: Copy SCS and NCS fiducials to post volume
+else
+    [DbMriFilePostReg, errMsg, fileTag, sMriPostReg] = mri_coregister(DbMriFilePost, DbMriFilePre, 'vox2ras', 0);
+end
+            
 % ===== SORT ANATOMY FOLDER =====
 % Get updated subject structure
 [sSubject, iSubject] = bst_get('Subject', SubjectName);
