@@ -1665,7 +1665,7 @@ function [iEEG, GroupNames, DisplayNames] = GetEegGroups(Channel, ChannelFlag, i
             AllGroups(cellfun(@isempty, AllGroups)) = {'Unknown'};
             uniqueGroups = unique(AllGroups);
             % If the sensors are not separated in groups using the comments fields
-            if isempty(uniqueGroups) || (length(uniqueGroups) == 1)
+            if isempty(uniqueGroups) % || (length(uniqueGroups) == 1)
                 % All the channels = one block
                 iEEG{end+1}  = iMod;
                 GroupNames{end+1} = Modality{1};
