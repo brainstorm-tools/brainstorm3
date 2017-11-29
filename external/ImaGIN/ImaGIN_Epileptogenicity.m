@@ -246,12 +246,25 @@ for i00 = 1:size(latency, 2)
 
         % Find frequency band
         IndexFreq1 = min(find(DPower.frequencies>=min(FreqBand))):max(find(DPower.frequencies<=max(FreqBand)));
-        % Get power for seizure and baselines
-        Power = DPower(:,IndexFreq1,:);
-        PowerBaseline = DPowerBaseline(:,IndexFreq1,:);
-        % Compute average power within frequencies of interest
-        Epileptogenicity = squeeze(mean(Power,2));
-        EpileptogenicityBaseline = squeeze(mean(PowerBaseline,2));
+        
+        % Compute power within frequencies of interest
+        [Epitmp,order] = sort(mean(DPower(:,IndexFreq1,:),3),2);
+        Epileptogenicity = squeeze(mean(DPower(:,IndexFreq1,:),2));
+        for i1 = 1:size(Epileptogenicity,1)
+            Epileptogenicity(i1,:) = squeeze(mean(DPower(i1,order(i1,floor(0.75*size(order,2)):end),:),2));
+        end
+        EpileptogenicityBaseline = squeeze(mean(DPowerBaseline(:,IndexFreq1,:),2));
+        for i1 = 1:size(EpileptogenicityBaseline,1)
+            EpileptogenicityBaseline(i1,:) = squeeze(mean(DPowerBaseline(i1,order(i1,floor(0.75*size(order,2)):end),:),2));
+        end
+        
+         
+%         % Get power for seizure and baselines
+%         Power = DPower(:,IndexFreq1,:);
+%         PowerBaseline = DPowerBaseline(:,IndexFreq1,:);
+%         % Compute average power within frequencies of interest
+%         Epileptogenicity = squeeze(mean(Power,2));
+%         EpileptogenicityBaseline = squeeze(mean(PowerBaseline,2));
         % Replace bad channels with NaN
         if ~isempty(BadChannel{i0})
             Epileptogenicity(BadChannel{i0},:) = NaN;
@@ -622,7 +635,13 @@ function WriteDelay(dirStat, latency, ThDelay, SmoothIterations, OutputFile, Out
         S = SPM.xVol.S;    %-search Volume {voxels}
         R = SPM.xVol.R;    %-search Volume {resels}
         % u = spm_uc_FDR(0.001,df,'T',1,P1);
-        u = spm_uc(ThDelay,df,'T',R,1,S);
+        % ThDelay is a p-value
+        if (ThDelay < 1)
+            u = spm_uc(ThDelay, df, 'T', R, 1, S);
+        % ThDelay is a t-value
+        else
+            u = ThDelay;
+        end
 
         % Load spmT map
         switch lower(OutputType)
@@ -640,6 +659,13 @@ function WriteDelay(dirStat, latency, ThDelay, SmoothIterations, OutputFile, Out
         end
         % Activated voxels
         Q1 = find(Tvalues >= u);
+        % Remove if isolated peak
+        Q4 = find(Tvalues < u);
+        if (i2 > 1)
+            Q5 = find(Delay == mean(latency(:,i2-1)));
+            Q6 = intersect(Q5, Q4);
+            Delay(Q6) = NaN;
+        end
         Q2 = find(isnan(Delay));
         Q3 = intersect(Q2, Q1);
         Delay(Q3) = mean(latency(:,i2));
