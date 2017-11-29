@@ -121,7 +121,7 @@ sFilesRaw = bst_process('CallProcess', 'process_channel_settype', sFilesRaw, [],
 %% ===== EVENTS AND BAD CHANNELS =====
 % Process: Set bad channels
 bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(1), [], 'sensortypes', 'v''1, f''1');
-bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(2), [], 'sensortypes', 'v''1');
+bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(2), [], 'sensortypes', 'v''1, t''8');
 bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(3), [], 'sensortypes', 'o''1, t''8');
 % Define events
 sfreq = 512;
@@ -220,7 +220,7 @@ Latency        = '0:2:20';
 TimeConstant   = 3;
 TimeResolution = .2;
 ThDelay        = 0.05;
-OutputType     = 'volume';
+OutputType     = 'surface';
 % Process: Epileptogenicity index (A=Baseline,B=Seizure)
 bst_report('Start', sFilesBaselines(2));
 sFilesEpilepto2 = bst_process('CallProcess', 'process_epileptogenicity', sFilesBaselines(2:3), sFilesOnsets(2:3), ...
