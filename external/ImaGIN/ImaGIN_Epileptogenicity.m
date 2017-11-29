@@ -128,7 +128,7 @@ end
 try
     ThDelay = S.ThDelay;
 catch
-    ThDelay = spm_input('Propagation threshold', '+1', 'r', 0.05, 1);
+    ThDelay = spm_input('Propagation threshold (p or T)', '+1', 'r', 0.05, 1);
 end
 
 try
