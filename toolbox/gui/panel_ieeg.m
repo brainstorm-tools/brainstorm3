@@ -2128,16 +2128,25 @@ end
 
 
 %% ===== DISPLAY CHANNELS (MRI VIEWER) =====
+% USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
+%         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, MriFile)
 function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
-    % Get study
-    sStudy = bst_get('ChannelFile', ChannelFile);
-    % Get subject
-    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-    if isempty(sSubject) || isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(iAnatomy).FileName)
-        bst_error('No MRI available for this subject.', 'Display electrodes', 0);
+    % Get MRI to display
+    if ischar(iAnatomy)
+        MriFile = iAnatomy;
+    else
+        % Get study
+        sStudy = bst_get('ChannelFile', ChannelFile);
+        % Get subject
+        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        if isempty(sSubject) || isempty(sSubject.Anatomy)
+            bst_error('No MRI available for this subject.', 'Display electrodes', 0);
+        end
+        % Get MRI file
+        MriFile = sSubject.Anatomy(iAnatomy).FileName;
     end
     % View MRI
-    [hFig, iDS, iFig] = view_mri(sSubject.Anatomy(iAnatomy).FileName);
+    [hFig, iDS, iFig] = view_mri(MriFile);
     if isempty(hFig)
         return;
     end
