@@ -196,7 +196,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jTextLatency = gui_component('text', jPanelEpilOptions, 'tab', '0:2:20');
     gui_component('label', jPanelEpilOptions, 'br', 'Time constant (s): ');
     ctrl.jTextTimeConstant = gui_component('texttime', jPanelEpilOptions, 'tab', '3');
-    gui_component('label', jPanelEpilOptions, 'br', 'Propagation threshold (p): ');
+    gui_component('label', jPanelEpilOptions, 'br', 'Propagation threshold (p or T): ');
     ctrl.jTextThDelay = gui_component('texttime', jPanelEpilOptions, 'tab', '0.05');
     % Output type
     gui_component('label', jPanelEpilOptions, 'br', 'Output type:');
@@ -1653,7 +1653,7 @@ function [isValidated, errMsg] = ValidateEpileptogenicity()
     elseif isempty(TimeResolution) || (TimeResolution <= 0)
         errMsg = 'Invalid time resolution.';
         return;
-    elseif isempty(ThDelay) || (ThDelay <= 0) || (ThDelay >= 1)
+    elseif isempty(ThDelay) || (ThDelay <= 0)
         errMsg = 'Invalid propagation threshold.';
         return;
     end

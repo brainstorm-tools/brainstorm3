@@ -74,9 +74,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timeresolution.Type    = 'value';
     sProcess.options.timeresolution.Value   = {0.2, 's', 3};
     % === PROPAGATION THRESHOLD
-    sProcess.options.thdelay.Comment = 'Propagation threshold (p-value): ';
+    sProcess.options.thdelay.Comment = 'Propagation threshold (p or T): ';
     sProcess.options.thdelay.Type    = 'value';
-    sProcess.options.thdelay.Value   = {0.05, '', 4};
+    sProcess.options.thdelay.Value   = {0.05, '', 5};
     % === OUTPUT TYPE
     sProcess.options.type.Comment = {'Volume', 'Surface', 'Output type: '; ...
                                      'volume', 'surface', ''};
