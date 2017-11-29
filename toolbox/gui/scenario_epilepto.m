@@ -1187,13 +1187,8 @@ function ButtonRawPos()
             % Display 3D positions on the subject MRI
             view_channels_3d(AllChannelFiles{1}, 'SEEG', GlobalData.Guidelines.MriPost, 1);
         case 'Edit'
-            % View MRI
-            [hFig, iDS, iFig] = view_mri(GlobalData.Guidelines.MriPost);
-            if isempty(hFig)
-                return;
-            end
-            % Add channels to the figure
-            figure_mri('LoadElectrodes', hFig, AllChannelFiles{1}, 'SEEG');
+            % Edit channel file in MRI
+            hFig = panel_ieeg('DisplayChannelsMri', AllChannelFiles{1}, 'SEEG', GlobalData.Guidelines.MriPost);
             % Wait for the editor to be closed
             waitfor(hFig);
             % Copy positions to the other files
