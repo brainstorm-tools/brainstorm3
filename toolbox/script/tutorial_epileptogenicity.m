@@ -80,6 +80,9 @@ if ~isRegistered
 else
     [DbMriFilePostReg, errMsg, fileTag, sMriPostReg] = mri_coregister(DbMriFilePost, DbMriFilePre, 'vox2ras', 0);
 end
+% Reslice the "post" volume
+[DbMriFilePostReslice, errMsg, fileTag, sMriPostReslice] = mri_reslice(DbMriFilePostReg, DbMriFilePre, 'vox2ras', 'vox2ras');
+
             
 % ===== SORT ANATOMY FOLDER =====
 % Get updated subject structure
@@ -89,13 +92,16 @@ file_delete(DbMriFilePost, 1);
 sSubject.Anatomy(2) = [];
 % Anatomy folder
 AnatDir = bst_fileparts(file_fullpath(sSubject.FileName));
-MriPre  = fullfile(AnatDir, 'subjectimage_pre.mat');
-MriPost = fullfile(AnatDir, 'subjectimage_post.mat');
+MriPre = fullfile(AnatDir, 'subjectimage_pre.mat');
+MriPost = fullfile(AnatDir, 'subjectimage_post_orig.mat');
+MriPostReslice = fullfile(AnatDir, 'subjectimage_post.mat');
 % Rename imported volumes
 movefile(file_fullpath(DbMriFilePre), MriPre);
 movefile(file_fullpath(DbMriFilePostReg), MriPost);
+movefile(file_fullpath(DbMriFilePostReslice), MriPostReslice);
 sSubject.Anatomy(1).FileName = file_short(MriPre);
 sSubject.Anatomy(2).FileName = file_short(MriPost);
+sSubject.Anatomy(3).FileName = file_short(MriPostReslice);
 % Update database
 bst_set('Subject', iSubject, sSubject);
 panel_protocols('UpdateNode', 'Subject', iSubject);
@@ -124,7 +130,7 @@ sFilesPsd = bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
          'TimeBands',       [], ...
          'Freqs',           [], ...
          'ClusterFuncTime', 'none', ...
-         'Measure',         'power', ...
+         'Measure',         'magnitude', ...
          'Output',          'all', ...
          'SaveKernel',      0));
 % Process: Add EEG positions
