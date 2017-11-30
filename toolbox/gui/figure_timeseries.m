@@ -2437,7 +2437,7 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         else
             PlotHandles(iAxes).DataMinMax = [min(F{iAxes}(:)), max(F{iAxes}(:))];
             % With Std
-            if ~isempty(Std) && ~isempty(Std{iAxes})
+            if ~isempty(Std) && ~isempty(Std{iAxes}) && isequal(size(F{iAxes}), size(Std{iAxes}))
                 Faxes = [F{iAxes} + Std{iAxes}, F{iAxes} - Std{iAxes}];
                 tmpMinMax = [min(Faxes(:)), max(Faxes(:))];
                 % Make sure that we are not going below zero just because of the Std

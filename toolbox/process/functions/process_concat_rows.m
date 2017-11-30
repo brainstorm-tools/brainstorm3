@@ -19,7 +19,7 @@ function varargout = process_concat_rows( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2017
 
 eval(macro_method);
 end
@@ -89,6 +89,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Concatenate the data matrices
                 NewMat.Value       = cat(1, NewMat.Value, MatrixMat.Value);
                 NewMat.Description = cat(1, NewMat.Description, MatrixMat.Description);
+                if isfield(MatrixMat, 'Std') && ~isempty(MatrixMat.Std)
+                    NewMat.Std = cat(1, NewMat.Std, MatrixMat.Std);
+                end
                 % History field
                 NewMat = bst_history('add', NewMat, 'concat', [' - ' sInputs(iInput).FileName]);
             end
