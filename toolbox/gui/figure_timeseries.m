@@ -2957,7 +2957,7 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
         
         % ===== STD HALO =====
         % Plot Std as a transparent halo
-        if ~isempty(Std)
+        if ~isempty(Std) && isequal(size(F), size(Std))
             % Get the colors of all the lines
             C = get(PlotHandles.hLines, 'Color');
             if ~iscell(C)
