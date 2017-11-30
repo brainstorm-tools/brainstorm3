@@ -50,13 +50,41 @@ sFile.prop.nAvg    = 1;
 sFile.channelflag = ones(hdr.channel_count, 1);
 
 
-%% ===== EVENT FILE =====   
-% If a .trg file exists with the same name: load it
-[fPath, fBase, fExt] = bst_fileparts(DataFile);
-TrgFile = bst_fullfile(fPath, [fBase '.trg']);
-% If file exists
-if file_exist(TrgFile)
-    [sFile, newEvents] = import_events(sFile, [], TrgFile, 'ANT');
+%% ===== EVENTS =====
+if isfield(hdr, 'triggers') && ~isempty(hdr.triggers)
+    % Get list of events
+    allNames = {hdr.triggers.label};
+    [uniqueEvt, iUnique] = unique(allNames);
+    uniqueEvt = allNames(sort(iUnique));
+    % Initialize list of events
+    events = repmat(db_template('event'), 1, length(uniqueEvt));
+    % Format list
+    for iEvt = 1:length(uniqueEvt)
+        % Ask for a label
+        events(iEvt).label      = uniqueEvt{iEvt};
+        events(iEvt).color      = [];
+        events(iEvt).reactTimes = [];
+        events(iEvt).select     = 1;
+        % Find list of occurences of this event
+        iOcc = find(strcmpi(allNames, uniqueEvt{iEvt}));
+        % Get time and samples
+        events(iEvt).samples = round([hdr.triggers(iOcc).seconds_in_file] .* sFile.prop.sfreq);
+        events(iEvt).times   = events(iEvt).samples ./ sFile.prop.sfreq;
+        % Epoch: set as 1 for all the occurrences
+        events(iEvt).epochs = ones(1, length(events(iEvt).samples));
+    end
+    % Import this list
+    sFile = import_events(sFile, [], events);
+    
+%% ===== EXTERNAL EVENT FILE =====   
+else
+    % If a .trg file exists with the same name: load it
+    [fPath, fBase, fExt] = bst_fileparts(DataFile);
+    TrgFile = bst_fullfile(fPath, [fBase '.trg']);
+    % If file exists
+    if file_exist(TrgFile)
+        [sFile, newEvents] = import_events(sFile, [], TrgFile, 'ANT');
+    end
 end
 
 
