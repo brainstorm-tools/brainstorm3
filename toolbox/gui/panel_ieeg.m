@@ -974,10 +974,13 @@ end
 function sModels = GetElectrodeModels()
     global GlobalData;
     % Get existing preferences
-    if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'IntraElectrodeModels') && ~isempty(GlobalData.Preferences.IntraElectrodeModels)
+    if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'IntraElectrodeModels') && ~isempty(GlobalData.Preferences.IntraElectrodeModels) ...
+            && (length(GlobalData.Preferences.IntraElectrodeModels) > 13)
         sModels = GlobalData.Preferences.IntraElectrodeModels;
     % Get default list of known electrodes
     else
+        sModels = repmat(db_template('intraelectrode'), 1, 0);
+        
         % === DIXI D08 ===
         % Common values
         sTemplate = db_template('intraelectrode');
@@ -988,19 +991,60 @@ function sModels = GetElectrodeModels()
         sTemplate.ElecDiameter    = 0.0007;
         sTemplate.ElecLength      = 0.070;
         % All models
-        sModels = repmat(sTemplate, 1, 6);
-        sModels(1).Model         = 'DIXI D08-05AM Microdeep';
-        sModels(1).ContactNumber = 5;
-        sModels(2).Model         = 'DIXI D08-08AM Microdeep';
-        sModels(2).ContactNumber = 8;
-        sModels(3).Model         = 'DIXI D08-10AM Microdeep';
-        sModels(3).ContactNumber = 10;
-        sModels(4).Model         = 'DIXI D08-12AM Microdeep';
-        sModels(4).ContactNumber = 12;
-        sModels(5).Model         = 'DIXI D08-15AM Microdeep';
-        sModels(5).ContactNumber = 15;
-        sModels(6).Model         = 'DIXI D08-18AM Microdeep';
-        sModels(6).ContactNumber = 18;
+        sMod = repmat(sTemplate, 1, 6);
+        sMod(1).Model         = 'DIXI D08-05AM Microdeep';
+        sMod(1).ContactNumber = 5;
+        sMod(2).Model         = 'DIXI D08-08AM Microdeep';
+        sMod(2).ContactNumber = 8;
+        sMod(3).Model         = 'DIXI D08-10AM Microdeep';
+        sMod(3).ContactNumber = 10;
+        sMod(4).Model         = 'DIXI D08-12AM Microdeep';
+        sMod(4).ContactNumber = 12;
+        sMod(5).Model         = 'DIXI D08-15AM Microdeep';
+        sMod(5).ContactNumber = 15;
+        sMod(6).Model         = 'DIXI D08-18AM Microdeep';
+        sMod(6).ContactNumber = 18;
+        sModels = [sModels, sMod];
+        
+        % === AD TECH RD10R ===
+        % Common values
+        sTemplate = db_template('intraelectrode');
+        sTemplate.Type = 'SEEG';
+        sTemplate.ContactNumber   = 10;
+        sTemplate.ContactDiameter = 0.0009;
+        sTemplate.ContactLength   = 0.0023;
+        sTemplate.ElecDiameter    = 0.0008;
+        sTemplate.ElecLength      = 0.080;
+        % All models
+        sMod = repmat(sTemplate, 1, 5);
+        sMod(1).Model          = 'AdTech RD10R-SP04X';
+        sMod(1).ContactSpacing = 0.004;
+        sMod(2).Model          = 'AdTech RD10R-SP05X';
+        sMod(2).ContactSpacing = 0.005;
+        sMod(3).Model          = 'AdTech RD10R-SP06X';
+        sMod(3).ContactSpacing = 0.006;
+        sMod(4).Model          = 'AdTech RD10R-SP07X';
+        sMod(4).ContactSpacing = 0.007;
+        sMod(5).Model          = 'AdTech RD10R-SP08X';
+        sMod(5).ContactSpacing = 0.008;
+        sModels = [sModels, sMod];
+        
+        % === AD TECH RD10R ===
+        % Common values
+        sTemplate = db_template('intraelectrode');
+        sTemplate.Type = 'SEEG';
+        sTemplate.ContactSpacing  = 0.005;
+        sTemplate.ContactDiameter = 0.0014;
+        sTemplate.ContactLength   = 0.0020;
+        sTemplate.ElecDiameter    = 0.0013;
+        sTemplate.ElecLength      = 0.080;
+        % All models
+        sMod = repmat(sTemplate, 1, 2);
+        sMod(1).Model          = 'AdTech MM16C-SP05X';
+        sMod(1).ContactNumber   = 6;
+        sMod(2).Model          = 'AdTech MM16D-SP05X';
+        sMod(2).ContactNumber   = 8;
+        sModels = [sModels, sMod];
     end
 end
 
