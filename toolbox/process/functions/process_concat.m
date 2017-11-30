@@ -95,6 +95,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 % Concatenate the F matrices
                 NewMat.F = [NewMat.F, DataMat.F];
+                % Concatenate the Std matrices
+                if isfield(DataMat, 'Std') && ~isempty(DataMat.Std)
+                    NewMat.Std = [NewMat.Std, DataMat.Std];
+                end
                 % Add the bad channels
                 NewMat.ChannelFlag(DataMat.ChannelFlag == -1) = -1;
                 % History field
@@ -144,6 +148,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 % Concatenate the data matrices
                 NewMat.Value = [NewMat.Value, MatrixMat.Value];
+                % Concatenate the Std matrices
+                if isfield(MatrixMat, 'Std') && ~isempty(MatrixMat.Std)
+                    NewMat.Std = [NewMat.Std, MatrixMat.Std];
+                end
                 % History field
                 NewMat = bst_history('add', NewMat, 'concat', [' - ' sInputs(iInput).FileName]);
             end
