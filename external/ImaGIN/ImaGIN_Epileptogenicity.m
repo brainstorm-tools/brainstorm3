@@ -565,7 +565,7 @@ function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, Sa
             % Use real coordinates from volume (considering first voxel is (1,1,1))
             else
                 [x,y,z] = meshgrid(1:V.dim(1), 1:V.dim(2), 1:V.dim(3));
-                P = (V.mat(1:3,1:3) * [x(:),y(:),z(:)]' + V.mat(1:3,4))';
+                P = bsxfun(@plus, V.mat(1:3,1:3) * [x(:),y(:),z(:)]', V.mat(1:3,4))';
             end
             Tvalues = permute(VV,[2 1 3]);
         case 'surface'
