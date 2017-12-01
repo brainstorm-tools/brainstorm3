@@ -155,10 +155,15 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
     % ===== IDENTIFY SUBJECTS =====
     % List all the subject folders
     subjDir = dir(bst_fullfile(BidsDir, 'sub-*'));
+    % If no subject are available, try in the derivatives/meg-derivatives folder (if we are importing tsss data only for instance)
+    if isempty(subjDir)
+        subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', 'sub-*'));
+    end
     % Loop on the subjects
-    SubjectNames   = {};
-    SubjectDirs    = {};
-    SubjectAnatRef = {};
+    SubjectNames     = {};
+    SubjectDirs      = {};
+    SubjectDerivDirs = {};
+    SubjectAnatRef   = {};
     for iSubj = 1:length(subjDir)
         % Default subject name
         subName = subjDir(iSubj).name;
@@ -167,8 +172,9 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % If there are multiple sessions: each session is imported as a separate subject
         if ~isempty(sessDir)
             for iSess = 1:length(sessDir)
-                SubjectNames{end+1} = [subName, '_', sessDir(iSess).name];
-                SubjectDirs{end+1}  = bst_fullfile(BidsDir, subName, sessDir(iSess).name);
+                SubjectNames{end+1}     = [subName, '_', sessDir(iSess).name];
+                SubjectDirs{end+1}      = bst_fullfile(BidsDir, subName, sessDir(iSess).name);
+                SubjectDerivDirs{end+1} = bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', subName, sessDir(iSess).name);
                 % For follow-up sessions, keep the reference to the session
                 if (iSess >= 2)
                     SubjectAnatRef{end+1} = length(SubjectNames) - iSess + 1;
@@ -177,9 +183,10 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                 end
             end
         else
-            SubjectNames{end+1}   = subName;
-            SubjectDirs{end+1}    = bst_fullfile(BidsDir, subName);
-            SubjectAnatRef{end+1} = [];
+            SubjectNames{end+1}     = subName;
+            SubjectDirs{end+1}      = bst_fullfile(BidsDir, subName);
+            SubjectDerivDirs{end+1} = bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', subName);
+            SubjectAnatRef{end+1}   = [];
         end
     end
     
@@ -214,7 +221,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % If a segmentation is available: check if there is a fiducials.m file available
         if ~isempty(SubjectAnatDirs{iSubj})
              % If fiducials are not defined: need to define them
-            isSetFiducials(iSubj) = isempty(file_find(SubjectAnatDirs{iSubj}, 'fiducials.m', [], 0));
+            isSetFiducials(iSubj) = 1; % isempty(file_find(SubjectAnatDirs{iSubj}, 'fiducials.m', [], 0));
             isSegmentation(iSubj) = 1;
         % Else: Try to get an anatomical MRI
         else
@@ -238,36 +245,36 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         end
     end
     
-    % Perform some checks
-    % Cannot set the fiducials when calling from a process (non-interactive)
-    if ~isInteractive && any(isSetFiducials)
-        Messages = ['You need to set the fiducials interactively before running this process.' 10 ...
-                    'Use the menu "File > Batch MRI fiducials" for creating fiducials.m files in the segmentation folders.' 10 ...
-                    'Alternatively, run this import interactively with the menu "File > Load protocol > Import BIDS dataset"'];
-        return;
-    % Ask the user whether to set all the fiducials at once
-    elseif isInteractive && any(isSetFiducials & isSegmentation)
-        res = java_dialog('question', ...
-            ['You need to set the anatomy fiducials interactively for each subject.' 10 10 ...
-             'There are two ways for doing this, depending if you have write access to the dataset:' 10 ...
-             '1) Batch: Set the fiducials for all the segmentation folders at once, save them in fiducials.m files, ' 10 ...
-             '   and then import everything. With this option, you won''t have to wait until each subject is ' 10 ...
-             '   fully processed before setting the fiducials for the next one, and the points you define will' 10 ...
-             '   be permanently saved in the dataset. But you need write access to the input folder.' 10 ...
-             '   This is equivalent to running the menu "File > Batch MRI fiducials" first.' 10 ...
-             '2) Sequencial: For each segmentation folder, set the fiducials then import it. Longer but more flexible.' 10 10], ...
-            'Import BIDS dataset', [], {'Batch', 'Sequential', 'Cancel'}, 'Sequential');
-        if isempty(res) || isequal(res, 'Cancel')
-            return;
-        end
-        % Run the setting of the fiducials in a batch
-        if strcmpi(res, 'Batch')
-            % Find one subject that needs to be defined
-            iSetSubj = find(isSetFiducials & isSegmentation);
-            % Run it for the subjects in the same folder
-            bst_batch_fiducials(bst_fileparts(SubjectAnatDirs{iSetSubj(1)}));
-        end
-    end
+%     % Perform some checks
+%     % Cannot set the fiducials when calling from a process (non-interactive)
+%     if ~isInteractive && any(isSetFiducials)
+%         Messages = ['You need to set the fiducials interactively before running this process.' 10 ...
+%                     'Use the menu "File > Batch MRI fiducials" for creating fiducials.m files in the segmentation folders.' 10 ...
+%                     'Alternatively, run this import interactively with the menu "File > Load protocol > Import BIDS dataset"'];
+%         return;
+%     % Ask the user whether to set all the fiducials at once
+%     elseif isInteractive && any(isSetFiducials & isSegmentation)
+%         res = java_dialog('question', ...
+%             ['You need to set the anatomy fiducials interactively for each subject.' 10 10 ...
+%              'There are two ways for doing this, depending if you have write access to the dataset:' 10 ...
+%              '1) Batch: Set the fiducials for all the segmentation folders at once, save them in fiducials.m files, ' 10 ...
+%              '   and then import everything. With this option, you won''t have to wait until each subject is ' 10 ...
+%              '   fully processed before setting the fiducials for the next one, and the points you define will' 10 ...
+%              '   be permanently saved in the dataset. But you need write access to the input folder.' 10 ...
+%              '   This is equivalent to running the menu "File > Batch MRI fiducials" first.' 10 ...
+%              '2) Sequencial: For each segmentation folder, set the fiducials then import it. Longer but more flexible.' 10 10], ...
+%             'Import BIDS dataset', [], {'Batch', 'Sequential', 'Cancel'}, 'Sequential');
+%         if isempty(res) || isequal(res, 'Cancel')
+%             return;
+%         end
+%         % Run the setting of the fiducials in a batch
+%         if strcmpi(res, 'Batch')
+%             % Find one subject that needs to be defined
+%             iSetSubj = find(isSetFiducials & isSegmentation);
+%             % Run it for the subjects in the same folder
+%             bst_batch_fiducials(bst_fileparts(SubjectAnatDirs{iSetSubj(1)}));
+%         end
+%     end
     
     % ===== IMPORT FILES =====
     for iSubj = 1:length(SubjectNames)
@@ -345,12 +352,13 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % Import options
         ImportOptions = db_template('ImportOptions');
         ImportOptions.ChannelReplace  = 1;
-        ImportOptions.ChannelAlign    = 2 * ~sSubject.UseDefaultAnat;
+        ImportOptions.ChannelAlign    = ChannelAlign * ~sSubject.UseDefaultAnat;
         ImportOptions.DisplayMessages = isInteractive;
         ImportOptions.EventsMode      = 'ignore';
         ImportOptions.EventsTrackMode = 'value';
         % Get all the files in the meg folder
-        megDir = dir(bst_fullfile(SubjectDirs{iSubj}, 'meg', '*.*'));
+        megDir = [dir(bst_fullfile(SubjectDirs{iSubj}, 'meg', '*.*')); ...
+                  dir(bst_fullfile(SubjectDerivDirs{iSubj}, 'meg', '*.*'))];
         % Try import them all, one by one
         for iFile = 1:length(megDir)
             % Skip hidden files

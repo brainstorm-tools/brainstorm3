@@ -202,14 +202,15 @@ if ~isInteractive || ~isempty(FidFile)
     % Use fiducials from file
     if ~isempty(FidFile)
         % Already loaded
-    % Set some random fiducial points
+    % Compute them from MNI transformation
     elseif isempty(sFid)
-        NAS = [cubeSize(1)./2,  cubeSize(2),           cubeSize(3)./2];
-        LPA = [1,               cubeSize(2)./2,        cubeSize(3)./2];
-        RPA = [cubeSize(1),     cubeSize(2)./2,        cubeSize(3)./2];
-        AC  = [cubeSize(1)./2,  cubeSize(2)./2 + 20,   cubeSize(3)./2];
-        PC  = [cubeSize(1)./2,  cubeSize(2)./2 - 20,   cubeSize(3)./2];
-        IH  = [cubeSize(1)./2,  cubeSize(2)./2,        cubeSize(3)./2 + 50];
+%         NAS = [cubeSize(1)./2,  cubeSize(2),           cubeSize(3)./2];
+%         LPA = [1,               cubeSize(2)./2,        cubeSize(3)./2];
+%         RPA = [cubeSize(1),     cubeSize(2)./2,        cubeSize(3)./2];
+%         AC  = [cubeSize(1)./2,  cubeSize(2)./2 + 20,   cubeSize(3)./2];
+%         PC  = [cubeSize(1)./2,  cubeSize(2)./2 - 20,   cubeSize(3)./2];
+%         IH  = [cubeSize(1)./2,  cubeSize(2)./2,        cubeSize(3)./2 + 50];
+        isComputeMni = 1;
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
