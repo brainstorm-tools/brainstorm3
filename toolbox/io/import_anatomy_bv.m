@@ -234,6 +234,12 @@ if ~isInteractive || ~isempty(FidFile)
 %             PC  = [cubeSize(1)./2,  cubeSize(2)./2 - 20,   cubeSize(3)./2];
 %             IH  = [cubeSize(1)./2,  cubeSize(2)./2,        cubeSize(3)./2 + 50];
 %         end
+        NAS = [];
+        LPA = [];
+        RPA = [];
+        AC  = [];
+        PC  = [];
+        IH  = [];
         isComputeMni = 1;
     % Else: use the defined ones
     else
@@ -246,7 +252,9 @@ if ~isInteractive || ~isempty(FidFile)
             IH = sFid.IH;
         end
     end
-    figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
+    if ~isempty(NAS) || ~isempty(LPA) || ~isempty(RPA) || ~isempty(AC) || ~isempty(PC) || ~isempty(IH)
+        figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
+    end
     % If the NAS/LPA/RPA are defined, but not the others: Compute them
     if ~isempty(NAS) && ~isempty(LPA) && ~isempty(RPA) % && isempty(AC) && isempty(PC) && isempty(IH)
         isComputeMni = 1;
@@ -270,7 +278,7 @@ else
 end
 % Load SCS and NCS field to make sure that all the points were defined
 sMri = load(BstMriFile);
-if ~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R)
+if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import BrainVISA folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive
         bst_error(errorMsg, 'Import BrainVISA folder', 0);
