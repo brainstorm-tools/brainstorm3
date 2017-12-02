@@ -122,7 +122,6 @@ elseif iscell(MriFile)
     % Import all volumes without supervision
     for i = 1:nFiles
         [BstMriFile{i}, sMri{i}] = import_mri(iSubject, MriFile{i}, FileFormat, isInteractive, isAutoAdjust);
-        
     end
     % All the files are imported: exit
     return;

@@ -155,93 +155,114 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
     % ===== IDENTIFY SUBJECTS =====
     % List all the subject folders
     subjDir = dir(bst_fullfile(BidsDir, 'sub-*'));
-    % If no subject are available, try in the derivatives/meg-derivatives folder (if we are importing tsss data only for instance)
+    % If no subject are available, try in the derivatives folder (if we are importing tsss data only for instance)
     if isempty(subjDir)
         subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', 'sub-*'));
     end
+    if isempty(subjDir)
+        subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*'));
+    end
     % Loop on the subjects
-    SubjectNames     = {};
-    SubjectDirs      = {};
-    SubjectDerivDirs = {};
-    SubjectAnatRef   = {};
+    SubjectTag = {};
+    SubjectName = {};
+    SubjectAnatDir = {};
+    SubjectAnatFormat = {};
+    SubjectSessDir = {};
+    SubjectMriFiles = {};
     for iSubj = 1:length(subjDir)
         % Default subject name
-        subName = subjDir(iSubj).name;
-        % Checks if there are multiple sessions
-        sessDir = dir(bst_fullfile(BidsDir, subName, 'ses-*'));
-        % If there are multiple sessions: each session is imported as a separate subject
-        if ~isempty(sessDir)
-            for iSess = 1:length(sessDir)
-                SubjectNames{end+1}     = [subName, '_', sessDir(iSess).name];
-                SubjectDirs{end+1}      = bst_fullfile(BidsDir, subName, sessDir(iSess).name);
-                SubjectDerivDirs{end+1} = bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', subName, sessDir(iSess).name);
-                % For follow-up sessions, keep the reference to the session
-                if (iSess >= 2)
-                    SubjectAnatRef{end+1} = length(SubjectNames) - iSess + 1;
-                else
-                    SubjectAnatRef{end+1} = [];
+        subjName = subjDir(iSubj).name;
+        % Get session folders
+        sessDir = dir(bst_fullfile(BidsDir, subjName, 'ses-*'));
+        % Check if sessions are defined for the derivatives
+        if isempty(sessDir) && isdir(bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', subjName))
+            sessDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', subjName, 'ses-*'));
+        end
+        if isempty(sessDir)
+            sessFolders = {bst_fullfile(BidsDir, subjName)};
+            derivFolders = {bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', subjName)};
+        else
+            sessFolders = cellfun(@(c)fullfile(BidsDir, subjName, c), {sessDir.name}, 'UniformOutput', 0);
+            derivFolders = cellfun(@(c)fullfile(BidsDir, 'derivatives', 'meg-derivatives', subjName, c), {sessDir.name}, 'UniformOutput', 0);
+        end
+        % If there is one unique segmented anatomy: group all the sessions together
+        [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName);
+        % If there is no segmented folder, try SUBJID_SESSID
+        if isempty(AnatDir) && (length(sessDir) == 1)
+            [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(1).name]);
+        end
+        % If a single anatomy folder is found
+        if ~isempty(AnatDir)
+            SubjectTag{end+1}        = subjName;
+            SubjectName{end+1}       = subjName;
+            SubjectAnatDir{end+1}    = AnatDir;
+            SubjectAnatFormat{end+1} = AnatFormat;
+            SubjectSessDir{end+1}    = cat(2, sessFolders, derivFolders);
+            SubjectMriFiles{end+1}   = {};
+        % Check for multiple sessions
+        elseif (length(sessFolders) > 1)
+            % Check for multiple session segmentation
+            isSessSeg = 1;
+            for isess = 1:length(sessFolders)
+                [sessAnatDir, sessAnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(isess).name]);
+                if isempty(sessAnatDir)
+                    isSessSeg = 0;
+                    break;
                 end
             end
-        else
-            SubjectNames{end+1}     = subName;
-            SubjectDirs{end+1}      = bst_fullfile(BidsDir, subName);
-            SubjectDerivDirs{end+1} = bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', subName);
-            SubjectAnatRef{end+1}   = [];
-        end
-    end
-    
-    % ===== FIND SUBJECT ANATOMY =====
-    % Check if segmented anatomy or an MRI is available for each subject
-    isSetFiducials    = zeros(1,length(SubjectNames));
-    isSegmentation    = zeros(1,length(SubjectNames));
-    SubjectAnatDirs   = cell(1,length(SubjectNames));
-    SubjectAnatFormat = cell(1,length(SubjectNames));
-    for iSubj = 1:length(SubjectNames)
-        % For later sessions: get the index of the subject
-        iSubjRef = SubjectAnatRef{iSubj};
-
-        % FreeSurfer
-        if file_exist(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', SubjectNames{iSubj}))
-            SubjectAnatDirs{iSubj}   = bst_fullfile(BidsDir, 'derivatives', 'freesurfer', SubjectNames{iSubj});
-            SubjectAnatFormat{iSubj} = 'FreeSurfer';
-        % BrainSuite
-        elseif file_exist(bst_fullfile(BidsDir, 'derivatives', 'brainsuite', SubjectNames{iSubj}))
-            SubjectAnatDirs{iSubj}   = bst_fullfile(BidsDir, 'derivatives', 'brainsuite', SubjectNames{iSubj});
-            SubjectAnatFormat{iSubj} = 'BrainSuite';
-        % BrainVISA
-        elseif file_exist(bst_fullfile(BidsDir, 'derivatives', 'brainvisa', SubjectNames{iSubj}))
-            SubjectAnatDirs{iSubj}   = bst_fullfile(BidsDir, 'derivatives', 'brainvisa', SubjectNames{iSubj});
-            SubjectAnatFormat{iSubj} = 'BrainVISA';
-        % CIVET
-        elseif file_exist(bst_fullfile(BidsDir, 'derivatives', 'civet', SubjectNames{iSubj}))
-            SubjectAnatDirs{iSubj}   = bst_fullfile(BidsDir, 'derivatives', 'civet', SubjectNames{iSubj});
-            SubjectAnatFormat{iSubj} = 'CIVET';
-        end
-        
-        % If a segmentation is available: check if there is a fiducials.m file available
-        if ~isempty(SubjectAnatDirs{iSubj})
-             % If fiducials are not defined: need to define them
-            isSetFiducials(iSubj) = 1; % isempty(file_find(SubjectAnatDirs{iSubj}, 'fiducials.m', [], 0));
-            isSegmentation(iSubj) = 1;
-        % Else: Try to get an anatomical MRI
-        else
-            % Find .nii or .nii.gz in the anat folder
-            AnatDir = bst_fullfile(SubjectDirs{iSubj}, 'anat');
-            mriDir = dir(bst_fullfile(AnatDir, '*T1w.nii*'));
-            if ~isempty(mriDir)
-                SubjectAnatDirs{iSubj}   = bst_fullfile(AnatDir, mriDir(1).name);
-                SubjectAnatFormat{iSubj} = 'Nifti1';
-                isSegmentation(iSubj)    = 0;
-                isSetFiducials(iSubj)    = 1;
+            % If there is one segmentation per session
+            if isSessSeg
+                for isess = 1:length(sessFolders)
+                    [sessAnatDir, sessAnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(isess).name]);
+                    SubjectTag{end+1}        = subjName;
+                    SubjectName{end+1}       = [subjName, '_', sessDir(isess).name];
+                    SubjectAnatDir{end+1}    = sessAnatDir;
+                    SubjectAnatFormat{end+1} = sessAnatFormat;
+                    SubjectSessDir{end+1}    = {sessFolders{isess}, derivFolders{isess}};
+                    SubjectMriFiles{end+1}   = {};
+                end
+            % There are no segmentations, check if there is one T1 volume per sesssion or per subject
+            else
+                % Check for multiple session anat
+                isSessSeg = 1;
+                allMriFiles = {};
+                for isess = 1:length(sessFolders)
+                    sessMriFiles = GetSubjectMri(bst_fullfile(sessFolders{isess}, 'anat'));
+                    if isempty(sessMriFiles)
+                        isSessSeg = 0;
+                    else
+                        allMriFiles = cat(2, allMriFiles, sessMriFiles);
+                    end
+                end
+                % If there is one anatomy per session
+                if isSessSeg
+                    for isess = 1:length(sessFolders)
+                        sessMriFiles = GetSubjectMri(bst_fullfile(sessFolders{isess}, 'anat'));
+                        SubjectTag{end+1}        = subjName;
+                        SubjectName{end+1}       = [subjName, '_', sessDir(isess).name];
+                        SubjectAnatDir{end+1}    = [];
+                        SubjectAnatFormat{end+1} = [];
+                        SubjectSessDir{end+1}    = {sessFolders{isess}, derivFolders{isess}};
+                        SubjectMriFiles{end+1}   = sessMriFiles;
+                    end
+                % One common anatomy for all the sessions
+                else
+                    SubjectTag{end+1}        = subjName;
+                    SubjectName{end+1}       = subjName;
+                    SubjectAnatDir{end+1}    = [];
+                    SubjectAnatFormat{end+1} = [];
+                    SubjectSessDir{end+1}    = cat(2, sessFolders, derivFolders);
+                    SubjectMriFiles{end+1}   = allMriFiles;
+                end
             end
-        end
-        
-        % For follow-up sessions, get the anatomy from the first session
-        if isempty(SubjectAnatDirs{iSubj}) && ~isempty(iSubjRef) && ~isempty(SubjectAnatDirs{iSubjRef})
-            SubjectAnatDirs{iSubj}   = SubjectAnatDirs{iSubjRef};
-            SubjectAnatFormat{iSubj} = SubjectAnatFormat{iSubjRef};
-            isSegmentation(iSubj)    = isSegmentation(iSubjRef);
-            isSetFiducials(iSubj)    = isSetFiducials(iSubjRef);
+        % One session
+        elseif (length(sessFolders) == 1)
+            SubjectTag{end+1}        = subjName;
+            SubjectName{end+1}       = subjName;
+            SubjectAnatDir{end+1}    = [];
+            SubjectAnatFormat{end+1} = [];
+            SubjectSessDir{end+1}    = cat(2, sessFolders, derivFolders);
+            SubjectMriFiles{end+1}   = GetSubjectMri(bst_fullfile(sessFolders{1}, 'anat'));
         end
     end
     
@@ -277,19 +298,20 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
 %     end
     
     % ===== IMPORT FILES =====
-    for iSubj = 1:length(SubjectNames)
+    for iSubj = 1:length(SubjectName)
+        errorMsg = [];
         
         % === GET/CREATE SUBJECT ===
         % Get subject 
-        [sSubject, iSubject] = bst_get('Subject', SubjectNames{iSubj});
+        [sSubject, iSubject] = bst_get('Subject', SubjectName{iSubj});
         % Create subject is it does not exist yet
         if isempty(sSubject)
-            UseDefaultAnat = isempty(SubjectAnatDirs{iSubj});
+            UseDefaultAnat = isempty(SubjectAnatDir{iSubj}) && isempty(SubjectMriFiles{iSubj});
             UseDefaultChannel = 0;
-            [sSubject, iSubject] = db_add_subject(SubjectNames{iSubj}, [], UseDefaultAnat, UseDefaultChannel);
+            [sSubject, iSubject] = db_add_subject(SubjectName{iSubj}, [], UseDefaultAnat, UseDefaultChannel);
         end
         if isempty(iSubject)
-            Messages = [Messages, 10, 'Cannot create subject "' SubjectNames{iSubj} '".'];
+            Messages = [Messages, 10, 'Cannot create subject "' SubjectName{iSubj} '".'];
             if isInteractive
                 bst_error(Messages, 'Import BIDS dataset', 0);
                 return;
@@ -299,9 +321,15 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         end
         
         % === IMPORT ANATOMY ===
-        if isempty(sSubject.Anatomy) && ~isempty(SubjectAnatFormat{iSubj})
+        % If the anatomy is already set: issue a warning
+        if ~isempty(sSubject.Anatomy)
+            msgAnatSet = ['Anatomy is already set for subject "' SubjectName{iSubj} '", not overwriting...'];
+            Messages = [Messages, 10, msgAnatSet];
+            disp(['BST> ' msgAnatSet]);
+        % Import segmentation
+        elseif ~isempty(SubjectAnatDir{iSubj})
             % Ask for number of vertices (so it is not asked multiple times)
-            if isempty(nVertices) && ismember(SubjectAnatFormat{iSubj}, {'FreeSurfer', 'BrainSuite', 'BrainVISA', 'Nifti1'})
+            if isempty(nVertices)
                 nVertices = java_dialog('input', 'Number of vertices on the cortex surface:', 'Import FreeSurfer folder', [], '15000');
                 if isempty(nVertices)
                     return;
@@ -311,43 +339,45 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
             % Import subject anatomy
             switch (SubjectAnatFormat{iSubj})
                 case 'FreeSurfer'
-                    errorMsg = import_anatomy_fs(iSubject, SubjectAnatDirs{iSubj}, nVertices, isInteractive, [], 0);
+                    errorMsg = import_anatomy_fs(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractive, [], 0);
                 case 'BrainSuite'
-                    errorMsg = import_anatomy_bs(iSubject, SubjectAnatDirs{iSubj}, nVertices, isInteractive, []);
+                    errorMsg = import_anatomy_bs(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractive, []);
                 case 'BrainVISA'
-                    errorMsg = import_anatomy_bv(iSubject, SubjectAnatDirs{iSubj}, nVertices, isInteractive, []);
+                    errorMsg = import_anatomy_bv(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractive, []);
                 case 'CIVET'
-                    errorMsg = import_anatomy_civet(iSubject, SubjectAnatDirs{iSubj}, nVertices, isInteractive, [], 0);
-                case 'Nifti1'
-                    % Import MRI
-                    BstMriFile = import_mri(iSubject, SubjectAnatDirs{iSubj}, SubjectAnatFormat{iSubj}, isInteractive);
-                    if isempty(BstMriFile)
-                        errorMsg = ['Could not load MRI file: ' SubjectAnatDirs{iSubj}];
-                    % Compute additional files
-                    else
-                        % Generate head surface
-                        tess_isohead(iSubject, 10000, 0, 2);
-                    end
+                    errorMsg = import_anatomy_civet(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractive, [], 0);
                 otherwise
                     errorMsg = ['Invalid file format: ' SubjectAnatFormat{iSubj}];
             end
-            % Error handling
-            if ~isempty(errorMsg)
-                Messages = [Messages, 10, errorMsg];
-                if isInteractive
-                    bst_error(Messages, 'Import BIDS dataset', 0);
-                    return;
-                else
-                    continue;
+        % Import MRI
+        elseif ~isempty(SubjectMriFiles{iSubj})
+            % Import first MRI
+            BstMriFile = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractive, 0);
+            if isempty(BstMriFile)
+                errorMsg = ['Could not load MRI file: ' SubjectMriFiles{iSubj}];
+            % Compute additional files
+            else
+                % Compute MNI transformation
+                [sMri, errorMsg] = bst_normalize_mni(BstMriFile);
+                % Generate head surface
+                tess_isohead(iSubject, 10000, 0, 2);
+                % Add other volumes
+                for i = 2:length(SubjectMriFiles)
+                    import_mri(iSubject, SubjectMriFiles{iSubj}{i}, 'ALL', 0, 1);
                 end
             end
-        % If the anatomy is already set: issue a warning
-        elseif ~isempty(SubjectAnatFormat{iSubj})
-            msgAnatSet = ['Anatomy is already set for subject "' SubjectNames{iSubj} '", not overwriting...'];
-            Messages = [Messages, 10, msgAnatSet];
-            disp(['BST> ' msgAnatSet]);
         end
-    
+        % Error handling
+        if ~isempty(errorMsg)
+            Messages = [Messages, 10, errorMsg];
+            if isInteractive
+                bst_error(Messages, 'Import BIDS dataset', 0);
+                return;
+            else
+                continue;
+            end
+        end
+            
         % === IMPORT MEG FILES ===
         % Import options
         ImportOptions = db_template('ImportOptions');
@@ -357,30 +387,76 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         ImportOptions.EventsMode      = 'ignore';
         ImportOptions.EventsTrackMode = 'value';
         % Get all the files in the meg folder
-        megDir = [dir(bst_fullfile(SubjectDirs{iSubj}, 'meg', '*.*')); ...
-                  dir(bst_fullfile(SubjectDerivDirs{iSubj}, 'meg', '*.*'))];
-        % Try import them all, one by one
-        for iFile = 1:length(megDir)
-            % Skip hidden files
-            if (megDir(iFile).name(1) == '.')
-                continue;
+        allMegFiles = {};
+        for isess = 1:length(SubjectSessDir{iSubj})
+            if isdir(SubjectSessDir{iSubj}{isess})
+                megDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, 'meg', '*.*'));
+                for iFile = 1:length(megDir)
+                    % Skip hidden files
+                    if (megDir(iFile).name(1) == '.')
+                        continue;
+                    end
+                    % Get full file name
+                    allMegFiles{end+1} = bst_fullfile(SubjectSessDir{iSubj}{isess}, 'meg', megDir(iFile).name);
+                end
             end
+        end
+        % Try import them all, one by one
+        for iFile = 1:length(allMegFiles)
             % Get file extension
-            [tmp, fBase, fExt] = bst_fileparts(megDir(iFile).name);
-            megFile = bst_fullfile(SubjectDirs{iSubj}, 'meg', megDir(iFile).name);
+            [tmp, fBase, fExt] = bst_fileparts(allMegFiles{iFile});
             % Import depending on this extension
             switch (fExt)
                 case '.ds'
-                    RawFiles = [RawFiles{:}, import_raw(megFile, 'CTF', iSubject, ImportOptions)];
+                    RawFiles = [RawFiles{:}, import_raw(allMegFiles{iFile}, 'CTF', iSubject, ImportOptions)];
                 case '.fif'
-                    RawFiles = [RawFiles{:}, import_raw(megFile, 'FIF', iSubject, ImportOptions)];
+                    RawFiles = [RawFiles{:}, import_raw(allMegFiles{iFile}, 'FIF', iSubject, ImportOptions)];
                 case {'.json', '.tsv'}
                     % Nothing to do
                 otherwise
-                    disp(['BST> Skipping unsupported file: ' megFile]);
+                    % disp(['BST> Skipping unsupported file: ' megFile]);
             end
         end
     end
 end
 
 
+% ===== FIND SUBJECT ANATOMY =====
+function [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName)
+    % Inialize returned structures
+    AnatDir    = [];
+    AnatFormat = [];
+    % FreeSurfer
+    if file_exist(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', subjName))
+        AnatDir = bst_fullfile(BidsDir, 'derivatives', 'freesurfer', subjName);
+        AnatFormat = 'FreeSurfer';
+    % BrainSuite
+    elseif file_exist(bst_fullfile(BidsDir, 'derivatives', 'brainsuite', subjName))
+        AnatDir = bst_fullfile(BidsDir, 'derivatives', 'brainsuite', subjName);
+        AnatFormat = 'BrainSuite';
+    % BrainVISA
+    elseif file_exist(bst_fullfile(BidsDir, 'derivatives', 'brainvisa', subjName))
+        AnatDir = bst_fullfile(BidsDir, 'derivatives', 'brainvisa', subjName);
+        AnatFormat = 'BrainVISA';
+    % CIVET
+    elseif file_exist(bst_fullfile(BidsDir, 'derivatives', 'civet', subjName))
+        AnatDir = bst_fullfile(BidsDir, 'derivatives', 'civet', subjName);
+        AnatFormat = 'CIVET';
+    end
+end
+
+function MriFiles = GetSubjectMri(anatFolder)
+    MriFiles = {};
+    isMpRage = [];
+    % Find .nii or .nii.gz in the anat folder
+    mriDir = dir(bst_fullfile(anatFolder, '*T1w.nii*'));
+    for i = 1:length(mriDir)
+        MriFiles{end+1} = bst_fullfile(anatFolder, mriDir(i).name);
+        isMpRage(i) = ~isempty(strfind(lower(mriDir(i).name), 'mprage'));
+    end
+    % Put mprage first
+    if ~isempty(MriFiles) && any(isMpRage)
+        iMpRage = find(isMpRage);
+        MriFiles = cat(2, MriFiles(iMpRage), MriFiles(setdiff(1:length(MriFiles), iMpRage)));
+    end
+end
