@@ -426,22 +426,35 @@ function [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName)
     % Inialize returned structures
     AnatDir    = [];
     AnatFormat = [];
+    DerivDir = bst_fullfile(BidsDir, 'derivatives');
     % FreeSurfer
-    if file_exist(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', subjName))
-        AnatDir = bst_fullfile(BidsDir, 'derivatives', 'freesurfer', subjName);
-        AnatFormat = 'FreeSurfer';
+    if file_exist(bst_fullfile(DerivDir, 'freesurfer', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'freesurfer', subjName), 'T1.mgz'))
+        TestFile = file_find(bst_fullfile(DerivDir, 'freesurfer', subjName), 'T1.mgz');
+        if ~isempty(TestFile)
+            AnatDir = bst_fileparts(bst_fileparts(TestFile));
+            AnatFormat = 'FreeSurfer';
+        end
     % BrainSuite
-    elseif file_exist(bst_fullfile(BidsDir, 'derivatives', 'brainsuite', subjName))
-        AnatDir = bst_fullfile(BidsDir, 'derivatives', 'brainsuite', subjName);
-        AnatFormat = 'BrainSuite';
+    elseif file_exist(bst_fullfile(DerivDir, 'brainsuite', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'brainsuite', subjName), '*.left.pial.cortex.svreg.dfs'))
+        TestFile = file_find(bst_fullfile(DerivDir, 'brainsuite', subjName), '*.left.pial.cortex.svreg.dfs');
+        if ~isempty(TestFile)
+            AnatDir = bst_fileparts(TestFile);
+            AnatFormat = 'BrainSuite';
+        end
     % BrainVISA
-    elseif file_exist(bst_fullfile(BidsDir, 'derivatives', 'brainvisa', subjName))
-        AnatDir = bst_fullfile(BidsDir, 'derivatives', 'brainvisa', subjName);
-        AnatFormat = 'BrainVISA';
+    elseif file_exist(bst_fullfile(DerivDir, 'brainvisa', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'brainvisa', subjName), 'nobias_*.*'))
+        TestFile = file_find(bst_fullfile(DerivDir, 'brainvisa', subjName), 'nobias_*.*');
+        if ~isempty(TestFile)
+            AnatDir = bst_fileparts(bst_fileparts(bst_fileparts(bst_fileparts(TestFile))));
+            AnatFormat = 'BrainVISA';
+        end
     % CIVET
-    elseif file_exist(bst_fullfile(BidsDir, 'derivatives', 'civet', subjName))
-        AnatDir = bst_fullfile(BidsDir, 'derivatives', 'civet', subjName);
-        AnatFormat = 'CIVET';
+    elseif file_exist(bst_fullfile(DerivDir, 'civet', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'civet', subjName), '*_t1.mnc'))
+        TestFile = file_find(bst_fullfile(DerivDir, 'civet', subjName), '*_t1.mnc');
+        if ~isempty(TestFile)
+            AnatDir = bst_fileparts(bst_fileparts(TestFile));
+            AnatFormat = 'CIVET';
+        end
     end
 end
 

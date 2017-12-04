@@ -162,7 +162,7 @@ for iSubj = iSubjStart:length(SubjectNames)
     
     % ===== FILES TO IMPORT =====
     % Build the path of the files to import
-    AnatDir    = fullfile(BidsDir, 'derivatives', 'freesurfer', SubjectNames{iSubj});
+    AnatDir    = fullfile(BidsDir, 'derivatives', 'freesurfer', SubjectNames{iSubj}, 'ses-mri', 'anat');
     DataDir    = fullfile(BidsDir, 'derivatives',  'meg_derivatives', SubjectNames{iSubj}, 'ses-meg', 'meg');
     % Check if the folder contains the required files
     if ~file_exist(AnatDir)
