@@ -22,7 +22,7 @@ function varargout = process_import_bids( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2017
 
 eval(macro_method);
 end
@@ -157,7 +157,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
     subjDir = dir(bst_fullfile(BidsDir, 'sub-*'));
     % If no subject are available, try in the derivatives folder (if we are importing tsss data only for instance)
     if isempty(subjDir)
-        subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', 'sub-*'));
+        subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', 'sub-*'));
     end
     if isempty(subjDir)
         subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*'));
@@ -175,15 +175,15 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % Get session folders
         sessDir = dir(bst_fullfile(BidsDir, subjName, 'ses-*'));
         % Check if sessions are defined for the derivatives
-        if isempty(sessDir) && isdir(bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', subjName))
-            sessDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', subjName, 'ses-*'));
+        if isempty(sessDir) && isdir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName))
+            sessDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, 'ses-*'));
         end
         if isempty(sessDir)
             sessFolders = {bst_fullfile(BidsDir, subjName)};
-            derivFolders = {bst_fullfile(BidsDir, 'derivatives', 'meg-derivatives', subjName)};
+            derivFolders = {bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName)};
         else
             sessFolders = cellfun(@(c)fullfile(BidsDir, subjName, c), {sessDir.name}, 'UniformOutput', 0);
-            derivFolders = cellfun(@(c)fullfile(BidsDir, 'derivatives', 'meg-derivatives', subjName, c), {sessDir.name}, 'UniformOutput', 0);
+            derivFolders = cellfun(@(c)fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, c), {sessDir.name}, 'UniformOutput', 0);
         end
         % If there is one unique segmented anatomy: group all the sessions together
         [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName);

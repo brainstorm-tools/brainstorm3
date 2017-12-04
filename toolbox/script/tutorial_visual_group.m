@@ -28,7 +28,7 @@ function tutorial_visual_group(ProtocolName, reports_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, Elizabeth Bock, 2016
+% Author: Francois Tadel, Elizabeth Bock, 2016-2017
 
 % ===== CHECK PROTOCOL =====
 % Start Brainstorm without the GUI
@@ -51,12 +51,12 @@ end
 if (iProtocol ~= bst_get('iProtocol'))
     gui_brainstorm('SetCurrentProtocol', iProtocol);
 end
-% Process: Select results files in: sub002/run_01_sss_notch
+% Process: Select results files in: sub-01/sub-01_ses-meg_task-facerecognition_run-01_proc-tsss_meg_notch
 sFiles = bst_process('CallProcess', 'process_select_files_results', [], [], ...
-    'subjectname', 'sub002', ...
-    'condition',   'run_01_sss_notch');
+    'subjectname', 'sub-01', ...
+    'condition',   'sub-01_ses-meg_task-facerecognition_run-01_proc-tsss_meg_notch');
 if isempty(sFiles)
-    error(['No source files available in folder: sub002/run_01_sss_notch.' 10 ...
+    error(['No source files available in folder: sub-01/sub-01_ses-meg_task-facerecognition_run-01_proc-tsss_meg_notch.' 10 ...
            'You should run tutorial_visual_single first, or download the ' 10 ...
            'protocol TutorialGroup.zip from the Brainstorm website.']);
 end

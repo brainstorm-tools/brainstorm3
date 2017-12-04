@@ -7,7 +7,7 @@ function tutorial_visual_single(tutorial_dir, reports_dir, iSubjStart)
 %    - tutorial_dir: Directory containing the folder ds000117_R1.0.0  (https://openfmri.org/dataset/ds000117/, version 1.0.0)
 %       |- ds000117_R1.0.0
 %           |- derivatives/freesurfer/sub-XX                         : Segmentation folders generated with FreeSurfer
-%           |- derivatives/meg-derivatives/sub-XX/ses-meg/meg/*.fif  : MEG+EEG recordings (processed with MaxFilter's tSSS)
+%           |- derivatives/meg_derivatives/sub-XX/ses-meg/meg/*.fif  : MEG+EEG recordings (processed with MaxFilter's tSSS)
 %           |- sub-emptyroom/ses-meg/meg/090707_raw_st.fif           : Empty room measurements
 %    - reports_dir: If defined, exports all the reports as HTML to this folder
 %    - iSubjStart : Index of the first subject to process
@@ -163,7 +163,7 @@ for iSubj = iSubjStart:length(SubjectNames)
     % ===== FILES TO IMPORT =====
     % Build the path of the files to import
     AnatDir    = fullfile(BidsDir, 'derivatives', 'freesurfer', SubjectNames{iSubj});
-    DataDir    = fullfile(BidsDir, 'derivatives',  'meg-derivatives', SubjectNames{iSubj}, 'ses-meg', 'meg');
+    DataDir    = fullfile(BidsDir, 'derivatives',  'meg_derivatives', SubjectNames{iSubj}, 'ses-meg', 'meg');
     % Check if the folder contains the required files
     if ~file_exist(AnatDir)
         error(['The folder "' AnatDir '" does not exist.']);
@@ -302,7 +302,7 @@ for iSubj = iSubjStart:length(SubjectNames)
             'timewindow',  [], ...
             'eventname',   'cardiac');
         % Different amplitude thresholds for different subjects
-        if strcmpi(SubjectNames{iSubj}, 'sub006')
+        if strcmpi(SubjectNames{iSubj}, 'sub-05')
             thresholdMAX = 50;
         else
             thresholdMAX = 100;

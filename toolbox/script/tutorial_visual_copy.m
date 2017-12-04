@@ -28,7 +28,7 @@ function tutorial_visual_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, Elizabeth Bock, 2016
+% Author: Francois Tadel, Elizabeth Bock, 2016-2017
 
 % ===== CHECK PROTOCOL =====
 % Start brainstorm without the GUI
@@ -63,18 +63,17 @@ ProtocolInfoSingle = bst_get('ProtocolInfo');
 bst_report('Start');
 
 % ===== COPY ONLY GOOD SUBJECTS =====
-% List of good subjects: all but sub001, sub005 and sub016
-iSubjList = setdiff(1:19, [1 5 16]);
 % Loop on subjects
-for iSubj = iSubjList
+for iSubj = 1:16
     % Subject folders
-    AnatSrc  = bst_fullfile(ProtocolInfoSingle.SUBJECTS, sprintf('sub%03d', iSubj));
-    DataSrc  = bst_fullfile(ProtocolInfoSingle.STUDIES,  sprintf('sub%03d', iSubj));
-    AnatDest = bst_fullfile(ProtocolInfoGroup.SUBJECTS,  sprintf('sub%03d', iSubj));
-    DataDest = bst_fullfile(ProtocolInfoGroup.STUDIES,   sprintf('sub%03d', iSubj));
+    SubjectName = sprintf('sub-%02d', iSubj);
+    AnatSrc  = bst_fullfile(ProtocolInfoSingle.SUBJECTS, SubjectName);
+    DataSrc  = bst_fullfile(ProtocolInfoSingle.STUDIES,  SubjectName);
+    AnatDest = bst_fullfile(ProtocolInfoGroup.SUBJECTS,  SubjectName);
+    DataDest = bst_fullfile(ProtocolInfoGroup.STUDIES,   SubjectName);
     % If subject folder doesn't exist: skip
     if ~file_exist(AnatSrc) || ~file_exist(DataSrc)
-        disp(sprintf('Subject "sub%03d" does not exist or is incomplete.', iSubj));
+        disp(['Subject "' SubjectName '" does not exist or is incomplete.']);
         continue;
     end
     % Copy anatomy files
@@ -90,11 +89,12 @@ for iSubj = iSubjList
     % Loop on runs
     for iRun = 1:6
         % Run folders
-        RunSrc  = bst_fullfile(DataSrc,  sprintf('run_%02d_sss_notch', iRun));
-        RunDest = bst_fullfile(DataDest, sprintf('run_%02d_sss_notch', iRun));
+        RunName = sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-tsss_meg_notch', iSubj, iRun);
+        RunSrc  = bst_fullfile(DataSrc,  RunName);
+        RunDest = bst_fullfile(DataDest, RunName);
         % If run folder doesn't exist: skip
         if ~file_exist(RunSrc)
-            disp(sprintf('Run "sub%03d/run_%02d_sss_notch" does not exist or is incomplete.', iSubj, iRun));
+            disp(['Run "' SubjectName '/' RunName '" does not exist or is incomplete.']);
             continue;
         end
         % Copy files
