@@ -191,10 +191,18 @@ function selectedCond = GetPanelContents(varargin) %#ok<DEFNU>
     if (length(selectedCond) < 2)
         selectedCond = [];
     else
+        % Get selected indices
+        iCondSel = ctrl.jTableCond.getSelectedRows();
+        if ~isempty(iCondSel)
+            iCondSel = double(iCondSel(:))' + 1;
+        else
+            iCondSel = 1:length(selectedCond);
+        end
         % Read new conditions names
-        for iCond = 1:length(selectedCond)
+        for iCond = iCondSel
             selectedCond(iCond).Name = file_standardize(char(ctrl.jTableCond.getModel.getValueAt(iCond-1, 1)));
         end
+        selectedCond = selectedCond(iCondSel);
     end
 end
 

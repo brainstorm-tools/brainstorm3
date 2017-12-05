@@ -1,4 +1,8 @@
 ---------------------------------------------------------------
+December 2017
+- IO: Improved EEGLAB reader: Keep events in epochs, allow epochs with multiple event occurrences
+- Doc: Conversion of the Visual/Group tutorial to BIDS
+---------------------------------------------------------------
 November 2017
 - Bug fixed: Changes in isosurface in Matlab 2017b caused irregularities in head surfaces
 - GUI: More guided protocol creation to avoid massive deletions of user folders
