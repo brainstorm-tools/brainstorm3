@@ -410,6 +410,7 @@ sFile.comment = fBase;
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
 nChannels = hdr.num_channels;
+ChannelMat = db_template('channelmat');
 ChannelMat.Comment = [sFile.device ' channels'];
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
 % Separate channels with different amplitude ranges
