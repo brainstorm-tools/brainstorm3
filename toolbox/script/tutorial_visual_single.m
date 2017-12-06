@@ -1,4 +1,4 @@
-function tutorial_visual_single(tutorial_dir, reports_dir, iSubjStart)
+function tutorial_visual_single(tutorial_dir, reports_dir, iSubjects)
 % TUTORIAL_VISUAL_SINGLE: Runs the Brainstorm/SPM group analysis pipeline (single subject, BIDS version).
 %
 % ONLINE TUTORIALS: http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
@@ -81,8 +81,11 @@ if ~brainstorm('status')
     brainstorm nogui
 end
 % First subject to process
-if (nargin < 3) || isempty(iSubjStart)
-    iSubjStart = 1;
+if (nargin < 3) || isempty(iSubjects)
+    iSubjects = 1:16;
+    isStartOver = 1;
+else
+    isStartOver = 0;
 end
 % Output folder for reports
 if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
@@ -96,7 +99,7 @@ end
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
 ProtocolName = 'TutorialVisual';
 % If starting from the first subject: delete the protocol
-if (iSubjStart == 1)
+if isStartOver
     % Delete existing protocol
     gui_brainstorm('DeleteProtocol', ProtocolName);
     % Create new protocol
@@ -108,7 +111,7 @@ panel_filter('SetFilters', 1, 40, 0, [], 0, [], 0, 0);
 
 %% ===== EMPTY ROOM RECORDINGS =====
 % If starting from the first subject: import the noise covariance
-if (iSubjStart == 1)
+if isStartOver
     % Use the same noise recordings for all the files
     NoiseFile  = fullfile(BidsDir, 'sub-emptyroom', 'ses-meg', 'meg', '090707_raw_st.fif');
     % Process: Create link to raw file
@@ -150,7 +153,7 @@ end
 
 
 %% ===== PRE-PROCESS AND IMPORT =====
-for iSubj = iSubjStart:length(SubjectNames)
+for iSubj = iSubjects
     % Start a new report (one report per subject)
     bst_report('Start');
     
@@ -702,6 +705,6 @@ function BadSeg = GetBadSegments(iSubj, iRun)
          [56.020 57.255; 60.711 61.096; 64.353 64.924; 73.202 73.757; 76.134 76.844; 95.625 96.859; 171.436 172.625; 178.359 178.715; 212.828 213.415; 352.425 352.617; 367.755 369.097; 488.400 489.426], ...
          [71.665 72.513; 76.347 77.181; 127.134 128.862], ...
          [46.190 47.209; 53.461 55.752; 194.317 194.510; 213.101 213.240; 216.356 216.442; 225.962 226.286; 245.163 245.464; 252.041 253.422; 254.648 254.856; 292.966 294.340; 340.928 341.067; 346.298 346.452]};
-    BadSeg = BadSegments{iSubj}{iRun};
+    BadSeg = BadSegments{iSubj}{iRun}';
 end
 
