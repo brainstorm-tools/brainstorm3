@@ -1,7 +1,9 @@
 ---------------------------------------------------------------
 December 2017
 - IO: Improved EEGLAB reader: Keep events in epochs, allow epochs with multiple event occurrences
+- IO: Improved BIDS reader, to support correctly the derivatives folder (freesurfer and meg/sss)
 - Doc: Conversion of the Visual/Group tutorial to BIDS
+- Doc: Redaction of Frontier's article "MEG/EEG group analysis with Brainstorm"
 ---------------------------------------------------------------
 November 2017
 - Bug fixed: Changes in isosurface in Matlab 2017b caused irregularities in head surfaces
