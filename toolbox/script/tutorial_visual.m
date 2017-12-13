@@ -39,7 +39,7 @@ if (nargin < 1) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
 end
 
 % Part 1: Single subject analysis
-tutorial_visual_single(tutorial_dir, reports_dir, 1);
+tutorial_visual_single(tutorial_dir, reports_dir);
 % Part 2: Copy to a new protocol for the group analysis
 tutorial_visual_copy('TutorialVisual', 'TutorialGroup', reports_dir);
 % Part 3: Group analysis
