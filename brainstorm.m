@@ -193,7 +193,11 @@ switch action
         for i = 1:length(tutonames)
             disp([10 '===== TUTORIAL: ' upper(tutonames{i}) ' =====']);
             startTime = tic;
-            eval(['tutorial_' lower(tutonames{i}) '(''' tutorial_dir ''');']);
+            if (length(varargin) == 4)
+                eval(['tutorial_' lower(tutonames{i}) '(''' tutorial_dir ''', ''' varargin{4} ''');']);
+            else
+                eval(['tutorial_' lower(tutonames{i}) '(''' tutorial_dir ''');']);
+            end
             % Done
             stopTime = toc(startTime);
             if (stopTime > 60)

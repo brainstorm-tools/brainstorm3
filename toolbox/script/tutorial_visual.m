@@ -38,6 +38,22 @@ if (nargin < 1) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
     error('The first argument must be the full path to the tutorial folder.');
 end
 
+% Configure default surface display
+DefaultSurfaceDisplay = bst_get('DefaultSurfaceDisplay');
+DefaultSurfaceDisplay.SurfShowSulci   = 1;
+DefaultSurfaceDisplay.SurfSmoothValue = 0.5;
+DefaultSurfaceDisplay.DataThreshold   = 0.3;
+DefaultSurfaceDisplay.SizeThreshold   = 1;
+DefaultSurfaceDisplay.DataAlpha       = 0;
+bst_set('DefaultSurfaceDisplay', DefaultSurfaceDisplay);
+% Configure default time series display
+bst_set('FlipYAxis', 0);
+bst_set('AutoScaleY', 1);
+bst_set('UniformizeTimeSeriesScales', 1);
+bst_set('ShowXGrid', 0);
+bst_set('ShowYGrid', 0);
+bst_set('DisplayGFP', 1);
+
 % Part 1: Single subject analysis
 tutorial_visual_single(tutorial_dir, reports_dir);
 % Part 2: Copy to a new protocol for the group analysis
