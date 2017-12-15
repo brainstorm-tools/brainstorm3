@@ -3511,7 +3511,7 @@ function EditScoutsColor(newColor)
         % Use previous scout color
         newColor = uisetcolor(sSelScouts(1).Color, 'Select scout color');
         % If no color was selected: exit
-        if (length(newColor) ~= 3) || all(sSelScouts(1).Color == newColor)
+        if (length(newColor) ~= 3) || all(sSelScouts(1).Color(:) == newColor(:))
             return
         end
     end
