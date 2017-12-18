@@ -965,6 +965,8 @@ function RemoveElectrode()
     end
     % Delete electrodes
     GlobalData.DataSet(iDS).IntraElectrodes(iSelElec) = [];
+    % Mark channel file as modified
+    GlobalData.DataSet(iDS).isChannelModified = 1;
     % Update list of electrodes
     UpdateElecList();
 end
