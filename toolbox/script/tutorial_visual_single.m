@@ -107,6 +107,9 @@ if isStartOver
 end
 % Set visualization filters: 40Hz low-pass, no high-pass
 panel_filter('SetFilters', 1, 40, 0, [], 0, [], 0, 0);
+% Set colormap: local color scale
+bst_colormaps('SetMaxMode', 'meg', 'local');
+bst_colormaps('SetMaxMode', 'eeg', 'local');
 
 
 %% ===== EMPTY ROOM RECORDINGS =====
