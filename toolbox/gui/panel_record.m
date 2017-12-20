@@ -682,14 +682,16 @@ function UpdateDisplayOptions(hFig)
             DispName = 'All';
         % Average reference
         elseif strcmpi(TsInfo.MontageName, 'Average reference')
-            % Get montage
-            [sTmp, iTmp, isLocal] = panel_montage('GetMontageAvgRef', hFig, [], 1);
-            % Change the title depending on the type of average reference
-            if isLocal
-                DispName = '<HTML><B>Local</B> Avg Ref';
-            else
-                DispName = 'Avg Ref';
-            end
+%             % Get montage
+%             [sTmp, iTmp, isLocal] = panel_montage('GetMontageAvgRef', hFig, [], 1);
+%             % Change the title depending on the type of average reference
+%             if isLocal
+%                 DispName = '<HTML><B>Local</B> Avg Ref';
+%             else
+%                 DispName = 'Avg Ref';
+%             end
+            % Always global average reference
+            DispName = 'Avg Ref';
         % Temporary montages:  Remove the [tmp] tag or display
         elseif ~isempty(strfind(TsInfo.MontageName, '[tmp]'))
             DispName = ['<HTML><I>' strrep(TsInfo.MontageName, '[tmp]', '') '</I>'];
