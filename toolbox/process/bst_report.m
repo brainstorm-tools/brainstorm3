@@ -894,7 +894,11 @@ function FileNames = GetFilesList(entry, isOneList, isStandard)
     % Entry = {sFiles1, sFiles2}
     elseif iscell(entry) && isstruct(entry{1})
         if isOneList
-            entry = [entry{:}];
+            try
+                FileNames = [entry{:}];
+            catch
+                FileNames = [];
+            end
             FileNames = {entry.FileName};
         else
             FileNames = {{entry{1}.FileName}, {entry{2}.FileName}};
@@ -902,7 +906,11 @@ function FileNames = GetFilesList(entry, isOneList, isStandard)
     % Entry = {{'filenameA1.mat', 'filenameA2.mat'}, {'filenameB1.mat', 'filenameB2.mat'}}
     elseif iscell(entry) && iscell(entry{1})
         if isOneList
-            FileNames = [entry{:}];
+            try
+                FileNames = [entry{:}];
+            catch
+                FileNames = [];
+            end
         else
             FileNames = entry;            
         end
