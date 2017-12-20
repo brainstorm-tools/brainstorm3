@@ -48,7 +48,12 @@ if ismember(FileFormat, {'SEEG-ALL', 'ECOG-ALL'})
     [fPath,fBase,fExt] = bst_fileparts(DataFile);
     switch lower(fExt)
         case '.trc',  FileFormat = 'EEG-MICROMED';
-        case '.eeg',  FileFormat = 'EEG-NK';
+        case '.eeg'
+            if file_exist(fullfile(fPath, [fBase, '.vhdr'])) || file_exist(fullfile(fPath, [fBase, '.ahdr']))
+                FileFormat = 'EEG-BRAINAMP';
+            else
+                FileFormat = 'EEG-NK';
+            end
         case '.e',    FileFormat = 'EEG-NICOLET';
         case '.bin',  FileFormat = 'EEG-DELTAMED';
         case '.rda',  FileFormat = 'EEG-COMPUMEDICS-PFS';
