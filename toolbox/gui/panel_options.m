@@ -167,7 +167,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckForceComp.setSelected(bst_get('ForceMatCompression'));
         jCheckUpdates.setSelected(bst_get('AutoUpdates'));
         jCheckGfp.setSelected(bst_get('DisplayGFP'));
-        jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries'));
+        jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries') > 0);
         jCheckIgnoreMem.setSelected(bst_get('IgnoreMemoryWarnings'));
         if ~isempty(jCheckSmooth)
             jCheckSmooth.setSelected(bst_get('GraphicsSmoothing'));
@@ -212,8 +212,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         bst_set('ForceMatCompression', jCheckForceComp.isSelected());
         bst_set('AutoUpdates', jCheckUpdates.isSelected());
         bst_set('DisplayGFP',  jCheckGfp.isSelected());
-        bst_set('DownsampleTimeSeries',  jCheckDownsample.isSelected());
         bst_set('IgnoreMemoryWarnings',  jCheckIgnoreMem.isSelected());
+        if jCheckDownsample.isSelected()
+            bst_set('DownsampleTimeSeries', 5);
+        else
+            bst_set('DownsampleTimeSeries', 0);
+        end
         if ~isempty(jCheckSmooth)
             % Update value
             isSmoothing = jCheckSmooth.isSelected();

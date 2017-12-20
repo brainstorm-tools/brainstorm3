@@ -2755,14 +2755,15 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
 
     % ===== DOWNSAMPLE TIME SERIES =====
     % If optimization is disabled
-    if ~bst_get('DownsampleTimeSeries')
+    DownsampleTimeSeries = bst_get('DownsampleTimeSeries');
+    if (DownsampleTimeSeries == 0)
         PlotHandles.DownsampleFactor = 1;
     % Detect optimal downsample factor
     elseif ~isFastUpdate || isempty(PlotHandles.DownsampleFactor)
         % Get number of pixels in the axes
         figPos = get(get(hAxes,'Parent'), 'Position');
         % Keep 5 values per pixel
-        PlotHandles.DownsampleFactor = max(1, floor(length(TimeVector) / (figPos(3) -50) / 5));
+        PlotHandles.DownsampleFactor = max(1, floor(length(TimeVector) / (figPos(3) -50) / DownsampleTimeSeries));
     end
     % Downsample time series
     if (PlotHandles.DownsampleFactor > 1)
@@ -3652,7 +3653,7 @@ function ShowGrids(jButton, hFig)
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
     set(hAxes, 'XGrid', toggle);
     set(hAxes, 'XMinorGrid', toggle);
-    % Only add XGrid for butterfly view.
+    % Only add YGrid for butterfly view.
     if (~isSel || ~strcmpi(TsInfo.DisplayMode, 'column'))
         set(hAxes, 'YGrid', toggle);
         set(hAxes, 'YMinorGrid', toggle);
