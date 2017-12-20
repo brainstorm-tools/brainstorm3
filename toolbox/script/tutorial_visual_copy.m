@@ -30,7 +30,7 @@ function tutorial_visual_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir
 %
 % Author: Francois Tadel, Elizabeth Bock, 2016-2017
 
-% ===== CHECK PROTOCOL =====
+% ===== CHECK PROTOCOLS =====
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
@@ -44,25 +44,28 @@ if (nargin < 2) || isempty(ProtocolNameSingle) || isempty(ProtocolNameGroup)
     ProtocolNameSingle = 'TutorialVisual';
     ProtocolNameGroup  = 'TutorialGroup';
 end
-% Input protocol: Check that it exists
-iProtocolSingle = bst_get('Protocol', ProtocolNameSingle);
-if isempty(iProtocolSingle)
-    error(['Unknown protocol: ' ProtocolNameSingle]);
-end
+
 % Output protocol: Delete existing protocol
 gui_brainstorm('DeleteProtocol', ProtocolNameGroup);
 % Output protocol: Create new protocol
 iProtocolGroup = gui_brainstorm('CreateProtocol', ProtocolNameGroup, 0, 0);
 % Output protocol: Get protocol information
 ProtocolInfoGroup = bst_get('ProtocolInfo');
+
+% Input protocol: Check that it exists
+iProtocolSingle = bst_get('Protocol', ProtocolNameSingle);
+if isempty(iProtocolSingle)
+    error(['Unknown protocol: ' ProtocolNameSingle]);
+end
 % Select input protocol 
 gui_brainstorm('SetCurrentProtocol', iProtocolSingle);
 % Input protocol: Get protocol information
 ProtocolInfoSingle = bst_get('ProtocolInfo');
-% Start a new report (one report per subject)
-bst_report('Start');
+
 
 % ===== COPY ONLY GOOD SUBJECTS =====
+% Start a new report (one report per subject)
+bst_report('Start');
 % Loop on subjects
 for iSubj = 1:16
     % Subject folders

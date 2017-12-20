@@ -57,8 +57,8 @@ bst_set('DisplayGFP', 1);
 % Part 1: Single subject analysis
 tutorial_visual_single(tutorial_dir, reports_dir);
 % Part 2: Copy to a new protocol for the group analysis
-tutorial_visual_copy('TutorialVisual', 'TutorialGroup', reports_dir);
+tutorial_visual_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir);
 % Part 3: Group analysis
-tutorial_visual_group('TutorialGroup', reports_dir);
+tutorial_visual_group(ProtocolNameGroup, reports_dir);
 
 
