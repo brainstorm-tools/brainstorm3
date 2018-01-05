@@ -1,4 +1,6 @@
 ---------------------------------------------------------------
+January 2018
+---------------------------------------------------------------
 December 2017
 - IO: Improved EEGLAB reader: Keep events in epochs, allow epochs with multiple event occurrences
 - IO: Improved BIDS reader, to support correctly the derivatives folder (freesurfer and meg/sss)
