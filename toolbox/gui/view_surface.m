@@ -88,6 +88,8 @@ if isempty(iDS)
         iDS = bst_memory('GetDataSetSubject', SubjectFile, 1);
     end
     iDS = iDS(1);
+else
+    SubjectFile = sSubject.FileName;
 end
 
 %% ===== CREATE NEW FIGURE =====
