@@ -22,7 +22,7 @@ function [hFig, iDS, iFig] = view_helmet(ChannelFile, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011
+% Authors: Francois Tadel, 2011-2018
 
 % Parse inputs
 if (nargin < 2) || isempty(hFig)
@@ -58,6 +58,8 @@ switch (Device)
         dist = .025;
     case 'BabyMEG'
         dist = .008;
+    case 'RICOH'
+        dist = .020;
     otherwise
         dist = 0;
 end

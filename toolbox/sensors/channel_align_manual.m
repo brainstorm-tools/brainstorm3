@@ -55,7 +55,7 @@ if (nargin < 3) || isempty(isEdit)
 end
 
 % Is processing MEG?
-isMeg  = ismember(Modality, {'MEG', 'MEG GRAD', 'MEG MAG', 'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS'});
+isMeg  = ismember(Modality, {'MEG', 'MEG GRAD', 'MEG MAG', 'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'RICOH'});
 isNirs = strcmpi(Modality, 'NIRS');
 isEeg  = ~isMeg && ~isNirs;
 % Get study

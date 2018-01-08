@@ -62,7 +62,7 @@ end
 
 %% ===== OPEN FILE =====
 % Open file (for some formats, it is open in the low-level function)
-if ismember(sFile.format, {'CTF', 'KIT', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS'}) 
+if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS'}) 
     sfid = [];
 else
     sfid = fopen(sFile.filename, 'r', sFile.byteorder);
@@ -82,6 +82,8 @@ switch (sFile.format)
         F = in_fread_4d(sFile, sfid, iEpoch, SamplesBounds, iChannels);
     case 'KIT'
         F = in_fread_kit(sFile, iEpoch, SamplesBounds, iChannels);
+    case 'RICOH'
+        F = in_fread_ricoh(sFile, iEpoch, SamplesBounds, iChannels);
     case 'KDF'
         F = in_fread_kdf(sFile, sfid, SamplesBounds, ChannelRange);
     case 'ITAB'

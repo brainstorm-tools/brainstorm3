@@ -25,7 +25,7 @@ function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFo
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2018
 
 %% ===== PARSE INPUTS =====
 if (nargin < 5) || isempty(EventName)
@@ -109,6 +109,8 @@ if isempty(newEvents)
             newEvents = in_events_trl(sFile, EventFile);
         case 'KIT'
             newEvents = in_events_kit(sFile, EventFile);
+        case 'RICOH'
+            newEvents = in_events_ricoh(sFile, EventFile);
         case 'KDF'
             newEvents = in_events_kdf(sFile, EventFile);
         case 'PRESENTATION'

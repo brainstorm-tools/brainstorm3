@@ -26,7 +26,7 @@ function [ChannelMat, Device] = in_channel_fif( sFile, ImportOptions )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2012
+% Authors: Francois Tadel, 2008-2018
 %          (Based on scripts from M.Hamalainen)
 
 %% ===== PARSE INPUTS =====
@@ -237,6 +237,8 @@ if isfield(info, 'chs') && ~isempty(info.chs)
                         Device = 'BabySQUID';
                     elseif ~isempty(strfind(lower(Channel(i).Comment), 'babymeg'))
                         Device = 'BabyMEG';
+                    elseif ~isempty(strfind(lower(Channel(i).Comment), 'ricoh'))
+                        Device = 'RICOH';
                     else
                         Device = 'Neuromag';
                     end

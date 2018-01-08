@@ -52,6 +52,10 @@ elseif strfind(lower(ChannelMat.Comment), 'babymeg')
 elseif strfind(lower(ChannelMat.Comment), 'kit')
     DeviceTag = '_kit';
     DeviceName = 'KIT';
+% RICOH
+elseif strfind(lower(ChannelMat.Comment), 'ricoh')
+    DeviceTag = '_ricoh';
+    DeviceName = 'RICOH';
 % KRISS
 elseif strfind(lower(ChannelMat.Comment), 'kriss')
     DeviceTag = '_kriss';

@@ -744,15 +744,15 @@ switch (lower(action))
                 [AllMod, DisplayMod] = bst_get('ChannelModalities', filenameRelative);
                 Device = bst_get('ChannelDevice', filenameRelative);
                 % If only one modality
-                if (length(DisplayMod) == 1) && ((length(bstNodes) ~= 1) || isempty(Device)) && ~ismember(Device, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG'}) && ~ismember(DisplayMod, {'EEG','ECOG','SEEG','NIRS'})
+                if (length(DisplayMod) == 1) && ((length(bstNodes) ~= 1) || isempty(Device)) && ~ismember(Device, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'RICOH'}) && ~ismember(DisplayMod, {'EEG','ECOG','SEEG','NIRS'})
                     gui_component('MenuItem', jPopup, [], 'Display sensors', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{1}, 'scalp'));
                 % More than one modality
                 elseif (length(DisplayMod) >= 1)
                     jMenuDisplay = gui_component('Menu', jPopup, [], 'Display sensors', IconLoader.ICON_DISPLAY, [], []);
                     % Only if one item selected
-                    if (length(bstNodes) == 1) && ismember(Device, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG'})
+                    if (length(bstNodes) == 1) && ismember(Device, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'RICOH'})
                         gui_component('MenuItem', jMenuDisplay, [], [Device ' helmet'], IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayHelmet(iStudy, filenameFull));
-                        if ismember(Device, {'CTF', 'KIT', 'KRISS', '4D', 'BabyMEG'})
+                        if ismember(Device, {'CTF', 'KIT', 'KRISS', '4D', 'BabyMEG', 'RICOH'})
                             gui_component('MenuItem', jMenuDisplay, [], [Device ' coils (MEG)'], IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 0));
                             gui_component('MenuItem', jMenuDisplay, [], [Device ' coils (ALL)'], IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 1));
                         elseif strcmpi(Device, 'Vectorview306')

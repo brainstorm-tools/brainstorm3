@@ -19,7 +19,7 @@ function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2018
 
 % Parse inputs
 if (nargin < 5) || isempty(isDetails)
@@ -38,7 +38,7 @@ hFig = [];
 iDS = [];
 iFig = [];
 % Coils or channel markers?
-isShowCoils = ismember(Modality, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'NIRS-BRS'});
+isShowCoils = ismember(Modality, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'NIRS-BRS', 'RICOH'});
 
 % === DISPLAY SURFACE ===
 % Get study

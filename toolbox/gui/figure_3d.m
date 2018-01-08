@@ -35,7 +35,7 @@ function varargout = figure_3d( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 eval(macro_method);
 end
@@ -3028,7 +3028,7 @@ function [chan_loc, markers_loc, vertices] = GetChannelPositions(iDS, selChan)
         nIntegPoints = size(Channel(i).Loc, 2);
         % Switch depending on the device
         switch (Device)
-            case {'CTF', '4D', 'KIT'}
+            case {'CTF', '4D', 'KIT', 'RICOH'}
                 if (nIntegPoints >= 4)
                     chan_loc    = [chan_loc,    mean(Channel(i).Loc(:,1:4),2)];
                     markers_loc = [markers_loc, mean(Channel(i).Loc(:,1:4),2)];
@@ -3152,7 +3152,7 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
         % Get sensors positions
         [tmp, markersLocs] = GetChannelPositions(iDS, selChan);
         % Markers orientations: only for MEG
-        if ismember(Modality, {'MEG', 'MEG GRAD', 'MEG MAG', 'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG'})
+        if ismember(Modality, {'MEG', 'MEG GRAD', 'MEG MAG', 'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'RICOH'})
             markersOrient = cell2mat(cellfun(@(c)c(:,1), {Channel(selChan).Orient}, 'UniformOutput', 0))';
         else
             markersOrient = [];
@@ -3521,7 +3521,7 @@ function PlotCoils(hFig, Modality, isDetails)
         % Plot different systems in different ways
         switch lower(Modality)
             % ===== CTF =====
-            case {'ctf', 'kit', 'kriss', '4d', 'babymeg'}
+            case {'ctf', 'kit', 'kriss', '4d', 'babymeg', 'ricoh'}
                 % === CTF: MEG AXIAL GRADIOMETER ===
                 if (nPoints == 8) && ~strcmpi(Channels(i).Type, 'MEG REF')
                     oriLength = 0.007;

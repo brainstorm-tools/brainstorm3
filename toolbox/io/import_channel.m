@@ -39,7 +39,7 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 %% ===== PARSE INPUTS =====
 Output = [];
@@ -114,7 +114,7 @@ switch (FileFormat)
     case 'CTF'
         ChannelMat = in_channel_ctf(ChannelFile);
         FileUnits = 'm';
-    case {'FIF', '4D', 'KIT', 'BST-BIN', 'KDF'}
+    case {'FIF', '4D', 'KIT', 'BST-BIN', 'KDF', 'RICOH'}
         [sFile, ChannelMat] = in_fopen(ChannelFile, FileFormat, ImportOptions);
         if isempty(ChannelMat)
             return;

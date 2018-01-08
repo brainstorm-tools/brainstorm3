@@ -49,7 +49,7 @@ for iType = 1:length(channelTypes)
     iEegRef = [];
     switch lower(channelType)
         % MEG: all sensors
-        case {'meg', 'vectorview306', 'ctf', '4d', 'kit', 'kriss', 'babymeg'}
+        case {'meg', 'vectorview306', 'ctf', '4d', 'kit', 'kriss', 'babymeg', 'ricoh'}
             iChannelType = find(ismember({Channel.Type}, {'MEG','MEG MAG','MEG GRAD'}));
             
         % EEG/MEG combined reconstruction

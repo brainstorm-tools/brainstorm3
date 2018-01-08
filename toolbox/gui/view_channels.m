@@ -26,7 +26,7 @@ function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isL
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2018
 
 global GlobalData;
 % Parse inputs
@@ -173,7 +173,7 @@ if is3DElectrodes
     if isLabels
         figure_3d('ViewSensors', hFig, 1, 1, 0, Modality);
     end
-elseif ismember(lower(Modality), {'ctf', 'vectorview306', '4d', 'kit', 'kriss', 'babymeg'})
+elseif ismember(lower(Modality), {'ctf', 'vectorview306', '4d', 'kit', 'kriss', 'babymeg', 'ricoh'})
     figure_3d('PlotCoils', hFig, Modality, isMarkers);
 elseif strcmpi(Modality, 'NIRS-BRS')
     figure_3d('PlotNirsCap', hFig, isMarkers);

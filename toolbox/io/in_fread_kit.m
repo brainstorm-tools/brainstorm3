@@ -1,7 +1,7 @@
 function F = in_fread_kit(sFile, iEpoch, SamplesBounds, iChannels)
 % IN_FREAD_KIT:  Read a block of recordings from a Yokogawa/KIT file
 %
-% USAGE:  F = in_fread_ctf(sFile, iEpoch=1, SamplesBounds=All, ChannelsRange=[])
+% USAGE:  F = in_fread_kit(sFile, iEpoch=1, SamplesBounds=All, ChannelsRange=[])
 %
 % This function is based on the Yokogawa MEG reader toolbox version 1.4.
 % For copyright and license information and software documentation, 
