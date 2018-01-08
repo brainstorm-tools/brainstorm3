@@ -1,6 +1,6 @@
 ---------------------------------------------------------------
 January 2018
-- IO: Support for new RICOH MEG file format 
+- IO: Support for new RICOH MEG file format
 ---------------------------------------------------------------
 December 2017
 - IO: Improved EEGLAB reader: Keep events in epochs, allow epochs with multiple event occurrences
