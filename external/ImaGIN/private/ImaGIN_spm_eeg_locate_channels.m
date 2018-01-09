@@ -14,7 +14,7 @@ function [Cel, Cind, x, y, z, Ic] = ImaGIN_spm_eeg_locate_channels(D, n, interpo
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE AUTHORS
 % DO NOT ASSUME ANY LIABILITY OR RESPONSIBILITY FOR ITS USE IN ANY CONTEXT.
 %
-% Copyright (c) 2000-2017 Inserm U1216
+% Copyright (c) 2000-2018 Inserm U1216
 % =============================================================================-
 %
 % Authors: Olivier David
