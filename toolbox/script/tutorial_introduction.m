@@ -8,7 +8,7 @@ function tutorial_introduction(tutorial_dir, reports_dir)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function tutorial_introduction(tutorial_dir, reports_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2016
+% Author: Francois Tadel, 2016-2017
 
 
 % ===== FILES TO IMPORT =====
@@ -833,9 +833,11 @@ panel_scout('SetScoutsOptions', 0, 1, 1, 'all', 0.7, 1, 1, 0);
 % View scouts
 hFigScouts = view_scouts({sFilesIntraZscore.FileName}, iScouts);
 hLegend = findobj(hFigScouts, 'Type', 'legend');
-set(hLegend(1), 'Units', 'pixels');
-pos = get(hLegend(1), 'Position');
-set(hLegend, 'Position', [1, 1, pos(3), pos(4)]);
+if ~isempty(hLegend) && ishandle(hLegend(1))
+    set(hLegend(1), 'Units', 'pixels');
+    pos = get(hLegend(1), 'Position');
+    set(hLegend(1), 'Position', [1, 1, pos(3), pos(4)]);
+end
 % Save figures
 bst_report('Snapshot', hFigScouts, sFilesIntraZscore(1).FileName, 'Scouts', [100 100 670 250]);
 % Close all

@@ -8,7 +8,7 @@ function varargout = process_ft_mtmconvol( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -32,7 +32,7 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'FieldTrip: ft_mtmconvol (Multitaper)';
-    sProcess.Category    = 'File';
+    sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Frequency';
     sProcess.Index       = 506;
     sProcess.Description = 'http://www.fieldtriptoolbox.org/tutorial/timefrequencyanalysis';
@@ -107,7 +107,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.measure.Value   = 'power';
     sProcess.options.measure.Group   = 'output';
     % === AVERAGE OUTPUT FILES
-    sProcess.options.avgoutput.Comment = 'Save average power of FFT values across files<BR>(do not save one new file per input file)';
+    sProcess.options.avgoutput.Comment = 'Save average power across files<BR>(do not save one new file per input file)';
     sProcess.options.avgoutput.Type    = 'checkbox';
     sProcess.options.avgoutput.Value   = 1;
     sProcess.options.avgoutput.Group   = 'output';

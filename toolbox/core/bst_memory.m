@@ -33,7 +33,6 @@ function [ varargout ] = bst_memory( varargin )
 %             iResult = bst_memory('GetDipolesInDataSet',  iDS, DipolesFile)
 %           iTimefreq = bst_memory('GetTimefreqInDataSet', iDS, TimefreqFile)
 %                 iDS = bst_memory('GetRawDataSet');
-%
 % [TimeVector, iTime] = bst_memory('GetTimeVector', ...) 
 %                isOk = bst_memory('CheckTimeWindows')
 %                isOk = bst_memory('CheckFrequencies')
@@ -52,7 +51,7 @@ function [ varargout ] = bst_memory( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -116,12 +115,12 @@ function [sMri,iMri] = LoadMri(MriFile)
         end
         % Set filename
         sMri.FileName = file_win2unix(MriFile);
-        % If loading an MRI that is not the primary one: load the transformations from the first imported one
-        if (iAnatomy >= 2) && (isempty(sMri.SCS) || isempty(sMri.SCS.R) || isempty(sMri.SCS.T))
-            sPrimaryMri = load(file_fullpath(sSubject.Anatomy(1).FileName), 'SCS', 'NCS');
-            sMri.SCS = sPrimaryMri.SCS;
-            sMri.NCS = sPrimaryMri.NCS;
-        end
+%         % If loading an MRI that is not the primary one: load the transformations from the first imported one
+%         if (iAnatomy >= 2) && (isempty(sMri.SCS) || isempty(sMri.SCS.R) || isempty(sMri.SCS.T))
+%             sPrimaryMri = load(file_fullpath(sSubject.Anatomy(1).FileName), 'SCS', 'NCS');
+%             sMri.SCS = sPrimaryMri.SCS;
+%             sMri.NCS = sPrimaryMri.NCS;
+%         end
         % Add MRI to loaded MRIs in this protocol
         iMri = length(GlobalData.Mri) + 1;
         % Save MRI in memory
@@ -367,6 +366,25 @@ function [sSurf, iSurf] = GetSurface(SurfaceFile)
 end
 
 
+%% ===== GET SURFACE ENVELOPE =====
+function [sEnvelope, sSurf] = GetSurfaceEnvelope(SurfaceFile, nVertices)
+    global GlobalData;
+    % Load surface
+    [sSurf, iSurf] = LoadSurface(SurfaceFile);
+    % Get an existing mrimask
+    fieldName = sprintf('v%d', nVertices);
+    if ~isempty(sSurf.envelope) && isfield(sSurf.envelope, fieldName) && ~isempty(sSurf.envelope.(fieldName))
+        sEnvelope = sSurf.envelope.(fieldName);
+    % MRI mask do not exist yet
+    else
+        % Compute mrimask
+        sEnvelope = tess_envelope(SurfaceFile, 'mask_cortex', nVertices);
+        % Add it to loaded structure
+        GlobalData.Surface(iSurf).envelope.(fieldName) = sEnvelope;
+    end
+end
+
+
 %% =========================================================================================
 %  ===== FUNCTIONAL DATA ===================================================================
 %  =========================================================================================
@@ -403,10 +421,11 @@ function LoadChannelFile(iDS, ChannelFile)
             error('Number of channels in ChannelFile (%d) and DataFile (%d) do not match. Aborting...', nChannels, nDataChan);
         end
         % Save in DataSet structure
-        GlobalData.DataSet(iDS).ChannelFile = file_win2unix(ChannelFile);
-        GlobalData.DataSet(iDS).Channel     = ChannelMat.Channel; 
-        GlobalData.DataSet(iDS).MegRefCoef  = ChannelMat.MegRefCoef; 
-        GlobalData.DataSet(iDS).Projector   = ChannelMat.Projector; 
+        GlobalData.DataSet(iDS).ChannelFile     = file_win2unix(ChannelFile);
+        GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+        GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
+        GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
+        GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
         % If extra channel info available (such as head points in FIF format)
         if isfield(ChannelMat, 'HeadPoints')
             GlobalData.DataSet(iDS).HeadPoints = ChannelMat.HeadPoints;
@@ -430,8 +449,9 @@ function LoadChannelFile(iDS, ChannelFile)
             GlobalData.DataSet(iDS).Channel(i).Loc  = [0;0;0];
             GlobalData.DataSet(iDS).Channel(i).Type = 'EEG';
         end
-        GlobalData.DataSet(iDS).MegRefCoef = []; 
-        GlobalData.DataSet(iDS).Projector  = []; 
+        GlobalData.DataSet(iDS).MegRefCoef      = []; 
+        GlobalData.DataSet(iDS).Projector       = []; 
+        GlobalData.DataSet(iDS).IntraElectrodes = [];
     end
 end
 
@@ -1092,6 +1112,7 @@ function LoadResultsMatrix(iDS, iResult)
         elseif isfield(FileMat, 'ImagingKernel') && ~isempty(FileMat.ImagingKernel)
             GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp  = [];
             GlobalData.DataSet(iDS).Results(iResult).ImagingKernel = FileMat.ImagingKernel; % FT 11-Jan-10: Remove "single"
+            GlobalData.DataSet(iDS).Results(iResult).OpticalFlow   = FileMat.OpticalFlow;
             GlobalData.DataSet(iDS).Results(iResult).ZScore        = FileMat.ZScore;
             % Make sure that recordings matrix is loaded
             if isempty(GlobalData.DataSet(iDS).Measures.F)
@@ -2807,6 +2828,10 @@ function isCancel = UnloadAll(varargin)
     drawnow;
     % Unload all marked datasets
     isCancel = UnloadDataSets(iDSToUnload);
+    if isCancel
+        bst_progress('stop');
+        return;
+    end
     
     % ===== UNLOAD ANATOMIES =====
     unloadedSurfaces = {};
@@ -2894,7 +2919,7 @@ function isCancel = UnloadAll(varargin)
         GlobalData.Interpolations = [];
         % Close channel editor
         if ~KeepChanEditor
-            gui_hide( 'ChannelEditor' );
+            gui_hide('ChannelEditor');
         end
         % Close report editor
         bst_report('Close');
@@ -2928,6 +2953,7 @@ function isCancel = UnloadAll(varargin)
         gui_hide('FreqPanel');
         gui_hide('Display');
         gui_hide('Stat');
+        gui_hide('iEEG');
     end
     if isNewProgress
         bst_progress('stop');
@@ -2942,7 +2968,7 @@ function isCancel = UnloadDataSets(iDataSets)
     % Close all figures of each dataset
     for i = 1:length(iDataSets)
         iDS = iDataSets(i);
-        % Invalid indice
+        % Invalid index
         if (iDS > length(GlobalData.DataSet))
             continue;
         end
@@ -2971,7 +2997,7 @@ function isCancel = UnloadDataSets(iDataSets)
                         % User canceled operation
                         if isempty(res) || strcmpi(res, 'Cancel')
                             isCancel = 1;
-                            return
+                            return;
                         end
                     % Auto-pilot: Accept modifications by default
                     else
@@ -2989,6 +3015,21 @@ function isCancel = UnloadDataSets(iDataSets)
             end
             % Force closing of SSP editor panel
             gui_hide('EditSsp');
+        end
+        % Save modified channel file
+        if ~isempty(GlobalData.DataSet(iDS).ChannelFile) && isequal(GlobalData.DataSet(iDS).isChannelModified, 1)
+            % Ask user for confirmation
+            res = java_dialog('question', ['Save modifications to channel file : ' 10 GlobalData.DataSet(iDS).ChannelFile 10 10], ...
+                              'Channel editor', [], {'Yes', 'No', 'Cancel'});
+            % Closing was cancelled
+            if isempty(res) || strcmpi(res, 'Cancel')
+                isCancel = 1;
+                return;
+            end
+            % Save channel file
+            if strcmpi(res, 'Yes')
+                SaveChannelFile(iDS);
+            end
         end
         % Close all the figures
         for iFig = length(GlobalData.DataSet(iDS).Figure):-1:1
@@ -3156,6 +3197,41 @@ function UnloadSubject(SubjectFile)
     % Force unload all the datasets for this subject
     if ~isempty(iDsToUnload)
         UnloadDataSets(iDsToUnload);
+    end
+end
+
+
+%% ===== SAVE CHANNEL FILE =====
+function SaveChannelFile(iDS)
+    global GlobalData;
+    % If nothing to save
+    if isempty(iDS) || isempty(GlobalData) || (iDS > length(GlobalData.DataSet)) || isempty(GlobalData.DataSet(iDS).ChannelFile) || ~isequal(GlobalData.DataSet(iDS).isChannelModified, 1)
+        return;
+    end
+    % Load channel file
+    ChannelMat = in_bst_channel(GlobalData.DataSet(iDS).ChannelFile);
+    % Update comment if number of channels changed
+    isNumChanged = (length(ChannelMat.Channel) ~= length(GlobalData.DataSet(iDS).Channel));
+    if isNumChanged
+        ChannelMat.Comment = sprintf('%s (%d)', str_remove_parenth(ChannelMat.Comment), length(GlobalData.DataSet(iDS).Channel));
+    end
+    % Get modified fields
+    ChannelMat.Channel         = GlobalData.DataSet(iDS).Channel;
+    ChannelMat.IntraElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
+    % History: Edit channel file
+    ChannelMat = bst_history('add', ChannelMat, 'edit', 'Edited manually');
+    % Save file
+    bst_save(file_fullpath(GlobalData.DataSet(iDS).ChannelFile), ChannelMat, 'v7');
+    % Reset modification flag
+    GlobalData.DataSet(iDS).isChannelModified = 0;
+    % Update database reference
+    [sStudy, iStudy] = bst_get('ChannelFile', GlobalData.DataSet(iDS).ChannelFile);
+    [sStudy.Channel(1).Modalities, sStudy.Channel(1).DisplayableSensorTypes] = channel_get_modalities(ChannelMat.Channel);
+    sStudy.Channel(1).Comment = ChannelMat.Comment;
+    bst_set('Study', iStudy, sStudy);
+    % Update tree
+    if isNumChanged
+        panel_protocols('UpdateNode', 'Study', iStudy);
     end
 end
 

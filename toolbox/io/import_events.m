@@ -11,7 +11,7 @@ function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFo
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,14 +25,14 @@ function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFo
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2014
+% Authors: Francois Tadel, 2010-2018
 
 %% ===== PARSE INPUTS =====
 if (nargin < 5) || isempty(EventName)
     EventName = [];
 end
 % CALL:  import_events(sFile, [], EventMat)
-if (nargin == 3) && isstruct(EventFile)
+if (nargin >= 3) && isstruct(EventFile)
     newEvents = EventFile;
     EventFile = [];
     FileFormat = [];
@@ -109,6 +109,8 @@ if isempty(newEvents)
             newEvents = in_events_trl(sFile, EventFile);
         case 'KIT'
             newEvents = in_events_kit(sFile, EventFile);
+        case 'RICOH'
+            newEvents = in_events_ricoh(sFile, EventFile);
         case 'KDF'
             newEvents = in_events_kdf(sFile, EventFile);
         case 'PRESENTATION'

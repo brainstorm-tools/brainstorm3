@@ -6,7 +6,7 @@ function [TimeUnits, precision] = gui_validate_text(jTextValid, jTextMin, jTextM
 %     - jTextMin       : Value in jTextValid must be superior to value in jTextMin (set to [] to ignore)
 %     - jTextMax       : Value in jTextValid must be inferior to value in jTextMax (set to [] to ignore)
 %     - TimeVector     : Either a full time vector (matrix) or {start, stop, sfreq} (cell)
-%     - TimeUnits      : Units used to represent the values: {'ms','s','scalar','list'}; detected if not specified
+%     - TimeUnits      : Units used to represent the values: {'ms','s','scalar','list','optional'}; detected if not specified
 %     - dispPrecision  : Number of digits to display after the point (0=integer); detected if not specified
 %     - initValue      : Initial value of the control
 %     - fcnCallback    : Callback that is executed after each validation of the jTextValid control
@@ -15,7 +15,7 @@ function [TimeUnits, precision] = gui_validate_text(jTextValid, jTextMin, jTextM
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -83,6 +83,8 @@ currentValue = [];
 if ~isempty(initValue)
     SetValue(jTextValid, initValue);
     TextValidation_Callback(0);
+else
+    jTextValid.setText('');
 end
 % Set validation callbacks
 java_setcb(jTextValid, 'ActionPerformedCallback', @(h,ev)TextValidation_Callback(1), ...
@@ -98,7 +100,7 @@ java_setcb(jTextValid, 'ActionPerformedCallback', @(h,ev)TextValidation_Callback
             newVal = setdiff(unique(newVal), 0);
             isChanged = 1;
         % Int list: accept empty input
-        elseif strcmpi(TimeUnits, 'list') && isempty(newVal)
+        elseif ismember(TimeUnits, {'list','optional'}) && isempty(newVal)
             isChanged = 1;
         % If no valid value entered, use previous value
         elseif isempty(newVal) && isempty(currentValue)
@@ -149,12 +151,17 @@ java_setcb(jTextValid, 'ActionPerformedCallback', @(h,ev)TextValidation_Callback
 %% ===== GET VALUES =====
     function val = GetValue(jText)
         % Get and check value
-        val = str2num(char(jText.getText()));
-        if isempty(val)
+        strVal = char(jText.getText());
+        if isempty(strVal)
             val = [];
-        % Convert back to ms
-        elseif strcmpi(TimeUnits, 'ms')
-            val = val / 1000; 
+        else
+            val = str2num(strVal);
+            if isempty(val)
+                val = [];
+            % Convert back to ms
+            elseif strcmpi(TimeUnits, 'ms')
+                val = val / 1000; 
+            end
         end
     end
 

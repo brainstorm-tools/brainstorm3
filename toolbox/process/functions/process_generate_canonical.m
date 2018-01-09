@@ -9,7 +9,7 @@ function varargout = process_generate_canonical( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -140,6 +140,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     end
 
     % ===== CALL SPM FUNCTIONS =====
+    % Empty temporary folder, otherwise it reuses previous files in the folder
+    gui_brainstorm('EmptyTempFolder');
     % Save MRI in .nii format
     NiiFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_canonical.nii');
     out_mri_nii(sMri, NiiFile);
@@ -180,9 +182,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     % Save cortex
     bst_save(SpmCortexFile, sCortex, 'v7');
     db_add_surface(iSubject, SpmCortexFile, sCortex.Comment);
-    
-    % Empty temporary folder
-    gui_brainstorm('EmptyTempFolder');
+
     isOk = 1;
 end
 
@@ -226,9 +226,9 @@ function sTess = CreateSurface(sMri, niiMri, gii, Comment)
     % Create surfaces structure
     sTess = db_template('SurfaceMat');
     sTess.Comment  = sprintf('%s_%dV', Comment, length(gii.vertices));
-    sTess.Vertices = bst_bsxfun(@plus, ras2vox(1:3,1:3)*gii.vertices', ras2vox(1:3,4))'  ./ 1000;
-    sTess.Vertices = sTess.Vertices + [1 1 1] ./ 1000;
-    sTess.Vertices = cs_convert(sMri, 'mri', 'scs', sTess.Vertices);
+    sTess.Vertices = bst_bsxfun(@plus, ras2vox(1:3,1:3)*gii.vertices', ras2vox(1:3,4))';
+    sTess.Vertices = bst_bsxfun(@plus, sTess.Vertices, [1 1 1]);
+    sTess.Vertices = cs_convert(sMri, 'voxel', 'scs', sTess.Vertices);
     sTess.Faces    = gii.faces(:,[2 1 3]);
     sTess = bst_history('add', sTess, 'spm', ['Canonical surface generated with: ' spm('version')]);
 end

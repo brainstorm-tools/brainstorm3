@@ -1,11 +1,11 @@
-function [TF, FreqVector, Nwin, Messages] = bst_psd( F, sfreq, WinLength, WinOverlap, BadSegments, ImagingKernel )
+function [TF, FreqVector, Nwin, Messages] = bst_psd( F, sfreq, WinLength, WinOverlap, BadSegments, ImagingKernel, isVariance )
 % BST_PSD: Compute the PSD of a set of signals using Welch method
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,9 +19,12 @@ function [TF, FreqVector, Nwin, Messages] = bst_psd( F, sfreq, WinLength, WinOve
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2017
 
 % Parse inputs
+if (nargin < 7) || isempty(isVariance)
+    isVariance = 0;
+end
 if (nargin < 6) || isempty(ImagingKernel)
     ImagingKernel = [];
 end
@@ -41,6 +44,7 @@ nTime = size(F,2);
 TF = [];
 FreqVector = [];
 Nwin = [];
+Var = [];
 
 % ===== WINDOWING =====
 Lwin  = round(WinLength * sfreq);
@@ -99,17 +103,44 @@ for iWin = 1:Nwin
     TFwin = permute(TFwin, [1 3 2]);
     % Convert to power
     TFwin = process_tf_measure('Compute', TFwin, 'none', 'power');
-    % Add PSD of the window to the average
+    
+    
+%     %%%%% OLD VERSION: MEAN ONLY %%%%%
+%     % Add PSD of the window to the average
+%     if isempty(TF)
+%         TF = TFwin ./ Nwin;
+%     else
+%         TF = TF + TFwin ./ Nwin;
+%     end
+%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    %%%%% NEW VERSION: MEAN AND STD %%%%%
+    % If file is first of the list: Initialize returned matrices
     if isempty(TF)
-        TF = TFwin ./ Nwin;
-    else
-        TF = TF + TFwin ./ Nwin;
+        TF = zeros(size(TFwin));
+        if isVariance
+            Var = zeros(size(TFwin));
+        end
     end
+    % Compute mean and standard deviation
+    TFwin = TFwin - TF;
+    R = TFwin ./ iWin;
+    if isVariance
+        Var = Var + TFwin .* R .* (iWin-1);
+    end
+    TF = TF + R;
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+end
+
+% Convert variance to standard deviation
+if isVariance
+    Var = Var ./ (Nwin - 1);
+    TF = sqrt(Var);
 end
 
 % Correct the dividing factor if there are bad segments
 if (Nbad > 0)
-    TF = TF .* (Nwin ./ (Nwin - Nbad));
+    % TF = TF .* (Nwin ./ (Nwin - Nbad));   % OLD VERSION
     Nwin = Nwin - Nbad;
 end
 

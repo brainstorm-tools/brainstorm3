@@ -25,7 +25,7 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -39,7 +39,7 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 %% ===== PARSE INPUTS =====
 Output = [];
@@ -114,7 +114,7 @@ switch (FileFormat)
     case 'CTF'
         ChannelMat = in_channel_ctf(ChannelFile);
         FileUnits = 'm';
-    case {'FIF', '4D', 'KIT', 'BST-BIN', 'KDF'}
+    case {'FIF', '4D', 'KIT', 'BST-BIN', 'KDF', 'RICOH'}
         [sFile, ChannelMat] = in_fopen(ChannelFile, FileFormat, ImportOptions);
         if isempty(ChannelMat)
             return;
@@ -227,12 +227,20 @@ switch (FileFormat)
                 FileUnits = 'mm';
         end
         
-    case 'PTS'
-        ChannelMat = in_channel_ascii(ChannelFile, {'name','X','Y','Z'}, 3, .001);
+    case {'INTRANAT', 'INTRANAT_MNI'}
+        switch (fExt)
+            case 'pts'
+                ChannelMat = in_channel_ascii(ChannelFile, {'name','X','Y','Z'}, 3, .001);
+            case 'csv'
+                if strcmpi(FileFormat, 'INTRANAT_MNI')
+                    ChannelMat = in_channel_tsv(ChannelFile, 'contact', 'MNI', .001);
+                else
+                    ChannelMat = in_channel_tsv(ChannelFile, 'contact', 'T1pre Scanner Based', .001);
+                end
+        end
         ChannelMat.Comment = 'Contacts';
         FileUnits = 'mm';
         [ChannelMat.Channel.Type] = deal('SEEG');
-                
     case {'ASCII_XYZ', 'ASCII_XYZ_MNI'}  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z'}, 0, .01);
         ChannelMat.Comment = 'Channels';
@@ -286,7 +294,7 @@ end
 
 %% ===== MNI TRANSFORMATION =====
 prevSubject = [];
-if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI'})
+if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'INTRANAT_MNI'})
     % Warning for multiple studies
     if (length(iStudies) > 1)
         warning(['WARNING: When importing MNI positions for multiple subjects: the MNI transformation from the first subject is used for all of them.' 10 ...
@@ -347,10 +355,10 @@ elseif ~isScsDefined && ~isequal(isFixUnits, 0)
                 % Get the transformation
                 iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
                 vox2ras = sMri.InitTransf{iTransf,2};
-                % 2nd operation: Change reference from (0,0,0) to (1,1,1)
-                vox2ras = vox2ras * [1 0 0 -1; 0 1 0 -1; 0 0 1 -1; 0 0 0 1];
+                % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
+                vox2ras = vox2ras * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
                 % 1st operation: Convert from MRI(mm) to voxels
-                vox2ras = vox2ras * [diag(1 ./ sMri.Voxsize), [0;0;0]; 0 0 0 1];
+                vox2ras = vox2ras * diag(1 ./ [sMri.Voxsize, 1]);
                 % Compute the transformation SUBJECT=>MRI (in meters)
                 Transf = inv(vox2ras);
                 Transf(1:3,4) = Transf(1:3,4) ./ 1000;

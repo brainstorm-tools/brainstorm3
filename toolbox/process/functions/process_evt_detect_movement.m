@@ -5,7 +5,7 @@ function varargout = process_evt_detect_movement( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -158,9 +158,10 @@ for iFile = 1:length(sInputs)
     
     %% ===== FIND SEGMENTS OF HEAD MOVEMENT =====
     SamplesBounds = sFile.prop.samples;
-    minSplitSamps = sFile.prop.sfreq*minSplitLength;
-    checkWinLen = sFile.prop.sfreq*10;
-    minShortSamps = 0.06*sFile.prop.sfreq;
+    minSplitSamps = floor(sFile.prop.sfreq*minSplitLength); % short vs long events 
+    checkWinMin = max(30,minSplitLength*2);
+    checkWinLen = floor(sFile.prop.sfreq*checkWinMin); % length of window for checking
+    minShortSamps = 0.06*sFile.prop.sfreq; % min time to consider a move event (2*30ms samp rate)
     
     bst_progress('text', 'Finding Head Movement...');
     
@@ -182,41 +183,77 @@ for iFile = 1:length(sInputs)
     longStart = [];
     shortStart = [];
     shortStop = [];
-    startCheck = max(1,SamplesBounds(1));
+    fileOffset = 0;
+    sampleIndex = max(1,SamplesBounds(1));
     totalWindows = ceil((SamplesBounds(2)-SamplesBounds(1)) / checkWinLen);
+    
+    % Only load 1Gb into memory: (12 HLU and 1 Time channel)
+    % 1Gb = 13chan * samprate * seconds * 8bytes => seconds = 1Gb / (104 * samprate)
+    GbSamples = (floor( 1e9 / (104*sFile.prop.sfreq) ) * sFile.prop.sfreq);
+    LoadSamples = [SamplesBounds(1) min(SamplesBounds(2),GbSamples)];
+    [ChanData, TimeVector] = in_fread(sFile, ChannelMat, 1, LoadSamples, iChannel(1:12));
     nWindows = 0;
-    % Loop through recording, 10 seconds at a time
-    while startCheck < SamplesBounds(2)
+    % Loop through recording using short windows
+    while sampleIndex < SamplesBounds(2)
         nWindows = nWindows+1;
         bst_progress('set', min(progressPos + round(nWindows/totalWindows * 100),100));
+        
         % load the window of interest
-        win = [startCheck,min(startCheck+checkWinLen-1,SamplesBounds(2))];
-        [F, TimeVector] = in_fread(sFile, ChannelMat, 1, win, iChannel(1:12));
-        if isempty(F)
-            bst_report('Error', sProcess, sInput, 'Time window is not valid.');
-            continue;
+        endCheck = min(sampleIndex+checkWinLen-1, SamplesBounds(2));
+        if endCheck > LoadSamples(2)
+            % load more samples
+            fileOffset = sampleIndex-1;
+            LoadSamples = [fileOffset+1 min(SamplesBounds(2),fileOffset+1+GbSamples)];
+            [ChanData, TimeVector] = in_fread(sFile, ChannelMat, 1, LoadSamples, iChannel(1:12));
         end
+        startCheck = sampleIndex - fileOffset;
+        win = [startCheck endCheck - fileOffset];
+        F = ChanData(:,win(1):win(2));
         
         % reset variables
         currentWindowLength = length(win(1):win(2));
         iThresh = zeros(1,currentWindowLength);
         glbChange = zeros(1,currentWindowLength);
         fitMask = ones(1,currentWindowLength);
-
-        % find head movement time point by time point (in centimeters)
-        for ii = 1:length(F)
-            Na = sqrt(sum((F(iNa,ii) - Loc(1,:)') .^ 2))*100; %cm
-            Le = sqrt(sum((F(iLe,ii) - Loc(2,:)') .^ 2))*100; %cm
-            Re = sqrt(sum((F(iRe,ii) - Loc(3,:)') .^ 2))*100; %cm
-            [mChange, iCoil] = max([Na;Le;Re]);
-
-            if iThresh(max(1,ii-1))
-                iThresh(ii) = mChange > threshDOWN;
-            else
-                iThresh(ii) = mChange > threshUP;
+        
+        % find head movement
+        Na1 = sqrt(sum((F(iNa,:) - repmat(Loc(1,:)',1,length(F))) .^2))*100;
+        Le1 = sqrt(sum((F(iLe,:) - repmat(Loc(2,:)',1,length(F))) .^2))*100;
+        Re1 = sqrt(sum((F(iRe,:) - repmat(Loc(3,:)',1,length(F))) .^2))*100;
+        [mChange1, iCoil1] = max([Na1;Le1;Re1]);
+        
+        nextChange = find(mChange1);
+        if ~isempty(nextChange)
+            if nextChange(1) > 1
+                sampleIndex = sampleIndex + nextChange(1) - 1;
+                continue
             end
-            glbChange(ii) = mChange;
         end
+        
+        iThresh1 = mChange1 < threshDOWN;
+        iThresh2 = mChange1 > threshUP;
+        
+        diffiThresh1 = diff(iThresh1);
+        diffiThresh1(diffiThresh1 < 0) = 0;
+        diffiThresh2 = diff(iThresh2);
+        diffiThresh2(diffiThresh2 < 0) = 0;
+        crossIndUP = find(diffiThresh2);
+        crossIndDOWN = find(diffiThresh1);
+        if isempty(crossIndUP)
+            iThresh = iThresh2;
+        else
+            for iCross = 1:length(crossIndUP)
+                endInd = find(crossIndDOWN > crossIndUP(iCross));
+                if ~isempty(endInd)
+                    iThresh2(crossIndUP(iCross):crossIndDOWN(endInd(1))) = 1;
+                else
+                    iThresh2(crossIndUP(iCross):end) = 1;
+                end
+            end
+            iThresh = iThresh2;
+        end
+            glbChange = mChange1;
+
         
         if isIgnoreBad
             iThresh = iThresh & Fmask(win(1):win(2));
@@ -230,7 +267,7 @@ for iFile = 1:length(sInputs)
 
         % check for first segment above thresh (subject moved between the
         % head localization and start of recording)
-        if startCheck==1 && iThresh(1)
+        if sampleIndex==1 && iThresh(1)
             ind = 1;
             Loc(1,:) = F(iNa,ind);
             Loc(2,:) = F(iLe,ind);
@@ -241,16 +278,16 @@ for iFile = 1:length(sInputs)
             longChange(nLongEvents) = glbChange(ind);
             longLoc(nLongEvents,:,:) = Loc;
             disp(['event at ' num2str(longStart(nLongEvents)) ' movement of ' num2str(glbChange(1)) ' cm'])
-            startCheck = 2;
+            sampleIndex = 2;
             
         else
-            disp(['window starts at ' num2str(round(startCheck/sFile.prop.sfreq)) ' sec']);
+            disp(['window starts at ' num2str(round(sampleIndex/sFile.prop.sfreq)) ' sec']);
             stMove = [];
             enMove = [];
             
             % find transitions
             iAbove = find(diff([0 iThresh]) == 1);
-            if startCheck + checkWinLen > SamplesBounds(2)
+            if sampleIndex + checkWinLen > SamplesBounds(2)
                 % this is at the end of the file
                 iBelow = find(diff([0 iThresh 0]) == -1) - 1;
             else
@@ -259,7 +296,7 @@ for iFile = 1:length(sInputs)
 
 
             if isempty(iAbove)
-               startCheck = startCheck + checkWinLen;
+               sampleIndex = sampleIndex + checkWinLen;
                continue;
             end
             
@@ -275,16 +312,16 @@ for iFile = 1:length(sInputs)
                     % check for movement events that are short
                     if moveLength < minSplitSamps  && moveLength > minShortSamps
                         nShortEvents = nShortEvents + 1;
-                        shortStart(nShortEvents) = startCheck + stMove(jj)-1;
-                        shortStop(nShortEvents) = startCheck + enMove(jj)-1;
+                        shortStart(nShortEvents) = sampleIndex + stMove(jj)-1;
+                        shortStop(nShortEvents) = sampleIndex + enMove(jj)-1;
                         disp(['short event at ' num2str(shortStart(nShortEvents)) ' movement of ' num2str(glbChange(stMove(jj))) ' cm'])
                         
                     % check for movement events that are long and record the 
                     % time and headposition for splitting the data
                     elseif moveLength > minSplitSamps
-                        % startCheck is the beginning of this section
+                        % sampleIndex is the beginning of this section
                         % st(jj) is relative to the beginning of the section
-                        ind = startCheck + stMove(jj)-1; % this index is relative to the beginning of the file
+                        ind = sampleIndex + stMove(jj)-1; % this index is relative to the beginning of the file
 
                         Loc(1,:) = F(iNa,stMove(jj));
                         Loc(2,:) = F(iLe,stMove(jj));
@@ -295,16 +332,16 @@ for iFile = 1:length(sInputs)
                         longChange(nLongEvents) = glbChange(stMove(jj));
                         longLoc(nLongEvents,:,:) = Loc;
                         disp(['event at ' num2str(longStart(nLongEvents)) ' movement of ' num2str(glbChange(stMove(jj))) ' cm'])
-                        startCheck = ind;
+                        sampleIndex = ind;
                         startNewSearch = 1;
                         break;
                     end
                 else
                     moveLength = length(stMove(jj):currentWindowLength);
                     if moveLength > minSplitSamps
-                        % startCheck is the beginning of this section
+                        % sampleIndex is the beginning of this section
                         % st(jj) is relative to the beginning of the section
-                        ind = startCheck + stMove(jj)-1; % this index is relative to the beginning of the file
+                        ind = sampleIndex + stMove(jj)-1; % this index is relative to the beginning of the file
 
                         Loc(1,:) = F(iNa,stMove(jj));
                         Loc(2,:) = F(iLe,stMove(jj));
@@ -315,10 +352,10 @@ for iFile = 1:length(sInputs)
                         longChange(nLongEvents) = glbChange(stMove(jj));
                         longLoc(nLongEvents,:,:) = Loc;
                         disp(['long event at ' num2str(longStart(nLongEvents)) ' movement of ' num2str(glbChange(stMove(jj))) ' cm'])
-                        startCheck = ind;
+                        sampleIndex = ind;
                         startNewSearch = 1;
                     else
-                        startCheck = startCheck + stMove(jj);
+                        sampleIndex = sampleIndex + stMove(jj);
                         startNewSearch = 1;
                     end
                     break;
@@ -327,7 +364,7 @@ for iFile = 1:length(sInputs)
             % if only short movements or no movements were found, start the
             % next check in the next segment
             if ~startNewSearch
-               startCheck = startCheck + checkWinLen;
+               sampleIndex = sampleIndex + checkWinLen;
             end
         end
     end

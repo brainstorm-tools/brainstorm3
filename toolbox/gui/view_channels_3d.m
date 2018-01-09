@@ -5,7 +5,7 @@ function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, 
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2018
 
 % Parse inputs
 if (nargin < 5) || isempty(isDetails)
@@ -38,7 +38,7 @@ hFig = [];
 iDS = [];
 iFig = [];
 % Coils or channel markers?
-isShowCoils = ismember(Modality, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'NIRS-BRS'});
+isShowCoils = ismember(Modality, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'NIRS-BRS', 'RICOH'});
 
 % === DISPLAY SURFACE ===
 % Get study
@@ -56,11 +56,20 @@ if ~isempty(sSubject)
     else
         opaqueAlpha = .1;
     end
+    % If passing a filename
+    if ~isempty(strfind(SurfaceType, '.mat'))
+        SurfaceFile = SurfaceType;
+        SurfaceType = file_gettype(SurfaceFile);
+    else
+        SurfaceFile = [];
+    end
     % Display surface
     switch lower(SurfaceType)
         case 'cortex'
             if ~isempty(sSubject.iCortex) && (sSubject.iCortex <= length(sSubject.Surface))
-                SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+                if isempty(SurfaceFile)
+                    SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+                end
                 switch (Modality)
                     case 'SEEG',  SurfAlpha = .8;
                     case 'ECOG',  SurfAlpha = .2;
@@ -70,7 +79,9 @@ if ~isempty(sSubject)
             end
         case 'innerskull'
             if ~isempty(sSubject.iInnerSkull) && (sSubject.iInnerSkull <= length(sSubject.Surface))
-                SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+                if isempty(SurfaceFile)
+                    SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+                end
                 switch (Modality)
                     case 'SEEG',  SurfAlpha = .5;
                     case 'ECOG',  SurfAlpha = .2;
@@ -80,7 +91,9 @@ if ~isempty(sSubject)
             end
         case 'scalp'
             if ~isempty(sSubject.iScalp) && (sSubject.iScalp <= length(sSubject.Surface))
-                SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+                if isempty(SurfaceFile)
+                    SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+                end
                 switch (Modality)
                     case 'SEEG',  SurfAlpha = .8;
                     case 'ECOG',  SurfAlpha = .8;
@@ -95,11 +108,13 @@ if ~isempty(sSubject)
                 end
                 hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
             end
-        case 'anatomy'
+        case {'anatomy', 'subjectimage'}
             if ~isempty(sSubject.iAnatomy) && (sSubject.iAnatomy <= length(sSubject.Anatomy))
-                MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                if isempty(SurfaceFile)
+                    SurfaceFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                end
                 SurfAlpha = .1;
-                hFig = view_mri_3d(MriFile, [], SurfAlpha, 'NewFigure');
+                hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
             end
     end
 end
@@ -118,6 +133,10 @@ if (length(FileNames) == 1)
     end
     isMarkers = ~isShowCoils || isDetails;
     [hFig, iDS, iFig] = view_channels(FileNames{1}, Modality, isMarkers, isLabels, hFig, is3DElectrodes);
+    % SEEG and ECOG: Open tab "iEEG"
+    if ismember(Modality, {'SEEG', 'ECOG'})
+        gui_brainstorm('ShowToolTab', 'iEEG');
+    end
 % Multiple: Markers only
 else
     ColorTable = [1,0,0; 0,1,0; 0,0,1];

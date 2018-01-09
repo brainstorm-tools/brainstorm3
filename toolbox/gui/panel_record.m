@@ -10,7 +10,7 @@ function varargout = panel_record(varargin)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -682,14 +682,16 @@ function UpdateDisplayOptions(hFig)
             DispName = 'All';
         % Average reference
         elseif strcmpi(TsInfo.MontageName, 'Average reference')
-            % Get montage
-            [sTmp, iTmp, isLocal] = panel_montage('GetMontageAvgRef', hFig, [], 1);
-            % Change the title depending on the type of average reference
-            if isLocal
-                DispName = '<HTML><B>Local</B> Avg Ref';
-            else
-                DispName = 'Avg Ref';
-            end
+%             % Get montage
+%             [sTmp, iTmp, isLocal] = panel_montage('GetMontageAvgRef', hFig, [], 1);
+%             % Change the title depending on the type of average reference
+%             if isLocal
+%                 DispName = '<HTML><B>Local</B> Avg Ref';
+%             else
+%                 DispName = 'Avg Ref';
+%             end
+            % Always global average reference
+            DispName = 'Avg Ref';
         % Temporary montages:  Remove the [tmp] tag or display
         elseif ~isempty(strfind(TsInfo.MontageName, '[tmp]'))
             DispName = ['<HTML><I>' strrep(TsInfo.MontageName, '[tmp]', '') '</I>'];
@@ -2452,9 +2454,10 @@ function CallProcessOnRaw(ProcessName)
         GlobalData.DataSet(iDS).Measures.sFile = DataMat.F;
         % Update channel mat
         ChannelMat = in_bst_channel(GlobalData.DataSet(iDS).ChannelFile);
-        GlobalData.DataSet(iDS).Channel    = ChannelMat.Channel;
-        GlobalData.DataSet(iDS).MegRefCoef = ChannelMat.MegRefCoef;
-        GlobalData.DataSet(iDS).Projector  = ChannelMat.Projector;
+        GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+        GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
+        GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
+        GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
     else
         DataMat = in_bst_data(DataFile, 'Events');
         GlobalData.DataSet(iDS).Measures.sFile.events = DataMat.Events;

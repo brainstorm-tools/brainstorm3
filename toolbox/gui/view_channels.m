@@ -12,7 +12,7 @@ function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isL
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,7 +26,7 @@ function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isL
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2018
 
 global GlobalData;
 % Parse inputs
@@ -40,16 +40,11 @@ if (nargin < 4) || isempty(isLabels) || isempty(isMarkers)
     isMarkers = 1;
     isLabels  = 1;
 end
-
 iDS  = [];
 iFig = [];
-    
-% ===== LOAD CHANNEL FILE =====
-% Get full path to this file
+% Get short path to this file
 ChannelFile = file_short(ChannelFile);
-% Load channel file
-ChannelMat = in_bst_channel(ChannelFile);
-
+    
 % ===== GET/CREATE DATASET =====
 if isempty(hFig)
     % Get Study that holds this ChannelFile
@@ -107,18 +102,25 @@ if isempty(hFig)
     iDS = iDS(1);
     GlobalData.DataSet(iDS).SubjectFile = SubjectFile;
     GlobalData.DataSet(iDS).StudyFile   = StudyFile;
+   
 % ===== RE-USE EXISTING FIGURE =====
 else
     % Get figure definition
     [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
 end
 
-% ===== CONFIGURE DATASET =====
-GlobalData.DataSet(iDS).ChannelFile = ChannelFile;
-GlobalData.DataSet(iDS).Channel     = ChannelMat.Channel;
-GlobalData.DataSet(iDS).MegRefCoef  = ChannelMat.MegRefCoef; 
-GlobalData.DataSet(iDS).Projector   = ChannelMat.Projector; 
-GlobalData.DataSet(iDS).HeadPoints  = ChannelMat.HeadPoints;
+% ===== LOAD CHANNEL FILE IF NOT DONE =====
+if isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel)
+    % Load channel file
+    ChannelMat = in_bst_channel(ChannelFile);
+    % Copy information in memory
+    GlobalData.DataSet(iDS).ChannelFile     = ChannelFile;
+    GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+    GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
+    GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
+    GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
+    GlobalData.DataSet(iDS).HeadPoints      = ChannelMat.HeadPoints;
+end
 
 % ===== CREATE 3DVIZ FIGURE =====
 % Progress bar
@@ -154,9 +156,9 @@ setappdata(hFig, 'AllChannelsDisplayed', 1);
 % Update figure selection
 bst_figures('SetCurrentFigure', hFig, '3D');
 % Get selected channels
-SelectedChannels = good_channel(ChannelMat.Channel, [], Modality);
+SelectedChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], Modality);
 % Remove the channels with empty positions
-iNoLoc = find(cellfun(@isempty, {ChannelMat.Channel.Loc}));
+iNoLoc = find(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel.Loc}));
 if ~isempty(iNoLoc)
     SelectedChannels = setdiff(SelectedChannels, iNoLoc);
 end
@@ -171,7 +173,7 @@ if is3DElectrodes
     if isLabels
         figure_3d('ViewSensors', hFig, 1, 1, 0, Modality);
     end
-elseif ismember(lower(Modality), {'ctf', 'vectorview306', '4d', 'kit', 'kriss', 'babymeg'})
+elseif ismember(lower(Modality), {'ctf', 'vectorview306', '4d', 'kit', 'kriss', 'babymeg', 'ricoh'})
     figure_3d('PlotCoils', hFig, Modality, isMarkers);
 elseif strcmpi(Modality, 'NIRS-BRS')
     figure_3d('PlotNirsCap', hFig, isMarkers);

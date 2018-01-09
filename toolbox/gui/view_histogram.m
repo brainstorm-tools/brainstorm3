@@ -1,10 +1,11 @@
-function hFig = view_histogram(FileNames)
+function hFig = view_histogram(varargin)
 % VIEW_HISTOGRAM: Compute and view the histogram of one or several brainstorm files.
 %
-% USAGE:  hFig = view_histogram(FileNames);
+% USAGE:  hFig = view_histogram(FileNames, forceOld);
 %
 % INPUT:
 %    - FileNames : Cell array of relative paths to Brainstorm files
+%    - forceOld  : Force usage of old Matlab histogram object (for Plotly)
 % OUTPUT:
 %    - hFig    : Matlab handle to the figure where the histogram is displayed
 
@@ -12,7 +13,7 @@ function hFig = view_histogram(FileNames)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -27,6 +28,13 @@ function hFig = view_histogram(FileNames)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2015-2016
+
+FileNames = varargin{1};
+if nargin > 1
+    forceOld = varargin{2};
+else
+    forceOld = 0;
+end
 
 % Java imports
 import org.brainstorm.icon.*;
@@ -56,7 +64,8 @@ hFig = figure(...
     'BusyAction',    'queue', ...
     'Interruptible', 'off', ...
     'ResizeFcn',     @ResizeCallback, ...
-    'Name',          'View histogram');
+    'Name',          'View histogram', ...
+    'UserData',      struct('FileNames', FileNames, 'forceOld', forceOld));
 % Configure axes
 hAxes = axes(...
     'Parent',        hFig, ...
@@ -79,6 +88,7 @@ jButtonEqual = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON
 jButtonGauss = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_FIND_MAX, TB_DIM},  'Display the corresponding normal distribution', @(h,ev)PlotGaussian, []);
 jButtonEqual.setSelected(1);
 jButtonGauss.setSelected(1);
+jButtonPlotly = gui_component('ToolbarButton', jToolbar, [], [], IconLoader.ICON_PLOTLY,  'Export to Plotly', @(h,ev)bst_call(@out_figure_plotly, hFig), []);
 jToolbar.addSeparator();
 % Edit number of bins
 nBins = 9;
@@ -141,7 +151,7 @@ histX = cell(1,length(Values));
 % Compute and display adjusted histogram
 for iFile = 1:length(Values)
     % Plot histogram
-    if exist('histogram', 'file')
+    if exist('histogram', 'file') && ~forceOld
         hHist(iFile) = histogram(Values{iFile}, 100, ...
             'NumBins',    nBins, ...
             'BinLimits',  bounds{iFile}, ...
@@ -186,14 +196,14 @@ bst_progress('stop');
         bst_progress('start', 'View histogram', 'Updating display...');
         % Change display mode
         if jButtonEqual.isSelected()
-            if exist('histogram', 'file')
+            if exist('histogram', 'file') && ~forceOld
                 set(hHist, 'Normalization', 'pdf');
             else
                 UpdateBarPlots();
             end
             ylabel('Probability density function');
         else
-            if exist('histogram', 'file')
+            if exist('histogram', 'file') && ~forceOld
                 set(hHist, 'Normalization', 'count');
             else
                 UpdateBarPlots();
@@ -225,7 +235,7 @@ bst_progress('stop');
             y = exp(-(x-u(i)).^2 / (2*s(i)^2)) / (s(i) * sqrt(2*pi));
             % Normalize it to the display
             if ~jButtonEqual.isSelected()
-                if exist('histogram', 'file')
+                if exist('histogram', 'file') && ~forceOld
                     %y = y ./ sum(get(hHist(i),'Values'));
                     tmpX = get(hHist(i),'BinEdges');
                     y = y .* (tmpX(2)-tmpX(1)) * sum(get(hHist(i),'Values'));
@@ -252,7 +262,7 @@ bst_progress('stop');
         % Get number of bins
         nBins = jSpinBins.getValue();
         % Update histograms
-        if exist('histogram', 'file')
+        if exist('histogram', 'file') && ~forceOld
             set(hHist, 'NumBins', nBins);
         else
             % Compute new histogram

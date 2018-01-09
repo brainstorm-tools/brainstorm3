@@ -3,12 +3,14 @@ function [hFig, iDS, iFig] = view_mri_3d(MriFile, OverlayFile, SurfAlpha, hFig)
 %
 % USAGE:  [hFig, iDS, iFig] = view_mri_3d(MriFile, OverlayFile=[], SurfAlpha=[], 'NewFigure')
 %         [hFig, iDS, iFig] = view_mri_3d(MriFile, OverlayFile=[], SurfAlpha=[], hFig)
+%         [hFig, iDS, iFig] = view_mri_3d(MriFile, OverlayFile=[], SurfAlpha=[], iDS)
 %
 % INPUT:
 %     - MriFile     : full path to the surface file to display 
 %     - SurfAlpha   : value that indicates surface transparency (optional)
 %     - "NewFigure" : force new figure creation (do not re-use a previously created figure)
 %     - hFig        : Specify the figure in which to display the MRI
+%     - iDS         : Specify which loaded dataset to use
 %
 % OUTPUT : 
 %     - hFig : Matlab handle to the 3DViz figure that was created or updated
@@ -20,7 +22,7 @@ function [hFig, iDS, iFig] = view_mri_3d(MriFile, OverlayFile, SurfAlpha, hFig)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +36,9 @@ function [hFig, iDS, iFig] = view_mri_3d(MriFile, OverlayFile, SurfAlpha, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2017
+
+global GlobalData;
 
 % ===== PARSE INPUTS =====
 iDS  = [];
@@ -48,6 +52,9 @@ elseif ischar(hFig) && strcmpi(hFig, 'NewFigure')
     NewFigure = 1;
 elseif ishandle(hFig)
     [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+elseif (round(hFig) == hFig) && (hFig <= length(GlobalData.DataSet))
+    iDS = hFig;
+    hFig = [];
 else
     error('Invalid figure handle.');
 end
@@ -101,8 +108,6 @@ end
 % ===== CREATE NEW FIGURE =====
 bst_progress('start', 'View surface', 'Loading MRI file...');
 if isempty(hFig)
-    % Try to get a default modality from the channel file
-    
     % Prepare FigureId structure
     FigureId = db_template('FigureId');
     FigureId.Type     = '3DViz';

@@ -818,7 +818,7 @@ function [D,D2,Dint,D2int] = ComputeMorlet(D, D2, Dint, D2int, k, TimeWindow, Ti
                 if Dsupr.tf.FactMod~=0
                     FrequencyMin = Dsupr.tf.frequencies(i)*(1-1/(2*Dsupr.tf.FactMod));
                     FrequencyMax = Dsupr.tf.frequencies(i)*(1+1/(2*Dsupr.tf.FactMod));
-                    tmp1=ImaGIN_bandpassFilter(tmp1,Dsupr.fsample,FrequencyMin,FrequencyMax);
+                    tmp1 = ImaGIN_bandpass(tmp1,Dsupr.fsample,FrequencyMin,FrequencyMax);
                 end
 
                 tmp = conv(tmp1, M{i});
@@ -974,7 +974,7 @@ function [D,D2,Dint,D2int] = ComputeMorlet(D, D2, Dint, D2int, k, TimeWindow, Ti
                 if Dsupr.tf.FactMod~=0
                     FrequencyMin = Dsupr.tf.frequencies(i)*(1-1/(2*Dsupr.tf.FactMod));
                     FrequencyMax = Dsupr.tf.frequencies(i)*(1+1/(2*Dsupr.tf.FactMod));
-                    tmp1=ImaGIN_bandpassFilter(tmp1,Dsupr.fsample,FrequencyMin,FrequencyMax);
+                    tmp1=ImaGIN_bandpass(tmp1,Dsupr.fsample,FrequencyMin,FrequencyMax);
                 end
 
                 tmp = conv(tmp1, M{i});
@@ -1131,7 +1131,7 @@ function Dint = ComputeMexhat(D,k,TimeWindow,TimeWindowWidth,Pre)
             if D.tf.FactMod~=0
                 FrequencyMin = D.tf.frequencies(i)*(1-1/(2*D.tf.FactMod));
                 FrequencyMax = D.tf.frequencies(i)*(1+1/(2*D.tf.FactMod));
-                tmp1=ImaGIN_bandpassFilter(tmp1,fsamplenew,FrequencyMin,FrequencyMax);
+                tmp1=ImaGIN_bandpass(tmp1,fsamplenew,FrequencyMin,FrequencyMax);
             end
 
             tmp = conv(tmp1, M{i});
@@ -1303,7 +1303,7 @@ function [D,D2,Dint,D2int] = ComputeHilbert(D, D2, Dint, D2int, k, TimeWindow, T
             if D.tf.FactMod~=0
                 FrequencyMin = D.tf.frequencies(i)*(1-1/(2*D.tf.FactMod));
                 FrequencyMax = min([D.fsample/2 D.tf.frequencies(i)*(1+1/(2*D.tf.FactMod))]);
-                tmp1=ImaGIN_bandpassFilter(tmp1,D.fsample,FrequencyMin,FrequencyMax);
+                tmp1=ImaGIN_bandpass(tmp1,D.fsample,FrequencyMin,FrequencyMax);
             end
 
             tmp=hilbert(tmp1);

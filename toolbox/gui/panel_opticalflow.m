@@ -5,7 +5,7 @@ function varargout = panel_opticalflow( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -758,6 +758,12 @@ function PlotOpticalFlow(hFig, opticalFlow, currentTime, sSurf)
     if timeIdx > size(opticalFlow.flowField, 3)
         return
     end
+    
+    % Remove old quivers (arrows)
+    oldQuivers = findobj(ax, 'Type', 'quiver');
+    for iQuiver = 1:length(oldQuivers)
+        delete(oldQuivers(iQuiver));
+    end
 
     % Hold axes to plot on top of surface
     hold(ax,'on');
@@ -800,20 +806,27 @@ function [ax, currentName] = process_surface(hFig)
     % OUTPUTS:
     %   ax            - axis containing surface (for plotting flow)
     %   currentName   - name on title of figure
+    
     % Get axis handle for surface
-    ax = get(hFig, 'children');
-    test = get(ax, 'CLim');
-    for n = 1:length(test)
-        if iscell(test) && isnumeric(test{n}) && (test{n}(1) ~= 1 || test{n}(2) ~= 256)
-            ax = ax(n);
+    axes = get(hFig, 'children');
+    ax = [];
+    for n = 1:length(axes)
+        if isprop(axes(n), 'CLim')
+            cLim = get(axes(n), 'CLim');
+            if cLim(1) ~= 1 || cLim(2) ~= 256
+                ax = axes(n);
+                break;
+            end
         end
     end
 
     % Clean off previous vector fields
-    hOld = get(ax, 'Children');
-    for n = 1:length(hOld)
-        if strcmp(get(hOld(n), 'Type'), 'hggroup') % hggroup is type name for quiver plot
-            delete(hOld(n));
+    if ~isempty(ax)
+        hOld = get(ax, 'Children');
+        for n = 1:length(hOld)
+            if strcmp(get(hOld(n), 'Type'), 'hggroup') % hggroup is type name for quiver plot
+                delete(hOld(n));
+            end
         end
     end
 
@@ -971,7 +984,7 @@ function hMovieButton = button_movie(hFig, hRotated, flowInterval)
             movieStep : ... % Go this fast
             (str2double(get(hMovieEnd,'String'))/1000)+2*eps; % End here
         
-        while strcmp(get(hMoviePause, 'Enable'), 'on') % Pause only when pause button is enabled
+        while ishandle(hMoviePause) && strcmp(get(hMoviePause, 'Enable'), 'on') % Pause only when pause button is enabled
             
             currentTimeIdx = get(hMovieButton, 'Value'); % HACK ALERT: current time index stored here
             if currentTimeIdx == 0
@@ -984,8 +997,9 @@ function hMovieButton = button_movie(hFig, hRotated, flowInterval)
                 currentTimeIdx = 1;
             end
             
-            set(hMovieButton, 'Value', currentTimeIdx); % HACK ALERT: current time index stored here after pausing
-            
+            if ishandle(hMovieButton)
+                set(hMovieButton, 'Value', currentTimeIdx); % HACK ALERT: current time index stored here after pausing
+            end
         end
         
     end

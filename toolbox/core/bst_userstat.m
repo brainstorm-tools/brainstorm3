@@ -5,7 +5,7 @@ function bst_userstat(isSave)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function bst_userstat(isSave)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2017
 
 % Parse inputs
 if (nargin < 1) || isempty(isSave)
@@ -69,11 +69,13 @@ dates = double([c{1}, c{2}]);
 dates = dates(:,1) + dates(:,2)./12;
 action = c{3};
 % Create histograms
-iUpdate = find(strcmpi(action, 'Auto-update') | strcmpi(action, 'Login'));
+iUpdate = find(strcmpi(action, 'Auto-update') | strcmpi(action, 'Login') | strcmpi(action, 'Download'));
 [nUpdate,xUpdate] = hist(dates(iUpdate), length(unique(dates(iUpdate))));
 % Look for all dates in the current year (exclude current month)
 cur = clock;
 iAvg = find((xUpdate >= 2017) & (xUpdate < (2017 + (cur(2)-2)./12)));
+% % Remove invalid data
+% nUpdate(nUpdate < 100) = interp1(xUpdate(nUpdate >= 100), nUpdate(nUpdate >= 100), xUpdate(nUpdate < 100), 'spline', 'extrap');
 
 % Plot number of downloads
 [hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
@@ -108,9 +110,9 @@ hFig(end+1) = fig_report(year, nPosts, 0, ...
 
 % ===== PUBLICATIONS =====
 % Hard coded list of publications
-year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016]; 
-nPubli = [   2    2    1    1    3    5    5   11   10   18   19   33   38   54   78   92  131];
-nPubliCurYear = 53;
+year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017]; 
+nPubli = [   2    2    1    1    3    5    5   11   10   18   19   33   38   54   78   93  131  210];
+nPubliCurYear = 0;
 % Plot figure
 hFig(end+1) = fig_report(year, nPubli, 1, ...
            [2000 max(year)], [], ...

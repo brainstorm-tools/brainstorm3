@@ -9,7 +9,7 @@ function varargout = process_timefreq( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -158,7 +158,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.WinLength  = sProcess.options.win_length.Value{1};
         tfOPTIONS.WinOverlap = sProcess.options.win_overlap.Value{1};
     end
-    
+    if isfield(sProcess.options, 'win_std') && ~isempty(sProcess.options.win_std) && ~isempty(sProcess.options.win_std.Value)
+        tfOPTIONS.WinStd = sProcess.options.win_std.Value;
+        if tfOPTIONS.WinStd
+            tfOPTIONS.Comment = [tfOPTIONS.Comment ' std'];
+        end
+    end
     % Multitaper options
     if isfield(sProcess.options, 'mt_taper') && ~isempty(sProcess.options.mt_taper) && ~isempty(sProcess.options.mt_taper.Value)
         if iscell(sProcess.options.mt_taper.Value)

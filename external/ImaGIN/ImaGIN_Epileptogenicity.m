@@ -14,7 +14,7 @@ function ImaGIN_Epileptogenicity(S)
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE AUTHORS
 % DO NOT ASSUME ANY LIABILITY OR RESPONSIBILITY FOR ITS USE IN ANY CONTEXT.
 %
-% Copyright (c) 2000-2017 Inserm U1216
+% Copyright (c) 2000-2018 Inserm U1216
 % =============================================================================-
 %
 % Authors: Olivier David
@@ -128,7 +128,7 @@ end
 try
     ThDelay = S.ThDelay;
 catch
-    ThDelay = spm_input('Propagation threshold', '+1', 'r', 0.05, 1);
+    ThDelay = spm_input('Propagation threshold (p or T)', '+1', 'r', 0.05, 1);
 end
 
 try
@@ -148,26 +148,21 @@ catch
     FileName = spm_input('File name', '+1', 's');
 end
 
-% Time window
-if length(Horizon)==1
-    TimeWindow = 0 : TimeResolution : Horizon+1+max(latency(:));
-end
-% Frequency bands
-Freq50 = [48:52 98:102 148:152 198:202 248:252 298:302 348:352 398:402 448:452 498:502];
 % Volume resolution
 VolRes = 3;
+SaveMNI = 0;
 
 % Find common Channels and define as bad the missing ones over files
 N = zeros(1,size(DD,1));
 Labels = cell(1,size(DD,1));
 BadChannel = cell(1,size(DD,1));
-for i0=1:size(DD,1)
-    D=spm_eeg_load(deblank(DD(i0,:)));
-    Labels{i0}=chanlabels(D);
-    N(i0)=length(Labels{i0});
-    BadChannel{i0}=badchannels(D);
+for i0 = 1:size(DD,1)
+    D = spm_eeg_load(deblank(DD(i0,:)));
+    Labels{i0} = chanlabels(D);
+    N(i0) = length(Labels{i0});
+    BadChannel{i0} = badchannels(D);
 end
-L=zeros(size(DD,1),max(N));
+L = zeros(size(DD,1),max(N));
 for i0=1:size(DD,1)
     tmp=setdiff(1:size(DD,1),i0);
     for i1=1:length(Labels{i0})
@@ -180,7 +175,7 @@ for i0=1:size(DD,1)
         end
     end
 end
-M=max(L(:));
+M = max(L(:));
 for i0=1:size(DD,1)
     BadChannel{i0} = unique([BadChannel{i0} find(L(i0,:)<M)]);
     BadChannel{i0} = BadChannel{i0}(find(BadChannel{i0}<=N(i0)));
@@ -207,76 +202,79 @@ for i00 = 1:size(latency, 2)
             TimeWindow = 0 : TimeResolution : Horizon(i0)+1+max(latency(:));
         end
         
+        % Load seizure
         D = spm_eeg_load(deblank(DD(i0,:)));
         P = spm_str_manip(deblank(DD(i0,:)),'h');
         cd(P)
-        
-        % Baseline
-        if ~isempty(BB)
-            B = spm_eeg_load(deblank(BB(i0,:)));
-            timebaseline = time(B);
-            TimeWindowBaseline = timebaseline(1) : (TimeWindow(2)-TimeWindow(1)) : (timebaseline(end)-1);
-        end
-        
-        % Downsample data in time
-        Coarse = 1;
-        while (D.fsample/Coarse > 2*max(FreqBand))
-            Coarse = Coarse+1;
-        end
-        Coarse = Coarse-1;
-        if ~isempty(BB)
-            timebaseline = timebaseline(1:Coarse:end);
-        end
+        % Load baseline
+        B = spm_eeg_load(deblank(BB(i0,:)));
+        timebaseline = time(B);
+        TimeWindowBaseline = timebaseline(1) : (TimeWindow(2)-TimeWindow(1)) : (timebaseline(end)-1);
         
         % Compute power using multitaper
-        clear SS
-        SS.D               = deblank(DD(i0,:));
-        SS.Pre             = ['Epi_' num2str(min(FreqBand)) '_' num2str(max(FreqBand)) '_' FileName];
-        SS.Method          = 'Multitaper';
-        SS.TimeResolution  = TimeResolution;
-        SS.frequencies     = setdiff(min(FreqBand):max(FreqBand),Freq50);
-        SS.frequencies     = min(FreqBand):max(FreqBand);
-        SS.TimeWindow      = [min(TimeWindow), max(TimeWindow)];
-        SS.TimeWindowWidth = 1;
-        SS.channels        = 1:D.nchannels;
-        SS.FactMod         = 10;
-        SS.NSegments       = 1;
-        SS.Taper           = 'hanning';
         try
             DPower = spm_eeg_load(fullfile(D.path,['m1_' SS.Pre '_' D.fname]));
-            if ~isempty(BB)
-                DPowerBaseline = spm_eeg_load(fullfile(B.path,['m1_' SS.Pre '_' B.fname]));
-            end
+            DPowerBaseline = spm_eeg_load(fullfile(B.path,['m1_' SS.Pre '_' B.fname]));
         catch
+            % Compute seizure power
+            clear SS
+            SS.D               = deblank(DD(i0,:));
+            SS.Pre             = ['Epi_' num2str(min(FreqBand)) '_' num2str(max(FreqBand)) '_' FileName];
+            SS.Method          = 'Multitaper';
+            SS.TimeResolution  = TimeResolution;
+            SS.frequencies     = min(FreqBand):max(FreqBand);
+            SS.TimeWindow      = [min(TimeWindow), max(TimeWindow)];
+            SS.TimeWindowWidth = 1;
+            SS.channels        = 1:D.nchannels;
+            SS.FactMod         = 10;
+            SS.NSegments       = 1;
+            SS.Taper           = 'hanning';
             ImaGIN_spm_eeg_tf(SS);
+            % Load seizure output
             DPower = spm_eeg_load(fullfile(D.path,['m1_' SS.Pre '_' D.fname]));
-            if isempty(BB)
-                SS2.TimeWindow = DPower.tf.time;
-                SS2.D = fullfile(D.path,['m1_' SS.Pre '_' D.fname]);
-                SS2.B = [TimeWindow(1) TimeWindow(max(find(SS2.TimeWindow<SS2.TimeWindow(1)-SS2.TimeWindow(2))))];
-                ImaGIN_NormaliseTF(SS2);
-            else
-                SSB = SS;
-                SSB.D = deblank(BB(i0,:));
-                SSB.TimeWindow = TimeWindowBaseline;
-                ImaGIN_spm_eeg_tf(SSB);
-                DPowerBaseline = spm_eeg_load(fullfile(B.path,['m1_' SSB.Pre '_' B.fname]));
-                SS2.D = fullfile(D.path,['m1_' SS.Pre '_' D.fname]);
-                SS2.B = fullfile(B.path,['m1_' SSB.Pre '_' B.fname]);
-                ImaGIN_NormaliseTF(SS2);
-            end
+            % Compute baseline power
+            SSB = SS;
+            SSB.D = deblank(BB(i0,:));
+            SSB.TimeWindow = TimeWindowBaseline;
+            ImaGIN_spm_eeg_tf(SSB);
+            % Load baseline output
+            DPowerBaseline = spm_eeg_load(fullfile(B.path,['m1_' SSB.Pre '_' B.fname]));
+%             SS2.D = fullfile(D.path,['m1_' SS.Pre '_' D.fname]);
+%             SS2.B = fullfile(B.path,['m1_' SSB.Pre '_' B.fname]);
+%             ImaGIN_NormaliseTF(SS2);
         end
-        
-        Power = DPower(:,:,:);
-        PowerBaseline = DPowerBaseline(:,:,:);
-        TimeWindow = DPower.tf.time;
-        
+
         % Find frequency band
-        IndexFreq1 = min(find(SS.frequencies>=min(FreqBand))):max(find(SS.frequencies<=max(FreqBand)));
-                
-        % Compute power within frequencies of interest
-        Epileptogenicity = squeeze(mean(Power(:,IndexFreq1,:),2));
-        EpileptogenicityBaseline = squeeze(mean(PowerBaseline(:,IndexFreq1,:),2));
+        IndexFreq1 = min(find(DPower.frequencies>=min(FreqBand))):max(find(DPower.frequencies<=max(FreqBand)));
+        
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%        
+% OD-Nov 2017: Attempt to select only the frequencies with the highest power.
+% Issues: - Different latencies are processed with different frequency bands
+%         - Frequency selection is different from what is explored in the time-frequency maps
+%
+%         % Compute power within frequencies of interest
+%         [Epitmp,order] = sort(mean(DPower(:,IndexFreq1,:),3),2);
+%         Epileptogenicity = squeeze(mean(DPower(:,IndexFreq1,:),2));
+%         for i1 = 1:size(Epileptogenicity,1)
+%             Epileptogenicity(i1,:) = squeeze(mean(DPower(i1,order(i1,floor(0.75*size(order,2)):end),:),2));
+%         end
+%         EpileptogenicityBaseline = squeeze(mean(DPowerBaseline(:,IndexFreq1,:),2));
+%         for i1 = 1:size(EpileptogenicityBaseline,1)
+%             EpileptogenicityBaseline(i1,:) = squeeze(mean(DPowerBaseline(i1,order(i1,floor(0.75*size(order,2)):end),:),2));
+%         end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ORIGINAL BLOCK
+        % Get power for seizure and baselines
+        Power = DPower(:,IndexFreq1,:);
+        PowerBaseline = DPowerBaseline(:,IndexFreq1,:);
+        % Compute average power within frequencies of interest
+        Epileptogenicity = squeeze(mean(Power,2));
+        EpileptogenicityBaseline = squeeze(mean(PowerBaseline,2));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        % Replace bad channels with NaN
         if ~isempty(BadChannel{i0})
             Epileptogenicity(BadChannel{i0},:) = NaN;
             EpileptogenicityBaseline(BadChannel{i0},:) = NaN;
@@ -287,7 +285,7 @@ for i00 = 1:size(latency, 2)
         tmp = min([Epileptogenicity(:);EpileptogenicityBaseline(:)]);
         Epileptogenicity = Epileptogenicity-tmp;
         EpileptogenicityBaseline = EpileptogenicityBaseline-tmp;
-                
+
         % Save Log Power: Seizure
         D1 = clone(D, [FileName spm_str_manip(D.fname,'s') '_' NameEpileptogenicity '_' num2str(min(FreqBand)) '_' num2str(max(FreqBand)) '_' num2str(round(mean(Horizon))) '_' num2str(round(mean(Latency))) '.mat'],[D.nchannels size(Epileptogenicity,2) 1]);
         D1(:,:,:) = Epileptogenicity;
@@ -446,7 +444,7 @@ for i00 = 1:size(latency, 2)
         WriteTvalues(deblank(DD(i0,:)), ...  % Reference recordings
                      fullfile(matlabbatch{1}.spm.stats.fmri_spec.dir{1}, ['spmT_0001' outExt]), ...  % T-values
                      fullfile(P, [NameEpileptogenicity '_' spm_str_manip(D.fname,'s') '_' FileName '_' num2str(min(FreqBand)) '_' num2str(max(FreqBand)) '_' num2str(round(mean(Horizon))) '_' num2str(round(mean(Latency)))]), ... % Output file name (without the extension)
-                     OutputType, giiCortex, VolRes);   % 'volume' or 'surface'
+                     OutputType, giiCortex, SaveMNI, VolRes);   % 'volume' or 'surface'
     end
     
     % ===== GROUP ANALYSIS =====
@@ -512,7 +510,7 @@ for i00 = 1:size(latency, 2)
         WriteTvalues(deblank(DD(1,:)), ...  % Reference recordings
                      fullfile(matlabbatch{1}.spm.stats.fmri_spec.dir{1}, ['spmT_0001' outExt]), ...  % T-values
                      fullfile(P, [NameEpileptogenicity '_Group_' FileName '_' num2str(min(FreqBand)) '_' num2str(max(FreqBand)) '_' num2str(round(mean(Horizon))) '_' num2str(round(mean(Latency)))]), ... % Output file name (without the extension)
-                     OutputType, giiCortex, VolRes);   % 'volume' or 'surface'
+                     OutputType, giiCortex, SaveMNI, VolRes);   % 'volume' or 'surface'
     end
     
     % ===== DELETE TEMP FILES =====
@@ -556,7 +554,7 @@ end
 %  ===================================================================================================
 
 %% ===== WRITE T-VALUES FOR EACH ELECTRODE =====
-function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, VolRes)
+function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, SaveMNI, VolRes)
     NameEpileptogenicity = 'EI';
     % Load reference recordings
     D = spm_eeg_load(RecFile);
@@ -565,18 +563,24 @@ function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, Vo
         case 'volume'
             V = spm_vol(TvalueFile);
             VV = spm_read_vols(V);
-            tmp = spm('Defaults','EEG');
-            bb = tmp.normalise.write.bb;
-            [x,y,z] = meshgrid(bb(1,1):VolRes:bb(2,1),...
-                bb(1,2):VolRes:bb(2,2),...
-                bb(1,3):VolRes:bb(2,3));
+            % Use standard positions from SPM template
+            if SaveMNI
+                tmp = spm('Defaults','EEG');
+                bb = tmp.normalise.write.bb;
+                [x,y,z] = meshgrid(bb(1,1):VolRes:bb(2,1),...
+                    bb(1,2):VolRes:bb(2,2),...
+                    bb(1,3):VolRes:bb(2,3));
+                P = [x(:),y(:),z(:)];
+            % Use real coordinates from volume (considering first voxel is (1,1,1))
+            else
+                [x,y,z] = meshgrid(1:V.dim(1), 1:V.dim(2), 1:V.dim(3));
+                P = bsxfun(@plus, V.mat(1:3,1:3) * [x(:),y(:),z(:)]', V.mat(1:3,4))';
+            end
             Tvalues = permute(VV,[2 1 3]);
         case 'surface'
             giiT = gifti(TvalueFile);
             Tvalues = giiT.cdata(:,:,:);
-            x = giiCortex.vertices(:,1);
-            y = giiCortex.vertices(:,2);
-            z = giiCortex.vertices(:,3);
+            P = giiCortex.vertices;
     end
     
     % Get sensor positions
@@ -589,9 +593,11 @@ function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, Vo
     % Average the T values in a neighborhood of 10 mm around each contact (SizeHorizon when creating images)
     EIGamma = zeros(size(PosElec,2),1);
     for i1 = 1:size(PosElec,2)
-        dist = (x(:)-PosElec(1,i1)).^2+(y(:)-PosElec(2,i1)).^2+(z(:)-PosElec(3,i1)).^2;
-        tmp1 = Tvalues(dist < 100);
-        EIGamma(i1) = mean(tmp1(tmp1~=0));
+        dist = (P(:,1)-PosElec(1,i1)).^2+(P(:,2)-PosElec(2,i1)).^2+(P(:,3)-PosElec(3,i1)).^2;
+        tmp1 = Tvalues((dist < 100) & (Tvalues(:) ~= 0));
+        if ~isempty(tmp1)
+            EIGamma(i1) = mean(tmp1);
+        end
     end
     % Save T values as a .mat/.dat file
     D1 = clone(D, [OutputFile, '.mat'], [size(PosElec,2) 1 1]);
@@ -638,7 +644,13 @@ function WriteDelay(dirStat, latency, ThDelay, SmoothIterations, OutputFile, Out
         S = SPM.xVol.S;    %-search Volume {voxels}
         R = SPM.xVol.R;    %-search Volume {resels}
         % u = spm_uc_FDR(0.001,df,'T',1,P1);
-        u = spm_uc(ThDelay,df,'T',R,1,S);
+        % ThDelay is a p-value
+        if (ThDelay < 1)
+            u = spm_uc(ThDelay, df, 'T', R, 1, S);
+        % ThDelay is a t-value
+        else
+            u = ThDelay;
+        end
 
         % Load spmT map
         switch lower(OutputType)
@@ -656,6 +668,13 @@ function WriteDelay(dirStat, latency, ThDelay, SmoothIterations, OutputFile, Out
         end
         % Activated voxels
         Q1 = find(Tvalues >= u);
+        % Remove if isolated peak
+        Q4 = find(Tvalues < u);
+        if (i2 > 1)
+            Q5 = find(Delay == mean(latency(:,i2-1)));
+            Q6 = intersect(Q5, Q4);
+            Delay(Q6) = NaN;
+        end
         Q2 = find(isnan(Delay));
         Q3 = intersect(Q2, Q1);
         Delay(Q3) = mean(latency(:,i2));

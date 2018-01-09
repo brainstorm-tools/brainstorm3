@@ -5,7 +5,7 @@ function varargout = process_psd( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_psd( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2017
 
 eval(macro_method);
 end
@@ -66,6 +66,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'MEG, EEG';
     sProcess.options.sensortypes.InputTypes = {'raw','data'};
+    % Options: Sensor types
+    sProcess.options.win_std.Comment = '<HTML><FONT color="#a0a0a0">Save the std across windows instead of the mean</FONT>';
+    sProcess.options.win_std.Type    = 'checkbox';
+    sProcess.options.win_std.Value   = 0;
     % Separator
     sProcess.options.sep.Type     = 'label';
     sProcess.options.sep.Comment  = '  ';

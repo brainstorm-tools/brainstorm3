@@ -14,7 +14,7 @@ function Channel = ctf_add_coil_defs(Channel, systemName)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function Channel = ctf_add_coil_defs(Channel, systemName)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2016
+% Authors: Francois Tadel, 2009-2018
 % Adapted from: Matti Hamalainen, MNE toolbox, 2006
 
 me='BST:ctf_add_coil_defs';
@@ -96,7 +96,7 @@ switch (lower(systemName))
         iMeg = find(strcmpi({Channel.Type}, 'MEG'));
         iRef = find(strcmpi({Channel.Type}, 'MEG REF'));
         iMegAll = [iRef iMeg];
-    case 'kit'
+    case {'kit', 'ricoh'}
         iMeg     = find(strcmpi({Channel.Type}, 'MEG'));
         iMegMag  = find(strcmpi({Channel.Type}, 'MEG MAG'));
         iMegGrad = find(strcmpi({Channel.Type}, 'MEG GRAD'));
@@ -150,7 +150,7 @@ for k = 1:nchan
         nbMeg = nbMeg + 1;
         
         % === CTF LOCATIONS ===
-        if strcmpi(systemName, 'CTF') || strcmpi(systemName, '4D') || strcmpi(systemName, 'KIT') || strcmpi(systemName, 'KRISS')
+        if strcmpi(systemName, 'CTF') || strcmpi(systemName, '4D') || strcmpi(systemName, 'KIT') || strcmpi(systemName, 'KRISS') || strcmpi(systemName, 'RICOH')
             % Create a vector base for this sensor
             vx = [];
             vz = Channel(k).Orient(:,1) ./ norm(Channel(k).Orient(:,1));

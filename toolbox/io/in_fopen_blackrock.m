@@ -19,7 +19,7 @@ function [sFile, ChannelMat] = in_fopen_blackrock(DataFile)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -82,7 +82,9 @@ ChannelMat.Comment = 'Blackrock channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.ChannelCount]);
 % For each channel
 for i = 1:hdr.ChannelCount
-    ChannelMat.Channel(i).Name    = strtrim(rec.ElectrodesInfo(i).Label);
+    chname = rec.ElectrodesInfo(i).Label;
+    chname(chname == 0) = [];
+    ChannelMat.Channel(i).Name    = strtrim(chname);
     ChannelMat.Channel(i).Loc     = [0; 0; 0];
     ChannelMat.Channel(i).Type    = 'EEG';
     ChannelMat.Channel(i).Orient  = [];

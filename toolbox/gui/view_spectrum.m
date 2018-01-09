@@ -22,7 +22,7 @@ function [hFig, iDS, iFig] = view_spectrum(TimefreqFile, DisplayMode, RowName, i
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -111,11 +111,15 @@ TfInfo.InputTarget = RowName;
 TfInfo.RowName     = RowName;
 % Get function to apply
 TfMethod = lower(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method);
-if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'other')
+TfMeasure = lower(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure);
+if strcmp(TfMeasure, 'other')
     TfInfo.Function = 'other';
 elseif ismember(TfMethod, {'fft', 'psd'})
-    if ~isempty(bst_get('LastPsdDisplayFunction'))
-        TfInfo.Function = bst_get('LastPsdDisplayFunction');
+    % Use last chosen display function, but only if supported by this measure
+    lastDisplayFun = lower(bst_get('LastPsdDisplayFunction'));
+    if ~isempty(lastDisplayFun) && ...
+            ~(strcmp(lastDisplayFun, 'phase') && ismember(TfMeasure, {'power', 'magnitude', 'log'}))
+        TfInfo.Function = lastDisplayFun;
     else
         TfInfo.Function = 'log';
     end

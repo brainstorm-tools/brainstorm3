@@ -20,7 +20,7 @@ function [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iC
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -62,7 +62,7 @@ end
 
 %% ===== OPEN FILE =====
 % Open file (for some formats, it is open in the low-level function)
-if ismember(sFile.format, {'CTF', 'KIT', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS'}) 
+if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS'}) 
     sfid = [];
 else
     sfid = fopen(sFile.filename, 'r', sFile.byteorder);
@@ -82,6 +82,8 @@ switch (sFile.format)
         F = in_fread_4d(sFile, sfid, iEpoch, SamplesBounds, iChannels);
     case 'KIT'
         F = in_fread_kit(sFile, iEpoch, SamplesBounds, iChannels);
+    case 'RICOH'
+        F = in_fread_ricoh(sFile, iEpoch, SamplesBounds, iChannels);
     case 'KDF'
         F = in_fread_kdf(sFile, sfid, SamplesBounds, ChannelRange);
     case 'ITAB'

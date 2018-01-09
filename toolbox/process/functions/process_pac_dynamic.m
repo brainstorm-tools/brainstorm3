@@ -7,7 +7,7 @@ function varargout = process_pac_dynamic( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -100,7 +100,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timewindow.Value   = [];
     
     % === Margin for filtering
-    sProcess.options.label0.Comment = 'Is 2 seconds of extra data for margin (from both sides) included in input time window?';
+    sProcess.options.label0.Comment = '<U><B>Buffer:</B></U> Is 2 seconds of extra data for buffer (from both sides) included in input time window?';
     sProcess.options.label0.Type    = 'label';
     sProcess.options.margin.Comment = {'No', 'Yes'};
     sProcess.options.margin.Type    = 'radio';
@@ -551,12 +551,13 @@ end
 if ~isfield(Options, 'overlap')
     Options.overlap = 0.5;
 end
+sProcess_name = 'Process_pac_dynamic';
 
 if fpBand(2)>faBand(1)
     fpBand(2) = faBand(1)/2;
     error_msg = ['Maximum of Fp should be less than half of the minimum of Fa!' 10 10 ...
         'max{Fp} modified to ', num2str(fpBand(2))];
-    bst_report('Error', 'process_pac_dynamic', [], error_msg);
+    bst_report('Error', sProcess_name, [], error_msg);
     disp(['Warning: ' error_msg]);    
 end
 
@@ -564,7 +565,7 @@ if winLen < 1/fpBand(1)
     error_msg = ['Window length is short for extracting this minimum fp!' 10 ...
         'Window length is increased to: ',num2str(2*1/fpBand(1)), ' or increase minimum fp to; ', num2str(2/winLen)];
     %         'Either increase window length to: ',num2str(2*1/fpBand(1)), ' or increase minimum fp to; ', num2str(2/winLen)];
-    bst_report('Error', 'process_pac_dynamic', [], error_msg);
+    bst_report('Error', sProcess_name, [], error_msg);
     disp(['Warning: ' error_msg]); 
     winLen = 2*1/fpBand(1);
 end
@@ -599,7 +600,7 @@ end
 
 if (nTS/sRate < winLen)
     error_msg = 'Data length should be at least equal to the window length';
-    bst_report('Error', 'process_pac_dynamic', [], error_msg);
+    bst_report('Error', sProcess_name, [], error_msg);
     disp(['Error: ' error_msg]);
     sPAC = [];
     return
@@ -634,7 +635,9 @@ PAC = zeros(nFa,nTime,nSources);                              % PAC measure
 nestingFreq = zeros(nFa,nTime,nSources);
 DynamicPhase= zeros(nFa,nTime,nSources);         
 
-
+if nTime ==1
+    doInterpolation = 0;
+end
 % ===== MAIN LOOP ON FA ===== %
 % Filtering in Fa band before cutting into smaller time windows
 % (=> Higherfrequency resolution + faster process)

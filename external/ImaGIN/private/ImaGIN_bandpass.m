@@ -1,4 +1,4 @@
-function xf = ImaGIN_bandpassFilter(x,Fs,Fp1,Fp2)
+function xf = ImaGIN_bandpass(x,Fs,Fp1,Fp2)
 % Bandpass filter for the signal x.  An acausal fft 
 % algorithm is applied (i.e. no phase shift). The filter functions is         
 % constructed from a Hamming window (default window used in "fir2" Matlab function). 

@@ -18,7 +18,7 @@ function ImaGIN_spm_eeg_convertmat2ana_3D(S)
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE AUTHORS
 % DO NOT ASSUME ANY LIABILITY OR RESPONSIBILITY FOR ITS USE IN ANY CONTEXT.
 %
-% Copyright (c) 2000-2017 Inserm U1216
+% Copyright (c) 2000-2018 Inserm U1216
 % =============================================================================-
 %
 % Authors: Stefan Kiebel, 2005  (for spm_eeg_convertmat2ana.m)
@@ -210,10 +210,15 @@ for k = 1:Nsub
     
     switch Atlas
         case{'Human'}
-            tmp=spm('Defaults','EEG');
-            bb=tmp.normalise.write.bb;
-            V = fullfile(spm('dir'), 'toolbox', 'OldNorm', 'T1.nii');
-            V=spm_vol(V);
+            if CorticalMesh && ~SaveMNI
+                bb = round([min(mm.vertices) - SizeHorizon;
+                            max(mm.vertices) + SizeHorizon]);
+            else
+                tmp=spm('Defaults','EEG');
+                bb=tmp.normalise.write.bb;
+                V = fullfile(spm('dir'), 'toolbox', 'OldNorm', 'T1.nii');
+                V=spm_vol(V);
+            end
         case{'PPN'}
             bb = [[-8 -5 -20];[8 6 2]];     %Brainstem full
             V = '/Users/odavid/Documents/Data/Goetz/IRM/MRI_PPN_Small2.img';
@@ -247,7 +252,7 @@ for k = 1:Nsub
     else
         FlagSyn=1;
         Nchannels=(1+sqrt(1+8*D{k}.nchannels))/2;
-        M=ImaGIN_ConnectivityMatrix(Nchannels);
+        M=ImaGIN_connectivity_matrix(Nchannels);
         tmpd=(D{k}(:, :,:));
         d=zeros(Nchannels,D{k}.nsamples);
         for i1=1:Nchannels

@@ -5,7 +5,7 @@ function varargout = process_stdtime( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_stdtime( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2017
 
 eval(macro_method);
 end
@@ -39,6 +39,17 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 2;
     sProcess.isSeparator = 1;
+    % Help
+    sProcess.options.help.Comment = ['Apply the time vector of the first file to all the other files.<BR>' ...
+                                     'If the number of samples is the same, it simply replaces the Time field.<BR>' ...
+                                     'If the number of samples is different, it reinterpolates the values with<BR>' ...
+                                     'Matlab function interp1. <B>Always overwrites the input files</B>.'];
+    sProcess.options.help.Type    = 'label';
+    % === Interpolation method
+    sProcess.options.method.Comment = 'Interpolation method: ';
+    sProcess.options.method.Type    = 'combobox_label';
+    sProcess.options.method.Value   = {'spline', {'linear', 'spline', 'pchip', 'v5cubic', 'makima'; ...
+                                                  'linear', 'spline', 'pchip', 'v5cubic', 'makima'}};
 end
 
 
@@ -50,9 +61,15 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
-    % Options
+    % Output
     OutputFiles = {};
     Time = [];
+    % Get options
+    if isfield(sProcess.options, 'method') && isfield(sProcess.options.method, 'Value') && ~isempty(sProcess.options.method.Value)
+        Method = sProcess.options.method.Value{1};
+    else
+        Method = 'spline';
+    end
     % Process files one by one
     for iFile = 1:length(sInputs)
         % Load file
@@ -65,13 +82,24 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % First file: define time reference
         if (iFile == 1)
             Time = sMatrix.Time;
-        % Following files: check time
-        elseif (length(sMatrix.Time) ~= length(Time))
-            bst_report('Error', sProcess, sInputs(iFile), 'Time dimension is not compatible with the first file.');
-            continue;
-        % Save first time vector in the file
+        % Following files: force the time vector of the first file
         else
-            save(file_fullpath(sInputs(iFile).FileName), 'Time', '-append');
+            % If the time is not the same: reinterpolate values
+            if (length(sMatrix.Time) ~= length(Time))
+                % interp1 works only on single signals: loops in time and frequency
+                F = sMatrix.(matName);
+                newMat = zeros(size(F,1), length(Time), size(F,3));
+                for iChan = 1:size(F,1)
+                    for iFreq = 1:size(F,3)
+                        newMat(iChan,:,iFreq) = interp1(linspace(0,1,length(sMatrix.Time)), F(iChan,:,iFreq), linspace(0,1,length(Time)), Method);
+                    end
+                end
+                sMatrix.(matName) = newMat;
+            end
+            % Update time vector
+            sMatrix.Time = Time;
+            % Update file
+            bst_save(file_fullpath(sInputs(iFile).FileName), sMatrix, 'v6');
             OutputFiles{end+1} = sInputs(iFile).FileName;
         end
     end

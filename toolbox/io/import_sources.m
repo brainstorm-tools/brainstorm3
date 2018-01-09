@@ -17,7 +17,7 @@ function [OutputFile, errorMsg] = import_sources(iStudy, SurfaceFile, SourceFile
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -225,7 +225,7 @@ for iFile = 1:length(SourceFiles)
     end
     % Read additional source file: simply concatenate to the previous one
     if ~isempty(SourceFiles2)
-        maps{iFile} = [maps{iFile}; in_sources(SourceFiles2{iFile}, FileFormat), bgValue];
+        maps{iFile} = [maps{iFile}; in_sources(SourceFiles2{iFile}, FileFormat, bgValue)];
     end
     % Check the number of sources
     if isempty(maps{iFile})

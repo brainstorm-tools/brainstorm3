@@ -19,7 +19,7 @@ function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, I
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,7 +33,7 @@ function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, I
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2016
+% Authors: Francois Tadel, 2009-2018
 
 if (nargin < 3) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
@@ -42,6 +42,25 @@ sFile = [];
 ChannelMat = [];
 DataMat = [];
 errMsg = [];
+
+% SEEG: Detect file format
+if ismember(FileFormat, {'SEEG-ALL', 'ECOG-ALL'})
+    [fPath,fBase,fExt] = bst_fileparts(DataFile);
+    switch lower(fExt)
+        case '.trc',  FileFormat = 'EEG-MICROMED';
+        case '.eeg'
+            if file_exist(fullfile(fPath, [fBase, '.vhdr'])) || file_exist(fullfile(fPath, [fBase, '.ahdr']))
+                FileFormat = 'EEG-BRAINAMP';
+            else
+                FileFormat = 'EEG-NK';
+            end
+        case '.e',    FileFormat = 'EEG-NICOLET';
+        case '.bin',  FileFormat = 'EEG-DELTAMED';
+        case '.rda',  FileFormat = 'EEG-COMPUMEDICS-PFS';
+        case '.edf',  FileFormat = 'EEG-EDF';
+        case '.bdf',  FileFormat = 'EEG-BDF';
+    end
+end
 
 switch (FileFormat)
     % ===== SUPPORTED AS CONTINUOUS FILES =====
@@ -53,6 +72,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_4d(DataFile, ImportOptions);
     case 'KIT'
         [sFile, ChannelMat, errMsg] = in_fopen_kit(DataFile);
+    case 'RICOH'
+        [sFile, ChannelMat, errMsg] = in_fopen_ricoh(DataFile);
     case 'KDF'
         [sFile, ChannelMat] = in_fopen_kdf(DataFile);
     case 'ITAB'

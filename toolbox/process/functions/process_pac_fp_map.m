@@ -5,7 +5,7 @@ function varargout = process_pac_fp_map( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,6 +33,7 @@ function varargout = process_pac_fp_map( varargin )
 % v 5.0: SS, tPAC package, Aug 2017
 % v 6.0: SS, Check for file format before using it for fp estimation, Sep
 %            2017
+% v 6.1: SS, Bug fix in time definition, Nov. 2017
 
 eval(macro_method);
 end
@@ -103,7 +104,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         bst_report('Error', 'process_pac_fp_map', sInput, Messages);
         return;
     end
-    
+    time = tPACMat.Time;
     PAC = [];    
     extract_phasePAC = 0;
     

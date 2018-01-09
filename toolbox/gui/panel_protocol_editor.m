@@ -9,7 +9,7 @@ function varargout = panel_protocol_editor(varargin)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -45,6 +45,7 @@ function bstPanelNew = CreatePanel(action) %#ok<DEFNU>
     
     % ===== Panel Protocol definition =====
     jPanelBase = gui_river([4,4], [1,4,8,4], 'Protocol definition');
+    colorDisable = Color(.6,.6,.6);
     % Protocol name
     gui_component('label', jPanelBase, '', 'Protocol name :');
     ctrl.jTextProtocolName = JTextField('');
@@ -60,21 +61,27 @@ function bstPanelNew = CreatePanel(action) %#ok<DEFNU>
     end
     
     % SUBJECTS path text field
-    gui_component('label', jPanelBase, 'p', 'Anatomy path :');
+    jLabelAnatomy = gui_component('label', jPanelBase, 'p', 'Anatomy path :');
+    jLabelAnatomy.setForeground(colorDisable);
     ctrl.jTextSubjectsPath = JTextField('');
     ctrl.jTextSubjectsPath.setFont(bst_get('Font'));
+    ctrl.jTextSubjectsPath.setForeground(colorDisable);
     jPanelBase.add('tab hfill', ctrl.jTextSubjectsPath);
     % SUBJECTS select dir button
     ctrl.jButtonSelectSubjPath = gui_component('button', jPanelBase, '', '...', [], [], @ButtonSubjectsDirCallback);
-
+    ctrl.jButtonSelectSubjPath.setForeground(colorDisable);
+    
     % Datasets path text field
-    gui_component('label', jPanelBase, 'p', 'Datasets path :');
+    jLabelData = gui_component('label', jPanelBase, 'p', 'Datasets path :');
+    jLabelData.setForeground(colorDisable);
     ctrl.jTextStudiesPath = JTextField('');
     ctrl.jTextStudiesPath.setFont(bst_get('Font'));
+    ctrl.jTextStudiesPath.setForeground(colorDisable);
     jPanelBase.add('tab hfill', ctrl.jTextStudiesPath);
     % SUBJECTS select dir button
     ctrl.jButtonSelectStudiesPath = gui_component('button', jPanelBase, '', '...', [], [], @ButtonStudiesDirCallback);
-
+    ctrl.jButtonSelectStudiesPath.setForeground(colorDisable);
+    
     % Add Base panel 
     jPanelNew.add('hfill', jPanelBase);
     
@@ -170,6 +177,15 @@ function bstPanelNew = CreatePanel(action) %#ok<DEFNU>
 
     % SUBJECTS '...' button
     function ButtonSubjectsDirCallback(varargin)
+        % Warning
+        if ~java_dialog('confirm', ['Warning: This folder is an element of the Brainstorm database and should not contain' 10 ...
+                'any of your own data. Using an inappropriate folder may result in data loss.' 10 ...
+                'Do not try to modify it unless you know exactly what you are doing.' 10 10 ...
+                'To save your new protocol in a different Brainstorm database folder, use the menu' 10 ...
+                '"File > Load protocol > Change database folder" first, then create the protocol.' 10 10 ...
+                'Do you really want to modify the protocol path?'], 'Edit protocol path')
+            return;
+        end
         % Get the input subjects path
         subjectsTextField = getFirstExistingParent(char(ctrl.jTextSubjectsPath.getText()));
         % Open 'Select directory' dialog

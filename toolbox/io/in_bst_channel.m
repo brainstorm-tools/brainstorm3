@@ -14,7 +14,7 @@ function sMat = in_bst_channel(MatFile, varargin)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function sMat = in_bst_channel(MatFile, varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2017
 
 %% ===== PARSE INPUTS =====
 % Full file name
@@ -90,6 +90,19 @@ end
 %% ===== ADD GROUP =====
 % Define default electrodes group for ECOG/SEEG based on the sensor names (only when groups are not defined yet)
 if ismember('Channel', FieldsToRead) && isstruct(sMat.Channel) && ~isempty(sMat.Channel)
+    % Fix intra electrode structures
+    if isfield(sMat, 'IntraElectrodes') && ~isempty(sMat.IntraElectrodes) && ~isequal(fieldnames(db_template('intraelectrode')), fieldnames(sMat.IntraElectrodes))
+        fileValues = sMat.IntraElectrodes;
+        sMat.IntraElectrodes = repmat(db_template('intraelectrode'), 1, length(fileValues));
+        namesSrc = fieldnames(sMat.IntraElectrodes);
+        for iElec = 1:length(sMat.IntraElectrodes)
+            for iField = 1:length(namesSrc)
+                if isfield(fileValues, namesSrc{iField})
+                    sMat.IntraElectrodes(iElec).(namesSrc{iField}) = fileValues(iElec).(namesSrc{iField});
+                end
+            end
+        end
+    end
     % If "Group" field is missing, add it
     if ~isfield(sMat.Channel, 'Group')
         sMat.Channel(1).Group = [];
@@ -101,8 +114,8 @@ if ismember('Channel', FieldsToRead) && isstruct(sMat.Channel) && ~isempty(sMat.
         if isempty(iMod)
             continue;
         end
-        % If there are already groups defined: skip
-        if any(~cellfun(@isempty, {sMat.Channel(iMod).Group}))
+        % If the groups are all defined: skip
+        if all(~cellfun(@isempty, {sMat.Channel(iMod).Group})) && isfield(sMat, 'IntraElectrodes') && ~isempty(sMat.IntraElectrodes) && all(ismember(unique({sMat.Channel(iMod).Group}), {sMat.IntraElectrodes.Name}))
             continue;
         end
         % Parse sensor names
@@ -113,8 +126,16 @@ if ismember('Channel', FieldsToRead) && isstruct(sMat.Channel) && ~isempty(sMat.
         if (length(uniqueTags) > 1) && ~any(isNoInd)
             for iGroup = 1:length(uniqueTags)
                 iTmp = find(strcmp(AllTags, uniqueTags{iGroup}));
-                [sMat.Channel(iMod(iTmp)).Group] = deal(uniqueTags{iGroup});
+                for i = 1:length(iTmp)
+                    if isempty(sMat.Channel(iMod(iTmp(i))).Group)
+                        [sMat.Channel(iMod(iTmp(i))).Group] = deal(uniqueTags{iGroup});
+                    end
+                end
             end
+        end
+        % Detect electrodes
+        if ~isfield(sMat, 'IntraElectrodes') || isempty(sMat.IntraElectrodes) || ~all(ismember(uniqueTags, {sMat.IntraElectrodes.Name}))
+            sMat = panel_ieeg('DetectElectrodes', sMat, Modality{1}, AllInd, 0);
         end
     end
 end

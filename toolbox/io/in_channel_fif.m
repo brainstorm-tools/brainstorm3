@@ -12,7 +12,7 @@ function [ChannelMat, Device] = in_channel_fif( sFile, ImportOptions )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,7 +26,7 @@ function [ChannelMat, Device] = in_channel_fif( sFile, ImportOptions )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2012
+% Authors: Francois Tadel, 2008-2018
 %          (Based on scripts from M.Hamalainen)
 
 %% ===== PARSE INPUTS =====
@@ -237,6 +237,8 @@ if isfield(info, 'chs') && ~isempty(info.chs)
                         Device = 'BabySQUID';
                     elseif ~isempty(strfind(lower(Channel(i).Comment), 'babymeg'))
                         Device = 'BabyMEG';
+                    elseif ~isempty(strfind(lower(Channel(i).Comment), 'ricoh'))
+                        Device = 'RICOH';
                     else
                         Device = 'Neuromag';
                     end

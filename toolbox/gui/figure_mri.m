@@ -18,7 +18,7 @@ function varargout = figure_mri(varargin)
 %               figure_mri('UpdateSurfaceColor',      hFig)
 %               figure_mri('UpdateCrosshairPosition', sMri, Handles)
 %               figure_mri('UpdateCoordinates',       sMri, Handles)
-%         hPt = figure_mri('PlotPoint',               sMri, Handles, ptLoc, ptColor)
+%         hPt = figure_mri('PlotPoint',               sMri, Handles, ptLoc, ptColor, UserData)
 %               figure_mri('UpdateVisibleLandmarks',  sMri, Handles, slicesToUpdate)
 %               figure_mri('SetFiducial',             hFig, FidCategory, FidName)
 %               figure_mri('ViewFiducial',            hFig, FidCategory, FiducialName)
@@ -29,7 +29,7 @@ function varargout = figure_mri(varargin)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -44,7 +44,7 @@ function varargout = figure_mri(varargin)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, 2004
-%          Francois Tadel, 2008-2016
+%          Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -95,13 +95,15 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'isStatic',    1);
     setappdata(hFig, 'isStaticFreq',1);
     setappdata(hFig, 'Colormap',    db_template('ColormapInfo'));
+%     setappdata(hFig, 'ElectrodeDisplay', struct('DisplayMode', 'sphere'));
+    setappdata(hFig, 'ElectrodeDisplay', struct('DisplayMode', 'depth'));
     
     % ===== AXES =====
     % Sagittal
     Handles.axs = axes(...
         'Parent',        hFig, ...
         'Units',         'pixels', ...
-        'Color',         [1 0 0],...
+        'DataAspectRatio', [1 1 1], ...
         'Tag',           'axs', ...
         'BusyAction',    'cancel', ...
         'Interruptible', 'off');
@@ -109,7 +111,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     Handles.axa = axes(...
         'Parent',        hFig, ...
         'Units',         'pixels', ...
-        'Color',         [1 0 0],...
+        'DataAspectRatio', [1 1 1], ...
         'Tag',           'axa', ...
         'BusyAction',    'cancel', ...
         'Interruptible', 'off');
@@ -117,12 +119,13 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     Handles.axc = axes(...
         'Parent',        hFig, ...
         'Units',         'pixels', ...
-        'Color',         [1 0 0],...
+        'DataAspectRatio', [1 1 1], ...
         'Tag',           'axc', ...
         'BusyAction',    'cancel', ...
         'Interruptible', 'off');
     % Configure axes
-    axis([Handles.axs, Handles.axa, Handles.axc], 'image', 'off');
+    %axis([Handles.axs, Handles.axa, Handles.axc], 'image', 'off');
+    axis([Handles.axs, Handles.axa, Handles.axc], 'off');
 
     % ===== SLIDERS =====
     [Handles.jSliderSagittal, Handles.sliderSagittal] = javacomponent(javax.swing.JSlider(0,10,0), [0 0 1 1], hFig);
@@ -136,9 +139,9 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     java_setcb(Handles.jSliderAxial,    'MouseClickedCallback', @(h,ev)set(hFig, 'CurrentAxes', Handles.axa));
     java_setcb(Handles.jSliderCoronal,  'MouseClickedCallback', @(h,ev)set(hFig, 'CurrentAxes', Handles.axc));
     % Set tooltips
-    Handles.jSliderSagittal.setToolTipText('Keyboard shortcut: [X] / [SHIFT]+[X]');
-    Handles.jSliderCoronal.setToolTipText('Keyboard shortcut: [Y] / [SHIFT]+[Y]');
-    Handles.jSliderAxial.setToolTipText('Keyboard shortcut: [Z] / [SHIFT]+[Z]');
+    Handles.jSliderSagittal.setToolTipText('<HTML>Keyboard shortcuts: <BR><B>&nbsp;&nbsp;&nbsp;[X] / [SHIFT]+[X]<BR>&nbsp;&nbsp;&nbsp;[1] / [2]</B>');
+    Handles.jSliderCoronal.setToolTipText('<HTML>Keyboard shortcuts: <BR><B>&nbsp;&nbsp;&nbsp;[Y] / [SHIFT]+[Y]<BR>&nbsp;&nbsp;&nbsp;[3] / [4]</B>');
+    Handles.jSliderAxial.setToolTipText('<HTML>Keyboard shortcuts: <BR><B>&nbsp;&nbsp;&nbsp;[Z] / [SHIFT]+[Z]<BR>&nbsp;&nbsp;&nbsp;[5] / [6]</B>');
     
     % ===== TITLE BARS =====
     % Title: Panels
@@ -307,8 +310,8 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.fill    = GridBagConstraints.BOTH;
     c.insets  = Insets(2,4,2,4);
     % Buttons: Zoom-, Zoom+, Cancel, Save
-    c.gridx = 1;  c.weightx = 0.1;  Handles.jButtonZoomMinus = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_MINUS, '<HTML><B>Zoom out   [-]</B><BR><BR>Double-click to reset view', @(h,ev)ButtonZoom_Callback(hFig, '-'));
-    c.gridx = 2;  c.weightx = 0.1;  Handles.jButtonZoomPlus  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_PLUS,  '<HTML><B>Zoom in   [+]</B><BR><BR>Double-click to reset view',  @(h,ev)ButtonZoom_Callback(hFig, '+'));
+    c.gridx = 1;  c.weightx = 0.1;  Handles.jButtonZoomMinus = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_MINUS, '<HTML><B>Zoom out<BR>[-] or [CTRL + Mouse scroll]</B><BR>Double-click to reset view', @(h,ev)ButtonZoom_Callback(hFig, '-'));
+    c.gridx = 2;  c.weightx = 0.1;  Handles.jButtonZoomPlus  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_PLUS,  '<HTML><B>Zoom in<BR>[+] or [CTRL + Mouse scroll]</B><BR>Double-click to reset view',  @(h,ev)ButtonZoom_Callback(hFig, '+'));
     c.gridx = 3;  c.weightx = 0.1;  Handles.jButtonSetCoord  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_VIEW_SCOUT_IN_MRI,  'Set the current coordinates',  @(h,ev)ButtonSetCoordinates_Callback(hFig));
     c.gridx = 4;  c.weightx = 0.7;  gui_component('label', Handles.jPanelValidate, c, '');
     c.gridx = 5;  c.weightx = 0.4;  Handles.jButtonCancel = gui_component('button', Handles.jPanelValidate, c, 'Cancel', [], '', @(h,ev)ButtonCancel_Callback(hFig));
@@ -380,16 +383,13 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     Handles.hPointEEG  = [];
     Handles.hTextEEG   = [];
     Handles.LocEEG     = [];
+    Handles.HiddenChannels  = [];
     Handles.isEditFiducials = 1;
     Handles.isEditVolume    = 1;
     Handles.isOverlay       = 1;
     Handles.isEeg           = 0;
     Handles.isEegLabels   = 1;
     Handles.isModifiedMri = 0;
-    Handles.isModifiedEeg = 0;
-    Handles.ChannelFile   = [];
-    Handles.ChannelMat    = [];
-    Handles.iChannels     = [];
 end
 
 
@@ -441,7 +441,7 @@ function ResizeCallback(hFig, varargin)
     set(Handles.sliderSagittal, 'Position', max([1 1 1 1], [posS(1), posS(2), posS(3), sliderH]));
     set(Handles.sliderAxial,    'Position', max([1 1 1 1], [posA(1), posA(2), posA(3), sliderH]));
     set(Handles.sliderCoronal,  'Position', max([1 1 1 1], [posC(1), posC(2), posC(3), sliderH]));
-
+    
     % Resize colorbar
     if ~isempty(hColorbar)
         colorbarWidth = 15;
@@ -452,6 +452,17 @@ function ResizeCallback(hFig, varargin)
             posS(4) - sliderH - titleH - 15];
         % Reposition the colorbar
         set(hColorbar, 'Units', 'pixels', 'Position', max([1 1 1 1], posColor));
+    end
+    
+    % === UPDATE IMAGE RATIOS ===
+    % Get MRI display size
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    if ~isempty(sMri)
+        FOV = size(sMri.Cube) .* sMri.Voxsize;
+        % Update views
+        SetupView(Handles.axs, [FOV(2),FOV(3)], [], []);
+        SetupView(Handles.axc, [FOV(1),FOV(3)], [], []);
+        SetupView(Handles.axa, [FOV(1),FOV(2)], [], []);
     end
 end
 
@@ -523,6 +534,7 @@ function SetFigureStatus(hFig, isEditFiducials, isEditVolume, isOverlay, isEeg, 
     if updateLandmarks
         sMri = panel_surface('GetSurfaceMri', hFig);
         UpdateVisibleLandmarks(sMri, Handles);
+        UpdateVisibleSensors3D(hFig);
     end
 end
 
@@ -589,18 +601,26 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                     JumpMaximum(hFig);
                     
                 % === SCROLL MRI CUTS ===
-                case {'x','y','z'}
+                case {'x','y','z','1','2','3','4','5','6'}
                     % Amount to scroll: +1 (no modifier) or -1 (shift key)
-                    if ismember('shift', keyEvent.Modifier)
-                        value = -1;
-                    else
-                        value = 1;
+                    if ismember(keyEvent.Key, {'x','y','z'})
+                        if ismember('shift', keyEvent.Modifier)
+                            value = -1;
+                        else
+                            value = 1;
+                        end
                     end
                     % Get dimension
                     switch (keyEvent.Key)
                         case 'x',  dim = 1;
                         case 'y',  dim = 2;
                         case 'z',  dim = 3;
+                        case '1',  dim = 2; value = 1;
+                        case '2',  dim = 2; value = -1;
+                        case '3',  dim = 1; value = 1;
+                        case '4',  dim = 1; value = -1;
+                        case '5',  dim = 3; value = 1;
+                        case '6',  dim = 3; value = -1;
                     end
                     % Get Mri and figure Handles
                     [sMri, TessInfo, iTess, iMri] = panel_surface('GetSurfaceMri', hFig);
@@ -686,7 +706,11 @@ end
 
 
 %% ===== BUTTON ZOOM =====
-function ButtonZoom_Callback(hFig, action)
+function ButtonZoom_Callback(hFig, action, param)
+    % Parse inputs
+    if (nargin < 3) || isempty(param)
+        param = 1.5;
+    end
     % Get figure Handles
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
@@ -694,8 +718,8 @@ function ButtonZoom_Callback(hFig, action)
     mmCoord = GetLocation('mri', sMri, Handles) .* 1000;
     % Zoom factor
     switch (action)
-        case '+',     Factor = 1 ./ 1.5;
-        case '-',     Factor = 1.5;
+        case '+',     Factor = 1 ./ param;
+        case '-',     Factor = param;
         case 'reset', Factor = 0;
     end
     % Prepare list to process
@@ -722,7 +746,7 @@ function ButtonZoom_Callback(hFig, action)
             XLim = XLimInit;
             YLim = YLimInit;
             % Restore orientation labels
-            %set(hLabelOrient, 'Visible', 'on');
+            set([hLabelOrientL, hLabelOrientR], 'Visible', 'on');
         else
             % Move view to have a full image (X)
             if (XLim(1) < XLimInit(1))
@@ -737,14 +761,26 @@ function ButtonZoom_Callback(hFig, action)
                 YLim = YLimInit(2) + [-Len(2), 0];
             end
             % Hide orientation labels
-            %set(hLabelOrient, 'Visible', 'off');
+            set([hLabelOrientL, hLabelOrientR], 'Visible', 'off');
         end
-        % Update zoom factor
         set(hAxes, 'XLim', XLim, 'YLim', YLim);
-        % Move orientation labels
-        set(hLabelOrientL, 'Position', [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 1]);
-        set(hLabelOrientR, 'Position', [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 1]);
+        
+        
+%         % Update zoom factor
+%         Xratio = axesLen(i,1) ./ AxesPos(3);
+%         Yratio = axesLen(i,2) ./ AxesPos(4);
+%         if (Yratio > Xratio)
+%             set(hAxes, 'YLim', YLim);
+%         else
+%             set(hAxes, 'XLim', XLim);
+%         end
+        
+        % % Move orientation labels
+        % set(hLabelOrientL, 'Position', [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 1]);
+        % set(hLabelOrientR, 'Position', [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 1]);
+        
     end
+    
 end
 
 %% ===== BUTTON SET COORDINATES =====
@@ -802,6 +838,7 @@ function DisplayFigurePopup(hFig)
     import java.awt.event.KeyEvent;
     import javax.swing.KeyStroke;
     import org.brainstorm.icon.*;
+    global GlobalData;
     
     % Create popup menu
     jPopup = java_create('javax.swing.JPopupMenu');
@@ -810,6 +847,8 @@ function DisplayFigurePopup(hFig)
     isOverlay = any(ismember({'source','stat1','stat2','timefreq'}, ColormapInfo.AllTypes));
     Handles = bst_figures('GetFigureHandles', hFig);
     TessInfo = getappdata(hFig, 'Surface');
+    % Get figure and dataset
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
     
     % ==== Menu colormaps ====
     % Create the colormaps menus
@@ -819,13 +858,13 @@ function DisplayFigurePopup(hFig)
     % Smooth factor
     if isOverlay 
         MriOptions = bst_get('MriOptions');
-        jMenuMri = gui_component('Menu', jPopup, [], 'Smooth sources', IconLoader.ICON_ANATOMY);
-        jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: None', [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 0));
-        jItem1 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 1',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 1));
-        jItem2 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 2',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 2));
-        jItem3 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 3',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 3));
-        jItem4 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 4',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 4));
-        jItem5 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 5',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 5));
+        jMenuMri = gui_component('Menu', jPopup, [], 'Overlay options', IconLoader.ICON_ANATOMY);
+        jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: None', [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 0));
+        jItem1 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 1',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 1));
+        jItem2 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 2',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 2));
+        jItem3 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 3',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 3));
+        jItem4 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 4',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 4));
+        jItem5 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 5',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 5));
         jItem0.setSelected(MriOptions.OverlaySmooth == 0);
         jItem1.setSelected(MriOptions.OverlaySmooth == 1);
         jItem2.setSelected(MriOptions.OverlaySmooth == 2);
@@ -833,12 +872,25 @@ function DisplayFigurePopup(hFig)
         jItem4.setSelected(MriOptions.OverlaySmooth == 4);
         jItem5.setSelected(MriOptions.OverlaySmooth == 5);
         jMenuMri.addSeparator();
-        jCheck = gui_component('checkboxmenuitem', jMenuMri, [], 'Grid interpolation', [], [], @(h,ev)figure_3d('SetGridSmooth', hFig, ~TessInfo.DataSource.GridSmooth));
+        % MENU: Interpolation MRI/sources
+        % Interpolate values
+        jMenuInterp = gui_component('Menu', jMenuMri, [], 'Interpolation sources>MRI', IconLoader.ICON_ANATOMY);
+        jCheck = gui_component('checkboxmenuitem', jMenuInterp, [], 'Interpolate values', [], [], @(h,ev)figure_3d('SetGridSmooth', hFig, ~TessInfo.DataSource.GridSmooth));
         jCheck.setSelected(TessInfo.DataSource.GridSmooth);
-%         jMenuMri = gui_component('Menu', jPopup, [], 'Sources resolution', IconLoader.ICON_ANATOMY);
-%         jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 1));
-%         jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 2));
-%         jItem3 = gui_component('radiomenuitem', jMenuMri, [], '3mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 3));
+        % Distance threshold
+        jMenuInterp.addSeparator();
+        jItem1 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 2mm', [], [], @(h,ev)figure_3d('SetDistanceThresh', hFig, 2));
+        jItem2 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 4mm', [], [], @(h,ev)figure_3d('SetDistanceThresh', hFig, 4));
+        jItem3 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 6mm', [], [], @(h,ev)figure_3d('SetDistanceThresh', hFig, 6));
+        jItem4 = gui_component('radiomenuitem', jMenuInterp, [], 'Distance threshold: 9mm', [], [], @(h,ev)figure_3d('SetDistanceThresh', hFig, 9));
+        jItem1.setSelected(MriOptions.DistanceThresh == 2);
+        jItem2.setSelected(MriOptions.DistanceThresh == 4);
+        jItem3.setSelected(MriOptions.DistanceThresh == 6);
+        jItem4.setSelected(MriOptions.DistanceThresh == 9);
+        % Interpolated grid resolution
+%         jItem1 = gui_component('radiomenuitem', jMenuInterp, [], 'Grid resolution: 1mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 1));
+%         jItem2 = gui_component('radiomenuitem', jMenuInterp, [], 'Grid resolution: 2mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 2));
+%         jItem3 = gui_component('radiomenuitem', jMenuInterp, [], 'Grid resolution: 3mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 3));
 %         jItem1.setSelected(MriOptions.InterpDownsample == 1);
 %         jItem2.setSelected(MriOptions.InterpDownsample == 2);
 %         jItem3.setSelected(MriOptions.InterpDownsample == 3);
@@ -852,30 +904,17 @@ function DisplayFigurePopup(hFig)
     end
 
     % ==== MENU ELECTRODES ====
-    if Handles.isEeg
-        jMenu = gui_component('Menu', jPopup, [], 'Electrodes', IconLoader.ICON_CHANNEL);
+    if Handles.isEeg && ~isempty(iDS) && ~isempty(GlobalData.DataSet(iDS).ChannelFile) || ~isempty(GlobalData.DataSet(iDS).Channel)
+        % Add 3D views
+        gui_component('MenuItem', jPopup, [], 'Add 3D view', IconLoader.ICON_AXES, [], @(h,ev)Add3DView(hFig));
+        % Display labels
+        jItem = gui_component('CheckBoxMenuItem', jPopup, [], 'Display labels',  IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)SetLabelVisible(hFig, ~Handles.isEegLabels));
+        jItem.setSelected(Handles.isEegLabels);
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
         % Set position
-        jItem = gui_component('MenuItem', jMenu, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
+        jItem = gui_component('MenuItem', jPopup, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
         jPopup.addSeparator();
-        % Align SEEG electrodes
-        Modality = Handles.ChannelMat.Channel(Handles.iChannels(1)).Type;
-        if strcmpi(Modality, 'SEEG')
-            jMenu.addSeparator();
-            jItem = gui_component('MenuItem', jMenu, [], 'Align all contacts in a group',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'all'));
-            jItem = gui_component('MenuItem', jMenu, [], 'Define group with first and second contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'first_second'));
-            jItem = gui_component('MenuItem', jMenu, [], 'Define group with first and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'first_last'));
-        elseif strcmpi(Modality, 'ECOG')
-            jMenu.addSeparator();
-            jItem = gui_component('MenuItem', jMenu, [], 'Define strip: First and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 1));
-            jItem = gui_component('MenuItem', jMenu, [], 'Define grid: First and last contacts',   IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 2));
-            jItem = gui_component('MenuItem', jMenu, [], 'Define grid: 4 corner contacts',         IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 4));
-        end
-        % Display labels
-        jMenu.addSeparator();
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Display labels',  IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)SetLabelVisible(hFig, ~Handles.isEegLabels));
-        jItem.setSelected(Handles.isEegLabels);
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK)); 
     end
     
     jMenuView = gui_component('Menu', jPopup, [], 'Views', IconLoader.ICON_AXES);
@@ -965,10 +1004,6 @@ function [sMri, Handles] = SetupMri(hFig)
     setappdata(hFig, 'Surface', TessInfo);
 
     % === SET MOUSE CALLBACKS ===
-    set(hFig, 'ButtonDownFcn', @(h,ev)MouseButtonDownAxes_Callback(hFig,[],sMri,Handles));
-    set([Handles.axa, Handles.imga_mri, Handles.crosshairAxialH,    Handles.crosshairAxialV],    'ButtonDownFcn', @(h,ev)MouseButtonDownAxes_Callback(hFig,Handles.axa, sMri, Handles));
-    set([Handles.axs, Handles.imgs_mri, Handles.crosshairSagittalH, Handles.crosshairSagittalV], 'ButtonDownFcn', @(h,ev)MouseButtonDownAxes_Callback(hFig,Handles.axs, sMri, Handles));
-    set([Handles.axc, Handles.imgc_mri, Handles.crosshairCoronalH,  Handles.crosshairCoronalV],  'ButtonDownFcn', @(h,ev)MouseButtonDownAxes_Callback(hFig,Handles.axc, sMri, Handles));
     % Register MouseMoved and MouseButtonUp callbacks for current figure
     set(hFig, 'WindowButtonDownFcn',   @(h,ev)MouseButtonDownFigure_Callback(hFig, sMri, Handles), ...
               'WindowButtonMotionFcn', @(h,ev)MouseMove_Callback(hFig, sMri, Handles), ...
@@ -1007,22 +1042,57 @@ end
 %% ===== SETUP A VIEW =====
 function [hImgMri, hCrossH, hCrossV] = SetupView(hAxes, xySize, imgSize, orientLabels)
     % MRI image
-    hImgMri = image('XData',        [1, xySize(1)], ...
-                    'YData',        [1, xySize(2)], ...
-                    'CData',        zeros(imgSize(1), imgSize(2)), ...
-                    'CDataMapping', 'scaled', ...
-                    'Parent',       hAxes);
-    % Define axes limits
+    hImgMri = findobj(hAxes, '-depth', 1, 'Tag', 'ImageMriSlice');
+    if isempty(hImgMri) && ~isempty(imgSize)
+        hImgMri = image('XData',        [1, xySize(1)], ...
+                        'YData',        [1, xySize(2)], ...
+                        'CData',        zeros(imgSize(1), imgSize(2)), ...
+                        'CDataMapping', 'scaled', ...
+                        'Parent',       hAxes, ...
+                        'Tag',          'ImageMriSlice');
+    end
+    
+    % Get axes dimensions
+    AxesPos = get(hAxes, 'Position');
+    % Get default axis limits
     XLim = [0 xySize(1)] + 0.5;
     YLim = [0 xySize(2)] + 0.5;
+    % Adapt display to the limiting axis (for full width display when zooming in)
+    Xr = xySize(1) / AxesPos(3);
+    Yr = xySize(2) / AxesPos(4);
+    if (Yr > Xr)
+        XLim = XLim + [-1,1] * (Yr * AxesPos(3) - xySize(1)) / 2;
+    else
+        YLim = YLim + [-1,1] * (Xr * AxesPos(4) - xySize(2)) / 2;
+    end
+    % Define axes limits
     set(hAxes, 'XLim', XLim, 'YLim', YLim);
+    
     % Crosshair
-    hCrossH = line(XLim, [1 1], [2, 2], 'Color', [.8 .8 .8], 'Parent', hAxes);
-    hCrossV = line([1,1], YLim, [2, 2], 'Color', [.8 .8 .8], 'Parent', hAxes);
+    hCrossH = findobj(hAxes, '-depth', 1, 'Tag', 'LineCrossH');
+    hCrossV = findobj(hAxes, '-depth', 1, 'Tag', 'LineCrossV');
+    if isempty(hCrossH) || isempty(hCrossV)
+        hCrossH = line(XLim, [1 1], [2, 2], 'Color', [.8 .8 .8], 'Parent', hAxes, 'Tag', 'LineCrossH');
+        hCrossV = line([1,1], YLim, [2, 2], 'Color', [.8 .8 .8], 'Parent', hAxes, 'Tag', 'LineCrossV');
+    else
+        set(hCrossH, 'XData', XLim);
+        set(hCrossV, 'YData', YLim);
+    end
     % Orientation markers
-    fontSize = bst_get('FigFont');
-    text(XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), orientLabels{1}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientL');
-    text(XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), orientLabels{2}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientR');
+    if ~isempty(orientLabels)
+        hLabelOrientL = findobj(hAxes, '-depth', 1, 'Tag', 'LabelOrientL');
+        hLabelOrientR = findobj(hAxes, '-depth', 1, 'Tag', 'LabelOrientR');
+        posL = [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        posR = [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        if isempty(hLabelOrientL) || isempty(hLabelOrientR)
+            fontSize = bst_get('FigFont');
+            text(posL(1), posL(2), orientLabels{1}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientL');
+            text(posR(1), posR(2), orientLabels{2}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientR');
+        else
+            set(hLabelOrientL, 'Position', posL);
+            set(hLabelOrientR, 'Position', posR);
+        end
+    end
     % Save initial axis limits
     setappdata(hAxes, 'XLimInit', XLim);
     setappdata(hAxes, 'YLimInit', YLim);
@@ -1197,6 +1267,7 @@ function Handles = UpdateMriDisplay(hFig, dims, varargin)
     % Display fiducials/other landmarks (Not if read only MRI)
     if Handles.isEditFiducials || Handles.isEeg
         UpdateVisibleLandmarks(sMri, Handles, dims);
+        UpdateVisibleSensors3D(hFig, dims);
     end
     % Update coordinates display
     UpdateCoordinates(sMri, Handles);
@@ -1281,36 +1352,63 @@ end
 %% =======================================================================================
 %  ===== MOUSE CALLBACKS =================================================================
 %  =======================================================================================
-%% ===== MOUSE CLICK: AXES =====       
-function MouseButtonDownAxes_Callback(hFig, hAxes, sMri, Handles)
+%% ===== MOUSE CLICK: FIGURE =====
+function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
+    global GlobalData;
+    % Get clicked axes
+    hObj = get(hFig,'CurrentObject');
+    if isempty(hObj)
+        hAxes = [];
+    elseif strcmpi(get(hObj, 'Type'), 'axes')
+        hAxes = hObj(1);
+    else
+        hParent = get(hObj(1), 'Parent');
+        if strcmpi(get(hParent, 'Type'), 'axes')
+            hAxes = hParent;
+        else
+            hAxes = [];
+        end
+    end
     % Double-click: Reset view
     if strcmpi(get(hFig, 'SelectionType'), 'open')
         ButtonZoom_Callback(hFig, 'reset');
-        setappdata(hFig,'clickAction','MouseDownOk');
         return;
     end
     % Check if MouseUp was executed before MouseDown
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig,'clickAction'), 'MouseDownNotConsumed')
-        % Should ignore this MouseDown event
-        setappdata(hFig,'clickAction','MouseDownOk');
         return;
     end
     % Switch between different types of mouse actions
     clickAction = '';
-    switch(get(hFig, 'SelectionType'))
-        % Left click
-        case 'normal'
-            clickAction = 'LeftClick';
-            % Move crosshair according to mouse position
-            if ~isempty(hAxes)
-                MouseMoveCrosshair(hAxes, sMri, Handles);
-            end
-        % CTRL+Mouse, or Mouse right
-        case 'alt'
-            clickAction = 'RightClick';
-        % SHIFT+Mouse
-        case 'extend'
-            clickAction = 'ShiftClick';
+    % Clicked on a sensor marker
+    if ~isempty(hObj) && strcmpi(get(hObj, 'Tag'), 'PointMarker')
+        % Get point name
+        PointLabel = get(hObj, 'UserData');
+        % Get channels displayed in this figure
+        [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+        if ~isempty(PointLabel) && ~isempty(iDS) && ~isempty(GlobalData.DataSet(iDS).Channel) && ismember(PointLabel, {GlobalData.DataSet(iDS).Channel.Name})
+            clickAction = 'MovePoint';
+            clickSource = hObj;
+        end
+    end
+    % Otherwise: no particular object was clicked
+    if isempty(clickAction)
+        switch(get(hFig, 'SelectionType'))
+            % Left click
+            case 'normal'
+                clickAction = 'LeftClick';
+                % Move crosshair according to mouse position
+                if ~isempty(hAxes)
+                    MouseMoveCrosshair(hAxes, sMri, Handles);
+                end
+            % CTRL+Mouse, or Mouse right
+            case 'alt'
+                clickAction = 'RightClick';
+            % SHIFT+Mouse
+            case 'extend'
+                clickAction = 'ShiftClick';
+        end
+        clickSource = hAxes;
     end
     % If no action was defined : nothing to do more
     if isempty(clickAction)
@@ -1321,13 +1419,7 @@ function MouseButtonDownAxes_Callback(hFig, hAxes, sMri, Handles)
     setappdata(hFig, 'hasMoved', 0);
     % Record mouse location in the figure coordinates system
     setappdata(hFig, 'clickAction', clickAction);
-    setappdata(hFig, 'clickSource', hAxes);
-    setappdata(hFig, 'clickPositionFigure', get(hFig, 'CurrentPoint'));
-end
-
-
-%% ===== MOUSE CLICK: FIGURE =====
-function MouseButtonDownFigure_Callback(hFig, varargin)
+    setappdata(hFig, 'clickSource', clickSource);
     setappdata(hFig, 'clickPositionFigure', get(hFig, 'CurrentPoint'));
 end
 
@@ -1377,20 +1469,39 @@ function MouseMove_Callback(hFig, sMri, Handles)
             ColormapInfo = getappdata(hFig, 'Colormap');
             sColormap = bst_colormaps('ColormapChangeModifiers', ColormapInfo.Type, [motionFigure(1), motionFigure(2)] ./ 100, 0);
             set(hFig, 'Colormap', sColormap.CMap);
+        case 'MovePoint'
+            if isempty(clickSource)
+                return
+            end
+            % Get all graphics handles
+            hAxes = get(clickSource, 'Parent');
+            Handles = bst_figures('GetFigureHandles', hFig);
+            iChannel = find(any(Handles.hPointEEG == clickSource, 2));
+            % Move slices according to mouse position
+            if ~isempty(iChannel)
+                MouseMovePoint(hAxes, sMri, Handles, iChannel);
+            end
     end
 end
 
 %% ===== MOUSE BUTTON UP =====       
-function MouseButtonUp_Callback(hFig, varargin) 
-    hasMoved = getappdata(hFig, 'hasMoved');
+function MouseButtonUp_Callback(hFig, varargin)
+    % Get saved properties
+    hasMoved    = getappdata(hFig, 'hasMoved');
     clickAction = getappdata(hFig, 'clickAction');
-    
+    clickSource = getappdata(hFig, 'clickSource');
     % Mouse was not moved during click
     if ~isempty(clickAction)
         if ~hasMoved
             switch (clickAction)
                 case 'RightClick'
                     DisplayFigurePopup(hFig);
+                case 'MovePoint'
+                    % Point was not moved: Move crosshair according to mouse position
+                    hAxes = get(clickSource, 'Parent');
+                    Handles = bst_figures('GetFigureHandles', hFig);
+                    sMri = panel_surface('GetSurfaceMri', hFig);
+                    MouseMoveCrosshair(hAxes, sMri, Handles);
             end
         % Mouse was moved
         else
@@ -1399,6 +1510,19 @@ function MouseButtonUp_Callback(hFig, varargin)
                     % Apply new colormap to all figures
                     ColormapInfo = getappdata(hFig, 'Colormap');
                     bst_colormaps('FireColormapChanged', ColormapInfo.Type);
+                case 'MovePoint'
+                    % Get all graphics handles
+                    hAxes = get(clickSource, 'Parent');
+                    Handles = bst_figures('GetFigureHandles', hFig);
+                    sMri = panel_surface('GetSurfaceMri', hFig);
+                    % Get channel name
+                    ChannelName = get(clickSource, 'UserData');
+                    % Get mouse position
+                    mouse3DPos = GetMouseLocation(hAxes, sMri, Handles);
+                    % Convert to SCS coordinates
+                    scsXYZ = cs_convert(sMri, 'mri', 'scs', mouse3DPos ./ 1000)';
+                    % Save new positions
+                    SetElectrodePosition(hFig, ChannelName, scsXYZ);
             end
         end
     end
@@ -1430,34 +1554,44 @@ function MouseWheel_Callback(hFig, sMri, Handles, event)
     if isempty(event)
         return;
     elseif isnumeric(event)
-        scrollCout = event;
+        scrollCount = event;
     else
-        scrollCout = event.VerticalScrollCount;
+        scrollCount = event.VerticalScrollCount;
     end
-    % Get which axis is selected
-    hAxes = get(hFig, 'CurrentAxes');
-    if isempty(hAxes)
-        return
+    % CTRL + Scroll: Zoom in/out
+    if ismember('control', get(hFig,'CurrentModifier'))
+        if (scrollCount > 0)
+            ButtonZoom_Callback(hFig, '-', 1.3);
+        else
+            ButtonZoom_Callback(hFig, '+', 1.3);
+        end
+    % Regular scroll: Change slices
+    else
+        % Get which axis is selected
+        hAxes = get(hFig, 'CurrentAxes');
+        if isempty(hAxes)
+            return
+        end
+        % Get handles and MRI
+        if isempty(sMri)
+            sMri = panel_surface('GetSurfaceMri', hFig);
+        end
+        if isempty(Handles)
+            Handles = bst_figures('GetFigureHandles', hFig);
+        end
+        % Get dimension corresponding to this axes
+        switch (hAxes)
+            case Handles.axs,  dim = 1;
+            case Handles.axc,  dim = 2;  
+            case Handles.axa,  dim = 3; 
+            otherwise,         return;
+        end
+        % Get current position
+        XYZ = GetLocation('voxel', sMri, Handles);
+        % Update location
+        XYZ(dim) = XYZ(dim) - double(scrollCount);
+        SetLocation('voxel', sMri, Handles, XYZ);
     end
-    % Get handles and MRI
-    if isempty(sMri)
-        sMri = panel_surface('GetSurfaceMri', hFig);
-    end
-    if isempty(Handles)
-        Handles = bst_figures('GetFigureHandles', hFig);
-    end
-    % Get dimension corresponding to this axes
-    switch (hAxes)
-        case Handles.axs,  dim = 1;
-        case Handles.axc,  dim = 2;  
-        case Handles.axa,  dim = 3; 
-        otherwise,         return;
-    end
-    % Get current position
-    XYZ = GetLocation('voxel', sMri, Handles);
-    % Update location
-    XYZ(dim) = XYZ(dim) - double(scrollCout);
-    SetLocation('voxel', sMri, Handles, XYZ);
 end
     
 %% ===== MOVE CROSSHAIR =====
@@ -1494,7 +1628,56 @@ function MouseMoveCrosshair(hAxes, sMri, Handles)
     SetLocation('voxel', sMri, Handles, voxPos);
 end
 
-    
+%% ===== MOVE ELECTRODE POINT =====
+function MouseMovePoint(hAxes, sMri, Handles, iChannel)
+    % Get mouse location
+    mouse3DPos = GetMouseLocation(hAxes, sMri, Handles);
+    % Update positions of the points
+    switch hAxes
+        case Handles.axs
+            set(Handles.hPointEEG(iChannel,1), 'XData', mouse3DPos(2));
+            set(Handles.hPointEEG(iChannel,1), 'YData', mouse3DPos(3));
+        case Handles.axc
+            set(Handles.hPointEEG(iChannel,2), 'XData', mouse3DPos(1));
+            set(Handles.hPointEEG(iChannel,2), 'YData', mouse3DPos(3));
+        case Handles.axa
+            set(Handles.hPointEEG(iChannel,3), 'XData', mouse3DPos(1));
+            set(Handles.hPointEEG(iChannel,3), 'YData', mouse3DPos(2));
+    end
+end
+
+%% ===== GET MOUSE LOCATION =====
+function mouse3DPos = GetMouseLocation(hAxes, sMri, Handles)
+    % Get mouse 2D position
+    mouse2DPos = get(hAxes, 'CurrentPoint');
+    mouse2DPos = [mouse2DPos(1,1), mouse2DPos(1,2)];
+    % Get current slices
+    slicesXYZ = GetLocation('mri', sMri, Handles) .* 1000;
+    % Get 3D mouse position 
+    mouse3DPos = [0 0 0];
+    switch hAxes
+        case Handles.axs
+            mouse3DPos(1) = slicesXYZ(1);
+            mouse3DPos(2) = mouse2DPos(1);
+            mouse3DPos(3) = mouse2DPos(2);
+        case Handles.axc
+            mouse3DPos(2) = slicesXYZ(2);
+            mouse3DPos(1) = mouse2DPos(1);
+            mouse3DPos(3) = mouse2DPos(2);
+        case Handles.axa
+            mouse3DPos(3) = slicesXYZ(3);
+            mouse3DPos(1) = mouse2DPos(1);
+            mouse3DPos(2) = mouse2DPos(2);
+    end
+    % Limit values to MRI cube
+    mriSize = size(sMri.Cube) .* sMri.Voxsize;
+    mouse3DPos(1) = min(max(mouse3DPos(1), sMri.Voxsize(1)), mriSize(1));
+    mouse3DPos(2) = min(max(mouse3DPos(2), sMri.Voxsize(2)), mriSize(2));
+    mouse3DPos(3) = min(max(mouse3DPos(3), sMri.Voxsize(3)), mriSize(3));
+end
+
+
+
 %% =======================================================================================
 %  ===== LANDMARKS SELECTION =============================================================
 %  =======================================================================================
@@ -1525,6 +1708,7 @@ function [sMri, Handles] = LoadLandmarks(sMri, Handles)
     % Update landmarks display
     if Handles.isEditFiducials || Handles.isEeg
         UpdateVisibleLandmarks(sMri, Handles);
+        UpdateVisibleSensors3D(Handles.hFig);
     end
     % Update coordinates displayed in the bottom-right panel
     UpdateCoordinates(sMri, Handles);
@@ -1550,42 +1734,184 @@ function [sMri,Handles] = LoadFiducial(sMri, Handles, FidCategory, FidName, FidC
             delete(Handles.(PtHandleName)(ishandle(Handles.(PtHandleName))));
         end
         % Create a marker object for this point
-        Handles.(PtHandleName) = PlotPoint(sMri, Handles, sMri.(FidCategory).(FidName), FidColor, 7);
+        Handles.(PtHandleName) = PlotPoint(sMri, Handles, sMri.(FidCategory).(FidName), FidColor, 7, FidName);
     end
 end
 
 
 %% ===== LOAD ELECTRODES =====
 function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
-    % Get figure handles
-    Handles = bst_figures('GetFigureHandles', hFig);
-    % Load the channel file
-    ChannelMat = in_bst_channel(ChannelFile);
-    iChannels = channel_find(ChannelMat.Channel, Modality);
-    if isempty(iChannels)
-        disp(['BST> Error: No "' Modality '" channels to display.']);
+    global GlobalData;
+    % Get figure and dataset
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+    if isempty(iDS)
         return;
     end
-    % Channel file
-    Handles.ChannelFile = ChannelFile;
-    Handles.ChannelMat  = ChannelMat;
-    Handles.iChannels   = iChannels;
+    % Check that the channel is not already defined
+    if ~isempty(GlobalData.DataSet(iDS).ChannelFile) && ~file_compare(GlobalData.DataSet(iDS).ChannelFile, ChannelFile)
+        error('There is already another channel file loaded for this MRI. Close the existing figures.');
+    end
+    % Load channel file in the dataset
+    bst_memory('LoadChannelFile', iDS, ChannelFile);
+    % Load the channel file
+    iChannels = channel_find(GlobalData.DataSet(iDS).Channel, Modality);
+    % Set the list of selected sensors
+    GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = iChannels;
+    GlobalData.DataSet(iDS).Figure(iFig).Id.Modality      = Modality;
     % Plot electrodes
-    Handles = PlotElectrodes(hFig, Handles);
-    % Update figure Handles
-    bst_figures('SetFigureHandles', hFig, Handles);
+    if ~isempty(iChannels)
+        GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotElectrodes(iDS, iFig, GlobalData.DataSet(iDS).Figure(iFig).Handles);
+        PlotSensors3D(iDS, iFig);
+    end
     % Set EEG flag
     SetFigureStatus(hFig, [], [], [], 1, 1);
 end
 
 
+%% ===== PLOT 3D ELECTRODES =====
+function PlotSensors3D(iDS, iFig, Channel, ChanLoc)
+    global GlobalData;
+    % Get current electrodes positions
+    if (nargin < 3) || isempty(Channel) || isempty(ChanLoc)
+        selChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+        Channel = GlobalData.DataSet(iDS).Channel(selChan);
+        [AllLoc, ChanLoc] = figure_3d('GetChannelPositions', iDS, selChan);
+    end
+    % Get figure
+    hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+    Handles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
+    % Get Mri and figure Handles
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    % Get font size
+    fontSize = bst_get('FigFont') + 2;
+    % Delete previously created electrodes
+    delete(findobj(hFig, 'Tag', 'ElectrodeGrid'));
+    delete(findobj(hFig, 'Tag', 'ElectrodeSelect'));
+    delete(findobj(hFig, 'Tag', 'ElectrodeDepth'));
+    delete(findobj(hFig, 'Tag', 'ElectrodeWire'));
+    delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
+    
+    % === DEPTH ELECTRODES ===
+    % Create objects geometry
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc);
+    % Plot depth electrodes
+    for iElec = 1:length(ElectrodeDepth)
+        % Get coordinates
+        VertMri = cs_convert(sMri, 'scs', 'mri', ElectrodeDepth(iElec).Vertices) .* 1000;
+        Z = repmat(2 + 0.01*iElec, size(VertMri,1), 1);
+        % Common display options
+        Opt = cat(2, ElectrodeDepth(iElec).Options, ...
+            'Faces',               ElectrodeDepth(iElec).Faces, ...
+            'FaceColor',           ElectrodeDepth(iElec).FaceColor, ...
+            'FaceAlpha',           'flat', ...
+            'FaceVertexAlphaData', repmat(ElectrodeDepth(iElec).FaceAlpha, size(VertMri,1), 1), ...
+            'AlphaDataMapping',    'none');
+        % Sagittal / Coronal / Axial
+        hElectrodeDepthS = patch(Opt{:}, ...
+            'Vertices',  [VertMri(:,2), VertMri(:,3), Z],...
+            'Parent',    Handles.axs);
+        hElectrodeDepthC = patch(Opt{:}, ...
+            'Vertices',  [VertMri(:,1), VertMri(:,3), Z],...
+            'Parent',    Handles.axc);
+        hElectrodeDepthA = patch(Opt{:}, ...
+            'Vertices',  [VertMri(:,1), VertMri(:,2), Z],...
+            'Parent',    Handles.axa);
+%         setappdata(hElectrodeDepthS, 'Z', VertMri(:,1));
+%         setappdata(hElectrodeDepthC, 'Z', VertMri(:,2));
+%         setappdata(hElectrodeDepthA, 'Z', VertMri(:,3));
+    end
+    
+    % === ELECTRODES LABELS ===
+    for iElec = 1:length(ElectrodeLabel)
+        % Do not add label for ECOG
+        if strcmpi(ElectrodeLabel(iElec).Type, 'ECOG')
+            continue;
+        end
+        % Get coordinates
+        Z = 3 + 0.01*iElec;
+        LocMri = cs_convert(sMri, 'scs', 'mri', ElectrodeLabel(iElec).Loc) .* 1000;
+        % Common display options
+        Opt = cat(2, ElectrodeLabel(iElec).Options, ...
+            'HorizontalAlignment', 'center', ...
+            'FontSize',            fontSize, ...
+            'FontWeight',          'bold', ...
+            'Color',               ElectrodeLabel(iElec).Color);
+        % Sagittal / Coronal / Axial
+        hElectrodeLabelS = text(LocMri(2), LocMri(3), Z, ElectrodeLabel(iElec).Name, Opt{:}, ...
+            'Parent', Handles.axs);
+        hElectrodeLabelC = text(LocMri(1), LocMri(3), Z, ElectrodeLabel(iElec).Name, Opt{:}, ...
+            'Parent', Handles.axc);
+        hElectrodeLabelA = text(LocMri(1), LocMri(2), Z, ElectrodeLabel(iElec).Name, Opt{:}, ...
+            'Parent', Handles.axa);
+    end
+    
+    % === ECOG WIRES ===
+    for iElec = 1:length(ElectrodeWire)
+        % Get coordinates
+        LocMri = cs_convert(sMri, 'scs', 'mri', ElectrodeWire(iElec).Loc) .* 1000;
+        Z = repmat(4 + 0.01*iElec, size(LocMri,1), 1);
+        % Common display options
+        Opt = cat(2, ElectrodeWire(iElec).Options, ...
+            'LineWidth',  ElectrodeWire(iElec).LineWidth, ...
+            'Color',      ElectrodeWire(iElec).Color);
+        % Sagittal / Coronal / Axial
+        hElectrodeWireS = line(LocMri(:,2), LocMri(:,3), Z, Opt{:}, ...           
+            'Parent', Handles.axs);
+        hElectrodeWireC = line(LocMri(:,1), LocMri(:,3), Z, Opt{:}, ...           
+            'Parent', Handles.axc);
+        hElectrodeWireA = line(LocMri(:,1), LocMri(:,2), Z, Opt{:}, ...           
+            'Parent', Handles.axa);
+%         setappdata(hElectrodeWireS, 'Z', LocMri(:,1));
+%         setappdata(hElectrodeWireC, 'Z', LocMri(:,2));
+%         setappdata(hElectrodeWireA, 'Z', LocMri(:,3));
+    end
+    
+    % === GRID OF CONTACTS ===
+    if ~isempty(ElectrodeGrid) && ~isempty(ElectrodeGrid.Vertices)
+        % Get coordinates
+        VertMri = cs_convert(sMri, 'scs', 'mri', ElectrodeGrid.Vertices) .* 1000;
+        Z = repmat(5, size(VertMri,1), 1);
+        % Common display options
+        Opt = cat(2, ElectrodeGrid.Options, ...
+            'Faces',               ElectrodeGrid.Faces, ...
+            'FaceVertexCData',     ElectrodeGrid.FaceVertexCData, ...
+            'FaceVertexAlphaData', ElectrodeGrid.FaceVertexAlphaData, ...
+            'FaceColor',           'interp', ...
+            'FaceAlpha',           'interp', ...
+            'AlphaDataMapping',    'none');
+        % Sagittal / Coronal / Axial
+        hElectrodeGridS = patch(Opt{:}, ...
+            'Vertices', [VertMri(:,2), VertMri(:,3), Z],...
+            'Parent',   Handles.axs);
+        hElectrodeGridC = patch(Opt{:}, ...
+            'Vertices', [VertMri(:,1), VertMri(:,3), Z],...
+            'Parent',   Handles.axc);
+        hElectrodeGridA = patch(Opt{:}, ...
+            'Vertices', [VertMri(:,1), VertMri(:,2), Z],...
+            'Parent',   Handles.axa);
+        % setappdata(hElectrodeGridS, 'Z', VertMri(:,1));
+        % setappdata(hElectrodeGridC, 'Z', VertMri(:,2));
+        % setappdata(hElectrodeGridA, 'Z', VertMri(:,3));
+    end
+    
+    % === HIDE SENSORS ===
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.HiddenChannels = HiddenChannels;
+    
+    % Repaint selected sensors for this figure
+%     UpdateFigSelectedRows(iDS, iFig);
+end
+
+
+
 %% ===== PLOT ELECTRODES =====
-function Handles = PlotElectrodes(hFig, Handles, isReset)
+function Handles = PlotElectrodes(iDS, iFig, Handles, isReset)
+    global GlobalData;
     % Parse input
-    if (nargin < 3) || isempty(isReset)
+    if (nargin < 4) || isempty(isReset)
         isReset = 0;
     end
     % Get Mri and figure Handles
+    hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
     sMri = panel_surface('GetSurfaceMri', hFig);
     % Delete existing points
     if isReset
@@ -1595,18 +1921,22 @@ function Handles = PlotElectrodes(hFig, Handles, isReset)
         Handles.hTextEEG = [];
     end
     % SEEG/ECOG: Get the sensor groups available and simplify the names of the sensors
-    if ismember(upper(Handles.ChannelMat.Channel(Handles.iChannels(1)).Type), {'SEEG', 'ECOG'})
-        [iGroupEeg, GroupNames, sensorNames] = panel_montage('GetEegGroups', Handles.ChannelMat.Channel(Handles.iChannels), [], 1);
-    else
-        sensorNames = {Handles.ChannelMat.Channel(Handles.iChannels).Name}';
+    selChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+    Channels = GlobalData.DataSet(iDS).Channel(selChan);
+    % Define display names for the channels
+    if ~isempty(Channels)
+        % if ismember(upper(Channels(selChan(1)).Type), {'SEEG', 'ECOG'})
+        if strcmpi(upper(Channels(selChan(1)).Type), 'SEEG')
+            [iGroupEeg, GroupNames, sensorNames] = panel_montage('GetEegGroups', Channels, [], 1);
+        else
+            sensorNames = {Channels.Name}';
+        end
     end
     % Loop on all the channels to create the graphic objects
-    for i = 1:length(Handles.iChannels)
-        % Get electrode position
-        chLoc = Handles.ChannelMat.Channel(Handles.iChannels(i)).Loc;
+    for i = 1:length(Channels)
         % Display electrode position
-        if ~isempty(chLoc)
-            Handles.LocEEG(i,:) = cs_convert(sMri, 'scs', 'mri', chLoc(:,1)')' .* 1000;
+        if ~isempty(Channels(i).Loc)
+            Handles.LocEEG(i,:) = cs_convert(sMri, 'scs', 'mri', Channels(i).Loc(:,1)')' .* 1000;
         else
             Handles.LocEEG(i,:) = [-500; -500; -500];
         end
@@ -1619,15 +1949,11 @@ function Handles = PlotElectrodes(hFig, Handles, isReset)
             set(Handles.hTextEEG(i,1), 'Position', [Handles.LocEEG(i,2), Handles.LocEEG(i,3), 1.5]);
             set(Handles.hTextEEG(i,2), 'Position', [Handles.LocEEG(i,1), Handles.LocEEG(i,3), 1.5]);
             set(Handles.hTextEEG(i,3), 'Position', [Handles.LocEEG(i,1), Handles.LocEEG(i,2), 1.5]);
-            % Update callbacks
-            set(Handles.hPointEEG(i,1), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
-            set(Handles.hPointEEG(i,2), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
-            set(Handles.hPointEEG(i,3), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
         else
             markerColor = [1 1 0];
             textColor = [.4,1,.4];
-            Handles.hPointEEG(i,:) = PlotPoint(sMri, Handles, Handles.LocEEG(i,:), markerColor, 4);
-            Handles.hTextEEG(i,:)  = PlotText(sMri, Handles, Handles.LocEEG(i,:), textColor, sensorNames{i});
+            Handles.hPointEEG(i,:) = PlotPoint(sMri, Handles, Handles.LocEEG(i,:), markerColor, 4, Channels(i).Name);
+            Handles.hTextEEG(i,:)  = PlotText(sMri, Handles, Handles.LocEEG(i,:), textColor, sensorNames{i}, Channels(i).Name);
         end
     end
 end
@@ -1635,50 +1961,51 @@ end
 
 
 %% ===== PLOT POINT =====
-function hPt = PlotPoint(sMri, Handles, ptLocVox, ptColor, ptSize)
-    % Small dots: selects them
-    if (ptSize <= 4)
-        clickFcnS = @(h,ev)SetLocation('mri', Handles.hFig, [], ptLocVox ./ 1000);
-        clickFcnC = @(h,ev)SetLocation('mri', Handles.hFig, [], ptLocVox ./ 1000);
-        clickFcnA = @(h,ev)SetLocation('mri', Handles.hFig, [], ptLocVox ./ 1000);
-    % Large dots: like it was not clicked
-    else
-        clickFcnS = @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axs, sMri, Handles);
-        clickFcnC = @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axc, sMri, Handles);
-        clickFcnA = @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axa, sMri, Handles);
-    end
+function hPt = PlotPoint(sMri, Handles, ptLocVox, ptColor, ptSize, UserData)
+%     % Small dots: selects them
+%     if (ptSize <= 4)
+%         clickFcnS = @(h,ev)SetLocation('mri', Handles.hFig, [], ptLocVox ./ 1000);
+%         clickFcnC = @(h,ev)SetLocation('mri', Handles.hFig, [], ptLocVox ./ 1000);
+%         clickFcnA = @(h,ev)SetLocation('mri', Handles.hFig, [], ptLocVox ./ 1000);
+%     % Large dots: like it was not clicked
+%     else
+%         clickFcnS = @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axs, sMri, Handles);
+%         clickFcnC = @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axc, sMri, Handles);
+%         clickFcnA = @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axa, sMri, Handles);
+%     end
     % Plot point in three views: sagittal, coronal, axial
-    hPt(1,1) = line(ptLocVox(2), ptLocVox(3), 1.5, ...
+    Z = 7;
+    hPt(1,1) = line(ptLocVox(2), ptLocVox(3), Z, ...
                   'MarkerFaceColor', ptColor, ...
                   'Marker',          'o', ...
                   'MarkerEdgeColor', [.4 .4 .4], ...
                   'MarkerSize',      ptSize, ...
                   'Parent',          Handles.axs, ...
-                  'ButtonDownFcn',   clickFcnS, ...
                   'Visible',         'off', ...
+                  'UserData',        UserData, ...
                   'Tag',             'PointMarker');
-    hPt(1,2) = line(ptLocVox(1), ptLocVox(3), 1.5, ...
+    hPt(1,2) = line(ptLocVox(1), ptLocVox(3), Z, ...
                   'MarkerFaceColor', ptColor, ...
                   'Marker',          'o', ...
                   'MarkerEdgeColor', [.4 .4 .4], ...
                   'MarkerSize',      ptSize, ...
                   'Parent',          Handles.axc, ...
-                  'ButtonDownFcn',   clickFcnC, ...
                   'Visible',         'off', ...
+                  'UserData',        UserData, ...
                   'Tag',             'PointMarker');
-    hPt(1,3) = line(ptLocVox(1), ptLocVox(2), 1.5, ...
+    hPt(1,3) = line(ptLocVox(1), ptLocVox(2), Z, ...
                   'MarkerFaceColor', ptColor, ...
                   'Marker',          'o', ...
                   'MarkerEdgeColor', [.4 .4 .4], ...
                   'MarkerSize',      ptSize, ...
                   'Parent',          Handles.axa, ...
-                  'ButtonDownFcn',   clickFcnA, ...
                   'Visible',         'off', ...
+                  'UserData',        UserData, ...
                   'Tag',             'PointMarker');
 end
 
 %% ===== PLOT TEXT =====
-function hPt = PlotText(sMri, Handles, ptLocVox, ptColor, ptLabel)
+function hPt = PlotText(sMri, Handles, ptLocVox, ptColor, ptLabel, UserData)
     fontSize = bst_get('FigFont');
     hPt(1,1) = text(ptLocVox(2), ptLocVox(3), 1.5, ptLabel, ...
                   'VerticalAlignment',   'bottom', ...
@@ -1689,7 +2016,7 @@ function hPt = PlotText(sMri, Handles, ptLocVox, ptColor, ptLabel)
                   'color',               ptColor, ...
                   'Tag',                 'LabelEEG', ...
                   'Parent',              Handles.axs, ...
-                  'ButtonDownFcn',       @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axs, sMri, Handles), ...
+                  'UserData',            UserData, ...
                   'Visible',             'off', ...
                   'Tag',                 'TextMarker');
     hPt(1,2) = text(ptLocVox(1), ptLocVox(3), 1.5, ptLabel, ...
@@ -1701,7 +2028,7 @@ function hPt = PlotText(sMri, Handles, ptLocVox, ptColor, ptLabel)
                   'color',               ptColor, ...
                   'Tag',                 'LabelEEG', ...
                   'Parent',              Handles.axc, ...
-                  'ButtonDownFcn',       @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axc, sMri, Handles), ...
+                  'UserData',            UserData, ...
                   'Visible',             'off', ...
                   'Tag',                 'TextMarker');
     hPt(1,3) = text(ptLocVox(1), ptLocVox(2), 1.5, ptLabel, ...
@@ -1713,15 +2040,30 @@ function hPt = PlotText(sMri, Handles, ptLocVox, ptColor, ptLabel)
                   'Color',               ptColor, ...
                   'Tag',                 'LabelEEG', ...
                   'Parent',              Handles.axa, ...
-                  'ButtonDownFcn',       @(h,ev)MouseButtonDownAxes_Callback(Handles.hFig, Handles.axa, sMri, Handles), ...
+                  'UserData',            UserData, ...
                   'Visible',             'off', ...
                   'Tag',                 'TextMarker');
 end
 
-    
+
 %% ===== UPDATE VISIBLE LANDMARKS =====
-% For each point, if it is located close to a slice, display it; else hide it 
+% For each point, if it is located close to a slice, display it; else hide it
+% USAGE: UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate=[1 2 3])
+%        UpdateVisibleLandmarks(hFig)
 function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
+    global GlobalData;
+    % CALL: UpdateVisibleLandmarks(hFig)
+    if (nargin == 1)
+        hFig = sMri;
+        % Get figure and dataset
+        [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+        if isempty(iDS) || isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel)
+            return;
+        end
+        % Get MRI and handles
+        sMri = panel_surface('GetSurfaceMri', hFig);
+        Handles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
+    end
     % Slices indices to update (direct indicing)
     if (nargin < 3)
         slicesToUpdate = [1 1 1];
@@ -1757,11 +2099,17 @@ function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
     MriOptions = bst_get('MriOptions');
     % Show electrodes
     if Handles.isEeg
+        % Hide all the points that we will never show
+        iEegHide = Handles.HiddenChannels;
+        iEegShow = setdiff(1:length(Handles.hPointEEG), iEegHide);
+        if ~isempty(iEegHide)
+            set(Handles.hPointEEG(iEegHide(:),:), 'Visible', 'off');
+        end
         % If MIP:Functional is on, then display all the electrodes
         if MriOptions.isMipFunctional
-            set(Handles.hPointEEG(:), 'Visible', 'on');
+            set(Handles.hPointEEG(iEegShow(:),:), 'Visible', 'on');
         else
-            for i = 1:size(Handles.hPointEEG,1)
+            for i = iEegShow
                 showPt(Handles.hPointEEG(i,:), Handles.LocEEG(i,:));
             end
         end
@@ -1771,16 +2119,125 @@ function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
     
     % Show electrodes labels
     if Handles.isEeg && Handles.isEegLabels
+        % Hide all the points that we will never show
+        if ~isempty(iEegHide)
+            set(Handles.hTextEEG(iEegHide(:),:), 'Visible', 'off');
+        end
         % If MIP:Functional is on, then display all the electrodes
         if MriOptions.isMipFunctional
-            set(Handles.hTextEEG(:),  'Visible', 'on');
+            set(Handles.hTextEEG(iEegShow(:),:),  'Visible', 'on');
         else
-            for i = 1:size(Handles.hTextEEG,1)
+            for i = iEegShow
                 showPt(Handles.hTextEEG(i,:), Handles.LocEEG(i,:));
             end
         end
     else
         set(Handles.hTextEEG, 'Visible', 'off');
+    end
+end
+
+
+%% ===== UPDATE VISIBLE SENSORS =====
+function UpdateVisibleSensors3D(hFig, slicesToUpdate)
+    global GlobalData;
+    % Slices indices to update (direct indicing)
+    if (nargin < 3)
+        slicesToUpdate = [1 1 1];
+    else
+        slicesToUpdate = ismember([1 2 3], slicesToUpdate);
+    end
+    % Get figure and dataset
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+    if isempty(iDS) || isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel)
+        return;
+    end
+    % Get MRI and handles
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    Handles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
+    % Get display properties
+    MriOptions = bst_get('MriOptions');
+    % Get current location in the MRI viewer
+    slicesLoc = GetLocation('mri', sMri, Handles) .* 1000;
+    % Tolerance for displaying a component (in mm)
+    nTol = 1;
+    
+    % Get axes list
+    hAxes = [Handles.axs, Handles.axc, Handles.axa];
+    % Proces axes one by one
+    for iDim = 1:3
+        % Skip dimensions not to update
+        if ~slicesToUpdate(iDim)
+            continue;
+        end
+        % Get depth electrode patch 
+        hElectrodeDepth = findobj(hAxes(iDim), 'Tag', 'ElectrodeDepth');
+        hElectrodeLabel = findobj(hAxes(iDim), 'Tag', 'ElectrodeLabel');
+        elecLabels = get(hElectrodeLabel, 'UserData');
+        % Get the electrodes that are currently in the field of view
+        for iElec = 1:length(hElectrodeDepth)
+            % Get contacts in this electrode
+            groupName = get(hElectrodeDepth(iElec), 'UserData');
+            % Functional MIP: Display all the depth electrodes
+            if MriOptions.isMipFunctional
+                Visible = 'on';
+            % Otherwise: Check if any contact of this electrode is close to the current slices
+            else
+                % Get contacts for this electrode
+                iChan = find(strcmpi({GlobalData.DataSet(iDS).Channel.Group}, groupName));
+                % Get position of contacts
+                ChanLoc = [GlobalData.DataSet(iDS).Channel(iChan).Loc]';
+                % If contacts are not defined: use the electrode position
+                if isempty(ChanLoc)
+                    iEl = find(strcmpi({GlobalData.DataSet(iDS).IntraElectrodes.Name}, groupName));
+                    if ~isempty(iEl) && (size(GlobalData.DataSet(iDS).IntraElectrodes(iEl).Loc,2) >= 2)
+                        ChanLoc = GlobalData.DataSet(iDS).IntraElectrodes(iEl).Loc(:,1) * (0:.05:1) + GlobalData.DataSet(iDS).IntraElectrodes(iEl).Loc(:,2) * (1:-.05:0);
+                    end
+                end
+                % Convert positions to MRI coordinates
+                ChanMri = cs_convert(sMri, 'scs', 'mri', ChanLoc) .* 1000;
+                % Is there any point close to the current slices
+                if any(abs(ChanMri(:,iDim) - slicesLoc(iDim)) <= nTol)
+                    Visible = 'on';
+                else
+                    Visible = 'off';
+                end
+            end
+            set(hElectrodeDepth(iElec), 'Visible', Visible);
+            % Find corresponding label
+            iLabel = find(strcmpi(elecLabels, groupName));
+            if ~isempty(iLabel)
+                set(hElectrodeLabel(iLabel), 'Visible', Visible);
+            end
+        end
+        
+        % Get ECOG wires
+        hElectrodeWire = findobj(hAxes(iDim), 'Tag', 'ElectrodeWire');
+        for iElec = 1:length(hElectrodeWire)
+            if MriOptions.isMipFunctional
+                Visible = 'on';
+            else
+                Visible = 'off';
+            end
+            set(hElectrodeWire(iElec), 'Visible', Visible);
+            % Find corresponding label
+            iLabel = find(strcmpi(elecLabels, get(hElectrodeWire(iElec), 'UserData')));
+            if ~isempty(iLabel)
+                set(hElectrodeLabel(iLabel), 'Visible', Visible);
+            end
+        end
+        
+        % Get electrode contacts
+        hElectrodeGrid = findobj(hAxes(iDim), 'Tag', 'ElectrodeGrid');
+        if ~isempty(hElectrodeGrid)
+            if MriOptions.isMipFunctional
+                set(hElectrodeGrid, 'Visible', 'on');
+            else
+                set(hElectrodeGrid, 'Visible', 'off');
+            end
+%             Z = getappdata(hElectrodeGrid, 'Z');
+%             FaceVertexAlphaData = double(abs(Z - slicesLoc(iDim)) <= nTol);
+%             set(hElectrodeGrid, 'FaceVertexAlphaData', FaceVertexAlphaData);
+        end
     end
 end
 
@@ -1842,7 +2299,6 @@ function ButtonCancel_Callback(hFig, varargin)
     [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
     % Mark that nothing changed
     GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedMri = 0;
-    GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedEeg = 0;
     % Unload all datasets that used this MRI
     sMri = panel_surface('GetSurfaceMri', hFig);
     bst_memory('UnloadMri', sMri.FileName);
@@ -1858,7 +2314,7 @@ function ButtonSave_Callback(hFig, varargin)
     % Get figure Handles
     [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
     % If something was changed in the MRI
-    if GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedMri || GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedEeg
+    if GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedMri || GlobalData.DataSet(iDS).isChannelModified
         % Save MRI
         if GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedMri
             % Save modifications
@@ -1870,15 +2326,6 @@ function ButtonSave_Callback(hFig, varargin)
             % Mark that nothing was changed
             GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedMri = 0;
         end
-        % Save EEG
-        if GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedEeg
-            % Save modifications
-            SaveEeg(hFig);
-            % Mark that nothing was changed
-            GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedEeg = 0;
-        end
-        % % Unload all datasets that used this MRI
-        % bst_memory('UnloadMri', MriFile);
         % Unload all datasets
         bst_memory('UnloadAll', 'Forced');
     else
@@ -1940,22 +2387,22 @@ function [isCloseAccepted, MriFile] = SaveMri(hFig)
     end
     bst_progress('stop');
  
-    % ==== UPDATE OTHER MRI FILES ====
-    if ~isempty(sMriOld) && (length(sSubject.Anatomy) > 1)
-        % New fiducials
-        s.SCS = sMri.SCS;
-        s.NCS = sMri.NCS;
-        % Update each MRI file
-        for iAnat = 1:length(sSubject.Anatomy)
-            % Skip the current one
-            if (iAnat == iAnatomy)
-                continue;
-            end
-            % Save NCS and SCS structures
-            updateMriFile = file_fullpath(sSubject.Anatomy(iAnat).FileName);
-            bst_save(updateMriFile, s, 'v7', 1);
-        end
-    end
+%     % ==== UPDATE OTHER MRI FILES ====
+%     if ~isempty(sMriOld) && (length(sSubject.Anatomy) > 1)
+%         % New fiducials
+%         s.SCS = sMri.SCS;
+%         s.NCS = sMri.NCS;
+%         % Update each MRI file
+%         for iAnat = 1:length(sSubject.Anatomy)
+%             % Skip the current one
+%             if (iAnat == iAnatomy)
+%                 continue;
+%             end
+%             % Save NCS and SCS structures
+%             updateMriFile = file_fullpath(sSubject.Anatomy(iAnat).FileName);
+%             bst_save(updateMriFile, s, 'v7', 1);
+%         end
+%     end
     
     % ==== REALIGN SURFACES ====
     if ~isempty(sMriOld)
@@ -1966,15 +2413,28 @@ end
 
 %% ===== SAVE EEG =====
 function SaveEeg(hFig)
-    % Get figure handles
-    Handles = bst_figures('GetFigureHandles', hFig);
+    global GlobalData;
+    % Get figure and dataset
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+    if isempty(iDS) || isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel)
+        return;
+    end
     % Get full file name
-    ChannelFile = file_fullpath(Handles.ChannelFile);
-    % Save new channel file
-    bst_save(ChannelFile, Handles.ChannelMat, 'v7');
-    % Reload channel study
-    [sStudy, iStudy] = bst_get('ChannelFile', Handles.ChannelFile);
-    db_reload_studies(iStudy);
+    ChannelFile = file_fullpath(GlobalData.DataSet(iDS).ChannelFile);
+    % Load channel file
+    ChannelMat = in_bst_channel(ChannelFile);
+    error('check this');
+    % Check for differences with existing channel file
+    if ~isequal(ChannelMat.Channel, GlobalData.DataSet(iDS).Channel) || ~isequal(ChannelMat.IntraElectrodes, GlobalData.DataSet(iDS).IntraElectrodes)
+        % Update channel structure
+        ChannelMat.Channel = GlobalData.DataSet(iDS).Channel;
+        ChannelMat.IntraElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
+        % Save new channel file
+        bst_save(ChannelFile, ChannelMat, 'v7');
+        % Reload channel study
+        [sStudy, iStudy] = bst_get('Study', GlobalData.DataSet(iDS).StudyFile);
+        db_reload_studies(iStudy);
+    end
 end
 
 
@@ -2256,7 +2716,16 @@ end
 
 
 %% ===== SET ELECTRODE POSITION =====
-function SetElectrodePosition(hFig)
+% USAGE:  SetElectrodePosition(hFig, ChannelName=[ask], scsXYZ=[get from MRI viewer])
+function SetElectrodePosition(hFig, ChannelName, scsXYZ)
+    global GlobalData;
+    % Parse inputs
+    if (nargin < 3) || isempty(scsXYZ)
+        scsXYZ = [];
+    end
+    if (nargin < 2) || isempty(ChannelName)
+        ChannelName = [];
+    end
     % Get MRI and figure handles
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
@@ -2264,350 +2733,41 @@ function SetElectrodePosition(hFig)
     if ~Handles.isEeg
         return;
     end
+    % Get figure and dataset
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+    if isempty(iDS) || isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel)
+        return;
+    end
+    % Get selected sensors
+    iChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
     % Channel name
-    AllNames = {Handles.ChannelMat.Channel(Handles.iChannels).Name};
-    ChannelName = java_dialog('combo', 'Select the electrode:', 'Set electrode position', [], AllNames);
     if isempty(ChannelName)
-        return
+        AllNames = {GlobalData.DataSet(iDS).Channel(iChannels).Name};
+        ChannelName = java_dialog('combo', 'Select the electrode:', 'Set electrode position', [], AllNames);
+        if isempty(ChannelName)
+            return
+        end
     end
     % Get channel index
-    iChan = channel_find(Handles.ChannelMat.Channel(Handles.iChannels), ChannelName);
+    iChan = channel_find(GlobalData.DataSet(iDS).Channel(iChannels), ChannelName);
     if (length(iChan) ~= 1)
         bst_error(['Channel "' ChannelName '" does not exist.'], 'Set electrode position', 0);
         return;
     end
     % Get current position (MRI)
-    scsXYZ = GetLocation('scs', sMri, Handles);
-    % Update electrode position
-    Handles.ChannelMat.Channel(Handles.iChannels(iChan)).Loc = scsXYZ(:);
-    % Plot electrodes again
-    Handles = PlotElectrodes(hFig, Handles);
-    % Update display
-    UpdateVisibleLandmarks(sMri, Handles);
-    % Mark MRI as modified
-    Handles.isModifiedEeg = 1;
-    bst_figures('SetFigureHandles', hFig, Handles);
-end
-
-
-%% ===== ALIGN ELECTRODES =====
-% SEEG:  AlignElectrodes_Callback(hFig, Method)     : Method={first_last, first_second, all}
-% ECOG:  AlignElectrodes_Callback(hFig, nCorners)   : nCorners={1,2,4}
-function AlignElectrodes_Callback(hFig, Method)
-    % Parse inputs
-    if (nargin < 2) || isempty(Method)
-        error('Invalid call.');
-    end
-    % Get MRI and figure handles
-    sMri = panel_surface('GetSurfaceMri', hFig);
-    Handles = bst_figures('GetFigureHandles', hFig);
-    % If there is no EEG: cancel
-    if ~Handles.isEeg
-        return;
-    end
-    % Progress bar
-    bst_progress('start', 'Align electrode contacts', 'Updating electrode positions...');
-    % Get current channels
-    Channels = Handles.ChannelMat.Channel(Handles.iChannels);
-    % Call the function to align electodes
-    Modality = Channels(1).Type;
-    switch (Modality)
-        case 'SEEG'
-            Channels = AlignSeegElectrodes(Channels, Method);
-        case 'ECOG'
-            sSubject = bst_get('Subject', getappdata(hFig, 'SubjectFile'));
-            Channels = AlignEcogElectrodes(Channels, sSubject, Method);
-        otherwise
-            error('Unsupported modality.');
-    end
-    if isempty(Channels)
-        bst_progress('stop');
-        return;
+    if isempty(scsXYZ)
+        scsXYZ = GetLocation('scs', sMri, Handles);
     end
     % Update electrode position
-    Handles.ChannelMat.Channel(Handles.iChannels) = Channels;
+    GlobalData.DataSet(iDS).Channel(iChannels(iChan)).Loc = scsXYZ(:);
     % Plot electrodes again
-    Handles = PlotElectrodes(hFig, Handles);
+    Handles = PlotElectrodes(iDS, iFig, Handles);
     % Update display
     UpdateVisibleLandmarks(sMri, Handles);
-    % Mark MRI as modified
-    Handles.isModifiedEeg = 1;
-    bst_figures('SetFigureHandles', hFig, Handles);
-    % Progress bar
-    bst_progress('stop');
-end
-
-
-%% ===== ALIGN SEEG ELECTRODES =====
-function Channels = AlignSeegElectrodes(Channels, Method)
-    % Get groups of electrodes
-    [iGroupEeg, GroupNames] = panel_montage('GetEegGroups', Channels, [], 1);
-    if isempty(iGroupEeg)
-        error('No groups of contacts are defined. Please edit the channel file and set the Name or Comment fields of the SEEG electrodes.');
-    end
-    % Select groups of electrodes to align
-    isSelected = java_dialog('checkbox', 'Select the groups of contacts to align:', 'Align electrode contacts', [], GroupNames, ones(size(GroupNames)));
-    if isempty(isSelected) || ~any(isSelected)
-        Channels = [];
-        return;
-    end
-    iGroupEeg = iGroupEeg(isSelected == 1);
-    % Ask the distance between contacts
-    if isequal(Method, 'first_second')
-        res = java_dialog('input', 'Distance between two contacts (in millimeters):', 'Align electrode contacts', [], '4.2');
-        % If user cancelled: return
-        if isempty(res)
-            return
-        end
-        % Get new values
-        DistContact = str2num(res) / 1000;
-        if isempty(DistContact) || (DistContact < 0)
-            bst_error('Invalid parameter.', 'Align electrode contacts', 0);
-            return
-        end
-    end
-    % Process each selected group separately
-    for iGroup = 1:length(iGroupEeg)
-        iChan = iGroupEeg{iGroup};
-        switch (Method)
-            % Use first and last contacts: Calculate the positions for the middle electrodes
-            case 'first_last'
-                % Stop in the first or second contacts are not defined
-                if (isempty(Channels(iChan(1)).Loc) || isempty(Channels(iChan(end)).Loc))
-                    disp(['BST> Warning: First or last contacts are not set for group "' GroupNames{iGroup} '".']);
-                    continue;
-                end
-                % Get the positions of the first and last contacts
-                EdgeLoc = [Channels(iChan(1)).Loc, Channels(iChan(end)).Loc];
-                % Set the position of the intermediate contacts
-                for i = 2:(length(iChan)-1)
-                    Channels(iChan(i)).Loc = ((length(iChan)-i)*EdgeLoc(:,1) + (i-1)*EdgeLoc(:,2)) / (length(iChan) - 1);
-                end
-            % Use first and second contacts + inter-contact distance: Calculate the positions for all the other electrodes
-            case 'first_second'
-                % Stop in the first or second contacts are not defined
-                if (isempty(Channels(iChan(1)).Loc) || isempty(Channels(iChan(2)).Loc))
-                    disp(['BST> Warning: First or second contacts are not set for group "' GroupNames{iGroup} '".']);
-                    continue;
-                end
-                % Get the direction of the electrode
-                direction = Channels(iChan(2)).Loc - Channels(iChan(1)).Loc;
-                direction = direction ./ sqrt(sum(direction.^2));
-                % Complete the electrode with distance+orientation
-                for i = 2:length(iChan)
-                    Channels(iChan(i)).Loc = Channels(iChan(1)).Loc(:,1) + (i-1) * direction * DistContact;
-                end
-            % Use Get the principal orientation for all the electrodes
-            case 'all'
-                % Stop if one of the contacts are not set
-                if any(cellfun(@isempty, {Channels(iChan).Loc}))
-                    disp(['BST> Warning: At least one contact is not set for group "' GroupNames{iGroup} '".']);
-                    continue;
-                end
-                % Fix all the channels
-                [ChanOrient, StripOrient, StripStart, ChanLocFix] = figure_3d('GetSeegStrips', Channels, [], {iChan});
-                for i = iChan
-                    Channels(i).Loc = ChanLocFix(i,:)';
-                end
-        end
-    end
-end
-
-
-%% ===== ALIGN ECOG ELECTRODES =====
-% Two different representations for the same grid (U=rows, V=cols)
-%                             |              V ->
-%    Q ___________ S          |        P ___________ T
-%     |__|__|__|__|           |         |__|__|__|__| 
-%     |__|__|__|__|   ^       |     U   |__|__|__|__| 
-%     |__|__|__|__|   U       |     |   |__|__|__|__| 
-%     |__|__|__|__|           |         |__|__|__|__| 
-%    T             P          |        S             Q
-%         <- V                |
-%
-function Channels = AlignEcogElectrodes(Channels, sSubject, nCorners)
-    % Parse inputs
-    if (nargin < 3) || isempty(nCorners)
-        nCorners = 2;
-    end
-    % This can be performed only with the inner skull
-    if isempty(sSubject.iInnerSkull) || (sSubject.iInnerSkull > length(sSubject.Surface))
-        bst_error('You need to define the inner skull surface of the subject before using this function.', 'Align electrode contacts', 0);
-        Channels = [];
-        return;
-    end
-    % Get groups of electrodes
-    [iGroupEeg, GroupNames] = panel_montage('GetEegGroups', Channels, [], 1);
-    if isempty(iGroupEeg)
-        bst_error(['No groups of electrodes are defined. ' 10 'Please edit the channel file and set the Name or Comment fields of the ECOG electrodes.'], 'Align electrode contacts', 0);
-        Channels = [];
-        return;
-    end
-    % Select groups of electrodes to align
-    SelGroup = java_dialog('combo', 'Select the group of contacts to align:', 'Align electrode contacts', [], GroupNames);
-    if isempty(SelGroup)
-        Channels = [];
-        return;
-    end
-    % Get electrodes in the selected group
-    iSelGroup = find(strcmpi(SelGroup, GroupNames));
-    iChan = iGroupEeg{iSelGroup};
-    % Default dimensions
-    nElec = length(iChan);
-    % ECOG strip
-    if (nCorners == 1)
-        nRows = 1;
-        nCols = nElec;
-    % ECOG grid
-    else
-        switch(nElec)
-            case 4,    nRows = 1;   nCols = 4;
-            case 6,    nRows = 1;   nCols = 6;
-            case 8,    nRows = 1;   nCols = 8;
-            case 12,   nRows = 2;   nCols = 6;
-            case 16,   nRows = 2;   nCols = 8;
-            case 32,   nRows = 4;   nCols = 8;
-            case 64,   nRows = 8;   nCols = 8;
-            otherwise, nRows = 1;   nCols = nElec;
-        end
-    end
+    UpdateVisibleSensors3D(hFig);
     
-    % Ask for number of rows and colums of the grid
-    switch (nCorners)
-        % Strips: two edges
-        case 1
-            orient = 0;
-        % Grids: two corners
-        case 2
-            % Get default width for the grid (isotropic scaling)
-            P = Channels(iChan(1)).Loc';
-            Q = Channels(iChan(end)).Loc';
-            PQ = sqrt(sum((Q-P).^2, 2));
-            unitX = PQ / sqrt((nCols-1).^2 + (nRows-1).^2);
-            % Ask user the confirmation
-            res = java_dialog('input', ...
-                {['<HTML>Number of contacts in this group: <B>', num2str(nElec), '</B><BR><BR>'...
-                  'Number of rows:'], ...
-                  'Number of columns:', ...
-                  'Space between two rows (mm):', ...
-                  '<HTML>Orientation of the grid:<BR>0=Rows first, 1=Columns first'}, 'Define ECOG grid', [], ...
-                 {num2str(nRows), num2str(nCols), num2str(unitX * 1000), '0'});
-            if isempty(res) || (length(res) < 4) || isnan(str2double(res{1})) || isempty(str2double(res{1})) || isnan(str2double(res{2})) || isempty(str2double(res{2})) || isnan(str2double(res{3})) || isempty(str2double(res{3})) || isnan(str2double(res{4})) || isempty(str2double(res{4}))
-                return
-            end
-            nRows = str2double(res{1});
-            nCols = str2double(res{2});
-            unitX = str2double(res{3}) / 1000;
-            orient = str2double(res{4});
-        % Grids: four corners
-        case 4
-            res = java_dialog('input', ...
-                {['<HTML>Number of contacts in this group: <B>', num2str(nElec), '</B><BR><BR>'...
-                  'Number of rows:'], 'Number of columns:'}, 'Define ECOG grid', [], ...
-                 {num2str(nRows), num2str(nCols)});
-            if isempty(res) || (length(res) < 2) || isnan(str2double(res{1})) || isempty(str2double(res{1})) || isnan(str2double(res{2})) || isempty(str2double(res{2}))
-                return
-            end
-            nRows = str2double(res{1});
-            nCols = str2double(res{2});
-            orient = 0;
-    end
-    % Check dimensions
-    if (nCols*nRows ~= nElec)
-        bst_error('The number of contacts of the grid does not match the group defined in the channel file.', 'Align electrode contacts', 0);
-        Channels = [];
-        return;
-    elseif (nCols < 2) || (nRows < 2)
-        nCorners = 1;
-    end
-
-    % Get the coordinates of the four corners
-    P = Channels(iChan(1)).Loc';
-    S = Channels(iChan(nRows)).Loc';
-    T = Channels(iChan(end-nRows+1)).Loc';
-    Q = Channels(iChan(end)).Loc';
-    % Project those points on the inner skull
-    [EdgeOrient, EdgeLoc] = figure_3d('GetChannelNormal', sSubject, [P;S;T;Q]);
-    % Retreive coordinates
-    P = EdgeLoc(1,:); 
-    S = EdgeLoc(2,:); 
-    T = EdgeLoc(3,:); 
-    Q = EdgeLoc(4,:); 
-    
-    % Define all the electrodes
-    NewLoc = zeros(nElec, 3);
-    % Get the electrodes indices
-    [I,J] = meshgrid(1:nRows, 1:nCols);
-    % Get list of indices, for the approriate orientation
-    switch (orient)
-        case 0,    I = I'; J = J'; 
-        case 1,    I = I(:);   J = J(:);
-        otherwise, error('Unsupported orientation');
-    end
-    I = I(:);
-    J = J(:);
-
-    % Reconstruct grid from different number of points
-    switch (nCorners)
-        % Strip: two edges
-        case 1
-            I = (1:nElec)';
-            NewLoc = ((nElec-I) * P + (I-1) * Q) ./ (nElec - 1);
-            
-        % Grids: two corners
-        case 2
-            % Get the average normal
-            GridNormal = (EdgeOrient(1,:) + EdgeOrient(4,:)) ./ 2;
-            % Get the distances between P/S   (S = third corner)
-            PS = (nRows-1) * unitX;
-            % Alpha = angle between PQ and PS
-            alpha = acos(PS/PQ);
-            % S1=projection of S on PQ;   S2=projection of S on w
-            S1 = cos(alpha) * PS;
-            S2 = sin(alpha) * PS;
-            % Calculate w1/w2, a base of vectors for the grid
-            w1 = Q - P;
-            w1 = w1 ./ sqrt(sum(w1.^2,2));
-            w2 = cross(w1, GridNormal);
-            w2 = w2 ./ sqrt(sum(w2.^2,2));
-            % Position of the third corner (S)
-            S = P + S1 * w1 + S2 * w2;
-            % Base U and V of vectors to define the grid
-            U = S-P;
-            N = cross(U, Q-P);
-            V = - cross(U, N);
-            % Normalize base vectors to the unit of the grid
-            unitY = sqrt(sum((Q-S).^2,2)) ./ (nCols - 1);
-            U = U ./ sqrt(sum(U.^2,2)) .* unitX;   % Rows
-            V = V ./ sqrt(sum(V.^2,2)) .* unitY;   % Cols
-            % Position of the realigned electrodes
-            NewLoc = bst_bsxfun(@plus, P, (I-1) * U + (J-1)*V);
-            
-        % Grids: four corners
-        case 4
-            % Get 4 possible coordinates for the point, from the four corners
-            Xp = bst_bsxfun(@plus, P,     (I-1)/(nRows-1)*(S-P) +     (J-1)/(nCols-1)*(T-P));
-            Xt = bst_bsxfun(@plus, T,     (I-1)/(nRows-1)*(Q-T) + (nCols-J)/(nCols-1)*(P-T));
-            Xs = bst_bsxfun(@plus, S, (nRows-I)/(nRows-1)*(P-S) +     (J-1)/(nCols-1)*(Q-S));
-            Xq = bst_bsxfun(@plus, Q, (nRows-I)/(nRows-1)*(T-Q) + (nCols-J)/(nCols-1)*(S-Q));
-            % Weight the four options based on their norm to the point, in grid spacing
-            m = (nRows-1)^2 + (nCols-1)^2;
-            wp = m - (    (I-1).^2 +     (J-1).^2);
-            wt = m - (    (I-1).^2 + (nCols-J).^2);
-            ws = m - ((nRows-I).^2 +     (J-1).^2);
-            wq = m - ((nRows-I).^2 + (nCols-J).^2);
-            NewLoc = (bst_bsxfun(@times, wp, Xp) + ...
-                      bst_bsxfun(@times, wt, Xt) + ...
-                      bst_bsxfun(@times, ws, Xs) + ...
-                      bst_bsxfun(@times, wq, Xq));
-            NewLoc = bst_bsxfun(@rdivide, NewLoc, wp + wt + ws + wq);                    
-    end
-    % Project on the inner skull
-    [NewOrient, NewLoc] = figure_3d('GetChannelNormal', sSubject, NewLoc);
-    % Replace original channel positions
-    for i = 1:nElec
-        Channels(iChan(i)).Loc(:,1) = NewLoc(i,:)';
-    end
+    % Mark channel file as modified
+    GlobalData.DataSet(iDS).isChannelModified = 1;
 end
 
 
@@ -2630,6 +2790,7 @@ function SetLabelVisible(hFig, isEegLabels)
     bst_figures('SetFigureHandles', hFig, Handles);
     % Update display
     UpdateVisibleLandmarks(sMri, Handles);
+    UpdateVisibleSensors3D(hFig);
 end
 
 
@@ -2703,3 +2864,39 @@ function ApplyCoordsToAllFigures(hSrcFig, cs)
         SetLocation(cs, destMri, destHandles, XYZ);
     end
 end
+
+
+%% ===== ADD 3D VIEW =====
+function Add3DView(hFig)
+    global GlobalData;
+    % Get figure and dataset
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+    % Get the MRI in this figure
+    TessInfo = getappdata(hFig, 'Surface');
+    MriFile = TessInfo(1).SurfaceFile;
+    % Get subject
+    sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
+    % Get figure modality
+    Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+    % Open a 3D figure
+    if ~isempty(Modality) && strcmpi(Modality, 'ECOG')
+        % SEEG or nothing: Display cortex, scalp or MRI
+        if ~isempty(sSubject.iCortex)
+            hFid3d = view_surface(sSubject.Surface(sSubject.iCortex).FileName);
+        elseif ~isempty(sSubject.iScalp)
+            hFid3d = view_surface(sSubject.Surface(sSubject.iScalp).FileName);
+        else
+            hFid3d = view_mri_3d(MriFile, [], [], iDS);
+        end
+    % SEEG: Only 3D MRI
+    else
+        hFid3d = view_mri_3d(MriFile, [], [], iDS);
+    end
+    % Add 3D contacts
+    if ~isempty(GlobalData.DataSet(iDS).ChannelFile) && ~isempty(Modality)
+        view_channels(GlobalData.DataSet(iDS).ChannelFile, Modality, 1, 0, hFid3d, 1);
+    end
+end
+
+
+

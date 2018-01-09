@@ -2,13 +2,14 @@ function events = in_events_array(sFile, EventFile, format, EventName)
 % IN_EVENTS_ARRAY: Read events information from a .mat or text file 
 %
 % USAGE:  events = in_events_array(sFile, EventFile, format, 'times')
-%         events = in_events_array(sFile, EventFile, format, 'samples')  
+%         events = in_events_array(sFile, EventFile, format, 'samples')
+%         events = in_events_array(sFile, EventMat, ...)  
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -30,15 +31,21 @@ if (nargin < 4) || isempty(EventName)
 end
 
 % ===== READ FILE =====
-% Can read ASCII or .mat
-EventsMat = load(EventFile);
-if isstruct(EventsMat)
-    fields = fieldnames(EventsMat);
-    EventsMat = EventsMat.(fields{1});
+if ischar(EventFile)
+    % Can read ASCII or .mat
+    EventsMat = load(EventFile);
     if isstruct(EventsMat)
         fields = fieldnames(EventsMat);
         EventsMat = EventsMat.(fields{1});
+        if isstruct(EventsMat)
+            fields = fieldnames(EventsMat);
+            EventsMat = EventsMat.(fields{1});
+        end
     end
+    isInteractive = 1;
+else
+    EventsMat = EventFile;
+    isInteractive = 0;
 end
 % Force to be double
 EventsMat = double(EventsMat);
@@ -57,24 +64,25 @@ switch (format)
 end
 
 % ===== TIME OFFSET =====
-% Check for offset (typical of FIF files)
-isAddOffset = 0;
-if (sFile.prop.times(1) > 0)
-    res = java_dialog('question', ['The raw data file starts at ' num2str(sFile.prop.times(1)) ' sec.' 10 10 ...
-                                  'Is this offset already added to these events?' 10 10],...
-                                  'Import events', [], {'Yes', 'Add Offset','Cancel'},'Yes');
-    if isempty(res) || strcmpi(res, 'Cancel')
-        bst_progress('stop');
-        return;
-    elseif strcmpi(res, 'Add Offset')
-        isAddOffset = 1;
+if isInteractive
+    % Check for offset (typical of FIF files)
+    isAddOffset = 0;
+    if (sFile.prop.times(1) > 0)
+        res = java_dialog('question', ['The raw data file starts at ' num2str(sFile.prop.times(1)) ' sec.' 10 10 ...
+                                      'Is this offset already added to these events?' 10 10],...
+                                      'Import events', [], {'Yes', 'Add Offset','Cancel'},'Yes');
+        if isempty(res) || strcmpi(res, 'Cancel')
+            bst_progress('stop');
+            return;
+        elseif strcmpi(res, 'Add Offset')
+            isAddOffset = 1;
+        end
+    end
+    % Add a column for time
+    if isAddOffset
+        evtSamples = evtSamples + sFile.prop.samples(1);
     end
 end
-% Add a column for time
-if isAddOffset
-    evtSamples = evtSamples + sFile.prop.samples(1);
-end
-    
 
 % ===== CONVERT TO BRAINSTORM STRUCTURE =====
 % Initialize list of events

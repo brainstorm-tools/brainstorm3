@@ -39,7 +39,7 @@ function varargout = bst_report( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -894,7 +894,11 @@ function FileNames = GetFilesList(entry, isOneList, isStandard)
     % Entry = {sFiles1, sFiles2}
     elseif iscell(entry) && isstruct(entry{1})
         if isOneList
-            entry = [entry{:}];
+            try
+                FileNames = [entry{:}];
+            catch
+                FileNames = [];
+            end
             FileNames = {entry.FileName};
         else
             FileNames = {{entry{1}.FileName}, {entry{2}.FileName}};
@@ -902,7 +906,11 @@ function FileNames = GetFilesList(entry, isOneList, isStandard)
     % Entry = {{'filenameA1.mat', 'filenameA2.mat'}, {'filenameB1.mat', 'filenameB2.mat'}}
     elseif iscell(entry) && iscell(entry{1})
         if isOneList
-            FileNames = [entry{:}];
+            try
+                FileNames = [entry{:}];
+            catch
+                FileNames = [];
+            end
         else
             FileNames = entry;            
         end

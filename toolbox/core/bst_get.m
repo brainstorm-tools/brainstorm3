@@ -143,7 +143,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('IgnoreMemoryWarnings')  : {0,1} - If 1, do not display memory warnings at the Brainstorm startup
 %    - bst_get('ExpertMode')            : {0,1} - If 1, show advanced options that regular user do not see
 %    - bst_get('DisplayGFP')            : {0,1} - If 1, the GFP is displayed on all the time series figures
-%    - bst_get('DownsampleTimeSeries')  : {0,1} - If 1, downsample dense time series for faster display
+%    - bst_get('DownsampleTimeSeries')  : {0,1,...} - If > 0, downsample dense time series for faster display
 %    - bst_get('DisableOpenGL')         : {0,1,2} - If 1, do not use OpenGL renderer; if 2, use software OpenGL
 %    - bst_get('InterfaceScaling')      : {100,125,150,...} - Scales the Brainstorm GUI by a fixed factor
 %    - bst_get('GraphicsSmoothing')     : {0,1} - If 1, uses the graphics smoothing (Matlab >= 2014b)
@@ -186,6 +186,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('groot')                   : Get the root graphic object
 %    - bst_get('JFrame', hFig)            : Get the underlying java frame for a Matlab figure
 %    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
+%    - bst_get('PlotlyCredentials')       : Get the credentials and URL to connect to plot.ly server
 %
 % SEE ALSO bst_set
 
@@ -193,7 +194,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -207,7 +208,8 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2018
+%          Martin Cousineau, 2017
 
 %% ==== PARSE INPUTS ====
 global GlobalData;
@@ -1318,6 +1320,8 @@ switch contextName
             Device = 'BabyMEG';
         elseif ~isempty(strfind(ChannelFile, 'kit'))
             Device = 'KIT';
+        elseif ~isempty(strfind(ChannelFile, 'ricoh'))
+            Device = 'RICOH';
         elseif ~isempty(strfind(ChannelFile, 'kriss'))
             Device = 'KRISS';
         elseif ~isempty(strfind(ChannelFile, 'nirsbrs'))
@@ -2441,16 +2445,19 @@ switch contextName
         
     case 'DownsampleTimeSeries'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'DownsampleTimeSeries')
+            if (GlobalData.Preferences.DownsampleTimeSeries == 1)
+                GlobalData.Preferences.DownsampleTimeSeries = 5;
+            end
             argout1 = GlobalData.Preferences.DownsampleTimeSeries;
         else
-            argout1 = 0;
+            argout1 = 5;
         end
         
     case 'GraphicsSmoothing'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'GraphicsSmoothing')
             argout1 = GlobalData.Preferences.GraphicsSmoothing;
         else
-            argout1 = 1;
+            argout1 = 5;
         end
         
     case 'DisableOpenGL'
@@ -2523,32 +2530,29 @@ switch contextName
             Modality = 'EEG';
         end
         % Value was saved previously
-        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ElectrodeConfig') && isfield(GlobalData.Preferences.ElectrodeConfig, Modality)
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ElectrodeConfig') && isfield(GlobalData.Preferences.ElectrodeConfig, Modality) && isfield(GlobalData.Preferences.ElectrodeConfig.(Modality), 'ContactDiameter')
             argout1 = GlobalData.Preferences.ElectrodeConfig.(Modality);
         % Get default value
         else
             switch (Modality)
                 case 'EEG'
-                    ElectrodeConfig.ElecType      = 'eeg';
-                    ElectrodeConfig.ElecDiameter  = 0.010;
-                    ElectrodeConfig.ElecHeight    = 0.002;
-                    ElectrodeConfig.StripDiameter = [];
-                    ElectrodeConfig.StripLength   = [];
-                    ElectrodeConfig.WireWidth     = [];
+                    ElectrodeConfig.Type            = 'eeg';
+                    ElectrodeConfig.ContactDiameter = 0.010;
+                    ElectrodeConfig.ContactLength   = 0.002;
+                    ElectrodeConfig.ElecDiameter    = [];
+                    ElectrodeConfig.ElecLength      = [];
                 case 'ECOG'
-                    ElectrodeConfig.ElecType      = 'ecog';
-                    ElectrodeConfig.ElecDiameter  = 0.004;
-                    ElectrodeConfig.ElecHeight    = 0.001;
-                    ElectrodeConfig.StripDiameter = [];
-                    ElectrodeConfig.StripLength   = [];
-                    ElectrodeConfig.WireWidth     = 0.5;
+                    ElectrodeConfig.Type            = 'ecog';
+                    ElectrodeConfig.ContactDiameter = 0.004;
+                    ElectrodeConfig.ContactLength   = 0.001;
+                    ElectrodeConfig.ElecDiameter    = 0.0005;
+                    ElectrodeConfig.ElecLength      = [];
                 case 'SEEG'
-                    ElectrodeConfig.ElecType      = 'seeg';
-                    ElectrodeConfig.ElecDiameter  = 0.0008;
-                    ElectrodeConfig.ElecHeight    = 0.002;
-                    ElectrodeConfig.StripDiameter = 0.0007;
-                    ElectrodeConfig.StripLength   = 0.070;
-                    ElectrodeConfig.WireWidth     = [];
+                    ElectrodeConfig.Type            = 'seeg';
+                    ElectrodeConfig.ContactDiameter = 0.0008;
+                    ElectrodeConfig.ContactLength   = 0.002;
+                    ElectrodeConfig.ElecDiameter    = 0.0007;
+                    ElectrodeConfig.ElecLength      = 0.070;
             end
             argout1 = ElectrodeConfig;
         end
@@ -2905,7 +2909,8 @@ switch contextName
             'isMipAnatomy',     0, ...
             'isMipFunctional',  0, ...
             'OverlaySmooth',    0, ...
-            'InterpDownsample', 3);
+            'InterpDownsample', 3, ...
+            'DistanceThresh',   6);
         argout1 = FillMissingFields(contextName, defPref);
         
     case 'DigitizeOptions'
@@ -2946,6 +2951,23 @@ switch contextName
             argout1 = GlobalData.Preferences.LastPsdDisplayFunction;
         else
             argout1 = [];
+        end
+
+    case 'PlotlyCredentials'
+        try
+            creds = loadplotlycredentials();
+            argout1 = creds.username;
+            argout2 = creds.api_key;
+        catch
+            argout1 = '';
+            argout2 = '';
+        end
+        
+        try
+            config = loadplotlyconfig();
+            argout3 = config.plotly_domain;
+        catch
+            argout3 = '';
         end
         
         
@@ -3032,6 +3054,7 @@ switch contextName
                      {'.mat'},               'MEG/EEG: FieldTrip (*.mat)',           'FT-TIMELOCK'; ...
                      {'.raw'},               'MEG/EEG: ITAB (*.raw)',                'ITAB'; ...
                      {'.kdf'},               'MEG/EEG: KRISS MEG (*.kdf)',           'KDF'; ...
+                     {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Ricoh (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'RICOH'; ...
                      {'.mat'},               'MEG/EEG: SPM (*.mat/.dat)',            'SPM-DAT'; ...
                      {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Yokogawa/KIT (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'KIT'; ...
                      {'.bst'},               'MEG/EEG: Brainstorm binary (*.bst)',   'BST-BIN'; ...
@@ -3074,6 +3097,7 @@ switch contextName
                      {'.mat'},               'MEG/EEG: FieldTrip (*.mat)',           'FT-TIMELOCK'; ...
                      {'.raw'},               'MEG/EEG: ITAB (*.raw)',                'ITAB'; ...
                      {'.kdf'},               'MEG/EEG: KRISS MEG (*.kdf)',           'KDF'; ...
+                     {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Ricoh (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'RICOH'; ...
                      {'.mat'},               'MEG/EEG: SPM (*.mat/.dat)',            'SPM-DAT'; ...
                      {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Yokogawa/KIT (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'KIT'; ...
                      {'.bst'},               'MEG/EEG: Brainstorm binary (*.bst)',   'BST-BIN'; ...
@@ -3103,6 +3127,8 @@ switch contextName
                      {'.e'},                 'EEG: Nicolet (*.e)',                   'EEG-NICOLET'; ...
                      {'.eeg'},               'EEG: Nihon Kohden (*.eeg)',            'EEG-NK'; ...
                      {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Ripple Trellis (*.nsX/*.nev)', 'EEG-RIPPLE'; ...
+                     {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'SEEG: Deltamed/Micromed/NK/Nicolet/BrainAmp/EDF', 'SEEG-ALL'; ...
+                     {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'ECOG: Deltamed/Micromed/NK/Nicolet/BrainAmp/EDF', 'ECOG-ALL'; ...
                      {'.nirs'},              'NIRS: Brainsight (*.nirs)',            'NIRS-BRS'; ...
                      {'.edf'},               'EyeLink eye tracker (*.edf)',          'EYELINK'; ...
                     };
@@ -3144,6 +3170,7 @@ switch contextName
                     {'.trg'},          'KRISS MEG (*.trg)',             'KDF'; ...
                     {'.ev2'},          'Neuroscan (*.ev2)',             'NEUROSCAN'; ...
                     {'.log'},          'Presentation (*.log)',          'PRESENTATION'; ...
+                    {'.mrk','.sqd','.con','.raw','.ave'},   'Ricoh (*.mrk;*.sqd;*.con;*.raw;*.ave)', 'RICOH'; ...
                     {'.txt'},          'XLTEK export (*.txt)',          'XLTEK'; ...
                     {'.mrk','.sqd','.con','.raw','.ave'},   'Yokogawa/KIT (*.mrk;*.sqd;*.con;*.raw;*.ave)', 'KIT'; ...
                     {'.*'},            'Array of times (*.mat;*.*)',    'ARRAY-TIMES'; ...
@@ -3157,6 +3184,7 @@ switch contextName
                     {'.fif'},                      'MEG/EEG: Elekta-Neuromag (*.fif)',    'FIF'; ...
                     {'.kdf'},                      'MEG/EEG: KRISS MEG (*.kdf)',          'KDF'; ...
                     {'.raw'},                      'MEG/EEG: ITAB (*.raw)',               'ITAB'; ...
+                    {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Ricoh (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'RICOH'; ...
                     {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Yokogawa/KIT (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'KIT'; ...
                     {'.bst'},                      'MEG/EEG: Brainstorm binary (*.bst)',   'BST-BIN'; ...
                     {'_channel'},                  'MEG/EEG: Brainstorm (channel*.mat)',  'BST'; ...
@@ -3170,9 +3198,10 @@ switch contextName
                     {'.elc'},                      'EEG: EETrak (*.elc)',                 'EETRAK'; ...
                     {'.sfp'},                      'EEG: EGI (*.sfp)',                    'EGI'; ...
                     {'.elp'},                      'EEG: EMSE (*.elp)',                   'EMSE'; ...
-                    {'.dat','.tri','.txt','.asc'}, 'EEG: Neuroscan (*.dat;*.tri;*.txt;*.asc)',  'NEUROSCAN'; ...
-                    {'.pos','.pol','.elp','.txt'}, 'EEG: Polhemus (*.pos;*.pol;*.elp;*.txt)',   'POLHEMUS'; ...
-                    {'.pts'},                      'EEG: PTS file (*.pts)',            'PTS'; ...
+                    {'.pts','.csv'},               'EEG: IntrAnat, subject space (*.pts;*.csv)', 'INTRANAT'; ...
+                    {'.pts','.csv'},               'EEG: IntrAnat, MNI space (*.pts;*.csv)',     'INTRANAT_MNI'; ...
+                    {'.dat','.tri','.txt','.asc'}, 'EEG: Neuroscan (*.dat;*.tri;*.txt;*.asc)',   'NEUROSCAN'; ...
+                    {'.pos','.pol','.elp','.txt'}, 'EEG: Polhemus (*.pos;*.pol;*.elp;*.txt)',    'POLHEMUS'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ (*.*)',       'ASCII_NXYZ'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ_MNI (*.*)',   'ASCII_NXYZ_MNI'; ...
                     {'*'},                         'EEG: ASCII: Name,XY (*.*)',        'ASCII_NXY'; ...

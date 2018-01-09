@@ -8,7 +8,7 @@ function varargout = figure_topo( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -166,8 +166,8 @@ function UpdateTopoPlot(iDS, iFig)
     % ===== Map data on target patch =====
     if ~isempty(TopoHandles.hSurf)
         set(TopoHandles.hSurf, 'FaceVertexCData', DataToPlot, ...
-                               'EdgeColor', 'none', ...
-                               'FaceColor', 'interp');
+                               'EdgeColor', 'none');
+                               % 'FaceColor', 'interp');
     elseif ~isempty(TopoHandles.hLines)
         % Convert data values to RGB
         iDataCmap = round( ((size(sColormap.CMap,1)-1)/(CLim(2)-CLim(1))) * (DataToPlot - CLim(1))) + 1;
@@ -512,6 +512,8 @@ function isOk = PlotFigure(iDS, iFig, isReset) %#ok<DEFNU>
         'Faces',            Faces_surf, ...
         'Vertices',         Vertices_surf, ...
         'EdgeColor',        'g', ...
+        'FaceColor',        'interp', ...
+        'FaceVertexCData',  repmat([0 0 0], size(Vertices_surf,1), 1), ...
         'BackfaceLighting', 'lit', ...
         'AmbientStrength',  0.95, ...
         'DiffuseStrength',  0, ...
@@ -947,11 +949,12 @@ function CreateTopo3dElectrodes(iDS, iFig, Channel, ChanLoc)
     % Get figure handles
     PlotHandles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
     % Display the electrodes
-    [PlotHandles.hSurf, N] = figure_3d('PlotSensors3D', iDS, iFig, Channel, ChanLoc);
-    % Create interpolation matrix [Nchannels*Npoints x Nchannels]
-    Wi = 1:(N*size(ChanLoc,1));
-    Wj = reshape(repmat(1:size(ChanLoc,1), N, 1), 1, []);
-    PlotHandles.Wmat = sparse(Wi, Wj, ones(size(Wi)));
+    PlotHandles.hSurf = figure_3d('PlotSensors3D', iDS, iFig, Channel, ChanLoc);
+    % Create interpolation matrix [Nvertices x Nchannels]
+    vert2chan = get(PlotHandles.hSurf, 'UserData');
+    Wi = 1:length(vert2chan);
+    Wj = vert2chan;
+    PlotHandles.Wmat = sparse(Wi, Wj, ones(size(Wi)), length(vert2chan), size(ChanLoc,1));
     % Set plot handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotHandles;
     % Update display

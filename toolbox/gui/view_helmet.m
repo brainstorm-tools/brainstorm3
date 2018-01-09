@@ -8,7 +8,7 @@ function [hFig, iDS, iFig] = view_helmet(ChannelFile, hFig)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function [hFig, iDS, iFig] = view_helmet(ChannelFile, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011
+% Authors: Francois Tadel, 2011-2018
 
 % Parse inputs
 if (nargin < 2) || isempty(hFig)
@@ -58,6 +58,8 @@ switch (Device)
         dist = .025;
     case 'BabyMEG'
         dist = .008;
+    case 'RICOH'
+        dist = .020;
     otherwise
         dist = 0;
 end

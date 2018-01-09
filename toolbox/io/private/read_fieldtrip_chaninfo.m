@@ -5,7 +5,7 @@ function ChannelMat = read_fieldtrip_chaninfo(ChannelMat, ftMat)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -141,7 +141,7 @@ for i = 1:nChannels
             % Apply units
             if isequal(elec.unit, 'mm')
                 ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 1000;
-            elseif isequal(D.sensors.eeg.unit, 'cm')
+            elseif isequal(elec.unit, 'cm')
                 ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 100;
             end
         end

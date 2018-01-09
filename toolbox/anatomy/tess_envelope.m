@@ -1,7 +1,7 @@
-function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale, MriFile, DEBUG)
+function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale, MriFile, isRemesh, DEBUG)
 % TESS_ENVELOPE: Compute a regular envelope of a tesselation.
 %
-% USAGE:  [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale, MriFile)
+% USAGE:  [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert=, scale=0, MriFile=[], isRemesh=1)
 %         [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale)
 %         [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert)
 %         [sEnvelope, sSurface] = tess_envelope(SurfaceFile)
@@ -12,6 +12,7 @@ function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale
 %    - nvert       : Number of vertices in the output mesh (approximated to the closest possible number by tess_sphere)
 %    - scale       : Scale factor to increase the volume of the envelope, in meters (default: 0)
 %    - MriFile     : Mri file can be specified, in case the surface being processed is not in the database
+%    - isRemesh    : If 1, call tess_remesh for producing a smoothe surface
 % OUTPUT:
 %    - sEnvelope : Structure with Vertices and Faces fields of the envelope
 %    - sSurface  : Structure with Vertices and Faces fields of the initial file
@@ -20,7 +21,7 @@ function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,11 +35,14 @@ function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2011
+% Authors: Francois Tadel, 2010-2017
 
 %% ===== PARSE INPUTS =====
-if (nargin < 6) || isempty(DEBUG)
+if (nargin < 7) || isempty(DEBUG)
     DEBUG = 0;
+end
+if (nargin < 6) || isempty(isRemesh)
+    isRemesh = 1;
 end
 if (nargin < 5) || isempty(MriFile)
     MriFile = [];
@@ -101,6 +105,9 @@ switch lower(method)
         % bst_progress('text', 'Envelope: Smoothing surface...');
         % env_vertconn = tess_vertconn(env_vert, env_faces);
         % env_vert = tess_smooth(env_vert, 1, 2, env_vertconn);
+        % Refine the faces that are too big
+        [env_vert, env_faces] = tess_refine(env_vert, env_faces, 3);
+        [env_vert, env_faces] = tess_refine(env_vert, env_faces, 3);
 
     % Using an MRI mask
     case {'mask_cortex', 'mask_head'}
@@ -123,15 +130,15 @@ switch lower(method)
         mrimask(:,:,1)   = 0*mrimask(:,:,1);
         mrimask(:,:,end) = 0*mrimask(:,:,1);
         % Erode one layer of the mask
-        if strcmpi(method, 'mask_head')
+%         if strcmpi(method, 'mask_head')
             mrimask = mrimask & ~mri_dilate(~mrimask, 1);
             mrimask = mrimask & ~mri_dilate(~mrimask, 1);
-        end
+%         end
         % Compute isosurface
         bst_progress('text', 'Envelope: Creating isosurface...');
-        fv = isosurface(mrimask);
-        env_vert = fv.vertices;
-        env_faces = fv.faces;
+        [env_faces, env_vert] = mri_isosurface(mrimask, 0.5);
+        % Swap faces
+        env_faces = env_faces(:,[2 1 3]);
         % Smooth isosurface
         bst_progress('text', 'Envelope: Smoothing surface...');
         env_vertconn = tess_vertconn(env_vert, env_faces);
@@ -145,9 +152,6 @@ switch lower(method)
         % Convert in SCS coordinates
         env_vert = cs_convert(sMri, 'mri', 'scs', env_vert ./ 1000);
 end
-% Refine the faces that are too big
-[env_vert, env_faces] = tess_refine(env_vert, env_faces, 3);
-[env_vert, env_faces] = tess_refine(env_vert, env_faces, 3);
 
 
 %% ===== RE-ORIENT ENVELOPE =====
@@ -166,9 +170,13 @@ env_vert = env_vert * R;
 
 
 %% ===== REMESH ENVELOPE =====
-bst_progress('text', 'Envelope: Remeshing surface...');
-[sph_vert, sph_faces] = tess_remesh(double(env_vert), nvert);
-
+if isRemesh
+    bst_progress('text', 'Envelope: Remeshing surface...');
+    [sph_vert, sph_faces] = tess_remesh(double(env_vert), nvert);
+else
+    bst_progress('text', 'Envelope: Downsampling surface...');
+    [sph_faces, sph_vert] = reducepatch(env_faces, env_vert, nvert / size(env_vert,1));
+end
 
 %% ===== CREATE OUTPUT STRUCTURE =====
 % Rescale

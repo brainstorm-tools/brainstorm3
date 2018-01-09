@@ -8,7 +8,7 @@ function varargout = panel_montage(varargin)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -944,10 +944,20 @@ function [sMontage, iMontage] = GetMontage(MontageName, hFig)
             % Find average reference montage
             iAvgRef = find(strcmpi({sMontage.Name}, 'Average reference'));
             if ~isempty(iAvgRef) && ~isempty(hFig)
-                [sTmp, iTmp] = GetMontageAvgRef(hFig, [], 1);
+                % [sTmp, iTmp] = GetMontageAvgRef(hFig, [], 1);    % Local average reference 
+                [sTmp, iTmp] = GetMontageAvgRef(hFig, [], 0);    % Global average reference 
                 if ~isempty(sTmp)
                     sMontage(iAvgRef) = sTmp;
                     iMontage(iAvgRef) = iTmp;
+                end
+            end
+            % Find local average reference montage
+            iLocalAvgRef = find(~cellfun(@(c)isempty(strfind(c, '(local average ref)')), {sMontage.Name}));
+            if ~isempty(iLocalAvgRef) && ~isempty(hFig)
+                [sTmp, iTmp] = GetMontageAvgRef(hFig, [], 1);    % Local average reference 
+                if ~isempty(sTmp)
+                    sMontage(iLocalAvgRef) = sTmp;
+                    iMontage(iLocalAvgRef) = iTmp;
                 end
             end
             % Find average reference montage
@@ -1246,18 +1256,8 @@ function [sMontage, iMontage, isLocal] = GetMontageAvgRef(Channels, ChannelFlag,
         sMontage.DispNames = {Channels.Name};
         sMontage.ChanNames = {Channels.Name};
         sMontage.Matrix    = eye(length(iChannels));
-        
         % Get EEG groups
         [iEEG, GroupNames] = GetEegGroups(Channels, ChannelFlag, isSubGroups);
-        % % If there is more that one: display a message
-        % if (length(GroupNames) > 2)
-        %     strNames = '';
-        %     for i = 1:length(GroupNames)
-        %         strNames = [strNames GroupNames{i} ', '];
-        %     end
-        %     disp(['BST> Groups of electrodes processed separately:  ' strNames(1:end-2)]);
-        % end
-
         % Computation
         for i = 1:length(iEEG)
             nChan = length(iEEG{i});
@@ -1399,14 +1399,16 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
         end
         % Special test for average reference: local or global
         if strcmpi(sFigMontages(i).Name, 'Average reference')
-            % Get montage
-            [sTmp, iTmp, isLocal] = panel_montage('GetMontageAvgRef', hFig, [], 1);
-            % Change the title depending on the type of average reference
-            if isLocal
-                DisplayName = 'Local average ref';
-            else
-                DisplayName = 'Average reference';
-            end
+%             % Get montage
+%             [sTmp, iTmp, isLocal] = GetMontageAvgRef(hFig, [], 1);
+%             % Change the title depending on the type of average reference
+%             if isLocal
+%                 DisplayName = 'Local average ref';
+%             else
+%                 DisplayName = 'Average reference';
+%             end
+            % Always use global average reference here
+            DisplayName = 'Average reference';
             jSubMenu = jMenu;
         % Temporary montages:  Remove the [tmp] tag or display
         elseif ~isempty(strfind(sFigMontages(i).Name, '[tmp]'))
@@ -1414,7 +1416,7 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
             DisplayName = ['<HTML><I>' MontageName '</I>'];
             % Parse name for sub menus
             GroupName = strtrim(str_remove_parenth(MontageName));
-            stdName = file_standardize(GroupName, 0, '_', 1);
+            stdName = ['m', file_standardize(GroupName, 0, '_', 1)];
             stdName((stdName == '.') | (stdName == '-') | (stdName == '@')) = '_';
             if isfield(subMenus, stdName)
                 jSubMenu = subMenus.(stdName);
@@ -1665,7 +1667,7 @@ function [iEEG, GroupNames, DisplayNames] = GetEegGroups(Channel, ChannelFlag, i
             AllGroups(cellfun(@isempty, AllGroups)) = {'Unknown'};
             uniqueGroups = unique(AllGroups);
             % If the sensors are not separated in groups using the comments fields
-            if isempty(uniqueGroups) || (length(uniqueGroups) == 1)
+            if isempty(uniqueGroups) % || (length(uniqueGroups) == 1)
                 % All the channels = one block
                 iEEG{end+1}  = iMod;
                 GroupNames{end+1} = Modality{1};
@@ -1772,9 +1774,8 @@ end
 
 %% ===== ADD AUTO MONTAGES: EEG =====
 function AddAutoMontagesEeg(Comment, ChannelMat) %#ok<DEFNU>
-    global GlobalData;
     % Get groups of electrodes
-    [iEeg, GroupNames] = panel_montage('GetEegGroups', ChannelMat.Channel, [], 1);    
+    [iEeg, GroupNames] = GetEegGroups(ChannelMat.Channel, [], 1);    
     % If there is more than one EEG group
     if (length(iEeg) > 2)
         % Get all the modalities available
@@ -1798,6 +1799,11 @@ function AddAutoMontagesEeg(Comment, ChannelMat) %#ok<DEFNU>
             sMontageAllBip2.(Mod).Name   = [Comment ': ' Mod ' (bipolar 2)[tmp]'];
             sMontageAllBip2.(Mod).Type   = 'text';
             SetMontage(sMontageAllBip2.(Mod).Name, sMontageAllBip2.(Mod));
+            % All (local average reference)
+            sMontageLocalAvgRef.(Mod) = db_template('Montage');
+            sMontageLocalAvgRef.(Mod).Name   = [Comment ': ' Mod ' (local average ref)[tmp]'];
+            sMontageLocalAvgRef.(Mod).Type   = 'matrix';
+            SetMontage(sMontageLocalAvgRef.(Mod).Name, sMontageLocalAvgRef.(Mod));
         end
 
         % For each group

@@ -43,7 +43,7 @@ function varargout = panel_scout(varargin)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -137,7 +137,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % ===== Atlas list =====
             jPanelAtlas = gui_component('Panel');
                 % Combo box to select the current protocol
-                jComboAtlas = gui_component('ComboBox', jPanelAtlas, BorderLayout.NORTH, [], [], [], []);
+                jComboAtlas = gui_component('ComboBox', jPanelAtlas, BorderLayout.NORTH, [], [], [], [], []);
                 jComboAtlas.setFocusable(0);
                 jComboAtlas.setMaximumRowCount(15);
                 % ComboBox change selection callback
@@ -1300,7 +1300,15 @@ function ScoutsOptions = GetScoutsOptions()
     % Get "Scouts" panel controls
     ctrl = bst_get('PanelControls', 'Scout');
     if isempty(ctrl)
-        ScoutsOptions = [];
+        ScoutsOptions = struct(...
+            'overlayScouts',      0, ...
+            'overlayConditions',  0, ...
+            'displayAbsolute',    1, ...
+            'showSelection',      'all', ...
+            'patchAlpha',         .7, ...
+            'displayContour',     1, ...
+            'displayText',        1, ...
+            'displayRegionColor', 0);
         return;
     end
     % Get current scouts
@@ -3503,7 +3511,7 @@ function EditScoutsColor(newColor)
         % Use previous scout color
         newColor = uisetcolor(sSelScouts(1).Color, 'Select scout color');
         % If no color was selected: exit
-        if (length(newColor) ~= 3) || all(sSelScouts(1).Color == newColor)
+        if (length(newColor) ~= 3) || all(sSelScouts(1).Color(:) == newColor(:))
             return
         end
     end
@@ -3956,6 +3964,8 @@ function ExportScoutsToMri()
     end
     % Save new MRI file
     export_mri(sMri);
+    % Close progress bar
+    bst_progress('stop');
 end
 
 

@@ -12,7 +12,7 @@ function varargout = bst_navigator( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -390,9 +390,10 @@ function DbNavigation( action, iDataSets )
                 GlobalData.DataSet(iDS).ChannelFile = newChannelFile;
                 % Load new channel file
                 ChannelMat = in_bst_channel(newChannelFile);
-                GlobalData.DataSet(iDS).Channel     = ChannelMat.Channel;
-                GlobalData.DataSet(iDS).MegRefCoef  = ChannelMat.MegRefCoef; 
-                GlobalData.DataSet(iDS).Projector   = ChannelMat.Projector; 
+                GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+                GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef; 
+                GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
+                GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
             end
         end
 

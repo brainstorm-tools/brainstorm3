@@ -9,7 +9,7 @@ function [flowField, int_dF, errorData, errorReg, poincare, interval] = ...
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -52,8 +52,20 @@ function [flowField, int_dF, errorData, errorReg, poincare, interval] = ...
 dimension = 3; % 2 for projected maps
 Faces = FV.Faces; Vertices = FV.Vertices; VertNormals = FV.VertNormals;
 nVertices = size(Vertices,1); % VertNormals = FV.VertNormals';
+nFaces = size(Faces,1);
 tStartIndex = find(Time < tStart-eps, 1, 'last')+1; % Index of first time point for flow calculation
+if isempty(tStartIndex)
+    [tmp, tStartIndex] = min(Time);
+    tStartIndex = tStartIndex + 1;
+end
 tEndIndex = find(Time < tEnd-eps, 1, 'last')+1; % Index of last time point for flow calculation
+if isempty(tEndIndex)
+    [tmp, tEndIndex] = max(Time);
+    tEndIndex = tEndIndex + 1;
+end
+if tEndIndex > size(Time, 2)
+    tEndIndex = size(Time, 2);
+end
 interval = Time(tStartIndex:tEndIndex); % Interval of flow calculations
 intervalLength = tEndIndex-tStartIndex+1; % Length of time interval for calculations
 M = max(max(abs(F(:,tStartIndex-1:tEndIndex)))); F = F/M; % Scale values to avoid precision error
@@ -69,12 +81,12 @@ int_dF = zeros(1, intervalLength);
 regularizer = hornSchunck * regularizerOld;
 
 % Projection of flow on triangle (for Poincar� index)
-Pn = zeros(3,3,size(Faces,1));
-for facesIdx = 1:size(Faces,1) 
+Pn = zeros(3,3,nFaces);
+for facesIdx = 1:nFaces
     Pn(:,:,facesIdx) = eye(3) - ...
       (FaceNormals(facesIdx,:)'*FaceNormals(facesIdx,:));
 end
-poincare = sparse(size(Faces,1), intervalLength);
+poincare = zeros(nFaces, intervalLength);
 
 % Optical flow calculations
 bst_progress('start', 'Optical Flow', ...
@@ -108,10 +120,13 @@ for timePoint = tStartIndex:tEndIndex
   dF13=(dF(Faces(:,1),:)+dF(Faces(:,3))).^2;
   int_dF(timeIdx) = sum(triangleAreas.*(dF12+dF23+dF13)) / 24;
   
+  % Precompute flowfield with faces to save time in the loop.
+  FacesFlowField = reshape(flowField(Faces', :, timeIdx)', [3,3,nFaces]);
+  
   % Poincare Index of each triangle
-  for facesIdx=1:size(Faces,1)
-      poincare(facesIdx,timeIdx)= ... % projection of flowField(f,:,t) on triangle f
-        poincare_index(Pn(:,:,facesIdx)*flowField(Faces(facesIdx,:),:,timeIdx)');
+  for facesIdx=1:nFaces
+      poincare(facesIdx,timeIdx) = ... % projection of flowField(f,:,t) on triangle f
+          poincare_index(Pn(:,:,facesIdx) * FacesFlowField(:,:,facesIdx));
   end
 
   % Displacement energy
@@ -482,8 +497,7 @@ function index = poincare_index(flowField)
 % necessary to give the coordinates !!)
 % VF has dimension 2*nbr vectors
   theta = myangle(flowField);
-  theta = [theta,theta(1)];
-  difftheta = diffangle(theta(2:end),theta(1:end-1));
+  difftheta = diffangle([theta(2),theta(3),theta(1)], theta);
   index = sum(difftheta)/(2*pi);
 end
 
@@ -492,33 +506,23 @@ function theta = myangle(flowField)
   normv=sqrt(sum(flowField.^2,1));
   c=flowField(1,:)./normv;
   s=flowField(2,:)./normv;
-  theta=zeros(1,size(flowField,2));
+  theta = acos(c);
 
   for ii=1:size(flowField,2)
-    ang=acos(c(ii));
-    if s(ii)>=0
-      theta(ii)=ang;
-    else
-      theta(ii)=-ang+2*pi;
+    if s(ii) < 0
+      theta(ii)= -theta(ii) + 2*pi;
     end
   end
-%   theta(s>=0)=acos(c(s>=0));
-%   theta(s<0)=-acos(c(s<0))+2*pi;
 end
 
-% difference of two angles (result between -pi and pi
+% Difference of two angles (result between -pi and pi)
 function theta = diffangle(theta2, theta1)
-  theta=theta2-theta1;
+  theta = theta2 - theta1;
   for ii=1:length(theta)
-    ang=theta(ii);
-    if ang<-pi
-      theta(ii)=ang+2*pi;
-    else
-      if ang>pi
-        theta(ii)=ang-2*pi;
-      end
+    if theta(ii) < -pi
+      theta(ii) = theta(ii) + 2*pi;
+    elseif theta(ii) > pi
+        theta(ii) = theta(ii) - 2*pi;
     end
   end
-%   theta(theta<-pi)=theta(theta<-pi)+2*pi;
-%   theta(theta>pi)=theta(theta>pi)-2*pi;
 end

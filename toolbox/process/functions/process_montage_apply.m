@@ -7,7 +7,7 @@ function varargout = process_montage_apply( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -116,6 +116,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             DataMat = in_bst_data(sInputs(iInput).FileName);
             % Build average reference
             if (strcmpi(sMontage.Name, 'Average reference'))
+                sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel, DataMat.ChannelFlag, 0);
+            elseif ~isempty(strfind(sMontage.Name, '(local average ref)'))
                 sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel, DataMat.ChannelFlag, 1);
             end
             % Get channels indices for the montage

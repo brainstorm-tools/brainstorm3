@@ -8,7 +8,7 @@ function varargout = process_export_spmvol( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -285,7 +285,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Else: Compute interpolation matrix grid points => MRI voxels
                     else
                         sMri.FileName = MriFile;
-                        GridSmooth = isempty(ResultsMat.DisplayUnits) || ~ismember(ResultsMat.DisplayUnits, {'s','ms'});
+                        GridSmooth = isempty(ResultsMat.DisplayUnits) || ~ismember(ResultsMat.DisplayUnits, {'s','ms','t'});
                         MriInterp = grid_interp_mri(ResultsMat.GridLoc, sMri, ResultsMat.SurfaceFile, 0, [], [], GridSmooth);
                         % Save values for next iteration
                         prevInterp  = MriInterp;

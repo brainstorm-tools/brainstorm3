@@ -5,7 +5,7 @@ function varargout = process_concat( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -95,6 +95,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 % Concatenate the F matrices
                 NewMat.F = [NewMat.F, DataMat.F];
+                % Concatenate the Std matrices
+                if isfield(DataMat, 'Std') && ~isempty(DataMat.Std)
+                    NewMat.Std = [NewMat.Std, DataMat.Std];
+                end
                 % Add the bad channels
                 NewMat.ChannelFlag(DataMat.ChannelFlag == -1) = -1;
                 % History field
@@ -144,6 +148,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 % Concatenate the data matrices
                 NewMat.Value = [NewMat.Value, MatrixMat.Value];
+                % Concatenate the Std matrices
+                if isfield(MatrixMat, 'Std') && ~isempty(MatrixMat.Std)
+                    NewMat.Std = [NewMat.Std, MatrixMat.Std];
+                end
                 % History field
                 NewMat = bst_history('add', NewMat, 'concat', [' - ' sInputs(iInput).FileName]);
             end

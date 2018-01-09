@@ -1,7 +1,7 @@
 function F = in_fread_kit(sFile, iEpoch, SamplesBounds, iChannels)
 % IN_FREAD_KIT:  Read a block of recordings from a Yokogawa/KIT file
 %
-% USAGE:  F = in_fread_ctf(sFile, iEpoch=1, SamplesBounds=All, ChannelsRange=[])
+% USAGE:  F = in_fread_kit(sFile, iEpoch=1, SamplesBounds=All, ChannelsRange=[])
 %
 % This function is based on the Yokogawa MEG reader toolbox version 1.4.
 % For copyright and license information and software documentation, 
@@ -11,7 +11,7 @@ function F = in_fread_kit(sFile, iEpoch, SamplesBounds, iChannels)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.

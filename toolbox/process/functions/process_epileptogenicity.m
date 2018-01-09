@@ -9,7 +9,7 @@ function varargout = process_epileptogenicity( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -74,9 +74,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timeresolution.Type    = 'value';
     sProcess.options.timeresolution.Value   = {0.2, 's', 3};
     % === PROPAGATION THRESHOLD
-    sProcess.options.thdelay.Comment = 'Propagation threshold (p-value): ';
+    sProcess.options.thdelay.Comment = 'Propagation threshold (p or T): ';
     sProcess.options.thdelay.Type    = 'value';
-    sProcess.options.thdelay.Value   = {0.05, '', 4};
+    sProcess.options.thdelay.Value   = {0.05, '', 5};
     % === OUTPUT TYPE
     sProcess.options.type.Comment = {'Volume', 'Surface', 'Output type: '; ...
                                      'volume', 'surface', ''};
@@ -95,6 +95,8 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     OutputFiles = {};
+    % Initialize SPM
+    bst_spm_init(0);
     
     % ===== GET OPTIONS =====
     % Get all the options
@@ -186,30 +188,23 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % Convert channel positions to MRI coordinates (for surface export, keep everything in SCS)
         if strcmpi(OPTIONS.OutputType, 'volume')
             Tscs2mri = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
+            % Get the MRI=>RAS transformation
+            if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf)
+                iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
+            else
+                iTransf = [];
+            end
             % If there is a transformation MRI=>RAS from a .nii file 
-            if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && isfield(sMri.Header.nifti, 'sform_code') && isfield(sMri.Header.nifti, 'qform_code')
-                nifti = sMri.Header.nifti;
-                if isfield(nifti, 'vox2ras') && ~isempty(nifti.vox2ras)
-                    vox2ras = nifti.vox2ras;
-                elseif (nifti.sform_code ~= 0) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3))
-                    vox2ras = nifti.sform;
-                elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3))
-                    vox2ras = nifti.qform;
-                else
-                    vox2ras = [];
-                end
-                if ~isempty(vox2ras)
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    % NOT UNDERSTOOD: 
-                    % Apply a [-1,-1,-1] translation to compensation the translation in process_generate_canonical,
-                    % so that we get the same coordinates directly with the SPM segmentation or through the Brainstorm database
-                    Tscs2mri = [1 0 0 -1/1000; 0 1 0 -1/1000; 0 0 1 -1/1000; 0 0 0 1] * Tscs2mri;
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    % Convert millimeters=>meters
-                    vox2ras(1:3,4) = vox2ras(1:3,4) ./ 1000;
-                    % Add this transformation
-                    Tscs2mri = vox2ras * Tscs2mri;
-                end
+            if ~isempty(iTransf)
+                vox2ras = sMri.InitTransf{iTransf,2};
+                % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
+                vox2ras = vox2ras * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
+                % 1st operation: Convert from MRI(mm) to voxels
+                vox2ras = vox2ras * diag(1 ./ [sMri.Voxsize, 1]);
+                % Convert millimeters=>meters
+                vox2ras(1:3,4) = vox2ras(1:3,4) ./ 1000;
+                % Add this transformation
+                Tscs2mri = vox2ras * Tscs2mri;
             end
             ChannelMat = channel_apply_transf(ChannelMat, Tscs2mri, iChan, 1);
             ChannelMat = ChannelMat{1};
@@ -289,26 +284,30 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     close([spm_figure('FindWin','Menu'), spm_figure('FindWin','Graphics'), spm_figure('FindWin','Interactive')]);
     
     % ===== OUTPUT FOLDER =====
-    % Default condition name
-    Condition = ['Epileptogenicity_' OPTIONS.OutputType];
-    % Get condition asked by user
-    [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
-    % Condition does not exist: create it
-    if isempty(sStudy)
-        % Add new folder
-        iStudy = db_add_condition(SubjectName, Condition, 1);
-        % Copy channel file from first file
-        db_set_channel(iStudy, sInputsB(1).ChannelFile, 1, 0);
-    end
-    
+    % Get new folder "Epileptogenicity"
+    ProtocolInfo = bst_get('ProtocolInfo');
+    EpiFolder = file_unique(bst_fullfile(ProtocolInfo.STUDIES, SubjectName, ['Epileptogenicity_' OPTIONS.OutputType]));
+    [tmp, Condition] = bst_fileparts(EpiFolder);
+    % Create new folder
+    iStudy = db_add_condition(SubjectName, Condition, 1);
+    % Copy channel file from first file
+    db_set_channel(iStudy, sInputsB(1).ChannelFile, 1, 0);
+
     % ===== READ EPILEPTOGENICITY MAPS =====
     % List all the epileptogenicity maps in output
-    listFiles = dir(bst_fullfile(workDir, 'SPM_*', ['spmT_0001', fileExt]));
-    strGoup = cell(1,length(listFiles));
-    fileLatency = zeros(1,length(listFiles));
+    listSpmDir = dir(bst_fullfile(workDir, 'SPM_*'));
+    spmFiles = {};
+    for i = 1:length(listSpmDir)
+        tFile = bst_fullfile(workDir, listSpmDir(i).name, ['spmT_0001', fileExt]);
+        if file_exist(tFile)
+            spmFiles{end+1} = tFile;
+        end
+    end
+    strGoup = cell(1,length(spmFiles));
+    fileLatency = zeros(1,length(spmFiles));
     % Get the list of groups (one group = all the latencies for a file or group)
-    for i = 1:length(listFiles)
-        [tmp, strGoup{i}] = bst_fileparts(listFiles(i).folder);
+    for i = 1:length(spmFiles)
+        [tmp, strGoup{i}] = bst_fileparts(bst_fileparts(spmFiles{i}));
         iLastSep = find(strGoup{i} == '_', 1, 'last');
         fileLatency(i) = str2num(strGoup{i}(iLastSep+1:end));
         strGoup{i} = strGoup{i}(1:iLastSep-1);
@@ -323,11 +322,13 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         iFiles = iFiles(I);
         % File comment = SPM folder
         Comment = strrep(strGoupUnique{iGroup}, 'SPM_', '');
-        % Full file names, sorted by latency
-        groupFiles = cellfun(@(c)bst_fullfile(c, ['spmT_0001', fileExt]), {listFiles(iFiles).folder}, 'UniformOutput', 0);
         % Import file
-        tmpFiles = import_sources(iStudy, [], groupFiles, [], fileFormat, Comment, 't', fileLatency(iFiles));
-        OutputFiles = cat(2, OutputFiles, tmpFiles);
+        tmpFile = import_sources(iStudy, [], spmFiles(iFiles), [], fileFormat, Comment, 't', fileLatency(iFiles));
+        OutputFiles = cat(2, OutputFiles, tmpFile);
+        % Remove negative values in the maps
+        tmpMat = load(tmpFile);
+        tmpMat.tmap(tmpMat.tmap < 0) = 0;
+        bst_save(tmpFile, tmpMat, 'v6');
     end
     
     % ===== READ DELAY MAPS =====
@@ -338,7 +339,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % File comment = File name
         [tmp, Comment] = bst_fileparts(listFiles(i).name);
         % Import file
-        tmpFiles = import_sources(iStudy, [], bst_fullfile(listFiles(i).folder, listFiles(i).name), [], fileFormat, Comment, 's');
+        tmpFiles = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's');
     end
     
     % ===== READ CONTACT VALUES =====
@@ -371,6 +372,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     ImportEegRawOptions.SkipLines         = 2;
     ImportEegRawOptions.nAvg              = 1;
     ImportEegRawOptions.isChannelName     = 1;
+    bst_set('ImportEegRawOptions', ImportEegRawOptions);
     % Import all the txt files, group by group
     for iGroup = 1:length(strGoupUnique)
         % Get file indices
@@ -394,8 +396,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             end
         end
         % Final time vector
-        DataMat.Time = fileLatency(iFiles);
-        DataMat.Comment = strGoupUnique{iGroup};
+        DataMat.Time         = fileLatency(iFiles);
+        DataMat.Comment      = strGoupUnique{iGroup};
+        DataMat.DataType     = 'ei';
+        DataMat.DisplayUnits = 't';
         % Save file
         OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), ['data_', strGoupUnique{iGroup}]);
         bst_save(OutputFile, DataMat, 'v7');

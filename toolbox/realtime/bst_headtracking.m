@@ -14,7 +14,7 @@ function bst_headtracking(varargin)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -407,7 +407,7 @@ while (1)
     
     if isSaveAlignChannelFile
         % Check for RealtimeAlign condition
-        [~, iStudyAlign] = bst_get('StudyWithCondition', [SubjectName '/' ConditionRealtimeAlign]);
+        [tmp, iStudyAlign] = bst_get('StudyWithCondition', [SubjectName '/' ConditionRealtimeAlign]);
         if isempty(iStudyAlign)
             % create the condition and channel file with the current sensor positions for subsequent alignment
             iStudyAlign = db_add_condition(SubjectName, ConditionRealtimeAlign);

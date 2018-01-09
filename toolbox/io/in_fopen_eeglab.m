@@ -14,7 +14,7 @@ function [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -92,6 +92,7 @@ end
 
 % ===== GET RELEVANT CONDITIONS =====
 epochNames = [];
+isAllEmpty = 1;
 if ~hdr.isRaw
     % Each trial is classified with many criteria
     % Need to ask the user along which creteria the trials should be classified
@@ -188,7 +189,7 @@ if ~hdr.isRaw
                         if isequal(paramsList{iParam}, 'latency')
                             isMatch = isequal(hdr.EEG.event(epoch.event(1)).latency, ParamSelected(iCond).(paramsList{iParam}));
                         elseif iscell(epoch.(['event', paramsList{iParam}]))
-                            isMatch = isequal(epoch.(['event', paramsList{iParam}]){1}, ParamSelected(iCond).(paramsList{iParam}));
+                            isMatch = any(cellfun(@(c)isequal(c,ParamSelected(iCond).(paramsList{iParam})), epoch.(['event', paramsList{iParam}])));
                         else
                             isMatch = isequal(epoch.(['event', paramsList{iParam}]), ParamSelected(iCond).(paramsList{iParam}));
                         end
@@ -211,9 +212,11 @@ if ~hdr.isRaw
                     epochNames{iTrial} = '';
                 end
             end
+            isAllEmpty = all(cellfun(@isempty, epochNames));
         % If no parameters were selected
         else
             epochNames = repmat({''}, 1, nEpochs);
+            isAllEmpty = 1;
         end
     end
 end
@@ -298,13 +301,16 @@ ChannelMat = in_channel_eeglab_set(hdr, isFixUnits);
 for i = 1:nEpochs
     if ~isempty(epochNames) && ~isempty(epochNames{i})
         sFile.epochs(i).label = epochNames{i};
-    else
+        sFile.epochs(i).select  = 1;
+    elseif isAllEmpty
         sFile.epochs(i).label = sprintf('%s (#%d)', hdr.EEG.setname, i);
+        sFile.epochs(i).select  = 1;
+    else
+        sFile.epochs(i).select  = 0;
     end
     sFile.epochs(i).samples = sFile.prop.samples;
     sFile.epochs(i).times   = sFile.prop.times;
     sFile.epochs(i).nAvg    = 1;
-    sFile.epochs(i).select  = 1;
     sFile.epochs(i).bad     = ~ismember(i, iGoodTrials);
     % Bad channels
     sFile.epochs(i).channelflag = ones(nChannels, 1);
@@ -334,7 +340,7 @@ else
 end
 
 % === EVENTS ====
-if hdr.isRaw && isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event)
+if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) % && hdr.isRaw
     % Get event types
     intTypes = [];
     if ischar(hdr.EEG.event(1).type)
@@ -360,15 +366,33 @@ if hdr.isRaw && isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event)
         end
         % Get event label 
         events(iEvt).label = listTypes{iEvt};
+        % If no occurrences: skip
+        if isempty(listOcc)
+            continue;
+        end
         % Get epochs indices
-        events(iEvt).epochs = ones(1, length(listOcc));
+        if ~hdr.isRaw && (isfield(hdr.EEG.event(listOcc(1)), 'epoch') && ~isempty(hdr.EEG.event(listOcc(1)).epoch))
+            events(iEvt).epochs = [hdr.EEG.event(listOcc).epoch];
+        else
+            events(iEvt).epochs = ones(1, length(listOcc));
+        end
         % Get samples
         allSmp = {hdr.EEG.event(listOcc).latency};
-        iEmpty = cellfun(@isempty, allSmp);
+        % Convert to values if available as strings
+        iChar = find(cellfun(@ischar, allSmp));
+        if ~isempty(iChar)
+            allSmp(iChar) = cellfun(@str2num, allSmp(iChar), 'UniformOutput', 0);
+        end
+        % Remove empty latencies
+        iEmpty = find(cellfun(@isempty, allSmp));
         if ~isempty(iEmpty)
             [allSmp{iEmpty}] = deal(1);
         end
         events(iEvt).samples = round([allSmp{:}]);
+        % For epoched files: convert events to samples local to each epoch 
+        if ~hdr.isRaw
+            events(iEvt).samples = events(iEvt).samples - (events(iEvt).epochs - 1) * (sFile.prop.samples(2) - sFile.prop.samples(1) + 1);
+        end
         % Compute samples
         events(iEvt).times = events(iEvt).samples ./ sFile.prop.sfreq;
     end

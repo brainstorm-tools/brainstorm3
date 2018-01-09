@@ -24,7 +24,7 @@ function [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType, F, Us
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -115,6 +115,7 @@ switch(fileType)
                            ~isempty(Modality) && ismember(Modality, {'MEG', 'MEG GRAD', 'MEG MAG', 'EEG'}) && ...
                            ~strcmpi(TopoType, '2DLayout');
         end
+        UseMontage = ismember(GlobalData.DataSet(iDS).Measures.DataType, {'recordings', 'raw'});
         
     case 'pdata'
         FileType = 'Data';
@@ -132,6 +133,7 @@ switch(fileType)
         DisplayUnits = GlobalData.DataSet(iDS).Measures.DisplayUnits;
         % Do not allow magnetic extrapolation for stat data
         UseSmoothing = 0;
+        UseMontage = 0;
         
     case {'timefreq', 'ptimefreq'}
         FileType = 'Timefreq';
@@ -153,6 +155,7 @@ switch(fileType)
         DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
         % Do not allow magnetic extrapolation for Timefreq data
         UseSmoothing = 0;
+        UseMontage = 0;
         % Detect modality
         if isempty(Modality)
             Modality = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality;
@@ -190,6 +193,7 @@ switch(fileType)
         end
     case 'none'
         UseSmoothing = 0;
+        UseMontage = 0;
     otherwise
         error(['This files contains information about cortical sources or regions of interest.' 10 ...
                'Cannot display it as a sensor topography.']);
@@ -233,7 +237,7 @@ end
 
 MontageName = [];
 % Only for recordings
-if ~strcmpi(FileType, 'Timefreq')
+if UseMontage
     % Get default montage
     sMontage = panel_montage('GetCurrentMontage', ['topo_' Modality]);
     sFigMontages = panel_montage('GetMontagesForFigure', hFig);
@@ -386,6 +390,10 @@ end
 % Update TF figure selection
 if strcmpi(FileType, 'Timefreq')
     bst_figures('SetCurrentFigure', hFig, 'TF');
+end
+% 3DElectrodes: Open tab "iEEG"
+if strcmpi(TopoType, '3DElectrodes')
+    gui_brainstorm('ShowToolTab', 'iEEG');
 end
 % Set figure visible
 set(hFig, 'Visible', 'on');

@@ -10,7 +10,7 @@ function [DataMat, ChannelMat] = in_data_ascii( DataFile )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -71,6 +71,8 @@ if OPTIONS.isChannelName
     [ChannelMat.Channel.Type] = deal('EEG');
     [ChannelMat.Channel.Name] = deal(chNames{:});
 end
+% Replace NaN with 0
+DataMat.F(isnan(DataMat.F)) = 0;
 
 % Apply voltage units (in Brainstorm: recordings are stored in Volts)
 switch (OPTIONS.VoltageUnits)

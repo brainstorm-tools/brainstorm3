@@ -9,7 +9,7 @@ function varargout = panel_realtime(varargin)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -179,7 +179,7 @@ function RegisterSubject_Callback(h, ev)
     ctrl = bst_get('PanelControls', 'Realtime');
     % Get subject
     SubjectName = char(ctrl.jTextCurSubject.getText());
-    [~, iSubject] = bst_get('Subject', SubjectName);
+    [tmp, iSubject] = bst_get('Subject', SubjectName);
 
     % Check if subject exists
     if ~isempty(iSubject)
@@ -203,7 +203,7 @@ function RegisterSubject_Callback(h, ev)
     end
     
     % ===== Create new subject
-    [~, iSubject] = db_add_subject(SubjectName, [], 1, 0);
+    [tmp, iSubject] = db_add_subject(SubjectName, [], 1, 0);
     sTemplate = bst_get('AnatomyDefaults', 'ICBM152');
     db_set_template( iSubject, sTemplate(1), 0 )
     

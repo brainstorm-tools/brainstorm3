@@ -19,7 +19,7 @@ function varargout = panel_surface(varargin)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -1269,12 +1269,16 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
     end
     % Grid smoothing: enable by default, except for time units
     if isAnatomy
-        TessInfo(iTess).DataSource.GridSmooth = isempty(DisplayUnits) || ~ismember(DisplayUnits, {'s','ms'});
+        TessInfo(iTess).DataSource.GridSmooth = isempty(DisplayUnits) || ~ismember(DisplayUnits, {'s','ms','t'});
     end
     % Add colormap of the surface to the figure
     if ~isempty(ColormapType)
         TessInfo(iTess).ColormapType = ColormapType;
         bst_colormaps('AddColormapToFigure', hFig, ColormapType, DisplayUnits);
+    end
+    % If the display units are in time: do not threshold the surface by default
+    if isequal(DisplayUnits, 's')
+        TessInfo(iTess).DataThreshold = 0;
     end
     % Update figure appdata
     setappdata(hFig, 'Surface', TessInfo);

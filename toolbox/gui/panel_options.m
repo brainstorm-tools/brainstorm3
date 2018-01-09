@@ -6,7 +6,7 @@ function varargout = panel_options(varargin)
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -45,7 +45,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelSystem = gui_river([5 2], [0 15 8 15], 'System');
         jCheckUpdates    = gui_component('CheckBox', jPanelSystem, 'br', 'Automatic updates', [], [], []);
         if (bst_get('MatlabVersion') >= 804)
-            jCheckSmooth = gui_component('CheckBox', jPanelSystem, 'br', 'Use smooth graphics', [], [], []);
+            jCheckSmooth = gui_component('CheckBox', jPanelSystem, 'br', 'Use smooth Matlab graphics', [], [], []);
         else
             jCheckSmooth = [];
         end
@@ -147,7 +147,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     gui_component('Label', jPanelBottom, '', labelBottom, [], [], []);
     gui_component('Label', jPanelBottom, 'hfill', ' ');
     gui_component('Button', jPanelBottom, 'right', 'Cancel', [], [], @ButtonCancel_Callback);
-    gui_component('Button', jPanelBottom, [],         'Save',   [], [], @ButtonSave_Callback);
+    gui_component('Button', jPanelBottom, [], 'Save', [], [], @ButtonSave_Callback);
 
     % ===== LOAD OPTIONS =====
     LoadOptions();
@@ -167,7 +167,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckForceComp.setSelected(bst_get('ForceMatCompression'));
         jCheckUpdates.setSelected(bst_get('AutoUpdates'));
         jCheckGfp.setSelected(bst_get('DisplayGFP'));
-        jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries'));
+        jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries') > 0);
         jCheckIgnoreMem.setSelected(bst_get('IgnoreMemoryWarnings'));
         if ~isempty(jCheckSmooth)
             jCheckSmooth.setSelected(bst_get('GraphicsSmoothing'));
@@ -212,8 +212,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         bst_set('ForceMatCompression', jCheckForceComp.isSelected());
         bst_set('AutoUpdates', jCheckUpdates.isSelected());
         bst_set('DisplayGFP',  jCheckGfp.isSelected());
-        bst_set('DownsampleTimeSeries',  jCheckDownsample.isSelected());
         bst_set('IgnoreMemoryWarnings',  jCheckIgnoreMem.isSelected());
+        if jCheckDownsample.isSelected()
+            bst_set('DownsampleTimeSeries', 5);
+        else
+            bst_set('DownsampleTimeSeries', 0);
+        end
         if ~isempty(jCheckSmooth)
             % Update value
             isSmoothing = jCheckSmooth.isSelected();

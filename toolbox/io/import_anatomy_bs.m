@@ -17,7 +17,7 @@ function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive,
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -205,14 +205,21 @@ if ~isInteractive || ~isempty(FidFile)
     % Use fiducials from file
     if ~isempty(FidFile)
         % Already loaded
-    % Set some random fiducial points
+    % Compute them from MNI transformation
     elseif isempty(sFid)
-        NAS = [cubeSize(1)./2,  cubeSize(2),           cubeSize(3)./2];
-        LPA = [1,               cubeSize(2)./2,        cubeSize(3)./2];
-        RPA = [cubeSize(1),     cubeSize(2)./2,        cubeSize(3)./2];
-        AC  = [cubeSize(1)./2,  cubeSize(2)./2 + 20,   cubeSize(3)./2];
-        PC  = [cubeSize(1)./2,  cubeSize(2)./2 - 20,   cubeSize(3)./2];
-        IH  = [cubeSize(1)./2,  cubeSize(2)./2,        cubeSize(3)./2 + 50];
+%         NAS = [cubeSize(1)./2,  cubeSize(2),           cubeSize(3)./2];
+%         LPA = [1,               cubeSize(2)./2,        cubeSize(3)./2];
+%         RPA = [cubeSize(1),     cubeSize(2)./2,        cubeSize(3)./2];
+%         AC  = [cubeSize(1)./2,  cubeSize(2)./2 + 20,   cubeSize(3)./2];
+%         PC  = [cubeSize(1)./2,  cubeSize(2)./2 - 20,   cubeSize(3)./2];
+%         IH  = [cubeSize(1)./2,  cubeSize(2)./2,        cubeSize(3)./2 + 50];
+        NAS = [];
+        LPA = [];
+        RPA = [];
+        AC  = [];
+        PC  = [];
+        IH  = [];
+        isComputeMni = 1;
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -226,7 +233,9 @@ if ~isInteractive || ~isempty(FidFile)
             isComputeMni = 1;
         end
     end
-    figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
+    if ~isempty(NAS) || ~isempty(LPA) || ~isempty(RPA) || ~isempty(AC) || ~isempty(PC) || ~isempty(IH)
+        figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
+    end
 % Define with the MRI Viewer
 else
     % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
@@ -242,7 +251,7 @@ else
 end
 % Load SCS and NCS field to make sure that all the points were defined
 sMri = load(BstMriFile, 'SCS', 'NCS');
-if ~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R)
+if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import BrainSuite folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive
         bst_error(errorMsg, 'Import BrainSuite folder', 0);

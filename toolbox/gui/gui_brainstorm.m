@@ -14,7 +14,7 @@ function varargout = gui_brainstorm( varargin )
 % This function is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2017 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -137,9 +137,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         gui_component('MenuItem', jMenuFile, [], 'Quit', IconLoader.ICON_RESET, [], @closeWindow_Callback, fontSize);
     end
     
-%     % ==== Menu COLORMAPS ====
-%     jMenuColormaps = gui_component('Menu', jMenuBar, [], 'Colormaps', [], [], [], fontSize);
-%         bst_colormaps('CreateAllMenus', jMenuColormaps, [], 1);
+    % ==== Menu COLORMAPS ====
+    jMenuColormaps = gui_component('Menu', jMenuBar, [], 'Colormaps', [], [], [], fontSize);
+        bst_colormaps('CreateAllMenus', jMenuColormaps, [], 1);
 
     % ==== Menu UPDATE ====
     jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
@@ -622,7 +622,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Create popup
         jPopupTab = java_create('javax.swing.JPopupMenu');
         % List possible tabs
-        panelList = {'Record', 'Filter', 'Surface', 'Scout', 'Cluster', 'Coordinates', 'Dipinfo', 'Command'};
+        panelList = {'Record', 'Filter', 'Surface', 'Scout', 'Cluster', 'Coordinates', 'Dipinfo', 'iEEG', 'Command'};
         panelRemove = {};
         % List missing tabs
         for iPanel = 1:length(GlobalData.Program.GUI.panels)
@@ -968,12 +968,12 @@ function SetCurrentProtocol(iProtocol)
                 % Update protocol
                 bst_set('ProtocolInfo', ProtocolInfo);
                 % Redrawing tree
-                UpdateProtocolsList();
+%                 UpdateProtocolsList();
                 panel_protocols('UpdateTree');
-                %%%%% DONT'T KNOW WHY WE HAVE TO RESTORE CALLBACK ON LINUX SYSTEMS ??? 
-                if ~ispc
-                    java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
-                end
+%                 %%%%% DONT'T KNOW WHY WE HAVE TO RESTORE CALLBACK ON LINUX SYSTEMS ??? 
+%                 if ~ispc
+%                     java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
+%                 end
             end
         else
             isRetry = 0;
@@ -1135,6 +1135,8 @@ function ShowToolTab(tabTitle)
             panel_scout('UpdatePanel');
         case 'Surface'
             panel_surface('UpdatePanel');
+        case 'iEEG'
+            panel_ieeg('UpdatePanel');
     end
     % Select tab
     SetSelectedTab(tabTitle, 0);
