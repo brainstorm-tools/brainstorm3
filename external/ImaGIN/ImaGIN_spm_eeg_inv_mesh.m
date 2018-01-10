@@ -19,7 +19,7 @@ function mesh = ImaGIN_spm_eeg_inv_mesh(sMRI, Msize)
 % SPM directory of canonical anatomy
 %--------------------------------------------------------------------------
 Cdir = fullfile(spm('dir'), 'canonical');
-ImaGINdir = fileparts(mfilename('fullpath'));
+ImaGINdir = fullfile(fileparts(mfilename('fullpath')), 'private');
 
 if nargin == 0 || isempty(sMRI)
     % Use the template
