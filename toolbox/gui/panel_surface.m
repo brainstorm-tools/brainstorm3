@@ -1231,7 +1231,7 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
                 end
             end
             % Display units
-            DisplayUnits = [];
+            DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
             % Set figure data
             setappdata(hFig, 'Timefreq', TfInfo);
             % Display options panel
