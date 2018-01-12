@@ -389,11 +389,16 @@ if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) % && hdr.isRaw
             [allSmp{iEmpty}] = deal(1);
         end
         events(iEvt).samples = round([allSmp{:}]);
+        % Add durations if they are more than one sample
+        allDur = [hdr.EEG.event(listOcc).duration];
+        if any(allDur>1) && length(events(iEvt).samples) == length(allDur)
+            events(iEvt).samples(2,:) = events(iEvt).samples + allDur; 
+        end         
         % For epoched files: convert events to samples local to each epoch 
         if ~hdr.isRaw
             events(iEvt).samples = events(iEvt).samples - (events(iEvt).epochs - 1) * (sFile.prop.samples(2) - sFile.prop.samples(1) + 1);
         end
-        % Compute samples
+        % Compute times
         events(iEvt).times = events(iEvt).samples ./ sFile.prop.sfreq;
     end
     % Save structure
