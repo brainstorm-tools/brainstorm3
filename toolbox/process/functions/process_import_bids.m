@@ -2,7 +2,7 @@ function varargout = process_import_bids( varargin )
 % PROCESS_IMPORT_BIDS: Import a dataset organized following the BIDS specficiations (http://bids.neuroimaging.io/)
 %
 % USAGE:           OutputFiles = process_import_bids('Run', sProcess, sInputs)
-%         [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], nVertices=[ask], isInteractive=1)
+%         [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], nVertices=[ask], isInteractive=1, ChannelAlign=0)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -116,7 +116,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
     
     % ===== PARSE INPUTS =====
     if (nargin < 4) || isempty(ChannelAlign)
-        ChannelAlign = 2;
+        ChannelAlign = 0;
     end
     if (nargin < 3) || isempty(isInteractive)
         isInteractive = 1;
@@ -382,7 +382,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % Import options
         ImportOptions = db_template('ImportOptions');
         ImportOptions.ChannelReplace  = 1;
-        ImportOptions.ChannelAlign    = ChannelAlign * ~sSubject.UseDefaultAnat;
+        ImportOptions.ChannelAlign    = 2 * (ChannelAlign >= 1) * ~sSubject.UseDefaultAnat;
         ImportOptions.DisplayMessages = isInteractive;
         ImportOptions.EventsMode      = 'ignore';
         ImportOptions.EventsTrackMode = 'value';

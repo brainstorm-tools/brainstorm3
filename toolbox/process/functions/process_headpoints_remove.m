@@ -18,7 +18,7 @@ function varargout = process_headpoints_remove( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
 
 eval(macro_method);
 end
@@ -94,15 +94,17 @@ function strMsg = RemoveHeadpoints(ChannelFile, zLimit)
         ChannelMat.HeadPoints = [];
         iDelete = 1:nPoints;
     else
+        % Get EXTRA points
+        iExtra = find(strcmpi(ChannelMat.HeadPoints.Label, 'EXTRA'));
         % Find the points below the z-threshold
-        iDelete = find(ChannelMat.HeadPoints.Loc(3,:) <= zLimit);
+        iDelete = find(ChannelMat.HeadPoints.Loc(3,iExtra) <= zLimit);
         % Remove the points
         if (length(iDelete) == nPoints)
             ChannelMat.HeadPoints = [];
         elseif ~isempty(iDelete)
-            ChannelMat.HeadPoints.Loc(:,iDelete) = [];
-            ChannelMat.HeadPoints.Label(iDelete) = [];
-            ChannelMat.HeadPoints.Type(iDelete)  = [];
+            ChannelMat.HeadPoints.Loc(:,iExtra(iDelete)) = [];
+            ChannelMat.HeadPoints.Label(iExtra(iDelete)) = [];
+            ChannelMat.HeadPoints.Type(iExtra(iDelete))  = [];
         end
     end
     % Message: head points removed

@@ -203,7 +203,11 @@ if isHeadPoints
     % Get labels positions
     tmpLoc = get(hHeadPointsLabels,'Position');
     if ~isempty(tmpLoc)
-        HeadPointsLabelsLoc = cat(1, tmpLoc{:});
+        if iscell(tmpLoc)
+            HeadPointsLabelsLoc = cat(1, tmpLoc{:});
+        else
+            HeadPointsLabelsLoc = tmpLoc;
+        end
     end
     % Get fiducials positions
     HeadPointsFidLoc = [get(hHeadPointsFid, 'XData')', ...
