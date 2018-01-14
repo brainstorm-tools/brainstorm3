@@ -26,7 +26,7 @@ function [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2014
+% Authors: Francois Tadel, 2009-2018
 
 %% ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(ImportOptions)
@@ -125,6 +125,9 @@ end
 sFile.device      = Device;
 sFile.channelflag = ChannelFlag;
 sFile.byteorder = 'b';
+% Acquisition date (saved in POSIX format in FIF file)
+sFile.acq_date = str_date(info.meas_date(1), 'posix');
+
 
 %% ===== READ DATA DESCRIPTION =====
 % Get number of epochs

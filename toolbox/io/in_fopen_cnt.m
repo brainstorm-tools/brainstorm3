@@ -26,7 +26,7 @@ function [sFile, ChannelMat] = in_fopen_cnt(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2014
+% Authors: Francois Tadel, 2009-2018
         
 %% ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(ImportOptions)
@@ -56,6 +56,8 @@ sFile.prop.nAvg    = 1;
 % Get bad channels
 sFile.channelflag = ones(length(hdr.electloc),1);
 sFile.channelflag([hdr.electloc.bad] == 1) = -1;
+% Acquisition date
+sFile.acq_date = str_date(char(hdr.data.date(:)'));
 
 
 %% ===== EVENTS LIST =====   

@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_ctf(ds_directory)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2015
+% Authors: Francois Tadel, 2009-2018
 
 
 %% ===== READ HEADER =====

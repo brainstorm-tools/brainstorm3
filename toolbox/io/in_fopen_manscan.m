@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_manscan(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2018
         
 
 %% ===== READ HEADER =====
@@ -43,7 +43,7 @@ while(1)
     % Reached the end of the file: exit the loop
     if feof(fid)
         break; 
-    end;
+    end
     % Read one line
     buf = fgetl(fid);
     if isempty(buf)
@@ -144,7 +144,11 @@ sFile.prop.sfreq = 256;
 sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(length(hdr.epoch(iEpoch).ChannelOrder), 1);
-
+% Acquisition date
+try
+    sFile.acq_date = str_date(hdr.epoch.ExperimentTime, 'mm/dd/yy');
+catch
+end
 
 %% ===== EPOCHS =====
 if (length(hdr.epoch) <= 1)

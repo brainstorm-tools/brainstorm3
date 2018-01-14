@@ -29,7 +29,7 @@ function [sFile, ChannelMat] = in_fopen_compumedics_pfs(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
 
 
 %% ===== GET FILES =====
@@ -218,7 +218,11 @@ sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nchannels, 1);
-
+% Acquisition date
+try
+    sFile.acq_date = str_date(hdr.xmlchan.ProFusionEEGStudy.Study.creation_time);
+catch
+end
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
 ChannelMat = db_template('channelmat');

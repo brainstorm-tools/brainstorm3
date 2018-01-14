@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_neurone(PhaseDir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
 
 %% ===== GET FILES =====
 % Get folders
@@ -125,7 +125,11 @@ sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nChannels, 1);
-
+% Acquisition date
+try
+    sFile.acq_date = str_date(hdr.Session.DataSetSession.TableSession.StartDateTime.text(1:10));
+catch
+end
 
 %% ===== EVENT MARKERS =====
 if ~isempty(EventsFile)

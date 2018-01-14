@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_kdf(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2018
         
 
 %% ===== READ OTHER FILES =====
@@ -219,6 +219,8 @@ sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nsignal,1);
+% Acquisition date
+sFile.acq_date = str_date(hdr.startdate);
 
 
 %% ===== READ DIGITIZER FILE =====

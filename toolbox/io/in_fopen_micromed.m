@@ -20,7 +20,7 @@ function [sFile, ChannelMat] = in_fopen_micromed(DataFile)
 % =============================================================================@
 %
 % Authors:  Guillaume Becq, 2010
-%           Adapted by Francois Tadel for Brainstorm, 2017
+%           Adapted by Francois Tadel for Brainstorm, 2018
 
 
 %% ===== READ HEADER =====
@@ -405,7 +405,8 @@ sFile.header       = hdr;
 % Comment: short filename
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
-
+% Acquisition date
+sFile.acq_date = datestr(datenum([hdr.acquisition.year, hdr.acquisition.month, hdr.acquisition.day]), 'dd-mmm-yyyy');
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====

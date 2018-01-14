@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2017
+% Authors: Francois Tadel, 2012-2018
         
 
 % Parse inputs
@@ -196,6 +196,9 @@ sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nsignal,1);
+% Acquisition date
+sFile.acq_date = str_date(hdr.startdate);
+
 
 
 %% ===== PROCESS CHANNEL NAMES/TYPES =====

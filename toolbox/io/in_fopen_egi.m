@@ -88,6 +88,8 @@ sFile.header     = header;
 % Comment: short filename
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
+% Acquisition date
+sFile.acq_date = datestr(datenum([header.recordingTime.Year, header.recordingTime.Month, header.recordingTime.Day]), 'dd-mmm-yyyy');
 
 
 %% ===== CHECK FILE INTEGRITY =====

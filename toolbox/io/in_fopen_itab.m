@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_itab(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
         
 
 %% ===== READ HEADER =====
@@ -140,6 +140,8 @@ sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ChannelFlag;
+% Acquisition date
+sFile.acq_date = str_date(hdr.date);
 
 
 %% ===== EVENTS =====

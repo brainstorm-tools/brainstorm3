@@ -99,7 +99,6 @@ sFile.prop.samples = double([-nSamplesPre, nSamples - nSamplesPre - 1]);
 sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = header.header_data.TotalEpochs;
 
-
 %% ===== CHANNELS =====
 % Initialize channels structure
 nChannels = length(header.channel_data);
