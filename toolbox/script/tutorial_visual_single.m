@@ -1,4 +1,4 @@
-function tutorial_visual_single(tutorial_dir, reports_dir, iSubjects)
+function tutorial_visual_single(tutorial_dir, reports_dir)
 % TUTORIAL_VISUAL_SINGLE: Runs the Brainstorm/SPM group analysis pipeline (single subject, BIDS version).
 %
 % ONLINE TUTORIALS: http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
@@ -10,8 +10,6 @@ function tutorial_visual_single(tutorial_dir, reports_dir, iSubjects)
 %           |- derivatives/meg_derivatives/sub-XX/ses-meg/meg/*.fif  : MEG+EEG recordings (processed with MaxFilter's tSSS)
 %           |- sub-emptyroom/ses-meg/meg/090707_raw_st.fif           : Empty room measurements
 %    - reports_dir: If defined, exports all the reports as HTML to this folder
-%    - iSubjStart : Index of the first subject to process
-%           => If the script crashes, you can re-run it starting from the last subject
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -31,14 +29,14 @@ function tutorial_visual_single(tutorial_dir, reports_dir, iSubjects)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, Elizabeth Bock, 2016-2017
+% Author: Francois Tadel, Elizabeth Bock, 2016-2018
 
 
 %% ===== SCRIPT VARIABLES =====
 % Full list of subjects to process
 SubjectNames = {'sub-01', 'sub-02', 'sub-03', 'sub-04', 'sub-05', 'sub-06', 'sub-07', 'sub-08', 'sub-09', 'sub-10', ...
                 'sub-11', 'sub-12', 'sub-13', 'sub-14', 'sub-15', 'sub-16'};
-SubjectNoise = 'emptyroom';
+SubjectNoise = 'sub-emptyroom';
 % Bad channels {iSubj} = {Run01, Run02, Run03, Run04, Run05, Run06}
 BadChannels{1}  = {'EEG016', 'EEG070', 'EEG050',{'EEG008','EEG050'}, [], []};
 BadChannels{2}  = {{'EEG027', 'EEG030', 'EEG038'}, 'EEG010', 'EEG010', 'EEG010', 'EEG010', 'EEG010'};
@@ -80,13 +78,6 @@ SspSelect{16} = {{1,1},         {1,1},   {1,1},   {2,1},   {1,1},   {1,1}};
 if ~brainstorm('status')
     brainstorm nogui
 end
-% First subject to process
-if (nargin < 3) || isempty(iSubjects)
-    iSubjects = 1:16;
-    isStartOver = 1;
-else
-    isStartOver = 0;
-end
 % Output folder for reports
 if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
     reports_dir = [];
@@ -98,13 +89,10 @@ if (nargin < 1) || isempty(tutorial_dir) || ~file_exist(tutorial_dir) || ~file_e
 end
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
 ProtocolName = 'TutorialVisual';
-% If starting from the first subject: delete the protocol
-if isStartOver
-    % Delete existing protocol
-    gui_brainstorm('DeleteProtocol', ProtocolName);
-    % Create new protocol
-    gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
-end
+% Delete existing protocol
+gui_brainstorm('DeleteProtocol', ProtocolName);
+% Create new protocol
+gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
 % Set visualization filters: 40Hz low-pass, no high-pass
 panel_filter('SetFilters', 1, 40, 0, [], 0, [], 0, 0);
 % Set colormap: local color scale
@@ -112,51 +100,8 @@ bst_colormaps('SetMaxMode', 'meg', 'local');
 bst_colormaps('SetMaxMode', 'eeg', 'local');
 
 
-%% ===== EMPTY ROOM RECORDINGS =====
-% If starting from the first subject: import the noise covariance
-if isStartOver
-    % Use the same noise recordings for all the files
-    NoiseFile  = fullfile(BidsDir, 'sub-emptyroom', 'ses-meg', 'meg', '090707_raw_st.fif');
-    % Process: Create link to raw file
-    sFileNoise = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
-        'subjectname',    SubjectNoise, ...
-        'datafile',       {NoiseFile, 'FIF'}, ...
-        'channelreplace', 1, ...
-        'channelalign',   0);
-    % Process: Notch filter: 50Hz 100Hz 150Hz 200Hz
-    sFileNoiseClean = bst_process('CallProcess', 'process_notch', sFileNoise, [], ...
-            'freqlist',    [50, 100, 150, 200], ...
-            'sensortypes', 'MEG, EEG', ...
-            'read_all',    0);
-    % Process: Compute noise covariance
-    bst_process('CallProcess', 'process_noisecov', sFileNoiseClean, [], ...
-        'baseline',    [], ...
-        'sensortypes', 'MEG, EEG', ...
-        'target',      1, ...  % Noise covariance     (covariance over baseline time window)
-        'dcoffset',    1, ...  % Block by block, to avoid effects of slow shifts in data
-        'identity',    0, ...
-        'copycond',    0, ...
-        'copysubj',    0, ...
-        'replacefile', 1);  % Replace
-% If the noise recordings are already imported: just select them from the database
-else
-    % Process: Select data files in: emptyroom/*
-    sFileNoiseClean = bst_process('CallProcess', 'process_select_files_data', [], [], ...
-        'subjectname',   SubjectNoise);
-    % Process: Select file comments with tag: Avg
-    sFileNoiseClean = bst_process('CallProcess', 'process_select_tag', sFileNoiseClean, [], ...
-        'tag',    'notch');  % Select only the files with the tag
-    % Check if it was already processed
-    if isempty(sFileNoiseClean)
-        error('Noise recordings have not been imported yet. Re-run the script from subject #1.');
-    end
-    % Select only the first file if there are multiple files
-    sFileNoiseClean = sFileNoiseClean(1);
-end
-
-
 %% ===== PRE-PROCESS AND IMPORT =====
-for iSubj = iSubjects
+for iSubj = 1:16
     % Start a new report (one report per subject)
     bst_report('Start');
     
@@ -384,12 +329,6 @@ for iSubj = iSubjects
             'time',     0.11, ...
             'Comment',  sprintf('Subject #%d, Run #%d', iSubj, iRun));
 
-        % ===== COPY NOISECOV: MEG =====
-        % Copy noise covariance to current study
-        isDataCov = 0;
-        AutoReplace = 1;
-        db_set_noisecov(sFileNoiseClean.iStudy, sFilesAvg(1).iStudy, isDataCov, AutoReplace);
-        
         % ===== COMPUTE NOISECOV: EEG =====
         % Process: Compute covariance (noise or data)
         bst_process('CallProcess', 'process_noisecov', sFilesEpochs, [], ...
@@ -400,7 +339,7 @@ for iSubj = iSubjects
             'identity',       0, ...
             'copycond',       0, ...
             'copysubj',       0, ...
-            'replacefile',    2);  % Merge
+            'replacefile',    1);  % Replace
     end
     
     % Save report
@@ -410,6 +349,33 @@ for iSubj = iSubjects
     end
 end
 
+
+%% ===== EMPTY ROOM RECORDINGS =====
+% Use the same noise recordings for all the files
+NoiseFiles = fullfile(BidsDir, 'sub-emptyroom');
+% Process: Create link to raw file
+sFilesNoise = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
+    'subjectname',    SubjectNoise, ...
+    'datafile',       {NoiseFiles, 'FIF'}, ...
+    'channelreplace', 1, ...
+    'channelalign',   0);
+% Process: Notch filter: 50Hz 100Hz 150Hz 200Hz
+sFileNoiseClean = bst_process('CallProcess', 'process_notch', sFilesNoise, [], ...
+        'freqlist',    [50, 100, 150, 200], ...
+        'sensortypes', 'MEG, EEG', ...
+        'read_all',    0);
+% Process: Compute noise covariance
+bst_process('CallProcess', 'process_noisecov', sFileNoiseClean, [], ...
+    'baseline',    [], ...
+    'sensortypes', 'MEG', ...
+    'target',      1, ...  % Noise covariance     (covariance over baseline time window)
+    'dcoffset',    1, ...  % Block by block, to avoid effects of slow shifts in data
+    'identity',    0, ...
+    'copycond',    1, ...
+    'copysubj',    1, ...
+    'copymatch',   1, ...
+    'replacefile', 2);  % Merge
+       
 
 
 %% ===== SOURCE ESTIMATION =====
