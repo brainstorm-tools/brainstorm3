@@ -22,7 +22,7 @@ function varargout = process_import_bids( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2017
+% Authors: Francois Tadel, 2016-2018
 
 eval(macro_method);
 end
@@ -388,8 +388,40 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         ImportOptions.EventsTrackMode = 'value';
         % Get all the files in the meg folder
         allMegFiles = {};
+        allMegDates = {};
         for isess = 1:length(SubjectSessDir{iSubj})
             if isdir(SubjectSessDir{iSubj}{isess})
+                tsvFiles = {};
+                tsvDates = {};
+                % Try to read the _scans.tsv file in the session folder, to get the acquisition date
+                tsvDir = dir(fullfile(SubjectSessDir{iSubj}{isess}, '*_scans.tsv'));
+                if (length(tsvDir) == 1)
+                    % Open file
+                    fid = fopen(fullfile(SubjectSessDir{iSubj}{isess}, tsvDir(1).name), 'r');
+                    if (fid < 0)
+                        disp(['BIDS> Warning: Cannot open file: ' tsvDir(1).name]);
+                        continue;
+                    end
+                    % Read header
+                    tsvHeader = str_split(fgetl(fid), sprintf('\t'));
+                    tsvFormat = repmat('%s ', 1, length(tsvHeader));
+                    tsvFormat(end) = [];
+                    % Read file
+                    tsvValues = textscan(fid, tsvFormat, 'Delimiter', '\t');
+                    % Close file
+                    fclose(fid);
+                    % Get the columns "filename" and "acq_time"
+                    iColFile = find(strcmpi(tsvHeader, 'filename'));
+                    iColTime = find(strcmpi(tsvHeader, 'acq_time'));
+                    if ~isempty(iColFile) && ~isempty(iColTime)
+                        tsvFiles = tsvValues{iColFile};
+                        for iDate = 1:length(tsvValues{iColTime})
+                            fDate = sscanf(tsvValues{iColTime}{iDate}, '%d-%d-%d');
+                            tsvDates{iDate} = datestr(datenum(fDate(1), fDate(2), fDate(3)), 'dd-mmm-yyyy');
+                        end
+                    end
+                end
+                % Read the contents of the 'meg' folder
                 megDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, 'meg', '*.*'));
                 for iFile = 1:length(megDir)
                     % Skip hidden files
@@ -398,19 +430,32 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                     end
                     % Get full file name
                     allMegFiles{end+1} = bst_fullfile(SubjectSessDir{iSubj}{isess}, 'meg', megDir(iFile).name);
+                    % Try to get the recordings date from the tsv file
+                    if ~isempty(tsvFiles)
+                        iFileTsv = find(strcmp(['meg', '/', megDir(iFile).name], tsvFiles));
+                        if ~isempty(iFileTsv)
+                            allMegDates{length(allMegFiles)} = tsvDates{iFileTsv};
+                        end
+                    end
                 end
             end
         end
         % Try import them all, one by one
         for iFile = 1:length(allMegFiles)
+            % Acquisition date
+            if (length(allMegDates) >= iFile) && ~isempty(allMegDates{iFile})
+                DateOfStudy = allMegDates{iFile};
+            else
+                DateOfStudy = [];
+            end
             % Get file extension
             [tmp, fBase, fExt] = bst_fileparts(allMegFiles{iFile});
             % Import depending on this extension
             switch (fExt)
                 case '.ds'
-                    RawFiles = [RawFiles{:}, import_raw(allMegFiles{iFile}, 'CTF', iSubject, ImportOptions)];
+                    RawFiles = [RawFiles{:}, import_raw(allMegFiles{iFile}, 'CTF', iSubject, ImportOptions, DateOfStudy)];
                 case '.fif'
-                    RawFiles = [RawFiles{:}, import_raw(allMegFiles{iFile}, 'FIF', iSubject, ImportOptions)];
+                    RawFiles = [RawFiles{:}, import_raw(allMegFiles{iFile}, 'FIF', iSubject, ImportOptions, DateOfStudy)];
                 case {'.json', '.tsv'}
                     % Nothing to do
                 otherwise

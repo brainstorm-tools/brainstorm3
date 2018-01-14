@@ -1,11 +1,11 @@
-function tutorial_omega(BidsDir)
-% TUTORIAL_OMEGA: Script that reproduces the results of the online tutorial "Resting state and OMEGA database".
+function tutorial_omega_orig(tutorial_dir)
+% TUTORIAL_OMEGA_ORIG: Script that reproduces the results of the online tutorial "Resting state and OMEGA database (Original)".
 %
 % CORRESPONDING ONLINE TUTORIALS:
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/RestingOmega
+%     http://neuroimage.usc.edu/brainstorm/Tutorials/RestingOmegaOrig
 %
 % INPUTS: 
-%     tutorial_dir: Directory where the ds000247_R1.0.0.zip file has been unzipped
+%     tutorial_dir: Directory where the sample_omega.zip file has been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -25,19 +25,25 @@ function tutorial_omega(BidsDir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2016-2018
+% Author: Francois Tadel, 2016
 
 
 %% ===== FILES TO IMPORT =====
 % You have to specify the folder in which the tutorial dataset is unzipped
-if (nargin == 0) || isempty(BidsDir) || ~file_exist(BidsDir)
+if (nargin == 0) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
     error('The first argument must be the full path to the tutorial dataset folder.');
+end
+% Build the path of the files to import
+BidsDir = fullfile(tutorial_dir, 'sample_omega');
+% Check if the folder contains the required files
+if ~file_exist(BidsDir)
+    error(['The folder ' tutorial_dir ' does not contain the folder from the file sample_omega.zip.']);
 end
 
 
 %% ===== CREATE PROTOCOL =====
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
-ProtocolName = 'TutorialOmega';
+ProtocolName = 'TutorialOmegaOrig';
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
@@ -170,8 +176,7 @@ bst_process('CallProcess', 'process_noisecov', sFilesNoise, [], ...
     'dcoffset',       1, ...  % Block by block, to avoid effects of slow shifts in data
     'identity',       0, ...
     'copycond',       1, ...
-    'copysubj',       1, ...
-    'copymatch',      1, ...
+    'copysubj',       0, ...
     'replacefile',    1);  % Replace
 
 % Process: Compute head model
