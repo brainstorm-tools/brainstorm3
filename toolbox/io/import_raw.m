@@ -1,10 +1,7 @@
-function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
+function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions, DateOfStudy)
 % IMPORT_RAW: Create a link to a raw file in the Brainstorm database.
 %
-% USAGE:  OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
-%         OutputFiles = import_raw(RawFiles, FileFormat, iSubject)
-%         OutputFiles = import_raw(RawFiles, FileFormat)
-%         OutputFiles = import_raw()
+% USAGE:  OutputFiles = import_raw(RawFiles=[ask], FileFormat=[ask], iSubject=[], ImportOptions=[], DateOfStudy=[])
 %
 % INPUTS:
 %     - RawFiles      : Full path to the file to import in database
@@ -12,6 +9,7 @@ function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
 %     - iSubject      : Subject indice in which to import the raw file
 %     - ImportOptions : Structure that describes how to import the recordings
 %       => Fields used: ChannelAlign, ChannelReplace, DisplayMessages, EventsMode, EventsTrackMode
+%     - DateOfStudy   : String 'dd-MMM-yyyy', force Study entries created in the database to use this acquisition date
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -31,9 +29,12 @@ function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 % 
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2018
 
 %% ===== PARSE INPUT =====
+if (nargin < 5) || isempty(DateOfStudy)
+    DateOfStudy = [];
+end
 if (nargin < 4) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
 end
@@ -199,8 +200,16 @@ for iFile = 1:length(RawFiles)
             end
         end
     end
+    % Creation date: use input value, or try to get it from the sFile structure
+    if ~isempty(DateOfStudy)
+        studyDate = DateOfStudy;
+    elseif isfield(sFile, 'acq_date') && ~isempty(sFile.acq_date)
+        studyDate = sFile.acq_date;
+    else
+        studyDate = [];
+    end
     % Create output condition
-    iOutputStudy = db_add_condition(sSubject.Name, ConditionName);
+    iOutputStudy = db_add_condition(sSubject.Name, ConditionName, [], studyDate);
     if isempty(iOutputStudy)
         error('Folder could not be created : "%s/%s".', bst_fileparts(sSubject.FileName), ConditionName);
     end

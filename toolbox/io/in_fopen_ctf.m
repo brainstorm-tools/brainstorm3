@@ -80,6 +80,8 @@ sFile.header     = header;
 sFile.prop.sfreq   = double(header.gSetUp.sample_rate);
 sFile.prop.samples = ([0, header.gSetUp.no_samples - 1] - header.gSetUp.preTrigPts);
 sFile.prop.times   = sFile.prop.samples ./ header.gSetUp.sample_rate;
+% Acquisition date
+sFile.acq_date = str_date(header.res4.data_date);
 
 % Get number of epochs
 nEpochs = header.gSetUp.no_trials;

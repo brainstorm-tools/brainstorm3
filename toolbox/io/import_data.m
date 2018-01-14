@@ -1,8 +1,8 @@
-function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions)
+function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy)
 % IMPORT_DATA: Imports a list of datafiles in a Study of Brainstorm database
 % 
-% USAGE:  NewFiles = import_data(DataFiles, [],         FileFormat, iStudyInit, iSubjectInit, ImportOptions)
-%         NewFiles = import_data(sFile,     ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions)
+% USAGE:  NewFiles = import_data(DataFiles, [],         FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy=[])
+%         NewFiles = import_data(sFile,     ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy=[])
 %
 % INPUT:
 %    - DataFiles     : Cell array of full filenames of the data files to import (requires FileFormat to be set)
@@ -19,6 +19,7 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 %                      Must be specified if iStudyInit is not defined.
 %                      In this case, default study is created for the target subject.
 %    - ImportOptions : Structure that describes how to import the recordings.
+%     - DateOfStudy  : String 'dd-MMM-yyyy', force Study entries created in the database to use this acquisition date
 %
 % NOTE : Some data filenames can be interpreted as subjects/conditions/run :
 %    - cell<i>_<conditionName>_obs<j>.erp     : subject #j, condition #i, conditionName
@@ -41,12 +42,15 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 
 %% ===== PARSE INPUTS =====
 % Default values for all parameters
-if (nargin < 6)
+if (nargin < 7) || isempty(DateOfStudy)
+    DateOfStudy = [];
+end
+if (nargin < 6) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
 end
 if (nargin < 5) || isempty(iSubjectInit)
@@ -244,7 +248,7 @@ for iFile = 1:length(DataFiles)
             [sStudies, iStudies] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, Condition));
             % If does not exist yet: Create the default study
             if isempty(iStudies)
-                iStudies = db_add_condition(sSubject.Name, Condition);
+                iStudies = db_add_condition(sSubject.Name, Condition, [], DateOfStudy);
                 if isempty(iStudies)
                     error('Default study could not be created : "%s".', Condition);
                 end
@@ -323,7 +327,7 @@ for iFile = 1:length(DataFiles)
             [sNewStudy, iNewStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubjectRaw.Name, ConditionName));
             % If study does not exist : create it
             if isempty(iNewStudy)
-                iNewStudy = db_add_condition(sSubjectRaw.Name, ConditionName, 0);
+                iNewStudy = db_add_condition(sSubjectRaw.Name, ConditionName, 0, DateOfStudy);
                 if isempty(iNewStudy)
                     warning(['Cannot create condition : "' bst_fullfile(sSubjectRaw.Name, ConditionName) '"']);
                     continue;

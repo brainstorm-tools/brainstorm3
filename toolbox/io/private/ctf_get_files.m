@@ -29,7 +29,7 @@ function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file] = 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2011
+% Authors: Francois Tadel, 2008-2018
 
 % ===== .MEG4 =====
 % Find the first .meg4 file in this directory
@@ -82,7 +82,7 @@ end
 % Get marker file
 marker_file = bst_fullfile(ds_directory, 'MarkerFile.mrk');
 % No default marker file available in current data set
-if ~exist(marker_file,'file'); 
+if ~exist(marker_file,'file')
     % Try to look for another marker file
     mrkFiles = dir(bst_fullfile(ds_directory, '*.mrk'));
     % Remove the filenames that start with "."
@@ -116,14 +116,34 @@ end
 if ~isempty(iHidden)
     posDir(iHidden) = [];
 end
+
 % Return polhemus file
-if isempty(posDir)
-    pos_file = [];
+pos_file = [];
+if (length(posDir) == 1)
+    pos_file = bst_fullfile(ds_directory, posDir(1).name);
 elseif (length(posDir) > 1)
     error('Two Polhemus files in the same folder.');
+% Check for BIDS version: .pos is in the same folder as the .ds
 else
-    pos_file = bst_fullfile(ds_directory, posDir(1).name);
+    % Get Polhemus file
+    posDir = dir(strrep(ds_directory, '_meg.ds', '_*.pos'));
+    % Remove the filenames that start with "."
+    iHidden = [];
+    for i = 1:length(posDir)
+        if (posDir(i).name(1) == '.')
+            iHidden(end+1) = i;
+        end
+    end
+    if ~isempty(iHidden)
+        posDir(iHidden) = [];
+    end
+    % Return Polhemus file
+    if (length(posDir) == 1)
+        pos_file = bst_fullfile(fileparts(ds_directory), posDir(1).name);
+    end
 end
+
+
 
 
 % ===== .HC =====

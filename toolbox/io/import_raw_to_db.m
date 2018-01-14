@@ -21,7 +21,7 @@ function NewFiles = import_raw_to_db( DataFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2014
+% Authors: Francois Tadel, 2011-2018
 
 
 % ===== GET FILE INFO =====
@@ -48,6 +48,6 @@ else
     sFile = in_fopen(DataFile, 'BST-DATA');
 end
 % Import file
-NewFiles = import_data(sFile, ChannelMat, sFile.format, [], iSubject);
+NewFiles = import_data(sFile, ChannelMat, sFile.format, [], iSubject, [], sStudy.DateOfStudy);
 
 

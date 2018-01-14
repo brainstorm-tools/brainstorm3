@@ -1,4 +1,4 @@
-function iStudies = db_add_condition(SubjectName, ConditionName, isRefresh)
+function iStudies = db_add_condition(SubjectName, ConditionName, isRefresh, DateOfStudy)
 % DB_ADD_CONDITION: Add a subdirectory with a default study file to one or all subjects (current protocol)
 %
 % USAGE:  iStudies = db_add_condition(SubjectName, ConditionName, isRefresh)
@@ -12,6 +12,7 @@ function iStudies = db_add_condition(SubjectName, ConditionName, isRefresh)
 %                       If empty or ommitted, asked to the user
 %     - isRefresh     : If 0, tree is not refreshed after adding condition
 %                       If 1, tree is refreshed
+%     - DateOfStudy   : String 'dd-MMM-yyyy', force Study entries created in the database to use this acquisition date
 % OUTPUT: 
 %     - iStudies : Indices of the studies that were created. 
 %                  Returns [] if an error occurs
@@ -34,10 +35,13 @@ function iStudies = db_add_condition(SubjectName, ConditionName, isRefresh)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2011
+% Authors: Francois Tadel, 2008-2018
 
 
 %% ===== PARSE INPUTS =====
+if (nargin < 4) || isempty(DateOfStudy)
+    DateOfStudy = date;
+end
 if (nargin < 3) || isempty(isRefresh)
     isRefresh = 1;
 end
@@ -98,6 +102,7 @@ for iSubject = iSubjectsList
     % Create structure
     StudyMat = db_template('studymat');
     StudyMat.Name = ConditionName;
+    StudyMat.DateOfStudy = DateOfStudy;
     % Filename : STUDIES/dirSubject/ConditionName/brainstormstudy.mat
     StudyFile = bst_fullfile(bst_fileparts(SubjectFile), ConditionName, 'brainstormstudy.mat');
     StudyFileFull = bst_fullfile(ProtocolInfo.STUDIES, StudyFile);

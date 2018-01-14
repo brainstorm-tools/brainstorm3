@@ -31,7 +31,7 @@ function varargout = bst_process( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2010-2018; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -572,11 +572,13 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         % Full output filename
         RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
         RawFileFormat = 'BST-BIN';
+        % Get input study (to copy the creation date)
+        sInputStudy = bst_get('AnyFile', sInput.FileName);
 
         % Get new condition name
         [tmp, ConditionName] = bst_fileparts(newStudyPath, 1);
         % Create output condition
-        iOutputStudy = db_add_condition(sInput.SubjectName, ConditionName);
+        iOutputStudy = db_add_condition(sInput.SubjectName, ConditionName, [], sInputStudy.DateOfStudy);
         if isempty(iOutputStudy)
             bst_report('Error', sProcess, sInput, ['Output folder could not be created:' 10 newPath]);
             return;
