@@ -177,6 +177,14 @@ for iFile = 1:length(DataFiles)
         % Importing data from a RAW file already in the DB: the re-alignment is already done
         ImportOptions.ChannelReplace = 0;
         ImportOptions.ChannelAlign = 0;
+        % Creation date: use input value, or try to get it from the sFile structure
+        if ~isempty(DateOfStudy)
+            studyDate = DateOfStudy;
+        elseif isfield(sFile, 'acq_date') && ~isempty(sFile.acq_date)
+            studyDate = sFile.acq_date;
+        else
+            studyDate = [];
+        end
     else
         % If importing files in an existing folder: adapt to the existing channel file
         if ~isempty(iStudyInit) && ~isnan(iStudyInit) && (iStudyInit > 0)
@@ -189,7 +197,11 @@ for iFile = 1:length(DataFiles)
         else
             ChannelMatInit = [];
         end
-        [ImportedDataMat, ChannelMat, nChannels, nTime, ImportOptions] = in_data(DataFile, ChannelMatInit, FileFormat, ImportOptions, nbCall);
+        [ImportedDataMat, ChannelMat, nChannels, nTime, ImportOptions, studyDate] = in_data(DataFile, ChannelMatInit, FileFormat, ImportOptions, nbCall);
+        % Creation date: use input value
+        if ~isempty(DateOfStudy)
+            studyDate = DateOfStudy;
+        end
     end
     if isempty(ImportedDataMat)
         break;
@@ -248,7 +260,7 @@ for iFile = 1:length(DataFiles)
             [sStudies, iStudies] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, Condition));
             % If does not exist yet: Create the default study
             if isempty(iStudies)
-                iStudies = db_add_condition(sSubject.Name, Condition, [], DateOfStudy);
+                iStudies = db_add_condition(sSubject.Name, Condition, [], studyDate);
                 if isempty(iStudies)
                     error('Default study could not be created : "%s".', Condition);
                 end
@@ -327,7 +339,7 @@ for iFile = 1:length(DataFiles)
             [sNewStudy, iNewStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubjectRaw.Name, ConditionName));
             % If study does not exist : create it
             if isempty(iNewStudy)
-                iNewStudy = db_add_condition(sSubjectRaw.Name, ConditionName, 0, DateOfStudy);
+                iNewStudy = db_add_condition(sSubjectRaw.Name, ConditionName, 0, studyDate);
                 if isempty(iNewStudy)
                     warning(['Cannot create condition : "' bst_fullfile(sSubjectRaw.Name, ConditionName) '"']);
                     continue;

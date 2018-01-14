@@ -1,10 +1,10 @@
-function [ImportedData, ChannelMat, nChannels, nTime, ImportOptions] = in_data( DataFile, ChannelMat, FileFormat, ImportOptions, nbCall)
+function [ImportedData, ChannelMat, nChannels, nTime, ImportOptions, DateOfStudy] = in_data( DataFile, ChannelMat, FileFormat, ImportOptions, nbCall)
 % IN_DATA: Import any type of EEG/MEG recordings files.
 %
-% USAGE:  [ImportedData, ChannelMat, nChannels, nTime, ImportOptions] = in_data( DataFile, [], FileFormat, ImportOptions, nbCall ) 
-%         [ImportedData, ChannelMat, nChannels, nTime, ImportOptions] = in_data( DataFile, [], FileFormat, ImportOptions )    % Considered as first call
-%         [ImportedData, ChannelMat, nChannels, nTime, ImportOptions] = in_data( DataFile, [], FileFormat )                   % Display the import GUI
-%         [ImportedData, ChannelMat, nChannels, nTime, ImportOptions] = in_data( sFile, ChannelMat, FileFormat, ...)            % Same calls, but specify the sFile/ChannelMat structures
+% USAGE:  [ImportedData, ChannelMat, nChannels, nTime, ImportOptions, DateOfStudy] = in_data( DataFile, [], FileFormat, ImportOptions, nbCall ) 
+%         [ImportedData, ChannelMat, nChannels, nTime, ImportOptions, DateOfStudy] = in_data( DataFile, [], FileFormat, ImportOptions )    % Considered as first call
+%         [ImportedData, ChannelMat, nChannels, nTime, ImportOptions, DateOfStudy] = in_data( DataFile, [], FileFormat )                   % Display the import GUI
+%         [ImportedData, ChannelMat, nChannels, nTime, ImportOptions, DateOfStudy] = in_data( sFile, ChannelMat, FileFormat, ...)            % Same calls, but specify the sFile/ChannelMat structures
 %
 % INPUT:
 %    - DataFile      : Full path to a recordings file (called 'data' files in Brainstorm)
@@ -77,6 +77,7 @@ end
 % Initialize returned variables
 ImportedData = [];
 nTime = [];
+DateOfStudy = [];
 % Get temporary directory
 tmpDir = bst_get('BrainstormTmpDir');
 [filePath, fileBase, fileExt] = bst_fileparts(DataFile);
@@ -105,7 +106,11 @@ if isRaw
         if ~isempty(errMsg) && ImportOptions.DisplayMessages
             java_dialog('warning', errMsg, 'Open raw EEG/MEG recordings');
         end
-    end    
+    end
+    % Get acquisition date
+    if isfield(sFile, 'acq_date') && ~isempty(sFile.acq_date)
+        DateOfStudy = sFile.acq_date;
+    end
 
     % Display import GUI
     if (nbCall == 1) && ImportOptions.DisplayMessages
