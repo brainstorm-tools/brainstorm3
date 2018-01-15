@@ -92,6 +92,10 @@ if ~exist('spm.m', 'file')
         error(['Please download SPM: http://www.fil.ion.ucl.ac.uk/spm/software/download' 10 ...
                'Then add the installation path in Brainstorm (File > Edit preferences).']);
     end
+% If spm.m is available but SpmDir is not defined: set it automatically
+elseif isempty(SpmDir) || ~file_exist(SpmDir)
+    SpmDir = bst_fileparts(which('spm'));
+    bst_set('SpmDir', SpmDir);
 end
 isOk = 1;
 
@@ -101,6 +105,9 @@ if ~isempty(SpmFunction) && ~exist(SpmFunction, 'file')
         case 'ft_read_headshape'
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'fileio'));
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'utilities'));
+        case 'ft_specest_mtmconvol'
+            addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'specest'));
+            addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'preproc'));
     end
 end
     

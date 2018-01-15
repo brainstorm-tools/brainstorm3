@@ -1458,6 +1458,8 @@ end
 function [isValidated, errMsg] = ValidateTimefreq()
     global GlobalData;
     ctrl = GlobalData.Guidelines.ctrl;
+    % Add missing paths
+    bst_spm_init(1, 'ft_specest_mtmconvol');
     % Initialize returned variables
     isValidated = 0;
     errMsg = '';
@@ -1519,6 +1521,11 @@ function [isValidated, errMsg] = ValidateTimefreq()
             'mt_timestep',    0.1, ...
             'measure',        'magnitude', ...  % Magnitude
             'avgoutput',      0);
+        if isempty(sFilesTf)
+            bst_report('Open', 'current');
+            errMsg = 'Could not run FieldTrip multitaper.';
+            return;
+        end
         % Process: Z-score transformation: [Start, -1s]
         sFilesTf = bst_process('CallProcess', 'process_baseline_norm', sFilesTf, [], ...
             'baseline',  [-Inf, -1], ...
