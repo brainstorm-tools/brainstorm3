@@ -241,6 +241,11 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             else
                 % Just copy the fiducials from the reference MRI
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'vox2ras', isReslice);
+                % Transform error in warning
+                if ~isempty(errMsg) && ~isempty(sMri) && isSameSize && ~isReslice
+                    disp(['BST> Warning: ' errMsg]);
+                    errMsg = [];
+                end
             end
             % Copy the old SCS and NCS fields to the new file (only if registered)
             if isSameSize || isReslice

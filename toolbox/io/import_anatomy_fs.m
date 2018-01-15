@@ -460,18 +460,25 @@ if ~isempty(AsegFile)
     % Import atlas
     [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
     % Extract cerebellum only
-    BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum L', 'Cerebellum R'}, 'aseg | cerebellum');
-    % Downsample cerebllum
-    [BstCerebLowFile, iCerLow, xCerLow] = tess_downsize(BstCerebFile, 2000, 'reducepatch');
-    % Merge with low-resolution pial
-    BstMixedLowFile = tess_concatenate({CortexLowFile, BstCerebLowFile}, sprintf('cortex_cereb_%dV', length(xLhLow) + length(xRhLow) + length(xCerLow)), 'Cortex');
-    % Rename mixed file
-    oldBstMixedLowFile = file_fullpath(BstMixedLowFile);
-    BstMixedLowFile    = bst_fullfile(bst_fileparts(oldBstMixedLowFile), 'tess_cortex_pialcereb_low.mat');
-    movefile(oldBstMixedLowFile, BstMixedLowFile);
-    % Delete intermediate files
-    file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
-    db_reload_subjects(iSubject);
+    try
+        BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum L', 'Cerebellum R'}, 'aseg | cerebellum');
+    catch
+        BstCerebFile = [];
+    end
+    % If the cerebellum surface can be reconstructed
+    if ~isempty(BstCerebFile)
+        % Downsample cerebllum
+        [BstCerebLowFile, iCerLow, xCerLow] = tess_downsize(BstCerebFile, 2000, 'reducepatch');
+        % Merge with low-resolution pial
+        BstMixedLowFile = tess_concatenate({CortexLowFile, BstCerebLowFile}, sprintf('cortex_cereb_%dV', length(xLhLow) + length(xRhLow) + length(xCerLow)), 'Cortex');
+        % Rename mixed file
+        oldBstMixedLowFile = file_fullpath(BstMixedLowFile);
+        BstMixedLowFile    = bst_fullfile(bst_fileparts(oldBstMixedLowFile), 'tess_cortex_pialcereb_low.mat');
+        movefile(oldBstMixedLowFile, BstMixedLowFile);
+        % Delete intermediate files
+        file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
+        db_reload_subjects(iSubject);
+    end
 else
     BstAsegFile = [];
 end
