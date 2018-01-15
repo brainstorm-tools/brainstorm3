@@ -22,7 +22,7 @@ function varargout = process_ft_mtmconvol( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2018
 
 eval(macro_method);
 end
@@ -122,9 +122,15 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+    OutputFiles = {};
     % Initialize fieldtrip
     if ~exist('ft_specest_mtmconvol', 'file')
         bst_ft_init();
+    end
+    % Check for Signal Processing Toolbox when using DPSS
+    if strcmpi(sProcess.options.mt_taper.Value{1}, 'dpss') && ~exist('dpss', 'file')
+        bst_report('Error', sProcess, [], 'The option "dpss" requires the Signal Processing Toolbox.');
+        return;
     end
     % Call TIME-FREQ process
     OutputFiles = process_timefreq('Run', sProcess, sInputs);
