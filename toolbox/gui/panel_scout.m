@@ -3066,6 +3066,7 @@ end
 
 %% ===== CREATE SCOUT: MNI COORDINATES =====
 function CreateScoutMni()
+    global GlobalData;
     % Prevent edition of read-only atlas
     if isAtlasReadOnly()
         return;
@@ -3119,9 +3120,40 @@ function CreateScoutMni()
         return;
     end
     
+    % Get atlas properties: surface or volume
+    [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
+    % Volume atlas: Get grid of points
+    if isVolumeAtlas
+        % Get current figure
+        hFig = bst_figures('GetCurrentFigure', '3D');
+        if isempty(hFig) || ~ishandle(hFig)
+            return
+        end
+        % Get ResultsFile and Surface
+        ResultsFile = getappdata(hFig, 'ResultsFile');
+        if isempty(ResultsFile)
+            bst_error('No source file loaded in this figure', 'Create new scout', 0);
+            return;
+        end
+        % Load results file
+        [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
+        GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
+        if isempty(GridLoc) || strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
+            bst_error('No volume sources loaded in this figure', 'Create new scout', 0);
+            return;
+        end
+        % Check number of grid points
+        if (size(GridLoc,1) ~= nAtlasGrid)
+            bst_error(['The number of grid points in this atlas (' num2str(nAtlasGrid) ') does not match the loaded source file (' num2str(size(GridLoc,1)) ').'], 'Create new scout', 0);
+            return;
+        end
+    % Surface atlas: Use surface vertices
+    else
+        GridLoc = sSurf.Vertices;
+    end
     % Find the closest vertex to the selected coordinate
-    dist = (sSurf.Vertices(:,1) - SCS(1)) .^ 2 + (sSurf.Vertices(:,2) - SCS(2)) .^ 2 + (sSurf.Vertices(:,3) - SCS(3)) .^ 2;
-    [tmp, iVertex] = min(dist);
+    dist = (GridLoc(:,1) - SCS(1)) .^ 2 + (GridLoc(:,2) - SCS(2)) .^ 2 + (GridLoc(:,3) - SCS(3)) .^ 2;
+    [tmp, iVertex] = min(dist); 
     % Create new scout
     sScout             = db_template('Scout');
     sScout.Vertices    = iVertex;
