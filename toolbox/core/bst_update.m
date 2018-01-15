@@ -25,7 +25,7 @@ function isUpdated = bst_update(AskConfirm)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2013
+% Authors: Francois Tadel, 2009-2018
 
 % Parse inputs
 if (nargin == 0) || isempty(AskConfirm)
@@ -50,19 +50,17 @@ zipFile    = fullfile(installDir, 'brainstorm_update.zip');
 
 % Check permissions
 if ~file_attrib(installDir, 'w') || ~file_attrib(fullfile(installDir, 'brainstorm3'), 'w')
-    strMsg = 'Installation folder is read-only...';
+    strMsg = 'Error: Installation folder is read-only...';
     if ispc
         strMsg = [strMsg 10 10 ...
                   'On some Windows 7 or 8 computers, the user folders Documents and Downloads' 10 ...
-                  'and the C:\Programs\ folder are seen as read-only by Matlab.' 10 ...
+                  'and the system folder C:\Programs\ are seen as read-only by Matlab.' 10 ...
                   'Try with admin privileges (right-click on Matlab > Run as Administrator)' 10 ...
-                  'and if you still cannot update, move the brainstorm3 folder somewhere else.' 10 ...
-                  'executing Matlab as an administrator (.'];
+                  'and if you still cannot update, move the brainstorm3 folder somewhere else.'];
     end
-    disp(['BST> Update: ' strrep(strMsg, 10, [10 'BST> '])]);
+    disp(['BST> ' strrep(strMsg, char(10), [char(10) 'BST> '])]);
     if AskConfirm
-        java_dialog('msgbox', ['Installation folder is read-only.' 10 10 ...
-                               'Software was not updated.' 10 10], 'Update');
+        java_dialog('msgbox', [strMsg 10 10], 'Update');
     end
     return
 end
