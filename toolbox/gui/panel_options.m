@@ -20,7 +20,7 @@ function varargout = panel_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2018
 
 eval(macro_method);
 end
@@ -170,7 +170,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries') > 0);
         jCheckIgnoreMem.setSelected(bst_get('IgnoreMemoryWarnings'));
         if ~isempty(jCheckSmooth)
-            jCheckSmooth.setSelected(bst_get('GraphicsSmoothing'));
+            jCheckSmooth.setSelected(bst_get('GraphicsSmoothing') > 0);
         end
         switch bst_get('DisableOpenGL')
             case 0

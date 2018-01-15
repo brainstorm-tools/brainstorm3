@@ -23,7 +23,7 @@ function isOk = file_attrib(fName, right)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2011
+% Authors: Francois Tadel, 2008-2018
 
 if isempty(fName)
     isOk = 0;
@@ -53,13 +53,13 @@ elseif ~isdir(fName)
 elseif isdir(fName)
     % Get all the rights
     [tmp__,att] = fileattrib(fName);
-    % On windows: grab write permission automatically
-    if ispc && (right == 'w') && ~att.UserWrite
-        % Use attrib function to update the file
-        system(['attrib -r ' fName ' /s /d']);
-        % Read again the permissions
-        [tmp__,att] = fileattrib(fName);
-    end
+%     % On windows: grab write permission automatically
+%     if ispc && (right == 'w') && ~att.UserWrite
+%         % Use attrib function to update the file
+%         system(['attrib -r ' fName ' /s /d']);
+%         % Read again the permissions
+%         [tmp__,att] = fileattrib(fName);
+%     end
     % Get proper right
     switch (right)
         case 'r'
