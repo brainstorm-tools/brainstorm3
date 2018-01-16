@@ -624,7 +624,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 nFreq = size(sourceValues,3);
                 for iFreq = 1:nFreq
                     % Apply scout function
-                    tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout);
+                    tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
                     scoutValues = cat(1, scoutValues, tmpScout);
                     if ~isempty(sourceStd)
                         tmpScoutStd = bst_scout_value(sourceStd(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);
