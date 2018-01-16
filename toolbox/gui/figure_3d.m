@@ -696,7 +696,9 @@ function FigureMouseUpCallback(hFig, varargin)
                 % If not all the channels are displayed: need to convert the selected sensor indice
                 if ~AllChannelsDisplayed
                     % Get channel indice (in Channel array)
-                    iSelChan = Figure.SelectedChannels(vi);
+                    if (vi <= length(Figure.SelectedChannels))
+                        iSelChan = Figure.SelectedChannels(vi);
+                    end
                 else
                     AllModalityChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], Figure.Id.Modality);
                     iSelChan = AllModalityChannels(vi);
