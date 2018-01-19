@@ -321,6 +321,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         end
         
         % === IMPORT ANATOMY ===
+        % Do not ask interactively for anatomical fiducials: if they are not set, use default positions from MNI template
+        isInteractiveAnat = 0;
         % If the anatomy is already set: issue a warning
         if ~isempty(sSubject.Anatomy)
             msgAnatSet = ['Anatomy is already set for subject "' SubjectName{iSubj} '", not overwriting...'];
@@ -339,20 +341,20 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
             % Import subject anatomy
             switch (SubjectAnatFormat{iSubj})
                 case 'FreeSurfer'
-                    errorMsg = import_anatomy_fs(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractive, [], 0);
+                    errorMsg = import_anatomy_fs(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractiveAnat, [], 0);
                 case 'BrainSuite'
-                    errorMsg = import_anatomy_bs(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractive, []);
+                    errorMsg = import_anatomy_bs(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractiveAnat, []);
                 case 'BrainVISA'
-                    errorMsg = import_anatomy_bv(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractive, []);
+                    errorMsg = import_anatomy_bv(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractiveAnat, []);
                 case 'CIVET'
-                    errorMsg = import_anatomy_civet(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractive, [], 0);
+                    errorMsg = import_anatomy_civet(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractiveAnat, [], 0);
                 otherwise
                     errorMsg = ['Invalid file format: ' SubjectAnatFormat{iSubj}];
             end
         % Import MRI
         elseif ~isempty(SubjectMriFiles{iSubj})
             % Import first MRI
-            BstMriFile = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractive, 0);
+            BstMriFile = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractiveAnat, 0);
             if isempty(BstMriFile)
                 errorMsg = ['Could not load MRI file: ' SubjectMriFiles{iSubj}];
             % Compute additional files

@@ -33,7 +33,7 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2018
 
 %% ===== PARSE INPUTS =====
 % Extrac cortical maps
@@ -219,6 +219,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
+        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -249,7 +250,9 @@ else
     % jHelp.close();
 end
 % Load SCS and NCS field to make sure that all the points were defined
+warning('off','MATLAB:load:variableNotFound');
 sMri = load(BstMriFile, 'SCS', 'NCS');
+warning('on','MATLAB:load:variableNotFound');
 if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import FreeSurfer folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive

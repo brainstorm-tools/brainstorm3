@@ -31,7 +31,7 @@ function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author   : Francois Tadel, 2012-2015
+% Author   : Francois Tadel, 2012-2018
 % Modified : Andrew Krause, 2013
 
 %% ===== PARSE INPUTS =====
@@ -220,6 +220,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
+        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
     % Else: use the defined ones
     else
         NAS = sFid.NAS;

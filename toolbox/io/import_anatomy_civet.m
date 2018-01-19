@@ -33,7 +33,7 @@ function errorMsg = import_anatomy_civet(iSubject, CivetDir, nVertices, isIntera
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013
+% Authors: Francois Tadel, 2013-2018
 
 
 %% ===== PARSE INPUTS =====
@@ -217,6 +217,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
+        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
