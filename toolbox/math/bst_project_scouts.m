@@ -61,6 +61,17 @@ for iAtlas = 1:length(sAtlas)
         vMap(sScout.Vertices) = 1;
         % Project to destination surface
         vMapProj = full(Wmat * vMap);
+        
+%         % If the number of vertices does not decrease: force the selection of the closest vertex to each input vertex
+%         if (ratio > 0.9)
+%             for iVert = 1:length(sScout.Vertices)
+%                 % Get the closest projected vertex for iVert
+%                 [tmp, iVertClosest] = max(Wmat(:, sScout.Vertices(iVert)));
+%                 % Force the selection by setting the interpolated value higher than 1
+%                 vMapProj(iVertClosest) = 2;
+%             end
+%         end
+        
         % Consider the projected vertex maps as a probability of being part of the projected scout
         % Sort the projected values and keep the highest ones, up to desired number of vertices
         iVertPossible = find(vMapProj > 0);
@@ -68,6 +79,7 @@ for iAtlas = 1:length(sAtlas)
         % Keep the highest values
         nVertices = round(ratio * length(sScout.Vertices));
         iVertices = iVertPossible(I(1:min(nVertices,length(I))));
+        
         % Nothing found...
         if isempty(iVertices)
             continue;
