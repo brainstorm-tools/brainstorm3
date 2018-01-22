@@ -24,7 +24,7 @@ function varargout = process_average( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2018
 
 eval(macro_method);
 end
@@ -60,7 +60,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                          'Standard deviation:  <FONT color="#777777">sqrt(var(x))</FONT>', ...
                                          'Standard error:  <FONT color="#777777">sqrt(var(x)/N)</FONT>', ...
                                          'Arithmetic average + Standard deviation', ...
-                                         'Arithmetic average + Standard error'};
+                                         'Arithmetic average + Standard error', ...
+                                         'Median:  <FONT color="#777777">median(x)</FONT>'};
     sProcess.options.avg_func.Type    = 'radio';
     sProcess.options.avg_func.Value   = 1;
     % === WEIGHTED AVERAGE
@@ -102,6 +103,7 @@ function Comment = FormatComment(sProcess)
             case 5,  Comment = 'Standard error: ';
             case 6,  Comment = 'Average+Std: ';
             case 7,  Comment = 'Average+Stderr: ';
+            case 8,  Comment = 'Median: ';    
         end
     else
         Comment = 'Average: ';
@@ -333,6 +335,7 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
             case 5,  Function = 'mean';   isVariance = 1;   strComment = 'StdError';
             case 6,  Function = 'mean';   isVariance = 1;   strComment = 'AvgStd';
             case 7,  Function = 'mean';   isVariance = 1;   strComment = 'AvgStderr';
+            case 8,  Function = 'median'; isVariance = 0;   strComment = 'Median';
         end
     else
         Function = 'mean';   isVariance = 0;   strComment = 'Avg';
@@ -389,12 +392,12 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
         Comment = [strComment ': ' Comment];
     end
     % Weighted
-    if isWeighted
+    if isWeighted && ~strcmpi(strComment, 'Median')
         Comment = ['W' Comment];
     end
     % Copy fields from Stat structure
     switch (strComment)
-        case {'Avg', 'Avg(abs)', 'RMS'}
+        case {'Avg', 'Avg(abs)', 'RMS', 'Median'}
             sMat.(matName) = Stat.mean;
         case {'Std', 'StdError'}
             sMat.(matName) = Stat.var;

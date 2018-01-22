@@ -4,6 +4,7 @@ January 2018
 - IO: Improved BIDS importer (read acquisition dates from _scans.tsv files)
 - IO: Read acquisition dates from continuous files and save them in study field DateOfStudy
 - Process: Noise covariance: Match automatically noise covariance with subjects by acquisition date
+- Process: Average: Added option "median"
 ---------------------------------------------------------------
 December 2017
 - IO: Improved EEGLAB reader: Keep events in epochs, allow epochs with multiple event occurrences

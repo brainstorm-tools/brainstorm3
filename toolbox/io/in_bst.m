@@ -1,4 +1,4 @@
-function [sMatrix, matName] = in_bst(FileName, TimeBounds,  isLoadFull, isIgnoreBad, RemoveBaseline, UseSsp)
+function [sMatrix, matName] = in_bst(FileName, TimeBounds, isLoadFull, isIgnoreBad, RemoveBaseline, UseSsp)
 % IN_BST: Read a data matrix in a Brainstorm file of any type.
 %
 % USAGE: [sMatrix, matName] = in_bst(FileName, TimeBounds, isLoadFull=1, isIgnoreBad=0, RemoveBaseline='all', UseSsp=1)  : read only the specified time indices
