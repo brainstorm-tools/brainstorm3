@@ -149,7 +149,7 @@ function [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat, usePhase)
             
         elseif isfield(spac,'DynamicPAC')    
             if usePhase
-                tpac = tpacMat.sPAC.DynamicPAC.*tpacMat.sPAC.DynamicPhase/N;
+                tpac = tpacMat.sPAC.DynamicPAC.*exp(1i*tpacMat.sPAC.DynamicPhase)/N;
             else
                 tpac = tpacMat.sPAC.DynamicPAC/N;
             end
@@ -167,7 +167,7 @@ function [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat, usePhase)
                     return;
                 end 
                 if usePhase && isequal(size(tpac,1), size(tmp.sPAC.DynamicPhase,1))
-                    tpac = tpac + tmp.sPAC.DynamicPAC.*tmp.sPAC.DynamicPhase/N;
+                    tpac = tpac + tmp.sPAC.DynamicPAC.*exp(1i*tmp.sPAC.DynamicPhase)/N;
                 elseif ~isequal(size(tpac,1), size(tmp.sPAC.DynamicPAC,1))                    
                     Message = ['Number of sources for phase in File #',num2str(iFile),' is not the same as previous files -- You cannot use phase in averaging'];
                     bst_report('Error', 'process_pac_average', sInput, Message);
