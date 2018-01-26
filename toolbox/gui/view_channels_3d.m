@@ -21,6 +21,7 @@ function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, 
 %
 % Authors: Francois Tadel, 2010-2018
 
+global GlobalData;
 % Parse inputs
 if (nargin < 5) || isempty(isDetails)
     isDetails = 0;
@@ -151,6 +152,8 @@ else
                     'Marker', 'none', 'Tag', 'MultipleSensorsPatches');
         if (i ~= length(FileNames))
             hPatch = copyobj(hPatch, get(hPatch,'Parent'));
+            % Delete loaded channel information to force it to be reloaded by the view_channels function
+            GlobalData.DataSet(iDS).Channel = [];
         end
     end
 end
