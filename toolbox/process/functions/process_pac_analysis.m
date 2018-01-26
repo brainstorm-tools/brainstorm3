@@ -50,6 +50,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'Mean (Over time)'};
     sProcess.options.analyze_type.Type    = 'radio';
     sProcess.options.analyze_type.Value   = 1;
+    
+        % === Using phase
+    sProcess.options.usePhase.Comment = 'Use phase in averaging';
+    sProcess.options.usePhase.Type    = 'checkbox';
+    sProcess.options.usePhase.Value   = 0;
+
 end
 
 %% ===== FORMAT COMMENT =====
@@ -64,7 +70,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     isMedian = 0;
     isZscore = 0;
     isTimeMean = 0;
-    
+
+    usePhase = sProcess.options.usePhase.Value;
+
     % Get options
     if sProcess.options.analyze_type.Value ==1
         isMean  = 1;
@@ -90,20 +98,38 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     
     % Apply the appropriate function
     tpac_avg = tpacMat.sPAC.DynamicPAC;    
+    if usePhase
+        tpac_avg_phase = tpacMat.sPAC.DynamicPhase; 
+    end
+    
     if isZscore
         iBaseline = find(tpacMat.Time<0);
         if isempty(iBaseline)
             iBaseline = 1:length(tpacMat.Time);
         end
         tpac_avg = process_zscore('Compute', tpac_avg, iBaseline);
+        
     elseif isMean
-        tpac_avg = mean(tpac_avg,1);
+        if usePhase
+            tmp = mean(tpac_avg.*exp(1i*tpac_avg_phase),1);
+            tpac_avg = abs(tmp);
+            tpac_avg_phase = angle(tmp);
+        else
+            tpac_avg = mean(tpac_avg,1);
+        end
+        
         if length(sInput)>1
             N = length(sInput);
             for iFile = 2:N
                 TimefreqMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
-                TimefreqMat2.sPAC.DynamicPAC = mean(TimefreqMat2.sPAC.DynamicPAC,1);
-                TimefreqMat2.TF = mean(TimefreqMat2.sPAC.DynamicPAC,1);
+                if usePhase
+                    tmp = mean(TimefreqMat2.sPAC.DynamicPAC.*exp(1i*TimefreqMat2.sPAC.DynamicPhase),1);
+                    TimefreqMat2.sPAC.DynamicPAC  = abs(tmp);
+                    TimefreqMat2.sPAC.DynamicPAC  = angle(tmp);
+                else
+                    TimefreqMat2.sPAC.DynamicPAC = mean(TimefreqMat2.sPAC.DynamicPAC,1);                
+                end
+                TimefreqMat2.TF = TimefreqMat2.sPAC.DynamicPAC;
                 %Saving the files
                 TimefreqMat2.Comment = [TimefreqMat2.Comment, ' ', tag];
                 % Output filename: add file tag
@@ -145,8 +171,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         [PACmax,tmp] = max(abs(tpac_avg),[],1);
         tpacMat.TF = squeeze(PACmax)';
     end    
+    
     tpacMat.sPAC.DynamicPAC = tpac_avg;
-    tpacMat.TF = tpac_avg;        
+    tpacMat.TF = tpac_avg;   
+    if usePhase
+        tpacMat.sPAC.DynamicPhase = tpac_avg_phase;
+    end
     
     % === SAVING THE DATA IN BRAINSTORM ===
     % Getting the study
