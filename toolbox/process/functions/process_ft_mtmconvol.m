@@ -128,7 +128,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_ft_init();
     end
     % Check for Signal Processing Toolbox when using DPSS
-    if strcmpi(sProcess.options.mt_taper.Value{1}, 'dpss') && ~exist('dpss', 'file')
+    if iscell(sProcess.options.mt_taper.Value)
+        mt_taper = sProcess.options.mt_taper.Value{1};
+    else
+        mt_taper = sProcess.options.mt_taper.Value;
+    end
+    if strcmpi(mt_taper, 'dpss') && ~exist('dpss', 'file')
         bst_report('Error', sProcess, [], 'The option "dpss" requires the Signal Processing Toolbox.');
         return;
     end
