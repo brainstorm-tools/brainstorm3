@@ -52,7 +52,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.analyze_type.Value   = 1;
     
         % === Using phase
-    sProcess.options.usePhase.Comment = 'Use phase in averaging';
+    sProcess.options.usePhase.Comment = 'Use phase in averaging (mean)';
     sProcess.options.usePhase.Type    = 'checkbox';
     sProcess.options.usePhase.Value   = 0;
 
@@ -125,7 +125,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 if usePhase
                     tmp = mean(TimefreqMat2.sPAC.DynamicPAC.*exp(1i*TimefreqMat2.sPAC.DynamicPhase),1);
                     TimefreqMat2.sPAC.DynamicPAC  = abs(tmp);
-                    TimefreqMat2.sPAC.DynamicPAC  = angle(tmp);
+                    TimefreqMat2.sPAC.DynamicPhase  = angle(tmp);
                 else
                     TimefreqMat2.sPAC.DynamicPAC = mean(TimefreqMat2.sPAC.DynamicPAC,1);                
                 end
