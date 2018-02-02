@@ -99,6 +99,6 @@ addpath(fullfile(FieldTripDir, 'specest'));
 addpath(fullfile(FieldTripDir, 'preproc'));
 addpath(fullfile(FieldTripDir, 'forward'));
 addpath(fullfile(FieldTripDir, 'src'));
-
+addpath(fullfile(FieldTripDir, 'utilities'));
 
     

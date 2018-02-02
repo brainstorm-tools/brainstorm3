@@ -108,6 +108,7 @@ if ~isempty(SpmFunction) && ~exist(SpmFunction, 'file')
         case 'ft_specest_mtmconvol'
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'specest'));
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'preproc'));
+            addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'utilities'));
     end
 end
     
