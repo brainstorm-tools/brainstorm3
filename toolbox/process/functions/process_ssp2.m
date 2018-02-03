@@ -484,6 +484,11 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         end
         sfreq = resample;
         TimeVector = TimeResample;
+        % Recompute filters at new sampling frequency
+        if ~isempty(BandPass) && ~all(BandPass == 0)
+            [tmp, FiltSpec] = process_bandpass('Compute', [], sfreq, BandPass(1), BandPass(2), 'bst-hfilter', isMirror);
+            nTransient = round(FiltSpec.transient * sfreq);
+        end
     end
     
     % ===== COMPUTE AVERAGE =====
