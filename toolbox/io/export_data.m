@@ -276,10 +276,6 @@ else
                 ftData = out_fieldtrip_data(DataMat, ChannelMat, [], 1);
                 bst_save(ExportFile, ftData, 'v6');
             case 'EEG-CARTOOL-EPH'
-                % Removing the EDF/BDF/KDF annotation channels
-                if ~isempty(iAnnot)
-                    F(iAnnot,:) = [];
-                end
                 % Get sampling rate
                 samplingFreq = round(1/(DataMat.Time(2) - DataMat.Time(1)));
                 % Write header : nb_electrodes, nb_time, sampling_freq
@@ -289,7 +285,6 @@ else
             case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'EXCEL'}
                 % Removing the EDF/BDF/KDF annotation channels
                 if ~isempty(iAnnot)
-                    F(iAnnot,:) = [];
                     ChannelMat.Channel(iAnnot) = [];
                 end
                 % Save data
