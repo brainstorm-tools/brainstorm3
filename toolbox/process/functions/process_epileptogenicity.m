@@ -267,12 +267,19 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             % Output format: NII surface
             fileFormat = 'ALLMRI';
             fileExt = '.nii';
+            % History output
+            strHistoryOutput = [...
+                '- Atlas : ' OPTIONS.Atlas, 10, ...
+                '- CorticalMesh : ' num2str(OPTIONS.CorticalMesh), 10, ...
+                '- sMRI : ' OPTIONS.sMRI, 10];
         case 'surface'
             % Additional options
             OPTIONS.SmoothIterations = 5;
             % Output format: GII surface
             fileFormat = 'GII';
             fileExt = '.gii';
+            % History output
+            strHistoryOutput = ['- SmoothIterations : ', num2str(OPTIONS.SmoothIterations), 10];
     end
 
     % ===== CALL EPILEPTOGENICITY SCRIPT =====
@@ -293,6 +300,28 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % Copy channel file from first file
     db_set_channel(iStudy, sInputsB(1).ChannelFile, 1, 0);
 
+    % ===== FILE HISTORY =====
+    % Common options
+    strHistory = [...
+        'ImaGIN_Epileptogenicity:', 10 ...
+        '- FreqBand : ' sprintf('%d - %d Hz', round(OPTIONS.FreqBand)), 10 ...
+        '- Latency : ' sprintf('%1.2f ', OPTIONS.Latency), 's', 10 ...
+        '- HorizonT : ' num2str(OPTIONS.HorizonT), ' s    (time constant)', 10 ...
+        '- TimeResolution : ' num2str(OPTIONS.TimeResolution), ' s', 10 ...
+        '- ThDelay : ' num2str(OPTIONS.ThDelay), '    (propagation threshold, p or T)',  10 ...
+        '- OutputType : ' OPTIONS.OutputType, 10 ...
+        '- AR : ' num2str(OPTIONS.AR), 10 ...
+        '- FileName : ' OPTIONS.FileName, 10, ...
+        '- MeshFile : ' OPTIONS.MeshFile, 10, ...
+        strHistoryOutput];
+    % List of input files
+    for i = 1:length(OnsetFiles)
+        strHistory = [strHistory, '- D (seizures) : ', OnsetFiles{i}, 10];
+    end
+    for i = 1:length(BaselineFiles)
+        strHistory = [strHistory, '- B (baseline) : ', BaselineFiles{i}, 10];
+    end
+    
     % ===== READ EPILEPTOGENICITY MAPS =====
     % List all the epileptogenicity maps in output
     listSpmDir = dir(bst_fullfile(workDir, 'SPM_*'));
@@ -328,6 +357,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % Remove negative values in the maps
         tmpMat = load(tmpFile);
         tmpMat.tmap(tmpMat.tmap < 0) = 0;
+        tmpMat = bst_history('add', tmpMat, 'epilepto', strHistory);
         bst_save(tmpFile, tmpMat, 'v6');
     end
     
@@ -339,7 +369,9 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % File comment = File name
         [tmp, Comment] = bst_fileparts(listFiles(i).name);
         % Import file
-        tmpFiles = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's');
+        tmpFile = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's');
+        % Add history field
+        tmpFile = bst_history('add', tmpFile, 'epilepto', strHistory);
     end
     
     % ===== READ CONTACT VALUES =====
@@ -400,6 +432,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         DataMat.Comment      = strGoupUnique{iGroup};
         DataMat.DataType     = 'ei';
         DataMat.DisplayUnits = 't';
+        % Add history field
+        DataMat = bst_history('add', DataMat, 'epilepto', strHistory);
         % Save file
         OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), ['data_', strGoupUnique{iGroup}]);
         bst_save(OutputFile, DataMat, 'v7');
