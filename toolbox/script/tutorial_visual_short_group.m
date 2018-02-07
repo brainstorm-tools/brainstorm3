@@ -1,9 +1,9 @@
-function tutorial_visual_group_orig(ProtocolName, reports_dir)
-% TUTORIAL_VISUAL_GROUP_ORIG: Runs the Brainstorm/SPM group analysis pipeline (group analysis).
+function tutorial_visual_short_group(ProtocolName, reports_dir)
+% TUTORIAL_VISUAL_SHORT_GROUP: Runs the Brainstorm/SPM group analysis pipeline (group analysis) - SHORT VERSION
 %
 % ONLINE TUTORIALS: 
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingleOrig
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroupOrig
+%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
+%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
 %    - ProtocolName : Name of the protocol in which the recordings for the 19 subjects have been imported (TutorialVisual or TutorialGroup)
@@ -28,7 +28,7 @@ function tutorial_visual_group_orig(ProtocolName, reports_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, Elizabeth Bock, 2016
+% Author: Francois Tadel, Elizabeth Bock, 2016-2018
 
 % ===== CHECK PROTOCOL =====
 % Start Brainstorm without the GUI
@@ -41,7 +41,7 @@ if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
 end
 % You have to specify the folder in which the tutorial dataset is unzipped
 if (nargin < 1) || isempty(ProtocolName)
-    ProtocolName = 'TutorialGroup';
+    ProtocolName = 'TutorialGroupShort';
 end
 % Select current protocol
 iProtocol = bst_get('Protocol', ProtocolName);
@@ -51,12 +51,12 @@ end
 if (iProtocol ~= bst_get('iProtocol'))
     gui_brainstorm('SetCurrentProtocol', iProtocol);
 end
-% Process: Select results files in: sub002/run_01_sss_notch
+% Process: Select results files in: sub-01/sub-01_ses-meg_task-facerecognition_run-01_proc-tsss_meg_notch
 sFiles = bst_process('CallProcess', 'process_select_files_results', [], [], ...
-    'subjectname', 'sub002', ...
-    'condition',   'run_01_sss_notch');
+    'subjectname', 'sub-01', ...
+    'condition',   'sub-01_ses-meg_task-facerecognition_run-01_proc-tsss_meg_notch');
 if isempty(sFiles)
-    error(['No source files available in folder: sub002/run_01_sss_notch.' 10 ...
+    error(['No source files available in folder: sub-01/sub-01_ses-meg_task-facerecognition_run-01_proc-tsss_meg_notch.' 10 ...
            'You should run tutorial_visual_single first, or download the ' 10 ...
            'protocol TutorialGroup.zip from the Brainstorm website.']);
 end
@@ -378,17 +378,17 @@ sAvgSrc = bst_process('CallProcess', 'process_baseline_norm', sAvgSrc, [], ...
     'method',     'zscore', ...  % Z-score transformation:    x_std = (x - &mu;) / &sigma;
     'overwrite',  1);
 
-% ===== NORMALIZE: TIMEFREQ =====
-% Process: Select time-frequency files in: */Intra
-sAvgTf = bst_process('CallProcess', 'process_select_files_timefreq', [], [], ...
-    'subjectname',   'All', ...
-    'condition',     DirIntra, ...
-    'includeintra',  1);
-% Process: Event-related perturbation (ERS/ERD): [-200ms,-4ms]
-sAvgTf = bst_process('CallProcess', 'process_baseline_norm', sAvgTf, [], ...
-    'baseline',  [-0.2, -0.004], ...
-    'method',    'ersd', ...  % Event-related perturbation (ERS/ERD):    x_std = (x - &mu;) / &mu; * 100
-    'overwrite', 1);
+% % ===== NORMALIZE: TIMEFREQ =====
+% % Process: Select time-frequency files in: */Intra
+% sAvgTf = bst_process('CallProcess', 'process_select_files_timefreq', [], [], ...
+%     'subjectname',   'All', ...
+%     'condition',     DirIntra, ...
+%     'includeintra',  1);
+% % Process: Event-related perturbation (ERS/ERD): [-200ms,-4ms]
+% sAvgTf = bst_process('CallProcess', 'process_baseline_norm', sAvgTf, [], ...
+%     'baseline',  [-0.2, -0.004], ...
+%     'method',    'ersd', ...  % Event-related perturbation (ERS/ERD):    x_std = (x - &mu;) / &mu; * 100
+%     'overwrite', 1);
 
 % Save report
 ReportFile = bst_report('Save', []);
@@ -435,17 +435,17 @@ bst_process('CallProcess', 'process_snapshot', sAvgFacesSrcMeg, [], ...
     'time',           0.1055, ...
     'threshold',      10);
 
-% ===== FACES: TIME-FREQ EEG ======
-% Process: Select time-frequency files in: */*/WAvg: Avg: Faces
-sAvgFacesTf = bst_process('CallProcess', 'process_select_files_timefreq', [], [], ...
-    'subjectname',   'All', ...
-    'tag',           'WAvg: Avg: Faces', ...
-    'includeintra',  1);
-% Process: Snapshot: Time-frequency maps
-bst_process('CallProcess', 'process_snapshot', sAvgFacesTf, [], ...
-    'target',         14, ...  % Time-frequency maps
-    'time',           0.1055, ...
-    'rowname',        'EEG070');
+% % ===== FACES: TIME-FREQ EEG ======
+% % Process: Select time-frequency files in: */*/WAvg: Avg: Faces
+% sAvgFacesTf = bst_process('CallProcess', 'process_select_files_timefreq', [], [], ...
+%     'subjectname',   'All', ...
+%     'tag',           'WAvg: Avg: Faces', ...
+%     'includeintra',  1);
+% % Process: Snapshot: Time-frequency maps
+% bst_process('CallProcess', 'process_snapshot', sAvgFacesTf, [], ...
+%     'target',         14, ...  % Time-frequency maps
+%     'time',           0.1055, ...
+%     'rowname',        'EEG070');
 
 % Save report
 ReportFile = bst_report('Save', []);
@@ -602,13 +602,15 @@ sStatClustFacesData = bst_process('CallProcess', 'process_ft_timelockstatistics'
     'correctiontype', 2, ...  % cluster
     'minnbchan',      0, ...
     'clusteralpha',   0.05);
-% Process: Set comment
-sStatClustFacesData = bst_process('CallProcess', 'process_set_comment', sStatClustFacesData, [], ...
-    'tag',     'Faces - Scrambled: Cluster t-test EEG', ...
-    'isindex', 0);
-% Take screen captures
-DataScreenCapture(sStatClustFacesData, 0, 1, sStatClustFacesData.Comment);
-
+% If FieldTrip is available and results were returned
+if ~isempty(sStatClustFacesData)
+    % Process: Set comment
+    sStatClustFacesData = bst_process('CallProcess', 'process_set_comment', sStatClustFacesData, [], ...
+        'tag',     'Faces - Scrambled: Cluster t-test EEG', ...
+        'isindex', 0);
+    % Take screen captures
+    DataScreenCapture(sStatClustFacesData, 0, 1, sStatClustFacesData.Comment);
+end
 
 
 %% ===== GROUP ANALYSIS: FACES-SCRAMBLED: MEG/EEG =====================================
@@ -669,12 +671,15 @@ sStatClustFamousData = bst_process('CallProcess', 'process_ft_timelockstatistics
     'correctiontype', 2, ...  % cluster
     'minnbchan',      0, ...
     'clusteralpha',   0.05);
-% Process: Set comment
-sStatClustFamousData = bst_process('CallProcess', 'process_set_comment', sStatClustFamousData, [], ...
-    'tag',     'Famous - Unfamiliar: Cluster t-test EEG', ...
-    'isindex', 0);
-% Take screen captures
-DataScreenCapture(sStatClustFamousData, 0, 1, sStatClustFamousData.Comment);
+% If FieldTrip is available and results were returned
+if ~isempty(sStatClustFacesData)
+    % Process: Set comment
+    sStatClustFamousData = bst_process('CallProcess', 'process_set_comment', sStatClustFamousData, [], ...
+        'tag',     'Famous - Unfamiliar: Cluster t-test EEG', ...
+        'isindex', 0);
+    % Take screen captures
+    DataScreenCapture(sStatClustFamousData, 0, 1, sStatClustFamousData.Comment);
+end
 
 % Save report
 ReportFile = bst_report('Save', []);
@@ -850,7 +855,7 @@ for iMod = 1:length(AllModalities)
         'tail',          'two');  % Two-tailed
     % Process: Set comment
     sChiParamFacesLog = bst_process('CallProcess', 'process_set_comment', sChiParamFacesLog, [], ...
-        'tag',     'log(|Faces-Scrambled|)=0: Parametric Chi2 test | MEG', ...
+        'tag',     ['log(|Faces-Scrambled|)=0: Parametric Chi2 test | ' Mod], ...
         'isindex', 0);
     % Process: Move files
     sChiParamFacesLog = bst_process('CallProcess', 'process_movefile', sChiParamFacesLog, [], ...
@@ -889,7 +894,7 @@ for iMod = 1:length(AllModalities)
         'weighted',   0);
     % Process: Set comment
     sDiffAbsFaces = bst_process('CallProcess', 'process_set_comment', sDiffAbsFaces, [], ...
-        'tag',     'mean(|Faces|)-mean(|Scrambled|) | MEG', ...
+        'tag',     ['mean(|Faces|)-mean(|Scrambled|) | ' Mod], ...
         'isindex', 0);
     % Colormap: Custom max: [-10,+10] Z
     bst_colormaps('SetMaxCustom', 'stat2', [], -10, 10);

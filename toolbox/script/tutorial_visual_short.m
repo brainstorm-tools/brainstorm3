@@ -1,5 +1,13 @@
-function tutorial_visual(tutorial_dir, reports_dir)
-% TUTORIAL_VISUAL_COPY: Runs the Brainstorm/SPM group analysis pipeline (BIDS version).
+function tutorial_visual_short(tutorial_dir, reports_dir)
+% TUTORIAL_VISUAL_SHORT: Runs the Brainstorm/SPM group analysis pipeline (BIDS) - SHORT VERSION
+% 
+% DESCRIPTION:
+%    The processing steps are the same as in tutorial_visual_full, except for the following steps:
+%    - Anatomy: No ASEG atlas imported
+%    - Pre-processing: No notch filtering
+%    - Source analysis: Spherical head model for EEG instead of realistic BEM
+%    - Source analysis: No individual source snapshots in the reports
+%    - No time-frequency analysis
 %
 % ONLINE TUTORIALS: 
 %    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
@@ -27,7 +35,7 @@ function tutorial_visual(tutorial_dir, reports_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, Elizabeth Bock, 2017
+% Author: Francois Tadel, Elizabeth Bock, 2018
 
 % Output folder for reports
 if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
@@ -54,11 +62,14 @@ bst_set('ShowXGrid', 0);
 bst_set('ShowYGrid', 0);
 bst_set('DisplayGFP', 1);
 
+% Protocol names
+ProtocolNameSingle = 'TutorialVisualShort';
+ProtocolNameGroup  = 'TutorialGroupShort';
 % Part 1: Single subject analysis
-tutorial_visual_single(tutorial_dir, reports_dir);
+tutorial_visual_short_single(tutorial_dir, reports_dir);
 % Part 2: Copy to a new protocol for the group analysis
-tutorial_visual_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir);
+tutorial_visual_short_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir);
 % Part 3: Group analysis
-tutorial_visual_group(ProtocolNameGroup, reports_dir);
+tutorial_visual_short_group(ProtocolNameGroup, reports_dir);
 
 

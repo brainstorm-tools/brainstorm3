@@ -1,5 +1,5 @@
-function tutorial_visual_single_orig(tutorial_dir, reports_dir, iSubjStart)
-% TUTORIAL_VISUAL_SINGLE_ORIG: Runs the Brainstorm/SPM group analysis pipeline (single subject).
+function tutorial_visual_old_single(tutorial_dir, reports_dir, iSubjStart)
+% TUTORIAL_VISUAL_OLD_SINGLE: Runs the Brainstorm/SPM group analysis pipeline (single subject, old distribution).
 %
 % ONLINE TUTORIALS: http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingleOrig
 %
