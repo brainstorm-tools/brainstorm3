@@ -978,7 +978,7 @@ switch lower(structureName)
             'CutsPosition',            [0 0 0], ...   % Position of the three orthogonal MRI slices
             'Resect',                  'none', ...    % Either [x,y,z] resect values, or {'left', 'right', 'none'}
             'MipAnatomy',              [], ...        % 3 cells: Maximum intensity power in each direction (MRI amplitudes)
-            'MipFunctional',           [] ...         % 3 cellsMaximum intensity power in each direction (sources amplitudes)
+            'MipFunctional',           [] ...         % 3 cells: Maximum intensity power in each direction (sources amplitudes)
             );      
         template.MipAnatomy = cell(3,1);
         template.MipFunctional = cell(3,1);

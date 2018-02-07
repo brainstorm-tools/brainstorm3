@@ -1849,6 +1849,7 @@ function hs = PlotMri(hFig, posXYZ)
     OPTIONS.OverlayAbsolute  = sColormapData.isAbsoluteValues;
     OPTIONS.isMipAnatomy     = MriOptions.isMipAnatomy;
     OPTIONS.isMipFunctional  = MriOptions.isMipFunctional;
+    OPTIONS.UpsampleImage    = MriOptions.UpsampleImage;
     OPTIONS.MipAnatomy       = TessInfo(iTess).MipAnatomy;
     OPTIONS.MipFunctional    = TessInfo(iTess).MipFunctional;
     % Plot cuts

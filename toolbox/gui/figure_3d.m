@@ -1685,6 +1685,14 @@ function DisplayFigurePopup(hFig)
 %             jItem2.setSelected(MriOptions.InterpDownsample == 2);
 %             jItem3.setSelected(MriOptions.InterpDownsample == 3);
         end
+        jMenuMri.addSeparator();
+        % Upsample image
+        jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'Upsample: No', [], [], @(h,ev)SetMriUpsample(hFig, 0));
+        jItem1 = gui_component('radiomenuitem', jMenuMri, [], 'Upsample: 4x', [], [], @(h,ev)SetMriUpsample(hFig, 4));
+        jItem2 = gui_component('radiomenuitem', jMenuMri, [], 'Upsample: 8x', [], [], @(h,ev)SetMriUpsample(hFig, 8));
+        jItem0.setSelected(MriOptions.UpsampleImage == 0);
+        jItem1.setSelected(MriOptions.UpsampleImage == 4);
+        jItem2.setSelected(MriOptions.UpsampleImage == 8);
     end
     
     % ==== MENU: NAVIGATOR ====
@@ -1905,6 +1913,13 @@ function SetMriSmooth(hFig, OverlaySmooth)
     MriOptions.OverlaySmooth = OverlaySmooth;
     bst_set('MriOptions', MriOptions);
     bst_figures('FireCurrentTimeChanged', 1);
+end
+% RADIO: MRI UPSAMPLE
+function SetMriUpsample(hFig, UpsampleImage)
+    MriOptions = bst_get('MriOptions');
+    MriOptions.UpsampleImage = UpsampleImage;
+    bst_set('MriOptions', MriOptions);
+    UpdateMriDisplay(hFig);
 end
 % RADIO: DISTANCE THRESHOLD
 function SetDistanceThresh(hFig, DistanceThresh)

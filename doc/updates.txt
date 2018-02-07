@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+February 2018
+- GUI: New options "Upsample image" to smooth MRI display in 3D figures
+---------------------------------------------------------------
 January 2018
 - IO: Support for new RICOH MEG file format
 - IO: Improved BIDS importer (read acquisition dates from _scans.tsv files)
