@@ -1,7 +1,7 @@
-function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps)
+function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps, isAseg)
 % IMPORT_ANATOMY_FS: Import a full FreeSurfer folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0)
+% USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isAseg=1)
 %
 % INPUT:
 %    - iSubject     : Indice of the subject where to import the MRI
@@ -12,6 +12,7 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 %    - sFid         : Structure with the fiducials coordinates
 %    - isExtraMaps  : If 1, create an extra folder "FreeSurfer" to save some of the
 %                     FreeSurfer cortical maps (thickness, ...)
+%    - isAseg       : If 1, imports the aseg atlas as a set of surfaces
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -36,7 +37,11 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 % Authors: Francois Tadel, 2012-2018
 
 %% ===== PARSE INPUTS =====
-% Extrac cortical maps
+% Import ASEG atlas
+if (nargin < 6) || isempty(isAseg)
+    isAseg = 1;
+end
+% Extract cortical maps
 if (nargin < 6) || isempty(isExtraMaps)
     isExtraMaps = 0;
 end
@@ -459,7 +464,7 @@ end
 HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 
 %% ===== LOAD ASEG.MGZ =====
-if ~isempty(AsegFile)
+if isAseg && ~isempty(AsegFile)
     % Import atlas
     [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
     % Extract cerebellum only

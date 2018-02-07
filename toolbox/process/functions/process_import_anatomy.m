@@ -19,7 +19,7 @@ function varargout = process_import_anatomy( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013
+% Authors: Francois Tadel, 2013-2018
 
 eval(macro_method);
 end
@@ -87,6 +87,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.ih.Comment = 'IH:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
     sProcess.options.ih.Type    = 'value';
     sProcess.options.ih.Value   = {[0 0 0], 'list', 2};
+    % Option: IH
+    sProcess.options.aseg.Comment = 'Import ASEG atlas (FreeSurfer only)';
+    sProcess.options.aseg.Type    = 'checkbox';
+    sProcess.options.aseg.Value   = 1;
 end
 
 
@@ -119,6 +123,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid number of vertices.');
         return
     end
+    % Import ASEG atlas
+    isAseg = sProcess.options.aseg.Value;
     % Fiducials positions
     NAS = sProcess.options.nas.Value{1};
     if (length(NAS) ~= 3) || all(NAS == 0)
@@ -172,7 +178,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Import folder
     switch (FileFormat)
         case 'FreeSurfer'
-            errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, 0, sFid, 0);
+            errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, 0, sFid, 0, isAseg);
         case 'FreeSurfer+Thick'
             errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, 0, sFid, 1);
         case 'BrainSuite'
