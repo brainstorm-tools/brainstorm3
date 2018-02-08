@@ -38,7 +38,7 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 
 %% ===== PARSE INPUTS =====
 % Import ASEG atlas
-if (nargin < 6) || isempty(isAseg)
+if (nargin < 7) || isempty(isAseg)
     isAseg = 1;
 end
 % Extract cortical maps
