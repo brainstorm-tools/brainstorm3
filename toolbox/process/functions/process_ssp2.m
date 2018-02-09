@@ -24,7 +24,7 @@ function varargout = process_ssp2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Elizabeth Bock, 2011-2016
+% Authors: Francois Tadel, Elizabeth Bock, 2011-2018
 
 eval(macro_method);
 end
@@ -253,15 +253,26 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     sfreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
     % Design band-pass filter
     if ~isempty(BandPass) && ~all(BandPass == 0)
+        % If we need to resample the recordings
+        if (resample > 0)
+            filterFreq = resample;
+        % Use the original sampling frequency
+        else
+            filterFreq = sfreq;
+        end
+        % Design the filter
         isMirror = 0;
-        [tmp, FiltSpec] = process_bandpass('Compute', [], sfreq, BandPass(1), BandPass(2), 'bst-hfilter', isMirror);
-        nTransient = round(FiltSpec.transient * sfreq);
+        [tmp, FiltSpec] = process_bandpass('Compute', [], filterFreq, BandPass(1), BandPass(2), 'bst-hfilter', isMirror);
+        % Estimate transient period (before and after resampling)
+        nTransientLoad    = round(FiltSpec.transient * sfreq);
+        nTransientDiscard = round(FiltSpec.transient * filterFreq);
         % Show warning when computing epoched files
         if ~isRawA
             bst_report('Warning', sProcess, sInputsA, sprintf('Removing %1.3fs at the beginning and the end of each input for filtering.', FiltSpec.transient));
         end
     else
-        nTransient = [];
+        nTransientLoad    = [];
+        nTransientDiscard = [];
     end
 
     % ===== READ ARTIFACTS (FILES A) =====
@@ -342,8 +353,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 evtSmpRange = [0 0];
             end
             % Add transients for bandpass
-            if ~isempty(nTransient)
-                evtSmpRange = evtSmpRange + [-1 1] .* nTransient;
+            if ~isempty(nTransientLoad)
+                evtSmpRange = evtSmpRange + [-1 1] .* nTransientLoad;
             end
             % Reading options
             % NOTE: FORCE READING CLEAN DATA (Baseline correction + CTF compensators + Previous SSP)
@@ -417,8 +428,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             LoadOptions.RemoveBaseline = 'all';
             LoadOptions.UseSsp         = UseSsp;
             % Add transients for bandpass filter
-            if ~isempty(nTransient) && ~isempty(TimeWindow)
-                rawTime = TimeWindow + [-1 1] .* (nTransient / sfreq_file);
+            if ~isempty(nTransientLoad) && ~isempty(TimeWindow)
+                rawTime = TimeWindow + [-1 1] .* (nTransientLoad / sfreq_file);
             else
                 rawTime = TimeWindow;
             end
@@ -525,7 +536,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         end
         % Filter recordings: Remove transients
         if ~isempty(BandPass) && ~all(BandPass == 0)
-            F{iBlock} = F{iBlock}(:, (nTransient+1):(end-nTransient));
+            F{iBlock} = F{iBlock}(:, (nTransientDiscard+1):(end-nTransientDiscard));
         end
         % Keep only the needed channels
         F{iBlock} = F{iBlock}(iChannels,:);
@@ -776,9 +787,9 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         ChannelFlag = ones(size(Favg,1), 1);
         ChannelFlag(iBad) = -1;
         % Remove transients
-        if ~isempty(nTransient)
-            Favg = Favg(:, (nTransient+1):(end-nTransient));
-            TimeVector = TimeVector((nTransient+1):(end-nTransient));
+        if ~isempty(nTransientDiscard)
+            Favg = Favg(:, (nTransientDiscard+1):(end-nTransientDiscard));
+            TimeVector = TimeVector((nTransientDiscard+1):(end-nTransientDiscard));
         end
         
         % === BEFORE ===
