@@ -474,8 +474,11 @@ else
     if isempty(DataMat) || ~isempty(errMsg)
         return;
     end
+    % If there is no channel file yet, use the one from the input file
+    if isempty(ChannelMat) && ~isempty(ChannelMatData)
+        ChannelMat = ChannelMatData;
     % Reorganize data to fit the existing channel mat
-    if ~isempty(ChannelMat) && ~isempty(ChannelMatData) && ~isequal({ChannelMat.Channel.Name}, {ChannelMatData.Channel.Name})
+    elseif ~isempty(ChannelMat) && ~isempty(ChannelMatData) && ~isequal({ChannelMat.Channel.Name}, {ChannelMatData.Channel.Name})
         % Get list of channels in the format of the existing channel file 
         DataMatReorder = DataMat;
         DataMatReorder.F = zeros(length(ChannelMat.Channel), size(DataMat.F,2));
