@@ -82,8 +82,13 @@ end
 if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
     reports_dir = [];
 end
+% Dataset version
+DsVersion = 'ds000117_R1.0.0';
 % You have to specify the folder in which the tutorial dataset is unzipped
-BidsDir = bst_fullfile(tutorial_dir, 'ds000117_R1.0.0');
+if ~isempty(strfind(tutorial_dir, DsVersion))
+    tutorial_dir = bst_fileparts(tutorial_dir);
+end
+BidsDir = bst_fullfile(tutorial_dir, DsVersion);
 if (nargin < 1) || isempty(tutorial_dir) || ~file_exist(tutorial_dir) || ~file_exist(BidsDir)
     error('The first argument must be the full path to the tutorial folder.');
 end
