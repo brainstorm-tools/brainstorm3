@@ -351,8 +351,11 @@ end
 
 
 %% ===== EMPTY ROOM RECORDINGS =====
-% Use the same noise recordings for all the files
-NoiseFiles = fullfile(BidsDir, 'sub-emptyroom');
+% Loop on all the noise sessions
+NoiseFiles = {};
+for ses = {'20090409', '20090506', '20090511', '20090515', '20090518', '20090601', '20091126', '20091208'}
+    NoiseFiles{end+1} = fullfile(BidsDir, 'derivatives', 'meg_derivatives', SubjectNoise, ['ses-' ses{1}], 'meg', ['sub-01_ses-' ses{1} '_task-noise_run-01_proc-tsss_meg.fif']);
+end
 % Process: Create link to raw file
 sFilesNoise = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'subjectname',    SubjectNoise, ...
