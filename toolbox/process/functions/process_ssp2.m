@@ -208,6 +208,12 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     else
         nIcaComp = 0;
     end
+    % Find components correlated to reference signals
+    if isfield(sProcess.options, 'icasort')
+        icaSort = sProcess.options.icasort.Value;
+    else
+        icaSort = [];
+    end    
     % Ignore bad segments
     if panel_record('IsEventBad', evtName)
         % If the event name contains the tag "bad", we need to include the bad segments
@@ -281,6 +287,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     progressPos = bst_progress('get');
     % Initialize concatenated data matrix
     F = {};
+    Fref = {}; % for holding reference signals (EOG, ECG)
     iBad = [];
     iTimeZero = [];
     nSamples = 0;
@@ -315,6 +322,14 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 bst_report('Warning', sProcess, sInputsA, ...
                     ['Mixing different channel types to compute the projector: ' [allTypes{:}], '.' 10 ...
                      'You should compute projectors separately for each sensor type.']);
+            end
+            if ~isempty(icaSort)
+                iRef = channel_find(ChannelMat.Channel, icaSort);
+                if isempty(iRef)
+                    bst_report('Error', sProcess, sInputsA(iFile), sprintf('Channels %s not found.', icaSort));
+                end
+                iSensors = iChannels;
+                iChannels = [iSensors iRef];
             end
         end
 
@@ -539,13 +554,22 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             F{iBlock} = F{iBlock}(:, (nTransientDiscard+1):(end-nTransientDiscard));
         end
         % Keep only the needed channels
-        F{iBlock} = F{iBlock}(iChannels,:);
+        if ~isempty(icaSort)
+            Fref{iBlock} = F{iBlock}(iRef,:);
+            F{iBlock} = F{iBlock}(iSensors,:);
+        else
+            F{iBlock} = F{iBlock}(iChannels,:);
+        end
     end
     % Comment
     nSamplesFinal = sum(cellfun(@(c)size(c,2), F));
     strOptions = [strOptions, 'Nsamples=' num2str(nSamplesFinal) ' from ' num2str(length(F)) ' blocks'];
     % Concatenate all the loaded data
     F = [F{:}];
+    if ~isempty(icaSort)
+        Fref = [Fref{:}];
+        iChannels = iSensors;
+    end    
     % Error if nothing was loaded
     if isempty(F)
         bst_report('Error', sProcess, sInputsA, 'No data could be read from the input files.');
@@ -735,6 +759,14 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             bst_report('Error', sProcess, sInputsA, ['Invalid method: "' Method '".']);
             return;
     end
+    
+    if ~isempty(icaSort)
+        y = W * F;
+        C = bst_corrn(Fref, y);
+        [corrs, iSort] = sort(max(abs(C)), 'descend');
+        proj.Components = proj.Components(:,iSort);
+    end
+    
     % Modality used in the end
     AllMod = unique({ChannelMat.Channel(iChannels).Type});
     strMod = '';

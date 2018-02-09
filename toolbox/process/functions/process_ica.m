@@ -71,6 +71,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'EEG';
+    % Select components
+    sProcess.options.icasort.Comment = 'Sort components based on correlation with (empty=none):';
+    sProcess.options.icasort.Type    = 'text';
+    sProcess.options.icasort.Value   = 'EOG, ECG';    
     % Use existing SSPs
     sProcess.options.usessp.Comment = 'Compute using existing SSP/ICA projectors';
     sProcess.options.usessp.Type    = 'checkbox';
