@@ -1012,13 +1012,13 @@ function Projector = BuildProjector(ListProj, ProjStatus) %#ok<*DEFNU>
             % Get selected channels (find the non-zero channels)
             iChan = find(any(ListProj(i).Components ~= 0, 2));
             % Get selected components
-            iComp = find(ListProj(i).CompMask == 0);
+            iComp = find(ListProj(i).CompMask == 1);
             % Initialize projector
             P = eye(size(ListProj(i).Components,1));
             % Compute projector
             W = ListProj(i).Components(iChan,:)';
             Winv = pinv(W);
-            P(iChan,iChan) = Winv(:,iComp) * W(iComp,:);
+            P(iChan,iChan) = eye(size(W,2)) - Winv(:,iComp) * W(iComp,:);
             % Check if there are any complex values in the projector
             if any(~isreal(P))
                 warning('WARNING: ICA components contain complex values. Something went wrong in their computation.');
