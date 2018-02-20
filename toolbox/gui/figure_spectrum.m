@@ -1013,6 +1013,11 @@ function UpdateFigurePlot(hFig, isForced)
         otherwise
             error('Invalid display mode');
     end
+    % Case of one frequency point for spectrum: replicate frequency
+    if isSpectrum && (size(TF,3) == 1)
+        TF = cat(3,TF,TF);
+        X = [X, X + 0.1];
+    end
     % Bands (time/freq), or linear axes
     if iscell(X)
         Xbands = process_tf_bands('GetBounds', X);
@@ -1029,10 +1034,6 @@ function UpdateFigurePlot(hFig, isForced)
     if (length(XLim) ~= 2) || any(isnan(XLim)) || (XLim(2) <= XLim(1))
         disp('BST> Error: No data to display...');
         XLim = [0 1];
-    end
-    % Case of one frequency point for spectrum: replicate frequency
-    if isSpectrum && (size(TF,3) == 1)
-        TF = cat(3,TF,TF);
     end
     % Auto-detect if legend should be displayed
     if isempty(TsInfo.ShowLegend)
@@ -1411,22 +1412,24 @@ function [hCursor,hTextCursor] = PlotCursor(hFig, hAxes)
     
     % ===== VERTICAL LINE =====
     hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
-    if isempty(hCursor)
-        % EraseMode: Only for Matlab <= 2014a
-        if (bst_get('MatlabVersion') <= 803)
-            optErase = {'EraseMode', 'xor'};   % INCOMPATIBLE WITH OPENGL RENDERER (BUG), REMOVED IN MATLAB 2014b
+    if ~isempty(curX)
+        if isempty(hCursor)
+            % EraseMode: Only for Matlab <= 2014a
+            if (bst_get('MatlabVersion') <= 803)
+                optErase = {'EraseMode', 'xor'};   % INCOMPATIBLE WITH OPENGL RENDERER (BUG), REMOVED IN MATLAB 2014b
+            else
+                optErase = {};
+            end
+            % Create line
+            hCursor = line([curX curX], YLim, [ZData ZData], ...
+                               'LineWidth', 1, ...  
+                               optErase{:}, ...
+                               'Color',     'r', ...
+                               'Tag',       'Cursor', ...
+                               'Parent',    hAxes);
         else
-            optErase = {};
+            set(hCursor, 'XData', [curX curX], 'YData', YLim, 'ZData', [ZData ZData]);
         end
-        % Create line
-        hCursor = line([curX curX], YLim, [ZData ZData], ...
-                           'LineWidth', 1, ...  
-                           optErase{:}, ...
-                           'Color',     'r', ...
-                           'Tag',       'Cursor', ...
-                           'Parent',    hAxes);
-    else
-        set(hCursor, 'XData', [curX curX], 'YData', YLim, 'ZData', [ZData ZData]);
     end
     % Get background color
     bgcolor = get(hFig, 'Color');

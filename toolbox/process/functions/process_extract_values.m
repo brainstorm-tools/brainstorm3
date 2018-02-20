@@ -737,7 +737,8 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
             end
         case 'timefreq'
             % Simplify output (not available for statistics)
-            if (length(FreqVector) == 1) && (OPTIONS.Dim ~= 0) && (OPTIONS.Dim ~= 4)
+            % if (length(FreqVector) == 1) && (OPTIONS.Dim ~= 0) && (OPTIONS.Dim ~= 4) 
+            if (length(FreqVector) == 1) && (OPTIONS.Dim ~= 0) && (OPTIONS.Dim ~= 4) && (length(sInputs) > 1)   %% ADDED FOR EB TO PLOT TOPOGRAPHY OF EXTRACT FREQUENCY OF A SINGLE FILE
                 % TF of data or matrix
                 if iscell(OutNames)
                     newFileType = 'matrix';

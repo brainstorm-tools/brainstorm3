@@ -99,7 +99,7 @@ setappdata(hFig, 'StudyFile',    GlobalData.DataSet(iDS).StudyFile);
 setappdata(hFig, 'SubjectFile',  GlobalData.DataSet(iDS).SubjectFile);
 % Static dataset
 setappdata(hFig, 'isStatic', (GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples <= 2));
-isStaticFreq = (size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF,3) <= 1);
+isStaticFreq = ~strcmpi(DisplayMode, 'Spectrum') && (size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF,3) <= 1);
 setappdata(hFig, 'isStaticFreq', isStaticFreq);
 % Get figure data
 TfInfo = getappdata(hFig, 'Timefreq');
