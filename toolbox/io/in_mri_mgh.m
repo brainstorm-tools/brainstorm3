@@ -1,12 +1,13 @@
-function MRI = in_mri_mgh(MriFile)
+function [MRI, vox2ras] = in_mri_mgh(MriFile)
 % IN_MRI_MGH: Read a structural MGH MRI (or gzipped MGZ).
 %
-% USAGE:  MRI = in_mri_mgh(MriFile);
+% USAGE:  [MRI, vox2ras] = in_mri_mgh(MriFile);
 %
 % INPUT:
 %     - MriFile : full path to a MRI file, WITH EXTENSION
 % OUTPUT:
-%     - MRI : Standard brainstorm structure for MRI volumes
+%    - MRI     : Standard brainstorm structure for MRI volumes
+%    - vox2ras : [4x4] transformation matrix: voxels to RAS coordinates
 %
 % FORMAT: https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/MghFormat
 
@@ -28,7 +29,7 @@ function MRI = in_mri_mgh(MriFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2018
 
 
 %% ===== INITIALIZATION =====   
@@ -81,6 +82,10 @@ if (hdr.ras_good_flag)
     hdr.Mdc     = reshape(hdr.Mdc,[3 3]);
     hdr.Pxyz_c  = fread(fid, 3, 'float32') ;
     unused_space_size = unused_space_size - (3*4 + 4*3*4) ; % space for ras transform
+    % Assemble vox2ras matrix
+    vox2ras = [hdr.Mdc, hdr.Pxyz_c; 0 0 0 1];
+else
+    vox2ras = [];
 end
 
 % Position at the end of the header

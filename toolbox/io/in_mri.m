@@ -116,7 +116,7 @@ switch (FileFormat)
             [MRI, vox2ras] = in_mri_nii(MriFile, 0, 1); % Function automatically detects right byte order
         end
     case 'MGH'
-        MRI = in_mri_mgh(MriFile);
+        [MRI, vox2ras] = in_mri_mgh(MriFile);
     case 'KIT'
         error('Not supported yet');
     case 'Neuromag'
@@ -133,10 +133,19 @@ switch (FileFormat)
     otherwise
         error(['Unknown format: ' FileFormat]);
 end
-
 % If nothing was loaded
 if isempty(MRI)
     return
+end
+
+% If a transformation was defined
+if ~isempty(vox2ras)
+    % Prepare the history of transformations
+    if ~isfield(MRI, 'InitTransf') || isempty(MRI.InitTransf)
+        MRI.InitTransf = cell(0,2);
+    end
+    % Save this transformation in the MRI
+    MRI.InitTransf(end+1,[1 2]) = {'vox2ras', vox2ras};
 end
 
 

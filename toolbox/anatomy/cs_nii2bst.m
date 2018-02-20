@@ -90,13 +90,4 @@ if isApply
     end
 end
 
-% If a transformation was defined
-if ~isempty(vox2ras)
-    % Prepare the history of transformations
-    if ~isfield(sMri, 'InitTransf') || isempty(sMri.InitTransf)
-        sMri.InitTransf = cell(0,2);
-    end
-    % Save this transformation in the MRI
-    sMri.InitTransf(end+1,[1 2]) = {'vox2ras', vox2ras};
-end
 
