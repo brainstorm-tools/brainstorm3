@@ -53,7 +53,7 @@ end
 % Only one .meg4 in .ds directory : OK
 meg4_files = {fullfile(ds_directory, meg4list.name)};
 % Get dataset name
-[tmp___, DataSetName] = bst_fileparts(meg4list.name);
+[tmp__, DataSetName] = bst_fileparts(meg4list.name);
 
 % ===== .X_MEG4 =====
 % Look for all the *.i_meg4 files in the folder (the first of the list is actually the .meg4 file)
@@ -125,25 +125,37 @@ elseif (length(posDir) > 1)
     error('Two Polhemus files in the same folder.');
 % Check for BIDS version: .pos is in the same folder as the .ds
 else
-    % Get Polhemus file
-    posDir = dir(strrep(ds_directory, '_meg.ds', '_*.pos'));
-    % Remove the filenames that start with "."
-    iHidden = [];
-    for i = 1:length(posDir)
-        if (posDir(i).name(1) == '.')
-            iHidden(end+1) = i;
+    % Get dataset name and path
+    [dspath, dsname] = bst_fileparts(ds_directory);
+    % Attempt #1: sub-subid_headshape.pos
+    iUnder = find(dsname == '_', 1);
+    if ~isempty(iUnder) && (iUnder > 1) && file_exist(bst_fullfile(dspath, [dsname(1:iUnder-1), '_headshape.pos']))
+        pos_file = bst_fullfile(dspath, [dsname(1:iUnder-1), '_headshape.pos']);
+    end
+    % Attempt #2: Any .pos with a name that starts with the .ds name (excluded "_meg")
+    if isempty(pos_file)
+        posDir = dir(strrep(ds_directory, '_meg.ds', '_*.pos'));
+        if (length(posDir) == 1)
+            pos_file = bst_fullfile(dspath, posDir(1).name);
         end
     end
-    if ~isempty(iHidden)
-        posDir(iHidden) = [];
-    end
-    % Return Polhemus file
-    if (length(posDir) == 1)
-        pos_file = bst_fullfile(fileparts(ds_directory), posDir(1).name);
+    % Attempt #3: Any .pos with a name that starts with the subject id
+    if isempty(pos_file)
+        posDir = dir(bst_fullfile(dspath, [dsname(1:iUnder-1), '*.pos']));
+        if (length(posDir) == 1)
+            pos_file = bst_fullfile(dspath, posDir(1).name);
+        else
+            disp(['CTF> Warning: Multiple .pos head shape points found in: ' dspath]);
+        end
     end
 end
 
-
+% Report which file is used
+if ~isempty(pos_file)
+    disp(['CTF> Using head shape file: ' pos_file]);
+else
+    disp('CTF> No head shape imported.');
+end
 
 
 % ===== .HC =====
