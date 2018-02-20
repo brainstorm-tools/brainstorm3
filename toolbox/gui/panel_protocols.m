@@ -19,7 +19,7 @@ function varargout = panel_protocols(varargin)
 %                    panel_protocols('SelectSubject',       SubjectName) % Select and expand subject node
 %                    panel_protocols('MarkUniqueNode',      bstNode)
 %      OutputFiles = panel_protocols('TreeHeadModel',       bstNode)
-%      OutputFiles = panel_protocols('TreeInverse',         bstNodes, is2014)
+%      OutputFiles = panel_protocols('TreeInverse',         bstNodes, Version)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -1183,7 +1183,7 @@ end
 
 
 %% ===== NODE: INVERSE MODEL =====
-function OutputFiles = TreeInverse(bstNodes, is2014) %#ok<DEFNU>
+function OutputFiles = TreeInverse(bstNodes, Version) %#ok<DEFNU>
     OutputFiles = {};
     % Get node type
     nodeType = lower(char(bstNodes(1).getType()));
@@ -1212,10 +1212,13 @@ function OutputFiles = TreeInverse(bstNodes, is2014) %#ok<DEFNU>
         end
     end
     % Call inverse function
-    if is2014
-        [OutputFiles, errMessage] = process_inverse_2016('Compute', iStudies, iDatas);
-    else
-        [OutputFiles, errMessage] = process_inverse('Compute', iStudies, iDatas);
+    switch Version
+        case '2009'
+            [OutputFiles, errMessage] = process_inverse('Compute', iStudies, iDatas);
+        case '2016'
+            [OutputFiles, errMessage] = process_inverse_2016('Compute', iStudies, iDatas);
+        case '2018'
+            [OutputFiles, errMessage] = process_inverse_2018('Compute', iStudies, iDatas);
     end
     % Error
     if isempty(OutputFiles) && ~isempty(errMessage)

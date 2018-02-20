@@ -1,5 +1,5 @@
-function varargout = process_inverse( varargin )
-% PROCESS_INVERSE: Compute an inverse model.
+function varargout = process_inverse_2018( varargin )
+% PROCESS_INVERSE_2018: Compute an inverse model.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -19,7 +19,7 @@ function varargout = process_inverse( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2018
 
 eval(macro_method);
 end
@@ -29,37 +29,25 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     % ===== PROCESS =====
     % Description the process
-    sProcess.Comment     = 'Compute sources [2009]';
+    sProcess.Comment     = 'Compute sources [2018]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Sources';
-    sProcess.Index       = 325;
+    sProcess.Index       = 326;
     sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'results', 'results'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    % Options: Comment
-    sProcess.options.Comment.Comment = 'Comment: ';
-    sProcess.options.Comment.Type    = 'text';
-    sProcess.options.Comment.Value   = '';
-    % Option: Inverse method
-    sProcess.options.method.Comment = {'Minimum norm estimates (wMNE)', 'dSPM', 'sLORETA'};
-    sProcess.options.method.Type    = 'radio';
-    sProcess.options.method.Value   = 1;
-    % Options: MNE options
-    sProcess.options.wmne.Comment = {'panel_wmne', 'Source estimation options: '};
-    sProcess.options.wmne.Type    = 'editpref';
-    sProcess.options.wmne.Value   = bst_wmne();
-    % Option: Sensors selection
-    sProcess.options.sensortypes.Comment = 'Sensor types:&nbsp;&nbsp;&nbsp;&nbsp;';
-    sProcess.options.sensortypes.Type    = 'text';
-    sProcess.options.sensortypes.Value   = 'MEG, MEG MAG, MEG GRAD, EEG';
+    sProcess.isSeparator = 1;
     % Option: Output
-    sProcess.options.sep3.Type      = 'separator';
     sProcess.options.output.Comment = {'Kernel only: shared', 'Kernel only: one per file', 'Full results: one per file'};
     sProcess.options.output.Type    = 'radio';
     sProcess.options.output.Value   = 1;
+    % Options: MNE options
+    sProcess.options.inverse.Comment = {'panel_inverse_2018', 'Source estimation options: '};
+    sProcess.options.inverse.Type    = 'editpref';
+    sProcess.options.inverse.Value   = bst_inverse_linear_2018();
 end
 
 
@@ -76,14 +64,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % ===== GET OPTIONS =====
     % Default inverse options
     OPTIONS = Compute();
-    % MNE options
-    OPTIONS = struct_copy_fields(OPTIONS, sProcess.options.wmne.Value, 1);
-    % Get options
-    switch (sProcess.options.method.Value)
-        case 1,  OPTIONS.InverseMethod = 'wmne';
-        case 2,  OPTIONS.InverseMethod = 'dspm';
-        case 3,  OPTIONS.InverseMethod = 'sloreta';
-    end
+    % Get options edited by the user
+    OPTIONS = struct_copy_fields(OPTIONS, sProcess.options.inverse.Value, 1);
     % Output
     switch (sProcess.options.output.Value)
         % Kernel only: shared
@@ -102,57 +84,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             iStudies = [sInputs.iStudy];
             iDatas   = [sInputs.iItem];
             OPTIONS.ComputeKernel = 0;
-    end
-    % Get modalities in channel files
-    AllSensorTypes = unique(cat(2, sInputs.ChannelTypes));
-    AllSensorTypes = intersect(AllSensorTypes, {'MEG MAG', 'MEG GRAD', 'MEG', 'EEG', 'ECOG', 'SEEG'});
-    if any(ismember(AllSensorTypes, {'MEG MAG', 'MEG GRAD'}))
-        AllSensorTypes = setdiff(AllSensorTypes, 'MEG');
-    end
-    % Get valid modalities in head models
-    allChanFiles = unique({sInputs.ChannelFile});
-    for i = 1:length(allChanFiles)
-        % Get study
-        sStudy = bst_get('ChannelFile', allChanFiles{i});
-        % Check if all the files exist
-        if isempty(sStudy.Channel) || isempty(sStudy.HeadModel) || isempty(sStudy.iHeadModel) || isempty(sStudy.NoiseCov) || isempty(sStudy.NoiseCov(1).FileName)
-            bst_report('Error', sProcess, [], 'No channel file, noise covariance, or headmodel or for at least one of the files.');
-            return;
-        end
-        % Remove all the modalities that do not exist in the headmodels
-        if isempty(sStudy.HeadModel(sStudy.iHeadModel).MEGMethod)
-            AllSensorTypes = setdiff(AllSensorTypes, {'MEG', 'MEG MAG', 'MEG GRAD'});
-        end
-        if isempty(sStudy.HeadModel(sStudy.iHeadModel).EEGMethod)
-            AllSensorTypes = setdiff(AllSensorTypes, {'EEG'});
-         end
-        if isempty(sStudy.HeadModel(sStudy.iHeadModel).ECOGMethod)
-            AllSensorTypes = setdiff(AllSensorTypes, {'ECOG'});
-        end
-        if isempty(sStudy.HeadModel(sStudy.iHeadModel).SEEGMethod)
-            AllSensorTypes = setdiff(AllSensorTypes, {'SEEG'});
-        end
-    end
-    % Selected sensor types
-    OPTIONS.DataTypes = strtrim(str_split(sProcess.options.sensortypes.Value, ',;'));
-    if ismember('MEG', OPTIONS.DataTypes) && any(ismember({'MEG GRAD','MEG MAG'}, AllSensorTypes))
-        OPTIONS.DataTypes = union(setdiff(OPTIONS.DataTypes, 'MEG'), {'MEG MAG', 'MEG GRAD'});
-    end
-    OPTIONS.DataTypes = intersect(OPTIONS.DataTypes, AllSensorTypes);
-    if isempty(OPTIONS.DataTypes)
-        strTypes = '';
-        for i = 1:length(AllSensorTypes)
-            if (i > 1)
-                strTypes = [strTypes, ', '];
-            end
-            strTypes = [strTypes, AllSensorTypes{i}];
-        end
-        bst_report('Error', sProcess, [], ['No valid sensor type selected.' 10 'Valid options are: ' strTypes]);
-        return;
-    end
-    % Comment
-    if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
-        OPTIONS.Comment = sProcess.options.Comment.Value;
     end
     % No messages
     OPTIONS.DisplayMessages = 0;
@@ -194,7 +125,7 @@ end
 % Authors: Sylvain Baillet, October 2002
 %          Esen Kucukaltun-Yildirim, 2004
 %          Syed Ashrafulla, John Mosher, Rey Ramirez, 2009-2012
-%          Francois Tadel, 2009-2014
+%          Francois Tadel, John Mosher, 2009-2018
 %
 function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
     % Initialize returned variables
@@ -202,7 +133,9 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
     errMessage = [];
     % Default options settings
     Def_OPTIONS = struct(...
-        'InverseMethod',       'wmne', ... % A string that specifies the imaging method: wmne, dspm, sloreta, ...
+        'InverseMethod',       'minnorm', ... % A string that specifies the imaging method
+        'InverseMeasure',      'dspm', ...
+        'SourceOrient',        'fixed', ...
         'DataTypes',           [], ...     % Cell array of strings: list of modality to use for the reconstruction (MEG, MEG GRAD, MEG MAG, EEG)
         'Comment',             '', ...     % Inverse solution description (optional)
         'DisplayMessages',     1, ...
@@ -251,6 +184,8 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
     AllMod = {};
     HeadModelType = 'surface';
     MEGMethod = [];
+    nSamplesNoise = [];
+    nSamplesData  = [];
     for i = 1:length(sChanStudies)
         AllMod = union(AllMod, sChanStudies(i).Channel.DisplayableSensorTypes);
         if isempty(sChanStudies(i).HeadModel(sChanStudies(i).iHeadModel).MEGMethod)
@@ -271,10 +206,22 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         if ~isempty(sChanStudies(i).HeadModel(sChanStudies(i).iHeadModel).MEGMethod) && isempty(MEGMethod)
             MEGMethod = sChanStudies(i).HeadModel(sChanStudies(i).iHeadModel).MEGMethod;
         end
-        % Check noise covariance
-        if isempty(sChanStudies(i).NoiseCov) || isempty(sChanStudies(i).NoiseCov(1).FileName)
-            errMessage = 'No noise covariance matrix available.';
-            return;
+        % First file only: Load the number of samples from the covariance files
+        if (i == 1)
+            % Noise covariance
+            if (length(sChanStudies(i).NoiseCov) >= 1) && ~isempty(sChanStudies(i).NoiseCov(1).FileName)
+                covMat = load(file_fullpath(sChanStudies(i).NoiseCov(1).FileName), 'nSamples');
+                if isfield(covMat, 'nSamples') && ~isempty(covMat.nSamples)
+                    nSamplesNoise = covMat.nSamples;
+                end
+            end
+            % Data covariance
+            if (length(sChanStudies(i).NoiseCov) >= 2) && ~isempty(sChanStudies(i).NoiseCov(2).FileName)
+                covMat = load(file_fullpath(sChanStudies(i).NoiseCov(2).FileName), 'nSamples');
+                if isfield(covMat, 'nSamples') && ~isempty(covMat.nSamples)
+                    nSamplesData = covMat.nSamples;
+                end
+            end
         end
     end
     % Keep only MEG and EEG
@@ -294,87 +241,42 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
     % Select method
     if OPTIONS.DisplayMessages
         % Options dialog window
-        sMethod = gui_show_dialog('Compute sources', @panel_inverse, 1, [], AllMod, isShared, HeadModelType);
+        sMethod = gui_show_dialog('Compute sources', @panel_inverse_2018, 1, [], AllMod, isShared, HeadModelType, nSamplesNoise, nSamplesData);
         if isempty(sMethod)
             return;
         end
         % Override default options
         OPTIONS = struct_copy_fields(OPTIONS, sMethod, 1);
-        % Get mthod options
-        switch (OPTIONS.InverseMethod)
-            % === MINIMUM NORM ===
-            case {'wmne','dspm','sloreta','gls','glsr','mnej','gls_p','glsr_p','mnej_p'}
-                % Default options
-                MethodOptions = bst_wmne();
-                MethodOptions.InverseMethod = OPTIONS.InverseMethod;
-                % DBA: Do not select the orientation constrain here
-                if strcmpi(HeadModelType, 'mixed')
-                    MethodOptions.SourceOrient = [];
-                    MethodOptions.flagSourceOrient = [0 0 0 0];
-                    OPTIONS.SourceOrient = [];
-                % Regular definition of the orientation constrain
-                else
-                    % Remove radial sources in MEG with spherical headmodels ?
-                    RemoveSilentComp = any(ismember(AllMod, {'MEG GRAD', 'MEG MAG', 'MEG'})) && strcmpi(MEGMethod, 'meg_sphere');
-                    % sLORETA and spherical models: Truncated source model must be the default
-                    if RemoveSilentComp && strcmpi(OPTIONS.InverseMethod, 'sloreta')
-                        MethodOptions.flagSourceOrient = [1 0 0 2];
-                    % Else: All source models available
-                    else
-                        MethodOptions.flagSourceOrient = [1 1 1 RemoveSilentComp];
-                    end
-                    % Default source model
-                    switch lower(MethodOptions.SourceOrient{1})
-                        case 'fixed',  MethodOptions.flagSourceOrient(1) = 2;
-                        case 'loose',  MethodOptions.flagSourceOrient(2) = 2;
-                        case 'free',   MethodOptions.flagSourceOrient(3) = 2;
-                    end
-                    % Default options are different depending on the head model type
-                    switch (HeadModelType)
-                        case {'surface', 'ImageGrid'}
-                            MethodOptions.SourceOrient{1} = 'fixed';
-                        case 'volume'
-                            MethodOptions.SourceOrient{1} = 'free';
-                            MethodOptions.flagSourceOrient = [0 0 2 0];
-                    end
+        
+        % === BRAINENTROPY MEM ===
+        % Display additional option windows
+        if strcmpi(OPTIONS.InverseMethod, 'mem')
+            % No data files found
+            if isShared
+                errMessage = 'Cannot compute shared kernels with this method.';
+                return
+            end
+            % Default options
+            MethodOptions = be_main();
+            % Interface to edit options
+            MethodOptions = gui_show_dialog('MEM options', @panel_brainentropy, [], [], MethodOptions);
+            % Add fields that are not defined by the options of the MEM interface
+            if ~isempty(MethodOptions)
+                switch (HeadModelType)
+                    case {'surface', 'ImageGrid'}
+                        MethodOptions.SourceOrient{1} = 'fixed';
+                    case 'volume'
+                        MethodOptions.SourceOrient{1} = 'free';
+                        MethodOptions.flagSourceOrient = [0 0 2 0];
                 end
-                % For sLORETA: no depth weighting
-                if strcmpi(OPTIONS.InverseMethod, 'sloreta')
-                    MethodOptions.depth = 0;
-                end
-                % Interface to edit options
-                if bst_get('ExpertMode')
-                    MethodOptions = gui_show_dialog('Minimum norm options', @panel_wmne, 1, [], MethodOptions, OPTIONS.DataTypes);
-                end
-
-            % === BRAINENTROPY MEM ===
-            case 'mem'
-                % No data files found
-                if isShared
-                    errMessage = 'Cannot compute shared kernels with this method.';
-                    return
-                end
-                % Default options
-                MethodOptions = be_main();
-                % Interface to edit options
-                MethodOptions = gui_show_dialog('MEM options', @panel_brainentropy, [], [], MethodOptions);
-                % Add fields that are not defined by the options of the MEM interface
-                if ~isempty(MethodOptions)
-                    switch (HeadModelType)
-                        case {'surface', 'ImageGrid'}
-                            MethodOptions.SourceOrient{1} = 'fixed';
-                        case 'volume'
-                            MethodOptions.SourceOrient{1} = 'free';
-                            MethodOptions.flagSourceOrient = [0 0 2 0];
-                    end
-                end
+            end
+            % Canceled by user
+            if isempty(MethodOptions)
+                return
+            end
+            % Add options to list
+            OPTIONS = struct_copy_fields(OPTIONS, MethodOptions, 1);
         end
-        % Canceled by user
-        if isempty(MethodOptions)
-            return
-        end
-        % Add options to list
-        OPTIONS = struct_copy_fields(OPTIONS, MethodOptions, 1);
     end
     % If no MEG and no EEG selected
     if isempty(OPTIONS.DataTypes)
@@ -382,18 +284,8 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         return;
     end
     % Tags corresponding to the different methods
-    switch(OPTIONS.InverseMethod)
-        case 'wmne',    methodTag = 'MN';
-        case 'gls',     methodTag = 'GLS';
-        case 'gls_p',   methodTag = 'GLSP';
-        case 'glsr',    methodTag = 'GLSR';
-        case 'glsr_p',  methodTag = 'GLSRP';
-        case 'mnej',    methodTag = 'MNEJ';
-        case 'mnej_p',  methodTag = 'MNEJP';
-        case 'dspm',    methodTag = 'dSPM';
-        case 'sloreta', methodTag = 'sLORETA';
-        case 'mem',     methodTag = 'MEM';
-    end
+    methodTag = panel_inverse_2018('GetMethodComment', OPTIONS.InverseMethod, OPTIONS.InverseMeasure);
+    
 
     %% ===== COMMENT =====
     % Base comment: "METHOD: MODALITIES"
@@ -404,12 +296,11 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
     strOptions = '';
     if isempty(OPTIONS.SourceOrient)
         strOptions = 'Mixed';
-    elseif any(strcmpi(OPTIONS.InverseMethod, {'wmne','dspm','sloreta','gls','glsr','mnej'}))
+    elseif ~strcmpi(OPTIONS.InverseMethod, 'mem')
         switch (OPTIONS.SourceOrient{1})
             case 'fixed',      strOptions = 'Constr';
             case 'loose',      strOptions = 'Loose';
             case 'free',       strOptions = 'Unconstr';
-            case 'truncated',  strOptions = 'Trunc';
         end
     end
     % Add Kernel/Full option string
@@ -453,11 +344,11 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         if ~isShared
             % Get only one file
             DataFile = sStudy.Data(iDatas(iEntry)).FileName;
-            % Load data file info
-            if OPTIONS.ComputeKernel
-                DataMat = in_bst_data(DataFile, 'ChannelFlag', 'Time', 'nAvg');
-            else
+            % Load data file info (only 'mem' requires the recordings to be loaded here)
+            if strcmpi(OPTIONS.InverseMethod, 'mem')
                 DataMat = in_bst_data(DataFile, 'ChannelFlag', 'Time', 'nAvg', 'F');
+            else
+                DataMat = in_bst_data(DataFile, 'ChannelFlag', 'Time', 'nAvg');
             end
             ChannelFlag = DataMat.ChannelFlag;
             nAvg        = DataMat.nAvg;
@@ -483,6 +374,12 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 else
                     nAvgAll(i) = 1;
                 end
+                % Count number of times the channe is bad
+                if isempty(BadChannels)
+                    BadChannels = double(DataMat.ChannelFlag < 0);
+                else
+                    BadChannels = BadChannels + (DataMat.ChannelFlag < 0);
+                end
                 % Channel number
                 if isempty(nChannels)
                     nChannels = length(DataMat.ChannelFlag);
@@ -490,18 +387,12 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                     errMessage = 'All data files must have the same number of channels.';
                     continue;
                 end
-                % Count number of times the channe is bad
-                if isempty(BadChannels)
-                    BadChannels = double(DataMat.ChannelFlag < 0);
-                else
-                    BadChannels = BadChannels + (DataMat.ChannelFlag < 0);
-                end
             end
             % Get list of sensors selected for inversion
             iChanInv = good_channel(ChannelMat.Channel, [], OPTIONS.DataTypes);
             % Mark all the channels that are not selected here as good
             BadChannels(setdiff(1:length(BadChannels), iChanInv)) = 0;
-            
+                    
             % === CHECK nAVG ===
             % if ~isempty(iRelatedStudies) && any(nAvgAll ~= nAvgAll(1)) && isFirstWarnAvg
             %     % Display a warning in a dialog window
@@ -581,16 +472,44 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         % Get channel study
         sStudyChannel = bst_get('Study', iStudyChannel);
         % Load NoiseCov file 
-        NoiseCovMat = load(file_fullpath(sStudyChannel.NoiseCov(1).FileName), 'NoiseCov');
-        NoiseCov = NoiseCovMat.NoiseCov;
+        NoiseCovMat = load(file_fullpath(sStudyChannel.NoiseCov(1).FileName));
         % Check for NaN values in the noise covariance
-        if ~isempty(NoiseCov) && (nnz(isnan(NoiseCov(GoodChannel, GoodChannel))) > 0)
+        if ~isempty(NoiseCovMat.NoiseCov) && (nnz(isnan(NoiseCovMat.NoiseCov(GoodChannel, GoodChannel))) > 0)
             errMessage = [errMessage 'The noise covariance contains NaN values. Please re-calculate it after tagging correctly the bad channels in the recordings.' 10];
             break;
         end
         % Divide noise covariance by number of trials
         if ~isempty(nAvg) && (nAvg > 1)
-            NoiseCov = NoiseCov ./ nAvg;
+            NoiseCovMat.NoiseCov = NoiseCovMat.NoiseCov ./ nAvg;
+        end
+        
+        % ===== LOAD DATA COVARIANCE =====
+        % Load DataCov file 
+        if (length(sStudyChannel.NoiseCov) >= 2) && ~isempty(sStudyChannel.NoiseCov(2).FileName)
+            DataCovMat = load(file_fullpath(sStudyChannel.NoiseCov(2).FileName));
+            % Check for NaN values in the noise covariance
+            if ~isempty(DataCovMat.NoiseCov) && (nnz(isnan(DataCovMat.NoiseCov(GoodChannel, GoodChannel))) > 0)
+                errMessage = [errMessage 'The data covariance contains NaN values. Please re-calculate it after tagging correctly the bad channels in the recordings.' 10];
+                break;
+            end
+            % Divide data covariance by number of trials
+            if isempty(nAvg) && (nAvg > 1)
+                DataCovMat.NoiseCov = DataCovMat.NoiseCov ./ nAvg;
+            end
+        else
+            DataCovMat = [];
+        end
+        % Beamformers: Require a data covariance matrix
+        if strcmpi(OPTIONS.InverseMethod, 'lcmv') && isempty(DataCovMat)
+            errMessage = [errMessage 'You need to calculate a data covariance before using the "beamformer" option.' 10];
+            break;
+        end
+        % Shrinkage: Require the FourthMoment matrix
+        if strcmpi(OPTIONS.NoiseMethod, 'shrink') && ...
+                ((~isempty(DataCovMat)  && (~isfield(DataCovMat, 'FourthMoment')  || isempty(DataCovMat.FourthMoment))) || ...
+                 (~isempty(NoiseCovMat) && (~isfield(NoiseCovMat, 'FourthMoment') || isempty(NoiseCovMat.FourthMoment))))
+            errMessage = [errMessage 'Please recalculate the noise and data covariance matrices for using the "automatic shrinkage" option.' 10];
+            break;
         end
         
         % ===== LOAD HEAD MODEL =====
@@ -611,7 +530,10 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 % Apply projectors to gain matrix
                 HeadModel.Gain(iGainSensors,:) = Proj(iGainSensors,iGainSensors) * HeadModel.Gain(iGainSensors,:);
                 % Apply SSPs on both sides of the noise covariance matrix
-                NoiseCov = Proj * NoiseCov * Proj';
+                NoiseCovMat.NoiseCov = Proj * NoiseCovMat.NoiseCov * Proj';
+                if ~isempty(DataCovMat)
+                    DataCovMat.NoiseCov = Proj * DataCovMat.NoiseCov * Proj';
+                end
             end
         end
         % Select only good channels
@@ -622,31 +544,65 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel(GoodChannel), ChannelFlag(GoodChannel), 0);
             HeadModel.Gain = sMontage.Matrix * HeadModel.Gain;
             % Apply average reference operator on both sides of the noise covariance matrix
-            NoiseCov(GoodChannel, GoodChannel) = sMontage.Matrix * NoiseCov(GoodChannel, GoodChannel) * sMontage.Matrix';
+            NoiseCovMat.NoiseCov(GoodChannel, GoodChannel) = sMontage.Matrix * NoiseCovMat.NoiseCov(GoodChannel, GoodChannel) * sMontage.Matrix';
+            if ~isempty(DataCovMat)
+                DataCovMat.NoiseCov(GoodChannel, GoodChannel) = sMontage.Matrix * DataCovMat.NoiseCov(GoodChannel, GoodChannel) * sMontage.Matrix';
+            end
         end
         % Copy initial head model
         HeadModelInit = HeadModel;
         % Get number of sources
         nSources =  size(HeadModelInit.Gain,2) / 3;
-        % Check that processing MEG with a spherical headmodel: if not, discard the 'truncated' option
-        if isfield(OPTIONS, 'SourceOrient') && ~isempty(OPTIONS.SourceOrient) && strcmpi(OPTIONS.SourceOrient{1}, 'truncated')  && (~isfield(HeadModel, 'MEGMethod') || ~strcmpi(HeadModel.MEGMethod, 'meg_sphere'))
-            disp('BST> Recordings do not contain MEG, or forward model is not spherical: ignore "truncated" source orientation.');
-            OPTIONS.SourceOrient = {'loose'};
-        end
 
         % ===== MIXED HEADMODEL =====
         if strcmpi(HeadModelInit.HeadModelType, 'mixed') && ~isempty(HeadModel.GridAtlas) && ~isempty(HeadModel.GridAtlas(1).Scouts)
             % Only supported for wMNE
-            if ~ismember(OPTIONS.InverseMethod, {'wmne', 'dspm', 'sloreta'})
-                errMessage = [errMessage 'The mixed headmodel is currently only supported for the wMNE/dSPM/sLORETA inverse solution.' 10];
+            if ~ismember(OPTIONS.InverseMethod, {'minnorm', 'gls', 'lcmv'})
+                errMessage = [errMessage 'The mixed headmodel is currently only supported for the following inverse solutions: Minimum norm, dipole fitting, beamformer.' 10];
                 break;
             end
-            % Split head model into multiple blocks with different properties
-            [HeadModel, HeadModelInit, OPTIONS.SourceOrient] = SplitHeadModel(HeadModelInit);
-            % Fix the comment of the file
-            OPTIONS.Comment = strrep(OPTIONS.Comment, 'Constr',   'Mixed');
-            OPTIONS.Comment = strrep(OPTIONS.Comment, 'Loose',    'Mixed');
-            OPTIONS.Comment = strrep(OPTIONS.Comment, 'Unconstr', 'Mixed');
+            % Initialize variable
+            HeadModel.Gain      = [];
+            HeadModel.GridAtlas = [];
+            HeadModel           = repmat(HeadModel, 1, length(HeadModelInit.GridAtlas(1).Scouts));
+            iVert2Grid = [];
+            iAllGrid   = [];
+            iAllSource = [];
+            iOffset    = 0;
+            % Split the head model in multiple entries
+            for iScout = 1:length(HeadModelInit.GridAtlas(1).Scouts)
+                % Get indices in the Gain matrix
+                sScout = HeadModelInit.GridAtlas(1).Scouts(iScout);
+                iGainRows = sort([3*sScout.GridRows-2, 3*sScout.GridRows-1, 3*sScout.GridRows]);
+                % Create the headmodel structure for the current region
+                HeadModel(iScout).Gain       = HeadModelInit.Gain(:, iGainRows);
+                HeadModel(iScout).GridLoc    = HeadModelInit.GridLoc(sScout.GridRows, :);
+                HeadModel(iScout).GridOrient = HeadModelInit.GridOrient(sScout.GridRows, :);
+                switch (sScout.Region(3))
+                    case 'C',  OPTIONS.SourceOrient{iScout} = 'fixed';  nComp = 1;
+                    case 'U',  OPTIONS.SourceOrient{iScout} = 'free';   nComp = 3;
+                    case 'L',  OPTIONS.SourceOrient{iScout} = 'loose';  nComp = 3;
+                end
+                % In the case of a surface region, add the match of the vertices in the cortex surface and the GridLoc matrix
+                if strcmpi(sScout.Region(2), 'S')
+                    iVert2Grid = [iVert2Grid; sScout.Vertices', sScout.GridRows'];
+                end
+                % Add to the scout definition the indices in the ImageGrid
+                iAllGrid   = [iAllGrid,   reshape(repmat(sScout.GridRows,nComp,1), 1, [])];
+                iAllSource = [iAllSource, iOffset + (1:nComp*length(sScout.GridRows))];
+                iOffset = iOffset + nComp*length(sScout.GridRows);
+            end
+            % Create sparse conversion matrices between indices
+            if ~isempty(iVert2Grid)
+                HeadModelInit.GridAtlas(1).Vert2Grid = logical(sparse(iVert2Grid(:,2), iVert2Grid(:,1), ones(size(iVert2Grid,1),1)));
+            else
+                HeadModelInit.GridAtlas(1).Vert2Grid = [];
+            end
+            if ~isempty(iAllSource)
+                HeadModelInit.GridAtlas(1).Grid2Source = logical(sparse(iAllSource, iAllGrid, ones(size(iAllSource))));
+            else
+                HeadModelInit.GridAtlas(1).Grid2Source = [];
+            end
         end
 
 
@@ -654,20 +610,31 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         bst_progress('text', 'Estimating sources...');
         bst_progress('inc', 1);
         % NoiseCov: keep only the good channels
-        OPTIONS.NoiseCov = NoiseCov(GoodChannel, GoodChannel);
+        OPTIONS.NoiseCovMat = NoiseCovMat;
+        OPTIONS.NoiseCovMat.NoiseCov = OPTIONS.NoiseCovMat.NoiseCov(GoodChannel, GoodChannel);
+        if isfield(OPTIONS.NoiseCovMat, 'FourthMoment') && ~isempty(OPTIONS.NoiseCovMat.FourthMoment)
+            OPTIONS.NoiseCovMat.FourthMoment = OPTIONS.NoiseCovMat.FourthMoment(GoodChannel, GoodChannel);
+        end
+        if isfield(OPTIONS.NoiseCovMat, 'nSamples') && ~isempty(OPTIONS.NoiseCovMat.nSamples)
+            OPTIONS.NoiseCovMat.nSamples = OPTIONS.NoiseCovMat.nSamples(GoodChannel, GoodChannel);
+        end
+        % DataCov: keep only the good channels
+        if ~isempty(DataCovMat)
+            OPTIONS.DataCovMat = DataCovMat;
+            OPTIONS.DataCovMat.NoiseCov     = OPTIONS.DataCovMat.NoiseCov(GoodChannel, GoodChannel);
+            OPTIONS.DataCovMat.FourthMoment = OPTIONS.DataCovMat.FourthMoment(GoodChannel, GoodChannel);
+            OPTIONS.DataCovMat.nSamples     = OPTIONS.DataCovMat.nSamples(GoodChannel, GoodChannel);
+        end
         % Get channels types
         OPTIONS.ChannelTypes = {ChannelMat.Channel(GoodChannel).Type};
         % Switch depending on the selected inverse method
         switch( OPTIONS.InverseMethod )       
-            case {'wmne', 'dspm', 'sloreta'}
-                % Call Rey's wmne function
-                % NOTE: The output HeadModel param is used here in return to save LOTS of memory in the bst_wmne function,
+            case {'minnorm', 'gls', 'lcmv'}
+                % Call John's wmne function
+                % NOTE: The output HeadModel param is used here in return to save LOTS of memory in the bst_inverse_linear_2018 function,
                 %       event if it seems to be absolutely useless. Having a parameter in both input and output have the
                 %       effect in Matlab of passing them "by reference".
-                [Results, OPTIONS] = bst_wmne(HeadModel, OPTIONS);
-            case {'gls', 'gls_p', 'glsr', 'glsr_p', 'mnej', 'mnej_p'}
-                % Mosher's function
-                [Results, OPTIONS] = bst_wmne_mosher(HeadModel, OPTIONS);
+                [Results, OPTIONS] = bst_inverse_linear_2018(HeadModel, OPTIONS);
             case 'mem'
                 % Add options needed by the MEM functions
                 OPTIONS.DataFile      = DataFile;
@@ -678,7 +645,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 OPTIONS.ResultFile    = [];
                 OPTIONS.HeadModelFile = HeadModelFile;
                 OPTIONS.GoodChannel   = GoodChannel;
-                OPTIONS.NoiseCovRaw   = NoiseCov;
+                OPTIONS.FunctionName  = 'mem';
                 % Call the mem solver
                 [Results, OPTIONS] = be_main(HeadModel, OPTIONS);
                 Results.nComponents = round(max(size(Results.ImageGridAmp,1),size(Results.ImagingKernel,1)) / nSources);
@@ -700,6 +667,8 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         % ===== COMPUTE FULL RESULTS =====
         % Full results
         if (OPTIONS.ComputeKernel == 0) && ~isempty(ResultsMat.ImagingKernel) && ~isempty(DataFile)
+            % Load data
+            DataMat = in_bst_data(DataFile, 'F');
             % Multiply inversion kernel with the recordings
             ResultsMat.ImageGridAmp = ResultsMat.ImagingKernel * DataMat.F(GoodChannel, :);
             ResultsMat.ImagingKernel = [];
@@ -740,8 +709,8 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         ResultFile = bst_process('GetNewFilename', OutputDir, ['results_', strMethod]);
 
         % ===== CREATE FILE STRUCTURE =====
-        ResultsMat.Comment       = OPTIONS.Comment;
-        ResultsMat.Function      = OPTIONS.InverseMethod;
+        ResultsMat.Comment       = [OPTIONS.Comment ' 2018'];
+        ResultsMat.Function      = OPTIONS.FunctionName;
         ResultsMat.Time          = Time;
         ResultsMat.DataFile      = DataFile;
         ResultsMat.HeadModelFile = HeadModelFile;
@@ -752,10 +721,10 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         switch lower(ResultsMat.HeadModelType)
             case 'volume'
                 ResultsMat.GridLoc    = HeadModelInit.GridLoc;
-                ResultsMat.GridOrient = [];
+                % ResultsMat.GridOrient = [];
             case 'surface'
                 ResultsMat.GridLoc    = [];
-                ResultsMat.GridOrient = [];
+                % ResultsMat.GridOrient = [];    % THE ORIENTATION CAN BE RETURNED BY THE INVERSE METHOD ('optim')
             case 'mixed'
                 ResultsMat.GridLoc    = HeadModelInit.GridLoc;
                 ResultsMat.GridOrient = HeadModelInit.GridOrient;
@@ -834,51 +803,5 @@ function Comment = GetModalityComment(Modalities)
 end
 
 
-%% ===== SPLIT MIXED HEADMODEL =====
-% Split head model into multiple blocks with different properties
-function [HeadModel, HeadModelInit, SourceOrient] = SplitHeadModel(HeadModelInit)
-    % Initialize variables
-    HeadModel.Gain      = [];
-    HeadModel.GridAtlas = [];
-    HeadModel           = repmat(HeadModel, 1, length(HeadModelInit.GridAtlas(1).Scouts));
-    SourceOrient = {};
-    iVert2Grid = [];
-    iAllGrid   = [];
-    iAllSource = [];
-    iOffset    = 0;
-    % Split the head model in multiple entries
-    for iScout = 1:length(HeadModelInit.GridAtlas(1).Scouts)
-        % Get indices in the Gain matrix
-        sScout = HeadModelInit.GridAtlas(1).Scouts(iScout);
-        iGainRows = sort([3*sScout.GridRows-2, 3*sScout.GridRows-1, 3*sScout.GridRows]);
-        % Create the headmodel structure for the current region
-        HeadModel(iScout).Gain       = HeadModelInit.Gain(:, iGainRows);
-        HeadModel(iScout).GridLoc    = HeadModelInit.GridLoc(sScout.GridRows, :);
-        HeadModel(iScout).GridOrient = HeadModelInit.GridOrient(sScout.GridRows, :);
-        switch (sScout.Region(3))
-            case 'C',  SourceOrient{iScout} = 'fixed';  nComp = 1;
-            case 'U',  SourceOrient{iScout} = 'free';   nComp = 3;
-            case 'L',  SourceOrient{iScout} = 'loose';  nComp = 3;
-        end
-        % In the case of a surface region, add the match of the vertices in the cortex surface and the GridLoc matrix
-        if strcmpi(sScout.Region(2), 'S')
-            iVert2Grid = [iVert2Grid; sScout.Vertices', sScout.GridRows'];
-        end
-        % Add to the scout definition the indices in the ImageGrid
-        iAllGrid   = [iAllGrid,   reshape(repmat(sScout.GridRows,nComp,1), 1, [])];
-        iAllSource = [iAllSource, iOffset + (1:nComp*length(sScout.GridRows))];
-        iOffset = iOffset + nComp*length(sScout.GridRows);
-    end
-    % Create sparse conversion matrices between indices
-    if ~isempty(iVert2Grid)
-        HeadModelInit.GridAtlas(1).Vert2Grid = logical(sparse(iVert2Grid(:,2), iVert2Grid(:,1), ones(size(iVert2Grid,1),1)));
-    else
-        HeadModelInit.GridAtlas(1).Vert2Grid = [];
-    end
-    if ~isempty(iAllSource)
-        HeadModelInit.GridAtlas(1).Grid2Source = logical(sparse(iAllSource, iAllGrid, ones(size(iAllSource))));
-    else
-        HeadModelInit.GridAtlas(1).Grid2Source = [];
-    end
-end
+
 

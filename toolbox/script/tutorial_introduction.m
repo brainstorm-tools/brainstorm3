@@ -630,8 +630,8 @@ InverseOptions = struct(...
     'SnrFixed',       3, ...
     'ComputeKernel',  1, ...
     'DataTypes',      {{'MEG'}});
-% Process: Compute sources [2016]
-sFilesSrcDeviant01 = bst_process('CallProcess', 'process_inverse_2016', sFilesAvgDeviant01, [], ...
+% Process: Compute sources [2018]
+sFilesSrcDeviant01 = bst_process('CallProcess', 'process_inverse_2018', sFilesAvgDeviant01, [], ...
     'output',  2, ...  % Kernel only: one per file
     'inverse', InverseOptions);
 
@@ -673,8 +673,8 @@ close([hFigSrc1 hFigSrc2 hFigSrc3 hFigSrc4]);
 InverseOptions.Comment        = 'MN: MEG';
 InverseOptions.InverseMeasure = 'amplitude';
 InverseOptions.SourceOrient   = {'free'};
-% Process: Compute sources [2016]
-sFilesSrcUnconst = bst_process('CallProcess', 'process_inverse_2016', sFilesAvgDeviant01, [], ...
+% Process: Compute sources [2018]
+sFilesSrcUnconst = bst_process('CallProcess', 'process_inverse_2018', sFilesAvgDeviant01, [], ...
     'output',  2, ...  % Kernel only: one per file
     'inverse', InverseOptions);
 
@@ -684,7 +684,7 @@ sFilesSrcUnconst = bst_process('CallProcess', 'process_inverse_2016', sFilesAvgD
 InverseOptions.Comment        = 'dSPM: MEG';
 InverseOptions.InverseMeasure = 'dspm';
 InverseOptions.SourceOrient   = {'fixed'};
-sFilesSrcDspm = bst_process('CallProcess', 'process_inverse_2016', sFilesAvgDeviant01, [], ...
+sFilesSrcDspm = bst_process('CallProcess', 'process_inverse_2018', sFilesAvgDeviant01, [], ...
     'output',  2, ...  % Kernel only: one per file
     'inverse', InverseOptions);
 % sLORETA (old function)
@@ -754,8 +754,8 @@ bst_process('CallProcess', 'process_delete', [sFilesSrcDeviant01, sFilesSrcDspm,
 InverseOptions.Comment        = 'MN: MEG';
 InverseOptions.InverseMeasure = 'amplitude';
 InverseOptions.SourceOrient   = {'fixed'};
-% Process: Compute sources [2016]
-sFilesAvgSrc = bst_process('CallProcess', 'process_inverse_2016', sFilesAvg, [], ...
+% Process: Compute sources [2018]
+sFilesAvgSrc = bst_process('CallProcess', 'process_inverse_2018', sFilesAvg, [], ...
     'output',  1, ...  % Kernel only: shared
     'inverse', InverseOptions);
 

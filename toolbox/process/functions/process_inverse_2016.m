@@ -39,7 +39,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'results', 'results'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Option: Output
     sProcess.options.output.Comment = {'Kernel only: shared', 'Kernel only: one per file', 'Full results: one per file'};
     sProcess.options.output.Type    = 'radio';

@@ -1125,8 +1125,9 @@ switch (lower(action))
                 
                 % === COMPUTE SOURCES ===
                 if ~bst_get('ReadOnly') && isempty(strfind(filenameRelative, 'headmodel_grid_'))
-                    gui_component('MenuItem', jPopup, [], 'Compute sources', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, 0));
-                    gui_component('MenuItem', jPopup, [], 'Compute sources [2016]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, 1));
+                    gui_component('MenuItem', jPopup, [], 'Compute sources [2009]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2009'));
+                    gui_component('MenuItem', jPopup, [], 'Compute sources [2016]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2016'));
+                    gui_component('MenuItem', jPopup, [], 'Compute sources [2018]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2018'));
                 end
                 % === SET AS DEFAULT HEADMODEL ===
                 if ~bst_get('ReadOnly') && (~ismember(iHeadModel, sStudy.iHeadModel) || ~bstNodes(1).isMarked())
@@ -2243,8 +2244,9 @@ end % END SWITCH( ACTION )
 %% ===== MENU: COMPUTE SOURCES =====
     function fcnPopupComputeSources()         
         import org.brainstorm.icon.*;
-        gui_component('MenuItem', jPopup, [], 'Compute sources', IconLoader.ICON_RESULTS, [], @(h,ev)panel_protocols('TreeInverse', bstNodes, 0));
-        gui_component('MenuItem', jPopup, [], 'Compute sources [2016]', IconLoader.ICON_RESULTS, [], @(h,ev)panel_protocols('TreeInverse', bstNodes, 1));
+        gui_component('MenuItem', jPopup, [], 'Compute sources [2009]', IconLoader.ICON_RESULTS, [], @(h,ev)panel_protocols('TreeInverse', bstNodes, '2009'));
+        gui_component('MenuItem', jPopup, [], 'Compute sources [2016]', IconLoader.ICON_RESULTS, [], @(h,ev)panel_protocols('TreeInverse', bstNodes, '2016'));
+        gui_component('MenuItem', jPopup, [], 'Compute sources [2018]', IconLoader.ICON_RESULTS, [], @(h,ev)panel_protocols('TreeInverse', bstNodes, '2018'));
     end
 
 %% ===== MENU: PROJECT ON DEFAULT ANATOMY =====
@@ -2842,11 +2844,11 @@ end
 
 
 %% ===== COMPUTE SOURCES (HEADMODEL) =====
-function selectHeadmodelAndComputeSources(bstNodes, is2014)
+function selectHeadmodelAndComputeSources(bstNodes, Version)
     % Select node
     tree_callbacks(bstNodes, 'doubleclick');
     % Compute sources
-    bst_call(@panel_protocols, 'TreeInverse', bstNodes, is2014);
+    bst_call(@panel_protocols, 'TreeInverse', bstNodes, Version);
 end
 
 
