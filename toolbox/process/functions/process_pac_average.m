@@ -178,6 +178,9 @@ function [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat, usePhase)
 %                 Nesting = cat(5,Nesting,tmp.sPAC.DynamicNesting);
             end
             tpacMat.sPAC.DynamicPAC = abs(tpac);
+            if usePhase
+                tpacMat.sPAC.PhasePAC = angle(tpac);
+            end
             tpacMat.sPAC.DynamicNesting = [];%Nesting;
             FileTag = 'timefreq_dpac_fullmaps';
         end                
