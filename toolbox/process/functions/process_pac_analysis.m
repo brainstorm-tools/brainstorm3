@@ -30,7 +30,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Basic Analysis of tPAC maps ';
+    sProcess.Comment     = 'Basic Analysis of tPAC maps';
     sProcess.FileTag     = '';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Frequency','Time-resolved Phase-Amplitude Coupling'};
@@ -180,20 +180,19 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     
     % === SAVING THE DATA IN BRAINSTORM ===
     % Getting the study
-    [sOutputStudy, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInput);       
+    [sOutputStudy, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInput(1));
     % Comment
     tpacMat.Comment = [tpacMat.Comment, ' ', tag];
     % Output filename: add file tag
     FileTag = strtrim(strrep(tag, '|', ''));
-%     pathName = file_fullpath(sOutputStudy.FileName); 
-    FileTag = [FileTag,'_timefreq_dpac_fullmaps']; 
+    pathName = file_fullpath(sInput(1).FileName); 
     % Preparing the output file
-    OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sOutputStudy.FileName), FileTag); 
-    OutputFiles{1} = file_unique(OutputFiles{1});     
+    OutputFile{1} = strrep(pathName, '.mat', ['_' FileTag '.mat']);
+    OutputFile{1} = file_unique(OutputFile{1});
     % Save on disk
-    bst_save(OutputFiles{1}, tpacMat, 'v6');
+    bst_save(OutputFile{1}, tpacMat, 'v6');
     % Register in database
-    db_add_data(iOutputStudy, OutputFiles{1}, tpacMat);
+    db_add_data(iOutputStudy, OutputFile{1}, tpacMat);
 end
 
 

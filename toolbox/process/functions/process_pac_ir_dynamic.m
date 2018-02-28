@@ -647,7 +647,6 @@ function sPAC = Compute(XinputA, XinputP, sRate, faBand, fpBand, winLen, Options
 %    - XinputA:       [nChannels,nTime] signal to process (signal for amplitude)
 %    - XinputP:       [nChannels,nTime] signal to process (signal for phase) 
 %    *  In local coupling estimation XinputA = XinputP
-%
 %    - sRate:         Sampling frequency (Hz)
 %    - faBand:        Nested Band: Minimum and maximum frequency for extraction of frequency for amplitude
 %    - fpBand:        Nesting Band: Minimum and maximum frequency for extraction of frequency for phase (Hz)
@@ -660,12 +659,15 @@ function sPAC = Compute(XinputA, XinputP, sRate, faBand, fpBand, winLen, Options
 %    - ValPAC:         [nChannels, nTimeOut] Maximum PAC strength in each  time point
 %    - NestedFreq:     [nChannels, nTimeOut] Fnested corresponding to maximum synchronization index in each time point
 %    - NestingFreq:    [nChannels, nTimeOut] Fnesting corresponding to maximum synchronization index in each time point
-%    - phasePAC:       [nChannels, nTimeOut] Phase corresponding to maximum synchronization index in each time point
-%    - DynamicNesting: [nNestedCenters,nTimeOut,nChannels] Estimated nesting frequency for all times, channels and nested intervals
+%    - phasePAC:       [nChannels, nTimeOut] Phase corresponding to maximum
+%                      synchronization index in each time point (rad)
+%    - DynamicNesting: [nNestedCenters,nTimeOut,nChannels] Estimated nesting frequency (fP) for all times, channels and nested intervals
 %    - DynamicPAC:     [nNestedCenters,nTimeOut,nChannels] full array of PAC
+%    - DynamicPhase:   [nNestedCenters,nTimeOut,nChannels] Preferred phase
+%                      of coupling for all times, channels and nested intervals (rad)
 %
 % DESCRIPTION:
-%   Estimation of Phase Amplitude Coupling (PAC) with tPAC method.
+%   Estimation of inter-regional Phase Amplitude Coupling (PAC) with tPAC method.
 %
 % Author:  Soheila Samiee, 2013-2017
 %
@@ -914,7 +916,7 @@ Sind     = repmat((1:nSources)', 1, nTime);           % Source indices
 Tind     = repmat(1:nTime, nSources, 1);              % Time indices
 linInd   = sub2ind(size(PAC),maxInd(:),Tind(:),Sind(:));
 Fnesting = reshape(nestingFreq(linInd),nTime,nSources)';
-Phase    = reshape(angle(PAC(linInd)),nTime,nSources)'/pi*180;
+Phase    = reshape(angle(PAC(linInd)),nTime,nSources)';
 PACmax   = reshape(abs(PAC(linInd)),nTime,nSources)';
 
 

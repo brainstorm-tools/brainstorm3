@@ -521,8 +521,8 @@ function sPAC = Compute(Xinput, sRate, faBand, fpBand, winLen, Options)
 % INPUTS:
 %    - Xinput:        [nChannels,nTime] signal to process
 %    - sRate:         Sampling frequency (Hz)
-%    - faBand:        Nested Band: Minimum and maximum frequency for extraction of frequency for amplitude
-%    - fpBand:        Nesting Band: Minimum and maximum frequency for extraction of frequency for phase (Hz)
+%    - faBand:        Nested Band (fA): Minimum and maximum frequency for extraction of frequency for amplitude
+%    - fpBand:        Nesting Band (fP): Minimum and maximum frequency for extraction of frequency for phase (Hz)
 %    - winLen:        Length of each time window for coupling estimation(S) (default: 1 Sec)
 %    - Options
 %
@@ -532,9 +532,12 @@ function sPAC = Compute(Xinput, sRate, faBand, fpBand, winLen, Options)
 %    - ValPAC:         [nChannels, nTimeOut] Maximum PAC strength in each  time point
 %    - NestedFreq:     [nChannels, nTimeOut] Fnested corresponding to maximum synchronization index in each time point
 %    - NestingFreq:    [nChannels, nTimeOut] Fnesting corresponding to maximum synchronization index in each time point
-%    - phasePAC:       [nChannels, nTimeOut] Phase corresponding to maximum synchronization index in each time point
-%    - DynamicNesting: [nNestedCenters,nTimeOut,nChannels] Estimated nesting frequency for all times, channels and nested intervals
+%    - phasePAC:       [nChannels, nTimeOut] Phase corresponding to maximum
+%                      synchronization index in each time point (rad)
+%    - DynamicNesting: [nNestedCenters,nTimeOut,nChannels] Estimated nesting frequency (fp) for all times, channels and nested intervals
 %    - DynamicPAC:     [nNestedCenters,nTimeOut,nChannels] full array of PAC
+%    - DynamicPhase:   [nNestedCenters,nTimeOut,nChannels] Preferred phase
+%                      of coupling for all times, channels and nested intervals (rad)
 %
 % DESCRIPTION:
 %   Estimation of Phase Amplitude Coupling (PAC) with tPAC method.
@@ -780,7 +783,7 @@ Sind     = repmat((1:nSources), nTime, 1);           % Source indices
 Tind     = repmat((1:nTime)', 1, nSources);              % Time indices
 linInd   = sub2ind(size(PAC),maxInd(:),Tind(:),Sind(:));
 Fnesting = reshape(nestingFreq(linInd),nTime,nSources)';
-phase_value    = reshape(angle(PAC(linInd)),nTime,nSources)'/pi*180;
+phase_value    = reshape(angle(PAC(linInd)),nTime,nSources)';
 PACmax   = squeeze(PACmax)';
 
 % ===== Interpolation in time domain for smoothing the results ==== %
