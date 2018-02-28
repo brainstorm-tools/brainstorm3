@@ -5244,7 +5244,7 @@ end
 % Reference: https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
 function Labels = GetAsegLabels(FsVersion)
     % Parse inputs
-    if (nargin < 1)
+    if (nargin < 1) || isempty(FsVersion)
         FsVersion = 5;
     end
     % Classification depends on FreeSurfer version
