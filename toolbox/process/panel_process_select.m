@@ -912,6 +912,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             SetOptionValue(iProcess, optNames{iOpt}, []);
                             continue;
                         end
+                        % If there is only one frequency: duplicate it
+                        if (length(FreqList) == 1)
+                            FreqList = [FreqList, FreqList];
+                        end
                     else
                         FreqList = [];
                     end
