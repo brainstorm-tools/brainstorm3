@@ -99,6 +99,7 @@ for i = 1:hdr.channel_count
     Channel(i).Comment = [];
     Channel(i).Loc = [0; 0; 0];
 end
+ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'ANT standard position';
 ChannelMat.Channel = Channel;
      
