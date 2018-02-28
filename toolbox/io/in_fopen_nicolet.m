@@ -83,6 +83,7 @@ sFile.prop.nAvg    = 1;
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
+ChannelMat = db_template('channelmat');
 ChannelMat.Comment = [sFile.device ' channels'];
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.numchan]);
 % For each channel
