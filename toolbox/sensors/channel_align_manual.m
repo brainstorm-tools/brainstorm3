@@ -178,6 +178,10 @@ if isHeadPoints
     HeadPointsMarkersLoc = [get(hHeadPointsMarkers, 'XData')', ...
                             get(hHeadPointsMarkers, 'YData')', ...
                             get(hHeadPointsMarkers, 'ZData')'];
+    % Hide HeadPoints when looking at EEG and number of EEG channels is the same as headpoints
+    if isEeg && ~isempty(HeadPointsMarkersLoc) && ~isempty(SensorsVertices) && (length(SensorsVertices) == length(HeadPointsMarkersLoc)) && (max(abs(SensorsVertices(:) - HeadPointsMarkersLoc(:))) < 0.001)
+        set(hHeadPointsMarkers, 'Visible', 'off');
+    end
     % Get labels positions
     tmpLoc = get(hHeadPointsLabels,'Position');
     if ~isempty(tmpLoc)
@@ -1029,6 +1033,13 @@ function ProjectElectrodesOnSurface(varargin)
 
     % Process each sensor
     gChanAlign.SensorsVertices(iChanToProject,:) = channel_project_scalp(Vertices, gChanAlign.SensorsVertices(iChanToProject,:));
+    % Copy modification to the head points
+    if gChanAlign.isEeg && ~isempty(gChanAlign.SensorsVertices) && ~isempty(gChanAlign.HeadPointsMarkersLoc) && (length(gChanAlign.SensorsVertices) == length(gChanAlign.HeadPointsMarkersLoc))
+        gChanAlign.HeadPointsMarkersLoc = gChanAlign.SensorsVertices;
+        set(gChanAlign.hHeadPointsMarkers, 'XData', gChanAlign.HeadPointsMarkersLoc(:,1), ...
+                                           'YData', gChanAlign.HeadPointsMarkersLoc(:,2), ...
+                                           'ZData', gChanAlign.HeadPointsMarkersLoc(:,3));
+    end
     % Mark current channel file as modified
     gChanAlign.isChanged = 1;
    

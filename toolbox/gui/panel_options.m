@@ -20,7 +20,7 @@ function varargout = panel_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2014
+% Authors: Francois Tadel, 2009-2017
 
 eval(macro_method);
 end
@@ -30,7 +30,8 @@ end
 function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % Java initializations
     import java.awt.*;
-    import javax.swing.*;   
+    import javax.swing.*;
+    global GlobalData;
     % Constants
     panelName = 'Preferences';
     
@@ -42,21 +43,22 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelNew.add('vtop', jPanelLeft);
     % ===== LEFT: SYSTEM =====
     jPanelSystem = gui_river([5 2], [0 15 8 15], 'System');
-        jCheckUpdates    = gui_component('CheckBox', jPanelSystem, 'br', 'Automatic updates', [], [], [], []);
+        jCheckUpdates    = gui_component('CheckBox', jPanelSystem, 'br', 'Automatic updates', [], [], []);
         if (bst_get('MatlabVersion') >= 804)
-            jCheckSmooth = gui_component('CheckBox', jPanelSystem, 'br', 'Use smooth graphics', [], [], [], []);
+            jCheckSmooth = gui_component('CheckBox', jPanelSystem, 'br', 'Use smooth graphics', [], [], []);
         else
             jCheckSmooth = [];
         end
-        jCheckGfp        = gui_component('CheckBox', jPanelSystem, 'br', 'Display GFP over time series', [], [], [], []);
-        jCheckForceComp  = gui_component('CheckBox', jPanelSystem, 'br', 'Force mat-files compression (slower)', [], [], [], []);
-        jCheckIgnoreMem  = gui_component('CheckBox', jPanelSystem, 'br', 'Ignore memory warnings', [], [], [], []);
+        jCheckDownsample = gui_component('CheckBox', jPanelSystem, 'br', 'Downsample recordings for faster display', [], [], []);
+        jCheckGfp        = gui_component('CheckBox', jPanelSystem, 'br', 'Display GFP over time series', [], [], []);
+        jCheckForceComp  = gui_component('CheckBox', jPanelSystem, 'br', 'Force mat-files compression (slower)', [], [], []);
+        jCheckIgnoreMem  = gui_component('CheckBox', jPanelSystem, 'br', 'Ignore memory warnings', [], [], []);
     jPanelLeft.add('hfill', jPanelSystem);
     % ===== LEFT: OPEN GL =====
     jPanelOpengl = gui_river([5 2], [0 15 8 15], 'OpenGL rendering');
-        jRadioOpenNone = gui_component('Radio', jPanelOpengl, '',   'OpenGL: Disabled (no transparency)', [], [], [], []);
-        jRadioOpenSoft = gui_component('Radio', jPanelOpengl, 'br', 'OpenGL: Software (slow)', [], [], [], []);
-        jRadioOpenHard = gui_component('Radio', jPanelOpengl, 'br', 'OpenGL: Hardware (accelerated)', [], [], [], []);
+        jRadioOpenNone = gui_component('Radio', jPanelOpengl, '',   'OpenGL: Disabled (no transparency)', [], [], []);
+        jRadioOpenSoft = gui_component('Radio', jPanelOpengl, 'br', 'OpenGL: Software (slow)', [], [], []);
+        jRadioOpenHard = gui_component('Radio', jPanelOpengl, 'br', 'OpenGL: Hardware (accelerated)', [], [], []);
         % Group buttons
         jButtonGroup = ButtonGroup();
         jButtonGroup.add(jRadioOpenNone);
@@ -67,38 +69,59 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jRadioOpenSoft.setEnabled(0);
         end
     jPanelLeft.add('br hfill', jPanelOpengl);
-
+    % ===== LEFT: INTERFACE SCALING =====
+    jPanelScaling = gui_river([5 2], [0 0 5 0], 'Interface scaling (%)');
+        % Slider labels
+        labelTable = java.util.Hashtable();
+        labelTable.put(uint32(1), gui_component('label',[],'','100'));
+        labelTable.put(uint32(2), gui_component('label',[],'','125'));
+        labelTable.put(uint32(3), gui_component('label',[],'','150'));
+        labelTable.put(uint32(4), gui_component('label',[],'','200'));
+        labelTable.put(uint32(5), gui_component('label',[],'','250'));
+        labelTable.put(uint32(6), gui_component('label',[],'','300'));
+        labelTable.put(uint32(7), gui_component('label',[],'','400'));
+        % Slider config
+        jSliderScaling = JSlider(1,7,1);
+        jSliderScaling.setLabelTable(labelTable);
+        jSliderScaling.setPaintTicks(1);
+        jSliderScaling.setMajorTickSpacing(1);
+        jSliderScaling.setPaintLabels(1);
+        jPanelScaling.add('hfill', jSliderScaling);
+    jPanelLeft.add('br hfill', jPanelScaling);
+    
     % ===== RIGHT =====
     jPanelRight = gui_river();
     jPanelNew.add(jPanelRight);
     % ===== RIGHT: DATA IMPORT =====
     jPanelImport = gui_river([5 5], [0 15 15 15], 'Folders');
         % Temporary directory
-        gui_component('Label', jPanelImport, '', 'Temporary directory: ', [], [], [], []);
-        jTextTempDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], [], []);
-        jButtonTempDir = gui_component('Button', jPanelImport, [], '...', [], [], @TempDirectory_Callback, []);
+        gui_component('Label', jPanelImport, '', 'Temporary directory: ', [], [], []);
+        jTextTempDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
+        jButtonTempDir = gui_component('Button', jPanelImport, [], '...', [], [], @TempDirectory_Callback);
         jButtonTempDir.setMargin(Insets(2,2,2,2));
         jButtonTempDir.setFocusable(0);
         % FieldTrip folder
-        gui_component('Label', jPanelImport, 'br', 'FieldTrip toolbox: ', [], [], [], []);
-        jTextFtDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], [], []);
-        jButtonFtDir = gui_component('Button', jPanelImport, [], '...', [], [], @FtDirectory_Callback, []);
+        gui_component('Label', jPanelImport, 'br', 'FieldTrip toolbox: ', [], [], []);
+        jTextFtDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
+        jButtonFtDir = gui_component('Button', jPanelImport, [], '...', [], [], @FtDirectory_Callback);
         jButtonFtDir.setMargin(Insets(2,2,2,2));
         jButtonFtDir.setFocusable(0);
     jPanelRight.add('br hfill', jPanelImport);
     
     % ===== RIGHT: SIGNAL PROCESSING =====
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
-        jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', [], []);
-        % jCheckOrigFolder = gui_component('CheckBox', jPanelProc, 'br', 'Store continuous files in original folder', [], '<HTML>If selected, the continuous files processed with the Process1 tab are stored in the same folder as the input raw files. <BR>Else, they are stored directly in the Brainstorm database.', @UpdateProcessOptions_Callback, []);
-        % jCheckOrigFormat = gui_component('CheckBox', jPanelProc, 'br', 'Save continuous files in original format',  [], '<HTML>If selected, the continuous files processed with the Process1 tab are saved in the same data format as the input raw files.<BR>Else, they are saved in the Brainstorm binary format.<BR>This option is available only for FIF and CTF files.', [], []);
+        jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', []);
+        % jCheckOrigFolder = gui_component('CheckBox', jPanelProc, 'br', 'Store continuous files in original folder', [], '<HTML>If selected, the continuous files processed with the Process1 tab are stored in the same folder as the input raw files. <BR>Else, they are stored directly in the Brainstorm database.', @UpdateProcessOptions_Callback);
+        % jCheckOrigFormat = gui_component('CheckBox', jPanelProc, 'br', 'Save continuous files in original format',  [], '<HTML>If selected, the continuous files processed with the Process1 tab are saved in the same data format as the input raw files.<BR>Else, they are saved in the Brainstorm binary format.<BR>This option is available only for FIF and CTF files.', []);
     jPanelRight.add('br hfill', jPanelProc);
     
     % ===== RIGHT: RESET =====
-    jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
-        gui_component('Label',  jPanelReset, [], 'Reset database and options to defaults: ', [], [], [], []);
-        gui_component('Button', jPanelReset, [], 'Reset', [], [], @ButtonReset_Callback, []);
-    jPanelRight.add('br hfill', jPanelReset);
+    if (GlobalData.Program.GuiLevel == 1)
+        jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
+            gui_component('Label',  jPanelReset, [], 'Reset database and options to defaults: ', [], [], []);
+            gui_component('Button', jPanelReset, [], 'Reset', [], [], @ButtonReset_Callback);
+        jPanelRight.add('br hfill', jPanelReset);
+    end
     
     % ===== BOTTOM =====
     jPanelBottom = gui_river();
@@ -115,10 +138,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     end
     
     % ===== VALIDATION BUTTONS =====
-    gui_component('Label', jPanelBottom, '', labelBottom, [], [], [], []);
+    gui_component('Label', jPanelBottom, '', labelBottom, [], [], []);
     gui_component('Label', jPanelBottom, 'hfill', ' ');
-    gui_component('Button', jPanelBottom, 'right', 'Cancel', [], [], @ButtonCancel_Callback, []);
-    gui_component('Button', jPanelBottom, [],         'Save',   [], [], @ButtonSave_Callback,   []);
+    gui_component('Button', jPanelBottom, 'right', 'Cancel', [], [], @ButtonCancel_Callback);
+    gui_component('Button', jPanelBottom, [],         'Save',   [], [], @ButtonSave_Callback);
 
     % ===== LOAD OPTIONS =====
     LoadOptions();
@@ -138,6 +161,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckForceComp.setSelected(bst_get('ForceMatCompression'));
         jCheckUpdates.setSelected(bst_get('AutoUpdates'));
         jCheckGfp.setSelected(bst_get('DisplayGFP'));
+        jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries'));
         jCheckIgnoreMem.setSelected(bst_get('IgnoreMemoryWarnings'));
         if ~isempty(jCheckSmooth)
             jCheckSmooth.setSelected(bst_get('GraphicsSmoothing'));
@@ -154,6 +178,16 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                     jRadioOpenSoft.setSelected(1);
                 end
         end
+        % Interface scaling
+        switch (bst_get('InterfaceScaling'))
+            case 100,       jSliderScaling.setValue(1);
+            case 125,       jSliderScaling.setValue(2);
+            case 150,       jSliderScaling.setValue(3);
+            case {175,200}, jSliderScaling.setValue(4);
+            case 250,       jSliderScaling.setValue(5);
+            case 300,       jSliderScaling.setValue(6);
+            case 400,       jSliderScaling.setValue(7);
+        end    
         % Temporary directory
         jTextTempDir.setText(bst_get('BrainstormTmpDir'));
         % FieldTrip directory
@@ -172,6 +206,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         bst_set('ForceMatCompression', jCheckForceComp.isSelected());
         bst_set('AutoUpdates', jCheckUpdates.isSelected());
         bst_set('DisplayGFP',  jCheckGfp.isSelected());
+        bst_set('DownsampleTimeSeries',  jCheckDownsample.isSelected());
         bst_set('IgnoreMemoryWarnings',  jCheckIgnoreMem.isSelected());
         if ~isempty(jCheckSmooth)
             % Update value
@@ -208,6 +243,19 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             StartOpenGL();
         end
         
+        % ===== INTERFACE SCALING =====
+        previousScaling = bst_get('InterfaceScaling');
+        switch (jSliderScaling.getValue())
+            case 1,  InterfaceScaling = 100;
+            case 2,  InterfaceScaling = 125;
+            case 3,  InterfaceScaling = 150;
+            case 4,  InterfaceScaling = 200;
+            case 5,  InterfaceScaling = 250;
+            case 6,  InterfaceScaling = 300;
+            case 7,  InterfaceScaling = 400;
+        end
+        bst_set('InterfaceScaling', InterfaceScaling);
+        
         % ===== DATA IMPORT =====
         % Temporary directory
         oldTmpDir = bst_get('BrainstormTmpDir');
@@ -240,6 +288,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         bst_set('UseSigProcToolbox', jCheckUseSigProc.isSelected());
         
         bst_progress('stop');
+        
+        % If the scaling was changed: Restart brainstorm
+        if (previousScaling ~= InterfaceScaling)
+            brainstorm stop;
+            brainstorm;
+        end
     end
 
 

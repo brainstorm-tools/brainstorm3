@@ -19,7 +19,7 @@ function varargout = process_extract_max( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -113,25 +113,26 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     end
     
     % Preprocess values to detect the correct peaks
+    minmaxFunc = @max;
     switch (Method)
         case 'absmax'
             sInput.A = abs(sInput.A);
         case 'max'
             % nothing to change
         case 'min'
-            sInput.A = -sInput.A;
+            minmaxFunc = @min;
     end
     % Find maximum in time
-    [Max, iMax] = max(sInput.A(:,iTime,:), [], 2);
+    [MinMax, iMinMax] = minmaxFunc(sInput.A(:,iTime,:), [], 2);
     % Save the expected value
     switch (Output)
         case 'amplitude'
-            sInput.A = Max;
+            sInput.A = MinMax;
             % Time vector: First and last time values
             sInput.TimeVector = [sInput.TimeVector(iTime(1)), sInput.TimeVector(iTime(end))];
             strMethod = '';
         case 'latency'
-            sInput.A = reshape(sInput.TimeVector(iTime(iMax)), size(iMax));
+            sInput.A = reshape(sInput.TimeVector(iTime(iMinMax)), size(iMinMax));
             % Time vector: First and last time values
             sInput.TimeVector = [sInput.TimeVector(iTime(1)), sInput.TimeVector(iTime(end))];
             strMethod = ', latency';
@@ -143,16 +144,16 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
                 return;
             end
             % Detect the maximum amplitude across signals
-            [SigMax, iSigMax] = max(Max, [], 1);
+            [SigMax, iSigMax] = max(MinMax, [], 1);
             % Set all the other values to zero
-            sInput.A = zeros(size(Max));
+            sInput.A = zeros(size(MinMax));
             sInput.A(iSigMax) = SigMax;
             % Time vector: Latency of the maximum
             T = sInput.TimeVector(2) - sInput.TimeVector(1);
             if (T > 0.100)
                 T = 0.001;
             end
-            sInput.TimeVector = sInput.TimeVector(iTime(iMax(iSigMax))) + [0,T];
+            sInput.TimeVector = sInput.TimeVector(iTime(iMinMax(iSigMax))) + [0,T];
             strMethod = ', global';
     end
     

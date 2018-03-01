@@ -49,10 +49,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.freqbands.Comment = 'Frequency bands for the Hilbert transform:';
     sProcess.options.freqbands.Type    = 'groupbands';
     sProcess.options.freqbands.Value   = bst_get('DefaultFreqBands');
-    % === Mirror
-    sProcess.options.mirror.Comment = 'Mirror signal before filtering (not recommended)';
-    sProcess.options.mirror.Type    = 'checkbox';
-    sProcess.options.mirror.Value   = 0;
     % === KEEP TIME
     sProcess.options.isorth.Comment = 'Orthogonalize signal pairs before envelope computation';
     sProcess.options.isorth.Type    = 'checkbox';
@@ -84,7 +80,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.Method = 'aec';
     % Filtering bands options
     OPTIONS.Freqs = sProcess.options.freqbands.Value;
-    OPTIONS.isMirror = sProcess.options.mirror.Value;
     OPTIONS.isOrth = sProcess.options.isorth.Value;
     
     % Compute metric

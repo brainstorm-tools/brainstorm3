@@ -81,7 +81,8 @@ switch upper(FileFormat)
         TessMat.Faces = TessMat.Faces(:,[2 1 3]);
         % MRI => FreeSurfer RAS coord
         if ~isempty(sMri)
-            TessMat.Vertices = bst_bsxfun(@minus, TessMat.Vertices, [128 129 128] / 1000);
+            % TessMat.Vertices = bst_bsxfun(@minus, TessMat.Vertices, [128 129 128] / 1000);
+            TessMat.Vertices = bst_bsxfun(@minus, TessMat.Vertices, (size(sMri.Cube)/2 + [0 1 0]) .* sMri.Voxsize / 1000);
         end
         % Export file
         out_tess_fs(TessMat, OutputFile);

@@ -354,16 +354,16 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         end
     end
     % Recompute missing comment field
-    if ~isMeg
+    if ~isMeg || ~isfield(sMethod, 'MEGMethod')
         sMethod.MEGMethod = '';
     end
-    if ~isEeg
+    if ~isEeg || ~isfield(sMethod, 'EEGMethod')
         sMethod.EEGMethod = '';
     end
-    if ~isEcog
+    if ~isEcog || ~isfield(sMethod, 'ECOGMethod')
         sMethod.ECOGMethod = '';
     end
-    if ~isSeeg
+    if ~isSeeg || ~isfield(sMethod, 'SEEGMethod')
         sMethod.SEEGMethod = '';
     end
     % List all methods

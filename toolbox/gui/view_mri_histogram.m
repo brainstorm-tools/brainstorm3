@@ -93,7 +93,7 @@ ylim(yLimits);
 line([Histogram.bgLevel, Histogram.bgLevel], yLimits, 'Color','b');
 line([Histogram.whiteLevel, Histogram.whiteLevel], yLimits, 'Color','y');
 h = legend('MRI hist.','Smoothed hist.','Cumulated hist.','Maxima','Minima',...
-    'Grey m thresh.','White m thresh.', 2);
+    'Grey m thresh.','White m thresh.');
 set(h, 'FontSize',  bst_get('FigFont'), ...
        'FontUnits', 'points');
 

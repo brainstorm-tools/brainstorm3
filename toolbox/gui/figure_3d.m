@@ -576,6 +576,19 @@ function FigureMouseUpCallback(hFig, varargin)
                 [sScout, iScout] = panel_scout('GetScoutWithHandle', clickObject);
                 % If a scout was found: select it in the list
                 if ~isempty(iScout)
+                    % If the SHIFT key is pressed, add/remove scout in extisting selection
+                    if strcmpi(get(hFig, 'SelectionType'), 'extend')
+                        [sPrevScouts, iPrevScouts] = panel_scout('GetSelectedScouts');
+                        % Already selected: remove from selection
+                        if ismember(iScout, iPrevScouts)
+                            iPrevScouts(iPrevScouts == iScout) = [];
+                            iScout = iPrevScouts;
+                        % Not selected yet: Add to selection
+                        else
+                            iScout = [iPrevScouts, iScout];
+                        end
+                    end
+                    % Set selection
                     panel_scout('SetSelectedScouts', iScout);
                 end
             end
@@ -962,7 +975,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                             % Cycle between three modes : Nothing, Sensors, Sensors+labels
                             else
                                 % SEEG/ECOG: Display 3D Electrodes
-                                if ismember(FigureId.Modality, {'SEEG','ECOG'})
+                                if ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'SEEG','ECOG'})
                                     view_channels(GlobalData.DataSet(iDS).ChannelFile, FigureId.Modality, 1, 0, hFig, 1);
                                 elseif isMarkers && isLabels
                                     ViewSensors(hFig, 0, 0);
@@ -997,6 +1010,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         out_figure_image(hFig, 'Figure');
                     end
+                % M : Jump to maximum
+                case 'm'
+                    JumpMaximum(hFig);
                 % CTRL+R : Recordings time series
                 case 'r'
                     if ismember('control', keyEvent.Modifier) && ~isempty(GlobalData.DataSet(iDS).DataFile) && ~strcmpi(FigureId.Modality, 'MEG GRADNORM')
@@ -1377,7 +1393,7 @@ function DisplayFigurePopup(hFig)
     % Menu title: Selected sensors
     if (length(iSelChan) == 1)
         menuTitle = sprintf('Channel #%d: %s', iSelChan, SelChan{1});
-        jTitle = gui_component('Label', jPopup, [], ['<HTML><B>' menuTitle '</B>'], [], [], [], []);
+        jTitle = gui_component('Label', jPopup, [], ['<HTML><B>' menuTitle '</B>']);
         jTitle.setBorder(javax.swing.BorderFactory.createEmptyBorder(5,35,0,0));
         jPopup.addSeparator();
     end
@@ -1447,7 +1463,7 @@ function DisplayFigurePopup(hFig)
         % Get current options
         TopoLayoutOptions = bst_get('TopoLayoutOptions');
         % Create menu
-        jMenu = gui_component('Menu', jPopup, [], '2DLayout options', IconLoader.ICON_2DLAYOUT, [], [], []);
+        jMenu = gui_component('Menu', jPopup, [], '2DLayout options', IconLoader.ICON_2DLAYOUT);
         gui_component('MenuItem', jMenu, [], 'Set time window...', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'TimeWindow'));
         jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'White background', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'WhiteBackground', ~TopoLayoutOptions.WhiteBackground));
         jItem.setSelected(TopoLayoutOptions.WhiteBackground);
@@ -1463,7 +1479,7 @@ function DisplayFigurePopup(hFig)
         % Get current options
         TopoLayoutOptions = bst_get('TopoLayoutOptions');
         % Create menu
-        jMenu = gui_component('Menu', jPopup, [], 'Contour lines', IconLoader.ICON_TOPOGRAPHY, [], [], []);
+        jMenu = gui_component('Menu', jPopup, [], 'Contour lines', IconLoader.ICON_TOPOGRAPHY);
         jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'No contour lines', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'ContourLines', 0));
         jItem.setSelected(TopoLayoutOptions.ContourLines == 0);
         jItem = gui_component('CheckBoxMenuItem', jMenu, [], '5 lines', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'ContourLines', 5));
@@ -1482,35 +1498,35 @@ function DisplayFigurePopup(hFig)
     isAlignFig = ~isempty(findobj(hFig, '-depth', 1, 'Tag', 'AlignToolbar'));
     % Not for align figures
     if ~isAlignFig && ~isempty(GlobalData.DataSet(iDS).ChannelFile)
-        jMenuChannels = gui_component('Menu', jPopup, [], 'Channels', IconLoader.ICON_CHANNEL, [], [], []);
+        jMenuChannels = gui_component('Menu', jPopup, [], 'Channels', IconLoader.ICON_CHANNEL);
         % ==== Selected channels submenu ====
         isMarkers = ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSensorMarkers) || ...
                     ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, {'2DLayout', '3DElectrodes', '3DOptodes'});
         % Time-frequency: Show selected sensor
         if ~isempty(TfFile) && isMarkers && ~isempty(SelChan)
-            jItem = gui_component('MenuItem', jMenuChannels, [], 'View selected', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(TfFile, 'SingleSensor', SelChan{1}), []);
+            jItem = gui_component('MenuItem', jMenuChannels, [], 'View selected', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(TfFile, 'SingleSensor', SelChan{1}));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)); % ENTER
         end
         % Excludes figures without selection and display-only figures (modality name starts with '$')
         if ~isempty(DataFile) && isMarkers && ~isempty(SelChan) && ~isempty(Modality) && (Modality(1) ~= '$')
             % === VIEW TIME SERIES ===
-            jItem = gui_component('MenuItem', jMenuChannels, [], 'View selected', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)figure_timeseries('DisplayDataSelectedChannels', iDS, SelChan, Modality), []);
+            jItem = gui_component('MenuItem', jMenuChannels, [], 'View selected', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)figure_timeseries('DisplayDataSelectedChannels', iDS, SelChan, Modality));
             if isempty(TfFile)
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)); % ENTER
             end
             % === SET SELECTED AS BAD CHANNELS ===
             newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
             newChannelFlag(iSelChan) = -1;
-            jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark selected as bad', IconLoader.ICON_BAD, [], @(h,ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag), []);
+            jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark selected as bad', IconLoader.ICON_BAD, [], @(h,ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0)); % DEL
             % === SET NON-SELECTED AS BAD CHANNELS ===
             newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
             newChannelFlag(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) = -1;
             newChannelFlag(iSelChan) = 1;
-            jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark non-selected as bad', IconLoader.ICON_BAD, [], @(h,ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag), []);
+            jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark non-selected as bad', IconLoader.ICON_BAD, [], @(h,ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, KeyEvent.SHIFT_MASK));
             % === RESET SELECTION ===
-            jItem = gui_component('MenuItem', jMenuChannels, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h,ev)bst_figures('SetSelectedRows', []), []);
+            jItem = gui_component('MenuItem', jMenuChannels, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h,ev)bst_figures('SetSelectedRows', []));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0)); % ESCAPE
         end
         % Separator if previous items
@@ -1522,10 +1538,10 @@ function DisplayFigurePopup(hFig)
         if ~isempty(DataFile) && isMarkers
             % ==== MARK ALL CHANNELS AS GOOD ====
             ChannelFlagGood = ones(size(GlobalData.DataSet(iDS).Measures.ChannelFlag));
-            jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark all channels as good', IconLoader.ICON_GOOD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, ChannelFlagGood), []);
+            jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark all channels as good', IconLoader.ICON_GOOD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, ChannelFlagGood));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, KeyEvent.SHIFT_MASK));
             % ==== EDIT CHANNEL FLAG ====
-            gui_component('MenuItem', jMenuChannels, [], 'Edit good/bad channels...', IconLoader.ICON_GOODBAD, [], @(h,ev)gui_edit_channelflag(DataFile), []);
+            gui_component('MenuItem', jMenuChannels, [], 'Edit good/bad channels...', IconLoader.ICON_GOODBAD, [], @(h,ev)gui_edit_channelflag(DataFile));
             % Separator if previous items
             if (jMenuChannels.getItemCount() > 0)
                 jMenuChannels.addSeparator();
@@ -1548,7 +1564,7 @@ function DisplayFigurePopup(hFig)
                     targetVisible = 'on';
                 end
                 % Create menu
-                jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)set(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSensorLabels, 'Visible', targetVisible), []);
+                jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)set(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSensorLabels, 'Visible', targetVisible));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
                 jItem.setSelected(isLabelsVisible);
             end
@@ -1556,7 +1572,7 @@ function DisplayFigurePopup(hFig)
         elseif ~isempty(hElectrodeGrid)
             % Menu "View sensor labels"
             isLabels = ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSensorLabels);
-            jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)ViewSensors(hFig, [], ~isLabels), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)ViewSensors(hFig, [], ~isLabels));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
             jItem.setSelected(isLabels);
             % Get the groups available in this file
@@ -1571,40 +1587,40 @@ function DisplayFigurePopup(hFig)
                 % Add a menu for each group
                 for iGroup = 1:length(iGroupEeg)
                     isVisible = any(FaceVertexAlphaData(UserData == iGroupEeg{iGroup}(1)) > 0);
-                    jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], ['Display: ' GroupNames{iGroup}], IconLoader.ICON_CHANNEL, [], @(h,ev)SetElecGroupVisible(hFig, GroupNames{iGroup}, ~isVisible), []);
+                    jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], ['Display: ' GroupNames{iGroup}], IconLoader.ICON_CHANNEL, [], @(h,ev)SetElecGroupVisible(hFig, GroupNames{iGroup}, ~isVisible));
                     jItem.setSelected(isVisible);
                 end
             end
             % Configure 3D electrode display
             jMenuChannels.addSeparator();
-            gui_component('MenuItem', jMenuChannels, [], 'Configure display', IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodesConfig(hFig), []);
+            gui_component('MenuItem', jMenuChannels, [], 'Configure display', IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodesConfig(hFig));
         % Other figures
         else
             % Menu "View sensors"
-            jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display sensors', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewSensors(hFig, ~isMarkers, []), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display sensors', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewSensors(hFig, ~isMarkers, []));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
             jItem.setSelected(isMarkers);
             % Menu "View sensor labels"
             isLabels = ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSensorLabels);
-            jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)ViewSensors(hFig, [], ~isLabels), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)ViewSensors(hFig, [], ~isLabels));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
             jItem.setSelected(isLabels);
             % View ECOG/SEEG
             AllTypes = unique({GlobalData.DataSet(iDS).Channel.Type});
             if ~isempty(AllTypes) && ismember('ECOG', AllTypes)
                 ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
-                gui_component('MenuItem', jMenuChannels, [], 'ECOG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'ECOG', 1, 0, hFig, 1), []);
+                gui_component('MenuItem', jMenuChannels, [], 'ECOG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'ECOG', 1, 0, hFig, 1));
             end
             if ~isempty(AllTypes) && ismember('SEEG', AllTypes)
                 ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
-                gui_component('MenuItem', jMenuChannels, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'SEEG', 1, 0, hFig, 1), []);
+                gui_component('MenuItem', jMenuChannels, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'SEEG', 1, 0, hFig, 1));
             end
         end
     end
     
     % ==== MENU: MONTAGE ====
     if strcmpi(FigureType, 'Topography') && ~isempty(Modality) && (Modality(1) ~= '$') && (isempty(TsInfo) || isempty(TsInfo.RowNames))
-        jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE, [], [], []);
+        jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE);
         panel_montage('CreateFigurePopupMenu', jMenuMontage, hFig);
     end
     
@@ -1615,49 +1631,56 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: MRI DISPLAY ====
     ColormapInfo = getappdata(hFig, 'Colormap');
     if ismember('anatomy', ColormapInfo.AllTypes)
-        jMenuMri = gui_component('Menu', jPopup, [], 'MRI display', IconLoader.ICON_ANATOMY, [], [], []);
+        jMenuMri = gui_component('Menu', jPopup, [], 'MRI display', IconLoader.ICON_ANATOMY);
         MriOptions = bst_get('MriOptions');
         % MIP: Anatomy
-        jItem = gui_component('CheckBoxMenuItem', jMenuMri, [], 'MIP: Anatomy', [], [], @(h,ev)MipAnatomy_Callback(hFig,ev), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuMri, [], 'MIP: Anatomy', [], [], @(h,ev)MipAnatomy_Callback(hFig,ev));
         jItem.setSelected(MriOptions.isMipAnatomy);
         % MIP: Functional
         isOverlay = any(ismember({'source','stat1','stat2','timefreq','eeg','meg'}, ColormapInfo.AllTypes));
         if isOverlay
-            jItem = gui_component('checkboxmenuitem', jMenuMri, [], 'MIP: Functional', [], [], @(h,ev)MipFunctional_Callback(hFig,ev), []);
+            jItem = gui_component('checkboxmenuitem', jMenuMri, [], 'MIP: Functional', [], [], @(h,ev)MipFunctional_Callback(hFig,ev));
             jItem.setSelected(MriOptions.isMipFunctional);
         end
         % Smooth factor
         if isOverlay
             jMenuMri.addSeparator();
-            jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: None', [], [], @(h,ev)SetMriSmooth(hFig, 0), []);
-            jItem1 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 1',    [], [], @(h,ev)SetMriSmooth(hFig, 1), []);
-            jItem2 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 2',    [], [], @(h,ev)SetMriSmooth(hFig, 2), []);
-            jItem3 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 3',    [], [], @(h,ev)SetMriSmooth(hFig, 3), []);
-            jItem4 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 4',    [], [], @(h,ev)SetMriSmooth(hFig, 4), []);
-            jItem5 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 5',    [], [], @(h,ev)SetMriSmooth(hFig, 5), []);
+            jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: None', [], [], @(h,ev)SetMriSmooth(hFig, 0));
+            jItem1 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 1',    [], [], @(h,ev)SetMriSmooth(hFig, 1));
+            jItem2 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 2',    [], [], @(h,ev)SetMriSmooth(hFig, 2));
+            jItem3 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 3',    [], [], @(h,ev)SetMriSmooth(hFig, 3));
+            jItem4 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 4',    [], [], @(h,ev)SetMriSmooth(hFig, 4));
+            jItem5 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth: 5',    [], [], @(h,ev)SetMriSmooth(hFig, 5));
             jItem0.setSelected(MriOptions.OverlaySmooth == 0);
             jItem1.setSelected(MriOptions.OverlaySmooth == 1);
             jItem2.setSelected(MriOptions.OverlaySmooth == 2);
             jItem3.setSelected(MriOptions.OverlaySmooth == 3);
             jItem4.setSelected(MriOptions.OverlaySmooth == 4);
             jItem5.setSelected(MriOptions.OverlaySmooth == 5);
+%             jMenuMri = gui_component('Menu', jPopup, [], 'Sources resolution', IconLoader.ICON_ANATOMY);
+%             jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1mm',    [], [], @(h,ev)SetMriResolution(hFig, 1));
+%             jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2mm',    [], [], @(h,ev)SetMriResolution(hFig, 2));
+%             jItem3 = gui_component('radiomenuitem', jMenuMri, [], '3mm',    [], [], @(h,ev)SetMriResolution(hFig, 3));
+%             jItem1.setSelected(MriOptions.InterpDownsample == 1);
+%             jItem2.setSelected(MriOptions.InterpDownsample == 2);
+%             jItem3.setSelected(MriOptions.InterpDownsample == 3);
         end
     end
     
     % ==== MENU: NAVIGATOR ====
     if ~isempty(DataFile) && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw')
-        jMenuNavigator = gui_component('Menu', jPopup, [], 'Navigator', IconLoader.ICON_NEXT_SUBJECT, [], [], []);
+        jMenuNavigator = gui_component('Menu', jPopup, [], 'Navigator', IconLoader.ICON_NEXT_SUBJECT);
         bst_navigator('CreateNavigatorMenu', jMenuNavigator);
         jPopup.addSeparator();        
     end
     
     % ==== MENU: GET COORDINATES ====
     if ~strcmpi(FigureType, 'Topography')
-        gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates, []);
+        gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
     end
     
     % ==== MENU: SNAPSHOT ====
-    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshot', IconLoader.ICON_SNAPSHOT, [], [], []);
+    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshot', IconLoader.ICON_SNAPSHOT);
         % Default output dir
         LastUsedDirs = bst_get('LastUsedDirs');
         DefaultOutputDir = LastUsedDirs.ExportImage;
@@ -1666,21 +1689,21 @@ function DisplayFigurePopup(hFig)
                  && (~isempty(DataFile) || ~isempty(ResultsFile) || ~isempty(Dipoles) || ~isempty(TfFile));
         isFreq = ~isempty(GlobalData) && ~isempty(GlobalData.UserFrequencies.iCurrentFreq) && ~isempty(TfFile);
         % === SAVE AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)out_figure_image(hFig), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)out_figure_image(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
         % === OPEN AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)out_figure_image(hFig, 'Viewer'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)out_figure_image(hFig, 'Viewer'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)out_figure_image(hFig, 'Figure'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)out_figure_image(hFig, 'Figure'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_MASK));
         % === SAVE AS SSP ===
         if strcmpi(FigureType, 'Topography')
             jMenuSave.addSeparator();
             % Raw file: use it directly
             if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw')
-                gui_component('MenuItem', jMenuSave, [], 'Use as SSP projector', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)panel_ssp_selection('SaveFigureAsSsp', hFig, 1), []);
+                gui_component('MenuItem', jMenuSave, [], 'Use as SSP projector', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)panel_ssp_selection('SaveFigureAsSsp', hFig, 1));
             end
-            gui_component('MenuItem', jMenuSave, [], 'Save as SSP projector', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)panel_ssp_selection('SaveFigureAsSsp', hFig, 0), []);
+            gui_component('MenuItem', jMenuSave, [], 'Save as SSP projector', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)panel_ssp_selection('SaveFigureAsSsp', hFig, 0));
         end
         % === SAVE SURFACE ===
         if ~isempty(TessInfo)
@@ -1702,8 +1725,8 @@ function DisplayFigurePopup(hFig)
             jMenuSave.addSeparator();
             % === MOVIE (TIME) ===
             if isTime
-                gui_component('MenuItem', jMenuSave, [], 'Movie (time): Selected figure', IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'time'), []);
-                gui_component('MenuItem', jMenuSave, [], 'Movie (time): All figures',     IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'allfig'), []);
+                gui_component('MenuItem', jMenuSave, [], 'Movie (time): Selected figure', IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'time'));
+                gui_component('MenuItem', jMenuSave, [], 'Movie (time): All figures',     IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'allfig'));
             end
             % If not topography
             if ~strcmpi(FigureType, 'Topography')
@@ -1711,45 +1734,45 @@ function DisplayFigurePopup(hFig)
                     jMenuSave.addSeparator();
                 end
                 % === MOVIE (HORIZONTAL) ===
-                gui_component('MenuItem', jMenuSave, [], 'Movie (horizontal)', IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'horizontal'), []);
+                gui_component('MenuItem', jMenuSave, [], 'Movie (horizontal)', IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'horizontal'));
                 % === MOVIE (VERTICAL) ===
-                gui_component('MenuItem', jMenuSave, [], 'Movie (vertical)', IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'vertical'), []);
+                gui_component('MenuItem', jMenuSave, [], 'Movie (vertical)', IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'vertical'));
             end
         end
         % === CONTACT SHEETS ===
         % If time, and if not 2DLayout
         if isTime && ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, '2DLayout')
             jMenuSave.addSeparator();
-            gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Figure', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'fig', DefaultOutputDir), []);
+            gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Figure', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'fig', DefaultOutputDir));
         end
         % If frequency
         if isFreq && ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, '2DLayout')
-            gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Figure', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'fig', DefaultOutputDir), []);
+            gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Figure', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'fig', DefaultOutputDir));
         end
         % === CONTACT SHEET / SLICES ===
         if ismember('anatomy', ColormapInfo.AllTypes)
             if isTime
                 jMenuSave.addSeparator();
-                gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'y', DefaultOutputDir), []);
-                gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'x', DefaultOutputDir), []);
-                gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'z', DefaultOutputDir), []);
+                gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'y', DefaultOutputDir));
+                gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'x', DefaultOutputDir));
+                gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'z', DefaultOutputDir));
             end
             jMenuSave.addSeparator();
-            gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'y', DefaultOutputDir), []);
-            gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'x', DefaultOutputDir), []);
-            gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'z', DefaultOutputDir), []);
+            gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'y', DefaultOutputDir));
+            gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'x', DefaultOutputDir));
+            gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'z', DefaultOutputDir));
             % === SAVE OVERLAY ===
             if isOverlay
                 jMenuSave.addSeparator();
-                gui_component('MenuItem', jMenuSave, [], 'Save overlay as MRI',  IconLoader.ICON_SAVE, [], @(h,ev)figure_mri('ExportOverlay', hFig), []);
+                gui_component('MenuItem', jMenuSave, [], 'Save overlay as MRI',  IconLoader.ICON_SAVE, [], @(h,ev)figure_mri('ExportOverlay', hFig));
             end
         end
     
     % ==== MENU: FIGURE ====
-    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL, [], [], []);
+    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
         % Show axes
         isAxis = ~isempty(findobj(hFig, 'Tag', 'AxisXYZ'));
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View axis', IconLoader.ICON_AXES, [], @(h,ev)ViewAxis(hFig, ~isAxis), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View axis', IconLoader.ICON_AXES, [], @(h,ev)ViewAxis(hFig, ~isAxis));
         jItem.setSelected(isAxis);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, KeyEvent.CTRL_MASK)); 
         % Show Head points
@@ -1758,40 +1781,40 @@ function DisplayFigurePopup(hFig)
             % Are head points visible
             hHeadPointsMarkers = findobj(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'Tag', 'HeadPointsMarkers');
             isVisible = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'Visible'), 'on');
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View head points', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewHeadPoints(hFig, ~isVisible), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View head points', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewHeadPoints(hFig, ~isVisible));
             jItem.setSelected(isVisible);
         end
         jMenuFigure.addSeparator();
         % Change background color
-        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig), []);
+        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
         jMenuFigure.addSeparator();
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
         jItem.setSelected(isMatlabCtrl);
         % Show plot edit toolbar
         isPlotEditToolbar = getappdata(hFig, 'isPlotEditToolbar');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig));
         jItem.setSelected(isPlotEditToolbar);
         % Dock figure
         isDocked = strcmpi(get(hFig, 'WindowStyle'), 'docked');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked));
         jItem.setSelected(isDocked);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, KeyEvent.CTRL_MASK)); 
 
     % ==== MENU: VIEWS ====    
     % Not for Topography
     if ~strcmpi(FigureType, 'Topography')
-        jMenuView = gui_component('Menu', jPopup, [], 'Views', IconLoader.ICON_AXES, [], [], []);
+        jMenuView = gui_component('Menu', jPopup, [], 'Views', IconLoader.ICON_AXES);
         % Check if it is a realignment figure
         isAlignFigure = ~isempty(findobj(hFig, 'Tag', 'AlignToolbar'));
         % STANDARD VIEWS
-        jItemViewLeft   = gui_component('MenuItem', jMenuView, [], 'Left',   [], [], @(h,ev)SetStandardView(hFig, {'left'}), []);
-        jItemViewBottom = gui_component('MenuItem', jMenuView, [], 'Bottom', [], [], @(h,ev)SetStandardView(hFig, {'bottom'}), []);
-        jItemViewRight  = gui_component('MenuItem', jMenuView, [], 'Right',  [], [], @(h,ev)SetStandardView(hFig, {'right'}), []);
-        jItemViewFront  = gui_component('MenuItem', jMenuView, [], 'Front',  [], [], @(h,ev)SetStandardView(hFig, {'front'}), []);
-        jItemViewTop    = gui_component('MenuItem', jMenuView, [], 'Top',    [], [], @(h,ev)SetStandardView(hFig, {'top'}), []);
-        jItemViewBack   = gui_component('MenuItem', jMenuView, [], 'Back',   [], [], @(h,ev)SetStandardView(hFig, {'back'}), []);
+        jItemViewLeft   = gui_component('MenuItem', jMenuView, [], 'Left',   [], [], @(h,ev)SetStandardView(hFig, {'left'}));
+        jItemViewBottom = gui_component('MenuItem', jMenuView, [], 'Bottom', [], [], @(h,ev)SetStandardView(hFig, {'bottom'}));
+        jItemViewRight  = gui_component('MenuItem', jMenuView, [], 'Right',  [], [], @(h,ev)SetStandardView(hFig, {'right'}));
+        jItemViewFront  = gui_component('MenuItem', jMenuView, [], 'Front',  [], [], @(h,ev)SetStandardView(hFig, {'front'}));
+        jItemViewTop    = gui_component('MenuItem', jMenuView, [], 'Top',    [], [], @(h,ev)SetStandardView(hFig, {'top'}));
+        jItemViewBack   = gui_component('MenuItem', jMenuView, [], 'Back',   [], [], @(h,ev)SetStandardView(hFig, {'back'}));
         % Keyboard shortcuts
         jItemViewLeft.setAccelerator(  KeyStroke.getKeyStroke('1', 0)); 
         jItemViewBottom.setAccelerator(KeyStroke.getKeyStroke('2', 0)); 
@@ -1801,11 +1824,11 @@ function DisplayFigurePopup(hFig)
         jItemViewBack.setAccelerator(  KeyStroke.getKeyStroke('6', 0));
         % MULTIPLE VIEWS
         if ~isAlignFigure
-            jItemViewLR     = gui_component('MenuItem', jMenuView, [], '[Left, Right]',              [], [], @(h,ev)SetStandardView(hFig, {'left', 'right'}), []);
-            jItemViewTB     = gui_component('MenuItem', jMenuView, [], '[Top, Bottom]',              [], [], @(h,ev)SetStandardView(hFig, {'top', 'bottom'}), []);
-            jItemViewFB     = gui_component('MenuItem', jMenuView, [], '[Front, Back]',              [], [], @(h,ev)SetStandardView(hFig, {'front','back'}), []);
-            jItemViewLTR    = gui_component('MenuItem', jMenuView, [], '[Left, Top, Right]',         [], [], @(h,ev)SetStandardView(hFig, {'left', 'top', 'right'}), []);
-            jItemViewLRIETB = gui_component('MenuItem', jMenuView, [], '[L/R, Int/Extern, Top/Bot]', [], [], @(h,ev)SetStandardView(hFig, {'left', 'right', 'top', 'left_intern', 'right_intern', 'bottom'}), []);
+            jItemViewLR     = gui_component('MenuItem', jMenuView, [], '[Left, Right]',              [], [], @(h,ev)SetStandardView(hFig, {'left', 'right'}));
+            jItemViewTB     = gui_component('MenuItem', jMenuView, [], '[Top, Bottom]',              [], [], @(h,ev)SetStandardView(hFig, {'top', 'bottom'}));
+            jItemViewFB     = gui_component('MenuItem', jMenuView, [], '[Front, Back]',              [], [], @(h,ev)SetStandardView(hFig, {'front','back'}));
+            jItemViewLTR    = gui_component('MenuItem', jMenuView, [], '[Left, Top, Right]',         [], [], @(h,ev)SetStandardView(hFig, {'left', 'top', 'right'}));
+            jItemViewLRIETB = gui_component('MenuItem', jMenuView, [], '[L/R, Int/Extern, Top/Bot]', [], [], @(h,ev)SetStandardView(hFig, {'left', 'right', 'top', 'left_intern', 'right_intern', 'bottom'}));
             % Keyboard shortcuts
             jItemViewLR.setAccelerator(    KeyStroke.getKeyStroke('7', 0));
             jItemViewTB.setAccelerator(    KeyStroke.getKeyStroke('8', 0));
@@ -1815,16 +1838,26 @@ function DisplayFigurePopup(hFig)
             % APPLY THRESHOLD TO ALL FIGURES
             jMenuView.addSeparator();
             if ismember('source', ColormapInfo.AllTypes)
-                jItem = gui_component('MenuItem', jMenuView, [], 'Apply threshold to all figures', [], [], @(h,ev)ApplyViewToAllFigures(hFig, 0, 1), []);
+                jItem = gui_component('MenuItem', jMenuView, [], 'Apply threshold to all figures', [], [], @(h,ev)ApplyViewToAllFigures(hFig, 0, 1));
                 jItem.setAccelerator(KeyStroke.getKeyStroke('*', 0));
             end
             % SET SAME VIEW FOR ALL FIGURES
-            jItem = gui_component('MenuItem', jMenuView, [], 'Apply this view to all figures', [], [], @(h,ev)ApplyViewToAllFigures(hFig, 1, 1), []);
+            jItem = gui_component('MenuItem', jMenuView, [], 'Apply this view to all figures', [], [], @(h,ev)ApplyViewToAllFigures(hFig, 1, 1));
             jItem.setAccelerator(KeyStroke.getKeyStroke('=', 0));
+            % JUMP TO MAXIMUM
+            if ismember('anatomy', ColormapInfo.AllTypes) && isOverlay
+                jItem = gui_component('MenuItem', jMenuView, [], 'Find maximum', [], [], @(h,ev)JumpMaximum(hFig));
+                jItem.setAccelerator(KeyStroke.getKeyStroke('m', 0));
+            end
             % CLONE FIGURE
             jMenuView.addSeparator();
-            gui_component('MenuItem', jMenuView, [], 'Clone figure', [], [], @(h,ev)bst_figures('CloneFigure', hFig), []);
+            gui_component('MenuItem', jMenuView, [], 'Clone figure', [], [], @(h,ev)bst_figures('CloneFigure', hFig));
         end
+    % Only for '3D Electrode'
+    elseif strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, '3DElectrodes')
+        % CLONE FIGURE
+        jMenuFigure.addSeparator();
+        gui_component('MenuItem', jMenuFigure, [], 'Clone figure', [], [], @(h,ev)bst_figures('CloneFigure', hFig));
     end
     % ==== Display menu ====
     gui_popup(jPopup, hFig);
@@ -1852,6 +1885,41 @@ function SetMriSmooth(hFig, OverlaySmooth)
     MriOptions.OverlaySmooth = OverlaySmooth;
     bst_set('MriOptions', MriOptions);
     bst_figures('FireCurrentTimeChanged', 1);
+end
+% RADIO: MRI RESOLUTION
+function SetMriResolution(hFig, InterpDownsample)
+    global GlobalData;
+    % Update MRI display options
+    MriOptions = bst_get('MriOptions');
+    MriOptions.InterpDownsample = InterpDownsample;
+    bst_set('MriOptions', MriOptions);
+    % Get displayed 
+    TessInfo = getappdata(hFig, 'Surface');
+    if ~isempty(TessInfo.DataSource.FileName)
+        [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo.DataSource.FileName);
+        if ~isempty(iDS)
+            GlobalData.DataSet(1).Results(1).grid2mri_interp = [];
+            bst_figures('FireCurrentTimeChanged', 1);
+        end
+    end
+end
+% CHECKBOX: GRID SMOOTH
+function SetGridSmooth(hFig, GridSmooth)
+    global GlobalData;
+    % Get figure configuration
+    TessInfo = getappdata(hFig, 'Surface');
+    if isempty(TessInfo.DataSource.FileName)
+        return;
+    end
+    % Update figure configuration 
+    TessInfo.DataSource.GridSmooth = GridSmooth;
+    setappdata(hFig, 'Surface', TessInfo);
+    % Update display
+    [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo.DataSource.FileName);
+    if ~isempty(iDS)
+        GlobalData.DataSet(1).Results(1).grid2mri_interp = [];
+        bst_figures('FireCurrentTimeChanged', 1);
+    end
 end
 
 
@@ -2900,6 +2968,7 @@ function mixedRGB = BlendAnatomyData(SulciMap, AnatomyColor, Data, DataLimit, Da
     anatRGB = AnatomyColor(2-SulciMap, :);
     % === OVERLAY: DATA MAP ===
     if ~isempty(Data) && (length(DataLimit) == 2) && (DataLimit(2) ~= DataLimit(1)) && ~any(isnan(DataLimit)) && ~any(isinf(DataLimit))
+        Data(isnan(Data)) = 0;
         iDataCmap = round( ((size(sColormap.CMap,1)-1)/(DataLimit(2)-DataLimit(1))) * (Data - DataLimit(1))) + 1;
         iDataCmap(iDataCmap <= 0) = 1;
         iDataCmap(iDataCmap > size(sColormap.CMap,1)) = size(sColormap.CMap,1);
@@ -4080,12 +4149,12 @@ function hPairs = PlotNirsCap(hFig, isDetails)
             'Tag',                 'NirsCapText', ...
             'Interpreter',         'none'};
         % Display text for sources
-        for i = 1:length(locSrc)
+        for i = 1:size(locSrc,1)
             txtLoc = locSrc(i,:) .* 1.08;
             text(txtLoc(1), txtLoc(2), txtLoc(3), Snames{i}, 'Color', [1,.8,0], textOpt{:});
         end
         % Display text for detectors
-        for i = 1:length(locDet)
+        for i = 1:size(locDet,1)
             txtLoc = locDet(i,:) .* 1.08;
             text(txtLoc(1), txtLoc(2), txtLoc(3), Dnames{i}, 'Color', [.8,1,0], textOpt{:});
         end
@@ -4320,7 +4389,26 @@ function SetElecGroupVisible(hFig, GroupName, isVisible)
         end
     end
 end
-                
+
+
+%% ===== JUMP TO MAXIMUM =====
+function JumpMaximum(hFig)
+    % Get figure data
+    [sMri, TessInfo, iAnatomy] = panel_surface('GetSurfaceMri', hFig);
+    if isempty(TessInfo) || isempty(iAnatomy) || ~isfield(TessInfo(iAnatomy), 'OverlayCube') || isempty(TessInfo(iAnatomy).OverlayCube)
+        return;
+    end
+    % Find maximum
+    [valMax, iMax] = max(TessInfo(iAnatomy).OverlayCube(:));
+    if isempty(iMax)
+        return;
+    end
+    % Convert index to voxel indices
+    [XYZ(1), XYZ(2), XYZ(3)] = ind2sub(size(TessInfo(iAnatomy).OverlayCube), iMax(1));
+    % Set new position
+    TessInfo(iAnatomy).CutsPosition = XYZ;
+    figure_3d('UpdateMriDisplay', hFig, [1 2 3], TessInfo, iAnatomy);
+end
 
 
 

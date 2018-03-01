@@ -81,7 +81,7 @@ nTime = [];
 tmpDir = bst_get('BrainstormTmpDir');
 [filePath, fileBase, fileExt] = bst_fileparts(DataFile);
 % Reading as raw continuous?
-isRaw = ismember(FileFormat, {'FIF', 'CTF', 'CTF-CONTINUOUS', '4D', 'KIT', 'KDF', 'ITAB', 'EEG-ANT-CNT', 'EEG-BRAINAMP', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-EGI-RAW', 'EEG-NEUROSCAN-CNT', 'EEG-NEUROSCAN-EEG', 'EEG-NEUROSCAN-AVG', 'EEG-EDF', 'EEG-BDF', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-MANSCAN', 'EEG-MICROMED', 'EEG-NEURALYNX', 'EEG-BLACKROCK', 'EEG-NEURONE', 'EEG-NEUROSCOPE', 'EEG-NK', 'SPM-DAT', 'NIRS-BRS', 'BST-DATA', 'BST-BIN', 'EYELINK', 'EEG-EDF'});
+isRaw = ismember(FileFormat, {'FIF', 'CTF', 'CTF-CONTINUOUS', '4D', 'KIT', 'KDF', 'ITAB', 'EEG-ANT-CNT', 'EEG-ANT-MSR', 'EEG-BRAINAMP', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-EGI-RAW', 'EEG-NEUROSCAN-CNT', 'EEG-NEUROSCAN-EEG', 'EEG-NEUROSCAN-AVG', 'EEG-EDF', 'EEG-BDF', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-MANSCAN', 'EEG-MICROMED', 'EEG-NEURALYNX', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EEG-NEURONE', 'EEG-NEUROSCOPE', 'EEG-NICOLET', 'EEG-NK', 'EEG-SMR', 'SPM-DAT', 'NIRS-BRS', 'BST-DATA', 'BST-BIN', 'EYELINK', 'EEG-EDF'});
 
 
 %% ===== READ RAW FILE =====
@@ -260,8 +260,10 @@ if isRaw
         sFile.prop.destCtfComp = sFile.prop.currCtfComp;
     end
     % No SSP
-    if ~ImportOptions.UseSsp && ~isempty(ChannelMat)
-        ChannelMat.Projector = [];
+    if ~ImportOptions.UseSsp && ~isempty(ChannelMat) && ~isempty(ChannelMat.Projector)
+        % Remove projectors that are not already applied
+        iProjDel = find([ChannelMat.Projector.Status] ~= 2);
+        ChannelMat.Projector(iProjDel) = [];
     end
 
     % ===== READING AND SAVING =====
@@ -463,9 +465,32 @@ else
         end
     end
     % Read file
-    [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat);
+    [tmp, ChannelMatData, errMsg, DataMat] = in_fopen(DataFile, FileFormat);
     if isempty(DataMat) || ~isempty(errMsg)
         return;
+    end
+    % Reorganize data to fit the existing channel mat
+    if ~isempty(ChannelMat) && ~isempty(ChannelMatData) && ~isequal({ChannelMat.Channel.Name}, {ChannelMatData.Channel.Name})
+        % Get list of channels in the format of the existing channel file 
+        DataMatReorder = DataMat;
+        DataMatReorder.F = size(length(ChannelMat.Channel), size(DataMat.F,2));
+        DataMatReorder.ChannelFlag = -1 * ones(length(ChannelMat.Channel),1);
+        for i = 1:length(ChannelMat.Channel)
+            iCh = find(strcmpi(ChannelMat.Channel(i).Name, {ChannelMatData.Channel.Name}));
+            % If the channel is not found: try a different convention if it is a bipolar channel
+            if any(ChannelMat.Channel(i).Name == '-')
+                iDash = find(ChannelMat.Channel(i).Name == '-',1);
+                chNameBip = [ChannelMat.Channel(i).Name(iDash+1:end), ChannelMat.Channel(i).Name(1:iDash-1)];
+                iCh = find(strcmpi(chNameBip, {ChannelMatData.Channel.Name}));
+            end
+            if ~isempty(iCh)
+                DataMatReorder.F(i,:) = DataMat.F(iCh,:);
+                DataMatReorder.ChannelFlag(i) = DataMat.ChannelFlag(iCh);
+            end
+        end
+        DataMat = DataMatReorder;
+        % Empty the channel file matrix, so it is not saved in the destination folder
+        ChannelMat = [];
     end
     
     % ===== SAVE DATA MATRIX IN BRAINSTORM FORMAT =====

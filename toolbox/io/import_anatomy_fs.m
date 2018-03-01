@@ -94,25 +94,8 @@ if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
         bst_progress('stop');
         return;
     end
-    % Delete MRI
-    if ~isempty(sSubject.Anatomy)
-        file_delete(file_fullpath({sSubject.Anatomy.FileName}), 1);
-        sSubject.Anatomy(1:end) = [];
-    end
-    % Delete surfaces
-    if ~isempty(sSubject.Surface)
-        file_delete(file_fullpath({sSubject.Surface.FileName}), 1);
-        sSubject.Surface(1:end) = [];
-    end
-    % Empty defaults lists
-    sSubject.iAnatomy = [];
-    sSubject.iCortex = [];
-    sSubject.iScalp = [];
-    sSubject.iInnerSkull = [];
-    sSubject.iOuterSkull = [];
-    % Update subject structure
-    bst_set('Subject', iSubject, sSubject);
-    panel_protocols('UpdateNode', 'Subject', iSubject);
+    % Delete anatomy
+    sSubject = db_delete_anatomy(iSubject);
 end
 
 
@@ -252,11 +235,11 @@ else
     drawnow;
     bst_progress('stop');
     % Display help message: ask user to select fiducial points
-    jHelp = bst_help('MriSetup.html', 0);
+    % jHelp = bst_help('MriSetup.html', 0);
     % Wait for the MRI Viewer to be closed
     waitfor(hFig);
     % Close help window
-    jHelp.close();
+    % jHelp.close();
 end
 % Load SCS and NCS field to make sure that all the points were defined
 sMri = load(BstMriFile, 'SCS', 'NCS');

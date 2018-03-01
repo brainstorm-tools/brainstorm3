@@ -113,6 +113,8 @@ if isempty(newEvents)
             newEvents = in_events_kdf(sFile, EventFile);
         case 'PRESENTATION'
             newEvents = in_events_presentation(sFile, EventFile);
+        case 'XLTEK'
+            newEvents = in_events_xltek(sFile, EventFile);
         case 'ARRAY-TIMES'
             newEvents = in_events_array(sFile, EventFile, 'times', EventName);
         case 'ARRAY-SAMPLES'
@@ -174,7 +176,32 @@ for iNew = 1:length(newEvents)
     % Add color if does not exist yet
     if isempty(sFile.events(iEvt).color)
         % Get the default color for this new event
-        sFile.events(iEvt).color = panel_record('GetNewEventColor', iEvt, sFile.events);
+        % sFile.events(iEvt).color = panel_record('GetNewEventColor', iEvt, sFile.events);
+        
+        % Same code, but without dependencies
+        AllEvents = sFile.events;
+        ColorTable = ...
+            [0     1    0   
+            .4    .4    1
+             1    .6    0
+             0     1    1
+            .56   .01  .91
+             0    .5    0
+            .4     0    0
+             1     0    1
+            .02   .02   1
+            .5    .5   .5];
+        % Attribute the first color that of the colortable that is not in the existing events
+        for iColor = 1:length(ColorTable)
+            if isempty(AllEvents) || ~isstruct(AllEvents) || ~any(cellfun(@(c)isequal(c, ColorTable(iColor,:)), {AllEvents.color}))
+                break;
+            end
+        end
+        % If all the colors of the color table are taken: attribute colors cyclically
+        if (iColor == length(ColorTable))
+            iColor = mod(iEvt-1, length(ColorTable)) + 1;
+        end
+        sFile.events(iEvt).color = ColorTable(iColor,:);
     end
 end
 

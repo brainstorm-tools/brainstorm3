@@ -101,6 +101,7 @@ function bstPanelNew = CreatePanel(ChannelFile, DataFile) %#ok<DEFNU>
     % ===== INITIALIZE CHANNEL EDITOR =====
     % Create JTable
     jTableChannel = JTable();
+    jTableChannel.setFont(bst_get('Font'));
     jTableChannel.setModel(ChannelTableModel(jTableChannel, channelsData, columnNames));
     jTableChannel.setRowHeight(22);
     jTableChannel.setForeground(Color(.2, .2, .2));
@@ -763,6 +764,12 @@ function UpdateChannelFlag(DataFile, ChannelFlag, varargin)
     end
     % Hide progress bar
     bst_progress('stop');
+    
+    % ===== TRACK CHANGES FOR AUTO-PILOT =====
+    if (GlobalData.Program.GuiLevel == 2)
+        global BstAutoPilot;
+        BstAutoPilot.isBadModified = 1;
+    end
     
     % ===== Update ChannelFlag in ChannelEditor panel =====
     if ~NoChannelEditorUpdate

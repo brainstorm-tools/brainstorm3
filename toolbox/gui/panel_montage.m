@@ -46,26 +46,27 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % PANEL: left panel (list of available montages)
     jPanelMontages = gui_component('Panel');
     jPanelMontages.setBorder(BorderFactory.createCompoundBorder(...
-                             BorderFactory.createTitledBorder('Montages'), ...
+                             java_scaled('titledborder', 'Montages'), ...
                              BorderFactory.createEmptyBorder(3, 10, 10, 10)));
         % ===== TOOLBAR =====
         jToolbar = gui_component('Toolbar', jPanelMontages, BorderLayout.NORTH);
-        jToolbar.setPreferredSize(Dimension(100,25));
-            TB_SIZE = Dimension(25,25);
-            jButtonNew      = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_MONTAGE_MENU, Dimension(35,25)}, 'New montage', []);
-            jButtonLoadFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_FOLDER_OPEN, TB_SIZE}, 'Load montage', []);
-            jButtonSaveFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SAVE, TB_SIZE}, 'Save montage', []);
+        jToolbar.setPreferredSize(java_scaled('dimension', 100,25));
+            TB_SIZE = java_scaled('dimension', 25,25);
+            jButtonNew      = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_MONTAGE_MENU, java_scaled('dimension', 35,25)}, 'New montage');
+            jButtonLoadFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_FOLDER_OPEN, TB_SIZE}, 'Load montage');
+            jButtonSaveFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SAVE, TB_SIZE}, 'Save montage');
             jToolbar.addSeparator();
-            jButtonAll = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SCOUT_ALL, TB_SIZE}, 'Display all the montages', []);
+            jButtonAll = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SCOUT_ALL, TB_SIZE}, 'Display all the montages');
         % LIST: Create list
         jListMontages = JList({' '});
+            jListMontages.setFont(bst_get('Font'));
             jListMontages.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
             java_setcb(jListMontages, 'ValueChangedCallback', [], ...
                                       'KeyTypedCallback',     [], ...
                                       'MouseClickedCallback', []);
             % Create scroll panel
             jScrollPanelSel = JScrollPane(jListMontages);
-            jScrollPanelSel.setPreferredSize(Dimension(150,200));
+            jScrollPanelSel.setPreferredSize(java_scaled('dimension', 150,200));
         jPanelMontages.add(jScrollPanelSel, BorderLayout.CENTER);
     jPanelNew.add(jPanelMontages, BorderLayout.WEST);
     
@@ -74,12 +75,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % === SENSOR SELECTION ===
         jPanelSelection = gui_component('Panel');
         jPanelSelection.setBorder(BorderFactory.createCompoundBorder(...
-                                  BorderFactory.createTitledBorder('Channel selection'), ...
+                                  java_scaled('titledborder', 'Channel selection'), ...
                                   BorderFactory.createEmptyBorder(10, 10, 10, 10)));
         % LABEL: Title
         jPanelSelection.add(JLabel('<HTML><DIV style="height:15px;">Available sensors:</DIV>'), BorderLayout.NORTH);
         % LIST: Create list (display labels of all clusters)
         jListSensors = JList({'Sensor #1', 'Sensor #2', 'Sensor #3','Sensor #4', 'Sensor #5', 'Sensor #6','Sensor #7', 'Sensor #8', 'Sensor #9','Sensor #10', 'Sensor #11', 'Sensor #12'});
+            jListSensors.setFont(bst_get('Font'));
             jListSensors.setLayoutOrientation(jListSensors.VERTICAL_WRAP);
             jListSensors.setVisibleRowCount(-1);
             jListSensors.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -90,11 +92,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % === TEXT VIEWER ===
         jPanelViewer = gui_component('Panel');
         jPanelViewer.setBorder(BorderFactory.createCompoundBorder(...
-                             BorderFactory.createTitledBorder('Channel selection [Read-only]'), ...
+                             java_scaled('titledborder', 'Channel selection [Read-only]'), ...
                              BorderFactory.createEmptyBorder(10, 10, 10, 10)));
         jTextViewer = JTextArea(6, 12);
-        jTextViewer.setFont(Font('Monospaced', Font.PLAIN, 11));
         jTextViewer.setEditable(0);
+        % Get font size
+        fontSize = round(11 * bst_get('InterfaceScaling') / 100);
+        jTextViewer.setFont(Font('Monospaced', Font.PLAIN, fontSize));
         % Create scroll panel
         jScrollPanel = JScrollPane(jTextViewer);
         jPanelViewer.add(jScrollPanel, BorderLayout.CENTER);
@@ -102,17 +106,17 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % === TEXT EDITOR ===
         jPanelText = gui_component('Panel');
         jPanelText.setBorder(BorderFactory.createCompoundBorder(...
-                             BorderFactory.createTitledBorder('Custom montage'), ...
+                             java_scaled('titledborder', 'Custom montage'), ...
                              BorderFactory.createEmptyBorder(10, 10, 10, 10)));
         % LABEL: Title
         strHelp = ['Examples:<BR>' ...
             '  Cz-C4 : Cz,-C4          % Difference Cz-C4<BR>' ...
             '  MC    : 0.5*M1, 0.5*M2  % Average of M1 and M2<BR>' ...
             '  EOG|00FF00 : EOG        % Display EOG in green<BR>'];
-        jPanelText.add(JLabel(['<HTML><PRE>' strHelp '</PRE>']), BorderLayout.NORTH);
+        gui_component('label', jPanelText, BorderLayout.NORTH, ['<HTML><PRE>' strHelp '</PRE>']);
         % TEXT: Create text editor
         jTextMontage = JTextArea(6, 12);
-        jTextMontage.setFont(Font('Monospaced', Font.PLAIN, 11));
+        jTextMontage.setFont(Font('Monospaced', Font.PLAIN, fontSize));
         % Create scroll panel
         jScrollPanel = JScrollPane(jTextMontage);
         jPanelText.add(jScrollPanel, BorderLayout.CENTER);
@@ -120,29 +124,30 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % === MATRIX EDITOR ===
         jPanelMatrix = gui_component('Panel');
         jPanelMatrix.setBorder(BorderFactory.createCompoundBorder(...
-                             BorderFactory.createTitledBorder('Matrix viewer'), ...
+                             java_scaled('titledborder', 'Matrix viewer'), ...
                              BorderFactory.createEmptyBorder(10, 10, 10, 10)));
         % Create JTable
         jTableMatrix = JTable();
+        jTableMatrix.setFont(bst_get('Font'));
         %jTableMatrix.setRowHeight(22);
         jTableMatrix.setEnabled(0);
         jTableMatrix.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
         jTableMatrix.getTableHeader.setReorderingAllowed(0);
-        jTableMatrix.setPreferredScrollableViewportSize(Dimension(5,5));
+        jTableMatrix.setPreferredScrollableViewportSize(java_scaled('dimension', 5,5));
         % Create scroll panel
         jScrollPanel = JScrollPane(jTableMatrix);
         jScrollPanel.setBorder([]);
         jPanelMatrix.add(jScrollPanel, BorderLayout.CENTER);          
         
-    jPanelRight.setPreferredSize(Dimension(400,550));
+    jPanelRight.setPreferredSize(java_scaled('dimension', 400,550));
     % PANEL: Selections buttons
     jPanelBottom = gui_component('Panel');
     jPanelBottomLeft = gui_river([10 0], [10 10 0 10]);
     jPanelBottomRight = gui_river([10 0], [10 10 0 10]);
-        jButtonValidate = gui_component('button', jPanelBottomLeft,  [], 'Validate', [], [], [], []);
+        jButtonValidate = gui_component('button', jPanelBottomLeft,  [], 'Validate');
         jButtonValidate.setVisible(0);
-        gui_component('button', jPanelBottomRight, [], 'Cancel', [], [], @(h,ev)ButtonCancel_Callback(), []);
-        jButtonSave = gui_component('button', jPanelBottomRight, [], 'Save', [], [], [], []);
+        gui_component('button', jPanelBottomRight, [], 'Cancel', [], [], @(h,ev)ButtonCancel_Callback());
+        jButtonSave = gui_component('button', jPanelBottomRight, [], 'Save');
     jPanelBottom.add(jPanelBottomLeft, BorderLayout.WEST);
     jPanelBottom.add(jPanelBottomRight, BorderLayout.EAST);
     jPanelRight.add(jPanelBottom, BorderLayout.SOUTH);
@@ -1177,8 +1182,11 @@ function [iChannels, iMatrixChan, iMatrixDisp] = GetMontageChannels(sMontage, Ch
             end
             % Look for for the montage channel names in the channel file
             iTmp = find(strcmpi(sMontage.ChanNames{i}, ChanNames));
+            % We may have some duplicates here, if there are both "C 4" and "c4" in the same file: use only the first one
+            if (length(iTmp) > 1)
+                iTmp = iTmp(1);
             % If channel was not found: skip
-            if isempty(iTmp)
+            elseif isempty(iTmp)
                 continue;
             end
             % Skip bad channel
@@ -1411,7 +1419,7 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
             if isfield(subMenus, stdName)
                 jSubMenu = subMenus.(stdName);
             else
-                jSubMenu = gui_component('Menu', jMenu, [], ['<HTML><I>' GroupName '</I>'], [], [], [], []);
+                jSubMenu = gui_component('Menu', jMenu, [], ['<HTML><I>' GroupName '</I>']);
                 subMenus.(stdName) = jSubMenu;
             end
         else
@@ -1440,17 +1448,17 @@ function CreateMontageMenu(jButton, hFig)
     end
     % Create new montages
     if isempty(hFig) || ~strcmpi(TsInfo.DisplayMode, 'topography')
-        gui_component('MenuItem', jPopup, [], 'New channel selection', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('selection', [], hFig), []);
+        gui_component('MenuItem', jPopup, [], 'New channel selection', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('selection', [], hFig));
     end
     if ~isempty(hFig) 
-        gui_component('MenuItem', jPopup, [], 'New re-referencing montage (single ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('ref', [], hFig), []);
-        gui_component('MenuItem', jPopup, [], 'New re-referencing montage (linked ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('linkref', [], hFig), []);
+        gui_component('MenuItem', jPopup, [], 'New re-referencing montage (single ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('ref', [], hFig));
+        gui_component('MenuItem', jPopup, [], 'New re-referencing montage (linked ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('linkref', [], hFig));
     end
-    gui_component('MenuItem', jPopup, [], 'New custom montage',  IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('text', [], hFig), []);
+    gui_component('MenuItem', jPopup, [], 'New custom montage',  IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('text', [], hFig));
     jPopup.addSeparator();
-    gui_component('MenuItem', jPopup, [], 'Duplicate montage', IconLoader.ICON_COPY, [], @(h,ev)ButtonDuplicate_Callback(hFig), []);
-    gui_component('MenuItem', jPopup, [], 'Rename montage', IconLoader.ICON_EDIT, [], @(h,ev)ButtonRename_Callback(hFig), []);
-    gui_component('MenuItem', jPopup, [], 'Delete montage', IconLoader.ICON_DELETE, [], @(h,ev)ButtonDelete_Callback(hFig), []);
+    gui_component('MenuItem', jPopup, [], 'Duplicate montage', IconLoader.ICON_COPY, [], @(h,ev)ButtonDuplicate_Callback(hFig));
+    gui_component('MenuItem', jPopup, [], 'Rename montage', IconLoader.ICON_EDIT, [], @(h,ev)ButtonRename_Callback(hFig));
+    gui_component('MenuItem', jPopup, [], 'Delete montage', IconLoader.ICON_DELETE, [], @(h,ev)ButtonDelete_Callback(hFig));
     % Show popup menu
     jPopup.show(jButton, 0, jButton.getHeight());
 end
@@ -1667,7 +1675,7 @@ function [iEEG, GroupNames, DisplayNames] = GetEegGroups(Channel, ChannelFlag, i
                     % Look for all the sensors belonging to this group
                     iTmp = find(strcmp({Channel(iMod).Group}, uniqueGroups{iGroup}));
                     % If the sensors can be split using the tag/index logic
-                    if ~isNoInd
+                    if ~any(isNoInd)
                         % Sort the sensors indices
                         [tmp_, I] = sort(AllInd(iTmp));
                         iTmp = iTmp(I);
@@ -1717,14 +1725,41 @@ function [AllGroups, AllTags, AllInd, isNoInd] = ParseSensorNames(Channels)
         AllNames = strrep(AllNames, 'G_L', 'G10');
     end
     AllNames = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), AllNames, 'UniformOutput', 0);
+    AllTags  = cell(size(AllNames));
+    AllInd   = cell(size(AllNames));
+    isNoInd  = zeros(size(AllNames));
     % Separate characters and numbers in the names
-    AllTags = cellfun(@(c)c(~ismember(c, '0123456789')), AllNames, 'UniformOutput', 0);
-    % Get indices
-    AllInd = cellfun(@(c)c(ismember(c, '0123456789')), AllNames, 'UniformOutput', 0);
-    isNoInd = any(cellfun(@isempty, AllInd));
-    if ~isNoInd
-        AllInd = cellfun(@str2num, AllInd);
+    for i = 1:length(AllNames)
+        % Find the last letter in the name
+        iLastLetter = find(~ismember(AllNames{i}, '0123456789'), 1, 'last');
+        AllTags{i} = AllNames{i}(1:iLastLetter);
+        % If there are digits at the end of the name: use them as the index of the contact
+        if (iLastLetter < length(AllNames{i}))
+            AllInd{i} = AllNames{i}(iLastLetter+1:end);
+        else
+            isNoInd(i) = 1;
+            AllInd{i} = '0';
+        end
     end
+    % If some indices are defined: check if the first digits shouldn't be part of the channel name
+    iInd = find(~isNoInd);
+    if ~isempty(iInd)
+        % Get unique tags
+        uniqueTags = unique(AllTags(iInd));
+        % Check for each of them: if 11 is the first index, include the first digit in the group name
+        for iTag = 1:length(uniqueTags)
+            iChTag = find(strcmpi(AllTags(iInd), uniqueTags{iTag}));
+            chInd = cellfun(@str2num, AllInd(iInd(iChTag)));
+            if all(chInd >= 10) && all(chInd <= 49) && (length(chInd) > 4)
+                for i = iInd(iChTag)
+                    AllTags{i} = [AllTags{i}, AllInd{i}(1)];
+                    AllInd{i}  = AllInd{i}(2:end);
+                end
+            end
+        end
+    end
+    % Convert indices to double values
+    AllInd = cellfun(@str2num, AllInd);
 end
 
 
@@ -1736,14 +1771,12 @@ end
 
 
 %% ===== ADD AUTO MONTAGES: EEG =====
-function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
+function AddAutoMontagesEeg(Comment, ChannelMat) %#ok<DEFNU>
     global GlobalData;
     % Get groups of electrodes
     [iEeg, GroupNames] = panel_montage('GetEegGroups', ChannelMat.Channel, [], 1);    
     % If there is more than one EEG group
     if (length(iEeg) > 2)
-        % Get subject name
-        SubjectName = bst_fileparts(GlobalData.DataSet(iDS).SubjectFile);
         % Get all the modalities available
         AllModalities = unique(upper({ChannelMat.Channel([iEeg{:}]).Type}));
     
@@ -1752,17 +1785,17 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
             Mod = AllModalities{iMod};
             % All (orig)
             sMontageAllOrig.(Mod) = db_template('Montage');
-            sMontageAllOrig.(Mod).Name   = [SubjectName ': ' Mod ' (orig)[tmp]'];
+            sMontageAllOrig.(Mod).Name   = [Comment ': ' Mod ' (orig)[tmp]'];
             sMontageAllOrig.(Mod).Type   = 'selection';
             SetMontage(sMontageAllOrig.(Mod).Name, sMontageAllOrig.(Mod));
             % All (bipolar 1)
             sMontageAllBip1.(Mod) = db_template('Montage');
-            sMontageAllBip1.(Mod).Name   = [SubjectName ': ' Mod ' (bipolar 1)[tmp]'];
+            sMontageAllBip1.(Mod).Name   = [Comment ': ' Mod ' (bipolar 1)[tmp]'];
             sMontageAllBip1.(Mod).Type   = 'text';
             SetMontage(sMontageAllBip1.(Mod).Name, sMontageAllBip1.(Mod));
             % All (bipolar 2)
             sMontageAllBip2.(Mod) = db_template('Montage');
-            sMontageAllBip2.(Mod).Name   = [SubjectName ': ' Mod ' (bipolar 2)[tmp]'];
+            sMontageAllBip2.(Mod).Name   = [Comment ': ' Mod ' (bipolar 2)[tmp]'];
             sMontageAllBip2.(Mod).Type   = 'text';
             SetMontage(sMontageAllBip2.(Mod).Name, sMontageAllBip2.(Mod));
         end
@@ -1771,16 +1804,17 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
         for iGroup = 1:length(iEeg)
             % Get the electrodes for this group
             iChan = iEeg{iGroup};
-            if isempty(iChan)
+            if isempty(iChan) || (length(iChan) < 2)
                 continue;
             end
             ChanNames = {ChannelMat.Channel(iChan).Name};
             Mod = upper(ChannelMat.Channel(iChan(1)).Type);
+            [AllGroups, AllTags, AllInd] = ParseSensorNames(ChannelMat.Channel(iChan));
 
             % === MONTAGE: ORIG ===
             % Create montage
             sMontage = db_template('Montage');
-            sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (orig)[tmp]'];
+            sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (orig)[tmp]'];
             sMontage.Type      = 'selection';
             sMontage.ChanNames = ChanNames;
             sMontage.DispNames = ChanNames;
@@ -1801,23 +1835,29 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
             % Example: A1-A2, A3-A4, ...
             % Create montage
             sMontage = db_template('Montage');
-            sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (bipolar 1)[tmp]'];
+            sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (bipolar 1)[tmp]'];
             sMontage.Type      = 'text';
             sMontage.ChanNames = ChanNames;
-            sMontage.Matrix    = zeros(ceil(length(iChan)/2), length(iChan));
+            sMontage.Matrix    = zeros(0, length(iChan));
             iDisp = 1;
             for i = 1:2:length(ChanNames)
                 % Last pair is not complete: A1-A2, A3-A4, A4-A5
                 if (i == length(ChanNames))
-                    sMontage.DispNames{iDisp} = [ChanNames{i-1} '-' ChanNames{i}];
-                    sMontage.Matrix(iDisp, i-1) =  1;
-                    sMontage.Matrix(iDisp, i)   = -1;
+                    i1 = i-1;
+                    i2 = i;
                 % Last pair is complete: A1-A2, A3-A4, A5-A6
                 else
-                    sMontage.DispNames{iDisp} = [ChanNames{i} '-' ChanNames{i+1}];
-                    sMontage.Matrix(iDisp, i)   =  1;
-                    sMontage.Matrix(iDisp, i+1) = -1;
+                    i1 = i;
+                    i2 = i+1;
                 end
+                % SEEG: Skip if the two channels are not consecutive
+                if strcmpi(Mod, 'SEEG') && ~ismember(AllInd(i1) - AllInd(i2), [1,-1])
+                    continue;
+                end
+                % Create entry
+                sMontage.DispNames{iDisp} = [ChanNames{i1} '-' ChanNames{i2}];
+                sMontage.Matrix(iDisp, i1) =  1;
+                sMontage.Matrix(iDisp, i2) = -1;
                 iDisp = iDisp + 1;
             end
             % Add montage: orig
@@ -1831,12 +1871,17 @@ function AddAutoMontagesEeg(iDS, ChannelMat) %#ok<DEFNU>
             % Example: A1-A2, A2-A3, ...
             % Create montage
             sMontage = db_template('Montage');
-            sMontage.Name      = [SubjectName ': ' GroupNames{iGroup} ' (bipolar 2)[tmp]'];
+            sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (bipolar 2)[tmp]'];
             sMontage.Type      = 'text';
             sMontage.ChanNames = ChanNames;
-            sMontage.Matrix    = zeros(length(iChan)-1, length(iChan));
+            sMontage.Matrix    = zeros(0, length(iChan));
             iDisp = 1;
             for i = 1:length(ChanNames)-1
+                % SEEG: Skip if the two channels are not consecutive
+                if strcmpi(Mod, 'SEEG') && ~ismember(AllInd(i) - AllInd(i+1), [1,-1])
+                    continue;
+                end
+                % Create entry
                 sMontage.DispNames{iDisp} = [ChanNames{i} '-' ChanNames{i+1}];
                 sMontage.Matrix(iDisp, i)   =  1;
                 sMontage.Matrix(iDisp, i+1) = -1;
@@ -1943,7 +1988,7 @@ end
 
 
 %% ===== UNLOAD AUTO MONTAGES =====
-function UnloadAutoMontages()
+function UnloadAutoMontages() %#ok<DEFNU>
     global GlobalData;
     % Exist in no montages loaded
     if isempty(GlobalData) || isempty(GlobalData.ChannelMontages) || isempty(GlobalData.ChannelMontages.Montages)

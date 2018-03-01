@@ -21,7 +21,7 @@ function varargout = figure_spectrum( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -713,12 +713,14 @@ end
 
 
 %% ===== HIDE/SHOW LEGENDS =====
-function ToggleAxesProperty(hAxes, propName)
+function newPropVal = ToggleAxesProperty(hAxes, propName)
     switch get(hAxes(1), propName)
         case 'on'
             set(hAxes, propName, 'off');
+            newPropVal = 0;
         case 'off'
             set(hAxes, propName, 'on');
+            newPropVal = 1;
     end
 end
 function SetShowLegend(iDS, iFig, ShowLegend)
@@ -730,6 +732,40 @@ function SetShowLegend(iDS, iFig, ShowLegend)
     setappdata(hFig, 'TsInfo', TsInfo);
     % Redraw figure
     UpdateFigurePlot(hFig, 1);
+end
+function ToggleGrid(hAxes, hFig, xy)
+    isSel = ToggleAxesProperty(hAxes, [xy 'Grid']);
+    ToggleAxesProperty(hAxes, [xy 'MinorGrid']);
+
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo = setfield(TsInfo, ['Show' xy 'Grid'], isSel);
+    setappdata(hFig, 'TsInfo', TsInfo);
+
+    RefreshGridBtnDisplay(hFig, TsInfo);
+end
+function ToggleLogScale(hAxes, hFig, loglin)
+    set(hAxes, 'XScale', loglin);
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.XScale = loglin;
+    setappdata(hFig, 'TsInfo', TsInfo);
+    RefreshLogScaleBtnDisplay(hFig, TsInfo);
+end
+function RefreshLogScaleBtnDisplay(hFig, TsInfo)
+    % Toggle selection of associated button if possible
+    buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
+    if ~isempty(buttonContainer)
+        button = get(buttonContainer, 'UserData');
+        button.setSelected(strcmp(TsInfo.XScale, 'log'));
+    end
+end
+function RefreshGridBtnDisplay(hFig, TsInfo)
+    % Toggle selection of associated button if possible
+    buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
+    if ~isempty(buttonContainer)
+        button = get(buttonContainer, 'UserData');
+        button.setSelected((TsInfo.ShowXGrid & TsInfo.ShowYGrid) || ...
+            (strcmpi(TsInfo.DisplayMode, 'column') & TsInfo.ShowXGrid));
+    end
 end
 
 
@@ -763,7 +799,7 @@ function DisplayFigurePopup(hFig, menuTitle)
     jPopup = java_create('javax.swing.JPopupMenu');
     % Menu title
     if ~isempty(menuTitle)
-        jTitle = gui_component('Label', jPopup, [], ['<HTML><B>' menuTitle '</B>'], [], [], [], []);
+        jTitle = gui_component('Label', jPopup, [], ['<HTML><B>' menuTitle '</B>']);
         jTitle.setBorder(javax.swing.BorderFactory.createEmptyBorder(5,35,0,0));
         jPopup.addSeparator();
     end
@@ -773,20 +809,20 @@ function DisplayFigurePopup(hFig, menuTitle)
     if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType, 'data')       
         % === View RECORDINGS ===
         if ~isempty(GlobalData.DataSet(iDS).DataFile)
-            jItem = gui_component('MenuItem', jPopup, [], 'Recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(GlobalData.DataSet(iDS).DataFile, GlobalData.DataSet(iDS).Figure(iFig).Id.Modality), []);
+            jItem = gui_component('MenuItem', jPopup, [], 'Recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(GlobalData.DataSet(iDS).DataFile, GlobalData.DataSet(iDS).Figure(iFig).Id.Modality));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_MASK));
         end
         % === View TOPOGRAPHY ===
-        jItem = gui_component('MenuItem', jPopup, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, TfFile, [], '2DSensorCap', [], 0), []);
+        jItem = gui_component('MenuItem', jPopup, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, TfFile, [], '2DSensorCap', [], 0));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
         jPopup.addSeparator();
     end
 
     % === VIEW SELECTED ===
-    jItem = gui_component('MenuItem', jPopup, [], 'View selected', IconLoader.ICON_SPECTRUM, [], @(h,ev)DisplaySelectedRows(hFig), []);
+    jItem = gui_component('MenuItem', jPopup, [], 'View selected', IconLoader.ICON_SPECTRUM, [], @(h,ev)DisplaySelectedRows(hFig));
     jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)); % ENTER  
     % === RESET SELECTION ===
-    jItem = gui_component('MenuItem', jPopup, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h,ev)bst_figures('SetSelectedRows',[]), []);
+    jItem = gui_component('MenuItem', jPopup, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h,ev)bst_figures('SetSelectedRows',[]));
     jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0)); % ESCAPE
     jPopup.addSeparator();
 
@@ -798,9 +834,9 @@ function DisplayFigurePopup(hFig, menuTitle)
             case 'Spectrum',    strMenu = 'Frequency selection';
             case 'TimeSeries',  strMenu = 'Time selection';
         end
-        jMenuSelection = gui_component('Menu', jPopup, [], strMenu, IconLoader.ICON_TS_SELECTION, [], [], []);
+        jMenuSelection = gui_component('Menu', jPopup, [], strMenu, IconLoader.ICON_TS_SELECTION);
         % Set selection
-        gui_component('MenuItem', jMenuSelection, [], 'Set selection manually...', IconLoader.ICON_TS_SELECTION, [], @(h,ev)SetFreqSelection(hFig), []);
+        gui_component('MenuItem', jMenuSelection, [], 'Set selection manually...', IconLoader.ICON_TS_SELECTION, [], @(h,ev)SetFreqSelection(hFig));
         % Get current time selection
         GraphSelection = getappdata(hFig, 'GraphSelection');
         isSelection = ~isempty(GraphSelection) && ~any(isinf(GraphSelection(:)));
@@ -808,73 +844,73 @@ function DisplayFigurePopup(hFig, menuTitle)
             jMenuSelection.addSeparator();
             % === EXPORT TO DATABASE ===
             if ~strcmpi(TfInfo.DisplayMode, 'TimeSeries')
-                gui_component('MenuItem', jMenuSelection, [], 'Export to database', IconLoader.ICON_SPECTRUM, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Selection'), []);
+                gui_component('MenuItem', jMenuSelection, [], 'Export to database', IconLoader.ICON_SPECTRUM, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Selection'));
             end
             % === EXPORT TO FILE ===
-            gui_component('MenuItem', jMenuSelection, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, [], 'Selection'), []);
+            gui_component('MenuItem', jMenuSelection, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, [], 'Selection'));
             % === EXPORT TO MATLAB ===
-            gui_component('MenuItem', jMenuSelection, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable', 'Selection'), []);
+            gui_component('MenuItem', jMenuSelection, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable', 'Selection'));
         end
         jPopup.addSeparator();
     end
     
     % ==== MENU: SNAPSHOT ====
-    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT, [], [], []);
+    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT);
         % === SAVE AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
         % === OPEN AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Figure'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Figure'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_MASK));
         jMenuSave.addSeparator();
         % === EXPORT TO DATABASE ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to database (time-freq)', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database'), []);
-        gui_component('MenuItem', jMenuSave, [], 'Export to database (matrix)',    IconLoader.ICON_MATRIX, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Matrix'), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to database (time-freq)', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database'));
+        gui_component('MenuItem', jMenuSave, [], 'Export to database (matrix)',    IconLoader.ICON_MATRIX, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Matrix'));
         % === EXPORT TO FILE ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, []), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, []));
         % === EXPORT TO MATLAB ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable'), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable'));
 
     % ==== MENU: FIGURE ====    
-    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL, [], [], []);
+    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
         % XGrid
         isXLog = strcmpi(get(hAxes, 'XScale'), 'log');
         if isXLog
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: linear', IconLoader.ICON_GRID_X, [], @(h,ev)set(hAxes, 'XScale', 'linear'), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: linear', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'linear'));
         else
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: log', IconLoader.ICON_GRID_X, [], @(h,ev)set(hAxes, 'XScale', 'log'), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: log', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'log'));
         end
         jMenuFigure.addSeparator();
         
         % Legend
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend));
         jItem.setSelected(TsInfo.ShowLegend);
         % XGrid
         isXGrid = strcmpi(get(hAxes(1), 'XGrid'), 'on');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleAxesProperty(hAxes, 'XGrid'), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleGrid(hAxes, hFig, 'X'));
         jItem.setSelected(isXGrid);
         % YGrid
         isYGrid = strcmpi(get(hAxes(1), 'YGrid'), 'on');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleAxesProperty(hAxes, 'YGrid'), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleGrid(hAxes, hFig, 'Y'));
         jItem.setSelected(isYGrid);
         % Change background color
         jMenuFigure.addSeparator();
-        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig), []);
+        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
         jMenuFigure.addSeparator();
         
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
         jItem.setSelected(isMatlabCtrl);
         % Show plot edit toolbar
         isPlotEditToolbar = getappdata(hFig, 'isPlotEditToolbar');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig));
         jItem.setSelected(isPlotEditToolbar);
         % Dock figure
         isDocked = strcmpi(get(hFig, 'WindowStyle'), 'docked');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked));
         jItem.setSelected(isDocked);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, KeyEvent.CTRL_MASK)); 
            
@@ -1000,6 +1036,8 @@ function UpdateFigurePlot(hFig, isForced)
     end
         
     % ===== DISPLAY =====
+    % Clear figure
+    clf(hFig);
     % Plot data in the axes
     PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, sFig.Handles.DataMinMax, LinesLabels, DisplayUnits);
     hAxes = PlotHandles.hAxes;
@@ -1013,7 +1051,7 @@ function UpdateFigurePlot(hFig, isForced)
         'FontSize',    bst_get('FigFont'), ...
         'FontUnits',   'points', ...
         'Interpreter', 'none');
-    
+
     % ===== SCALE BAR =====
     % For column displays: add a scale display
     if strcmpi(TsInfo.DisplayMode, 'column')
@@ -1026,8 +1064,7 @@ function UpdateFigurePlot(hFig, isForced)
             'BusyAction',    'queue', ...
             'Tag',           'AxesColumnScale', ...
             'YGrid',      'off', ...
-            'XGrid',      'off', ...
-            'XMinorGrid', 'off', ...
+            'YMinorGrid', 'off', ...
             'XTick',      [], ...
             'YTick',      [], ...
             'TickLength', [0,0], ...
@@ -1038,8 +1075,30 @@ function UpdateFigurePlot(hFig, isForced)
         % Update figure list of handles
         GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotHandles;
     end
+    
+    % Update scale depending on settings
+    if TsInfo.ShowXGrid
+        set(hAxes, 'XGrid', 'on');
+        set(hAxes, 'XMinorGrid', 'on');
+    end
+    if TsInfo.ShowYGrid && ~strcmpi(TsInfo.DisplayMode, 'column')
+        set(hAxes, 'YGrid', 'on');
+        set(hAxes, 'YMinorGrid', 'on');
+    end
+    if ~isfield(TsInfo, 'XScale')
+        TsInfo.XScale = 'linear';
+        setappdata(hFig, 'TsInfo', TsInfo);
+    else
+        set(hAxes, 'XScale', TsInfo.XScale);
+    end
+
     % Create scale buttons
-    figure_timeseries('CreateScaleButtons', iDS, iFig);
+    if isempty(findobj(hFig, 'Tag', 'ButtonGainPlus'))
+        figure_timeseries('CreateScaleButtons', iDS, iFig);
+    else
+        RefreshGridBtnDisplay(hFig, TsInfo);
+        RefreshLogScaleBtnDisplay(hFig, TsInfo);
+    end
     % Update stat clusters
     if ~isempty(TfInfo) && ~isempty(TfInfo.FileName) && strcmpi(file_gettype(TfInfo.FileName), 'ptimefreq')
         ViewStatClusters(hFig);
@@ -1066,8 +1125,6 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
         set(hAxes, 'Interruptible', 'off', ...
                    'BusyAction',    'queue', ...
                    'Tag',           'AxesGraph', ...
-                   'YGrid',      'off', ...
-                   'XGrid',      'off', 'XMinorGrid', 'off', ...
                    'XLim',       XLim, ...
                    'Box',        'on', ...
                    'FontName',   'Default', ...

@@ -32,7 +32,11 @@ if (nargin < 5) || isempty(ChannelsRange)
     ChannelsRange = [1, sFile.header.num_channels];
 end
 if (nargin < 4) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    if isempty(sFile.epochs)
+        SamplesBounds = sFile.prop.samples;
+    else
+        SamplesBounds = sFile.epochs(iEpoch).samples;
+    end
 end
 if (nargin < 3) || isempty(iEpoch)
     iEpoch = 1;

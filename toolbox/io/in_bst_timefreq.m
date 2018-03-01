@@ -87,6 +87,8 @@ for i = 1:length(FieldsToRead)
                     Timefreq.(FieldsToRead{i}) = 'fft';
                 elseif ~isempty(strfind(TimefreqFile, '_hilbert'))
                     Timefreq.(FieldsToRead{i}) = 'hilbert';
+                elseif ~isempty(strfind(TimefreqFile, '_mtmconvol'))
+                    Timefreq.(FieldsToRead{i}) = 'mtmconvol';
                 else
                     Timefreq.(FieldsToRead{i}) = 'morlet';
                 end

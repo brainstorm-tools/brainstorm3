@@ -25,7 +25,7 @@ function varargout = panel_time(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -40,10 +40,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     % Create tool panel
     jPanelNew = gui_river([1,4], [2,2,10,1]);
-    jPanelNew.setMinimumSize(Dimension(10,42));
+    jPanelNew.setMinimumSize(java_scaled('dimension', 10, 42));
     % Time labels
     jLabelTime = gui_component('label', jPanelNew, 'hfill', ' ');
-    jLabelTime.setPreferredSize(Dimension(10, 42));
+    jLabelTime.setPreferredSize(java_scaled('dimension', 10, 42));
     
     % Time: Previous
     gui_component('label', jPanelNew, 'br', ' ');
@@ -52,7 +52,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jButtonTime(3) = gui_component('button', jPanelNew, '',   '<', [], [], @(h,ev)TimeKeyCallback('leftarrow'));
     % Time: Current
     jTextCurrent = gui_component('texttime', jPanelNew, 'hfill', ' ');
-    jTextCurrent.setPreferredSize(Dimension(62, 20));
+    jTextCurrent.setPreferredSize(java_scaled('dimension', 62, 20));
     jTextCurrent.setHorizontalAlignment(JTextField.RIGHT);
     java_setcb(jTextCurrent, 'FocusLostCallback', @TextValidationCallback, 'ActionPerformedCallback', @TextValidationCallback);
     % Time: Next
@@ -62,16 +62,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     gui_component('label', jPanelNew, '', ' ');
     
     % Button size
-    jButtonTime(1).setPreferredSize(Dimension(28, 20));
-    jButtonTime(2).setPreferredSize(Dimension(24, 20));
-    jButtonTime(3).setPreferredSize(Dimension(20, 20));
-    jButtonTime(4).setPreferredSize(Dimension(20, 20));
-    jButtonTime(5).setPreferredSize(Dimension(24, 20));
-    jButtonTime(6).setPreferredSize(Dimension(28, 20));
+    jButtonTime(1).setPreferredSize(java_scaled('dimension', 28, 20));
+    jButtonTime(2).setPreferredSize(java_scaled('dimension', 24, 20));
+    jButtonTime(3).setPreferredSize(java_scaled('dimension', 20, 20));
+    jButtonTime(4).setPreferredSize(java_scaled('dimension', 20, 20));
+    jButtonTime(5).setPreferredSize(java_scaled('dimension', 24, 20));
+    jButtonTime(6).setPreferredSize(java_scaled('dimension', 28, 20));
     % Buttons properties
     for i = 1:length(jButtonTime)
         jButtonTime(i).setBorder([]);
-        jButtonTime(i).setMargin(Insets(0,3,0,3));
+        jButtonTime(i).setMargin(java_scaled('insets', 0, 3, 0, 3));
         jButtonTime(i).setFocusPainted(0);
         java_setcb(jButtonTime(i), 'KeyPressedCallback', @(h,ev)TimeKeyCallback(ev));
     end
@@ -406,12 +406,14 @@ end
 
 
 %% ===== INPUT TIME WINDOW =====
-% USAGE:  TimeWindow = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow, timeUnit)
-%         TimeWindow = InputTimeWindow(maxTimeWindow, Comment)
-function TimeWindow = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow, timeUnit) %#ok<DEFNU>
-    % No default time window: offer the whole time
-    if (nargin < 3) || isempty(defTimeWindow)
-        defTimeWindow = maxTimeWindow;
+% USAGE:  [TimeWindow, isUpdatedTime] = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow=[maxTimeWindow], timeUnit=[detect], rawTimeWindow=[])
+%         [TimeWindow, isUpdatedTime] = InputTimeWindow(maxTimeWindow, Comment)
+function [TimeWindow, isUpdatedTime] = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow, timeUnit, rawTimeWindow) %#ok<DEFNU>
+    % Initialize returned value
+    isUpdatedTime = 0;
+    % No expandable time window
+    if (nargin < 5) || isempty(rawTimeWindow)
+        rawTimeWindow = [];
     end
     % No time units: use the maximum time window to define it
     if (nargin < 4) || isempty(timeUnit)
@@ -420,6 +422,10 @@ function TimeWindow = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow, tim
         else
             timeUnit = 'ms';
         end
+    end
+    % No default time window: offer the whole time
+    if (nargin < 3) || isempty(defTimeWindow)
+        defTimeWindow = maxTimeWindow;
     end
     % Get time factor
     if strcmpi(timeUnit, 's')
@@ -442,8 +448,26 @@ function TimeWindow = InputTimeWindow(maxTimeWindow, Comment, defTimeWindow, tim
         % Check values
         tStart = str2num(res{1}) ./ timeFactor;
         tStop = str2num(res{2}) ./ timeFactor;
+        % If the requested selection is not available in the current page
         if isempty(tStart) || isempty(tStop) || (tStart >= tStop) || (tStart < maxTimeWindow(1)-1e-6) || (tStop > maxTimeWindow(end)+1e-6)
-            java_dialog('warning', 'Invalid time window');
+            % If the requested selection is available in the file: adjust current page
+            if ~isempty(rawTimeWindow) && (tStart >= rawTimeWindow(1)-1e-6) && (tStop <= rawTimeWindow(end)+1e-6)
+                timeLength = tStop - tStart;
+                newWindow = [max(tStart - 0.1 * timeLength, rawTimeWindow(1)), ...
+                             min(tStop  + 0.1 * timeLength, rawTimeWindow(end))];
+                % Change time start AND duration
+                if (timeLength > maxTimeWindow(end) - maxTimeWindow(1))
+                    panel_record('SetStartTime', newWindow(1), [], 0);
+                    panel_record('SetTimeLength', newWindow(2)-newWindow(1), 1);
+                % Change time start only
+                else
+                    panel_record('SetStartTime', newWindow(1), [], 1);
+                end
+                validTime = 1;
+                isUpdatedTime = 1;
+            else
+                java_dialog('warning', 'Invalid time window.');
+            end
         else
             validTime = 1;
         end

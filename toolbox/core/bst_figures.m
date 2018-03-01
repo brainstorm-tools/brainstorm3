@@ -54,7 +54,7 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -165,7 +165,7 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
         % ==== CREATE FIGURE ====
         switch(FigureId.Type)
             case {'DataTimeSeries', 'ResultsTimeSeries'}
-                hFig =figure_timeseries ('CreateFigure', FigureId);
+                hFig = figure_timeseries ('CreateFigure', FigureId);
                 FigHandles = db_template('DisplayHandlesTimeSeries');
             case 'Topography'
                 hFig = figure_3d('CreateFigure', FigureId);
@@ -237,19 +237,27 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
     errMsg = [];
     selChan = [];
     % If no modality for the figure: return empty list of channels
-    if isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
+    Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+    if isempty(Modality)
         return;
+    end
+    % If "stat" modality: replace with the first display modality
+    if strcmpi(Modality, 'stat')
+        [tmp, dispMod] = channel_get_modalities(GlobalData.DataSet(iDS).Channel);
+        if ~isempty(dispMod)
+            Modality = dispMod{1};
+        end
     end
     % Get selected channels
     selChan = good_channel(GlobalData.DataSet(iDS).Channel, ...
                            GlobalData.DataSet(iDS).Measures.ChannelFlag, ...
-                           GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
+                           Modality);
     % If opening EEG/SEEG/ECOG topography or 3D view: exclude (0,0,0) points
-    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'EEG','SEEG','ECOG'})
+    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(Modality, {'EEG','SEEG','ECOG'})
         % Get the locations for all the channels
         chanLoc = {GlobalData.DataSet(iDS).Channel(selChan).Loc};
         % Detect the channels without location or at (0,0,0)
-        iChanZero = find(cellfun(@(c)(~isequal(size(c),[3,1]) | all(abs(c)<1e-5)), chanLoc));
+        iChanZero = find(~cellfun(@(c)(isequal(size(c),[3,1]) && any(abs(c)>=1e-5)), chanLoc));
         % Remove them from the list of available channels for this figure
         if ~isempty(iChanZero)
             % Display warning
@@ -262,10 +270,10 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
     % Make sure that something can be displayed in this figure
     if isempty(selChan) && ~isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
         % Get the channels again, but ignoring the bad channels
-        selChanAll = good_channel(GlobalData.DataSet(iDS).Channel, [], GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
+        selChanAll = good_channel(GlobalData.DataSet(iDS).Channel, [], Modality);
         % Display an error message, depending on the results of this request
         if ~isempty(selChanAll)
-            errMsg = ['Nothing to display: All the "' GlobalData.DataSet(iDS).Figure(iFig).Id.Modality '" channels are marked as bad or do not have 3D positions.'];
+            errMsg = ['Nothing to display: All the "' Modality '" channels are marked as bad or do not have 3D positions.'];
         else
             % THAT IS FINE TO SHOW DATA WITHOUT ANY CHANNEL
             %error(['There are no "' GlobalData.DataSet(iDS).Figure(iFig).Id.Modality '" channel in this channel file']);
@@ -468,7 +476,11 @@ function UpdateFigureName(hFig)
                             figureName = ['Sources: ' figureName];
                             imageFile = ['/' sStudy.Results(iFile).Comment];
                         case {'timefreq'}
-                            figureName = ['Connect: ' figureName];
+                            if isequal(FigureId.SubType, 'trialimage')
+                                figureName = ['Image: ' figureName];
+                            else
+                                figureName = ['Connect: ' figureName];
+                            end
                             imageFile = ['/' sStudy.Timefreq(iFile).Comment];
                         case 'matrix'
                             figureName = ['Matrix: ' figureName];
@@ -1246,7 +1258,7 @@ function hNewFig = CloneFigure(hFig)
     end
         
     % ===== 3D FIGURES =====
-    if strcmpi(FigureId.Type, '3DViz')
+    if strcmpi(FigureId.Type, '3DViz') || strcmpi(FigureId.Type, 'Topography')
         % Remove all children objects (axes are automatically created)
         delete(get(hNewFig, 'Children'));
         % Copy all the figure objects
@@ -1280,6 +1292,12 @@ function hNewFig = CloneFigure(hFig)
         % Update sensor markers and labels
         GlobalData.DataSet(iDS).Figure(iNewFig).Handles.hSensorMarkers = findobj(hNewAxes, 'tag', 'SensorMarker');
         GlobalData.DataSet(iDS).Figure(iNewFig).Handles.hSensorLabels  = findobj(hNewAxes, 'tag', 'SensorsLabels');
+        % Topography handles
+        if strcmpi(FigureId.Type, 'Topography')
+            GlobalData.DataSet(iDS).Figure(iNewFig).Handles.hSurf = findobj(hNewAxes, 'tag', get(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSurf, 'Tag'));
+            GlobalData.DataSet(iDS).Figure(iNewFig).Handles.Wmat        = GlobalData.DataSet(iDS).Figure(iFig).Handles.Wmat;
+            GlobalData.DataSet(iDS).Figure(iNewFig).Handles.DataMinMax  = GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax;
+        end
         % Delete scouts
         delete(findobj(hNewAxes, 'Tag', 'ScoutLabel'));
         delete(findobj(hNewAxes, 'Tag', 'ScoutMarker'));
@@ -1688,6 +1706,7 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                         if TsInfo.AutoScaleY
                             GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax = [];
                         end
+                        GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor = [];
                         isOk = figure_timeseries('PlotFigure', iDS, iFig, [], [], isFastUpdate);
                         % The figure could not be refreshed: close it
                         if ~isOk

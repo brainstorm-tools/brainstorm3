@@ -14,8 +14,9 @@ function varargout = panel_protocols(varargin)
 %        nodeFound = panel_protocols('SelectNode',          nodeRoot, FileName )
 %        nodeFound = panel_protocols('GetNode',             nodeType, iStudy, iFile )
 %        nodeFound = panel_protocols('GetNode',             FileName )
-%        nodeStudy = panel_protocols('SelectStudyNode',     nodeStudy ) % Select given 'study' tree node
-%        nodeStudy = panel_protocols('SelectStudyNode',     iStudy )    % Find 'study' tree node with studyIndex = iStudy and select it
+%        nodeStudy = panel_protocols('SelectStudyNode',     nodeStudy )  % Select given 'study' tree node
+%        nodeStudy = panel_protocols('SelectStudyNode',     iStudy )     % Find 'study' tree node with studyIndex = iStudy and select it
+%                    panel_protocols('SelectSubject',       SubjectName) % Select and expand subject node
 %                    panel_protocols('MarkUniqueNode',      bstNode)
 %      OutputFiles = panel_protocols('TreeHeadModel',       bstNode)
 %      OutputFiles = panel_protocols('TreeInverse',         bstNodes, is2014)
@@ -38,7 +39,7 @@ function varargout = panel_protocols(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -48,12 +49,17 @@ end
 function bstPanelNew = CreatePanel() %#ok<DEFNU>
     panelName = 'Protocols';
 
+    % Get scaling factor
+    InterfaceScaling = bst_get('InterfaceScaling');
+    % Get standard font
+    stdFont = bst_get('Font');
     % Creation of the exploration tree
-    jTreeProtocols = java_create('org.brainstorm.tree.BstTree');
+    jTreeProtocols = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100, stdFont.getSize(), stdFont.getFontName());
     jTreeProtocols.setEditable(1);
     jTreeProtocols.setToggleClickCount(3);
     jTreeProtocols.setBorder(javax.swing.BorderFactory.createEmptyBorder(5,5,5,0));
     jTreeProtocols.setLoading(1);
+    jTreeProtocols.setRowHeight(round(20 * InterfaceScaling / 100));
     % Configure selection model
     jTreeSelModel = jTreeProtocols.getSelectionModel();
     jTreeSelModel.setSelectionMode(jTreeSelModel.DISCONTIGUOUS_TREE_SELECTION);
@@ -1134,6 +1140,18 @@ function OutputFiles = TreeHeadModel( bstNodes ) %#ok<DEFNU>
     if ~isempty(sSubject.Anatomy)
         figure_mri('FiducialsValidation', sSubject.Anatomy(sSubject.iAnatomy).FileName);
     end
+    % Check that the default cortex is not the high resolution one
+    if ~isempty(sSubject.iCortex) && ~isempty(sSubject.Surface) && (sSubject.iCortex <= length(sSubject.Surface))
+        nVertices = sscanf(sSubject.Surface(sSubject.iCortex).Comment, 'cortex_%dV');
+        if (length(nVertices) == 1) && (nVertices > 100000) && ~java_dialog('confirm', sprintf([...
+                    '<HTML>Warning: The selected cortex surface has <FONT COLOR="#FF0000">%d vertices</FONT>.\n' ...
+                    'This resolution is very high and may cause memory issues in the source analysis.\n\n' ...
+                    'To use a cortex surface with a lower resolution: Click "No", go to the anatomy view\n' ...
+                    'and double-click on a surface with a lower resolution (eg. 15000V).\n\n' ...
+                    'Proceed with the high-resolution cortex surface?'], nVertices), 'High-resolution cortex')
+            return;
+        end
+    end
     % Call head modeler
     [OutputFiles, errMessage] = panel_headmodel('ComputeHeadModel', iChanStudies);
     % Error
@@ -1206,6 +1224,38 @@ function OutputFiles = TreeInverse(bstNodes, is2014) %#ok<DEFNU>
 end
 
 
-
+%% ===== SELECT SUBJECT =====
+function SelectSubject(SubjectName) %#ok<DEFNU>
+    % Check input subject name
+    if ~ischar(SubjectName) || isempty(SubjectName)
+        return;
+    end
+    % Get subject 
+    [sSubject, iSubject] = bst_get('Subject', SubjectName);
+    if isempty(sSubject)
+        return;
+    end
+    % Get exploration mode
+    ExplorationMode = bst_get('Layout', 'ExplorationMode');
+    % Select different nodes depending on the exploration mode
+    switch (ExplorationMode)
+        case 'Subjects'
+            % Select first MRI
+            if ~isempty(sSubject.Anatomy)
+                SelectNode([], 'anatomy', iSubject, 1);
+            else
+                SelectNode([], 'subject', iSubject, -1);
+            end
+        case {'StudiesCond', 'StudiesSubj'}
+            % Get all the studies for this subject
+            [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
+            % Select first study
+            if ~isempty(iStudies)
+                SelectStudyNode(iStudies(1));
+            else
+                SelectNode([], 'studysubject', -1, iSubject);
+            end
+    end
+end
 
 

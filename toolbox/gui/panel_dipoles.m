@@ -24,7 +24,7 @@ function varargout = panel_dipoles(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Elizabeth Bock, 2010-2016
+% Authors: Francois Tadel, Elizabeth Bock, 2010-2017
 
 eval(macro_method);
 end
@@ -39,11 +39,13 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     import org.brainstorm.list.*;
     
     % The the better JList height
-    JLIST_MAX_HEIGHT = 150;
-    LABEL_WIDTH    = 40;
-    SLIDER_WIDTH   = 5;
-    DEFAULT_HEIGHT = 22;
+    LABEL_WIDTH      = java_scaled('value', 40);
+    SLIDER_WIDTH     = java_scaled('value', 5);
+    DEFAULT_HEIGHT   = java_scaled('value', 22);
     LABEL_FONT = java.awt.Font('Arial', java.awt.Font.PLAIN, 9);
+    % Font size for the lists
+    fontSize = round(11 * bst_get('InterfaceScaling') / 100);
+    
     % Main panel container
     jPanelNew = java_create('javax.swing.JPanel');
     jPanelNew.setLayout(BoxLayout(jPanelNew, BoxLayout.PAGE_AXIS));
@@ -51,14 +53,13 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     % ===== PANEL: LOADED DIPOLES =====
     jPanelList = gui_component('Panel');
-    jPanelList.setPreferredSize(Dimension(100,JLIST_MAX_HEIGHT));
-    jPanelList.setMaximumSize(Dimension(500,JLIST_MAX_HEIGHT));    
-        jBorder = BorderFactory.createTitledBorder('Loaded dipoles');
-        jBorder.setTitleFont(bst_get('Font', 11));
+    jPanelList.setPreferredSize(java_scaled('dimension', 100, 150));
+    jPanelList.setMaximumSize(java_scaled('dimension', 500, 150));    
+        jBorder = java_scaled('titledborder', 'Loaded dipoles');
         jPanelList.setBorder(jBorder);
         % Groups
         jListDipoles = JList();
-        jListDipoles.setCellRenderer(BstStringListRenderer);
+        jListDipoles.setCellRenderer(BstStringListRenderer(fontSize));
         java_setcb(jListDipoles, 'ValueChangedCallback', @DipolesListValueChanged_Callback, ...
                                  'KeyPressedCallback',   @DipolesListKeyTyped_Callback);
         jPanelScrollList = JScrollPane();
@@ -67,7 +68,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jPanelScrollList.setBorder([]);
         % Subsets
         jListSubsets = JList();
-        jListSubsets.setCellRenderer(BstStringListRenderer);
+        jListSubsets.setCellRenderer(BstStringListRenderer(fontSize));
         java_setcb(jListSubsets, 'ValueChangedCallback', @SubsetsListValueChanged_Callback, ...
                                  'MouseClickedCallback', @SubsetsListValueChanged_Callback, ...
                                  'KeyPressedCallback',   @DipolesListKeyTyped_Callback);

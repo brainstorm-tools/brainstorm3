@@ -40,7 +40,7 @@ if isdir(BrainstormDbDir)
 end
 mkdir(BrainstormDbDir);
 % Start Brainstorm with GUI
-bst_startup(BrainstormHomeDir, 0, 0, BrainstormDbDir);
+bst_startup(BrainstormHomeDir, 0, BrainstormDbDir);
 
 % Initialize random generator
 rng('default');

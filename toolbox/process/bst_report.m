@@ -200,7 +200,7 @@ function Snapshot(SnapType, FileName, Comment, varargin)
     end
     % Hide scouts
     ScoutsOptions = panel_scout('GetScoutsOptions');
-    if ~strcmpi(ScoutsOptions.showSelection, 'none')
+    if ~isempty(ScoutsOptions) && ~strcmpi(ScoutsOptions.showSelection, 'none')
         panel_scout('SetScoutShowSelection', 'none');
     end
                 
@@ -530,7 +530,7 @@ function Snapshot(SnapType, FileName, Comment, varargin)
         end
     end
     % Restore scouts
-    if ~strcmpi(ScoutsOptions.showSelection, 'none')
+    if ~isempty(ScoutsOptions) && ~strcmpi(ScoutsOptions.showSelection, 'none')
         panel_scout('SetScoutShowSelection', ScoutsOptions.showSelection);
     end
     % Restore Brainstorm window

@@ -34,7 +34,7 @@ function varargout = figure_timeseries( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2017; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -69,11 +69,14 @@ function hFig = CreateFigure(FigureId)
                   'WindowButtonDownFcn',      @FigureMouseDownCallback, ...
                   'WindowButtonUpFcn',        @FigureMouseUpCallback, ...
                   bst_get('ResizeFunction'),  @ResizeCallback);
-    % Define Mouse wheel callback separately (not supported by old versions of Matlab)
+    % Define some mouse callbacks separately (not supported by old versions of Matlab)
     if isprop(hFig, 'WindowScrollWheelFcn')
         set(hFig, 'WindowScrollWheelFcn',  @FigureMouseWheelCallback);
     end
-
+    if isprop(hFig, 'WindowKeyPressFcn') && isprop(hFig, 'WindowKeyReleaseFcn')
+        set(hFig, 'WindowKeyPressFcn',    @WindowKeyPressedCallback, ...
+                  'WindowKeyReleaseFcn',  @WindowKeyReleaseCallback);
+    end
     % Prepare figure appdata
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'isPlotEditToolbar', 0);
@@ -83,6 +86,7 @@ function hFig = CreateFigure(FigureId)
     setappdata(hFig, 'isStaticFreq', 1);
     setappdata(hFig, 'Colormap', db_template('ColormapInfo'));
     setappdata(hFig, 'MovingTimeBar', 0);
+    setappdata(hFig, 'MovingTimeBarAction', []);
 end
 
 
@@ -368,16 +372,28 @@ function FigureMouseDownCallback(hFig, ev)
             if ((~strcmpi(MouseStatus, 'alt') || 1) || (get(hObj, 'LineWidth') > 1))
                 noMoveAction = @()LineClickedCallback(hObj);
             end
-        case 'AxesRawTimeBar'
-            % Raw time bar: change time window
+        case 'AxesRawTimeBar'   % Raw time bar: change time window
             timePos = get(hObj, 'CurrentPoint');
             timePos = timePos(1,1) - (GlobalData.UserTimeWindow.Time(2)-GlobalData.UserTimeWindow.Time(1)) / 2;
             panel_record('SetStartTime', timePos);
             return;
-        case 'UserTime'
-            % Raw time marker patch: ignore click
-            setappdata(hFig, 'MovingTimeBar', hObj);
+        case 'UserTime'   % Raw time marker patch: start moving or resizing
+            % Get time
             hAxes = get(hObj, 'Parent');
+            timePos = get(hAxes, 'CurrentPoint');
+            rawTime = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
+            % If click is close to beginning of current page
+            if (abs(timePos(1) - GlobalData.UserTimeWindow.Time(1)) / (rawTime(2)-rawTime(1))) < 0.002
+                set(hFig, 'Pointer', 'left');
+                setappdata(hFig, 'MovingTimeBarAction', 'start');
+            elseif (abs(timePos(1) - GlobalData.UserTimeWindow.Time(2)) / (rawTime(2)-rawTime(1))) < 0.002
+                set(hFig, 'Pointer', 'right');
+                setappdata(hFig, 'MovingTimeBarAction', 'stop');
+            else
+                set(hFig, 'Pointer', 'fleur');
+                setappdata(hFig, 'MovingTimeBarAction', 'move');
+            end
+            setappdata(hFig, 'MovingTimeBar', hObj);
         case {'TimeSelectionPatch', 'TimeZeroLine', 'Cursor', 'TextCursor', 'GFP', 'GFPTitle'}
             hAxes = get(hObj, 'Parent');
         case 'legend'
@@ -435,12 +451,15 @@ function FigureMouseDownCallback(hFig, ev)
             else
                 setappdata(hFig, 'GraphSelection', []);
             end
+            % set(hFig, 'Pointer', 'ibeam');
         % CTRL+Mouse, or Mouse right
         case 'alt'
             clickAction = 'gzoom';
+            set(hFig, 'Pointer', 'top');
         % SHIFT+Mouse
         case 'extend'
             clickAction = 'pan';
+            set(hFig, 'Pointer', 'fleur');
         % DOUBLE CLICK
         case 'open'
             ResetViewLinked(hFig);
@@ -485,21 +504,7 @@ function FigureMouseMoveCallback(hFig, event)
     % Switch between different actions (Pan, Rotate, Contrast)
     switch(clickAction)                          
         case 'pan'
-            % Get initial XLim and YLim
-            XLimInit = getappdata(hAxes, 'XLimInit');
-            YLimInit = getappdata(hAxes, 'YLimInit');
-            % Move view along X axis
-            XLim = get(hAxes, 'XLim');
-            XLim = XLim - (XLim(2) - XLim(1)) * motionFigure(1);
-            XLim = bst_saturate(XLim, XLimInit, 1);
-            set(hAxes, 'XLim', XLim);
-            % Move view along Y axis
-            YLim = get(hAxes, 'YLim');
-            YLim = YLim - (YLim(2) - YLim(1)) * motionFigure(2);
-            YLim = bst_saturate(YLim, YLimInit, 1);
-            set(hAxes, 'YLim', YLim);
-            % Update raw events bar xlim
-            UpdateRawXlim(hFig, XLim);
+            FigurePan(hFig, motionFigure);
             
         case 'selection'
             % Get time selection
@@ -517,15 +522,26 @@ function FigureMouseMoveCallback(hFig, event)
                 % Get current mouse time position
                 xMouse = get(hAxes, 'CurrentPoint');
                 xMouse = xMouse(1);
-                startBar = xMouse - (GraphSelection(1) - GlobalData.UserTimeWindow.Time(1));
-                % Get previous bar position
-                xBar = startBar + [0, 1, 1, 0] * (xBar(2)-xBar(1));
-                % Block in the XLim bounds
+                % Get axes limits
                 XLim = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
-                if (min(xBar) < XLim(1))
-                    xBar = xBar - min(xBar) + XLim(1);
-                elseif (max(xBar) > XLim(2))
-                    xBar = xBar - max(xBar) + XLim(2);
+                minLen = 50 .* GlobalData.UserTimeWindow.SamplingRate;
+                % Modification  depends on the action to perform
+                switch getappdata(hFig, 'MovingTimeBarAction')
+                    case 'move'
+                        startBar = xMouse - (GraphSelection(1) - GlobalData.UserTimeWindow.Time(1));
+                        xBar = startBar + [0, 1, 1, 0] * (xBar(2)-xBar(1));
+                        % Block in the XLim bounds
+                        if (min(xBar) < XLim(1))
+                            xBar = xBar - min(xBar) + XLim(1);
+                        elseif (max(xBar) > XLim(2))
+                            xBar = xBar - max(xBar) + XLim(2);
+                        end
+                    case 'start'
+                        xBar([1,4]) = max(XLim(1), xMouse);
+                        xBar([1,4]) = min(xBar(2)-minLen, xBar([1,4]));
+                    case 'stop'
+                        xBar([2,3]) = min(XLim(2), xMouse);
+                        xBar([2,3]) = max(xBar(1)+minLen, xBar([2,3]));
                 end
                 % Update bar
                 set(MovingTimeBar, 'XData', xBar);
@@ -545,11 +561,16 @@ function FigureMouseUpCallback(hFig, event)
     hasMoved    = getappdata(hFig, 'hasMoved');
     MouseStatus = get(hFig, 'SelectionType');
     MovingTimeBar = getappdata(hFig, 'MovingTimeBar');
+    MovingTimeBarAction = getappdata(hFig, 'MovingTimeBarAction');
     noMoveAction = getappdata(hFig, 'noMoveAction');
     % Reset figure mouse fields
     setappdata(hFig, 'clickAction', '');
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'MovingTimeBar', 0);
+    setappdata(hFig, 'MovingTimeBarAction', []);
+    % Restore mouse pointer
+    set(hFig, 'Pointer', 'arrow');
+    drawnow;
     % Get axes handles
     hAxes = getappdata(hFig, 'clickSource');
     if isempty(hAxes) || ~ishandle(hAxes)
@@ -583,8 +604,14 @@ function FigureMouseUpCallback(hFig, event)
     elseif hasMoved && ~isequal(MovingTimeBar, 0)
         % Get time bar patch
         xBar = get(MovingTimeBar, 'XData');
-        % Set new start time to the beginning of the bar
-        panel_record('SetStartTime', xBar(1));
+        % Update current page
+        switch (MovingTimeBarAction)
+            case 'move'
+                panel_record('SetStartTime', xBar(1));
+            case {'start', 'stop'}
+                panel_record('SetStartTime', xBar(1), [], 0);
+                panel_record('SetTimeLength', xBar(2)-xBar(1), 1);
+        end
     % If time selection was defined: check if its length is non-zero
     elseif hasMoved
         GraphSelection = getappdata(hFig, 'GraphSelection');
@@ -641,13 +668,24 @@ end
 % USAGE:  SetTimeSelectionManual(hFig, newSelection)
 %         SetTimeSelectionManual(hFig)
 function SetTimeSelectionManual(hFig, newSelection)
+    global GlobalData;
+    % If raw viewer: allow redimensioning of current page
+    if ~isempty(GlobalData.FullTimeWindow) && ~isempty(GlobalData.FullTimeWindow.Epochs) && ~isempty(GlobalData.FullTimeWindow.CurrentEpoch)
+        rawTimeWindow = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
+    else
+        rawTimeWindow = [];
+    end
     % Get the time vector for this figure
     TimeVector = getappdata(hFig, 'TimeVector');
     % Ask for a time window
     if (nargin < 2) || isempty(newSelection)
-        newSelection = panel_time('InputTimeWindow', TimeVector([1,end]), 'Set time selection');
+        [newSelection, isUpdatedTime] = panel_time('InputTimeWindow', TimeVector([1,end]), 'Set time selection', [], [], rawTimeWindow);
         if isempty(newSelection)
             return
+        end
+        % Get the updated time vector
+        if isUpdatedTime
+            TimeVector = getappdata(hFig, 'TimeVector');
         end
     end
     % Select the closest point in time vector
@@ -808,7 +846,7 @@ end
 
 %% ===== FIGURE SCROLL =====
 function FigureScroll(hFig, ScrollCount, target)
-    % Convert scroll count to soom factor
+    % Convert scroll count to zoom factor
     if (ScrollCount < 0)
         Factor = 1 - ScrollCount ./ 10;   % ZOOM IN
     elseif (ScrollCount > 0)
@@ -845,32 +883,90 @@ end
 
 
 %% ===== FIGURE ZOOM =====
-function FigureZoom(hFig, direction, Factor)
+function FigureZoom(hFig, direction, Factor, center)
+    global GlobalData;
+    % Parse inputs
+    if (nargin < 4)
+        center = [];
+    end
     % Get list of axes in this figure
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
     % Possible directions
     switch lower(direction)
         case 'vertical'
+            % Get figure info
+            TsInfo = getappdata(hFig, 'TsInfo');
             % Process axes individually
             for i = 1:length(hAxes)
                 % Get current zoom factor
+                XLim = get(hAxes(i), 'XLim');
                 YLim = get(hAxes(i), 'YLim');
                 Ylength = YLim(2) - YLim(1);
-                % In case everything is positive: zoom from the bottom
-                if (YLim(1) >= 0)
-                    YLim = [YLim(1), YLim(1) + Ylength/Factor];
-                % Else: zoom from the middle
-                else
-                    Ycenter = (YLim(2) + YLim(1)) / 2;
-                    YLim = [Ycenter - Ylength/Factor/2, Ycenter + Ylength/Factor/2];
+                % Butterfly plot
+                if strcmpi(TsInfo.DisplayMode, 'butterfly')
+                    % In case everything is positive: zoom from the bottom
+                    if (YLim(1) >= 0)
+                        YLim = [YLim(1), YLim(1) + Ylength/Factor];
+                    % Else: zoom from the middle
+                    else
+                        Ycenter = (YLim(2) + YLim(1)) / 2;
+                        YLim = [Ycenter - Ylength/Factor/2, Ycenter + Ylength/Factor/2];
+                    end
+                % Column plot
+                elseif strcmpi(TsInfo.DisplayMode, 'column')
+                    % Get current point 
+                    curPt = get(hAxes(i), 'CurrentPoint');
+                    % If the cursor is in the image: Zoom from the cursor
+                    if ~isempty(center) || (curPt(1,1) >= XLim(1)) && (curPt(1,1) <= XLim(2)) && (curPt(1,2) >= YLim(1)) && (curPt(1,2) <= YLim(2))
+                        if ~isempty(center)
+                            Ycenter = center;
+                        else
+                            Ycenter = curPt(1,2);
+                        end
+                        Yratio = (Ycenter - YLim(1)) ./ Ylength;
+                        if (Ycenter - Ylength/Factor/2 < 0)
+                            YLim = [0, Ylength/Factor];
+                        elseif (Ycenter + Ylength/Factor/2 > 1)
+                            YLim = [1 - Ylength/Factor, 1];
+                        else
+                            YLim = [Ycenter - Ylength/Factor*Yratio, Ycenter + Ylength/Factor*(1-Yratio)];
+                        end
+                    % Otherwise: zoom from the bottom
+                    else
+                        YLim = [YLim(1), YLim(1) + Ylength/Factor];
+                    end
+                    % Restrict zoom
+                    YLim(1) = max(YLim(1), 0);
+                    YLim(2) = min(YLim(2), 1);
                 end
                 % Update zoom factor
                 set(hAxes(i), 'YLim', YLim);
                 % Set the time cursor height to the maximum of the display
                 hCursor = findobj(hAxes(i), '-depth', 1, 'Tag', 'Cursor');
-                set(hCursor, 'YData', YLim)
+                set(hCursor, 'YData', YLim);
+                % Set the selection rectangle dimensions to the maximum of the display
+                hTimeSelectionPatch = findobj(hAxes(i), '-depth', 1, 'Tag', 'TimeSelectionPatch');
+                if ~isempty(hTimeSelectionPatch)
+                    set(hTimeSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+                end
+                % Update amplitude bar (columns mode only)
+                if strcmpi(TsInfo.DisplayMode, 'column')
+                    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+                    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum') 
+                        UpdateScaleBar(iDS, iFig, TsInfo);
+                    end
+                end
             end
         case 'horizontal'
+            % Start by displaying the full resolution if necessary
+            [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+            if (GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor > 1)
+                set(hFig, 'Pointer', 'watch');
+                drawnow;
+                GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor = 1;
+                figure_timeseries('PlotFigure', iDS, iFig, [], [], 1);
+                set(hFig, 'Pointer', 'arrow');
+            end
             % Get current time frame
             hCursor = findobj(hAxes(1), '-depth', 1, 'Tag', 'Cursor');
             Xcurrent = get(hCursor, 'XData');
@@ -895,6 +991,43 @@ function FigureZoom(hFig, direction, Factor)
 end
 
 
+%% ===== FIGURE PAN =====
+function FigurePan(hFig, motion)
+    % Get list of axes in this figure
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
+    % Displacement in X
+    if (motion(1) ~= 0)
+        % Get initial and current XLim
+        XLimInit = getappdata(hAxes, 'XLimInit');
+        XLim = get(hAxes, 'XLim');
+        % Move view along X axis
+        XLim = XLim - (XLim(2) - XLim(1)) * motion(1);
+        XLim = bst_saturate(XLim, XLimInit, 1);
+        set(hAxes, 'XLim', XLim);
+        % Update raw events bar xlim
+        UpdateRawXlim(hFig, XLim);
+    end
+    % Displacement in Y
+    if (motion(2) ~= 0)
+        % Get initial and current YLim
+        YLimInit = getappdata(hAxes, 'YLimInit');
+        YLim = get(hAxes, 'YLim');
+        % Move view along Y axis
+        YLim = YLim - (YLim(2) - YLim(1)) * motion(2);
+        YLim = bst_saturate(YLim, YLimInit, 1);
+        set(hAxes, 'YLim', YLim);
+        % Set the time cursor height to the maximum of the display
+        hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
+        set(hCursor, 'YData', YLim)
+        % Set the selection rectangle dimensions to the maximum of the display
+        hTimeSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'TimeSelectionPatch');
+        if ~isempty(hTimeSelectionPatch)
+            set(hTimeSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+        end
+    end
+end
+
+
 %% ===== RESET VIEW: LINKED =====
 function ResetViewLinked(hFig)
     % Get all the time-series figures
@@ -910,6 +1043,7 @@ end
 
 %% ===== RESET VIEW =====
 function ResetView(hFig)
+    global GlobalData;
     % Get list of axes in this figure
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
     % Loop the different axes
@@ -925,6 +1059,13 @@ function ResetView(hFig)
     end
     % Update raw events bar xlim
     UpdateRawXlim(hFig);
+    % Get figure handles
+    TsInfo = getappdata(hFig, 'TsInfo');
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    % Update scale bar (not for spectrum figures)
+    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum') && strcmpi(TsInfo.DisplayMode, 'column')
+        UpdateScaleBar(iDS, iFig, TsInfo);
+    end
 end
 
 
@@ -1035,26 +1176,44 @@ function ResizeCallback(hFig, ev)
     hButtonFlipY     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonFlipY');
     hButtonZoomTimePlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus');
     hButtonZoomTimeMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus');
+    hButtonSetScaleLog   = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
+    hButtonShowGrids     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
+    hButtonZoomUp        = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomUp');
+    hButtonZoomPlus      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomPlus');
+    hButtonZoomMinus     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomMinus');
+    hButtonZoomDown      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomDown');
+    
     % Update gain buttons
     butSize = 22;
-    if ~isempty(hButtonGainMinus)
-        set(hButtonGainMinus, 'Position', [figPos(3)-butSize-1, 45, butSize, butSize]);
-        set(hButtonGainPlus,  'Position', [figPos(3)-butSize-1, 70, butSize, butSize]);
-    end
-    if ~isempty(hButtonAutoScale)
-        set(hButtonAutoScale, 'Position', [figPos(3)-butSize-1, 110, butSize, butSize]);
-    end
-    if ~isempty(hButtonSetScaleY)
-        set(hButtonSetScaleY, 'Position', [figPos(3)-butSize-1, 135, butSize, butSize]);
-    end
-    if ~isempty(hButtonFlipY)
-        set(hButtonFlipY,  'Position', [figPos(3)-butSize-1, 160, butSize, butSize]);
-    end
     if ~isempty(hButtonZoomTimePlus)
         set(hButtonZoomTimePlus,   'Position', [figPos(3) - 65, 3, butSize, butSize]);
         set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 40, 3, butSize, butSize]);
     end
-
+    if ~isempty(hButtonGainMinus)
+        set(hButtonGainMinus, 'Position', [figPos(3)-butSize-1, 45, butSize, butSize]);
+        set(hButtonGainPlus,  'Position', [figPos(3)-butSize-1, 67, butSize, butSize]);
+    end
+    if ~isempty(hButtonShowGrids)
+        set(hButtonShowGrids,  'Position', [figPos(3)-butSize-1, 116, butSize, butSize]);
+    end
+    if ~isempty(hButtonAutoScale)
+        set(hButtonAutoScale, 'Position', [figPos(3)-butSize-1, 138, butSize, butSize]);
+    end
+    if ~isempty(hButtonSetScaleLog)
+        set(hButtonSetScaleLog,  'Position', [figPos(3)-butSize-1, 138, butSize, butSize]);
+    end
+    if ~isempty(hButtonSetScaleY)
+        set(hButtonSetScaleY, 'Position', [figPos(3)-butSize-1, 162, butSize, butSize]);
+    end
+    if ~isempty(hButtonFlipY)
+        set(hButtonFlipY,  'Position', [figPos(3)-butSize-1, 184, butSize, butSize]);
+    end
+    if ~isempty(hButtonZoomUp)
+        set(hButtonZoomUp,    'Position', [figPos(3)-butSize-1, 299, butSize, butSize]);
+        set(hButtonZoomPlus,  'Position', [figPos(3)-butSize-1, 277, butSize, butSize]);
+        set(hButtonZoomMinus, 'Position', [figPos(3)-butSize-1, 255, butSize, butSize]);
+        set(hButtonZoomDown,  'Position', [figPos(3)-butSize-1, 233, butSize, butSize]);
+    end
     % ===== REPOSITION SCALE BAR =====
     hColumnScale = findobj(hFig, '-depth', 1, 'Tag', 'AxesColumnScale');
     if ~isempty(hColumnScale)
@@ -1211,6 +1370,17 @@ function FigureKeyPressedCallback(hFig, ev)
                 elseif isMenuSelectedChannels && isFullDataFile
                     newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
                     newChannelFlag(iSelectedRows) = newValue;
+                    % Display warning for bipolar SEEG montages
+                    if ~isempty(TsInfo.MontageName) && ~isempty(strfind(TsInfo.MontageName, 'bipolar'))
+                        if ~java_dialog('confirm', [...
+                                'Marking one bad signal with a bipolar montage will mark two channels as bad.' 10 ...
+                                'This may cause more than one signal to disappear from this display.' 10 ...
+                                'To mark the bad channels individually, select the montage "All channels" first.' 10 10 ...
+                                'Mark ' num2str(length(iSelectedRows)) ' channels as bad?' 10 ...
+                                sprintf('%s ', GlobalData.DataSet(iDS).Channel(iSelectedRows).Name)], 'Bad channels')
+                            return;
+                        end
+                    end
                 end
                 % Save new channel flag
                 panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
@@ -1271,6 +1441,19 @@ function FigureKeyPressedCallback(hFig, ev)
     end
 end
 
+%% ===== CHANGE CURSOR WITH MODIFIERS =====
+function WindowKeyPressedCallback(hFig, ev)
+    switch (ev.Key)
+        case 'shift'
+            set(hFig, 'Pointer', 'ibeam');
+        case 'control'
+            set(hFig, 'Pointer', 'top');
+    end
+end
+function WindowKeyReleaseCallback(hFig, ev)
+    set(hFig, 'Pointer', 'arrow');
+end
+
 
 %% ===== UPDATE TIME SERIES FACTOR =====
 function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
@@ -1312,9 +1495,15 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
             end
             % Update factor value
             GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxes).DisplayFactor = Handles(iAxes).DisplayFactor * changeFactor;
-        % Else: Zoom/unzoom vertically in the graph
+        % Butterfly: Zoom/unzoom vertically in the graph
         else
             FigureZoom(hFig, 'vertical', changeFactor);
+            % If auto-scale is disabled: Update DataMinMax to keep it hen scrolling
+            if ~TsInfo.AutoScaleY
+                for iAxe = 1:length(GlobalData.DataSet(iDS).Figure(iFig).Handles)
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax = GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax ./ changeFactor;
+                end
+            end
         end
     end
     % Update default factor in the figure
@@ -1325,7 +1514,7 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
         SetDefaultFactor(iDS, iFig, changeFactor);
     end
     % Update scale bar (not for spectrum figures)
-    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
+    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum') && strcmpi(TsInfo.DisplayMode, 'column')
         UpdateScaleBar(iDS, iFig, TsInfo);
     end
 end
@@ -1525,6 +1714,26 @@ function [RowNames, iRows] = GetFigSelectedRows(hFig, AllRows)
                 iRows = [iRows, find(strcmpi(RowNamesNoSpace{i}, AllRowsNoSpace))];
             end
         end
+        % If the sensors where not found: try to use the current montage
+        if isempty(iRows)
+            TsInfo = getappdata(hFig, 'TsInfo');
+            if ~isempty(TsInfo.MontageName)
+                % Get montage
+                sMontage = panel_montage('GetMontage', TsInfo.MontageName);
+                % Find rows in montage
+                iMontageChan = [];
+                for i = 1:length(RowNamesNoSpace)
+                    iMontageDisp = find(strcmpi(RowNamesNoSpace{i}, sMontage.DispNames));
+                    if ~isempty(iMontageDisp) && (nnz(sMontage.Matrix(iMontageDisp,:)) <= 3)
+                        iMontageChan = union(iMontageChan, find(sMontage.Matrix(iMontageDisp,:)));
+                    end
+                end
+                % Find montage channels in current dataset
+                for i = 1:length(iMontageChan)
+                    iRows = [iRows, find(strcmpi(sMontage.ChanNames{iMontageChan(i)}, AllRowsNoSpace))];
+                end
+            end
+        end
     end
 end
 
@@ -1717,11 +1926,11 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
     % Menu title
     if ~isempty(menuTitle) || ~isempty(dateTitle)
         if ~isempty(menuTitle) && ~isempty(dateTitle)
-            jTitle = gui_component('Label', jPopup, [], ['<HTML><B>' menuTitle '</B></HTML>'], [], [], [], []);
+            jTitle = gui_component('Label', jPopup, [], ['<HTML><B>' menuTitle '</B></HTML>']);
         elseif ~isempty(menuTitle)
-            jTitle = gui_component('Label', jPopup, [], ['<HTML><B>' menuTitle '</B></HTML>'], [], [], [], []);
+            jTitle = gui_component('Label', jPopup, [], ['<HTML><B>' menuTitle '</B></HTML>']);
         else
-            jTitle = gui_component('Label', jPopup, [], ['<HTML><FONT COLOR="#707070">' dateTitle '</HTML>'], [], [], [], []);
+            jTitle = gui_component('Label', jPopup, [], ['<HTML><FONT COLOR="#707070">' dateTitle '</HTML>']);
         end
         jTitle.setBorder(javax.swing.BorderFactory.createEmptyBorder(5,35,0,0));
         jPopup.addSeparator();
@@ -1743,7 +1952,7 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
             ff = VideoTime - hh * 1e6 - mm * 1e4 - ss * 1e2;
             strVideo = sprintf('%02d:%02d:%02d(%02d)', hh, mm, ss, ff);
             % Show/set video time
-            jItem = gui_component('MenuItem', jPopup, [], ['<HTML>Video time &nbsp;&nbsp;&nbsp;<FONT color=#7F7F7F>[' strVideo ']</FONT>'], IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)panel_record('JumpToVideoTime', hFig, VideoTime), []);
+            jItem = gui_component('MenuItem', jPopup, [], ['<HTML>Video time &nbsp;&nbsp;&nbsp;<FONT color=#7F7F7F>[' strVideo ']</FONT>'], IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)panel_record('JumpToVideoTime', hFig, VideoTime));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, KeyEvent.CTRL_MASK));
             jPopup.addSeparator();
         end
@@ -1753,18 +1962,18 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
     % If an event structure is defined
     if ~isempty(GlobalData.DataSet(iDS).Measures.sFile)
         % Add / delete event
-        jItem = gui_component('MenuItem', jPopup, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)panel_record('ToggleEvent'), []);
+        jItem = gui_component('MenuItem', jPopup, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)panel_record('ToggleEvent'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
         % Only for RAW files
         if isRaw
             % Reject time segment
-            jItem = gui_component('MenuItem', jPopup, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)panel_record('RejectTimeSegment'), []);
+            jItem = gui_component('MenuItem', jPopup, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)panel_record('RejectTimeSegment'));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_MASK));
             jPopup.addSeparator();
             % Previous / next event
-            jItem = gui_component('MenuItem', jPopup, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)panel_record('JumpToEvent', 'leftarrow'), []);
+            jItem = gui_component('MenuItem', jPopup, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)panel_record('JumpToEvent', 'leftarrow'));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, KeyEvent.SHIFT_MASK));
-            jItem = gui_component('MenuItem', jPopup, [], 'Jump to next event', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)panel_record('JumpToEvent', 'rightarrow'), []);
+            jItem = gui_component('MenuItem', jPopup, [], 'Jump to next event', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)panel_record('JumpToEvent', 'rightarrow'));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, KeyEvent.SHIFT_MASK));
         end
         jPopup.addSeparator();
@@ -1776,11 +1985,11 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
     isSource = ismember(Modality, {'results', 'timefreq', 'stat', 'none'});
     if ~isempty(Modality) && (Modality(1) ~= '$') && ~isSource
         % === View TOPOGRAPHY ===
-        jItem = gui_component('MenuItem', jPopup, [], 'View topography', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_figures('ViewTopography', hFig), []);
+        jItem = gui_component('MenuItem', jPopup, [], 'View topography', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_figures('ViewTopography', hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));   
         % === View SOURCES ===
         if ~isempty(sStudy.Result)
-            jItem = gui_component('MenuItem', jPopup, [], 'View sources', IconLoader.ICON_RESULTS, [], @(h,ev)bst_figures('ViewResults', hFig), []);
+            jItem = gui_component('MenuItem', jPopup, [], 'View sources', IconLoader.ICON_RESULTS, [], @(h,ev)bst_figures('ViewResults', hFig));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
         end
         jPopup.addSeparator();
@@ -1791,15 +2000,15 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
         % === SET TRIAL GOOD/BAD ===
         if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'recordings')
             if (sStudy.Data(iData).BadTrial == 0)
-                jItem = gui_component('MenuItem', jPopup, [], 'Reject trial', IconLoader.ICON_BAD, [], @(h,ev)process_detectbad('SetTrialStatus', DataFile, 1), []);
+                jItem = gui_component('MenuItem', jPopup, [], 'Reject trial', IconLoader.ICON_BAD, [], @(h,ev)process_detectbad('SetTrialStatus', DataFile, 1));
             else
-                jItem = gui_component('MenuItem', jPopup, [], 'Accept trial', IconLoader.ICON_GOOD, [], @(h,ev)process_detectbad('SetTrialStatus', DataFile, 0), []);
+                jItem = gui_component('MenuItem', jPopup, [], 'Accept trial', IconLoader.ICON_GOOD, [], @(h,ev)process_detectbad('SetTrialStatus', DataFile, 0));
             end
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_MASK));
         end    
 
         % Create figures menu
-        jMenuSelected = gui_component('Menu', jPopup, [], 'Channels', IconLoader.ICON_CHANNEL, [], [], []);
+        jMenuSelected = gui_component('Menu', jPopup, [], 'Channels', IconLoader.ICON_CHANNEL);
         [SelectedRows, iSelectedRows] = GetFigSelectedRows(hFig, {GlobalData.DataSet(iDS).Channel.Name});
         % Excludes figures without selection and display-only figures (modality name starts with '$')
         if ~isempty(iSelectedRows) && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality) ...
@@ -1809,27 +2018,27 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
                 % === SET SELECTED AS GOOD CHANNELS ===
                 newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
                 newChannelFlag(iSelectedRows) = 1;
-                jItem = gui_component('MenuItem', jMenuSelected, [], 'Mark selected as good', IconLoader.ICON_GOOD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag), []);
+                jItem = gui_component('MenuItem', jMenuSelected, [], 'Mark selected as good', IconLoader.ICON_GOOD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_DELETE), 0)); % DEL
             % If displaying good channels
             elseif all(ismember(iSelectedRows, GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels))
                 % === VIEW TIME SERIES ===
-                jItem = gui_component('MenuItem', jMenuSelected, [], 'View selected', IconLoader.ICON_TS_DISPLAY, [], @(h, ev)DisplayDataSelectedChannels(iDS, SelectedRows, GlobalData.DataSet(iDS).Figure(iFig).Id.Modality), []);
+                jItem = gui_component('MenuItem', jMenuSelected, [], 'View selected', IconLoader.ICON_TS_DISPLAY, [], @(h, ev)DisplayDataSelectedChannels(iDS, SelectedRows, GlobalData.DataSet(iDS).Figure(iFig).Id.Modality));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_ENTER), 0)); % ENTER
                 % === SET SELECTED AS BAD CHANNELS ===
                 newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
                 newChannelFlag(iSelectedRows) = -1;
-                jItem = gui_component('MenuItem', jMenuSelected, [], 'Mark selected as bad', IconLoader.ICON_BAD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag), []);
+                jItem = gui_component('MenuItem', jMenuSelected, [], 'Mark selected as bad', IconLoader.ICON_BAD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_DELETE), 0)); % DEL
                 % === SET NON-SELECTED AS BAD CHANNELS ===
                 newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
                 newChannelFlag(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) = -1;
                 newChannelFlag(iSelectedRows) = 1;
-                jItem = gui_component('MenuItem', jMenuSelected, [], 'Mark non-selected as bad', IconLoader.ICON_BAD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag), []);
+                jItem = gui_component('MenuItem', jMenuSelected, [], 'Mark non-selected as bad', IconLoader.ICON_BAD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, KeyEvent.SHIFT_MASK));
             end
             % === RESET SELECTION ===
-            jItem = gui_component('MenuItem', jMenuSelected, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h, ev)bst_figures('SetSelectedRows',[]), []);
+            jItem = gui_component('MenuItem', jMenuSelected, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h, ev)bst_figures('SetSelectedRows',[]));
             jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_ESCAPE), 0)); % ESCAPE
         end
         % Separator if previous items
@@ -1839,33 +2048,33 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
 
         % ==== MARK ALL CHANNELS AS GOOD ====
         ChannelFlagGood = ones(size(GlobalData.DataSet(iDS).Measures.ChannelFlag));
-        jItem = gui_component('MenuItem', jMenuSelected, [], 'Mark all channels as good', IconLoader.ICON_GOOD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', DataFile, ChannelFlagGood), []);
+        jItem = gui_component('MenuItem', jMenuSelected, [], 'Mark all channels as good', IconLoader.ICON_GOOD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', DataFile, ChannelFlagGood));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, KeyEvent.SHIFT_MASK));
         % ==== EDIT CHANNEL FLAG =====
-        gui_component('MenuItem', jMenuSelected, [], 'Edit good/bad channels...', IconLoader.ICON_GOODBAD, [], @(h,ev)gui_edit_channelflag(DataFile), []);
+        gui_component('MenuItem', jMenuSelected, [], 'Edit good/bad channels...', IconLoader.ICON_GOODBAD, [], @(h,ev)gui_edit_channelflag(DataFile));
     end
     
     % ==== MENU: MONTAGE ====
     if ~isSource && ~isempty(Modality) && (Modality(1) ~= '$') && (isempty(TsInfo) || isempty(TsInfo.RowNames))
-        jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE, [], [], []);
+        jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE);
         panel_montage('CreateFigurePopupMenu', jMenuMontage, hFig);
     end
     
     % ==== MENU: NAVIGATION ====
     if ~isSource && ~isRaw && ~isempty(DataFile)
-        jMenuNavigator = gui_component('Menu', jPopup, [], 'Navigator', IconLoader.ICON_NEXT_SUBJECT, [], [], []);
+        jMenuNavigator = gui_component('Menu', jPopup, [], 'Navigator', IconLoader.ICON_NEXT_SUBJECT);
         bst_navigator('CreateNavigatorMenu', jMenuNavigator);
     end
     
     % ==== MENU: SELECTION ====
-    jMenuSelection = gui_component('Menu', jPopup, [], 'Time selection', IconLoader.ICON_TS_SELECTION, [], [], []);
+    jMenuSelection = gui_component('Menu', jPopup, [], 'Time selection', IconLoader.ICON_TS_SELECTION);
     % Move time sursor
     if ~isempty(curTime)
-        gui_component('MenuItem', jMenuSelection, [], 'Set current time   [Shift+Click]', [], [], @(h,ev)panel_time('SetCurrentTime', curTime), []);
+        gui_component('MenuItem', jMenuSelection, [], 'Set current time   [Shift+Click]', [], [], @(h,ev)panel_time('SetCurrentTime', curTime));
         jMenuSelection.addSeparator();
     end
     % Set selection
-    gui_component('MenuItem', jMenuSelection, [], 'Set selection manually...', IconLoader.ICON_TS_SELECTION, [], @(h,ev)SetTimeSelectionManual(hFig), []);
+    gui_component('MenuItem', jMenuSelection, [], 'Set selection manually...', IconLoader.ICON_TS_SELECTION, [], @(h,ev)SetTimeSelectionManual(hFig));
     % Get current time selection
     GraphSelection = getappdata(hFig, 'GraphSelection');
     isTimeSelection = ~isempty(GraphSelection) && ~isinf(GraphSelection(2));
@@ -1874,33 +2083,33 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
         % ONLY FOR ORIGINAL DATA FILES
         if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && (FigId.Modality(1) ~= '$') && ~isempty(DataFile)
             % === SAVE MEAN AS NEW FILE ===
-            gui_component('MenuItem', jMenuSelection, [], 'Average time', IconLoader.ICON_TS_NEW, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, 'Database', 'SelectedChannels', 'SelectedTime', 'TimeAverage'), []);
+            gui_component('MenuItem', jMenuSelection, [], 'Average time', IconLoader.ICON_TS_NEW, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, 'Database', 'SelectedChannels', 'SelectedTime', 'TimeAverage'));
             % === REJECT TIME SEGMENT ===
             if isRaw
-                jItem = gui_component('MenuItem', jMenuSelection, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)panel_record('RejectTimeSegment'), []);
+                jItem = gui_component('MenuItem', jMenuSelection, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)panel_record('RejectTimeSegment'));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_MASK));
             end
             % === EXPORT TO DATABASE ===
             jMenuSelection.addSeparator();
-            gui_component('MenuItem', jMenuSelection, [], 'Export to database', IconLoader.ICON_DATA, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, 'Database', 'SelectedChannels', 'SelectedTime'), []);
+            gui_component('MenuItem', jMenuSelection, [], 'Export to database', IconLoader.ICON_DATA, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, 'Database', 'SelectedChannels', 'SelectedTime'));
         end
 
         % === EXPORT TO FILE ===
-        gui_component('MenuItem', jMenuSelection, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, [], 'SelectedChannels', 'SelectedTime'), []);
+        gui_component('MenuItem', jMenuSelection, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, [], 'SelectedChannels', 'SelectedTime'));
         % === EXPORT TO MATLAB ===
-        gui_component('MenuItem', jMenuSelection, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, 'Variable', 'SelectedChannels', 'SelectedTime'), []);
+        gui_component('MenuItem', jMenuSelection, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, 'Variable', 'SelectedChannels', 'SelectedTime'));
     end
     
     % ==== MENU: SNAPSHOT ====
     jPopup.addSeparator();
-    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT, [], [], []);
+    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT);
         % === SAVE AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
         % === OPEN AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Figure'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Figure'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_MASK));
         jMenuSave.addSeparator();
         
@@ -1909,74 +2118,74 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
         LastUsedDirs = bst_get('LastUsedDirs');
         DefaultOutputDir = LastUsedDirs.ExportImage;
         % Output menu
-        gui_component('MenuItem', jMenuSave, [], 'Contact sheet', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'fig', DefaultOutputDir), []);
+        gui_component('MenuItem', jMenuSave, [], 'Contact sheet', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'fig', DefaultOutputDir));
         jMenuSave.addSeparator();
         
         % === EXPORT TO DATABASE ===
         if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && (FigId.Modality(1) ~= '$') && ~isempty(DataFile)
-            gui_component('MenuItem', jMenuSave, [], 'Export to database', IconLoader.ICON_DATA, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, 'Database', 'SelectedChannels'), []);
+            gui_component('MenuItem', jMenuSave, [], 'Export to database', IconLoader.ICON_DATA, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, 'Database', 'SelectedChannels'));
         end
         % === EXPORT TO FILE ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, [], 'SelectedChannels'), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, [], 'SelectedChannels'));
         % === EXPORT TO MATLAB ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, 'Variable', 'SelectedChannels'), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timeseries, hFig, 'Variable', 'SelectedChannels'));
 
     % ==== MENU: FIGURE ====    
-    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL, [], [], []);
+    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
         % === FIGURE CONFIG ===
         % Set fixed resolution
         if strcmpi(FigId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
         end
         % Normalize amplitudes
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Uniform figure scales', IconLoader.ICON_TS_SYNCRO, [], @(h,ev)panel_record('UniformTimeSeries_Callback',h,ev), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Uniform figure scales', IconLoader.ICON_TS_SYNCRO, [], @(h,ev)panel_record('UniformTimeSeries_Callback',h,ev));
         jItem.setSelected(bst_get('UniformizeTimeSeriesScales'));
         % Normalize amplitudes
         if strcmpi(FigId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Normalize signals', [], [], @(h,ev)SetNormalizeAmp(iDS, iFig, ~TsInfo.NormalizeAmp), []);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Normalize signals', [], [], @(h,ev)SetNormalizeAmp(iDS, iFig, ~TsInfo.NormalizeAmp));
             jItem.setSelected(TsInfo.NormalizeAmp);
         end
         % Legend
         jMenuFigure.addSeparator();
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend));
         jItem.setSelected(TsInfo.ShowLegend);
         % XGrid
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleProperty(hAxes, 'ShowXGrid'), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleProperty(hAxes, 'ShowXGrid'));
         jItem.setSelected(TsInfo.ShowXGrid);
         % YGrid
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowYGrid'), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowYGrid'));
         jItem.setSelected(TsInfo.ShowYGrid);
         % Change background color
         jMenuFigure.addSeparator();
-        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig), []);
+        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
         
         % === MATLAB CONTROLS ===
         jMenuFigure.addSeparator();
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
         jItem.setSelected(isMatlabCtrl);
         % Show plot edit toolbar
         isPlotEditToolbar = getappdata(hFig, 'isPlotEditToolbar');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig));
         jItem.setSelected(isPlotEditToolbar);
         % Dock figure
         isDocked = strcmpi(get(hFig, 'WindowStyle'), 'docked');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked));
         jItem.setSelected(isDocked);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, KeyEvent.CTRL_MASK)); 
         % Recordings
         if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && (FigId.Modality(1) ~= '$') && ~isempty(DataFile)
             jMenuFigure.addSeparator();
             % Copy figure properties
-            jItem = gui_component('MenuItem', jMenuFigure, [], 'Apply view to all figures', IconLoader.ICON_TS_SYNCRO, [], @(h,ev)CopyDisplayOptions(hFig, 1, 1), []);
+            jItem = gui_component('MenuItem', jMenuFigure, [], 'Apply view to all figures', IconLoader.ICON_TS_SYNCRO, [], @(h,ev)CopyDisplayOptions(hFig, 1, 1));
             jItem.setAccelerator(KeyStroke.getKeyStroke('=', 0));
-            jItem = gui_component('MenuItem', jMenuFigure, [], 'Apply montage to all figures', IconLoader.ICON_TS_SYNCRO, [], @(h,ev)CopyDisplayOptions(hFig, 1, 0), []);
+            jItem = gui_component('MenuItem', jMenuFigure, [], 'Apply montage to all figures', IconLoader.ICON_TS_SYNCRO, [], @(h,ev)CopyDisplayOptions(hFig, 1, 0));
             jItem.setAccelerator(KeyStroke.getKeyStroke('*', 0));
             % Clone figure
             jMenuFigure.addSeparator();
-            gui_component('MenuItem', jMenuFigure, [], 'Clone figure', IconLoader.ICON_COPY, [], @(h,ev)bst_figures('CloneFigure', hFig), []);
+            gui_component('MenuItem', jMenuFigure, [], 'Clone figure', IconLoader.ICON_COPY, [], @(h,ev)bst_figures('CloneFigure', hFig));
         end
     % Display Popup menu
     gui_popup(jPopup, hFig);
@@ -2265,7 +2474,10 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         end
         % Store initial XLim and YLim
         setappdata(hAxes(iAxes), 'XLimInit', get(hAxes(iAxes), 'XLim'));
-        setappdata(hAxes(iAxes), 'YLimInit', get(hAxes(iAxes), 'YLim'));
+        % When updating the figure: Keep the same zoom factor
+        if ~isFastUpdate
+            setappdata(hAxes(iAxes), 'YLimInit', get(hAxes(iAxes), 'YLim'));
+        end
     end
     % Resize here FOR MAC ONLY (don't now why, if not the display flickers)
     if strncmp(computer,'MAC',3)
@@ -2408,9 +2620,25 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         set(PlotHandles(1).hColumnScale, 'Visible', 'off');
         cla(PlotHandles(1).hColumnScale);
     end
+    if ~isfield(TsInfo, 'XScale')
+        TsInfo.XScale = 'linear';
+        setappdata(hFig, 'TsInfo', TsInfo);
+    else
+        set(hAxes, 'XScale', TsInfo.XScale);
+    end
     % Create scale buttons
     if ~isFastUpdate && isempty(findobj(hFig, 'Tag', 'ButtonGainPlus'))
         CreateScaleButtons(iDS, iFig);
+    else
+        hButtonZoom = [findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomUp'), ...
+                       findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomPlus'), ...
+                       findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomMinus'), ...
+                       findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomDown')];
+        if ~isempty(hButtonZoom) && strcmpi(TsInfo.DisplayMode, 'column') && strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries')
+            set(hButtonZoom, 'Visible', 'on');
+        else
+            set(hButtonZoom, 'Visible', 'off');
+        end
     end
     % Update sensor selection
     SelectedRowChangedCallback(iDS, iFig)
@@ -2480,6 +2708,26 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
         % Replace plot colors if available
         if ~isempty(MontageColors) && isempty(LinesColor)
             LinesColor = MontageColors;
+        end
+    end
+
+    % ===== DOWNSAMPLE TIME SERIES =====
+    % If optimization is disabled
+    if ~bst_get('DownsampleTimeSeries')
+        PlotHandles.DownsampleFactor = 1;
+    % Detect optimal downsample factor
+    elseif ~isFastUpdate || isempty(PlotHandles.DownsampleFactor)
+        % Get number of pixels in the axes
+        figPos = get(get(hAxes,'Parent'), 'Position');
+        % Keep 5 values per pixel
+        PlotHandles.DownsampleFactor = max(1, floor(length(TimeVector) / (figPos(3) -50) / 5));
+    end
+    % Downsample time series
+    if (PlotHandles.DownsampleFactor > 1)
+        TimeVector = TimeVector(1:PlotHandles.DownsampleFactor:end);
+        F = F(:,1:PlotHandles.DownsampleFactor:end);
+        if ~isempty(Std)
+            Std = Std(:,1:PlotHandles.DownsampleFactor:end);
         end
     end
 
@@ -2592,7 +2840,7 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
         set(hAxes, 'XGrid',      'on', ...
                    'XMinorGrid', 'on');
     end
-    if TsInfo.ShowYGrid
+    if TsInfo.ShowYGrid && ~strcmpi(TsInfo.DisplayMode, 'column')
         set(hAxes, 'YGrid',      'on', ...
                    'YMinorGrid', 'on');
     end
@@ -2933,8 +3181,10 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
                    'Yticklabel',     bst_flip(YtickLabel,1));
     end
     
-    % Set Y axis scale
-    set(hAxes, 'YLim', YLim);
+    % Set Y axis scale (updating: keeping the zoom factor)
+    if ~isFastUpdate
+        set(hAxes, 'YLim', YLim);
+    end
     % Set axis orientation
     set(hAxes, 'YDir', 'normal');
     % Remove axes legend for Y axis
@@ -3019,6 +3269,9 @@ function UpdateScaleBar(iDS, iFig, TsInfo)
     if isempty(PlotHandles.hColumnScale)
         return
     end
+    % Get axes zoom factor
+    YLim = get(PlotHandles.hAxes, 'YLim');
+    zoomFactor = YLim(2) - YLim(1);  % /(1-0)
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
     [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName );
@@ -3028,7 +3281,10 @@ function UpdateScaleBar(iDS, iFig, TsInfo)
     centerOffset = PlotHandles.ChannelOffsets(min(2,nChan)) + 1/(nChan+2)/2;
     % Plot bar for the maximum amplitude
     xBar = .3;
-    yBar = centerOffset + 1/(nChan+2) * [-0.5, 0.5];
+    yBar = centerOffset + 1/(nChan+2) * [-0.5, 0.5] / zoomFactor;
+    if (yBar(2) > 1)
+        yBar = yBar - yBar(2) + 1;
+    end
     lineX = [xBar,xBar; xBar-.1,xBar+.1; xBar-.1,xBar+.1]';
     lineY = [yBar(1),yBar(2); yBar(1),yBar(1); yBar(2),yBar(2)]';
     if ~isempty(PlotHandles.hColumnScaleBar) && all(ishandle(PlotHandles.hColumnScaleBar))
@@ -3070,8 +3326,11 @@ function CreateScaleButtons(iDS, iFig)
     TsInfo = getappdata(hFig, 'TsInfo');
     % Get figure background color
     bgColor = get(hFig, 'Color');
+    % Get fixed font
+    jFontDefault = bst_get('Font');
+    jFont = java.awt.Font(jFontDefault.getFamily(), java.awt.Font.PLAIN, 11);
     % Create scale buttons
-    jButton = javaArray('java.awt.Component', 6);
+    jButton = javaArray('java.awt.Component', 13);
     jButton(1) = javax.swing.JButton('^');
     jButton(2) = javax.swing.JButton('v');
     jButton(3) = javax.swing.JButton('...');
@@ -3079,13 +3338,20 @@ function CreateScaleButtons(iDS, iFig)
     jButton(5) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_FLIPY);
     jButton(6) = javax.swing.JButton('<');
     jButton(7) = javax.swing.JButton('>');
+    jButton(8) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_LOG);
+    jButton(9) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_MATRIX);
+    jButton(10) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_UP);
+    jButton(11) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_PLUS);
+    jButton(12) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_MINUS);
+    jButton(13) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_DOWN);
+    
     % Configure buttons
     for i = 1:length(jButton)
         jButton(i).setBackground(java.awt.Color(bgColor(1), bgColor(2), bgColor(3)));
         jButton(i).setFocusPainted(0);
         jButton(i).setFocusable(0);
         jButton(i).setMargin(java.awt.Insets(0,0,0,0));
-        jButton(i).setFont(bst_get('Font', 10));
+        jButton(i).setFont(jFont);
     end
     % Create Matlab objects
     [j1, h1] = javacomponent(jButton(1), [0, 0, .01, .01], hFig);
@@ -3095,21 +3361,40 @@ function CreateScaleButtons(iDS, iFig)
     [j5, h5] = javacomponent(jButton(5), [0, 0, .01, .01], hFig);
     [j6, h6] = javacomponent(jButton(6), [0, 0, .01, .01], hFig);
     [j7, h7] = javacomponent(jButton(7), [0, 0, .01, .01], hFig);
+    [j8, h8] = javacomponent(jButton(8), [0, 0, .01, .01], hFig);
+    [j9, h9] = javacomponent(jButton(9), [0, 0, .01, .01], hFig);
+    [j10, h10] = javacomponent(jButton(10), [0, 0, .01, .01], hFig);
+    [j11, h11] = javacomponent(jButton(11), [0, 0, .01, .01], hFig);
+    [j12, h12] = javacomponent(jButton(12), [0, 0, .01, .01], hFig);
+    [j13, h13] = javacomponent(jButton(13), [0, 0, .01, .01], hFig);
+    
     % Configure Gain buttons
-    set(h1, 'Tag', 'ButtonGainPlus',  'Units', 'pixels');
-    set(h2, 'Tag', 'ButtonGainMinus', 'Units', 'pixels');
-    set(h3, 'Tag', 'ButtonSetScaleY', 'Units', 'pixels');
-    set(h4, 'Tag', 'ButtonAutoScale', 'Units', 'pixels');
-    set(h5, 'Tag', 'ButtonFlipY',     'Units', 'pixels');
-    set(h6, 'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
-    set(h7, 'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
-    j1.setToolTipText('<HTML><TABLE><TR><TD>Increase gain (vertical zoom)</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B>');
-    j2.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain (vertical unzoom)</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B>');
+    set(h1,  'Tag', 'ButtonGainPlus',  'Units', 'pixels');
+    set(h2,  'Tag', 'ButtonGainMinus', 'Units', 'pixels');
+    set(h3,  'Tag', 'ButtonSetScaleY', 'Units', 'pixels');
+    set(h4,  'Tag', 'ButtonAutoScale', 'Units', 'pixels');
+    set(h5,  'Tag', 'ButtonFlipY',     'Units', 'pixels');
+    set(h6,  'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
+    set(h7,  'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
+    set(h8,  'Tag', 'ButtonSetScaleLog',   'Units', 'pixels');
+    set(h9,  'Tag', 'ButtonShowGrids',     'Units', 'pixels');
+    set(h10, 'Tag', 'ButtonZoomUp',        'Units', 'pixels');
+    set(h11, 'Tag', 'ButtonZoomPlus',      'Units', 'pixels');
+    set(h12, 'Tag', 'ButtonZoomMinus',     'Units', 'pixels');
+    set(h13, 'Tag', 'ButtonZoomDown',      'Units', 'pixels');
+    j1.setToolTipText('<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B></TD></TR></TABLE>');
+    j2.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B></TD></TR></TABLE>');
     j3.setToolTipText('Set scale manually');
     j4.setToolTipText('Auto-scale amplitude when changing page');
     j5.setToolTipText('<HTML><B>Flips the Y axis when displaying the recordings</B>:<BR><BR>Negative values are displayed oriented towards the top of the figures.');
-    j6.setToolTipText('<HTML><TABLE><TR><TD>Horizontal unzoom</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]');
-    j7.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]');
+    j6.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
+    j7.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
+    j8.setToolTipText('Set X scale to log scale');
+    j9.setToolTipText('Show grids');
+    j10.setToolTipText('<HTML><TABLE><TR><TD>Scroll up</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse up]<BR> &nbsp; [Middle click + Mouse up]</B></TD></TR></TABLE>');
+    j11.setToolTipText('<HTML><TABLE><TR><TD>Vertical zoom in</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>');
+    j12.setToolTipText('<HTML><TABLE><TR><TD>Vertical zoom out</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>');
+    j13.setToolTipText('<HTML><TABLE><TR><TD>Scroll down</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B></TD></TR></TABLE>');
     java_setcb(j1, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1));
     java_setcb(j2, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, .9091));
     java_setcb(j3, 'ActionPerformedCallback', @(h,ev)SetScaleY(iDS, iFig));
@@ -3117,12 +3402,23 @@ function CreateScaleButtons(iDS, iFig)
     java_setcb(j5, 'ActionPerformedCallback', @(h,ev)FlipY_Callback(ev.getSource(), hFig));
     java_setcb(j6, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', .9091));
     java_setcb(j7, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', 1.1));
+    java_setcb(j8, 'ActionPerformedCallback', @(h,ev)ToggleLogLinearScale(ev.getSource(), hFig));
+    java_setcb(j9, 'ActionPerformedCallback', @(h,ev)ShowGrids(ev.getSource(), hFig));
+    java_setcb(j10, 'ActionPerformedCallback', @(h,ev)FigurePan(hFig, [0, -.9]));
+    java_setcb(j11, 'ActionPerformedCallback', @(h,ev)FigureZoom(hFig, 'vertical', 1.3, 0));
+    java_setcb(j12, 'ActionPerformedCallback', @(h,ev)FigureZoom(hFig, 'vertical', .7692, 0));
+    java_setcb(j13, 'ActionPerformedCallback', @(h,ev)FigurePan(hFig, [0, .9]));
     % Up button
     j1.setMargin(java.awt.Insets(3,0,0,0));
     j1.setFont(bst_get('Font', 12));    
     % Select buttons
     j4.setSelected(TsInfo.AutoScaleY);
     j5.setSelected(TsInfo.FlipYAxis);
+    j8.setSelected(strcmp(TsInfo.XScale, 'log'));
+    j9.setSelected(TsInfo.ShowXGrid || TsInfo.ShowYGrid);
+    % Add associated button to container when needed
+    set(h8, 'UserData', j8);
+    set(h9, 'UserData', j9);
     % Visible / not visible
     if isRaw
         set([h6 h7], 'Visible', 'off');
@@ -3131,8 +3427,14 @@ function CreateScaleButtons(iDS, iFig)
     if isempty(TsInfo) || isempty(TsInfo.FileName) || ~ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
         set([h4 h5], 'Visible', 'off');
     end
+    if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'column') || ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries')
+        set([h10 h11 h12 h13], 'Visible', 'off');
+    end
     if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries') || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
-        set([h3], 'Visible', 'off');
+        set(h3, 'Visible', 'off');
+    end
+    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
+        set(h8, 'Visible', 'off');
     end
 end
 
@@ -3273,6 +3575,51 @@ function AutoScale_Callback(jButton, hFig)
     bst_progress('stop');
 end
 
+%% ===== TOGGLE BETWEEN LOG/LINEAR SCALE =====
+function ToggleLogLinearScale(jButton, hFig)
+    isSel = jButton.isSelected();
+    if isSel
+        scale = 'log';
+    else
+        scale = 'linear';
+    end
+    
+    % Update figure structure
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.XScale = scale;
+    hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
+    set(hAxes, 'XScale', scale);
+    setappdata(hFig, 'TsInfo', TsInfo);
+end
+
+
+%% ===== SHOW X AND Y GRIDS =====
+function ShowGrids(jButton, hFig)
+    isSel = jButton.isSelected();
+    if isSel
+        toggle = 'on';
+    else
+        toggle = 'off';
+    end
+    % Update figure information
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.ShowXGrid = isSel;
+    TsInfo.ShowYGrid = isSel;
+    setappdata(hFig, 'TsInfo', TsInfo);
+    % Update the axes properties
+    hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
+    set(hAxes, 'XGrid', toggle);
+    set(hAxes, 'XMinorGrid', toggle);
+    % Only add XGrid for butterfly view.
+    if (~isSel || ~strcmpi(TsInfo.DisplayMode, 'column'))
+        set(hAxes, 'YGrid', toggle);
+        set(hAxes, 'YMinorGrid', toggle);
+    end
+    % Save in user preferences
+    bst_set('ShowXGrid', isSel);
+    bst_set('ShowYGrid', isSel);
+end
+
 
 %% ===== SET NORMALIZE AMPLITUDE =====
 function SetNormalizeAmp(iDS, iFig, NormalizeAmp)
@@ -3372,6 +3719,8 @@ function SetResolution(iDS, iFig, newResX, newResY)
         end
         % Save resolution modification
         Resolution(1) = newResX;
+    else
+        Resolution(1) = 0;
     end
     % Changing the amplitude resolution
     if (length(newResY) == 1) && (newResY ~= TsInfo.Resolution(2)) && (newResY > 0)
@@ -3398,6 +3747,8 @@ function SetResolution(iDS, iFig, newResX, newResY)
         end
         % Save resolution modification
         Resolution(2) = newResY;
+    else
+        Resolution(2) = 0;
     end
     % Save modifications in user preferences
     if ~isequal(Resolution, oldResolution)
@@ -3486,13 +3837,16 @@ function PlotRawTimeBar(iDS, iFig)
             jButton(1) = javax.swing.JButton('>>>');
             jButton(2) = javax.swing.JButton('<<<');
             jButton(3) = javax.swing.JButton('<<<');
+            % Get fixed font
+            jFontDefault = bst_get('Font');
+            jFont = java.awt.Font(jFontDefault.getFamily(), java.awt.Font.PLAIN, 11);
             % Configure buttons
             for i = 1:length(jButton)
                 jButton(i).setBackground(java.awt.Color(bgColor(1), bgColor(2), bgColor(3)));
                 jButton(i).setFocusPainted(0);
                 jButton(i).setFocusable(0);
                 jButton(i).setMargin(java.awt.Insets(0,0,0,0));
-                jButton(i).setFont(bst_get('Font', 10));
+                jButton(i).setFont(jFont);
             end
             [j1, h1] = javacomponent(jButton(1), [0, 0, .01, .01], hFig);
             [j2, h2] = javacomponent(jButton(2), [0, 0, .01, .01], hFig);
@@ -3568,19 +3922,18 @@ function UpdateRawTime(hFig)
         % EraseMode: Only for Matlab <= 2014a
         if (bst_get('MatlabVersion') <= 803)
             optErase = {'EraseMode',  'xor', ...   % INCOMPATIBLE WITH OPENGL RENDERER (BUG), REMOVED IN MATLAB 2014b
-                        'FaceAlpha',  1, ...
                         'EdgeColor', 'None'};
         else
-            optErase = {...'FaceAlpha',  0.4, ...
-                        'EdgeColor',  [1 0 0]};
+            optErase = {'EdgeColor',  [.8 0 0]};
         end
         % Create selection patch
         hUserTime = patch('XData', [Time(1), Time(2), Time(2), Time(1)], ...
                           'YData', [.01 .01 .99 .99], ...
                           'ZData', 1.1 * [1 1 1 1], ...
-                          'LineWidth', 1, ...
+                          'LineWidth', 0.5, ...
                           optErase{:}, ...
                           'FaceColor', [1 .3 .3], ...
+                          'FaceAlpha', 1, ...
                           'EdgeAlpha', 1, ...
                           'Tag',       'UserTime', ...
                           'Parent',    hRawTimeBar);
@@ -3689,18 +4042,20 @@ function PlotEventsDots_EventsBar(hFig)
                            'Parent',          hEventsBar);
         end
         % Event bar: Plot event labels
-        hEvtLabel = text(mean(events(iEvt).times,1), ...  % X
-                         .3 * ones(1,nOccur), ... % Y
-                         events(iEvt).label, ...
-                         'Color',               color, ...
-                         'FontSize',            bst_get('FigFont'), ...
-                         'FontUnits',           'points', ...
-                         'VerticalAlignment',   'bottom', ...
-                         'HorizontalAlignment', 'center', ...
-                         'Interpreter',         'none', ...
-                         'Tag',                 'EventLabels', ...
-                         'UserData',            iEvt, ...
-                         'Parent',              hEventsBar);
+        if (length(events(iEvt).times) < 30)
+            hEvtLabel = text(mean(events(iEvt).times,1), ...  % X
+                             .3 * ones(1,nOccur), ... % Y
+                             events(iEvt).label, ...
+                             'Color',               color, ...
+                             'FontSize',            bst_get('FigFont'), ...
+                             'FontUnits',           'points', ...
+                             'VerticalAlignment',   'bottom', ...
+                             'HorizontalAlignment', 'center', ...
+                             'Interpreter',         'none', ...
+                             'Tag',                 'EventLabels', ...
+                             'UserData',            iEvt, ...
+                             'Parent',              hEventsBar);
+        end
     end
 end
 

@@ -101,6 +101,8 @@ end
 % ===== CREATE NEW FIGURE =====
 bst_progress('start', 'View surface', 'Loading MRI file...');
 if isempty(hFig)
+    % Try to get a default modality from the channel file
+    
     % Prepare FigureId structure
     FigureId = db_template('FigureId');
     FigureId.Type     = '3DViz';

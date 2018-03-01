@@ -144,6 +144,7 @@ function [DefFunction, ColormapType] = GetDefaultFunction(sTimefreq) %#ok<DEFNU>
         case 'fft',      DefFunction = 'power';       ColormapType = 'timefreq';
         case 'psd',      DefFunction = 'power';       ColormapType = 'timefreq';
         case 'hilbert',  DefFunction = 'power';       ColormapType = 'timefreq';
+        case 'mtmconvol',DefFunction = 'power';       ColormapType = 'timefreq';
         case 'instfreq', DefFunction = 'other';       ColormapType = 'timefreq';
         case 'canolty',  DefFunction = 'other';       ColormapType = 'timefreq';  
         case 'corr',     DefFunction = 'other';       ColormapType = 'connect1';

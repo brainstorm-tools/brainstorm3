@@ -21,7 +21,7 @@ function [DataMat, ChannelMat] = in_data_fieldtrip(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2016
+% Authors: Francois Tadel, 2015-2017
 
 % Get format
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
@@ -79,53 +79,34 @@ elseif isfield(ftMat, 'trial') && ~isempty(ftMat.trial)
     end
 end
 
+
+% ===== CREATE CHANNEL FILE =====
 % Default channel structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'FieldTrip channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
-% For each channel
+% Basic channel properties
 for i = 1:nChannels
-    % Basic channel properties
     ChannelMat.Channel(i).Name    = ftMat.label{i};
     ChannelMat.Channel(i).Comment = [];
     ChannelMat.Channel(i).Loc     = [0; 0; 0];
     ChannelMat.Channel(i).Orient  = [];
     ChannelMat.Channel(i).Weight  = 1;
-    
-    % EEG sensors
-    if isfield(ftMat, 'elec') && ~isempty(ftMat.elec) && isfield(ftMat.elec, 'label') && ~isempty(ftMat.elec.label) && ismember(ftMat.label{i}, ftMat.elec.label)
-        ChannelMat.Channel(i).Type = 'EEG';
-        % Find channel index
-        ichan = find(strcmpi(ftMat.label{i}, ftMat.grad.label));
-        % Locations
-        ChannelMat.Channel(i).Loc = ftMat.grad.elecpos(ichan,:)';
-        
-    % MEG sensors
-    elseif isfield(ftMat, 'grad') && ~isempty(ftMat.grad)  && isfield(ftMat.grad, 'tra') && isfield(ftMat.grad, 'label') && ~isempty(ftMat.grad.label) && ismember(ftMat.label{i}, ftMat.grad.label)
-        ChannelMat.Channel(i).Type = 'MEG';
-        % Find channel index
-        ichan = find(strcmpi(ftMat.label{i}, ftMat.grad.label));
-        % Find corresponding coils
-        icoils = find(ftMat.grad.tra(ichan,:));
-        % Locations
-        ChannelMat.Channel(i).Loc    = ftMat.grad.coilpos(icoils,:)';
-        ChannelMat.Channel(i).Orient = ftMat.grad.coilori(icoils,:)';
-        ChannelMat.Channel(i).Weight = ftMat.grad.tra(ichan,icoils);
-        % Apply units
-        if isfield(ftMat.grad, 'unit') && isequal(ftMat.grad.unit, 'cm')
-            ChannelMat.Channel(i).Loc = ChannelMat.Channel(i).Loc ./ 100;
-        elseif isfield(ftMat.grad, 'unit') && isequal(ftMat.grad.unit, 'mm')
-            ChannelMat.Channel(i).Loc = ChannelMat.Channel(i).Loc ./ 1000;
-        end
-        
-    % No channel information
-    elseif (ftMat.label{i}(1) == 'M')
-        ChannelMat.Channel(i).Type = 'MEG';
-    else
-        ChannelMat.Channel(i).Type = 'EEG';
+    if isfield(ftMat, 'chantype') && ~isempty(ftMat.chantype)
+        ChannelMat.Channel(i).Type = upper(ftMat.chantype{i});
     end
 end
 
+% Read detailed information from .grad and .elec fields
+ChannelMat = read_fieldtrip_chaninfo(ChannelMat, ftMat);
 
+% If none of the channels are set, make it all "EEG"
+isEmptyType = cellfun(@isempty, {ChannelMat.Channel.Type});
+if all(isEmptyType)
+    [ChannelMat.Channel.Type] = deal('EEG');
+% If only a few are empty: tag them as "OTHER"
+elseif any(isEmptyType)
+    [ChannelMat.Channel(isEmptyType).Type] = deal('OTHER');
+end
 
 

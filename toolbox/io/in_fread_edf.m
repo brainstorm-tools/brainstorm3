@@ -23,11 +23,14 @@ function F = in_fread_edf(sFile, sfid, SamplesBounds, ChannelsRange)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2017
 
 %% ===== PARSE INPUTS =====
-nChannels  = sFile.header.nsignal;
-iChanAnnot = find(strcmpi({sFile.header.signal.label}, 'EDF Annotations'));
+nChannels      = sFile.header.nsignal;
+iChanAnnot     = find(strcmpi({sFile.header.signal.label}, 'EDF Annotations'));
+iChanSignal    = setdiff(1:nChannels, iChanAnnot);
+iChanWrongRate = find([sFile.header.signal(iChanSignal).sfreq] < max([sFile.header.signal(iChanSignal).sfreq]));   
+iChanSkip      = union(iChanAnnot, iChanWrongRate);
 if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, nChannels];
 end
@@ -48,11 +51,17 @@ if isAnnotOnly
     iChanF = 1;
 else
     % Remove all the annotation channels from the list of channels to read
-    iChanF = setdiff(ChannelsRange(1):ChannelsRange(2), iChanAnnot) - ChannelsRange(1) + 1;
+    iChanF = setdiff(ChannelsRange(1):ChannelsRange(2), iChanSkip) - ChannelsRange(1) + 1;
+%     if any(diff(iChanF) ~= 1)
+%         error('All the data channels to read from the file must be contiguous (EDF Annotation channels must be at the end of the list).');
+%     end
     if any(diff(iChanF) ~= 1)
-        error('All the data channels to read from the file must be contiguous (EDF Annotation channels must be at the end of the list).');
+        iChanLast = find(diff(iChanF) ~= 1, 1);
+        iChanF = iChanF(1:iChanLast);
+    else
+        iChanLast = length(iChanF);
     end
-    ChannelsRange = [iChanF(1), iChanF(end)] + ChannelsRange(1) - 1;
+    ChannelsRange = [iChanF(1), iChanF(iChanLast)] + ChannelsRange(1) - 1;
 end
 % Cannot read channels with different sampling rates at the same time
 if (ChannelsRange(1) ~= ChannelsRange(2))
@@ -204,6 +213,11 @@ function F = edf_read_epoch(sFile, sfid, iEpoch, iTimes, ChannelsRange, isAnnotO
         F = double(F);
         % Apply gains
         F = bst_bsxfun(@rdivide, F, [sFile.header.signal(iChannels).gain]');
+% IN THEORY: THIS OFFSET SECTION IS USEFUL, BUT IN PRACTICE IT LOOKS LIKE THE VALUES IN ALL THE FILES ARE CENTERED ON ZERO
+%         % Add offset 
+%         if isfield(sFile.header.signal, 'offset') && ~isempty(sFile.header.signal(1).offset)
+%             % ...
+%         end
     end
 end
 

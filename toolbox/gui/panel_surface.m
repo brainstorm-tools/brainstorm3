@@ -51,11 +51,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelTop = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
     % Constants
-    TB_DIM = Dimension(25, 25);
-    LABEL_WIDTH    = 30;
-    BUTTON_WIDTH   = 50;
-    SLIDER_WIDTH   = 20;
-    DEFAULT_HEIGHT = 22;
+    TB_DIM = java_scaled('dimension', 25, 25);
+    LABEL_WIDTH    = java_scaled('value', 30);
+    BUTTON_WIDTH   = java_scaled('value', 50);
+    SLIDER_WIDTH   = java_scaled('value', 20);
+    DEFAULT_HEIGHT = java_scaled('value', 22);
 
     % ===== TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
@@ -76,7 +76,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelOptions.setLayout(BoxLayout(jPanelOptions, BoxLayout.Y_AXIS));
     jPanelOptions.setBorder(BorderFactory.createEmptyBorder(7,7,0,7));
         % ===== SURFACE OPTIONS =====
-        jPanelSurfaceOptions = gui_river([1,1], [1,8,1,4], 'Surface options');              
+        jPanelSurfaceOptions = gui_river([1,1], [1,8,1,4], 'Surface options');
             % Alpha title 
             jLabelAlphaTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Transp.:');
             % Alpha slider
@@ -819,6 +819,8 @@ function nbSurfaces = CreateSurfaceList(jToolbar, hFig)
     end
     % Create a button group for Surfaces and "Add" button
     jButtonGroup = ButtonGroup();
+    % Get interface scaling
+    InterfaceScaling = bst_get('InterfaceScaling');
     
     % If a figure is defined 
     if ishandle(hFig)
@@ -844,10 +846,14 @@ function nbSurfaces = CreateSurfaceList(jToolbar, hFig)
                 case 'anatomy'
                     iconButton = IconLoader.ICON_ANATOMY;
             end
+            % Scale icon if needed
+            if (InterfaceScaling ~= 100)
+                iconButton = IconLoader.scaleIcon(iconButton, InterfaceScaling / 100);
+            end
             % Create surface button 
             jButtonSurf = JToggleButton(iconButton, isSelected);
-            jButtonSurf.setMaximumSize(Dimension(24,24));
-            jButtonSurf.setPreferredSize(Dimension(24,24));
+            jButtonSurf.setMaximumSize(java_scaled('dimension', 24,24));
+            jButtonSurf.setPreferredSize(java_scaled('dimension', 24,24));
             jButtonSurf.setToolTipText(TessInfo(iSurf).SurfaceFile);
             % Store the surface index as the button Name
             jButtonSurf.setName(sprintf('%d', iSurf));
@@ -1260,6 +1266,10 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
             DisplayUnits = [];
             TessInfo(iTess).Data = [];
             TessInfo(iTess).DataWmat = [];
+    end
+    % Grid smoothing: enable by default, except for time units
+    if isAnatomy
+        TessInfo(iTess).DataSource.GridSmooth = isempty(DisplayUnits) || ~ismember(DisplayUnits, {'s','ms'});
     end
     % Add colormap of the surface to the figure
     if ~isempty(ColormapType)
@@ -1953,21 +1963,21 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
         TessInfo(iTess).OverlayCube = OverlayCube;
     % ===== DISPLAY SURFACE/GRIDS =====
     else
-        % === INTERPOLATION MRI<->SURFACE ===
-        [sSurf, iSurf] = bst_memory('LoadSurface', SurfaceFile);
-        tess2mri_interp = bst_memory('GetTess2MriInterp', iSurf);
-        % If no interpolation tess<->mri accessible : exit
-        if isempty(tess2mri_interp)
-           return 
-        end
         % Progress bar
         isProgressBar = bst_progress('isVisible');
         bst_progress('start', 'Display MRI', 'Updating values...');
         % === INTERPOLATION MRI<->GRID ===
         if isVolumeGrid
             % Compute interpolation
-            MriInterp = bst_memory('GetGrid2MriInterp', iDS, iResult);
+            MriInterp = bst_memory('GetGrid2MriInterp', iDS, iResult, TessInfo.DataSource.GridSmooth);
+        % === INTERPOLATION MRI<->SURFACE ===
         else
+            [sSurf, iSurf] = bst_memory('LoadSurface', SurfaceFile);
+            tess2mri_interp = bst_memory('GetTess2MriInterp', iSurf);
+            % If no interpolation tess<->mri accessible : exit
+            if isempty(tess2mri_interp)
+               return 
+            end
             % Only surface interpolation is needed
             MriInterp = tess2mri_interp;
         end

@@ -19,7 +19,7 @@ function varargout = process_channel_addloc( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2017
 
 eval(macro_method);
 end
@@ -67,6 +67,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.usedefault.Comment = 'Or use default:';
     sProcess.options.usedefault.Type    = 'combobox';
     sProcess.options.usedefault.Value   = {1, strList};
+    % Fix units
+    sProcess.options.fixunits.Comment = 'Fix distance units automatically';
+    sProcess.options.fixunits.Type    = 'checkbox';
+    sProcess.options.fixunits.Value   = 1;
+    % Fix units
+    sProcess.options.vox2ras.Comment = 'Apply voxel=>subject transformation from the MRI';
+    sProcess.options.vox2ras.Type    = 'checkbox';
+    sProcess.options.vox2ras.Value   = 1;
 end
 
 
@@ -85,12 +93,23 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get filename to import
     ChannelFile = sProcess.options.channelfile.Value{1};
     FileFormat  = sProcess.options.channelfile.Value{2};
+    % Get other options
+    if isfield(sProcess.options, 'fixunits') && isfield(sProcess.options.fixunits, 'Value')
+        isFixUnits = sProcess.options.fixunits.Value;
+    else
+        isFixUnits = 1;
+    end
+    if isfield(sProcess.options, 'vox2ras') && isfield(sProcess.options.vox2ras, 'Value')
+        isApplyVox2ras = sProcess.options.vox2ras.Value;
+    else
+        isApplyVox2ras = 1;
+    end
     % Get channel studies
     [tmp, iChanStudies] = bst_get('ChannelForStudy', [sInputs.iStudy]);
     iChanStudies = unique(iChanStudies);
     % Load file
     if ~isempty(ChannelFile)
-        ChannelMat = import_channel(iChanStudies, ChannelFile, FileFormat, [], [], 0);
+        ChannelMat = import_channel(iChanStudies, ChannelFile, FileFormat, [], [], 0, isFixUnits, isApplyVox2ras);
     end
 
     % ===== USE DEFAULT =====

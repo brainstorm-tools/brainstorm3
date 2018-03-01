@@ -267,8 +267,12 @@ end
 
 
 %% ===== GET INTERPOLATION GRID-MRI =====
-function grid2mri_interp = GetGrid2MriInterp(iDS, iResult) %#ok<DEFNU>
+function grid2mri_interp = GetGrid2MriInterp(iDS, iResult, GridSmooth) %#ok<DEFNU>
     global GlobalData;
+    % Default grid smooth: yes
+    if (nargin < 3) || isempty(GridSmooth)
+        GridSmooth = 1;
+    end
     % If matrix was already computed: return it
     if ~isempty(GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp)
         grid2mri_interp = GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp;
@@ -284,7 +288,7 @@ function grid2mri_interp = GetGrid2MriInterp(iDS, iResult) %#ok<DEFNU>
             case 'volume'
                 GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
                 % Compute interpolation
-                grid2mri_interp = grid_interp_mri(GridLoc, sMri, SurfaceFile, 1);
+                grid2mri_interp = grid_interp_mri(GridLoc, sMri, SurfaceFile, 1, [], [], GridSmooth);
             case 'mixed'
                 % Compute the surface interpolation
                 tess2mri_interp = tess_interp_mri(SurfaceFile, sMri);
@@ -302,7 +306,7 @@ function grid2mri_interp = GetGrid2MriInterp(iDS, iResult) %#ok<DEFNU>
                     switch (sScouts(i).Region(2))
                         case 'V'
                             GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc(sScouts(i).GridRows,:);
-                            grid2mri_interp(:,iGrid) = grid_interp_mri(GridLoc, sMri, SurfaceFile, 1);
+                            grid2mri_interp(:,iGrid) = grid_interp_mri(GridLoc, sMri, SurfaceFile, 1, [], [], GridSmooth);
                         case 'S'
                             grid2mri_interp(:,iGrid) = tess2mri_interp(:, sScouts(i).Vertices);
                     end
@@ -409,7 +413,8 @@ function LoadChannelFile(iDS, ChannelFile)
         end
         % If there are some ECOG/SEEG channels: Create new temporary montages automatically
         if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
-            panel_montage('AddAutoMontagesEeg', iDS, ChannelMat);
+            SubjectName = bst_fileparts(GlobalData.DataSet(iDS).SubjectFile);
+            panel_montage('AddAutoMontagesEeg', SubjectName, ChannelMat);
         end
         % If there are some NIRS channels: Create new temporary montages automatically
         if ismember('NIRS', {ChannelMat.Channel.Type})
@@ -556,8 +561,8 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             % If current time window can be re-used
             if ~isempty(GlobalData.UserTimeWindow.Time) && (GlobalData.UserTimeWindow.NumberOfSamples > 2) && (GlobalData.UserTimeWindow.Time(1) >= Time(1)) && (GlobalData.UserTimeWindow.Time(2) <= Time(end))
                 iTime = bst_closest(GlobalData.UserTimeWindow.Time, Time);
-            elseif (length(Time) > RawViewerOptions.MaxSamples)
-                iTime = [1, RawViewerOptions.MaxSamples];
+            elseif (length(Time) > floor(RawViewerOptions.PageDuration * sFile.prop.sfreq))
+                iTime = [1, floor(RawViewerOptions.PageDuration * sFile.prop.sfreq)];
             end
         end
         Measures.Time            = double(Time([iTime(1), iTime(2)])); 
@@ -681,7 +686,7 @@ function LoadRecordingsMatrix(iDS)
     % Load F Matrix
     if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
         % Load stat file
-        StatMat = in_bst_data(DataFile, 'pmap', 'tmap', 'df', 'ChannelFlag', 'Correction', 'StatClusters');
+        StatMat = in_bst_data(DataFile, 'pmap', 'tmap', 'df', 'SPM', 'ChannelFlag', 'Correction', 'StatClusters');
         % Get only relevant sensors as multiple tests
         iChannels = good_channel(GlobalData.DataSet(iDS).Channel, StatMat.ChannelFlag, {'MEG', 'EEG', 'SEEG', 'ECOG', 'NIRS'});
         if isfield(StatMat, 'pmap') && ~isempty(StatMat.pmap)
@@ -1105,7 +1110,7 @@ function LoadResultsMatrix(iDS, iResult)
     else
         % Load stat matrix
         StatFile = GlobalData.DataSet(iDS).Results(iResult).FileName;
-        FileMat = in_bst_results(StatFile, 0, 'pmap', 'tmap', 'df', 'nComponents', 'GridLoc', 'GridOrient', 'GridAtlas', 'Correction', 'StatClusters');
+        FileMat = in_bst_results(StatFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'nComponents', 'GridLoc', 'GridOrient', 'GridAtlas', 'Correction', 'StatClusters');
         % For stat with more than one components: take the maximum t-value
         if (FileMat.nComponents ~= 1)
             % Extract one value at each grid point
@@ -1393,7 +1398,7 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
 %         end
     else
         % Load stat matrix
-        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'pmap', 'tmap', 'df', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TF', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'Correction', 'StatClusters');
+        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TF', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'Correction', 'StatClusters');
         % Report thresholded maps
         TimefreqMat.TF = process_extract_pthresh('Compute', TimefreqMat);
         % Open the "Stat" tab
@@ -2094,6 +2099,9 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     elseif isequal(Function, 'pacfhigh')
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).sPAC.NestedFreq(iRow, iTime, iFreqs);
         isApplyFunction = 0;
+    elseif isempty(Function) || ~ismember(Function, {'power', 'magnitude', 'log', 'phase', 'none'}) || ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'power', 'magnitude', 'log', 'phase', 'none'})
+        Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs);
+        isApplyFunction = 0;
     else
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs);
         isApplyFunction = ~isempty(Function);
@@ -2753,8 +2761,9 @@ end
 %     - 'KeepSurface'    : Do not unload the surfaces
 %     - 'KeepRegSurface' : Unload only the anonymous surfaces (created with view_surface_matrix)
 %     - 'KeepChanEditor' : Do not close the channel editor
-function UnloadAll(varargin)
+function isCancel = UnloadAll(varargin)
     global GlobalData;
+    isCancel = 0;
     if isempty(GlobalData)
         return;
     end
@@ -2784,7 +2793,7 @@ function UnloadAll(varargin)
     end  
     drawnow;
     % Unload all marked datasets
-    UnloadDataSets(iDSToUnload);
+    isCancel = UnloadDataSets(iDSToUnload);
     
     % ===== UNLOAD ANATOMIES =====
     unloadedSurfaces = {};
@@ -2914,8 +2923,9 @@ end
 
 
 %% ===== UNLOAD DATASET =====
-function UnloadDataSets(iDataSets)
+function isCancel = UnloadDataSets(iDataSets)
     global GlobalData;
+    isCancel = 0;
     % Close all figures of each dataset
     for i = 1:length(iDataSets)
         iDS = iDataSets(i);
@@ -2940,13 +2950,22 @@ function UnloadDataSets(iDataSets)
                     else
                         strFile = '';
                     end
-                    % Ask user whether to save modifications
-                    res = java_dialog('question', ...
-                        ['Events were modified', strFile, '.' 10 10 'Save modifications ?'], ...
-                        'Save file', [], {'Yes', 'No', 'Cancel'});
-                    % User canceled operation
-                    if isempty(res) || strcmpi(res, 'Cancel')
-                        return
+                    % Regular interface: Ask user whether to save modifications
+                    if (GlobalData.Program.GuiLevel == 1)
+                        res = java_dialog('question', ...
+                            ['Events were modified', strFile, '.' 10 10 'Save modifications ?'], ...
+                            'Save file', [], {'Yes', 'No', 'Cancel'});
+                        % User canceled operation
+                        if isempty(res) || strcmpi(res, 'Cancel')
+                            isCancel = 1;
+                            return
+                        end
+                    % Auto-pilot: Accept modifications by default
+                    else
+                        res = 'Yes';
+                        % Track modifications for external usage
+                        global BstAutoPilot;
+                        BstAutoPilot.isEventsModified = 1;
                     end
                     % Save modifications
                     if strcmpi(res, 'Yes')

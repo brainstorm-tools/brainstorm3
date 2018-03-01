@@ -1,4 +1,4 @@
-function gui_edit_channel( ChannelFile )
+function jFrame = gui_edit_channel( ChannelFile )
 % GUI_EDIT_CHANNEL: Load, edit and save a channel file.
 %
 % USAGE: gui_edit_channel( ChannelFile )
@@ -21,7 +21,7 @@ function gui_edit_channel( ChannelFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2017
 
 global GlobalData;
 
@@ -44,10 +44,10 @@ end
 bstContainer = gui_show(bstPanel, 'JavaWindow', ['Channel editor: ' ChannelFile], [], 0, 0, 1);
 
 % Get current layout
-[jBstArea, FigArea, nScreens, jFigArea] = gui_layout('GetScreenBrainstormAreas');
+[jBstArea, FigArea, nScreens, jFigArea, jInsets] = gui_layout('GetScreenBrainstormAreas');
 % Place this figure on the screen to take all the possible figure space 
 jFrame = bstContainer.handle{1};
-jFrame.setLocation(jFigArea.getX(), jFigArea.getY());
+jFrame.setLocation(jFigArea.getX(), jFigArea.getY() - jInsets.bottom);
 jFrame.setSize(jFigArea.getWidth(), jFigArea.getHeight());
 
 % Set selected sensors

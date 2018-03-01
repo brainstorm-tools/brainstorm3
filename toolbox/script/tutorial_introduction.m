@@ -46,7 +46,9 @@ if ~file_exist(Run1File)
     error(['The folder ' tutorial_dir ' does not contain the folder from the file sample_introduction.zip.']);
 end
 % Re-inialize random number generator
-rng('default');
+if (bst_get('MatlabVersion') >= 712)
+    rng('default');
+end
 
 
 %% ===== TUTORIAL #1: CREATE PROTOCOL ================================================

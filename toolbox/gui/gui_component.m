@@ -19,8 +19,10 @@ function jComp = gui_component(compType, jParent, constrain, compText, compOptio
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 % 
-% Authors: Francois Tadel, 2010-2014
+% Authors: Francois Tadel, 2010-2017
 
+% Java imports
+import org.brainstorm.icon.IconLoader;
 % Parse inputs
 if (nargin < 2),  jParent      = []; end
 if (nargin < 3),  constrain    = []; end
@@ -31,7 +33,7 @@ if (nargin < 7),  compCallback = []; end
 % Default font size: depends on the system
 if (nargin < 8)
     if strncmp(computer,'MAC',3)
-        fontSize = 11.5;
+        fontSize = 12;
     else
         fontSize = 11;
     end
@@ -80,11 +82,11 @@ switch lower(compType)
         callbackName = 'MouseClickedCallback';
     case 'texttime'
         jComp = java_create('javax.swing.JTextField');
-        jComp.setPreferredSize(java_create('java.awt.Dimension', 'II', 54, 20));
+        jComp.setPreferredSize(java_scaled('dimension', 54, 20));
         jComp.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
         callbackName = 'KeyTypedCallback';
     case 'textfreq'
-        jComp   = java_create('javax.swing.JTextArea', 'II', 6, 12);
+        jComp   = java_scaled('textarea', 6, 12);
         jScroll = java_create('javax.swing.JScrollPane', 'Ljava.awt.Component;', jComp);
         callbackName = 'FocusLostCallback';
         if isempty(jFont) && exist('isdeployed', 'builtin') && isdeployed
@@ -92,10 +94,11 @@ switch lower(compType)
         end
     case 'text'
         jComp = java_create('javax.swing.JTextField');
+        jComp.setPreferredSize(java_scaled('dimension', 54, 20));
         callbackName = 'KeyTypedCallback';
     case 'spinner'
         jComp = java_create('javax.swing.JSpinner');
-        jComp.setPreferredSize(java_create('java.awt.Dimension', 'II', 57, 20));
+        jComp.setPreferredSize(java_scaled('dimension', 57, 20));
         jComp.getEditor().getFormat().setGroupingSize(0);
         callbackName = 'MouseReleasedCallback';
         if ~isempty(jFont)
@@ -141,13 +144,13 @@ switch lower(compType)
         callbackName = 'MenuSelectedCallback';
     case 'menuitem'
         jComp = java_create('javax.swing.JMenuItem');
-        jFont = [];
+        %jFont = [];
     case 'radiomenuitem'
         jComp = java_create('javax.swing.JRadioButtonMenuItem');
-        jFont = [];
+        %jFont = [];
     case 'checkboxmenuitem'
         jComp = java_create('javax.swing.JCheckBoxMenuItem');
-        jFont = [];
+        %jFont = [];
     case 'toolbar'
         jComp = java_create('javax.swing.JToolBar');
         jComp.setBorderPainted(0);
@@ -186,7 +189,12 @@ if ~isempty(jFont)
     jComp.setFont(jFont);
 end
 if ~isempty(compIcon)
-    jComp.setIcon(compIcon);
+    InterfaceScaling = bst_get('InterfaceScaling');
+    if (InterfaceScaling ~= 100)
+        jComp.setIcon(IconLoader.scaleIcon(compIcon, InterfaceScaling / 100));
+    else
+        jComp.setIcon(compIcon);
+    end
 end
 if ~isempty(compTooltip)
     jComp.setToolTipText(compTooltip);

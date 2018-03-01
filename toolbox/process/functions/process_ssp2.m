@@ -150,6 +150,13 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     else
         evtTimeWindow = [];
     end
+    % Get downsampling value
+    if isfield(sProcess.options, 'resample') && isfield(sProcess.options.resample, 'Value') && ~isempty(sProcess.options.resample.Value)
+        resample = sProcess.options.resample.Value{1};
+        strOptions = [strOptions, 'resample=' num2str(resample) ', '];
+    else
+        resample = 0;
+    end
     % Get bandpass range
     BandPass = sProcess.options.bandpass.Value{1};
     if isempty(BandPass) || all(BandPass <= 0)
@@ -467,6 +474,17 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         return;
     end
     
+    % ===== DOWNSAMPLE =====
+    % Downsample data to specified rate.
+    if (resample > 0)
+        bst_progress('text', 'Downsampling recordings...');
+        bst_progress('set', progressPos + 25);
+        for iFile = 1:length(F)
+            [F{iFile}, TimeResample] = process_resample('Compute', F{iFile}, TimeVector, resample);
+        end
+        sfreq = resample;
+        TimeVector = TimeResample;
+    end
     
     % ===== COMPUTE AVERAGE =====
     % Compute the average of the data blocks (unfiltered)
@@ -531,7 +549,11 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     % ICA: Check that the number of time samples is sufficient
     % Recommended number of time samples (from S Makeig):  Ntime/Nchan^2 >> 10
     nTime = size(F,2);
-    nChan = size(F,1);
+    if (nIcaComp > 0)
+        nChan = nIcaComp;
+    else
+        nChan = size(F,1);
+    end
     if isICA && (nTime / nChan^2 < 10)
         % Warning message
         strWarning = ['There is probably not enough data for a correct ICA decomposition.' 10 ...

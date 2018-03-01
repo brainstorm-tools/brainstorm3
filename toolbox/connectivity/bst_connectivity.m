@@ -22,7 +22,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017
 
 
 %% ===== DEFAULT OPTIONS =====
@@ -433,12 +433,12 @@ for iFile = 1:length(FilesA)
             % Loop on each frequency band
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
-                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
                 HA = hilbert_fcn(DataAband')';                
                 if isConnNN
                     HB = HA;
                 else
-                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
                     HB = hilbert_fcn(DataBband')';
                 end
                 if OPTIONS.isOrth
@@ -461,7 +461,7 @@ for iFile = 1:length(FilesA)
                             HAo = imag(bsxfun(@times, HA(iSeed,:), conj(HB)./abs(HB)));
                             HBo = imag(bsxfun(@times, HB, conj(HA(iSeed,:))./abs(HA(iSeed,:))));
                             % avoid rounding errors
-                            HAo(abs(bsxfun(@rdivide,HAo,abs(HA)))<2*eps)=0;
+                            HAo(abs(bsxfun(@rdivide,HAo,abs(HA(iSeed,:))))<2*eps)=0;
                             HBo(abs(HBo./abs(HB))<2*eps)=0;
                             % Compute correlation coefficients
                             r1 = correlate_dims(abs(HA(iSeed,:)), abs(HBo), 2);
@@ -552,6 +552,26 @@ for iFile = 1:length(FilesA)
                 iB = reshape(repmat(1:nB, nA, 1), [], 1);
                 % Compute the PLV in time for each pair
                 R(:,:,iBand) = exp(1i * (angle(HA(iA,:)) - angle(HB(iB,:))));
+            end
+            % We don't want to compute again the frequency bands
+            FreqBands = [];
+        
+        % ==== PTE ====
+        case 'pte'
+            bst_progress('text', sprintf('Calculating: PTE [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
+            Comment = 'PTE: ';
+            % Get frequency bands
+            nFreqBands = size(OPTIONS.Freqs, 1);
+            BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
+            % Intitialize returned matrix
+            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
+            % Loop on each frequency band
+            for iBand = 1:nFreqBands
+                % Band-pass filter in one frequency band + Apply Hilbert transform
+                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                % Compute PTE
+                [R(:,:,iBand), ~] = PhaseTE_MF(permute(DataAband, [2 1]));
+                R(:,:,iBand) = R(:,:,iBand) - 0.5; % Center result around 0
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
@@ -664,6 +684,14 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
     FileMat.Method    = OPTIONS.Method;
     FileMat.DataFile  = file_win2unix(DataFile);
     FileMat.nAvg      = nAvg;
+    % Head model
+    if isfield(sInputA, 'HeadModelFile') && ~isempty(sInputA.HeadModelFile)
+        FileMat.HeadModelFile = sInputA.HeadModelFile;
+        FileMat.HeadModelType = sInputA.HeadModelType;
+    elseif isfield(sInputB, 'HeadModelFile') && ~isempty(sInputB.HeadModelFile)
+        FileMat.HeadModelFile = sInputB.HeadModelFile;
+        FileMat.HeadModelType = sInputB.HeadModelType;
+    end
     % Time vector
     if strcmpi(OPTIONS.Method, 'plvt')
         FileMat.Time      = sInputB.Time;

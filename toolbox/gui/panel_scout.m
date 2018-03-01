@@ -57,7 +57,7 @@ function varargout = panel_scout(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -72,8 +72,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     import org.brainstorm.icon.*;
     % Create tools panel
     jPanelNew = gui_component('Panel');
-    TB_DIM = Dimension(25,25);
-
+    TB_DIM = java_scaled('dimension',25,25);
+    % Font size for the lists
+    fontSize = round(11 * bst_get('InterfaceScaling') / 100);
+    
     % ===== TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelNew, BorderLayout.NORTH);
         jToolbar = gui_component('Toolbar', jMenuBar);
@@ -83,7 +85,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jButtonAddScout = gui_component('ToolbarToggle', jToolbar,[],[], IconLoader.ICON_SCOUT_NEW, ...
             ['<HTML><B>Create scout</B>:<BR><BLOCKQUOTE> - Select this button<BR> - Click on the cortex surface</BLOCKQUOTE>' ...
              '<B>Add vertex to scout</B>:<BR><BLOCKQUOTE> - Select this button<BR> - Select the scout to edit<BR> - Click on the vertex to add</BLOCKQUOTE>', ...
-             '<B>Remove vertex from scout</B>:<BR><BLOCKQUOTE> - Select this button<BR> - Select the scout to edit<BR> - Hold the <B>SHIFT</B> key<BR> - Click on the vertex to remove</BLOCKQUOTE>'], @(h,ev)bst_call(@ButtonAddScout,h,ev));
+             '<B>Remove vertex from scout</B>:<BR><BLOCKQUOTE> - Select this button<BR> - Select the scout to edit<BR> - Hold the <B>SHIFT</B> key<BR> - Click on the vertex to remove</BLOCKQUOTE>' ...
+             '<B>To select a scout</B>:<BR><BLOCKQUOTE> - Click on it the scout list below<BR> - Click on it in a 3D figure<BR> - Hold CTRL/SHIFT for multiple selection</BLOCKQUOTE>'], @(h,ev)bst_call(@ButtonAddScout,h,ev));
         gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_TS_DISPLAY, '<HTML><B>Display scouts time series</B>&nbsp;&nbsp;&nbsp;&nbsp;[ENTER]</HTML>', @(h,ev)bst_call(@ViewTimeSeries));        
         % Menu: Atlas
         jMenuAtlas = gui_component('Menu', jMenuBar, [], 'Atlas', IconLoader.ICON_MENU, [], [], 11);
@@ -101,7 +104,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % ===== VERTICAL TOOLBAR =====
         jToolbar2 = gui_component('Toolbar', jPanelMain, BorderLayout.EAST);
         jToolbar2.setOrientation(jToolbar2.VERTICAL);
-        jToolbar2.setPreferredSize(Dimension(26,20));
+        jToolbar2.setPreferredSize(java_scaled('dimension',26,20));
         jToolbar2.setBorder([]);
             % Load/save
             gui_component('ToolbarButton', jToolbar2,[],[], {IconLoader.ICON_FOLDER_OPEN, TB_DIM}, 'Load atlas', @(h,ev)bst_call(@LoadScouts));
@@ -134,7 +137,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % ===== Atlas list =====
             jPanelAtlas = gui_component('Panel');
                 % Combo box to select the current protocol
-                jComboAtlas = gui_component('ComboBox', jPanelAtlas, BorderLayout.NORTH, [], [], [], [], []);
+                jComboAtlas = gui_component('ComboBox', jPanelAtlas, BorderLayout.NORTH, [], [], [], []);
                 jComboAtlas.setFocusable(0);
                 jComboAtlas.setMaximumRowCount(15);
                 % ComboBox change selection callback
@@ -144,12 +147,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
             % ===== Scouts list =====
             jPanelScoutsList = gui_component('Panel');
-                jBorder = BorderFactory.createTitledBorder('');
-                jBorder.setTitleFont(bst_get('Font', 11));
+                jBorder = java_scaled('titledborder', '');
                 jPanelScoutsList.setBorder(jBorder);
                 % Scouts list
                 jListScouts = java_create('org.brainstorm.list.BstClusterList');
-                jListScouts.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer'));
+                jListScouts.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer', 'I', fontSize));
                 jListScouts.setBackground(Color(.9,.9,.9));
                 java_setcb(jListScouts, ...
                     'ValueChangedCallback', @(h,ev)bst_call(@ScoutsListValueChanged_Callback,h,ev), ...
@@ -166,14 +168,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % ===== Scouts options panel =====
             jPanelScoutOptions = gui_river([0,3], [0,5,10,3], 'Scout size');
                 % Scout growth            
-                gui_component('button', jPanelScoutOptions,[], '<<', {Insets(0,0,0,0), Dimension(26,20)}, 'Decrease scout size',                   @(h,ev)bst_call(@EditScoutsSize, 'Shrink'));
-                gui_component('button', jPanelScoutOptions,[], '<',  {Insets(0,0,0,0), Dimension(22,20)}, 'Decrease scout size (only one vertex)', @(h,ev)bst_call(@EditScoutsSize, 'Shrink1'));
-                gui_component('button', jPanelScoutOptions,[], '>',  {Insets(0,0,0,0), Dimension(22,20)}, 'Increase scout size (only one vertex)', @(h,ev)bst_call(@EditScoutsSize, 'Grow1'));
-                gui_component('button', jPanelScoutOptions,[], '>>', {Insets(0,0,0,0), Dimension(26,20)}, 'Increase scout size',                   @(h,ev)bst_call(@EditScoutsSize, 'Grow'));
+                gui_component('button', jPanelScoutOptions,[], '<<', {Insets(0,0,0,0), java_scaled('dimension',26,20)}, 'Decrease scout size',                   @(h,ev)bst_call(@EditScoutsSize, 'Shrink'));
+                gui_component('button', jPanelScoutOptions,[], '<',  {Insets(0,0,0,0), java_scaled('dimension',22,20)}, 'Decrease scout size (only one vertex)', @(h,ev)bst_call(@EditScoutsSize, 'Shrink1'));
+                gui_component('button', jPanelScoutOptions,[], '>',  {Insets(0,0,0,0), java_scaled('dimension',22,20)}, 'Increase scout size (only one vertex)', @(h,ev)bst_call(@EditScoutsSize, 'Grow1'));
+                gui_component('button', jPanelScoutOptions,[], '>>', {Insets(0,0,0,0), java_scaled('dimension',26,20)}, 'Increase scout size',                   @(h,ev)bst_call(@EditScoutsSize, 'Grow'));
                 % Separator
                 gui_component('label', jPanelScoutOptions, [], '  ');
                 % Constrained to data
-                jToggleConst = gui_component('toggle', jPanelScoutOptions,'tab hfill', 'Constrained', {Insets(0,0,0,0), Dimension(10,20)}, 'Constrain patch growth to vertices with data above threshold.');
+                jToggleConst = gui_component('toggle', jPanelScoutOptions,'tab hfill', 'Constrained', {Insets(0,0,0,0), java_scaled('dimension',10,20)}, 'Constrain patch growth to vertices with data above threshold.');
                 % Scout size in vertices/area
                 %gui_component('Label', jPanelScoutOptions, 'br', 'Number of vertices:');
                 jLabelScoutSize = gui_component('Label', jPanelScoutOptions, 'br hfill', '  No scout selected');
@@ -386,11 +388,11 @@ function UpdateMenus(sAtlas)
     % Remove all previous menus
     jMenu.removeAll();
     % Menu: New atlas
-    jMenuNew = gui_component('Menu', jMenu, [], 'New atlas', IconLoader.ICON_ATLAS, [], [], []);
+    jMenuNew = gui_component('Menu', jMenu, [], 'New atlas', IconLoader.ICON_ATLAS, [], []);
         gui_component('MenuItem', jMenuNew, [], 'Empty atlas', IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@SetAtlas, [], 'Add'));
         jMenuNew.addSeparator();
-        gui_component('MenuItem', jMenuNew, [], 'Copy atlas',            IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 1,0), []);
-        gui_component('MenuItem', jMenuNew, [], 'Copy selected scouts',  IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 0,0), []);
+        gui_component('MenuItem', jMenuNew, [], 'Copy atlas',            IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 1,0));
+        gui_component('MenuItem', jMenuNew, [], 'Copy selected scouts',  IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 0,0));
         % Create special atlases
         jMenuNew.addSeparator();
         if ~strcmpi(sAtlas.Name, 'Source model')
@@ -398,73 +400,75 @@ function UpdateMenus(sAtlas)
         end
         gui_component('MenuItem', jMenuNew, [], 'Volume scouts', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@CreateAtlasVolumeGrid));
     jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'Load atlas...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@LoadScouts), []);
+    gui_component('MenuItem', jMenu, [], 'Load atlas...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@LoadScouts));
     if ~isReadOnly
-        gui_component('MenuItem', jMenu, [], 'Rename atlas',  IconLoader.ICON_EDIT,        [], @(h,ev)bst_call(@EditAtlasLabel), []);
-        gui_component('MenuItem', jMenu, [], 'Delete atlas',  IconLoader.ICON_DELETE,      [], @(h,ev)bst_call(@RemoveAtlas), []);
+        gui_component('MenuItem', jMenu, [], 'Rename atlas',  IconLoader.ICON_EDIT,        [], @(h,ev)bst_call(@EditAtlasLabel));
+        gui_component('MenuItem', jMenu, [], 'Delete atlas',  IconLoader.ICON_DELETE,      [], @(h,ev)bst_call(@RemoveAtlas));
         jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Add scouts to atlas...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@LoadScouts, [],0), []);
+        gui_component('MenuItem', jMenu, [], 'Add scouts to atlas...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@LoadScouts, [],0));
     end
     jMenu.addSeparator();
     % Subdivide: Only for surfaces
     if ~isVolumeAtlas
-        gui_component('MenuItem', jMenu, [], 'Subdivide atlas',           IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@SubdivideScouts, 1), []);
-        gui_component('MenuItem', jMenu, [], 'Subdivide selected scouts', IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@SubdivideScouts, 0), []);
+        gui_component('MenuItem', jMenu, [], 'Subdivide atlas',           IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@SubdivideScouts, 1));
+        gui_component('MenuItem', jMenu, [], 'Subdivide selected scouts', IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@SubdivideScouts, 0));
         % Menu: Clustering
-        jMenuCluster = gui_component('Menu', jMenu, [], 'Surface clustering',      IconLoader.ICON_ATLAS, [], [], []);
-            gui_component('MenuItem', jMenuCluster, [], 'Homogeneous parcellation (random)',        IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@CreateAtlasCluster, 1), []);
-            gui_component('MenuItem', jMenuCluster, [], 'Homogeneous parcellation (deterministic)', IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@CreateAtlasCluster, 0), []);
+        jMenuCluster = gui_component('Menu', jMenu, [], 'Surface clustering',      IconLoader.ICON_ATLAS, [], []);
+            gui_component('MenuItem', jMenuCluster, [], 'Homogeneous parcellation (random)',        IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@CreateAtlasCluster, 1));
+            gui_component('MenuItem', jMenuCluster, [], 'Homogeneous parcellation (deterministic)', IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@CreateAtlasCluster, 0));
             jMenuCluster.addSeparator();
-            gui_component('MenuItem', jMenuCluster, [], 'Maximum leadfield [under development]',  IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@CreateMLCCluster), []);
-            gui_component('MenuItem', jMenuCluster, [], 'Multiresolution [under development]',    IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@CreateMRACluster), []);
-            gui_component('MenuItem', jMenuCluster, [], 'Functional clustering [under development]',    IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@CreateFunctionalCluster), []);
+            gui_component('MenuItem', jMenuCluster, [], 'Maximum leadfield [under development]',  IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@CreateMLCCluster));
+            gui_component('MenuItem', jMenuCluster, [], 'Multiresolution [under development]',    IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@CreateMRACluster));
+            gui_component('MenuItem', jMenuCluster, [], 'Functional clustering [under development]',    IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@CreateFunctionalCluster));
         jMenu.addSeparator();
     end
-    gui_component('MenuItem', jMenu, [], 'Save modifications', IconLoader.ICON_SAVE, 'Force all the recent modifications to be saved to the surface file', @(h,ev)bst_call(@SaveModifications), []);
-    gui_component('MenuItem', jMenu, [], 'Undo all modifications', IconLoader.ICON_ARROW_LEFT, 'Revert back to the version currently saved in the surface file', @(h,ev)bst_call(@Undo), []);
+    gui_component('MenuItem', jMenu, [], 'Save modifications', IconLoader.ICON_SAVE, 'Force all the recent modifications to be saved to the surface file', @(h,ev)bst_call(@SaveModifications));
+    gui_component('MenuItem', jMenu, [], 'Undo all modifications', IconLoader.ICON_ARROW_LEFT, 'Revert back to the version currently saved in the surface file', @(h,ev)bst_call(@Undo));
 
     % === MENU: SCOUT ===
     jMenu = ctrl.jMenuScout;
     % Remove all previous menus
     jMenu.removeAll();
     if ~isReadOnly
-        gui_component('MenuItem', jMenu, [], 'New: coordinates',  IconLoader.ICON_EDIT_SCOUT_IN_MRI, [], @(h,ev)bst_call(@CreateScoutMni), []);
+        gui_component('MenuItem', jMenu, [], 'New: coordinates',  IconLoader.ICON_EDIT_SCOUT_IN_MRI, [], @(h,ev)bst_call(@CreateScoutMni));
         jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Add vertices', IconLoader.ICON_SCOUT_NEW,         [], @(h,ev)bst_call(@EditScoutSurface), []);
-        gui_component('MenuItem', jMenu, [], 'Edit in MRI',  IconLoader.ICON_EDIT_SCOUT_IN_MRI, [], @(h,ev)bst_call(@EditScoutMri), []);
+        gui_component('MenuItem', jMenu, [], 'Add vertices', IconLoader.ICON_SCOUT_NEW,         [], @(h,ev)bst_call(@EditScoutSurface));
+        if ~isVolumeAtlas
+            gui_component('MenuItem', jMenu, [], 'Edit in MRI',  IconLoader.ICON_EDIT_SCOUT_IN_MRI, [], @(h,ev)bst_call(@EditScoutMri));
+        end
         jMenu.addSeparator();
     end
     % Menu: Set cluster function
     if strcmpi(sAtlas.Name, 'Source model')
-        gui_component('Menu', jMenu, [], 'Set modeling options', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@CreateMenuInverse, ev.getSource()), []);
+        gui_component('Menu', jMenu, [], 'Set modeling options', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@CreateMenuInverse, ev.getSource()));
     else
-        gui_component('Menu', jMenu, [], 'Set function', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@CreateMenuFunction, ev.getSource()), []);
+        gui_component('Menu', jMenu, [], 'Set function', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@CreateMenuFunction, ev.getSource()));
         if ~isReadOnly
-            gui_component('Menu', jMenu, [], 'Set region', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@CreateMenuRegion, ev.getSource()), []);
+            gui_component('Menu', jMenu, [], 'Set region', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@CreateMenuRegion, ev.getSource()));
         end
     end
     jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'Rename',       IconLoader.ICON_EDIT,    [], @(h,ev)bst_call(@EditScoutLabel), []);
-    gui_component('MenuItem', jMenu, [], 'Set color',    IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EditScoutsColor), []);
+    gui_component('MenuItem', jMenu, [], 'Rename',       IconLoader.ICON_EDIT,    [], @(h,ev)bst_call(@EditScoutLabel));
+    gui_component('MenuItem', jMenu, [], 'Set color',    IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EditScoutsColor));
     if ~isReadOnly
-        gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,  [], @(h,ev)bst_call(@RemoveScouts), []);
-        gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,  [], @(h,ev)bst_call(@JoinScouts), []);
+        gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,  [], @(h,ev)bst_call(@RemoveScouts));
+        gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,  [], @(h,ev)bst_call(@JoinScouts));
         jMenu.addSeparator();
     end
-    gui_component('MenuItem', jMenu, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@ExportScoutsToMatlab), []);
+    gui_component('MenuItem', jMenu, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@ExportScoutsToMatlab));
     if ~isReadOnly
-        gui_component('MenuItem', jMenu, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)bst_call(@ImportScoutsFromMatlab), []);
-        jMenuProject = gui_component('Menu', jMenu, [], 'Project to...', IconLoader.ICON_RESULTS_LIST, [], [], []);
+        gui_component('MenuItem', jMenu, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)bst_call(@ImportScoutsFromMatlab));
+        jMenuProject = gui_component('Menu', jMenu, [], 'Project to...', IconLoader.ICON_RESULTS_LIST, [], []);
     else
         jMenuProject = [];
     end
     jMenu.addSeparator();
-    jMenuSurf = gui_component('Menu', jMenu, [], 'Edit surface', IconLoader.ICON_SURFACE_CORTEX, [], [], []);
-        gui_component('MenuItem', jMenuSurf, [], 'Remove selected scouts',    IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@NewSurface,0), []);
-        gui_component('MenuItem', jMenuSurf, [], 'Keep only selected scouts', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@NewSurface,1), []);
+    jMenuSurf = gui_component('Menu', jMenu, [], 'Edit surface', IconLoader.ICON_SURFACE_CORTEX, [], []);
+        gui_component('MenuItem', jMenuSurf, [], 'Remove selected scouts',    IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@NewSurface,0));
+        gui_component('MenuItem', jMenuSurf, [], 'Keep only selected scouts', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@NewSurface,1));
     if isVolumeAtlas
         jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Export as MRI mask', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportScoutsToMri), []);
+        gui_component('MenuItem', jMenu, [], 'Export as MRI mask', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportScoutsToMri));
     end
         
     % === MENU PROJECT ====
@@ -490,9 +494,9 @@ function UpdateMenus(sAtlas)
             end
             % Create a menu for the subject
             if (iSubject == 0)
-                jMenuSubj = gui_component('Menu', jMenuProject, [], 'Default anatomy', IconLoader.ICON_SUBJECT, [], [], []);
+                jMenuSubj = gui_component('Menu', jMenuProject, [], 'Default anatomy', IconLoader.ICON_SUBJECT, [], []);
             else
-                jMenuSubj = gui_component('Menu', jMenuProject, [], sSubject.Name, IconLoader.ICON_SUBJECT, [], [], []);
+                jMenuSubj = gui_component('Menu', jMenuProject, [], sSubject.Name, IconLoader.ICON_SUBJECT, [], []);
             end
             % Loop on all the surfaces
             for iSurf = 1:length(sAllCortex)
@@ -501,7 +505,7 @@ function UpdateMenus(sAtlas)
                     continue;
                 end
                 % Project to this cortex surface
-                gui_component('MenuItem', jMenuSubj, [], sAllCortex(iSurf).Comment, IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScouts, sSurf.FileName, sAllCortex(iSurf).FileName), []);
+                gui_component('MenuItem', jMenuSubj, [], sAllCortex(iSurf).Comment, IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScouts, sSurf.FileName, sAllCortex(iSurf).FileName));
             end
         end
     end
@@ -512,16 +516,16 @@ function UpdateMenus(sAtlas)
     % Remove all previous menus
     jMenu.removeAll();
     if ~isReadOnly
-        gui_component('MenuItem', jMenu, [], 'Correlation with sensor (new scout)', IconLoader.ICON_FIND_MAX, [], @(h,ev)bst_call(@CreateScoutCorr), []);
-        gui_component('MenuItem', jMenu, [], 'Expand with correlation (selected scout)', IconLoader.ICON_RESIZE, 'Expand scout based on correlation with other sources.', @(h,ev)bst_call(@ExpandWithCorrelation,h,ev), []);
+        gui_component('MenuItem', jMenu, [], 'Correlation with sensor (new scout)', IconLoader.ICON_FIND_MAX, [], @(h,ev)bst_call(@CreateScoutCorr));
+        gui_component('MenuItem', jMenu, [], 'Expand with correlation (selected scout)', IconLoader.ICON_RESIZE, 'Expand scout based on correlation with other sources.', @(h,ev)bst_call(@ExpandWithCorrelation,h,ev));
         jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Maximal value (new scout)', IconLoader.ICON_FIND_MAX, [], @(h,ev)bst_call(@CreateScoutMax), []);
-        gui_component('MenuItem', jMenu, [], 'Maximal value (selected scout)', IconLoader.ICON_FIND_MAX, [], @(h,ev)bst_call(@EditScoutMax), []);
+        gui_component('MenuItem', jMenu, [], 'Maximal value (new scout)', IconLoader.ICON_FIND_MAX, [], @(h,ev)bst_call(@CreateScoutMax));
+        gui_component('MenuItem', jMenu, [], 'Maximal value (selected scout)', IconLoader.ICON_FIND_MAX, [], @(h,ev)bst_call(@EditScoutMax));
         jMenu.addSeparator();
     end
     gui_component('MenuItem', jMenu, [], 'Simulate recordings', IconLoader.ICON_EEG_NEW, ['<HTML><B>Simulation: Forward model of selected scouts</B>:<BR>' ...
                                         '<BLOCKQUOTE>Simulate the scalp data that would be recorded if<BR>only the selected cortex region was activated.<BR><BR>' ...
-                                        'If no scout is selected: simulate recordings produced<BR>by the activity of the whole cortex.</BLOCKQUOTE></HTML>'], @(h,ev)bst_call(@ForwardModelForScout,h,ev), []);
+                                        'If no scout is selected: simulate recordings produced<BR>by the activity of the whole cortex.</BLOCKQUOTE></HTML>'], @(h,ev)bst_call(@ForwardModelForScout,h,ev));
 
 end
     
@@ -535,13 +539,13 @@ function CreateMenuFunction(jMenu)
         return;
     end
     % List the functions
-    jMenuMean = gui_component('RadioMenuItem', jMenu, [], 'Mean',       [], [], @(h,ev)bst_call(@SetScoutFunction,'Mean'), []);
-    jMenuPca  = gui_component('RadioMenuItem', jMenu, [], 'PCA',        [], [], @(h,ev)bst_call(@SetScoutFunction,'PCA'), []);
-    jMenuFast = gui_component('RadioMenuItem', jMenu, [], 'FastPCA',    [], [], @(h,ev)bst_call(@SetScoutFunction,'FastPCA'), []);
-    jMenuNorm = gui_component('RadioMenuItem', jMenu, [], 'Mean(norm)', [], [], @(h,ev)bst_call(@SetScoutFunction,'Mean_norm'), []);
-    jMenuMax  = gui_component('RadioMenuItem', jMenu, [], 'Max',        [], [], @(h,ev)bst_call(@SetScoutFunction,'Max'), []);
-    jMenuPow  = gui_component('RadioMenuItem', jMenu, [], 'Power',      [], [], @(h,ev)bst_call(@SetScoutFunction,'Power'), []);
-    jMenuAll  = gui_component('RadioMenuItem', jMenu, [], 'All',        [], [], @(h,ev)bst_call(@SetScoutFunction,'All'), []);
+    jMenuMean = gui_component('RadioMenuItem', jMenu, [], 'Mean',       [], [], @(h,ev)bst_call(@SetScoutFunction,'Mean'));
+    jMenuPca  = gui_component('RadioMenuItem', jMenu, [], 'PCA',        [], [], @(h,ev)bst_call(@SetScoutFunction,'PCA'));
+    jMenuFast = gui_component('RadioMenuItem', jMenu, [], 'FastPCA',    [], [], @(h,ev)bst_call(@SetScoutFunction,'FastPCA'));
+    jMenuNorm = gui_component('RadioMenuItem', jMenu, [], 'Mean(norm)', [], [], @(h,ev)bst_call(@SetScoutFunction,'Mean_norm'));
+    jMenuMax  = gui_component('RadioMenuItem', jMenu, [], 'Max',        [], [], @(h,ev)bst_call(@SetScoutFunction,'Max'));
+    jMenuPow  = gui_component('RadioMenuItem', jMenu, [], 'Power',      [], [], @(h,ev)bst_call(@SetScoutFunction,'Power'));
+    jMenuAll  = gui_component('RadioMenuItem', jMenu, [], 'All',        [], [], @(h,ev)bst_call(@SetScoutFunction,'All'));
     % Get the selected functions
     allFun = unique({sScouts.Function});
     if (length(allFun) > 1)
@@ -570,19 +574,19 @@ function CreateMenuRegion(jMenu)
         return;
     end
     % Hemisphere
-    jMenuLeft  = gui_component('RadioMenuItem', jMenu, [], 'Left',  [], [], @(h,ev)bst_call(@SetScoutRegion, 'L.'), []);
-    jMenuRight = gui_component('RadioMenuItem', jMenu, [], 'Right',  [], [], @(h,ev)bst_call(@SetScoutRegion, 'R.'), []);
+    jMenuLeft  = gui_component('RadioMenuItem', jMenu, [], 'Left',  [], [], @(h,ev)bst_call(@SetScoutRegion, 'L.'));
+    jMenuRight = gui_component('RadioMenuItem', jMenu, [], 'Right',  [], [], @(h,ev)bst_call(@SetScoutRegion, 'R.'));
     jMenu.addSeparator();
     % Region
-    jMenuPF = gui_component('RadioMenuItem', jMenu, [], 'Prefrontal',  [], [], @(h,ev)bst_call(@SetScoutRegion, '.PF'), []);
-    jMenuF  = gui_component('RadioMenuItem', jMenu, [], 'Frontal',     [], [], @(h,ev)bst_call(@SetScoutRegion, '.F'), []);
-    jMenuC  = gui_component('RadioMenuItem', jMenu, [], 'Central',     [], [], @(h,ev)bst_call(@SetScoutRegion, '.C'), []);
-    jMenuP  = gui_component('RadioMenuItem', jMenu, [], 'Pariental',   [], [], @(h,ev)bst_call(@SetScoutRegion, '.P'), []);
-    jMenuT  = gui_component('RadioMenuItem', jMenu, [], 'Temporal',    [], [], @(h,ev)bst_call(@SetScoutRegion, '.T'), []);
-    jMenuO  = gui_component('RadioMenuItem', jMenu, [], 'Occipital',   [], [], @(h,ev)bst_call(@SetScoutRegion, '.O'), []);
-    jMenuL  = gui_component('RadioMenuItem', jMenu, [], 'Limbic',      [], [], @(h,ev)bst_call(@SetScoutRegion, '.L'), []);
+    jMenuPF = gui_component('RadioMenuItem', jMenu, [], 'Prefrontal',  [], [], @(h,ev)bst_call(@SetScoutRegion, '.PF'));
+    jMenuF  = gui_component('RadioMenuItem', jMenu, [], 'Frontal',     [], [], @(h,ev)bst_call(@SetScoutRegion, '.F'));
+    jMenuC  = gui_component('RadioMenuItem', jMenu, [], 'Central',     [], [], @(h,ev)bst_call(@SetScoutRegion, '.C'));
+    jMenuP  = gui_component('RadioMenuItem', jMenu, [], 'Pariental',   [], [], @(h,ev)bst_call(@SetScoutRegion, '.P'));
+    jMenuT  = gui_component('RadioMenuItem', jMenu, [], 'Temporal',    [], [], @(h,ev)bst_call(@SetScoutRegion, '.T'));
+    jMenuO  = gui_component('RadioMenuItem', jMenu, [], 'Occipital',   [], [], @(h,ev)bst_call(@SetScoutRegion, '.O'));
+    jMenuL  = gui_component('RadioMenuItem', jMenu, [], 'Limbic',      [], [], @(h,ev)bst_call(@SetScoutRegion, '.L'));
     jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'Custom region...',   [], [], @(h,ev)bst_call(@SetScoutRegion), []);
+    gui_component('MenuItem', jMenu, [], 'Custom region...',   [], [], @(h,ev)bst_call(@SetScoutRegion));
     % Get the selected functions
     allHemi = {};
     allRegions = {};
@@ -627,15 +631,15 @@ function CreateMenuInverse(jMenu)
         return;
     end
     % Region(2): X=ignore, S=surface, V=volume, D=dba    
-    jMenuSurf    = gui_component('RadioMenuItem', jMenu, [], 'Surface',  [], [], @(h,ev)bst_call(@SetScoutRegion, '.S.'), []);
-    jMenuVol     = gui_component('RadioMenuItem', jMenu, [], 'Volume',   [], [], @(h,ev)bst_call(@SetScoutRegion, '.V.'), []);
-    jMenuDba     = gui_component('RadioMenuItem', jMenu, [], 'Deep brain', [], [], @(h,ev)bst_call(@SetScoutRegion, '.D.'), []);
-    jMenuExclude = gui_component('RadioMenuItem', jMenu, [], 'Exclude',    [], [], @(h,ev)bst_call(@SetScoutRegion, '.X.'), []);
+    jMenuSurf    = gui_component('RadioMenuItem', jMenu, [], 'Surface',  [], [], @(h,ev)bst_call(@SetScoutRegion, '.S.'));
+    jMenuVol     = gui_component('RadioMenuItem', jMenu, [], 'Volume',   [], [], @(h,ev)bst_call(@SetScoutRegion, '.V.'));
+    jMenuDba     = gui_component('RadioMenuItem', jMenu, [], 'Deep brain', [], [], @(h,ev)bst_call(@SetScoutRegion, '.D.'));
+    jMenuExclude = gui_component('RadioMenuItem', jMenu, [], 'Exclude',    [], [], @(h,ev)bst_call(@SetScoutRegion, '.X.'));
     jMenu.addSeparator();
     % Region(3): C=constrained, L=loose, U=unconstrained
-    jMenuConstr   = gui_component('RadioMenuItem', jMenu, [], 'Constrained',   [], [], @(h,ev)bst_call(@SetScoutRegion, '..C'), []);
-    jMenuUnconstr = gui_component('RadioMenuItem', jMenu, [], 'Unconstrained', [], [], @(h,ev)bst_call(@SetScoutRegion, '..U'), []);
-    jMenuLoose    = gui_component('RadioMenuItem', jMenu, [], 'Loose',         [], [], @(h,ev)bst_call(@SetScoutRegion, '..L'), []);
+    jMenuConstr   = gui_component('RadioMenuItem', jMenu, [], 'Constrained',   [], [], @(h,ev)bst_call(@SetScoutRegion, '..C'));
+    jMenuUnconstr = gui_component('RadioMenuItem', jMenu, [], 'Unconstrained', [], [], @(h,ev)bst_call(@SetScoutRegion, '..U'));
+    jMenuLoose    = gui_component('RadioMenuItem', jMenu, [], 'Loose',         [], [], @(h,ev)bst_call(@SetScoutRegion, '..L'));
     % Get the selected functions
     allForward = {};
     allInverse = {};
@@ -1239,9 +1243,9 @@ function SetSelectedScouts(iSelScouts)
     java_setcb(ctrl.jListScouts, 'ValueChangedCallback', []);
     % Select items in JList
     ctrl.jListScouts.setSelectedIndices(iSelItem);
-    % Scroll to see the selected scout in the list
-    if (length(iSelItem) == 1) && ~isequal(iSelItem, -1)
-        selRect = ctrl.jListScouts.getCellBounds(iSelItem, iSelItem);
+    % Scroll to see the last selected scout in the list
+    if (length(iSelItem) >= 1) && ~isequal(iSelItem, -1)
+        selRect = ctrl.jListScouts.getCellBounds(iSelItem(end), iSelItem(end));
         ctrl.jListScouts.scrollRectToVisible(selRect);
         ctrl.jListScouts.repaint();
     end

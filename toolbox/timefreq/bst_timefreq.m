@@ -11,7 +11,7 @@ function [OutputFiles, Messages, isError] = bst_timefreq(Data, OPTIONS)
 %          - Matrix of time-series [nRow x nTime]
 %          - Cell-array of matrices of time series
 %     - OPTIONS: Structure with the following fields
-%          - Method       : {'morlet', 'fft', 'psd', 'hilbert'}
+%          - Method       : {'morlet', 'fft', 'psd', 'hilbert', 'mtmconvol'}
 %          - Output       : {'average', 'all'}
 %          - Comment      : Output file comment
 %          - ListFiles    : Cell array of filenames, used only if Data is a matrix of data (used to reference the "parent" file)
@@ -76,6 +76,8 @@ Def_OPTIONS.iTargetStudy    = [];
 Def_OPTIONS.SaveKernel      = 0;
 Def_OPTIONS.nComponents     = 1;
 Def_OPTIONS.NormalizeFunc   = 'none';
+Def_OPTIONS.ft_mtmconvol    = [];
+
 % Return the default options
 if (nargin == 0)
     OutputFiles = Def_OPTIONS;
@@ -106,6 +108,7 @@ ChannelFlag      = [];
 RowNames         = [];
 InitTimeVector   = [];
 nRows            = [];
+strHistory       = [];
 % Number of frequency bands
 if iscell(OPTIONS.Freqs)
     FreqBands = OPTIONS.Freqs;
@@ -124,10 +127,11 @@ end
         
 % Progress bar
 switch(OPTIONS.Method)
-    case 'morlet',   strMap = 'time-frequency maps';
-    case 'fft',      strMap = 'FFT values';
-    case 'psd',      strMap = 'PSD values';
-    case 'hilbert',  strMap = 'Hilbert maps';
+    case 'morlet',    strMap = 'time-frequency maps';
+    case 'fft',       strMap = 'FFT values';
+    case 'psd',       strMap = 'PSD values';
+    case 'hilbert',   strMap = 'Hilbert maps';
+    case 'mtmconvol', strMap = 'multitaper maps';
 end
 
 
@@ -337,6 +341,10 @@ for iData = 1:length(Data)
                     % Imported recordings
                     else
                         F = sMat.F;
+                        % Detect bad segments
+                        sMat.events = sMat.Events;
+                        sMat.prop.sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
+                        BadSegments = panel_record('GetBadSegments', sMat) - sMat.prop.sfreq * sMat.Time(1) + 1;
                     end
                     % Get indices of channels for this results file
                     F = F(ResultsMat.GoodChannel, :);
@@ -497,7 +505,7 @@ for iData = 1:length(Data)
             % Calculate PSD/FFT
             [TF, OPTIONS.Freqs, Nwin, Messages] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel);
             if isempty(TF)
-                return;
+                continue;
             end
             % Imaging kernel is already applied: don't do it twice
             ImagingKernel = [];
@@ -536,6 +544,45 @@ for iData = 1:length(Data)
                     TF(:,:,iBand) = oc_hilbert(Fband')';
                 end
             end
+            
+        % Multitaper
+        case 'mtmconvol'
+            mt = OPTIONS.ft_mtmconvol;
+            % Configuration inspired from SPM function spm_eeg_specest_mtmconvol
+            dt = OPTIONS.TimeVector(end) - OPTIONS.TimeVector(1) + diff(OPTIONS.TimeVector(1:2));
+            fsample = 1 ./ diff(OPTIONS.TimeVector(1:2));
+            df = unique(diff(mt.frequencies));
+            if length(df) == 1  
+                pad = ceil(dt*df)/df;
+            else
+                pad = [];
+            end
+            % Correct the time step to the closest multiple of the sampling interval to keep the time axis uniform
+            mt.timestep = round(fsample * mt.timestep) / fsample;
+            % Time axis
+            timeoi = (OPTIONS.TimeVector(1) + mt.timeres/2) : mt.timestep : (OPTIONS.TimeVector(end) - mt.timeres/2 - 1/fsample); 
+            % Frequency resolution for each frequency
+            freqres = mt.frequencies / mt.freqmod;
+            freqres(find(freqres < 1/mt.timeres)) = 1/mt.timeres;
+            
+            % Call fieldtrip function
+            [TF, ntaper, OPTIONS.Freqs, OPTIONS.TimeVector] = ft_specest_mtmconvol(F, OPTIONS.TimeVector, ...
+                'taper',     mt.taper, ...
+                'timeoi',    timeoi, ...
+                'freqoi',    mt.frequencies,...
+                'timwin',    repmat(mt.timeres, 1, length(mt.frequencies)), ...
+                'tapsmofrq', freqres, ...
+                'pad',       pad, ...
+                'verbose',   0);
+            % Compute power, average across tapers
+            TF = nanmean(TF .* conj(TF), 1);
+            % Permute dimensions to get [nChannels x nTime x nFreq]
+            TF = permute(TF, [2 4 3 1]);
+            % Apply measure here
+            if strcmpi(OPTIONS.Measure, 'magnitude')
+                TF = sqrt(TF);
+            end
+            isMeasureApplied = 1;
     end
     bst_progress('inc', 1);
     % Set to zero the bad channels
@@ -661,10 +708,12 @@ for iData = 1:length(Data)
         % Add block to accumulator
         TF_avg = TF_avg + TF * nAvg;
         nAvgTotal = nAvgTotal + nAvg;
+        % Add history message
+        strHistory = [strHistory, ' - Average TF: ', InitFile, 10];
     % Save all the time-frequency maps
     else
         % Save file
-        SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvg, Atlas);
+        SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvg, Atlas, strHistory);
     end
     bst_progress('inc', 1);
 end
@@ -696,13 +745,13 @@ if isAverage
         InitFile = '';
     end
     % Save file
-    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas);
+    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas, strHistory);
 end
 
 
 
 %% ===== SAVE FILE =====
-    function SaveFile(iTargetStudy, DataFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgFile, Atlas)
+    function SaveFile(iTargetStudy, DataFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgFile, Atlas, strHistory)
         % Create file structure
         FileMat = db_template('timefreqmat');
         FileMat.Comment   = OPTIONS.Comment;
@@ -741,6 +790,9 @@ end
         end
         % History: Computation
         FileMat = bst_history('add', FileMat, 'compute', 'Time-frequency decomposition');
+        if ~isempty(strHistory)
+            FileMat = bst_history('add', FileMat, 'compute', strHistory);
+        end
         
         % Apply time and frequency bands
         if ~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)

@@ -21,10 +21,24 @@ function out_fwrite_edf(sFile, sfid, SamplesBounds, ChannelsRange, F)
 %
 % Authors: Martin Cousineau, 2017
 
+% ===== PARSE INPUTS =====
+[nSignals, nSamples] = size(F);
+if isempty(SamplesBounds)
+    SamplesBounds = [0, nSamples];
+end
+if isempty(ChannelsRange)
+    ChannelsRange = [1, nSignals];
+end
+
 fseek(sfid, 0, 'eof');
 
-% Convert V to uV to avoid precision loss
-F = F * 1e6;
+% Get the gains of the channels for all the non-Annotation channels
+iChanGain = setdiff(1:length(sFile.header.signal), sFile.header.annotchan);
+% Apply channel gains before converting to integer
+unit_gain = 1e6;
+chgain = unit_gain ./ ([sFile.header.signal(iChanGain).physical_max] - [sFile.header.signal(iChanGain).physical_min]) .* ...
+                      ([sFile.header.signal(iChanGain).digital_max]  - [sFile.header.signal(iChanGain).digital_min]);
+F = bst_bsxfun(@times, F, chgain');
 
 % Convert to 2-byte integer in 2's complement
 F = int16(F);
@@ -34,25 +48,62 @@ F(negF) = bitcmp(abs(F(negF))) + 1;
 % Prepare annotations if any.
 if sFile.header.annotchan >= 0
     annotations    = 1;
-    nextEvent      = 1;
-    nextAnnot      = [];
-    nEvents        = length(sFile.events);
+    nAnnots        = numel(sFile.header.annotations);
+    nSamplesReal   = sFile.prop.samples(2) - sFile.prop.samples(1);
     nSamplesAnnots = sFile.header.signal(sFile.header.annotchan).nsamples;
+    annotThreshold = floor((1:nAnnots) / nAnnots * nSamplesReal);
+    annotBounds    = [0, 0];
+    
+    % Insert annotation in this record only if it contains the required
+    % cutoff sample threshold
+    for iThr = 1:nAnnots
+        if annotThreshold(iThr) >= SamplesBounds(1) && annotThreshold(iThr) <= SamplesBounds(2)
+            if annotBounds(1) < 1
+                annotBounds(1) = iThr;
+            end
+            annotBounds(2) = iThr;
+        end
+    end
+    
+    if annotBounds(2) < 1
+        annotsList = [];
+    else
+        annotsList = sFile.header.annotations(annotBounds(1) : annotBounds(2));
+    end
+    
+    nAnnots     = numel(annotsList);
+    nextAnnot   = 1;
 else
     annotations = 0;
 end
 
 % Write to file record per record
-nSamplesPerRecord    = sFile.prop.sfreq * sFile.header.reclen;
-nRecords             = int16(sFile.header.nrec);
-[nSignals, nSamples] = size(F);
-ncount               = 0;
-bounds               = [1, nSamplesPerRecord];
-timeOffset           = 0.0;
+nSamplesPerRecord = sFile.prop.sfreq * sFile.header.reclen;
+nRecords          = ceil((SamplesBounds(2) - SamplesBounds(1)) / nSamplesPerRecord);
+ncount            = 0;
+bounds            = [1, nSamplesPerRecord];
+timeOffset        = SamplesBounds(1) / sFile.prop.sfreq;
 
 for iRec = 1:nRecords
-    for iSig = 1:nSignals
+    % Special case when we don't have enough data to fill the last record
+    if bounds(2) > nSamples
+        if iRec ~= nRecords
+            error('Ran out of data before last record.');
+        end
+        writeZeros = bounds(2) - nSamples;
+        bounds(2)  = nSamples;
+    else
+        writeZeros = 0;
+    end
+
+    % Write data
+    for iSig = ChannelsRange(1):ChannelsRange(2)
         ncount = ncount + fwrite(sfid, F(iSig, bounds(1):bounds(2)), 'int16');
+        
+        % Fill rest of the record with 0s if required
+        if writeZeros
+            fwrite(sfid, zeros(writeZeros, 1), 'int16');
+        end
     end
     
     % Write annotations if any, split by records
@@ -63,29 +114,9 @@ for iRec = 1:nRecords
         bytesLeft = bytesLeft - fprintf(sfid, '+%f%c%c%c', timeOffset, char(20), char(20), char(0));
         
         % Write as many annotations as possible in current record
-        while bytesLeft >= length(nextAnnot)
-            if ~isempty(nextAnnot)
-                bytesLeft = bytesLeft - fprintf(sfid, '%s', nextAnnot);
-            end
-            
-            if nextEvent > nEvents
-                nextAnnot = [];
-                break;
-            end
-            
-            % Prepare the next annotation string
-            event = sFile.events(nextEvent);
-            startTime = event.times(1);
-            nextAnnot = sprintf('+%f', startTime);
-
-            % Add duration if specified.
-            if length(event.times) > 1
-                duration = event.times(2) - startTime;
-                nextAnnot = [nextAnnot sprintf('%c%f', char(21), duration)];
-            end
-
-            nextAnnot = [nextAnnot sprintf('%c%s%c%c', char(20), event.label, char(20), char(0))];
-            nextEvent = nextEvent + 1;
+        while nextAnnot <= nAnnots && bytesLeft >= length(annotsList{nextAnnot})
+            bytesLeft = bytesLeft - fprintf(sfid, '%s', annotsList{nextAnnot});
+            nextAnnot = nextAnnot + 1;
         end
         
         % Fill remaining of record with 0-bytes.
@@ -101,3 +132,5 @@ end
 if (ncount ~= numel(F))
     error('Error writing data to file.');
 end
+
+

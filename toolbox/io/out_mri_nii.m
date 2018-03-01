@@ -1,11 +1,13 @@
-function fid = out_mri_nii( sMri, OutputFile, typeMatlab, Nt )
+function [fid, nifti] = out_mri_nii( sMri, OutputFile, typeMatlab, Nt )
 % OUT_MRI_NII: Exports a MRI to a NIFTI-1 file (.NII or .HDR/.IMG)).
 % 
 % USAGE:        out_mri_nii( sMri, OutputFile, typeMatlab)         : Write a full file
 %         fid = out_mri_nii( sMri, OutputFile, typeMatlab, Nt=1 )  : Write the header and do not close the file before returning
+%         ... = out_mri_nii( BstMriFile, ...)
 %
 % INPUT: 
 %    - sMri       : Brainstorm MRI structure
+%    - BstMriFile : Path to a MRI file in the Brainstorm database
 %    - OutputFile : full path to output file (with '.img' or '.nii' extension)
 %    - typeMatlab : string, type of data to write in the file: uint8, int16, int32, float32, double
 %    - Nt         : Number of time points to write in the file
@@ -31,7 +33,7 @@ function fid = out_mri_nii( sMri, OutputFile, typeMatlab, Nt )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2017
 
 % ===== PARSE INPUTS =====
 % Write header of full file
@@ -50,6 +52,11 @@ byteOrder = 'l';
 [OutputPath, OutputBase, OutputExt] = bst_fileparts(OutputFile);
 
 % ===== LOAD BRAINSTORM MRI =====
+% If input is a filename
+if ischar(sMri)
+    BstMriFile = sMri;
+    sMri = in_mri_bst(BstMriFile);
+end
 % Get maximum
 MaxVal = max(abs(sMri.Cube(:)));
 % Check value range
@@ -94,28 +101,38 @@ hdr.dim    = [4 volDim Nt 0 0 0];
 hdr.pixdim = [1 pixDim 1  0 0 0];
 hdr.glmax  = MaxVal;
 
-% Default origin of the volume: AC, if not middle of the volume
-if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'Origin') && ~isempty(sMri.NCS.Origin) 
-    Origin = sMri.NCS.Origin - [1 2 2];
-elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T) 
-    Origin = cs_convert(sMri, 'mni', 'mri', [0 0 0]) .* 1000;
-elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC) 
-    Origin = sMri.NCS.AC + [0, -3, 4];
-else
-    Origin = volDim / 2;
-end
-% if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC) 
-%     if ~isempty(strfind(sMri.Comment, 'Colin27'))
-%         Origin = sMri.NCS.AC + [-1 -6 2];   % Adapted to match the display in MRICron (overlay with default)
-%     else
-%         Origin = sMri.NCS.AC;
-%     end
-% end
 
-% sform matrix
-srow_x = [pixDim(1), 0, 0, -Origin(1)];
-srow_y = [0, pixDim(2), 0, -Origin(2)];
-srow_z = [0, 0, pixDim(3), -Origin(3)];  
+% ===== TRANSORMATION MATRICES ======
+% Use existing matrices (from the header)
+if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'}))
+    nifti = sMri.Header.nifti;
+    
+% Otherwise: Try to define from existing information in the database
+else
+    % Default origin of the volume: AC, if not middle of the volume
+    if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'Origin') && ~isempty(sMri.NCS.Origin) 
+        Origin = sMri.NCS.Origin - [1 2 2];
+    elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T) 
+        Origin = cs_convert(sMri, 'mni', 'mri', [0 0 0]) .* 1000;
+    elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC) 
+        Origin = sMri.NCS.AC + [0, -3, 4];
+    else
+        Origin = volDim / 2;
+    end
+    % sform matrix
+    nifti.sform_code = 2;
+    nifti.srow_x     = [1, 0, 0, -Origin(1)] * pixDim(1);
+    nifti.srow_y     = [0, 1, 0, -Origin(2)] * pixDim(2);
+    nifti.srow_z     = [0, 0, 1, -Origin(3)] * pixDim(3);
+    % qform matrix
+    nifti.qform_code = 0;
+    nifti.quatern_b  = 0;
+    nifti.quatern_c  = 0;
+    nifti.quatern_d  = 0;
+    nifti.qoffset_x  = 0;
+    nifti.qoffset_y  = 0;
+    nifti.qoffset_z  = 0;
+end
 
 
 %% ===== SAVE ANALYZE HEADER (.NII or .HDR) =====
@@ -200,12 +217,17 @@ desc(1:23) = 'Written with Brainstorm';
 fwrite(fid, desc,  'uchar');         % descrip
 fwrite(fid, z(24), 'uchar');         % aux_file
 if isNifti 
-    fwrite(fid, 0,     'uint16');    % qform_code
-    fwrite(fid, 2,     'uint16');    % sform_code: NIFTI_XFORM_ALIGNED_ANAT
-    fwrite(fid, z(6),  'float');     % quatern_b, quatern_c, quatern_d, qoffset_x, qoffset_y, qoffset_z
-    fwrite(fid, srow_x,  'float');   % sform
-    fwrite(fid, srow_y,  'float');   % sform
-    fwrite(fid, srow_z,  'float');   % sform
+    fwrite(fid, nifti.qform_code, 'uint16');    % qform_code
+    fwrite(fid, nifti.sform_code, 'uint16'); 
+    fwrite(fid, nifti.quatern_b,  'float');
+    fwrite(fid, nifti.quatern_c,  'float');
+    fwrite(fid, nifti.quatern_d,  'float');
+    fwrite(fid, nifti.qoffset_x,  'float');
+    fwrite(fid, nifti.qoffset_y,  'float');
+    fwrite(fid, nifti.qoffset_z,  'float');
+    fwrite(fid, nifti.srow_x,  'float');   % sform
+    fwrite(fid, nifti.srow_y,  'float');   % sform
+    fwrite(fid, nifti.srow_z,  'float');   % sform
     fwrite(fid, z(16), 'uchar');     % intent_name
     fwrite(fid, ['n+1' 0], 'uchar'); % magic
     fwrite(fid, z(4),      'uchar'); % end...

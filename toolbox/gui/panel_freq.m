@@ -50,7 +50,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Current frequency label
     jLabelCurFreq = gui_component('Label', jPanelNew, [], '     ');
     jLabelCurFreq.setHorizontalAlignment(JLabel.RIGHT);
-    jLabelCurFreq.setPreferredSize(Dimension(40, 22));
+    jLabelCurFreq.setPreferredSize(java_scaled('dimension', 40, 22));
     % Quick preview
     java_setcb(jSliderCurFreq, 'StateChangedCallback',  @(h,ev)SliderQuickPreview(jSliderCurFreq, jLabelCurFreq));
 
@@ -131,20 +131,20 @@ function UpdatePanel()
                 f = round(GlobalData.UserFrequencies.Freqs(iCurFreq) * 100) / 100;
                 strFreq = [num2str(f), ' Hz'];
                 ctrl.jLabelCurFreq.setHorizontalAlignment(ctrl.jLabelCurFreq.RIGHT);
-                ctrl.jLabelCurFreq.setPreferredSize(java.awt.Dimension(50, 22));
+                ctrl.jLabelCurFreq.setPreferredSize(java_scaled('dimension', 50, 22));
                 ctrl.jSliderCurFreq.setPaintTicks(0);
             elseif (size(GlobalData.UserFrequencies.Freqs,2) == 3)
                 BandBounds = process_tf_bands('GetBounds', GlobalData.UserFrequencies.Freqs(iCurFreq,:));
                 strFreq = ['<HTML>' GlobalData.UserFrequencies.Freqs{iCurFreq, 1} '<BR>' ...
                            sprintf('%g-%g Hz', BandBounds)];
                 ctrl.jLabelCurFreq.setHorizontalAlignment(ctrl.jLabelCurFreq.LEFT);
-                ctrl.jLabelCurFreq.setPreferredSize(java.awt.Dimension(60, 22));
+                ctrl.jLabelCurFreq.setPreferredSize(java_scaled('dimension', 60, 22));
                 ctrl.jSliderCurFreq.setPaintTicks(1);
                 ctrl.jSliderCurFreq.setMajorTickSpacing(1);
             else
                 strFreq = GlobalData.UserFrequencies.Freqs{iCurFreq};
                 ctrl.jLabelCurFreq.setHorizontalAlignment(ctrl.jLabelCurFreq.LEFT);
-                ctrl.jLabelCurFreq.setPreferredSize(java.awt.Dimension(60, 22));
+                ctrl.jLabelCurFreq.setPreferredSize(java_scaled('dimension', 60, 22));
                 ctrl.jSliderCurFreq.setPaintTicks(1);
                 ctrl.jSliderCurFreq.setMajorTickSpacing(1);
             end

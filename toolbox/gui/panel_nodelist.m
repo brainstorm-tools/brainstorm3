@@ -33,7 +33,7 @@ function varargout = panel_nodelist( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2013
+% Authors: Francois Tadel, 2010-2017
 
 eval(macro_method);
 end
@@ -48,20 +48,24 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
     if ~isempty(nodeList)
         error(['Nodelist "' nodelistName '" already exists.']);
     end
-    
+    % Get scaling factor
+    InterfaceScaling = bst_get('InterfaceScaling');
+    % Get standard font
+    stdFont = bst_get('Font');
+            
     % Create panel
     jPanel = gui_component('Panel');
     % Create list (tree or treetable)
     switch(listType)
         case 'tree'
             % Create border
-            jBorder = BorderFactory.createTitledBorder(nodelistComment);
-            jBorder.setTitleFont(bst_get('Font', 11));
+            jBorder = java_scaled('titledborder', nodelistComment);
             jPanel.setBorder(jBorder);
             % Create tree
-            jTree = java_create('org.brainstorm.tree.BstTree');
+            jTree = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100, stdFont.getSize(), stdFont.getFontName());
             jTree.setBorder(BorderFactory.createEmptyBorder(5,5,5,0));
             jTree.setEditable(0);
+            jTree.setRowHeight(round(20 * InterfaceScaling / 100));
             % Configure selection model
             jTreeSelModel = jTree.getSelectionModel();
             jTreeSelModel.setSelectionMode(jTreeSelModel.DISCONTIGUOUS_TREE_SELECTION);
@@ -78,7 +82,7 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
             java_setcb(jTree.getModel(), 'TreeStructureChangedCallback', @(h,ev)TreeStructureChanged_Callback(nodelistName));
         case 'table'
             % Create table
-            jTree = java_create('org.brainstorm.tree.BstTreeTable');
+            jTree = java_create('org.brainstorm.tree.BstTreeTable', stdFont.getSize(), stdFont.getFontName());
             jPanel.add(jTree.getContainer(), BorderLayout.CENTER);
             % Initialize other undefined variables
             jBorder = [];

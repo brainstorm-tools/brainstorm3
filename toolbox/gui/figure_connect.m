@@ -864,17 +864,17 @@ function DisplayFigurePopup(hFig)
     
     % ==== MENU: SNAPSHOT ====
     jPopup.addSeparator();
-    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT, [], [], []);
+    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT);
         % === SAVE AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
         % === OPEN AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));       
     jPopup.add(jMenuSave);
     
     % ==== MENU: 2D LAYOUT ====
-    jGraphMenu = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_CONNECTN, [], [], []);
+    jGraphMenu = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_CONNECTN);
         % Check Matlab version: Works only for R2007b and newer
         if (bst_get('MatlabVersion') >= 705)
             if is3DDisplay
@@ -886,14 +886,14 @@ function DisplayFigurePopup(hFig)
                 % Slider
                 jSliderContrast = JSlider(0,250,250);
                 jSliderContrast.setValue(round(Transparency * 1000));
-                jSliderContrast.setPreferredSize(Dimension(100,23));
+                jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
                 %jSliderContrast.setToolTipText(tooltipSliders);
                 jSliderContrast.setFocusable(0);
                 jSliderContrast.setOpaque(0);
                 jPanelModifiers.add('tab hfill', jSliderContrast);
                 % Value (text)
                 jLabelContrast = JLabel(sprintf('%0.2f', Transparency));
-                jLabelContrast.setPreferredSize(Dimension(50,23));
+                jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
                 jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
                 jPanelModifiers.add(jLabelContrast);
                 % Slider callbacks
@@ -905,18 +905,18 @@ function DisplayFigurePopup(hFig)
             jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
             Transparency = getappdata(hFig, 'LinkTransparency');
             % Label
-            jPanelModifiers.add(JLabel('Link Transp.'));
+            gui_component('label', jPanelModifiers, '', 'Link transp');
             % Slider
             jSliderContrast = JSlider(0,100,100);
             jSliderContrast.setValue(round(Transparency * 100));
-            jSliderContrast.setPreferredSize(Dimension(100,23));
+            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
             jSliderContrast.setFocusable(0);
             jSliderContrast.setOpaque(0);
             jPanelModifiers.add('tab hfill', jSliderContrast);
             % Value (text)
-            jLabelContrast = JLabel(sprintf('%.0f %%', Transparency * 100));
-            jLabelContrast.setPreferredSize(Dimension(50,23));
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f %%', Transparency * 100));
+            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
             jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
             jPanelModifiers.add(jLabelContrast);
             % Slider callbacks
@@ -928,18 +928,18 @@ function DisplayFigurePopup(hFig)
             jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
             LinkSize = GetLinkSize(hFig);
             % Label
-            jPanelModifiers.add(JLabel('Link Size'));
+            gui_component('label', jPanelModifiers, '', 'Link size');
             % Slider
             jSliderContrast = JSlider(0,5,5);
             jSliderContrast.setValue(LinkSize);
-            jSliderContrast.setPreferredSize(Dimension(100,23));
+            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
             jSliderContrast.setFocusable(0);
             jSliderContrast.setOpaque(0);
             jPanelModifiers.add('tab hfill', jSliderContrast);
             % Value (text)
-            jLabelContrast = JLabel(sprintf('%.0f', round(LinkSize)));
-            jLabelContrast.setPreferredSize(Dimension(50,23));
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(LinkSize)));
+            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
             jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
             jPanelModifiers.add(jLabelContrast);
             % Slider callbacks
@@ -952,32 +952,32 @@ function DisplayFigurePopup(hFig)
         jGraphMenu.addSeparator();
         BackgroundColor = getappdata(hFig, 'BgColor');
         isWhite = all(BackgroundColor == [1 1 1]);
-        jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig), []);
+        jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
         jItem.setSelected(isWhite);
         
         % === TOGGLE BLENDING OPTIONS ===
         BlendingEnabled = getappdata(hFig, 'BlendingEnabled');
-        jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Color blending', [], [], @(h, ev)ToggleBlendingMode(hFig), []);
+        jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Color blending', [], [], @(h, ev)ToggleBlendingMode(hFig));
         jItem.setSelected(BlendingEnabled);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
         jGraphMenu.addSeparator();
         
         % === TOGGLE BLENDING OPTIONS ===
         TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
-        jLabelMenu = gui_component('Menu', jGraphMenu, [], 'Labels Display', [], [], [], []);
-            jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Measure Nodes', [], [], @(h, ev)SetTextDisplayMode(hFig, 1), []);
+        jLabelMenu = gui_component('Menu', jGraphMenu, [], 'Labels Display');
+            jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Measure Nodes', [], [], @(h, ev)SetTextDisplayMode(hFig, 1));
             jItem.setSelected(ismember(1,TextDisplayMode));
             if (DisplayInRegion)
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Region Nodes', [], [], @(h, ev)SetTextDisplayMode(hFig, 2), []);
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Region Nodes', [], [], @(h, ev)SetTextDisplayMode(hFig, 2));
                 jItem.setSelected(ismember(2,TextDisplayMode));
             end
-            jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Selection only', [], [], @(h, ev)SetTextDisplayMode(hFig, 3), []);
+            jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Selection only', [], [], @(h, ev)SetTextDisplayMode(hFig, 3));
             jItem.setSelected(ismember(3,TextDisplayMode));
 
         % === TOGGLE HIERARCHY NODE VISIBILITY ===
         if (DisplayInRegion)
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible), []);
+            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
             jItem.setSelected(~HierarchyNodeIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
         end
@@ -986,21 +986,21 @@ function DisplayFigurePopup(hFig)
         Method = getappdata(hFig, 'Method');
         if ismember(Method, {'granger'}) || ismember(Method, {'spgranger'})
             IsBinaryData = getappdata(hFig, 'IsBinaryData');
-            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Binary Link Display', IconLoader.ICON_CHANNEL_LABEL, [], @(h, ev)SetIsBinaryData(hFig, 1 - IsBinaryData), []);
+            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Binary Link Display', IconLoader.ICON_CHANNEL_LABEL, [], @(h, ev)SetIsBinaryData(hFig, 1 - IsBinaryData));
             jItem.setSelected(IsBinaryData);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
         end
 
     % ==== MENU: GRAPH DISPLAY ====
-    jGraphMenu = gui_component('Menu', jPopup, [], 'Graph options', IconLoader.ICON_CONNECTN, [], [], []);
+    jGraphMenu = gui_component('Menu', jPopup, [], 'Graph options', IconLoader.ICON_CONNECTN);
         % === SELECT ALL THE NODES ===
-        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select all the nodes', [], [], @(h, n, s, r)SetSelectedNodes(hFig, [], 1, 1), []);
+        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select all the nodes', [], [], @(h, n, s, r)SetSelectedNodes(hFig, [], 1, 1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0));
         % === SELECT NEXT REGION ===
-        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select next region', [], [], @(h, ev)ToggleRegionSelection(hFig, 1), []);
+        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select next region', [], [], @(h, ev)ToggleRegionSelection(hFig, 1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0));
         % === SELECT PREVIOUS REGION===
-        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select previous region', [], [], @(h, ev)ToggleRegionSelection(hFig, -1), []);
+        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select previous region', [], [], @(h, ev)ToggleRegionSelection(hFig, -1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0));
         jGraphMenu.addSeparator();
 
@@ -1013,16 +1013,16 @@ function DisplayFigurePopup(hFig)
             % === TOGGLE DISPLAY REGION MEAN ===
             RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
             RegionFunction = getappdata(hFig, 'RegionFunction');
-            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig), []);
+            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
             jItem.setSelected(RegionLinksIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
             
             % === TOGGLE REGION FUNCTIONS===
             IsMean = strcmp(RegionFunction, 'mean');
-            jLabelMenu = gui_component('Menu', jGraphMenu, [], 'Region function', [], [], [], []);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'), []);
+            jLabelMenu = gui_component('Menu', jGraphMenu, [], 'Region function');
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
                 jItem.setSelected(IsMean);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'), []);
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
                 jItem.setSelected(~IsMean);
         end
     
@@ -2274,7 +2274,7 @@ function UpdateColormap(hFig)
     % Get colormap bounds
     if strcmpi(sColormap.MaxMode, 'custom')
         CLim = [sColormap.MinValue, sColormap.MaxValue];
-    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere'})
+    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte'})
         CLim = [DataMinMax(1) DataMinMax(2)];
     elseif ismember(Method, {'corr'})
         if strcmpi(sColormap.MaxMode, 'local')

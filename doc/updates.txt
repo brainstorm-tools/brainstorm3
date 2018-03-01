@@ -1,15 +1,60 @@
 ---------------------------------------------------------------
+September 2017
+- IO: Elekta recordings: Default acquisition SSP are not applied by default anymore
+- New process: Epilepsy > Epileptogenicity maps
+- New process: Undo 4D/CTF noise compensation
+- GUI: MRI viewer and MRI-3D: New menu Jump to maximum (shortcut "M")
+---------------------------------------------------------------
+August 2017
+- GUI: Raw viewer: Optimized scrolling speed with new option "Downsample recordings"
+- GUI: New menu "Guidelines" for computing epileptogenicity maps
+- GUI: Added colormaps "tpac" and "gin"
+- Process: Added tPAC processes
+- Process: Added Phase transfer entropy
+- Process: Added Multitaper time-frequency decomposition (FieldTrip: ft_mtmconvol)
+- NIRS: Distribution of Nirstorm toolbox and tutorial
+---------------------------------------------------------------
+July 2017
+- GUI: Standalone file viewer ("brainstorm autopilot")
+- GUI: Allow marking bad EEG/SEEG channels in bipolar montages
+- GUI: Raw viewer: Edit current page size by resizing the cursor at the bottom
+- GUI: Raw viewer: Different mouse cursors for different actions
+- GUI: Raw viewer: Added buttons to zoom along channels
+- GUI: Interface scaling option (for adapting to high DPI screens)
+- IO: Support for ERPLab files
+- IO: New menu "Import texture" in the popup menus of the surface files
+- IO: Load .gii files as source maps/textures
+- Anatomy: Added template USCBrain
+- Anatomy: Add computation of SPM canonical surfaces
+- Anatomy: Properly handle the NIfTI sform/qform voxel=>subject transformations
+- Anatomy: Import sensors positions in subject coordinates (NIfTI sform/qform)
+- Anatomy: Added more options for importing multiple registered volumes
+---------------------------------------------------------------
+June 2017
+- IO: Added support for Blackrock .ns6 files
+- IO: Added support for XLTEK event files
+- Workshop: Cambridge
+---------------------------------------------------------------
+May 2017
+- Bug fix: Some Neuroscan .cnt files with low accuracy (int16) were not read correctly
+- Bug fix: Import to database: SSP already applied were not saved in the channel file
+- IO: Support for Nicolet .e files
+- IO: Support for ANT ASA .msm/.msr files
+- IO: Support for CED Spike2 .smr
+- GUI: Added log XScale and XGrid/YGrid buttons to PSD plots
+---------------------------------------------------------------
 April 2017
 - Bug fix: Nihon Kohden reader had many issues channel names and types
 - Bug fix: Micromed .trc channel names were incorrect
 - Bug fix: Fixed SEEG contact positioning in MRI viewer
 - IO: Export to EDF => Now all the file formats can be converted to EDF with Brainstorm
 - IO: Updated ANT EEProbe library to ANTeepimport1.13 (EEGLAB plugin)
+- IO: Support for Ripple Trellis NEV/NSx files
 - GUI: New displays for SEEG/ECOG: Cortex surface, MRI Viewer, 2D Layout
 - GUI: Support for 2D/3D displays of time-frequency/PSD of SEEG/ECOG
 - Anatomy: Compute MNI transformation sets default NAS/LPA/RPA points
 - Doc: New forum software (replaced VBulletin with Discourse)
-- Workshop: Beijing
+- Workshops: Beijing, Montreal
 ---------------------------------------------------------------
 March 2017
 - New process: Amplitude envelope correlation (Peter D)

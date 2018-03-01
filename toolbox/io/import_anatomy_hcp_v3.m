@@ -79,25 +79,8 @@ if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
         bst_progress('stop');
         return;
     end
-    % Delete MRI
-    if ~isempty(sSubject.Anatomy)
-        file_delete(file_fullpath({sSubject.Anatomy.FileName}), 1);
-        sSubject.Anatomy(1:end) = [];
-    end
-    % Delete surfaces
-    if ~isempty(sSubject.Surface)
-        file_delete(file_fullpath({sSubject.Surface.FileName}), 1);
-        sSubject.Surface(1:end) = [];
-    end
-    % Empty defaults lists
-    sSubject.iAnatomy = [];
-    sSubject.iCortex = [];
-    sSubject.iScalp = [];
-    sSubject.iInnerSkull = [];
-    sSubject.iOuterSkull = [];
-    % Update subject structure
-    bst_set('Subject', iSubject, sSubject);
-    panel_protocols('UpdateNode', 'Subject', iSubject);
+    % Delete anatomy
+    sSubject = db_delete_anatomy(iSubject);
 end
 
 
@@ -170,16 +153,8 @@ Tbst2ft = [diag([-1, 1, 1] ./ sMri.Voxsize), [size(sMri.Cube,1); 0; 0]; 0 0 0 1]
 Tmni = transform.vox07mm2spm * Tbst2ft;
 sMri.NCS.R = Tmni(1:3,1:3);
 sMri.NCS.T = Tmni(1:3,4);
-% MNI coordinates for the AC/PC/IH fiducials
-AC = [0,   3,  -4] ./ 1000;
-PC = [0, -25,  -2] ./ 1000;
-IH = [0, -10,  60] ./ 1000;
-Origin = [0, 0, 0];
-% Convert: MNI (meters) => MRI (millimeters)
-sMri.NCS.AC     = cs_convert(sMri, 'mni', 'mri', AC) .* 1000;
-sMri.NCS.PC     = cs_convert(sMri, 'mni', 'mri', PC) .* 1000;
-sMri.NCS.IH     = cs_convert(sMri, 'mni', 'mri', IH) .* 1000;
-sMri.NCS.Origin = cs_convert(sMri, 'mni', 'mri', Origin) .* 1000;
+% Compute default fiducials positions based on MNI coordinates
+sMri = mri_set_default_fid(sMri);
 
 
 %% ===== MRI=>SCS TRANSFORMATION =====

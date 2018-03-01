@@ -4,6 +4,7 @@ function status = bst_exit()
 %
 % Return : 1 if exited
 %          0 if Brainstorm was not started
+%         -1 if exit process was cancelled
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -32,12 +33,24 @@ if ~isappdata(0, 'BrainstormRunning')
     status = 0;
     return
 end
-rmappdata(0, 'BrainstormRunning');
 % Get GUI handles
 ctrl = bst_get('BstControls');
 
+
+%% ===== UNLOAD DATASETS ====
+% Unload all data
+isCancel = bst_memory('UnloadAll', 'Forced');
+if isCancel
+    status = -1;
+    return;
+end
+
+
 %% ===== REMOVE ALL IMPORTANT CALLBACKS =====
-if isfield(ctrl, 'jComboBoxProtocols')
+% Stop execution
+rmappdata(0, 'BrainstormRunning');
+% Protocols list
+if isfield(ctrl, 'jComboBoxProtocols') && ~isempty(ctrl.jComboBoxProtocols)
     java_setcb(ctrl.jToolButtonSubject,     'ItemStateChangedCallback', []);
     java_setcb(ctrl.jToolButtonStudiesSubj, 'ItemStateChangedCallback', []);
     java_setcb(ctrl.jToolButtonStudiesCond, 'ItemStateChangedCallback', []);
@@ -62,8 +75,6 @@ end
 
 
 %% ===== CLOSE WINDOW =====
-% Unload all data
-bst_memory('UnloadAll', 'Forced');
 % Hide all the registered panels
 listPanels = GlobalData.Program.GUI.panels;
 for iPanel = 1:length(listPanels)

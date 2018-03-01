@@ -49,23 +49,24 @@ while 1
     elseif ~isMarkerSection || ismember(newLine(1), {'[', ';', char(10), char(13)}) || ~any(newLine == '=')
         continue;
     end
-    % Split around the '=' and ','
-    argLine = strtrim(str_split(newLine, '=,', 0));
-    if (length(argLine) < 6) || (length(argLine{1}) < 2)
+    % Find the first '=' (and marker names start with 'Mk')
+    iEqual = find(newLine == '=', 1);
+    if isempty(iEqual) || (iEqual < 3) || (iEqual == length(newLine)) || ~strcmpi(newLine(1:2), 'Mk')
         continue;
     end
-    % Markers start with 'Mk'
-    if ~strcmpi(argLine{1}(1:2), 'Mk')
+    % Split around the '=' and ','
+    argLine = strtrim(str_split(newLine(iEqual+1:end) , ',', 0));
+    if (length(argLine) < 5)
         continue;
     end
     % Marker label
-    if ~isempty(argLine{3})
-        mlabel = argLine{3};
+    if ~isempty(argLine{2})
+        mlabel = argLine{2};
     else
         mlabel = 'Mk';
     end
     % Add markers entry: {name, type, start, length}
-    Markers(end+1,:) = {mlabel, argLine{2}, str2num(argLine{4}), str2num(argLine{5})};
+    Markers(end+1,:) = {mlabel, argLine{1}, str2num(argLine{3}), str2num(argLine{4})};
 end
 % Close file
 fclose(fid);

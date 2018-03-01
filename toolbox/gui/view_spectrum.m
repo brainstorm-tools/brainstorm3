@@ -36,7 +36,7 @@ function [hFig, iDS, iFig] = view_spectrum(TimefreqFile, DisplayMode, RowName, i
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012
+% Authors: Francois Tadel, 2012; Martin Cousineau, 2017
 
 
 %% ===== INITIALIZATION =====
@@ -114,7 +114,11 @@ TfMethod = lower(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method);
 if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'other')
     TfInfo.Function = 'other';
 elseif ismember(TfMethod, {'fft', 'psd'})
-    TfInfo.Function = 'log';
+    if ~isempty(bst_get('LastPsdDisplayFunction'))
+        TfInfo.Function = bst_get('LastPsdDisplayFunction');
+    else
+        TfInfo.Function = 'log';
+    end
 else
     TfInfo.Function = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));
 end
@@ -139,6 +143,8 @@ else
         TsInfo.DisplayMode = bst_get('TSDisplayMode');
     end
 end
+TsInfo.ShowXGrid = bst_get('ShowXGrid');
+TsInfo.ShowYGrid = bst_get('ShowYGrid');
 setappdata(hFig, 'TsInfo', TsInfo);
 
 % Display options panel

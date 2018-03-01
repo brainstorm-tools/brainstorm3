@@ -183,6 +183,13 @@ switch (hdr.version)
         fseek(fid, hdr.ctl(i).extblock2_address + 20, 'bof');
         hdr.ctl(i).data(id).extblock3_address = fread(fid, 1, 'uint32');
         
+% Suggestion from V. Gnatkovsky: not working with some of the files...
+%         % Read the block information: number of records 
+%         fseek(fid, hdr.ctl(i).data(id).extblock3_address + 44, 'bof');
+%         hdr.ctl(i).data(id).num_records = fread(fid, 1, 'uint32');
+%         % Compute number of samples
+%         hdr.ctl(i).data(id).num_samples = hdr.ctl(i).data(id).num_records * hdr.ctl(i).data(id).sample_rate * hdr.record_duration;
+
         % Reading number of channels
         fseek(fid, hdr.ctl(i).data(id).extblock3_address + 68, 'bof');
         hdr.ctl(i).data(id).num_channels = fread(fid, 1, 'uint16') + 1;   % +1 for the STIM channel
@@ -210,7 +217,7 @@ if (length(hdr.ctl) ~= 1)
 end
 % TODO: Current limitation: Multiple data blocks are not supported yet with the new file format (just need an example dataset)
 if (length(hdr.ctl(1).data) > 1) && (hdr.version == 2)
-    error(['Newer files with more than one data block are currently not supported yet (systems NK EEG-1200A V01.00)'.' 10 ...
+    error(['Newer files with more than one data block are currently not supported yet (systems NK EEG-1200A V01.00).' 10 ...
            'Please post a message on the Brainstorm forum if you need this feature to be enabled.']);
 end
 % TODO: Current limitation: Multiple data blocks must have the same properties

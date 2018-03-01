@@ -229,7 +229,7 @@ function  OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                      
             % Check for PLS toolbox 
             if ~exist('plscmd')
-                 bst_report('Error', sProcess, sInputsA, 'This process requires the PLS Toolbox.');
+                 bst_report('Error', sProcess, sInputs, 'This process requires the PLS Toolbox.');
                  return;
             end
             

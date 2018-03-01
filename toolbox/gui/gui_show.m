@@ -37,7 +37,7 @@ function [panelContainer, bstPanel] = gui_show( bstPanel, contType, contName, co
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 import org.brainstorm.icon.*;
 global GlobalData;
@@ -121,10 +121,10 @@ switch (contType)
         % Maximized over the figure area (ONLY WHEN TILED LAYOUT)
         if isMaximized && strcmpi(bst_get('Layout', 'WindowManager'), 'TileWindows')
             % Get current layout
-            [jBstArea, FigArea] = gui_layout('GetScreenBrainstormAreas');
+            [jBstArea, FigArea, nbScreens, jFigArea, jInsets] = gui_layout('GetScreenBrainstormAreas');
             % Place this figure on the screen to take all the possible figure space 
             jWindow.setSize(FigArea(3), FigArea(4));
-            jWindow.setLocation(FigArea(1)-1, jBstArea.getY());
+            jWindow.setLocation(FigArea(1)-1, jBstArea.getY() - jInsets.bottom);
         % Normal display
         else
             % Set window size and location
@@ -139,7 +139,6 @@ switch (contType)
                 jWindow.setLocation(winPos(1),winPos(2));
             end
         end
-        % 
         % Show window: KEEP IT WITH AWTINVOKE
         awtinvoke(jWindow, 'setVisible(Z)', 1);
         % Returned variable

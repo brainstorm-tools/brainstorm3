@@ -6,6 +6,7 @@ function varargout = gui_brainstorm( varargin )
 %                   gui_brainstorm('ShowToolTab',    TabName)
 %       iProtocol = gui_brainstorm('CreateProtocol', ProtocolName, UseDefaultAnat, UseDefaultChannel)
 %                   gui_brainstorm('DeleteProtocol', ProtocolName)
+%                   gui_brainstorm('SetExplorationMode', ExplorationMode)    % ExplorationMode = {'Subjects','StudiesSubj','StudiesCond'}
 % BrainstormDbDir = gui_brainstorm('SetDatabaseFolder')
 %  [keyEvent,...] = gui_brainstorm('ConvertKeyEvent', ev)
 
@@ -27,7 +28,7 @@ function varargout = gui_brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -42,8 +43,6 @@ function GUI = CreateWindow() %#ok<DEFNU>
     import javax.swing.BorderFactory;
     import javax.swing.UIManager;
     global GlobalData;
-    isGUI    = GlobalData.Program.isGUI;
-    isServer = GlobalData.Program.isServer;
     
     % ===== CREATE GLOBAL MUTEX =====
     % Clone control
@@ -57,63 +56,64 @@ function GUI = CreateWindow() %#ok<DEFNU>
     end
     % In order to catch when Matlab is closed with Brainstorm still running
     bst_mutex('create', 'Brainstorm');
-    if ~isServer
+    if (GlobalData.Program.GuiLevel >= 0)
         bst_mutex('setReleaseCallback', 'Brainstorm', @closeWindow_Callback);
     end
 
     % ===== CREATE JFRAME =====
+    % Get interface scaling
+    InterfaceScaling = bst_get('InterfaceScaling') / 100;
     % Create main Brainstorm window (JFrame)
     jBstFrame = java_create('javax.swing.JFrame');
     % Set window icon
     jBstFrame.setIconImage(IconLoader.ICON_APP.getImage());
     % Set closing callback
-    if ~isServer
+    if (GlobalData.Program.GuiLevel >= 0)
         jBstFrame.setDefaultCloseOperation(jBstFrame.DO_NOTHING_ON_CLOSE);
         java_setcb(jBstFrame, 'WindowClosingCallback', @closeWindow_Callback);
     end
     % Get main frame panel
     jFramePanel = jBstFrame.getContentPane();
     % Constants
-    TB_HEIGHT = 25;
-    TB_BUTTON_WIDTH  = 25;
-    TB_BUTTON_HEIGHT = 25;
-    TB_COMBOBOX_WIDTH  = 160;
-    TB_COMBOBOX_HEIGHT = 21;
+    TB_HEIGHT = 25 * InterfaceScaling;
+    TB_BUTTON_WIDTH  = 25 * InterfaceScaling;
+    TB_BUTTON_HEIGHT = 25 * InterfaceScaling;
     TB_DIM = Dimension(TB_BUTTON_WIDTH, TB_BUTTON_HEIGHT);
-    TB_MENU_DIM = Dimension(32, TB_BUTTON_HEIGHT);
+    TB_MENU_DIM = Dimension(32 * InterfaceScaling, TB_BUTTON_HEIGHT);
     % Fonts
-    jFontText = bst_get('Font', 11);
     if strncmp(computer,'MAC',3)
-        menuSize = 12;
+        fontSize = 12;
     else
-        menuSize = [];
+        fontSize = 11.5;
     end
-
+    
     % ===== MENU BAR =====
     jMenuBar = java_create('javax.swing.JMenuBar');
     jMenuBar.setBorder([]);
     
     % ===== Menu: FILE =====
-    jMenuFile = gui_component('Menu', jMenuBar, [], 'File', [], [], [], menuSize);
+    if (GlobalData.Program.GuiLevel == 1)
+        jMenuFile = gui_component('Menu', jMenuBar, [], ' File ', [], [], [], fontSize);
+        
         % === PROTOCOL ===
-        gui_component('MenuItem', jMenuFile, [], 'New protocol', IconLoader.ICON_FOLDER_NEW, [], @(h,ev)bst_call(@gui_edit_protocol, 'create'), []);
-        jSubMenu = gui_component('Menu', jMenuFile, [], 'Load protocol', IconLoader.ICON_FOLDER_OPEN,[],[],[]);
-            gui_component('MenuItem', jSubMenu, [], 'Load from folder',   IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@gui_edit_protocol, 'load'), []);
-            gui_component('MenuItem', jSubMenu, [], 'Load from zip file', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@import_protocol), []);
-            gui_component('MenuItem', jSubMenu, [], 'Import subject from zip', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@import_subject), []);
+        gui_component('MenuItem', jMenuFile, [], 'New protocol', IconLoader.ICON_FOLDER_NEW, [], @(h,ev)bst_call(@gui_edit_protocol, 'create'), fontSize);
+        jSubMenu = gui_component('Menu', jMenuFile, [], 'Load protocol', IconLoader.ICON_FOLDER_OPEN,[],[], fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Load from folder',   IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@gui_edit_protocol, 'load'), fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Load from zip file', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@import_protocol), fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Import subject from zip', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@import_subject), fontSize);
             jSubMenu.addSeparator();
-            gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'), []);
+            gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'), fontSize);
             jSubMenu.addSeparator();
-            gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), []);
-        jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[],[]);
-            gui_component('MenuItem', jSubMenu, [], 'Copy raw files to database', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@MakeProtocolPortable), []);
-            gui_component('MenuItem', jSubMenu, [], 'Export as zip file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_protocol), []);
-        jSubMenu = gui_component('Menu', jMenuFile, [], 'Delete protocol', IconLoader.ICON_DELETE, [],[],[]);
-            gui_component('MenuItem', jSubMenu, [], 'Remove all files', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 1), []);
-            gui_component('MenuItem', jSubMenu, [], 'Only detach from database', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 0),[ ]);
+            gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), fontSize);
+        jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[], fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Copy raw files to database', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@MakeProtocolPortable), fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Export as zip file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_protocol), fontSize);
+        jSubMenu = gui_component('Menu', jMenuFile, [], 'Delete protocol', IconLoader.ICON_DELETE, [],[], fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Remove all files', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 1), fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Only detach from database', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 0), fontSize);
         jMenuFile.addSeparator();
         % === NEW SUBJECT ===
-        gui_component('MenuItem', jMenuFile, [], 'New subject', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@db_edit_subject), []);
+        gui_component('MenuItem', jMenuFile, [], 'New subject', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@db_edit_subject), fontSize);
         jMenuFile.addSeparator();
 %         % === DATABASE ===
 %         gui_component('MenuItem', jMenuFile, [], 'Import database',     IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@db_import), []);
@@ -121,59 +121,67 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %         gui_component('MenuItem', jMenuFile, [], 'Set database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@SetDatabaseFolder), []);
 %         jMenuFile.addSeparator();
         % === PROCESSES ===
-        gui_component('MenuItem', jMenuFile, [], 'Report viewer',        IconLoader.ICON_EDIT,    [], @(h,ev)bst_call(@bst_report, 'Open', 'current'), []);
-        gui_component('MenuItem', jMenuFile, [], 'Reload last pipeline', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@bst_report, 'Recall', 'current'), []);
+        gui_component('MenuItem', jMenuFile, [], 'Report viewer',        IconLoader.ICON_EDIT,    [], @(h,ev)bst_call(@bst_report, 'Open', 'current'), fontSize);
+        gui_component('MenuItem', jMenuFile, [], 'Reload last pipeline', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@bst_report, 'Recall', 'current'), fontSize);
         % === SET PREFERENCES ===
-        gui_component('MenuItem', jMenuFile, [], 'Edit preferences', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@gui_show, 'panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0), []);
+        gui_component('MenuItem', jMenuFile, [], 'Edit preferences', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@gui_show, 'panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0), fontSize);
         jMenuFile.addSeparator();
         % === DIGITIZE ===
         if exist('isdeployed', 'builtin') && isdeployed
-            gui_component('MenuItem', jMenuFile, [], 'Command window', IconLoader.ICON_TERMINAL, [], @(h,ev)gui_show('panel_command', 'JavaWindow', 'MATLAB command window', [], 0, 1, 0), []);
+            gui_component('MenuItem', jMenuFile, [], 'Command window', IconLoader.ICON_TERMINAL, [], @(h,ev)gui_show('panel_command', 'JavaWindow', 'MATLAB command window', [], 0, 1, 0), fontSize);
         end
-        gui_component('MenuItem', jMenuFile, [], 'Digitize', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@panel_digitize, 'Start'), []);
-        gui_component('MenuItem', jMenuFile, [], 'Batch MRI fiducials', IconLoader.ICON_LOBE, [], @(h,ev)bst_call(@bst_batch_fiducials), []);
+        gui_component('MenuItem', jMenuFile, [], 'Digitize', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@panel_digitize, 'Start'), fontSize);
+        gui_component('MenuItem', jMenuFile, [], 'Batch MRI fiducials', IconLoader.ICON_LOBE, [], @(h,ev)bst_call(@bst_batch_fiducials), fontSize);
         jMenuFile.addSeparator();
         % === QUIT ===
-        gui_component('MenuItem', jMenuFile, [], 'Quit', IconLoader.ICON_RESET, [], @closeWindow_Callback, []);
+        gui_component('MenuItem', jMenuFile, [], 'Quit', IconLoader.ICON_RESET, [], @closeWindow_Callback, fontSize);
+    end
+    
+%     % ==== Menu COLORMAPS ====
+%     jMenuColormaps = gui_component('Menu', jMenuBar, [], 'Colormaps', [], [], [], fontSize);
+%         bst_colormaps('CreateAllMenus', jMenuColormaps, [], 1);
 
-    % ==== Menu COLORMAPS ====
-    jMenuColormaps = gui_component('Menu', jMenuBar, [], 'Colormaps', [], [], [], menuSize);
-        bst_colormaps('CreateAllMenus', jMenuColormaps, [], 1);
-
-    % ==== Menu HELP ====
-    jMenuSupport = gui_component('Menu', jMenuBar, [], 'Help', [], [], [], menuSize);
+    % ==== Menu UPDATE ====
+    jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
         % UPDATE BRAINSTORM
         if ~(exist('isdeployed', 'builtin') && isdeployed)
-            gui_component('MenuItem', jMenuSupport, [], 'Update Brainstorm', [], [], @(h,ev)bst_update(1), []);
+            gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);
         end
         % UPDATE OPENMEEG
-        jMenuOpenmeeg = gui_component('Menu', jMenuSupport, [], 'Update OpenMEEG', [], [], [], []);
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'Download', [], [], @(h,ev)bst_call(@DownloadOpenmeeg), []);
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'Install', [], [], @(h,ev)bst_call(@bst_openmeeg, 'update'), []);
+        if (GlobalData.Program.GuiLevel == 1)
+            jMenuOpenmeeg = gui_component('Menu', jMenuUpdate, [], 'Update OpenMEEG', IconLoader.ICON_RELOAD, [], [], fontSize);
+            gui_component('MenuItem', jMenuOpenmeeg, [], 'Download', [], [], @(h,ev)bst_call(@DownloadOpenmeeg), fontSize);
+            gui_component('MenuItem', jMenuOpenmeeg, [], 'Install', [], [], @(h,ev)bst_call(@bst_openmeeg, 'update'), fontSize);
             if strcmpi(bst_get('OsType',0), 'win64')
                 jMenuOpenmeeg.addSeparator();
-                gui_component('MenuItem', jMenuOpenmeeg, [], 'Download Visual C++', [], [], @(h,ev)web('http://www.microsoft.com/en-us/download/details.aspx?id=14632', '-browser'), []);
+                gui_component('MenuItem', jMenuOpenmeeg, [], 'Download Visual C++', [], [], @(h,ev)web('http://www.microsoft.com/en-us/download/details.aspx?id=14632', '-browser'), fontSize);
             end
             jMenuOpenmeeg.addSeparator();
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), []);
-        jMenuSupport.addSeparator();
+            gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
+        end
+        
+    % ==== Menu HELP ====
+    jMenuSupport = gui_component('Menu', jMenuBar, [], ' Help ', [], [], [], fontSize);
         % BUG REPORTS
         % gui_component('MenuItem', jMenuSupport, [], 'Bug reporting...', [], [], @(h,ev)gui_show('panel_bug', 'JavaWindow', 'Bug reporting', [], 1, 0), []);
         % WEBSITE
-        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm website', [], [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/', '-browser'), []);
-        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm forum', [], [], @(h,ev)web('http://neuroimage.usc.edu/forums/', '-browser'), []);
-        gui_component('MenuItem', jMenuSupport, [], 'Report a bug', [], [], @(h,ev)web('http://neuroimage.usc.edu/forums/newthread.php?do=newthread&f=21', '-browser'), []);
-        gui_component('MenuItem', jMenuSupport, [], 'Ask a question', [], [], @(h,ev)web('http://neuroimage.usc.edu/forums/newthread.php?do=newthread&f=22', '-browser'), []);
+        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm website', IconLoader.ICON_EXPLORER, [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/', '-browser'), fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm forum', IconLoader.ICON_EXPLORER, [], @(h,ev)web('http://neuroimage.usc.edu/forums/', '-browser'), fontSize);
         jMenuSupport.addSeparator();
         % USAGE STATS
-        gui_component('MenuItem', jMenuSupport, [], 'Usage statistics', [], [], @(h,ev)bst_userstat, []);
+        gui_component('MenuItem', jMenuSupport, [], 'Usage statistics', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_userstat, fontSize);
         jMenuSupport.addSeparator();
         % LICENSE
-        gui_component('MenuItem', jMenuSupport, [], 'License',       [], [], @(h,ev)bst_license(), []);
-        %gui_component('MenuItem', jMenuSupport, [], 'About Brainstorm', [], [], @(h,ev)bst_splash('show'), []);
+        gui_component('MenuItem', jMenuSupport, [], 'License',       IconLoader.ICON_EDIT, [], @(h,ev)bst_license(), fontSize);
         % RELEASE NOTES
         updatesfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'updates.txt');
-        gui_component('MenuItem', jMenuSupport, [], 'Release notes', [], [], @(h,ev)view_text(updatesfile, 'Release notes', 1), []);
+        gui_component('MenuItem', jMenuSupport, [], 'Release notes', IconLoader.ICON_EDIT, [], @(h,ev)view_text(updatesfile, 'Release notes', 1), fontSize);
+        jMenuSupport.addSeparator();
+        % Guidelines
+        jMenuGuidelines = gui_component('Menu', jMenuSupport, [], 'Guidelines', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
+        gui_component('MenuItem', jMenuGuidelines, [], 'Epileptogenicity maps', IconLoader.ICON_EDIT, [], @(h,ev)ShowGuidelines('epileptogenicity'), fontSize);
+        jMenuGuidelines.addSeparator();
+        gui_component('MenuItem', jMenuGuidelines, [], 'Close panel', IconLoader.ICON_EDIT, [], @(h,ev)gui_hide('Guidelines'), fontSize);
         
     % ===== TOOLBAR =====
     jToolbar = gui_component('Toolbar', jMenuBar);
@@ -186,7 +194,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Button "Layout"
         gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_LAYOUT_SELECT, TB_MENU_DIM}, 'Window layout options', @(h,ev)ShowLayoutMenu(ev.getSource()), []);
         % Button: "Unload all"
-        gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_DELETE, TB_DIM}, 'Close all figures and clear memory', @(h,ev)GuiUnloadAll());
+        if (GlobalData.Program.GuiLevel == 1)
+            gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_DELETE, TB_DIM}, 'Close all figures and clear memory', @(h,ev)GuiUnloadAll());
+        end
     % Set colors and backgrounds
     jToolbar.setOpaque(0);
     
@@ -199,15 +209,20 @@ function GUI = CreateWindow() %#ok<DEFNU>
     jPanelExplorer = gui_component('Panel');
     jPanelExplorer.setBorder(BorderFactory.createTitledBorder(''));
         jPanelExplorerTop = gui_component('Panel');
-        % Combo box to select the current protocol
-        jComboBoxProtocols = gui_component('ComboBox', jPanelExplorerTop, java.awt.BorderLayout.NORTH, [], [], [], [], []);
-        jComboBoxProtocols.setMaximumSize(Dimension(TB_COMBOBOX_WIDTH, TB_COMBOBOX_HEIGHT));
-        jComboBoxProtocols.setPreferredSize(Dimension(TB_COMBOBOX_WIDTH, TB_COMBOBOX_HEIGHT));
-        jComboBoxProtocols.setMaximumRowCount(25);
-        jComboBoxProtocols.setFocusable(0);
-        % ComboBox change selection callback
-        jModel = jComboBoxProtocols.getModel();
-        java_setcb(jModel, 'ContentsChangedCallback', @protocolComboBoxChanged_Callback);
+        % Protocol list
+        if (GlobalData.Program.GuiLevel == 1)
+            % Combo box to select the current protocol
+            jComboBoxProtocols = gui_component('ComboBox', jPanelExplorerTop, java.awt.BorderLayout.NORTH, [], [], [], [], []);
+            jComboBoxProtocols.setMaximumSize(java_scaled('dimension', 160, 21));
+            jComboBoxProtocols.setPreferredSize(java_scaled('dimension', 160, 21));
+            jComboBoxProtocols.setMaximumRowCount(25);
+            jComboBoxProtocols.setFocusable(0);
+            % ComboBox change selection callback
+            jModel = jComboBoxProtocols.getModel();
+            java_setcb(jModel, 'ContentsChangedCallback', @protocolComboBoxChanged_Callback);
+        else
+            jComboBoxProtocols = [];
+        end
 
         % ==== Exploration mode toolbar ====
         jToolbarExpMode = gui_component('Toolbar', jPanelExplorerTop, [], [], {TB_DIM});
@@ -224,14 +239,14 @@ function GUI = CreateWindow() %#ok<DEFNU>
     jPanelTools = gui_component('Panel');
         UIManager.put('TabbedPane.tabInsets', java.awt.Insets(2, 5, 1, 1));
         jTabpaneTools = java_create('javax.swing.JTabbedPane', 'II', javax.swing.JTabbedPane.TOP, javax.swing.JTabbedPane.WRAP_TAB_LAYOUT); 
-        jTabpaneTools.setFont(jFontText);
+        jTabpaneTools.setFont(bst_get('Font', 11));
         jTabpaneTools.setFocusable(0);
-        jTabpaneTools.setMinimumSize(Dimension(100,200));
+        jTabpaneTools.setMinimumSize(java_scaled('dimension', 100, 200));
         java_setcb(jTabpaneTools, 'StateChangedCallback', @ToolsPanelChanged_Callback);
         % Add the "+" button
         jButtonPlus = gui_component('Label', [], [], '<HTML><B>+ </B>');
         jButtonPlus.setOpaque(0);
-        jButtonPlus.setPreferredSize(java.awt.Dimension(12,10));
+        jButtonPlus.setPreferredSize(java_scaled('dimension', 12, 10));
         jPanelPlus = gui_component('Panel');
         jTabpaneTools.addTab(' ', [], jPanelPlus);
         if (bst_get('JavaVersion') >= 1.6)
@@ -244,12 +259,12 @@ function GUI = CreateWindow() %#ok<DEFNU>
 
     % ==== PROCESS CONTAINER ====   
     jPanelProcess = gui_component('Panel');
-    jPanelProcess.setMinimumSize(Dimension(100,30));
-    jPanelProcess.setPreferredSize(Dimension(250,140));
+    jPanelProcess.setMinimumSize(java_scaled('dimension', 100, 30));
+    jPanelProcess.setPreferredSize(java_scaled('dimension', 250, 140));
     % Selection toolbar
     jToolbarA = gui_component('Toolbar', jPanelProcess);
     jToolbarA.setOrientation(javax.swing.JToolBar.VERTICAL);
-        TB_SIZE = Dimension(28, 28);
+        TB_SIZE = Dimension(28*InterfaceScaling, 28*InterfaceScaling);
         jButtonGroupType = java_create('javax.swing.ButtonGroup');
         % Buttons
         jButtonRecordingsA = gui_component('toolbartoggle', jToolbarA, [], '', {IconLoader.ICON_DATA_LIST,     TB_SIZE, jButtonGroupType}, 'Process recordings',  @(h,ev)bst_call(@ProcessDataType_Callback, 'data', 'A', ev));
@@ -276,6 +291,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     
     % Tab panel
     jTabpaneProcess = java_create('javax.swing.JTabbedPane', 'I', javax.swing.JTabbedPane.BOTTOM);
+    jTabpaneProcess.setFont(bst_get('Font', 11));
     java_setcb(jTabpaneProcess, 'StateChangedCallback', @ProcessPanelChanged_Callback);
     jPanelProcess.add(jTabpaneProcess, java.awt.BorderLayout.CENTER);
     
@@ -292,9 +308,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Label 
         jTextFilter = gui_component('Text', jToolbarFilter, [], '', [], [], [], 11);
         if strncmp(computer,'MAC',3)
-            jSize = java.awt.Dimension(90, 22);
+            jSize = java_scaled('dimension', 90, 22);
         else
-            jSize = java.awt.Dimension(jPopupFilter.getPreferredSize().getWidth(), 22);
+            jSize = java.awt.Dimension(jPopupFilter.getPreferredSize().getWidth(), 22 * InterfaceScaling);
         end
         jTextFilter.setPreferredSize(jSize);
         jTextFilter.setMinimumSize(jSize);
@@ -308,7 +324,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Separator
         gui_component('Label', jToolbarFilter, [], ' ', [], [], [], 11);
         % Filter options
-        gui_component('ToolbarButton', jToolbarFilter, [], 'Filter', {IconLoader.ICON_MENU_LEFT, java.awt.Dimension(50,26)}, 'Edit the filter properties', @(h,ev)ShowFilterMenu());
+        gui_component('ToolbarButton', jToolbarFilter, [], 'Filter', {IconLoader.ICON_MENU_LEFT, java_scaled('dimension', 50, 26)}, 'Edit the filter properties', @(h,ev)ShowFilterMenu());
         
     % ==== LAYERED PROCESS PANEL ====
     jLayeredProcess = java_create('javax.swing.JLayeredPane');
@@ -333,22 +349,27 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jPanelTopRightTop.add( jPanelFreq, java.awt.BorderLayout.SOUTH );
     jPanelTopRight.add(jPanelTopRightTop, java.awt.BorderLayout.NORTH);
     jPanelTopRight.add(jPanelTools, java.awt.BorderLayout.CENTER );
-
+    
+    % Vertical split panel
     jSplitV = java_create('javax.swing.JSplitPane', 'ILjava.awt.Component;Ljava.awt.Component;', javax.swing.JSplitPane.HORIZONTAL_SPLIT, jPanelExplorer, jPanelTopRight);
     jSplitV.setResizeWeight(1.0);
-    jSplitV.setDividerSize(6);
+    jSplitV.setDividerSize(round(6*InterfaceScaling));
     jSplitV.setBorder([]);
-
     % Horizontal split panel 
-    % Top : EXPLORER/TOOLS/TIMEWINDOW, Bottom : MESSAGES
     jSplitH = java_create('javax.swing.JSplitPane', 'ILjava.awt.Component;Ljava.awt.Component;', javax.swing.JSplitPane.VERTICAL_SPLIT, jSplitV, jLayeredProcess);
-    jSplitH.setResizeWeight(1.0);
-    jSplitH.setDividerSize(8);
-    jSplitH.setBorder([]);
-
-    % Add panel to main frame
-    jFramePanel.add(jSplitH, java.awt.BorderLayout.CENTER);
-
+        
+    % Regular interface
+    if (GlobalData.Program.GuiLevel ~= 2)
+        % Configure horizontal split pane
+        jSplitH.setResizeWeight(1.0);
+        jSplitH.setDividerSize(round(8*InterfaceScaling));
+        jSplitH.setBorder([]);
+        % Add panel to main frame
+        jFramePanel.add(jSplitH, java.awt.BorderLayout.CENTER);
+    % Auto-pilot: No process tabs at the bottom (ignore horizontal split pane)
+    else
+        jFramePanel.add(jSplitV, java.awt.BorderLayout.CENTER);
+    end
     % Pack JFrame
     jBstFrame.pack();
 
@@ -360,7 +381,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     % Get position from previous session
     sLayout = bst_get('Layout');
     % If main window is visible
-    if isGUI
+    if (GlobalData.Program.GuiLevel >= 1)
         % Detect on which screen was Brainstorm window at the previous session
         if (length(ScreenDef) > 1) && (sLayout.MainWindowPos(1) >= ScreenDef(2).javaPos.getX())
             javaMax = ScreenDef(2).javaPos;
@@ -370,15 +391,15 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Minimum, maximum and default location/size of brainstorm window
         minPos = [javaMax.getX(), ...
                   javaMax.getY(), ...
-                  380, ...
-                  700];
+                  380 * InterfaceScaling, ...
+                  700 * InterfaceScaling];
         maxPos = [javaMax.getWidth()  + javaMax.getX() - minPos(3), ...
                   javaMax.getHeight() - javaMax.getY() - minPos(4), ...
                   javaMax.getWidth() * .6, ...
                   javaMax.getHeight() - javaMax.getY() + 10];
         defPos = [minPos(1), ...
                   minPos(2), ...
-                  450, ...
+                  450 * InterfaceScaling, ...
                   max(maxPos(4) * .9, minPos(4))];
         % Check values of previous session
         if all(sLayout.MainWindowPos >= minPos) && all(sLayout.MainWindowPos <= maxPos)
@@ -393,8 +414,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %         jBstFrame.setMaximizedBounds(Rectangle(0,0,javaMax.getWidth() / 2, javaMax.getHeight()));
 % =======================================
         % Set Split panels divider location
-        jSplitH.setDividerLocation(uint32(round(defPos(4) - 240)));
-        jSplitV.setDividerLocation(uint32(round(defPos(3) - 260)));
+        jSplitH.setDividerLocation(uint32(round(defPos(4) - 240 * InterfaceScaling)));
+        jSplitV.setDividerLocation(uint32(round(defPos(3) - 260 * InterfaceScaling)));
     end
     
     % ===== EXPLORATION MODE =====
@@ -414,6 +435,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
     GUI = struct(... % ==== Attributes ====
          'mainWindow', struct(...
              'jBstFrame',              jBstFrame, ...
+             'jSplitH',                jSplitH, ...
+             'jSplitV',                jSplitV, ...
              'jToolButtonSubject',     jToolButtonSubject, ...
              'jToolButtonStudiesSubj', jToolButtonStudiesSubj, ...
              'jToolButtonStudiesCond', jToolButtonStudiesCond, ...
@@ -449,7 +472,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %% ===== CLOSE WINDOW =====
     function closeWindow_Callback(varargin)
         % If GUI was displayed: save current position
-        if isGUI
+        if (GlobalData.Program.GuiLevel >= 1)
             % Update main window size and position
             MainWindowPos = [jBstFrame.getLocation.getX(), ...
                              jBstFrame.getLocation.getY(), ...
@@ -516,16 +539,16 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jPopup = java_create('javax.swing.JPopupMenu');
         % Possible layout managers
         groupLayout = javax.swing.ButtonGroup();
-        jRadioTile   = gui_component('RadioMenuItem', jPopup, [], 'Tiled',       {IconLoader.ICON_LAYOUT_TILE, groupLayout},       [], @(h,ev)bst_set('Layout', 'WindowManager', 'TileWindows'), []);
-        jRadioWeight = gui_component('RadioMenuItem', jPopup, [], 'Weighted',    {IconLoader.ICON_LAYOUT_WEIGHT, groupLayout},     [], @(h,ev)bst_set('Layout', 'WindowManager', 'WeightWindows'), []);
-        jRadioFullA  = gui_component('RadioMenuItem', jPopup, [], 'Full area',   {IconLoader.ICON_LAYOUT_FULLAREA, groupLayout},   [], @(h,ev)bst_set('Layout', 'WindowManager', 'FullArea'), []);
-        jRadioNone   = gui_component('RadioMenuItem', jPopup, [], 'None',        {IconLoader.ICON_LAYOUT_NONE, groupLayout},       [], @(h,ev)bst_set('Layout', 'WindowManager', 'None'), []);
+        jRadioTile   = gui_component('RadioMenuItem', jPopup, [], 'Tiled',       {IconLoader.ICON_LAYOUT_TILE, groupLayout},       [], @(h,ev)bst_set('Layout', 'WindowManager', 'TileWindows'), fontSize);
+        jRadioWeight = gui_component('RadioMenuItem', jPopup, [], 'Weighted',    {IconLoader.ICON_LAYOUT_WEIGHT, groupLayout},     [], @(h,ev)bst_set('Layout', 'WindowManager', 'WeightWindows'), fontSize);
+        jRadioFullA  = gui_component('RadioMenuItem', jPopup, [], 'Full area',   {IconLoader.ICON_LAYOUT_FULLAREA, groupLayout},   [], @(h,ev)bst_set('Layout', 'WindowManager', 'FullArea'), fontSize);
+        jRadioNone   = gui_component('RadioMenuItem', jPopup, [], 'None',        {IconLoader.ICON_LAYOUT_NONE, groupLayout},       [], @(h,ev)bst_set('Layout', 'WindowManager', 'None'), fontSize);
         % One or two screens
         jPopup.addSeparator();
         groupScreen = javax.swing.ButtonGroup();
-        jRadioOne  = gui_component('RadioMenuItem', jPopup, [], 'One screen',  {IconLoader.ICON_SCREEN1, groupScreen}, [], @(h,ev)bst_set('Layout', 'DoubleScreen', 0), []);
-        jRadioTwo  = gui_component('RadioMenuItem', jPopup, [], 'Two screens', {IconLoader.ICON_SCREEN2, groupScreen}, [], @(h,ev)bst_set('Layout', 'DoubleScreen', 1), []);
-        jCheckFull = gui_component('CheckboxMenuItem', jPopup, [], 'Full screen', IconLoader.ICON_RESIZE, [],   @(h,ev)bst_set('Layout', 'FullScreen', ev.getSource().isSelected()), []);
+        jRadioOne  = gui_component('RadioMenuItem', jPopup, [], 'One screen',  {IconLoader.ICON_SCREEN1, groupScreen}, [], @(h,ev)bst_set('Layout', 'DoubleScreen', 0), fontSize);
+        jRadioTwo  = gui_component('RadioMenuItem', jPopup, [], 'Two screens', {IconLoader.ICON_SCREEN2, groupScreen}, [], @(h,ev)bst_set('Layout', 'DoubleScreen', 1), fontSize);
+        jCheckFull = gui_component('CheckboxMenuItem', jPopup, [], 'Full screen', IconLoader.ICON_RESIZE, [],   @(h,ev)bst_set('Layout', 'FullScreen', ev.getSource().isSelected()), fontSize);
         % Select current options
         switch bst_get('Layout', 'WindowManager')
             case 'TileWindows',    jRadioTile.setSelected(1);
@@ -542,10 +565,10 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jCheckFull.setSelected(bst_get('Layout', 'FullScreen'));
         % User setups
         jPopup.addSeparator();
-        jMenu = gui_component('Menu', jPopup, [], 'User setups', IconLoader.ICON_LAYOUT_CASCADE, [], [], []);
+        jMenu = gui_component('Menu', jPopup, [], 'User setups', IconLoader.ICON_LAYOUT_CASCADE, [], [], fontSize);
         gui_layout('SetupMenu', jMenu);
         % Show all figures
-        gui_component('MenuItem', jPopup, [], 'Show all figures', IconLoader.ICON_LAYOUT_SHOWALL, [], @(h,ev)gui_layout('ShowAllWindows'), []);
+        gui_component('MenuItem', jPopup, [], 'Show all figures', IconLoader.ICON_LAYOUT_SHOWALL, [], @(h,ev)gui_layout('ShowAllWindows'), fontSize);
         % Show popup menu
         ShowPopup(jPopup, jButton);
     end
@@ -557,17 +580,17 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jPopup = java_create('javax.swing.JPopupMenu');
         % What field to search for: {'FileName', 'Comment'}
         groupTarget = java_create('javax.swing.ButtonGroup');
-        jRadioFilename = gui_component('RadioMenuItem', jPopup, [], 'Search file names', groupTarget, [], @(h,ev)SetFilterOption('Target', 'FileName'));
-        jRadioComment  = gui_component('RadioMenuItem', jPopup, [], 'Search comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Comment'));
-        jRadioParent   = gui_component('RadioMenuItem', jPopup, [], 'Search parent comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Parent'));
+        jRadioFilename = gui_component('RadioMenuItem', jPopup, [], 'Search file names', groupTarget, [], @(h,ev)SetFilterOption('Target', 'FileName'), fontSize);
+        jRadioComment  = gui_component('RadioMenuItem', jPopup, [], 'Search comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Comment'), fontSize);
+        jRadioParent   = gui_component('RadioMenuItem', jPopup, [], 'Search parent comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Parent'), fontSize);
         jPopup.addSeparator();
         % What to do with the filtered files: {'Select', 'Exclude'}
         groupAction = java_create('javax.swing.ButtonGroup');
-        jRadioSelect  = gui_component('RadioMenuItem', jPopup, [], 'Select files',  groupAction, [], @(h,ev)SetFilterOption('Action', 'Select'));
-        jRadioExclude = gui_component('RadioMenuItem', jPopup, [], 'Exclude files', groupAction, [], @(h,ev)SetFilterOption('Action', 'Exclude'));
+        jRadioSelect  = gui_component('RadioMenuItem', jPopup, [], 'Select files',  groupAction, [], @(h,ev)SetFilterOption('Action', 'Select'), fontSize);
+        jRadioExclude = gui_component('RadioMenuItem', jPopup, [], 'Exclude files', groupAction, [], @(h,ev)SetFilterOption('Action', 'Exclude'), fontSize);
         % Reset filters
         jPopup.addSeparator();
-        gui_component('MenuItem', jPopup, [], 'Reset filters', IconLoader.ICON_RESET, [], @(h,ev)ButtonFilterReset_Callback());
+        gui_component('MenuItem', jPopup, [], 'Reset filters', IconLoader.ICON_RESET, [], @(h,ev)ButtonFilterReset_Callback(), fontSize);
         % Select current options
         NodelistOptions = bst_get('NodelistOptions');
         switch (NodelistOptions.Target)
@@ -682,8 +705,10 @@ function GUI = CreateWindow() %#ok<DEFNU>
         end
         % Get panel title
         panelTitle = jTabpaneProcess.getTitleAt(iSelPanel);
-        % If no data type selected and it's not Process2: select recordings
+        % Hide the tooloars when not wanted
         jToolbarB.setVisible(strcmpi(panelTitle, 'Process2'));
+        jToolbarA.setVisible(~strcmpi(panelTitle, 'Guidelines'));
+        jToolbarFilter.setVisible(~strcmpi(panelTitle, 'Guidelines'));
     end
 
 %% ===== PROCESS: DATA TYPE CHANGED =====
@@ -800,6 +825,10 @@ function UpdateProtocolsList()
     [tmp__, indProtocols] = sort(lower({GlobalData.DataBase.ProtocolInfo.Comment}));
     % Get the ComboBox java handle
     ctrl = bst_get('BstControls');
+    % No protocol list
+    if isempty(ctrl.jComboBoxProtocols)
+        return;
+    end
     % Save combobox callback
     jModel = ctrl.jComboBoxProtocols.getModel();
     bakCallback = java_getcb(jModel, 'ContentsChangedCallback');
@@ -851,43 +880,47 @@ function SetCurrentProtocol(iProtocol)
         db_save();
     end
     
-    % Look for the indice of the protocol in the combo box
-    iItem = [];
-    if (iProtocol ~= 0)
-        for i = 1:jComboBoxProtocols.getItemCount()
-            iItemProt = jComboBoxProtocols.getItemAt(i-1).getUserData();
-            if ~isempty(iItemProt) && (iItemProt == iProtocol)
-                iItem = i;
-                break;
+    % If the protocol list is available
+    if ~isempty(jComboBoxProtocols)
+        % Look for the indice of the protocol in the combo box
+        iItem = [];
+        if (iProtocol ~= 0)
+            for i = 1:jComboBoxProtocols.getItemCount()
+                iItemProt = jComboBoxProtocols.getItemAt(i-1).getUserData();
+                if ~isempty(iItemProt) && (iItemProt == iProtocol)
+                    iItem = i;
+                    break;
+                end
             end
+        else
+            iItem = 0;
         end
-    else
-        iItem = 0;
+        % Save combobox callback
+        jModel = jComboBoxProtocols.getModel();
+        bakCallback = java_getcb(jModel, 'ContentsChangedCallback');
+        % Make sure that the right item is selected in the protocols combox box
+        if ~isempty(iItem) && (iItem-1 ~= jComboBoxProtocols.getSelectedIndex())
+            java_setcb(jModel, 'ContentsChangedCallback', []);
+            % Update list selection
+            jComboBoxProtocols.setSelectedIndex(iItem-1);
+            % Restore callback
+            java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
+        end
+        % Repaint box
+        jComboBoxProtocols.invalidate();
+        jComboBoxProtocols.repaint();
     end
-    % Save combobox callback
-    jModel = jComboBoxProtocols.getModel();
-    bakCallback = java_getcb(jModel, 'ContentsChangedCallback');
-    % Make sure that the right item is selected in the protocols combox box
-    if ~isempty(iItem) && (iItem-1 ~= jComboBoxProtocols.getSelectedIndex())
-        java_setcb(jModel, 'ContentsChangedCallback', []);
-        % Update list selection
-        jComboBoxProtocols.setSelectedIndex(iItem-1);
-        % Restore callback
-        java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
-    end
-    % Repaint box
-    jComboBoxProtocols.invalidate();
-    jComboBoxProtocols.repaint();
-
     % ===== UPDATE GUI =====
     % Update tree model
     panel_protocols('UpdateTree');
-    %Update "Time Window" 
+    % Update "Time Window" 
     panel_time('UpdatePanel');
     % Reset processes and stat panels
     panel_nodelist('ResetAllLists');
     % Empty the clipboard
     bst_set('Clipboard', []);
+    % Close guidelines panel
+    gui_hide('Guidelines');
     
     % ===== CHECK FOLDERS =====
     % Check protocol folders
@@ -1032,13 +1065,16 @@ end
 
 
 %% ===== SET SELECTED TAB =====
-function SetSelectedTab(tabTitle, isAutoSelect)
+function SetSelectedTab(tabTitle, isAutoSelect, containerName)
     % Parse inputs
+    if (nargin < 3) || isempty(containerName)
+        containerName = 'Tools';
+    end
     if (nargin < 2) || isempty(isAutoSelect)
         isAutoSelect = 1;
     end
     % Get Tools panel container
-    jTabpaneTools = bst_get('PanelContainer', 'Tools');
+    jTabpaneTools = bst_get('PanelContainer', containerName);
     % Check if the requirements are met to allow auto-select
     if isAutoSelect
         % If there are more than one figure: do not allow
@@ -1282,6 +1318,10 @@ end
 function isDeleted = EmptyTempFolder()
     % Get temporary directory
     tmpDir = bst_get('BrainstormTmpDir');
+    % Make sure Matlab is not currently in a subfolder of the temp directory
+    if ~isempty(strfind(pwd, tmpDir)) && ~file_compare(pwd, tmpDir)
+        cd(tmpDir);
+    end
     % If directory exists
     if isdir(tmpDir)
         disp('BST> Emptying temporary directory...');
@@ -1327,6 +1367,32 @@ function SetFilterOption(FieldName, Value)
     bst_progress('start', 'File filters', 'Updating list...');
     panel_nodelist('UpdatePanel', [], 1);
     bst_progress('stop');
+end
+
+
+%% ===== SET EXPLORATION MODE =====
+function SetExplorationMode(ExplorationMode) %#ok<DEFNU>
+    global GlobalData;
+    GUI = GlobalData.Program.GUI.mainWindow;
+    % If the mode didn't change: don't do anything
+    if strcmpi(ExplorationMode, bst_get('Layout', 'ExplorationMode'))
+        return;
+    end
+    % Select appropriate button
+    switch (ExplorationMode)
+        case 'Subjects'
+            GUI.jToolButtonSubject.setSelected(1);
+        case 'StudiesSubj'
+            GUI.jToolButtonStudiesSubj.setSelected(1);
+        case 'StudiesCond'
+            GUI.jToolButtonStudiesCond.setSelected(1);
+        otherwise
+            error('Invalid exploration mode.');
+    end
+    % Update the Layout structure
+    bst_set('Layout', 'ExplorationMode', ExplorationMode);
+    % Update tree display
+    panel_protocols('UpdateTree');
 end
 
 
@@ -1441,4 +1507,30 @@ end
 %     contentLength = connection.getContentLength();
 % end
 
+
+%% ===== SHOW GUIDELINES =====
+function ShowGuidelines(ScenarioName)
+    % Close tab if it already exists
+    panelName = 'Guidelines';
+    if isTabVisible(panelName)
+        gui_hide(panelName);
+    end
+    % Resize the bottom panel
+    GUI = bst_get('BstControls');
+    InterfaceScaling = bst_get('InterfaceScaling') / 100;
+    Hmin = round(300 * InterfaceScaling);
+    Hfig = GUI.jBstFrame.getHeight();
+    if (Hfig - GUI.jSplitH.getDividerLocation() < Hmin)
+        GUI.jSplitH.setDividerLocation(uint32(Hfig - Hmin));
+    end
+    % Create guidelines panel
+    bstPanel = panel_guidelines('CreatePanel', ScenarioName);
+    % Open tab new tab
+    gui_show(bstPanel, 'BrainstormTab', 'process');
+
+    % Initialize first tab
+    panel_guidelines('SwitchPanel', 'next');
+    % Select tab
+    SetSelectedTab(panelName, 0, 'Process');
+end
 

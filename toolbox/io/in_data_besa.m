@@ -67,6 +67,10 @@ switch lower(fExt)
         hdr = fgetl(fid);
         % If there are alphabetical characters in the line: sensor names
         if any(ismember(double(hdr), double('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz()[]/\_@')))
+            % Replace spaces in channel names with _ (eg. "TP 1" to "TP_1")
+            for iDig = 0:9
+                hdr = strrep(hdr, sprintf(' %d', iDig), sprintf('_%d', iDig));
+            end
             % Try to get the channel names
             ChanNames = str_split(hdr, ' ');
         % Else: It was the first sensor

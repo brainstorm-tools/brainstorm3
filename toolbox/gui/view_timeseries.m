@@ -190,7 +190,11 @@ setappdata(hFig, 'TsInfo', TsInfo);
 % Get default montage
 if isNewFig
     sMontage = panel_montage('GetCurrentMontage', Modality);
-    if ~isempty(sMontage) && isempty(RowNames) && (~isStat || strcmpi(sMontage.Type, 'selection')) && ~ismember(sMontage.Name, {'ICA components[tmp]', 'SSP components[tmp]'})
+    % If displaying a SEEG for which a bipolar montage has already been applied: ignore current montage
+    if ~isempty(sMontage) && isempty(RowNames) && strcmpi(Modality, 'SEEG') && all(cellfun(@(c)any(c=='-'), {GlobalData.DataSet(iDS).Channel.Name}))
+        TsInfo.MontageName = [];
+    % Use previous montage
+    elseif ~isempty(sMontage) && isempty(RowNames) && (~isStat || strcmpi(sMontage.Type, 'selection')) && ~ismember(sMontage.Name, {'ICA components[tmp]', 'SSP components[tmp]'})
         TsInfo.MontageName = sMontage.Name;
     else
         TsInfo.MontageName = [];

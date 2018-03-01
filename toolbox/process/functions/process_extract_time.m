@@ -100,9 +100,21 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput = [];
         return;
     end
-    % Keep only those indices
-    sInput.A          = sInput.A(:, iTime, :);
-    sInput.TimeVector = sInput.TimeVector(iTime);
+    
+    % If there is only one time sample: duplicate the data, but the time values must be different
+    if (length(iTime) == 1)
+        iTime = [iTime, iTime];
+        if (length(sInput.TimeVector) > 2)
+            sInput.TimeVector = sInput.TimeVector(iTime) + [0, sInput.TimeVector(2)-sInput.TimeVector(1)];
+        else
+            sInput.TimeVector = sInput.TimeVector(iTime) + [0, 1e-6];
+        end
+    else
+        sInput.TimeVector = sInput.TimeVector(iTime);
+    end
+    
+    % Keep only these indices
+    sInput.A = sInput.A(:, iTime, :);
     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
         sInput.Std = sInput.Std(:, iTime, :);
     end

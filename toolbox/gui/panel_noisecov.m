@@ -66,31 +66,28 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS)  %#ok<DEFNU>
     import java.awt.*;
     import javax.swing.*;
     % Constants
-    TEXT_DIM = java.awt.Dimension(70, 20);
-    FONT_SIZE = [];
+    TEXT_DIM = java_scaled('dimension', 70, 20);
     % Create main main panel
     jPanelNew = gui_river();
     
     % FILES PANEL
     jPanelFiles = gui_river([5,5], [0,10,15,0], 'Files');
         % Number of files
-        jPanelFiles.add(JLabel('Number of files :   '));
-        jPanelFiles.add('tab', JLabel(sprintf('%d', OPTIONS.nFiles)));
+        gui_component('label', jPanelFiles, '', 'Number of files :   ');
+        gui_component('label', jPanelFiles, 'tab', sprintf('%d', OPTIONS.nFiles));
         % Time window
-        jPanelFiles.add('br',  JLabel('Time window : '));
-        jPanelFiles.add('tab', JLabel(strTime));
+        gui_component('label', jPanelFiles, 'br', 'Time window : ');
+        gui_component('label', jPanelFiles, 'tab', strTime);
         % Frequency
-        jPanelFiles.add('br',  JLabel('Frequency : '));
-        jPanelFiles.add('tab', JLabel(strFreq));
+        gui_component('label', jPanelFiles, 'br', 'Frequency : ');
+        gui_component('label', jPanelFiles, 'tab', strFreq);
         % Number of baseline samples
-        jPanelFiles.add('br',  JLabel('Baseline samples : '));
-        jLabelBaselineSamples = JLabel('0');
-        jPanelFiles.add('tab', jLabelBaselineSamples);
+        gui_component('label', jPanelFiles, 'br', 'Baseline samples : ');
+        jLabelBaselineSamples = gui_component('label', jPanelFiles, 'tab', '0');
         % Number of data samples
         if OPTIONS.isDataCov
-            jPanelFiles.add('br',  JLabel('Data samples : '));
-            jLabelDataSamples = JLabel('0');
-            jPanelFiles.add('tab', jLabelDataSamples);
+            gui_component('label', jPanelFiles, 'br', 'Data samples : ');
+            jLabelDataSamples = gui_component('label', jPanelFiles, 'tab', '0');
         end
     jPanelNew.add('hfill', jPanelFiles);
 
@@ -98,28 +95,28 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS)  %#ok<DEFNU>
     jPanelOptions = gui_river([5,2], [0,10,15,0], 'Options');
         % BASELINE 
         % Time range
-        gui_component('label', jPanelOptions, [], 'Baseline: ', [],[],[],FONT_SIZE);
-        jBaselineTimeStart = gui_component('texttime', jPanelOptions, 'tab', ' ', TEXT_DIM,[],[],FONT_SIZE);
-        gui_component('label', jPanelOptions, [], ' - ', [],[],[],FONT_SIZE);
-        jBaselineTimeStop = gui_component('texttime', jPanelOptions, [], ' ', TEXT_DIM,[],[],FONT_SIZE);
+        gui_component('label', jPanelOptions, [], 'Baseline: ');
+        jBaselineTimeStart = gui_component('texttime', jPanelOptions, 'tab', ' ', TEXT_DIM);
+        gui_component('label', jPanelOptions, [], ' - ');
+        jBaselineTimeStop = gui_component('texttime', jPanelOptions, [], ' ', TEXT_DIM);
         % Callbacks
         BaselineTimeUnit = gui_validate_text(jBaselineTimeStart, [], jBaselineTimeStop, unique(OPTIONS.timeSamples), 'time', [], defBaseline(1), @UpdatePanel);
         BaselineTimeUnit = gui_validate_text(jBaselineTimeStop, jBaselineTimeStart, [], unique(OPTIONS.timeSamples), 'time', [], defBaseline(2), @UpdatePanel);
         % Units
-        gui_component('label', jPanelOptions, [], BaselineTimeUnit, [],[],[],FONT_SIZE);
+        gui_component('label', jPanelOptions, [], BaselineTimeUnit);
 
         % DATA TIME WINDOW 
         if OPTIONS.isDataCov
             % Time range
-            gui_component('label', jPanelOptions, 'br', 'Data: ', [],[],[],FONT_SIZE);
-            jDataTimeStart = gui_component('texttime', jPanelOptions, 'tab', ' ', TEXT_DIM,[],[],FONT_SIZE);
-            gui_component('label', jPanelOptions, [], ' - ', [],[],[],FONT_SIZE);
-            jDataTimeStop = gui_component('texttime', jPanelOptions, [], ' ', TEXT_DIM,[],[],FONT_SIZE);
+            gui_component('label', jPanelOptions, 'br', 'Data: ');
+            jDataTimeStart = gui_component('texttime', jPanelOptions, 'tab', ' ', TEXT_DIM);
+            gui_component('label', jPanelOptions, [], ' - ');
+            jDataTimeStop = gui_component('texttime', jPanelOptions, [], ' ', TEXT_DIM);
             % Callbacks
             DataTimeUnit = gui_validate_text(jDataTimeStart, [], jDataTimeStop, unique(OPTIONS.timeSamples), 'time', [], defData(1), @UpdatePanel);
             DataTimeUnit = gui_validate_text(jDataTimeStop, jDataTimeStart, [], unique(OPTIONS.timeSamples), 'time', [], defData(2), @UpdatePanel);
             % Units
-            gui_component('label', jPanelOptions, [], DataTimeUnit, [],[],[],FONT_SIZE);
+            gui_component('label', jPanelOptions, [], DataTimeUnit);
         else
             jDataTimeStart = [];
             jDataTimeStop = [];
@@ -131,7 +128,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS)  %#ok<DEFNU>
             jPanelOptions.add('br', JLabel('Sensors: '));
             jCheckTypes = javaArray('javax.swing.JCheckBox', length(OPTIONS.ChannelTypes));
             for i = 1:length(OPTIONS.ChannelTypes)
-                jCheckTypes(i) = gui_component('checkbox', jPanelOptions, '', OPTIONS.ChannelTypes{i}, [], '', [], []);
+                jCheckTypes(i) = gui_component('checkbox', jPanelOptions, '', OPTIONS.ChannelTypes{i});
                 jCheckTypes(i).setSelected(1);
             end
         else
@@ -140,19 +137,17 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS)  %#ok<DEFNU>
         jPanelOptions.add('br', JLabel('    '));
         
         % Remove DC offset
-        jLabelRemoveDc = JLabel('<HTML>Remove DC offset: &nbsp;&nbsp;&nbsp; <FONT color="#777777"><I>(subtract average computed over the baseline)</I></FONT>');
-        jPanelOptions.add('p', jLabelRemoveDc);
+        gui_component('label', jPanelOptions, 'p', '<HTML>Remove DC offset: &nbsp;&nbsp;&nbsp; <FONT color="#777777"><I>(subtract average computed over the baseline)</I></FONT>');
         jButtonGroupRemove = ButtonGroup();
         % Output type: Full matrix
-        jPanelOptions.add('br', JLabel('    '));
-        jRadioRemoveDcFile = JRadioButton('Block by block, to avoid effects of slow shifts in data', 1);
+        gui_component('label', jPanelOptions, 'br', '    ');
+        jRadioRemoveDcFile = gui_component('radio', jPanelOptions, '', 'Block by block, to avoid effects of slow shifts in data');
+        jRadioRemoveDcFile.setSelected(1);
         jButtonGroupRemove.add(jRadioRemoveDcFile);
-        jPanelOptions.add(jRadioRemoveDcFile);
         % Output type: Diagonal matrix
-        jPanelOptions.add('br', JLabel('    '));
-        jRadioRemoveDcAll = JRadioButton('Compute global average and remove it to from all the blocks');
+        gui_component('label', jPanelOptions, 'br', '    ');
+        jRadioRemoveDcAll = gui_component('radio', jPanelOptions, '', 'Compute global average and remove it to from all the blocks');
         jButtonGroupRemove.add(jRadioRemoveDcAll);
-        jPanelOptions.add(jRadioRemoveDcAll);
         % Disable these controls if only one file
         if (OPTIONS.nBlocks == 1)
             jRadioRemoveDcAll.setEnabled(0);
@@ -161,13 +156,9 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS)  %#ok<DEFNU>
         
     % ===== VALIDATION BUTTONS =====
     % Cancel
-    jButtonCancel = JButton('Cancel');
-    java_setcb(jButtonCancel, 'ActionPerformedCallback', @ButtonCancel_Callback);
-    jPanelNew.add('br right', jButtonCancel);
+    gui_component('button', jPanelNew, 'br right', 'Cancel', [], [], @ButtonCancel_Callback);
     % Run
-    jButtonRun = JButton('OK');    
-    java_setcb(jButtonRun, 'ActionPerformedCallback', @ButtonOk_Callback);
-    jPanelNew.add(jButtonRun);
+    gui_component('button', jPanelNew, '', 'OK', [], [], @ButtonOk_Callback);
 
     % ===== PANEL CREATION =====
     % Return a mutex to wait for panel close

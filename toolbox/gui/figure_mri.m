@@ -12,6 +12,7 @@ function varargout = figure_mri(varargin)
 %[hI,hCH,hCV] = figure_mri('SetupView',               hAxes, xySize, imgSize, orientLabels)
 %         XYZ = figure_mri('GetLocation',             cs, sMri, Handles)
 %               figure_mri('SetLocation',             cs, sMri, Handles, XYZ)
+%               figure_mri('JumpMaximum',             hFig)
 %               figure_mri('MriTransform',            hButton, Transf, iDim)
 %               figure_mri('UpdateMriDisplay',        hFig, dims)
 %               figure_mri('UpdateSurfaceColor',      hFig)
@@ -148,26 +149,26 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     jPanelTitleAxial.setBackground(Color(0,0,0));
     jPanelTitleCoronal.setBackground(Color(0,0,0));
     % Title: Buttons
-    Handles.jButtonRotateS  = gui_component('button', jPanelTitleSagittal, [], '', IconLoader.ICON_MRI_ROTATE,  'Rotate MRI: 90° clockwise around axis X', @(h,ev)MriTransform(hFig, 'Rotate', 1), []);
-    Handles.jButtonRotateA  = gui_component('button', jPanelTitleAxial,    [], '', IconLoader.ICON_MRI_ROTATE,  'Rotate MRI: 90° clockwise around axis Z', @(h,ev)MriTransform(hFig, 'Rotate', 3), []);
-    Handles.jButtonRotateC  = gui_component('button', jPanelTitleCoronal,  [], '', IconLoader.ICON_MRI_ROTATE,  'Rotate MRI: 90° clockwise around axis Y', @(h,ev)MriTransform(hFig, 'Rotate', 2), []);
-    Handles.jButtonFlipS    = gui_component('button', jPanelTitleSagittal, [], '', IconLoader.ICON_MRI_FLIP,    'Flip MRI anterior-posterior', @(h,ev)MriTransform(hFig, 'Flip', 2), []);
-    Handles.jButtonFlipA    = gui_component('button', jPanelTitleAxial,    [], '', IconLoader.ICON_MRI_FLIP,    'Flip MRI left-right',         @(h,ev)MriTransform(hFig, 'Flip', 1), []);
-    Handles.jButtonFlipC    = gui_component('button', jPanelTitleCoronal,  [], '', IconLoader.ICON_MRI_FLIP,    'Flip MRI left-right',         @(h,ev)MriTransform(hFig, 'Flip', 1), []);
-    Handles.jButtonPermuteS = gui_component('button', jPanelTitleSagittal, [], '', IconLoader.ICON_MRI_PERMUTE, 'Permute MRI dimensions', @(h,ev)MriTransform(hFig, 'Permute', 1), []);
-    Handles.jButtonPermuteA = gui_component('button', jPanelTitleAxial,    [], '', IconLoader.ICON_MRI_PERMUTE, 'Permute MRI dimensions', @(h,ev)MriTransform(hFig, 'Permute', 3), []);
-    Handles.jButtonPermuteC = gui_component('button', jPanelTitleCoronal,  [], '', IconLoader.ICON_MRI_PERMUTE, 'Permute MRI dimensions', @(h,ev)MriTransform(hFig, 'Permute', 2), []);
+    Handles.jButtonRotateS  = gui_component('button', jPanelTitleSagittal, [], '', IconLoader.ICON_MRI_ROTATE,  'Rotate MRI: 90° clockwise around axis X', @(h,ev)MriTransform(hFig, 'Rotate', 1));
+    Handles.jButtonRotateA  = gui_component('button', jPanelTitleAxial,    [], '', IconLoader.ICON_MRI_ROTATE,  'Rotate MRI: 90° clockwise around axis Z', @(h,ev)MriTransform(hFig, 'Rotate', 3));
+    Handles.jButtonRotateC  = gui_component('button', jPanelTitleCoronal,  [], '', IconLoader.ICON_MRI_ROTATE,  'Rotate MRI: 90° clockwise around axis Y', @(h,ev)MriTransform(hFig, 'Rotate', 2));
+    Handles.jButtonFlipS    = gui_component('button', jPanelTitleSagittal, [], '', IconLoader.ICON_MRI_FLIP,    'Flip MRI anterior-posterior', @(h,ev)MriTransform(hFig, 'Flip', 2));
+    Handles.jButtonFlipA    = gui_component('button', jPanelTitleAxial,    [], '', IconLoader.ICON_MRI_FLIP,    'Flip MRI left-right',         @(h,ev)MriTransform(hFig, 'Flip', 1));
+    Handles.jButtonFlipC    = gui_component('button', jPanelTitleCoronal,  [], '', IconLoader.ICON_MRI_FLIP,    'Flip MRI left-right',         @(h,ev)MriTransform(hFig, 'Flip', 1));
+    Handles.jButtonPermuteS = gui_component('button', jPanelTitleSagittal, [], '', IconLoader.ICON_MRI_PERMUTE, 'Permute MRI dimensions', @(h,ev)MriTransform(hFig, 'Permute', 1));
+    Handles.jButtonPermuteA = gui_component('button', jPanelTitleAxial,    [], '', IconLoader.ICON_MRI_PERMUTE, 'Permute MRI dimensions', @(h,ev)MriTransform(hFig, 'Permute', 3));
+    Handles.jButtonPermuteC = gui_component('button', jPanelTitleCoronal,  [], '', IconLoader.ICON_MRI_PERMUTE, 'Permute MRI dimensions', @(h,ev)MriTransform(hFig, 'Permute', 2));
     % Set buttons size
     jButtons = [Handles.jButtonRotateS, Handles.jButtonRotateA, Handles.jButtonRotateC, Handles.jButtonFlipS, Handles.jButtonFlipA, Handles.jButtonFlipC, Handles.jButtonPermuteS, Handles.jButtonPermuteA, Handles.jButtonPermuteC];
     for i = 1:length(jButtons)
         jButtons(i).setPreferredSize(Dimension(20,20));
     end
     % Title: Labels
-    Handles.jLabelTitleS = gui_component('label',  jPanelTitleSagittal, [], '<HTML>&nbsp;&nbsp;&nbsp;<B>Sagittal</B>', [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axs), []);
-    Handles.jLabelTitleA = gui_component('label',  jPanelTitleAxial,    [], '<HTML>&nbsp;&nbsp;&nbsp;<B>Axial</B>',    [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axa), []);
-    Handles.jLabelTitleC = gui_component('label',  jPanelTitleCoronal,  [], '<HTML>&nbsp;&nbsp;&nbsp;<B>Coronal</B>',  [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axc), []);
+    Handles.jLabelTitleS = gui_component('label',  jPanelTitleSagittal, [], '<HTML>&nbsp;&nbsp;&nbsp;<B>Sagittal</B>', [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axs));
+    Handles.jLabelTitleA = gui_component('label',  jPanelTitleAxial,    [], '<HTML>&nbsp;&nbsp;&nbsp;<B>Axial</B>',    [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axa));
+    Handles.jLabelTitleC = gui_component('label',  jPanelTitleCoronal,  [], '<HTML>&nbsp;&nbsp;&nbsp;<B>Coronal</B>',  [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axc));
     % Title: Value
-    Handles.jLabelValue = gui_component('label',  jPanelTitleSagittal, 'hfill', 'Value', [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axs), []);
+    Handles.jLabelValue = gui_component('label',  jPanelTitleSagittal, 'hfill', 'Value', [], [], @(h,ev)set(hFig,'CurrentAxes',Handles.axs));
     Handles.jLabelValue.setHorizontalAlignment(Handles.jLabelValue.RIGHT);
     % Add panels to the figure
     [Handles.jPanelSagittal, Handles.panelTitleSagittal] = javacomponent(jPanelTitleSagittal, [0 0 1 1], hFig);
@@ -233,25 +234,25 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.weighty = 1;
     % Titles and buttons
     c.insets  = Insets(0,0,0,0);
-    c.gridx = 1;  c.gridy = 1;  Handles.jTitleNAS      = gui_component('label',  Handles.jPanelCS, c, 'NAS: ', [], '', [], []);
-    c.gridx = 1;  c.gridy = 2;  Handles.jTitleLPA      = gui_component('label',  Handles.jPanelCS, c, 'LPA: ', [], '', [], []);
-    c.gridx = 1;  c.gridy = 3;  Handles.jTitleRPA      = gui_component('label',  Handles.jPanelCS, c, 'RPA: ', [], '', [], []);
-    c.gridx = 4;  c.gridy = 1;  Handles.jTitleAC       = gui_component('label',  Handles.jPanelCS, c, 'AC: ',  [], '', [], []);
-    c.gridx = 4;  c.gridy = 2;  Handles.jTitlePC       = gui_component('label',  Handles.jPanelCS, c, 'PC: ',  [], '', [], []);
-    c.gridx = 4;  c.gridy = 3;  Handles.jTitleIH       = gui_component('label',  Handles.jPanelCS, c, 'IH: ',  [], '', [], []);
+    c.gridx = 1;  c.gridy = 1;  Handles.jTitleNAS      = gui_component('label',  Handles.jPanelCS, c, 'NAS: ');
+    c.gridx = 1;  c.gridy = 2;  Handles.jTitleLPA      = gui_component('label',  Handles.jPanelCS, c, 'LPA: ');
+    c.gridx = 1;  c.gridy = 3;  Handles.jTitleRPA      = gui_component('label',  Handles.jPanelCS, c, 'RPA: ');
+    c.gridx = 4;  c.gridy = 1;  Handles.jTitleAC       = gui_component('label',  Handles.jPanelCS, c, 'AC: ');
+    c.gridx = 4;  c.gridy = 2;  Handles.jTitlePC       = gui_component('label',  Handles.jPanelCS, c, 'PC: ');
+    c.gridx = 4;  c.gridy = 3;  Handles.jTitleIH       = gui_component('label',  Handles.jPanelCS, c, 'IH: ');
     c.insets  = Insets(2,2,2,2);
-    c.gridx = 2;  c.gridy = 1;  Handles.jButtonNasSet  = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'SCS', 'NAS'), []);
-    c.gridx = 2;  c.gridy = 2;  Handles.jButtonLpaSet  = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'SCS', 'LPA'), []);
-    c.gridx = 2;  c.gridy = 3;  Handles.jButtonRpaSet  = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'SCS', 'RPA'), []);
-    c.gridx = 3;  c.gridy = 1;  Handles.jButtonNasView = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'SCS', 'NAS'), []);
-    c.gridx = 3;  c.gridy = 2;  Handles.jButtonLpaView = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'SCS', 'LPA'), []);
-    c.gridx = 3;  c.gridy = 3;  Handles.jButtonRpaView = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'SCS', 'RPA'), []);
-    c.gridx = 5;  c.gridy = 1;  Handles.jButtonAcSet   = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'NCS', 'AC'), []);
-    c.gridx = 5;  c.gridy = 2;  Handles.jButtonPcSet   = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'NCS', 'PC'), []);
-    c.gridx = 5;  c.gridy = 3;  Handles.jButtonIhSet   = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'NCS', 'IH'), []);
-    c.gridx = 6;  c.gridy = 1;  Handles.jButtonAcView  = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'NCS', 'AC'), []);
-    c.gridx = 6;  c.gridy = 2;  Handles.jButtonPcView  = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'NCS', 'PC'), []);
-    c.gridx = 6;  c.gridy = 3;  Handles.jButtonIhView  = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'NCS', 'IH'), []);
+    c.gridx = 2;  c.gridy = 1;  Handles.jButtonNasSet  = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'SCS', 'NAS'));
+    c.gridx = 2;  c.gridy = 2;  Handles.jButtonLpaSet  = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'SCS', 'LPA'));
+    c.gridx = 2;  c.gridy = 3;  Handles.jButtonRpaSet  = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'SCS', 'RPA'));
+    c.gridx = 3;  c.gridy = 1;  Handles.jButtonNasView = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'SCS', 'NAS'));
+    c.gridx = 3;  c.gridy = 2;  Handles.jButtonLpaView = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'SCS', 'LPA'));
+    c.gridx = 3;  c.gridy = 3;  Handles.jButtonRpaView = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'SCS', 'RPA'));
+    c.gridx = 5;  c.gridy = 1;  Handles.jButtonAcSet   = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'NCS', 'AC'));
+    c.gridx = 5;  c.gridy = 2;  Handles.jButtonPcSet   = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'NCS', 'PC'));
+    c.gridx = 5;  c.gridy = 3;  Handles.jButtonIhSet   = gui_component('button', Handles.jPanelCS, c, 'Set',  [], '', @(h,ev)SetFiducial(hFig, 'NCS', 'IH'));
+    c.gridx = 6;  c.gridy = 1;  Handles.jButtonAcView  = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'NCS', 'AC'));
+    c.gridx = 6;  c.gridy = 2;  Handles.jButtonPcView  = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'NCS', 'PC'));
+    c.gridx = 6;  c.gridy = 3;  Handles.jButtonIhView  = gui_component('button', Handles.jPanelCS, c, 'View', [], '', @(h,ev)ViewFiducial(hFig, 'NCS', 'IH'));
 
     % ===== DISPLAY OPTIONS =====
     % Default constrains
@@ -263,13 +264,13 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     % Group for radio buttons
     groupOrient = ButtonGroup();
     % Titles and checkboxes
-    c.gridx = 1;  c.gridy = 1;  Handles.jTitleView          = gui_component('label',    Handles.jPanelDisplayOptions, c, ' ', [], '', [], []);
-    c.gridx = 2;  c.gridy = 1;  Handles.jCheckMipAnatomy    = gui_component('checkbox', Handles.jPanelDisplayOptions, c, 'MIP: Anatomy',      [], '', @(h,ev)checkMip_Callback(hFig,ev), []);
-    c.gridx = 2;  c.gridy = 2;  Handles.jCheckMipFunctional = gui_component('checkbox', Handles.jPanelDisplayOptions, c, 'MIP: Functional',   [], '', @(h,ev)checkMip_Callback(hFig,ev), []);
-    c.gridx = 3;  c.gridy = 1;  Handles.jCheckViewCrosshair = gui_component('checkbox', Handles.jPanelDisplayOptions, c, 'Crosshairs',   [], '', @(h,ev)checkCrosshair_Callback(hFig,ev), []);
-    c.gridx = 3;  c.gridy = 2;  Handles.jCheckViewSliders   = gui_component('checkbox', Handles.jPanelDisplayOptions, c, 'Controls',     [], '', @(h,ev)checkViewControls_Callback(hFig,ev), []);
-    c.gridx = 4;  c.gridy = 1;  Handles.jRadioNeurological  = gui_component('radio',    Handles.jPanelDisplayOptions, c, 'Neurological', groupOrient, '', @(h,ev)orientation_Callback(hFig,ev), []);
-    c.gridx = 4;  c.gridy = 2;  Handles.jRadioRadiological  = gui_component('radio',    Handles.jPanelDisplayOptions, c, 'Radiological', groupOrient, '', @(h,ev)orientation_Callback(hFig,ev), []);
+    c.gridx = 1;  c.gridy = 1;  Handles.jTitleView          = gui_component('label',    Handles.jPanelDisplayOptions, c);
+    c.gridx = 2;  c.gridy = 1;  Handles.jCheckMipAnatomy    = gui_component('checkbox', Handles.jPanelDisplayOptions, c, 'MIP: Anatomy',      [], '', @(h,ev)checkMip_Callback(hFig,ev));
+    c.gridx = 2;  c.gridy = 2;  Handles.jCheckMipFunctional = gui_component('checkbox', Handles.jPanelDisplayOptions, c, 'MIP: Functional',   [], '', @(h,ev)checkMip_Callback(hFig,ev));
+    c.gridx = 3;  c.gridy = 1;  Handles.jCheckViewCrosshair = gui_component('checkbox', Handles.jPanelDisplayOptions, c, 'Crosshairs',   [], '', @(h,ev)checkCrosshair_Callback(hFig,ev));
+    c.gridx = 3;  c.gridy = 2;  Handles.jCheckViewSliders   = gui_component('checkbox', Handles.jPanelDisplayOptions, c, 'Controls',     [], '', @(h,ev)checkViewControls_Callback(hFig,ev));
+    c.gridx = 4;  c.gridy = 1;  Handles.jRadioNeurological  = gui_component('radio',    Handles.jPanelDisplayOptions, c, 'Neurological', groupOrient, '', @(h,ev)orientation_Callback(hFig,ev));
+    c.gridx = 4;  c.gridy = 2;  Handles.jRadioRadiological  = gui_component('radio',    Handles.jPanelDisplayOptions, c, 'Radiological', groupOrient, '', @(h,ev)orientation_Callback(hFig,ev));
     % Pptions selected by default
     Handles.jCheckViewCrosshair.setSelected(1);
     Handles.jCheckViewSliders.setSelected(1);
@@ -282,21 +283,21 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.insets  = Insets(0,0,0,0);
     % Titles and labels
     c.weightx = 0.1;
-    c.gridx = 1;  c.gridy = 1;  Handles.jTitleMRI      = gui_component('label', Handles.jPanelCoordinates, c, 'MRI:', [], '', [], []);
-    c.gridx = 1;  c.gridy = 2;  Handles.jTitleSCS      = gui_component('label', Handles.jPanelCoordinates, c, 'SCS:', [], '', [], []);
-    c.gridx = 1;  c.gridy = 3;  Handles.jTitleMNI      = gui_component('label', Handles.jPanelCoordinates, c, 'MNI:', [], '', [], []);
+    c.gridx = 1;  c.gridy = 1;  Handles.jTitleMRI      = gui_component('label', Handles.jPanelCoordinates, c, 'MRI:');
+    c.gridx = 1;  c.gridy = 2;  Handles.jTitleSCS      = gui_component('label', Handles.jPanelCoordinates, c, 'SCS:');
+    c.gridx = 1;  c.gridy = 3;  Handles.jTitleMNI      = gui_component('label', Handles.jPanelCoordinates, c, 'MNI:');
     c.weightx = 0.2;
-    c.gridx = 2;  c.gridy = 1;  Handles.jTextCoordMriX = gui_component('label', Handles.jPanelCoordinates, c, '...',  [], '', [], []);
-    c.gridx = 3;  c.gridy = 1;  Handles.jTextCoordMriY = gui_component('label', Handles.jPanelCoordinates, c, '...',  [], '', [], []);
-    c.gridx = 4;  c.gridy = 1;  Handles.jTextCoordMriZ = gui_component('label', Handles.jPanelCoordinates, c, '...',  [], '', [], []);
-    c.gridx = 2;  c.gridy = 2;  Handles.jTextCoordScsX = gui_component('label', Handles.jPanelCoordinates, c, '...',  [], '', [], []);
-    c.gridx = 3;  c.gridy = 2;  Handles.jTextCoordScsY = gui_component('label', Handles.jPanelCoordinates, c, '...',  [], '', [], []);
-    c.gridx = 4;  c.gridy = 2;  Handles.jTextCoordScsZ = gui_component('label', Handles.jPanelCoordinates, c, '...',  [], '', [], []);
-    c.gridx = 2;  c.gridy = 3;  Handles.jTextCoordMniX = gui_component('label', Handles.jPanelCoordinates, c, '...',  [], '', [], []);
-    c.gridx = 3;  c.gridy = 3;  Handles.jTextCoordMniY = gui_component('label', Handles.jPanelCoordinates, c, '...',  [], '', [], []);
-    c.gridx = 4;  c.gridy = 3;  Handles.jTextCoordMniZ = gui_component('label', Handles.jPanelCoordinates, c, '...',  [], '', [], []);
+    c.gridx = 2;  c.gridy = 1;  Handles.jTextCoordMriX = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 3;  c.gridy = 1;  Handles.jTextCoordMriY = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 4;  c.gridy = 1;  Handles.jTextCoordMriZ = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 2;  c.gridy = 2;  Handles.jTextCoordScsX = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 3;  c.gridy = 2;  Handles.jTextCoordScsY = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 4;  c.gridy = 2;  Handles.jTextCoordScsZ = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 2;  c.gridy = 3;  Handles.jTextCoordMniX = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 3;  c.gridy = 3;  Handles.jTextCoordMniY = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 4;  c.gridy = 3;  Handles.jTextCoordMniZ = gui_component('label', Handles.jPanelCoordinates, c, '...');
     c.gridx = 2;  c.gridy = 3;  c.gridwidth = 3;  
-    Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#505050"><U>Click here to compute MNI transformation</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig), []);
+    Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#505050"><U>Click here to compute MNI transformation</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig));
     
     % ===== VALIDATION BAR =====
     % Default constrains
@@ -306,12 +307,12 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.fill    = GridBagConstraints.BOTH;
     c.insets  = Insets(2,4,2,4);
     % Buttons: Zoom-, Zoom+, Cancel, Save
-    c.gridx = 1;  c.weightx = 0.1;  Handles.jButtonZoomMinus = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_MINUS, '<HTML><B>Zoom out   [-]</B><BR><BR>Double-click to reset view', @(h,ev)ButtonZoom_Callback(hFig, '-'), []);
-    c.gridx = 2;  c.weightx = 0.1;  Handles.jButtonZoomPlus  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_PLUS,  '<HTML><B>Zoom in   [+]</B><BR><BR>Double-click to reset view',  @(h,ev)ButtonZoom_Callback(hFig, '+'), []);
-    c.gridx = 3;  c.weightx = 0.1;  Handles.jButtonSetCoord  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_VIEW_SCOUT_IN_MRI,  'Set the current coordinates',  @(h,ev)ButtonSetCoordinates_Callback(hFig), []);
+    c.gridx = 1;  c.weightx = 0.1;  Handles.jButtonZoomMinus = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_MINUS, '<HTML><B>Zoom out   [-]</B><BR><BR>Double-click to reset view', @(h,ev)ButtonZoom_Callback(hFig, '-'));
+    c.gridx = 2;  c.weightx = 0.1;  Handles.jButtonZoomPlus  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_PLUS,  '<HTML><B>Zoom in   [+]</B><BR><BR>Double-click to reset view',  @(h,ev)ButtonZoom_Callback(hFig, '+'));
+    c.gridx = 3;  c.weightx = 0.1;  Handles.jButtonSetCoord  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_VIEW_SCOUT_IN_MRI,  'Set the current coordinates',  @(h,ev)ButtonSetCoordinates_Callback(hFig));
     c.gridx = 4;  c.weightx = 0.7;  gui_component('label', Handles.jPanelValidate, c, '');
-    c.gridx = 5;  c.weightx = 0.4;  Handles.jButtonCancel = gui_component('button', Handles.jPanelValidate, c, 'Cancel', [], '', @(h,ev)ButtonCancel_Callback(hFig), []);
-    c.gridx = 6;  c.weightx = 0.4;  Handles.jButtonSave   = gui_component('button', Handles.jPanelValidate, c, 'Save',   [], '', @(h,ev)ButtonSave_Callback(hFig), []);
+    c.gridx = 5;  c.weightx = 0.4;  Handles.jButtonCancel = gui_component('button', Handles.jPanelValidate, c, 'Cancel', [], '', @(h,ev)ButtonCancel_Callback(hFig));
+    c.gridx = 6;  c.weightx = 0.4;  Handles.jButtonSave   = gui_component('button', Handles.jPanelValidate, c, 'Save',   [], '', @(h,ev)ButtonSave_Callback(hFig));
     
     % ===== CONFIGURE OBJECTS =====
     % Set labels in white
@@ -583,6 +584,10 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         SetLabelVisible(hFig, []);
                     end
+                % M : Jump to maximum
+                case 'm'
+                    JumpMaximum(hFig);
+                    
                 % === SCROLL MRI CUTS ===
                 case {'x','y','z'}
                     % Amount to scroll: +1 (no modifier) or -1 (shift key)
@@ -804,7 +809,8 @@ function DisplayFigurePopup(hFig)
     ColormapInfo = getappdata(hFig, 'Colormap');
     isOverlay = any(ismember({'source','stat1','stat2','timefreq'}, ColormapInfo.AllTypes));
     Handles = bst_figures('GetFigureHandles', hFig);
-        
+    TessInfo = getappdata(hFig, 'Surface');
+    
     % ==== Menu colormaps ====
     % Create the colormaps menus
     bst_colormaps('CreateAllMenus', jPopup, hFig, 0);
@@ -812,101 +818,115 @@ function DisplayFigurePopup(hFig)
     % === MRI Options ===
     % Smooth factor
     if isOverlay 
-        jMenuMri = gui_component('Menu', jPopup, [], 'Smooth sources', IconLoader.ICON_ANATOMY, [], [], []);
         MriOptions = bst_get('MriOptions');
-        jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'None', [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 0), []);
-        jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 1), []);
-        jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 2), []);
-        jItem3 = gui_component('radiomenuitem', jMenuMri, [], '3',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 3), []);
-        jItem4 = gui_component('radiomenuitem', jMenuMri, [], '4',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 4), []);
-        jItem5 = gui_component('radiomenuitem', jMenuMri, [], '5',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 5), []);
+        jMenuMri = gui_component('Menu', jPopup, [], 'Smooth sources', IconLoader.ICON_ANATOMY);
+        jItem0 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: None', [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 0));
+        jItem1 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 1',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 1));
+        jItem2 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 2',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 2));
+        jItem3 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 3',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 3));
+        jItem4 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 4',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 4));
+        jItem5 = gui_component('radiomenuitem', jMenuMri, [], 'Smooth display: 5',    [], [], @(h,ev)figure_3d('SetMriSmooth', hFig, 5));
         jItem0.setSelected(MriOptions.OverlaySmooth == 0);
         jItem1.setSelected(MriOptions.OverlaySmooth == 1);
         jItem2.setSelected(MriOptions.OverlaySmooth == 2);
         jItem3.setSelected(MriOptions.OverlaySmooth == 3);
         jItem4.setSelected(MriOptions.OverlaySmooth == 4);
         jItem5.setSelected(MriOptions.OverlaySmooth == 5);
+        jMenuMri.addSeparator();
+        jCheck = gui_component('checkboxmenuitem', jMenuMri, [], 'Grid interpolation', [], [], @(h,ev)figure_3d('SetGridSmooth', hFig, ~TessInfo.DataSource.GridSmooth));
+        jCheck.setSelected(TessInfo.DataSource.GridSmooth);
+%         jMenuMri = gui_component('Menu', jPopup, [], 'Sources resolution', IconLoader.ICON_ANATOMY);
+%         jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 1));
+%         jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 2));
+%         jItem3 = gui_component('radiomenuitem', jMenuMri, [], '3mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 3));
+%         jItem1.setSelected(MriOptions.InterpDownsample == 1);
+%         jItem2.setSelected(MriOptions.InterpDownsample == 2);
+%         jItem3.setSelected(MriOptions.InterpDownsample == 3);
     end
     jPopup.addSeparator();
     % Set fiducials
     if Handles.isEditFiducials
-        gui_component('MenuItem', jPopup, [], 'Edit fiducial positions', IconLoader.ICON_EDIT, [], @(h,ev)EditFiducials(hFig), []);
-        gui_component('MenuItem', jPopup, [], 'Save fiducial file', IconLoader.ICON_EDIT, [], @(h,ev)SaveFiducialsFile(hFig), []);
+        gui_component('MenuItem', jPopup, [], 'Edit fiducial positions', IconLoader.ICON_EDIT, [], @(h,ev)EditFiducials(hFig));
+        gui_component('MenuItem', jPopup, [], 'Save fiducial file', IconLoader.ICON_EDIT, [], @(h,ev)SaveFiducialsFile(hFig));
         jPopup.addSeparator();
     end
 
     % ==== MENU ELECTRODES ====
     if Handles.isEeg
-        jMenu = gui_component('Menu', jPopup, [], 'Electrodes', IconLoader.ICON_CHANNEL, [], [], []);
+        jMenu = gui_component('Menu', jPopup, [], 'Electrodes', IconLoader.ICON_CHANNEL);
         % Set position
-        jItem = gui_component('MenuItem', jMenu, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig), []);      
+        jItem = gui_component('MenuItem', jMenu, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
         jPopup.addSeparator();
         % Align SEEG electrodes
         Modality = Handles.ChannelMat.Channel(Handles.iChannels(1)).Type;
         if strcmpi(Modality, 'SEEG')
             jMenu.addSeparator();
-            jItem = gui_component('MenuItem', jMenu, [], 'Align all contacts in a group',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'all'), []);
-            jItem = gui_component('MenuItem', jMenu, [], 'Define group with first and second contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'first_second'), []);
-            jItem = gui_component('MenuItem', jMenu, [], 'Define group with first and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'first_last'), []);
+            jItem = gui_component('MenuItem', jMenu, [], 'Align all contacts in a group',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'all'));
+            jItem = gui_component('MenuItem', jMenu, [], 'Define group with first and second contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'first_second'));
+            jItem = gui_component('MenuItem', jMenu, [], 'Define group with first and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 'first_last'));
         elseif strcmpi(Modality, 'ECOG')
             jMenu.addSeparator();
-            jItem = gui_component('MenuItem', jMenu, [], 'Define strip: First and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 1), []);
-            jItem = gui_component('MenuItem', jMenu, [], 'Define grid: First and last contacts',   IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 2), []);
-            jItem = gui_component('MenuItem', jMenu, [], 'Define grid: 4 corner contacts',         IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 4), []);
+            jItem = gui_component('MenuItem', jMenu, [], 'Define strip: First and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 1));
+            jItem = gui_component('MenuItem', jMenu, [], 'Define grid: First and last contacts',   IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 2));
+            jItem = gui_component('MenuItem', jMenu, [], 'Define grid: 4 corner contacts',         IconLoader.ICON_CHANNEL, [], @(h,ev)AlignElectrodes_Callback(hFig, 4));
         end
         % Display labels
         jMenu.addSeparator();
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Display labels',  IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)SetLabelVisible(hFig, ~Handles.isEegLabels), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Display labels',  IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)SetLabelVisible(hFig, ~Handles.isEegLabels));
         jItem.setSelected(Handles.isEegLabels);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK)); 
     end
     
-    jMenuView = gui_component('Menu', jPopup, [], 'Views', IconLoader.ICON_AXES, [], [], []);
-        jItem = gui_component('MenuItem', jMenuView, [], 'Apply MNI coordinates to all figures', [], [], @(h,ev)ApplyCoordsToAllFigures(hFig, 'mni'), []);
+    jMenuView = gui_component('Menu', jPopup, [], 'Views', IconLoader.ICON_AXES);
+        jItem = gui_component('MenuItem', jMenuView, [], 'Apply MNI coordinates to all figures', [], [], @(h,ev)ApplyCoordsToAllFigures(hFig, 'mni'));
         jItem.setAccelerator(KeyStroke.getKeyStroke('=', 0));
-        jItem = gui_component('MenuItem', jMenuView, [], 'Apply SCS coordinates to all figures', [], [], @(h,ev)ApplyCoordsToAllFigures(hFig, 'scs'), []);
+        jItem = gui_component('MenuItem', jMenuView, [], 'Apply SCS coordinates to all figures', [], [], @(h,ev)ApplyCoordsToAllFigures(hFig, 'scs'));
         jItem.setAccelerator(KeyStroke.getKeyStroke('*', 0));
+        if isOverlay
+            jItem = gui_component('MenuItem', jMenuView, [], 'Find maximum', [], [], @(h,ev)JumpMaximum(hFig));
+            jItem.setAccelerator(KeyStroke.getKeyStroke('m', 0));
+        end
     
     % ==== Menu SNAPSHOT ====
-    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshot', IconLoader.ICON_SNAPSHOT, [], [], []);
+    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshot', IconLoader.ICON_SNAPSHOT);
         % Default output dir
         LastUsedDirs = bst_get('LastUsedDirs');
         DefaultOutputDir = LastUsedDirs.ExportImage;
         % === SAVE AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)out_figure_image(hFig), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)out_figure_image(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
         % === OPEN AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)out_figure_image(hFig, 'Viewer'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)out_figure_image(hFig, 'Viewer'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));
         % === CONTACT SHEETS ===
         if ~getappdata(hFig, 'isStatic')
             % Separator
             jMenuSave.addSeparator();
-            gui_component('MenuItem', jMenuSave, [], 'Movie (time): Selected figure', IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'time'), []);
-            gui_component('MenuItem', jMenuSave, [], 'Movie (time): All figures',     IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'allfig'), []);
+            gui_component('MenuItem', jMenuSave, [], 'Movie (time): Selected figure', IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'time'));
+            gui_component('MenuItem', jMenuSave, [], 'Movie (time): All figures',     IconLoader.ICON_MOVIE, [], @(h,ev)out_figure_movie(hFig, DefaultOutputDir, 'allfig'));
             jMenuSave.addSeparator();
-            gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'y', DefaultOutputDir), []);
-            gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'x', DefaultOutputDir), []);
-            gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'z', DefaultOutputDir), []);
+            gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'y', DefaultOutputDir));
+            gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'x', DefaultOutputDir));
+            gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'z', DefaultOutputDir));
         end
         jMenuSave.addSeparator();
-        gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'y', DefaultOutputDir), []);
-        gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'x', DefaultOutputDir), []);
-        gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'z', DefaultOutputDir), []);
+        gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'y', DefaultOutputDir));
+        gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'x', DefaultOutputDir));
+        gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'z', DefaultOutputDir));
         % === SAVE OVERLAY ===
         if isOverlay
             jMenuSave.addSeparator();
-            gui_component('MenuItem', jMenuSave, [], 'Save overlay as MRI',  IconLoader.ICON_SAVE, [], @(h,ev)ExportOverlay(hFig), []);
+            gui_component('MenuItem', jMenuSave, [], 'Save overlay as MRI',  IconLoader.ICON_SAVE, [], @(h,ev)ExportOverlay(hFig));
         end       
         
     % ==== MENU FIGURE ====
-    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL, [], [], []);
+    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
         % Edit fiducials
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Edit fiducials', IconLoader.ICON_ANATOMY, [], @(h,ev)SetFigureStatus(hFig, ~Handles.isEditFiducials, [], [], [], 1), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Edit fiducials', IconLoader.ICON_ANATOMY, [], @(h,ev)SetFigureStatus(hFig, ~Handles.isEditFiducials, [], [], [], 1));
         jItem.setSelected(Handles.isEditFiducials);
         % Edit volume
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Edit volume', IconLoader.ICON_ANATOMY, [], @(h,ev)SetFigureStatus(hFig, [], ~Handles.isEditVolume, [], [], 1), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Edit volume', IconLoader.ICON_ANATOMY, [], @(h,ev)SetFigureStatus(hFig, [], ~Handles.isEditVolume, [], [], 1));
         jItem.setSelected(Handles.isEditVolume);
     % ==== Display menu ====
     gui_popup(jPopup, hFig);
@@ -1047,6 +1067,25 @@ function SetLocation(cs, sMri, Handles, XYZ)
     Handles.jSliderSagittal.setValue(XYZ(1));
     Handles.jSliderCoronal.setValue(XYZ(2));
     Handles.jSliderAxial.setValue(XYZ(3));
+end
+
+
+%% ===== JUMP TO MAXIMUM =====
+function JumpMaximum(hFig)
+    % Get figure data
+    TessInfo = getappdata(hFig, 'Surface');
+    if isempty(TessInfo) || ~isfield(TessInfo, 'OverlayCube') || isempty(TessInfo.OverlayCube)
+        return;
+    end
+    % Find maximum
+    [valMax, iMax] = max(TessInfo.OverlayCube(:));
+    if isempty(iMax)
+        return;
+    end
+    % Convert index to voxel indices
+    [XYZ(1), XYZ(2), XYZ(3)] = ind2sub(size(TessInfo.OverlayCube), iMax(1));
+    % Set new location to maximum
+    SetLocation('voxel', hFig, [], XYZ);  
 end
 
 
@@ -1571,14 +1610,19 @@ function Handles = PlotElectrodes(hFig, Handles, isReset)
         else
             Handles.LocEEG(i,:) = [-500; -500; -500];
         end
-        % Plot electrode
+        % Plot electrode: If already exists, just update the position and callbacks
         if (i <= size(Handles.hPointEEG,1)) && all(ishandle(Handles.hPointEEG(i,:))) && (i <= size(Handles.hTextEEG,1)) && all(ishandle(Handles.hTextEEG(i,:)))
+            % Update position
             set(Handles.hPointEEG(i,1), 'XData', Handles.LocEEG(i,2), 'YData', Handles.LocEEG(i,3));
             set(Handles.hPointEEG(i,2), 'XData', Handles.LocEEG(i,1), 'YData', Handles.LocEEG(i,3));
             set(Handles.hPointEEG(i,3), 'XData', Handles.LocEEG(i,1), 'YData', Handles.LocEEG(i,2));
             set(Handles.hTextEEG(i,1), 'Position', [Handles.LocEEG(i,2), Handles.LocEEG(i,3), 1.5]);
             set(Handles.hTextEEG(i,2), 'Position', [Handles.LocEEG(i,1), Handles.LocEEG(i,3), 1.5]);
             set(Handles.hTextEEG(i,3), 'Position', [Handles.LocEEG(i,1), Handles.LocEEG(i,2), 1.5]);
+            % Update callbacks
+            set(Handles.hPointEEG(i,1), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
+            set(Handles.hPointEEG(i,2), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
+            set(Handles.hPointEEG(i,3), 'ButtonDownFcn', @(h,ev)SetLocation('mri', Handles.hFig, [], Handles.LocEEG(i,:) ./ 1000));
         else
             markerColor = [1 1 0];
             textColor = [.4,1,.4];

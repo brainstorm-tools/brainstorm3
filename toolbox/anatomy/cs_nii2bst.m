@@ -22,61 +22,81 @@ function [vox2ras, sMri] = cs_nii2bst(sMri, vox2ras, isApply)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2016
+% Author: Francois Tadel, 2016-2017
 
 % Parse inputs
 if (nargin < 3) || isempty(isApply)
     isApply = [];
 end
-isVolume = (nargin >= 2);
+
 
 % Normalize rotation matrix
 R = vox2ras(1:3,1:3);
 R = bst_bsxfun(@rdivide, R, sqrt(sum(R.^2)));
-% Binarize rotation matrix
+TransPerm = zeros(4);
+TransPerm(4,4) = 1;
+% Define what is the best possible orientation for the volume
 for i = 1:3
     [val, Pmat(i)] = max(abs(R(i,:)));
     isFlip(i) = (R(i,Pmat(i)) < 0);
+    TransPerm(i,Pmat(i)) = 1;
 end
+
 % Ask user
 if isempty(isApply)
     if ~isequal(Pmat, [1 2 3]) || ~isequal(isFlip, [0 0 0])
         isApply = java_dialog('confirm', ['A transformation is available in the MRI file.' 10 10 ...
                                           'Do you want to apply it to the volume now?' 10 10], 'NIfTI MRI');
-        if ~isApply
-            vox2ras = [];
-        end
     else
         isApply = 0;
     end
 end
+
 % Apply transformations
 if isApply
     % Permute dimensions
-    if isVolume
-        sMri.Cube = permute(sMri.Cube, [Pmat 4]);
-    end
+    sMri.Cube = permute(sMri.Cube, [Pmat 4]);
     sMri.Voxsize = sMri.Voxsize(Pmat);
     % Flip matrix
+    TransFlip = eye(4);
     for i = 1:3
         if isFlip(i)
-            if isVolume
-                sMri.Cube = bst_flip(sMri.Cube,i);
-            end
-            vox2ras(i,:) = -vox2ras(i,:);
-            R(i,:) = -R(i,:);
+            sMri.Cube = bst_flip(sMri.Cube,i);
+            TransFlip(i,i) = -1;
+            TransFlip(i,4) = size(sMri.Cube,i) - 1;
         end
     end
-    % Rotation to apply to obtain a correctly oriented MRI
-    vox2ras(1:3,1:3) = inv(R) * vox2ras(1:3,1:3);
-    % Permute translation
-    vox2ras(1:3,4) = permute(vox2ras(1:3,4), Pmat);
+    % Apply all transformations
+    vox2ras = vox2ras * inv(TransFlip * TransPerm);
+    % Set the sform/qform transformations from the nifti header
+    if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'}))
+        % Set sform to NIFTI_XFORM_ALIGNED_ANAT 
+        sMri.Header.nifti.sform_code = 2;
+        sMri.Header.nifti.srow_x     = vox2ras(1,:);
+        sMri.Header.nifti.srow_y     = vox2ras(2,:);
+        sMri.Header.nifti.srow_z     = vox2ras(3,:);
+        sMri.Header.nifti.sform      = vox2ras;
+        % Remove qform
+        sMri.Header.nifti.qform_code = 0;
+        sMri.Header.nifti.quatern_b  = 0;
+        sMri.Header.nifti.quatern_c  = 0;
+        sMri.Header.nifti.quatern_d  = 0;
+        sMri.Header.nifti.qoffset_x  = 0;
+        sMri.Header.nifti.qoffset_y  = 0;
+        sMri.Header.nifti.qoffset_z  = 0;
+        sMri.Header.nifti.qform      = [];
+        % Save final version
+        sMri.Header.nifti.vox2ras = vox2ras;
+    end
 end
-% Scale transformation matrix
+
+% If a transformation was defined
 if ~isempty(vox2ras)
-    vox2ras(1:3,1:3) = bst_bsxfun(@rdivide, vox2ras(1:3,1:3), sMri.Voxsize(:));
+    % Prepare the history of transformations
+    if ~isfield(sMri, 'InitTransf') || isempty(sMri.InitTransf)
+        sMri.InitTransf = cell(0,2);
+    end
+    % Save this transformation in the MRI
+    sMri.InitTransf(end+1,[1 2]) = {'vox2ras', vox2ras};
 end
-
-
-
 

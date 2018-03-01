@@ -344,8 +344,12 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         if ~isShared
             % Get only one file
             DataFile = sStudy.Data(iDatas(iEntry)).FileName;
-            % Load data file info
-            DataMat = in_bst_data(DataFile, 'ChannelFlag', 'Time', 'nAvg');
+            % Load data file info (only 'mem' requires the recordings to be loaded here)
+            if strcmpi(OPTIONS.InverseMethod, 'mem')
+                DataMat = in_bst_data(DataFile, 'ChannelFlag', 'Time', 'nAvg', 'F');
+            else
+                DataMat = in_bst_data(DataFile, 'ChannelFlag', 'Time', 'nAvg');
+            end
             ChannelFlag = DataMat.ChannelFlag;
             nAvg        = DataMat.nAvg;
             Time        = DataMat.Time;

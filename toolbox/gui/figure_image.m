@@ -21,7 +21,7 @@ function varargout = figure_image( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2016
+% Authors: Francois Tadel, 2014-2017
 
 eval(macro_method);
 end
@@ -130,7 +130,14 @@ function ResizeCallback(hFig, ev)
     % Define constants
     colorbarWidth = 15;
     marginTop     = 10;
-    marginBottom  = 25;
+    
+    % Define the size of the bottom margin, function of the labels that have to be displayed
+    XTickLabel = get(hAxes, 'XTickLabel');
+    if isempty(XTickLabel)
+        marginBottom = 25;
+    else
+        marginBottom = 40;
+    end
     
     % Define the size of the left margin in function of the labels that have to be displayed
     YTickLabel = get(hAxes, 'YTickLabel');
@@ -629,33 +636,33 @@ function DisplayFigurePopup(hFig)
     bst_colormaps('CreateAllMenus', jPopup, hFig, 0);
     % ==== MENU: MONTAGE ====
     if isequal(FigId.SubType, 'erpimage')
-        jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE, [], [], []);
+        jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE);
         panel_montage('CreateFigurePopupMenu', jMenuMontage, hFig);
     end
     % ==== MENU: SNAPSHOT ====
     jPopup.addSeparator();
-    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT, [], [], []);
+    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT);
         % === SAVE AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
         % === OPEN AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Figure'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Figure'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_MASK));
     % ==== MENU: FIGURE ====
-    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL, [], [], []);
+    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
         jItem.setSelected(isMatlabCtrl);
         % Show plot edit toolbar
         isPlotEditToolbar = getappdata(hFig, 'isPlotEditToolbar');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig));
         jItem.setSelected(isPlotEditToolbar);
         % Dock figure
         isDocked = strcmpi(get(hFig, 'WindowStyle'), 'docked');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked));
         jItem.setSelected(isDocked);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, KeyEvent.CTRL_MASK)); 
            
@@ -820,7 +827,6 @@ function UpdateFigurePlot(hFig, isResetMax)
                'Color',      [.9 .9 .9], ...
                'XColor',     [0 0 0], ...
                'YColor',     [0 0 0], ...
-               'XTick',      [], ...
                'Visible',    'on');
     % No interpreter in the labels
     if isprop(hAxes, 'TickLabelInterpreter')
@@ -830,6 +836,22 @@ function UpdateFigurePlot(hFig, isResetMax)
     xlabel(hAxes, DimLabels{2});
     % Y Label
     strLabelY = DimLabels{1};
+    % X Ticks
+    if ShowLabels && ~isempty(strfind(DimLabels{2}, 'Time')) && isnumeric(Labels{2})
+        % Get limits (time values and axes limits)
+        TimeWindow = [Labels{2}(1), Labels{2}(end)];
+        XLim = get(hAxes, 'XLim');
+        % Get reasonable ticks spacing
+        [XTick, XTickLabel] = bst_colormaps('GetTicks', TimeWindow, XLim, 1);
+        % Set the axes ticks
+        set(hAxes, 'XTickMode',      'manual', ...
+                   'XTickLabelMode', 'manual', ...
+                   'XTick',          XTick, ...
+                   'XTickLabel',     XTickLabel);
+    else
+        set(hAxes, 'XTick',      [], ...
+                   'XTickLabel', []);
+    end
     % Y Ticks
     if ShowLabels && ~isempty(Labels)
         % Remove all the common parts of the labels

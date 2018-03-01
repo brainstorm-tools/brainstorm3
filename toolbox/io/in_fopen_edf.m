@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2017
         
 
 % Parse inputs
@@ -125,7 +125,8 @@ for i = 1:hdr.nsignal
         hdr.signal(i).physical_max = hdr.signal(i).digital_max;
     end
     % Calculate and save channel gain
-    hdr.signal(i).gain = unit_gain ./ (hdr.signal(i).physical_max - hdr.signal(i).physical_min) .* (hdr.signal(i).digital_max - hdr.signal(i).digital_min);
+    hdr.signal(i).gain   = unit_gain ./ (hdr.signal(i).physical_max - hdr.signal(i).physical_min) .* (hdr.signal(i).digital_max - hdr.signal(i).digital_min);
+    hdr.signal(i).offset = hdr.signal(i).physical_min ./ unit_gain - hdr.signal(i).digital_min ./ hdr.signal(i).gain;
     % Error: The number of samples is not specified
     if isempty(hdr.signal(i).nsamples)
         % If it is not the first electrode: try to use the previous one
@@ -139,9 +140,14 @@ for i = 1:hdr.nsignal
     hdr.signal(i).sfreq = hdr.signal(i).nsamples ./ hdr.reclen;
 end
 % Find annotations channel
-iAnnotChans = find(strcmpi({hdr.signal.label}, 'EDF Annotations'));   % Mutliple "EDF Annotation" channels allowed in EDF+
-iStatusChan = find(strcmpi({hdr.signal.label}, 'Status'), 1);         % Only one "Status" channel allowed in BDF
+iAnnotChans = find(strcmpi({hdr.signal.label}, 'EDF Annotations'));  % Mutliple "EDF Annotation" channels allowed in EDF+
+iStatusChan = find(strcmpi({hdr.signal.label}, 'Status'), 1);        % Only one "Status" channel allowed in BDF
 iOtherChan = setdiff(1:hdr.nsignal, [iAnnotChans iStatusChan]);
+% Remove channels with lower sampling rates
+iIgnoreChan = find([hdr.signal(iOtherChan).sfreq] < max([hdr.signal(iOtherChan).sfreq]));    % Ignore all the channels with lower sampling rate
+if ~isempty(iIgnoreChan)
+    iOtherChan = setdiff(iOtherChan, iIgnoreChan);
+end
 % Get all the other channels
 if isempty(iOtherChan)
     error('This file does not contain any data channel.');
@@ -154,12 +160,12 @@ elseif ~isempty(iStatusChan)
 else
     iEvtChans = [];
 end
-% Detect channels with inconsistent sampling frenquency
-iErrChan = find([hdr.signal(iOtherChan).sfreq] ~= hdr.signal(iOtherChan(1)).sfreq);
-iErrChan = setdiff(iErrChan, iAnnotChans);
-if ~isempty(iErrChan)
-    error('Files with mixed sampling rates are not supported yet.');
-end
+% % Detect channels with inconsistent sampling frenquency
+% iErrChan = find([hdr.signal(iOtherChan).sfreq] ~= hdr.signal(iOtherChan(1)).sfreq);
+% iErrChan = setdiff(iErrChan, iAnnotChans);
+% if ~isempty(iErrChan)
+%     error('Files with mixed sampling rates are not supported yet.');
+% end
 % Detect interrupted signals (time non-linear)
 hdr.interrupted = ischar(hdr.unknown1) && (length(hdr.unknown1) >= 5) && isequal(hdr.unknown1(1:5), 'EDF+D');
 if hdr.interrupted
@@ -193,7 +199,6 @@ sFile.channelflag = ones(hdr.nsignal,1);
 
 
 %% ===== PROCESS CHANNEL NAMES/TYPES =====
-% Remove "-Ref" 
 % Try to split the channel names in "TYPE NAME"
 SplitType = repmat({''}, 1, hdr.nsignal);
 SplitName = repmat({''}, 1, hdr.nsignal);
@@ -204,6 +209,10 @@ for i = 1:hdr.nsignal
     if (length(iSpace) == 1) && (iSpace >= 3)
         SplitName{i} = hdr.signal(i).label(iSpace+1:end);
         SplitType{i} = hdr.signal(i).label(1:iSpace-1);
+    % Accept also 2 spaces
+    elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
+        SplitName{i} = strrep(hdr.signal(i).label(iSpace(1)+1:end), ' ', '_');
+        SplitType{i} = hdr.signal(i).label(1:iSpace(1)-1);
     end
 end
 % Remove the classification if it makes some names non unique
@@ -223,6 +232,7 @@ end
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = [sFile.device ' channels'];
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.nsignal]);
+chRef = {};
 % For each channel
 for i = 1:hdr.nsignal
     % If is the annotation channel
@@ -254,14 +264,33 @@ for i = 1:hdr.nsignal
                 ChannelMat.Channel(i).Type = 'EEG';
             end
         end
-        % Remove the '-Ref' tag
-        ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-Ref', '');
+        % Extract reference name (at the end of the channel name, separated with a "-", eg. "-REF")
+        iDash = find(ChannelMat.Channel(i).Name == '-');
+        if ~isempty(iDash) && (iDash(end) < length(ChannelMat.Channel(i).Name))
+            chRef{end+1} = ChannelMat.Channel(i).Name(iDash(end):end);
+        end
     end
     ChannelMat.Channel(i).Loc     = [0; 0; 0];
     ChannelMat.Channel(i).Orient  = [];
     ChannelMat.Channel(i).Weight  = 1;
     % ChannelMat.Channel(i).Comment = hdr.signal(i).type;
 end
+
+% If the same reference is indicated for all the channels: remove it
+if (length(chRef) >= 2) 
+    % Get the shortest reference tag
+    lenRef = cellfun(@length, chRef);
+    minLen = min(lenRef);
+    % Check if all the ref names are equal (up to the max length - some might be cut because the channel name is too long)
+    if all(cellfun(@(c)strcmpi(c(1:minLen), chRef{1}(1:minLen)), chRef))
+        % Remove the reference tag from all the channel names
+        for i = 1:length(ChannelMat.Channel)
+            ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, chRef{1}, '');
+            ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, chRef{1}(1:minLen), '');
+        end
+    end
+end
+
 % If there are only "Misc" and no "EEG" channels: rename to "EEG"
 iMisc = find(strcmpi({ChannelMat.Channel.Type}, 'Misc'));
 iEeg  = find(strcmpi({ChannelMat.Channel.Type}, 'EEG'));
@@ -283,6 +312,7 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
         for ichan = 1:length(iEvtChans)
             % Read annotation channel epoch by epoch
             for irec = 1:hdr.nrec
+                bst_progress('text', sprintf('Reading annotations... [%d%%]', round((irec + (ichan-1)*hdr.nrec)/length(iEvtChans)/hdr.nrec*100)));
                 % Sample indices for the current epoch (=record)
                 SampleBounds = [irec-1,irec] * sFile.header.signal(iEvtChans(ichan)).nsamples - [0,1];
                 % Read record

@@ -77,9 +77,9 @@ hdr.ras_good_flag = fread(fid, 1, 'short') ;
 
 if (hdr.ras_good_flag)
     MRI.Voxsize = fread(fid, 3, 'float32')' ;
-    hdr.Mdc         = fread(fid, 9, 'float32') ;
-    hdr.Mdc         = reshape(hdr.Mdc,[3 3]);
-    hdr.Pxyz_c      = fread(fid, 3, 'float32') ;
+    hdr.Mdc     = fread(fid, 9, 'float32') ;
+    hdr.Mdc     = reshape(hdr.Mdc,[3 3]);
+    hdr.Pxyz_c  = fread(fid, 3, 'float32') ;
     unused_space_size = unused_space_size - (3*4 + 4*3*4) ; % space for ras transform
 end
 

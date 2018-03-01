@@ -414,7 +414,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
             end
         end
         % Warning if no data is loaded at all (cannot set the maximum)
-        if isinf(estimMax) || isinf(estimMin)
+        if isequal(estimMax, -Inf) || isequal(estimMin, Inf)
             bst_error('You should load some data before setting the maximum value of the colormap.', 'Set colormap max value', 0);
             return;
         end
@@ -432,19 +432,24 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
         % Get the maximum value units
         amplitudeMax = max(abs([estimMin estimMax]));
         % If the units are percents: force to factor=1
-        if isequal(DisplayUnits, '%')
+        if isinf(amplitudeMax)
+            fFactor = 1;
+            fUnits = 'Inf';
+        elseif isequal(DisplayUnits, '%')
             fFactor = 1;
             fUnits = DisplayUnits;
         else
             % Guess the display units
-            [tmp, fFactor, fUnits ] = bst_getunits(amplitudeMax, DataType );
+            [tmp, fFactor, fUnits ] = bst_getunits(amplitudeMax, DataType);
             % For readability: replace '\sigma' with 'no units'
             fUnits = strrep(fUnits, '\sigma', 'no units');
             fUnits = strrep(fUnits, '{', '');
             fUnits = strrep(fUnits, '}', '');
         end
         % Format estimated value correctly
-        if (amplitudeMax * fFactor > 0.01) && (amplitudeMax * fFactor < 1e6)
+        if isinf(amplitudeMax)
+            strPrecision = '%g';
+        elseif (amplitudeMax * fFactor > 0.01) && (amplitudeMax * fFactor < 1e6)
             strPrecision = '%4.3f';
         else
             strPrecision = '%e';
@@ -576,7 +581,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     if isempty(sColormap)
         return
     end
-    
+
     % Parent
     if isPermanent
         % Left panel
@@ -594,15 +599,15 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         % Output at the beginning: Left
         jMenuColormap = jMenuLeft;
     else
-        jMenuColormap = gui_component('Menu', jMenu, [], 'Colormap', [], [], [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], 'Colormap');
     end
     
     % Colormap list: Standard
-    cmapList = {'cmap_rbw', 'hot', 'cmap_hot2', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_nih', 'jet', 'cmap_jetinv', 'cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_ge', 'cool', 'cmap_parula', 'cmap_cluster', 'cmap_atlas'};
-    iconList = [IconLoader.ICON_COLORMAP_RBW, IconLoader.ICON_COLORMAP_HOT, IconLoader.ICON_COLORMAP_HOT2, IconLoader.ICON_COLORMAP_BONE, IconLoader.ICON_COLORMAP_GREY, ...
+    cmapList = {'cmap_rbw', 'hot', 'cmap_hot2', 'cmap_gin', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_nih', 'jet', 'cmap_jetinv', 'cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_ge', 'cmap_tpac', 'cool', 'cmap_parula', 'cmap_cluster', 'cmap_atlas'};
+    iconList = [IconLoader.ICON_COLORMAP_RBW, IconLoader.ICON_COLORMAP_HOT, IconLoader.ICON_COLORMAP_HOT2, IconLoader.ICON_COLORMAP_GIN, IconLoader.ICON_COLORMAP_BONE, IconLoader.ICON_COLORMAP_GREY, ...
                 IconLoader.ICON_COLORMAP_PINK, IconLoader.ICON_COLORMAP_COPPER, IconLoader.ICON_COLORMAP_NIHFIRE, IconLoader.ICON_COLORMAP_NIH, IconLoader.ICON_COLORMAP_JET, IconLoader.ICON_COLORMAP_JETINV, ...
                 IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, ...
-                IconLoader.ICON_COLORMAP_HSV, IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_GE, ...
+                IconLoader.ICON_COLORMAP_HSV, IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_GE,  IconLoader.ICON_COLORMAP_TPAC, ...
                 IconLoader.ICON_COLORMAP_COOL, IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_CLUSTER, IconLoader.ICON_COLORMAP_ATLAS];
     for i = 1:length(cmapList)
         % If the colormap #i is currently used for this surface : check the menu
@@ -631,10 +636,10 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     end
     % Colormap list: Add new colormap
     CreateSeparator(jMenuColormap, isPermanent);
-    gui_component('MenuItem', jMenuColormap, [], 'New...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)NewCustomColormap(ColormapType), []);
-    gui_component('MenuItem', jMenuColormap, [], 'Load...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)LoadColormap(ColormapType), []);
+    gui_component('MenuItem', jMenuColormap, [], 'New...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)NewCustomColormap(ColormapType));
+    gui_component('MenuItem', jMenuColormap, [], 'Load...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)LoadColormap(ColormapType));
     % Colormap list: Delete selected colormap
-    jMenuDelete = gui_component('MenuItem', jMenuColormap, [], 'Delete', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)DeleteCustomColormap(ColormapType), []);
+    jMenuDelete = gui_component('MenuItem', jMenuColormap, [], 'Delete', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)DeleteCustomColormap(ColormapType));
     if ~isCustom
         jMenuDelete.setEnabled(0);
     end
@@ -648,13 +653,13 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     % Not for anatomy or time colormap
     if ~strcmpi(ColormapType, 'Anatomy') && ~strcmpi(ColormapType, 'Time') && ~strcmpi(ColormapType, 'Overlay')
         % Options : Absolute values
-        jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Absolute values', [], [], @(h,ev)SetColormapAbsolute(ColormapType, ev.getSource.isSelected()), []);
+        jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Absolute values', [], [], @(h,ev)SetColormapAbsolute(ColormapType, ev.getSource.isSelected()));
         jCheck.setSelected(sColormap.isAbsoluteValues);
         CreateSeparator(jMenu, isPermanent);
         % Options : Maximum
-        jRadioGlobal = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Global',    [], [], @(h,ev)SetMaxMode(ColormapType, 'global', DisplayUnits), []);
-        jRadioLocal  = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Local',     [], [], @(h,ev)SetMaxMode(ColormapType, 'local', DisplayUnits), []);
-        jRadioCustom = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Custom...', [], [], @(h,ev)SetMaxMode(ColormapType, 'custom', DisplayUnits), []);
+        jRadioGlobal = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Global',    [], [], @(h,ev)SetMaxMode(ColormapType, 'global', DisplayUnits));
+        jRadioLocal  = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Local',     [], [], @(h,ev)SetMaxMode(ColormapType, 'local', DisplayUnits));
+        jRadioCustom = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Custom...', [], [], @(h,ev)SetMaxMode(ColormapType, 'custom', DisplayUnits));
         switch lower(sColormap.MaxMode)
             case 'local',  jRadioLocal.setSelected(1);
             case 'global', jRadioGlobal.setSelected(1);
@@ -671,9 +676,9 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         else
             strRange = 'Range: [-max,max]';
         end
-        jRadio1 = gui_component('RadioMenuItem', jMenu, [], strRange, [], [], @(h,ev)SetColormapRealMin(ColormapType, 0), []);
+        jRadio1 = gui_component('RadioMenuItem', jMenu, [], strRange, [], [], @(h,ev)SetColormapRealMin(ColormapType, 0));
         jRadio1.setSelected(~sColormap.isRealMin);
-        jRadio2 = gui_component('RadioMenuItem', jMenu, [], 'Range: [min,max]', [], [], @(h,ev)SetColormapRealMin(ColormapType, 1), []);
+        jRadio2 = gui_component('RadioMenuItem', jMenu, [], 'Range: [min,max]', [], [], @(h,ev)SetColormapRealMin(ColormapType, 1));
         jRadio2.setSelected(sColormap.isRealMin);
         jButtonGroup = ButtonGroup();
         jButtonGroup.add(jRadio1);
@@ -700,7 +705,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
     jMenu.add(jPanel);
     % Title
-    jLabel = JLabel('Contrast:  ');
+    jLabel = gui_component('label', [], '', 'Contrast:  ');
     jPanel.add(jLabel, BorderLayout.CENTER);
     % Spin button
     val = round(sColormap.Contrast * 100);
@@ -718,7 +723,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
     jMenu.add(jPanel);
     % Title
-    jLabel = JLabel('Brightness:  ');
+    jLabel = gui_component('label', [], '', 'Brightness:  ');
     jPanel.add(jLabel, BorderLayout.WEST);
     % Spin button
     val = -round(sColormap.Brightness * 100);
@@ -731,15 +736,20 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
 
     % Display/hide colorbar
     CreateSeparator(jMenu, isPermanent);
-    jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()), []);
+    jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
     jCheck.setSelected(sColormap.DisplayColorbar);
     % Open menu in a new window
     if ~isPermanent
-        gui_component('MenuItem', jMenu, [], 'Permanent menu', [], [], @(h,ev)CreatePermanentMenu(ColormapType), []);
+        gui_component('MenuItem', jMenu, [], 'Permanent menu', [], [], @(h,ev)CreatePermanentMenu(ColormapType));
     end
     CreateSeparator(jMenu, isPermanent);
     % Display/hide colorbar
-    gui_component('MenuItem', jMenu, [], 'Restore defaults', [], [], @(h,ev)RestoreDefaults(ColormapType), []);
+    gui_component('MenuItem', jMenu, [], 'Restore defaults', [], [], @(h,ev)RestoreDefaults(ColormapType));
+    
+    drawnow;
+    jMenu.getParent().pack();
+    jMenu.getParent().invalidate();
+    jMenu.getParent().repaint();
 end
 
 
@@ -781,7 +791,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
     end
     % Create all menus
     if isempty(hFig) || ismember('anatomy', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Anatomy'], IconLoader.ICON_COLORMAP_ANATOMY, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Anatomy'], IconLoader.ICON_COLORMAP_ANATOMY);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'anatomy', DisplayUnits));
         else
@@ -789,7 +799,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('eeg', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'EEG Recordings'], IconLoader.ICON_COLORMAP_RECORDINGS, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'EEG Recordings'], IconLoader.ICON_COLORMAP_RECORDINGS);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'eeg', DisplayUnits));
         else
@@ -797,7 +807,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('meg', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'MEG Recordings'], IconLoader.ICON_COLORMAP_RECORDINGS, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'MEG Recordings'], IconLoader.ICON_COLORMAP_RECORDINGS);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'meg', DisplayUnits));
         else
@@ -805,7 +815,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('source', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Sources'], IconLoader.ICON_COLORMAP_SOURCES, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Sources'], IconLoader.ICON_COLORMAP_SOURCES);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'source', DisplayUnits));
         else
@@ -813,7 +823,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('stat1', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Stat 1'], IconLoader.ICON_COLORMAP_STAT, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Stat 1'], IconLoader.ICON_COLORMAP_STAT);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'stat1', DisplayUnits));
         else
@@ -821,7 +831,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('stat2', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Stat 2'], IconLoader.ICON_COLORMAP_STAT, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Stat 2'], IconLoader.ICON_COLORMAP_STAT);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'stat2', DisplayUnits));
         else
@@ -829,7 +839,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('time', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Time'], IconLoader.ICON_COLORMAP_TIME, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Time'], IconLoader.ICON_COLORMAP_TIME);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'time', DisplayUnits));
         else
@@ -837,7 +847,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('timefreq', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Timefreq'], IconLoader.ICON_COLORMAP_TIMEFREQ, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Timefreq'], IconLoader.ICON_COLORMAP_TIMEFREQ);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'timefreq', DisplayUnits));
         else
@@ -845,7 +855,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('connect1', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Connect 1xN'], IconLoader.ICON_COLORMAP_CONNECT, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Connect 1xN'], IconLoader.ICON_COLORMAP_CONNECT);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'connect1', DisplayUnits));
         else
@@ -853,7 +863,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('connectn', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Connect NxN'], IconLoader.ICON_COLORMAP_CONNECT, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Connect NxN'], IconLoader.ICON_COLORMAP_CONNECT);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'connectn', DisplayUnits));
         else
@@ -861,7 +871,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('pac', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'PAC'], IconLoader.ICON_COLORMAP_PAC, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'PAC'], IconLoader.ICON_COLORMAP_PAC);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'pac', DisplayUnits));
         else
@@ -869,7 +879,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
         end
     end
     if isempty(hFig) || ismember('image', AllTypes)
-        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Image'], IconLoader.ICON_COLORMAP_TIMEFREQ, '', [], []);
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Image'], IconLoader.ICON_COLORMAP_TIMEFREQ);
         if isDynamic
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'image', DisplayUnits));
         else
@@ -1325,43 +1335,52 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
         end
         
         % === DEFINE TICKS ===
-        % Try to find an easy to read scale for this data
-        possibleTickSpaces = reshape([1; 2; 5] * [0.0001 0.001 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000], 1, []);
-        possibleNbTicks = (dataBounds(2) - dataBounds(1)) .* fFactor ./ possibleTickSpaces ;
-        iTicks = find((possibleNbTicks >= 3) & (possibleNbTicks <= 500));
-        % If at least one scale is found
-        if ~isempty(iTicks)
-            % Take the one with the smallest number of ticks
-            tickSpace = possibleTickSpaces(iTicks(end));
-            YTick = unique([bst_flip(0:-tickSpace/fFactor:dataBounds(1), 2), 0, 0:tickSpace/fFactor:dataBounds(2)]);
-            YTickLabel = fFactor * YTick;
-            % Normalized YTicks
-            YLim = get(hColorbar, 'YLim');
-            YTickNorm = (YTick-dataBounds(1)) / (dataBounds(2)-dataBounds(1)) * (YLim(2)-YLim(1)) + YLim(1);
-            
-            % If displaying integer values (%d)
-            if (round(tickSpace) == tickSpace)
-                YTickLabel = num2str(round(YTickLabel)', '%d');
-            % Else : display fractional values
-            else
-                nbDecimal = 1;
-                while (tickSpace < power(10, -nbDecimal))
-                    nbDecimal = nbDecimal + 1;
-                end
-                YTickLabel = num2str(YTickLabel', sprintf('%%0.%df', nbDecimal));
-            end
-        % If no scale can be manually set
-        else
-            % Cannot find a valid number of ticks : do not display ticks
-            YTickNorm  = 0;
-            YTickLabel = [];
-            fUnits     = 'Invalid scale';
+        YLim = get(hColorbar, 'YLim');
+        % Guess the most reasonable ticks spacing
+        [YTickNorm, YTickLabel] = GetTicks(dataBounds, YLim, fFactor);
+        % Invalid scale
+        if isempty(YTickLabel)
+            fUnits = 'Invalid scale';
         end
         % Update ticks of the colorbar
         set(hColorbar, 'YTick',      YTickNorm, ...
                        'YTickLabel', YTickLabel);
         xlabel(hColorbar, fUnits);
     end    
+end
+
+
+%% ====== GET TICKS ======
+% Guess the most reasonable ticks spacing
+function [TickNorm, TickLabel] = GetTicks(dataBounds, axesLim, fFactor)
+    % Try to find an easy to read scale for this data
+    possibleTickSpaces = reshape([1; 2; 5] * [0.0001 0.001 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000], 1, []);
+    possibleNbTicks = (dataBounds(2) - dataBounds(1)) .* fFactor ./ possibleTickSpaces ;
+    iTicks = find((possibleNbTicks >= 3) & (possibleNbTicks <= 500));
+    % If at least one scale is found
+    if ~isempty(iTicks)
+        % Take the one with the smallest number of ticks
+        tickSpace = possibleTickSpaces(iTicks(end));
+        Tick = unique([bst_flip(0:-tickSpace/fFactor:dataBounds(1), 2), 0, 0:tickSpace/fFactor:dataBounds(2)]);
+        TickLabel = fFactor * Tick;
+        % Normalized Ticks
+        TickNorm = (Tick-dataBounds(1)) / (dataBounds(2)-dataBounds(1)) * (axesLim(2)-axesLim(1)) + axesLim(1);
+        % If displaying integer values (%d)
+        if (round(tickSpace) == tickSpace)
+            TickLabel = num2str(round(TickLabel)', '%d');
+        % Else : display fractional values
+        else
+            nbDecimal = 1;
+            while (tickSpace < power(10, -nbDecimal))
+                nbDecimal = nbDecimal + 1;
+            end
+            TickLabel = num2str(TickLabel', sprintf('%%0.%df', nbDecimal));
+        end
+    % Cannot find a valid number of ticks : do not display ticks
+    else
+        TickNorm  = 0;
+        TickLabel = [];
+    end
 end
 
 

@@ -19,8 +19,46 @@ function sFileOut = out_fopen_edf(OutputFile, sFileIn, ChannelMat, EpochSize)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, 2017
+% Authors: Martin Cousineau & Francois Tadel, 2017
 
+
+%% ===== PARSE INPUTS =====
+% Reject files with epochs
+if (length(sFileIn.epochs) > 1)
+    error('Cannot export epoched files to continuous EDF files.');
+end
+% Is the input file a native EDF file
+isRawEdf = strcmpi(sFileIn.format, 'EEG-EDF') && ~isempty(sFileIn.header) && isfield(sFileIn.header, 'patient_id') && isfield(sFileIn.header, 'signal');
+
+
+%% ===== GET MAXIMUM VALUES =====
+if ~isRawEdf
+    % Extracts the minimum and maximum values for each sensor over all the file (by blocks of 1s).
+    % This helps optimizing the conversion of the recordings to int16 values.
+    BlockSize = sFileIn.prop.sfreq; % 1-second blocks
+    nSamples = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
+    nBlocks = ceil(nSamples ./ BlockSize);
+    % Initialize min/max matrices
+    Fmax = 0 * ones(length(ChannelMat.Channel), 1);
+    % Loop on all the blocks
+    for iBlock = 1:nBlocks
+        bst_progress('text', sprintf('Finding maximum values [%d%%]', round(iBlock/nBlocks*100)));
+        % Get sample indices for a block of 1s
+        SamplesBounds = [(iBlock - 1) * BlockSize, min(nSamples, iBlock * BlockSize) - 1] - sFileIn.prop.samples(1);
+        % Read the block from the file
+        Fblock = in_fread(sFileIn, ChannelMat, 1, SamplesBounds);
+        % Extract absolute max
+        Fmax = max(Fmax, max(abs(Fblock),[],2));
+    end
+    % Make sure we don't have cases where the maximum is zero
+    Fmax(Fmax == 0) = 1;
+else
+    Fmax =  1 * ones(length(ChannelMat.Channel), 1);
+end
+
+
+%% ===== WRITE EDF HEADER =====
+bst_progress('text', 'Writing EDF+ header...');
 % Get file comment
 [fPath, fBase, fExt] = bst_fileparts(OutputFile);
 
@@ -41,16 +79,14 @@ header.starttime  = datestr(date, 'HH.MM.SS');
 header.nsignal    = length(ChannelMat.Channel);
 header.nrec       = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / EpochSize;
 
-% We need to choose a record length that produces a whole number of records
-% and a record size less than 61440 bytes (at 2 bytes per sample).
-header.reclen     = 1.0;
-epsilon           = 1e-8;
+% We need to choose a record length that produces a  record size less than
+% 61440 bytes (at 2 bytes per sample).
+header.reclen = 1.0;
 for i = 1:10
-    remainder     = mod(header.nrec / header.reclen, 1);
-    recordSize    = header.reclen * EpochSize * header.nsignal * 2;
+    recordSize = header.reclen * EpochSize * header.nsignal * 2;
     
-    if (remainder > epsilon && abs(remainder - 1) > epsilon) || recordSize > 61440
-        header.reclen = header.reclen / 10;
+    if recordSize > 61440
+        header.reclen = header.reclen / 2;
     else
         break;
     end
@@ -59,77 +95,95 @@ for i = 1:10
         error('Could not find a valid record length for this data.');
     end
 end
-header.nrec       = header.nrec / header.reclen;
+header.nrec = ceil(header.nrec / header.reclen);
 
 % Add an additional channel at the end to save events if necessary.
-if ~isempty(sFileIn.events)
-    header.nsignal     = header.nsignal + 1;
-    header.annotchan   = header.nsignal;
-    
+% if ~isempty(sFileIn.events)
+    % If the last channel is not already an Annotation channel: add it
+    if ~strcmpi(ChannelMat.Channel(end).Name, 'Annotations') || ~strcmpi(ChannelMat.Channel(end).Type, 'EDF')
+        header.nsignal = header.nsignal + 1;
+        Fmax(end+1) = 1;
+    end
+    header.annotchan = header.nsignal;
+
     % Some EDF+ fields are required by strict viewers such as EDFbrowser
     header.unknown1    = 'EDF+C';
     header.patient_id  = 'UNKNOWN M 01-JAN-1900 Unknown_Patient';
     header.rec_id      = ['Startdate ', upper(datestr(date, 'dd-mmm-yyyy')), ...
                           ' Unknown_Hospital Unknown_Technician Unknown_Equipment'];
-else
-    header.annotchan   = -1;
-    header.unknown1    = '';
-    header.patient_id  = '';
-    header.rec_id      = '';
-end
+
+    % Compute annotations
+    header.annotations = {};
+    maxAnnotLength     = 0;
+    
+    for iEvt = 1:numel(sFileIn.events)
+        event       = sFileIn.events(iEvt);
+        hasDuration = numel(event.epochs) ~= numel(event.times);
+        
+        for iEpc = 1:numel(event.epochs)
+            if hasDuration
+                startTime = event.times(2 * iEpc - 1);
+            else
+                startTime = event.times(iEpc);
+            end
+            
+            annot = sprintf('+%f', startTime);
+            
+            if hasDuration
+                duration = event.times(2 * iEpc) - startTime;
+                annot    = [annot, sprintf('%c%f', char(21), duration)];
+            end
+            
+            annot = [annot, sprintf('%c%s%c%c', char(20), event.label, char(20), char(0))];
+            header.annotations{end + 1} = annot;
+            
+            if length(annot) > maxAnnotLength
+                maxAnnotLength = length(annot);
+            end
+        end
+    end
+% else
+%     header.annotchan   = -1;
+%     header.unknown1    = '';
+%     header.patient_id  = '';
+%     header.rec_id      = '';
+% end
 header.hdrlen = 256 + 256 * header.nsignal;
 
 % Channel information
 for i = 1:header.nsignal
-    header.signal(i).unit         = 'uV';
-    header.signal(i).physical_min = -2^15;
-    header.signal(i).physical_max = 2^15 - 1;
-    header.signal(i).digital_min  = -2^15;
-    header.signal(i).digital_max  = 2^15 - 1;
-    header.signal(i).filters      = '';
-    header.signal(i).unknown2     = '';
+    header.signal(i).unit = 'uV';
+    if ~isRawEdf
+        chScale = 2^15 / Fmax(i);
+        header.signal(i).digital_min  = -2^15;
+        header.signal(i).digital_max  = 2^15 - 1;
+        header.signal(i).physical_min = header.signal(i).digital_min / chScale .* 1e6;
+        header.signal(i).physical_max = header.signal(i).digital_max / chScale .* 1e6;
+        header.signal(i).filters      = '';
+        header.signal(i).unknown2     = '';
+    end
     
     % Approximate size of annotation channel
+    header.signal(i).type  = '';
     if i == header.annotchan
         header.signal(i).label    = 'EDF Annotations';
-        header.signal(i).type     = '';
-        header.signal(i).nsamples = 12 * header.nrec; % For first annotation of each record
-        maxEventSize              = 0;
-        
-        for j = 1:length(sFileIn.events)
-            eventSize = length(sFileIn.events(j).label) + 25;
-            header.signal(i).nsamples = header.signal(i).nsamples + eventSize;
-            
-            if eventSize > maxEventSize
-                maxEventSize = eventSize;
-            end
-        end
-        header.signal(i).nsamples = int64(header.signal(i).nsamples / header.nrec);
-        
-        % The annotation record cannot be smaller than the largest event
-        % plus the first annotation (12 bytes) of the record
-        if header.signal(i).nsamples < maxEventSize + 12
-            header.signal(i).nsamples = maxEventSize + 12;
-        end
-        
+        eventsPerRecord           = ceil(numel(header.annotations) / header.nrec);
+        header.signal(i).nsamples = eventsPerRecord * maxAnnotLength + 15; % For first annotation of each record
         % Convert chars (1-byte) to 2-byte integers, the size of a sample
         header.signal(i).nsamples = int64((header.signal(i).nsamples + 1) / 2);
     else
-        header.signal(i).label    = ChannelMat.Channel(i).Name;
-        header.signal(i).type     = ChannelMat.Channel(i).Type;
-        header.signal(i).nsamples = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / header.nrec;
+        header.signal(i).label = [ChannelMat.Channel(i).Type, ' ', ChannelMat.Channel(i).Name];
+        header.signal(i).nsamples = header.reclen * EpochSize;
     end
-
 end
 
 % Copy some values from the original header if possible
-if strcmpi(sFileIn.format, sFileOut.format) && ~isempty(sFileIn.header)
+if isRawEdf
     header.patient_id = sFileIn.header.patient_id;
     header.rec_id     = sFileIn.header.rec_id;
     header.startdate  = sFileIn.header.startdate;
     header.starttime  = sFileIn.header.starttime;
     header.unknown1   = sFileIn.header.unknown1;
-
     for i = 1:sFileIn.header.nsignal
         header.signal(i).label        = sFileIn.header.signal(i).label;
         header.signal(i).type         = sFileIn.header.signal(i).type;
@@ -137,7 +191,8 @@ if strcmpi(sFileIn.format, sFileOut.format) && ~isempty(sFileIn.header)
         header.signal(i).unknown2     = sFileIn.header.signal(i).unknown2;
         header.signal(i).physical_min = sFileIn.header.signal(i).physical_min;
         header.signal(i).physical_max = sFileIn.header.signal(i).physical_max;
-        header.signal(i).digital_min  = sFileIn.header.signal(i).digital_max;
+        header.signal(i).digital_min  = sFileIn.header.signal(i).digital_min;
+        header.signal(i).digital_max  = sFileIn.header.signal(i).digital_max;
     end
 end
 

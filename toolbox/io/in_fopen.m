@@ -59,7 +59,9 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_itab(DataFile);
     case 'EEG-ANT-CNT'
         [sFile, ChannelMat] = in_fopen_ant(DataFile);
-    case 'EEG-BLACKROCK'
+    case 'EEG-ANT-MSR'
+        [sFile, ChannelMat] = in_fopen_msr(DataFile);
+    case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
         [sFile, ChannelMat] = in_fopen_blackrock(DataFile);
     case 'EEG-BRAINAMP'
         [sFile, ChannelMat] = in_fopen_brainamp(DataFile);
@@ -91,8 +93,12 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_neuroscope(DataFile);
     case 'EEG-NEURALYNX'
         [sFile, ChannelMat] = in_fopen_neuralynx(DataFile);
+    case 'EEG-NICOLET'
+        [sFile, ChannelMat] = in_fopen_nicolet(DataFile);
     case 'EEG-NK'
         [sFile, ChannelMat] = in_fopen_nk(DataFile);
+    case 'EEG-SMR'
+        [sFile, ChannelMat] = in_fopen_smr(DataFile);
     case 'EYELINK'
         [sFile, ChannelMat] = in_fopen_eyelink(DataFile);
     case 'NIRS-BRS'
@@ -106,7 +112,7 @@ switch (FileFormat)
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);
     % ===== CONVERT TO CONTINUOUS =====
     case 'EEG-ASCII'
-        DataMat = in_data_ascii(DataFile);
+        [DataMat, ChannelMat] = in_data_ascii(DataFile);
     case 'EEG-BESA'
         [DataMat, ChannelMat] = in_data_besa(DataFile);
     case 'EEG-BRAINVISION'
@@ -115,6 +121,8 @@ switch (FileFormat)
         DataMat = in_data_cartool(DataFile);
     case 'EEG-ERPCENTER'
         DataMat = in_data_erpcenter(DataFile);
+    case 'EEG-ERPLAB'
+        [DataMat, ChannelMat] = in_data_erplab(DataFile);
     case 'EEG-MAT'
         DataMat = in_data_mat(DataFile);
     case 'EEG-NEUROSCAN-DAT'

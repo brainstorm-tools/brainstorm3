@@ -41,7 +41,7 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2017
 
 
 %% ===== PARSE INPUTS =====
@@ -111,7 +111,7 @@ if isempty(DataFiles)
     % Process the selected directories :
     %    1) If they are .ds/ directory with .meg4 and .res4 files : keep them as "files to open"
     %    2) Else : add all the data files they contains (subdirectories included)
-    DataFiles = io_expand_filenames(FileFilter, DataFiles);
+    DataFiles = file_expand_selection(FileFilter, DataFiles);
     if isempty(DataFiles)
         error(['No data ' FileFormat ' file in the selected directories.']);
     end
@@ -131,15 +131,8 @@ end
 
 
 %% ===== EMPTY TEMPORARY DIRECTORY =====
-% Get temporary directory
-tmpDir = bst_get('BrainstormTmpDir');
-% If directory exists
-if isdir(tmpDir)
-    bst_progress('start', 'Import MEG/EEG recordings', 'Emptying temporary directory...');
-    % Delete contents of directory
-    file_delete(bst_fullfile(tmpDir, '*.*'), 1);
-    bst_progress('stop');
-end
+bst_progress('start', 'Import MEG/EEG recordings', 'Emptying temporary directory...');
+gui_brainstorm('EmptyTempFolder');
 
 
 %% ===== IMPORT SELECTED DATA =====
@@ -181,7 +174,18 @@ for iFile = 1:length(DataFiles)
         ImportOptions.ChannelReplace = 0;
         ImportOptions.ChannelAlign = 0;
     else
-        [ImportedDataMat, ChannelMat, nChannels, nTime, ImportOptions] = in_data(DataFile, [], FileFormat, ImportOptions, nbCall);
+        % If importing files in an existing folder: adapt to the existing channel file
+        if ~isempty(iStudyInit) && ~isnan(iStudyInit) && (iStudyInit > 0)
+            sStudyInit = bst_get('Study', iStudyInit);
+            if ~isempty(sStudyInit) && ~isempty(sStudyInit.Channel) && ~isempty(sStudyInit.Channel(1).FileName)
+                ChannelMatInit = in_bst_channel(sStudyInit.Channel(1).FileName);
+            else
+                ChannelMatInit = [];
+            end
+        else
+            ChannelMatInit = [];
+        end
+        [ImportedDataMat, ChannelMat, nChannels, nTime, ImportOptions] = in_data(DataFile, ChannelMatInit, FileFormat, ImportOptions, nbCall);
     end
     if isempty(ImportedDataMat)
         break;

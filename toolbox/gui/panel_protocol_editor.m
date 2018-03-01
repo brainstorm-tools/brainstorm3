@@ -23,7 +23,7 @@ function varargout = panel_protocol_editor(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2012
+% Authors: Francois Tadel, 2008-2017
 
 eval(macro_method);
 end
@@ -46,37 +46,34 @@ function bstPanelNew = CreatePanel(action) %#ok<DEFNU>
     % ===== Panel Protocol definition =====
     jPanelBase = gui_river([4,4], [1,4,8,4], 'Protocol definition');
     % Protocol name
-    jPanelBase.add(JLabel('Protocol name :'));
+    gui_component('label', jPanelBase, '', 'Protocol name :');
     ctrl.jTextProtocolName = JTextField('');
+    ctrl.jTextProtocolName.setFont(bst_get('Font'));
     if ~strcmpi(action, 'load')
         java_setcb(ctrl.jTextProtocolName, 'KeyTypedCallback', @ProtocolNameChanged_Callback);
     end
     jPanelBase.add('tab hfill', ctrl.jTextProtocolName);
-    ctrl.jTextProtocolName.setPreferredSize(Dimension(280,22));
+    ctrl.jTextProtocolName.setPreferredSize(java_scaled('dimension', 280,22));
     % PROTOCOL select dir button
     if strcmpi(action, 'load')
-        ctrl.jButtonSelectProtocol = JButton('...');
-        java_setcb(ctrl.jButtonSelectProtocol, 'ActionPerformedCallback', @ButtonProtocolCallback);
-        jPanelBase.add(ctrl.jButtonSelectProtocol);
+        ctrl.jButtonSelectProtocol = gui_component('button', jPanelBase, '', '...', [], [], @ButtonProtocolCallback);
     end
     
     % SUBJECTS path text field
-    jPanelBase.add('p', JLabel('Anatomy path :'));
+    gui_component('label', jPanelBase, 'p', 'Anatomy path :');
     ctrl.jTextSubjectsPath = JTextField('');
+    ctrl.jTextSubjectsPath.setFont(bst_get('Font'));
     jPanelBase.add('tab hfill', ctrl.jTextSubjectsPath);
     % SUBJECTS select dir button
-    ctrl.jButtonSelectSubjPath = JButton('...');
-    java_setcb(ctrl.jButtonSelectSubjPath, 'ActionPerformedCallback', @ButtonSubjectsDirCallback);
-    jPanelBase.add(ctrl.jButtonSelectSubjPath);
+    ctrl.jButtonSelectSubjPath = gui_component('button', jPanelBase, '', '...', [], [], @ButtonSubjectsDirCallback);
 
     % Datasets path text field
-    jPanelBase.add('p', JLabel('Datasets path :'));
+    gui_component('label', jPanelBase, 'p', 'Datasets path :');
     ctrl.jTextStudiesPath = JTextField('');
+    ctrl.jTextStudiesPath.setFont(bst_get('Font'));
     jPanelBase.add('tab hfill', ctrl.jTextStudiesPath);
     % SUBJECTS select dir button
-    ctrl.jButtonSelectStudiesPath = JButton('...');
-    java_setcb(ctrl.jButtonSelectStudiesPath, 'ActionPerformedCallback', @ButtonStudiesDirCallback);
-    jPanelBase.add(ctrl.jButtonSelectStudiesPath);
+    ctrl.jButtonSelectStudiesPath = gui_component('button', jPanelBase, '', '...', [], [], @ButtonStudiesDirCallback);
 
     % Add Base panel 
     jPanelNew.add('hfill', jPanelBase);
@@ -85,36 +82,31 @@ function bstPanelNew = CreatePanel(action) %#ok<DEFNU>
     if strcmpi(action, 'create') || strcmpi(action, 'edit')
         jPanelDefaults = gui_river([1,4], [1,4,8,4], 'Default properties for the subjects');
         % === DEFAULT ANATOMY ===
-        jPanelDefaults.add('br', JLabel('<HTML><B>Default anatomy</B>: '));
+        gui_component('label', jPanelDefaults, 'br', '<HTML><B>Default anatomy</B>: ');
         jButtonGroupAnatomy = ButtonGroup();
-        ctrl.jRadioAnatomyIndividual = JRadioButton('No, use individual anatomy');
-        ctrl.jRadioAnatomyDefault    = JRadioButton('Yes, use protocol''s default anatomy');
+        gui_component('label', jPanelDefaults, 'br', '     ');
+        ctrl.jRadioAnatomyIndividual = gui_component('radio', jPanelDefaults, 'tab', 'No, use individual anatomy');
+        ctrl.jRadioAnatomyDefault    = gui_component('radio', jPanelDefaults, 'br tab', 'Yes, use protocol''s default anatomy');
         ctrl.jRadioAnatomyIndividual.setToolTipText('<HTML><BLOCKQUOTE><B>UseDefaultAnat=0</B><BR><BR> MRI and surfaces for this subject are saved in: <P>[ protocol/anat/<I>subject_dir</I> ]<BR><BR></BLOCKQUOTE></HTML>');
         ctrl.jRadioAnatomyDefault.setToolTipText(['<HTML><BLOCKQUOTE><B>UseDefaultAnat=1</B><BR><BR> MRI and surfaces for this subject are saved in: <P>[ protocol/anat/' bst_get('DirDefaultSubject') ' ]<BR><BR></BLOCKQUOTE></HTML>']);
         jButtonGroupAnatomy.add(ctrl.jRadioAnatomyIndividual);
         jButtonGroupAnatomy.add(ctrl.jRadioAnatomyDefault);
-        jPanelDefaults.add('br', JLabel('     '));
-        jPanelDefaults.add('tab', ctrl.jRadioAnatomyIndividual);
-        jPanelDefaults.add('br tab', ctrl.jRadioAnatomyDefault);
         % By default : Individual anatomy
         ctrl.jRadioAnatomyIndividual.setSelected(1);
 
         % === DEFAULT CHANNEL FILE ===
-        jPanelDefaults.add('p', JLabel('<HTML><B>Default channel file</B>: &nbsp;&nbsp;&nbsp;&nbsp;<FONT color=#7F7F7F><I>(includes the SSP/ICA projectors)</I></FONT>'));
+        gui_component('label', jPanelDefaults, 'p', '<HTML><B>Default channel file</B>: &nbsp;&nbsp;&nbsp;&nbsp;<FONT color=#7F7F7F><I>(includes the SSP/ICA projectors)</I></FONT>');
         jButtonGroupChannel = ButtonGroup();
-        ctrl.jRadioChannelIndividual     = JRadioButton('No, use one channel file per acquisition run (MEG/EEG)');
-        ctrl.jRadioChannelDefaultSubject = JRadioButton('Yes, use one channel file per subject  (one run per subject)');
-        ctrl.jRadioChannelDefaultGlobal  = JRadioButton('Yes, use only one global channel file');
+        ctrl.jRadioChannelIndividual     = gui_component('radio', jPanelDefaults, 'br tab vtop', 'No, use one channel file per acquisition run (MEG/EEG)');
+        ctrl.jRadioChannelDefaultSubject = gui_component('radio', jPanelDefaults, 'br tab', 'Yes, use one channel file per subject  (one run per subject)');
+        ctrl.jRadioChannelDefaultGlobal  = gui_component('radio', jPanelDefaults, 'br tab', 'Yes, use only one global channel file');
         ctrl.jRadioChannelIndividual.setToolTipText(     '<HTML><BLOCKQUOTE><B>UseDefaultChannel=0</B><BR><BR> Sensors locations and headmodel files for this subject are saved in: <P>[ protocol/data/<I>subject_dir</I>/<I>condition_name</I> ]<BR><BR></BLOCKQUOTE></HTML>');
         ctrl.jRadioChannelDefaultSubject.setToolTipText(['<HTML><BLOCKQUOTE><B>UseDefaultChannel=1</B><BR><BR> Sensors locations and headmodel files for this subject are saved in: <P>[ protocol/data/<I>subject_dir</I>/' bst_get('DirDefaultStudy') ' ]<BR><BR></BLOCKQUOTE></HTML>']);
         ctrl.jRadioChannelDefaultGlobal.setToolTipText( ['<HTML><BLOCKQUOTE><B>UseDefaultChannel=2</B><BR><BR> Sensors locations and headmodel files for this subject are saved in: <P>[ protocol/data/' bst_get('DirDefaultStudy') ' ]<BR><BR></BLOCKQUOTE></HTML>']);
         jButtonGroupChannel.add(ctrl.jRadioChannelIndividual);
         jButtonGroupChannel.add(ctrl.jRadioChannelDefaultSubject);
-        jButtonGroupChannel.add(ctrl.jRadioChannelDefaultGlobal);       
-        jPanelDefaults.add('br tab vtop', ctrl.jRadioChannelIndividual);
-        jPanelDefaults.add('br tab', ctrl.jRadioChannelDefaultSubject);
-        jPanelDefaults.add('br tab', ctrl.jRadioChannelDefaultGlobal);
-        jPanelDefaults.add('br', JLabel());
+        jButtonGroupChannel.add(ctrl.jRadioChannelDefaultGlobal);
+        gui_component('label', jPanelDefaults, 'br', '');
         
         % By default : Individual channel file
         ctrl.jRadioChannelIndividual.setSelected(1);
@@ -129,27 +121,18 @@ function bstPanelNew = CreatePanel(action) %#ok<DEFNU>
     jPanelNew.add('p right', JLabel(''));
     % Help button
     if ismember(action, {'create', 'edit'})
-        jButtonHelp = JButton('Help');
+        jButtonHelp = gui_component('button', jPanelNew, '', 'Help', [], [], @(h,ev)bst_help('ProtocolEditor.html'));
         jButtonHelp.setForeground(Color(.7, 0, 0));
-        java_setcb(jButtonHelp, 'ActionPerformedCallback', @(h,ev)bst_help('ProtocolEditor.html'));
-        jPanelNew.add(jButtonHelp);
     end
     % Cancel button
-    ctrl.jButtonCancel = JButton('Cancel');
-    java_setcb(ctrl.jButtonCancel, 'ActionPerformedCallback', @ButtonCancelCallback);
-    jPanelNew.add(ctrl.jButtonCancel);
+    ctrl.jButtonCancel = gui_component('button', jPanelNew, '', 'Cancel', [], [], @ButtonCancelCallback);
     % Save button
     switch (action)
-        case 'create'
-            ctrl.jButtonSave = JButton('Create');
-            jPanelNew.add(ctrl.jButtonSave);
-        case 'edit'
-            ctrl.jButtonSave = JButton('Save');
-            jPanelNew.add(ctrl.jButtonSave);
-        case 'load'
-            ctrl.jButtonSave = JButton('Load');
-            jPanelNew.add(ctrl.jButtonSave);
+        case 'create', strSave = 'Create';
+        case 'edit',   strSave = 'Save';
+        case 'load',   strSave = 'Load';
     end
+    ctrl.jButtonSave = gui_component('button', jPanelNew, '', strSave);
 
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)

@@ -24,9 +24,22 @@ function [res, isCancel] = java_dialog( msgType, msg, msgTitle, jParent, varargi
 %                                 OPTIONS = buttonList, defaultVals
 %                  - 'radio'    : OPTIONS = buttonList
 %                                 OPTIONS = buttonList, defaultInd
-% OUTPUT:
-%    - res      : 1 if user validated the dialog, 0 else.
-%    - isCancel : 1 if the user pressed the cancel button or closed the window (0 else)
+% OUTPUT: 
+%    - res      : Depends on the dialog type
+%                  - 'error', 'warning', 'msgbox', 'confirm':
+%                        1 if user validated the dialog, 0 else.
+%                  - 'question':
+%                        'Yes' if user clicked yes button, 'No' for no button,
+%                        [] if user closed the dialog.
+%                  - 'input':
+%                        str or cell array of str corresponding to selected input 
+%                        [] if dialog canceled
+%                  - 'radio':
+%                        [] if user closed dialog or cancelled, else index of choice.
+%                  - 'combo':
+%                        value of choice (empty if user cancelled or closed dialog)
+%    - isCancel : 1 if the user pressed the cancel button or closed the
+%                 window (0 else). Always 0 for dialog types 'error', 'warning' and 'msgbox'
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -103,23 +116,34 @@ switch(lower(msgType))
             msgTitle = 'Error';
         end
         java_call('javax.swing.JOptionPane', 'showMessageDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, msg, msgTitle, javax.swing.JOptionPane.ERROR_MESSAGE);
+        isCancel = 0;
+        res = 1;
     case 'warning'
         if isempty(msgTitle)
             msgTitle = 'Warning';
         end
         java_call('javax.swing.JOptionPane', 'showMessageDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, msg, msgTitle, javax.swing.JOptionPane.WARNING_MESSAGE);
+        isCancel = 0;
+        res = 1;
     case 'msgbox'
         if isempty(msgTitle)
             msgTitle = 'Information';
         end
         java_call('javax.swing.JOptionPane', 'showMessageDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, msg, msgTitle, javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        isCancel = 0;
+        res = 1;
     case 'confirm'
         if isempty(msgTitle)
             msgTitle = 'Confirmation';
         end
         reponse = java_call('javax.swing.JOptionPane', 'showConfirmDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, msg, msgTitle, javax.swing.JOptionPane.YES_NO_OPTION);
-        res = (reponse == javax.swing.JOptionPane.OK_OPTION);
-        
+        if reponse == javax.swing.JOptionPane.CLOSED_OPTION
+            res = 0;
+            isCancel = 1;
+        else
+            res = (reponse == javax.swing.JOptionPane.OK_OPTION);
+            isCancel = 0;
+        end
     % OPTIONS: buttonList; buttonDefault
     case 'question'
         % Button list
@@ -140,8 +164,9 @@ switch(lower(msgType))
         end
         % Show dialog
         java_res = java_call('org.brainstorm.dialogs.MsgServer', 'dlgQuest', 'Ljava.awt.Component;Ljava.lang.String;Ljava.lang.String;[Ljava.lang.String;Ljava.lang.String;', jParent, msg, msgTitle, buttonList, buttonDefault);
-        if isempty(java_res)
+        if isempty(char(java_res))
             res = [];
+            isCancel = 1;
         else
             res = char(java_res);
             isCancel = 0;
@@ -215,7 +240,7 @@ switch(lower(msgType))
                 % Box size
                 isLongText = (length(buttonList{i}) > 10);
                 if ~isLongText
-                    jCheck(i).setPreferredSize(java.awt.Dimension(80, 20));
+                    jCheck(i).setPreferredSize(java_scaled('dimension', 80, 20));
                 end
                 % Default value
                 if ~isempty(defaultVal)
@@ -282,7 +307,7 @@ switch(lower(msgType))
                 % Box size
                 isLongText = (length(buttonList{i}) > 10);
                 if ~isLongText
-                    jRadio(i).setPreferredSize(java.awt.Dimension(80, 20));
+                    jRadio(i).setPreferredSize(java_scaled('dimension', 80, 20));
                 end
                 % Default value
                 if ~isempty(defaultInd) && (i == defaultInd)
@@ -331,6 +356,7 @@ switch(lower(msgType))
         
         % Create a dialog message
         jCombo = gui_component('ComboBox', [], [], [], {buttonList}, [], [], []);
+        jCombo.setMaximumRowCount(30);
         % Default selection
         if ~isempty(iSelect)
             jCombo.setSelectedIndex(iSelect - 1);

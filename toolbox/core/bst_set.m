@@ -32,10 +32,12 @@ function bst_set( varargin )
 %    - bst_set('AutoUpdates',  isAutoUpdates)
 %    - bst_set('ExpertMode',   isExpertMode)
 %    - bst_set('DisplayGFP',   isDisplayGFP)
+%    - bst_set('DownsampleTimeSeries',  isDownsampleTimeSeries)
 %    - bst_set('GraphicsSmoothing',     isGraphicsSmoothing)
 %    - bst_set('ForceMatCompression',   isForceCompression)
 %    - bst_set('IgnoreMemoryWarnings',  isIgnoreMemoryWarnings)
 %    - bst_set('DisableOpenGL',         isDisableOpenGL)
+%    - bst_set('InterfaceScaling',      InterfaceScaling)
 %    - bst_set('TSDisplayMode',         TSDisplayMode)    : {'butterfly','column'}
 %    - bst_set('ElectrodeConfig',       ElectrodeConfig, Modality)
 %    - bst_set('DefaultFormats'         defaultFormats)
@@ -69,6 +71,7 @@ function bst_set( varargin )
 %    - bst_set('CustomColormaps',       CustomColormaps)
 %    - bst_set('DigitizeOptions',       DigitizeOptions)
 %    - bst_set('ReadOnly',              ReadOnly)
+%    - bst_set('LastPsdDisplayFunction', LastPsdDisplayFunction)
 %
 % SEE ALSO bst_get
 
@@ -90,7 +93,7 @@ function bst_set( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2017
 
 global GlobalData;
 
@@ -234,12 +237,12 @@ switch contextName
         GlobalData.Preferences.(contextName).(Modality) = ElectrodeConf;
         
     case {'UniformizeTimeSeriesScales', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', ...
-          'GraphicsSmoothing', 'DisableOpenGL', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
+          'GraphicsSmoothing', 'DownsampleTimeSeries', 'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
           'BFSProperties', 'ImportDataOptions', 'ImportEegRawOptions', 'RawViewerOptions', 'TopoLayoutOptions', ...
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'GridOptions_headmodel', 'GridOptions_dipfit'}
+          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction'}
         GlobalData.Preferences.(contextName) = contextValue;
 
     case 'ReadOnly'

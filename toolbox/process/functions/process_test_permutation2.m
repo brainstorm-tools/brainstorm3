@@ -180,12 +180,13 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Files A and B do not have the same number of signals or time samples.');
         return;
     end
-    % Time-frequency: Warning if processing power
-    if strcmpi(sInputsA(1).FileType, 'timefreq') && isfield(sDataA, 'Measure') && isequal(sDataA.Measure, 'power')
-        bst_report('Warning', sProcess, [], ['You are testing power values, while a more standard analysis is to test the magnitude (ie. sqrt(power)).' 10 ...
-            'Option #1: Recompute the time-frequency maps using the option "Measure: Magnitude".' 10 ...
-            'Option #2: Run the process "Extract > Measure from complex values", with option "Magntiude".']);
-    end
+% WARNING ONLY APPLIES TO PARAMETRIC TESTS
+%     % Time-frequency: Warning if processing power
+%     if strcmpi(sInputsA(1).FileType, 'timefreq') && isfield(sDataA, 'Measure') && isequal(sDataA.Measure, 'power')
+%         bst_report('Warning', sProcess, [], ['You are testing power values, while a more standard analysis is to test the magnitude (ie. sqrt(power)).' 10 ...
+%             'Option #1: Recompute the time-frequency maps using the option "Measure: Magnitude".' 10 ...
+%             'Option #2: Run the process "Extract > Measure from complex values", with option "Magntiude".']);
+%     end
 
     % ===== UNCONSTRAINED SOURCES =====
     % Detect if the source model is unconstrained

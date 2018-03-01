@@ -27,7 +27,7 @@ function [VertConn, GridLoc] = results_vertconn(ResultsFile, isComputeVertConn)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015; Martin Cousineau, 2017
 
 % Parse inputs
 if (nargin < 2) || isempty(isComputeVertConn)

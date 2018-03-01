@@ -114,7 +114,8 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % ====== GUI =================================================================
 %    - bst_get('BstControls')    : Return main Brainstorm GUI structure
 %    - bst_get('BstFrame')       : Return main Brainstorm JFrame
-%    - bst_get('isGUI')          : Return 1 if the Brainstorm is displayed
+%    - bst_get('isGUI')          : Return 1 if the Brainstorm interface is displayed
+%    - bst_get('GuiLevel')       : Return GUI level:  -1=server, 0=nogui, 1=normal, 2=autopilot
 %    - bst_get('ScreenDef')      : Get screens configuration
 %    - bst_get('Layout')         : Configuration of the main Brainstorm window
 %    - bst_get('Layout', prop)   : Get one property in the layout properties
@@ -141,7 +142,9 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('IgnoreMemoryWarnings')  : {0,1} - If 1, do not display memory warnings at the Brainstorm startup
 %    - bst_get('ExpertMode')            : {0,1} - If 1, show advanced options that regular user do not see
 %    - bst_get('DisplayGFP')            : {0,1} - If 1, the GFP is displayed on all the time series figures
+%    - bst_get('DownsampleTimeSeries')  : {0,1} - If 1, downsample dense time series for faster display
 %    - bst_get('DisableOpenGL')         : {0,1,2} - If 1, do not use OpenGL renderer; if 2, use software OpenGL
+%    - bst_get('InterfaceScaling')      : {100,125,150,...} - Scales the Brainstorm GUI by a fixed factor
 %    - bst_get('GraphicsSmoothing')     : {0,1} - If 1, uses the graphics smoothing (Matlab >= 2014b)
 %    - bst_get('JOGLVersion')           : {0,1,2}, Detect the current version of JOGL available in Matlab
 %    - bst_get('DefaultFormats')        : Default formats for importing/exporting data, channels, ... (last used)
@@ -181,6 +184,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('ResizeFunction')          : Get the appropriate resize function
 %    - bst_get('groot')                   : Get the root graphic object
 %    - bst_get('JFrame', hFig)            : Get the underlying java frame for a Matlab figure
+%    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
 %
 % SEE ALSO bst_set
 
@@ -202,7 +206,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2017
 
 %% ==== PARSE INPUTS ====
 global GlobalData;
@@ -1243,14 +1247,14 @@ switch contextName
             % Remove EDF and BDF from the default list
             defList = setdiff(defList, {'EDF','BDF','KDF'});
             % Get default modality
-            if any(ismember({'MEG','MEG GRAD','MEG MAG'}, defList))
+            if ismember('SEEG', defList)
+                argout3 = 'SEEG';
+            elseif ismember('ECOG', defList)
+                argout3 = 'ECOG';
+            elseif any(ismember({'MEG','MEG GRAD','MEG MAG'}, defList))
                 argout3 = 'MEG';
             elseif ismember('EEG', defList)
                 argout3 = 'EEG';
-            elseif ismember('ECOG', defList)
-                argout3 = 'ECOG';
-            elseif ismember('SEEG', defList)
-                argout3 = 'SEEG';
             elseif ismember('NIRS', defList)
                 argout3 = 'NIRS';
             else
@@ -2186,6 +2190,10 @@ switch contextName
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2016';
             sTemplates(end).Name = 'BCI-DNI_BrainSuite_2016';
         end
+        if ~ismember(lower({sTemplates.Name}), 'uscbrain_brainsuite_2017')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2017';
+            sTemplates(end).Name = 'USCBrain_BrainSuite_2017';
+        end
         if ~ismember(lower({sTemplates.Name}), 'fsaverage_2016')
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2016';
             sTemplates(end).Name = 'FSAverage_2016';
@@ -2308,10 +2316,16 @@ switch contextName
             argout1 = GlobalData.Program.GUI.mainWindow;
         end
     case 'isGUI'
-        if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'isGUI')
+        if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'GuiLevel')
             argout1 = [];
         else
-            argout1 = GlobalData.Program.isGUI;
+            argout1 = (GlobalData.Program.GuiLevel >= 1);
+        end
+    case 'GuiLevel'
+        if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'GuiLevel')
+            argout1 = [];
+        else
+            argout1 = GlobalData.Program.GuiLevel;
         end
     case 'ScreenDef'
         if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'ScreenDef')
@@ -2373,7 +2387,7 @@ switch contextName
             argout1 = GlobalData.Preferences.ShowYGrid;
         else
             argout1 = 0;
-        end 
+        end
         
     case 'Resolution'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'Resolution')
@@ -2424,6 +2438,13 @@ switch contextName
             argout1 = 1;
         end
         
+    case 'DownsampleTimeSeries'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'DownsampleTimeSeries')
+            argout1 = GlobalData.Preferences.DownsampleTimeSeries;
+        else
+            argout1 = 0;
+        end
+        
     case 'GraphicsSmoothing'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'GraphicsSmoothing')
             argout1 = GlobalData.Preferences.GraphicsSmoothing;
@@ -2438,6 +2459,20 @@ switch contextName
             argout1 = 0;
         end
 
+    case 'InterfaceScaling'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'InterfaceScaling')
+            argout1 = GlobalData.Preferences.InterfaceScaling;
+        else
+            % Get screen resolution
+            if isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'ScreenDef') && isfield(GlobalData.Program.ScreenDef, 'javaPos') && ~isempty(GlobalData.Program.ScreenDef(1).javaPos)
+                AvailableRes = [100 125 150 200 250 300 400];
+                iRes = bst_closest(GlobalData.Program.ScreenDef(1).javaPos.width * 125 / 1920, AvailableRes);
+                argout1 = AvailableRes(iRes);
+            else
+                argout1 = 100;
+            end
+        end
+        
     case 'JOGLVersion'
         % If JOGL1 is available
         if exist('javax.media.opengl.GLCanvas', 'class')
@@ -2611,7 +2646,7 @@ switch contextName
         
     case 'RawViewerOptions'
         defPref =  struct(...
-            'MaxSamples',     2000, ...
+            'PageDuration',   3, ...
             'RemoveBaseline', 'all', ...
             'UseCtfComp',     1, ...
             'Shortcuts',      []);
@@ -2626,18 +2661,18 @@ switch contextName
             '8', 'event8'; ...
             '9', 'event9'};
         argout1 = FillMissingFields(contextName, defPref);
-        % If invalid MaxSamples: reset to default
-        if (argout1.MaxSamples <= 100)
-            argout1.MaxSamples = defPref.MaxSamples;
+        % If invalid PageDuration: reset to default
+        if (argout1.PageDuration <= 0.1)
+            argout1.PageDuration = defPref.PageDuration;
         end
-        % Adapt to FIF block size
-        if (nargin >= 2)
-            sFile = varargin{2};
-            if strcmpi(sFile.format, 'FIF') && isfield(sFile.header, 'raw') && isfield(sFile.header.raw, 'rawdir') && ~isempty(sFile.header.raw.rawdir)
-                fifBlockSize = min(double(sFile.header.raw.rawdir(1).nsamp), 5000);
-                argout1.MaxSamples = fifBlockSize * max(1, round(argout1.MaxSamples / fifBlockSize));
-            end
-        end
+%         % Adapt to FIF block size
+%         if (nargin >= 2)
+%             sFile = varargin{2};
+%             if strcmpi(sFile.format, 'FIF') && isfield(sFile.header, 'raw') && isfield(sFile.header.raw, 'rawdir') && ~isempty(sFile.header.raw.rawdir)
+%                 fifBlockSize = min(double(sFile.header.raw.rawdir(1).nsamp), 5000);
+%                 argout1.PageDuration = fifBlockSize * max(1, round(argout1.PageDuration / fifBlockSize)) / sFile.prop.sfreq;
+%             end
+%         end
         
     case 'TopoLayoutOptions'
         defPref = struct(...
@@ -2684,7 +2719,8 @@ switch contextName
             'MatrixOrientation', 'channelXtime', ... % {'channelXtime', 'timeXchannel'}
             'VoltageUnits',      'V', ...            % {'\muV', 'mV', 'V'}
             'SkipLines',         0, ...
-            'nAvg',              1);
+            'nAvg',              1, ...
+            'isChannelName',     0);                 % 1 if the first entry contains the channel name
         argout1 = FillMissingFields(contextName, defPref);
         
     case 'BugReportOptions'
@@ -2853,10 +2889,11 @@ switch contextName
         
     case 'MriOptions'
         defPref = struct(...
-            'isRadioOrient',   0, ...
-            'isMipAnatomy',    0, ...
-            'isMipFunctional', 0, ...
-            'OverlaySmooth',   0);
+            'isRadioOrient',    0, ...
+            'isMipAnatomy',     0, ...
+            'isMipFunctional',  0, ...
+            'OverlaySmooth',    0, ...
+            'InterpDownsample', 3);
         argout1 = FillMissingFields(contextName, defPref);
         
     case 'DigitizeOptions'
@@ -2890,7 +2927,14 @@ switch contextName
             argout1 = GlobalData.DataBase.isReadOnly;
         else
             argout1 = 0;
-        end 
+        end
+        
+    case 'LastPsdDisplayFunction'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'LastPsdDisplayFunction')
+            argout1 = GlobalData.Preferences.LastPsdDisplayFunction;
+        else
+            argout1 = [];
+        end
         
         
 %% ===== FILE FILTERS =====
@@ -2978,20 +3022,23 @@ switch contextName
                      {'.mat'},               'MEG/EEG: SPM (*.mat/.dat)',            'SPM-DAT'; ...
                      {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Yokogawa/KIT (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'KIT'; ...
                      {'.bst'},               'MEG/EEG: Brainstorm binary (*.bst)',   'BST-BIN'; ...
+                     {'.msr'},               'EEG: ANT ASA (*.msr)',                 'EEG-ANT-MSR'; ...
                      {'.cnt'},               'EEG: ANT EEProbe (*.cnt)',             'EEG-ANT-CNT'; ...
                      {'*'},                  'EEG: ASCII text (*.*)',                'EEG-ASCII'; ...
                      {'.bdf'},               'EEG: BDF (*.bdf)',                     'EEG-BDF'; ...
                      {'.avr','.mux','.mul'}, 'EEG: BESA exports (*.avr;*.mul;*.mux)', 'EEG-BESA'; ...
-                     {'.ns1','.ns2','.ns3','.ns4','.ns5'}, 'EEG: Blackrock NeuroPort (*.nsX)', 'EEG-BLACKROCK';
+                     {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Blackrock NeuroPort (*.nsX/*.nev)', 'EEG-BLACKROCK';
                      {'.eeg'},               'EEG: BrainVision BrainAmp (*.eeg)',    'EEG-BRAINAMP'; ...
                      {'.txt'},               'EEG: BrainVision Analyzer (*.txt)',    'EEG-BRAINVISION'; ...
                      {'.sef','.ep','.eph'},  'EEG: Cartool (*.sef;*.ep;*.eph)',      'EEG-CARTOOL'; ...
+                     {'.smr','.son'},        'EEG: CED Spike2 (*.smr;*.son)',        'EEG-SMR'; ...
                      {'.rda'},               'EEG: Compumedics ProFusion Sleep (*.rda)',  'EEG-COMPUMEDICS-PFS'; ...
                      {'.bin'},               'EEG: Deltamed Coherence-Neurofile (*.bin)', 'EEG-DELTAMED'; ...
                      {'.edf','.rec'},        'EEG: EDF / EDF+ (*.rec;*.edf)',        'EEG-EDF'; ...
                      {'.set'},               'EEG: EEGLAB (*.set)',                  'EEG-EEGLAB'; ...
                      {'.raw'},               'EEG: EGI Netstation RAW (*.raw)',      'EEG-EGI-RAW'; ...
                      {'.erp','.hdr'},        'EEG: ERPCenter (*.hdr;*.erp)',         'EEG-ERPCENTER'; ...
+                     {'.erp'},               'EEG: ERPLab (*.erp)',                  'EEG-ERPLAB'; ...
                      {'.mat','.hdf5'},       'EEG: g.tec Matlab (*.mat,*.hdf5)',     'EEG-GTEC'; ...
                      {'.mb2'},               'EEG: MANSCAN (*.mb2)',                 'EEG-MANSCAN'; ...
                      {'.trc'},               'EEG: Micromed (*.trc)',                'EEG-MICROMED'; ...
@@ -3000,7 +3047,9 @@ switch contextName
                      {'.bin'},               'EEG: NeurOne session folder',          'EEG-NEURONE'; ...
                      {'.cnt','.avg','.eeg','.dat'}, 'EEG: Neuroscan (*.cnt;*.eeg;*.avg;*.dat)', 'EEG-NEUROSCAN'; ...
                      {'.eeg','.dat'},        'EEG: NeuroScope (*.eeg;*.dat)',        'EEG-NEUROSCOPE'; ...
+                     {'.e'},                 'EEG: Nicolet (*.e)',                   'EEG-NICOLET'; ...
                      {'.eeg'},               'EEG: Nihon Kohden (*.eeg)',            'EEG-NK'; ...
+                     {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Ripple Trellis (*.nsX/*.nev)', 'EEG-RIPPLE'; ...
                      {'.nirs'},              'NIRS: Brainsight (*.nirs)',            'NIRS-BRS'; ...
                      {'.edf'},               'EyeLink eye tracker (*.edf)',          'EYELINK'; ...
                     };
@@ -3015,14 +3064,16 @@ switch contextName
                      {'.mat'},               'MEG/EEG: SPM (*.mat/.dat)',            'SPM-DAT'; ...
                      {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Yokogawa/KIT (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'KIT'; ...
                      {'.bst'},               'MEG/EEG: Brainstorm binary (*.bst)',   'BST-BIN'; ...
+                     {'.msr'},               'EEG: ANT ASA (*.msr)',                 'EEG-ANT-MSR'; ...
                      {'.cnt'},               'EEG: ANT EEProbe (*.cnt)',             'EEG-ANT-CNT'; ...
                      {'*'},                  'EEG: ASCII text (*.*)',                'EEG-ASCII'; ...
                      {'.bdf'},               'EEG: BDF (*.bdf)',                     'EEG-BDF'; ...
                      {'.avr','.mux','.mul'}, 'EEG: BESA exports (*.avr;*.mul;*.mux)', 'EEG-BESA'; ...
-                     {'.ns1','.ns2','.ns3','.ns4','.ns5'}, 'EEG: Blackrock NeuroPort (*.nsX)', 'EEG-BLACKROCK';
+                     {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Blackrock NeuroPort (*.nsX/*.nev)', 'EEG-BLACKROCK';
                      {'.eeg'},               'EEG: BrainVision BrainAmp (*.eeg)',    'EEG-BRAINAMP'; ...
                      {'.txt'},               'EEG: BrainVision Analyzer (*.txt)',    'EEG-BRAINVISION'; ...
                      {'.sef','.ep','.eph'},  'EEG: Cartool (*.sef;*.ep;*.eph)',      'EEG-CARTOOL'; ...
+                     {'.smr','.son'},        'EEG: CED Spike2 (*.smr;*.son)',        'EEG-SMR'; ...
                      {'.rda'},               'EEG: Compumedics ProFusion Sleep (*.rda)',  'EEG-COMPUMEDICS-PFS'; ...
                      {'.bin'},               'EEG: Deltamed Coherence-Neurofile (*.bin)', 'EEG-DELTAMED'; ...
                      {'.edf','.rec'},        'EEG: EDF / EDF+ (*.rec;*.edf)',        'EEG-EDF'; ...
@@ -3036,7 +3087,9 @@ switch contextName
                      {'.bin'},               'EEG: NeurOne session folder',          'EEG-NEURONE'; ...
                      {'.cnt','.avg','.eeg','.dat'}, 'EEG: Neuroscan (*.cnt;*.eeg;*.avg;*.dat)', 'EEG-NEUROSCAN'; ...
                      {'.eeg','.dat'},        'EEG: NeuroScope (*.eeg;*.dat)',        'EEG-NEUROSCOPE'; ...
+                     {'.e'},                 'EEG: Nicolet (*.e)',                   'EEG-NICOLET'; ...
                      {'.eeg'},               'EEG: Nihon Kohden (*.eeg)',            'EEG-NK'; ...
+                     {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Ripple Trellis (*.nsX/*.nev)', 'EEG-RIPPLE'; ...
                      {'.nirs'},              'NIRS: Brainsight (*.nirs)',            'NIRS-BRS'; ...
                      {'.edf'},               'EyeLink eye tracker (*.edf)',          'EYELINK'; ...
                     };
@@ -3078,6 +3131,7 @@ switch contextName
                     {'.trg'},          'KRISS MEG (*.trg)',             'KDF'; ...
                     {'.ev2'},          'Neuroscan (*.ev2)',             'NEUROSCAN'; ...
                     {'.log'},          'Presentation (*.log)',          'PRESENTATION'; ...
+                    {'.txt'},          'XLTEK export (*.txt)',          'XLTEK'; ...
                     {'.mrk','.sqd','.con','.raw','.ave'},   'Yokogawa/KIT (*.mrk;*.sqd;*.con;*.raw;*.ave)', 'KIT'; ...
                     {'.*'},            'Array of times (*.mat;*.*)',    'ARRAY-TIMES'; ...
                     {'.*'},            'Array of samples (*.mat;*.*)',  'ARRAY-SAMPLES'; ...
@@ -3133,6 +3187,7 @@ switch contextName
                     {'.txt'}, 'EEG: ASCII: XYZ (*.txt)',             'ASCII_XYZ-EEG'; ...
                     {'.txt'}, 'EEG: ASCII: Name,XYZ (*.txt)',        'ASCII_NXYZ-EEG'; ...
                     {'.txt'}, 'EEG: ASCII: XYZ,Name (*.txt)',        'ASCII_XYZN-EEG'; ...
+                    {'.txt'}, 'NIRS: Brainsight (*.txt)',            'BRAINSIGHT-TXT'; ...                     ''
                     };
             case 'labelin'
                 argout1 = {...
@@ -3198,17 +3253,57 @@ switch contextName
         end
         
     case 'Font'
-        fontSize = varargin{2};
-        if (nargin >= 3)
-            fontType = varargin{3};
+        % Default font size
+        if (nargin < 2)
+            if strncmp(computer,'MAC',3)
+                fontSize = 12;
+            else
+                fontSize = 11;
+            end
+        % Font size in input
         else
-            fontType = 'Arial';
+            fontSize = varargin{2};
         end
-        % Get cached font
-        strCache = strrep(sprintf('%s%d', fontType, round(fontSize*100)), ' ', '_');
-        if ~isempty(GlobalData) && isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'FontCache') && isfield(GlobalData.Program.FontCache, strCache)
-            argout1 = GlobalData.Program.FontCache.(strCache);
-        else
+        % Adjust for interface scaling
+        fontSize = fontSize * bst_get('InterfaceScaling') / 100;
+        
+        % Font types
+        fontTypes = {};
+        if (nargin >= 3)
+            fontTypes{end + 1} = varargin{3};
+        end
+        fontTypes{end + 1} = 'Arial';  % Default font
+        fontTypes{end + 1} = 'Liberation Sans';  % Free Arial substitute
+        
+        % Check for cached font
+        foundFont = 0;
+        for iFont = 1 : length(fontTypes)
+            strCache = strrep(sprintf('%s%d', fontTypes{iFont}, round(fontSize*100)), ' ', '_');
+            if ~isempty(GlobalData) && isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'FontCache') && isfield(GlobalData.Program.FontCache, strCache)
+                argout1 = GlobalData.Program.FontCache.(strCache);
+                foundFont = 1;
+                break;
+            end
+        end
+            
+        % If font not cached, find first supported font
+        if ~foundFont
+            ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment();
+            allFonts = cell(ge.getAvailableFontFamilyNames());
+            
+            for iFont = 1 : length(fontTypes)
+                if any(strcmp(fontTypes{iFont}, allFonts))
+                    fontType = fontTypes{iFont};
+                    foundFont = 1;
+                    break;
+                end
+            end
+            
+            if ~foundFont
+                fontType = 'SansSerif';  % If nothing else works.
+            end
+            
+            strCache = strrep(sprintf('%s%d', fontType, round(fontSize*100)), ' ', '_');
             argout1 = java.awt.Font(fontType, java.awt.Font.PLAIN, fontSize);
             GlobalData.Program.FontCache.(strCache) = argout1;
         end

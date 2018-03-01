@@ -21,7 +21,7 @@ function varargout = process_montage_apply( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2015
+% Authors: Francois Tadel, 2014-2017
 
 eval(macro_method);
 end
@@ -65,35 +65,57 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Options
     isCreateChan = (sProcess.options.createchan.Value == 1);
     MontageName  = sProcess.options.montage.Value;
-    % Get loaded montage
-    sMontage = panel_montage('GetMontage',MontageName);
-    if isempty(sMontage) || (length(sMontage) > 1)
-        bst_report('Error', sProcess, sInputs, ['Invalid montage name "' MontageName '".']);
-        return;
+    % Get a simpler montage name (for automatic SEEG montages)
+    strMontage = MontageName;
+    strMontage = strrep(strMontage, '[tmp]', '');
+    strMontage = strrep(strMontage, 'SEEG (', '');
+    iColon = find(strMontage == ':');
+    if ~isempty(iColon)
+        strMontage = strMontage(iColon+1:end);
     end
-    % If not creating a new channel file: montage output has to be compatible with curent channel structure
-    isCompatibleChan = ~strcmpi(sMontage.Type, 'selection') && (~strcmpi(sMontage.Type, 'text') || all(sum(sMontage.Matrix,2) == 0));
-    if ~isCreateChan && ~isCompatibleChan
-        bst_report('Error', sProcess, [], ['The montage "' sMontage.Name '" cannot be applied without writing a new folders.']);
-        return;
-    end
+    strMontage((strMontage == '(') | (strMontage == ')')) = [];
+    strMontage = strtrim(strrep(strMontage, '  ', ' '));
+    % Bipolar montage?
+    isBipolar = ~isempty(strfind(strMontage, 'bipolar'));
 
     % Get all the channel files from the list of files
     allChanFiles = unique({sInputs.ChannelFile});
     for iChan = 1:length(allChanFiles)
+        % Get subject for the channel file
+        sStudyChan = bst_get('ChannelFile', allChanFiles{iChan});
+        sSubject = bst_get('Subject', sStudyChan.BrainStormSubject, 1);
+        % Load channel file 
+        ChannelMat = in_bst_channel(allChanFiles{iChan});
+        % Update automatic montages
+        panel_montage('UnloadAutoMontages');
+        if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
+            panel_montage('AddAutoMontagesEeg', sSubject.Name, ChannelMat);
+        end
+        if ismember('NIRS', {ChannelMat.Channel.Type})
+            panel_montage('AddAutoMontagesNirs', ChannelMat);
+        end
+        
+        % Get montage
+        sMontage = panel_montage('GetMontage', MontageName);
+        if isempty(sMontage) || (length(sMontage) > 1)
+            bst_report('Error', sProcess, sInputs, ['Invalid montage name "' MontageName '".']);
+            return;
+        end
+        % If not creating a new channel file: montage output has to be compatible with curent channel structure
+        isCompatibleChan = ~strcmpi(sMontage.Type, 'selection') && (~strcmpi(sMontage.Type, 'text') || all(sum(sMontage.Matrix,2) == 0));
+        if ~isCreateChan && ~isCompatibleChan
+            bst_report('Error', sProcess, [], ['The montage "' sMontage.Name '" cannot be applied without writing a new folders.']);
+            return;
+        end
+        
         % Process each data file
         iDataFile = find(strcmpi(allChanFiles{iChan}, {sInputs.ChannelFile}));
         for ik = 1:length(iDataFile)
             iInput = iDataFile(ik);
-            % Get subject for the channel file
-            sSubject = bst_get('Subject', sInputs(iInput).SubjectFile, 1);
-            % Load channel file 
-            ChannelMat = in_bst_channel(allChanFiles{iChan});
-        
             % Load input file 
             DataMat = in_bst_data(sInputs(iInput).FileName);
             % Build average reference
-            if (strcmpi(sMontage.Name, 'Average reference'));
+            if (strcmpi(sMontage.Name, 'Average reference'))
                 sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel, DataMat.ChannelFlag, 1);
             end
             % Get channels indices for the montage
@@ -124,7 +146,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % If the subject has default channel: Create new subject
                 if (sSubject.UseDefaultChannel > 0)
                     % Output subject name
-                    SubjectNameOut = file_standardize([sSubject.Name '_' sMontage.Name]);
+                    SubjectNameOut = [sSubject.Name '_' file_standardize(strrep(strMontage, '''', 'p'))];
                     % Get output subject
                     sSubjectOut = bst_get('Subject', SubjectNameOut, 1);
                     % Create new output subject
@@ -144,7 +166,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     iStudyOut = db_add_condition(sSubjectOut.Name, sInputs(iInput).Condition, 1);
                 else
                     % Output condition name
-                    ConditionOut = file_standardize([sInputs(iInput).Condition, '_', sMontage.Name]);
+                    ConditionOut = [sInputs(iInput).Condition, '_', file_standardize(strrep(strMontage, '''', 'p'))];
                     % Get output condition
                     [sStudyOut, iStudyOut] = bst_get('StudyWithCondition', [sSubject.Name '/' ConditionOut]);
                     % Create condition
@@ -163,19 +185,30 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if isempty(sChannelOut)
                     % Create new channel file
                     ChannelMatOut = ChannelMat;
-                    ChannelMatOut.Comment = [ChannelMatOut.Comment ' | ' sMontage.Name];
+                    ChannelMatOut.Comment = [ChannelMatOut.Comment ' | ' strMontage];
                     ChannelMatOut.Channel = repmat(db_template('channeldesc'), 0);
                     % Create list of output channels
                     for iChanOut = 1:length(iMatrixDisp)
+                        Loc = [];
                         % Name of the output channel
                         ChanNameOut = sMontage.DispNames{iMatrixDisp(iChanOut)};
                         % Try to look for it directly in the input file names
                         iInputChan = find(strcmpi({ChannelMat.Channel.Name}, ChanNameOut));
                         % If not: get the first sensor involved
                         if isempty(iInputChan)
-                            iTmp = find(sMontage.Matrix(iMatrixDisp(iChanOut),:) > 0);
-                            if ~isempty(iTmp)
-                                iInputChan = find(strcmpi({ChannelMat.Channel.Name}, sMontage.ChanNames{iTmp}));
+                            iTmpPos = find(sMontage.Matrix(iMatrixDisp(iChanOut),:) > 0);
+                            if (length(iTmpPos) == 1)
+                                iInputChan = find(strcmpi({ChannelMat.Channel.Name}, sMontage.ChanNames{iTmpPos}));
+                            end
+                            % For bipolar montages: Compute average position between the two contacts
+                            if isBipolar 
+                                iTmpNeg = find(sMontage.Matrix(iMatrixDisp(iChanOut),:) < 0);
+                                if (length(iTmpNeg) == 1)
+                                    iInputRef = find(strcmpi({ChannelMat.Channel.Name}, sMontage.ChanNames{iTmpNeg}));
+                                    if ~isempty(iInputRef)
+                                        Loc = (ChannelMat.Channel(iInputChan).Loc + ChannelMat.Channel(iInputRef).Loc) ./ 2;
+                                    end
+                                end
                             end
                         end
                         % Channel still not found: set to defaults
@@ -189,9 +222,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                             ChannelMatOut.Channel(iChanOut).Comment = ChannelMat.Channel(iInputChan).Comment;
                             ChannelMatOut.Channel(iChanOut).Type    = ChannelMat.Channel(iInputChan).Type;
                             ChannelMatOut.Channel(iChanOut).Group   = ChannelMat.Channel(iInputChan).Group;
-                            ChannelMatOut.Channel(iChanOut).Loc     = ChannelMat.Channel(iInputChan).Loc;
                             ChannelMatOut.Channel(iChanOut).Orient  = ChannelMat.Channel(iInputChan).Orient;
                             ChannelMatOut.Channel(iChanOut).Weight  = ChannelMat.Channel(iInputChan).Weight;
+                            % Set location (one channel, or average of two SEEG contacts)
+                            if ~isempty(Loc)
+                                ChannelMatOut.Channel(iChanOut).Loc = Loc;
+                            else
+                                ChannelMatOut.Channel(iChanOut).Loc = ChannelMat.Channel(iInputChan).Loc;
+                            end
                         end
                     end
                     % Save to channel study
@@ -204,7 +242,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             sStudyOut = bst_get('Study', iStudyOut);
             
             % Edit data strcture
-            DataMat.Comment     = [DataMat.Comment ' | ' sMontage.Name];
+            DataMat.Comment     = [DataMat.Comment ' | ' strMontage];
             DataMat.ChannelFlag = ChannelFlag;
             DataMat = bst_history('add', DataMat, 'montage', ['Applied montage: ' sMontage.Name]);
             % New filename

@@ -23,7 +23,7 @@ function varargout = figure_timefreq( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2017
 
 eval(macro_method);
 end
@@ -733,25 +733,25 @@ function DisplayFigurePopup(hFig)
     gui_component('MenuItem', jPopup, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)bst_call(@view_spectrum, TfInfo.FileName, 'TimeSeries', TfInfo.RowName));
     % === View TOPOGRAPHY ===
     if strcmpi(DataType, 'data')
-        jItem = gui_component('MenuItem', jPopup, [], 'Topography', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_figures('ViewTopography', hFig), []);
+        jItem = gui_component('MenuItem', jPopup, [], 'Topography', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_figures('ViewTopography', hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
     end
     % === View RECORDINGS ===
     if ~isempty(sTimefreq.DataFile) && strcmpi(DataType, 'data')
         jPopup.addSeparator();
-        jItem = gui_component('MenuItem', jPopup, [], 'Recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(sTimefreq.DataFile), []);
+        jItem = gui_component('MenuItem', jPopup, [], 'Recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(sTimefreq.DataFile));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_MASK));
     end
     % === View RECORDINGS (one sensor) ===
     if ~isempty(sTimefreq.DataFile) && strcmpi(DataType, 'data') && ~ismember(FigId.SubType, {'2DLayout', '2DLayoutOpt', 'AllSensors'})
-        jItem = gui_component('MenuItem', jPopup, [], 'Recordings (one sensor)', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)ShowTimeSeries(hFig), []);
+        jItem = gui_component('MenuItem', jPopup, [], 'Recordings (one sensor)', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)ShowTimeSeries(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0));
     end
     jPopup.addSeparator();
     
     % ==== SYNCHRONIZE OTHER FIGURES ====
     if ~isempty(TfInfo.RowName)
-        jItem = gui_component('MenuItem', jPopup, [], 'Synchronize other figures', IconLoader.ICON_TS_SYNCRO, [], @(h,ev)SynchronizeFigures(hFig), []);
+        jItem = gui_component('MenuItem', jPopup, [], 'Synchronize other figures', IconLoader.ICON_TS_SYNCRO, [], @(h,ev)SynchronizeFigures(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke('=', 0));
         jPopup.addSeparator();
     end
@@ -760,16 +760,16 @@ function DisplayFigurePopup(hFig)
     bst_colormaps('CreateAllMenus', jPopup, hFig, 0);
 
     % ==== MENU: NAVIGATION ====
-    jMenuNavigator = gui_component('Menu', jPopup, [], 'Navigator', IconLoader.ICON_NEXT_SUBJECT, [], [], []);
+    jMenuNavigator = gui_component('Menu', jPopup, [], 'Navigator', IconLoader.ICON_NEXT_SUBJECT);
     bst_navigator('CreateNavigatorMenu', jMenuNavigator);
     
     % ==== MENU: SELECTION ====
     % Do not show for "Display all sensors" figures
-    jMenuSelection = gui_component('Menu', [], [], 'Time-Freq selection', IconLoader.ICON_TS_SELECTION, [], [], []);
+    jMenuSelection = gui_component('Menu', [], [], 'Time-Freq selection', IconLoader.ICON_TS_SELECTION);
     if ~ismember(FigId.SubType, {'2DLayout', '2DLayoutOpt', 'AllSensors'})
         % Set selection
         if ~iscell(GlobalData.UserFrequencies.Freqs)
-            gui_component('MenuItem', jMenuSelection, [], 'Set selection manually...', IconLoader.ICON_TS_SELECTION, [], @(h,ev)SetTimefreqSelection(hFig), []);
+            gui_component('MenuItem', jMenuSelection, [], 'Set selection manually...', IconLoader.ICON_TS_SELECTION, [], @(h,ev)SetTimefreqSelection(hFig));
         end
         % Get current time selection
         GraphSelection = getappdata(hFig, 'GraphSelection');
@@ -779,12 +779,12 @@ function DisplayFigurePopup(hFig)
                 jMenuSelection.addSeparator();
             end
             % === EXPORT TO DATABASE ===
-            gui_component('MenuItem', jMenuSelection, [], 'Export to database (time-freq)', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Selection'), []);
-            gui_component('MenuItem', jMenuSelection, [], 'Export to database (matrix)', IconLoader.ICON_MATRIX, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Selection', 'Matrix'), []);
+            gui_component('MenuItem', jMenuSelection, [], 'Export to database (time-freq)', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Selection'));
+            gui_component('MenuItem', jMenuSelection, [], 'Export to database (matrix)', IconLoader.ICON_MATRIX, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Selection', 'Matrix'));
             % === EXPORT TO FILE ===
-            gui_component('MenuItem', jMenuSelection, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, [], 'Selection'), []);
+            gui_component('MenuItem', jMenuSelection, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, [], 'Selection'));
             % === EXPORT TO MATLAB ===
-            gui_component('MenuItem', jMenuSelection, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable', 'Selection'), []);
+            gui_component('MenuItem', jMenuSelection, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable', 'Selection'));
         end
         if (jMenuSelection.getItemCount() > 0)
             jPopup.add(jMenuSelection);
@@ -792,45 +792,45 @@ function DisplayFigurePopup(hFig)
     end
     % ==== MENU: SNAPSHOT ====
     jPopup.addSeparator();
-    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT, [], [], []);
+    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT);
         % === SAVE AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
         % === OPEN AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Figure'), []);
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Figure'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_MASK));
         jMenuSave.addSeparator();
         % === EXPORT TO DATABASE ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to database (time-freq)', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database'), []);
-        gui_component('MenuItem', jMenuSave, [], 'Export to database (matrix)', IconLoader.ICON_MATRIX, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Matrix'), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to database (time-freq)', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database'));
+        gui_component('MenuItem', jMenuSave, [], 'Export to database (matrix)', IconLoader.ICON_MATRIX, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Database', 'Matrix'));
         % === EXPORT TO FILE ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, []), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to file', IconLoader.ICON_TS_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, []));
         % === EXPORT TO MATLAB ===
-        gui_component('MenuItem', jMenuSave, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable'), []);
+        gui_component('MenuItem', jMenuSave, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@out_figure_timefreq, hFig, 'Variable'));
     
     % ==== MENU: FIGURE ====    
-    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL, [], [], []);
+    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
         % Change background color
-        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig), []);
+        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
         jMenuFigure.addSeparator();
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
         jItem.setSelected(isMatlabCtrl);
         % Show plot edit toolbar
         isPlotEditToolbar = getappdata(hFig, 'isPlotEditToolbar');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig));
         jItem.setSelected(isPlotEditToolbar);
         % Dock figure
         isDocked = strcmpi(get(hFig, 'WindowStyle'), 'docked');
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked), []);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked));
         jItem.setSelected(isDocked);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, KeyEvent.CTRL_MASK)); 
         % Clone figure
         jMenuFigure.addSeparator();
-        gui_component('MenuItem', jMenuFigure, [], 'Clone figure', IconLoader.ICON_COPY, [], @(h,ev)bst_figures('CloneFigure', hFig), []);
+        gui_component('MenuItem', jMenuFigure, [], 'Clone figure', IconLoader.ICON_COPY, [], @(h,ev)bst_figures('CloneFigure', hFig));
     % Display Popup menu
     gui_popup(jPopup, hFig);
 end
@@ -1174,12 +1174,12 @@ function PlotTimefreqSurfHigh(hAxes, Time, Freqs, TF, TFmask)
     [X1,Y1] = meshgrid(Time, linspace(d, 1-d, length(Y)-1));
     [X2,Y2] = meshgrid(linspace(TimeBounds(1), TimeBounds(2), res(1)), linspace(0, 1, res(2)));
     % Re-interpolate for high-resolution display: one value per pixel
-    TFhi = interp2(X1, Y1, TF, X2, Y2, 'spline');
+    TFhi = interp2(X1, Y1, TF, X2, Y2, 'linear');
     
     % If there are lots of strictly 0 values (thresholded stat): Enforce the zero values
     zeroMask = (TF == 0);
     if (nnz(zeroMask) > 0.10*numel(TF)) && (nnz(zeroMask) < numel(TF))
-        zeroMaskHi = interp2(X1, Y1, double(zeroMask), X2, Y2, 'spline');
+        zeroMaskHi = interp2(X1, Y1, double(zeroMask), X2, Y2, 'linear');
         TFhi(zeroMaskHi > 0.8) = 0;
     end
     
@@ -1484,7 +1484,11 @@ function ImageClicked_Callback(hFig, FileName, RowName)
             Function = [];
         end
         % View separate sensor
-        view_timefreq(FileName, 'SingleSensor', RowName, [], Function);
+        hFigNew = view_timefreq(FileName, 'SingleSensor', RowName, [], Function);
+        % Set smooth display
+        if TfInfo.HighResolution
+            panel_display('SetSmoothDisplay', TfInfo.HighResolution, hFigNew);
+        end
     end
 end
 

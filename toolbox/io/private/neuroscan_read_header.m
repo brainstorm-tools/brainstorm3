@@ -3,10 +3,6 @@ function sHeader = neuroscan_read_header(NeuroscanFile, fileFormat, isEvents)
 %
 % USAGE:  sHeader = neuroscan_read_header(NeuroscanFile, fileFormat)  : Full path to a Neuroscan file
 %         sHeader = neuroscan_read_header(..., isEvents)              : {0,1}, if 1 read the events structure
-%
-% NOTE: Based on functions from:
-%     - The Bioelectromagnetism toolbox (GNU): eeg_load_scan4*.m
-%     - EEGLAB (GNU): loadcnt.m
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -26,7 +22,10 @@ function sHeader = neuroscan_read_header(NeuroscanFile, fileFormat, isEvents)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009
+% Authors: This function is based on code from:
+%          - The Bioelectromagnetism toolbox: eeg_load_scan4*.m
+%          - EEGLAB: loadcnt.m
+%          Francois Tadel, Adaptation for Brainstorm, 2009-2017
 
 %% ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(fileFormat)
@@ -265,7 +264,6 @@ for n = 1:h.nchannels
     e(n).physicalchnl   = fread(fid,1,'uchar');
     e(n).rectify        = fread(fid,1,'char');
     e(n).calib          = fread(fid,1,'float');
-%     disp(sprintf('#%02d: %s', n, char(e(n).lab')))
 end
 h.datapos = ftell(fid);
 
@@ -276,22 +274,32 @@ EVT_offset = (double(h.prevfile) * (2^32)) + double(h.eventtablepos);
 % Try to find something better: depends on the data format
 switch lower(fileFormat)
     case 'cnt'
+        % Estimate data format
         nbVal = h.nchannels * h.numsamples;
         nbPos = EVT_offset - h.datapos;
         h.bytes_per_samp = nbPos / nbVal;
-        switch (h.bytes_per_samp)
-            case 2
-                h.dataformat = 'int16';
-            case 4
-                h.dataformat = 'int32';
-            otherwise
+        % If this method doesn't work
+        if ~ismember(h.bytes_per_samp, [2,4])
+            if (h.nextfile > 0)
+                fseek(fid,h.nextfile + 52,'bof');
+                is32bit = fread(fid,1,'char');
+                if (is32bit == 1)
+                    h.bytes_per_samp = 4;
+                else
+                    h.bytes_per_samp = 2;
+                end
+            else
                 % By default: 32bits
-                h.dataformat = 'int32';
                 h.bytes_per_samp = 4;
-                % Recompute the number of available samples
-                h.numsamples = floor((EVT_offset - h.datapos) / h.bytes_per_samp / h.nchannels);
                 % Display warning in the command window
-                warning(['Wrong number of samples in the header or unknown file format. Assuming file is in ' h.dataformat '...']);
+                warning('Wrong number of samples in the header or unknown file format... Assuming file in int32.');
+            end
+            % Recompute the number of available samples
+            h.numsamples = floor((EVT_offset - h.datapos) / h.bytes_per_samp / h.nchannels);
+        end
+        switch (h.bytes_per_samp)
+            case 2,  h.dataformat = 'int16';
+            case 4,  h.dataformat = 'int32';
         end
     case 'avg'
         h.bytes_per_samp = 2;

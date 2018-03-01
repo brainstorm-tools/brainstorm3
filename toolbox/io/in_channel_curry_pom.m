@@ -35,6 +35,7 @@ end
 iChannel = 1;
 curBlock = '';
 ChannelMat = db_template('channelmat');
+ChannelMat.Channel = db_template('channeldesc');
 ChannelMat.Comment = 'Curry pom';
 
 % Read file line by line
@@ -71,6 +72,9 @@ while 1
                 ChannelMat.Channel(iChannel).Orient  = [];
                 ChannelMat.Channel(iChannel).Comment = '';
                 ChannelMat.Channel(iChannel).Weight  = 1;
+                if isempty(ChannelMat.Channel(iChannel).Name)
+                    ChannelMat.Channel(iChannel).Name = sprintf('e%03d', iChannel);
+                end
                 iChannel = iChannel + 1;
         end
     end

@@ -35,7 +35,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     import javax.swing.*;
     % Create tools panel
     jPanelNew = gui_component('Panel');
-    jPanelNew.setPreferredSize(Dimension(400, 300));
+    jPanelNew.setPreferredSize(java_scaled('dimension', 400, 300));
     
     % Text editor
     jText = JTextArea(6, 12);

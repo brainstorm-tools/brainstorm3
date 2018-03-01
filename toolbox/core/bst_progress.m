@@ -58,7 +58,7 @@ end
 
 %% ===== GET OR CREATE PROGRESS BAR =====
 % Do nothing in case of server mode
-if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && GlobalData.Program.isServer
+if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Program, 'GuiLevel') && (GlobalData.Program.GuiLevel == -1)
     if ismember(lower(commandName), {'pos','isvisible'})
         pBar = 0;
     else
@@ -67,7 +67,7 @@ if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && GlobalData.Program.is
     return;
 end
 % If running in NOGUI mode: just display the message in the command window
-if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && ~GlobalData.Program.isGUI
+if ~bst_get('isGUI')
     switch lower(commandName)
         case 'start',     disp(['PROGRESS> ' varargin{2} ': ' varargin{3}]); pBar = [];
         case 'text',      disp(['PROGRESS> ' varargin{2}]); pBar = [];
@@ -89,7 +89,10 @@ if isempty(jBstFrame)
 end
 
 % Default window size
-DefaultSize = Dimension(350, 130);
+if isempty(pBar) || strcmpi(commandName, 'removeimage') || (strcmpi(commandName, 'stop') && pBar.isImage)
+    DefaultSize = java_scaled('dimension', 350, 130);
+end
+
 % If progress bar was not created yet : create it
 if isempty(pBar)
     % If action=isvisible: no need to create the progress bar
@@ -127,8 +130,10 @@ if isempty(pBar)
     pBar.jPanel.setLayout(java_create('java.awt.GridBagLayout'));
 
     % Create objects
+    pBar.isImage = 0;
     pBar.jImage = java_create('javax.swing.JLabel');
     pBar.jLabel = java_create('javax.swing.JLabel', 'Ljava.lang.String;', '...');
+    pBar.jLabel.setFont(bst_get('Font'));
     pBar.jProgressBar = java_create('javax.swing.JProgressBar', 'II', 0, 99);
     % Update constraints
     UpdateConstraints(0);
@@ -161,9 +166,9 @@ switch (lower(commandName))
     % ==== START ====
     case 'start'
         % Set as "always on top"
-        pBar.jWindow.setAlwaysOnTop(1);
-        pBar.jWindow.setFocusable(0);
-        pBar.jWindow.setFocusableWindowState(0);
+        java_call(pBar.jWindow, 'setAlwaysOnTop', 'Z', 1);
+        java_call(pBar.jWindow, 'setFocusable',   'Z', 0);
+        java_call(pBar.jWindow, 'setFocusableWindowState', 'Z', 0);
         % Call: bst_progress(''start'', title, msg)
         if (nargin == 3) && ischar(varargin{3}) && ischar(varargin{2})
             % Get window title and comment
@@ -218,15 +223,16 @@ switch (lower(commandName))
     % ==== STOP ====
     case 'stop'
         % Remove the "always on top" status
-        pBar.jWindow.setAlwaysOnTop(0);
-        pBar.jWindow.setFocusable(1);
-        pBar.jWindow.setFocusableWindowState(1);
+        java_call(pBar.jWindow, 'setAlwaysOnTop', 'Z', 0);
+        java_call(pBar.jWindow, 'setFocusable',   'Z', 1);
+        java_call(pBar.jWindow, 'setFocusableWindowState', 'Z', 1);
         % Hide window
         java_call(pBar.jWindow, 'setVisible', 'Z', 0);
         % Restore cursor
         jBstFrame.setCursor([]);
         % Remove image
-        if ~isempty(pBar.jImage.getIcon())
+        if pBar.isImage
+            GlobalData.Program.ProgressBar.isImage = 0;
             pBar.jImage.setIcon([]);
             java_setcb(pBar.jImage, 'MouseClickedCallback', []);
             UpdateConstraints(0);
@@ -287,9 +293,9 @@ switch (lower(commandName))
     % ==== SHOW ====
     case 'show'
         % Set as "always on top"
-        pBar.jWindow.setAlwaysOnTop(1);
-        pBar.jWindow.setFocusable(0);
-        pBar.jWindow.setFocusableWindowState(0);
+        java_call(pBar.jWindow, 'setAlwaysOnTop', 'Z', 1);
+        java_call(pBar.jWindow, 'setFocusable',   'Z', 0);
+        java_call(pBar.jWindow, 'setFocusableWindowState', 'Z', 0);
         % Show window
         java_call(pBar.jWindow, 'setVisible', 'Z', 1);
         % Set watch cursor
@@ -298,9 +304,9 @@ switch (lower(commandName))
     % ==== HIDE ====
     case 'hide'
         % Remove the "always on top" status
-        pBar.jWindow.setAlwaysOnTop(0);
-        pBar.jWindow.setFocusable(1);
-        pBar.jWindow.setFocusableWindowState(1);
+        java_call(pBar.jWindow, 'setAlwaysOnTop', 'Z', 0);
+        java_call(pBar.jWindow, 'setFocusable',   'Z', 1);
+        java_call(pBar.jWindow, 'setFocusableWindowState', 'Z', 1);
         % Hide window
         java_call(pBar.jWindow, 'setVisible', 'Z', 0);
         % Restore cursor
@@ -319,6 +325,7 @@ switch (lower(commandName))
         end
         % Image in label
         pBar.jImage.setIcon(javax.swing.ImageIcon(imagefile));
+        GlobalData.Program.ProgressBar.isImage = 1;
         % Extend size of the frame
         UpdateConstraints(1);
         pBar.jWindow.setPreferredSize([]);
@@ -332,6 +339,7 @@ switch (lower(commandName))
     % ==== REMOVE IMAGE ====
     case 'removeimage'
         % Remove image
+        GlobalData.Program.ProgressBar.isImage = 0;
         pBar.jImage.setIcon([]);
         java_setcb(pBar.jImage, 'MouseClickedCallback', []);
         UpdateConstraints(0);

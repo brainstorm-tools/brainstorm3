@@ -323,6 +323,7 @@ end
 % Display time-frequency nodes
 for i = 1:length(sStudy.Timefreq)
     Modifier = 0;
+    nodeParent = [];
     % If stand-alone file (not associated with a data file) => DISPLAY
     if isempty(sStudy.Timefreq(i).DataFile)
         % Add node to study node

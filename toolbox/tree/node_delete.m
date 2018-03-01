@@ -355,7 +355,7 @@ switch (lower(nodeType{1}))
                     % Remove delete trials
                     fPath = bst_fileparts(sStudy.FileName);
                     badFiles = cellfun(@(c)bst_fullfile(fPath, c), StudyMat.BadTrials, 'UniformOutput', 0);
-                    iDel = find(ismember(badFiles, sStudy.Data(iDataDel(iBad)).FileName));
+                    iDel = find(ismember(badFiles, {sStudy.Data(iDataDel(iBad)).FileName}));
                     StudyMat.BadTrials(iDel) = [];
                     % Save list of bad trials in the study file
                     bst_save(StudyFile, StudyMat, 'v7');

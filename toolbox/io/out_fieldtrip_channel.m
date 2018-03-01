@@ -50,7 +50,7 @@ iEeg = channel_find(ChannelMat.Channel, 'EEG,SEEG,ECOG');
 iMeg = channel_find(ChannelMat.Channel, 'MEG');
 iRef = channel_find(ChannelMat.Channel, 'MEG REF');
 if isIncludeRef
-    iMegAll = [iRef, iMeg];
+    iMegAll = [iMeg, iRef];
 else
     iMegAll = iMeg;
 end
@@ -92,7 +92,7 @@ if ~isempty(iMeg)
     chantype = cell(1,length(iMegAll));
     for i = 1:length(iMegAll)
         switch (ChannelMat.Channel(iMegAll(i)).Type)
-            case 'MEG',
+            case 'MEG'
                 chantype{i} = 'megaxial';
             case 'MEG MAG'
                 chantype{i} = 'megmag';

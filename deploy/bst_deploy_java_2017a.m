@@ -37,7 +37,7 @@ function bst_deploy_java_2017a(IS_BIN)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2015
+% Authors: Francois Tadel, 2011-2017
 
 
 %% ===== PARSE INPUTS =====

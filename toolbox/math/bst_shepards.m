@@ -62,6 +62,10 @@ end
 % Allocate interpolation matrix
 nDest = size(destLoc,1);
 nSrc  = size(srcLoc,1);
+% Maximum number of neighbors = number of electrodes
+if (nbNeighbors > nSrc)
+    nbNeighbors = nSrc;
+end
 
 % Find nearest neighbors
 [I,dist] = bst_nearest(srcLoc, destLoc, nbNeighbors, 1);

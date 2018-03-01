@@ -42,21 +42,17 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % Create 9 text boxes
     jText = javaArray('javax.swing.JTextField', 9);
     for i = 1:9
-        gui_component('label', jPanelShort, 'br', sprintf('Shortcut %d: ', i), [], [], [], []);
-        jText(i) = gui_component('text', jPanelShort, 'tab hfill', RawViewerOptions.Shortcuts{i,2}, {Dimension(120,22)}, [], [], []);
+        gui_component('label', jPanelShort, 'br', sprintf('Shortcut %d: ', i));
+        jText(i) = gui_component('text', jPanelShort, 'tab hfill', RawViewerOptions.Shortcuts{i,2}, {java_scaled('dimension', 120,22)});
     end
     jPanelNew.add(jPanelShort, BorderLayout.CENTER);
     
     % PANEL: Selections buttons
     jPanelValidation = gui_river([10 0], [10 10 0 10]);
         % Cancel
-        jButtonCancel = JButton('Cancel');
-        java_setcb(jButtonCancel, 'ActionPerformedCallback', @ButtonCancel_Callback);
-        jPanelValidation.add('br right', jButtonCancel);
+        gui_component('button', jPanelValidation, 'br right', 'Cancel', [], [], @ButtonCancel_Callback);
         % Save
-        jButtonSave = JButton('Save');
-        java_setcb(jButtonSave, 'ActionPerformedCallback', @ButtonSave_Callback);
-        jPanelValidation.add(jButtonSave);
+        gui_component('button', jPanelValidation, '', 'Save', [], [], @ButtonSave_Callback);
     jPanelNew.add(jPanelValidation, BorderLayout.SOUTH);
 
     % Create the BstPanel object that is returned by the function

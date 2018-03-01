@@ -74,13 +74,13 @@ else
 end
 % Get default url
 switch(osType)
-    case 'linux32',  url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-Linux32.i386-gcc-4.3.2-static.tar.gz';
-    case 'linux64',  url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-Linux64.amd64-gcc-4.3.2-OpenMP-static.tar.gz';
-    case 'mac32',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-MacOSX-Intel-gcc-4.2.1-static.tar.gz';
-    case 'mac64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-MacOSX-Intel-gcc-4.2.1-static.tar.gz';
+    case 'linux32',  url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-Linux32.i386-gcc-4.3.2-static.tar.gz';
+    case 'linux64',  url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-Linux64.amd64-gcc-4.3.2-OpenMP-static.tar.gz';
+    case 'mac32',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-MacOSX-Intel-gcc-4.2.1-static.tar.gz';
+    case 'mac64',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-MacOSX-Intel-gcc-4.2.1-static.tar.gz';
     case 'sol64',    error('Solaris system is not supported');
-    case 'win32',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
-    case 'win64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.2.0-win64-x86_64-cl-OpenMP-shared.tar.gz';
+    case 'win32',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
+    case 'win64',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win64-x86_64-cl-OpenMP-shared.tar.gz';
     otherwise,       error('OpenMEEG software does not exist for your operating system.');
 end
 % Read the previous download url information
@@ -198,6 +198,11 @@ isEeg  = strcmpi(OPTIONS.EEGMethod, 'openmeeg')  && ~isempty(OPTIONS.iEeg);
 isMeg  = strcmpi(OPTIONS.MEGMethod, 'openmeeg')  && ~isempty(OPTIONS.iMeg);
 isEcog = strcmpi(OPTIONS.ECOGMethod, 'openmeeg') && ~isempty(OPTIONS.iEcog);
 isSeeg = strcmpi(OPTIONS.SEEGMethod, 'openmeeg') && ~isempty(OPTIONS.iSeeg);
+% SEEG and adjoint incompatible
+if isSeeg && OPTIONS.isAdjoint
+    errMsg = 'The option "Use adjoint formulation" is not available for SEEG sensors yet.';
+    return;
+end
 % Get temp folder
 TmpDir = bst_get('BrainstormTmpDir');
 % Open log file
@@ -246,48 +251,54 @@ dipdata = [kron(OPTIONS.GridLoc,ones(3,1)), kron(ones(nv,1), eye(3))];
 save(dipfile, 'dipdata', '-ASCII', '-double');  
 % Go to openmeeg folder
 cd(OpenmeegDir);
-%system(['cd "' OpenmeegDir '"']);
 
 
 %% ===== GET EXISTING HM FILE =====
-% Compute signature of current combination of files
-sig = [num2str(OPTIONS.isAdjoint), sprintf('_%1.07f',OPTIONS.BemCond)];
-for i = 1:length(OPTIONS.BemFiles)
-    fileinfo = dir(OPTIONS.BemFiles{i});
-    sig = [sig '_' fileinfo.name '_' num2str(nVert(i)), '_' num2str(nFaces(i))];
-end
-% Inner skull file
-InnerSkullFile = OPTIONS.BemFiles{end};
-% Load file
-warning off
-TessMat = load(InnerSkullFile, 'OpenMEEG');
-warning on
-% If HM-FILE file already exists and signature matches
-hminvfile = '';
-hmfile = '';
-if isfield(TessMat, 'OpenMEEG') && ~isempty(TessMat.OpenMEEG) && isfield(TessMat.OpenMEEG, 'HmFile') && ~isempty(TessMat.OpenMEEG.HmFile) && isequal(TessMat.OpenMEEG.Signature, sig)
-    tmpfile = bst_fullfile(bst_fileparts(InnerSkullFile), TessMat.OpenMEEG.HmFile);
-    if file_exist(tmpfile)
-        if OPTIONS.isAdjoint 
-            hmfile = tmpfile;
-        else
-            hminvfile = tmpfile;
-        end
-    end
-end
+% % % TEMPORARY STORAGE OF HM FILE IS DISABLED TO ALLOW UPGRADE OF OPENMEEG
+% % % % Compute signature of current combination of files
+% % % sig = [num2str(OPTIONS.isAdjoint), sprintf('_%1.07f',OPTIONS.BemCond)];
+% % % for i = 1:length(OPTIONS.BemFiles)
+% % %     fileinfo = dir(OPTIONS.BemFiles{i});
+% % %     sig = [sig '_' fileinfo.name '_' num2str(nVert(i)), '_' num2str(nFaces(i))];
+% % % end
+% % % 
+% % % % Inner skull file
+% % % InnerSkullFile = OPTIONS.BemFiles{end};
+% % % % Load file
+% % % warning off
+% % % TessMat = load(InnerSkullFile, 'OpenMEEG');
+% % % warning on
+% % % % If HM-FILE file already exists and signature matches
+% % % hminvfile = '';
+% % % hmfile = '';
+% % % if isfield(TessMat, 'OpenMEEG') && ~isempty(TessMat.OpenMEEG) && isfield(TessMat.OpenMEEG, 'HmFile') && ~isempty(TessMat.OpenMEEG.HmFile) && isequal(TessMat.OpenMEEG.Signature, sig)
+% % %     tmpfile = bst_fullfile(bst_fileparts(InnerSkullFile), TessMat.OpenMEEG.HmFile);
+% % %     if file_exist(tmpfile)
+% % %         if OPTIONS.isAdjoint 
+% % %             hmfile = tmpfile;
+% % %         else
+% % %             hminvfile = tmpfile;
+% % %         end
+% % %     end
+% % % end
+
+% % % REPLACED WITH HARD CODED HMINV FILES
+hmfile    = bst_fullfile(TmpDir, 'openmeeg_hm.mat');
+hminvfile = bst_fullfile(TmpDir, 'openmeeg_hminv.mat');
+
 
 
 %% ===== COMPUTE HM-INV FILE =====
-if isempty(hminvfile) && isempty(hmfile)
-    % Filenames
-    if OPTIONS.isAdjoint
-        hmfile = strrep(InnerSkullFile, '.mat', '_openmeeg.mat');
-        [tmp__, fBase, fExt] = bst_fileparts(hmfile);
-    else
-        hmfile = bst_fullfile(TmpDir, 'openmeeg_hm.mat');
-        hminvfile = strrep(InnerSkullFile, '.mat', '_openmeeg.mat');
-        [tmp__, fBase, fExt] = bst_fileparts(hminvfile);
-    end
+% % % if isempty(hminvfile) && isempty(hmfile)
+% % %     % Filenames
+% % %     if OPTIONS.isAdjoint
+% % %         hmfile = strrep(InnerSkullFile, '.mat', '_openmeeg.mat');
+% % %         [tmp__, fBase, fExt] = bst_fileparts(hmfile);
+% % %     else
+% % %         hmfile = bst_fullfile(TmpDir, 'openmeeg_hm.mat');
+% % %         hminvfile = strrep(InnerSkullFile, '.mat', '_openmeeg.mat');
+% % %         [tmp__, fBase, fExt] = bst_fileparts(hminvfile);
+% % %     end
     % === BUILD HM FILE ===
     % Build HM file
     if ~om_call('om_assemble -HM', ['"' geomfile '" "' condfile '"'], hmfile, 'Assembling head matrix...')
@@ -299,14 +310,14 @@ if isempty(hminvfile) && isempty(hmfile)
             return;
         end
     end
-    % === ADD REFERENCE IN INNER SKULL ===
-    % Build reference structure
-    OpenMEEG.HmFile = [fBase, fExt];
-    OpenMEEG.Signature = sig;
-    % Add it to inner skull file
-    s.OpenMEEG = OpenMEEG;
-    bst_save(InnerSkullFile, s, 'v7', 1);
-end
+% % %     % === ADD REFERENCE IN INNER SKULL ===
+% % %     % Build reference structure
+% % %     OpenMEEG.HmFile = [fBase, fExt];
+% % %     OpenMEEG.Signature = sig;
+% % %     % Add it to inner skull file
+% % %     s.OpenMEEG = OpenMEEG;
+% % %     bst_save(InnerSkullFile, s, 'v7', 1);
+% % % end
 
 
 %% ===== COMPUTE DSM =====
@@ -419,7 +430,7 @@ if isEcog
     if  OPTIONS.isAdjoint
         res = om_call('om_gain -EEGadjoint', ['"' geomfile '" "' condfile '" "' dipfile '" "' hmfile '" "' h2ecogmfile '"'], ecoggain_file, 'Assembling ECOG leadfield...');
     else
-        res = om_call('om_gain -EEG', ['"' hminvfile '" "' dsmfile '" "' h2ecogmfile '"'], eeggain_file, 'Assembling ECOG leadfield...');
+        res = om_call('om_gain -EEG', ['"' hminvfile '" "' dsmfile '" "' h2ecogmfile '"'], ecoggain_file, 'Assembling ECOG leadfield...');
     end
     if ~res
         return
@@ -482,7 +493,6 @@ bst_progress('removeimage');
         bst_progress('text', ['OpenMEEG: ' strProgress]);
         % System call
         strCall = [omFunc ' ' omInput ' "' omOutput '"'];
-disp(strCall)
         [status, result] = bst_system(strCall);
         % Append to log file file
         if ~isempty(fid_log) && (fid_log >= 0) && ~isempty(fopen(fid_log))

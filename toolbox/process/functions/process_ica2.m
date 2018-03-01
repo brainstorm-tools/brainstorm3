@@ -22,7 +22,7 @@ function varargout = process_ica2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2017
 
 eval(macro_method);
 end
@@ -59,6 +59,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.eventtime.Type    = 'range';
     sProcess.options.eventtime.Value   = {[-.200, .200], 'ms', []};
     sProcess.options.eventtime.InputTypes = {'raw'};
+    % Resample
+    sProcess.options.resample.Comment = 'Resample input signals (0=disable): ';
+    sProcess.options.resample.Type    = 'value';
+    sProcess.options.resample.Value   = {0, 'Hz', 2};
     % Band-pass filter
     sProcess.options.bandpass.Comment = 'Frequency band (0=ignore): ';
     sProcess.options.bandpass.Type    = 'range';

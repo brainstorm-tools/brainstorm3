@@ -21,7 +21,7 @@ function MRI = in_mri_mnc(MriFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013
+% Authors: Francois Tadel, 2013; Martin Cousineau, 2017
 
 % ===== DETECT FORMAT =====
 % Open file
@@ -44,21 +44,33 @@ fclose(fid);
 % ===== METHOD 1: MOMINC =====
 % Read MINC1 volume
 if strcmpi(format, 'minc1')
-    disp([10 'MINC> Reading MINC1 file (NetCDF).']);
-    [hdr,Cube] = minc_read(MriFile);
+    format_name = 'NetCDF';
 else
-    %error('MINC2 format not supported yet...');
-    disp([10 'MINC> Reading MINC2 file (HDF5).']);
-    [hdr,Cube] = minc_read(MriFile);
+    format_name = 'HDF5';
 end
 
-% % Flip volume if necessary
-% step = [minc_variable(hdr, 'xspace', 'step'), minc_variable(hdr, 'yspace', 'step'), minc_variable(hdr, 'zspace', 'step')];
-% if (length(step) == 3)
-%     if (step(1) < 0)
-%         
-%     end
-% end
+disp([10 'MINC> Reading ' upper(format) ' file (' format_name ').']);
+[hdr,Cube] = minc_read(MriFile);
+spaces = {'xspace', 'yspace', 'zspace'};
+
+% Make sure dimensions are in the right order
+iSpaces = zeros(1,3);
+for i=1:3
+    iSpaces(i) = find(strcmpi(hdr.info.dimension_order, spaces{i}));
+end
+Cube = permute(Cube, iSpaces);
+
+% Flip volume if negative step
+n = size(Cube);
+for i=1:3
+    [keys, step] = minc_variable_fixed(hdr, spaces{i}, 'step');
+    if step < 0
+        Cube = flip(Cube, i);
+        hdr = setfield(hdr, keys{1:end}, {abs(step)});
+        hdr.info.mat(i,i) = abs(step);
+        hdr.info.mat(i,4) = (n(i) - 1) * step + hdr.info.mat(i,4);
+    end
+end
 
 % Create Brainstorm structure
 MRI = db_template('mrimat');
@@ -100,5 +112,48 @@ MRI.Header  = hdr;
 %     return
 % end
 
+function [keys,val] = minc_variable_fixed(hdr,var_name,att_name)
+% Fixed version of MOMINC's minc_variable supporting attribute names with
+% prefixes. Also returns a list of keys to access val in hdr.
 
-        
+hdr = hdr.details;
+list_var = {hdr.variables(:).name}; 
+keys = {'details', 'variables'};
+
+if nargin == 1
+    val = list_var;
+    keys{3} = {':'};
+    keys{4} = {'name'};
+    return
+end
+
+ind = find(ismember(list_var,var_name));
+if isempty(ind)
+    error('Could not find variable %s in HDR',var_name)
+end
+
+ind = ind(1);
+varminc = hdr.variables(ind);
+list_att = varminc.attributes;
+keys{3} = {ind};
+
+if nargin == 2
+    val = list_att;
+    keys{4} = 'attributes';
+    return
+end
+
+% Find exact attribute name or at least a unique one with the name suffixed
+if sum(ismember(list_att, att_name))
+    ind2 = find(ismember(list_att, att_name));
+elseif sum(~cellfun(@isempty, regexp(list_att, ['/' att_name '$']))) == 1
+    ind2 = find(~cellfun(@isempty, regexp(list_att, ['/' att_name '$'])));
+else
+    error('Could not find attribute %s in variable %s',att_name,var_name)
+end
+
+val = varminc.values{ind2};
+keys{4} = 'values';
+keys{5} = {ind2};
+
+

@@ -19,7 +19,7 @@ function varargout = process_import_channel( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2017
 
 eval(macro_method);
 end
@@ -74,6 +74,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.channelalign.Comment = 'Align sensors using headpoints';
     sProcess.options.channelalign.Type    = 'checkbox';
     sProcess.options.channelalign.Value   = 1;
+    % Fix units
+    sProcess.options.fixunits.Comment = 'Fix distance units automatically';
+    sProcess.options.fixunits.Type    = 'checkbox';
+    sProcess.options.fixunits.Value   = 1;
+    % Fix units
+    sProcess.options.vox2ras.Comment = 'Apply voxel=>subject transformation from the MRI';
+    sProcess.options.vox2ras.Type    = 'checkbox';
+    sProcess.options.vox2ras.Value   = 1;
 end
 
 
@@ -129,9 +137,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     iChanStudies = unique(iChanStudies);
     % Channel align
     ChannelAlign = 2 * double(sProcess.options.channelalign.Value);
+    % Other options
+    if isfield(sProcess.options, 'fixunits') && isfield(sProcess.options.fixunits, 'Value')
+        isFixUnits = sProcess.options.fixunits.Value;
+    else
+        isFixUnits = 1;
+    end
+    if isfield(sProcess.options, 'vox2ras') && isfield(sProcess.options.vox2ras, 'Value')
+        isApplyVox2ras = sProcess.options.vox2ras.Value;
+    else
+        isApplyVox2ras = 1;
+    end
     % Import channel files
     ChannelReplace = 2;
-    import_channel(iChanStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign);
+    isSave = 1;
+    import_channel(iChanStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras);
     % Return all the files in input
     OutputFiles = {sInputs.FileName};
 end

@@ -43,7 +43,14 @@ if ~isempty(LocChannelFile)
     end
 % Import positions from external file
 else
-    LocChannelMat = import_channel(iStudies, [], [], 0, 0, 0);
+    if isInteractive
+        isFixUnits = [];
+        isApplyVox2ras = [];
+    else
+        isFixUnits = 0;
+        isApplyVox2ras = 1;
+    end
+    LocChannelMat = import_channel(iStudies, [], [], 0, 0, 0, isFixUnits, isApplyVox2ras);
 end
 % Nothing loaded: exit
 if isempty(LocChannelMat)

@@ -26,7 +26,7 @@ function varargout = panel_display(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -49,6 +49,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelSelect.setVisible(0);
         % Combobox: list of the available rows of data
         jComboRows = JComboBox();
+        jComboRows.setFont(bst_get('Font'));
         java_setcb(jComboRows, 'ItemStateChangedCallback', @ComboRowsStateChange_Callback);
         jPanelSelect.add('hfill', jComboRows);
         % Checkbox: Hide edge effects / Resolution
@@ -84,10 +85,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jSliderThreshold = JSlider(0, 100, 0);
         java_setcb(jSliderThreshold, 'MouseReleasedCallback', @SliderConnect_Callback, ...
                                      'KeyPressedCallback',    @SliderConnect_Callback);
-        jSliderThreshold.setPreferredSize(Dimension(130, 22));
+        jSliderThreshold.setPreferredSize(java_scaled('dimension', 130, 22));
         jPanelThreshold.add('hfill', jSliderThreshold);
         % Threshold label
-        jLabelConnectThresh = gui_component('label', jPanelThreshold, [], '0.00 ', {JLabel.LEFT, Dimension(40, 22)});
+        jLabelConnectThresh = gui_component('label', jPanelThreshold, [], '0.00 ', {JLabel.LEFT, java_scaled('dimension', 40, 22)});
         % Quick preview
         % java_setcb(jSliderThreshold, 'StateChangedCallback',  @(h,ev)jLabelConnectThresh.setText(sprintf('%1.2d', double(ev.getSource().getValue()))));
     jPanelNew.add(jPanelThreshold);
@@ -95,16 +96,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     %% ===== CONNECT: DISTANCE THRESHOLD =====
     jPanelDistance = gui_river([0,0], [2,2,2,2], 'Distance Filtering (0 - 150 mm)');
         % Minimum Distance title
-        jLabelMinimumDistance = gui_component('label', [], [], 'Min.', {JLabel.LEFT, Dimension(25, 22)});
+        jLabelMinimumDistance = gui_component('label', [], [], 'Min.', {JLabel.LEFT, java_scaled('dimension', 25, 22)});
         jPanelDistance.add('br', jLabelMinimumDistance);
         % Distance slider
         jSliderMinimumDistance = JSlider(0, 150, 0);
         java_setcb(jSliderMinimumDistance,  'MouseReleasedCallback', @SliderConnect_Callback, ...
                                             'KeyPressedCallback',    @SliderConnect_Callback);
-        jSliderMinimumDistance.setPreferredSize(Dimension(100, 22));
+        jSliderMinimumDistance.setPreferredSize(java_scaled('dimension', 100, 22));
         jPanelDistance.add('', jSliderMinimumDistance);
         % Distance Threshold label
-        jLabelConnectMinimumDistance = gui_component('label', [], [], '0 mm', {JLabel.RIGHT, Dimension(40, 22)});
+        jLabelConnectMinimumDistance = gui_component('label', [], [], '0 mm', {JLabel.RIGHT, java_scaled('dimension', 40, 22)});
         jPanelDistance.add('', jLabelConnectMinimumDistance);
         % Quick preview
         java_setcb(jSliderMinimumDistance, 'StateChangedCallback',  @(h,ev)jLabelConnectMinimumDistance.setText(sprintf('%d mm', double(ev.getSource().getValue()))));
@@ -589,6 +590,11 @@ function SetDisplayOptions(sOptions)
         end
         if ~strcmpi(TfInfo.Function, 'other')
             TfInfo.Function = sOptions.Function;
+            
+            % Remember option for spectrum figures.
+            if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
+                bst_set('LastPsdDisplayFunction', sOptions.Function);
+            end
         end
         TfInfo.HideEdgeEffects = sOptions.HideEdgeEffects;
         TfInfo.HighResolution  = sOptions.HighResolution;
@@ -672,6 +678,26 @@ function SetDisplayOptions(sOptions)
     end
     drawnow;
     bst_progress('stop');
+end
+
+
+%% ===== SET SMOOTH DISPLAY =====
+function SetSmoothDisplay(HighResolution, hFigs) %#ok<DEFNU>
+    % Get figures
+    if (nargin < 2) || isempty(hFigs)
+        [hFigs,iFig,iDS] = bst_figures('GetFiguresByType', 'timefreq');
+    end
+    % Update the display of all figures
+    for i = 1:length(hFigs)
+        % Update the figure configuration
+        TfInfo = getappdata(hFigs(i), 'Timefreq');
+        TfInfo.HighResolution = HighResolution;
+        setappdata(hFigs(i), 'Timefreq', TfInfo);
+        % Update display
+        figure_timefreq('UpdateFigurePlot', hFigs(i));
+    end
+    % Update panel
+    UpdatePanel(hFigs(end));
 end
 
 

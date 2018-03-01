@@ -23,7 +23,7 @@ function varargout = panel_timefreq_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2017
 
 eval(macro_method);
 end
@@ -131,19 +131,19 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jPanelNew = gui_river();
     
     % ===== COMMENT =====
-                   gui_component('label', jPanelNew, [], 'Comment:  ', [], [], [], []);
-    jTextComment = gui_component('text', jPanelNew, 'hfill', ' ', [], [], [], []);
+                   gui_component('label', jPanelNew, [], 'Comment:  ');
+    jTextComment = gui_component('text', jPanelNew, 'hfill', ' ');
     
     % ===== TIME PANEL =====
     jPanelTime = gui_river([2,2], [0,10,15,10], 'Time definition');
         % Radio: Time mode
         jButtonGroup = ButtonGroup();
-        jRadioTimeInput = gui_component('radio', jPanelTime, [],   'Same as input files', jButtonGroup, [], @UpdatePanel, []);
-        jLabelTimeInput = gui_component('label', jPanelTime, 'br', strTimeInput,          [], [], [], []);
-        jRadioTimeBands = gui_component('radio', jPanelTime, 'br', 'Group in time bands (ms)', jButtonGroup, [], @UpdatePanel, []);
+        jRadioTimeInput = gui_component('radio', jPanelTime, [],   'Same as input files', jButtonGroup, [], @UpdatePanel);
+        jLabelTimeInput = gui_component('label', jPanelTime, 'br', strTimeInput);
+        jRadioTimeBands = gui_component('radio', jPanelTime, 'br', 'Group in time bands (ms)', jButtonGroup, [], @UpdatePanel);
         % Text: time bands
         strTimeBands = process_tf_bands('FormatBands', TimefreqOptions.TimeBands);
-        jTextTimeBands = gui_component('textfreq', jPanelTime, 'br hfill', strTimeBands, [], [], @UpdatePanel, []);
+        jTextTimeBands = gui_component('textfreq', jPanelTime, 'br hfill', strTimeBands, [], [], @UpdatePanel);
         if strcmpi(Method, 'morlet')
             jTextTimeBands.setRows(10);
         end
@@ -162,22 +162,22 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jButtonGroup = ButtonGroup();
         % Hilbert/FFT: Cannot specify the output frequency vector
         if strcmpi(Method, 'morlet')
-            jRadioFreqLinear = gui_component('radio', jPanelFreq, [],         'Linear (start:step:stop)',      jButtonGroup, [], @UpdatePanel, []);
-            jTextFreqLinear  = gui_component('text',  jPanelFreq, 'br hfill', TimefreqOptions.Freqs,           [],           [], @UpdatePanel, []);
-            jRadioFreqLog    = gui_component('radio', jPanelFreq, 'br',       'Log (start:N:stop)',            jButtonGroup, [], @UpdatePanel, []);
-            jTextFreqLog     = gui_component('text',  jPanelFreq, 'br hfill', TimefreqOptions.FreqsLog,        [],           [], @UpdatePanel, []);
-            jRadioFreqBands  = gui_component('radio', jPanelFreq, 'br',       'Group in frequency bands (Hz)', jButtonGroup, [], @UpdatePanel, []);
+            jRadioFreqLinear = gui_component('radio', jPanelFreq, [],         'Linear (start:step:stop)',      jButtonGroup, [], @UpdatePanel);
+            jTextFreqLinear  = gui_component('text',  jPanelFreq, 'br hfill', TimefreqOptions.Freqs,           [],           [], @UpdatePanel);
+            jRadioFreqLog    = gui_component('radio', jPanelFreq, 'br',       'Log (start:N:stop)',            jButtonGroup, [], @UpdatePanel);
+            jTextFreqLog     = gui_component('text',  jPanelFreq, 'br hfill', TimefreqOptions.FreqsLog,        [],           [], @UpdatePanel);
+            jRadioFreqBands  = gui_component('radio', jPanelFreq, 'br',       'Group in frequency bands (Hz)', jButtonGroup, [], @UpdatePanel);
         % TF: Setting the output vector
         elseif ismember(Method, {'fft', 'psd'}) || strcmpi(Method, 'hilbert')
-            jRadioFreqLinear = gui_component('radio', jPanelFreq, [],   'Matlab''s FFT defaults',        jButtonGroup, [], @UpdatePanel, []);
+            jRadioFreqLinear = gui_component('radio', jPanelFreq, [],   'Matlab''s FFT defaults',        jButtonGroup, [], @UpdatePanel);
             jTextFreqLinear  = [];
             jRadioFreqLog    = [];
             jTextFreqLog     = [];
-            jRadioFreqBands  = gui_component('radio', jPanelFreq, 'br', 'Group in frequency bands (Hz)', jButtonGroup, [], @UpdatePanel, []);
+            jRadioFreqBands  = gui_component('radio', jPanelFreq, 'br', 'Group in frequency bands (Hz)', jButtonGroup, [], @UpdatePanel);
         end
         % Text: freq bands
         strFreqBands = process_tf_bands('FormatBands', TimefreqOptions.FreqBands);
-        jTextFreqBands = gui_component('textfreq', jPanelFreq, 'br hfill', strFreqBands, [], [], @UpdatePanel, []);
+        jTextFreqBands = gui_component('textfreq', jPanelFreq, 'br hfill', strFreqBands, [], [], @UpdatePanel);
         % Button Reset
         jButtonFreqBands = gui_component('button', jPanelFreq, 'br', 'Reset', [], [], @ResetFreqBands);
         jButtonFreqBands.setMargin(Insets(0,3,0,3));
@@ -187,16 +187,16 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     if strcmpi(Method, 'morlet')
         jPanelWave= gui_river([2,2], [0,10,15,10], 'Morlet wavelet options');
         % Central frenquency
-                  gui_component('label',    jPanelWave, '', 'Central frequency: ', [], [], [], []);
-        jTextFc = gui_component('texttime', jPanelWave, 'tab', num2str(TimefreqOptions.MorletFc), [], [], [], []);
+                  gui_component('label',    jPanelWave, '', 'Central frequency: ');
+        jTextFc = gui_component('texttime', jPanelWave, 'tab', num2str(TimefreqOptions.MorletFc));
                   gui_component('label',    jPanelWave, '', 'Hz  (default=1)');
         java_setcb(jTextFc, 'ActionPerformedCallback', @DisplayTimeResolution);
         % Display wavelets
         gui_component('label',  jPanelWave, '', '      ');
         jButtonDisplay = gui_component('toggle', jPanelWave, '', 'Display', [], [], @DisplayTimeResolution);
         % Time resolution
-                  gui_component('label',    jPanelWave, 'br', 'Time resolution (FWHM):  ', [], [], [], []);
-        jTextTr = gui_component('texttime', jPanelWave, 'tab', num2str(TimefreqOptions.MorletFwhmTc), [], [], [], []);
+                  gui_component('label',    jPanelWave, 'br', 'Time resolution (FWHM):  ');
+        jTextTr = gui_component('texttime', jPanelWave, 'tab', num2str(TimefreqOptions.MorletFwhmTc));
                   gui_component('label',    jPanelWave, '', 's   (default=3)');
         jPanelNew.add('br hfill', jPanelWave);
         java_setcb(jTextTr, 'ActionPerformedCallback', @DisplayTimeResolution);
@@ -211,11 +211,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         if isSource && all(isKernel) && ismember(Method, {'morlet', 'hilbert'})
             % Cluster function
             jButtonGroup = ButtonGroup();
-                              gui_component('label', jPanelProc, 'p',  'Optimize the storage of the time-frequency files:', [], [], [], []);
-                              gui_component('label', jPanelProc, 'br', '     ', [], [], [], []);
-            jRadioKernelYes = gui_component('radio', jPanelProc, '',   ['Yes, save ' Method '(sensors) and inversion kernel'], jButtonGroup, [], @UpdatePanel, []);
-                              gui_component('label', jPanelProc, 'br', '     ', [], [], [], []);
-            jRadioKernelNo  = gui_component('radio', jPanelProc, '',   ['No, save full ' Method '(sources)'], jButtonGroup, [], @UpdatePanel, []);
+                              gui_component('label', jPanelProc, 'p',  'Optimize the storage of the time-frequency files:');
+                              gui_component('label', jPanelProc, 'br', '     ');
+            jRadioKernelYes = gui_component('radio', jPanelProc, '',   ['Yes, save ' Method '(sensors) and inversion kernel'], jButtonGroup, [], @UpdatePanel);
+                              gui_component('label', jPanelProc, 'br', '     ');
+            jRadioKernelNo  = gui_component('radio', jPanelProc, '',   ['No, save full ' Method '(sources)'], jButtonGroup, [], @UpdatePanel);
         else
             jRadioKernelYes = [];
             jRadioKernelNo = [];
@@ -233,11 +233,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         if isCluster && ~isClusterAll
             % Cluster function
             jButtonGroup = ButtonGroup();
-                                gui_component('label', jPanelProc, 'p',  [ClusterName ' function (' ScoutFunc '):'], [], [], [], []);
-                                gui_component('label', jPanelProc, 'br', '     ', [], [], [], []);
-            jRadioClustBefore = gui_component('radio', jPanelProc, '',   'Before: Apply function and then compute TF', jButtonGroup, [], @UpdatePanel, []);
-                                gui_component('label', jPanelProc, 'br', '     ', [], [], [], []);
-            jRadioClustAfter  = gui_component('radio', jPanelProc, '',   'After: Compute TF and then apply function', jButtonGroup, [], @UpdatePanel, []);
+                                gui_component('label', jPanelProc, 'p',  [ClusterName ' function (' ScoutFunc '):']);
+                                gui_component('label', jPanelProc, 'br', '     ');
+            jRadioClustBefore = gui_component('radio', jPanelProc, '',   'Before: Apply function and then compute TF', jButtonGroup, [], @UpdatePanel);
+                                gui_component('label', jPanelProc, 'br', '     ');
+            jRadioClustAfter  = gui_component('radio', jPanelProc, '',   'After: Compute TF and then apply function', jButtonGroup, [], @UpdatePanel);
             % Default: depends on the function selected
             if strcmpi(ScoutFunc, 'PCA') || strcmpi(ScoutFunc, 'FastPCA')
                 jRadioClustBefore.setSelected(1);
@@ -256,11 +256,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         if ~strcmpi(Method, 'psd')
             % Compute measure
             jButtonGroup = ButtonGroup();
-                            gui_component('label', jPanelProc, 'p',  'Compute the following measure:', [], [], [], []);
-                            gui_component('label', jPanelProc, 'br', '     ', [], [], [], []);
-            jRadioMeasPow = gui_component('radio', jPanelProc, '',   'Power', jButtonGroup, [], @UpdatePanel, []);
-            jRadioMeasMag = gui_component('radio', jPanelProc, '',   'Magnitude', jButtonGroup, [], @UpdatePanel, []);
-            jRadioMeasNon = gui_component('radio', jPanelProc, '',   'None (save complex values)', jButtonGroup, [], @UpdatePanel, []);
+                            gui_component('label', jPanelProc, 'p',  'Compute the following measure:');
+                            gui_component('label', jPanelProc, 'br', '     ');
+            jRadioMeasPow = gui_component('radio', jPanelProc, '',   'Power', jButtonGroup, [], @UpdatePanel);
+            jRadioMeasMag = gui_component('radio', jPanelProc, '',   'Magnitude', jButtonGroup, [], @UpdatePanel);
+            jRadioMeasNon = gui_component('radio', jPanelProc, '',   'None (save complex values)', jButtonGroup, [], @UpdatePanel);
         else
             jRadioMeasNon = [];
             jRadioMeasMag = [];
@@ -277,25 +277,25 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         % Compute average
         if ~isOneFile
             jButtonGroup = ButtonGroup();
-                           gui_component('label', jPanelProc, 'br', 'Output:', [], [], [], []);
-                           gui_component('label', jPanelProc, 'br', '     ', [], [], [], []);
-            jRadioOutAll = gui_component('radio', jPanelProc, '',   ['Save individual ' strMap ' (for each trial)'], jButtonGroup, [], @UpdatePanel, []);
-                           gui_component('label', jPanelProc, 'br', '     ', [], [], [], []);
-            jRadioOutAvg = gui_component('radio', jPanelProc, '',   ['Save average ' strMap ' (across trials)'], jButtonGroup, [], @UpdatePanel, []);
+                           gui_component('label', jPanelProc, 'br', 'Output:');
+                           gui_component('label', jPanelProc, 'br', '     ');
+            jRadioOutAll = gui_component('radio', jPanelProc, '',   ['Save individual ' strMap ' (for each trial)'], jButtonGroup, [], @UpdatePanel);
+                           gui_component('label', jPanelProc, 'br', '     ');
+            jRadioOutAvg = gui_component('radio', jPanelProc, '',   ['Save average ' strMap ' (across trials)'], jButtonGroup, [], @UpdatePanel);
         else
             jRadioOutAll = [];
             jRadioOutAvg = [];
         end
         % Remove evoked response
         if ~isOneFile && ismember(Method, {'morlet','hilbert'})
-            gui_component('label', jPanelProc, 'br', '     ', [], [], [], []);
-            jCheckEvoked = gui_component('checkbox', jPanelProc, '', 'Remove evoked response from each trial before computing TF', [], [], @UpdatePanel, []);
+            gui_component('label', jPanelProc, 'br', '     ');
+            jCheckEvoked = gui_component('checkbox', jPanelProc, '', 'Remove evoked response from each trial before computing TF', [], [], @UpdatePanel);
         else
             jCheckEvoked = [];
         end
         
         % === FILE SIZE ===
-        jTextOutputSize = gui_component('label', jPanelProc, 'br', '', [], [], [], []);
+        jTextOutputSize = gui_component('label', jPanelProc, 'br', '');
     jPanelNew.add('br hfill', jPanelProc);
     
     % ===== SET DEFAULT =====
