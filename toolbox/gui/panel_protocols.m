@@ -192,7 +192,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                     % Cancel action
                 else
                     % Replace the "Link to raw file" nodes with their parent
-                    if strcmpi(char(targetNodes(1).getType()), 'rawdata') && strcmpi(char(targetNodes(1).getParent().getType()), 'rawcondition')
+                    if strcmpi(char(targetNodes(1).getType()), 'rawdata') ...
+                            && strcmpi(char(targetNodes(1).getParent().getType()), 'rawcondition') ...
+                            && targetNodes(1).getParent().getChildCount() <= 1
                         for iNode = 1:length(targetNodes)
                             targetNodes(iNode) = targetNodes(iNode).getParent();
                         end

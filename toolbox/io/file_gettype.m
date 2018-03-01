@@ -166,6 +166,8 @@ elseif isstruct(fileName)
         fileType = 'matrix';
     elseif isfield(sMat, 'VideoStart')
         fileType = 'videolink';
+    elseif isfield(sMat, 'Spikes')
+        fileType = 'spikes';
     else
         fileType = 'unknown';
     end

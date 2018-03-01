@@ -49,7 +49,7 @@ switch lower(FileType)
             tmpFile = bst_fullfile(ProtocolInfo.SUBJECTS, FileName);
         end
         isAnatomy = 1;
-    case {'brainstormstudy', 'study', 'studysubject', 'condition', 'rawcondition', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'spectrum', 'ptimefreq', 'pspectrum', 'matrix', 'pmatrix', 'proj', 'image', 'video', 'videolink'}
+    case {'brainstormstudy', 'study', 'studysubject', 'condition', 'rawcondition', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'spectrum', 'ptimefreq', 'pspectrum', 'matrix', 'pmatrix', 'proj', 'image', 'video', 'videolink', 'spikes'}
         if ~file_exist(FileName)
             tmpFile = bst_fullfile(ProtocolInfo.STUDIES, FileName);
         end

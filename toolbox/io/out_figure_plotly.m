@@ -157,7 +157,7 @@ end
 function downloadAndInstallPlotly()
     plotlyDir = bst_fullfile(bst_get('BrainstormUserDir'), 'plotly');
     plotlyTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'plotly_tmp');
-    url = 'https://github.com/plotly/MATLAB-Online/archive/master.zip';
+    url = 'http://github.com/plotly/MATLAB-Online/archive/master.zip';
     % If folders exists: delete
     if isdir(plotlyDir)
         file_delete(plotlyDir, 1, 3);
