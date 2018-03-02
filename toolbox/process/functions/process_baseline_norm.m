@@ -224,8 +224,8 @@ function sInputB = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     end
     % Add comment tag
     sInputB.CommentTag = OPTIONS.Method;
-    % Do not keep the Std field in the output
-    if isfield(sInputB, 'Std') && ~isempty(sInputB.Std)
+    % Do not keep the Std field in the output except for simple Baseline substraction
+    if isfield(sInputB, 'Std') && ~isempty(sInputB.Std) && ~strcmpi(OPTIONS.Method, 'bl')
         sInputB.Std = [];
     end
 end

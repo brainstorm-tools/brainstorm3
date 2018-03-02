@@ -749,7 +749,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     % Standard error
                     if ~isempty(sInput.Std)
                         tmp2(iRowProcess,:,:) = sInput.Std;
-                        sInput.A = tmp2;
+                        sInput.Std = tmp2;
                     end
                 end
             end
