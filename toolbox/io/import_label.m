@@ -122,16 +122,6 @@ for iFile = 1:length(LabelFiles)
         else
             % FreeSurfer Atlas names
             switch (fBase)
-                case {'lh.myaparc_36', 'rh.myaparc_36'}
-                    sAtlas.Name = 'Lausanne-S33';
-                case {'lh.myaparc_60', 'rh.myaparc_60'}
-                    sAtlas.Name = 'Lausanne-S60';
-                case {'lh.myaparc_125', 'rh.myaparc_125'}
-                    sAtlas.Name = 'Lausanne-S125';
-                case {'lh.myaparc_250', 'rh.myaparc_250'}
-                    sAtlas.Name = 'Lausanne-S250';
-                case {'lh.pRF', 'rh.pRF'}
-                    sAtlas.Name = 'Retinotopy';
                 case {'lh.aparc.a2009s', 'rh.aparc.a2009s'}
                     sAtlas.Name = 'Destrieux';
                 case {'lh.aparc', 'rh.aparc'}
@@ -154,6 +144,16 @@ for iFile = 1:length(LabelFiles)
                     sAtlas.Name = 'Yeo 7 Networks';
                 case {'lh.Yeo2011_17Networks_N1000', 'rh.Yeo2011_17Networks_N1000'}
                     sAtlas.Name = 'Yeo 17 Networks';
+                case {'lh.pRF', 'rh.pRF'}
+                    sAtlas.Name = 'Retinotopy';
+                case {'lh.myaparc_36', 'rh.myaparc_36'}
+                    sAtlas.Name = 'Lausanne-S33';
+                case {'lh.myaparc_60', 'rh.myaparc_60'}
+                    sAtlas.Name = 'Lausanne-S60';
+                case {'lh.myaparc_125', 'rh.myaparc_125'}
+                    sAtlas.Name = 'Lausanne-S125';
+                case {'lh.myaparc_250', 'rh.myaparc_250'}
+                    sAtlas.Name = 'Lausanne-S250';
                 otherwise
                     sAtlas.Name = fBase;
             end
