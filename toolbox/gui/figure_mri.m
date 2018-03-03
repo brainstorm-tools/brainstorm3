@@ -124,7 +124,6 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
         'BusyAction',    'cancel', ...
         'Interruptible', 'off');
     % Configure axes
-    %axis([Handles.axs, Handles.axa, Handles.axc], 'image', 'off');
     axis([Handles.axs, Handles.axa, Handles.axc], 'off');
 
     % ===== SLIDERS =====
@@ -1372,6 +1371,7 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
     % Double-click: Reset view
     if strcmpi(get(hFig, 'SelectionType'), 'open')
         ButtonZoom_Callback(hFig, 'reset');
+        setappdata(hFig, 'clickAction', []);
         return;
     end
     % Check if MouseUp was executed before MouseDown
@@ -1390,6 +1390,10 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
             clickAction = 'MovePoint';
             clickSource = hObj;
         end
+    % Click on the colorbar (this should also be set in bst_colormaps>ColorbarButtonDown_Callback)
+    elseif ~isempty(hObj) && ismember(get(hObj, 'Tag'), {'ColorbarSurf', 'Colorbar'})
+        clickAction = 'colorbar';
+        clickSource = [];
     end
     % Otherwise: no particular object was clicked
     if isempty(clickAction)
@@ -1935,7 +1939,7 @@ function Handles = PlotElectrodes(iDS, iFig, Handles, isReset)
     % Loop on all the channels to create the graphic objects
     for i = 1:length(Channels)
         % Display electrode position
-        if ~isempty(Channels(i).Loc)
+        if ~isempty(Channels(i).Loc) && ~isequal(Channels(i).Loc, [0;0;0])
             Handles.LocEEG(i,:) = cs_convert(sMri, 'scs', 'mri', Channels(i).Loc(:,1)')' .* 1000;
         else
             Handles.LocEEG(i,:) = [-500; -500; -500];
