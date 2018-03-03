@@ -367,8 +367,15 @@ end
 
 
 %% ===== GET SURFACE ENVELOPE =====
-function [sEnvelope, sSurf] = GetSurfaceEnvelope(SurfaceFile, nVertices)
+function [sEnvelope, sSurf] = GetSurfaceEnvelope(SurfaceFile, nVertices, isRemesh, dilateMask)
     global GlobalData;
+    % Parse inputs
+    if (nargin < 4) || isempty(dilateMask)
+        dilateMask = 1;
+    end
+    if (nargin < 3) || isempty(isRemesh)
+        isRemesh = 1;
+    end
     % Load surface
     [sSurf, iSurf] = LoadSurface(SurfaceFile);
     % Get an existing mrimask
@@ -378,7 +385,7 @@ function [sEnvelope, sSurf] = GetSurfaceEnvelope(SurfaceFile, nVertices)
     % MRI mask do not exist yet
     else
         % Compute mrimask
-        sEnvelope = tess_envelope(SurfaceFile, 'mask_cortex', nVertices);
+        sEnvelope = tess_envelope(SurfaceFile, 'mask_cortex', nVertices, [], [], isRemesh, dilateMask);
         % Add it to loaded structure
         GlobalData.Surface(iSurf).envelope.(fieldName) = sEnvelope;
     end

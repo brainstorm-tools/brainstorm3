@@ -1,7 +1,7 @@
-function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale, MriFile, isRemesh, DEBUG)
+function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale, MriFile, isRemesh, dilateMask, DEBUG)
 % TESS_ENVELOPE: Compute a regular envelope of a tesselation.
 %
-% USAGE:  [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert=, scale=0, MriFile=[], isRemesh=1)
+% USAGE:  [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale=0, MriFile=[], isRemesh=1, dilateMask=-2)
 %         [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale)
 %         [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert)
 %         [sEnvelope, sSurface] = tess_envelope(SurfaceFile)
@@ -13,6 +13,8 @@ function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale
 %    - scale       : Scale factor to increase the volume of the envelope, in meters (default: 0)
 %    - MriFile     : Mri file can be specified, in case the surface being processed is not in the database
 %    - isRemesh    : If 1, call tess_remesh for producing a smoothe surface
+%    - dilateMask  : If >1, dilate N times the surface mask (only when computing a mask)
+%                    If <1, erode N times the surface mask (only when computing a mask)
 % OUTPUT:
 %    - sEnvelope : Structure with Vertices and Faces fields of the envelope
 %    - sSurface  : Structure with Vertices and Faces fields of the initial file
@@ -38,8 +40,11 @@ function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale
 % Authors: Francois Tadel, 2010-2017
 
 %% ===== PARSE INPUTS =====
-if (nargin < 7) || isempty(DEBUG)
+if (nargin < 8) || isempty(DEBUG)
     DEBUG = 0;
+end
+if (nargin < 7) || isempty(dilateMask)
+    dilateMask = -2;
 end
 if (nargin < 6) || isempty(isRemesh)
     isRemesh = 1;
@@ -129,11 +134,14 @@ switch lower(method)
         mrimask(:,end,:) = 0*mrimask(:,1,:);
         mrimask(:,:,1)   = 0*mrimask(:,:,1);
         mrimask(:,:,end) = 0*mrimask(:,:,1);
-        % Erode one layer of the mask
-%         if strcmpi(method, 'mask_head')
-            mrimask = mrimask & ~mri_dilate(~mrimask, 1);
-            mrimask = mrimask & ~mri_dilate(~mrimask, 1);
-%         end
+        % Erode/dilate ]the mask
+        for i = 1:abs(dilateMask)
+            if (dilateMask > 0)
+                mrimask = mri_dilate(mrimask, 1);
+            else
+                mrimask = mrimask & ~mri_dilate(~mrimask, 1);
+            end
+        end
         % Compute isosurface
         bst_progress('text', 'Envelope: Creating isosurface...');
         [env_faces, env_vert] = mri_isosurface(mrimask, 0.5);

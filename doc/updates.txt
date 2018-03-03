@@ -2,6 +2,7 @@
 March 2018
 - Bug fix: "Filter" processes were replacing the actual data with the "Std" field
 - GUI: Add numbers to the comments of new files that already exist
+- GUI: Updated tools for ECOG (new display options, many bug fixes)
 ---------------------------------------------------------------
 February 2018
 - GUI: New options "Upsample image" to smooth MRI display in 3D figures
