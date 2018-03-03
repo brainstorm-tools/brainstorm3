@@ -23,7 +23,7 @@ function [iChannels, Comment] = channel_find(Channel, target)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2011
+% Authors: Francois Tadel, 2010-2018
 
 % Select all the channels
 if (nargin < 2) || isempty(target)
@@ -45,9 +45,12 @@ Comment   = [];
 % Get all the channel types
 allTypes = upper(unique({Channel.Type}));
 allNames = {Channel.Name};
-% Add extra types based on the ones
+% Add extra types based on the ones existing
 if any(ismember(allTypes, {'MEG MAG','MEG GRAD'}))
     allTypes = union(allTypes, {'MEG', 'MEG GRAD2', 'MEG GRAD3'});
+end
+if any(ismember(allTypes, {'SEEG','ECOG'}))
+    allTypes = union(allTypes, {'ECOG+SEEG'});
 end
 % Process all the targets
 for i = 1:length(target)

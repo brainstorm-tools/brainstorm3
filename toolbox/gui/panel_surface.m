@@ -653,6 +653,9 @@ function ButtonAddSurfaceCallback(surfaceType)
         % Ask user which kind of surface he wants to add to the figure 3DViz
         surfaceType = java_dialog('question', 'What kind of surface would you like to display ?', 'Add surface', [], typesList, typesList{1});
     end
+    if isempty(surfaceType)
+        return;
+    end
     % Switch between surfaces types
     switch (surfaceType)
         case 'Anatomy'

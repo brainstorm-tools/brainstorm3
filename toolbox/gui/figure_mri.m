@@ -44,7 +44,7 @@ function varargout = figure_mri(varargin)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, 2004
-%          Francois Tadel, 2008-2017
+%          Francois Tadel, 2008-2018
 
 eval(macro_method);
 end
@@ -1757,8 +1757,12 @@ function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
     end
     % Load channel file in the dataset
     bst_memory('LoadChannelFile', iDS, ChannelFile);
-    % Load the channel file
-    iChannels = channel_find(GlobalData.DataSet(iDS).Channel, Modality);
+    % If iEEG channels: load both SEEG and ECOG
+    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
+        iChannels = channel_find(GlobalData.DataSet(iDS).Channel, 'SEEG, ECOG');
+    else
+        iChannels = channel_find(GlobalData.DataSet(iDS).Channel, Modality);
+    end
     % Set the list of selected sensors
     GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = iChannels;
     GlobalData.DataSet(iDS).Figure(iFig).Id.Modality      = Modality;
@@ -1930,7 +1934,7 @@ function Handles = PlotElectrodes(iDS, iFig, Handles, isReset)
     % Define display names for the channels
     if ~isempty(Channels)
         % if ismember(upper(Channels(selChan(1)).Type), {'SEEG', 'ECOG'})
-        if strcmpi(upper(Channels(selChan(1)).Type), 'SEEG')
+        if strcmpi(upper(Channels(1).Type), 'SEEG')
             [iGroupEeg, GroupNames, sensorNames] = panel_montage('GetEegGroups', Channels, [], 1);
         else
             sensorNames = {Channels.Name}';
@@ -2882,13 +2886,14 @@ function Add3DView(hFig)
     sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
     % Get figure modality
     Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+    selChan  = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
     % Open a 3D figure
     if ~isempty(Modality) && strcmpi(Modality, 'ECOG')
         % SEEG or nothing: Display cortex, scalp or MRI
         if ~isempty(sSubject.iCortex)
-            hFid3d = view_surface(sSubject.Surface(sSubject.iCortex).FileName);
+            hFid3d = view_surface(sSubject.Surface(sSubject.iCortex).FileName, [], [], iDS);
         elseif ~isempty(sSubject.iScalp)
-            hFid3d = view_surface(sSubject.Surface(sSubject.iScalp).FileName);
+            hFid3d = view_surface(sSubject.Surface(sSubject.iScalp).FileName, [], [], iDS);
         else
             hFid3d = view_mri_3d(MriFile, [], [], iDS);
         end
@@ -2898,7 +2903,7 @@ function Add3DView(hFig)
     end
     % Add 3D contacts
     if ~isempty(GlobalData.DataSet(iDS).ChannelFile) && ~isempty(Modality)
-        view_channels(GlobalData.DataSet(iDS).ChannelFile, Modality, 1, 0, hFid3d, 1);
+        view_channels(GlobalData.DataSet(iDS).ChannelFile, Modality, 1, 0, hFid3d, 1, selChan);
     end
 end
 

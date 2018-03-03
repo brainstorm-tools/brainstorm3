@@ -1,7 +1,7 @@
-function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isLabels, hFig, is3DElectrodes)
+function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isLabels, hFig, is3DElectrodes, selChannels)
 % VIEW_CHANNELS: Display a channel file in all the associated 3DViz figure.
 %
-% USAGE: view_channels(ChannelFile, Modality, isMarker=1, isLabels=1, hFig=[], is3DElectrodes=0)
+% USAGE: view_channels(ChannelFile, Modality, isMarker=1, isLabels=1, hFig=[], is3DElectrodes=0, selChannels=[])
 %        view_channels(ChannelFile, Modality)
 % OUTPUT: 
 %     - hFig : Matlab handle to the 3DViz figure that was created or updated
@@ -30,6 +30,9 @@ function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isL
 
 global GlobalData;
 % Parse inputs
+if (nargin < 7) || isempty(selChannels)
+    selChannels = [];
+end
 if (nargin < 6) || isempty(is3DElectrodes)
     is3DElectrodes = 0;
 end
@@ -155,18 +158,21 @@ setappdata(hFig, 'AllChannelsDisplayed', 1);
 % ===== DISPLAY SENSORS =====
 % Update figure selection
 bst_figures('SetCurrentFigure', hFig, '3D');
-% Get selected channels
-SelectedChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], Modality);
-% Remove the channels with empty positions
-iNoLoc = find(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel.Loc}));
-if ~isempty(iNoLoc)
-    SelectedChannels = setdiff(SelectedChannels, iNoLoc);
-end
-if isempty(SelectedChannels)
-    error('None of the channels have positions defined.');
+% Get default selected channels for this modality
+if isempty(selChannels)
+    % Get selected channels
+    selChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], Modality);
+    % Remove the channels with empty positions
+    iNoLoc = find(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel.Loc}));
+    if ~isempty(iNoLoc)
+        selChannels = setdiff(selChannels, iNoLoc);
+    end
+    if isempty(selChannels)
+        error('None of the channels have positions defined.');
+    end
 end
 % Set figure selected sensors
-GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = SelectedChannels;
+GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = selChannels;
 % Display sensors
 if is3DElectrodes
     figure_3d('PlotSensors3D', iDS, iFig);

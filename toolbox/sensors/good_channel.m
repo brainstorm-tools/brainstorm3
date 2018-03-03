@@ -102,6 +102,10 @@ for iType = 1:length(channelTypes)
             iEegRef      = find(strcmpi({Channel.Type}, 'EEG REF'));
             iChannelType = find(strcmpi({Channel.Type}, 'EEG'));
             
+        % iEEG: ECOG+SEEG
+        case 'ecog+seeg'
+            iChannelType = find(ismember({Channel.Type}, {'ECOG+SEEG','ECOG','SEEG'}));
+            
         % NIRS
         case {'nirs', 'nirs-brs'}
             iChannelType = find(strcmpi({Channel.Type}, 'NIRS'));

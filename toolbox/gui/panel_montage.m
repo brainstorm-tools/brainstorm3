@@ -22,7 +22,7 @@ function varargout = panel_montage(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2018
 
 eval(macro_method);
 end
@@ -944,7 +944,6 @@ function [sMontage, iMontage] = GetMontage(MontageName, hFig)
             % Find average reference montage
             iAvgRef = find(strcmpi({sMontage.Name}, 'Average reference'));
             if ~isempty(iAvgRef) && ~isempty(hFig)
-                % [sTmp, iTmp] = GetMontageAvgRef(hFig, [], 1);    % Local average reference 
                 [sTmp, iTmp] = GetMontageAvgRef(hFig, [], 0);    % Global average reference 
                 if ~isempty(sTmp)
                     sMontage(iAvgRef) = sTmp;
@@ -1131,6 +1130,12 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             end
             % Not EEG: Skip average reference
             if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG'})
+                continue;
+            end
+            % Local average reference: Only available for current modality
+            if ~isempty(strfind(GlobalData.ChannelMontages.Montages(i).Name, 'SEEG (local average ref)')) && ~isequal(FigId.Modality, 'SEEG')
+                continue;
+            elseif ~isempty(strfind(GlobalData.ChannelMontages.Montages(i).Name, 'ECOG (local average ref)')) && ~isequal(FigId.Modality, 'ECOG')
                 continue;
             end
             % No bad channels: Skip the bad channels montage

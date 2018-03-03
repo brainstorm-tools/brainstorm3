@@ -99,7 +99,7 @@ switch(fileType)
             switch Modality
                 case {'MEG', 'MEG MAG', 'MEG GRAD', 'MEG GRAD2', 'MEG GRAD3', 'NIRS'}
                     ColormapType = 'meg';
-                case {'EEG', 'ECOG', 'SEEG'}
+                case {'EEG', 'ECOG', 'SEEG', 'ECOG+SEEG'}
                     ColormapType = 'eeg';
                 case {'MEG GRADNORM'}
                     ColormapType = 'timefreq';
@@ -162,7 +162,7 @@ switch(fileType)
         end
         AllModalities = GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities;
         % Sensor type that cannot be displayed
-        if ~isempty(Modality) && ~ismember(Modality, {'MEG','MEG GRAD','MEG MAG','MEG GRAD2','MEG GRAD3','MEG GRADNORM', 'EEG','SEEG','ECOG','NIRS'})
+        if ~isempty(Modality) && ~ismember(Modality, {'MEG','MEG GRAD','MEG MAG','MEG GRAD2','MEG GRAD3','MEG GRADNORM', 'EEG','SEEG','ECOG','ECOG+SEEG','NIRS'})
             bst_error(['Cannot display 2D/3D topography for modality "' Modality '".'], 'View topography', 0);
             return;
         % If there are multiple modalities available in the file
@@ -337,10 +337,11 @@ if isNewFig && ismember(TopoType, {'3DSensorCap', '3DElectrodes', '3DOptodes'})
     % Default surface type
     if isempty(SurfaceType)
         switch (Modality)
-            case 'ECOG',  SurfaceType = 'cortex';
-            case 'SEEG',  SurfaceType = 'anatomy';
-            case 'NIRS',  SurfaceType = 'scalp';
-            otherwise,    SurfaceType = 'scalp';
+            case 'ECOG',      SurfaceType = 'cortex';
+            case 'SEEG',      SurfaceType = 'anatomy';
+            case 'ECOG+SEEG', SurfaceType = 'cortex';
+            case 'NIRS',      SurfaceType = 'scalp';
+            otherwise,        SurfaceType = 'scalp';
         end
     end
     % Display surface
