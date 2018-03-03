@@ -733,6 +733,10 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         ResultsMat.Options   = OPTIONS;
         % History
         ResultsMat = bst_history('add', ResultsMat, 'compute', ['Source estimation: ' OPTIONS.InverseMethod]);
+        % Make file comment unique
+        if ~isempty(sStudy.Result)
+            ResultsMat.Comment = file_unique(ResultsMat.Comment, {sStudy.Result.Comment});
+        end
         % Save new file structure
         bst_save(ResultFile, ResultsMat, 'v6');
 
