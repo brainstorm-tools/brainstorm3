@@ -207,7 +207,7 @@ function UniformizeTimeSeriesScales(isUniform)
                                     else
                                         iType = 2;
                                     end
-                                case {'ECOG', 'SEEG', '$ECOG', '$SEEG'}
+                                case {'ECOG', 'SEEG', '$ECOG', '$SEEG', 'ECOG+SEEG', '$ECOG+SEEG'}
                                     if (CurDataMinMax(2) > 0.01)
                                         iType = 3;
                                     else
@@ -2482,7 +2482,7 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         end
         % Auto-detect if legend should be displayed
         if isempty(TsInfo.ShowLegend)
-            TsInfo.ShowLegend = (size(F{iAxes},1) <= 15) && (~isempty(TsInfo.RowNames) || ~ismember(TsInfo.Modality, {'EEG','MEG','MEG MAG','MEG GRAD','SEEG','ECOG'}));
+            TsInfo.ShowLegend = (size(F{iAxes},1) <= 15) && (~isempty(TsInfo.RowNames) || ~ismember(TsInfo.Modality, {'EEG','MEG','MEG MAG','MEG GRAD','SEEG','ECOG','ECOG+SEEG'}));
             setappdata(hFig, 'TsInfo', TsInfo);
         end
         % If there is Std data available
