@@ -2578,7 +2578,7 @@ function fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, isGradNorm, A
         else
             jSubMenu = jMenu;
         end
-        if ~strcmpi(AllMod{iMod}, 'SEEG') && ~strcmpi(Modality, 'ECOG+SEEG')
+        if ~strcmpi(AllMod{iMod}, 'SEEG') && ~strcmpi(AllMod{iMod}, 'ECOG+SEEG')
             gui_component('MenuItem', jSubMenu, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DSensorCap', [], UseSmoothing, hFig));
             gui_component('MenuItem', jSubMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DSensorCap', [], UseSmoothing, hFig));
             gui_component('MenuItem', jSubMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DDisc',      [], UseSmoothing, hFig));
@@ -2590,7 +2590,7 @@ function fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, isGradNorm, A
         % 3D Electrodes
         if ismember(AllMod{iMod}, {'EEG', 'ECOG'}) && ~AlwaysCreate
             gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
-        elseif strcmpi(AllMod{iMod}, 'SEEG') || strcmpi(Modality, 'ECOG+SEEG')
+        elseif strcmpi(AllMod{iMod}, 'SEEG') || strcmpi(AllMod{iMod}, 'ECOG+SEEG')
             gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Scalp'));
             gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Cortex'));
             gui_component('MenuItem', jSubMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-MRI'));
