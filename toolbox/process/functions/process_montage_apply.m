@@ -89,7 +89,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Update automatic montages
         panel_montage('UnloadAutoMontages');
         if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
-            panel_montage('AddAutoMontagesEeg', sSubject.Name, ChannelMat);
+            panel_montage('AddAutoMontagesSeeg', sSubject.Name, ChannelMat);
         end
         if ismember('NIRS', {ChannelMat.Channel.Type})
             panel_montage('AddAutoMontagesNirs', ChannelMat);
@@ -116,9 +116,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             DataMat = in_bst_data(sInputs(iInput).FileName);
             % Build average reference
             if (strcmpi(sMontage.Name, 'Average reference'))
-                sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel, DataMat.ChannelFlag, 0);
+                sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 0);
             elseif ~isempty(strfind(sMontage.Name, '(local average ref)'))
-                sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel, DataMat.ChannelFlag, 1);
+                sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 1);
             end
             % Get channels indices for the montage
             [iChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, {ChannelMat.Channel.Name});

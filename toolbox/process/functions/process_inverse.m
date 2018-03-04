@@ -619,7 +619,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         % Apply average reference: separately SEEG, ECOG, EEG
         if any(ismember(unique({ChannelMat.Channel.Type}), {'EEG','ECOG','SEEG'}))
             % Create average reference montage
-            sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel(GoodChannel), ChannelFlag(GoodChannel), 0);
+            sMontage = panel_montage('GetMontageAvgRef', [], ChannelMat.Channel(GoodChannel), ChannelFlag(GoodChannel), 0);
             HeadModel.Gain = sMontage.Matrix * HeadModel.Gain;
             % Apply average reference operator on both sides of the noise covariance matrix
             NoiseCov(GoodChannel, GoodChannel) = sMontage.Matrix * NoiseCov(GoodChannel, GoodChannel) * sMontage.Matrix';

@@ -24,7 +24,7 @@ function varargout = panel_record(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2018
 
 eval(macro_method);
 end
@@ -682,23 +682,23 @@ function UpdateDisplayOptions(hFig)
             DispName = 'All';
         % Average reference
         elseif strcmpi(TsInfo.MontageName, 'Average reference')
-%             % Get montage
-%             [sTmp, iTmp, isLocal] = panel_montage('GetMontageAvgRef', hFig, [], 1);
-%             % Change the title depending on the type of average reference
-%             if isLocal
-%                 DispName = '<HTML><B>Local</B> Avg Ref';
-%             else
-%                 DispName = 'Avg Ref';
-%             end
-            % Always global average reference
             DispName = 'Avg Ref';
-        % Temporary montages:  Remove the [tmp] tag or display
-        elseif ~isempty(strfind(TsInfo.MontageName, '[tmp]'))
-            DispName = ['<HTML><I>' strrep(TsInfo.MontageName, '[tmp]', '') '</I>'];
-        % Regular montage
+        % Regular montages
         else
             DispName = TsInfo.MontageName;
+            % Local average ref: simplify name
+            DispName = strrep(DispName, '(local average ref)', '(local avg)');
+            % Remove subject name
+            iColon = strfind(DispName, ': ');
+            if ~isempty(iColon) && (iColon + 2 < length(DispName))
+                DispName = DispName(iColon(1)+2:end);
+            end
+            % Temporary montages:  Remove the [tmp] tag or display
+            if ~isempty(strfind(TsInfo.MontageName, '[tmp]'))
+                DispName = ['<HTML><I>' strrep(DispName, '[tmp]', '') '</I>'];
+            end
         end
+        % Set label of the drop-down menu
         ctrl.jMenuMontage.setText(DispName);
     end
     % Update display mode
@@ -925,7 +925,7 @@ function UpdatePanel(hFig)
         ctrl.jButtonCtf.setVisible(0);
     end
     % Check if data is EEG
-    isEeg = ~isempty(iFig) && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'EEG','SEEG','ECOG'});
+    isEeg = ~isempty(iFig) && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'});
     % Show/Hide the entire "Display" menu
     ctrl.jButtonBaseline.setVisible(isRaw);
     % Enable/disable Artifacts menus

@@ -944,28 +944,27 @@ function [sMontage, iMontage] = GetMontage(MontageName, hFig)
             % Find average reference montage
             iAvgRef = find(strcmpi({sMontage.Name}, 'Average reference'));
             if ~isempty(iAvgRef) && ~isempty(hFig)
-                [sTmp, iTmp] = GetMontageAvgRef(hFig, [], 0);    % Global average reference 
+                sTmp = GetMontageAvgRef(sMontage(iAvgRef), hFig, [], 0);    % Global average reference 
                 if ~isempty(sTmp)
                     sMontage(iAvgRef) = sTmp;
-                    iMontage(iAvgRef) = iTmp;
                 end
             end
-            % Find local average reference montage
+            % Find local average reference montages
             iLocalAvgRef = find(~cellfun(@(c)isempty(strfind(c, '(local average ref)')), {sMontage.Name}));
             if ~isempty(iLocalAvgRef) && ~isempty(hFig)
-                [sTmp, iTmp] = GetMontageAvgRef(hFig, [], 1);    % Local average reference 
-                if ~isempty(sTmp)
-                    sMontage(iLocalAvgRef) = sTmp;
-                    iMontage(iLocalAvgRef) = iTmp;
+                for i = 1:length(iLocalAvgRef)
+                    sTmp = GetMontageAvgRef(sMontage(iLocalAvgRef(i)), hFig, [], 1);    % Local average reference 
+                    if ~isempty(sTmp)
+                        sMontage(iLocalAvgRef(i)) = sTmp;
+                    end
                 end
             end
             % Find average reference montage
             iBadChan = find(strcmpi({sMontage.Name}, 'Bad channels'));
             if ~isempty(iBadChan) && ~isempty(hFig)
-                [sTmp, iTmp] = GetMontageBadChan(hFig);
+                sTmp = GetMontageBadChan(hFig);
                 if ~isempty(sTmp)
                     sMontage(iBadChan) = sTmp;
-                    iMontage(iBadChan) = iTmp;
                 end
             end
         else
@@ -1129,13 +1128,13 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
                 continue;
             end
             % Not EEG: Skip average reference
-            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG'})
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})
                 continue;
             end
             % Local average reference: Only available for current modality
-            if ~isempty(strfind(GlobalData.ChannelMontages.Montages(i).Name, 'SEEG (local average ref)')) && ~isequal(FigId.Modality, 'SEEG')
+            if ~isempty(strfind(GlobalData.ChannelMontages.Montages(i).Name, 'SEEG (local average ref)')) && ~ismember(FigId.Modality, {'SEEG','ECOG+SEEG'})
                 continue;
-            elseif ~isempty(strfind(GlobalData.ChannelMontages.Montages(i).Name, 'ECOG (local average ref)')) && ~isequal(FigId.Modality, 'ECOG')
+            elseif ~isempty(strfind(GlobalData.ChannelMontages.Montages(i).Name, 'ECOG (local average ref)')) && ~ismember(FigId.Modality, {'ECOG','ECOG+SEEG'})
                 continue;
             end
             % No bad channels: Skip the bad channels montage
@@ -1222,15 +1221,12 @@ function [iChannels, iMatrixChan, iMatrixDisp] = GetMontageChannels(sMontage, Ch
 end
 
 %% ===== GET AVERAGE REF MONTAGE =====
-% USAGE:  [sMontage, iMontage, isLocal] = GetMontageAvgRef(hFig)
-%         [sMontage, iMontage, isLocal] = GetMontageAvgRef(Channels, ChannelFlag, isSubGroups=0)
-function [sMontage, iMontage, isLocal] = GetMontageAvgRef(Channels, ChannelFlag, isSubGroups)
+% USAGE:  sMontage = GetMontageAvgRef(sMontage, hFig)
+%         sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroups=0)
+function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroups)
     global GlobalData;
-    sMontage = [];
-    iMontage = [];
-    isLocal = 0;
     % Split the electrodes in subgroups or group them all
-    if (nargin < 3) || isempty(isSubGroups)
+    if (nargin < 4) || isempty(isSubGroups)
         isSubGroups = 0;
     end
     % Get info from figure
@@ -1238,13 +1234,15 @@ function [sMontage, iMontage, isLocal] = GetMontageAvgRef(Channels, ChannelFlag,
         hFig = Channels;
         % Create EEG average reference menus
         TsInfo = getappdata(hFig,'TsInfo');
-        if isempty(TsInfo.Modality) || ~ismember(TsInfo.Modality, {'EEG','SEEG','ECOG'})
+        if isempty(TsInfo.Modality) || ~ismember(TsInfo.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})
+            sMontage = [];
             return;
         end
         % Get figure description
         [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
         % Check that this figure can handle montages
         if isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) || isempty(GlobalData.DataSet(iDS).Channel) || isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
+            sMontage = [];
             return;
         end
         % Get selected channels
@@ -1254,24 +1252,55 @@ function [sMontage, iMontage, isLocal] = GetMontageAvgRef(Channels, ChannelFlag,
     else
         iChannels = 1:length(Channels);
     end
-    % Set montage structure
-    iMontage = find(strcmpi({GlobalData.ChannelMontages.Montages.Name}, 'Average reference'), 1);
-    if ~isempty(iMontage)
-        sMontage = GlobalData.ChannelMontages.Montages(iMontage);
-        sMontage.DispNames = {Channels.Name};
-        sMontage.ChanNames = {Channels.Name};
-        sMontage.Matrix    = eye(length(iChannels));
-        % Get EEG groups
-        [iEEG, GroupNames] = GetEegGroups(Channels, ChannelFlag, isSubGroups);
-        % Computation
-        for i = 1:length(iEEG)
-            nChan = length(iEEG{i});
-            if (nChan >= 2)
-                sMontage.Matrix(iEEG{i},iEEG{i}) = eye(nChan) - ones(nChan) ./ nChan;
-            end
+    % Apply limitation from montage name (for subgroups only)
+    if isSubGroups && ~isempty(sMontage)
+        TargetName = sMontage.Name;
+        % Remove subject name
+        iColon = strfind(TargetName, ': ');
+        if ~isempty(iColon) && (iColon + 2 < length(TargetName))
+            TargetName = TargetName(iColon(1)+2:end);
         end
-        % If there are multiple subgroup, consider it is a "local" average reference (used for SEEG or ECOG)
-        isLocal = (length(iEEG) > 1);
+        % Remove other tags
+        TargetName = strrep(TargetName, '(local average ref)', '');
+        TargetName = strrep(TargetName, '[tmp]', '');
+        TargetName = strtrim(TargetName);
+        % SEEG/ECOG: Keep only selected modality
+        if ismember(TargetName, {'SEEG', 'ECOG'})
+            iSel = find(strcmpi({Channels.Type}, TargetName));
+        else
+            iSel = find(strcmpi({Channels.Group}, TargetName));
+        end
+        % Nothing selected: return
+        if isempty(iSel)
+            disp(['BST> Error: No channel correspond to montage "' sMontage.Name '".']);
+            sMontage = [];
+            return;
+        end
+        % Apply sub-selection
+        iChannels = iChannels(iSel);
+        Channels = Channels(iSel);
+        ChannelFlag = ChannelFlag(iSel);
+    end
+    % If no montage in input: get the global average ref
+    if isempty(sMontage)
+        iMontage = find(strcmpi({GlobalData.ChannelMontages.Montages.Name}, 'Average reference'), 1);
+        if isempty(iMontage)
+            return;
+        end
+        sMontage = GlobalData.ChannelMontages.Montages(iMontage(1));
+    end
+    % Update montage
+    sMontage.DispNames = {Channels.Name};
+    sMontage.ChanNames = {Channels.Name};
+    sMontage.Matrix    = eye(length(iChannels));
+    % Get EEG groups
+    [iEEG, GroupNames] = GetEegGroups(Channels, ChannelFlag, isSubGroups);
+    % Computation
+    for i = 1:length(iEEG)
+        nChan = length(iEEG{i});
+        if (nChan >= 2)
+            sMontage.Matrix(iEEG{i},iEEG{i}) = eye(nChan) - ones(nChan) ./ nChan;
+        end
     end
 end
 
@@ -1402,17 +1431,8 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
         else
             isSelected = 0;
         end
-        % Special test for average reference: local or global
+        % Special test for average reference
         if strcmpi(sFigMontages(i).Name, 'Average reference')
-%             % Get montage
-%             [sTmp, iTmp, isLocal] = GetMontageAvgRef(hFig, [], 1);
-%             % Change the title depending on the type of average reference
-%             if isLocal
-%                 DisplayName = 'Local average ref';
-%             else
-%                 DisplayName = 'Average reference';
-%             end
-            % Always use global average reference here
             DisplayName = 'Average reference';
             jSubMenu = jMenu;
         % Temporary montages:  Remove the [tmp] tag or display
@@ -1657,15 +1677,15 @@ function [iEEG, GroupNames, DisplayNames] = GetEegGroups(Channel, ChannelFlag, i
     end
     % Default display name: actual channel name
     DisplayNames = {Channel.Name};
-    % Try to split SEEG and ECOG with the Comment field
+    % SEEG/ECOG: Try to split group/index  with the Comment field
     for Modality = {'EEG', 'SEEG', 'ECOG'}
         % Get channels for modality
         iMod = good_channel(Channel, ChannelFlag, Modality{1});
         if isempty(iMod)
             continue;
         end
-        % Use subgroups
-        if isSubGroups
+        % Use subgroups (not for EEG)
+        if isSubGroups && ~strcmpi(Modality{1}, 'EEG')
             % Parse sensor names
             [AllGroups, AllTags, AllInd, isNoInd] = ParseSensorNames(Channel(iMod));
             % If the group name is empty, replace with "Unknown"
@@ -1778,141 +1798,164 @@ end
 
 
 %% ===== ADD AUTO MONTAGES: EEG =====
-function AddAutoMontagesEeg(Comment, ChannelMat) %#ok<DEFNU>
+function AddAutoMontagesSeeg(Comment, ChannelMat) %#ok<DEFNU>
     % Get groups of electrodes
-    [iEeg, GroupNames] = GetEegGroups(ChannelMat.Channel, [], 1);    
-    % If there is more than one EEG group
-    if (length(iEeg) > 2)
-        % Get all the modalities available
-        AllModalities = unique(upper({ChannelMat.Channel([iEeg{:}]).Type}));
-    
-        % === MONTAGES: ALL ===
-        for iMod = 1:length(AllModalities)
-            Mod = AllModalities{iMod};
-            % All (orig)
-            sMontageAllOrig.(Mod) = db_template('Montage');
-            sMontageAllOrig.(Mod).Name   = [Comment ': ' Mod ' (orig)[tmp]'];
-            sMontageAllOrig.(Mod).Type   = 'selection';
-            SetMontage(sMontageAllOrig.(Mod).Name, sMontageAllOrig.(Mod));
-            % All (bipolar 1)
-            sMontageAllBip1.(Mod) = db_template('Montage');
-            sMontageAllBip1.(Mod).Name   = [Comment ': ' Mod ' (bipolar 1)[tmp]'];
-            sMontageAllBip1.(Mod).Type   = 'text';
-            SetMontage(sMontageAllBip1.(Mod).Name, sMontageAllBip1.(Mod));
-            % All (bipolar 2)
-            sMontageAllBip2.(Mod) = db_template('Montage');
-            sMontageAllBip2.(Mod).Name   = [Comment ': ' Mod ' (bipolar 2)[tmp]'];
-            sMontageAllBip2.(Mod).Type   = 'text';
-            SetMontage(sMontageAllBip2.(Mod).Name, sMontageAllBip2.(Mod));
-            % All (local average reference)
-            sMontageLocalAvgRef.(Mod) = db_template('Montage');
-            sMontageLocalAvgRef.(Mod).Name   = [Comment ': ' Mod ' (local average ref)[tmp]'];
-            sMontageLocalAvgRef.(Mod).Type   = 'matrix';
-            SetMontage(sMontageLocalAvgRef.(Mod).Name, sMontageLocalAvgRef.(Mod));
+    [iEeg, GroupNames] = GetEegGroups(ChannelMat.Channel, [], 1);
+    % Get all the modalities available: Only SEEG and ECOG accepted
+    AllModalities = intersect(unique(upper({ChannelMat.Channel([iEeg{:}]).Type})), {'SEEG','ECOG'});
+    if isempty(AllModalities) || isempty(iEeg) 
+        return;
+    end
+
+    % === MONTAGES: ALL ===
+    for iMod = 1:length(AllModalities)
+        Mod = AllModalities{iMod};
+        % All (orig)
+        sMontageAllOrig.(Mod) = db_template('Montage');
+        sMontageAllOrig.(Mod).Name   = [Comment ': ' Mod ' (orig)[tmp]'];
+        sMontageAllOrig.(Mod).Type   = 'selection';
+        % SetMontage(sMontageAllOrig.(Mod).Name, sMontageAllOrig.(Mod));
+        % All (bipolar 1)
+        sMontageAllBip1.(Mod) = db_template('Montage');
+        sMontageAllBip1.(Mod).Name   = [Comment ': ' Mod ' (bipolar 1)[tmp]'];
+        sMontageAllBip1.(Mod).Type   = 'text';
+        % SetMontage(sMontageAllBip1.(Mod).Name, sMontageAllBip1.(Mod));
+        % All (bipolar 2)
+        sMontageAllBip2.(Mod) = db_template('Montage');
+        sMontageAllBip2.(Mod).Name   = [Comment ': ' Mod ' (bipolar 2)[tmp]'];
+        sMontageAllBip2.(Mod).Type   = 'text';
+        % SetMontage(sMontageAllBip2.(Mod).Name, sMontageAllBip2.(Mod));
+        % All (local average reference)
+        sMontageLocalAvgRef.(Mod) = db_template('Montage');
+        sMontageLocalAvgRef.(Mod).Name   = [Comment ': ' Mod ' (local average ref)[tmp]'];
+        sMontageLocalAvgRef.(Mod).Type   = 'matrix';
+        % SetMontage(sMontageLocalAvgRef.(Mod).Name, sMontageLocalAvgRef.(Mod));
+        % Initialize counter of montages per modality
+        nMontages.(Mod) = 0;
+    end
+
+    % For each group
+    for iGroup = 1:length(iEeg)
+        % Get the electrodes for this group
+        iChan = iEeg{iGroup};
+        if isempty(iChan) || (length(iChan) < 2)
+            continue;
+        end
+        ChanNames = {ChannelMat.Channel(iChan).Name};
+        Mod = upper(ChannelMat.Channel(iChan(1)).Type);
+        % Skip EEG
+        if strcmpi(Mod, 'EEG')
+            continue;
+        end
+        % Get indices
+        [AllGroups, AllTags, AllInd] = ParseSensorNames(ChannelMat.Channel(iChan));
+        % Count montages
+        nMontages.(Mod) = nMontages.(Mod) + 1;
+
+        % === MONTAGE: ORIG ===
+        % Create montage
+        sMontage = db_template('Montage');
+        sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (orig)[tmp]'];
+        sMontage.Type      = 'selection';
+        sMontage.ChanNames = ChanNames;
+        sMontage.DispNames = ChanNames;
+        sMontage.Matrix    = eye(length(iChan));
+        % Add montage
+        SetMontage(sMontage.Name, sMontage);
+        % Add to ALL-orig montage
+        sMontageAllOrig.(Mod).ChanNames = cat(2, sMontageAllOrig.(Mod).ChanNames, sMontage.ChanNames);
+        sMontageAllOrig.(Mod).DispNames = cat(2, sMontageAllOrig.(Mod).DispNames, sMontage.DispNames);
+        sMontageAllOrig.(Mod).Matrix(size(sMontageAllOrig.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllOrig.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
+
+        % Skip bipolar montages if there is only one channel
+        if (length(iChan) < 2)
+            continue;
         end
 
-        % For each group
-        for iGroup = 1:length(iEeg)
-            % Get the electrodes for this group
-            iChan = iEeg{iGroup};
-            if isempty(iChan) || (length(iChan) < 2)
+        % === MONTAGE: BIPOLAR 1 ===
+        % Example: A1-A2, A3-A4, ...
+        % Create montage
+        sMontage = db_template('Montage');
+        sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (bipolar 1)[tmp]'];
+        sMontage.Type      = 'text';
+        sMontage.ChanNames = ChanNames;
+        sMontage.Matrix    = zeros(0, length(iChan));
+        iDisp = 1;
+        for i = 1:2:length(ChanNames)
+            % Last pair is not complete: A1-A2, A3-A4, A4-A5
+            if (i == length(ChanNames))
+                i1 = i-1;
+                i2 = i;
+            % Last pair is complete: A1-A2, A3-A4, A5-A6
+            else
+                i1 = i;
+                i2 = i+1;
+            end
+            % SEEG: Skip if the two channels are not consecutive
+            if strcmpi(Mod, 'SEEG') && ~ismember(AllInd(i1) - AllInd(i2), [1,-1])
                 continue;
             end
-            ChanNames = {ChannelMat.Channel(iChan).Name};
-            Mod = upper(ChannelMat.Channel(iChan(1)).Type);
-            [AllGroups, AllTags, AllInd] = ParseSensorNames(ChannelMat.Channel(iChan));
-
-            % === MONTAGE: ORIG ===
-            % Create montage
-            sMontage = db_template('Montage');
-            sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (orig)[tmp]'];
-            sMontage.Type      = 'selection';
-            sMontage.ChanNames = ChanNames;
-            sMontage.DispNames = ChanNames;
-            sMontage.Matrix    = eye(length(iChan));
-            % Add montage
-            SetMontage(sMontage.Name, sMontage);
-            % Add to ALL-orig montage
-            sMontageAllOrig.(Mod).ChanNames = cat(2, sMontageAllOrig.(Mod).ChanNames, sMontage.ChanNames);
-            sMontageAllOrig.(Mod).DispNames = cat(2, sMontageAllOrig.(Mod).DispNames, sMontage.DispNames);
-            sMontageAllOrig.(Mod).Matrix(size(sMontageAllOrig.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllOrig.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
-
-            % Skip bipolar montages if there is only one channel
-            if (length(iChan) < 2)
-                continue;
-            end
-
-            % === MONTAGE: BIPOLAR 1 ===
-            % Example: A1-A2, A3-A4, ...
-            % Create montage
-            sMontage = db_template('Montage');
-            sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (bipolar 1)[tmp]'];
-            sMontage.Type      = 'text';
-            sMontage.ChanNames = ChanNames;
-            sMontage.Matrix    = zeros(0, length(iChan));
-            iDisp = 1;
-            for i = 1:2:length(ChanNames)
-                % Last pair is not complete: A1-A2, A3-A4, A4-A5
-                if (i == length(ChanNames))
-                    i1 = i-1;
-                    i2 = i;
-                % Last pair is complete: A1-A2, A3-A4, A5-A6
-                else
-                    i1 = i;
-                    i2 = i+1;
-                end
-                % SEEG: Skip if the two channels are not consecutive
-                if strcmpi(Mod, 'SEEG') && ~ismember(AllInd(i1) - AllInd(i2), [1,-1])
-                    continue;
-                end
-                % Create entry
-                sMontage.DispNames{iDisp} = [ChanNames{i1} '-' ChanNames{i2}];
-                sMontage.Matrix(iDisp, i1) =  1;
-                sMontage.Matrix(iDisp, i2) = -1;
-                iDisp = iDisp + 1;
-            end
-            % Add montage: orig
-            SetMontage(sMontage.Name, sMontage);
-            % Add to ALL-dip1 montage
-            sMontageAllBip1.(Mod).ChanNames = cat(2, sMontageAllBip1.(Mod).ChanNames, sMontage.ChanNames);
-            sMontageAllBip1.(Mod).DispNames = cat(2, sMontageAllBip1.(Mod).DispNames, sMontage.DispNames);
-            sMontageAllBip1.(Mod).Matrix(size(sMontageAllBip1.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllBip1.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
-
-            % === MONTAGE: BIPOLAR 2 ===
-            % Example: A1-A2, A2-A3, ...
-            % Create montage
-            sMontage = db_template('Montage');
-            sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (bipolar 2)[tmp]'];
-            sMontage.Type      = 'text';
-            sMontage.ChanNames = ChanNames;
-            sMontage.Matrix    = zeros(0, length(iChan));
-            iDisp = 1;
-            for i = 1:length(ChanNames)-1
-                % SEEG: Skip if the two channels are not consecutive
-                if strcmpi(Mod, 'SEEG') && ~ismember(AllInd(i) - AllInd(i+1), [1,-1])
-                    continue;
-                end
-                % Create entry
-                sMontage.DispNames{iDisp} = [ChanNames{i} '-' ChanNames{i+1}];
-                sMontage.Matrix(iDisp, i)   =  1;
-                sMontage.Matrix(iDisp, i+1) = -1;
-                iDisp = iDisp + 1;
-            end
-            % Add montage: orig
-            SetMontage(sMontage.Name, sMontage);
-            % Add to ALL-dip2 montage
-            sMontageAllBip2.(Mod).ChanNames = cat(2, sMontageAllBip2.(Mod).ChanNames, sMontage.ChanNames);
-            sMontageAllBip2.(Mod).DispNames = cat(2, sMontageAllBip2.(Mod).DispNames, sMontage.DispNames);
-            sMontageAllBip2.(Mod).Matrix(size(sMontageAllBip2.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllBip2.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
-        end 
-
-        % Update the ALL montages
-        for iMod = 1:length(AllModalities)
-            Mod = AllModalities{iMod};
-            SetMontage(sMontageAllOrig.(Mod).Name, sMontageAllOrig.(Mod));
-            SetMontage(sMontageAllBip1.(Mod).Name, sMontageAllBip1.(Mod));
-            SetMontage(sMontageAllBip2.(Mod).Name, sMontageAllBip2.(Mod));
+            % Create entry
+            sMontage.DispNames{iDisp} = [ChanNames{i1} '-' ChanNames{i2}];
+            sMontage.Matrix(iDisp, i1) =  1;
+            sMontage.Matrix(iDisp, i2) = -1;
+            iDisp = iDisp + 1;
         end
+        % Add montage: orig
+        SetMontage(sMontage.Name, sMontage);
+        % Add to ALL-dip1 montage
+        sMontageAllBip1.(Mod).ChanNames = cat(2, sMontageAllBip1.(Mod).ChanNames, sMontage.ChanNames);
+        sMontageAllBip1.(Mod).DispNames = cat(2, sMontageAllBip1.(Mod).DispNames, sMontage.DispNames);
+        sMontageAllBip1.(Mod).Matrix(size(sMontageAllBip1.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllBip1.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
+
+        % === MONTAGE: BIPOLAR 2 ===
+        % Example: A1-A2, A2-A3, ...
+        % Create montage
+        sMontage = db_template('Montage');
+        sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (bipolar 2)[tmp]'];
+        sMontage.Type      = 'text';
+        sMontage.ChanNames = ChanNames;
+        sMontage.Matrix    = zeros(0, length(iChan));
+        iDisp = 1;
+        for i = 1:length(ChanNames)-1
+            % SEEG: Skip if the two channels are not consecutive
+            if strcmpi(Mod, 'SEEG') && ~ismember(AllInd(i) - AllInd(i+1), [1,-1])
+                continue;
+            end
+            % Create entry
+            sMontage.DispNames{iDisp} = [ChanNames{i} '-' ChanNames{i+1}];
+            sMontage.Matrix(iDisp, i)   =  1;
+            sMontage.Matrix(iDisp, i+1) = -1;
+            iDisp = iDisp + 1;
+        end
+        % Add montage: orig
+        SetMontage(sMontage.Name, sMontage);
+        % Add to ALL-dip2 montage
+        sMontageAllBip2.(Mod).ChanNames = cat(2, sMontageAllBip2.(Mod).ChanNames, sMontage.ChanNames);
+        sMontageAllBip2.(Mod).DispNames = cat(2, sMontageAllBip2.(Mod).DispNames, sMontage.DispNames);
+        sMontageAllBip2.(Mod).Matrix(size(sMontageAllBip2.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllBip2.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
+
+        % === MONTAGE: LOCAL AVG REF ===
+        % Create montage
+        sMontage = db_template('Montage');
+        sMontage.Name      = [Comment ': ' GroupNames{iGroup} ' (local average ref)[tmp]'];
+        sMontage.Type      = 'matrix';
+        % Add montage
+        SetMontage(sMontage.Name, sMontage);
+    end 
+
+    % Update the ALL montages
+    for iMod = 1:length(AllModalities)
+        Mod = AllModalities{iMod};
+        % Skip modalities that only have one montage
+        if (nMontages.(Mod) <= 1)
+            continue;
+        end
+        % Add all modality montages
+        SetMontage(sMontageAllOrig.(Mod).Name, sMontageAllOrig.(Mod));
+        SetMontage(sMontageAllBip1.(Mod).Name, sMontageAllBip1.(Mod));
+        SetMontage(sMontageAllBip2.(Mod).Name, sMontageAllBip2.(Mod));
+        SetMontage(sMontageLocalAvgRef.(Mod).Name, sMontageLocalAvgRef.(Mod));
     end
 end
 

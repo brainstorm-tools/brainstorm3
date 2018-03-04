@@ -1089,7 +1089,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Update automatic montages
                     panel_montage('UnloadAutoMontages');
                     if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
-                        panel_montage('AddAutoMontagesEeg', sFiles(1).SubjectName, ChannelMat);
+                        panel_montage('AddAutoMontagesSeeg', sFiles(1).SubjectName, ChannelMat);
                     end
                     if ismember('NIRS', {ChannelMat.Channel.Type})
                         panel_montage('AddAutoMontagesNirs', ChannelMat);

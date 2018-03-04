@@ -123,7 +123,8 @@ if ismember('Channel', FieldsToRead) && isstruct(sMat.Channel) && ~isempty(sMat.
         % Get the unique non-empty group names
         uniqueTags = unique(AllTags(~cellfun(@isempty, AllTags)));
         % If the sensors can be grouped using the tags/indices logic
-        if (length(uniqueTags) > 1) && ~any(isNoInd)
+%         if (length(uniqueTags) > 1) && ~any(isNoInd)
+        if ~isempty(uniqueTags) && ~any(isNoInd)
             for iGroup = 1:length(uniqueTags)
                 iTmp = find(strcmp(AllTags, uniqueTags{iGroup}));
                 for i = 1:length(iTmp)
