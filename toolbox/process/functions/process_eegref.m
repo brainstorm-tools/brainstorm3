@@ -19,7 +19,7 @@ function varargout = process_eegref( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
 
 eval(macro_method);
 end
@@ -41,7 +41,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Label
     sProcess.options.title.Comment = ['This process creates a linear projector that re-refences the EEG.<BR>' ...
                                       'Enter below the name of one or more electrodes, separated with comas.<BR>' ...
-                                      'For average reference, enter "<B>AVERAGE</B>".<BR><BR>' ...
+                                      'For average reference, enter "<B>AVERAGE</B>" (EEG).<BR>' ...
+                                      'For local average reference, enter "<B>LOCAL AVERAGE</B>" (SEEG/ECOG).<BR><BR>' ...
                                       'To view or delete this operator: open the file, go the Record tab<BR>' ...
                                       'and select the menu "Artifacts > Select active projectors".<BR><BR>'];
     sProcess.options.title.Type    = 'label';
@@ -78,6 +79,21 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % Process each channel file separately
     for iFile = 1:length(uniqueChanFiles)
+        % === GET BAD CHANNELS ===
+        % Get data files
+        iFilesIn = find(strcmp({sInputs.ChannelFile}, uniqueChanFiles{iFile}));
+        DataFiles = {sInputs(iFilesIn).FileName};
+        % Get bad channels
+        ChannelFlag = [];
+        for i = 1:length(DataFiles)
+            DataMat = in_bst_data(DataFiles{i}, 'ChannelFlag');
+            if isempty(ChannelFlag)
+                ChannelFlag = DataMat.ChannelFlag;
+            else
+                ChannelFlag(DataMat.ChannelFlag == -1) = -1;
+            end
+        end
+        
         % === GET CHANNEL FILE ===
         ChannelFile = uniqueChanFiles{iFile};
         % Load the channel file
@@ -105,17 +121,27 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Find EEG reference channels
         iEegRef = channel_find(ChannelMat.Channel, EegRef);
+        % Initialize weight matrix
+        W = eye(length(ChannelMat.Channel));
+        % AVERAGE: Average reference
         if isempty(iEegRef) && ismember(lower(EegRef), {'average','avg','avgref','all','*'})
             iEegRef = iChannels;
+            sMontage = panel_montage('GetMontageAvgRef', [], ChannelMat.Channel(iChannels), ChannelFlag(iChannels), 0);
+            W(iChannels,iChannels) = sMontage.Matrix;
+        % LOCAL AVERAGE: Local average reference
+        elseif isempty(iEegRef) && ismember(lower(EegRef), {'local average'})
+            iEegRef = iChannels;
+            sMontage = panel_montage('GetMontageAvgRef', [], ChannelMat.Channel(iChannels), ChannelFlag(iChannels), 1);
+            W(iChannels,iChannels) = sMontage.Matrix;
         elseif isempty(iEegRef)
             bst_report('Error', sProcess, [], ['EEG reference channels were not found: "' EegRef '".']);
             return;
+        % Standard referencing
+        else
+            W(iChannels,iEegRef) = W(iChannels,iEegRef) - 1./length(iEegRef);
         end
 
         % === CREATE AVERAGE REF PROJECTOR ===
-        % Create the montage matrix
-        W = eye(length(ChannelMat.Channel));
-        W(iChannels,iEegRef) = W(iChannels,iEegRef) - 1./length(iEegRef);
         % Remove the references that were used (if they are not regular channels)
         iExtRef = setdiff(iEegRef, iChannels);
         if ~isempty(iExtRef)
