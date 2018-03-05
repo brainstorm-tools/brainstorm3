@@ -1644,6 +1644,10 @@ switch (lower(action))
                 % Get available modalities for this data file
                 elseif strcmpi(DataType, 'data')
                     DisplayMod = bst_get('TimefreqDisplayModalities', filenameRelative);
+                    % Add SEEG+ECOG 
+                    if all(ismember({'SEEG','ECOG'}, DisplayMod))
+                        DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
+                    end
                 end
                 % One file selected
                 if (length(bstNodes) == 1)
@@ -1804,20 +1808,44 @@ switch (lower(action))
                                 AddSeparator(jPopup);
                                 % Topography
                                 if ~isempty(DisplayMod)
-                                    fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 1, 1, 0);
-                                    % Display on scalp: Only for EEG and if a scalp is defined
-                                    if ismember('EEG', DisplayMod) && ~isempty(sSubject) && ~isempty(sSubject.iScalp)
+                                    jSubMenus = fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 1, 1, 0);
+                                    % Interpolate SEEG/ECOG on the anatomy
+                                    for iMod = 1:length(DisplayMod)
+                                        % Create submenu if there are multiple modalities
+                                        if (length(DisplayMod) > 1)
+                                            dispMod = getChannelTypeDisplay(DisplayMod{iMod}, DisplayMod);
+                                            if (iMod <= length(jSubMenus))
+                                                jMenuModality = jSubMenus(iMod);
+                                                jMenuModality.addSeparator();
+                                            else
+                                                jMenuModality = gui_component('Menu', jPopup, [], dispMod, IconLoader.ICON_TOPOGRAPHY, [], []);
+                                            end
+                                        else
+                                            jMenuModality = jPopup;
+                                        end
                                         AddSeparator(jPopup);
-                                        gui_component('MenuItem', jPopup, [], 'Display on scalp', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iScalp).FileName, filenameRelative, 'EEG'));
-                                    end
-                                    % Display on cortex: Only for SEEG/ECOG, and if a cortex is defined
-                                    if ismember('SEEG', DisplayMod) && ~isempty(sSubject) && ~isempty(sSubject.iCortex)
-                                        AddSeparator(jPopup);
-                                        gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, 'SEEG'));
-                                    end
-                                    if ismember('ECOG', DisplayMod) && ~isempty(sSubject) && ~isempty(sSubject.iCortex)
-                                        AddSeparator(jPopup);
-                                        gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, 'ECOG'));
+                                        % EEG: Display on scalp
+                                        if strcmpi(DisplayMod{iMod}, 'EEG') && ~isempty(sSubject) && ~isempty(sSubject.iScalp)
+                                            gui_component('MenuItem', jPopup, [], 'Display on scalp', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iScalp).FileName, filenameRelative, 'EEG'));
+                                        % SEEG/ECOG: Display on cortex or MRI
+                                        elseif ismember(DisplayMod{iMod}, {'SEEG', 'ECOG', 'ECOG+SEEG'}) && ~isempty(sSubject)
+                                            if ~isempty(sSubject.iCortex)
+                                                gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, DisplayMod{iMod}));
+                                            end
+                                            if ~isempty(sSubject.iAnatomy)
+                                                if (length(sSubject.Anatomy) == 1)
+                                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
+                                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
+                                                else
+                                                    for iAnat = 1:length(sSubject.Anatomy)
+                                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
+                                                    end
+                                                    for iAnat = 1:length(sSubject.Anatomy)
+                                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
+                                                    end
+                                                end
+                                            end
+                                        end
                                     end
                                 end
                                 
@@ -1875,7 +1903,6 @@ switch (lower(action))
                 iStudy = bstNodes(1).getStudyIndex();
                 iTimefreq = bstNodes(1).getItemIndex();
                 sStudy = bst_get('Study', iStudy);
-                DisplayMod = {};
                 % Get subject structure
                 sSubject = bst_get('Subject', sStudy.BrainStormSubject);
                 % Get data type
@@ -1891,45 +1918,56 @@ switch (lower(action))
                     DataType = sStudy.Timefreq(iTimefreq).DataType;
                     DataFile = sStudy.Timefreq(iTimefreq).DataFile;
                 end
-                % Get avaible modalities for this data file
-                if strcmpi(DataType, 'data')
-                    DisplayMod = bst_get('TimefreqDisplayModalities', filenameRelative);
-                end
                 % One file selected
                 if (length(bstNodes) == 1)
                     % ===== RECORDINGS =====
                     if strcmpi(DataType, 'data')
+                        % Get avaible modalities for this data file
+                        DisplayMod = bst_get('TimefreqDisplayModalities', filenameRelative);
+                        % Add SEEG+ECOG 
+                        if all(ismember({'SEEG','ECOG'}, DisplayMod))
+                            DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
+                        end
+                        % Power spectrum
                         gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                         AddSeparator(jPopup);
                         % Topography
                         isGradNorm = strcmpi(nodeType, 'spectrum');
-                        fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, isGradNorm, 0);
+                        jSubMenus = fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, isGradNorm, 0);
                         % Interpolate SEEG/ECOG on the anatomy
                         for iMod = 1:length(DisplayMod)
-                            if ~ismember(DisplayMod{iMod}, {'SEEG', 'ECOG'})
-                                continue;
-                            end
                             % Create submenu if there are multiple modalities
                             if (length(DisplayMod) > 1)
                                 dispMod = getChannelTypeDisplay(DisplayMod{iMod}, DisplayMod);
-                                jMenuModality = gui_component('Menu', jPopup, [], dispMod, IconLoader.ICON_TOPOGRAPHY, [], []);
+                                if (iMod <= length(jSubMenus))
+                                    jMenuModality = jSubMenus(iMod);
+                                    jMenuModality.addSeparator();
+                                else
+                                    jMenuModality = gui_component('Menu', jPopup, [], dispMod, IconLoader.ICON_TOPOGRAPHY, [], []);
+                                end
                             else
                                 jMenuModality = jPopup;
                             end
                             AddSeparator(jPopup);
-                            if ~isempty(sSubject.iCortex)
-                                gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, DisplayMod{iMod}));
-                            end
-                            if ~isempty(sSubject.iAnatomy)
-                                if (length(sSubject.Anatomy) == 1)
-                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
-                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
-                                else
-                                    for iAnat = 1:length(sSubject.Anatomy)
-                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
-                                    end
-                                    for iAnat = 1:length(sSubject.Anatomy)
-                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
+                            % EEG: Display on scalp
+                            if strcmpi(DisplayMod{iMod}, 'EEG') && ~isempty(sSubject) && ~isempty(sSubject.iScalp)
+                                gui_component('MenuItem', jPopup, [], 'Display on scalp', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iScalp).FileName, filenameRelative, 'EEG'));
+                            % SEEG/ECOG: Display on cortex or MRI
+                            elseif ismember(DisplayMod{iMod}, {'SEEG', 'ECOG', 'ECOG+SEEG'}) && ~isempty(sSubject)
+                                if ~isempty(sSubject.iCortex)
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, DisplayMod{iMod}));
+                                end
+                                if ~isempty(sSubject.iAnatomy)
+                                    if (length(sSubject.Anatomy) == 1)
+                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
+                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
+                                    else
+                                        for iAnat = 1:length(sSubject.Anatomy)
+                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
+                                        end
+                                        for iAnat = 1:length(sSubject.Anatomy)
+                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
+                                        end
                                     end
                                 end
                             end
@@ -2513,9 +2551,9 @@ function fcnPopupDisplayTopography(jMenu, FileName, AllMod, Modality, isStat)
     import org.brainstorm.icon.*;
     AddSeparator(jMenu);
     % Interpolation
-    if ~strcmpi(Modality, 'SEEG') && ~strcmpi(Modality, 'ECOG+SEEG')
+    if ~ismember(Modality, {'SEEG','ECOG+SEEG'})
         gui_component('MenuItem', jMenu, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, Modality, '3DSensorCap'));
-        if ~strcmpi(Modality, 'NIRS')
+        if ~ismember(Modality, {'NIRS','ECOG'})
             gui_component('MenuItem', jMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, Modality, '2DSensorCap'));
             gui_component('MenuItem', jMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, Modality, '2DDisc'));
         end
@@ -2547,7 +2585,7 @@ end
 
 
 %% ===== DISPLAY TOPOGRAPHY: NO INTERP =====
-function fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, isGradNorm, AlwaysCreate)
+function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, isGradNorm, AlwaysCreate)
     import org.brainstorm.icon.*;
     % Display defaults
     UseSmoothing = 0;
@@ -2575,13 +2613,17 @@ function fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, isGradNorm, A
         if (length(AllMod) > 1)
             dispMod = getChannelTypeDisplay(AllMod{iMod}, AllMod);
             jSubMenu = gui_component('Menu', jMenu, [], dispMod, IconLoader.ICON_TOPOGRAPHY, [], []);
+            jSubMenus(iMod) = jSubMenu;
         else
             jSubMenu = jMenu;
+            jSubMenus = [];
         end
-        if ~strcmpi(AllMod{iMod}, 'SEEG') && ~strcmpi(AllMod{iMod}, 'ECOG+SEEG')
+        if ~ismember(AllMod{iMod}, {'SEEG','ECOG+SEEG'})
             gui_component('MenuItem', jSubMenu, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DSensorCap', [], UseSmoothing, hFig));
-            gui_component('MenuItem', jSubMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DSensorCap', [], UseSmoothing, hFig));
-            gui_component('MenuItem', jSubMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DDisc',      [], UseSmoothing, hFig));
+            if ~ismember(AllMod{iMod}, {'NIRS','ECOG'})
+                gui_component('MenuItem', jSubMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DSensorCap', [], UseSmoothing, hFig));
+                gui_component('MenuItem', jSubMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DDisc',      [], UseSmoothing, hFig));
+            end
         end
         % 2D Layout
         if is2DLayout
@@ -2590,7 +2632,7 @@ function fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, isGradNorm, A
         % 3D Electrodes
         if ismember(AllMod{iMod}, {'EEG', 'ECOG'}) && ~AlwaysCreate
             gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
-        elseif strcmpi(AllMod{iMod}, 'SEEG') || strcmpi(AllMod{iMod}, 'ECOG+SEEG')
+        elseif ismember(AllMod{iMod}, {'SEEG', 'ECOG+SEEG'}) && ~AlwaysCreate
             gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Scalp'));
             gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Cortex'));
             gui_component('MenuItem', jSubMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-MRI'));

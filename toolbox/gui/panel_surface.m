@@ -1214,7 +1214,20 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
             TfInfo = db_template('TfInfo');
             TfInfo.FileName = sTimefreq.FileName;
             TfInfo.Comment  = sTimefreq.Comment;
-            TfInfo.RowName  = [];
+            % Select channels
+            if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType, 'data')
+                % Get all the channels allowed in the current figure
+                TfInfo.RowName = {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels).Name};
+                % Remove the channels for which the TF was not computed
+                iMissing = find(~ismember(TfInfo.RowName, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames));
+                if ~isempty(iMissing)
+                    TfInfo.RowName(iMissing) = [];
+                    GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels(iMissing) = [];
+                end
+            else
+                TfInfo.RowName = [];
+            end
+            % Selected frequencies
             if isStaticFreq
                 TfInfo.iFreqs = [];
             elseif ~isempty(GlobalData.UserFrequencies.iCurrentFreq)
@@ -1448,8 +1461,13 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                 % Get associated results
                 switch (GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType)
                     case 'data'
-                        % Compute interpolation sensors => scalp vertices
-                        TessInfo(iTess) = ComputeScalpInterpolation(iDS, iFig, TessInfo(iTess));
+                        % Overlay on MRI: Reset Overlay cube
+                        if strcmpi(TessInfo(iTess).Name, 'Anatomy')
+                            TessInfo(iTess).OverlayCube = [];
+                        % Compute interpolation sensors => surface vertices
+                        else
+                            TessInfo(iTess) = ComputeScalpInterpolation(iDS, iFig, TessInfo(iTess));
+                        end
                         nVertices = TessInfo(iTess).nVertices;
                     case 'results'
                         nVertices = max(numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames), numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames));
@@ -1579,11 +1597,12 @@ function TessInfo = ComputeScalpInterpolation(iDS, iFig, TessInfo)
             (size(TessInfo.DataWmat,2) ~= length(selChan)) || ...
             (size(TessInfo.DataWmat,1) ~= length(Vertices))
         switch lower(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
-            case 'eeg',  excludeParam = .3;
-            case 'ecog', excludeParam = -.015;
-            case 'seeg', excludeParam = -.015;
-            case 'meg',  excludeParam = .5;
-            otherwise,   excludeParam = 0;
+            case 'eeg',       excludeParam = .3;
+            case 'ecog',      excludeParam = -.015;
+            case 'seeg',      excludeParam = -.015;
+            case 'ecog+seeg', excludeParam = -.015;
+            case 'meg',       excludeParam = .5;
+            otherwise,        excludeParam = 0;
         end
         nbNeigh = 4;
         TessInfo.DataWmat = bst_shepards(Vertices, chan_loc, nbNeigh, excludeParam);
@@ -1946,14 +1965,29 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
             % Get cortex surface
             SurfaceFile = GlobalData.DataSet(iDS).Timefreq(iTf).SurfaceFile;
             % If timefreq on sources
-            if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTf).DataType, 'results')
-                % Check source grid type
-                if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTf).DataFile)
-                    [iDS, iResult] = bst_memory('GetDataSetResult', GlobalData.DataSet(iDS).Timefreq(iTf).DataFile);
-                    isVolumeGrid = ismember(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, {'volume', 'mixed'});
-                else
-                    isVolumeGrid = 0;
-                end
+            switch (GlobalData.DataSet(iDS).Timefreq(iTf).DataType)
+                case 'data'
+                    % Get figure index (in DataSet structure)
+                    [tmp__, iFig, iDS] = bst_figures('GetFigure', hFig);
+                    % Get selected channels indices and location
+                    selChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+                    % Set data for current time frame
+                    GridLoc = [GlobalData.DataSet(iDS).Channel(selChan).Loc]';
+                    % Compute interpolation
+                    if isempty(TessInfo(iTess).DataWmat) || (size(TessInfo(iTess).DataWmat,2) ~= size(GridLoc,1))
+                        TessInfo(iTess).DataWmat = grid_interp_mri_seeg(GridLoc, sMri);
+                    end
+                    % Build interpolated cube
+                    MriInterp = TessInfo(iTess).DataWmat;
+                    OverlayCube = tess_interp_mri_data(MriInterp, size(sMri.Cube), TessInfo(iTess).Data, isVolumeGrid);
+                case 'results'
+                    % Check source grid type
+                    if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTf).DataFile)
+                        [iDS, iResult] = bst_memory('GetDataSetResult', GlobalData.DataSet(iDS).Timefreq(iTf).DataFile);
+                        isVolumeGrid = ismember(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, {'volume', 'mixed'});
+                    else
+                        isVolumeGrid = 0;
+                    end
             end
         case 'Surface'
             % Get surface specified in DataSource.FileName

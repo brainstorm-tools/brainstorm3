@@ -2525,7 +2525,7 @@ switch contextName
     case 'ElectrodeConfig'
         % Get modality
         Modality = varargin{2};
-        if isempty(Modality) || ~ismember(Modality, {'EEG','ECOG','SEEG'})
+        if isempty(Modality) || ~ismember(Modality, {'EEG','ECOG','SEEG','ECOG+SEEG'})
             disp(['GET> Invalid modality: ' Modality]);
             Modality = 'EEG';
         end
@@ -2547,7 +2547,7 @@ switch contextName
                     ElectrodeConfig.ContactLength   = 0.001;
                     ElectrodeConfig.ElecDiameter    = 0.0005;
                     ElectrodeConfig.ElecLength      = [];
-                case 'SEEG'
+                case {'SEEG','ECOG+SEEG'}
                     ElectrodeConfig.Type            = 'seeg';
                     ElectrodeConfig.ContactDiameter = 0.0008;
                     ElectrodeConfig.ContactLength   = 0.002;

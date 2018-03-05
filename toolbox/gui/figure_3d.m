@@ -524,7 +524,7 @@ function FigureMouseUpCallback(hFig, varargin)
     % Update figure selection
     if strcmpi(Figure.Id.Type, '3DViz')
         bst_figures('SetCurrentFigure', hFig, '3D');
-    elseif strcmpi(Figure.Id.SubType, '3DSensorCap')
+    elseif ismember(Figure.Id.SubType, {'3DSensorCap', '3DElectrodes'})
         bst_figures('SetCurrentFigure', hFig, '3D');
         bst_figures('SetCurrentFigure', hFig, '2D');
     else

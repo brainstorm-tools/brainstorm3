@@ -813,9 +813,11 @@ function DisplayFigurePopup(hFig, menuTitle)
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_MASK));
         end
         % === View TOPOGRAPHY ===
-        jItem = gui_component('MenuItem', jPopup, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, TfFile, [], '2DSensorCap', [], 0));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
-        jPopup.addSeparator();
+        if ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'MEG MAG','MEG GRAD','MEG','EEG'})
+            jItem = gui_component('MenuItem', jPopup, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, TfFile, [], '2DSensorCap', [], 0));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
+            jPopup.addSeparator();
+        end
     end
 
     % === VIEW SELECTED ===
