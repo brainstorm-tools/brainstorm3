@@ -22,7 +22,7 @@ function varargout = figure_topo( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 eval(macro_method);
 end
@@ -717,10 +717,61 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     isDrawSensorLabels= isempty(PlotHandles.hSensorLabels) || any(~ishandle(PlotHandles.hSensorLabels));
 
     % ===== CREATE SURFACE =====
+    LabelRows = {};
+    LabelRowsRef = [];
+    % SEEG/ECOG: DO no use real positions
+    if ismember(Channel(1).Type, {'SEEG','ECOG'}) && ~isempty(GlobalData.DataSet(iDS).IntraElectrodes)
+        % Parse channel names
+        [AllGroups, AllTags, AllInd, isNoInd] = panel_montage('ParseSensorNames', Channel);
+        % Initialize variables
+        X = zeros(length(Channel),1);
+        Y = zeros(length(Channel),1);
+        iRow = 0;
+        % Plot all the contacts of each electrode in a row
+        for iElec = 1:length(GlobalData.DataSet(iDS).IntraElectrodes)
+            % Get the contacts for this electrode
+            iChan = find(strcmpi(GlobalData.DataSet(iDS).IntraElectrodes(iElec).Name, AllGroups));
+            if isempty(iChan)
+                continue;
+            end
+            % Multiple rows
+            if (length(GlobalData.DataSet(iDS).IntraElectrodes(iElec).ContactNumber) >= 2)
+                Nrows = GlobalData.DataSet(iDS).IntraElectrodes(iElec).ContactNumber(1);
+            elseif (length(iChan) > 16)
+                Nrows = ceil(max(AllInd(iChan)) / 10);
+            else
+                Nrows = 1;
+            end
+            if (Nrows > 1)
+                for iEcogLine = 1:Nrows
+                    iChanLine = find((AllInd(iChan) >= (iEcogLine - 1)*10) & (AllInd(iChan) < iEcogLine*10));
+                    if ~isempty(iChanLine)
+                        iRow = iRow + 1;
+                        X(iChan(iChanLine)) = repmat(iRow, length(iChanLine), 1);
+                        Y(iChan(iChanLine)) = AllInd(iChan(iChanLine)) - (iEcogLine - 1)*10;
+                        LabelRows{iRow} = [GlobalData.DataSet(iDS).IntraElectrodes(iElec).Name, num2str(iEcogLine)];
+                        LabelRowsRef(iRow) = iChan(iChanLine(1));
+                    end
+                end
+            % Single row
+            else
+                % Start new row
+                iRow = iRow + 1;
+                X(iChan) = repmat(iRow, length(iChan), 1);
+                Y(iChan) = AllInd(iChan);
+                LabelRows{iRow} = GlobalData.DataSet(iDS).IntraElectrodes(iElec).Name;
+                LabelRowsRef(iRow) = iChan(1);
+            end
+        end
+        % Flip both axes
+        X = -X;
+        Y = -Y;
+        
     % 2D Projection
-    if all(Vertices(:,3) < 0.0001)
+    elseif all(Vertices(:,3) < 0.0001)
         X = Vertices(:,1);
         Y = Vertices(:,2);
+    % Rgular sensors with 3D ccordinates: Project in 2D
     else
         [X,Y] = bst_project_2d(Vertices(:,1), Vertices(:,2), Vertices(:,3), '2dlayout');
     end
@@ -787,7 +838,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                     'UserData',      selChanGlobal(i), ...
                     'ButtonDownFcn', @(h,ev)LineClickedCallback(h,selChanGlobal(i)));
         else
-            % Update xisting lines
+            % Update existing lines
             set(PlotHandles.hLines(i), ...
                 'XData', XData, ...
                 'YData', YData, ...
@@ -813,6 +864,27 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
 %             => CANNOT KEEP THAT: UPDATE IS WAY TOO SLOW
 %             set(PlotHandles.hSensorLabels(i), 'Position', [Xtext, Ytext, 0]);
         end
+    end
+    
+    % ===== ROW LABELS =====
+    if ~isempty(LabelRows)
+        for iRow = 1:length(LabelRows)
+            Xtext = X(LabelRowsRef(iRow));
+            Ytext = 1.03;
+            hText = text(Xtext, Ytext, 0*Xtext + 1, ...
+                LabelRows{iRow}, ...
+                'VerticalAlignment',   'baseline', ...
+                'HorizontalAlignment', 'left', ...
+                'FontSize',            bst_get('FigFont'), ...
+                'FontUnits',           'points', ...
+                'Interpreter',         'none', ...
+                'Color',               [0 1 0], ...
+                'Visible',             'on', ...
+                'Tag',                 'RowLabels', ...
+                'Parent',              hAxes);
+        end
+        % Why do we have to print something else to have the labels displayed??????
+        line([-1,-1],[-1,-1],[-1,-1], 'color', [1 1 1]);
     end
     
     % ===== LEGEND =====

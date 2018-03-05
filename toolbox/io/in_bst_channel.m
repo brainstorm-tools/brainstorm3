@@ -28,7 +28,7 @@ function sMat = in_bst_channel(MatFile, varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2017
+% Authors: Francois Tadel, 2012-2018
 
 %% ===== PARSE INPUTS =====
 % Full file name
