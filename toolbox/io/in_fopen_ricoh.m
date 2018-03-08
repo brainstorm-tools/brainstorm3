@@ -29,15 +29,15 @@ function [sFile, ChannelMat, errMsg] = in_fopen_ricoh(RawFile)
 
 
 %% ===== READ HEADER =====
-header.system   = getRHdrSystem(RawFile);    % Get information about the MEG system.
-header.sensors  = getRHdrChannel(RawFile);   % Get information about the data channels.
-header.acq      = getRHdrAcqCond(RawFile);   % Get information about data acquisition condition.
-header.events   = getYkgwHdrEvent(RawFile);     % Get information about trigger events.
-% header.bookmark = getYkgwHdrBookmark(RawFile);  % Get information about bookmark.
-header.coreg    = getRHdrCoregist(RawFile);  % Get information about coregistration.
-header.digitize = getRHdrDigitize(RawFile);  % Get information about digitization.
-header.subject  = getRHdrSubject(RawFile);   % Get information about subject.
-%header.sources  = getRHdrSource(RawFile);   % Get information analyzed sources.
+header.system     = getRHdrSystem(RawFile);    % Get information about the MEG system.
+header.sensors    = getRHdrChannel(RawFile);   % Get information about the data channels.
+header.acq        = getRHdrAcqCond(RawFile);   % Get information about data acquisition condition.
+header.events     = getRHdrEvent(RawFile);     % Get information about trigger events.
+header.annotation = getRHdrAnnotation(RawFile);  % Get information about bookmark.
+header.coreg      = getRHdrCoregist(RawFile);  % Get information about coregistration.
+header.digitize   = getRHdrDigitize(RawFile);  % Get information about digitization.
+header.subject    = getRHdrSubject(RawFile);   % Get information about subject.
+%header.sources   = getRHdrSource(RawFile);   % Get information analyzed sources.
 errMsg = [];
 
     
