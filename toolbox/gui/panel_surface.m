@@ -647,6 +647,10 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(sSubject.iAnatomy)
             typesList{end+1} = 'Anatomy';
         end
+        iAseg = find(~cellfun(@(c)isempty(strfind(lower(c),'aseg')), {sSubject.Surface.FileName}), 1);
+        if ~isempty(iAseg)
+            typesList{end+1} = 'ASEG';
+        end
         if isempty(typesList)
             return
         end
@@ -668,6 +672,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(sSubject.iInnerSkull(1)).FileName;
         case 'OuterSkull'
             SurfaceFile = sSubject.Surface(sSubject.iOuterSkull(1)).FileName;
+        case 'ASEG'
+            SurfaceFile = sSubject.Surface(iAseg).FileName;
         otherwise
             return;
     end

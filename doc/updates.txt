@@ -6,7 +6,7 @@ March 2018
 - GUI: Allow simultaneous display of SEEG and ECOG
 - GUI: SEEG/ECOG local average reference made available for all the groups of contacts
 - Process: Re-reference EEG: New option "local average", and use of the list of bad channels
-- GUI: SEEG/ECOG: 2DLayout works
+- GUI: 2DLayout made available for SEEG/ECOG
 ---------------------------------------------------------------
 February 2018
 - GUI: New options "Upsample image" to smooth MRI display in 3D figures
