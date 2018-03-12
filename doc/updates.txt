@@ -5,6 +5,7 @@ March 2018
 - GUI: Updated tools for ECOG (new display options, many bug fixes)
 - GUI: Allow simultaneous display of SEEG and ECOG
 - GUI: SEEG/ECOG local average reference made available for all the groups of contacts
+- GUI: New option to add the "ASEG" atlas easily to any figure
 - Process: Re-reference EEG: New option "local average", and use of the list of bad channels
 - GUI: 2DLayout made available for SEEG/ECOG
 ---------------------------------------------------------------
