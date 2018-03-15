@@ -92,6 +92,13 @@ switch lower(compType)
         if isempty(jFont) && exist('isdeployed', 'builtin') && isdeployed
             jFont = bst_get('Font', 11, 'Arial');
         end
+    case 'textarea'
+        jComp   = java_scaled('textarea', 15, 30);
+        jScroll = java_create('javax.swing.JScrollPane', 'Ljava.awt.Component;', jComp);
+        callbackName = 'FocusLostCallback';
+        if isempty(jFont) && exist('isdeployed', 'builtin') && isdeployed
+            jFont = bst_get('Font', 11, 'Arial');
+        end
     case 'text'
         jComp = java_create('javax.swing.JTextField');
         jComp.setPreferredSize(java_scaled('dimension', 54, 20));

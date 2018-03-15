@@ -43,6 +43,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 0;
+    % === Spike Sorter
+    sProcess.options.label1.Comment = '<U><B>Spike Sorter</B></U>:';
+    sProcess.options.label1.Type    = 'label';
+    sProcess.options.spikesorter.Comment = {'WaveClus'};
+    sProcess.options.spikesorter.Type    = 'radio';
+    sProcess.options.spikesorter.Value   = 1;
+    % Options: Options
+    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Options</B></U>: '};
+    sProcess.options.edit.Type    = 'editpref';
+    sProcess.options.edit.Value   = [];
 end
 
 
@@ -57,24 +67,31 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     global GlobalData;
     OutputFiles = {};
     ProtocolInfo = bst_get('ProtocolInfo');
+    spikeSorter = sProcess.options.spikesorter.Comment{sProcess.options.spikesorter.Value};
     
-    % Ensure we are including the WaveClus folder in the Matlab path
-    waveclusDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus');
-    if exist(waveclusDir, 'file')
-        addpath(genpath(waveclusDir));
-    end
+    switch lower(spikeSorter)
+        case 'waveclus'
+            % Ensure we are including the WaveClus folder in the Matlab path
+            waveclusDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus');
+            if exist(waveclusDir, 'file')
+                addpath(genpath(waveclusDir));
+            end
 
-    % Install WaveClus if missing
-    if ~exist('wave_clus_font', 'file')
-        rmpath(genpath(waveclusDir));
-        isOk = java_dialog('confirm', ...
-            ['The WaveClus spike-sorter is not installed on your computer.' 10 10 ...
-                 'Download and install the latest version?'], 'WaveClus');
-        if ~isOk
-            bst_report('Error', sProcess, sInputs, 'This process requires the WaveClus spike-sorter.');
-            return;
-        end
-        process_spikesorting_unsupervised('downloadAndInstallWaveClus');
+            % Install WaveClus if missing
+            if ~exist('wave_clus_font', 'file')
+                rmpath(genpath(waveclusDir));
+                isOk = java_dialog('confirm', ...
+                    ['The WaveClus spike-sorter is not installed on your computer.' 10 10 ...
+                         'Download and install the latest version?'], 'WaveClus');
+                if ~isOk
+                    bst_report('Error', sProcess, sInputs, 'This process requires the WaveClus spike-sorter.');
+                    return;
+                end
+                process_spikesorting_unsupervised('downloadAndInstallWaveClus');
+            end
+            
+        otherwise
+            bst_error('The chosen spike sorter is currently unsupported by Brainstorm.');
     end
     
     % Compute on each raw input independently
@@ -92,7 +109,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             return;
         end
         if ~isfield(DataMat, 'Device') || isempty(DataMat.Device) ...
-                || ~strcmpi(DataMat.Device, 'waveclus')
+                || ~strcmpi(DataMat.Device, spikeSorter)
             bst_report('Error', sProcess, sInput, ...
                 'This spike sorting structure is currently unsupported by Brainstorm.');
             return;
