@@ -287,7 +287,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
     end
     newEvents = struct();
     DataMat = in_bst_data(rawFile);
-    eventName = [eventNamePrefix 'Spikes Channel ' electrodeName ' '];
+    eventName = [eventNamePrefix GetSpikesEventPrefix() ' ' electrodeName ' '];
 
     % Load spike data and convert to Brainstorm event format
     switch lower(deviceType)
@@ -379,3 +379,8 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
 
     save(bst_fullfile(sFile.Parent, outputFile),'events');
 end
+
+function prefix = GetSpikesEventPrefix()
+    prefix = 'Spikes Channel';
+end
+

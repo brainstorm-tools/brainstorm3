@@ -42,7 +42,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 0;
+    sProcess.isSeparator = 1;
     % === Spike Sorter
     sProcess.options.label1.Comment = '<U><B>Spike Sorter</B></U>:';
     sProcess.options.label1.Type    = 'label';
