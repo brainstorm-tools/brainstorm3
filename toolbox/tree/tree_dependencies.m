@@ -85,6 +85,8 @@ if ~isempty(NodelistOptions)
     else
         % Options
         NodelistOptions.isSelect  = strcmpi(NodelistOptions.Action, 'Select');
+        % Make search case insensitive
+        NodelistOptions.String = lower(NodelistOptions.String);
         % Create filter eval expression
         NodelistOptions.Eval = CreateFilterEvalExpression(NodelistOptions.String);
     end
