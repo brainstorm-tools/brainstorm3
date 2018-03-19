@@ -899,6 +899,10 @@ function res = ParseFilterTree(root)
     if isfield(root, 'children')
         for iChild = 1:length(root.children)
             node = root.children(iChild);
+            % Add implicit AND if no operator between two tags specified
+            if (iChild >= 2) && ~any(strcmpi({'and', '&', '&&', 'or', '|', '||', 'not'}, root.children(iChild-1)))
+                res = [res ' &&'];
+            end
             if isfield(node, 'children') && ~isempty(node.children)
                 res = [res ' (' ParseFilterTree(node) ')'];
             else
