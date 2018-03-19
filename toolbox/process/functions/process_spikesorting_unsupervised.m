@@ -213,8 +213,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Build spikes structure
         spikes = dir(bst_fullfile(outputPath, 'raw_elec*_spikes.mat'));
         spikes = sort_nat({spikes.name});
-        for iSpike = 1:length(spikes)
-            iChannel  = sscanf(spikes{iSpike}, 'raw_elec%d_spikes.mat');
+        
+        % Get channelID from the channels
+        channelIDs = zeros(1,length(spikes));
+        
+        for iChannel = 1:length(spikes)
+            wordsInLabel         = strsplit(ChannelMat.Channel(iChannel).Name, ' '); % cell 1x2   (raw, 1)
+            channelIDs(iChannel) = str2double(wordsInLabel{2});
+        end
+
+       
+        for iSpike = 1:length(channelIDs)
+            
+            iChannel  = find(channelIDs, sscanf(spikes{iSpike}, 'raw_elec%d_spikes.mat'));  % The channelID is not equivalent to the channel index
+            
             DataMat.Spikes(iSpike).Path = outputPath;
             DataMat.Spikes(iSpike).File = ['times_raw_elec' num2str(iChannel) '.mat'];
             if exist(DataMat.Spikes(iSpike).File, 'file') ~= 2
@@ -222,6 +234,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             DataMat.Spikes(iSpike).Name = ChannelMat.Channel(iChannel).Name;
             DataMat.Spikes(iSpike).Mod  = 0;
+
         end
         % Save events file for backup
         SaveBrainstormEvents(DataMat, 'events_UNSUPERVISED.mat', 'Unsupervised');
