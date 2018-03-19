@@ -67,7 +67,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.spikesorter.Type    = 'radio';
     sProcess.options.spikesorter.Value   = 1;
     % Options: Options
-    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Options</B></U>: '};
+    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Parameters</B></U>: '};
     sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = [];
 end
@@ -236,7 +236,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         end
         % Save events file for backup
-        SaveBrainstormEvents(DataMat, 'events_UNSUPERVISED.mat', 'Unsupervised');
+        SaveBrainstormEvents(DataMat, 'events_UNSUPERVISED.mat', ''); % No prefix (unsupervised)
         % Add history field
         DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
         % Save file on hard drive
@@ -316,7 +316,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
     end
     newEvents = struct();
     DataMat = in_bst_data(rawFile);
-    eventName = [eventNamePrefix GetSpikesEventPrefix() ' ' electrodeName ' '];
+    eventName = [eventNamePrefix GetSpikesEventPrefix() ' ' electrodeName];
 
     % Load spike data and convert to Brainstorm event format
     switch lower(deviceType)
