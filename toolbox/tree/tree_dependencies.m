@@ -903,6 +903,7 @@ function [res, isWord] = ParseFilterTree(root)
         for iChild = 1:length(root.children)
             node = root.children(iChild);
             [word, isWord] = ParseFilterTree(node);
+            % Add implicit AND if no operator between two tags specified
             if lastChildIsWord && isWord
                 res = [res ' &&'];
             end
