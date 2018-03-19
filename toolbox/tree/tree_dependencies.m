@@ -880,8 +880,9 @@ function root = CreateFilterTree(s)
 end
 
 %% ===== Parsing filter tree recursively =====
-function res = ParseFilterTree(root)
+function [res, isWord] = ParseFilterTree(root)
     % Change reserved words to symbol
+    isWord = 0;
     if isempty(root.word)
         res = '';
     elseif any(strcmpi({'and', '&', '&&', '+'}, root.word))
@@ -893,16 +894,23 @@ function res = ParseFilterTree(root)
     % Add query for string to find if not reserved symbol
     else
         res = ['~isempty(strfind(c,"' root.word '"))'];
+        isWord = 1;
     end
     
     % Recursive call to children
     if isfield(root, 'children')
+        lastChildIsWord = 0;
         for iChild = 1:length(root.children)
             node = root.children(iChild);
+            [word, isWord] = ParseFilterTree(node);
+            if lastChildIsWord && isWord
+                res = [res ' &&'];
+            end
+            lastChildIsWord = isWord;
             if isfield(node, 'children') && ~isempty(node.children)
-                res = [res ' (' ParseFilterTree(node) ')'];
+                res = [res ' (' word ')'];
             else
-                res = [res ' ' ParseFilterTree(node)];
+                res = [res ' ' word];
             end
         end
     end
