@@ -900,7 +900,9 @@ function res = ParseFilterTree(root)
         for iChild = 1:length(root.children)
             node = root.children(iChild);
             % Add implicit AND if no operator between two tags specified
-            if (iChild >= 2) && ~any(strcmpi({'and', '&', '&&', 'or', '|', '||', 'not'}, root.children(iChild-1)))
+            if (iChild >= 2) && ~isempty(root.children(iChild-1).word) && ~isempty(root.children(iChild).word) ...
+                    && ~any(strcmpi({'and', '&', '&&', '+', 'or', '|', '||', 'not'}, root.children(iChild-1).word)) ...
+                    && ~any(strcmpi({'and', '&', '&&', 'or', '+', '|', '||', 'not'}, root.children(iChild).word))
                 res = [res ' &&'];
             end
             if isfield(node, 'children') && ~isempty(node.children)
