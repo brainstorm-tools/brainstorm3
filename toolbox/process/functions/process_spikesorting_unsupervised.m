@@ -37,7 +37,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'WaveClus unsupervised spike sorting';
+    sProcess.Comment     = 'Unsupervised spike sorting';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Electrophysiology';
     sProcess.Index       = 1201;
@@ -60,6 +60,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Channel name comment
     sProcess.options.make_plotshelp.Comment = '<I><FONT color="#777777">This saves images of the clustered spikes</FONT></I>';
     sProcess.options.make_plotshelp.Type    = 'label';
+    % === Spike Sorter
+    sProcess.options.label1.Comment = '<U><B>Spike Sorter</B></U>:';
+    sProcess.options.label1.Type    = 'label';
+    sProcess.options.spikesorter.Comment = {'WaveClus'};
+    sProcess.options.spikesorter.Type    = 'radio';
+    sProcess.options.spikesorter.Value   = 1;
+    % Options: Options
+    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Options</B></U>: '};
+    sProcess.options.edit.Type    = 'editpref';
+    sProcess.options.edit.Value   = [];
 end
 
 
@@ -73,29 +83,36 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     ProtocolInfo = bst_get('ProtocolInfo');
+    spikeSorter = sProcess.options.spikesorter.Comment{sProcess.options.spikesorter.Value};
     
     if sProcess.options.binsize.Value{1} <= 0
         bst_report('Error', sProcess, sInputs, 'Invalid maximum amount of RAM specified.');
         return
     end
     
-    % Ensure we are including the WaveClus folder in the Matlab path
-    waveclusDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus');
-    if exist(waveclusDir, 'file')
-        addpath(genpath(waveclusDir));
-    end
+    switch lower(spikeSorter)
+        case 'waveclus'
+            % Ensure we are including the WaveClus folder in the Matlab path
+            waveclusDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus');
+            if exist(waveclusDir, 'file')
+                addpath(genpath(waveclusDir));
+            end
 
-    % Install WaveClus if missing
-    if ~exist('wave_clus_font', 'file')
-        rmpath(genpath(waveclusDir));
-        isOk = java_dialog('confirm', ...
-            ['The WaveClus spike-sorter is not installed on your computer.' 10 10 ...
-                 'Download and install the latest version?'], 'WaveClus');
-        if ~isOk
-            bst_report('Error', sProcess, sInputs, 'This process requires the WaveClus spike-sorter.');
-            return;
-        end
-        downloadAndInstallWaveClus();
+            % Install WaveClus if missing
+            if ~exist('wave_clus_font', 'file')
+                rmpath(genpath(waveclusDir));
+                isOk = java_dialog('confirm', ...
+                    ['The WaveClus spike-sorter is not installed on your computer.' 10 10 ...
+                         'Download and install the latest version?'], 'WaveClus');
+                if ~isOk
+                    bst_report('Error', sProcess, sInputs, 'This process requires the WaveClus spike-sorter.');
+                    return;
+                end
+                downloadAndInstallWaveClus();
+            end
+            
+        otherwise
+            bst_error('The chosen spike sorter is currently unsupported by Brainstorm.');
     end
     
     % Compute on each raw input independently
@@ -188,7 +205,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         DataMat = struct();
         DataMat.Comment     = ['Spike Sorting' commentSuffix];
         DataMat.DataType    = 'raw';%'ephys';
-        DataMat.Device      = 'waveclus';
+        DataMat.Device      = lower(spikeSorter);
         DataMat.Name        = NewBstFile;
         DataMat.Parent      = outputPath;
         DataMat.RawFile     = sInputs(i).FileName;

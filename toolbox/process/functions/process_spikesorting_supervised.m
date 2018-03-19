@@ -49,10 +49,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.spikesorter.Comment = {'WaveClus'};
     sProcess.options.spikesorter.Type    = 'radio';
     sProcess.options.spikesorter.Value   = 1;
-    % Options: Options
-    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Options</B></U>: '};
-    sProcess.options.edit.Type    = 'editpref';
-    sProcess.options.edit.Value   = [];
 end
 
 
