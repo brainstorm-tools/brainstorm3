@@ -150,7 +150,13 @@ function UpdateElectrodesList(varargin)
                 iList = iList + 1;
             end
         end
-        jComboElectrodes.setSelectedIndex(GlobalData.SpikeSorting.Data.Spikes(GlobalData.SpikeSorting.Selected).ItemList);
+% % % % % % % % % %         jComboElectrodes.setSelectedIndex(GlobalData.SpikeSorting.Data.Spikes(GlobalData.SpikeSorting.Selected).ItemList);
+        
+%%%%%%%%%%%%%%%%%%%%%%%% HACK %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        jComboElectrodes.setSelectedIndex(13)   % The supervised spike sorting fails. FIX THE LINE COMMENTED ABOVE and delete this one
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        
     else
         jComboElectrodes.setEnabled(0);
     end

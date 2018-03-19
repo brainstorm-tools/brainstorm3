@@ -224,12 +224,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
        
         for iSpike = 1:length(channelIDs)
-            
-            iChannel  = find(channelIDs, sscanf(spikes{iSpike}, 'raw_elec%d_spikes.mat'));  % The channelID is not equivalent to the channel index
+            iChannel  = find(channelIDs == sscanf(spikes{iSpike}, 'raw_elec%d_spikes.mat'));  % The channelID is not equivalent to the channel index
             
             DataMat.Spikes(iSpike).Path = outputPath;
             DataMat.Spikes(iSpike).File = ['times_raw_elec' num2str(iChannel) '.mat'];
-            if exist(DataMat.Spikes(iSpike).File, 'file') ~= 2
+            if exist(bst_fullfile(outputPath, DataMat.Spikes(iSpike).File), 'file') ~= 2
                 DataMat.Spikes(iSpike).File = '';
             end
             DataMat.Spikes(iSpike).Name = ChannelMat.Channel(iChannel).Name;
@@ -402,7 +401,14 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
             iEvent = length(newEvents);
         else
             numNewEvents = length(newEvents);
-            events(iEvent:iEvent+numNewEvents) = newEvents;
+            
+            try
+                events(iEvent:iEvent+numNewEvents-1) = newEvents;
+            catch
+                disp('sfsfs')
+            end
+                
+                
             iEvent = iEvent + numNewEvents;
         end
     end
