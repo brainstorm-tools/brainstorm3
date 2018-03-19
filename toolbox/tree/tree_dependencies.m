@@ -884,7 +884,7 @@ function res = ParseFilterTree(root)
     % Change reserved words to symbol
     if isempty(root.word)
         res = '';
-    elseif any(strcmpi({'and', '&', '&&'}, root.word))
+    elseif any(strcmpi({'and', '&', '&&', '+'}, root.word))
         res = '&&';
     elseif any(strcmpi({'or', '|', '||'}, root.word))
         res = '||';
