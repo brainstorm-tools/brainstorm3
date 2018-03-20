@@ -85,10 +85,10 @@ if ~isempty(NodelistOptions)
     else
         % Options
         NodelistOptions.isSelect  = strcmpi(NodelistOptions.Action, 'Select');
-        % Split 
-        NodelistOptions.Tags = str_split(NodelistOptions.String, ' ');
-        % Convert to lower case
-        NodelistOptions.Tags = lower(NodelistOptions.Tags);
+        % Make search case insensitive
+        NodelistOptions.String = lower(NodelistOptions.String);
+        % Create filter eval expression
+        NodelistOptions.Eval = CreateFilterEvalExpression(NodelistOptions.String);
     end
 end
 
@@ -789,10 +789,8 @@ function isSelected = isFileSelected(FileNames, Comments, NodelistOptions, iStud
 %         end
 %     end
 
-    % Loop on the tags to find
-    for i = 1:length(NodelistOptions.Tags)
-        isSelected = isSelected & ~cellfun(@(c)isempty(strfind(c, NodelistOptions.Tags{i})), FileNames);
-    end
+    % Eval filter expression to check if selected
+    isSelected = isSelected & cellfun(@(c)eval(NodelistOptions.Eval), FileNames);
     % Invert selection
     if ~NodelistOptions.isSelect
         isSelected = ~isSelected;
@@ -808,8 +806,129 @@ function isPure = isPureKernel(sResults)
 end
 
 
+%% ===== Building Filter tree =====
+function root = CreateFilterTree(s)
+    s = [s ' '];
+    root = struct();
+    root.word = '';
+    path = [];
+    numChildren = 0;
+    quoting = 0;
+    ADD_BRANCH = 1;
+    END_BRANCH = 2;
+    word = '';
+    
+    for i = 1:length(s)
+        wordEnd = 0;
+        action = 0;
+        
+        % Check for special characters.
+        if s(i) == '"'
+            wordEnd = 1;
+            quoting = ~quoting;
+        elseif s(i) == '(' && ~quoting
+            wordEnd = 1;
+            action = ADD_BRANCH;
+        elseif s(i) == ')' && ~quoting
+            wordEnd = 1;
+            action = END_BRANCH;
+        elseif s(i) == ' ' && ~quoting
+            wordEnd = 1;
+        else
+            word = [word s(i)];
+        end
+        
+        % If this is the end of a word, store it.
+        if wordEnd
+            word = strtrim(word);
+            if ~isempty(word)
+                node = struct();
+                node.word = word;
+                evalString = 'root';
+                for iPath = 1:length(path)
+                    evalString = [evalString '.children(' num2str(path(iPath)) ')'];
+                end
+                evalString = [evalString '.children(' num2str(numChildren + 1) ') = node;'];
+                eval(evalString);
+                numChildren = numChildren + 1;
+            end
+            word = '';
+        end
+        
+        % Create new branch
+        if action == ADD_BRANCH
+            node = struct();
+            node.word = '';
+            iChild = numChildren + 1;
+            path = [path, iChild];
+            evalString = 'root';
+            for iPath = 1:length(path)
+                evalString = [evalString '.children(' num2str(path(iPath)) ')'];
+            end
+            eval([evalString ' = node;']);
+            numChildren = 0;
+        % Go back one branch
+        elseif action == END_BRANCH
+            path(end) = [];
+            evalString = 'root';
+            for iPath = 1:length(path)
+                evalString = [evalString '.children(' num2str(path(iPath)) ')'];
+            end
+            eval(['numChildren = length(' evalString '.children);']);
+        end
+    end
+end
 
+%% ===== Parsing filter tree recursively =====
+function [res, isWord] = ParseFilterTree(root)
+    % Change reserved words to symbol
+    isWord = 0;
+    if isempty(root.word)
+        res = '';
+    elseif any(strcmpi({'and', '&', '&&', '+'}, root.word))
+        res = '&&';
+    elseif any(strcmpi({'or', '|', '||'}, root.word))
+        res = '||';
+    elseif strcmpi(root.word, 'not')
+        res = '~';
+    % Add query for string to find if not reserved symbol
+    else
+        res = ['~isempty(strfind(c,"' root.word '"))'];
+        isWord = 1;
+    end
+    
+    % Recursive call to children
+    if isfield(root, 'children')
+        lastChildIsWord = 0;
+        for iChild = 1:length(root.children)
+            node = root.children(iChild);
+            [word, isWord] = ParseFilterTree(node);
+            % Add implicit AND if no operator between two tags specified
+            if lastChildIsWord && isWord
+                res = [res ' &&'];
+            end
+            lastChildIsWord = isWord;
+            if isfield(node, 'children') && ~isempty(node.children)
+                res = [res ' (' word ')'];
+            else
+                res = [res ' ' word];
+            end
+        end
+    end
+end
 
-
-
+%% ===== Combining filter calls =====
+function evalExpression = CreateFilterEvalExpression(s)
+    root = CreateFilterTree(s);
+    evalExpression = ParseFilterTree(root);
+    
+    % Validate expression
+    c = 'test';
+    try
+        tmp = eval(evalExpression);
+    catch
+        % If there is an error, use an "exclude all" expression instead.
+        evalExpression = '0';
+    end
+end
 
