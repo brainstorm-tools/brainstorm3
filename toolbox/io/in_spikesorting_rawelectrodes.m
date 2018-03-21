@@ -30,6 +30,11 @@ if nargin < 2
 else
     ram = varargin{2};
 end
+if nargin < 3
+    parallel = 0;
+else
+    parallel = varargin{3};
+end
 
 protocol = bst_get('ProtocolInfo');
 parentPath = bst_fullfile(bst_get('BrainstormTmpDir'), ...
@@ -68,13 +73,17 @@ end
 DataMat = in_bst_data(sInput.FileName, 'F');
 sFile = DataMat.F;
 sr = sFile.prop.sfreq;
-sFiles = {};
 samples = [0,0];
 max_samples = ram / 8 / numChannels;
 total_samples = sFile.prop.samples(2);
 num_segments = ceil(total_samples / max_samples);
 num_samples_per_segment = ceil(total_samples / num_segments);
-bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, num_segments + numChannels);
+bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, num_segments);
+
+sFiles = {};
+for iChannel = 1:numChannels
+    sFiles{end + 1} = bst_fullfile(parentPath, ['raw_elec' num2str(iChannel)]);
+end
 
 % Read data in segments
 for iSegment = 1:num_segments
@@ -89,9 +98,8 @@ for iSegment = 1:num_segments
 
     % Append segment to individual channel file
     for iChannel = 1:numChannels
-        chanFile = bst_fullfile(parentPath, ['raw_elec' num2str(iChannel)]);
         electrode_data = F(iChannel,:);
-        fid = fopen([chanFile '.bin'], 'a');
+        fid = fopen([sFiles{iChannel} '.bin'], 'a');
         fwrite(fid, electrode_data, 'double');
         fclose(fid);
     end
@@ -99,13 +107,26 @@ for iSegment = 1:num_segments
 end
 
 % Convert channel files to Matlab
-for iChannel = 1:numChannels
-    chanFile = bst_fullfile(parentPath, ['raw_elec' num2str(iChannel)]);
+bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, (parallel == 0) * numChannels);
+if parallel
+    parfor iChannel = 1:numChannels
+        convert2mat(sFiles{iChannel}, sr);
+    end
+else
+    for iChannel = 1:numChannels
+        convert2mat(sFiles{iChannel}, sr);
+        bst_progress('inc', 1);
+    end
+end
+
+sFiles = cellfun(@(x) [x '.mat'], sFiles, 'UniformOutput', 0);
+
+end
+
+function convert2mat(chanFile, sr)
     fid = fopen([chanFile '.bin'], 'rb');
     data = fread(fid, 'double');
     fclose(fid);
     save([chanFile '.mat'], 'data', 'sr');
     file_delete([chanFile '.bin'], 1 ,3);
-    sFiles{end+1} = [chanFile '.mat'];
-    bst_progress('inc', 1);
 end

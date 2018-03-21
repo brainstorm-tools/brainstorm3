@@ -131,9 +131,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % Prepare parallel pool, if requested
         if sProcess.options.paral.Value
-            poolobj = gcp('nocreate');
-            if isempty(poolobj)
-                parpool;
+            try
+                poolobj = gcp('nocreate');
+                if isempty(poolobj)
+                    parpool;
+                end
+            catch
+                sProcess.options.paral.Value = 0;
             end
         end
         
