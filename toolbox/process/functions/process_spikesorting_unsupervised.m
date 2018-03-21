@@ -127,7 +127,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         ChannelMat = in_bst_channel(sInputs(i).ChannelFile);
         numChannels = length(ChannelMat.Channel);
-        sFiles = in_spikesorting_rawelectrodes(sInputs(i));
+        sFiles = in_spikesorting_rawelectrodes(sInputs(i), sProcess.options.binsize.Value{1});
         
         % Prepare parallel pool, if requested
         if sProcess.options.paral.Value
