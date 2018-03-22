@@ -893,7 +893,7 @@ function [res, isWord] = ParseFilterTree(root)
         res = '~';
     % Add query for string to find if not reserved symbol
     else
-        res = ['~isempty(strfind(c,"' root.word '"))'];
+        res = ['~isempty(strfind(c,''' root.word '''))'];
         isWord = 1;
     end
     
