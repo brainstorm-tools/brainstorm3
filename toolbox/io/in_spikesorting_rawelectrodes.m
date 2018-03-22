@@ -78,7 +78,7 @@ max_samples = ram / 8 / numChannels;
 total_samples = sFile.prop.samples(2);
 num_segments = ceil(total_samples / max_samples);
 num_samples_per_segment = ceil(total_samples / num_segments);
-bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, num_segments);
+bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, num_segments * numChannels);
 
 sFiles = {};
 for iChannel = 1:numChannels
@@ -102,8 +102,8 @@ for iSegment = 1:num_segments
         fid = fopen([sFiles{iChannel} '.bin'], 'a');
         fwrite(fid, electrode_data, 'double');
         fclose(fid);
+        bst_progress('inc', 1);
     end
-    bst_progress('inc', 1);
 end
 
 % Convert channel files to Matlab
