@@ -1498,7 +1498,7 @@ function MouseButtonUp_Callback(hFig, varargin)
     if ~isempty(clickAction)
         if ~hasMoved
             switch (clickAction)
-                case 'RightClick'
+                case {'RightClick', 'popup'}
                     DisplayFigurePopup(hFig);
                 case 'MovePoint'
                     % Point was not moved: Move crosshair according to mouse position
