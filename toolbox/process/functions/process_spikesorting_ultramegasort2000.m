@@ -316,18 +316,23 @@ end
 function do_UltraMegaSorting(A, B, electrodeFile, ielectrode, sFile)
     electrodeID = sFile.header.ChannelID(ielectrode);
 
-    DataMat = load(electrodeFile, 'data');
-    filtered_data_temp = filtfilt(B, A, DataMat.data); % runs filter
-    filtered_data = cell(1,1);
-    filtered_data{1} = filtered_data_temp; %should be a column vector clear filter
-    
-    spikes = ss_default_params(sFile.prop.sfreq);
-    spikes = ss_detect(filtered_data,spikes);
-    spikes = ss_align(spikes);
-    spikes = ss_kmeans(spikes);
-    spikes = ss_energy(spikes);
-    spikes = ss_aggregate(spikes);
-    
-    save(['times_raw_elec' num2str(electrodeID) '.mat'], 'spikes')
+    try
+        DataMat = load(electrodeFile, 'data');
+        filtered_data_temp = filtfilt(B, A, DataMat.data); % runs filter
+        filtered_data = cell(1,1);
+        filtered_data{1} = filtered_data_temp; %should be a column vector clear filter
+
+        spikes = ss_default_params(sFile.prop.sfreq);
+        spikes = ss_detect(filtered_data,spikes);
+        spikes = ss_align(spikes);
+        spikes = ss_kmeans(spikes);
+        spikes = ss_energy(spikes);
+        spikes = ss_aggregate(spikes);
+
+        save(['times_raw_elec' num2str(electrodeID) '.mat'], 'spikes')
+    catch
+        % If an error occurs, just don't create the spike file.
+        disp(['Warning: Spiking failed on electrode ' num2str(ielectrode) '. Skipping this electrode.']);
+    end
     
 end
