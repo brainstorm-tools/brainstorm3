@@ -37,11 +37,11 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'WaveClus unsupervised spike sorting';
+    sProcess.Comment     = 'WaveClus';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Electrophysiology';
+    sProcess.SubGroup    = {'Electrophysiology','Unsupervised Spike Sorting'};
     sProcess.Index       = 1201;
-    sProcess.Description = 'www.in.gr';
+    sProcess.Description = 'https://github.com/csn-le/wave_clus';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
     sProcess.OutputTypes = {'raw'};
