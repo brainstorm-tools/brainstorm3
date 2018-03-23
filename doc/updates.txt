@@ -8,6 +8,7 @@ March 2018
 - GUI: New option to add the "ASEG" atlas easily to any figure
 - Process: Re-reference EEG: New option "local average", and use of the list of bad channels
 - GUI: 2DLayout made available for SEEG/ECOG
+- Distrib: Swith to Matlab 2018b
 ---------------------------------------------------------------
 February 2018
 - GUI: New options "Upsample image" to smooth MRI display in 3D figures
