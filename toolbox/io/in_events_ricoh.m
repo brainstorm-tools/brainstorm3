@@ -71,8 +71,6 @@ if ~isempty(header.annotation)
             annotLabel{i}(annotLabel{i} == 0) = [];
         elseif ~isempty(header.annotation(i).label) && isnumeric(header.annotation(i).label)
             annotLabel{i} = ['annot_', num2str(header.annotation(i).label)];
-        elseif ~isempty(header.annotation(i).annotationCategory) && isnumeric(header.annotation(i).annotationCategory)
-            annotLabel{i} = ['annot_', num2str(header.annotation(i).annotationCategory)];
         else
             annotLabel{i} = 'Unknown';
         end
