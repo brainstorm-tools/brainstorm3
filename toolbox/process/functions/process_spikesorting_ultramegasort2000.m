@@ -142,7 +142,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
-        outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_spikes']);
+        outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_ums2k_spikes']);
         
         % Clear if directory already exists
         if exist(outputPath, 'dir') == 7
@@ -198,7 +198,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Build output structure
         DataMat = struct();
-        DataMat.Comment     = ['Spike Sorting' commentSuffix];
+        DataMat.Comment     = ['UltraMegaSort2000 Spike Sorting' commentSuffix];
         DataMat.DataType    = 'raw';%'ephys';
         DataMat.Device      = 'ultramegasort2000';
         DataMat.Name        = NewBstFile;
