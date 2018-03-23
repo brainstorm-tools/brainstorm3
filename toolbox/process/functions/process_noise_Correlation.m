@@ -1,5 +1,5 @@
-function varargout = process_rasterplot_Nas( varargin )
-% PROCESS_RASTERPLOT_NAS: Computes a rasterplot per electrode.
+function varargout = process_noise_Correlation( varargin )
+% process_noise_Correlation: Computes noise Correlation of all neurons (nxn)
 % 
 % USAGE:    sProcess = process_rasterplot_Nas('GetDescription')
 %        OutputFiles = process_rasterplot_Nas('Run', sProcess, sInput)
@@ -22,7 +22,7 @@ function varargout = process_rasterplot_Nas( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2017; Martin Cousineau, 2017
+% Authors: Konstantinos Nasiotis, 2017
 
 eval(macro_method);
 end
@@ -31,12 +31,12 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Raster Plot';
+    sProcess.Comment     = 'Noise Correlation';
     sProcess.FileTag     = 'raster';
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
-    sProcess.Index       = 1505;
-    sProcess.Description = 'www.in.gr';
+    sProcess.Index       = 1506;
+    sProcess.Description = 'https://www.ncbi.nlm.nih.gov/pubmed/9950724';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'data'};

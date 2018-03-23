@@ -137,6 +137,10 @@ function [optionFile, skipLines] = GetSpikeSorterOptionFile(spikeSorter)
             optionFile = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus', 'set_parameters.m');
             skipLines = 2;
 
+        case 'ultramegasort2000'
+            optionFile = bst_fullfile(bst_get('BrainstormUserDir'), 'UltraMegaSort2000', 'ss_default_params.m');
+            skipLines = 2;
+
         otherwise
             bst_error('The chosen spike sorter is currently unsupported by Brainstorm.');
     end

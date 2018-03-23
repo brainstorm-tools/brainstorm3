@@ -37,11 +37,11 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'UltraMegaSort unsupervised spike sorting';
+    sProcess.Comment     = 'UltraMegaSort2000';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Spike Sorting';
+    sProcess.SubGroup    = {'Electrophysiology','Unsupervised Spike Sorting'};
     sProcess.Index       = 1202;
-    sProcess.Description = 'www.in.gr';
+    sProcess.Description = 'https://github.com/danamics/UMS2K';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
     sProcess.OutputTypes = {'raw'};
@@ -51,6 +51,24 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.paral.Comment = 'Parallel processing';
     sProcess.options.paral.Type    = 'checkbox';
     sProcess.options.paral.Value   = 0;
+    % ==== Parameters 
+    sProcess.options.label1.Comment = '<BR><U><B>Filtering parameters</B></U>:';
+    sProcess.options.label1.Type    = 'label';
+    % === Low bound
+    sProcess.options.highpass.Comment = 'Lower cutoff frequency:';
+    sProcess.options.highpass.Type    = 'value';
+    sProcess.options.highpass.Value   = {700,'Hz ',0};
+    % === High bound
+    sProcess.options.lowpass.Comment = 'Upper cutoff frequency:';
+    sProcess.options.lowpass.Type    = 'value';
+    sProcess.options.lowpass.Value   = {5000,'Hz ',0};
+    % Options: Options
+    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Parameters</B></U>: '};
+    sProcess.options.edit.Type    = 'editpref';
+    sProcess.options.edit.Value   = [];
+    sProcess.options.spikesorter.Comment = {'UltraMegaSort2000'};
+    sProcess.options.spikesorter.Type    = 'radio';
+    sProcess.options.spikesorter.Value   = 1;
 end
 
 
@@ -137,8 +155,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         %% UltraMegaSorter2000 needs manual filtering of the raw files
         
-        Wp = [ 700 5000] * 2 / sFile.prop.sfreq; % pass band for filtering
-        Ws = [ 500 7000] * 2 / sFile.prop.sfreq; % transition zone
+        % The -200 and +2000 should be substituted by a relaxed or a strict
+        % filtering option
+        Wp = [ sProcess.options.highpass.Value{1}      sProcess.options.lowpass.Value{1}       ] * 2 / sFile.prop.sfreq; % pass band for filtering
+        Ws = [ sProcess.options.highpass.Value{1}-200  sProcess.options.lowpass.Value{1} + 2000] * 2 / sFile.prop.sfreq; % transition zone
         [N,Wn] = buttord( Wp, Ws, 3, 20); % determine filter parameters
         [B,A] = butter(N,Wn); % builds filter
         
@@ -158,21 +178,38 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         %%%%%%%%%%%%%%%%%%%%%  Create Brainstorm Events %%%%%%%%%%%%%%%%%%%
         bst_progress('text', 'Saving events file...');
-        convert2BrainstormEvents(sFile, bst_fullfile(ProtocolInfo.STUDIES, fPath));
+        convert2BrainstormEvents(sFile, bst_fullfile(ProtocolInfo.STUDIES, fPath), ChannelMat);
         
         
         cd(previous_directory);
         
+        
+        
         % ===== SAVE LINK FILE =====
         % Build output filename
-        NewBstFile = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_' fBase '.mat']);
+        NewBstFilePrefix = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_' fBase]);
+        NewBstFile = [NewBstFilePrefix '.mat'];
+        iFile = 1;
+        commentSuffix = '';
+        while exist(NewBstFile, 'file') == 2
+            iFile = iFile + 1;
+            NewBstFile = [NewBstFilePrefix '_' num2str(iFile) '.mat'];
+            commentSuffix = [' (' num2str(iFile) ')'];
+        end
+        spikeSorter = sProcess.options.spikesorter.Comment;
+        
         % Build output structure
         DataMat = struct();
-        %DataMat.F          = sFile;
-        DataMat.Comment     = 'Spike Sorting';
+        DataMat.Comment     = ['Spike Sorting' commentSuffix];
         DataMat.DataType    = 'raw';%'ephys';
-        DataMat.Device      = 'UltraMegaSort2000';
-        DataMat.Spikes      = outputPath;
+        DataMat.Device      = lower(spikeSorter);
+        DataMat.Name        = NewBstFile;
+        DataMat.Parent      = outputPath;
+        DataMat.RawFile     = sInputs(i).FileName;
+        DataMat.Spikes      = struct();
+        
+        
+        
         % Add history field
         DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
         % Save file on hard drive
@@ -191,13 +228,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     %%%%%%%%%%%%%%%%%%%%%%   Prepare to exit    %%%%%%%%%%%%%%%%%%%%%%%
     % Turn off parallel processing and return to the initial directory
 
-    if sProcess.options.paral.Value
-        if ~isempty(poolobj)
-            delete(poolobj);
-        end
-    end
+%     if sProcess.options.paral.Value
+%         if ~isempty(poolobj)
+%             delete(poolobj);
+%         end
+%     end
 
-    cd(previous_directory)
     
     
 end
@@ -236,7 +272,7 @@ end
 
 
 
-function convert2BrainstormEvents(sFile, parentPath)
+function convert2BrainstormEvents(sFile, parentPath, ChannelMat)
 
     events = struct;
     events(2).label = [];
@@ -259,7 +295,7 @@ function convert2BrainstormEvents(sFile, parentPath)
                 index = index+1;
 
                 % Write the packet to events
-                events(index).label       = ['Spikes Electrode ' num2str(ielectrode)];
+                events(index).label       = ['Spikes Channel ' num2str(ielectrode)];
                 events(index).color       = [rand(1,1),rand(1,1),rand(1,1)];
                 events(index).epochs      = ones(1,length(spikes.assigns));   % There is no noise automatic assignment on UltraMegaSorter2000. Everything is assigned to neurons
                 events(index).times       = spikes.spiketimes; % The timestamps are in seconds
@@ -271,7 +307,7 @@ function convert2BrainstormEvents(sFile, parentPath)
                 for ineuron = 1:nNeurons
                     % Write the packet to events
                     index = index+1;
-                    events(index).label = ['Spikes Electrode ' num2str(ielectrode) ' |' num2str(ineuron) '|'];
+                    events(index).label = ['Spikes Channel ' num2str(ielectrode) ' |' num2str(ineuron) '|'];
 
                     events(index).color       = [rand(1,1),rand(1,1),rand(1,1)];
                     events(index).epochs      = ones(1,length(spikes.assigns(spikes.assigns==spikes.labels(ineuron,1))));

@@ -37,9 +37,9 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'KiloSort unsupervised spike sorting';
+    sProcess.Comment     = 'KiloSort';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Spike Sorting';
+    sProcess.SubGroup    = {'Electrophysiology','Unsupervised Spike Sorting'};
     sProcess.Index       = 1203;
     sProcess.Description = 'https://github.com/cortex-lab/KiloSort';
     % Definition of the input accepted by this process

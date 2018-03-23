@@ -1,4 +1,4 @@
-function varargout = process_spikesorting_unsupervised( varargin )
+function varargout = process_spikesorting_unsupervised_WaveClus( varargin )
 % PROCESS_SPIKESORTING_UNSUPERVISED:
 % This process separates the initial raw signal to nChannels binary signals
 % and performs spike sorting individually on each channel with the WaveClus
@@ -37,11 +37,11 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Unsupervised spike sorting';
+    sProcess.Comment     = 'WaveClus';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Electrophysiology';
+    sProcess.SubGroup    = {'Electrophysiology','Unsupervised Spike Sorting'};
     sProcess.Index       = 1201;
-    sProcess.Description = 'www.in.gr';
+    sProcess.Description = 'https://www2.le.ac.uk/departments/engineering/research/bioengineering/neuroengineering-lab/spike-sorting';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
     sProcess.OutputTypes = {'raw'};
@@ -115,6 +115,23 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_error('The chosen spike sorter is currently unsupported by Brainstorm.');
     end
     
+    
+    
+    %% Prepare parallel pool, if requested
+    if sProcess.options.paral.Value
+        try
+            poolobj = gcp('nocreate');
+            if isempty(poolobj)
+                parpool;
+            end
+        catch
+            sProcess.options.paral.Value = 0;
+        end
+    else
+        poolobj = [];
+    end
+    
+    
     % Compute on each raw input independently
     for i = 1:length(sInputs)
         [fPath, fBase] = bst_fileparts(sInputs(i).FileName);
@@ -127,21 +144,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         ChannelMat = in_bst_channel(sInputs(i).ChannelFile);
         numChannels = length(ChannelMat.Channel);
-        sFiles = in_spikesorting_rawelectrodes(sInputs(i), ...
-            sProcess.options.binsize.Value{1} * 1e9, ...
-            sProcess.options.paral.Value);
+        sFiles = in_spikesorting_rawelectrodes(sInputs(i));
         
-        % Prepare parallel pool, if requested
-        if sProcess.options.paral.Value
-            try
-                poolobj = gcp('nocreate');
-                if isempty(poolobj)
-                    parpool;
-                end
-            catch
-                sProcess.options.paral.Value = 0;
-            end
-        end
         
         %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
         outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_spikes']);
@@ -318,7 +322,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
     if nargin < 6
         eventNamePrefix = '';
     else
-        eventNamePrefix = [eventNamePrefix ' '];
+        eventNamePrefix = [eventNamePrefix ''];  % The space here messed up the events if there is no prefix
     end
     newEvents = struct();
     DataMat = in_bst_data(rawFile);
@@ -345,7 +349,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
                 newEvents(1).select     = 1;
             elseif numNeurons > 1
                 for iNeuron = 1:numNeurons
-                    newEvents(iNeuron).label      = [eventName '|' num2str(iNeuron) '|'];
+                    newEvents(iNeuron).label      = [eventName ' |' num2str(iNeuron) '|'];
                     newEvents(iNeuron).color      = [rand(1,1), rand(1,1), rand(1,1)];
                     newEvents(iNeuron).epochs     = ones(1, length(ElecData.cluster_class(ElecData.cluster_class(:,1) == iNeuron, 1)));
                     newEvents(iNeuron).times      = ElecData.cluster_class(ElecData.cluster_class(:,1) == iNeuron, 2)' ./ 1000;

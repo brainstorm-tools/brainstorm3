@@ -46,12 +46,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Spike Triggered Average';
     sProcess.FileTag     = 'STA';
     sProcess.Category    = 'custom';
-    sProcess.SubGroup    = 'e-Phys Functions';
-    sProcess.Index       = 2507;
+    sProcess.SubGroup    = 'Electrophysiology';
+    sProcess.Index       = 1506;
     sProcess.Description = 'http://www.in.gr';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
-    sProcess.OutputTypes = {'timefreq'};
+    sProcess.OutputTypes = {'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Options: Sensor types
@@ -83,7 +83,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Initialize returned values
     OutputFiles = {};
     % Extract method name from the process name
-    strProcess = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    strProcess = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'data', '');
     
     % Add other options
     tfOPTIONS.Method = strProcess;
@@ -139,7 +139,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     nElectrodes = 0;
     for iChannel = 1:length(ChannelMat.Channel)
-       if ChannelMat.Channel(iChannel).Type == 'EEG' % Maybe we can add this option to be available on the raw file as well???
+       if strcmp(ChannelMat.Channel(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG') % Maybe we can add this option to be available on the raw file as well???
           nElectrodes = nElectrodes + 1;               
        end
     end
@@ -150,14 +150,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % Prepare parallel pool, if requested
     if sProcess.options.paral.Value
-        poolobj = gcp('nocreate');
-        if isempty(poolobj)
-            parpool;
+        try
+            poolobj = gcp('nocreate');
+            if isempty(poolobj)
+                parpool;
+            end
+        catch
+            sProcess.options.paral.Value = 0;
         end
-    else
-        poolobj = [];
     end
-    
     
     
     
@@ -176,21 +177,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Optimize this
     if ~isempty(poolobj) 
         parfor iFile = 1:nTrials
-            [LFPs_single_trial] = get_LFPs(ALL_TRIALS_files(iFile).a, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate);
+            [LFPs_single_trial] = get_LFPs(ALL_TRIALS_files(iFile).a, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
             everything(iFile).LFPs_single_trial = LFPs_single_trial;
         end 
     else
         for iFile = 1:nTrials
             [trial, ~] = in_bst(sInputs(iFile).FileName);
-            [LFPs_single_trial] = get_LFPs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate);
+            [LFPs_single_trial] = get_LFPs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
             everything(iFile).LFPs_single_trial = LFPs_single_trial;
         end 
     end
         
         
     
-    %% Calculate the SFC
-    % The Spike Field Coherence should be a 3d matrix
+    %% Calculate the STA
+    % The Spike Triggered Average should be a 3d matrix
     % Number of neurons x Frequencies x Electrodes
     % Ultimately the user will select the NEURON that wants to be displayed,
     % and a 2D image with the other two dimensions will appear, showing the
@@ -216,14 +217,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     
     
-    
-    STA = zeros(length(labelsForDropDownMenu), length(time_segmentAroundSpikes), nElectrodes); % Number of neurons x Frequencies x Electrodes : 161x301x192
-    tempAverageLFP = zeros(nElectrodes, length(time_segmentAroundSpikes));                  % 192 x 301
-    
+    %% Compute STA per individual Neuron
     
     for iNeuron = 1:length(labelsForDropDownMenu)
         %% For each TRIAL, get the index of the label that corresponds to the appropriate neuron.
-        logicalEvents = ismember(all_labels, labelsForDropDownMenu{iNeuron}); % Find the index of the spike-events that correspond to that electrode (Exact string match). This linearizes the cell. I need to dilenearize it.
+%         logicalEvents = ismember(all_labels, labelsForDropDownMenu{iNeuron}); % Find the index of the spike-events that correspond to that electrode (Exact string match). This linearizes the cell. I need to dilenearize it.
+        
+        for ii = 1:size(all_labels,1)
+            for jj = 1:size(all_labels,2)
+                logicalEvents(ii,jj) = strcmp(all_labels{ii,jj}, labelsForDropDownMenu{iNeuron});
+            end
+        end
+        
+        
         iEvents = zeros(size(all_labels,2),1);
         for iTrial = 1:size(all_labels,2)
             [temp, ~] = find(logicalEvents(:,iTrial));
@@ -234,20 +240,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         end
         
-        
-        %% Take the Averagesof the appropriate indices
+        STA_single_neuron = zeros(nElectrodes, length(time_segmentAroundSpikes));                  % 192 x 301
+
+        %% Take the Averages of the appropriate indices
         for iTrial = 1:size(all_labels,2)
+
         
             divideBy = 0;
             if iEvents(iTrial)~=0
-                tempAverageLFP = tempAverageLFP + everything(iTrial).LFPs_single_trial(iEvents(iTrial)).nSpikes * everything(iTrial).LFPs_single_trial(iEvents(iTrial)).avgLFP; % The avgLFP are sum actually. 
+                STA_single_neuron = STA_single_neuron + everything(iTrial).LFPs_single_trial(iEvents(iTrial)).nSpikes * everything(iTrial).LFPs_single_trial(iEvents(iTrial)).avgLFP; % The avgLFP are sum actually. 
                 divideBy = divideBy + everything(iTrial).LFPs_single_trial(iEvents(iTrial)).nSpikes;
             end 
         end
         
-        STA(iNeuron,:,:) = (tempAverageLFP./divideBy)'; % 
-           
-    end
+%         STA(iNeuron,:,:) = (STA_single_neuron./divideBy)'; % 
+        STA_single_neuron = (STA_single_neuron./divideBy)';
     
 %     
 %     
@@ -264,73 +271,64 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
 
    
-    %% Rename the labels to something more meaningfull
-    labelsForDropDownMenu_temp = cell(1,length(labelsForDropDownMenu));
-    for iNeuron = 1:length(labelsForDropDownMenu)
-        multiple_neurons_indicator = strfind(labelsForDropDownMenu{iNeuron},'|');
-        if isempty(multiple_neurons_indicator) % Only a single neuron on the electrode
-            wordsInLabel = strsplit(labelsForDropDownMenu{iNeuron}, ' ');
-            labelsForDropDownMenu_temp{iNeuron} = ['Electrode ' num2str(wordsInLabel{3}) ': Neuron 1']; % Rename 'Spikes Electrode 1' to Electrode 1 : Neuron 1
-        else
-            wordsInLabel = strsplit(labelsForDropDownMenu{iNeuron}, ' ');
-            labelsForDropDownMenu_temp{iNeuron} = ['Electrode ' num2str(wordsInLabel{3}) ': Neuron ' num2str(labelsForDropDownMenu{iNeuron}(multiple_neurons_indicator(1)+1:multiple_neurons_indicator(2)-1))];
-            % Rename 'Spikes Electrode 1 |2|' to Electrode 1 : Neuron 2
+        %% Rename the labels to something more meaningfull -  THIS IS HARDCODED - IMPROVE
+        wordsInLabel = strsplit(labelsForDropDownMenu{iNeuron}, ' ');
+        if length(wordsInLabel) == 4
+            better_label = ['Spike Triggered Average (Ch. ' num2str(wordsInLabel{4}) ')'];
+        elseif length(wordsInLabel) == 5
+            better_label = ['Spike Triggered Average (Ch. ' num2str(wordsInLabel{4}) ' ' num2str(wordsInLabel{5}) ')'];
         end
+        
+            
+            
+            
+        %% Fill the fields of the output files
+        tfOPTIONS.ParentFiles = {sInputs.FileName};
+
+        % Prepare output file structure
+        FileMat.F = STA_single_neuron';
+        FileMat.Time = time_segmentAroundSpikes; 
+
+        FileMat.Std = [];
+        FileMat.Comment = better_label;
+        FileMat.DataType = 'recordings';
+        
+        FileMat.ChannelFlag = ones(length(ChannelMat.Channel),1);            % GET THE GOOD CHANNELS HERE
+        FileMat.Device      = ALL_TRIALS_files(1).a.Device;
+        FileMat.Events      = [];
+        
+        FileMat.nAvg = 1;
+        FileMat.ColormapType = [];
+        FileMat.DisplayUnits = [];
+        FileMat.History = ALL_TRIALS_files(1).a.History;
+        
+% % % % %         % Add history field
+% % % % %         DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
+        
+
+        % Get output study
+        sTargetStudy = bst_get('Study', iStudy);
+        % Output filename
+        FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'data_STA');
+        OutputFiles = {FileName};
+        % Save output file and add to database
+        bst_save(FileName, FileMat, 'v6');
+        db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
+    
     end
-    labelsForDropDownMenu = labelsForDropDownMenu_temp;
-
-
 
     
-    %%
-    tfOPTIONS.ParentFiles = {sInputs.FileName};
-    
-    % Prepare output file structure
-    FileMat.TF = STA;
-    FileMat.Time = time_segmentAroundSpikes; % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
-    FileMat.TFmask = [];
-    FileMat.Freqs = 1:nElectrodes;      % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
-    FileMat.Std = [];
-    FileMat.Comment = 'Spike Triggered Average';
-    FileMat.DataType = 'data';
-    FileMat.TimeBands = [];
-    FileMat.RefRowNames = [];
-    FileMat.RowNames = labelsForDropDownMenu;
-    FileMat.Measure = 'power';
-    FileMat.Method = 'morlet';
-    FileMat.DataFile = []; % Leave blank because multiple parents
-    FileMat.SurfaceFile = [];
-    FileMat.GridLoc = [];
-    FileMat.GridAtlas = [];
-    FileMat.Atlas = [];
-    FileMat.HeadModelFile = [];
-    FileMat.HeadModelType = [];
-    FileMat.nAvg = [];
-    FileMat.ColormapType = [];
-    FileMat.DisplayUnits = [];
-    FileMat.Options = tfOPTIONS;
-    FileMat.History = [];
-   
-    
-    % Get output study
-    sTargetStudy = bst_get('Study', iStudy);
-    % Output filename
-    FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'timefreq_spike_field_coherence');
-    OutputFiles = {FileName};
-    % Save output file and add to database
-    bst_save(FileName, FileMat, 'v6');
-    db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
     % Display report to user
     bst_report('Info', sProcess, sInputs, 'Success');
     disp('BST> process_spike_field_coherence: Success');
     
     
-    % Close parallel pool
-    if sProcess.options.paral.Value
-        if ~isempty(poolobj)
-            delete(poolobj);
-        end
-    end
+%     % Close parallel pool
+%     if sProcess.options.paral.Value
+%         if ~isempty(poolobj)
+%             delete(poolobj);
+%         end
+%     end
 end
 
 
@@ -338,7 +336,7 @@ end
 
 
 
-function all = get_LFPs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate)
+function all = get_LFPs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat)
 
 
     allEventLabels = {trial.Events.label};
@@ -352,13 +350,13 @@ function all = get_LFPs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, 
     for ielectrode = 1:nElectrodes
 
         % Check for single neuron on electrode
-        iEvent = find(ismember(allEventLabels, ['Spikes Electrode ' num2str(ielectrode)])); % Find the index of the spike-events that correspond to that electrode (Exact string match)
+        iEvent = find(ismember(allEventLabels, ['Spikes Channel ' ChannelMat.Channel(ielectrode).Name])); % Find the index of the spike-events that correspond to that electrode (Exact string match)
 
         % Check for multiple neurons on the same electrode
         if isempty(iEvent)
-            Index = find(contains(allEventLabels,['Spikes Electrode ' num2str(ielectrode)])); % Check that the spike string is contained (this will be true in electrodes with multiple neurons: Spikes Electrode 150 |1|, Spikes Electrode 150 |2|)
+            Index = find(contains(allEventLabels,['Spikes Channel ' ChannelMat.Channel(ielectrode).Name])); % Check that the spike string is contained (this will be true in electrodes with multiple neurons: Spikes Electrode 150 |1|, Spikes Electrode 150 |2|)
             for iNeuron = 1:length(Index)
-                if strcmp(allEventLabels(Index(iNeuron)), ['Spikes Electrode ' num2str(ielectrode) ' |' num2str(iNeuron) '|'])
+                if strcmp(allEventLabels(Index(iNeuron)), ['Spikes Channel ' ChannelMat.Channel(ielectrode).Name ' |' num2str(iNeuron) '|'])
                     iEvent = Index(iNeuron);
                     spikeEvents(end+1) = iEvent;
                 end 
