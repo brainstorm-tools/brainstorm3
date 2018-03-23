@@ -2,7 +2,7 @@ function sFiles = in_spikesorting_rawelectrodes( varargin )
 % IN_SPIKESORTING_RAWELECTRODES: Loads and creates if needed separate raw
 % electrode files for spike sorting purposes.
 %
-% USAGE: OutputFiles = process_spikesorting_unsupervised('Run', sProcess, sInputs)
+% USAGE: OutputFiles = in_spikesorting_rawelectrodes(sInput, ram, parallel)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

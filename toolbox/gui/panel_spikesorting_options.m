@@ -42,7 +42,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     end
     
     % Check chosen spike sorter
-    spikeSorter = sProcess.options.spikesorter.Comment{sProcess.options.spikesorter.Value};
+    spikeSorter = sProcess.options.spikesorter;
     
     % Create main main panel
     jPanelNew = gui_river();

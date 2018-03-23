@@ -91,7 +91,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         bst_report('Error', sProcess, sInputs, 'This process requires the WaveClus spike-sorter.');
                         return;
                     end
-                    process_spikesorting_unsupervised('downloadAndInstallWaveClus');
+                    process_spikesorting_waveclus('downloadAndInstallWaveClus');
                 end
 
             otherwise
@@ -216,12 +216,11 @@ function SaveElectrode()
     bst_save(GlobalData.SpikeSorting.Data.Name, GlobalData.SpikeSorting.Data, 'v6');
     
     % Add event to linked raw file    
-    process_spikesorting_unsupervised('CreateSpikeEvents', ...
-        GlobalData.SpikeSorting.Data.RawFile, ...
+    CreateSpikeEvents(GlobalData.SpikeSorting.Data.RawFile, ...
         GlobalData.SpikeSorting.Data.Device, ...
         electrodeFile, ...
         GlobalData.SpikeSorting.Data.Spikes(GlobalData.SpikeSorting.Selected).Name, ...
-        1)
+        1);
 end
 
 function nextElectrode = GetNextElectrode()
@@ -244,5 +243,81 @@ function nextElectrode = GetNextElectrode()
     if nextElectrode > numSpikes || isempty(GlobalData.SpikeSorting.Data.Spikes(nextElectrode).File)
         nextElectrode = GlobalData.SpikeSorting.Selected;
     end
+end
+
+function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, electrodeName, import, eventNamePrefix)
+    if nargin < 6
+        eventNamePrefix = '';
+    else
+        eventNamePrefix = [eventNamePrefix ' '];
+    end
+    newEvents = struct();
+    DataMat = in_bst_data(rawFile);
+    eventName = [eventNamePrefix GetSpikesEventPrefix() ' ' electrodeName ' '];
+
+    % Load spike data and convert to Brainstorm event format
+    switch lower(deviceType)
+        case 'waveclus'
+            if exist(electrodeFile, 'file') == 2
+                ElecData = load(electrodeFile, 'cluster_class');
+                neurons = unique(ElecData.cluster_class(ElecData.cluster_class(:,1) > 0,1));
+                numNeurons = length(neurons);
+            else
+                numNeurons = 0;
+            end
+
+            if numNeurons == 1
+                newEvents(1).label      = eventName;
+                newEvents(1).color      = [rand(1,1), rand(1,1), rand(1,1)];
+                newEvents(1).epochs     = ones(1, sum(ElecData.cluster_class(:,1) ~= 0));
+                newEvents(1).times      = ElecData.cluster_class(ElecData.cluster_class(:,1) ~= 0, 2)' ./ 1000;
+                newEvents(1).samples    = newEvents(1).times .* DataMat.F.prop.sfreq;
+                newEvents(1).reactTimes = [];
+                newEvents(1).select     = 1;
+            elseif numNeurons > 1
+                for iNeuron = 1:numNeurons
+                    newEvents(iNeuron).label      = [eventName '|' num2str(iNeuron) '|'];
+                    newEvents(iNeuron).color      = [rand(1,1), rand(1,1), rand(1,1)];
+                    newEvents(iNeuron).epochs     = ones(1, length(ElecData.cluster_class(ElecData.cluster_class(:,1) == iNeuron, 1)));
+                    newEvents(iNeuron).times      = ElecData.cluster_class(ElecData.cluster_class(:,1) == iNeuron, 2)' ./ 1000;
+                    newEvents(iNeuron).samples    = newEvents(iNeuron).times .* DataMat.F.prop.sfreq;
+                    newEvents(iNeuron).reactTimes = [];
+                    newEvents(iNeuron).select     = 1;
+                end
+            else
+                % This electrode just picked up noise, no event to add.
+                newEvents(1).label      = eventName;
+                newEvents(1).color      = [rand(1,1), rand(1,1), rand(1,1)];
+                newEvents(1).epochs     = [];
+                newEvents(1).times      = [];
+                newEvents(1).samples    = [];
+                newEvents(1).reactTimes = [];
+                newEvents(1).select     = 1;
+            end
+            
+        otherwise
+            bst_error('This spike sorting structure is currently unsupported by Brainstorm.');
+    end
+    
+    if import
+        ProtocolInfo = bst_get('ProtocolInfo');
+        % Add event to linked raw file
+        numEvents = length(DataMat.F.events);
+        % Delete existing event(s)
+        if numEvents > 0
+            iDelEvents = cellfun(@(x) ~isempty(x), strfind({DataMat.F.events.label}, eventName));
+            DataMat.F.events = DataMat.F.events(~iDelEvents);
+            numEvents = length(DataMat.F.events);
+        end
+        % Add as new event(s);
+        for iEvent = 1:length(newEvents)
+            DataMat.F.events(numEvents + iEvent) = newEvents(iEvent);
+        end
+        bst_save(bst_fullfile(ProtocolInfo.STUDIES, rawFile), DataMat, 'v6');
+    end
+end
+
+function prefix = GetSpikesEventPrefix()
+    prefix = 'Spikes Channel';
 end
 
