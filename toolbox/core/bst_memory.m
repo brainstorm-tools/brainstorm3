@@ -1515,21 +1515,29 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         % Fake results file
         ParentFile = strrep(TimefreqFile, '.mat', '$.mat');
         TimefreqMat.DataFile = ParentFile;
+        % Check if this fake file is already created
+        if ~isempty(GlobalData.DataSet(iDS).Results)
+            iResults = find(file_compare({GlobalData.DataSet(iDS).Results.FileName}, ParentFile) & (cellfun(@length, {GlobalData.DataSet(iDS).Results.GridLoc}) == length(TimefreqMat.GridLoc)));
+        else
+            iResults = [];
+        end
         % Create new fake structure
-        iResults = length(GlobalData.DataSet(iDS).Results) + 1;
-        GlobalData.DataSet(iDS).Results(iResults) = db_template('LoadedResults');
-        GlobalData.DataSet(iDS).Results(iResults).FileName        = ParentFile;
-        GlobalData.DataSet(iDS).Results(iResults).DataType        = 'results';
-        GlobalData.DataSet(iDS).Results(iResults).Comment         = [TimefreqMat.Comment '$'];
-        GlobalData.DataSet(iDS).Results(iResults).Time            = [TimefreqMat.Time(1), TimefreqMat.Time(end)];
-        GlobalData.DataSet(iDS).Results(iResults).SamplingRate    = (TimefreqMat.Time(2) - TimefreqMat.Time(1));
-        GlobalData.DataSet(iDS).Results(iResults).NumberOfSamples = length(TimefreqMat.Time);
-        GlobalData.DataSet(iDS).Results(iResults).HeadModelType   = 'volume';
-        GlobalData.DataSet(iDS).Results(iResults).HeadModelFile   = TimefreqMat.HeadModelFile;
-        GlobalData.DataSet(iDS).Results(iResults).SurfaceFile     = TimefreqMat.SurfaceFile;
-        GlobalData.DataSet(iDS).Results(iResults).GridLoc         = TimefreqMat.GridLoc;
-        GlobalData.DataSet(iDS).Results(iResults).GridAtlas       = TimefreqMat.GridAtlas;
-        GlobalData.DataSet(iDS).Results(iResults).nComponents     = 3;
+        if isempty(iResults)
+            iResults = length(GlobalData.DataSet(iDS).Results) + 1;
+            GlobalData.DataSet(iDS).Results(iResults) = db_template('LoadedResults');
+            GlobalData.DataSet(iDS).Results(iResults).FileName        = ParentFile;
+            GlobalData.DataSet(iDS).Results(iResults).DataType        = 'results';
+            GlobalData.DataSet(iDS).Results(iResults).Comment         = [TimefreqMat.Comment '$'];
+            GlobalData.DataSet(iDS).Results(iResults).Time            = [TimefreqMat.Time(1), TimefreqMat.Time(end)];
+            GlobalData.DataSet(iDS).Results(iResults).SamplingRate    = (TimefreqMat.Time(2) - TimefreqMat.Time(1));
+            GlobalData.DataSet(iDS).Results(iResults).NumberOfSamples = length(TimefreqMat.Time);
+            GlobalData.DataSet(iDS).Results(iResults).HeadModelType   = 'volume';
+            GlobalData.DataSet(iDS).Results(iResults).HeadModelFile   = TimefreqMat.HeadModelFile;
+            GlobalData.DataSet(iDS).Results(iResults).SurfaceFile     = TimefreqMat.SurfaceFile;
+            GlobalData.DataSet(iDS).Results(iResults).GridLoc         = TimefreqMat.GridLoc;
+            GlobalData.DataSet(iDS).Results(iResults).GridAtlas       = TimefreqMat.GridAtlas;
+            GlobalData.DataSet(iDS).Results(iResults).nComponents     = 3;
+        end
     end
     
     % ===== CREATE NEW TIMEFREQ ENTRY =====

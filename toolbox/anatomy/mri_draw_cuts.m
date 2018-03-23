@@ -200,7 +200,7 @@ function cmapA = ApplyColormap( A, CMap, intensityBounds, isIndexed )
         intensityBounds = [min(A(:)), max(A(:))];
     end
     % If slice is empty : return
-    if (intensityBounds(1)==intensityBounds(2)) || (intensityBounds(2) == 0)
+    if (intensityBounds(1)==intensityBounds(2))   % || (intensityBounds(2) == 0)
         cmapA = repmat(A, [1 1 3]);
         return
     end
