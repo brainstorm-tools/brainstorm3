@@ -23,7 +23,7 @@ function bst_deploy_java_2018a(IS_BIN)
 % This software is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2016 University of Southern California & McGill University
+% Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPL
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -37,7 +37,7 @@ function bst_deploy_java_2018a(IS_BIN)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2017
+% Authors: Francois Tadel, 2011-2018
 
 
 %% ===== PARSE INPUTS =====
