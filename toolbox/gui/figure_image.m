@@ -135,6 +135,10 @@ function ResizeCallback(hFig, ev)
     XTickLabel = get(hAxes, 'XTickLabel');
     if isempty(XTickLabel)
         marginBottom = 25;
+    elseif iscell(XTickLabel) && ~isempty(XTickLabel{1}) && isempty(num2str(XTickLabel{1}))
+        % Get the largest frequency band string
+        strMax = max(cellfun(@length, XTickLabel));
+        marginBottom = 35 + 5 * min(15, strMax);
     else
         marginBottom = 40;
     end
@@ -146,7 +150,7 @@ function ResizeCallback(hFig, ev)
     else
         % Get the largest frequency band string
         strMax = max(cellfun(@length, YTickLabel));
-        marginLeft = 35 + 5 * min(15, strMax);
+        marginLeft = 40 + 5 * min(15, strMax);
     end
 
     % If colorbar: Add a small label to hide the x10^exp on top of the colorbar
@@ -652,6 +656,11 @@ function DisplayFigurePopup(hFig)
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_MASK));
     % ==== MENU: FIGURE ====
     jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
+        % Legend
+        ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ~ShowLabels));
+        jItem.setSelected(ShowLabels);
+        jMenuFigure.addSeparator();
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
@@ -848,6 +857,23 @@ function UpdateFigurePlot(hFig, isResetMax)
                    'XTickLabelMode', 'manual', ...
                    'XTick',          XTick, ...
                    'XTickLabel',     XTickLabel);
+    elseif ShowLabels && iscell(Labels{2}) && ~isempty(Labels{2}) && ischar(Labels{2}{1})
+        % Remove all the common parts of the labels
+        tmpLabels = str_remove_common(Labels{2});
+        if ~isempty(tmpLabels)
+            Labels{2} = tmpLabels;
+        end
+        % Limit the size of the comments to 15 characters
+        Labels{2} = cellfun(@(c)c(max(1,length(c)-14):end), Labels{2}, 'UniformOutput', 0);
+        % Show the names of each row
+        set(hAxes, 'XTickMode',      'manual', ...
+                   'XTickLabelMode', 'manual', ...
+                   'XTick',          (1:size(FigData,1)) + 0.5, ...
+                   'XTickLabel',     Labels{2});
+        % New versions of Matlab only (Matlab >= 2014b)
+        if (bst_get('MatlabVersion') >= 804)
+            set(hAxes, 'XTickLabelRotation', 45)
+        end
     else
         set(hAxes, 'XTick',      [], ...
                    'XTickLabel', []);
@@ -951,5 +977,16 @@ function SetSelectedPoint(hFig, iA, iB, Value, LabelA, LabelB, DimLabels, isPerm
     end
 end
 
+
+%% ===== SHOW/HIDE LABELS =====
+function SetShowLabels(iDS, iFig, ShowLabels)
+    global GlobalData;
+    % Save new value
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels = ShowLabels;
+    % Update figure
+    UpdateFigurePlot(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 1);
+    % Resize to update the size of the margins
+    ResizeCallback(GlobalData.DataSet(iDS).Figure(iFig).hFigure);
+end
 
 
