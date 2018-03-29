@@ -116,7 +116,11 @@ switch (FileFormat)
             [MRI, vox2ras] = in_mri_nii(MriFile, 0, 1); % Function automatically detects right byte order
         end
     case 'MGH'
-        [MRI, vox2ras] = in_mri_mgh(MriFile);
+        if isInteractive
+            [MRI, vox2ras] = in_mri_mgh(MriFile, [], []);
+        else
+            [MRI, vox2ras] = in_mri_mgh(MriFile, 1, 0);
+        end
     case 'KIT'
         error('Not supported yet');
     case 'Neuromag'

@@ -1,6 +1,8 @@
 ---------------------------------------------------------------
 March 2018
 - Bug fix: "Filter" processes were replacing the actual data with the "Std" field
+- Bug fix: Exporting vox2ras transformation to .nii when volume was not initially .nii
+- Bug fix: Correct registration of additional .nii files full FreeSurfer anatomy folders
 - GUI: Add numbers to the comments of new files that already exist
 - GUI: Updated tools for ECOG (new display options, many bug fixes)
 - GUI: Allow simultaneous display of SEEG and ECOG

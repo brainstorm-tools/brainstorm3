@@ -36,7 +36,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2017
+% Authors: Francois Tadel, 2016-2018
 
 % ===== LOAD INPUTS =====
 % Initialize returned variables
@@ -248,7 +248,7 @@ if isUpdateScs || isUpdateNcs
         end
     end
     % Transform the reference SCS coordinates if possible
-    if ~isempty(TransfReg) && ~isempty(TransfRef) && isfield(sMriRef, 'SCS') && all(isfield(sMriRef.SCS, {'NAS','LPA','RPA','T','R'})) && ~isempty(sMriRef.SCS.NAS) && ~isempty(sMriRef.SCS.LPA) && ~isempty(sMriRef.SCS.RPA) && ~isempty(sMriRef.SCS.R) && ~isempty(sMriRef.SCS.T)
+    if isUpdateScs && ~isempty(TransfReg) && ~isempty(TransfRef) && isfield(sMriRef, 'SCS') && all(isfield(sMriRef.SCS, {'NAS','LPA','RPA','T','R'})) && ~isempty(sMriRef.SCS.NAS) && ~isempty(sMriRef.SCS.LPA) && ~isempty(sMriRef.SCS.RPA) && ~isempty(sMriRef.SCS.R) && ~isempty(sMriRef.SCS.T)
         % Apply transformation: reference MRI => SPM RAS/world => registered MRI
         Transf = inv(TransfReg) * (TransfRef);
         % Update SCS fiducials
@@ -262,7 +262,7 @@ if isUpdateScs || isUpdateNcs
         sMriReg.SCS.T = Tscs(1:3,4);
     end
     % Transform the reference SCS coordinates if possible
-    if ~isempty(TransfReg) && ~isempty(TransfRef) && isfield(sMriRef, 'NCS') && all(isfield(sMriRef.NCS, {'AC','PC','IH','T','R'})) && ~isempty(sMriRef.NCS.AC) && ~isempty(sMriRef.NCS.PC) && ~isempty(sMriRef.NCS.IH) && ~isempty(sMriRef.NCS.R) && ~isempty(sMriRef.NCS.T)
+    if isUpdateNcs && ~isempty(TransfReg) && ~isempty(TransfRef) && isfield(sMriRef, 'NCS') && all(isfield(sMriRef.NCS, {'AC','PC','IH','T','R'})) && ~isempty(sMriRef.NCS.AC) && ~isempty(sMriRef.NCS.PC) && ~isempty(sMriRef.NCS.IH) && ~isempty(sMriRef.NCS.R) && ~isempty(sMriRef.NCS.T)
         % Apply transformation: reference MRI => SPM RAS/world => registered MRI
         Transf = inv(TransfReg) * (TransfRef);
         % Update SCS fiducials

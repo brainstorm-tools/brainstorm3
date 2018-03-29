@@ -46,7 +46,7 @@ end
 if isempty(isApply)
     if ~isequal(Pmat, [1 2 3]) || ~isequal(isFlip, [0 0 0])
         isApply = java_dialog('confirm', ['A transformation is available in the MRI file.' 10 10 ...
-                                          'Do you want to apply it to the volume now?' 10 10], 'NIfTI MRI');
+                                          'Do you want to apply it to the volume now?' 10 10], 'MRI orientation');
     else
         isApply = 0;
     end
