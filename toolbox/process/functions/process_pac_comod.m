@@ -211,7 +211,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         if isequal(inputTime, tPACMat.Time)
             tPACMat.Comment = [tPACMat.Comment, ' | ',tag];
         else
-            tPACMat.Comment = [tPACMat.Comment, ' | ',tag,' | t=[', num2str(inputTime(1)), ',',  num2str(inputTime(2)),']'];
+            tPACMat.Comment = [tPACMat.Comment, ' | ',tag,' | t=(', num2str(inputTime(1)), ',',  num2str(inputTime(2)),')'];
         end
 
         % Output filename: add file tag
@@ -270,7 +270,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 if isequal(inputTime,tPACMat.Time)
                     tPACMat.Comment = [tPACMat.Comment, ' | ',tag];
                 else
-                    tPACMat.Comment = [tPACMat.Comment, ' | ',tag,' | t=[', num2str(inputTime(1)), ',',  num2str(inputTime(2)),']'];
+                    tPACMat.Comment = [tPACMat.Comment, ' | ',tag,' | t=(', num2str(inputTime(1)), ',',  num2str(inputTime(2)),')'];
                 end
                 tPACMat.FunctionVersion = sProcess.Comment;
                 
