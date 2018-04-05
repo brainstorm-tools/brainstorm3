@@ -32,26 +32,20 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Noise Correlation';
-    sProcess.FileTag     = 'raster';
+    sProcess.FileTag     = 'NoiseCorrelation';
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
-    sProcess.Index       = 1506;
-    sProcess.Description = 'https://www.ncbi.nlm.nih.gov/pubmed/9950724';
+    sProcess.Index       = 1508;
+    sProcess.Description = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3586814/';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
-    sProcess.OutputTypes = {'data'};
+    sProcess.OutputTypes = {'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    % Options: Sensor types
-    sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
-    sProcess.options.sensortypes.Type    = 'text';
-    sProcess.options.sensortypes.Value   = 'EEG';
-    sProcess.options.sensortypes.InputTypes = {'data'};
-    sProcess.options.sensortypes.Group   = 'input';
-    % Options: Bin size
-    sProcess.options.binsize.Comment = 'Bin size: ';
-    sProcess.options.binsize.Type    = 'value';
-    sProcess.options.binsize.Value   = {0.05, 'ms', 1};
+    % Time window
+    sProcess.options.timewindow.Comment = 'Time window:';
+    sProcess.options.timewindow.Type    = 'range';
+    sProcess.options.timewindow.Value    = {[0, 0.200],'ms',[]};
 end
 
 
@@ -77,20 +71,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.SensorTypes = [];
     end
     
-    % Bin size
-    if isfield(sProcess.options, 'binsize') && ~isempty(sProcess.options.binsize) && ~isempty(sProcess.options.binsize.Value) && iscell(sProcess.options.binsize.Value) && sProcess.options.binsize.Value{1} > 0
-        bin_size = sProcess.options.binsize.Value{1};
+    % Time window
+    if isfield(sProcess.options, 'timewindow') && ~isempty(sProcess.options.timewindow) && ~isempty(sProcess.options.timewindow.Value)...
+                                               && iscell(sProcess.options.timewindow.Value) && (sProcess.options.timewindow.Value{1}(1) < sProcess.options.timewindow.Value{1}(2))
+        time_window = sProcess.options.timewindow.Value{1}; % [0, 0.2]
     else
-        bst_report('Error', sProcess, sInputs, 'Positive bin size required.');
+        bst_report('Error', sProcess, sInputs, 'Check window inputs');
         return;
     end
     
-    % If a time window was specified
-    if isfield(sProcess.options, 'timewindow') && ~isempty(sProcess.options.timewindow) && ~isempty(sProcess.options.timewindow.Value) && iscell(sProcess.options.timewindow.Value)
-        tfOPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};
-    elseif ~isfield(tfOPTIONS, 'TimeWindow')
-        tfOPTIONS.TimeWindow = [];
-    end
     
     % Output
     if isfield(sProcess.options, 'avgoutput') && ~isempty(sProcess.options.avgoutput) && ~isempty(sProcess.options.avgoutput.Value)
@@ -115,108 +104,154 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Load channel file
     ChannelMat = in_bst_channel(sChannel.FileName);
    
-    % Get the channels IDs
-    ChannelID = zeros(length(ChannelMat.Channel),1);
-    for iChannel = 1:length(ChannelMat.Channel)
-        temp = strrep(ChannelMat.Channel(iChannel).Name,'LFP ','');
-        ChannelID(iChannel) = str2double(temp); clear temp;
+    
+    %% Get only the unique neurons along all of the trials
+    nTrials = length(sInputs);
+    
+    % This loads the information from ALL TRIALS on ALL_TRIALS_files
+    % (Shouldn't create a memory problem).
+    ALL_TRIALS_files = struct();
+    for iFile = 1:nTrials
+        ALL_TRIALS_files(iFile).a = in_bst(sInputs(iFile).FileName);
     end
     
-    % === START COMPUTATION ===
-    sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
+    % Create a cell that holds all of the labels and one for the unique labels
+    % This will be used to take the averages using the appropriate indices
+    uniqueNeurons = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
+    for iFile = 1:nTrials
+        for iEvent = 1:length(ALL_TRIALS_files(iFile).a.Events)
+            if strfind(ALL_TRIALS_files(iFile).a.Events(iEvent).label, 'Spikes Channel') && sum(ALL_TRIALS_files(iFile).a.Events(iEvent).times>time_window(1) & ALL_TRIALS_files(iFile).a.Events(iEvent).times<time_window(2))~=0
+                uniqueNeurons{end+1} = ALL_TRIALS_files(iFile).a.Events(iEvent).label;
+            end
+        end
+    end
+    uniqueNeurons = unique(uniqueNeurons,'stable');
     
-    [temp, ~] = in_bst(sInputs(1).FileName);
-    nElectrodes = size(temp.ChannelFlag,1); 
-    nTrials = length(sInputs);
-    nBins = round(length(tfOPTIONS.TimeVector) / (bin_size * sampling_rate));
-    raster = zeros(nElectrodes, nBins, nTrials);
-    
-    bins = unique([linspace(temp.Time(1),0 ,nBins/2+1)  linspace(0, temp.Time(end), nBins/2+1)]); % This doesn't give the eact bin_size if the bin_size doesn't divide the length of the signal
-    
-    for ifile = 1:length(sInputs)
-        [trial, ~] = in_bst(sInputs(ifile).FileName);
-        single_file_binning = zeros(nElectrodes, nBins);
 
-        for ielectrode = 1:size(trial.F,1)
-            for ievent = 1:size(trial.Events,2)
+    
+    %% Sort the neurons based on the array they belong to.
+    % The visualization is greatly affected by the order of the neurons.
+    % TODO - this is hardcoded for channels names "Raw 1" etc. (String then space then number)
+    
+    %     uniqueNeurons = sort(uniqueNeurons)';
+    
+    channel_of_neurons = zeros(length(uniqueNeurons),1);
+    for iNeuron = 1:length(uniqueNeurons)
+        separate_strings = strsplit(uniqueNeurons{iNeuron})';
+        channel_of_neurons(iNeuron) = str2double(separate_strings{4});
+    end
+    
+    [~, ii] = sort(channel_of_neurons);
+    
+    uniqueNeurons_new = cell(length(uniqueNeurons),1);
+    
+    for iNeuron = 1:length(uniqueNeurons)
+        uniqueNeurons_new{iNeuron} = uniqueNeurons{ii(iNeuron)};
+    end
+    
+    
+    uniqueNeurons = uniqueNeurons_new; clear uniqueNeurons_new ii
+    
+    
+    
+    %% === START COMPUTATION ===
+    protocol   = bst_get('ProtocolInfo');
+    
+    
+    %% Gather the spikes
+    all_binned = zeros(length(sInputs), length(uniqueNeurons));
+    for iFile = 1:length(sInputs)
+        
+        trial = load(fullfile(protocol.STUDIES, sInputs(iFile).FileName));
+        events = trial.Events;
+        
+        for iNeuron = 1:length(uniqueNeurons)
+            for iEvent = 1:length(events)
                 
-                if strcmp(trial.Events(ievent).label, ['Spikes Channel ' ChannelMat.Channel(ielectrode).Name])
+                if strcmp(events(iEvent).label, uniqueNeurons{iNeuron})
                     
-                    outside_up = trial.Events(ievent).times > bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
-                    trial.Events(ievent).times(outside_up) = bins(end);
-                    outside_down = trial.Events(ievent).times < bins(1);
-                    trial.Events(ievent).times(outside_down) = bins(1);
+                    all_binned(iFile, iNeuron) = length(events(iEvent).times(events(iEvent).times>time_window(1) & events(iEvent).times<time_window(2)));
                     
-                    [~, ~, bin_it_belongs_to] = histcounts(trial.Events(ievent).times, bins);
-                     
-                    unique_bin = unique(bin_it_belongs_to);
-                    occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
-                     
-                    single_file_binning(ielectrode,occurences(1,:)) = occurences(2,:)/bin_size; % The division by the bin_size gives the Firing Rate
                     break
                 end
             end
             
         end
         
-        
-        % Events have to be converted to the sampling rate of the binning
-        convertedEvents = trial.Events;
-        
-        for iEvent = 1:length(trial.Events)
-            [~, ~, bin_it_belongs_to] = histcounts(trial.Events(iEvent).times, bins);
-            convertedEvents(iEvent).samples = bin_it_belongs_to;
-            
-            bin_it_belongs_to(bin_it_belongs_to==0) = 1;
-            convertedEvents(iEvent).times   = bins(bin_it_belongs_to);
-            
-        end
-        Events = convertedEvents; clear convertedEvents
-            
-        
-        
-        
-        %%
-        tfOPTIONS.ParentFiles = {sInputs.FileName};
+    end
 
-        % Prepare output file structure
-        FileMat.F = single_file_binning;
-        FileMat.Time = diff(bins(1:2))/2+bins(1:end-1); % CHECK THIS OUT - IT WILL NOT GO ALL THE WAY BUT IT WILL HAVE THE CORRECT NUMBER OF BINS
+    
+    %% Subtract mean from each neuron (this is needed for noise correlation)
+    
+    all_binned = all_binned - mean(all_binned);
+    
+    
+    %% Compute the Pearson Correlation for nxn Neurons
+    noise_correlation = zeros(1,size(all_binned, 2), size(all_binned, 2));
+    noise_correlation(1,:,:) = corr(all_binned, all_binned);
+    
+%     figure;
+%     imagesc(squeeze(noise_correlation))
+%     
+%     
+%     myColorMap = jet(256);
+%     myColorMap(1,:) = 1;
+%     colormap(myColorMap);
+%     colorbar
+        
+    %% Build the output file
+    
+    tfOPTIONS.ParentFiles = {sInputs.FileName};
 
-        FileMat.Std = [];
-        FileMat.Comment = ['Raster Plot: ' trial.Comment];
-        FileMat.DataType = 'recordings';
-        
-        FileMat.ChannelFlag = ones(length(ChannelMat.Channel),1);            % GET THE GOOD CHANNELS HERE
-        FileMat.Device      = trial.Device;
-        FileMat.Events      = Events;
-        
-        FileMat.nAvg = 1;
-        FileMat.ColormapType = [];
-        FileMat.DisplayUnits = [];
-        FileMat.History = trial.History;
-        
-        
+    % Prepare output file structure
+    FileMat.TF     = noise_correlation;
+    FileMat.Time   = 1:length(uniqueNeurons); % CHECK THIS OUT - IT WILL NOT GO ALL THE WAY BUT IT WILL HAVE THE CORRECT NUMBER OF BINS
+    FileMat.TFmask = true(size(noise_correlation, 2), size(noise_correlation, 3));
+    FileMat.Freqs  = 1:size(FileMat.TF, 3);
+    FileMat.Std = [];
+    FileMat.Comment = ['Noise Correlation'];
+%     FileMat.Comment = ['Noise Correlation: ' linkToRaw.Comment];
+    FileMat.DataType = 'data';
+    FileMat.TimeBands = [];
+    FileMat.RefRowNames = [];
+    FileMat.RowNames = {'nxn Noise Correlation'};
+    FileMat.Measure = 'power';
+    FileMat.Method = 'morlet';
+    FileMat.DataFile = []; % Leave blank because multiple parents
+    FileMat.SurfaceFile = [];
+    FileMat.GridLoc = [];
+    FileMat.GridAtlas = [];
+    FileMat.Atlas = [];
+    FileMat.HeadModelFile = [];
+    FileMat.HeadModelType = [];
+    FileMat.nAvg = [];
+    FileMat.ColormapType = [];
+    FileMat.DisplayUnits = [];
+    FileMat.Options = tfOPTIONS;
+    FileMat.History = [];
+    
+
+    
+    
 % % % % % %         % Add history field
 % % % % % %         DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
-        
 
-        % Get output study
-        sTargetStudy = bst_get('Study', iStudy);
-        % Output filename
-        FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'data_rasterplot');
-        OutputFiles = {FileName};
-        % Save output file and add to database
-        bst_save(FileName, FileMat, 'v6');
-        db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
+
+    % Get output study
+    sTargetStudy = bst_get('Study', iStudy);
+    % Output filename
+    FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'timefreq_noiseCorrelation');
+    OutputFiles = {FileName};
+    % Save output file and add to database
+    bst_save(FileName, FileMat, 'v6');
+    db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
     
-    end
 
     
     
     % Display report to user
     bst_report('Info', sProcess, sInputs, 'Success');
-    disp('BST> process_timefreq: Success');
+    disp('BST> process_noise_Correlation: Success');
 end
 
 

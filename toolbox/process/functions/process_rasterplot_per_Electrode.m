@@ -1,4 +1,4 @@
-function varargout = process_rasterplot_Nas( varargin )
+function varargout = process_rasterplot_per_Electrode( varargin )
 % PROCESS_RASTERPLOT_NAS: Computes a rasterplot per electrode.
 % 
 % USAGE:    sProcess = process_rasterplot_Nas('GetDescription')
@@ -22,7 +22,7 @@ function varargout = process_rasterplot_Nas( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2017; Martin Cousineau, 2017
+% Author: Konstantinos Nasiotis, 2018;
 
 eval(macro_method);
 end
@@ -31,7 +31,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Raster Plot';
+    sProcess.Comment     = 'Raster Plot Per Electrode';
     sProcess.FileTag     = 'raster';
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
@@ -140,7 +140,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         for ielectrode = 1:size(trial.F,1)
             for ievent = 1:size(trial.Events,2)
                 
-                if strcmp(trial.Events(ievent).label, ['Spikes Channel ' ChannelMat.Channel(ielectrode).Name])
+                % Bin ONLY THE FIRST NEURON'S SPIKES if there are multiple neurons!
+                if strcmp(trial.Events(ievent).label, ['Spikes Channel ' ChannelMat.Channel(ielectrode).Name]) || strcmp(trial.Events(ievent).label, ['Spikes Channel ' ChannelMat.Channel(ielectrode).Name ' |1|'])
                     
                     outside_up = trial.Events(ievent).times > bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
                     trial.Events(ievent).times(outside_up) = bins(end);

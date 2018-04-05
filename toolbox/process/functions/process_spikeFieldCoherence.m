@@ -50,7 +50,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.FileTag     = 'SFC';
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
-    sProcess.Index       = 2506;
+    sProcess.Index       = 1507;
     sProcess.Description = 'http://science.sciencemag.org/content/suppl/2003/05/02/291.5508.1560.DC1';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
@@ -336,7 +336,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     FileMat.TFmask = [];
     FileMat.Freqs = 1:nElectrodes;      % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
     FileMat.Std = [];
-    FileMat.Comment = 'Spike Field Coherence';
+%     FileMat.Comment = ['Spike Field Coherence: ' ALL_TRIALS_files(1).a.Comment];
+    FileMat.Comment = ['Spike Field Coherence']; % This should have the event that was selected or something
     FileMat.DataType = 'data';
     FileMat.TimeBands = [];
     FileMat.RefRowNames = [];
@@ -358,7 +359,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
    
     
 % % % % % %     % Add history field
-% % % % % %     DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
+% % % % % %     FileMat = bst_history('add', FileMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
         
     
     
