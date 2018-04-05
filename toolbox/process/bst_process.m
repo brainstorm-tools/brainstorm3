@@ -617,7 +617,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     OutputStd = [];
     OutputTFmask = [];
     % Get maximum size of a data block
-    MaxSize = ProcessOptions.MaxBlockSize;
+    MaxSize = ProcessOptions.MaxBlockSize*10;
     % Split the block size in rows and columns
     if (nRow * nCol > MaxSize) && ~isempty(sProcess.processDim)
         % Split max block by row blocks
