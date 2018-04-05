@@ -169,7 +169,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     unique_bin = unique(bin_it_belongs_to);
                     occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
                      
-                    single_file_binning(iNeuron,occurences(1,:)) = occurences(2,:); 
+                    single_file_binning(iNeuron,occurences(1,:)) = occurences(2,:)/bin_size; % The division by the bin_size gives the Firing Rate 
                     break
                 end
             end
