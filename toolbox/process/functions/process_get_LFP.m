@@ -42,8 +42,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Convert RAW to LFP';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import recordings';
-    sProcess.Index       = 1201;
+    sProcess.SubGroup    = 'Electrophysiology';
+    sProcess.Index       = 1401;
     sProcess.Description = 'https://www.ncbi.nlm.nih.gov/pubmed/21068271';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
