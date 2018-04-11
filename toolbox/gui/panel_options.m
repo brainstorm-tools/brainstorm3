@@ -118,7 +118,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
         jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', []);
         gui_component('Label',  jPanelProc, 'br', 'Memory block size (Mb): ', [], [], []);
-        jBlockSize = gui_component('Text',  jPanelProc, [], '100', [], [], []);
+        jBlockSize = gui_component('Text',  jPanelProc, [], '', [], [], []);
         % jCheckOrigFolder = gui_component('CheckBox', jPanelProc, 'br', 'Store continuous files in original folder', [], '<HTML>If selected, the continuous files processed with the Process1 tab are stored in the same folder as the input raw files. <BR>Else, they are stored directly in the Brainstorm database.', @UpdateProcessOptions_Callback);
         % jCheckOrigFormat = gui_component('CheckBox', jPanelProc, 'br', 'Save continuous files in original format',  [], '<HTML>If selected, the continuous files processed with the Process1 tab are saved in the same data format as the input raw files.<BR>Else, they are saved in the Brainstorm binary format.<BR>This option is available only for FIF and CTF files.', []);
     jPanelRight.add('br hfill', jPanelProc);
@@ -205,7 +205,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckUseSigProc.setEnabled(isToolboxInstalled);
         jCheckUseSigProc.setSelected(bst_get('UseSigProcToolbox'));
         processOptions = bst_get('ProcessOptions');
-        jBlockSize.setText(num2str(processOptions.MaxBlockSize * 8 / (1024*1024)));
+        jBlockSize.setText(num2str(processOptions.MaxBlockSize * 8 / 1024 / 1024));
     end
 
 
