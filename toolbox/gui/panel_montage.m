@@ -1399,6 +1399,7 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
     sFigMontages = GetMontagesForFigure(hFig);
     % Get current montage
     TsInfo = getappdata(hFig, 'TsInfo');
+    MontageOptions = bst_get('MontageOptions');
     % Get selected sensors
     if ~isempty(TsInfo) && (strcmpi(TsInfo.DisplayMode, 'column') || strcmpi(TsInfo.DisplayMode, 'butterfly'))
         SelChannels = figure_timeseries('GetFigSelectedRows', hFig);
@@ -1456,8 +1457,15 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
         % Create menu
         jItem = gui_component('CheckBoxMenuItem', jSubMenu, [], DisplayName, [], [], @(h,ev)SetCurrentMontage(hFig, sFigMontages(i).Name));
         jItem.setSelected(isSelected);
-        if (i <= 25)
-            jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A + i), KeyEvent.SHIFT_MASK));
+        shortcut = [];
+        for iShortcut = 2:26
+            if strcmpi(sFigMontages(i).Name, MontageOptions.Shortcuts{iShortcut,2})
+                shortcut = MontageOptions.Shortcuts{iShortcut,1};
+                break;
+            end
+        end
+        if ~isempty(shortcut)
+            jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A + shortcut - 'a'), KeyEvent.SHIFT_MASK));
         end
     end
     drawnow;
@@ -1482,6 +1490,8 @@ function CreateMontageMenu(jButton, hFig)
         gui_component('MenuItem', jPopup, [], 'New re-referencing montage (linked ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('linkref', [], hFig));
     end
     gui_component('MenuItem', jPopup, [], 'New custom montage',  IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('text', [], hFig));
+    jPopup.addSeparator();
+    gui_component('MenuItem', jPopup, [], 'Edit montage keyboard shortcuts', IconLoader.ICON_PROPERTIES, [], @(h,ev)gui_show('panel_montage_shortcuts', 'JavaWindow', 'Montage keyboard shortcuts', [], 1, 0, 0));
     jPopup.addSeparator();
     gui_component('MenuItem', jPopup, [], 'Duplicate montage', IconLoader.ICON_COPY, [], @(h,ev)ButtonDuplicate_Callback(hFig));
     gui_component('MenuItem', jPopup, [], 'Rename montage', IconLoader.ICON_EDIT, [], @(h,ev)ButtonRename_Callback(hFig));
@@ -1524,6 +1534,7 @@ end
 function isProcessed = ProcessKeyPress(hFig, Key) %#ok<DEFNU>
     isProcessed = 0;
     % Get montages for the figure
+    MontageOptions = bst_get('MontageOptions');
     sMontages = GetMontagesForFigure(hFig);
     if isempty(sMontages)
         return
@@ -1539,8 +1550,13 @@ function isProcessed = ProcessKeyPress(hFig, Key) %#ok<DEFNU>
         return
     elseif (iSel == 0)
         newName = [];
-    else
+    elseif strcmpi(MontageOptions.Shortcuts{iSel+1,2}, sMontages(iSel).Name)
         newName = sMontages(iSel).Name;
+    else
+        % Count key press as processed even if no montage attached to avoid
+        % triggering other unwanted events.
+        isProcessed = 1;
+        return;
     end
     % Process key pressed: switch to new montage
     SetCurrentMontage(hFig, newName);
