@@ -398,7 +398,7 @@ if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) % && hdr.isRaw
         end
         % For epoched files: convert events to samples local to each epoch 
         if ~hdr.isRaw
-            events(iEvt).samples = events(iEvt).samples - (events(iEvt).epochs - 1) * (sFile.prop.samples(2) - sFile.prop.samples(1) + 1);
+            events(iEvt).samples = events(iEvt).samples - (events(iEvt).epochs - 1) * (sFile.prop.samples(2) - sFile.prop.samples(1) + 1) + sFile.prop.samples(1) - 1;
         end
         % Compute times
         events(iEvt).times = events(iEvt).samples ./ sFile.prop.sfreq;
