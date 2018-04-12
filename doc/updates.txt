@@ -11,7 +11,7 @@ March 2018
 - GUI: Added legends to connectivity matrices displayed as images
 - Process: Re-reference EEG: New option "local average", and use of the list of bad channels
 - GUI: 2DLayout made available for SEEG/ECOG
-- Distrib: Swith to Matlab 2018b
+- Distrib: Switch to Matlab 2018b
 ---------------------------------------------------------------
 February 2018
 - GUI: New options "Upsample image" to smooth MRI display in 3D figures
@@ -1722,7 +1722,7 @@ September-2008
 - Bug fix: Navigator for kernel results
 - Bug fix: position of popup menus for visualization figures
 - Bug fix: target surface for scouts 3D edition
-- Bug fix: characters 'ç' and 'µ'
+- Bug fix: characters 'Ã§' and 'Âµ'
 - Bug fix: mouse sensibility for alignment of surfaces, channels and sphere
 - Bug fix: selection of time interval
 - MEG: Import of Neuromag/FIF files at Neurospin
@@ -1741,7 +1741,7 @@ August-2008
 - Display of the results (sources) in the MRI
 - New colormaps for anatomy and stats
 - Display of scouts in MRI (MRI Viewer and 3D)
-- Tests of VideoIO  to make movies under linux : échec
+- Tests of VideoIO  to make movies under linux : Ã©chec
 - Updated shepards.m to ignore the vertices that are too far away from the sources
 - Updated default anatomies and EEG nets
 - Contrast/Brightness control over predefined colormaps
