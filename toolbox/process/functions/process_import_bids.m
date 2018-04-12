@@ -364,7 +364,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                 % Generate head surface
                 tess_isohead(iSubject, 10000, 0, 2);
                 % Add other volumes
-                for i = 2:length(SubjectMriFiles)
+                for i = 2:length(SubjectMriFiles{iSubj})
                     import_mri(iSubject, SubjectMriFiles{iSubj}{i}, 'ALL', 0, 1);
                 end
             end
