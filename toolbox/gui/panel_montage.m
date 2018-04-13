@@ -1565,6 +1565,8 @@ function sMontages = LoadMontageFiles(FileNames, FileFormat)
         if isempty(DefaultFormats.MontageIn)
             DefaultFormats.MontageIn = 'MON';
         end
+        
+       
         % Select file
         [FileNames, FileFormat] = java_getfile( 'open', 'Import montages', ...
             LastUsedDirs.ImportMontage, 'multiple', 'files', ...
@@ -1598,6 +1600,8 @@ function sMontages = LoadMontageFiles(FileNames, FileFormat)
             case 'BST'
                 DataMat = load(FileNames{iFile});
                 sMon = DataMat.Montages;
+            case 'CSV'
+                sMon = in_montage_csv(FileNames{iFile});
         end
         % Concatenate with the list of loaded montages
         sMontages = cat(2, sMontages, sMon);
