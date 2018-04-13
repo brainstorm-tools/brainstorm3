@@ -191,6 +191,8 @@ switch (sFile.format)
             iChannels = 1:size(sFile.header.F,1);
         end
         F = sFile.header.F(iChannels, iTimes);
+    case 'EEG-INTAN'
+        F = in_fread_intan(sFile, SamplesBounds, iChannels);
     otherwise
         error('Cannot read data from this file');
 end
