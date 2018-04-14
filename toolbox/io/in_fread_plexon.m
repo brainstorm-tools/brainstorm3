@@ -1,7 +1,10 @@
-function F = in_fread_intan(sFile, SamplesBounds, iChannels)
-% IN_FREAD_INTAN Read a block of recordings from a Intan files
+function F = in_fread_plexon(sFile, SamplesBounds, iChannels)
+% IN_FREAD_PLEXON Read a block of recordings from a Plexon file
 %
 % USAGE:  F = in_fread_intan(sFile, SamplesBounds=[], iChannels=[])
+
+% % This function is using the importer developed by Benjamin Kraus (2013)
+% https://www.mathworks.com/matlabcentral/fileexchange/42160-readplxfilec
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -33,14 +36,36 @@ if (nargin < 2) || isempty(SamplesBounds)
 end
 
 
+% The readPLXFileC needs to export data from time sample 1, not 0.
+% Leaving it 0 would export a vector with one less element, messing the
+% assignment to the matrix F later. The only effect that this change has is
+% that the imported matrix would be one sample shifted, nothing else.
+
+data = readPLXFileC(fullfile(sFile.filename,[sFile.comment sFile.header.extension]),'continuous','first', SamplesBounds(1)+1, 'num', diff(SamplesBounds)+1);
+
 % Read the corresponding recordings
 F = zeros(length(iChannels), diff(SamplesBounds)+1);
 
-for iChannel = 1:length(iChannels)
-    
-    fid = fopen(fullfile(sFile.filename,sFile.header.chan_files(iChannel).name), 'r');
-    fseek(fid, SamplesBounds(1), 'bof');
-    data_channel = fread(fid, SamplesBounds(2) - SamplesBounds(1) +1, 'int16');
-    F(iChannel,:) = data_channel*0.195; % Convert to microvolts
-    fclose(fid);
+
+%% CHECK WHAT EXACTLY IS NEEDED - ONLY 32 CHANNELS GET VALUES
+
+
+try
+    for iChannel = 1:length(iChannels)
+        if ~isempty(double(data.ContinuousChannels(iChannel).Values))
+            F(iChannel,:) = double(data.ContinuousChannels(iChannel).Values); % Convert to microvolts
+        end
+    end
+catch
+    disp('malakia epaixthi')
 end
+
+
+
+
+
+
+
+
+
+
