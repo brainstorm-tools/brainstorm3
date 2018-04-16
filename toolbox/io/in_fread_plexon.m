@@ -48,7 +48,7 @@ end
 
 %% Read the PLX file and assign it to the Brainstorm format
 
-data = readPLXFileC(fullfile(sFile.filename,[sFile.comment sFile.header.extension]),'continuous','first', SamplesBounds(1), 'num', diff(SamplesBounds)+1);
+data = readPLXFileC(sFile.filename,'continuous','first', SamplesBounds(1), 'num', diff(SamplesBounds)+1);
 
 % Initialize Brainstorm output
 F = zeros(length(iChannels), diff(SamplesBounds)+1);

@@ -100,7 +100,7 @@ hdr.ChannelCount = length(hdr.chan_headers);
 sFile = db_template('sfile');
 % Add information read from header
 sFile.byteorder = 'l';
-sFile.filename  = hdr.BaseFolder;  %!!!!!!!!!!!!!!!
+sFile.filename  = DataFile;
 sFile.format    = 'EEG-PLEXON';
 sFile.device    = 'Plexon';
 sFile.header    = hdr;
