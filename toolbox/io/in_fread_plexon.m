@@ -36,18 +36,22 @@ if (nargin < 2) || isempty(SamplesBounds)
 end
 
 
-% The readPLXFileC needs to export data from time sample 1, not 0.
+%% The readPLXFileC needs to export data from time sample 1, not 0.
 % Leaving it 0 would export a vector with one less element, messing the
 % assignment to the matrix F later. The only effect that this change has is
 % that the imported matrix would be one sample shifted, nothing else.
 
-data = readPLXFileC(fullfile(sFile.filename,[sFile.comment sFile.header.extension]),'continuous','first', SamplesBounds(1)+1, 'num', diff(SamplesBounds)+1);
+if SamplesBounds(1) == 0
+    SamplesBounds = SamplesBounds + 1;
+end
 
-% Read the corresponding recordings
+
+%% Read the PLX file and assign it to the Brainstorm format
+
+data = readPLXFileC(fullfile(sFile.filename,[sFile.comment sFile.header.extension]),'continuous','first', SamplesBounds(1), 'num', diff(SamplesBounds)+1);
+
+% Initialize Brainstorm output
 F = zeros(length(iChannels), diff(SamplesBounds)+1);
-
-
-%% CHECK WHAT EXACTLY IS NEEDED - ONLY 32 CHANNELS GET VALUES on this example file. Check others too.
 
 for iChannel = 1:length(iChannels)
     if ~isempty(double(data.ContinuousChannels(iChannel).Values))
