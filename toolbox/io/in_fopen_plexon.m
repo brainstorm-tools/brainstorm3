@@ -60,7 +60,7 @@ if ~exist('readPLXFileC.mexw*','file') == 2
     build_readPLXFileC
 end
 
-newHeader = readPLXFileC(DataFile,'events');   % THE LASTTIMESTAMP IS WRONG !!!!. SAME FOR ADFREQUENCY
+newHeader = readPLXFileC(DataFile,'events');   % THE LASTTIMESTAMP IS WRONG !!!!. SAME FOR ADFREQUENCY. Get them from the channel field.
 
 
 % Check for some important fields

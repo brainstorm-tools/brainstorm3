@@ -47,25 +47,13 @@ data = readPLXFileC(fullfile(sFile.filename,[sFile.comment sFile.header.extensio
 F = zeros(length(iChannels), diff(SamplesBounds)+1);
 
 
-%% CHECK WHAT EXACTLY IS NEEDED - ONLY 32 CHANNELS GET VALUES
+%% CHECK WHAT EXACTLY IS NEEDED - ONLY 32 CHANNELS GET VALUES on this example file. Check others too.
 
-
-try
-    for iChannel = 1:length(iChannels)
-        if ~isempty(double(data.ContinuousChannels(iChannel).Values))
-            F(iChannel,:) = double(data.ContinuousChannels(iChannel).Values); % Convert to microvolts
-        end
+for iChannel = 1:length(iChannels)
+    if ~isempty(double(data.ContinuousChannels(iChannel).Values))
+        F(iChannel,:) = double(data.ContinuousChannels(iChannel).Values) * 2.441406250000000e-04; % Convert to Volts
     end
-catch
-    disp('malakia epaixthi')
 end
-
-
-
-
-
-
-
 
 
 
