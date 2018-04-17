@@ -157,9 +157,9 @@ if isfield(newHeader, 'EventChannels')
         if ~isempty(newHeader.EventChannels(iEvt).Timestamps)
             iNotEmptyEvents = iNotEmptyEvents + 1;
             % Fill the event fields
-            events(iNotEmptyEvents).label      = newHeader.EventChannels(iNotEmptyEvents).Name;
+            events(iNotEmptyEvents).label      = newHeader.EventChannels(iEvt).Name;
             events(iNotEmptyEvents).color      = rand(1,3);
-            events(iNotEmptyEvents).samples    = newHeader.EventChannels(iNotEmptyEvents).Timestamps';
+            events(iNotEmptyEvents).samples    = newHeader.EventChannels(iEvt).Timestamps';
             events(iNotEmptyEvents).times      = events(iNotEmptyEvents).samples * hdr.SamplingFrequency;
             events(iNotEmptyEvents).reactTimes = [];
             events(iNotEmptyEvents).select     = 1;
