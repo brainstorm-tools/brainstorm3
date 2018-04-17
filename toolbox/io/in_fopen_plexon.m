@@ -70,7 +70,7 @@ end
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% % THE LASTTIMESTAMP and ADFREQUENCY fields are wrong.
+%% % THE LASTTIMESTAMP and ADFREQUENCY fields are for the events!
 % Load one channel file and get them from there.
 
 
@@ -78,18 +78,15 @@ CHANNELS_SELECTED = [newHeader.ContinuousChannels.Enabled]; % Only get the chann
 CHANNELS_SELECTED = find(CHANNELS_SELECTED);
 
 one_channel = readPLXFileC(DataFile,'continuous',CHANNELS_SELECTED(1)-1);
-newHeader.ADFrequency   = one_channel.ContinuousChannels(1).ADFrequency;
-newHeader.LastTimestamp = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+channel_Fs = one_channel.ContinuousChannels(1).ADFrequency; % There is a different sampling rate for channels and (events and spikes events)
 
 
 % Extract information needed for opening the file
 hdr.FirstTimeStamp    = 0;
-hdr.LastTimeStamp     = newHeader.LastTimestamp*newHeader.ADFrequency;
-hdr.NumSamples        = newHeader.LastTimestamp; % newHeader.LastTimestamp is in samples. Brainstorm header is in seconds.
+hdr.LastTimeStamp     = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values)*one_channel.ContinuousChannels(1).ADFrequency;
+hdr.NumSamples        = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values); % newHeader.LastTimestamp is in samples. Brainstorm header is in seconds.
 hdr.extension         = extension;
-hdr.SamplingFrequency = newHeader.ADFrequency; 
+hdr.SamplingFrequency = one_channel.ContinuousChannels(1).ADFrequency;
 
 % Get only the channels from electrodes, not auxillary channels %% FIX THIS ON A LATER VERSION
 just_recording_channels = newHeader.ContinuousChannels;
@@ -159,8 +156,8 @@ if isfield(newHeader, 'EventChannels')
             % Fill the event fields
             events(iNotEmptyEvents).label      = newHeader.EventChannels(iEvt).Name;
             events(iNotEmptyEvents).color      = rand(1,3);
-            events(iNotEmptyEvents).samples    = newHeader.EventChannels(iEvt).Timestamps';
-            events(iNotEmptyEvents).times      = events(iNotEmptyEvents).samples * hdr.SamplingFrequency;
+            events(iNotEmptyEvents).samples    = round(double(newHeader.EventChannels(iEvt).Timestamps') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
+            events(iNotEmptyEvents).times      = events(iNotEmptyEvents).samples/channel_Fs; 
             events(iNotEmptyEvents).reactTimes = [];
             events(iNotEmptyEvents).select     = 1;
             events(iNotEmptyEvents).epochs     = ones(1, length(events(iNotEmptyEvents).samples));
