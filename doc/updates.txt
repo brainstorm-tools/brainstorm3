@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+April 2018
+- Bug fix: Reading EEGLAB epoched .set files: Latency of additional events was incorrect
+---------------------------------------------------------------
 March 2018
 - Bug fix: "Filter" processes were replacing the actual data with the "Std" field
 - Bug fix: Exporting vox2ras transformation to .nii when volume was not initially .nii
