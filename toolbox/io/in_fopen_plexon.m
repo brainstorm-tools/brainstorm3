@@ -73,9 +73,13 @@ end
 %% % THE LASTTIMESTAMP and ADFREQUENCY fields are wrong.
 % Load one channel file and get them from there.
 
-one_channel = readPLXFileC(DataFile,'continuous',0);
+
+CHANNELS_SELECTED = [newHeader.ContinuousChannels.Enabled]; % Only get the channels that have been enabled. The rest won't load any data
+CHANNELS_SELECTED = find(CHANNELS_SELECTED);
+
+one_channel = readPLXFileC(DataFile,'continuous',CHANNELS_SELECTED(1)-1);
 newHeader.ADFrequency   = one_channel.ContinuousChannels(1).ADFrequency;
-newHeader.LastTimestamp = length(one_channel.ContinuousChannels(1).Values);
+newHeader.LastTimestamp = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -88,11 +92,11 @@ hdr.extension         = extension;
 hdr.SamplingFrequency = newHeader.ADFrequency; 
 
 % Get only the channels from electrodes, not auxillary channels %% FIX THIS ON A LATER VERSION
-just_recording_channels = newHeader.SpikeChannels;
+just_recording_channels = newHeader.ContinuousChannels;
 
 % Assign important fields
 hdr.chan_headers = just_recording_channels;
-hdr.ChannelCount = length(hdr.chan_headers);
+hdr.ChannelCount = length(CHANNELS_SELECTED);
 
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
@@ -119,13 +123,16 @@ ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'Plexon channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.ChannelCount]);
 % For each channel
-for i = 1:hdr.ChannelCount
-    ChannelMat.Channel(i).Name    = just_recording_channels(i).Name;
-    ChannelMat.Channel(i).Loc     = [0; 0; 0];
-    ChannelMat.Channel(i).Type    = 'EEG';
-    ChannelMat.Channel(i).Orient  = [];
-    ChannelMat.Channel(i).Weight  = 1;
-    ChannelMat.Channel(i).Comment = [];
+
+ii = 0;
+for i = CHANNELS_SELECTED
+    ii = ii+1;
+    ChannelMat.Channel(ii).Name    = hdr.chan_headers(i).Name;
+    ChannelMat.Channel(ii).Loc     = [0; 0; 0];
+    ChannelMat.Channel(ii).Type    = 'EEG';
+    ChannelMat.Channel(ii).Orient  = [];
+    ChannelMat.Channel(ii).Weight  = 1;
+    ChannelMat.Channel(ii).Comment = [];
 end
 
 
