@@ -69,6 +69,3 @@ for iChannel = CHANNELS_SELECTED
 end
 
 
-disp('')
-
-

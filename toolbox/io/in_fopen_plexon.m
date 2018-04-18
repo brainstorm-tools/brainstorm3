@@ -60,7 +60,7 @@ if ~exist('readPLXFileC.mexw*','file') == 2
     build_readPLXFileC
 end
 
-newHeader = readPLXFileC(DataFile,'events');   % THE LASTTIMESTAMP IS WRONG !!!!. SAME FOR ADFREQUENCY. Get them from the channel field.
+newHeader = readPLXFileC(DataFile,'events','spikes');
 
 
 % Check for some important fields
@@ -134,7 +134,8 @@ end
 
 
 %% ===== READ EVENTS =====
-% Events are saved in the file Events.nev
+
+% Read the events
 if isfield(newHeader, 'EventChannels')
         
     unique_events = 0;
@@ -166,6 +167,57 @@ if isfield(newHeader, 'EventChannels')
     % Import this list
     sFile = import_events(sFile, [], events);
 end
+
+
+% Read the Spikes events
+if isfield(newHeader, 'SpikeChannels')
+        
+    unique_events = 0;
+    for i = 1:length(newHeader.SpikeChannels)
+        if ~isempty(newHeader.SpikeChannels(i).Timestamps)
+            unique_events = unique_events + 1;
+        end
+    end
+    
+    for iEvt = 1:length(newHeader.SpikeChannels)
+        if ~isempty(newHeader.SpikeChannels(iEvt).Timestamps)
+            
+            nNeurons = double(unique(newHeader.SpikeChannels(iEvt).Units));
+            
+            for iNeuron = 1:length(nNeurons)
+            
+                last_event_index = length(events) + 1;
+                
+                if length(nNeurons)>1
+                    event_label_postfix = ['|' num2str(iNeuron) '|'];
+                else
+                    event_label_postfix = '';
+                end
+                
+                % Fill the event fields
+                events(last_event_index).label      = ['Spikes Channel ' newHeader.SpikeChannels(iEvt).Name ' ' event_label_postfix];
+                events(last_event_index).color      = rand(1,3);
+                events(last_event_index).samples    = round(double(newHeader.SpikeChannels(iEvt).Timestamps(double(newHeader.SpikeChannels(iEvt).Units) == iNeuron-1)') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
+                events(last_event_index).times      = events(last_event_index).samples/channel_Fs; 
+                events(last_event_index).reactTimes = [];
+                events(last_event_index).select     = 1;
+                events(last_event_index).epochs     = ones(1, length(events(last_event_index).samples));
+            end
+        end
+    end
+    % Import this list
+    sFile = import_events(sFile, [], events);
+
+end
+
+
+
+
+
+
+
+
+
 end
 
 
