@@ -183,6 +183,7 @@ if isfield(newHeader, 'SpikeChannels')
         if ~isempty(newHeader.SpikeChannels(iEvt).Timestamps)
             
             nNeurons = double(unique(newHeader.SpikeChannels(iEvt).Units));
+            nNeurons = nNeurons(nNeurons~=0);
             
             for iNeuron = 1:length(nNeurons)
             
@@ -195,9 +196,9 @@ if isfield(newHeader, 'SpikeChannels')
                 end
                 
                 % Fill the event fields
-                events(last_event_index).label      = ['Spikes Channel ' newHeader.SpikeChannels(iEvt).Name ' ' event_label_postfix];
+                events(last_event_index).label      = ['Spikes Channel ' newHeader.SpikeChannels(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
                 events(last_event_index).color      = rand(1,3);
-                events(last_event_index).samples    = round(double(newHeader.SpikeChannels(iEvt).Timestamps(double(newHeader.SpikeChannels(iEvt).Units) == iNeuron-1)') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
+                events(last_event_index).samples    = round(double(newHeader.SpikeChannels(iEvt).Timestamps(double(newHeader.SpikeChannels(iEvt).Units) == iNeuron)') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
                 events(last_event_index).times      = events(last_event_index).samples/channel_Fs; 
                 events(last_event_index).reactTimes = [];
                 events(last_event_index).select     = 1;
@@ -207,16 +208,6 @@ if isfield(newHeader, 'SpikeChannels')
     end
     % Import this list
     sFile = import_events(sFile, [], events);
-
-end
-
-
-
-
-
-
-
-
 
 end
 
