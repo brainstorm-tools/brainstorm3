@@ -1,8 +1,8 @@
-function varargout = process_noise_Correlation( varargin )
-% process_noise_Correlation: Computes noise Correlation of all neurons (nxn)
+function varargout = process_noise_correlation( varargin )
+% process_noise_correlation: Computes noise Correlation of all neurons (nxn)
 % 
-% USAGE:    sProcess = process_rasterplot_Nas('GetDescription')
-%        OutputFiles = process_rasterplot_Nas('Run', sProcess, sInput)
+% USAGE:    sProcess = process_noise_correlation('GetDescription')
+%        OutputFiles = process_noise_correlation('Run', sProcess, sInput)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,7 +22,7 @@ function varargout = process_noise_Correlation( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2017
+% Authors: Konstantinos Nasiotis, 2018
 
 eval(macro_method);
 end
@@ -42,6 +42,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    % === Sensor types
+    sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
+    sProcess.options.sensortypes.Type    = 'text';
+    sProcess.options.sensortypes.Value   = 'EEG';
     % Time window
     sProcess.options.timewindow.Comment = 'Time window:';
     sProcess.options.timewindow.Type    = 'range';
@@ -80,16 +84,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return;
     end
     
-    
-    % Output
-    if isfield(sProcess.options, 'avgoutput') && ~isempty(sProcess.options.avgoutput) && ~isempty(sProcess.options.avgoutput.Value)
-        if sProcess.options.avgoutput.Value
-            tfOPTIONS.Output = 'average';
-        else
-            tfOPTIONS.Output = 'all';
-        end
-    end
-    
     tfOPTIONS.TimeVector = in_bst(sInputs(1).FileName, 'Time');
 
     
@@ -112,16 +106,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % (Shouldn't create a memory problem).
     ALL_TRIALS_files = struct();
     for iFile = 1:nTrials
-        ALL_TRIALS_files(iFile).a = in_bst(sInputs(iFile).FileName);
+        DataMat = in_bst(sInputs(iFile).FileName);
+        ALL_TRIALS_files(iFile).Events = DataMat.Events;
     end
     
     % Create a cell that holds all of the labels and one for the unique labels
     % This will be used to take the averages using the appropriate indices
     uniqueNeurons = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
     for iFile = 1:nTrials
-        for iEvent = 1:length(ALL_TRIALS_files(iFile).a.Events)
-            if strfind(ALL_TRIALS_files(iFile).a.Events(iEvent).label, 'Spikes Channel') && sum(ALL_TRIALS_files(iFile).a.Events(iEvent).times>time_window(1) & ALL_TRIALS_files(iFile).a.Events(iEvent).times<time_window(2))~=0
-                uniqueNeurons{end+1} = ALL_TRIALS_files(iFile).a.Events(iEvent).label;
+        for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
+            if process_spikesorting_supervised('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label) && any(ALL_TRIALS_files(iFile).Events(iEvent).times > time_window(1) & ALL_TRIALS_files(iFile).Events(iEvent).times < time_window(2))
+                uniqueNeurons{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
             end
         end
     end
@@ -131,27 +126,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     %% Sort the neurons based on the array they belong to.
     % The visualization is greatly affected by the order of the neurons.
-    % TODO - this is hardcoded for channels names "Raw 1" etc. (String then space then number)
-    
-    %     uniqueNeurons = sort(uniqueNeurons)';
-    
-    channel_of_neurons = zeros(length(uniqueNeurons),1);
-    for iNeuron = 1:length(uniqueNeurons)
-        separate_strings = strsplit(uniqueNeurons{iNeuron})';
-        channel_of_neurons(iNeuron) = str2double(separate_strings{4});
-    end
-    
-    [~, ii] = sort(channel_of_neurons);
-    
-    uniqueNeurons_new = cell(length(uniqueNeurons),1);
-    
-    for iNeuron = 1:length(uniqueNeurons)
-        uniqueNeurons_new{iNeuron} = uniqueNeurons{ii(iNeuron)};
-    end
-    
-    
-    uniqueNeurons = uniqueNeurons_new; clear uniqueNeurons_new ii
-    
+    uniqueNeurons = sort_nat(uniqueNeurons);
     
     
     %% === START COMPUTATION ===
@@ -162,20 +137,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     all_binned = zeros(length(sInputs), length(uniqueNeurons));
     for iFile = 1:length(sInputs)
         
-        trial = load(fullfile(protocol.STUDIES, sInputs(iFile).FileName));
-        events = trial.Events;
+        trial = load(fullfile(protocol.STUDIES, sInputs(iFile).FileName), 'Events');
         
         for iNeuron = 1:length(uniqueNeurons)
-            for iEvent = 1:length(events)
+            for iEvent = 1:length(trial.Events)
                 
-                if strcmp(events(iEvent).label, uniqueNeurons{iNeuron})
-                    
-                    all_binned(iFile, iNeuron) = length(events(iEvent).times(events(iEvent).times>time_window(1) & events(iEvent).times<time_window(2)));
-                    
+                if strcmp(trial.Events(iEvent).label, uniqueNeurons{iNeuron})
+                    all_binned(iFile, iNeuron) = length(trial.Events(iEvent).times(trial.Events(iEvent).times > time_window(1) & trial.Events(iEvent).times < time_window(2)));
                     break
                 end
+                
             end
-            
         end
         
     end
@@ -198,19 +170,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 %     myColorMap(1,:) = 1;
 %     colormap(myColorMap);
 %     colorbar
-        
+
+    %% Get list of unique conditions for output label
+    conditions = unique({sInputs.Condition});
+    condition = [];
+    for iCond = 1:length(conditions)
+        if iCond > 1
+            condition = [condition ', '];
+        end
+        condition = [condition conditions{iCond}];
+    end
+
     %% Build the output file
     
     tfOPTIONS.ParentFiles = {sInputs.FileName};
 
     % Prepare output file structure
+    FileMat = struct();
     FileMat.TF     = noise_correlation;
-    FileMat.Time   = 1:length(uniqueNeurons); % CHECK THIS OUT - IT WILL NOT GO ALL THE WAY BUT IT WILL HAVE THE CORRECT NUMBER OF BINS
+    FileMat.Time   = 1:length(uniqueNeurons);
     FileMat.TFmask = true(size(noise_correlation, 2), size(noise_correlation, 3));
     FileMat.Freqs  = 1:size(FileMat.TF, 3);
     FileMat.Std = [];
-    FileMat.Comment = ['Noise Correlation'];
-%     FileMat.Comment = ['Noise Correlation: ' linkToRaw.Comment];
+    FileMat.Comment = ['Noise Correlation: ' condition];
     FileMat.DataType = 'data';
     FileMat.TimeBands = [];
     FileMat.RefRowNames = [];
@@ -228,14 +210,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     FileMat.ColormapType = [];
     FileMat.DisplayUnits = [];
     FileMat.Options = tfOPTIONS;
-    FileMat.History = [];
     
-
-    
-    
-% % % % % %         % Add history field
-% % % % % %         DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
-
+    % Add history field
+	FileMat = bst_history('add', FileMat, 'compute', ...
+        ['Noise correlation: [' num2str(time_window(1)) ', ' num2str(time_window(2)) '] ms']);
 
     % Get output study
     sTargetStudy = bst_get('Study', iStudy);
