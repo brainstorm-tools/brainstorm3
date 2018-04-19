@@ -305,7 +305,7 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
             iEvent = length(newEvents);
         else
             numNewEvents = length(newEvents);
-            events(iEvent:iEvent+numNewEvents-1) = newEvents;
+            events(iEvent+1:iEvent+numNewEvents) = newEvents;
             iEvent = iEvent + numNewEvents;
         end
     end
