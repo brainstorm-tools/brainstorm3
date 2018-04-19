@@ -2034,16 +2034,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         DataEvents = DataMat.F.events;
         EventList = {};
         
-        if excludeSpikes || onlySpikes
-            prefix = process_spikesorting_supervised('GetSpikesEventPrefix');
-            prefixSize = length(prefix);
-        end
-        
         for iEvent = 1:length(DataEvents)
             label = DataEvents(iEvent).label;
+            isSpikeEvent = process_spikesorting_supervised('IsSpikeEvent', label);
             
-            if (excludeSpikes && ~strncmp(label, prefix, prefixSize)) || ...
-                    (onlySpikes && strncmp(label, prefix, prefixSize))
+            if (excludeSpikes && ~isSpikeEvent) || (onlySpikes && isSpikeEvent)
                 EventList{end + 1} = label;
             end
         end

@@ -383,3 +383,29 @@ function prefix = GetSpikesEventPrefix()
     prefix = 'Spikes Channel';
 end
 
+function isSpikeEvent = IsSpikeEvent(eventLabel)
+    prefix = GetSpikesEventPrefix();
+    isSpikeEvent = strncmp(eventLabel, prefix, length(prefix));
+end
+
+function neuron = GetNeuronOfSpikeEvent(eventLabel)
+    markers = strfind(eventLabel, '|');
+    if length(markers) > 1
+        neuron = str2num(eventLabel(markers(end-1)+1:markers(end)-1));
+    else
+        neuron = [];
+    end
+end
+
+function isFirst = IsFirstNeuron(eventLabel, onlyIsFirst)
+    % onlyIsFirst = We assume a channel with a single neuron counts as a first neuron.
+    if nargin < 2
+        onlyIsFirst = 1;
+    end
+    
+    neuron = GetNeuronOfSpikeEvent(eventLabel);
+    isFirst = neuron == 1;
+    if onlyIsFirst && isempty(neuron)
+        isFirst = 1;
+    end
+end
