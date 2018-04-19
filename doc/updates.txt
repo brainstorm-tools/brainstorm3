@@ -1,6 +1,10 @@
 ---------------------------------------------------------------
 April 2018
 - Bug fix: Reading EEGLAB epoched .set files: Latency of additional events was incorrect
+- IO: Import montage: Added CSV file format
+- Process: ICA: Added option "Sort components based on correlation with" 
+- Process: ICA: Changed reconstruction method: (Winv_good * W_good) => (eye() - Winv_bad * W_bad)
+- IO: Added support for Curry 6-7-8 EEG recordings
 ---------------------------------------------------------------
 March 2018
 - Bug fix: "Filter" processes were replacing the actual data with the "Std" field

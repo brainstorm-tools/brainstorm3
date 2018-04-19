@@ -133,10 +133,12 @@ for i = 1:length(iCheck)
         iDelChan = [iDelChan, iChan];
     end
     % Count channels with and without locations
-    if isempty(ChannelMat.Channel(iChan).Loc) || isequal(ChannelMat.Channel(iChan).Loc, [0;0;0])
-        iEegNoLoc(end+1) = iChan;
-    else
-        iEegLoc(end+1) = iChan;
+    if ismember(ChannelMat.Channel(iChan).Type, {'EEG','SEEG','ECOG'})
+        if isempty(ChannelMat.Channel(iChan).Loc) || isequal(ChannelMat.Channel(iChan).Loc, [0;0;0])
+            iEegNoLoc(end+1) = iChan;
+        else
+            iEegLoc(end+1) = iChan;
+        end
     end
 end
 

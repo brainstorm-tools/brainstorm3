@@ -90,6 +90,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_deltamed(DataFile);
     case 'EEG-COMPUMEDICS-PFS'
         [sFile, ChannelMat] = in_fopen_compumedics_pfs(DataFile);
+    case 'EEG-CURRY'
+        [sFile, ChannelMat] = in_fopen_curry(DataFile);
     case {'EEG-EDF', 'EEG-BDF'}
         [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions);
     case 'EEG-EEGLAB'

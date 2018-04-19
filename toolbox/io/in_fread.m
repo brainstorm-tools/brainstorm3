@@ -45,7 +45,7 @@ if (nargin < 5)
 end
 TimeVector = [];
 % Read channel ranges for faster access
-isChanRange = ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS', 'KDF', 'EEG-EDF', 'EEG-BDF', 'BST-BIN', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-MICROMED', 'EEG-NEURONE', 'EEG-NK'});
+isChanRange = ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS', 'KDF', 'EEG-EDF', 'EEG-BDF', 'BST-BIN', 'EEG-CURRY', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-MICROMED', 'EEG-NEURONE', 'EEG-NK'});
 if isChanRange
     if isempty(iChannels)
         ChannelRange = [];
@@ -105,6 +105,8 @@ switch (sFile.format)
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
+    case 'EEG-CURRY'
+        F = in_fread_curry(sFile, sfid, iEpoch, SamplesBounds, ChannelRange);
     case 'EEG-DELTAMED'
         F = in_fread_deltamed(sFile, sfid, SamplesBounds, ChannelRange);
     case 'EEG-COMPUMEDICS-PFS'
