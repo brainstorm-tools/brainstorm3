@@ -172,8 +172,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end 
     else
         for iFile = 1:nTrials
-            [trial, ~] = in_bst(sInputs(iFile).FileName);
-            [FFTs_single_trial, Freqs] = get_FFTs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
+            [FFTs_single_trial, Freqs] = get_FFTs(ALL_TRIALS_files(iFile).trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
             everything(iFile).FFTs_single_trial = FFTs_single_trial;
             everything(iFile).Freqs = Freqs;
         end 
