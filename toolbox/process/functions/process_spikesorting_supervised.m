@@ -397,6 +397,23 @@ function neuron = GetNeuronOfSpikeEvent(eventLabel)
     end
 end
 
+function channel = GetChannelOfSpikeEvent(eventLabel)
+    eventLabel = strtrim(eventLabel);
+    prefix = GetSpikesEventPrefix();
+    neuron = GetNeuronOfSpikeEvent(eventLabel);
+    bounds = [length(prefix) + 2, 0]; % 'Spikes Channel '
+    
+    if ~isempty(neuron)
+        bounds(2) = length(num2str(neuron)) + 3; % ' |31|'
+    end
+    
+    try
+        channel = eventLabel(bounds(1):end-bounds(2));
+    catch
+        channel = [];
+    end
+end
+
 function isFirst = IsFirstNeuron(eventLabel, onlyIsFirst)
     % onlyIsFirst = We assume a channel with a single neuron counts as a first neuron.
     if nargin < 2
