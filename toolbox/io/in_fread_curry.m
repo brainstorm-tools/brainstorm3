@@ -39,6 +39,10 @@ if (nargin < 5) || isempty(ChannelsRange)
     ChannelsRange = [1, sFile.header.nChannels];
 end
 
+% Ascii files not supported
+if (hdr.nASCII == 1)
+    error('ASCII files not supported yet: post a message on the Brainstorm user forum to request this feature.');
+end
 
 % ===== COMPUTE OFFSETS =====
 nChannels     = double(sFile.header.nChannels);

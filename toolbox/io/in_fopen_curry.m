@@ -119,7 +119,7 @@ end
 
 % Epoched files not supported yet
 if (hdr.nTrials > 1)
-    error('Multiplexed data not supported yet: post a message on the Brainstorm forum to request this feature.');
+    error('Multiplexed data not supported yet: post a message on the Brainstorm user forum to request this feature.');
 end
 
 %Search for Impedance Values
@@ -290,7 +290,6 @@ if (fid >= 0)
 end
 
 
-
 %% ===== READ ASCII DATA =====
 if (hdr.nASCII == 1)
     fid = fopen(DataFile,'rt');
@@ -312,7 +311,6 @@ if (hdr.nASCII == 1)
 else
     hdr.data = [];
 end
-
 
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
@@ -381,58 +379,6 @@ for i = 1:hdr.nChannels
     ChannelMat.Channel(i).Orient  = [];
     ChannelMat.Channel(i).Weight  = 1;
 end
-
-
-
-% %% ===== READ TRIGGER CHANNEL =====
-% % Find trigger channel
-% iEvtChan = find(strcmpi({ChannelMat.Channel.label}, 'Trigger'), 1);
-% % Read trigger channel if events not already available
-% if isempty(hdr.events) && ~isempty(iEvtChan)
-%     % Set reading options
-%     ImportOptions.ImportMode = 'Time';
-%     ImportOptions.UseSsp     = 0;
-%     ImportOptions.UseCtfComp = 0;
-%     % Read trigger channel
-%     bst_progress('text', 'Reading trigger channel...');
-%     F = in_fread(sFile, ChannelMat, 1, sFile.prop.samples, iEvtChan, ImportOptions);
-%     % Remove baseline
-%     F(iEvtChan,:) = F(iEvtChan,:) - F(iEvtChan,1); 
-% 
-%     % Populate list based on values above 0, triggers may last more than one sample
-%     templat = find(F(iEvtChan,:)>0);
-%     templatrem = [];
-%     for cC = 2:numel(templat)
-%         % If the sampling point is one off
-%         if ((templat(cC)-1) == templat(cC-1))
-%            templatrem(end+1) = templat(cC);
-%         end
-%     end
-%     templat = setdiff(templat,templatrem);
-%     if ~isempty(templat)
-%         EEG.event = struct('type', [], 'latency', [], 'urevent', []);
-%         EEG.urevent = struct('type', [], 'latency', []);
-%         % Populate event list
-%         for cC = 1:numel(templat)
-%             try
-%                 EEG.event(cC).urevent = cC;
-%                 EEG.event(cC).type = EEG.data(iEvtChan,templat(cC));
-%                 EEG.urevent(cC).type = EEG.event(cC).type;
-%                 EEG.event(cC).latency = (templat(cC)-1);
-%                 EEG.urevent(cC).latency = EEG.event(cC).latency;
-%             catch
-%                 continue
-%             end
-%         end
-%     end
-% 
-% 
-%     % Handle Epoched Datasets
-%     if (hdr.nTrials > 1)
-%         error('Not supported yet.');
-%     end
-% end
-
 
 
 %% ===== CREATE EVENTS STRUCTURE =====
