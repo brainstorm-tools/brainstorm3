@@ -1,8 +1,8 @@
-function varargout = process_rasterplot_per_Electrode( varargin )
-% PROCESS_RASTERPLOT_NAS: Computes a rasterplot per electrode.
+function varargout = process_rasterplot_per_electrode( varargin )
+% PROCESS_RASTERPLOT_PER_ELECTRODE: Computes a rasterplot per electrode.
 % 
-% USAGE:    sProcess = process_rasterplot_Nas('GetDescription')
-%        OutputFiles = process_rasterplot_Nas('Run', sProcess, sInput)
+% USAGE:    sProcess = process_rasterplot_per_electrode('GetDescription')
+%        OutputFiles = process_rasterplot_per_electrode('Run', sProcess, sInput)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -46,8 +46,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'EEG';
-    sProcess.options.sensortypes.InputTypes = {'data'};
-    sProcess.options.sensortypes.Group   = 'input';
     % Options: Bin size
     sProcess.options.binsize.Comment = 'Bin size: ';
     sProcess.options.binsize.Type    = 'value';
@@ -92,15 +90,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.TimeWindow = [];
     end
     
-    % Output
-    if isfield(sProcess.options, 'avgoutput') && ~isempty(sProcess.options.avgoutput) && ~isempty(sProcess.options.avgoutput.Value)
-        if sProcess.options.avgoutput.Value
-            tfOPTIONS.Output = 'average';
-        else
-            tfOPTIONS.Output = 'all';
-        end
-    end
-    
     tfOPTIONS.TimeVector = in_bst(sInputs(1).FileName, 'Time');
 
     
@@ -114,41 +103,32 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     sChannel = bst_get('ChannelForStudy', iStudy);
     % Load channel file
     ChannelMat = in_bst_channel(sChannel.FileName);
-   
-    % Get the channels IDs
-    ChannelID = zeros(length(ChannelMat.Channel),1);
-    for iChannel = 1:length(ChannelMat.Channel)
-        temp = strrep(ChannelMat.Channel(iChannel).Name,'LFP ','');
-        ChannelID(iChannel) = str2double(temp); clear temp;
-    end
     
     % === START COMPUTATION ===
     sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
     
-    [temp, ~] = in_bst(sInputs(1).FileName);
+    temp = in_bst(sInputs(1).FileName);
     nElectrodes = size(temp.ChannelFlag,1); 
     nTrials = length(sInputs);
-    nBins = round(length(tfOPTIONS.TimeVector) / (bin_size * sampling_rate));
-    raster = zeros(nElectrodes, nBins, nTrials);
-    
-    bins = unique([linspace(temp.Time(1),0 ,nBins/2+1)  linspace(0, temp.Time(end), nBins/2+1)]); % This doesn't give the eact bin_size if the bin_size doesn't divide the length of the signal
+    nBins = floor(length(tfOPTIONS.TimeVector) / (bin_size * sampling_rate));
+    bins = linspace(temp.Time(1), temp.Time(end), nBins+1);
     
     for ifile = 1:length(sInputs)
-        [trial, ~] = in_bst(sInputs(ifile).FileName);
+        trial = in_bst(sInputs(ifile).FileName);
         single_file_binning = zeros(nElectrodes, nBins);
 
         for ielectrode = 1:size(trial.F,1)
             for ievent = 1:size(trial.Events,2)
                 
                 % Bin ONLY THE FIRST NEURON'S SPIKES if there are multiple neurons!
-                if strcmp(trial.Events(ievent).label, ['Spikes Channel ' ChannelMat.Channel(ielectrode).Name]) || strcmp(trial.Events(ievent).label, ['Spikes Channel ' ChannelMat.Channel(ielectrode).Name ' |1|'])
+                if process_spikesorting_supervised('IsSpikeEvent', trial.Events(ievent).label) && process_spikesorting_supervised('IsFirstNeuron', trial.Events(ievent).label)
                     
-                    outside_up = trial.Events(ievent).times > bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
+                    outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
                     trial.Events(ievent).times(outside_up) = bins(end);
-                    outside_down = trial.Events(ievent).times < bins(1);
+                    outside_down = trial.Events(ievent).times <= bins(1);
                     trial.Events(ievent).times(outside_down) = bins(1);
                     
-                    [~, ~, bin_it_belongs_to] = histcounts(trial.Events(ievent).times, bins);
+                    [~, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
                      
                     unique_bin = unique(bin_it_belongs_to);
                     occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
@@ -165,14 +145,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         convertedEvents = trial.Events;
         
         for iEvent = 1:length(trial.Events)
-            [~, ~, bin_it_belongs_to] = histcounts(trial.Events(iEvent).times, bins);
+            [~, bin_it_belongs_to] = histc(trial.Events(iEvent).times, bins);
             convertedEvents(iEvent).samples = bin_it_belongs_to;
             
             bin_it_belongs_to(bin_it_belongs_to==0) = 1;
             convertedEvents(iEvent).times   = bins(bin_it_belongs_to);
             
         end
-        Events = convertedEvents; clear convertedEvents
+        Events = convertedEvents;
             
         
         
@@ -188,7 +168,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.Comment = ['Raster Plot: ' trial.Comment];
         FileMat.DataType = 'recordings';
         
-        FileMat.ChannelFlag = ones(length(ChannelMat.Channel),1);            % GET THE GOOD CHANNELS HERE
+        FileMat.ChannelFlag = temp.ChannelFlag;
         FileMat.Device      = trial.Device;
         FileMat.Events      = Events;
         
@@ -197,10 +177,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.DisplayUnits = [];
         FileMat.History = trial.History;
         
-        
-% % % % % %         % Add history field
-% % % % % %         DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
-        
+        % Add history field
+        FileMat = bst_history('add', FileMat, 'compute', ...
+            ['Raster Plot per electrode: ' num2str(bin_size) ' ms']);
 
         % Get output study
         sTargetStudy = bst_get('Study', iStudy);
