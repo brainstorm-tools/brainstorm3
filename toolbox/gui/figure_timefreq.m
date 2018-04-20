@@ -1261,6 +1261,9 @@ function ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, Lo
     if ~isempty(strfind(lower(TfInfo.FileName), 'spike_field_coherence'))
         xlabel(hAxes, 'Frequency (Hz)');
         ylabel(hAxes, 'Electrodes');
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'noise_correlation'))
+        xlabel(hAxes, 'Neurons');
+        ylabel(hAxes, 'Neurons');
     else
         xlabel(hAxes, 'Time (s)');
         ylabel(hAxes, 'Frequency (Hz)');
@@ -1390,6 +1393,19 @@ function UpdateLabels(hAxes, GraphSelection)
         end
         xlabel(hAxes, strFreq);
         ylabel(hAxes, strElec);
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'noise_correlation'))
+        if numel(GraphSelection) > 0
+            strNeur1 = ['Neuron: ' TfInfo.NeuronNames{GraphSelection(1)}];
+        else
+            strNeur1 = 'Neurons';
+        end
+        if numel(GraphSelection) > 1
+            strNeur2 = ['Neuron: ' TfInfo.NeuronNames{GraphSelection(2)}];
+        else
+            strNeur2 = 'Neurons';
+        end
+        xlabel(hAxes, strNeur1);
+        ylabel(hAxes, strNeur2);
     else
         % Get current time units
         timeUnit = panel_time('GetTimeUnit');

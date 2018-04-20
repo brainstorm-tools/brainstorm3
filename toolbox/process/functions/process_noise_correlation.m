@@ -197,6 +197,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     FileMat.TimeBands = [];
     FileMat.RefRowNames = [];
     FileMat.RowNames = {'nxn Noise Correlation'};
+    FileMat.NeuronNames = uniqueNeurons;
     FileMat.Measure = 'power';
     FileMat.Method = 'morlet';
     FileMat.DataFile = []; % Leave blank because multiple parents
@@ -218,7 +219,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get output study
     sTargetStudy = bst_get('Study', iStudy);
     % Output filename
-    FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'timefreq_noiseCorrelation');
+    FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'timefreq_noise_correlation');
     OutputFiles = {FileName};
     % Save output file and add to database
     bst_save(FileName, FileMat, 'v6');
