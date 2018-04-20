@@ -644,10 +644,34 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(sSubject.iCortex)
             typesList{end+1} = 'Cortex';
         end
+        
+        % Get low resolution white surface
+        iWhite = find(~cellfun(@(c)isempty(strfind(lower(c),'white')), {sSubject.Surface.Comment}));
+        % If there are multiple surfaces with "white" in the comment, try to get the one with the lowest resolution
+        if ~isempty(iWhite)
+            if (length(iWhite) > 1)
+                nVert = Inf * ones(1, length(iWhite));
+                for i = 1:length(iWhite)
+                    strN = sSubject.Surface(iWhite(i)).Comment(ismember(sSubject.Surface(iWhite(i)).Comment, '1234567890'));
+                    if ~isempty(strN)
+                        nVert(i) = str2num(strN);
+                    end
+                end
+                [vMin,iMin] = min(nVert);
+                if ~isinf(vMin)
+                    iWhite = iWhite(iMin);
+                else
+                    iWhite = iWhite(1);
+                end
+            end
+            typesList{end+1} = 'White';
+        end
         if ~isempty(sSubject.iAnatomy)
             typesList{end+1} = 'Anatomy';
         end
-        iAseg = find(~cellfun(@(c)isempty(strfind(lower(c),'aseg')), {sSubject.Surface.FileName}), 1);
+        
+        % ASEG atlas
+        iAseg = find(~cellfun(@(c)isempty(strfind(lower(c),'aseg')), {sSubject.Surface.Comment}), 1);
         if ~isempty(iAseg)
             typesList{end+1} = 'ASEG';
         end
@@ -674,6 +698,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(sSubject.iOuterSkull(1)).FileName;
         case 'ASEG'
             SurfaceFile = sSubject.Surface(iAseg).FileName;
+        case 'White'
+            SurfaceFile = sSubject.Surface(iWhite).FileName;
         otherwise
             return;
     end
