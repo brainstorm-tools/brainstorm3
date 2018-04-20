@@ -1379,8 +1379,12 @@ function UpdateLabels(hAxes, GraphSelection)
     
     % Electrophysiology figures have different labels
     if ~isempty(strfind(lower(TfInfo.FileName), 'spike_field_coherence'))
+        xLim = get(hAxes, 'XLim');
+        nFreqs = length(GlobalData.UserFrequencies.Freqs);
+        iFreq = round(GraphSelection(1) / xLim(2) * nFreqs);
+        iFreq = min(max(iFreq, 1), nFreqs);
         if numel(GraphSelection) > 0
-            strFreq = ['Frequency: ' num2str(GraphSelection(1)), ' Hz'];
+            strFreq = ['Frequency: ' num2str(GlobalData.UserFrequencies.Freqs(iFreq)), ' Hz'];
         else
             strFreq = 'Frequency (Hz)';
         end
