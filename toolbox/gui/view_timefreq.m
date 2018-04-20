@@ -55,7 +55,10 @@ end
 if (nargin < 5) || isempty(Function)
     Function = [];
 end
-   
+
+if ~isempty(strfind(lower(TimefreqFile), 'spike_field_coherence'))
+    GlobalData.UserFrequencies.HideFreqPanel = 1;
+end
 
 %% ===== GET ALL ACCESSIBLE DATA =====
 % Get study
@@ -164,7 +167,10 @@ else
     TfInfo.RowName = AllRows(1);
 end
 % Default function
-if ~isempty(Function)
+if ~isempty(strfind(lower(TfInfo.FileName), 'spike_field_coherence'))
+    TfInfo.Function = 'power';
+    TfInfo.DisplayMeasure = 0;
+elseif ~isempty(Function)
     TfInfo.Function = Function;
 else
     TfInfo.Function = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));

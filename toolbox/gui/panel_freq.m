@@ -113,7 +113,7 @@ function UpdatePanel()
         return;
     end
     % There is data : display values
-    if ~isempty(GlobalData.UserFrequencies.Freqs)
+    if ~isempty(GlobalData.UserFrequencies.Freqs) && (~isfield(GlobalData.UserFrequencies, 'HideFreqPanel') || isempty(GlobalData.UserFrequencies.HideFreqPanel))
         % Configure slider
         if iscell(GlobalData.UserFrequencies.Freqs)
             nSamples = size(GlobalData.UserFrequencies.Freqs, 1);

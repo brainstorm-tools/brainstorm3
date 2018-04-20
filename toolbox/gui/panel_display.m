@@ -358,7 +358,8 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFunPhase.setEnabled(1);            
         end
         % Entire panel
-        if ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'none', 'power', 'magnitude', 'log', 'phase'})
+        if ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'none', 'power', 'magnitude', 'log', 'phase'}) ...
+                || (isfield(TfInfo, 'DisplayMeasure') && ~TfInfo.DisplayMeasure)
             ctrl.jPanelFunction.setVisible(0);
         else
             ctrl.jPanelFunction.setVisible(1);

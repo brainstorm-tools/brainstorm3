@@ -52,7 +52,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'Tag',           FigureId.Type, ...
                   'Renderer',      rendererName, ...
                   'Color',         [.8 .8 .8], ...
-                  'CloseRequestFcn',         @(h,ev)bst_figures('DeleteFigure',h,ev), ...
+                  'CloseRequestFcn',         @FigureClosedCallback, ...
                   'KeyPressFcn',             @FigureKeyPressedCallback, ...
                   'WindowButtonDownFcn',     @FigureMouseDownCallback, ...
                   'WindowButtonUpFcn',       @FigureMouseUpCallback, ...
@@ -85,6 +85,14 @@ end
 %% ===========================================================================
 %  ===== FIGURE CALLBACKS ====================================================
 %  ===========================================================================
+
+%% ===== FIGURE CLOSED CALLBACK =====
+function FigureClosedCallback(hFig, ev)
+    global GlobalData;
+    GlobalData.UserFrequencies = rmfield(GlobalData.UserFrequencies, 'HideFreqPanel');
+    bst_figures('DeleteFigure', hFig, ev);
+end
+
 %% ===== COLORMAP CHANGED CALLBACK =====
 function ColormapChangedCallback(hFig) %#ok<DEFNU>
     % Update colormap
@@ -1250,8 +1258,13 @@ function ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, Lo
     % Update axes ticks
     UpdateAxesTicks(hAxes);
     % Labels
-    xlabel(hAxes, 'Time (s)');
-    ylabel(hAxes, 'Frequency (Hz)');
+    if ~isempty(strfind(lower(TfInfo.FileName), 'spike_field_coherence'))
+        xlabel(hAxes, 'Frequency (Hz)');
+        ylabel(hAxes, 'Electrodes');
+    else
+        xlabel(hAxes, 'Time (s)');
+        ylabel(hAxes, 'Frequency (Hz)');
+    end
     % Axes title
     if ischar(TfInfo.RowName)
         axesTitle = [TfInfo.Comment, ': ', TfInfo.RowName];
@@ -1358,43 +1371,62 @@ end
 %% ===== UPDATE LABELS =====
 function UpdateLabels(hAxes, GraphSelection)
     global GlobalData;
-    % Get current time units
-    timeUnit = panel_time('GetTimeUnit');
+    hFig = get(hAxes, 'parent');
+    TfInfo = getappdata(hFig, 'Timefreq');
     
-    % No time definition at all
-    if isempty(GraphSelection) || (numel(GraphSelection) < 2)
-        strTime = 'Time (s)';
-        strFreq = 'Frequency (Hz)';
-    % Current time/freq
-    elseif (numel(GraphSelection) == 2)
-        switch (timeUnit)
-            case 'ms',  strTime = sprintf('Time: %.2f ms', GraphSelection(1) * 1000);
-            case 's',   strTime = sprintf('Time: %.3f s',  GraphSelection(1));
-        end
-        % Get current frequency value/description
-        if ~iscell(GlobalData.UserFrequencies.Freqs)
-            strFreq = ['Frequency: ' num2str(GlobalData.UserFrequencies.Freqs(GraphSelection(2))), ' Hz'];
+    % Electrophysiology figures have different labels
+    if ~isempty(strfind(lower(TfInfo.FileName), 'spike_field_coherence'))
+        if numel(GraphSelection) > 0
+            strFreq = ['Frequency: ' num2str(GraphSelection(1)), ' Hz'];
         else
-            strFreq = ['Frequency: ' GlobalData.UserFrequencies.Freqs{GraphSelection(2),1}];
+            strFreq = 'Frequency (Hz)';
         end
-    % Time-frequency selection
+        if numel(GraphSelection) == 2
+            [tmp, tmp, iDS] = bst_figures('GetFigure', hFig);
+            channel = GlobalData.DataSet(iDS).Channel(GraphSelection(2)).Name;
+            strElec = ['Electrodes: ' channel];
+        else
+            strElec = 'Electrodes';
+        end
+        xlabel(hAxes, strFreq);
+        ylabel(hAxes, strElec);
     else
-        switch (timeUnit)
-            case 'ms',  strTime = sprintf('Selection: [%.2f ms - %.2f ms]', min(GraphSelection(1,:)) * 1000, max(GraphSelection(1,:)) * 1000);
-            case 's',   strTime = sprintf('Selection: [%.2f s - %.2f s]', min(GraphSelection(1,:)), max(GraphSelection(1,:)));
-        end
-        % Get current frequency value/description
-        if ~iscell(GlobalData.UserFrequencies.Freqs)
-            selFreq = sort(GlobalData.UserFrequencies.Freqs(GraphSelection(2,:)));
-            strFreq = ['Selection: [' num2str(selFreq(1)) ' Hz - ' num2str(max(selFreq(2))) ' Hz]'];
+        % Get current time units
+        timeUnit = panel_time('GetTimeUnit');
+        % No time definition at all
+        if isempty(GraphSelection) || (numel(GraphSelection) < 2)
+            strTime = 'Time (s)';
+            strFreq = 'Frequency (Hz)';
+        % Current time/freq
+        elseif (numel(GraphSelection) == 2)
+            switch (timeUnit)
+                case 'ms',  strTime = sprintf('Time: %.2f ms', GraphSelection(1) * 1000);
+                case 's',   strTime = sprintf('Time: %.3f s',  GraphSelection(1));
+            end
+            % Get current frequency value/description
+            if ~iscell(GlobalData.UserFrequencies.Freqs)
+                strFreq = ['Frequency: ' num2str(GlobalData.UserFrequencies.Freqs(GraphSelection(2))), ' Hz'];
+            else
+                strFreq = ['Frequency: ' GlobalData.UserFrequencies.Freqs{GraphSelection(2),1}];
+            end
+        % Time-frequency selection
         else
-            selBands = sort(GraphSelection(2,:));
-            strFreq = ['Frequency: ' GlobalData.UserFrequencies.Freqs{selBands(1),1} ' - ' GlobalData.UserFrequencies.Freqs{selBands(2),1}];
+            switch (timeUnit)
+                case 'ms',  strTime = sprintf('Selection: [%.2f ms - %.2f ms]', min(GraphSelection(1,:)) * 1000, max(GraphSelection(1,:)) * 1000);
+                case 's',   strTime = sprintf('Selection: [%.2f s - %.2f s]', min(GraphSelection(1,:)), max(GraphSelection(1,:)));
+            end
+            % Get current frequency value/description
+            if ~iscell(GlobalData.UserFrequencies.Freqs)
+                selFreq = sort(GlobalData.UserFrequencies.Freqs(GraphSelection(2,:)));
+                strFreq = ['Selection: [' num2str(selFreq(1)) ' Hz - ' num2str(max(selFreq(2))) ' Hz]'];
+            else
+                selBands = sort(GraphSelection(2,:));
+                strFreq = ['Frequency: ' GlobalData.UserFrequencies.Freqs{selBands(1),1} ' - ' GlobalData.UserFrequencies.Freqs{selBands(2),1}];
+            end
         end
+        xlabel(hAxes, strTime);
+        ylabel(hAxes, strFreq);
     end
-    % Set labels
-    xlabel(hAxes, strTime);
-    ylabel(hAxes, strFreq);
 end
 
 
