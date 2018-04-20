@@ -57,9 +57,12 @@ if (nargin < 5) || isempty(Function)
 end
 
 if ~isempty(strfind(lower(TimefreqFile), 'spike_field_coherence')) ...
-        || ~isempty(strfind(lower(TimefreqFile), 'noise_correlation'))
+        || ~isempty(strfind(lower(TimefreqFile), 'noise_correlation')) ...
+        || ~isempty(strfind(lower(TimefreqFile), 'rasterplot'))
     isEphysFile = 1;
     GlobalData.UserFrequencies.HideFreqPanel = 1;
+else
+    isEphysFile = 0;
 end
 
 %% ===== GET ALL ACCESSIBLE DATA =====

@@ -1264,6 +1264,9 @@ function ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, Lo
     elseif ~isempty(strfind(lower(TfInfo.FileName), 'noise_correlation'))
         xlabel(hAxes, 'Neurons');
         ylabel(hAxes, 'Neurons');
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'rasterplot'))
+        xlabel(hAxes, 'Time (s)');
+        ylabel(hAxes, 'Trials');
     else
         xlabel(hAxes, 'Time (s)');
         ylabel(hAxes, 'Frequency (Hz)');
@@ -1410,6 +1413,24 @@ function UpdateLabels(hAxes, GraphSelection)
         end
         xlabel(hAxes, strNeur1);
         ylabel(hAxes, strNeur2);
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'rasterplot'))
+        if numel(GraphSelection) > 0
+            % Get current time units
+            timeUnit = panel_time('GetTimeUnit');
+            switch (timeUnit)
+                case 'ms',  strTime = sprintf('Time: %.2f ms', GraphSelection(1) * 1000);
+                case 's',   strTime = sprintf('Time: %.3f s',  GraphSelection(1));
+            end
+        else
+            strTime = 'Time (s)';
+        end
+        if numel(GraphSelection) > 1
+            strTrial = ['Trial: #' num2str(GraphSelection(2))];
+        else
+            strTrial= 'Trials';
+        end
+        xlabel(hAxes, strTime);
+        ylabel(hAxes, strTrial);
     else
         % Get current time units
         timeUnit = panel_time('GetTimeUnit');
