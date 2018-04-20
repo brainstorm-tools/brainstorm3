@@ -1,7 +1,7 @@
 function [DataMat, ChannelMat] = in_data_erplab(DataFile)
 % IN_DATA_ERPLAB: Imports an ERPLab file.
 %
-% USAGE: DataMat = in_data_erplab(DataFile);
+% USAGE: [DataMat, ChannelMat] = in_data_erplab(DataFile);
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

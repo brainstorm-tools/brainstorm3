@@ -154,9 +154,9 @@ end
 if isRemoveFid
     ChannelMat.Channel(iDelChan) = [];
 end
-% If there are less than a certain number of "EEG" channels, let's consider it's not EEG
+% If there are less than a certain number of "EEG" channels, but with other displayable modalities let's consider it's not EEG
 iEEG = channel_find(ChannelMat.Channel, 'EEG');
-if (length(iEEG) < 5)
+if (length(iEEG) < 5) && ~isempty(channel_find(ChannelMat.Channel, 'MEG,SEEG,ECOG'))
     [ChannelMat.Channel(iEEG).Type] = deal('Misc');
 end
 

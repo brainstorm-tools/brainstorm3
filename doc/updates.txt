@@ -5,6 +5,7 @@ April 2018
 - Process: ICA: Added option "Sort components based on correlation with" 
 - Process: ICA: Changed reconstruction method: (Winv_good * W_good) => (eye() - Winv_bad * W_bad)
 - IO: Added support for Curry 6-7-8 EEG recordings
+- IO: Added support for Muse .csv
 ---------------------------------------------------------------
 March 2018
 - Bug fix: "Filter" processes were replacing the actual data with the "Std" field

@@ -146,6 +146,8 @@ switch (FileFormat)
         DataMat = in_data_erpcenter(DataFile);
     case 'EEG-ERPLAB'
         [DataMat, ChannelMat] = in_data_erplab(DataFile);
+    case 'EEG-MUSE-CSV'
+        [DataMat, ChannelMat] = in_data_muse_csv(DataFile);
     case 'EEG-MAT'
         DataMat = in_data_mat(DataFile);
     case 'EEG-NEUROSCAN-DAT'
