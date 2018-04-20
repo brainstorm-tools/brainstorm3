@@ -779,7 +779,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     if (length(selChan) < 60)
         plotSize = [0.05, 0.05] .* sqrt(120 ./ length(selChan));
     else
-        plotSize = [0.05, 0.05];
+        plotSize = [0.05, 0.05]                        / 5; % I divide by 5 since the minimum plot was not enough for microelectrodes
     end
     % Normalize positions between 0 and 1
     X = (X - min(X)) ./ (max(X) - min(X)) .* (1-plotSize(1))   + plotSize(1) ./ 2;

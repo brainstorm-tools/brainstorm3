@@ -135,7 +135,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     nTrials = length(sInputs);
     time_segmentAroundSpikes = linspace(sProcess.options.timewindow.Value{1}(1), sProcess.options.timewindow.Value{1}(2), abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);
     
-    
     % Prepare parallel pool, if requested
     if sProcess.options.paral.Value
         try
