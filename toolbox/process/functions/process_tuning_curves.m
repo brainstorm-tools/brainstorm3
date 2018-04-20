@@ -21,7 +21,7 @@ function varargout = process_tuning_curves( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, Konstantinos Nasiotis 2018
+% Authors: Martin Cousineau, 2018; Konstantinos Nasiotis, 2018
 
 eval(macro_method);
 end
@@ -44,7 +44,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === EVENTS SELECTION ===
     sProcess.options.label1.Comment = 'Select which events to plot (X axis) and spikes (Y axis) to count.';
     sProcess.options.label1.Type    = 'label';
-    sProcess.options.eventsel.Comment = 'Events';
+    sProcess.options.eventsel.Comment = 'Conditions';
     sProcess.options.eventsel.Type    = 'event_ordered';
     sProcess.options.eventsel.Value   = {};
     sProcess.options.eventsel.Spikes  = 'exclude';
@@ -72,17 +72,19 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
-%     global GlobalData;
-
-    % Check if the user actually selected Neurons and or Conditions
+    OutputFiles = {};
     
-    if length(sProcess.options.spikesel.Value) == 0
-        error('You have to select in the right box the Neurons that will be displayed'); 
+    % Check if the user actually selected Neurons and Conditions
+    if ~isfield(sProcess.options, 'spikesel') || isempty(sProcess.options.spikesel.Value)
+        bst_report('Error', sProcess, sInputs, 'You have to select the Neurons that will be displayed');
+        return;
     end
-    if length(sProcess.options.eventsel.Value) == 0
-        error('You have to select the Conditions that will be displayed'); 
-    elseif length(sProcess.options.eventsel.Value) == 1
-        error('You should select more Conditions to be displayed'); 
+    if ~isfield(sProcess.options, 'eventsel') || isempty(sProcess.options.eventsel.Value)
+        bst_report('Error', sProcess, sInputs, 'You have to select the Conditions that will be displayed');
+        return;
+    elseif length(sProcess.options.eventsel.Value) < 2
+        bst_report('Error', sProcess, sInputs, 'You should select at least two Conditions to be displayed');
+        return;
     end
 
     OutputFiles = {};
@@ -90,10 +92,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % Compute on each raw input independently
     for iFile = 1:length(sInputs)
-        disp(sProcess.options.eventsel.Value);
-        disp(sProcess.options.spikesel.Value);
-        
-        
         % Read the link to raw file and the Events
         raw_link = load(fullfile(ProtocolInfo.STUDIES,sInputs(iFile).FileName));
         events = raw_link.F.events;    
@@ -112,7 +110,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 times_StimulusEvents = events(index_StimulusEvents).times;
                 
                 for iSampleEvent = 1:length(times_StimulusEvents)
-                    condition_success = sum((times_NeuronEvents>times_StimulusEvents(iSampleEvent)- sProcess.options.timewindow.Value{1}(1)) & (times_NeuronEvents<times_StimulusEvents(iSampleEvent) + sProcess.options.timewindow.Value{1}(2)));
+                    condition_success = sum((times_NeuronEvents>times_StimulusEvents(iSampleEvent) - sProcess.options.timewindow.Value{1}(1)) & (times_NeuronEvents < times_StimulusEvents(iSampleEvent) + sProcess.options.timewindow.Value{1}(2)));
                     if condition_success
                         final_matrix(iNeuron, iEvent) = condition_success;
                     end
@@ -121,23 +119,26 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             
             
             % Create the plot, and overlap a Shape-Preserving Interpolant fit on it
+            %TODO: brainstorm figure?
             figure(iNeuron);
 
             x = 1:length(sProcess.options.eventsel.Value);
             % Y will be the y points that will be plotted
             if sProcess.options.normalize.Value
                 y = final_matrix(iNeuron,:)./max(final_matrix(iNeuron,:));
-                set(gcf,'Name',['Normalized : ' sProcess.options.spikesel.Value{iNeuron}])
+                set(gcf, 'Name', ['Normalized : ' sProcess.options.spikesel.Value{iNeuron}]);
             else
                 y = final_matrix(iNeuron,:);
-                set(gcf,'Name',sProcess.options.spikesel.Value{iNeuron})
+                set(gcf, 'Name', sProcess.options.spikesel.Value{iNeuron});
             end
 
             % Fit the Shape-Preserving Interpolant
             f = fit(x.',y.','pchip');
-            plot(f,x,y)
-            set(gca,'Xtick',1:length(sProcess.options.eventsel.Value),'Xticklabel',sProcess.options.eventsel.Value);
-            xlabel 'Condition'; ylabel 'Number of Spikes'; legend 'Spikes' 'Fitted Curve';
+            plot(f,x,y);
+            set(gca, 'Xtick', 1:length(sProcess.options.eventsel.Value), 'Xticklabel', sProcess.options.eventsel.Value);
+            xlabel('Condition');
+            ylabel('Number of Spikes');
+            legend('Spikes', 'Fitted Curve');
             if max(y) == 0
                 axis([0 length(sProcess.options.eventsel.Value)+1 0 Inf]);
             else
@@ -147,6 +148,5 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
 end
-    
-    
-    
+
+
