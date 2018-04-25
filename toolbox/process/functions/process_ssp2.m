@@ -763,7 +763,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     if ~isempty(icaSort)
         y = W * F;
         C = bst_corrn(Fref, y);
-        [corrs, iSort] = sort(max(abs(C)), 'descend');
+        [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
         proj.Components = proj.Components(:,iSort);
     end
     
