@@ -60,6 +60,10 @@ end
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Opposite values
     sInput.A = abs(sInput.A);
+    % Change DataType
+    if ~strcmpi(sInput.FileType, 'timefreq')
+        sInput.DataType = 'abs';
+    end
 end
 
 

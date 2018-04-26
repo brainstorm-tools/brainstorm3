@@ -1222,7 +1222,11 @@ switch (lower(action))
                             gui_component('MenuItem', jMenuModality, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(filenameRelative, 'trialimage', AllMod{iMod}));
                             % == DISPLAY TOPOGRAPHY ==
                             if ismember(AllMod{iMod}, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'}) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
-                                fcnPopupDisplayTopography(jMenuModality, filenameRelative, AllMod, AllMod{iMod}, isStat);
+                                if ~isStat
+                                    fcnPopupDisplayTopography(jMenuModality, filenameRelative, AllMod, AllMod{iMod}, isStat);
+                                elseif ~(strcmpi(AllMod{iMod}, 'MEG') && all(ismember({'MEG MAG', 'MEG GRAD'}, AllMod)))
+                                    fcnPopupTopoNoInterp(jMenuModality, filenameRelative, AllMod(iMod), 0, 0, 0);
+                                end
                             end
                             % === DISPLAY ON SCALP ===
                             % => ONLY for EEG, and if a scalp is defined
