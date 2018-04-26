@@ -136,7 +136,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 DataMat.F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
                 % Compute channel flag
                 ChannelFlag = ones(size(DataMat.F,1),1);
-                isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * double(DataMat.ChannelFlag(iChannels) == -1) > 0);
+                isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(DataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
                 ChannelFlag(isChanBad) = -1;
             else
                 DataMat.F(iChannels,:) = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);

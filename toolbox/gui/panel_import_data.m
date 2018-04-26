@@ -213,6 +213,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             TimeBoundsEvents = {-500, 500, sFile.prop.sfreq};
             gui_validate_text(jTextEventsTimeStart, [], jTextEventsTimeStop, TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(1), @UpdateBaselineDefault);
             gui_validate_text(jTextEventsTimeStop, jTextEventsTimeStart, [], TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(2), @UpdateBaselineDefault);
+            TimeUnitBl = [];
             % Display units: ms
             jLabelTimeUnitsEvents = JLabel(' ms');
             jPanelEvents.add(jLabelTimeUnitsEvents);
