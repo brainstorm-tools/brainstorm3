@@ -138,6 +138,7 @@ end
 % Read the events
 if isfield(newHeader, 'EventChannels')
         
+    % General events
     unique_events = 0;
     for i = 1:length(newHeader.EventChannels)
         if ~isempty(newHeader.EventChannels(i).Values)
@@ -145,23 +146,54 @@ if isfield(newHeader, 'EventChannels')
         end
     end
     
+    
+    %% Plexon has an event named: Strobed
+    % This takes different values (it works like a parallel port event generator). 
+    % Create a unique event for each of these values.
+    iStrobed = find(strcmp({newHeader.EventChannels.Name},'Strobed'));
+    if ~isempty(iStrobed)
+        uniqueStrobed = double(sort(unique(newHeader.EventChannels(iStrobed).Values)));
+        unique_events = unique_events+length(uniqueStrobed)-1;
+    end
+        
+        
+    
     % Initialize list of events
     events = repmat(db_template('event'), 1, unique_events);
+    
+    
     
     % Format list
     iNotEmptyEvents = 0;
     
     for iEvt = 1:length(newHeader.EventChannels)
         if ~isempty(newHeader.EventChannels(iEvt).Timestamps)
-            iNotEmptyEvents = iNotEmptyEvents + 1;
             % Fill the event fields
-            events(iNotEmptyEvents).label      = newHeader.EventChannels(iEvt).Name;
-            events(iNotEmptyEvents).color      = rand(1,3);
-            events(iNotEmptyEvents).samples    = round(double(newHeader.EventChannels(iEvt).Timestamps') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
-            events(iNotEmptyEvents).times      = events(iNotEmptyEvents).samples/channel_Fs; 
-            events(iNotEmptyEvents).reactTimes = [];
-            events(iNotEmptyEvents).select     = 1;
-            events(iNotEmptyEvents).epochs     = ones(1, length(events(iNotEmptyEvents).samples));
+            
+            if ~strcmp(newHeader.EventChannels(iEvt).Name, 'Strobed')
+                iNotEmptyEvents = iNotEmptyEvents + 1;
+                %%%%%%%%%%%%%%%%%%%%%%   WARNING   %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                events(iNotEmptyEvents).label      = newHeader.EventChannels(iEvt).Name; % MAKE SURE TO CHECK WHAT THIS MEANS - PLEXON USES DIFFERENT EVENT CHANNEL NAME FOR THE SPIKES, THAN THE ORIGINAL CHANNEL NAME !!!!!!!!!
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                events(iNotEmptyEvents).color      = rand(1,3);
+                events(iNotEmptyEvents).samples    = round(double(newHeader.EventChannels(iEvt).Timestamps') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
+                events(iNotEmptyEvents).times      = events(iNotEmptyEvents).samples/channel_Fs; 
+                events(iNotEmptyEvents).reactTimes = [];
+                events(iNotEmptyEvents).select     = 1;
+                events(iNotEmptyEvents).epochs     = ones(1, length(events(iNotEmptyEvents).samples));
+            else
+                for iStrobed = uniqueStrobed'
+                    iNotEmptyEvents = iNotEmptyEvents + 1;
+                    events(iNotEmptyEvents).label      = [newHeader.EventChannels(iEvt).Name ' ' num2str(iStrobed)];
+                    events(iNotEmptyEvents).color      = rand(1,3);
+                    events(iNotEmptyEvents).samples    = round(double(newHeader.EventChannels(iEvt).Timestamps(double(newHeader.EventChannels(iEvt).Values)==iStrobed)') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
+                    events(iNotEmptyEvents).times      = events(iNotEmptyEvents).samples/channel_Fs; 
+                    events(iNotEmptyEvents).reactTimes = [];
+                    events(iNotEmptyEvents).select     = 1;
+                    events(iNotEmptyEvents).epochs     = ones(1, length(events(iNotEmptyEvents).samples));
+                end
+            end
+                
         end
     end
     % Import this list

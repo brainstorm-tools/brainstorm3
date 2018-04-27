@@ -64,7 +64,7 @@ ii = 0;
 for iChannel = CHANNELS_SELECTED
     if ~isempty(data.ContinuousChannels(iChannel).Values)
         ii = ii+1;
-        F(ii,:) = double(data.ContinuousChannels(iChannel).Values) * 2.441406250000000e-04; % Convert to Volts
+        F(ii,:) = double(data.ContinuousChannels(iChannel).Values) * 2.441406250000000e-07; % Convert to Volts
     end
 end
 
