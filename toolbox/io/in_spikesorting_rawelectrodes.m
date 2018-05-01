@@ -25,12 +25,12 @@ function sFiles = in_spikesorting_rawelectrodes( varargin )
 % Authors: Konstantinos Nasiotis, 2018; Martin Cousineau, 2018
 
 sInput = varargin{1};
-if nargin < 2
+if nargin < 2 || isempty(varargin{2})
     ram = 1e9; % 1 GB
 else
     ram = varargin{2};
 end
-if nargin < 3
+if nargin < 3 || isempty(varargin{3})
     parallel = 0;
 else
     parallel = varargin{3};
@@ -47,13 +47,19 @@ if ~exist(parentPath, 'dir')
     mkdir(parentPath);
 end
 
+
 % Check whether the electrode files already exist
 ChannelMat = in_bst_channel(sInput.ChannelFile);
 numChannels = length(ChannelMat.Channel);
+
+% New channelNames - Without any special characters. Use this
+% transformation throughout the toolbox for temp files
+cleanNames = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), {ChannelMat.Channel.Name}, 'UniformOutput', 0)';
+
 missingFile = 0;
 sFiles = {};
 for iChannel = 1:numChannels
-    chanFile = bst_fullfile(parentPath, ['raw_elec' num2str(iChannel) '.mat']);
+    chanFile = bst_fullfile(parentPath, ['raw_elec_' cleanNames{iChannel} '.mat']);
     if ~exist(chanFile, 'file')
         missingFile = 1;
     else
@@ -78,12 +84,16 @@ max_samples = ram / 8 / numChannels;
 total_samples = sFile.prop.samples(2);
 num_segments = ceil(total_samples / max_samples);
 num_samples_per_segment = ceil(total_samples / num_segments);
-bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, num_segments * numChannels);
+bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, (parallel == 0)*num_segments * numChannels);
+
 
 sFiles = {};
 for iChannel = 1:numChannels
-    sFiles{end + 1} = bst_fullfile(parentPath, ['raw_elec' num2str(iChannel)]);
+    sFiles{end + 1} = bst_fullfile(parentPath, ['raw_elec_' cleanNames{iChannel}]);
 end
+
+
+tic
 
 % Read data in segments
 for iSegment = 1:num_segments
@@ -97,15 +107,28 @@ for iSegment = 1:num_segments
     F = in_fread(sFile, ChannelMat, [], samples);
 
     % Append segment to individual channel file
-    for iChannel = 1:numChannels
-        electrode_data = F(iChannel,:);
-        fid = fopen([sFiles{iChannel} '.bin'], 'a');
-        fwrite(fid, electrode_data, 'double');
-        fclose(fid);
-        bst_progress('inc', 1);
+    if parallel
+        parfor iChannel = 1:numChannels
+            electrode_data = F(iChannel,:);
+            fid = fopen([sFiles{iChannel} '.bin'], 'a');
+            fwrite(fid, electrode_data, 'double');
+            fclose(fid);
+            bst_progress('inc', 1);
+        end
+    else
+        for iChannel = 1:numChannels
+            electrode_data = F(iChannel,:);
+            fid = fopen([sFiles{iChannel} '.bin'], 'a');
+            fwrite(fid, electrode_data, 'double');
+            fclose(fid);
+            bst_progress('inc', 1);
+        end
     end
 end
+disp(['Separation of Electrodes took: ' num2str(toc) ' seconds'])
 
+
+tic
 % Convert channel files to Matlab
 bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, (parallel == 0) * numChannels);
 if parallel
@@ -118,6 +141,8 @@ else
         bst_progress('inc', 1);
     end
 end
+disp(['Conversion to .mat files took: ' num2str(toc) ' seconds'])
+
 
 sFiles = cellfun(@(x) [x '.mat'], sFiles, 'UniformOutput', 0);
 

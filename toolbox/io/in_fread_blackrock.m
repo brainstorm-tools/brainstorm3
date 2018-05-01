@@ -34,16 +34,29 @@ end
 
 % Samples string
 strSamples = sprintf('t:%d:%d', SamplesBounds(1) + 1, SamplesBounds(2) + 1);
-% Read the corresponding recordings
-rec = openNSx('read', sFile.filename, 'sample', strSamples, 'p:double');
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%   Francois   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % Read the corresponding recordings
+% rec = openNSx('read', sFile.filename, 'sample', strSamples, 'p:double');
+% 
+% % Get values and convert from uV to V
+% F = rec.Data * 1e-6;
+% 
+% % Select channels
+% % TODO: CAN BE DONE MORE EFFICIENTLY WITH openNSx PARAMETERS
+% if ~isempty(iChannels)
+%     F = F(iChannels,:);s
+% end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% KONSTANTINOS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Read the corresponding recordings
+rec = openNSx('read', sFile.filename, 'channels', iChannels , 'sample', strSamples, 'p:double');
 % Get values and convert from uV to V
 F = rec.Data * 1e-6;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Select channels
-% TODO: CAN BE DONE MORE EFFICIENTLY WITH openNSx PARAMETERS
-if ~isempty(iChannels)
-    F = F(iChannels,:);
-end
+
+
 
 
