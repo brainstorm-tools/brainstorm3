@@ -747,7 +747,9 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     gui_component('MenuItem', jMenu, [], 'Restore defaults', [], [], @(h,ev)RestoreDefaults(ColormapType));
     
     drawnow;
-    jMenu.getParent().pack();
+    if ~isPermanent
+        jMenu.getParent().pack();
+    end
     jMenu.getParent().invalidate();
     jMenu.getParent().repaint();
 end
