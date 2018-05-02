@@ -35,9 +35,9 @@ fseek(sfid, 0, 'eof');
 % Get the gains of the channels for all the non-Annotation channels
 iChanGain = setdiff(1:length(sFile.header.signal), sFile.header.annotchan);
 % Apply channel gains before converting to integer
-unit_gain = 1e6;
-chgain = unit_gain ./ ([sFile.header.signal(iChanGain).physical_max] - [sFile.header.signal(iChanGain).physical_min]) .* ...
-                      ([sFile.header.signal(iChanGain).digital_max]  - [sFile.header.signal(iChanGain).digital_min]);
+chgain = [sFile.header.signal(iChanGain).unit_gain] ./ ...
+            ([sFile.header.signal(iChanGain).physical_max] - [sFile.header.signal(iChanGain).physical_min]) .* ...
+            ([sFile.header.signal(iChanGain).digital_max]  - [sFile.header.signal(iChanGain).digital_min]);
 F = bst_bsxfun(@times, F, chgain');
 
 % Convert to 2-byte integer in 2's complement
@@ -98,7 +98,7 @@ for iRec = 1:nRecords
 
     % Write data
     for iSig = ChannelsRange(1):ChannelsRange(2)
-        ncount = ncount + fwrite(sfid, F(iSig, bounds(1):bounds(2)), 'int16');
+        ncount = ncount + fwrite(sfid, F(iSig, floor(bounds(1)):floor(bounds(2))), 'int16');
         
         % Fill rest of the record with 0s if required
         if writeZeros

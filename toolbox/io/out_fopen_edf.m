@@ -29,14 +29,13 @@ if (length(sFileIn.epochs) > 1)
 end
 % Is the input file a native EDF file
 isRawEdf = strcmpi(sFileIn.format, 'EEG-EDF') && ~isempty(sFileIn.header) && isfield(sFileIn.header, 'patient_id') && isfield(sFileIn.header, 'signal');
-
+nSamples = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
 
 %% ===== GET MAXIMUM VALUES =====
 if ~isRawEdf
     % Extracts the minimum and maximum values for each sensor over all the file (by blocks of 1s).
     % This helps optimizing the conversion of the recordings to int16 values.
     BlockSize = sFileIn.prop.sfreq; % 1-second blocks
-    nSamples = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
     nBlocks = ceil(nSamples ./ BlockSize);
     % Initialize min/max matrices
     Fmax = 0 * ones(length(ChannelMat.Channel), 1);
@@ -77,22 +76,20 @@ header.version    = 0;
 header.startdate  = datestr(date, 'dd.mm.yy');
 header.starttime  = datestr(date, 'HH.MM.SS');
 header.nsignal    = length(ChannelMat.Channel);
-header.nrec       = (sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1) / EpochSize;
+header.nrec       = nSamples / sFileIn.prop.sfreq;
 
 % We need to choose a record length that produces a  record size less than
 % 61440 bytes (at 2 bytes per sample).
-header.reclen = 1.0;
-for i = 1:10
-    recordSize = header.reclen * EpochSize * header.nsignal * 2;
+% We'll enforce this only if the epoch size is divisible to avoid problems.
+header.reclen = EpochSize / sFileIn.prop.sfreq;
+factors = full_factors(EpochSize);
+
+for iFactor = 1:length(factors)
+    header.reclen = EpochSize / sFileIn.prop.sfreq / factors(iFactor);
+    recordSize = EpochSize / factors(iFactor) * header.nsignal * 2;
     
-    if recordSize > 61440
-        header.reclen = header.reclen / 2;
-    else
+    if recordSize <= 61440
         break;
-    end
-    
-    if i == 10
-        error('Could not find a valid record length for this data.');
     end
 end
 header.nrec = ceil(header.nrec / header.reclen);
@@ -152,13 +149,24 @@ header.hdrlen = 256 + 256 * header.nsignal;
 
 % Channel information
 for i = 1:header.nsignal
-    header.signal(i).unit = 'uV';
     if ~isRawEdf
+        % Choose unit based on maximal value
+        if Fmax(i) > 1
+            header.signal(i).unit = 'V';
+            header.signal(i).unit_gain = 1;
+        elseif Fmax(i) * 1e3 > 1
+            header.signal(i).unit = 'mV';
+            header.signal(i).unit_gain = 1e3;
+        else
+            header.signal(i).unit = 'uV';
+            header.signal(i).unit_gain = 1e6;
+        end
+        
         chScale = 2^15 / Fmax(i);
         header.signal(i).digital_min  = -2^15;
         header.signal(i).digital_max  = 2^15 - 1;
-        header.signal(i).physical_min = header.signal(i).digital_min / chScale .* 1e6;
-        header.signal(i).physical_max = header.signal(i).digital_max / chScale .* 1e6;
+        header.signal(i).physical_min = header.signal(i).digital_min / chScale .* header.signal(i).unit_gain;
+        header.signal(i).physical_max = header.signal(i).digital_max / chScale .* header.signal(i).unit_gain;
         header.signal(i).filters      = '';
         header.signal(i).unknown2     = '';
     end
@@ -173,7 +181,7 @@ for i = 1:header.nsignal
         header.signal(i).nsamples = int64((header.signal(i).nsamples + 1) / 2);
     else
         header.signal(i).label = [ChannelMat.Channel(i).Type, ' ', ChannelMat.Channel(i).Name];
-        header.signal(i).nsamples = header.reclen * EpochSize;
+        header.signal(i).nsamples = header.reclen * sFileIn.prop.sfreq;
     end
 end
 
@@ -188,11 +196,18 @@ if isRawEdf
         header.signal(i).label        = sFileIn.header.signal(i).label;
         header.signal(i).type         = sFileIn.header.signal(i).type;
         header.signal(i).filters      = sFileIn.header.signal(i).filters;
+        header.signal(i).unit         = sFileIn.header.signal(i).unit;
         header.signal(i).unknown2     = sFileIn.header.signal(i).unknown2;
         header.signal(i).physical_min = sFileIn.header.signal(i).physical_min;
         header.signal(i).physical_max = sFileIn.header.signal(i).physical_max;
         header.signal(i).digital_min  = sFileIn.header.signal(i).digital_min;
         header.signal(i).digital_max  = sFileIn.header.signal(i).digital_max;
+        
+        switch (header.signal(i).unit)
+            case 'mV',                        header.signal(i).unit_gain = 1e3;
+            case {'uV', char([166 204 86])},  header.signal(i).unit_gain = 1e6;
+            otherwise,                        header.signal(i).unit_gain = 1;
+        end
     end
 end
 
@@ -269,4 +284,36 @@ function sout = str_zeros(sin, N)
     else
         sout = sin(1:N);
     end
+end
+
+% This extracts a subset of the full factors of a number, not just the
+% prime factors like factors() returns.
+% E.g.: factor(100)      = [2,2,5,5]
+%       full_factors(100) = [2,4,5,10,20,25,50]
+function factors = full_factors(n)
+    factors = factor(n);
+    if length(factors) == 1
+        factors = [];
+        return;
+    end
+    [occurences, factors] = hist(factors, unique(factors));
+    factors = factors(occurences > 0);
+    occurences = occurences(occurences > 0);
+    nFactors = length(factors);
+    possibleFactors = ones(sum(occurences) * nFactors * nFactors);
+    iPos = 1;
+    for iFactor = 1:nFactors
+        for iOcc = 1:occurences(iFactor)
+            fact = factors(iFactor) ^ iOcc;
+            possibleFactors(iPos) = fact;
+            iPos = iPos + 1;
+            for iFactor2 = 1:nFactors
+                if iFactor ~= iFactor2
+                    possibleFactors(iPos) = fact * factors(iFactor2);
+                    iPos = iPos + 1;
+                end
+            end
+        end
+    end
+    factors = unique(possibleFactors(1:iPos-1));
 end
