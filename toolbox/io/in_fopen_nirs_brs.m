@@ -71,10 +71,12 @@ function [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile)
 
 nirs = load(DataFile, '-mat');
 
-if ~isfield(nirs, 'ml') && isfield(nirs.SD, 'MeasList')
-    nirs.ml = nirs.SD.MeasList;
-else
-    bst_error('Cannot read .nirs file: missing measurement list field');
+if ~isfield(nirs, 'ml')
+    if isfield(nirs.SD, 'MeasList')
+        nirs.ml = nirs.SD.MeasList;
+    else
+        bst_error('Cannot read .nirs file: missing measurement list field');
+    end
 end
 
 nb_channels = size(nirs.d,2);
