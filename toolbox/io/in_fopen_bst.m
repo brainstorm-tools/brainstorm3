@@ -50,6 +50,11 @@ hdr.nsamples  = fread(fid, [1 1], 'uint32');                  % UINT32(1)  : Tot
 hdr.epochsize = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of samples per epoch
 hdr.nchannels = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of channels
 
+% ===== CHECK WHETHER VERSION IS SUPPORTED =====
+if hdr.version ~= '1'
+    error(['The selected version of the BST format is currently not supported.' ...
+           10 'Please update Brainstorm.']);
+end
 
 % ===== CHANNEL LOCATIONS =====
 ChannelMat.Comment = str_read(fid, 40);                                     % CHAR(40)   : Channel file comment
