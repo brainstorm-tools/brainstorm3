@@ -159,8 +159,9 @@ function OpenFigure()
 
         case 'ultramegasort2000'
             DataMat = load(electrodeFile, 'spikes');
-            GlobalData.SpikeSorting.Fig = figure('Units', 'Normalized');
-            splitmerge_tool(DataMat.spikes, 'all', GlobalData.SpikeSorting.Fig);
+            GlobalData.SpikeSorting.Fig = figure('Units', 'Normalized', 'Position', ...
+                DataMat.spikes.params.display.default_figure_size);
+            % Just open figure, rest of the code in LoadElectrode()
         otherwise
             bst_error('This spike sorting structure is currently unsupported by Brainstorm.');
     end
@@ -208,9 +209,24 @@ function LoadElectrode()
             end
 
         case 'ultramegasort2000'
+            % Reload figure altogether, same behavior as builtin load...
             DataMat = load(electrodeFile, 'spikes');
             clf(GlobalData.SpikeSorting.Fig, 'reset');
             splitmerge_tool(DataMat.spikes, 'all', GlobalData.SpikeSorting.Fig);
+            
+            % Some UMS2k visual hacks
+            save_button = findall(GlobalData.SpikeSorting.Fig, 'Tag', 'saveButton');
+            if ishandle(save_button)
+                save_button.Visible = 'off';
+            end
+            save_button = findall(GlobalData.SpikeSorting.Fig, 'Tag', 'saveFileButton');
+            if ishandle(save_button)
+                save_button.Visible = 'off';
+            end
+            load_button = findall(GlobalData.SpikeSorting.Fig, 'Tag', 'loadFileButton');
+            if ishandle(load_button)
+                load_button.Visible = 'off';
+            end
             
         otherwise
             bst_error('This spike sorting structure is currently unsupported by Brainstorm.');
