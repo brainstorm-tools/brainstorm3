@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_bst(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2015
+% Authors: Francois Tadel, 2014-2015; Martin Cousineau, 2018
         
 
 %% ===== READ HEADER =====
@@ -51,7 +51,9 @@ hdr.epochsize = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Num
 hdr.nchannels = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of channels
 
 % ===== CHECK WHETHER VERSION IS SUPPORTED =====
-if hdr.version ~= '1'
+bst_version = bst_get('Version');
+bst_version = str2num(bst_version.Release);
+if hdr.version ~= '1' && (hdr.version ~= '2' || bst_version < 180213) %TODO: final version number of BSTv2 support
     error(['The selected version of the BST format is currently not supported.' ...
            10 'Please update Brainstorm.']);
 end
@@ -133,7 +135,12 @@ end
 nevt = double(fread(fid, [1 1], 'uint32'));                         % UINT32(1)  : Number of event categories
 events = repmat(db_template('event'), [1, nevt]);
 for i = 1:nevt
-    events(i).label = str_read(fid, 20);                            % CHAR(20)   : Event name
+    if hdr.version == '1'
+        labelLength = 20;
+    else
+        labelLength = fread(fid, [1 1], 'uint8');                   % UINT8(1)   : Length of event name (1 to 255)
+    end
+    events(i).label = str_read(fid, labelLength);                   % CHAR(??)   : Event name
     events(i).color = double(fread(fid, [1,3], 'float32'));         % FLOAT32(3) : Event color
     isExtended  = fread(fid, [1 1], 'int8');                        % INT8(1)    : Event type (0=regular, 1=extended)
     nocc = double(fread(fid, [1 1], 'uint32'));                     % UINT32(1)  : Number of occurrences
