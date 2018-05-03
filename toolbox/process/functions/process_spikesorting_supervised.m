@@ -247,9 +247,14 @@ function SaveElectrode()
     % Save through Spike Sorting software
     switch lower(GlobalData.SpikeSorting.Data.Device)
         case 'waveclus'
+            % WaveClus takes a screenshot of the figure when saving, which
+            % is pretty slow. If we change the figure tag it skips this.
             save_button = findall(GlobalData.SpikeSorting.Fig, 'Tag', 'save_clusters_button');
+            fig_tag = GlobalData.SpikeSorting.Fig.Tag;
+            GlobalData.SpikeSorting.Fig.Tag = 'wave_clus_tmp';
             wave_clus('save_clusters_button_Callback', save_button, ...
                 [], guidata(GlobalData.SpikeSorting.Fig), 0);
+            GlobalData.SpikeSorting.Fig.Tag = fig_tag;
 
         case 'ultramegasort2000'
             figdata = get(GlobalData.SpikeSorting.Fig, 'UserData');
