@@ -267,7 +267,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.Time = time_segmentAroundSpikes; 
 
         FileMat.Std = [];
-        FileMat.Comment = ['Spike Triggered Average: ' better_label];
+        FileMat.Comment = ['Spike Triggered Average: ' ...
+                           str_remove_parenth(ALL_TRIALS_files(1).trial.Comment) ...
+                           ' (' better_label ')'];
         FileMat.DataType = 'recordings';
         
         temp = in_bst(sInputs(1).FileName, 'ChannelFlag');
