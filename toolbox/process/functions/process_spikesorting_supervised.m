@@ -168,6 +168,14 @@ function OpenFigure()
     
     panel_spikes('UpdatePanel');
     LoadElectrode();
+    
+    % Close Spike panel when you close the figure
+    function my_closereq(src, callbackdata)
+        delete(src);
+        panel_spikes('UpdatePanel');
+    end
+    GlobalData.SpikeSorting.Fig.CloseRequestFcn = @my_closereq;
+    
     bst_progress('stop');
 end
 
