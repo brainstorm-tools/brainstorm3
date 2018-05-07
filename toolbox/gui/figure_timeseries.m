@@ -34,7 +34,7 @@ function varargout = figure_timeseries( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2018; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -2017,7 +2017,7 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
     % Only for MEG and EEG time series
     Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;   
     isSource = ismember(Modality, {'results', 'timefreq', 'stat', 'none'});
-    if ~isempty(Modality) && (Modality(1) ~= '$') && ~isSource
+    if ~isempty(Modality) && ismember(Modality, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'}) && ~isSource
         % === View TOPOGRAPHY ===
         jItem = gui_component('MenuItem', jPopup, [], 'View topography', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_figures('ViewTopography', hFig, 1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));

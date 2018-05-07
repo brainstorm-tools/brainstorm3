@@ -1470,17 +1470,19 @@ function ViewTopography(hFig, UseSmoothing)
             % Get all the figure information 
             DataFile = getappdata(hFig, 'DataFile');
             FigMod = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+            RecType = GlobalData.DataSet(iDS).Measures.DataType;
             % Get displayable sensor types
             [AllMod, DispMod, DefaultMod] = bst_get('ChannelModalities', DataFile);
             % If current modality is not MEG or EEG, cannot display topography: get default modality
             if ~ismember(FigMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','SEEG','NIRS'}) && ~isempty(DataFile)
                 Modalities = {DefaultMod};
             % If displaying Stat on Neuromag recordings: Display all sensors separately
-            elseif ismember(FigMod, {'MEG','MEG GRAD'}) && all(ismember({'MEG MAG','MEG GRAD'}, AllMod)) && ~isempty(DataFile) && strcmpi(file_gettype(DataFile), 'pdata')
+            elseif ismember(FigMod, {'MEG','MEG GRAD'}) && all(ismember({'MEG MAG','MEG GRAD'}, AllMod)) && ~isempty(DataFile) && (strcmpi(file_gettype(DataFile), 'pdata') || ~ismember(RecType, {'recordings','raw'}))
                 Modalities = {'MEG MAG', 'MEG GRAD2', 'MEG GRAD3'};
             else
                 Modalities = {FigMod};
-            end
+            end           
+                
         case {'Timefreq', 'Spectrum', 'Pac'}
             % Get time freq information
             TfInfo = getappdata(hFig, 'Timefreq');
@@ -1506,6 +1508,7 @@ function ViewTopography(hFig, UseSmoothing)
                     error(['This files contains information about cortical sources or regions of interest.' 10 ...
                            'Cannot display it as a sensor topography.']);
             end
+            RecType = '';
         case 'Connect'
             warning('todo');
     end
@@ -1530,6 +1533,9 @@ function ViewTopography(hFig, UseSmoothing)
                 % Open topography figure
                 view_topography(DataFile, Modalities{i}, '3DOptodes');
             else
+                if ~ismember(RecType, {'recordings','raw'}) || strcmpi(file_gettype(DataFile), 'pdata')
+                    UseSmoothing = 0;
+                end
                 view_topography(DataFile, Modalities{i}, '2DSensorCap', [], UseSmoothing);
             end
         end
