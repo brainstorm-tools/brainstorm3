@@ -19,7 +19,7 @@ function sXml = in_xml(XmlFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012
+% Authors: Francois Tadel, 2012-2018
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -35,8 +35,13 @@ dbf.setFeature('http://xml.org/sax/features/namespaces', 0);
 dbf.setFeature('http://xml.org/sax/features/validation', 0);
 dbf.setFeature('http://apache.org/xml/features/nonvalidating/load-dtd-grammar', 0);
 dbf.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', 0);
+% Parse XML string
+if (XmlFile(1) == '<')
+    jFile = org.xml.sax.InputSource(java.io.StringReader(XmlFile));
 % Parse XML file
-jFile = java.io.File(XmlFile);
+else
+    jFile = java.io.File(XmlFile);
+end
 DocXml = dbf.newDocumentBuilder().parse(jFile);
 DocXml.getDocumentElement().normalize();
 % Process root node

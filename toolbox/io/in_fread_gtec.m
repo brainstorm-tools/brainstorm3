@@ -21,7 +21,7 @@ function F = in_fread_gtec(sFile, iEpoch, SamplesBounds)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
 
 % Check inputs
 if (nargin < 3) || isempty(SamplesBounds)
@@ -33,23 +33,32 @@ if (nargin < 2) || isempty(iEpoch)
     iEpoch = 1;
 end
 
-% Read file
-warning('off', 'MATLAB:unknownObjectNowStruct');
-FileMat = load(sFile.filename, 'P_C_S', '-mat');
-warning('on', 'MATLAB:unknownObjectNowStruct');
-if isempty(FileMat) || ~isfield(FileMat, 'P_C_S') || isempty(FileMat.P_C_S)
-    error('Invalid g.tec Matlab export: Missing field "P_C_S".');
-end
+% Handle different file formats
+switch (sFile.header.format)
+    case 'mat'
+        % Read file
+        warning('off', 'MATLAB:unknownObjectNowStruct');
+        FileMat = load(sFile.filename, 'P_C_S', '-mat');
+        warning('on', 'MATLAB:unknownObjectNowStruct');
+        if isempty(FileMat) || ~isfield(FileMat, 'P_C_S') || isempty(FileMat.P_C_S)
+            error('Invalid g.tec Matlab export: Missing field "P_C_S".');
+        end
+        % Select only a given time window
+        if ~isempty(SamplesBounds)
+            F = FileMat.P_C_S.data(iEpoch,iTime,:);
+        else
+            F = FileMat.P_C_S.data(iEpoch,:,:);
+        end
+        % Transform to [Channel x Time] matrix
+        F = permute(F, [3,2,1]);
 
-% Select only a given time window
-if ~isempty(SamplesBounds)
-    F = FileMat.P_C_S.data(iEpoch,iTime,:);
-else
-    F = FileMat.P_C_S.data(iEpoch,:,:);
+    case 'hdf5'
+        % Read data
+        F = hdf5read(sFile.filename, 'RawData/Samples');
+        % Select only a given time window
+        F = F(:, iTime);
 end
-% Transform to [Channel x Time] matrix
-F = permute(F, [3,2,1]);
-
+        
 % Convert values to uV
 F = F .* 1e-6;
 
