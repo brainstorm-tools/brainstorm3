@@ -50,7 +50,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.FileTag     = 'SFC';
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
-    sProcess.Index       = 1507;
+    sProcess.Index       = 1607;
     sProcess.Description = 'http://science.sciencemag.org/content/suppl/2003/05/02/291.5508.1560.DC1';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
@@ -134,7 +134,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
     nTrials = length(sInputs);
     time_segmentAroundSpikes = linspace(sProcess.options.timewindow.Value{1}(1), sProcess.options.timewindow.Value{1}(2), abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);
-    
+
     % Prepare parallel pool, if requested
     if sProcess.options.paral.Value
         try
