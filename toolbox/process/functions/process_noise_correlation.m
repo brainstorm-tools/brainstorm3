@@ -158,9 +158,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     all_binned = all_binned - mean(all_binned);
     
     
-    %% Compute the Pearson Correlation for nxn Neurons
+    %% Compute the Correlation for nxn Neurons
     noise_correlation = zeros(1,size(all_binned, 2), size(all_binned, 2));
-    noise_correlation(1,:,:) = corr(all_binned, all_binned);
+    
+    inputs.normalize      = true;
+    inputs.nTrials        = 1;
+    inputs.flagStatistics = 0;
+    [connectivity, ~, ~] = bst_correlation(all_binned', all_binned',inputs);
+    noise_correlation(1,:,:) = connectivity; 
+    
     
 %     figure;
 %     imagesc(squeeze(noise_correlation))
