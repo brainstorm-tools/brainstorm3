@@ -161,8 +161,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % The -200 and +2000 should be substituted by a relaxed or a strict
         % filtering option
+<<<<<<< HEAD
         Wp = [ sProcess.options.highpass.Value{1}      sProcess.options.lowpass.Value{1}       ] * 2 / sFile.prop.sfreq; % pass band for filtering
         Ws = [ sProcess.options.highpass.Value{1}-200  sProcess.options.lowpass.Value{1} + 2000] * 2 / sFile.prop.sfreq; % transition zone
+=======
+        Wp = [ sProcess.options.highpass.Value{1}      sProcess.options.lowpass.Value{1}       ] * 1 / sFile.prop.sfreq; % pass band for filtering
+        Ws = [ sProcess.options.highpass.Value{1}-200  sProcess.options.lowpass.Value{1} + 2000] * 1 / sFile.prop.sfreq; % transition zone
+>>>>>>> martin's sorters
         [N,Wn] = buttord(Wp, Ws, 3, 20); % determine filter parameters
         [B,A] = butter(N,Wn); % builds filter
         
