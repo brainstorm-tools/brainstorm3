@@ -3513,6 +3513,7 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
     sFoundStudy = [];
     iFoundStudy = [];
     iItem       = [];
+    fieldFolder = fileparts(fieldFile);
     % Get protocol information
     ProtocolStudies = GlobalData.DataBase.ProtocolStudies(GlobalData.DataBase.iProtocol);
     % List studies to process
@@ -3530,6 +3531,10 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
         end
         % Check if field is available for the study
         if isempty(sStudy.(fieldGroup))
+            continue;
+        end
+        % Check we are in the correct folder
+        if ~file_compare(fieldFolder, fileparts(sStudy.FileName))
             continue;
         end
         % Get list of files from study
