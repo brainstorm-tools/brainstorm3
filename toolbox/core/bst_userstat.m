@@ -19,7 +19,7 @@ function bst_userstat(isSave)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2017
+% Authors: Francois Tadel, 2012-2018
 
 % Parse inputs
 if (nargin < 1) || isempty(isSave)
@@ -112,7 +112,7 @@ hFig(end+1) = fig_report(year, nPosts, 0, ...
 % Hard coded list of publications
 year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017]; 
 nPubli = [   2    2    1    1    3    5    5   11   10   18   19   33   38   54   78   93  131  210];
-nPubliCurYear = 0;
+nPubliCurYear = 63;
 % Plot figure
 hFig(end+1) = fig_report(year, nPubli, 1, ...
            [2000 max(year)], [], ...
@@ -219,6 +219,9 @@ function [hFig, hAxes] = fig_report(x, y, isMarkers, XLim, YLim, wTitle, xLabel,
     % Get YTicks
     YTick = get(hAxes, 'YTick');
     YTick = setdiff(YTick, 0);
+    if (bst_get('MatlabVersion') > 900)
+        hAxes.YAxis.Exponent = 0;
+    end
     % Plot horizontal grid
     for i = 1:length(YTick)
         line([XLim(1) XLim(end)], [YTick(i) YTick(i)], [.5 .5], ...

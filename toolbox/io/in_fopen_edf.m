@@ -352,6 +352,10 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                     label = Fsplit{iAnnot+1};
                     if (length(t_dur) > 1)
                         duration = str2double(t_dur{2});
+                        % Exclude 1-sample long events
+                        if (round(duration .* sFile.prop.sfreq) <= 1)
+                            duration = 0;
+                        end
                     else
                         duration = 0;
                     end

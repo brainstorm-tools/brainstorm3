@@ -22,7 +22,7 @@ March 2018
 - GUI: Added legends to connectivity matrices displayed as images
 - Process: Re-reference EEG: New option "local average", and use of the list of bad channels
 - GUI: 2DLayout made available for SEEG/ECOG
-- Distrib: Switch to Matlab 2018b
+- Distrib: Switch to Matlab 2018a
 ---------------------------------------------------------------
 February 2018
 - GUI: New options "Upsample image" to smooth MRI display in 3D figures
