@@ -44,7 +44,7 @@ end
 
 % === DOWNLOAD NEW VERSION ===
 % Get update zip file
-urlUpdate  = 'http://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09';
+urlUpdate  = 'https://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09';
 installDir = fileparts(fileparts(fileparts(fileparts(mfilename('fullpath')))));
 zipFile    = fullfile(installDir, 'brainstorm_update.zip');
 
