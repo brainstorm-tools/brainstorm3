@@ -21,7 +21,7 @@ function varargout = process_evt_simple( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
 
 eval(macro_method);
 end
@@ -65,7 +65,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     
     % ===== GET OPTIONS =====
     % Time offset
-    switch (sProcess.options.method.Value);
+    switch (sProcess.options.method.Value)
         case 1,  Method = 'start';
         case 2,  Method = 'middle';
         case 3,  Method = 'end';
