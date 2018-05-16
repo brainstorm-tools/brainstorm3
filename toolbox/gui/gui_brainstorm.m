@@ -12,7 +12,7 @@ function varargout = gui_brainstorm( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -157,7 +157,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
                 gui_component('MenuItem', jMenuOpenmeeg, [], 'Download Visual C++', [], [], @(h,ev)web('http://www.microsoft.com/en-us/download/details.aspx?id=14632', '-browser'), fontSize);
             end
             jMenuOpenmeeg.addSeparator();
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
+            gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
         end
         
     % ==== Menu HELP ====
@@ -165,8 +165,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % BUG REPORTS
         % gui_component('MenuItem', jMenuSupport, [], 'Bug reporting...', [], [], @(h,ev)gui_show('panel_bug', 'JavaWindow', 'Bug reporting', [], 1, 0), []);
         % WEBSITE
-        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm website', IconLoader.ICON_EXPLORER, [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/', '-browser'), fontSize);
-        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm forum', IconLoader.ICON_EXPLORER, [], @(h,ev)web('http://neuroimage.usc.edu/forums/', '-browser'), fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm website', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/', '-browser'), fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm forum', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/forums/', '-browser'), fontSize);
         jMenuSupport.addSeparator();
         % USAGE STATS
         gui_component('MenuItem', jMenuSupport, [], 'Usage statistics', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_userstat, fontSize);
@@ -1484,7 +1484,7 @@ end
 % %% ===== TEST CONNECTION =====
 % function TestConnection()
 %     % Test address
-%     srcUrl  = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015';
+%     srcUrl  = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015';
 %     % Get URL
 %     handler = sun.net.www.protocol.http.Handler;
 %     jUrl = java.net.URL([],srcUrl,handler);

@@ -43,7 +43,7 @@ function [R,s,sensnum,th,rings] = sensor_ring(r,th,rings,version)
 
 % @=============================================================================
 % This software is part of The Brainstorm Toolbox
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2010 Brainstorm by the University of Southern California
 % This software is distributed under the terms of the GNU General Public License

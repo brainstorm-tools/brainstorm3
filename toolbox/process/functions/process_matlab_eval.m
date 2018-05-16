@@ -3,7 +3,7 @@ function varargout = process_matlab_eval( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Pre-process';
     sProcess.Index       = 80;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TutUserProcess#Alternative';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutUserProcess#Alternative';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'timefreq', 'raw', 'matrix'};
     sProcess.OutputTypes = {'data', 'results', 'timefreq', 'raw', 'matrix'};

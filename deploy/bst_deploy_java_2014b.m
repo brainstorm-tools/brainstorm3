@@ -20,7 +20,7 @@ function bst_deploy_java_2014b(IS_BIN)
 
 % @=============================================================================
 % This software is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2016 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License

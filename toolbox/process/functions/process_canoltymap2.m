@@ -3,7 +3,7 @@ function varargout = process_canoltymap2( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -38,7 +38,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 2;
     sProcess.nMinFiles   = 1;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Resting#Canolty_maps';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Resting#Canolty_maps';
     % ==== INPUT ====
     sProcess.options.label_in.Comment = '<B><U>Input options</U></B>:';
     sProcess.options.label_in.Type    = 'label';

@@ -6,7 +6,7 @@ function varargout = process_select_subset( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -35,7 +35,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'File';
     sProcess.Index       = 1014;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/SelectFiles';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/SelectFiles';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
     sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};

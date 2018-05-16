@@ -3,7 +3,7 @@ function [isOk, onlineRel] = bst_check_internet()
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -21,7 +21,7 @@ function [isOk, onlineRel] = bst_check_internet()
 %
 % Authors: Francois Tadel, 2009-2012
 
-urlChar = 'http://neuroimage.usc.edu/bst/getversion.php';
+urlChar = 'https://neuroimage.usc.edu/bst/getversion.php';
 onlineRel = [];
 try
     % Open the URL for reading

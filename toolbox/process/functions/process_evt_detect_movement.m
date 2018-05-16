@@ -3,7 +3,7 @@ function varargout = process_evt_detect_movement( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -29,7 +29,7 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Detect movement [Experimental]';
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/MovementDetect';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MovementDetect';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 70;

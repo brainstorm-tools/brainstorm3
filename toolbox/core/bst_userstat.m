@@ -3,7 +3,7 @@ function bst_userstat(isSave)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -45,7 +45,7 @@ end
 
 % ===== NUMBER OF USERS =====
 % Read list of users
-str = url_read_fcn('http://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
+str = url_read_fcn('https://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
 % Extract values
 dates = textscan(str, '%d %d');
 dates = double([dates{1}, dates{2}]);
@@ -62,7 +62,7 @@ hFig(end+1) = fig_report(year, nUsersTotal, 0, ...
        
 % ===== LOG ANALYSIS =====
 % Read list of users
-str = url_read_fcn('http://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
+str = url_read_fcn('https://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
 % Extract values
 c = textscan(str, '%d %d %s');
 dates = double([c{1}, c{2}]);
@@ -95,7 +95,7 @@ iAvg = find((xUpdate >= 2017) & (xUpdate < (2017 + (cur(2)-2)./12)));
 
 % ===== NUMBER OF FORUM POSTS =====
 % Read list of users
-str = url_read_fcn('http://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
+str = url_read_fcn('https://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
 % Extract values
 dates = textscan(str, '%d %d');
 dates = double([dates{1}, dates{2}]);

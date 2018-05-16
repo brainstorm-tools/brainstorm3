@@ -3,7 +3,7 @@ function varargout = process_extract_time( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Extract';
     sProcess.Index       = 353;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/ExploreRecordings?highlight=%28Extract+time%29#Time_selection';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ExploreRecordings?highlight=%28Extract+time%29#Time_selection';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix'};
     sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix'};

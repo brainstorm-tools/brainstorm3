@@ -3,7 +3,7 @@ function varargout = scenario_epilepto( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -1492,7 +1492,7 @@ function [isValidated, errMsg] = ValidateTimefreq()
                       num2str(nBaselines) ' baseline(s) and ' num2str(nOnsets) ' seizure(s).' 10 10 ...
                       'To specify one baseline for each seizure, proceed manually as indicated' 10 ...
                       'in the online tutorial "SEEG epileptogenicity maps":' 10 ...
-                      'http://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity'];
+                      'https://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity'];
             return;
         end
     end

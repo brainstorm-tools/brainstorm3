@@ -192,7 +192,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -2164,51 +2164,51 @@ switch contextName
         end
         % Get defaults from internet 
         if ~ismember(lower({sTemplates.Name}), 'icbm152')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016c';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016c';
             sTemplates(end).Name = 'ICBM152';
         end
 %         if ~ismember(lower({sTemplates.Name}), 'icbm152_2016')
-%             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016';
+%             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016';
 %             sTemplates(end).Name = 'ICBM152_2016';
 %         end
         if ~ismember(lower({sTemplates.Name}), 'icbm152_2016c')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016c';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016c';
             sTemplates(end).Name = 'ICBM152_2016c';
         end
         if ~ismember(lower({sTemplates.Name}), 'icbm152_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
             sTemplates(end).Name = 'ICBM152_BrainSuite_2016';
         end
         if ~ismember(lower({sTemplates.Name}), 'colin27_2016')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
             sTemplates(end).Name = 'Colin27_2016';
         end
         if ~ismember(lower({sTemplates.Name}), 'colin27_2012')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2012';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2012';
             sTemplates(end).Name = 'Colin27_2012';
         end
         if ~ismember(lower({sTemplates.Name}), 'colin27_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
             sTemplates(end).Name = 'Colin27_BrainSuite_2016';
         end
         if ~ismember(lower({sTemplates.Name}), 'bci-dni_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2016';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2016';
             sTemplates(end).Name = 'BCI-DNI_BrainSuite_2016';
         end
         if ~ismember(lower({sTemplates.Name}), 'uscbrain_brainsuite_2017')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2017';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2017';
             sTemplates(end).Name = 'USCBrain_BrainSuite_2017';
         end
         if ~ismember(lower({sTemplates.Name}), 'fsaverage_2016')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2016';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2016';
             sTemplates(end).Name = 'FSAverage_2016';
         end
         if ~ismember(lower({sTemplates.Name}), 'infant7w_2015b')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015b';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015b';
             sTemplates(end).Name = 'Infant7w_2015b';
         end
         if ~ismember(lower({sTemplates.Name}), 'oreilly_1y')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1y';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1y';
             sTemplates(end).Name = 'Oreilly_1y';
         end
         % If a specific template was requested

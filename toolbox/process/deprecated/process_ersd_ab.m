@@ -8,7 +8,7 @@ function varargout = process_ersd_ab( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -39,7 +39,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Filter2';
     sProcess.SubGroup    = 'Standardize';
     sProcess.Index       = 205;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TimeFrequency#Normalized_time-frequency_maps';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TimeFrequency#Normalized_time-frequency_maps';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix'};
     sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix'};

@@ -5,7 +5,7 @@ function varargout = process_simulate_recordings( varargin )
  
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Simulate'; 
     sProcess.Index       = 915;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Scouts?highlight=(simulate)#Menu:_Sources';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Scouts?highlight=(simulate)#Menu:_Sources';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'matrix'};
     sProcess.OutputTypes = {'data'};

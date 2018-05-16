@@ -14,7 +14,7 @@ function jPopup = tree_callbacks( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -541,7 +541,7 @@ switch (lower(action))
                         AddSeparator(jMenuDefaults);
                         gui_component('MenuItem', jMenuDefaults, [], 'Create new template', IconLoader.ICON_ANATOMY, [], @(h,ev)export_default_anat(iSubject));
                         AddSeparator(jMenuDefaults);
-                        gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
+                        gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
                     end
 
                     % === GENERATE HEAD ===

@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 May 2018
 - IO: Added support for g.tec HDF5 files
+- Web: Switch to https
 ---------------------------------------------------------------
 April 2018
 - Bug fix: Reading EEGLAB epoched .set files: Latency of additional events was incorrect

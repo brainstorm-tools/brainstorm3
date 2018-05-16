@@ -3,7 +3,7 @@ function [Wmat, sSrcSubj, sDestSubj, srcSurfMat, destSurfMat, isStopWarped] = te
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -239,7 +239,7 @@ if ~isBrainSuite && ~isFreeSurfer
                   'for the MRI segmentation, because they generate registered atlases' 10 ...
                   'we can use in Brainstorm for the the inter-subject co-registration.' 10 10 ...
                   'More information on the Brainstorm website: ' 10 ...
-                  'http://neuroimage.usc.edu/brainstorm/Tutorials/CoregisterSubjects' 10];
+                  'https://neuroimage.usc.edu/brainstorm/Tutorials/CoregisterSubjects' 10];
     if isInteractive
         % Close all figures
         bst_memory('UnloadAll', 'Forced');

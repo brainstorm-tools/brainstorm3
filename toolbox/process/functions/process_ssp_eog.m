@@ -5,7 +5,7 @@ function varargout = process_ssp_eog( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Artifacts';
     sProcess.Index       = 111;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsSsp#SSP:_Eye_blinks';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsSsp#SSP:_Eye_blinks';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
     sProcess.OutputTypes = {'raw'};

@@ -2,7 +2,7 @@ function varargout = process_nst_mbll( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -32,8 +32,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'NIRS';
     sProcess.Index       = 1010; %0: not shown, >0: defines place in the list of processes
-    %sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/NIRSDataPreprocessing#MBLL';
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TutUserProcess';
+    %sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/NIRSDataPreprocessing#MBLL';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutUserProcess';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     % Definition of the outputs of this process

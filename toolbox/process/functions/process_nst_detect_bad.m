@@ -2,7 +2,7 @@ function varargout = process_nst_detect_bad( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'NIRS';
     sProcess.Index       = 1000; %0: not shown, >0: defines place in the list of processes
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/NIRSDataProcess#Bad_channel_tagging';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/NIRSDataProcess#Bad_channel_tagging';
     % sProcess.isSeparator = 0; % add a horizontal bar after the process in
     %                             the list
     % Definition of the input accepted by this process

@@ -2,14 +2,14 @@ function tutorial_epilepsy(tutorial_dir)
 % TUTORIAL_EPILEPSY: Script that reproduces the results of the online tutorial "EEG/Epilepsy".
 %
 % CORRESPONDING ONLINE TUTORIALS:
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy
 %
 % INPUTS: 
 %     tutorial_dir: Directory where the sample_epilepsy.zip file has been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License

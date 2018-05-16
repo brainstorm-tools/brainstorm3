@@ -2,7 +2,7 @@ function varargout = process_headpoints_remove( varargin )
 % PROCESS_HEADPOINTS_REMOVE: Remove head points from the channel file below a certain level.
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -31,7 +31,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Import anatomy';
     sProcess.Index       = 26;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/ChannelFile#Automatic_registration';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ChannelFile#Automatic_registration';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};

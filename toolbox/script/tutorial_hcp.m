@@ -2,14 +2,14 @@ function tutorial_hcp(tutorial_dir)
 % TUTORIAL_HCP: Script that reproduces the results of the online tutorial "Human Connectome Project: Resting-state MEG".
 %
 % CORRESPONDING ONLINE TUTORIALS:
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/HCP-MEG
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/HCP-MEG
 %
 % INPUTS: 
 %     tutorial_dir: Directory where the HCP files have been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License

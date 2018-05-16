@@ -2,8 +2,8 @@ function tutorial_visual_full(tutorial_dir, reports_dir)
 % TUTORIAL_VISUAL_FULL: Runs the Brainstorm/SPM group analysis pipeline (BIDS version).
 %
 % ONLINE TUTORIALS: 
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
 %    - tutorial_dir : Directory containing the folder ds000117_R1.0.0  (https://openfmri.org/dataset/ds000117/, version 1.0.0)
@@ -11,7 +11,7 @@ function tutorial_visual_full(tutorial_dir, reports_dir)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License

@@ -7,7 +7,7 @@ function varargout = process_bandstop( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -41,7 +41,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Pre-process';
     sProcess.Index       = 65;
-    sProcess.Description = 'hhttp://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsFilter#Filter_specifications:_Band-stop';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsFilter#Filter_specifications:_Band-stop';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'raw', 'matrix'};
     sProcess.OutputTypes = {'data', 'results', 'raw', 'matrix'};

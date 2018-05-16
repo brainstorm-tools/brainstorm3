@@ -2,19 +2,19 @@ function tutorial_ctf(tutorial_dir)
 % TUTORIAL_CTF: Run all the scripts related to tutorial CTF.
 %
 % CORRESPONDING ONLINE TUTORIALS:
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/TutImportAnatomy
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/TutImportRecordings
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/TutExploreRecodings
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/TutHeadModel
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/TutNoiseCov
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/TutSourceEstimation
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/TutImportAnatomy
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/TutImportRecordings
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/TutExploreRecodings
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/TutHeadModel
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/TutNoiseCov
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/TutSourceEstimation
 %
 % INPUTS: 
 %     tutorial_dir: Directory where the sample_ctf.zip file has been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License

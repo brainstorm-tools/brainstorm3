@@ -2,8 +2,8 @@ function tutorial_visual_short_copy(ProtocolNameSingle, ProtocolNameGroup, repor
 % TUTORIAL_VISUAL_SHORT_COPY: Copy the subject averages for the Brainstorm/SPM group tutorial into a new protocol - SHORT VERSION
 %
 % ONLINE TUTORIALS: 
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
 %    - ProtocolNameSingle : Name of the protocol created with all the data imported (TutorialVisual)
@@ -12,7 +12,7 @@ function tutorial_visual_short_copy(ProtocolNameSingle, ProtocolNameGroup, repor
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License

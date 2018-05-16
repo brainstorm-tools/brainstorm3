@@ -2,8 +2,8 @@ function tutorial_visual_old_copy(ProtocolNameSingle, ProtocolNameGroup, reports
 % TUTORIAL_VISUAL_OLD_COPY: Copy the subject averages for the Brainstorm/SPM group tutorial into a new protocol (old distribution).
 %
 % ONLINE TUTORIALS: 
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingleOrig
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroupOrig
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingleOrig
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroupOrig
 %
 % INPUTS:
 %    - ProtocolNameSingle : Name of the protocol created with all the data imported (TutorialVisual)
@@ -12,7 +12,7 @@ function tutorial_visual_old_copy(ProtocolNameSingle, ProtocolNameGroup, reports
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License

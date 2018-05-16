@@ -3,7 +3,7 @@ function varargout = process_evt_classify( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -32,7 +32,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 60;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsDetect?highlight=%28Enable+classification%29#Custom_detection';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsDetect?highlight=%28Enable+classification%29#Custom_detection';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};

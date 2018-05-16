@@ -5,7 +5,7 @@ function varargout = process_extract_pthresh2( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'File2';
     sProcess.SubGroup    = 'Test';
     sProcess.Index       = 140;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Statistics#Directionality:_Difference_of_absolute_values';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Statistics#Directionality:_Difference_of_absolute_values';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'pdata', 'presults', 'ptimefreq', 'pmatrix'};
     sProcess.OutputTypes = {'data',  'results',  'timefreq',  'matrix'};

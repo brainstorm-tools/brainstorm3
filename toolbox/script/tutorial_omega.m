@@ -2,14 +2,14 @@ function tutorial_omega(BidsDir)
 % TUTORIAL_OMEGA: Script that reproduces the results of the online tutorial "Resting state and OMEGA database".
 %
 % CORRESPONDING ONLINE TUTORIALS:
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/RestingOmega
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/RestingOmega
 %
 % INPUTS: 
 %     tutorial_dir: Directory where the ds000247_R1.0.0.zip file has been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License

@@ -3,7 +3,7 @@ function varargout = process_warp( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -32,7 +32,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Import anatomy';
     sProcess.Index       = 22;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TutWarping';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutWarping';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};

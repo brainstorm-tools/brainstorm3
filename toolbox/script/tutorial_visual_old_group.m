@@ -2,8 +2,8 @@ function tutorial_visual_old_group(ProtocolName, reports_dir)
 % TUTORIAL_VISUAL_OLD_GROUP: Runs the Brainstorm/SPM group analysis pipeline (group analysis, old distribution).
 %
 % ONLINE TUTORIALS: 
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingleOrig
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroupOrig
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingleOrig
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroupOrig
 %
 % INPUTS:
 %    - ProtocolName : Name of the protocol in which the recordings for the 19 subjects have been imported (TutorialVisual or TutorialGroup)
@@ -12,7 +12,7 @@ function tutorial_visual_old_group(ProtocolName, reports_dir)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License

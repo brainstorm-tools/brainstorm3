@@ -8,7 +8,7 @@ function varargout = process_bandpass( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -44,7 +44,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.processDim  = 1;   % Process channel by channel
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsFilter#What_filters_to_apply.3F';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsFilter#What_filters_to_apply.3F';
     % Definition of the options
     % === Sensor types
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';

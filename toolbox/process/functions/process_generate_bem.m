@@ -3,7 +3,7 @@ function varargout = process_generate_bem( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -37,7 +37,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'import'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TutBem';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem';
     sProcess.isSeparator = 0;
     % Option: Subject name
     sProcess.options.subjectname.Comment = 'Subject name:';

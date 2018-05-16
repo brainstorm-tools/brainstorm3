@@ -3,7 +3,7 @@ function varargout = process_import_data_raw( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -32,7 +32,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Import recordings';
     sProcess.Index       = 11;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/ChannelFile#Link_the_raw_files_to_the_database';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ChannelFile#Link_the_raw_files_to_the_database';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
     sProcess.OutputTypes = {'raw'};

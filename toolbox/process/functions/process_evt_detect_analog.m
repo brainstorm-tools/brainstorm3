@@ -8,7 +8,7 @@ function varargout = process_evt_detect_analog( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -37,7 +37,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 42;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/StimDelays#Detection_of_the_analog_triggers';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/StimDelays#Detection_of_the_analog_triggers';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};

@@ -8,8 +8,8 @@ BEstDir = bst_fullfile( bst_get('BrainstormUserDir'), 'brainentropy' );
 BEstBST = bst_fullfile( bst_get('BrainstormHomeDir'), 'external', 'brainentropy' ); 
 % Set file url - temporary
 url     = 'http://www.bic.mni.mcgill.ca/uploads/ResearchLabsMFIL/brainentropy.tar.gz';
-url     = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst?action=AttachFile&do=get&target=brainentropy.tar.gz';
-urlV    = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst?action=AttachFile&do=get&target=VERSION.txt';
+url     = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst?action=AttachFile&do=get&target=brainentropy.tar.gz';
+urlV    = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst?action=AttachFile&do=get&target=VERSION.txt';
 
 try
     addpath( genpath(BEstDir) );

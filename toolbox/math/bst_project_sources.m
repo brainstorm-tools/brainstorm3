@@ -12,7 +12,7 @@ function OutputFiles = bst_project_sources( ResultsFile, destSurfFile, isAbsolut
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -86,7 +86,7 @@ for iRes = 1:length(ResultsFile)
     % Else : Check the type of grid (skip volume head models)
     elseif ismember(ResMat.HeadModelType, {'volume'})
         wrnMsg = ['To project source grids, see online tutorial "Group analysis: Subjects corergistration":' 10 ...
-                  'http://neuroimage.usc.edu/brainstorm/Tutorials/CoregisterSubjects#Volume_source_models' 10 ...
+                  'https://neuroimage.usc.edu/brainstorm/Tutorials/CoregisterSubjects#Volume_source_models' 10 ...
                   'Skipping file: "' ResultsFile{iRes} '"...'];
         if isInteractive
             disp(wrnMsg);

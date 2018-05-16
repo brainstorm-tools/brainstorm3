@@ -3,7 +3,7 @@ function varargout = process_test_parametric2p( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -32,7 +32,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Stat2';
     sProcess.SubGroup    = 'Test';
     sProcess.Index       = 102;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Statistics';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Statistics';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',  'results',  'timefreq',  'matrix'};
     sProcess.OutputTypes = {'pdata', 'presults', 'ptimefreq', 'pmatrix'};

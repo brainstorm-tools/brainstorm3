@@ -2,14 +2,14 @@ function tutorial_epileptogenicity(tutorial_dir)
 % TUTORIAL_EPILEPTOGENITICY: Script that reproduces the results of the online tutorial "SEEG Epileptogenicity maps".
 %
 % CORRESPONDING ONLINE TUTORIALS:
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity
 %
 % INPUTS: 
 %     tutorial_dir: Directory where the tutorial_epimap.zip file has been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License

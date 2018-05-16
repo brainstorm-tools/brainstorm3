@@ -7,7 +7,7 @@ function P = cs_convert(sMri, src, dest, P)
 %     - dest  : Target coordinate system {'voxel','mri','scs','mni'}
 %     - P     : a Nx3 matrix of point coordinates to convert
 %
-% DESCRIPTION:   http://neuroimage.usc.edu/brainstorm/CoordinateSystems
+% DESCRIPTION:   https://neuroimage.usc.edu/brainstorm/CoordinateSystems
 %     - voxel : X=left>right,  Y=posterior>anterior,   Z=bottom>top
 %               Coordinate of the center of the first voxel at the bottom-left-posterior of the MRI volume: (1,1,1)
 %     - mri   : Same as 'voxel' but in millimeters instead of voxels:  mriXYZ = voxelXYZ * Voxsize
@@ -20,7 +20,7 @@ function P = cs_convert(sMri, src, dest, P)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
