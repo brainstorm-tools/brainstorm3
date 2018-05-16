@@ -618,7 +618,6 @@ end
 
 %% ===== POSITION FIGURES =====
 function PositionFigure(hFigure, figArea, decorationSize)
-    drawnow
     if ~ishandle(hFigure)
         return
     end
@@ -667,6 +666,7 @@ function PositionFigure(hFigure, figArea, decorationSize)
     end
 
     % Apply position to figure
+    drawnow;
     set(hFigure, 'Position', figDim);
 
     if isVisible
