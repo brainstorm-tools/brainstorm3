@@ -635,16 +635,9 @@ end
 function X = GetMouseTime(hFig, hAxes)
     % Get current point in axes
     X = get(hAxes, 'CurrentPoint');
-    X = X(1,1);
     XLim = get(hAxes, 'XLim');
-    % Weird bugfix where sometimes the cursor coordinates are flipped in
-    % the negative
-    if X < -0.5
-        % 0.68 is the width of the right border of the figure
-        X = X + XLim(2) + 0.68;
-    end
     % Check whether cursor is out of display time bounds
-    X = bst_saturate(X, XLim);
+    X = bst_saturate(X(1,1), XLim);
     % Get the time vector
     TimeVector = getappdata(hFig, 'TimeVector');
     % Select the closest point in time vector
