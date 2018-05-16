@@ -658,8 +658,20 @@ function PositionFigure(hFigure, figArea, decorationSize)
 %     if (length(ScreenDef) > 1) && (figDim(1) >= ScreenDef(1).matlabPos(1) + ScreenDef(1).matlabPos(3)) && (ScreenDef(1).matlabPos(4) ~= ScreenDef(2).matlabPos(4))
 %         figDim(2) = figDim(2) - ScreenDef(2).matlabPos(4) + ScreenDef(1).matlabPos(4);
 %     end
+
+    % In some setups, resizing the figure will position it in an invalid
+    % state and making it invisible and visible again will fix it.
+    isVisible = get(hFigure, 'Visible');
+    if isVisible
+        set(hFigure, 'Visible', 'off');
+    end
+
     % Apply position to figure
     set(hFigure, 'Position', figDim);
+
+    if isVisible
+        set(hFigure, 'Visible', 'on');
+    end
 end
 
 
