@@ -660,7 +660,9 @@ function PositionFigure(hFigure, figArea, decorationSize)
 
     % In some setups, resizing the figure will position it in an invalid
     % state and making it invisible and visible again will fix it.
-    isVisible = get(hFigure, 'Visible');
+    % This is only required for time series.
+    isVisible = strcmpi(get(hFigure, 'Visible'), 'on') ...
+        && strcmpi(get(hFigure, 'Tag'), 'DataTimeSeries');
     if isVisible
         set(hFigure, 'Visible', 'off');
     end
