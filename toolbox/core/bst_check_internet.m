@@ -19,59 +19,31 @@ function [isOk, onlineRel] = bst_check_internet()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2012
+% Authors: Francois Tadel, 2009-2018
 
-urlChar = 'https://neuroimage.usc.edu/bst/getversion.php';
+% Initialize returned values
+isOk = 0;
 onlineRel = [];
+% Reading function: urlread replaced with webread in Matlab 2014b
+if (bst_get('MatlabVersion') <= 803)
+    url_read_fcn = @urlread;
+else
+    url_read_fcn = @webread;
+end
+% Read online version.txt
 try
-    % Open the URL for reading
-    handler = sun.net.www.protocol.http.Handler;
-    url = java.net.URL([],urlChar,handler);
-    % Open HTTP connection
-    urlConnection = url.openConnection();
-    urlConnection.setConnectTimeout(5000);
-    urlConnection.setReadTimeout(5000);
-    urlConnection.connect();
-    % Read online version.txt file
-    inputStream = urlConnection.getContent();
-    % Get release date
-    onlineRel = readVersion(inputStream);
-    % Close stream
-    inputStream.close();
-    % Return success
-    isOk = 1;
+    str = url_read_fcn('http://neuroimage.usc.edu/bst/getversion.php');
 catch
-    isOk = 0;
+    return;
 end
-
+if (length(str) < 20)
+    return;
 end
-
-
-%% ===== READ VERSION.TXT =====
-function onlineRel = readVersion(inputStream)
-    % Read file
-    version_txt = '';
-    stop = 0;
-    while ~stop
-        val = inputStream.read();
-        if (val > 0)
-            version_txt(end+1) = char(val);
-        else
-            stop = 1;
-        end
-    end
-    if (length(version_txt) < 20)
-        warning('Cannot read online version.txt');
-        VER = [];
-        return;
-    end
-    % Find release date in text file
-    iParent = strfind(version_txt, '(');
-    dateStr = version_txt(iParent - 7:iParent - 2);
-    % Interpetation of date string
-    onlineRel.year  = str2num(dateStr(1:2));
-    onlineRel.month = str2num(dateStr(3:4));
-    onlineRel.day   = str2num(dateStr(5:6));
-end
-
-
+% Find release date in text file
+iParent = strfind(str, '(');
+dateStr = str(iParent - 7:iParent - 2);
+% Interpetation of date string
+onlineRel.year  = str2num(dateStr(1:2));
+onlineRel.month = str2num(dateStr(3:4));
+onlineRel.day   = str2num(dateStr(5:6));
+isOk = 1;
