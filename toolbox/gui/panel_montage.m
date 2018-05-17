@@ -1847,7 +1847,7 @@ function [AllGroups, AllTags, AllInd, isNoInd] = ParseSensorNames(Channels)
         AllNames = strrep(AllNames, 'G_K', 'G9');
         AllNames = strrep(AllNames, 'G_L', 'G10');
     end
-    AllNames = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), AllNames, 'UniformOutput', 0);
+    AllNames = str_remove_spec_chars(AllNames);
     AllTags  = cell(size(AllNames));
     AllInd   = cell(size(AllNames));
     isNoInd  = zeros(size(AllNames));
