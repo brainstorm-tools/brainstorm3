@@ -147,6 +147,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % ===== ADD POSITIONS =====
     % Add channel positions
     channel_add_loc(iChanStudies, ChannelMat, 0);
+    
+    % Return input files
+    OutputFiles = {sInputs.FileName};
 end
 
 
