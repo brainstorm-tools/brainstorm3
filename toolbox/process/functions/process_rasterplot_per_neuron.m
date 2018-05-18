@@ -153,16 +153,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if strcmp(trial.Events(ievent).label, labelsForDropDownMenu{iNeuron})
                     
                     outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
-                    trial.Events(ievent).times(outside_up) = bins(end)-.001; % I assign those spikes just inside the bin
+                    trial.Events(ievent).times(outside_up) = bins(end)-.001; % I assign those spikes just 1ms inside the bin
                     outside_down = trial.Events(ievent).times <= bins(1);
-                    trial.Events(ievent).times(outside_down) = bins(1)+.001; % I assign those spikes just inside the bin
+                    trial.Events(ievent).times(outside_down) = bins(1)+.001; % I assign those spikes just 1ms inside the bin
                     
                     [~, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
-                    
-                    if sum(bin_it_belongs_to>20)~=0 
-                        disp(['iFile: ' num2str(ifile) '   iNeuron: ' num2str(iNeuron) '   iEvent: ' num2str(ievent)])
-                    end
-                                         
+                                 
                     unique_bin = unique(bin_it_belongs_to);
                     occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
                      
