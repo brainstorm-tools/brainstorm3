@@ -56,7 +56,8 @@ hdr.chan_files = {};
 % Read the header
 % THIS IMPORTER COMPILES A C FUNCTION BEFORE RUNNING FOR THE FIRST TIME
 
-if ~exist('readPLXFileC.mexw*','file') == 2
+if ~exist('readPLXFileC.mexw*','file')
+    'asdfsdf'
     build_readPLXFileC
 end
 
