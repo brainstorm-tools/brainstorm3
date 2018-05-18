@@ -121,7 +121,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     labelsForDropDownMenu = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
     for iFile = 1:nTrials
         for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
-            labelsForDropDownMenu{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
+            if ~isempty(strfind(ALL_TRIALS_files(iFile).Events(iEvent).label,'Spikes Channel'))
+                labelsForDropDownMenu{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
+            end
         end
     end
     labelsForDropDownMenu = unique(labelsForDropDownMenu,'stable');
@@ -136,23 +138,31 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     nBins = floor(length(tfOPTIONS.TimeVector) / (bin_size * sampling_rate));
     raster = zeros(length(labelsForDropDownMenu), nBins, nTrials);
     bins = linspace(temp.Time(1), temp.Time(end), nBins+1);
+    
+    bst_progress('start', 'Raster Plot per Neuron', 'Binning Spikes...', 0, length(sInputs));
+
 
     for ifile = 1:length(sInputs)
+        
         trial = in_bst(sInputs(ifile).FileName);
         single_file_binning = zeros(length(labelsForDropDownMenu), nBins);
-
+        
         for iNeuron = 1:length(labelsForDropDownMenu)
             for ievent = 1:size(trial.Events,2)
                 
                 if strcmp(trial.Events(ievent).label, labelsForDropDownMenu{iNeuron})
                     
                     outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
-                    trial.Events(ievent).times(outside_up) = bins(end);
+                    trial.Events(ievent).times(outside_up) = bins(end)-.001; % I assign those spikes just inside the bin
                     outside_down = trial.Events(ievent).times <= bins(1);
-                    trial.Events(ievent).times(outside_down) = bins(1);
+                    trial.Events(ievent).times(outside_down) = bins(1)+.001; % I assign those spikes just inside the bin
                     
                     [~, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
-                     
+                    
+                    if sum(bin_it_belongs_to>20)~=0 
+                        disp(['iFile: ' num2str(ifile) '   iNeuron: ' num2str(iNeuron) '   iEvent: ' num2str(ievent)])
+                    end
+                                         
                     unique_bin = unique(bin_it_belongs_to);
                     occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
                      
@@ -160,10 +170,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     break
                 end
             end
-            
         end
         
         raster(:, :, ifile) = single_file_binning;
+        bst_progress('inc', 1);
     end
     
     
