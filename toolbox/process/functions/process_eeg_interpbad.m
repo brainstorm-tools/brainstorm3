@@ -119,6 +119,8 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     if (length(iFix) ~= length(iBad))
         iNotFix = setdiff(iBad, iFix);
         bst_report('Warning', sProcess, sInput, ['The following channels could not be interpolated from any good neighbor: ' sprintf('%s ', ChannelMat.Channel(iNotFix).Name)]);
+    else
+        iNotFix = [];
     end
     % If none of the bad channels can be interpolated
     if isempty(iFix)
