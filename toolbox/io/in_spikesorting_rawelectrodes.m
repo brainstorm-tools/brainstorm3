@@ -52,9 +52,8 @@ end
 ChannelMat = in_bst_channel(sInput.ChannelFile);
 numChannels = length(ChannelMat.Channel);
 
-% New channelNames - Without any special characters. Use this
-% transformation throughout the toolbox for temp files
-cleanNames = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), {ChannelMat.Channel.Name}, 'UniformOutput', 0)';
+% New channelNames - Without any special characters.
+cleanNames = str_remove_spec_chars(ChannelMat.Channel.Name);
 
 missingFile = 0;
 sFiles = {};
@@ -84,16 +83,13 @@ max_samples = ram / 8 / numChannels;
 total_samples = sFile.prop.samples(2);
 num_segments = ceil(total_samples / max_samples);
 num_samples_per_segment = ceil(total_samples / num_segments);
-bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, (parallel == 0)*num_segments * numChannels);
+bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, (parallel == 0) * num_segments * numChannels);
 
 
 sFiles = {};
 for iChannel = 1:numChannels
     sFiles{end + 1} = bst_fullfile(parentPath, ['raw_elec_' cleanNames{iChannel}]);
 end
-
-
-tic
 
 % Read data in segments
 for iSegment = 1:num_segments
@@ -113,7 +109,6 @@ for iSegment = 1:num_segments
             fid = fopen([sFiles{iChannel} '.bin'], 'a');
             fwrite(fid, electrode_data, 'double');
             fclose(fid);
-            bst_progress('inc', 1);
         end
     else
         for iChannel = 1:numChannels
@@ -125,10 +120,7 @@ for iSegment = 1:num_segments
         end
     end
 end
-disp(['Separation of Electrodes took: ' num2str(toc) ' seconds'])
 
-
-tic
 % Convert channel files to Matlab
 bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, (parallel == 0) * numChannels);
 if parallel
@@ -141,8 +133,6 @@ else
         bst_progress('inc', 1);
     end
 end
-disp(['Conversion to .mat files took: ' num2str(toc) ' seconds'])
-
 
 sFiles = cellfun(@(x) [x '.mat'], sFiles, 'UniformOutput', 0);
 

@@ -58,7 +58,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     sProcess.options.binsize.Comment = 'Memory to use for demultiplexing';
     sProcess.options.binsize.Type    = 'value';
-    sProcess.options.binsize.Value   = {10, 'GB', 1}; % This is used in case the electrodes are not separated yet (no spike sorting done), ot the temp folder was emptied 
+    sProcess.options.binsize.Value   = {1, 'GB', 1}; % This is used in case the electrodes are not separated yet (no spike sorting done), ot the temp folder was emptied 
     
 end
 
@@ -71,7 +71,7 @@ end
 
 
 %% ===== RUN =====
-function sInputs = Run(sProcess, sInputs, method) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
     
     for iInput = 1:length(sInputs)
         sInput = sInputs(iInput);
@@ -91,7 +91,7 @@ function sInputs = Run(sProcess, sInputs, method) %#ok<DEFNU>
         if sProcess.options.despikeLFP.Value
             % Ensure we are including the DeriveLFP folder in the Matlab path
             DeriveLFPDir = bst_fullfile(bst_get('BrainstormUserDir'), 'DeriveLFP');
-            if exist(DeriveLFPDir, 'file')
+            if exist(DeriveLFPDir, 'dir')
                 addpath(genpath(DeriveLFPDir));
             end
 
@@ -111,9 +111,10 @@ function sInputs = Run(sProcess, sInputs, method) %#ok<DEFNU>
 
         % Check for Signal Processing toolbox
         if ~bst_get('UseSigProcToolbox')
+            %TODO: Confirm this is actually implemented?
             bst_report('Warning', sProcess, [], [...
                 'The Signal Processing Toolbox is not available. Using the EEGLAB method instead (results may be much less accurate).' 10 ...
-                'This method is based on a fft-based low-pass filter, followed by a spline interpolation.' 10 ...
+                'This method is based on a FFT-based low-pass filter, followed by a spline interpolation.' 10 ...
                 'Make sure you remove the DC offset before resampling; EEGLAB function does not work well when the signals are not centered.']);
         end
 
@@ -127,6 +128,7 @@ function sInputs = Run(sProcess, sInputs, method) %#ok<DEFNU>
                 end
             catch
                 sProcess.options.paral.Value = 0;
+                poolobj = [];
             end
         else
             poolobj = [];
@@ -140,13 +142,10 @@ function sInputs = Run(sProcess, sInputs, method) %#ok<DEFNU>
         ProtocolInfo = bst_get('ProtocolInfo');
         ProcessOptions = bst_get('ProcessOptions');
         newCondition = [sInput.Condition, '_LFP'];
-    %     newCondition = ['@raw', sFileIn.condition, fileTag];
-        [sMat, ~] = in_bst(sInput.FileName, [],0);
+        sMat = in_bst(sInput.FileName, [], 0);
+        Fs = 1 / diff(sMat.Time(1:2)); % This is the original sampling rate
 
-        Fs = 1/diff(sMat.Time(1:2)); % This is the original sampling rate
-
-
-        if mod(Fs,NewFreq)~=0
+        if mod(Fs,NewFreq) ~= 0
             % This should never be an issue. Never heard of an acquisition
             % system that doesn't record in multiples of 1kHz.
             warning(['The downsampling might not be accurate. This process downsamples from ' num2str(Fs) ' to ' num2str(NewFreq) ' Hz'])
@@ -166,7 +165,7 @@ function sInputs = Run(sProcess, sInputs, method) %#ok<DEFNU>
         sInputStudy = bst_get('AnyFile', sInput.FileName);
 
         sStudy = bst_get('ChannelFile', sInput.ChannelFile);
-        [~, iSubject] = bst_get('Subject', sStudy.BrainStormSubject, 1);
+        [tmp, iSubject] = bst_get('Subject', sStudy.BrainStormSubject, 1);
 
         % Get new condition name
         [tmp, ConditionName] = bst_fileparts(newStudyPath, 1);
@@ -176,14 +175,9 @@ function sInputs = Run(sProcess, sInputs, method) %#ok<DEFNU>
         ChannelMatOut = ChannelMat;
         sFileTemplate = sMat.F;
 
-
-
         %% Get the transformed channelnames that were used on the signal data naming. This is used in the derive lfp function in order to find the spike events label
-        % New channelNames - Without any special characters. Use this
-        % transformation throughout the toolbox for temp files
-        cleanChannelNames = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), {ChannelMat.Channel.Name}, 'UniformOutput', 0)';
-
-
+        % New channelNames - Without any special characters.
+        cleanChannelNames = str_remove_spec_chars(ChannelMat.Channel.Name);
 
         %% Update fields before initializing the header on the binary file
         sFileTemplate.prop.samples = floor(sFileTemplate.prop.times * NewFreq);  % Check if FLOOR IS NEEDED HERE
@@ -207,182 +201,62 @@ function sInputs = Run(sProcess, sInputs, method) %#ok<DEFNU>
 
         %% Check if the files are separated per channel. If not do it now.
         % These files will be converted to LFP right after
-        sFiles_temp_mat = in_spikesorting_rawelectrodes(sInput,sProcess.options.binsize.Value{1}(1)*1024*1024*1024,sProcess.options.paral.Value);
+        sFiles_temp_mat = in_spikesorting_rawelectrodes(sInput, sProcess.options.binsize.Value{1}(1) * 1e9, sProcess.options.paral.Value);
 
         %% Filter and derive LFP
         LFP = zeros(length(sFiles_temp_mat), length(downsample(sMat.Time,round(Fs/NewFreq)))); % This shouldn't create a memory problem
         bst_progress('start', 'Spike-sorting', 'Converting RAW signals to LFP...', 0, (sProcess.options.paral.Value == 0) * nChannels);
 
-        if sProcess.options.paral.Value
-            if ~sProcess.options.despikeLFP.Value
+        if sProcess.options.despikeLFP.Value
+            if sProcess.options.paral.Value
                 parfor iChannel = 1:nChannels
-                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel},Fs, filterBounds)
-                    bst_progress('inc', 1);
+                    LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames);
                 end
-                % WRITE OUT
-                sFileOut = out_fwrite(sFileOut, ChannelMatOut, [], [], [], LFP);
-            else
-                tic
-                parfor iChannel = 1:nChannels
-                    LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F,ChannelMat, cleanChannelNames);
-                    bst_progress('inc', 1);
-                end
-                % WRITE OUT
-                sFileOut = out_fwrite(sFileOut, ChannelMatOut, [], [], [], LFP);
-                disp(['Total time for BayesianSpikeRemoval: ' num2str(toc)])
-            end
-        else
-            if ~sProcess.options.despikeLFP.Value
-                for iChannel = 1:nChannels
-                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel},Fs, filterBounds);
-                    bst_progress('inc', 1);
-                end
-                % WRITE OUT
-                sFileOut = out_fwrite(sFileOut, ChannelMatOut, [], [], [], LFP); 
             else
                 for iChannel = 1:nChannels
                     LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames);
                     bst_progress('inc', 1);
                 end
-                % WRITE OUT
-                sFileOut = out_fwrite(sFileOut, ChannelMatOut, [], [], [], LFP);
+            end
+        else
+            if sProcess.options.paral.Value
+                parfor iChannel = 1:nChannels
+                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds);
+                end
+            else
+                for iChannel = 1:nChannels
+                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds);
+                    bst_progress('inc', 1);
+                end
             end
         end
+        
+        % WRITE OUT
+        sFileOut = out_fwrite(sFileOut, ChannelMatOut, [], [], [], LFP);
 
         % Import the RAW file in the database viewer and open it immediately
         OutputFiles = import_raw({sFileOut.filename}, 'BST-BIN', iSubject);
-
-
-
-
-        %% THIS APPROACH BELOW IS WITHOUT SEPARATING THE ELECTRODES
-        %  IT SEGMENTS LARGE FILES AND LOADS EVERYTHING STRAIGHT FROM THE
-        %  BINARY FILE.
-
-    %     %% START THE CONVERSION
-    %     % Do it in segments based on the memory the user selected
-    %     nBits_memory = sProcess.options.binsize.Value{1}*1024*1024*1024*8; % User input is in GB
-    %     % Loop through file based on the memory requested    
-    %     % Initialize sample bounds of the segments
-    %     nSamples_segment = ceil(nBits_memory/64/length(ChannelMat.Channel));
-    %     nSegments = ceil(sMat.F.prop.samples(2)/nSamples_segment);
-    %     timeBounds = zeros(nSegments,2);
-    %     for iSeg = 1:nSegments
-    %         if iSeg == nSegments
-    %             timeBounds(iSeg,:) = sMat.Time([(iSeg-1)*nSamples_segment+1, sMat.F.prop.samples(2)])
-    %         else
-    %             timeBounds(iSeg,:) = sMat.Time([(iSeg-1)*nSamples_segment+1, iSeg*nSamples_segment]);
-    %         end
-    %     end
-    %     
-    %     % Convert timeBounds to sample Bounds with the new sampling frequency
-    %     SAMPLEBounds = floor((timeBounds*NewFreq));
-    %     
-    %     for iSeg = 1:nSegments-1
-    %         if SAMPLEBounds(iSeg,2) == SAMPLEBounds(iSeg+1,1)
-    %             SAMPLEBounds(iSeg+1,1) = SAMPLEBounds(iSeg+1,1)+1;
-    %         end
-    %     end
-
-
-
-    % %     channelTypes = {ChannelMat.Channel.Type};
-    % %     nSpikeChannels = strcmp(channelTypes,'EEG'); % Perform spike sorting only on the channels that are EEG (CONSIDER CHANGING THE ACQUISITION IMPORTERS TO iEEG)
-
-
-
-    % % % % % %     iSeg = 1
-    % % % % % %     tic
-    % % % % % %     [a, ~] = in_bst(sInput.FileName, timeBounds(iSeg,:),1, 1, 'all', 0);
-    % % % % % %     disp(['Time to import all files at once: ' num2str(toc)])
-    % % % % % % 
-    % % % % % %     tic
-    % % % % % %     for iChannel = 1:length(ChannelMat.Channel)
-    % % % % % %         [F, TimeVector] = in_fread(sMat.F, ChannelMat, 1, SAMPLEBounds, iChannel, []);
-    % % % % % %     end
-    % % % % % %     disp(['Time to import all filessequentially: ' num2str(toc)])
-    % % % % % % 
-    % % % % % %     tic
-    % % % % % %     parfor iChannel = 1:length(ChannelMat.Channel)
-    % % % % % %         [F, TimeVector] = in_fread(sMat.F, ChannelMat, 1, SAMPLEBounds, iChannel, []);
-    % % % % % %     end
-    % % % % % %     disp(['Time to import all files in parallel: ' num2str(toc)])
-
-
-    % % %     filename = sInput.FileName;
-    % % %     % Do it in segments so there are no memory issues
-    % % %     if ~sProcess.options.despikeLFP.Value
-    % % %         % If no parallel processing is used, do it in segments. CHECK HOW
-    % % %         % TO DEAL WITH THE SAMPLES THAT STITCH THE SEGMENTS TOGETHER
-    % % %         if ~sProcess.options.paral.Value
-    % % %             for iSeg = 1:nSegments
-    % % %                 disp(['iSeg: ' num2str(iSeg)])
-    % % %                 [sMatSegment, ~] = in_bst(filename, timeBounds(iSeg,:),1, 1, 'all', 0); % The memory is skyrocketing for no apparent reason here...
-    % % % 
-    % % %                 % Filter and downsample
-    % % %                 [output_signal, ~, ~] = bst_bandpass_hfilter(sMatSegment.F, Fs, filterBounds(1), filterBounds(2), 0, 0);
-    % % %                 output_signal = downsample(output_signal',round(Fs/1000))';  % The file now has a different sampling rate (fs/30) = 1000Hz.
-    % % % 
-    % % %                 %% WRITE OUT
-    % % %                 sFileOut = out_fwrite(sFileOut, ChannelMatOut, [], [SAMPLEBounds(iSeg,1) SAMPLEBounds(iSeg,2)], [], output_signal); %clear F
-    % % %           %     sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iRow, sInput.A);
-    % % % 
-    % % %             end
-    % % %         else
-    % % %             % If doing things in parallel, load the entire electrode. This
-    % % %             % takes the same time as the in_bst function, but doesn't
-    % % %             % create any memory problems, and also avoids the "stitching problem"
-    % % %             tic
-    % % %             parfor iChannel = 1:length(ChannelMat.Channel)
-    % % %                 [F, ~] = in_fread(sMat.F, ChannelMat, 1, [], iChannel, []);
-    % % %                 %% WRITE OUT
-    % % %                 out_fwrite(sFileOut, ChannelMatOut, 1, [0, length(F)-1], iElectrode, F); %clear F
-    % % % %               sFile = out_fwrite(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, F);
-    % % %             end
-    % % %             toc
-    % % %            
-    % % %         end
-    % % %             
-    % % %     else
-    % % %         for iSeg = 1:nSegments
-    % % %             disp(['iSeg: ' num2str(iSeg)])
-    % % %             [output_signal, ~] = BayesianSpikeRemoval(sMat.F, ChannelMat, SAMPLEBounds, iSeg);
-    % % %             sFileOut = out_fwrite(sFileOut, ChannelMatOut, [], [SAMPLEBounds(iSeg,1) SAMPLEBounds(iSeg,2)], [], output_signal); %clear F
-    % % %         end
-    % % %     end
-    % % %     
-    % % %         
-    % % %         
-    % % %     % Import the RAW file in the database viewer and open it immediately
-    % % %     OutputFiles = import_raw({sFileOut.filename}, 'BST-BIN', iSubject);
     end
-
 end
 
 
-
-function data = filter_and_downsample(inputFilename,Fs, filterBounds)
-    load(inputFilename) % Make sure that a variable named data is loaded here. This file is saved as an output from the separator 
-    [data, ~, ~] = bst_bandpass_hfilter(data', Fs, filterBounds(1), filterBounds(2), 0, 0);
-    data = downsample(data',round(Fs/1000))';  % The file now has a different sampling rate (fs/30) = 1000Hz.
+function data = filter_and_downsample(inputFilename, Fs, filterBounds)
+    sMat = load(inputFilename); % Make sure that a variable named data is loaded here. This file is saved as an output from the separator 
+    data = bst_bandpass_hfilter(sMat.data', Fs, filterBounds(1), filterBounds(2), 0, 0);
+    data = downsample(data', round(Fs/1000))';  % The file now has a different sampling rate (fs/30) = 1000Hz.
 end
-
-
-
-
-
 
 
 %% BAYESIAN DESPIKING
 function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile, ChannelMat, cleanChannelNames)
 
-    load(inputFilename) % Make sure that a variable named data is loaded here. This file is saved as an output from the separator 
+    sMat = load(inputFilename); % Make sure that a variable named data is loaded here. This file is saved as an output from the separator 
     
     %% Instead of just filtering and then downsampling, DeriveLFP is used, as in:
     % https://www.ncbi.nlm.nih.gov/pubmed/21068271
     
     % Remove line noise peaks at 60, 180Hz
-    data_deligned = delineSignal(data, sr, [60,180]); % This function plots a figure!!!
+    data_deligned = delineSignal(sMat.data, sMat.sr, [60,180]); % This function plots a figure!!!
     
     g = fitLFPpowerSpectrum(data_deligned,filterBounds(1),filterBounds(2),sFile.prop.sfreq);
 %     load('C:/Users/McGill/Desktop/g.mat') % this loads a variable g
@@ -399,30 +273,30 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     % for 30000 Hz sampling rate
     % Since spktimes are the time of the peak of each spike, we subtract 15
     % from spktimes to obtain the start times of the spikes
-    nSegment = sr * 0.0025;
+    nSegment = sMat.sr * 0.0025;
     Bs = eye(nSegment); % 60x60
     opts.displaylevel = 0;
 
     S = zeros(length(data_deligned),1);
     
     
-    
     %% Get the channel Index of the file that is imported
-    [~,ChannelName,~] = fileparts(inputFilename);
-    ChannelName = erase(ChannelName,'raw_elec_');
+    [tmp, ChannelName] = fileparts(inputFilename);
+    ChannelName = strrep(ChannelName, 'raw_elec_', '');
     % I need to find the transformed channelname index that is used at the filename.
     iChannel = find(ismember(cleanChannelNames, ChannelName));
     
     
     % Get the index of the event that show this electrode's spikes
     allEventLabels = {sFile.events.label};
+    spike_event_prefix = process_spikesorting_supervised('GetSpikesEventPrefix');
     % First check if there is only one neuron on the channel
-    iEventforElectrode = find(ismember(allEventLabels, ['Spikes Channel ' ChannelMat.Channel(iChannel).Name])); % Find the index of the spike-events that correspond to that electrode (Exact string match)
+    iEventforElectrode = find(ismember(allEventLabels, [spike_event_prefix ' ' ChannelMat.Channel(iChannel).Name])); % Find the index of the spike-events that correspond to that electrode (Exact string match)
     %Then check if there are multiple
     if isempty(iEventforElectrode)
-        iEventforElectrode = find(ismember(allEventLabels, ['Spikes Channel ' ChannelMat.Channel(iChannel).Name ' |1|']));% Find the index of the spike-events that correspond to that electrode (Exact string match)
+        iEventforElectrode = find(ismember(allEventLabels, [spike_event_prefix ' ' ChannelMat.Channel(iChannel).Name ' |1|']));% Find the index of the spike-events that correspond to that electrode (Exact string match)
         if ~isempty(iEventforElectrode)
-            iEventforElectrode = find(contains(allEventLabels, ['Spikes Channel ' ChannelMat.Channel(iChannel).Name ' |']));
+            iEventforElectrode = find(contains(allEventLabels, [spike_event_prefix ' ' ChannelMat.Channel(iChannel).Name ' |']));
         end
     end
     
@@ -439,8 +313,7 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
         data_derived = data_deligned';
     end
     
-    data_derived = downsample(data_derived, sr/1000);  % The file now has a different sampling rate (fs/30) = 1000Hz
-    
+    data_derived = downsample(data_derived, sMat.sr/1000);  % The file now has a different sampling rate (fs/30) = 1000Hz
     
 end
 
@@ -471,19 +344,12 @@ function downloadAndInstallDeriveLFP()
     % Unzip file
     bst_progress('start', 'DeriveLFP', 'Installing DeriveLFP...');
     unzip(zipFile, DeriveLFPTmpDir);
-    % Get parent folder of the unzipped file
-    diropen = dir(fullfile(DeriveLFPTmpDir, 'MATLAB*'));
-%     idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
     newDeriveLFPDir = bst_fullfile(DeriveLFPTmpDir);
-    % Move WaveClus directory to proper location
+    % Move directory to proper location
     movefile(newDeriveLFPDir, DeriveLFPDir);
     % Delete unnecessary files
     file_delete(DeriveLFPTmpDir, 1, 3);
-    % Add WaveClus to Matlab path
+    % Add to Matlab path
     addpath(genpath(DeriveLFPDir));
 end
-
-
-
-
 
