@@ -32,15 +32,16 @@ if (nargin < 2) || isempty(SamplesBounds)
     SamplesBounds = sFile.prop.samples;
 end
 
+nChannels = length(iChannels);
+nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
 
 % Read the corresponding recordings
-F = zeros(length(iChannels), diff(SamplesBounds)+1);
+F = zeros(nChannels, nSamples);
 
-for iChannel = 1:length(iChannels)
-    
-    fid = fopen(fullfile(sFile.filename,sFile.header.chan_files(iChannel).name), 'r');
+for iChannel = 1:nChannels
+    fid = fopen(fullfile(sFile.filename, sFile.header.chan_files(iChannel).name), 'r');
     fseek(fid, SamplesBounds(1), 'bof');
-    data_channel = fread(fid, SamplesBounds(2) - SamplesBounds(1) +1, 'int16');
-    F(iChannel,:) = data_channel*0.195; % Convert to microvolts
+    data_channel = fread(fid, nSamples, 'int16');
+    F(iChannel,:) = data_channel * 0.195; % Convert to microvolts
     fclose(fid);
 end

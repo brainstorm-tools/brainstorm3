@@ -55,10 +55,19 @@ hdr.chan_files = {};
 
 % Read the header
 % THIS IMPORTER COMPILES A C FUNCTION BEFORE RUNNING FOR THE FIRST TIME
-
-if ~exist('readPLXFileC.mexw*','file')
-    'asdfsdf'
-    build_readPLXFileC
+if exist('readPLXFileC','file') ~= 3
+    current_path = pwd;
+    plexon_path = bst_fileparts(which('build_readPLXFileC'));
+    cd(plexon_path);
+    ME = [];
+    try
+        build_readPLXFileC();
+    catch ME
+    end
+    cd(current_path);
+    if ~isempty(ME)
+        rethrow(ME);
+    end
 end
 
 newHeader = readPLXFileC(DataFile,'events','spikes');
@@ -156,13 +165,9 @@ if isfield(newHeader, 'EventChannels')
         uniqueStrobed = double(sort(unique(newHeader.EventChannels(iStrobed).Values)));
         unique_events = unique_events+length(uniqueStrobed)-1;
     end
-        
-        
     
     % Initialize list of events
     events = repmat(db_template('event'), 1, unique_events);
-    
-    
     
     % Format list
     iNotEmptyEvents = 0;
@@ -212,6 +217,8 @@ if isfield(newHeader, 'SpikeChannels')
         end
     end
     
+    spike_event_prefix = process_spikesorting_supervised('GetSpikesEventPrefix');
+    
     for iEvt = 1:length(newHeader.SpikeChannels)
         if ~isempty(newHeader.SpikeChannels(iEvt).Timestamps)
             
@@ -229,7 +236,7 @@ if isfield(newHeader, 'SpikeChannels')
                 end
                 
                 % Fill the event fields
-                events(last_event_index).label      = ['Spikes Channel ' newHeader.SpikeChannels(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
+                events(last_event_index).label      = [spike_event_prefix ' ' newHeader.SpikeChannels(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
                 events(last_event_index).color      = rand(1,3);
                 events(last_event_index).samples    = round(double(newHeader.SpikeChannels(iEvt).Timestamps(double(newHeader.SpikeChannels(iEvt).Units) == iNeuron)') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
                 events(last_event_index).times      = events(last_event_index).samples/channel_Fs; 

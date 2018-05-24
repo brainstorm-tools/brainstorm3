@@ -51,19 +51,19 @@ header = readPLXFileC(sFile.filename);
 CHANNELS_SELECTED = [header.ContinuousChannels.Enabled]; % Only get the channels that have been enabled. The rest won't load any data
 CHANNELS_SELECTED = find(CHANNELS_SELECTED);
 
-data = readPLXFileC(sFile.filename,'continuous',CHANNELS_SELECTED(iChannels)-1, 'first', SamplesBounds(1), 'num', diff(SamplesBounds)+1); % This loads only the iChannels
-% data = readPLXFileC(sFile.filename,'continuous', iChannels, 'first', SamplesBounds(1), 'num', diff(SamplesBounds)+1);
+nChannels = length(CHANNELS_SELECTED(iChannels));
+nSamples  = diff(SamplesBounds) + 1;
 
+data = readPLXFileC(sFile.filename, 'continuous', CHANNELS_SELECTED(iChannels)-1, 'first', SamplesBounds(1), 'num', nSamples); % This loads only the iChannels
 
 % Initialize Brainstorm output
-F = zeros(length(CHANNELS_SELECTED(iChannels)), diff(SamplesBounds)+1);
-
+F = zeros(nChannels, nSamples);
 
 ii = 0;
 for iChannel = CHANNELS_SELECTED(iChannels)
     if ~isempty(data.ContinuousChannels(iChannel).Values)
         ii = ii+1;
-        F(ii,:) = double(data.ContinuousChannels(iChannel).Values) * 2.441406250000000e-07; % Convert to Volts
+        F(ii,:) = double(data.ContinuousChannels(iChannel).Values) / 4096000; % Convert to Volts
     end
 end
 
