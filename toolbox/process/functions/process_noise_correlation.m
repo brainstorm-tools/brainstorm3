@@ -161,10 +161,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     %% Compute the Correlation for nxn Neurons
     noise_correlation = zeros(1,size(all_binned, 2), size(all_binned, 2));
     
-    inputs.normalize      = true;
-    inputs.nTrials        = 1;
-    inputs.flagStatistics = 0;
-    [connectivity, ~, ~] = bst_correlation(all_binned', all_binned',inputs);
+    opts.normalize      = true;
+    opts.nTrials        = 1;
+    opts.flagStatistics = 0;
+    connectivity = bst_correlation(all_binned', all_binned', opts);
     noise_correlation(1,:,:) = connectivity; 
     
     

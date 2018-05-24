@@ -121,7 +121,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     labelsForDropDownMenu = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
     for iFile = 1:nTrials
         for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
-            if ~isempty(strfind(ALL_TRIALS_files(iFile).Events(iEvent).label,'Spikes Channel'))
+            if process_spikesorting_supervised('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label)
                 labelsForDropDownMenu{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
             end
         end
@@ -143,22 +143,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
 
     for ifile = 1:length(sInputs)
-        
         trial = in_bst(sInputs(ifile).FileName);
         single_file_binning = zeros(length(labelsForDropDownMenu), nBins);
         
         for iNeuron = 1:length(labelsForDropDownMenu)
             for ievent = 1:size(trial.Events,2)
-                
                 if strcmp(trial.Events(ievent).label, labelsForDropDownMenu{iNeuron})
                     
                     outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
-                    trial.Events(ievent).times(outside_up) = bins(end)-.001; % I assign those spikes just 1ms inside the bin
+                    trial.Events(ievent).times(outside_up) = bins(end) - 0.001; % I assign those spikes just 1ms inside the bin
                     outside_down = trial.Events(ievent).times <= bins(1);
-                    trial.Events(ievent).times(outside_down) = bins(1)+.001; % I assign those spikes just 1ms inside the bin
+                    trial.Events(ievent).times(outside_down) = bins(1) + 0.001; % I assign those spikes just 1ms inside the bin
                     
                     [~, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
-                                 
+                    
                     unique_bin = unique(bin_it_belongs_to);
                     occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
                      

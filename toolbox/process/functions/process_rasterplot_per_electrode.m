@@ -95,7 +95,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % === OUTPUT STUDY ===
     % Get output study
-    [~, iStudy, ~] = bst_process('GetOutputStudy', sProcess, sInputs);
+    [tmp, iStudy] = bst_process('GetOutputStudy', sProcess, sInputs);
     tfOPTIONS.iTargetStudy = iStudy;
     
    
@@ -124,11 +124,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if process_spikesorting_supervised('IsSpikeEvent', trial.Events(ievent).label) && process_spikesorting_supervised('IsFirstNeuron', trial.Events(ievent).label)
                     
                     outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
-                    trial.Events(ievent).times(outside_up) = bins(end);
+                    trial.Events(ievent).times(outside_up) = bins(end) - 0.001; % Make sure it is inside the bin. Add 1ms offset
                     outside_down = trial.Events(ievent).times <= bins(1);
-                    trial.Events(ievent).times(outside_down) = bins(1);
+                    trial.Events(ievent).times(outside_down) = bins(1) + 0.001; % Make sure it is inside the bin. Add 1ms offset
                     
-                    [~, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
+                    [tmp, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
                      
                     unique_bin = unique(bin_it_belongs_to);
                     occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
@@ -145,7 +145,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         convertedEvents = trial.Events;
         
         for iEvent = 1:length(trial.Events)
-            [~, bin_it_belongs_to] = histc(trial.Events(iEvent).times, bins);
+            [tmp, bin_it_belongs_to] = histc(trial.Events(iEvent).times, bins);
             convertedEvents(iEvent).samples = bin_it_belongs_to;
             
             bin_it_belongs_to(bin_it_belongs_to==0) = 1;

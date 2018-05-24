@@ -479,7 +479,7 @@ function [TF, Freqs] = compute_FFT(F, time)
     
     
     %%%%%%%%%%%% This is added. SFC doesn't need the complex values %%%%%%%
-    TF = (abs(TF)).^2;                           % CHECK IF SHOULD USE THE ABS HERE, OR THE PLOTTING_FFT DOES IT - or even the .^2
+    TF = TF .^ 2;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     % Permute dimensions: time and frequency
