@@ -939,6 +939,9 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     % ChannelFlag 
      if isfield(sInput, 'ChannelFlag') && ~isempty(sInput.ChannelFlag)
         sMat.ChannelFlag = sInput.ChannelFlag;
+        if isRaw
+            sMat.F.channelflag = sInput.ChannelFlag;
+        end
     end
     % New events created in the process
     if isfield(sInput, 'Events') && ~isempty(sInput.Events) && ismember(sInput.FileType, {'data', 'raw', 'matrix'})
