@@ -67,10 +67,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.lowpass.Type    = 'value';
     sProcess.options.lowpass.Value   = {5000,'Hz ',0};
     % Options: Options
-    sProcess.options.make_plotshelp.Comment = '<I><FONT color="#777777">This saves images of the clustered spikes</FONT></I>';
-    sProcess.options.make_plotshelp.Type    = 'label';
-    % Options: Options
-    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Options</B></U>: '};
+    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Parameters</B></U>: '};
     sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = [];
 end
@@ -138,7 +135,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
             catch
                 sProcess.options.paral.Value = 0;
+                poolobj = [];
             end
+        else
+            poolobj = [];
         end
         
         %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
@@ -182,7 +182,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         %%%%%%%%%%%%%%%%%%%%%  Create Brainstorm Events %%%%%%%%%%%%%%%%%%%
-        bst_progress('text', 'Saving events file...');        
+        bst_progress('text', 'Saving events file...');
         cd(previous_directory);
         
         % ===== SAVE LINK FILE =====
@@ -218,7 +218,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             DataMat.Spikes(iSpike).Mod  = 0;
         end
         % Save events file for backup
-        SaveBrainstormEvents(DataMat, 'events_UNSUPERVISED.mat', 'Unsupervised');
+        SaveBrainstormEvents(DataMat, 'events_UNSUPERVISED.mat');
         % Add history field
         DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
         % Save file on hard drive

@@ -62,7 +62,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.make_plotshelp.Comment = '<I><FONT color="#777777">This saves images of the clustered spikes</FONT></I>';
     sProcess.options.make_plotshelp.Type    = 'label';
     % Options: Options
-    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Options</B></U>: '};
+    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Parameters</B></U>: '};
     sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = [];
 end
@@ -103,6 +103,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         downloadAndInstallWaveClus();
     end
     
+    % Prepare parallel pool, if requested
+    if sProcess.options.paral.Value
+        try
+            poolobj = gcp('nocreate');
+            if isempty(poolobj)
+                parpool;
+            end
+        catch
+            sProcess.options.paral.Value = 0;
+            poolobj = [];
+        end
+    else
+        poolobj = [];
+    end
+    
     % Compute on each raw input independently
     for i = 1:length(sInputs)
         [fPath, fBase] = bst_fileparts(sInputs(i).FileName);
@@ -118,18 +133,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         sFiles = in_spikesorting_rawelectrodes(sInputs(i), ...
             sProcess.options.binsize.Value{1} * 1e9, ...
             sProcess.options.paral.Value);
-        
-        % Prepare parallel pool, if requested
-        if sProcess.options.paral.Value
-            try
-                poolobj = gcp('nocreate');
-                if isempty(poolobj)
-                    parpool;
-                end
-            catch
-                sProcess.options.paral.Value = 0;
-            end
-        end
         
         %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
         outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_waveclus_spikes']);
@@ -153,11 +156,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         if sProcess.options.paral.Value  
             parfor ielectrode = 1:numChannels
-                Get_spikes(sFiles{ielectrode});
+                if strcmpi(ChannelMat.Channel(ielectrode).Type, 'EEG') % Perform spike sorting only on the channels that are EEG
+                    Get_spikes(sFiles{ielectrode});
+                end
             end
         else
             for ielectrode = 1:numChannels
-                Get_spikes(sFiles{ielectrode});
+                if strcmpi(ChannelMat.Channel(ielectrode).Type, 'EEG')
+                    Get_spikes(sFiles{ielectrode});
+                end
                 bst_progress('inc', 1);
             end
         end
@@ -177,7 +184,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             make_plots = false;
         end
         
-        % Do the clustering in parallel
+        % Do the clustering
         Do_clustering(1:numChannels, 'parallel', parallel, 'make_plots', make_plots);
         
         %%%%%%%%%%%%%%%%%%%%%  Create Brainstorm Events %%%%%%%%%%%%%%%%%%%
@@ -207,18 +214,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Build spikes structure
         spikes = dir(bst_fullfile(outputPath, 'raw_elec*_spikes.mat'));
         spikes = sort_nat({spikes.name});
-        for iSpike = 1:length(spikes)
-            iChannel  = sscanf(spikes{iSpike}, 'raw_elec%d_spikes.mat');
-            DataMat.Spikes(iSpike).Path = outputPath;
-            DataMat.Spikes(iSpike).File = ['times_raw_elec' num2str(iChannel) '.mat'];
-            if exist(bst_fullfile(outputPath, DataMat.Spikes(iSpike).File), 'file') ~= 2
-                DataMat.Spikes(iSpike).File = '';
+        % New channelNames - Without any special characters.
+        cleanChannelNames = str_remove_spec_chars({ChannelMat.Channel.Name});
+        for iChannel = 1:length(cleanChannelNames)
+            DataMat.Spikes(iChannel).Path = outputPath;
+            DataMat.Spikes(iChannel).File = ['times_raw_elec_' cleanChannelNames{iChannel} '.mat'];
+            if exist(bst_fullfile(outputPath, DataMat.Spikes(iChannel).File), 'file') ~= 2
+                DataMat.Spikes(iChannel).File = '';
+                disp(['The threshold was not crossed for Channel: ' ChannelMat.Channel(iChannel).Name]);
             end
-            DataMat.Spikes(iSpike).Name = ChannelMat.Channel(iChannel).Name;
-            DataMat.Spikes(iSpike).Mod  = 0;
+            DataMat.Spikes(iChannel).Name = ChannelMat.Channel(iChannel).Name;
+            DataMat.Spikes(iChannel).Mod  = 0;
         end
         % Save events file for backup
-        SaveBrainstormEvents(DataMat, 'events_UNSUPERVISED.mat', 'Unsupervised');
+        SaveBrainstormEvents(DataMat, 'events_UNSUPERVISED.mat');
         % Add history field
         DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
         % Save file on hard drive
@@ -242,9 +251,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             delete(poolobj);
         end
     end
-
-    %cd(previous_directory)
-    
     
 end
 
