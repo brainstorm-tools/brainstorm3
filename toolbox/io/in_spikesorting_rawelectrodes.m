@@ -53,7 +53,7 @@ ChannelMat = in_bst_channel(sInput.ChannelFile);
 numChannels = length(ChannelMat.Channel);
 
 % New channelNames - Without any special characters.
-cleanNames = str_remove_spec_chars(ChannelMat.Channel.Name);
+cleanNames = str_remove_spec_chars({ChannelMat.Channel.Name});
 
 missingFile = 0;
 sFiles = {};
