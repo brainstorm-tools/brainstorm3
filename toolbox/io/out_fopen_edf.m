@@ -43,7 +43,7 @@ if ~isRawEdf
     for iBlock = 1:nBlocks
         bst_progress('text', sprintf('Finding maximum values [%d%%]', round(iBlock/nBlocks*100)));
         % Get sample indices for a block of 1s
-        SamplesBounds = [(iBlock - 1) * BlockSize, min(nSamples, iBlock * BlockSize) - 1] - sFileIn.prop.samples(1);
+        SamplesBounds = [(iBlock - 1) * BlockSize + sFileIn.prop.samples(1), min(sFileIn.prop.samples(2), sFileIn.prop.samples(1) + iBlock * BlockSize)];
         % Read the block from the file
         Fblock = in_fread(sFileIn, ChannelMat, 1, SamplesBounds);
         % Extract absolute max
