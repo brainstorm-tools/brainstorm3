@@ -416,8 +416,19 @@ for iFile = 1:length(LabelFiles)
                     % Find left and right areas
                     iL = find(Pmni(:,1) < 0);
                     iR = find(Pmni(:,1) >= 0);
+                    % If there is about the same number of points in the two sides: consider it's a bilateral region
+                    if isempty(iL) || isempty(iR)
+                        isSplit = 0;
+                    elseif (length(iL) / length(iR) < 1.6) && (length(iL) / length(iR) > 0.4)
+                        isSplit = 1;
+                    % If the name starts with "S_", "G_" or "N_", it's also a bilateral region
+                    elseif (length(sAtlas.Scouts(iScout).Label) >= 3) && ismember(sAtlas.Scouts(iScout).Label(1:2), {'S_', 'G_', 'N_'})
+                        isSplit = 1;
+                    else
+                        isSplit = 0;
+                    end
                     % If this is a bilateral region: split in two
-                    if ~isempty(iL) && ~isempty(iR) && (length(iL) / length(iR) < 1.6) && (length(iL) / length(iR) > 0.4)
+                    if isSplit
                         % Duplicate scout
                         sAtlas.Scouts(iScout+1) = sAtlas.Scouts(iScout);
                         % Left scout
