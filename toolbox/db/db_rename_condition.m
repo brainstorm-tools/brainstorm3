@@ -263,9 +263,10 @@ function [s, isModified] = replaceStruct(s, field, oldPath, newPath)
             % Get file path
             [fPath,fBase,fExt] = bst_fileparts(splitLink{i});
             % Replace "oldPath" with "newPath"
-            fPath = strrep(file_win2unix(fPath), file_win2unix(oldPath), file_win2unix(newPath));
+            if ~isempty(strfind(file_win2unix(fPath), file_win2unix(oldPath)))
+                fPath = strrep(file_win2unix(fPath), file_win2unix(oldPath), file_win2unix(newPath));
             % If the subject was renamed: change the subject directly (in the case of link files to @default_study)
-            if ~strcmpi(oldSubj, newSubj)
+            elseif ~strcmpi(oldSubj, newSubj)
                 fPath = strrep(file_win2unix(fPath), [file_win2unix(oldSubj) '/'], [file_win2unix(newSubj) '/']);
             end
             % Update file path
@@ -278,9 +279,10 @@ function [s, isModified] = replaceStruct(s, field, oldPath, newPath)
         % Get file path
         [fPath,fBase,fExt] = bst_fileparts(s.(field));
         % Replace "oldPath" with "newPath"
-        fPath = strrep(file_win2unix(fPath), file_win2unix(oldPath), file_win2unix(newPath));
+        if ~isempty(strfind(file_win2unix(fPath), file_win2unix(oldPath)))
+            fPath = strrep(file_win2unix(fPath), file_win2unix(oldPath), file_win2unix(newPath));
         % If the subject was renamed: change the subject directly (in the case of link files to @default_study)
-        if ~strcmpi(oldSubj, newSubj)
+        elseif ~strcmpi(oldSubj, newSubj)
             fPath = strrep([file_win2unix(fPath) '/'], [file_win2unix(oldSubj) '/'], [file_win2unix(newSubj) '/']);
             fPath = fPath(1:end-1);
         end
