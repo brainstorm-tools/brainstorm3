@@ -33,17 +33,19 @@ end
 
 % Read MRI volume
 if ischar(MriFile)
+    % FreeSurfer ASEG?
+    isAseg = (~isempty(strfind(MriFile, 'aseg.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto_noCCseg.mgz')));
+    % Read volume
+    isInteractive = ~isAseg;
     if isMni
-        sMri = in_mri(MriFile, 'ALL-MNI');
+        sMri = in_mri(MriFile, 'ALL-MNI', isInteractive);
     else
-        sMri = in_mri(MriFile, 'ALL');
+        sMri = in_mri(MriFile, 'ALL', isInteractive);
     end
     if isempty(sMri)
         TessMat = [];
         return;
     end
-    % FreeSurfer ASEG?
-    isAseg = (~isempty(strfind(MriFile, 'aseg.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto_noCCseg.mgz')));
     % Try to get volume labels for this atlas
     if isAseg
         if (nnz(sMri.Cube == 7) == 0)

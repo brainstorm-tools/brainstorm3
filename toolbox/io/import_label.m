@@ -132,6 +132,8 @@ for iFile = 1:length(LabelFiles)
                     sAtlas.Name = 'Brodmann-thresh';
                 case {'lh.aparc.DKTatlas40', 'rh.aparc.DKTatlas40'}
                     sAtlas.Name = 'Mindboggle';
+                case {'lh.aparc.DKTatlas', 'rh.aparc.DKTatlas'}
+                    sAtlas.Name = 'Mindboggle6';
                 case {'lh.PALS_B12_Brodmann', 'rh.PALS_B12_Brodmann'}
                     sAtlas.Name = 'PALS-B12 Brodmann';
                 case {'lh.PALS_B12_Lobes', 'rh.PALS_B12_Lobes'}
