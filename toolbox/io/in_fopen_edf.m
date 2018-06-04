@@ -259,7 +259,7 @@ for i = 1:hdr.nsignal
             if ~isempty(hdr.signal(i).type)
                 if (length(hdr.signal(i).type) == 3)
                     ChannelMat.Channel(i).Type = hdr.signal(i).type(hdr.signal(i).type ~= ' ');
-                elseif isequal(hdr.signal(i).type, 'Active Electrode')
+                elseif isequal(hdr.signal(i).type, 'Active Electrode') || isequal(hdr.signal(i).type, 'AgAgCl electrode')
                     ChannelMat.Channel(i).Type = 'EEG';
                 else
                     ChannelMat.Channel(i).Type = 'Misc';
