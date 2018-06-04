@@ -58,9 +58,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jToolbar.addSeparator();
             jButtonAll = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SCOUT_ALL, TB_SIZE}, 'Display all the montages');
         % LIST: Create list
-        jListMontages = JList({' '});
+        jListMontages = JList();
             jListMontages.setFont(bst_get('Font'));
             jListMontages.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+            fontSize1 = round(11 * bst_get('InterfaceScaling') / 100);
+            fontSize2 = round(8 * bst_get('InterfaceScaling') / 100);
+            jListMontages.setCellRenderer(java_create('org.brainstorm.list.BstHotkeyListRenderer', 'I', fontSize1, fontSize2));
             java_setcb(jListMontages, 'ValueChangedCallback', [], ...
                                       'KeyTypedCallback',     [], ...
                                       'MouseClickedCallback', []);
@@ -477,6 +480,7 @@ function [sFigMontages, iFigMontages] = UpdateMontagesList(hFig, SelMontageName)
     end
     % Create a list with all the available montages
     listModel = javax.swing.DefaultListModel();
+    MontageOptions = bst_get('MontageOptions');
     for i = 1:length(iDispMontages)
         iMontage = iDispMontages(i);
         if ~isAll || ismember(iMontage, iFigMontages)
@@ -484,7 +488,15 @@ function [sFigMontages, iFigMontages] = UpdateMontagesList(hFig, SelMontageName)
         else
             strMontage = ['[' sAllMontages(iMontage).Name ']'];
         end
-        listModel.addElement(BstListItem(sAllMontages(iMontage).Name, '', strMontage, iMontage));
+        % Look for shortcut
+        shortcut = [];
+        for iShortcut = 2:26
+            if strcmpi(sAllMontages(iMontage).Name, MontageOptions.Shortcuts{iShortcut,2})
+                shortcut = ['Shift+' upper(MontageOptions.Shortcuts{iShortcut,1})];
+                break;
+            end
+        end
+        listModel.addElement(BstListItem(shortcut, '', strMontage, iMontage));
     end
     ctrl.jListMontages.setModel(listModel);
     % Look for selected montage index in the list of displayed montages
