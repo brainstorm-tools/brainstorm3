@@ -65,7 +65,7 @@ switch OPTIONS.MatrixOrientation
         % OK
     case 'timeXchannel'
         % Transpose needed
-        FileData = permute(FileData, [2 1]);
+        FileData = permute(FileData, [2 1 3]);
 end
 
 % Build time vector
