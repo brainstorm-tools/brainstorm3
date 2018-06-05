@@ -1,4 +1,8 @@
 ---------------------------------------------------------------
+June 2018
+- IO: Updated BIDS import function to follow the most recent changes in the specs
+- Doc: Updated tutorial resting/omega to match the v2 of the BIDS dataset on OpenNeuro
+---------------------------------------------------------------
 May 2018
 - IO: Added support for g.tec HDF5 files
 - Web: Switch to https

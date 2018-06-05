@@ -5,7 +5,7 @@ function tutorial_omega(BidsDir)
 %     https://neuroimage.usc.edu/brainstorm/Tutorials/RestingOmega
 %
 % INPUTS: 
-%     tutorial_dir: Directory where the ds000247_R1.0.0.zip file has been unzipped
+%     tutorial_dir: Directory where the OMEGA_RestingState_sample.tar file has been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
