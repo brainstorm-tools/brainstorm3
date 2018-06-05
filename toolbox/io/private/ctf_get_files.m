@@ -117,6 +117,8 @@ if ~isempty(iHidden)
     posDir(iHidden) = [];
 end
 
+% Get dataset name and path
+[dspath, dsname] = bst_fileparts(ds_directory);
 % Return polhemus file
 pos_file = [];
 if (length(posDir) == 1)
@@ -125,8 +127,6 @@ elseif (length(posDir) > 1)
     error('Two Polhemus files in the same folder.');
 % Check for BIDS version: .pos is in the same folder as the .ds
 else
-    % Get dataset name and path
-    [dspath, dsname] = bst_fileparts(ds_directory);
     % Attempt #1: sub-subid_headshape.pos
     iUnder = find(dsname == '_', 1);
     if ~isempty(iUnder) && (iUnder > 1) && file_exist(bst_fullfile(dspath, [dsname(1:iUnder-1), '_headshape.pos']))
@@ -144,7 +144,7 @@ else
         posDir = dir(bst_fullfile(dspath, [dsname(1:iUnder-1), '*.pos']));
         if (length(posDir) == 1)
             pos_file = bst_fullfile(dspath, posDir(1).name);
-        else
+        elseif (length(posDir) >= 2)
             disp(['CTF> Warning: Multiple .pos head shape points found in: ' dspath]);
         end
     end
@@ -154,7 +154,7 @@ end
 if ~isempty(pos_file)
     disp(['CTF> Using head shape file: ' pos_file]);
 else
-    disp('CTF> No head shape imported.');
+    disp(['CTF> Warning: No head shape imported for dataset: ' dsname]);
 end
 
 

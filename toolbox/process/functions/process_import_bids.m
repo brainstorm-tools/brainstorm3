@@ -57,6 +57,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.bidsdir.Comment = 'Folder to import:';
     sProcess.options.bidsdir.Type    = 'filename';
     sProcess.options.bidsdir.Value   = SelectOptions;
+    % Subject selection
+    sProcess.options.selectsubj.Comment = 'Import only selected subjects:';
+    sProcess.options.selectsubj.Type    = 'text';
+    sProcess.options.selectsubj.Value   = '';
     % Option: Number of vertices
     sProcess.options.nvertices.Comment = 'Number of vertices (cortex): ';
     sProcess.options.nvertices.Type    = 'value';
@@ -92,10 +96,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Channels align
     ChannelAlign = 2 * double(sProcess.options.channelalign.Value);
+    % Subject selection
+    SelectedSubjects = sProcess.options.selectsubj.Value;
     
     % === IMPORT DATASET ===
     % Import dataset
-    [OutputFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, 0, ChannelAlign);
+    [OutputFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, 0, ChannelAlign, SelectedSubjects);
     % Handling errors
     if ~isempty(Messages)
         if isempty(OutputFiles)
@@ -108,13 +114,16 @@ end
 
 
 %% ===== IMPORT BIDS DATABASE =====
-% USAGE:  [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], nVertices=[ask], isInteractive=1, ChannelAlign=2)
-function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteractive, ChannelAlign)
+% USAGE:  [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], nVertices=[ask], isInteractive=1, ChannelAlign=2, SelectedSubjects=[])
+function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteractive, ChannelAlign, SelectedSubjects)
     % Initialize returned values
     RawFiles = {};
     Messages = [];
     
     % ===== PARSE INPUTS =====
+    if (nargin < 5) || isempty(SelectedSubjects)
+        SelectedSubjects = [];
+    end
     if (nargin < 4) || isempty(ChannelAlign)
         ChannelAlign = 0;
     end
@@ -172,6 +181,11 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
     for iSubj = 1:length(subjDir)
         % Default subject name
         subjName = subjDir(iSubj).name;
+        % Check if this is a subject selected for import
+        if ~isempty(SelectedSubjects) && ((iscell(SelectedSubjects) && ~ismember(subjName, SelectedSubjects)) || (ischar(SelectedSubjects) && ~strcmpi(subjName, SelectedSubjects)))
+            disp(['BIDS> Subject "' subjName '" was not selected. Skipping...']);
+            continue;
+        end
         % Get session folders
         sessDir = dir(bst_fullfile(BidsDir, subjName, 'ses-*'));
         % Check if sessions are defined for the derivatives
