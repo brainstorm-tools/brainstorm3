@@ -167,17 +167,42 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         end
         
     elseif isTimeMean
-        tpac_avg = repmat(mean(tpac_avg,2),[1,size(tpac_avg,2),1]);
-        [PACmax,tmp] = max(abs(tpac_avg),[],1);
-        tpacMat.TF = squeeze(PACmax)';
-    end    
-    
-    tpacMat.sPAC.DynamicPAC = tpac_avg;
-    tpacMat.TF = tpac_avg;   
-    if usePhase
-        tpacMat.sPAC.DynamicPhase = tpac_avg_phase;
+        if length(sInput)==1
+            tpac_avg = repmat(mean(tpac_avg,2),[1,size(tpac_avg,2),1]);
+            [PACmax,tmp] = max(abs(tpac_avg),[],1);
+            tpacMat.TF = squeeze(PACmax)';        
+        elseif length(sInput)>1
+            N = length(sInput);
+            for iFile = 2:N
+%                 TimefreqMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
+%                 TimefreqMat2.sPAC.DynamicPAC = median(TimefreqMat2.sPAC.DynamicPAC,1);
+%                 TimefreqMat2.TF = median(TimefreqMat2.sPAC.DynamicPAC,1);                
+                tPACMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
+                tpac_avg = repmat(mean(tPACMat2.sPAC.DynamicPAC,2),[1,size(tPACMat2.sPAC.DynamicPAC,2),1]);
+                [PACmax,tmp] = max(abs(tpac_avg),[],1);
+                tPACMat2.TF = tpac_avg;%squeeze(PACmax)';
+                tPACMat2.sPAC.DynamicPAC = tpac_avg;
+                
+                
+                %Saving the files
+                tPACMat2.Comment = [tPACMat2.Comment, ' ', tag];
+                % Output filename: add file tag
+                FileTag = strtrim(strrep(tag, '|', ''));
+                pathName = file_fullpath(sInput(iFile).FileName);
+                OutputFile{1} = strrep(pathName, '.mat', ['_' FileTag '.mat']);
+                OutputFile{1} = file_unique(OutputFile{1});
+                % Save file
+                bst_save(OutputFile{1}, tPACMat2, 'v6');
+                % Add file to database structure
+                db_add_data(sInput(iFile).iStudy, OutputFile{1}, tPACMat2);
+            end
+        end            
+        tpacMat.sPAC.DynamicPAC = tpac_avg;
+        tpacMat.TF = tpac_avg;
+        if usePhase
+            tpacMat.sPAC.DynamicPhase = tpac_avg_phase;
+        end
     end
-    
     % === SAVING THE DATA IN BRAINSTORM ===
     % Getting the study
     [sOutputStudy, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInput(1));
