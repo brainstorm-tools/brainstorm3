@@ -1521,8 +1521,6 @@ function CreateMontageMenu(jButton, hFig)
     end
     gui_component('MenuItem', jPopup, [], 'New custom montage',  IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('text', [], hFig));
     jPopup.addSeparator();
-    gui_component('MenuItem', jPopup, [], 'Edit montage keyboard shortcuts', IconLoader.ICON_PROPERTIES, [], @(h,ev)gui_show('panel_montage_shortcuts', 'JavaWindow', 'Montage keyboard shortcuts', [], 1, 0, 0));
-    jPopup.addSeparator();
     gui_component('MenuItem', jPopup, [], 'Duplicate montage', IconLoader.ICON_COPY, [], @(h,ev)ButtonDuplicate_Callback(hFig));
     gui_component('MenuItem', jPopup, [], 'Rename montage', IconLoader.ICON_EDIT, [], @(h,ev)ButtonRename_Callback(hFig));
     gui_component('MenuItem', jPopup, [], 'Delete montage', IconLoader.ICON_DELETE, [], @(h,ev)ButtonDelete_Callback(hFig));
