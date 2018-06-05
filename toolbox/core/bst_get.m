@@ -3513,6 +3513,22 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
     sFoundStudy = [];
     iFoundStudy = [];
     iItem       = [];
+    % Extract folder(s) of the file(s) we're looking for
+    fieldParts = strfind(fieldFile, '|');
+    if ~isempty(fieldParts)
+        fieldParts(end+1) = length(fieldFile);
+        fieldFolders = {};
+        iLast = 1;
+        for iPart = 1:length(fieldParts)
+            folder = fileparts(fieldFile(iLast:fieldParts(iPart)-1));
+            if ~isempty(folder)
+                fieldFolders{end + 1} = folder;
+            end
+            iLast = fieldParts(iPart) + 1;
+        end
+    else
+        fieldFolders = {fileparts(fieldFile)};
+    end
     % Get protocol information
     ProtocolStudies = GlobalData.DataBase.ProtocolStudies(GlobalData.DataBase.iProtocol);
     % List studies to process
@@ -3530,6 +3546,10 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
         end
         % Check if field is available for the study
         if isempty(sStudy.(fieldGroup))
+            continue;
+        end
+         % Check we are in the correct folder
+        if ~any(file_compare(fieldFolders, fileparts(sStudy.FileName)))
             continue;
         end
         % Get list of files from study
