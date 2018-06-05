@@ -58,7 +58,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.bidsdir.Type    = 'filename';
     sProcess.options.bidsdir.Value   = SelectOptions;
     % Subject selection
-    sProcess.options.selectsubj.Comment = 'Import only selected subjects:';
+    sProcess.options.selectsubj.Comment = 'Names of subjects to import:';
     sProcess.options.selectsubj.Type    = 'text';
     sProcess.options.selectsubj.Value   = '';
     % Option: Number of vertices
@@ -97,7 +97,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Channels align
     ChannelAlign = 2 * double(sProcess.options.channelalign.Value);
     % Subject selection
-    SelectedSubjects = sProcess.options.selectsubj.Value;
+    SelectedSubjects = strtrim(str_split(sProcess.options.selectsubj.Value, ','));
     
     % === IMPORT DATASET ===
     % Import dataset
