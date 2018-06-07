@@ -57,10 +57,14 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jButtonSaveFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SAVE, TB_SIZE}, 'Save montage');
             jToolbar.addSeparator();
             jButtonAll = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SCOUT_ALL, TB_SIZE}, 'Display all the montages');
+            jButtonShortcut = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_KEYBOARD, TB_SIZE}, 'Add custom keyboard shortcut');
         % LIST: Create list
-        jListMontages = JList({' '});
+        jListMontages = JList();
             jListMontages.setFont(bst_get('Font'));
             jListMontages.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+            fontSize1 = round(11 * bst_get('InterfaceScaling') / 100);
+            fontSize2 = round(8 * bst_get('InterfaceScaling') / 100);
+            jListMontages.setCellRenderer(java_create('org.brainstorm.list.BstHotkeyListRenderer', 'I', fontSize1, fontSize2));
             java_setcb(jListMontages, 'ValueChangedCallback', [], ...
                                       'KeyTypedCallback',     [], ...
                                       'MouseClickedCallback', []);
@@ -175,6 +179,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                                   'jListSensors',     jListSensors, ...
                                   'jButtonValidate',  jButtonValidate, ...
                                   'jButtonSave',      jButtonSave, ...
+                                  'jButtonShortcut',  jButtonShortcut, ...
                                   'MontageModified',  MontageModified));
               
                                
@@ -398,6 +403,30 @@ function ButtonAll_Callback(hFig)
     UpdateEditor(hFig);
 end
 
+%% ===== BUTTON: SHORTCUT =====
+function ButtonShortcut_Callback(hFig)
+    import org.brainstorm.dialogs.HotkeyDialog;
+    % Get current montage
+    sMontage = GetSelectedMontage();
+    % Open up hotkey dialog
+    dialog = HotkeyDialog();
+    % If a valid key was selected, update montage shortcut options
+    if dialog.hasKey()
+        key = dialog.getKey();
+        montageName = CleanMontageName(sMontage.Name);
+        MontageOptions = bst_get('MontageOptions');
+        for iShortcut = 1:25
+            if strcmpi(montageName, MontageOptions.Shortcuts{iShortcut,2})
+                MontageOptions.Shortcuts{iShortcut,2} = [];
+            end
+        end
+        MontageOptions.Shortcuts{key - uint8('a'), 2} = montageName;
+        bst_set('MontageOptions', MontageOptions);
+        % Update montage list
+        UpdateMontagesList(hFig, sMontage.Name);
+    end
+end
+
 
 %% ===== LOAD FIGURE =====
 function LoadFigure(hFig)
@@ -432,6 +461,7 @@ function LoadFigure(hFig)
     java_setcb(ctrl.jButtonSaveFile, 'ActionPerformedCallback', @(h,ev)ButtonSaveFile_Callback());
     java_setcb(ctrl.jButtonValidate, 'ActionPerformedCallback', @(h,ev)ValidateEditor(hFig));
     java_setcb(ctrl.jButtonSave,     'ActionPerformedCallback', @(h,ev)ButtonSave_Callback(hFig));
+    java_setcb(ctrl.jButtonShortcut, 'ActionPerformedCallback', @(h,ev)ButtonShortcut_Callback(hFig));
 end
 
 
@@ -477,6 +507,7 @@ function [sFigMontages, iFigMontages] = UpdateMontagesList(hFig, SelMontageName)
     end
     % Create a list with all the available montages
     listModel = javax.swing.DefaultListModel();
+    MontageOptions = bst_get('MontageOptions');
     for i = 1:length(iDispMontages)
         iMontage = iDispMontages(i);
         if ~isAll || ismember(iMontage, iFigMontages)
@@ -484,7 +515,15 @@ function [sFigMontages, iFigMontages] = UpdateMontagesList(hFig, SelMontageName)
         else
             strMontage = ['[' sAllMontages(iMontage).Name ']'];
         end
-        listModel.addElement(BstListItem(sAllMontages(iMontage).Name, '', strMontage, iMontage));
+        % Look for shortcut
+        shortcut = [];
+        for iShortcut = 1:25
+            if strcmpi(CleanMontageName(sAllMontages(iMontage).Name), MontageOptions.Shortcuts{iShortcut,2})
+                shortcut = ['Shift+' upper(MontageOptions.Shortcuts{iShortcut,1})];
+                break;
+            end
+        end
+        listModel.addElement(BstListItem(shortcut, '', strMontage, iMontage));
     end
     ctrl.jListMontages.setModel(listModel);
     % Look for selected montage index in the list of displayed montages
@@ -1254,16 +1293,7 @@ function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroup
     end
     % Apply limitation from montage name (for subgroups only)
     if isSubGroups && ~isempty(sMontage)
-        TargetName = sMontage.Name;
-        % Remove subject name
-        iColon = strfind(TargetName, ': ');
-        if ~isempty(iColon) && (iColon + 2 < length(TargetName))
-            TargetName = TargetName(iColon(1)+2:end);
-        end
-        % Remove other tags
-        TargetName = strrep(TargetName, '(local average ref)', '');
-        TargetName = strrep(TargetName, '[tmp]', '');
-        TargetName = strtrim(TargetName);
+        TargetName = CleanMontageName(sMontage.Name);
         % SEEG/ECOG: Keep only selected modality
         if ismember(TargetName, {'SEEG', 'ECOG'})
             iSel = find(strcmpi({Channels.Type}, TargetName));
@@ -1399,6 +1429,7 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
     sFigMontages = GetMontagesForFigure(hFig);
     % Get current montage
     TsInfo = getappdata(hFig, 'TsInfo');
+    MontageOptions = bst_get('MontageOptions');
     % Get selected sensors
     if ~isempty(TsInfo) && (strcmpi(TsInfo.DisplayMode, 'column') || strcmpi(TsInfo.DisplayMode, 'butterfly'))
         SelChannels = figure_timeseries('GetFigSelectedRows', hFig);
@@ -1456,8 +1487,15 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
         % Create menu
         jItem = gui_component('CheckBoxMenuItem', jSubMenu, [], DisplayName, [], [], @(h,ev)SetCurrentMontage(hFig, sFigMontages(i).Name));
         jItem.setSelected(isSelected);
-        if (i <= 25)
-            jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A + i), KeyEvent.SHIFT_MASK));
+        shortcut = [];
+        for iShortcut = 1:25
+            if strcmpi(CleanMontageName(sFigMontages(i).Name), MontageOptions.Shortcuts{iShortcut,2})
+                shortcut = MontageOptions.Shortcuts{iShortcut,1};
+                break;
+            end
+        end
+        if ~isempty(shortcut)
+            jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A + shortcut - 'a'), KeyEvent.SHIFT_MASK));
         end
     end
     drawnow;
@@ -1524,6 +1562,7 @@ end
 function isProcessed = ProcessKeyPress(hFig, Key) %#ok<DEFNU>
     isProcessed = 0;
     % Get montages for the figure
+    MontageOptions = bst_get('MontageOptions');
     sMontages = GetMontagesForFigure(hFig);
     if isempty(sMontages)
         return
@@ -1535,12 +1574,25 @@ function isProcessed = ProcessKeyPress(hFig, Key) %#ok<DEFNU>
     end
     % Get the selection indicated by the key
     iSel = Key - uint8('a');
-    if (iSel > length(sMontages))
-        return
-    elseif (iSel == 0)
+    if (iSel == 0)
         newName = [];
     else
-        newName = sMontages(iSel).Name;
+        found = 0;
+        if ~isempty(MontageOptions.Shortcuts{iSel,2})
+            for iMontage = 1:length(sMontages)
+                if strcmpi(MontageOptions.Shortcuts{iSel,2}, CleanMontageName(sMontages(iMontage).Name))
+                    newName = sMontages(iMontage).Name;
+                    found = 1;
+                    break;
+                end
+            end
+        end
+        if ~found
+            % Count key press as processed even if no montage attached to avoid
+            % triggering other unwanted events.
+            isProcessed = 1;
+            return;
+        end
     end
     % Process key pressed: switch to new montage
     SetCurrentMontage(hFig, newName);
@@ -2127,5 +2179,18 @@ function AllChannels = GetRelatedNirsChannels(Channels, ChannelName)
     iSelChan = find((S == St) & (D == Dt));
     % Get channel names
     AllChannels = unique({Channels(iSelChan).Name, sprintf('S%dD%d', St, Dt), ChannelName});
+end
+
+%% ===== CLEAN MONTAGE NAME =====
+function montageName = CleanMontageName(montageName)
+    % Remove subject name
+    iColon = strfind(montageName, ': ');
+    if ~isempty(iColon) && (iColon + 2 < length(montageName))
+        montageName = montageName(iColon(1)+2:end);
+    end
+    % Remove other tags
+    montageName = strrep(montageName, '(local average ref)', '');
+    montageName = strrep(montageName, '[tmp]', '');
+    montageName = strtrim(montageName);
 end
 
