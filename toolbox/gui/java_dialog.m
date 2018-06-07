@@ -8,7 +8,7 @@ function [res, isCancel] = java_dialog( msgType, msg, msgTitle, jParent, varargi
 %         
 % INPUT:
 %    - msgType  : String that defines the icon and controls displayed in the dialog box. Possible values:
-%                 {'error', 'warning', 'msgbox', 'confirm', 'question', 'input', 'checkbox', 'radio', 'combo'}
+%                 {'error', 'warning', 'msgbox', 'confirm', 'question', 'input', 'checkbox', 'radio', 'combo', 'hotkey'}
 %    - msg      : Message in the dialog box 
 %                 (can be a cell array of strings for 'input' message type)
 %    - msgTitle : Title of the dialog box
@@ -38,6 +38,8 @@ function [res, isCancel] = java_dialog( msgType, msg, msgTitle, jParent, varargi
 %                        [] if user closed dialog or cancelled, else index of choice.
 %                  - 'combo':
 %                        value of choice (empty if user cancelled or closed dialog)
+%                  - 'hotkey':
+%                        [] if user closed dialog or cancelled, else chosen hotkey
 %    - isCancel : 1 if the user pressed the cancel button or closed the
 %                 window (0 else). Always 0 for dialog types 'error', 'warning' and 'msgbox'
 
@@ -373,6 +375,21 @@ switch(lower(msgType))
             isCancel = 0;
             iSelect = jCombo.getSelectedIndex() + 1;
             res = buttonList{iSelect};
+        end
+        
+    % Dialog for hotkey input from user
+    case 'hotkey'
+        import org.brainstorm.dialogs.HotkeyDialog;
+        % Open up hotkey dialog
+        fontSize = round(11 * bst_get('InterfaceScaling') / 100);
+        dialog = HotkeyDialog(fontSize);
+        % If a valid key was selected, return it. Otherwise, cancel
+        if dialog.hasKey()
+            res = dialog.getKey();
+            isCancel = 0;
+        else
+            res = [];
+            isCancel = 1;
         end
 end
 

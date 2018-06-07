@@ -405,14 +405,12 @@ end
 
 %% ===== BUTTON: SHORTCUT =====
 function ButtonShortcut_Callback(hFig)
-    import org.brainstorm.dialogs.HotkeyDialog;
     % Get current montage
     sMontage = GetSelectedMontage();
     % Open up hotkey dialog
-    dialog = HotkeyDialog();
+    [key, isCancel] = java_dialog('hotkey', []);
     % If a valid key was selected, update montage shortcut options
-    if dialog.hasKey()
-        key = dialog.getKey();
+    if ~isCancel
         montageName = CleanMontageName(sMontage.Name);
         MontageOptions = bst_get('MontageOptions');
         for iShortcut = 1:25
