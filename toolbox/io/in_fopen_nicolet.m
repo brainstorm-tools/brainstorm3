@@ -87,9 +87,9 @@ ChannelMat = db_template('channelmat');
 ChannelMat.Comment = [sFile.device ' channels'];
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.numchan]);
 % For each channel
-for i = hdr.selchan
-    ChannelMat.Channel(i).Type    = 'EEG';
-    ChannelMat.Channel(i).Name    = strrep(str_clean(hdr.obj.segments(1).chName{hdr.selchan(i)}), ' ', '');
+for i = 1:length(hdr.selchan)
+    ChannelMat.Channel(i).Type = 'EEG';
+    ChannelMat.Channel(i).Name = strrep(str_clean(hdr.obj.segments(1).chName{hdr.selchan(i)}), ' ', '');
     ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-Ref', '');
     ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-ref', '');
     ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-REF', '');
