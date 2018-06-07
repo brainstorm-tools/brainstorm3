@@ -193,7 +193,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % ===== SAVE LINK FILE =====
         % Build output filename
-        NewBstFilePrefix = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_' fBase]);
+        NewBstFilePrefix = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_wclus_' fBase]);
         NewBstFile = [NewBstFilePrefix '.mat'];
         iFile = 1;
         commentSuffix = '';

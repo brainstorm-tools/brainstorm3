@@ -187,7 +187,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % ===== SAVE LINK FILE =====
         % Build output filename
-        NewBstFilePrefix = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_' fBase]);
+        NewBstFilePrefix = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_ums2k_' fBase]);
         NewBstFile = [NewBstFilePrefix '.mat'];
         iFile = 1;
         commentSuffix = '';
@@ -314,8 +314,6 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
 end
 
 function do_UltraMegaSorting(A, B, electrodeFile, ielectrode, sFile)
-    electrodeID = sFile.header.ChannelID(ielectrode);
-
     try
         DataMat = load(electrodeFile, 'data');
         filtered_data_temp = filtfilt(B, A, DataMat.data); % runs filter
@@ -329,7 +327,8 @@ function do_UltraMegaSorting(A, B, electrodeFile, ielectrode, sFile)
         spikes = ss_energy(spikes);
         spikes = ss_aggregate(spikes);
 
-        save(['times_raw_elec' num2str(electrodeID) '.mat'], 'spikes')
+        [path, filename] = fileparts(electrodeFile);
+        save(['times_' filename '.mat'], 'spikes')
     catch
         % If an error occurs, just don't create the spike file.
         disp(['Warning: Spiking failed on electrode ' num2str(ielectrode) '. Skipping this electrode.']);
