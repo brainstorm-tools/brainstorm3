@@ -420,7 +420,7 @@ function ButtonShortcut_Callback(hFig)
                 MontageOptions.Shortcuts{iShortcut,2} = [];
             end
         end
-        MontageOptions.Shortcuts{key - uint8('a'), 2} = montageName;
+        MontageOptions.Shortcuts{uint8(key) - uint8('a'), 2} = montageName;
         bst_set('MontageOptions', MontageOptions);
         % Update montage list
         UpdateMontagesList(hFig, sMontage.Name);
