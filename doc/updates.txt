@@ -1,5 +1,7 @@
 ---------------------------------------------------------------
 June 2018
+- GUI: Custom montage shortcuts
+- GUI: New cluster functions: Mean+Std, Mean+StdErr
 - IO: Updated BIDS import function to follow the most recent changes in the specs
 - Doc: Updated tutorial resting/omega to match the v2 of the BIDS dataset on OpenNeuro
 ---------------------------------------------------------------
