@@ -590,7 +590,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         else
             newMat.Value       = scoutValues;
-            newMat.Std         = scoutStds;
             newMat.Description = Description;
             newMat.ChannelFlag = sMat.ChannelFlag;
             if hasStds
