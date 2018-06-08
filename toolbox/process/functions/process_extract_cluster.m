@@ -363,12 +363,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % === LOOP ON CLUSTERS ===
         scoutValues  = [];
+        scoutStds    = [];
         Description  = {};
         clustComment = [];
+        hasStds      = 0;
         for iClust = 1:length(sClusters)
             % === ATLAS-BASED FILES ===
             if ~isempty(iFileScouts)
                 scoutValues = cat(1, scoutValues, matValues(iFileScouts(iClust),:,:));
+                scoutStds   = cat(1, scoutStds, zeros(size(matValues(iFileScouts(iClust),:,:))));
                 Description = cat(1, Description, sClusters(iClust).Label);
                 nComponents = 1;
                 continue;
@@ -499,6 +502,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
             end
             
+            % Split cluster function if applicable
+            separator = strfind(sClusters(iClust).Function, '+');
+            if ~isempty(separator)
+                ClusterFunction = sClusters(iClust).Function(1:separator-1);
+                StdFunction     = sClusters(iClust).Function(separator+1:end);
+                hasStds         = 1;
+            else
+                ClusterFunction = sClusters(iClust).Function;
+                StdFunction = [];
+            end
+            
             % === COMPUTE CLUSTER VALUES ===
             % Are we supposed to flip the sign of the vertices with different orientations
             isFlipSign = (nComponents == 1) && ...
@@ -510,7 +524,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             nFreq = size(sourceValues,3);
             for iFreq = 1:nFreq
                 % Apply scout function
-                tmpScout = bst_scout_value(sourceValues(:,:,iFreq), sClusters(iClust).Function, ScoutOrient, nComponents, XyzFunction, isFlipSign);
+                tmpScout = bst_scout_value(sourceValues(:,:,iFreq), ClusterFunction, ScoutOrient, nComponents, XyzFunction, isFlipSign);
+                if ~isempty(StdFunction)
+                    tmpStd = bst_scout_value(sourceValues(:,:,iFreq), StdFunction, ScoutOrient, nComponents, XyzFunction, isFlipSign);
+                else
+                    tmpStd = zeros(size(tmpScout));
+                end
                 % Add frequency
                 if (nFreq > 1)
                 % Get frequency comments
@@ -525,6 +544,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % If there is only one component
                 if (nComponents == 1) || strcmpi(XyzFunction, 'norm')
                     scoutValues = cat(1, scoutValues, tmpScout);
+                    scoutStds = cat(1, scoutStds, tmpStd);
                     % Multiple rows for the same cluster (Function 'All')
                     if ~isempty(RowNames)
                         for iRow = 1:size(tmpScout,1)
@@ -537,6 +557,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end        
                 else
                     scoutValues = cat(1, scoutValues, tmpScout);
+                    scoutStds = cat(1, scoutStds, tmpStd);
                     for iRow = 1:(size(tmpScout,1) / nComponents) 
                         for iComp = 1:nComponents
                             if ~isempty(RowNames)
@@ -564,10 +585,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             newMat.Value       = cat(1, newMat.Value,       scoutValues);
             newMat.Description = cat(1, newMat.Description, Description);
             newMat.ChannelFlag(sMat.ChannelFlag == -1) = -1;
+            if hasStds
+                newMat.Std     = cat(1, newMat.Std,         scoutStds);
+            end
         else
             newMat.Value       = scoutValues;
+            newMat.Std         = scoutStds;
             newMat.Description = Description;
             newMat.ChannelFlag = sMat.ChannelFlag;
+            if hasStds
+                newMat.Std     = scoutStds;
+            end
         end
         % For surface files / scouts
         if strcmpi(clustType, 'scouts')

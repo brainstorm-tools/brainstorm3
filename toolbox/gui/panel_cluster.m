@@ -63,6 +63,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Menu: Set cluster function
             jMenuTs = gui_component('Menu', jMenu, [], 'Set cluster function', IconLoader.ICON_PROPERTIES, [], []);
                 gui_component('MenuItem', jMenuTs, [], 'Mean',    [], [], @(h,ev)SetClusterFunction('Mean'));
+                gui_component('MenuItem', jMenuTs, [], 'Mean+Std',    [], [], @(h,ev)SetClusterFunction('Mean+Std'));
+                gui_component('MenuItem', jMenuTs, [], 'Mean+StdErr',    [], [], @(h,ev)SetClusterFunction('Mean+StdErr'));
                 gui_component('MenuItem', jMenuTs, [], 'PCA',     [], [], @(h,ev)SetClusterFunction('PCA'));
                 gui_component('MenuItem', jMenuTs, [], 'FastPCA', [], [], @(h,ev)SetClusterFunction('FastPCA'));
                 gui_component('MenuItem', jMenuTs, [], 'Max',     [], [], @(h,ev)SetClusterFunction('Max'));
