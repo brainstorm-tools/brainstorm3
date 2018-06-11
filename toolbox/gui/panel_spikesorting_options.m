@@ -73,12 +73,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
 %  =================================================================================
 %% ===== OK BUTTON =====
     function ButtonOk_Callback(varargin)
+        [optionFile, skipLines, skipValidate] = GetSpikeSorterOptionFile(spikeSorter);
         textOptions = char(jTextOptions.getText());
+        
         % Validate
-        if ValidateOptions(textOptions)
-            % Save updated file
-            [optionFile, skipLines] = GetSpikeSorterOptionFile(spikeSorter);
-            
+        if skipValidate || ValidateOptions(textOptions)
             % Load header if applicable
             if skipLines > 0
                 fid = fopen(optionFile,'rt');
@@ -130,8 +129,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     end
 end
 
-function [optionFile, skipLines] = GetSpikeSorterOptionFile(spikeSorter)
+function [optionFile, skipLines, skipValidate] = GetSpikeSorterOptionFile(spikeSorter)
     skipLines = 0;
+    skipValidate = 0;
+    
     switch lower(spikeSorter)
         case 'waveclus'
             optionFile = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus', 'set_parameters.m');
@@ -140,6 +141,7 @@ function [optionFile, skipLines] = GetSpikeSorterOptionFile(spikeSorter)
         case 'ultramegasort2000'
             optionFile = bst_fullfile(bst_get('BrainstormUserDir'), 'UltraMegaSort2000', 'ss_default_params.m');
             skipLines = 2;
+            skipValidate = 1;
 
         otherwise
             bst_error('The chosen spike sorter is currently unsupported by Brainstorm.');
