@@ -381,7 +381,7 @@ function UpdatePanel(hFig)
 
         % === SELECTED DATA ===
         % Hide edge effects
-        if strcmpi(FigureId.Type, 'Timefreq') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TimeBands) % && ~iscell(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs)
+        if strcmpi(FigureId.Type, 'Timefreq') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TimeBands) && (~isfield(TfInfo, 'DisableHideEdgeEffects') || TfInfo.DisableHideEdgeEffects == 0)
             isEnabledEdge = 1;
             ctrl.jCheckHideEdge.setSelected(TfInfo.HideEdgeEffects);
         else

@@ -175,6 +175,7 @@ end
 if isEphysFile
     TfInfo.Function = 'power';
     TfInfo.DisplayMeasure = 0;
+    TfInfo.DisableHideEdgeEffects = 1;
 elseif ~isempty(Function)
     TfInfo.Function = Function;
 else
