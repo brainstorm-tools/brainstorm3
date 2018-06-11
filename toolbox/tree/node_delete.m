@@ -311,6 +311,7 @@ switch (lower(nodeType{1}))
         sStudies_dipoles  = bst_get('Study', iStudies_dipoles);
         % Build full files list 
         FullFilesList = {};
+        isRecursive = 0;
         for i = 1:length(iStudies_data)
             DataFile = bst_fullfile(ProtocolInfo.STUDIES, sStudies_data(i).Data(iDatas(i)).FileName);
             FullFilesList{end+1} = DataFile;
@@ -320,6 +321,12 @@ switch (lower(nodeType{1}))
                 BinFile = strrep(BinFile, 'data_0raw_', '');
                 if file_exist(BinFile)
                     FullFilesList{end+1} = BinFile;
+                end
+                % Spike sorting files: delete spikes folder
+                if strfind(DataFile, 'data_0ephys_')
+                    DataMat = load(DataFile, 'Parent');
+                    FullFilesList{end+1} = DataMat.Parent;
+                    isRecursive = 1;
                 end
             end
         end
@@ -336,7 +343,7 @@ switch (lower(nodeType{1}))
         end
 
         % === DELETE FILES ===
-        if (file_delete(FullFilesList, ~isUserConfirm) == 1)
+        if (file_delete(FullFilesList, ~isUserConfirm, isRecursive) == 1)
             % Get unique list of studies
             uniqueStudies = unique([iStudies_data, iStudies_results]);
             for i = 1:length(uniqueStudies)
