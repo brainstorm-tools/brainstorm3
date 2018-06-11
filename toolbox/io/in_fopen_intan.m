@@ -83,6 +83,13 @@ if ~isfield(newHeader, 'frequency_parameters') || ~isfield(newHeader, 'amplifier
     error('Missing fields in the file header of file');
 end
 
+% Check if all the channels' files are present
+if length(ampFiles) ~= newHeader.num_amplifier_channels
+    error('Missing channel files. Check if the .dat files from all channels are present');
+end
+
+
+
 % Check if there are missing timestamps in the file
 % Check from the time.dat file how many sapmles exist, and compare with
 % every amp file that was collected
