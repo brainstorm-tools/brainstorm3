@@ -48,7 +48,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.despikeLFP.Comment = 'Despike LFP <I><FONT color="#777777"> Highly Recommended if analysis uses SFC or STA</FONT></I>';
     sProcess.options.despikeLFP.Type    = 'checkbox';
     sProcess.options.despikeLFP.Value   = 1;
-  
+    
+    sProcess.options.filterbounds.Comment = 'LFP filtering limits';
+    sProcess.options.filterbounds.Type    = 'range';
+    sProcess.options.filterbounds.Value   = {[0.5, 150],'Hz',1};
+    
     sProcess.options.paral.Comment     = 'Parallel processing';
     sProcess.options.paral.Type        = 'checkbox';
     sProcess.options.paral.Value       = 1;
@@ -76,7 +80,7 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
     for iInput = 1:length(sInputs)
         sInput = sInputs(iInput);
         %% Parameters
-        filterBounds = [0.5, 300];   % Filtering bounds for the LFP
+        filterBounds = sProcess.options.filterbounds.Value{1}; % Filtering bounds for the LFP
         % Output frequency
         NewFreq = 1000;
 
@@ -133,8 +137,6 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         else
             poolobj = [];
         end
-
-
 
         %% Initialize
 
