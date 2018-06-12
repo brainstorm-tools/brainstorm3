@@ -841,7 +841,7 @@ function UpdateProtocolsList()
     end
     % Set current protocol
     iProtocol = GlobalData.DataBase.iProtocol;
-    if ~isempty(iProtocol) && (iProtocol > 0) && (iProtocol < length(GlobalData.DataBase.ProtocolInfo))
+    if ~isempty(iProtocol) && isnumeric(iProtocol) && (iProtocol > 0) && (iProtocol < length(GlobalData.DataBase.ProtocolInfo))
         iSel = find(indProtocols == iProtocol);
         ctrl.jComboBoxProtocols.setSelectedIndex(iSel-1);
     end
@@ -884,7 +884,7 @@ function SetCurrentProtocol(iProtocol)
     if ~isempty(jComboBoxProtocols)
         % Look for the indice of the protocol in the combo box
         iItem = [];
-        if (iProtocol ~= 0)
+        if isnumeric(iProtocol) && (iProtocol ~= 0)
             for i = 1:jComboBoxProtocols.getItemCount()
                 iItemProt = jComboBoxProtocols.getItemAt(i-1).getUserData();
                 if ~isempty(iItemProt) && (iItemProt == iProtocol)

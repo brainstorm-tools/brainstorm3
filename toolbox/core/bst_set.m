@@ -125,7 +125,11 @@ switch contextName
 
 %% ==== PROTOCOL ====
     case 'iProtocol'
-        GlobalData.DataBase.iProtocol = contextValue;
+        if isnumeric(contextValue)
+            GlobalData.DataBase.iProtocol = contextValue;
+        else
+            error('iProtocol should be a number.');
+        end
     case {'ProtocolSubjects', 'ProtocolStudies'}
         for structField = fieldnames(contextValue)'
             GlobalData.DataBase.(contextName)(GlobalData.DataBase.iProtocol).(structField{1}) = contextValue.(structField{1});

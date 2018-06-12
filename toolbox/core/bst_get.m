@@ -426,7 +426,7 @@ switch contextName
     case {'ProtocolInfo', 'ProtocolSubjects', 'ProtocolStudies', 'isProtocolLoaded', 'isProtocolModified'}
         argout2 = GlobalData.DataBase.iProtocol;
         % No protocol: return empty matrix
-        if isempty(argout2) || (GlobalData.DataBase.iProtocol == 0)
+        if isempty(argout2) || ~isnumeric(argout2) || argout2 == 0
             return;
         end
         % Check index integrity
