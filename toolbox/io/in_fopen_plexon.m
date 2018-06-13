@@ -236,7 +236,11 @@ if isfield(newHeader, 'SpikeChannels')
                 end
                 
                 % Fill the event fields
-                events(last_event_index).label      = [spike_event_prefix ' ' newHeader.SpikeChannels(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
+                %%%%%%%% MAKE SURE THE ALIGNMENT (INDEX) OF SPIKECHANNELS AND
+                %%%%%%%% CONTINUOUS CHANNELS IS THE SAME
+%                 events(last_event_index).label      = [spike_event_prefix ' ' newHeader.SpikeChannels(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
+
+                events(last_event_index).label      = [spike_event_prefix ' ' newHeader.ContinuousChannels(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
                 events(last_event_index).color      = rand(1,3);
                 events(last_event_index).samples    = round(double(newHeader.SpikeChannels(iEvt).Timestamps(double(newHeader.SpikeChannels(iEvt).Units) == iNeuron)') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
                 events(last_event_index).times      = events(last_event_index).samples/channel_Fs; 
