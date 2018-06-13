@@ -179,7 +179,7 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
 
         %% Get the transformed channelnames that were used on the signal data naming. This is used in the derive lfp function in order to find the spike events label
         % New channelNames - Without any special characters.
-        cleanChannelNames = str_remove_spec_chars(ChannelMat.Channel.Name);
+        cleanChannelNames = str_remove_spec_chars({ChannelMat.Channel.Name});
 
         %% Update fields before initializing the header on the binary file
         sFileTemplate.prop.samples = floor(sFileTemplate.prop.times * NewFreq);  % Check if FLOOR IS NEEDED HERE
@@ -257,29 +257,58 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     %% Instead of just filtering and then downsampling, DeriveLFP is used, as in:
     % https://www.ncbi.nlm.nih.gov/pubmed/21068271
     
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Remove line noise peaks at 60, 180Hz
-    data_deligned = delineSignal(sMat.data, sMat.sr, [60,180]); % This function plots a figure!!!
+    % This is copied from the process_notch
+    FreqList = [60,180];
+    sfreq    = sMat.sr;
     
-    g = fitLFPpowerSpectrum(data_deligned,filterBounds(1),filterBounds(2),sFile.prop.sfreq);
-%     load('C:/Users/McGill/Desktop/g.mat') % this loads a variable g
-    
-% % % % % % % % % % % % % % % % % % %     %Find a good value for g according to the method shown in the appendix,
-% % % % % % % % % % % % % % % % % % %     %fitting to a function with a modest number of free parameters
-% % % % % % % % % % % % % % % % % % %     %Usually this takes some fiddling with the parameters
-% % % % % % % % % % % % % % % % % % %     g = fitLFPpowerSpectrum(data_deligned,.01,250,sFile.prop.sfreq);
+    % Use the signal processing toolbox?
+    UseSigProcToolbox = bst_get('UseSigProcToolbox');
+    % Check list of freq to remove
+    if isempty(FreqList) || isequal(FreqList, 0)
+        return;
+    end
+    % Define a default width
+    FreqWidth = 1;
+    % Remove the mean of the data before filtering
+    xmean = mean(sMat.data);
+    x = bst_bsxfun(@minus, sMat.data', xmean);
+    % Remove all the frequencies sequencially
+    for ifreq = 1:length(FreqList)
+        % Define coefficients of an IIR notch filter
+        delta = FreqWidth/2;
+        % Pole radius
+        r = 1 - (delta * pi / sfreq);     
+        theta = 2 * pi * FreqList(ifreq) / sfreq;
+        % Gain factor
+        B0 = abs(1 - 2*r*cos(theta) + r^2) / (2*abs(1-cos(theta)));   
+        % Numerator coefficients
+        B = B0 * [1, -2*cos(theta), 1];  
+        % Denominator coefficients
+        A = [1, -2*r*cos(theta), r^2];    
+        % Filter signal
+        if UseSigProcToolbox
+            x = filtfilt(B,A,x')'; 
+        else
+            x = filter(B,A,x')'; 
+            x(:,end:-1:1) = filter(B,A,x(:,end:-1:1)')'; 
+        end
+    end
+    % Restore the mean of the signal
+    data_deligned = bst_bsxfun(@plus, x, xmean)';
+    clear A B B0 delta x
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
     
 
-    % Assume that a spike lasts 2.5ms
-    % We'd like to assume that a spike lasts
-    % from -25 samples to +50 samples (2.5 ms) compared to its peak % 
-    % for 30000 Hz sampling rate
-    % Since spktimes are the time of the peak of each spike, we subtract 15
-    % from spktimes to obtain the start times of the spikes
-    nSegment = sMat.sr * 0.0025;
+    % Assume that a spike lasts 3ms
+    nSegment = sMat.sr * 0.003;
     Bs = eye(nSegment); % 60x60
     opts.displaylevel = 0;
 
-    S = zeros(length(data_deligned),1);
+    
     
     
     %% Get the channel Index of the file that is imported
@@ -306,14 +335,45 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     % If there are no neurons picked up from that electrode, continue
     % Apply despiking around the spiking times
     if ~isempty(iEventforElectrode) % If there are spikes on that electrode
-        spktimes = sFile.events(iEventforElectrode).samples;
-        S(spktimes - round(nSegment/3)) = 1; % This assumes the spike starts at 1/3 before the trough of the spike
+        spkSamples = [sFile.events(iEventforElectrode).samples]; % All spikes, from all neurons on that electrode
+        
+        % We'd like to assume that a spike lasts
+        % from-10 samples to +19 samples (3 ms) for 10000 Hz sampling rate compared to its peak
+        % Since spktimes are the time of the peak of each spike, we subtract 15
+        % from spktimes to obtain the start times of the spikes
+%         S(spktimes - round(nSegment/3)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
+  
+        if mod(length(data_deligned),2)~=0
+            
+            data_deligned_temp = [data_deligned;0];
+            g = fitLFPpowerSpectrum(data_deligned_temp,filterBounds(1),filterBounds(2),sFile.prop.sfreq);
+            S = zeros(length(data_deligned_temp),1);
+            S(spkSamples - round(nSegment/2)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
 
-        data_derived = despikeLFP(data_deligned,S,Bs,g,opts);
-        data_derived = data_derived.z';
+            data_derived = despikeLFP(data_deligned_temp,S,Bs,g,opts);
+            data_derived = data_derived.z';
+            
+        else
+            g = fitLFPpowerSpectrum(data_deligned,filterBounds(1),filterBounds(2),sFile.prop.sfreq);
+            S = zeros(length(data_deligned),1);
+            S(spkSamples - round(nSegment/2)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
+
+            data_derived = despikeLFP(data_deligned,S,Bs,g,opts);
+            data_derived = data_derived.z';
+            
+        end
     else
         data_derived = data_deligned';
     end
+    
+% % % % %     %% Check the difference
+% % % % %     figure(1);
+% % % % %     plot(data_deligned)
+% % % % %     hold on
+% % % % %     plot(data_derived)
+% % % % %     plot(spkSamples,zeros(length(spkSamples),1),'*');
+% % % % %     legend('Deligned Data','Bayesian Spike Removal','Spike Timestamps')
+    
     
     data_derived = downsample(data_derived, sMat.sr/1000);  % The file now has a different sampling rate (fs/30) = 1000Hz
     
