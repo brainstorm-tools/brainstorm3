@@ -319,7 +319,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
     end
     newEvents = struct();
     DataMat = in_bst_data(rawFile);
-    eventName = [eventNamePrefix GetSpikesEventPrefix() ' ' electrodeName ' '];
+    eventName = [eventNamePrefix GetSpikesEventPrefix() ' ' electrodeName];
 
     % Load spike data and convert to Brainstorm event format
     switch lower(deviceType)
@@ -366,16 +366,16 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
         newEvents(1).color      = [rand(1,1), rand(1,1), rand(1,1)];
         newEvents(1).epochs     = tmpEvents(1).epochs;
         newEvents(1).times      = tmpEvents(1).times;
-        newEvents(1).samples    = newEvents(1).times .* DataMat.F.prop.sfreq;
+        newEvents(1).samples    = round(newEvents(1).times .* DataMat.F.prop.sfreq);
         newEvents(1).reactTimes = [];
         newEvents(1).select     = 1;
     elseif numNeurons > 1
         for iNeuron = 1:numNeurons
-            newEvents(iNeuron).label      = [eventName '|' num2str(iNeuron) '|'];
+            newEvents(iNeuron).label      = [eventName ' |' num2str(iNeuron) '|'];
             newEvents(iNeuron).color      = [rand(1,1), rand(1,1), rand(1,1)];
             newEvents(iNeuron).epochs     = tmpEvents(iNeuron).epochs;
             newEvents(iNeuron).times      = tmpEvents(iNeuron).times;
-            newEvents(iNeuron).samples    = newEvents(iNeuron).times .* DataMat.F.prop.sfreq;
+            newEvents(iNeuron).samples    = round(newEvents(iNeuron).times .* DataMat.F.prop.sfreq);
             newEvents(iNeuron).reactTimes = [];
             newEvents(iNeuron).select     = 1;
         end
