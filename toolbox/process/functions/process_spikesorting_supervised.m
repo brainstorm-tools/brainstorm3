@@ -314,7 +314,7 @@ end
 function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, electrodeName, import, eventNamePrefix)
     if nargin < 6
         eventNamePrefix = '';
-    else
+    elseif ~isempty(eventNamePrefix)
         eventNamePrefix = [eventNamePrefix ' '];
     end
     newEvents = struct();
@@ -396,7 +396,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
         numEvents = length(DataMat.F.events);
         % Delete existing event(s)
         if numEvents > 0
-            iDelEvents = cellfun(@(x) ~isempty(x), strfind({DataMat.F.events.label}, eventName));
+            iDelEvents = cellfun(@(x) ~isempty(x), strfind({DataMat.F.events.label}, strtrim(eventName)));
             DataMat.F.events = DataMat.F.events(~iDelEvents);
             numEvents = length(DataMat.F.events);
         end
