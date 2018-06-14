@@ -126,9 +126,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     %TODO: clarify and use sensortypes?
     nElectrodes = 0;
+    selectedChannels = [];
     for iChannel = 1:length(ChannelMat.Channel)
        if strcmp(ChannelMat.Channel(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG')
-          nElectrodes = nElectrodes + 1;               
+          nElectrodes = nElectrodes + 1;   
+          selectedChannels = [selectedChannels iChannel];
        end
     end
 
@@ -165,13 +167,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Optimize this
     if ~isempty(poolobj) 
         parfor iFile = 1:nTrials
-            [FFTs_single_trial, Freqs] = get_FFTs(ALL_TRIALS_files(iFile).trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
+            [FFTs_single_trial, Freqs] = get_FFTs(ALL_TRIALS_files(iFile).trial, selectedChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
             everything(iFile).FFTs_single_trial = FFTs_single_trial;
             everything(iFile).Freqs = Freqs;
         end 
     else
         for iFile = 1:nTrials
-            [FFTs_single_trial, Freqs] = get_FFTs(ALL_TRIALS_files(iFile).trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
+            [FFTs_single_trial, Freqs] = get_FFTs(ALL_TRIALS_files(iFile).trial, selectedChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
             everything(iFile).FFTs_single_trial = FFTs_single_trial;
             everything(iFile).Freqs = Freqs;
         end 
@@ -338,7 +340,7 @@ end
 
 
 
-function [all, Freqs] = get_FFTs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat)
+function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat)
     %% Get the events that show NEURONS' activity
 
     % Important Variable here!
@@ -348,7 +350,7 @@ function [all, Freqs] = get_FFTs(trial, nElectrodes, sProcess, time_segmentAroun
     allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
         {trial.Events.label}, 'UniformOutput', 0);
     
-    for ielectrode = 1:nElectrodes
+    for ielectrode = selectedChannels
         iEvents = find(strcmp(allChannelEvents, ChannelMat.Channel(ielectrode).Name)); % Find the index of the spike-events that correspond to that electrode (Exact string match)
         if ~isempty(iEvents)
             spikeEvents(end+1:end+length(iEvents)) = iEvents;
@@ -366,10 +368,10 @@ function [all, Freqs] = get_FFTs(trial, nElectrodes, sProcess, time_segmentAroun
 
         %% Create a matrix that holds all the segments around the spike
         % of that neuron, for all electrodes.
-        allSpikeSegments_singleNeuron_singleTrial = zeros(length(events_within_segment),size(trial.F,1),abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);
+        allSpikeSegments_singleNeuron_singleTrial = zeros(length(events_within_segment),size(trial.F(selectedChannels,:),1),abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);
 
         for ispike = 1:length(events_within_segment)
-            allSpikeSegments_singleNeuron_singleTrial(ispike,:,:) = trial.F(:, round(length(trial.Time) / 2) + events_within_segment(ispike) - abs(sProcess.options.timewindow.Value{1}(1)) * sampling_rate: ...
+            allSpikeSegments_singleNeuron_singleTrial(ispike,:,:) = trial.F(selectedChannels, round(length(trial.Time) / 2) + events_within_segment(ispike) - abs(sProcess.options.timewindow.Value{1}(1)) * sampling_rate: ...
                                                                                round(length(trial.Time) / 2) + events_within_segment(ispike) + abs(sProcess.options.timewindow.Value{1}(2)) * sampling_rate  ...
                                                                            );
         end
