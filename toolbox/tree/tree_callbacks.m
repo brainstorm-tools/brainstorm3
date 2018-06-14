@@ -1649,7 +1649,7 @@ switch (lower(action))
                 elseif strcmpi(DataType, 'data')
                     DisplayMod = bst_get('TimefreqDisplayModalities', filenameRelative);
                     % Add SEEG+ECOG 
-                    if all(ismember({'SEEG','ECOG'}, DisplayMod))
+                    if ~isempty(DisplayMod) && all(ismember({'SEEG','ECOG'}, DisplayMod))
                         DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
                     end
                 end
