@@ -304,8 +304,22 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
     end
 
     numElectrodes = length(sFile.Spikes);
-    iEvent = 0;
+    iNewEvent = 0;
     events = struct();
+    
+    % Add existing non-spike events for backup
+    DataMat = in_bst_data(sFile.RawFile);
+    existingEvents = DataMat.F.events;
+    for iEvent = 1:length(existingEvents)
+        if ~process_spikesorting_supervised('IsSpikeEvent', existingEvents(iEvent).label)
+            if iNewEvent == 0
+                events = existingEvents(iEvent);
+            else
+                events(iNewEvent + 1) = existingEvents(iEvent);
+            end
+            iNewEvent = iNewEvent + 1;
+        end
+    end
     
     for iElectrode = 1:numElectrodes
         newEvents = process_spikesorting_supervised(...
@@ -316,13 +330,13 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
             sFile.Spikes(iElectrode).Name, ...
             0, eventNamePrefix);
         
-        if iEvent == 0
+        if iNewEvent == 0
             events = newEvents;
-            iEvent = length(newEvents);
+            iNewEvent = length(newEvents);
         else
             numNewEvents = length(newEvents);
-            events(iEvent+1:iEvent+numNewEvents) = newEvents;
-            iEvent = iEvent + numNewEvents;
+            events(iNewEvent+1:iNewEvent+numNewEvents) = newEvents;
+            iNewEvent = iNewEvent + numNewEvents;
         end
     end
 
