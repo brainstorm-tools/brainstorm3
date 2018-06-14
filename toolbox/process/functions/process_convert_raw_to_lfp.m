@@ -306,7 +306,7 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     % Assume that a spike lasts 3ms
     nSegment = sMat.sr * 0.003;
     Bs = eye(nSegment); % 60x60
-    opts.displaylevel = 0;
+    opts.displaylevel = 2; % 0 gets rid of all the outputs
 
     
     
@@ -348,10 +348,11 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
             data_deligned_temp = [data_deligned;0];
             g = fitLFPpowerSpectrum(data_deligned_temp,filterBounds(1),filterBounds(2),sFile.prop.sfreq);
             S = zeros(length(data_deligned_temp),1);
-            S(spkSamples - round(nSegment/2)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
-
+            S(spkSamples - round(nSegment/2)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike    
             data_derived = despikeLFP(data_deligned_temp,S,Bs,g,opts);
             data_derived = data_derived.z';
+   %         data_derived = bst_bandpass_hfilter(data_derived.z', Fs, filterBounds(1), filterBounds(2), 0, 0);
+
             
         else
             g = fitLFPpowerSpectrum(data_deligned,filterBounds(1),filterBounds(2),sFile.prop.sfreq);
@@ -360,19 +361,22 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
 
             data_derived = despikeLFP(data_deligned,S,Bs,g,opts);
             data_derived = data_derived.z';
+   %         data_derived = bst_bandpass_hfilter(data_derived.z', Fs, filterBounds(1), filterBounds(2), 0, 0);
+
             
         end
     else
+%         data_derived = bst_bandpass_hfilter(data_deligned', Fs, filterBounds(1), filterBounds(2), 0, 0);
         data_derived = data_deligned';
     end
     
-% % % % %     %% Check the difference
-% % % % %     figure(1);
-% % % % %     plot(data_deligned)
-% % % % %     hold on
-% % % % %     plot(data_derived)
-% % % % %     plot(spkSamples,zeros(length(spkSamples),1),'*');
-% % % % %     legend('Deligned Data','Bayesian Spike Removal','Spike Timestamps')
+% % % %     %% Check the difference
+% % % %     figure(1);
+% % % %     plot(data_deligned)
+% % % %     hold on
+% % % %     plot(data_derived)
+% % % %     plot(spkSamples,zeros(length(spkSamples),1),'*');
+% % % %     legend('Deligned Data','Bayesian Spike Removal','Spike Timestamps')
     
     
     data_derived = downsample(data_derived, sMat.sr/1000);  % The file now has a different sampling rate (fs/30) = 1000Hz
