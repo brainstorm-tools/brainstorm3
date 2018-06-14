@@ -53,6 +53,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.filterbounds.Type    = 'range';
     sProcess.options.filterbounds.Value   = {[0.5, 150],'Hz',1};
     
+    % Definition of the options
+    % === Freq list
+    sProcess.options.freqlist.Comment = 'Notch filter Frequencies (Hz):';
+    sProcess.options.freqlist.Type    = 'value';
+    sProcess.options.freqlist.Value   = {[], 'list', 2};
+    sProcess.options.freqlistHelp.Comment = '<I><FONT color="#777777">Frequencies for notch filter (leave empty for no selection)</FONT></I>';
+    sProcess.options.freqlistHelp.Type    = 'label';
+    
     sProcess.options.paral.Comment     = 'Parallel processing';
     sProcess.options.paral.Type        = 'checkbox';
     sProcess.options.paral.Value       = 1;
@@ -81,6 +89,7 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         sInput = sInputs(iInput);
         %% Parameters
         filterBounds = sProcess.options.filterbounds.Value{1}; % Filtering bounds for the LFP
+        notchFilterFreqs = sProcess.options.freqlist.Value{1}; % Notch Filter frequencies for the LFP
         % Output frequency
         NewFreq = 1000;
 
@@ -212,22 +221,22 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         if sProcess.options.despikeLFP.Value
             if sProcess.options.paral.Value
                 parfor iChannel = 1:nChannels
-                    LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames);
+                    LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames, notchFilterFreqs);
                 end
             else
                 for iChannel = 1:nChannels
-                    LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames);
+                    LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames, notchFilterFreqs);
                     bst_progress('inc', 1);
                 end
             end
         else
             if sProcess.options.paral.Value
                 parfor iChannel = 1:nChannels
-                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds);
+                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds, notchFilterFreqs);
                 end
             else
                 for iChannel = 1:nChannels
-                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds);
+                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds, notchFilterFreqs);
                     bst_progress('inc', 1);
                 end
             end
@@ -242,75 +251,34 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
 end
 
 
-function data = filter_and_downsample(inputFilename, Fs, filterBounds)
+function data = filter_and_downsample(inputFilename, Fs, filterBounds, notchFilterFreqs)
     sMat = load(inputFilename); % Make sure that a variable named data is loaded here. This file is saved as an output from the separator 
-    data = bst_bandpass_hfilter(sMat.data', Fs, filterBounds(1), filterBounds(2), 0, 0);
-    data = downsample(data', round(Fs/1000))';  % The file now has a different sampling rate (fs/30) = 1000Hz.
+    
+    % Apply notch filter
+    data = apply_notch(sMat.data, notchFilterFreqs, sMat.sr);
+    
+    % Aplly final filter
+    data = bst_bandpass_hfilter(data, Fs, filterBounds(1), filterBounds(2), 0, 0);
+    data = downsample(data, round(Fs/1000));  % The file now has a different sampling rate (fs/30) = 1000Hz.
 end
 
 
 %% BAYESIAN DESPIKING
-function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile, ChannelMat, cleanChannelNames)
+function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile, ChannelMat, cleanChannelNames, notchFilterFreqs)
 
     sMat = load(inputFilename); % Make sure that a variable named data is loaded here. This file is saved as an output from the separator 
     
     %% Instead of just filtering and then downsampling, DeriveLFP is used, as in:
     % https://www.ncbi.nlm.nih.gov/pubmed/21068271
     
+    data_deligned = apply_notch(sMat.data, notchFilterFreqs, sMat.sr)';
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Remove line noise peaks at 60, 180Hz
-    % This is copied from the process_notch
-    FreqList = [60,180];
-    sfreq    = sMat.sr;
-    
-    % Use the signal processing toolbox?
-    UseSigProcToolbox = bst_get('UseSigProcToolbox');
-    % Check list of freq to remove
-    if isempty(FreqList) || isequal(FreqList, 0)
-        return;
-    end
-    % Define a default width
-    FreqWidth = 1;
-    % Remove the mean of the data before filtering
-    xmean = mean(sMat.data);
-    x = bst_bsxfun(@minus, sMat.data', xmean);
-    % Remove all the frequencies sequencially
-    for ifreq = 1:length(FreqList)
-        % Define coefficients of an IIR notch filter
-        delta = FreqWidth/2;
-        % Pole radius
-        r = 1 - (delta * pi / sfreq);     
-        theta = 2 * pi * FreqList(ifreq) / sfreq;
-        % Gain factor
-        B0 = abs(1 - 2*r*cos(theta) + r^2) / (2*abs(1-cos(theta)));   
-        % Numerator coefficients
-        B = B0 * [1, -2*cos(theta), 1];  
-        % Denominator coefficients
-        A = [1, -2*r*cos(theta), r^2];    
-        % Filter signal
-        if UseSigProcToolbox
-            x = filtfilt(B,A,x')'; 
-        else
-            x = filter(B,A,x')'; 
-            x(:,end:-1:1) = filter(B,A,x(:,end:-1:1)')'; 
-        end
-    end
-    % Restore the mean of the signal
-    data_deligned = bst_bsxfun(@plus, x, xmean)';
-    clear A B B0 delta x
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    
-
     % Assume that a spike lasts 3ms
     nSegment = sMat.sr * 0.003;
     Bs = eye(nSegment); % 60x60
-    opts.displaylevel = 2; % 0 gets rid of all the outputs
+    opts.displaylevel = 0; % 0 gets rid of all the outputs
+                           % 2 shows the optimization steps
 
-    
-    
-    
     %% Get the channel Index of the file that is imported
     [tmp, ChannelName] = fileparts(inputFilename);
     ChannelName = strrep(ChannelName, 'raw_elec_', '');
@@ -384,6 +352,46 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
 end
 
 
+function output_signal = apply_notch(input_signal, notchFilterFreqs, sfreq)
+
+    % All this is copied from the process_notch
+    
+    % Use the signal processing toolbox?
+    UseSigProcToolbox = bst_get('UseSigProcToolbox');
+    % Check list of freq to remove
+    if isempty(notchFilterFreqs) || isequal(notchFilterFreqs, 0)
+        output_signal = input_signal';
+        return;
+    end
+    % Define a default width
+    FreqWidth = 1;
+    % Remove the mean of the data before filtering
+    xmean = mean(input_signal);
+    x = bst_bsxfun(@minus, input_signal, xmean); clear input_signal
+    % Remove all the frequencies sequencially
+    for ifreq = 1:length(notchFilterFreqs)
+        % Define coefficients of an IIR notch filter
+        delta = FreqWidth/2;
+        % Pole radius
+        r = 1 - (delta * pi / sfreq);     
+        theta = 2 * pi * notchFilterFreqs(ifreq) / sfreq;
+        % Gain factor
+        B0 = abs(1 - 2*r*cos(theta) + r^2) / (2*abs(1-cos(theta)));   
+        % Numerator coefficients
+        B = B0 * [1, -2*cos(theta), 1];  
+        % Denominator coefficients
+        A = [1, -2*r*cos(theta), r^2];    
+        % Filter signal
+        if UseSigProcToolbox
+            x = filtfilt(B,A,x')'; 
+        else
+            x = filter(B,A,x')'; 
+            x(:,end:-1:1) = filter(B,A,x(:,end:-1:1)')'; 
+        end
+    end
+    % Restore the mean of the signal
+    output_signal = bst_bsxfun(@plus, x, xmean)';
+end
 
 
 
