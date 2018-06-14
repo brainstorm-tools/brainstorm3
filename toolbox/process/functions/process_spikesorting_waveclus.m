@@ -194,6 +194,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_progress('text', 'Saving events file...');        
         cd(previous_directory);
         
+        % Delete existing spike events
+        process_spikesorting_supervised('DeleteSpikeEvents', sInputs(i).FileName);
+        
         % ===== SAVE LINK FILE =====
         % Build output filename
         NewBstFilePrefix = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_wclus_' fBase]);

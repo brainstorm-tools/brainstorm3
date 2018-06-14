@@ -455,3 +455,19 @@ function isFirst = IsFirstNeuron(eventLabel, onlyIsFirst)
         isFirst = 1;
     end
 end
+
+function DeleteSpikeEvents(rawFile)
+    ProtocolInfo = bst_get('ProtocolInfo');
+    DataMat = in_bst_data(rawFile);
+    events = DataMat.F.events;
+    iKeepEvents = [];
+    
+    for iEvent = 1:length(events)
+        if ~IsSpikeEvent(events(iEvent).label)
+            iKeepEvents(end+1) = iEvent;
+        end
+    end
+    
+    DataMat.F.events = DataMat.F.events(iKeepEvents);
+    bst_save(bst_fullfile(ProtocolInfo.STUDIES, rawFile), DataMat, 'v6');
+end
