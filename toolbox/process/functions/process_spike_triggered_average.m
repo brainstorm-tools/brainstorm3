@@ -232,30 +232,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         STA_single_neuron = zeros(length(ChannelMat.Channel), length(time_segmentAroundSpikes));                  % 192 x 301
 
         %% Take the Averages of the appropriate indices
+        divideBy = 0;
         for iTrial = 1:size(all_labels,2)
-
-        
-            divideBy = 0;
             if iEvents(iTrial)~=0
                 STA_single_neuron = STA_single_neuron + everything(iTrial).LFPs_single_trial(iEvents(iTrial)).nSpikes * everything(iTrial).LFPs_single_trial(iEvents(iTrial)).avgLFP; % The avgLFP are sum actually. 
                 divideBy = divideBy + everything(iTrial).LFPs_single_trial(iEvents(iTrial)).nSpikes;
             end 
         end
         
-%         STA(iNeuron,:,:) = (STA_single_neuron./divideBy)'; % 
         STA_single_neuron = (STA_single_neuron./divideBy)';
     
-%     
-%     
-%     %% Plot an example for proof of concept
-%     iNeuron = 100;
-%     figure(1);
-%     imagesc(squeeze(SFC(iNeuron,:,:))')        % SFC: Number of neurons x Frequencies x Electrodes : 161x151x192
-%     ylabel 'iElectrode'
-%     xlabel 'Frequency (Hz)'
-%     title ({'Spike Field Coherence';['Neuron ' num2str(iNeuron)]})
-%     
-%     
 
         %% Get meaningful label from neuron name
         better_label = process_spikesorting_supervised('GetChannelOfSpikeEvent', labelsForDropDownMenu{iNeuron});
@@ -366,13 +352,12 @@ function all = get_LFPs(trial, nChannels, sProcess, time_segmentAroundSpikes, sa
 
     end
     
+    %% Check if any events had no spikes in the time-region of interest and remove them!
+    %  Some spikes might be on the edges of the trial. Ultimately, the
+    %  Spikes Channel i events would be considered in the STA (I mean the event group, not the events themselves), 
+    %  but there would be a zeroed avgLFP included. Get rid of those events
+    iEventsToRemove = find([all.nSpikes]==0);
     
+    all = all(~ismember(1:length(all),iEventsToRemove));
     
-    
-    
-    
-    
-    
-    
-        
 end
