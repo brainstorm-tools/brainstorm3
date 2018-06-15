@@ -122,13 +122,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
     
     %TODO: clarify and use sensortypes?
-    nElectrodes = 0;
+    selectedChannels = [];
+    nChannels = 0;
     for iChannel = 1:length(ChannelMat.Channel)
-       if strcmp(ChannelMat.Channel(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG') % Maybe we can add this option to be available on the raw file as well???
-          nElectrodes = nElectrodes + 1;               
+       if strcmp(ChannelMat.Channel(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG')
+          nChannels = nChannels+1;
+          selectedChannels = [selectedChannels iChannel];
        end
     end
-
+    
+    
     nTrials = length(sInputs);
     time_segmentAroundSpikes = linspace(sProcess.options.timewindow.Value{1}(1), sProcess.options.timewindow.Value{1}(2), abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);    
 
@@ -143,6 +146,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         catch
             sProcess.options.paral.Value = 0;
         end
+    else
+        poolobj = [];
     end
     
     
@@ -162,12 +167,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Optimize this
     if ~isempty(poolobj) 
         parfor iFile = 1:nTrials
-            [LFPs_single_trial] = get_LFPs(ALL_TRIALS_files(iFile).trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
+            [LFPs_single_trial] = get_LFPs(ALL_TRIALS_files(iFile).trial, nChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
             everything(iFile).LFPs_single_trial = LFPs_single_trial;
         end 
     else
         for iFile = 1:nTrials
-            [LFPs_single_trial] = get_LFPs(ALL_TRIALS_files(iFile).trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
+            [LFPs_single_trial] = get_LFPs(ALL_TRIALS_files(iFile).trial, nChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
             everything(iFile).LFPs_single_trial = LFPs_single_trial;
         end 
     end
@@ -224,7 +229,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         end
         
-        STA_single_neuron = zeros(nElectrodes, length(time_segmentAroundSpikes));                  % 192 x 301
+        STA_single_neuron = zeros(length(ChannelMat.Channel), length(time_segmentAroundSpikes));                  % 192 x 301
 
         %% Take the Averages of the appropriate indices
         for iTrial = 1:size(all_labels,2)
@@ -317,7 +322,7 @@ end
 
 
 
-function all = get_LFPs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat)
+function all = get_LFPs(trial, nChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat)
     %% Get the events that show NEURONS' activity
 
     % Important Variable here!
@@ -327,7 +332,7 @@ function all = get_LFPs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, 
     allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
         {trial.Events.label}, 'UniformOutput', 0);
     
-    for ielectrode = 1:nElectrodes
+    for ielectrode = 1: nChannels %selectedChannels
         iEvents = find(strcmp(allChannelEvents, ChannelMat.Channel(ielectrode).Name)); % Find the index of the spike-events that correspond to that electrode (Exact string match)
         if ~isempty(iEvents)
             spikeEvents(end+1:end+length(iEvents)) = iEvents;
@@ -345,7 +350,7 @@ function all = get_LFPs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, 
 
         %% Create a matrix that holds all the segments around the spike
         % of that neuron, for all electrodes.
-        allSpikeSegments_singleNeuron_singleTrial = zeros(length(events_within_segment),size(trial.F,1),abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);
+        allSpikeSegments_singleNeuron_singleTrial = zeros(length(events_within_segment),length(ChannelMat.Channel),abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);
 
         for ispike = 1:length(events_within_segment)
             allSpikeSegments_singleNeuron_singleTrial(ispike,:,:) = trial.F(:, round(length(trial.Time) / 2) + events_within_segment(ispike) - abs(sProcess.options.timewindow.Value{1}(1)) * sampling_rate: ...
@@ -360,5 +365,14 @@ function all = get_LFPs(trial, nElectrodes, sProcess, time_segmentAroundSpikes, 
 
 
     end
+    
+    
+    
+    
+    
+    
+    
+    
+    
         
 end
