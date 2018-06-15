@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 June 2018
+- Distrib: New electrophysiology toolbox
 - GUI: Custom montage shortcuts
 - GUI: New cluster functions: Mean+Std, Mean+StdErr
 - IO: Updated BIDS import function to follow the most recent changes in the specs
