@@ -231,9 +231,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         
         %% Take the Averagesof the appropriate indices
+        divideBy = 0;
         for iTrial = 1:size(all_labels,2)
-        
-            divideBy = 0;
             if iEvents(iTrial)~=0
                 tempAverageLFP = tempAverageLFP + everything(iTrial).FFTs_single_trial(iEvents(iTrial)).nSpikes * everything(iTrial).FFTs_single_trial(iEvents(iTrial)).avgLFP; % The avgLFP are sum actually. 
                 tempAverageFFT = tempAverageFFT + everything(iTrial).FFTs_single_trial(iEvents(iTrial)).nSpikes * everything(iTrial).FFTs_single_trial(iEvents(iTrial)).avgFFT;
@@ -386,6 +385,14 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
 
 
     end
+    
+    %% Check if any events had no spikes in the time-region of interest and remove them!
+    %  Some spikes might be on the edges of the trial. Ultimately, the
+    %  Spikes Channel i events would be considered in the STA (I mean the event group, not the events themselves), 
+    %  but there would be a zeroed avgLFP included. Get rid of those events
+    iEventsToRemove = find([all.nSpikes]==0);
+    
+    all = all(~ismember(1:length(all),iEventsToRemove));
         
 end
 
