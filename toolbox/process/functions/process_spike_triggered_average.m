@@ -126,8 +126,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     nChannels = 0;
     for iChannel = 1:length(ChannelMat.Channel)
        if strcmp(ChannelMat.Channel(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG')
-          nChannels = nChannels+1;
-          selectedChannels = [selectedChannels iChannel];
+          nChannels = nChannels + 1;
+          selectedChannels(end + 1) = iChannel;
        end
     end
     
@@ -145,6 +145,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         catch
             sProcess.options.paral.Value = 0;
+            poolobj = [];
         end
     else
         poolobj = [];

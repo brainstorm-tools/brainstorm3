@@ -151,14 +151,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % Clear if directory already exists
         if exist(outputPath, 'dir') == 7
-            try
-                rmdir(outputPath, 's');
-            catch
-                error('Couldnt remove spikes folder. Make sure the current directory is not that folder.')
-            end
+            rmdir(outputPath, 's');
         end
         mkdir(outputPath);
-        
         
         %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
         if sProcess.options.paral.Value
@@ -337,37 +332,9 @@ end
 
 function do_UltraMegaSorting(electrodeFile, sFile, lowPass, highPass, Fs)
     try
-% % % % %             DataMat = load(electrodeFile, 'data');
-% % % % %             Wp = [ highPass.Value{1}      lowPass.Value{1}-1000    ] * 2 / sFile.prop.sfreq; % pass band for filtering
-% % % % %             Ws = [ highPass.Value{1}-200  lowPass.Value{1} - 1] * 2 / sFile.prop.sfreq; % transition zone
-% % % % %             [N,Wn] = buttord( Wp, Ws, 3, 20); % determine filter parameters
-% % % % %             [B,A] = butter(N,Wn); % builds filter
-% % % % %             DataMat = load(electrodeFile, 'data');
-% % % % %             filtered_data_temp = filtfilt(B, A, DataMat.data); % runs filter
-% % % % %             filtered_data = cell(1,1);
-% % % % %             filtered_data{1} = filtered_data_temp; %should be a column vector clear filter
-
+        % Apply BST bandpass filter
         DataMat = load(electrodeFile, 'data');
         filtered_data_temp = bst_bandpass_hfilter(DataMat.data', Fs, highPass.Value{1}(1), lowPass.Value{1}(1), 0, 0);
-% % % % %         % USAGE:  [x, FiltSpec, Messages] = bst_bandpass_hfilter(x,  Fs, HighPass, LowPass, isMirror=0, isRelax=0, Function=[detect], Rolloff=[])
-% % % % % 
-% % % % %         
-% % % % %         
-% % % % %         
-% % % % %         
-% % % % %         %%%%%%%%%%%%% THE FILTERING DOESN'T SEEM TO BE DOING ANYTHING %%%%%
-% % % % %                 warning ('Something is wrong here !!!!!!!!!!!')
-% % % % % 
-% % % % %                         figure(1);
-% % % % %                         plot(DataMat.data)
-% % % % %                         hold on
-% % % % %                         plot(filtered_data_temp)
-% % % % %         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % % % %      
-% % % % %         
-% % % % %         
-% % % % %         
-% % % % %         
         
         filtered_data = cell(1,1);
         filtered_data{1} = filtered_data_temp'; %should be a column vector clear filter
@@ -384,8 +351,8 @@ function do_UltraMegaSorting(electrodeFile, sFile, lowPass, highPass, Fs)
     catch e
         % If an error occurs, just don't create the spike file.
         [path, filename] = fileparts(electrodeFile);
-        clean_label = erase(filename,'raw_elec_');
-        disp(e)
+        clean_label = strrep(filename,'raw_elec_','');
+        disp(e);
         disp(['Warning: Spiking failed on electrode ' clean_label '. Skipping this electrode.']);
     end
     

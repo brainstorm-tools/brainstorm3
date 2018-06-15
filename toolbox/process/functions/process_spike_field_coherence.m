@@ -130,7 +130,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     for iChannel = 1:length(ChannelMat.Channel)
        if strcmp(ChannelMat.Channel(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG')
           nElectrodes = nElectrodes + 1;   
-          selectedChannels = [selectedChannels iChannel];
+          selectedChannels(end + 1) = iChannel;
        end
     end
 
@@ -349,7 +349,8 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
     allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
         {trial.Events.label}, 'UniformOutput', 0);
     
-    for ielectrode = selectedChannels
+    for iElec = 1:length(selectedChannels)
+        ielectrode = selectedChannels(iElec);
         iEvents = find(strcmp(allChannelEvents, ChannelMat.Channel(ielectrode).Name)); % Find the index of the spike-events that correspond to that electrode (Exact string match)
         if ~isempty(iEvents)
             spikeEvents(end+1:end+length(iEvents)) = iEvents;

@@ -255,7 +255,7 @@ function data = filter_and_downsample(inputFilename, Fs, filterBounds, notchFilt
     sMat = load(inputFilename); % Make sure that a variable named data is loaded here. This file is saved as an output from the separator 
     
     % Apply notch filter
-    data = apply_notch(sMat.data, notchFilterFreqs, sMat.sr);
+    data = process_notch('Compute', sMat.data, sMat.sr, notchFilterFreqs);
     
     % Aplly final filter
     data = bst_bandpass_hfilter(data, Fs, filterBounds(1), filterBounds(2), 0, 0);
@@ -271,7 +271,7 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     %% Instead of just filtering and then downsampling, DeriveLFP is used, as in:
     % https://www.ncbi.nlm.nih.gov/pubmed/21068271
     
-    data_deligned = apply_notch(sMat.data, notchFilterFreqs, sMat.sr)';
+    data_deligned = process_notch('Compute', sMat.data, sMat.sr, notchFilterFreqs)';
     
     % Assume that a spike lasts 3ms
     nSegment = sMat.sr * 0.003;
@@ -349,48 +349,6 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     
     data_derived = downsample(data_derived, sMat.sr/1000);  % The file now has a different sampling rate (fs/30) = 1000Hz
     
-end
-
-
-function output_signal = apply_notch(input_signal, notchFilterFreqs, sfreq)
-
-    % All this is copied from the process_notch
-    
-    % Use the signal processing toolbox?
-    UseSigProcToolbox = bst_get('UseSigProcToolbox');
-    % Check list of freq to remove
-    if isempty(notchFilterFreqs) || isequal(notchFilterFreqs, 0)
-        output_signal = input_signal';
-        return;
-    end
-    % Define a default width
-    FreqWidth = 1;
-    % Remove the mean of the data before filtering
-    xmean = mean(input_signal);
-    x = bst_bsxfun(@minus, input_signal, xmean); clear input_signal
-    % Remove all the frequencies sequencially
-    for ifreq = 1:length(notchFilterFreqs)
-        % Define coefficients of an IIR notch filter
-        delta = FreqWidth/2;
-        % Pole radius
-        r = 1 - (delta * pi / sfreq);     
-        theta = 2 * pi * notchFilterFreqs(ifreq) / sfreq;
-        % Gain factor
-        B0 = abs(1 - 2*r*cos(theta) + r^2) / (2*abs(1-cos(theta)));   
-        % Numerator coefficients
-        B = B0 * [1, -2*cos(theta), 1];  
-        % Denominator coefficients
-        A = [1, -2*r*cos(theta), r^2];    
-        % Filter signal
-        if UseSigProcToolbox
-            x = filtfilt(B,A,x')'; 
-        else
-            x = filter(B,A,x')'; 
-            x(:,end:-1:1) = filter(B,A,x(:,end:-1:1)')'; 
-        end
-    end
-    % Restore the mean of the signal
-    output_signal = bst_bsxfun(@plus, x, xmean)';
 end
 
 
