@@ -50,7 +50,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === Channels list
     sProcess.options.channels.Comment = 'Channel indices to select:';
     sProcess.options.channels.Type    = 'value';
-    sProcess.options.channels.Value   = {[], 'list', 2};
+    sProcess.options.channels.Value   = {[], 'list', -1};
+    sProcess.options.channelshelp.Comment = '<I><FONT color="#777777">Channel indices or range of indices: e.g. 1 2 3 4 5, or 1:5</FONT></I>';
+    sProcess.options.channelshelp.Type    = 'label';
     
     sProcess.options.binsize.Comment = 'Memory to use for demultiplexing';
     sProcess.options.binsize.Type    = 'value';
@@ -58,7 +60,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     sProcess.options.sampling.Comment = 'New sampling rate';
     sProcess.options.sampling.Type    = 'value';
-    sProcess.options.sampling.Value   = {10000, 'Hz', 1}; % This is used in case the electrodes are not separated yet (no spike sorting done), or the temp folder was emptied 
+    sProcess.options.sampling.Value   = {10000, 'Hz', 1};
     
     sProcess.options.samplingHelp.Comment = '<I><FONT color="#777777">The new Fs should be the same or a submultiple of the original Fs</FONT></I>';
     sProcess.options.samplingHelp.Type    = 'label';
