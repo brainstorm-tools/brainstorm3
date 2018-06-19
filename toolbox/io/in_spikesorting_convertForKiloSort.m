@@ -38,8 +38,6 @@ end
 DataMat = in_bst_data(sInput.FileName, 'F');
 ChannelMat = in_bst_channel(sInput.ChannelFile);
 sFile = DataMat.F;
-numChannels = length(ChannelMat.Channel);
-sFiles = {};
 
 
 % Separate the file to length
@@ -55,47 +53,21 @@ nget_samples = sProcess.options.binsize.Value{1}*(10^6);   % This is the length 
 
                                                            
                                                            
-converted_raw_File = bst_fullfile(parentPath, ['raw_data_no_header_' sInput.Condition(5:end) '.bin']);
+converted_raw_File = bst_fullfile(parentPath, ['raw_data_no_header_' sInput.Condition(5:end) '.dat']);
                                                            
 bst_progress('start', 'Spike-sorting', 'Converting to KiloSort Input...', 0, ceil(sFile.prop.samples(2)/nget_samples));
 
 
-% Make sure the file is deleted because everything will be appended.
+% % % % Make sure the file is deleted because everything will be appended.
+% % % if exist(converted_raw_File, 'file') == 2
+% % %     file_delete(converted_raw_File, 1, 3);
+% % %     disp('Previous converted file succesfully deleted')
+% % % end
+
 if exist(converted_raw_File, 'file') == 2
-    file_delete(converted_raw_File, 1, 3);
-    disp('Previous converted file succesfully deleted')
+    disp('File already converted')
+    return
 end
-
-
-
-%% The files are read twice. Is there a faster way to do this?
-
-%% The converted file needs to be a .bin file in INT16. I need to convert
-%  the signals to int16 first. Since the signals also has negative values, I
-%  have to search all of them to find the minimum value that needs to be
-%  added.
-
-
-minimum_value = 0;
-while nsegment_max<sFile.prop.samples(2)
-    nsegment_min = (isegment-1)*nget_samples;
-    nsegment_max = isegment*nget_samples - 1;
-    if nsegment_max>sFile.prop.samples(2)
-        nsegment_max = sFile.prop.samples(2);
-    end
-    [F, ~] = in_fread(sFile, ChannelMat, [], [nsegment_min,nsegment_max], [], []);
-    
-    minimum_value = min([minimum_value min(min(F))]);
-    clear F
-    isegment = isegment + 1;
-
-end
-
-
-
-
-
-
 
 
 %% Convert the acquisition system file to an int16 without a header.
@@ -117,20 +89,14 @@ while nsegment_max<sFile.prop.samples(2)
     % KILOSORT USES INT16 AS INPUT
     % THIS IS WHAT THEY HAD IN THE make_eMouseData
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    F = (F + abs(minimum_value))*10^6 ;  % This assumes that F signals are in V. You need to convert it to uV so you have big numbers and int16 precision doesn't zero it out.            
+    F = F*10^6 ;  % This assumes that F signals are in V. I convert it to uV there are big numbers and int16 precision doesn't zero it out.            
     fwrite(fid, F,'int16');
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- 
-
-%     fwrite(fid, F,'double'); % This will create bigger files for some acquisition systems (int16, int32)
-%                              % If we could grab the precision automatically
-%                              % it would be ideal
     
     clear F
     isegment = isegment + 1;
     bst_progress('inc', 1);
 
 end
-% fclose(fid)
-fclose('all');
+fclose(fid);
 
