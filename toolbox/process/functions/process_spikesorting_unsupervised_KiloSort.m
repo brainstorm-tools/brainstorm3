@@ -142,8 +142,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 %     ops.NchanTOT            = 32;           % total number of channels (omit if already in chanMap file)
 %     ops.Nchan               = 32;           % number of active channels (omit if already in chanMap file)
     ops.Nfilt               = 64;           % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     		
-    ops.nNeighPC            = 4; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)		
-    ops.nNeigh              = 4; % visualization only (Phy): number of neighboring templates to retain projections of (16)		
+    ops.nNeighPC            = 12; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)		
+    ops.nNeigh              = 16; % visualization only (Phy): number of neighboring templates to retain projections of (16)		
 
     % options for channel whitening		
     ops.whitening           = 'full'; % type of whitening (default 'full', for 'noSpikes' set options for spike detection below)		
@@ -199,6 +199,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ops.epu     = Inf;		
 
     ops.ForceMaxRAMforDat   = 20e9; % maximum RAM the algorithm will try to use; on Windows it will autodetect.
+    ops.nt0                 = 32; % THIS NEEDS TO BE EVEN. AN ODD VALUE DOESN'T GIVE ANY WAVEFORMS (The Kilosort2Neurosuite Function doesn't accommodate odd numbers)
 
 
     
@@ -394,10 +395,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         defaults.VoltageRange = 20;
         defaults.Amplification = 1000;
         defaults.LfpSampleRate = 1250;
-        defaults.PointsPerWaveform = 32;
+        defaults.PointsPerWaveform = ops.nt0;
         defaults.PeakPointInWaveform = 16;
-        defaults.FeaturesPerWave = 4;
-        
+        defaults.FeaturesPerWave = 3;
         
         [~, xmlFileBase] = bst_fileparts(xml_filename);
         bz_MakeXMLFromProbeMaps({xmlFileBase}, '','',1,defaults) % This creates a Barcode_f096_kilosort_spikes.xml
