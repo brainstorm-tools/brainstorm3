@@ -1,4 +1,4 @@
-function F = in_fread_intan(sFile, SamplesBounds, iChannels)
+function F = in_fread_intan(sFile, SamplesBounds, selectedChannels)
 % IN_FREAD_INTAN Read a block of recordings from a Intan files
 %
 % USAGE:  F = in_fread_intan(sFile, SamplesBounds=[], iChannels=[])
@@ -25,23 +25,32 @@ function F = in_fread_intan(sFile, SamplesBounds, iChannels)
 
 
 % Parse inputs
-if (nargin < 3) || isempty(iChannels)
-    iChannels = 1:sFile.header.ChannelCount;
+if (nargin < 3) || isempty(selectedChannels)
+    selectedChannels = 1:sFile.header.ChannelCount;
 end
 if (nargin < 2) || isempty(SamplesBounds)
     SamplesBounds = sFile.prop.samples;
 end
 
-nChannels = length(iChannels);
+nChannels = length(selectedChannels);
 nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
 
 % Read the corresponding recordings
+data_and_headers = read_Intan_RHD2000_file(sFile.header.DataFile,1,0,SamplesBounds(1) + 1,nSamples); % This loads all the channels. 
+%newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSamplesStart,nSamplesToLoad)
+
 F = zeros(nChannels, nSamples);
 
-for iChannel = 1:nChannels
-    fid = fopen(fullfile(sFile.filename, sFile.header.chan_files(iChannel).name), 'r');
-    fseek(fid, SamplesBounds(1), 'bof');
-    data_channel = fread(fid, nSamples, 'int16');
-    F(iChannel,:) = data_channel * 0.195; % Convert to microvolts
-    fclose(fid);
+ii = 0;
+for iChannel = selectedChannels
+    ii = ii + 1;
+    if sFile.header.chan_headers.AcqType==2
+        fid = fopen(fullfile(sFile.filename, sFile.header.chan_files(iChannel).name), 'r');
+        fseek(fid, SamplesBounds(1), 'bof');
+        data_channel = fread(fid, nSamples, 'int16');
+        F(ii,:) = data_channel * 0.195; % Convert to microvolts
+        fclose(fid);
+    else
+        F(ii,:) = data_and_headers.amplifier_channels(iChannel).amplifier_data;
+    end
 end

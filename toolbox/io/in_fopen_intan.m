@@ -1,11 +1,17 @@
 function [sFile, ChannelMat] = in_fopen_intan(DataFile)
-% IN_FOPEN_INTAN Open Intan recordings.
-% The header is a .rhd file
-% The data are separated by channel in .dat files.
-% They should be located on the same folder.
+%% IN_FOPEN_INTAN Open Intan recordings.
+%% Intan has 3 different ways of saving the raw file (Indicated by the AcqType variable throughout the code)
+% 1. One .rhd file for saving everything
+% 2. A separate file for each channel (.dat), a .rhd header, a separate
+% file for each pin of the parallel port (.dat)
+% 3. A separate file for each type of channel (one file for all data-files, one file for aux etc.)
+% This code supports 1 and 2
 
 % The events are read from a parallel port, and all Digital outputs are
 % saved in seperate files as well.
+% Information for the datatypes can be found at:
+% http://intantech.com/files/Intan_RHD2000_data_file_formats.pdf
+
 % 
 % DESCRIPTION:
 %     Reads all the following files available in the same folder.
@@ -34,36 +40,41 @@ function [sFile, ChannelMat] = in_fopen_intan(DataFile)
 
 %% ===== GET FILES =====
 % Get base dataset folder
-if isdir(DataFile)
-    hdr.BaseFolder = DataFile;
-elseif strcmpi(DataFile(end-3:end), '.rhd')
-    hdr.BaseFolder = bst_fileparts(DataFile);
+[hdr.BaseFolder, isItInfo] = bst_fileparts(DataFile);
+
+if strcmp(isItInfo,'info')
+    AcqType = 2; % One separate file per channel
 else
-    error('Invalid Intan folder.');
+    AcqType = 1; % One file to rule them all
 end
 
 
-% Event files (.dat) % They are collected from a parallel port and saved as board-DIN-*.dat files
-EventFiles = dir(bst_fullfile(hdr.BaseFolder, '*DIN*.dat'));
-if isempty(EventFiles)
-    disp(['BST> Warning: board-DIN-*.dat files not found in folder: ' 10 hdr.BaseFolder]);
-    EventFiles = [];
-end
-% Recordings (*.ncs; *.nse)
-ampFiles = dir(bst_fullfile(hdr.BaseFolder, 'amp*.dat'));
-auxFiles = dir(bst_fullfile(hdr.BaseFolder, 'aux*.dat'));
 
-if isempty(ampFiles)
-    error(['Could not find any .ncs recordings in folder: ' 10 hdr.BaseFolder]);
+
+if AcqType==2
+    % Event files (.dat) % They are collected from a parallel port and saved as board-DIN-*.dat files
+    EventFiles = dir(bst_fullfile(hdr.BaseFolder, '*DIN*.dat'));
+    if isempty(EventFiles)
+        disp(['BST> Warning: board-DIN-*.dat files not found in folder: ' 10 hdr.BaseFolder]);
+        EventFiles = [];
+    end
+    % Recordings (*.ncs; *.nse)
+    ampFiles = dir(bst_fullfile(hdr.BaseFolder, 'amp*.dat'));
+    auxFiles = dir(bst_fullfile(hdr.BaseFolder, 'aux*.dat'));
+
+    if isempty(ampFiles)
+        error(['Could not find any .ncs recordings in folder: ' 10 hdr.BaseFolder]);
+    end
+    ChanFiles = sort({ampFiles.name, auxFiles.name});
 end
-ChanFiles = sort({ampFiles.name, auxFiles.name});
+    
 
 
 %% ===== FILE COMMENT =====
 % Get base folder name
 [base_, dirComment, tmp] = bst_fileparts(hdr.BaseFolder);
 % Comment: BaseFolder + number or files
-Comment = [dirComment '-' num2str(length(ampFiles)) '.dat'];
+Comment = dirComment;
 
 
 %% ===== READ DATA HEADERS =====
@@ -71,7 +82,9 @@ hdr.chan_headers = {};
 hdr.chan_files = {};
 
 % Read the header
-newHeader = read_Intan_RHD2000_file(DataFile);
+newHeader = read_Intan_RHD2000_file(DataFile,1,1,1,100);
+%newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSamplesStart,nSamplesToLoad)
+newHeader.AcqType = AcqType; % This will be used later in in_fread_intan.m
 
 % Check for the magic Number
 if newHeader.magic_number ~= hex2dec('c6912702')
@@ -84,42 +97,50 @@ if ~isfield(newHeader, 'frequency_parameters') || ~isfield(newHeader, 'amplifier
 end
 
 % Check if all the channels' files are present
-if length(ampFiles) ~= newHeader.num_amplifier_channels
-    error('Missing channel files. Check if the .dat files from all channels are present');
-end
-
-
-
-% Check if there are missing timestamps in the file
-% Check from the time.dat file how many sapmles exist, and compare with
-% every amp file that was collected
-fileinfo = dir(fullfile(base_,dirComment,'time.dat'));
-num_samples_time = fileinfo.bytes/4; % int32 = 4 bytes
-for iChannel = 1:newHeader.num_amplifier_channels
-    num_samples_channel = ampFiles(iChannel).bytes/2; % int32 = 4 bytes
-    if (num_samples_time ~= num_samples_channel)
-        error(['There are some missing blocks of recordings in file: ' ampFiles(iChannel).name]);
+if AcqType==2
+    if length(ampFiles) ~= newHeader.num_amplifier_channels
+        error('Missing channel files. Check if the .dat files from all channels are present');
     end
-end
-    
+    % Check if there are missing timestamps in the file
+    % Check from the time.dat file how many samples exist, and compare with
+    % every amp file that was collected
+    fileinfo = dir(fullfile(base_,dirComment,'time.dat'));
+    num_samples_time = fileinfo.bytes/4; % int32 = 4 bytes
+    for iChannel = 1:newHeader.num_amplifier_channels
+        num_samples_channel = ampFiles(iChannel).bytes/2; % int32 = 4 bytes
+        if (num_samples_time ~= num_samples_channel)
+            error(['There are some missing blocks of recordings in file: ' ampFiles(iChannel).name]);
+        end
+    end
+    % Read the time.dat file to extract first and last timestamp
+    fid = fopen(fullfile(base_,dirComment,'time.dat'), 'r');
+    Time = fread(fid, num_samples_time, 'int32');
+    fclose(fid);
+    Time = Time / newHeader.frequency_parameters.amplifier_sample_rate; % sample rate from header file
 
-% Read the time.dat file to extract first and last timestamp
-fid = fopen(fullfile(base_,dirComment,'time.dat'), 'r');
-Time = fread(fid, num_samples_time, 'int32');
-fclose(fid);
-Time = Time / newHeader.frequency_parameters.amplifier_sample_rate; % sample rate from header file
+    hdr.chan_files   = ampFiles;  % I ONLY LOAD THE AMP FILES HERE. THE AUXILIARY FILES HAVE DIFFERENT SAMPLING FREQUENCY. FIX THIS ON A LATER VERSION
+    hdr.ChannelCount = length(hdr.chan_files);
+    hdr.NumSamples   = num_samples_time;
+
+else
+    Time             = linspace(0,newHeader.nSamples/newHeader.sample_rate,newHeader.nSamples);
+    num_samples_time = newHeader.sample_rate;
+    hdr.ChannelCount = newHeader.num_amplifier_channels;
+    hdr.NumSamples   = newHeader.nSamples;
+end
+
 
 
 % Extract information needed for opening the file
 hdr.FirstTimeStamp        = Time(1);
 hdr.LastTimeStamp         = Time(end);
-hdr.NumSamples            = num_samples_time;
 hdr.SamplingFrequency     = newHeader.sample_rate;
+
 
 % Save all file names
 hdr.chan_headers = newHeader;
-hdr.chan_files   = ampFiles;  % I ONLY LOAD THE AMP FILES HERE. THE AUXILIARY FILES HAVE DIFFERENT SAMPLING FREQUENCY. FIX THIS ON A LATER VERSION
-hdr.ChannelCount = length(hdr.chan_files);
+hdr.DataFile     = DataFile;
+
 
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
@@ -147,8 +168,12 @@ ChannelMat.Comment = 'Intan channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.ChannelCount]);
 % For each channel
 for i = 1:hdr.ChannelCount
-    [fPath,fName,fExt] = bst_fileparts(hdr.chan_files(i).name);
-    ChannelMat.Channel(i).Name    = fName;
+    if AcqType==2
+        [fPath,fName,fExt] = bst_fileparts(hdr.chan_files(i).name);
+        ChannelMat.Channel(i).Name = fName;
+    else
+        ChannelMat.Channel(i).Name = newHeader.amplifier_channels(i).custom_channel_name;
+    end
     ChannelMat.Channel(i).Loc     = [0; 0; 0];
     ChannelMat.Channel(i).Type    = 'EEG';
     ChannelMat.Channel(i).Orient  = [];
@@ -158,21 +183,34 @@ end
 
 
 %% ===== READ EVENTS =====
-% Events are saved in the file Events.nev
-if ~isempty(EventFiles)
-    
-    
-    % Read blocks of BINARY INPUT channels to create events
-    parallel_input = false(num_samples_time, length(EventFiles)); % 23425920 x 9
-    
-    for iDIN = 1:length(EventFiles)
-        fid = fopen(fullfile(base_,dirComment,EventFiles(iDIN).name), 'r');        
-        temp = fread(fid, num_samples_time, 'uint16');
-        parallel_input(:,iDIN) = logical(temp);
-        fclose(fid);
+areThereEvents = 0;
+
+if AcqType==2
+    if ~isempty(EventFiles)
+        % Read blocks of BINARY INPUT channels to create events
+        parallel_input = false(num_samples_time, length(EventFiles)); % 23425920 x 9
+
+        for iDIN = 1:length(EventFiles)
+            fid = fopen(fullfile(base_,dirComment,EventFiles(iDIN).name), 'r');        
+            temp = fread(fid, num_samples_time, 'uint16');
+            parallel_input(:,iDIN) = logical(temp);
+            fclose(fid);
+        end
+        events_vector = bi2de(parallel_input,'right-msb'); % Collapse the 9 parallel ports to a vector that shows the events
+        areThereEvents = 1;
     end
-        
-    events_vector = bi2de(parallel_input,'right-msb'); % Collapse the 9 parallel ports to a vector that shows the events
+else
+    if isfield(newHeader,'board_dig_in_data')
+        events_vector = bi2de(newHeader.board_dig_in_data,'right-msb'); % Collapse the 9 parallel ports to a vector that shows the events
+        areThereEvents = 1;
+    end
+end
+
+
+
+
+    
+if areThereEvents    
     
     %TODO: change to a toolbox-free function
     [event_labels, event_samples] = findpeaks(events_vector);

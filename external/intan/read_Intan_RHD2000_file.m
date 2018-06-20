@@ -1,4 +1,36 @@
-function newHeader = read_Intan_RHD2000_file(filename)
+function newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSamplesStart,nSamplesToLoad)
+
+% Modified for Brainstorm
+% Author: Konstantinos Nasiotis 2018
+
+
+% This file was modified to offer on the fly small segment data selection
+
+
+
+% loadData       : loads the data defined in iSamplesStart and nSamplesToLoad
+% loadEvents     : loads the events from the entire file (loadData has to be set to 1)
+% iSamplesStart  : The starting sample
+% nSamplesToLoad : How many samples will be loaded
+
+% e.g. newHeader = read_Intan_RHD2000_file(filename,1,1,1001,10000);
+% This will load the 10000 samples from all channels, starting at sample 1001
+% The events from the ENTIRE file will be loaded
+
+% When someone is interested only in the events, they should load a small
+% portion of the data (100 samples) and enable the loadEvents flag.
+% e.g. newHeader = read_Intan_RHD2000_file(filename,1,1,1,100);
+
+
+
+
+
+
+
+
+
+
+
 
 % read_Intan_RHD2000_file
 %
@@ -284,28 +316,37 @@ if (bytes_remaining > 0)
     data_present = 1;
 end
 
-num_data_blocks = bytes_remaining / bytes_per_block;
+num_data_blocks_ALL = bytes_remaining / bytes_per_block;
 
-num_amplifier_samples = num_samples_per_data_block * num_data_blocks;
-num_aux_input_samples = (num_samples_per_data_block / 4) * num_data_blocks;
-num_supply_voltage_samples = 1 * num_data_blocks;
-num_board_adc_samples = num_samples_per_data_block * num_data_blocks;
-num_board_dig_in_samples = num_samples_per_data_block * num_data_blocks;
-num_board_dig_out_samples = num_samples_per_data_block * num_data_blocks;
+
+%% Check how many data blocks of size num_samples_per_data_block will be loaded
+
+num_data_blocks = ceil(nSamplesToLoad/num_samples_per_data_block);
+
+
+%%
+
+
+
+num_amplifier_samples = num_samples_per_data_block * (num_data_blocks + 1);
+num_aux_input_samples = (num_samples_per_data_block / 4) * (num_data_blocks + 1);
+num_supply_voltage_samples = 1 * (num_data_blocks + 1);
+num_board_adc_samples = num_samples_per_data_block * (num_data_blocks + 1);
+
 
 record_time = num_amplifier_samples / sample_rate;
+% % % 
+% % % if (data_present)
+% % %     fprintf(1, 'File contains %0.3f seconds of data.  Amplifiers were sampled at %0.2f kS/s.\n', ...
+% % %         record_time, sample_rate / 1000);
+% % %     fprintf(1, '\n');
+% % % else
+% % %     fprintf(1, 'Header file contains no data.  Amplifiers were sampled at %0.2f kS/s.\n', ...
+% % %         sample_rate / 1000);
+% % %     fprintf(1, '\n');
+% % % end
 
-if (data_present)
-    fprintf(1, 'File contains %0.3f seconds of data.  Amplifiers were sampled at %0.2f kS/s.\n', ...
-        record_time, sample_rate / 1000);
-    fprintf(1, '\n');
-else
-    fprintf(1, 'Header file contains no data.  Amplifiers were sampled at %0.2f kS/s.\n', ...
-        sample_rate / 1000);
-    fprintf(1, '\n');
-end
-
-if (data_present)
+if (data_present) && loadData
     
     % Pre-allocate memory for data.
     fprintf(1, 'Allocating memory for data...\n');
@@ -317,10 +358,17 @@ if (data_present)
     supply_voltage_data = zeros(num_supply_voltage_channels, num_supply_voltage_samples);
     temp_sensor_data = zeros(num_temp_sensor_channels, num_supply_voltage_samples);
     board_adc_data = zeros(num_board_adc_channels, num_board_adc_samples);
-    board_dig_in_data = zeros(num_board_dig_in_channels, num_board_dig_in_samples);
-    board_dig_in_raw = zeros(1, num_board_dig_in_samples);
-    board_dig_out_data = zeros(num_board_dig_out_channels, num_board_dig_out_samples);
-    board_dig_out_raw = zeros(1, num_board_dig_out_samples);
+    
+    
+    if loadEvents
+        num_board_dig_in_samples  = num_samples_per_data_block * (num_data_blocks_ALL + 1);
+        num_board_dig_out_samples = num_samples_per_data_block * (num_data_blocks_ALL + 1);
+        
+        board_dig_in_data = zeros(num_board_dig_in_channels, num_board_dig_in_samples);
+        board_dig_in_raw = zeros(1, num_board_dig_in_samples);
+        board_dig_out_data = zeros(num_board_dig_out_channels, num_board_dig_out_samples);
+        board_dig_out_raw = zeros(1, num_board_dig_out_samples);
+    end
 
     % Read sampled data from file.
     fprintf(1, 'Reading data from file...\n');
@@ -334,50 +382,100 @@ if (data_present)
 
     print_increment = 10;
     percent_done = print_increment;
-    for i=1:num_data_blocks
+    
+    
+    %% Select specific blocks, based on the time selection
+    
+    %  The starting block is based on the iSamplesStart selection
+    
+    iStartingBlock = floor(iSamplesStart/num_samples_per_data_block)+1;
+
+    selectedBlocks = iStartingBlock + [0:num_data_blocks];
+    
+    
+    
+    for iBlock=1:num_data_blocks_ALL
         % In version 1.2, we moved from saving timestamps as unsigned
         % integeters to signed integers to accomidate negative (adjusted)
         % timestamps for pretrigger data.
+        
         if ((data_file_main_version_number == 1 && data_file_secondary_version_number >= 2) ...
         || (data_file_main_version_number > 1))
-            t_amplifier(amplifier_index:(amplifier_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'int32');
+            if ismember(iBlock, selectedBlocks)
+                t_amplifier(amplifier_index:(amplifier_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'int32');
+            else
+                fseek(fid, num_samples_per_data_block*4,'cof');
+            end
         else
-            t_amplifier(amplifier_index:(amplifier_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'uint32');
+            if ismember(iBlock, selectedBlocks)
+                t_amplifier(amplifier_index:(amplifier_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'uint32');
+            else
+                fseek(fid, num_samples_per_data_block*4,'cof');
+            end
         end
         if (num_amplifier_channels > 0)
-            amplifier_data(:, amplifier_index:(amplifier_index + num_samples_per_data_block - 1)) = fread(fid, [num_samples_per_data_block, num_amplifier_channels], 'uint16')';
+            if ismember(iBlock, selectedBlocks)
+                amplifier_data(:, amplifier_index:(amplifier_index + num_samples_per_data_block - 1)) = fread(fid, [num_samples_per_data_block, num_amplifier_channels], 'uint16')';
+            else
+                fseek(fid, num_samples_per_data_block*num_amplifier_channels*2,'cof');
+            end    
         end
         if (num_aux_input_channels > 0)
-            aux_input_data(:, aux_input_index:(aux_input_index + (num_samples_per_data_block / 4) - 1)) = fread(fid, [(num_samples_per_data_block / 4), num_aux_input_channels], 'uint16')';
+            if ismember(iBlock, selectedBlocks)
+                aux_input_data(:, aux_input_index:(aux_input_index + (num_samples_per_data_block / 4) - 1)) = fread(fid, [(num_samples_per_data_block / 4), num_aux_input_channels], 'uint16')';
+            else
+                fseek(fid, (num_samples_per_data_block / 4)*num_aux_input_channels*2,'cof');
+            end   
         end
         if (num_supply_voltage_channels > 0)
-            supply_voltage_data(:, supply_voltage_index) = fread(fid, [1, num_supply_voltage_channels], 'uint16')';
+            if ismember(iBlock, selectedBlocks)
+                supply_voltage_data(:, supply_voltage_index) = fread(fid, [1, num_supply_voltage_channels], 'uint16')';
+            else
+                fseek(fid, num_supply_voltage_channels*2,'cof');
+            end      
         end
         if (num_temp_sensor_channels > 0)
-            temp_sensor_data(:, supply_voltage_index) = fread(fid, [1, num_temp_sensor_channels], 'int16')';
+            if ismember(iBlock, selectedBlocks)
+                temp_sensor_data(:, supply_voltage_index) = fread(fid, [1, num_temp_sensor_channels], 'int16')';
+            else
+                fseek(fid, num_temp_sensor_channels*2,'cof');
+            end      
         end
         if (num_board_adc_channels > 0)
-            board_adc_data(:, board_adc_index:(board_adc_index + num_samples_per_data_block - 1)) = fread(fid, [num_samples_per_data_block, num_board_adc_channels], 'uint16')';
+            if ismember(iBlock, selectedBlocks)
+                board_adc_data(:, board_adc_index:(board_adc_index + num_samples_per_data_block - 1)) = fread(fid, [num_samples_per_data_block, num_board_adc_channels], 'uint16')';
+            else
+                fseek(fid, num_samples_per_data_block*num_board_adc_channels*2,'cof');
+            end        
         end
         if (num_board_dig_in_channels > 0)
-            board_dig_in_raw(board_dig_in_index:(board_dig_in_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'uint16');
+            if ismember(iBlock, selectedBlocks) && loadEvents
+                board_dig_in_raw(board_dig_in_index:(board_dig_in_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'uint16');
+            else
+                fseek(fid, num_samples_per_data_block*2,'cof');
+            end     
         end
         if (num_board_dig_out_channels > 0)
-            board_dig_out_raw(board_dig_out_index:(board_dig_out_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'uint16');
+            if ismember(iBlock, selectedBlocks) && loadEvents
+                board_dig_out_raw(board_dig_out_index:(board_dig_out_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'uint16');
+            else
+                fseek(fid, num_samples_per_data_block*2,'cof');
+            end      
         end
 
-        amplifier_index = amplifier_index + num_samples_per_data_block;
-        aux_input_index = aux_input_index + (num_samples_per_data_block / 4);
-        supply_voltage_index = supply_voltage_index + 1;
-        board_adc_index = board_adc_index + num_samples_per_data_block;
-        board_dig_in_index = board_dig_in_index + num_samples_per_data_block;
+        if ismember(iBlock, selectedBlocks)
+            amplifier_index = amplifier_index + num_samples_per_data_block;
+            aux_input_index = aux_input_index + (num_samples_per_data_block / 4);
+            supply_voltage_index = supply_voltage_index + 1;
+            board_adc_index = board_adc_index + num_samples_per_data_block;
+            
+        end
+        
+        % The board dig in and out are for the events. I need them to be
+        % updated constantly, not only when I'm in a selectedBlock.
+        board_dig_in_index  = board_dig_in_index + num_samples_per_data_block;
         board_dig_out_index = board_dig_out_index + num_samples_per_data_block;
-
-        fraction_done = 100 * (i / num_data_blocks);
-        if (fraction_done >= percent_done)
-            fprintf(1, '%d%% done...\n', percent_done);
-            percent_done = percent_done + print_increment;
-        end
+        
     end
 
     % Make sure we have read exactly the right amount of data.
@@ -386,23 +484,56 @@ if (data_present)
         %error('Error: End of file not reached.');
     end
 
+    
+    %% The code above imported the blocks that contain the required samples.
+    %  Now they need to be chopped since the blocks are not necessarily the
+    %  size requested from the iSamplesStart,nSamplesToLoad inputs.
+
+    start = mod(iSamplesStart,num_samples_per_data_block);
+    stop  = start + nSamplesToLoad - 1;
+
+    if ~isempty(t_amplifier)
+        t_amplifier = t_amplifier(start:stop);
+    end
+    if ~isempty(amplifier_data)
+        amplifier_data = amplifier_data(:,start:stop);
+    end
+    if ~isempty(aux_input_data)
+        aux_input_data = aux_input_data(:,ceil(start/4):round(stop/4)); % 9x45   -> 9x25
+    end
+%     if ~isempty(supply_voltage_data)
+%         temp_sensor_data = temp_sensor_data(start:stop);  % []
+%     end
+%     if ~isempty(board_adc_data)
+%         board_adc_data = board_adc_data(start:stop);    % []
+%     end
 end
+
+
+
+
+
+
+
+
 
 % Close data file.
 fclose(fid);
 
-if (data_present)
+if (data_present) && loadData
     
     fprintf(1, 'Parsing data...\n');
 
-    % Extract digital input channels to separate variables.
-    for i=1:num_board_dig_in_channels
-       mask = 2^(board_dig_in_channels(i).native_order) * ones(size(board_dig_in_raw));
-       board_dig_in_data(i, :) = (bitand(board_dig_in_raw, mask) > 0);
-    end
-    for i=1:num_board_dig_out_channels
-       mask = 2^(board_dig_out_channels(i).native_order) * ones(size(board_dig_out_raw));
-       board_dig_out_data(i, :) = (bitand(board_dig_out_raw, mask) > 0);
+    if loadEvents
+        % Extract digital input channels to separate variables.
+        for iBlock=1:num_board_dig_in_channels
+           mask = 2^(board_dig_in_channels(iBlock).native_order) * ones(size(board_dig_in_raw));
+           board_dig_in_data(iBlock, :) = (bitand(board_dig_in_raw, mask) > 0);
+        end
+        for iBlock=1:num_board_dig_out_channels
+           mask = 2^(board_dig_out_channels(iBlock).native_order) * ones(size(board_dig_out_raw));
+           board_dig_out_data(iBlock, :) = (bitand(board_dig_out_raw, mask) > 0);
+        end
     end
 
     % Scale voltage levels appropriately.
@@ -442,11 +573,11 @@ if (data_present)
 
         print_increment = 10;
         percent_done = print_increment;
-        for i=1:num_amplifier_channels
-            amplifier_data(i,:) = ...
-                notch_filter(amplifier_data(i,:), sample_rate, notch_filter_frequency, 10);
+        for iBlock=1:num_amplifier_channels
+            amplifier_data(iBlock,:) = ...
+                notch_filter(amplifier_data(iBlock,:), sample_rate, notch_filter_frequency, 10);
 
-            fraction_done = 100 * (i / num_amplifier_channels);
+            fraction_done = 100 * (iBlock / num_amplifier_channels);
             if (fraction_done >= percent_done)
                 fprintf(1, '%d%% done...\n', percent_done);
                 percent_done = percent_done + print_increment;
@@ -457,72 +588,76 @@ if (data_present)
 
 end
 
-% Move variables to base workspace.
 
-move_to_base_workspace(notes);
-move_to_base_workspace(frequency_parameters);
-if (data_file_main_version_number > 1)
-    move_to_base_workspace(reference_channel);
-end
 
-if (num_amplifier_channels > 0)
-    move_to_base_workspace(amplifier_channels);
-    if (data_present)
-        move_to_base_workspace(amplifier_data);
-        move_to_base_workspace(t_amplifier);
-    end
-    move_to_base_workspace(spike_triggers);
-end
-if (num_aux_input_channels > 0)
-    move_to_base_workspace(aux_input_channels);
-    if (data_present)
-        move_to_base_workspace(aux_input_data);
-        move_to_base_workspace(t_aux_input);
-    end
-end
-if (num_supply_voltage_channels > 0)
-    move_to_base_workspace(supply_voltage_channels);
-    if (data_present)
-        move_to_base_workspace(supply_voltage_data);
-        move_to_base_workspace(t_supply_voltage);
-    end
-end
-if (num_board_adc_channels > 0)
-    move_to_base_workspace(board_adc_channels);
-    if (data_present)
-        move_to_base_workspace(board_adc_data);
-        move_to_base_workspace(t_board_adc);
-    end
-end
-if (num_board_dig_in_channels > 0)
-    move_to_base_workspace(board_dig_in_channels);
-    if (data_present)
-        move_to_base_workspace(board_dig_in_data);
-        move_to_base_workspace(t_dig);
-    end
-end
-if (num_board_dig_out_channels > 0)
-    move_to_base_workspace(board_dig_out_channels);
-    if (data_present)
-        move_to_base_workspace(board_dig_out_data);
-        move_to_base_workspace(t_dig);
-    end
-end
-if (num_temp_sensor_channels > 0)
-    if (data_present)
-        move_to_base_workspace(temp_sensor_data);
-        move_to_base_workspace(t_temp_sensor);
-    end
-end
+%%%%%%% NAS
 
-fprintf(1, 'Done!  Elapsed time: %0.1f seconds\n', toc);
-if (data_present)
-    fprintf(1, 'Extracted data are now available in the MATLAB workspace.\n');
-else
-    fprintf(1, 'Extracted waveform information is now available in the MATLAB workspace.\n');
-end
-fprintf(1, 'Type ''whos'' to see variables.\n');
-fprintf(1, '\n');
+% % % % % Move variables to base workspace.
+% % % % 
+% % % % move_to_base_workspace(notes);
+% % % % move_to_base_workspace(frequency_parameters);
+% % % % if (data_file_main_version_number > 1)
+% % % %     move_to_base_workspace(reference_channel);
+% % % % end
+% % % % 
+% % % % if (num_amplifier_channels > 0)
+% % % %     move_to_base_workspace(amplifier_channels);
+% % % %     if (data_present)
+% % % %         move_to_base_workspace(amplifier_data);
+% % % %         move_to_base_workspace(t_amplifier);
+% % % %     end
+% % % %     move_to_base_workspace(spike_triggers);
+% % % % end
+% % % % if (num_aux_input_channels > 0)
+% % % %     move_to_base_workspace(aux_input_channels);
+% % % %     if (data_present)
+% % % %         move_to_base_workspace(aux_input_data);
+% % % %         move_to_base_workspace(t_aux_input);
+% % % %     end
+% % % % end
+% % % % if (num_supply_voltage_channels > 0)
+% % % %     move_to_base_workspace(supply_voltage_channels);
+% % % %     if (data_present)
+% % % %         move_to_base_workspace(supply_voltage_data);
+% % % %         move_to_base_workspace(t_supply_voltage);
+% % % %     end
+% % % % end
+% % % % if (num_board_adc_channels > 0)
+% % % %     move_to_base_workspace(board_adc_channels);
+% % % %     if (data_present)
+% % % %         move_to_base_workspace(board_adc_data);
+% % % %         move_to_base_workspace(t_board_adc);
+% % % %     end
+% % % % end
+% % % % if (num_board_dig_in_channels > 0)
+% % % %     move_to_base_workspace(board_dig_in_channels);
+% % % %     if (data_present)
+% % % %         move_to_base_workspace(board_dig_in_data);
+% % % %         move_to_base_workspace(t_dig);
+% % % %     end
+% % % % end
+% % % % if (num_board_dig_out_channels > 0)
+% % % %     move_to_base_workspace(board_dig_out_channels);
+% % % %     if (data_present)
+% % % %         move_to_base_workspace(board_dig_out_data);
+% % % %         move_to_base_workspace(t_dig);
+% % % %     end
+% % % % end
+% % % % if (num_temp_sensor_channels > 0)
+% % % %     if (data_present)
+% % % %         move_to_base_workspace(temp_sensor_data);
+% % % %         move_to_base_workspace(t_temp_sensor);
+% % % %     end
+% % % % end
+% % % % 
+% % % % fprintf(1, 'Done!  Elapsed time: %0.1f seconds\n', toc);
+% % % % if (data_present)
+% % % %     fprintf(1, 'Extracted data are now available in the MATLAB workspace.\n');
+% % % % else
+% % % %     fprintf(1, 'Extracted waveform information is now available in the MATLAB workspace.\n');
+% % % % end
+% % % % fprintf(1, 'Type ''whos'' to see variables.\n');
+% % % % fprintf(1, '\n');
 
 
 
@@ -553,13 +688,27 @@ newHeader.spike_trigger_struct        = spike_trigger_struct;
 newHeader.spike_triggers              = spike_triggers;
 newHeader.supply_voltage_channels     = supply_voltage_channels;
 newHeader.magic_number                = magic_number;
+newHeader.nSamples                    = num_data_blocks_ALL*num_samples_per_data_block;
 
+
+
+
+if (data_present) && loadData
+    newHeader.time = t_amplifier;
+    for iChannel = 1:length(amplifier_channels)
+        newHeader.amplifier_channels(iChannel).amplifier_data = amplifier_data(iChannel,:);
+    end
+end
+
+if (data_present) && loadEvents
+    if ~isempty(num_board_dig_in_channels)
+        newHeader.board_dig_in_data = board_dig_in_data';
+    end
+    if ~isempty(board_dig_out_channels)
+        newHeader.board_dig_in_data = board_dig_out_data';
+    end
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-
-
 
 
 return
