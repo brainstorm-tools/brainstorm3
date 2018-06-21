@@ -84,6 +84,7 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
+    OutputFiles = {};
     
     for iInput = 1:length(sInputs)
         sInput = sInputs(iInput);
@@ -246,7 +247,16 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         sFileOut = out_fwrite(sFileOut, ChannelMatOut, [], [], [], LFP);
 
         % Import the RAW file in the database viewer and open it immediately
-        OutputFiles = import_raw({sFileOut.filename}, 'BST-BIN', iSubject);
+        RawFile = import_raw({sFileOut.filename}, 'BST-BIN', iSubject);
+        RawFile = RawFile{1};
+        OutputFiles{end + 1} = RawFile;
+        
+        % Modify it slightly since this is an LFP raw file
+        RawMat = load(RawFile);
+        RawMat.Comment = 'Link to LFP file';
+        bst_save(RawFile, RawMat, 'v6');
+        [sStudy, iStudy] = bst_get('DataFile', RawFile);
+        db_reload_studies(iStudy);
     end
 end
 
