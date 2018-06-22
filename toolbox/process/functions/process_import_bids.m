@@ -407,8 +407,17 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % Get all the files in the meg folder
         allMegFiles = {};
         allMegDates = {};
+        subjConditions = bst_get('ConditionsForSubject', sSubject.FileName);
         for isess = 1:length(SubjectSessDir{iSubj})
             if isdir(SubjectSessDir{iSubj}{isess})
+                % If the subject already has this session, skip it.
+                [tmp, sessionName] = fileparts(SubjectSessDir{iSubj}{isess});
+                if any(~cellfun(@isempty, strfind(subjConditions, ['@raw' SubjectName{iSubj} '_' sessionName])))
+                    sessionMessage = ['Session "' sessionName '" of subject "' SubjectName{iSubj} '" already exists. Skipping...'];
+                    disp(['BIDS> ' sessionMessage]);
+                    Messages = [Messages, 10, sessionMessage];
+                    continue;
+                end
                 tsvFiles = {};
                 tsvDates = {};
                 % Try to read the _scans.tsv file in the session folder, to get the acquisition date
