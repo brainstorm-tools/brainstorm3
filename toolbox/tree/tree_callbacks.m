@@ -470,7 +470,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Edit protocol', IconLoader.ICON_EDIT,        [], @(h,ev)gui_edit_protocol('edit', iProtocol));
                     gui_component('MenuItem', jPopup, [], 'New subject',   IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)db_edit_subject);
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'));
+                    gui_component('MenuItem', jPopup, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'));
                 end
                 % Export menu (added later)
                 jMenuExport = gui_component('MenuItem', [], [], 'Export',   IconLoader.ICON_SAVE, [], @(h,ev)export_protocol);
@@ -487,7 +487,7 @@ switch (lower(action))
                     end
                     gui_component('MenuItem', jPopup, [], 'New folder', IconLoader.ICON_FOLDER_NEW,  [], @(h,ev)db_add_condition('*'));
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'));
+                    gui_component('MenuItem', jPopup, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Review raw file', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@import_raw));
                     gui_component('MenuItem', jPopup, [], 'Import MEG/EEG',  IconLoader.ICON_EEG_NEW,  [], @(h,ev)bst_call(@import_data));

@@ -102,7 +102,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
             gui_component('MenuItem', jSubMenu, [], 'Load from zip file', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@import_protocol), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Import subject from zip', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@import_subject), fontSize);
             jSubMenu.addSeparator();
-            gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'), fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'), fontSize);
             jSubMenu.addSeparator();
             gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[], fontSize);
