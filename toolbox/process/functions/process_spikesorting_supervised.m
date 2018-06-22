@@ -298,6 +298,7 @@ function nextElectrode = GetNextElectrode()
     end
     
     numSpikes = length(GlobalData.SpikeSorting.Data.Spikes);
+    nextElectrode = [];
     
     if GlobalData.SpikeSorting.Selected < numSpikes
         nextElectrode = GlobalData.SpikeSorting.Selected + 1;
@@ -306,7 +307,7 @@ function nextElectrode = GetNextElectrode()
             nextElectrode = nextElectrode + 1;
         end
     end
-    if nextElectrode >= numSpikes || isempty(GlobalData.SpikeSorting.Data.Spikes(nextElectrode).File)
+    if isempty(nextElectrode) || nextElectrode >= numSpikes || isempty(GlobalData.SpikeSorting.Data.Spikes(nextElectrode).File)
         nextElectrode = GlobalData.SpikeSorting.Selected;
     end
 end
