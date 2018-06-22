@@ -58,17 +58,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.binsize.Type    = 'value';
     sProcess.options.binsize.Value   = {6, 'million samples', 1};
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MARTIN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % These two files need to be accessible to the user
-    % The parameters file is created in StandardCOnfig_MOVEME
-    
-    % The Channel Positions file is created in createChannelMapFile
-    % In theory, the acquisition system should give the positions of the
-    % electrodes (ChannelMat.Channel.Loc). We have to make sure this works
-    % with the coordinates of the positions (0.11, 0.22, 0.33 mm), or it
-    % only takes indices (1,2,3)
-    
-    
     % Options: Edit parameters
     sProcess.options.edit.Comment = {'panel_timefreq_options',  ' Edit parameters file:'};
     sProcess.options.edit.Type    = 'editpref'; 
@@ -198,7 +187,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ops.epu     = Inf;		
 
     ops.ForceMaxRAMforDat   = 20e9; % maximum RAM the algorithm will try to use; on Windows it will autodetect.
-    ops.nt0                 = 32; % THIS NEEDS TO BE EVEN. AN ODD VALUE DOESN'T GIVE ANY WAVEFORMS (The Kilosort2Neurosuite Function doesn't accommodate odd numbers)
 
 
     
@@ -267,6 +255,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         try
             Montages = unique({Channels.Group});
             alreadyAssignedMontages = true;
+            for iChannel = 1:length(Channels)
+                for iMontage = 1:length(Montages)
+                    if strcmp(Channels(iChannel).Group, Montages{iMontage})
+                        channelsMontage(iChannel)    = iMontage;
+                    end
+                end
+            end
+                
         catch
             Montages = 'SingleGroup';
             
@@ -293,7 +289,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             for iChannel = 1:length(Channels)
                 for iMontage = 1:length(Montages)
                     if strcmp(Channels(iChannel).Group, Montages{iMontage})
-                        channelsMontage(iChannel)    = iMontage;
                         channelsCoords(iChannel,1:3) = Channels(iChannel).Loc;
                     end
                 end
@@ -319,7 +314,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         kcoords = channelsMontage'; % grouping of channels (i.e. tetrode groups)
         fs = sFile.prop.sfreq; % sampling frequency
-
+        
+       
         
 % % %         %%%%%%%%%%%%%  WE HAVE TO FIGURE OUT A SOLUTION FOR THIS %%%%%%%%%%
 % % %         
@@ -341,7 +337,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         
         
-        
+        %% Width of the spike-waveforms - NEEDS TO BE EVEN
+        ops.nt0  = 0.0017*fs; % Width of the spike Waveforms. (1.7ms) THIS NEEDS TO BE EVEN. AN ODD VALUE DOESN'T GIVE ANY WAVEFORMS (The Kilosort2Neurosuite Function doesn't accommodate odd numbers)
+        if mod(ops.nt0,2)
+            ops.nt0 =ops.nt0+1;
+        end
         
         
         
@@ -438,12 +438,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_progress('text', 'Spike-sorting...');
         
         
+       
+        
         %% Some residual parameters that need the outputPath and the converted Raw signal
         ops.fbinary =  converted_raw_File; % will be created for 'openEphys'		
         ops.fproc   = [outputPath '\temp_wh.bin']; % residual from RAM of preprocessed data		% It was .dat, I changed it to .bin - Make sure this is correct
         ops.chanMap = [outputPath '\chanMap.mat']; % make this file using createChannelMapFile.m		
         ops.root    = outputPath; % 'openEphys' only: where raw files are
         ops.basename = xmlFileBase;
+        
+        
         
         
         %% KiloSort
