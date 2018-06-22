@@ -113,7 +113,7 @@ else
 end
 
 % ===== LOAD CHANNEL FILE IF NOT DONE =====
-if isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel)
+if isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel) || ~strcmpi(GlobalData.DataSet(iDS).ChannelFile, ChannelFile)
     % Load channel file
     ChannelMat = in_bst_channel(ChannelFile);
     % Copy information in memory

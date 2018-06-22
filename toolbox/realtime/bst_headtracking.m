@@ -342,6 +342,7 @@ end
 % Display current position helmet
 colorInd = 1;
 % Display CTF helmet
+
 view_helmet(SensorPositionFile, hFig);
 % Get the helmet patch
 hHelmetPatch = findobj(hFig, 'Tag', 'HelmetPatch');
