@@ -34,6 +34,7 @@ function varargout = process_pac_comod( varargin )
 % v 2.2:   SS, tPAC, Aug 2017
 % v 3.0:   SS, Check for file format before using it for fp estimation, Sep
 %          2017
+% v 3.3    SS, Bug fix: check time window length (line 332)
 
 eval(macro_method);
 end
@@ -328,8 +329,7 @@ function tPACMatOutput = Compute(tPACMat, t, window_length, anal_type, doInterpo
     timeRange = bst_closest(inputTime, tPACMat.Time);
     if length(timeRange)==1
        timeRange = [timeRange, timeRange]; 
-    end
-    if tPACMat.Time(timeRange(2)) > inputTime(2)
+    elseif tPACMat.Time(timeRange(2)) > inputTime(2)
         timeRange(2) = timeRange(2)-1;
     end
     
