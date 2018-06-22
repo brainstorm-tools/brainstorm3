@@ -170,17 +170,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_progress('inc', 1);
     end
     
-    
-    %% Get list of unique conditions for output label
-    conditions = unique({sInputs.Condition});
-    condition = [];
-    for iCond = 1:length(conditions)
-        if iCond > 1
-            condition = [condition ', '];
-        end
-        condition = [condition conditions{iCond}];
-    end
-    
     %% Build the output file
     tfOPTIONS.ParentFiles = {sInputs.FileName};
     
@@ -190,7 +179,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     FileMat.TFmask = true(size(raster, 2), size(raster, 3));
     FileMat.Freqs = 1:size(FileMat.TF, 3);
     FileMat.Std = [];
-    FileMat.Comment = ['Raster Plot: ' condition];
+    FileMat.Comment = ['Raster Plot: ' str_remove_parenth(sInputs(1).Comment)];
     FileMat.DataType = 'data';
     FileMat.TimeBands = [];
     FileMat.RefRowNames = [];

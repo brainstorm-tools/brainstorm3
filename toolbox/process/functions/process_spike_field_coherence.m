@@ -268,17 +268,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 %     
 
 
-    %% Get list of unique conditions for output label
-    conditions = unique({sInputs.Condition});
-    condition = [];
-    for iCond = 1:length(conditions)
-        if iCond > 1
-            condition = [condition ', '];
-        end
-        condition = [condition conditions{iCond}];
-    end
-
-
     %% Wrap everything into the output file
     
     tfOPTIONS.ParentFiles = {sInputs.FileName};
@@ -289,7 +278,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     FileMat.TFmask = [];
     FileMat.Freqs = 1:nElectrodes;      % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
     FileMat.Std = [];
-    FileMat.Comment = ['Spike Field Coherence: ' condition];
+    FileMat.Comment = ['Spike Field Coherence: ' str_remove_parenth(sInputs(1).Comment)];
     FileMat.DataType = 'data';
     FileMat.TimeBands = [];
     FileMat.RefRowNames = [];
@@ -348,6 +337,10 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
 
     allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
         {trial.Events.label}, 'UniformOutput', 0);
+    
+    if isempty(allChannelEvents)
+        error('No spike event found in this file.');
+    end
     
     for iElec = 1:length(selectedChannels)
         ielectrode = selectedChannels(iElec);
