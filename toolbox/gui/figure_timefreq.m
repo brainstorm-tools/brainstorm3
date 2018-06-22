@@ -1400,6 +1400,10 @@ function UpdateLabels(hAxes, GraphSelection)
         end
         xlabel(hAxes, strFreq);
         ylabel(hAxes, strElec);
+        % Change x tick labels to use frequencies
+        xTick = get(hAxes, 'XTick');
+        xTickLabel = sprintfc('%d', round(xTick * nFreqs / xLim(2)));
+        set(hAxes, 'XTickLabel', xTickLabel);
     elseif ~isempty(strfind(lower(TfInfo.FileName), 'noise_correlation'))
         if numel(GraphSelection) > 0
             strNeur1 = ['Neuron: ' TfInfo.NeuronNames{GraphSelection(1)}];
