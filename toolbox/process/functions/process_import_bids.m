@@ -22,7 +22,7 @@ function varargout = process_import_bids( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2018
+% Authors: Francois Tadel, 2016-2018; Martin Cousineau, 2018
 
 eval(macro_method);
 end
@@ -49,7 +49,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'open', ...                        % Dialog type: {open,save}
         'Import BIDS dataset folder...', ...     % Window title
         'ImportAnat', ...                  % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
-        'single', ...                      % Selection mode: {single,multiple}
+        'multiple', ...                    % Selection mode: {single,multiple}
         'dirs', ...                        % Selection mode: {files,dirs,files_and_dirs}
         {{'.folder'}, 'BIDS dataset folder', 'BIDS'}, ... % Available file formats
         []};                               % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,AnatIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn}
@@ -83,9 +83,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     % === GET OPTIONS ===
     % Get folder to import
-    BidsDir = sProcess.options.bidsdir.Value{1};
-    if isempty(BidsDir) || ~file_exist(bst_fullfile(BidsDir, 'dataset_description.json'))
-        bst_report('Error', sProcess, [], 'Invalid BIDS dataset: missing file "dataset_description.json"');
+    selectedFolders = sProcess.options.bidsdir.Value{1};
+    [tmp, tmp2, errorMessage] = GetValidBidsDir(selectedFolders);
+    if ~isempty(errorMessage)
+        bst_report('Error', sProcess, [], errorMessage);
         return
     end
     % Number of vertices
@@ -101,7 +102,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % === IMPORT DATASET ===
     % Import dataset
-    [OutputFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, 0, ChannelAlign, SelectedSubjects);
+    [OutputFiles, Messages] = ImportBidsDataset(selectedFolders, nVertices, 0, ChannelAlign, SelectedSubjects);
     % Handling errors
     if ~isempty(Messages)
         if isempty(OutputFiles)
@@ -143,7 +144,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % Get default directories
         LastUsedDirs = bst_get('LastUsedDirs');
         % Pick a folder
-        BidsDir = java_getfile('open', 'Import BIDS dataset folder...', LastUsedDirs.ImportAnat, 'single', 'dirs', {{'.folder'}, 'BIDS dataset folder', 'BIDS'}, 'BIDS');
+        BidsDir = java_getfile('open', 'Import BIDS dataset folder...', LastUsedDirs.ImportAnat, 'multiple', 'dirs', {{'.folder'}, 'BIDS dataset folder', 'BIDS'}, 'BIDS');
         % If nothing selected
         if isempty(BidsDir)
             return;
@@ -153,13 +154,14 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         bst_set('LastUsedDirs', LastUsedDirs);
     end
     % Check the structure of the dataset
-    if ~file_exist(bst_fullfile(BidsDir, 'dataset_description.json'))
-        Messages = 'Invalid BIDS dataset: missing file "dataset_description.json"';
+    [BidsDir, selSubjects, errorMessage] = GetValidBidsDir(BidsDir);
+    if ~isempty(errorMessage)
         if isInteractive
-            bst_error(Messages, 'Import BIDS dataset', 0);
+            bst_error(errorMessage, 'Import BIDS dataset', 0);
         end
         return;
     end
+    SelectedSubjects = unique([SelectedSubjects, selSubjects]);
     
     % ===== IDENTIFY SUBJECTS =====
     % List all the subject folders
@@ -542,5 +544,47 @@ function MriFiles = GetSubjectMri(anatFolder)
     if ~isempty(MriFiles) && any(isMpRage)
         iMpRage = find(isMpRage);
         MriFiles = cat(2, MriFiles(iMpRage), MriFiles(setdiff(1:length(MriFiles), iMpRage)));
+    end
+end
+
+% Selects a valid BIDS folder and a list of selected subject if applicable.
+function [BidsDir, selectedSubjects, errorMessage] = GetValidBidsDir(inputFolders)
+    BidsDir = [];
+    selectedSubjects = {};
+    errorMessage = [];
+    
+    if isempty(inputFolders)
+        errorMessage = 'No BIDS folder provided.';
+        return;
+    elseif ~iscell(inputFolders)
+        inputFolders = {inputFolders};
+    end
+    
+    numFolders = length(inputFolders);
+    json_file = 'dataset_description.json';
+    
+    for iFolder = 1:numFolders
+        % If no dataset JSON file, this might be a subject. Check parent.
+        if ~file_exist(bst_fullfile(inputFolders{iFolder}, json_file))
+            [parentFolder, folderName] = fileparts(inputFolders{iFolder});
+            if file_exist(bst_fullfile(parentFolder, json_file))
+                if isempty(BidsDir)
+                    BidsDir = parentFolder;
+                elseif ~file_compare(BidsDir, parentFolder)
+                    errorMessage = 'This process only supports importing multiple subjects from the same BIDS dataset.';
+                    return;
+                end
+                selectedSubjects{end + 1} = folderName;
+            else
+                errorMessage = ['Invalid BIDS dataset: missing file "' json_file '"'];
+                return;
+            end
+        % If a dataset JSON file, make sure it's the only supplied folder.
+        elseif numFolders == 1
+            BidsDir = inputFolders{iFolder};
+        else
+            errorMessage = 'This process only supports one BIDS folder at a time.';
+            return;
+        end
     end
 end
