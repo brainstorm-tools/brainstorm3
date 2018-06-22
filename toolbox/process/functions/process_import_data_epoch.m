@@ -30,7 +30,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Import MEG/EEG: Existing epochs';
     sProcess.Category    = 'File';
-    sProcess.SubGroup    = 'Import recordings';
+    sProcess.SubGroup    = {'Import', 'Import recordings'};
     sProcess.Index       = 24;
     sProcess.Description = '';
     % Definition of the input accepted by this process
