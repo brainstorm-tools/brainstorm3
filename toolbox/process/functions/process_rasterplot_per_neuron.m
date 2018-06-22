@@ -91,127 +91,137 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     tfOPTIONS.TimeVector = in_bst(sInputs(1).FileName, 'Time');
 
+    % Check how many event groups we're processing
+    listComments = cellfun(@str_remove_parenth, {sInputs.Comment}, 'UniformOutput', 0);
+    [uniqueComments,tmp,iData2List] = unique(listComments);
+    nLists = length(uniqueComments);
     
-    % === OUTPUT STUDY ===
-    % Get output study
-    [~, iStudy, ~] = bst_process('GetOutputStudy', sProcess, sInputs);
-    tfOPTIONS.iTargetStudy = iStudy;
+    % Process each even group seperately
+    for iList = 1:nLists
+        sCurrentInputs = sInputs(iData2List == iList);
     
-   
-    % Get channel file
-    sChannel = bst_get('ChannelForStudy', iStudy);
-    % Load channel file
-    ChannelMat = in_bst_channel(sChannel.FileName);
-   
-    
-    %% Get only the unique neurons along all of the trials
-    nTrials = length(sInputs);
-    
-    % I get the files outside of the parfor so it won't fail.
-    % This loads the information from ALL TRIALS on ALL_TRIALS_files
-    % (Shouldn't create a memory problem).
-    ALL_TRIALS_files = struct();
-    for iFile = 1:nTrials
-        DataMat = in_bst(sInputs(iFile).FileName);
-        ALL_TRIALS_files(iFile).Events = DataMat.Events;
-    end
-    
-    % Create a cell that holds all of the labels and one for the unique labels
-    % This will be used to take the averages using the appropriate indices
-    labelsForDropDownMenu = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
-    for iFile = 1:nTrials
-        for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
-            if process_spikesorting_supervised('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label)
-                labelsForDropDownMenu{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
-            end
+        % === OUTPUT STUDY ===
+        % Get output study
+        [~, iStudy, ~] = bst_process('GetOutputStudy', sProcess, sCurrentInputs);
+        tfOPTIONS.iTargetStudy = iStudy;
+
+
+        % Get channel file
+        sChannel = bst_get('ChannelForStudy', iStudy);
+        % Load channel file
+        ChannelMat = in_bst_channel(sChannel.FileName);
+
+
+        %% Get only the unique neurons along all of the trials
+        nTrials = length(sCurrentInputs);
+
+        % I get the files outside of the parfor so it won't fail.
+        % This loads the information from ALL TRIALS on ALL_TRIALS_files
+        % (Shouldn't create a memory problem).
+        ALL_TRIALS_files = struct();
+        for iFile = 1:nTrials
+            DataMat = in_bst(sCurrentInputs(iFile).FileName);
+            ALL_TRIALS_files(iFile).Events = DataMat.Events;
         end
-    end
-    labelsForDropDownMenu = unique(labelsForDropDownMenu,'stable');
-    labelsForDropDownMenu = sort_nat(labelsForDropDownMenu);
-        
-    
-    %% === START COMPUTATION ===
-    sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
-    
-    [temp, ~] = in_bst(sInputs(1).FileName);
-    nElectrodes = size(temp.ChannelFlag,1);
-    nBins = floor(length(tfOPTIONS.TimeVector) / (bin_size * sampling_rate));
-    raster = zeros(length(labelsForDropDownMenu), nBins, nTrials);
-    bins = linspace(temp.Time(1), temp.Time(end), nBins+1);
-    
-    bst_progress('start', 'Raster Plot per Neuron', 'Binning Spikes...', 0, length(sInputs));
 
-
-    for ifile = 1:length(sInputs)
-        trial = in_bst(sInputs(ifile).FileName);
-        single_file_binning = zeros(length(labelsForDropDownMenu), nBins);
-        
-        for iNeuron = 1:length(labelsForDropDownMenu)
-            for ievent = 1:size(trial.Events,2)
-                if strcmp(trial.Events(ievent).label, labelsForDropDownMenu{iNeuron})
-                    
-                    outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
-                    trial.Events(ievent).times(outside_up) = bins(end) - 0.001; % I assign those spikes just 1ms inside the bin
-                    outside_down = trial.Events(ievent).times <= bins(1);
-                    trial.Events(ievent).times(outside_down) = bins(1) + 0.001; % I assign those spikes just 1ms inside the bin
-                    
-                    [~, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
-                    
-                    unique_bin = unique(bin_it_belongs_to);
-                    occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
-                     
-                    single_file_binning(iNeuron,occurences(1,:)) = occurences(2,:)/bin_size; % The division by the bin_size gives the Firing Rate 
-                    break
+        % Create a cell that holds all of the labels and one for the unique labels
+        % This will be used to take the averages using the appropriate indices
+        labelsForDropDownMenu = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
+        for iFile = 1:nTrials
+            for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
+                if process_spikesorting_supervised('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label)
+                    labelsForDropDownMenu{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
                 end
             end
         end
-        
-        raster(:, :, ifile) = single_file_binning;
-        bst_progress('inc', 1);
+        labelsForDropDownMenu = unique(labelsForDropDownMenu,'stable');
+        labelsForDropDownMenu = sort_nat(labelsForDropDownMenu);
+
+
+        %% === START COMPUTATION ===
+        sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
+
+        [temp, ~] = in_bst(sCurrentInputs(1).FileName);
+        nElectrodes = size(temp.ChannelFlag,1);
+        nBins = floor(length(tfOPTIONS.TimeVector) / (bin_size * sampling_rate));
+        raster = zeros(length(labelsForDropDownMenu), nBins, nTrials);
+        bins = linspace(temp.Time(1), temp.Time(end), nBins+1);
+
+        bst_progress('start', 'Raster Plot per Neuron', 'Binning Spikes...', 0, length(sCurrentInputs));
+
+
+        for ifile = 1:length(sCurrentInputs)
+            trial = in_bst(sCurrentInputs(ifile).FileName);
+            single_file_binning = zeros(length(labelsForDropDownMenu), nBins);
+
+            for iNeuron = 1:length(labelsForDropDownMenu)
+                for ievent = 1:size(trial.Events,2)
+                    if strcmp(trial.Events(ievent).label, labelsForDropDownMenu{iNeuron})
+
+                        outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
+                        trial.Events(ievent).times(outside_up) = bins(end) - 0.001; % I assign those spikes just 1ms inside the bin
+                        outside_down = trial.Events(ievent).times <= bins(1);
+                        trial.Events(ievent).times(outside_down) = bins(1) + 0.001; % I assign those spikes just 1ms inside the bin
+
+                        [~, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
+
+                        unique_bin = unique(bin_it_belongs_to);
+                        occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
+
+                        single_file_binning(iNeuron,occurences(1,:)) = occurences(2,:)/bin_size; % The division by the bin_size gives the Firing Rate 
+                        break
+                    end
+                end
+            end
+
+            raster(:, :, ifile) = single_file_binning;
+            bst_progress('inc', 1);
+        end
+
+        %% Build the output file
+        tfOPTIONS.ParentFiles = {sCurrentInputs.FileName};
+
+        % Prepare output file structure
+        FileMat.TF = raster;
+        FileMat.Time = diff(bins(1:2))/2+bins(1:end-1); % CHECK THIS OUT - IT WILL NOT GO ALL THE WAY BUT IT WILL HAVE THE CORRECT NUMBER OF BINS
+        FileMat.TFmask = true(size(raster, 2), size(raster, 3));
+        FileMat.Freqs = 1:size(FileMat.TF, 3);
+        FileMat.Std = [];
+        FileMat.Comment = ['Raster Plot: ' uniqueComments{iList}];
+        FileMat.DataType = 'data';
+        FileMat.TimeBands = [];
+        FileMat.RefRowNames = [];
+        FileMat.RowNames = labelsForDropDownMenu;
+        FileMat.Measure = 'power';
+        FileMat.Method = 'morlet';
+        FileMat.DataFile = []; % Leave blank because multiple parents
+        FileMat.SurfaceFile = [];
+        FileMat.GridLoc = [];
+        FileMat.GridAtlas = [];
+        FileMat.Atlas = [];
+        FileMat.HeadModelFile = [];
+        FileMat.HeadModelType = [];
+        FileMat.nAvg = [];
+        FileMat.ColormapType = [];
+        FileMat.DisplayUnits = [];
+        FileMat.Options = tfOPTIONS;
+        FileMat.History = [];
+
+        % Add history field
+        FileMat = bst_history('add', FileMat, 'compute', ...
+            ['Raster Plot per neuron: ' num2str(bin_size) ' ms']);
+
+
+        % Get output study
+        sTargetStudy = bst_get('Study', iStudy);
+        % Output filename
+        FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'timefreq_rasterplot');
+        OutputFiles = {FileName};
+        % Save output file and add to database
+        bst_save(FileName, FileMat, 'v6');
+        db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
     end
-    
-    %% Build the output file
-    tfOPTIONS.ParentFiles = {sInputs.FileName};
-    
-    % Prepare output file structure
-    FileMat.TF = raster;
-    FileMat.Time = diff(bins(1:2))/2+bins(1:end-1); % CHECK THIS OUT - IT WILL NOT GO ALL THE WAY BUT IT WILL HAVE THE CORRECT NUMBER OF BINS
-    FileMat.TFmask = true(size(raster, 2), size(raster, 3));
-    FileMat.Freqs = 1:size(FileMat.TF, 3);
-    FileMat.Std = [];
-    FileMat.Comment = ['Raster Plot: ' str_remove_parenth(sInputs(1).Comment)];
-    FileMat.DataType = 'data';
-    FileMat.TimeBands = [];
-    FileMat.RefRowNames = [];
-    FileMat.RowNames = labelsForDropDownMenu;
-    FileMat.Measure = 'power';
-    FileMat.Method = 'morlet';
-    FileMat.DataFile = []; % Leave blank because multiple parents
-    FileMat.SurfaceFile = [];
-    FileMat.GridLoc = [];
-    FileMat.GridAtlas = [];
-    FileMat.Atlas = [];
-    FileMat.HeadModelFile = [];
-    FileMat.HeadModelType = [];
-    FileMat.nAvg = [];
-    FileMat.ColormapType = [];
-    FileMat.DisplayUnits = [];
-    FileMat.Options = tfOPTIONS;
-    FileMat.History = [];
-    
-    % Add history field
-    FileMat = bst_history('add', FileMat, 'compute', ...
-        ['Raster Plot per neuron: ' num2str(bin_size) ' ms']);
-    
-    
-    % Get output study
-    sTargetStudy = bst_get('Study', iStudy);
-    % Output filename
-    FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'timefreq_rasterplot');
-    OutputFiles = {FileName};
-    % Save output file and add to database
-    bst_save(FileName, FileMat, 'v6');
-    db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
+        
     % Display report to user
     bst_report('Info', sProcess, sInputs, 'Success');
     disp('BST> process_timefreq: Success');
