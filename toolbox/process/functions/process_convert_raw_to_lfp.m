@@ -249,13 +249,15 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         % Import the RAW file in the database viewer and open it immediately
         RawFile = import_raw({sFileOut.filename}, 'BST-BIN', iSubject);
         RawFile = RawFile{1};
-        OutputFiles{end + 1} = RawFile;
         
         % Modify it slightly since this is an LFP raw file
+        [sStudy, iStudy] = bst_get('DataFile', RawFile);
         RawMat = load(RawFile);
         RawMat.Comment = 'Link to LFP file';
-        bst_save(RawFile, RawMat, 'v6');
-        [sStudy, iStudy] = bst_get('DataFile', RawFile);
+        RawNewFile = strrep(RawFile, 'data_0raw', 'data_0lfp');
+        bst_save(RawNewFile, RawMat, 'v6');
+        OutputFiles{end + 1} = RawNewFile;
+        delete(RawFile);
         db_reload_studies(iStudy);
     end
 end
