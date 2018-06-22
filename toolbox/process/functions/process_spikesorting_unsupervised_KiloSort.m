@@ -73,10 +73,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.edit.Comment = {'panel_timefreq_options',  ' Edit parameters file:'};
     sProcess.options.edit.Type    = 'editpref'; 
     sProcess.options.edit.Value   = [];
-    % Options: Edit electrodes positions
-    sProcess.options.edit2.Comment = {'panel_timefreq_options', ' Edit Channel Positions file: '};
-    sProcess.options.edit2.Type    = 'editpref';
-    sProcess.options.edit2.Value   = [];
+    % Show warning that pre-spikesorted events will be overwritten
+    sProcess.options.warning.Comment = '<B><FONT color="#FF0000">Spike Events created from the acquisition system will be overwritten</FONT></B>';
+    sProcess.options.warning.Type    = 'label';
 end
 
 
@@ -141,9 +140,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 %     ops.fs                  = 25000;        % sampling rate		(omit if already in chanMap file)
 %     ops.NchanTOT            = 32;           % total number of channels (omit if already in chanMap file)
 %     ops.Nchan               = 32;           % number of active channels (omit if already in chanMap file)
-    ops.Nfilt               = 64;           % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     		
-    ops.nNeighPC            = 12; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)		
-    ops.nNeigh              = 16; % visualization only (Phy): number of neighboring templates to retain projections of (16)		
+
+    ops.nNeighPC            = [] %12; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)		
+    ops.nNeigh              = [] %16; % visualization only (Phy): number of neighboring templates to retain projections of (16)		
 
     % options for channel whitening		
     ops.whitening           = 'full'; % type of whitening (default 'full', for 'noSpikes' set options for spike detection below)		
@@ -227,7 +226,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         sFile = DataMat.F;
-               
+        
+        
+        %% Adjust the possible clusters based on the number of channels
+        doubleChannels = 2*numChannels;
+        nClustersToUse = ceil(doubleChannels/32)*32; % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     
+        
+        ops.Nfilt = nClustersToUse;    %64; % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)    
+        clear doubleChannels nClustersToUse
+        
         %% %%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
         outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_kilosort_spikes']);
         
@@ -246,12 +253,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % This is a file that just contains information for the location of
         % the electrodes.
         
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%% MARTIN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % I assume that each acquisition system provides information for
-        % the location of the electrodes here (ChannelMatChannel.Loc)
-        % Make sure that each importer (in_fread) populates the location values 
-        
-        
         Nchannels = numChannels;
         connected = true(Nchannels, 1);
         chanMap   = 1:Nchannels;
@@ -259,46 +260,64 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         
         
-        %% Use the same algorithm that I use for the 2d channel display
-        %  This assumes that the users have already assigned the channel
-        %  coordinates and the channel Montages
+        %% Use the same algorithm that I use for the 2d channel display for converting 3d to 2d
         
         Channels = ChannelMat.Channel; % 1x224
+        
+        try
+            Montages = unique({Channels.Group});
+            alreadyAssignedMontages = true;
+        catch
+            Montages = 'SingleGroup';
+            
+            for iChannel = 1:length(Channels)
+                Channels(iChannel).Group = 'SingleGroup';
+            end
+            
+            alreadyAssignedMontages = false;
+            channelsMontage = ones(1,length(Channels)); % This holds the code of the montage each channel holds 
+        end
 
-        channelsMontage = zeros(length(Channels),1); % This holds the code of the montage each channel holds 
+        %% If the coordinates are assigned, convert 3d to 2d
+        
+        if sum(sum([ChannelMat.Channel.Loc]'))~=0 % If values are already assigned
+            alreadyAssignedLocations = 1;
+        else
+            alreadyAssignedLocations = 0;
+        end
+        
+        
         channelsCoords  = zeros(length(Channels),3); % THE 3D COORDINATES
-        Montages = unique({Channels.Group});
-
-        for iChannel = 1:length(Channels)
-            for iMontage = 1:length(Montages)
-                if strcmp(Channels(iChannel).Group, Montages{iMontage})
-                    channelsMontage(iChannel)    = iMontage;
-                    channelsCoords(iChannel,1:3) = Channels(iChannel).Loc;
+        
+        if alreadyAssignedLocations
+            for iChannel = 1:length(Channels)
+                for iMontage = 1:length(Montages)
+                    if strcmp(Channels(iChannel).Group, Montages{iMontage})
+                        channelsMontage(iChannel)    = iMontage;
+                        channelsCoords(iChannel,1:3) = Channels(iChannel).Loc;
+                    end
                 end
             end
+
+            % APPLY TRANSORMATION TO A FLAT SURFACE (X-Y COORDINATES: IGNORE Z)
+            converted_coordinates = zeros(length(Channels),3);
+            for iMontage = 1:length(Montages)
+                clear single_array_coords
+                single_array_coords = channelsCoords(channelsMontage==iMontage,:);
+                % SVD approach
+                [U, S, V] = svd(single_array_coords-mean(single_array_coords));
+                lower_rank = 2;% Get only the first two components
+                converted_coordinates(channelsMontage==iMontage,:)=U(:,1:lower_rank)*S(1:lower_rank,1:lower_rank)*V(:,1:lower_rank)'+mean(single_array_coords);
+            end
+
+            xcoords = converted_coordinates(:,1); 
+            ycoords = converted_coordinates(:,2);
+        else 
+            xcoords = [1:length(Channels)]';
+            ycoords = ones(length(Channels),1);
         end
-
-        % APPLY TRANSORMATION TO A FLAT SURFACE (X-Y COORDINATES: IGNORE Z)
-        converted_coordinates = zeros(length(Channels),3);
-        for iMontage = 1:length(Montages)
-            clear single_array_coords
-            single_array_coords = channelsCoords(channelsMontage==iMontage,:);
-
-            % PCA approach
-%                 [coeff,score,latent,tsquared,explained] = pca(single_array_coords - mean(single_array_coords));
-%                 converted_coordinates(channelsMontage==iMontage,:) = score*coeff' + mean(single_array_coords);
-
-            % SVD approach
-            [U, S, V] = svd(single_array_coords-mean(single_array_coords));
-            lower_rank = 2;% Get only the first two components
-            converted_coordinates(channelsMontage==iMontage,:)=U(:,1:lower_rank)*S(1:lower_rank,1:lower_rank)*V(:,1:lower_rank)'+mean(single_array_coords);
-        end
-
-        xcoords = converted_coordinates(:,1); 
-        ycoords = converted_coordinates(:,2);
         
-        
-        kcoords   = channelsMontage; % grouping of channels (i.e. tetrode groups)
+        kcoords = channelsMontage'; % grouping of channels (i.e. tetrode groups)
         fs = sFile.prop.sfreq; % sampling frequency
 
         
@@ -438,18 +457,37 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         rez                = fitTemplates(rez, DATA, uproj);  % fit templates iteratively
         rez                = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)
 
+        
+        
+        %  rez = merge_posthoc2(rez);  
+
+        %% Convert to Phy output
+        
         % AutoMerge. rez2Phy will use for clusters the new 5th column of st3 if you run this)
-        %     rez = merge_posthoc2(rez);
-
-        % save matlab results file
-        save(fullfile(ops.root,  'rez.mat'), 'rez', '-v7.3');
-
+        
         % save python results file for Phy
-        rezToPhy(rez, ops.root);
+        % rezToPhy(rez, ops.root);
 
+        
+        
+        %% save matlab results file
+        save(fullfile(ops.root,  'rez.mat'), 'rez', '-v7.3');
         % remove temporary file
         delete(ops.fproc);
 
+        
+        
+        %% Now convert the rez.mat and the .xml to Neuroscope format so it can be read from Klusters
+        %  Downloaded from: https://github.com/brendonw1/KilosortWrapper
+        %  This creates 4 types of files x Number of montages (Groups of electrodes)
+        % .clu: holds the cluster each spike belongs to
+        % .fet: holds the feature values of each spike
+        % .res: holds the spiketimes
+        % .spk: holds the spike waveforms
+        
+        
+        Kilosort2Neurosuite(rez)
+        
         
         
         %% %%%%%%%%%%%%%%%%%%%  Create Brainstorm Events %%%%%%%%%%%%%%%%%%%
@@ -527,8 +565,8 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
 %         second column is the spike template, 
 %         third column is the extracted amplitude, 
 %     and fifth column is the post auto-merge cluster (if you run the auto-merger).
-    spikeTimes = rez.st3(:,1);     % 10 spikes - TIMESTAMPS
-    spikeTemplates = rez.st3(:,2); % 10 spikes - TEMPLATE THEY MUCH WITH
+    spikeTimes     = rez.st3(:,1); % spikes - TIMESTAMPS in SAMPLES
+    spikeTemplates = rez.st3(:,2); % spikes - TEMPLATE THEY MATCH WITH
 
     templates = zeros(length(ChannelMat.Channel), size(rez.W,1), rez.ops.Nfilt, 'single');
     for iNN = 1:rez.ops.Nfilt
@@ -546,53 +584,44 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     
-    
-    
-    %% %% %%
-    DO A FOR LOOP PER NEURON HERE, NOT PER CHANNEL
-    %% %% %%
-    
+    % Fill the events fields
     for iElectrode = 1:length(ChannelMat.Channel)
         if strcmp(ChannelMat.Channel(iElectrode).Type,'EEG') || strcmp(ChannelMat.Channel(iElectrode).Type,'SEEG')
-            nNeurons = size(spike2ChannelAssignment,1); 
-            if nNeurons==1
+            NeuronalTemplates = unique(spikeTemplates(spike2ChannelAssignment==iElectrode));
+            if length(NeuronalTemplates)==1
                 index = index+1;
                 % Write the packet to events
                 events(index).label       = ['Spikes Channel ' ChannelMat.Channel(iElectrode).Name];
                 events(index).color       = rand(1,3);
-                events(index).epochs      = ones(1,length(spikes.assigns));
-                events(index).times       = spikes.spiketimes; % The timestamps are in seconds
-                events(index).samples     = events(index).times.*sFile.prop.sfreq;
+                events(index).samples     = spikeTimes(spike2ChannelAssignment==iElectrode)'; % The timestamps are in SAMPLES
+                events(index).times       = events(index).samples./sFile.prop.sfreq;
+                events(index).epochs      = ones(1,length(events(index).samples));
                 events(index).reactTimes  = [];
                 events(index).select      = 1;
 
-            elseif nNeurons>1
-                for ineuron = 1:nNeurons
+            elseif NeuronalTemplates>1
+                for ineuron = 1:length(NeuronalTemplates)
                     % Write the packet to events
                     index = index+1;
                     events(index).label = ['Spikes Channel ' ChannelMat.Channel(iElectrode).Name ' |' num2str(ineuron) '|'];
 
                     events(index).color       = [rand(1,1),rand(1,1),rand(1,1)];
-                    events(index).epochs      = ones(1,length(spikes.assigns(spikes.assigns==spikes.labels(ineuron,1))));
-                    events(index).times       = spikes.spiketimes(spikes.assigns==spikes.labels(ineuron,1)); % The timestamps are in seconds
-                    events(index).samples     = events(index).times.*sFile.prop.sfreq;
+                    events(index).samples     = spikeTimes(spikeTemplates(spike2ChannelAssignment==iElectrode)==NeuronalTemplates(ineuron))'; % The timestamps are in SAMPLES
+                    events(index).times       = events(index).samples./sFile.prop.sfreq;
+                    events(index).epochs      = ones(1,length(events(index).times));
                     events(index).reactTimes  = [];
                     events(index).select      = 1;
                 end
-            elseif nNeurons == 0
+            elseif NeuronalTemplates == 0
                 disp(['Channel: ' num2str(sFile.header.ChannelID(iElectrode)) ' just picked up noise'])
                 continue % This electrode just picked up noise
             end
         end
     end
 
-
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     save(fullfile(parentPath,'events_UNSUPERVISED.mat'),'events')
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
 end
 
 
@@ -609,6 +638,7 @@ function downloadAndInstallKiloSort()
 
     KiloSortDir = bst_fullfile(bst_get('BrainstormUserDir'), 'KiloSort');
     KiloSortTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'KiloSort_tmp');
+    KiloSortWrapperTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'KiloSortWrapper_tmp');
     
     % If folders exists: delete
     if isdir(KiloSortDir)
@@ -620,9 +650,11 @@ function downloadAndInstallKiloSort()
     
     % Create folders
     KiloSortTmp = [KiloSortTmpDir '\KiloSort'];
+    KiloSortWrapperTmp = [KiloSortWrapperTmpDir '\KiloSortWrapper'];
     PhyTmp = [KiloSortTmpDir '\Phy'];
     npyTemp = [KiloSortTmpDir '\npy'];
 	mkdir(KiloSortTmp);
+	mkdir(KiloSortWrapperTmp);
 	mkdir(PhyTmp);
 	mkdir(npyTemp);
     
@@ -634,6 +666,14 @@ function downloadAndInstallKiloSort()
     if ~isempty(errMsg)
         error(['Impossible to download KiloSort:' errMsg]);
     end
+    % Download KiloSortWrapper (For conversion to Neurosuite - Klusters)
+    url_KiloSort_wrapper = 'https://github.com/brendonw1/KilosortWrapper/archive/master.zip';
+    KiloSortWrapperZipFile = bst_fullfile(KiloSortWrapperTmpDir, 'master.zip');
+    errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSort download');
+    if ~isempty(errMsg)
+        error(['Impossible to download KiloSort:' errMsg]);
+    end
+    
     % Download Phy
     url_Phy = 'https://github.com/kwikteam/phy/archive/master.zip';
     PhyZipFile = bst_fullfile(KiloSortTmpDir, 'master.zip');
@@ -661,6 +701,18 @@ function downloadAndInstallKiloSort()
     movefile(newKiloSortDir, KiloSortDir);
     % Delete unnecessary files
     file_delete(KiloSortTmpDir, 1, 3);
+    
+    % Unzip KiloSort Wrapper zip-file
+    bst_progress('start', 'KiloSort', 'Installing KiloSortWrapper...');
+    unzip(KiloSortWrapperZipFile, KiloSortWrapperTmpDir);
+    % Get parent folder of the unzipped file
+    diropen = dir(fullfile(KiloSortWrapperTmpDir, 'MATLAB*'));
+    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
+    newKiloSortWrapperDir = bst_fullfile(KiloSortWrapperTmpDir, diropen(idir).name, 'KiloSortWrapper-master');
+    % Move KiloSort directory to proper location
+    movefile(newKiloSortWrapperDir, KiloSortDir);
+    % Delete unnecessary files
+    file_delete(KiloSortWrapperTmpDir, 1, 3);
     
     % Unzip Phy zip-file
     bst_progress('start', 'Phy', 'Installing KiloSort...');
