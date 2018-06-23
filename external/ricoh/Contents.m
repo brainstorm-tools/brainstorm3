@@ -1,5 +1,5 @@
 % RICOH MEG Reader toolbox for MATLAB
-% Version 1.00.10 14-March-2018
+% Version 1.0.2 04-June-2018
 %
 % Files
 %   getRData          - Get measured data
@@ -18,8 +18,9 @@
 %------------------------------------------------------------
 %                          History
 %------------------------------------------------------------
-% R1.00.10 : 2018.03.14 - modify conflict 3rd party file 
-% R1.00.00 : 2017.09.27 - First release
+% R1.0.2 : 2018.06.04 - modify comment(fear of misinterpretation)
+% R1.0.1 : 2018.03.14 - modify conflict 3rd party file 
+% R1.0.0 : 2017.09.27 - First release
 % 
 %-----------------------------------------------------------------------
 % Copyright (C) 2017-2018     Ricoh Company Ltd. All Rights Reserved.
