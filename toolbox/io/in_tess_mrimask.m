@@ -140,9 +140,9 @@ if (length(allValues) > 10) && ~isempty(MriFile) && isAseg
             % Grouping the cerebellum white+cortex voxels
             sMri.Cube(sMri.Cube == 21) = 24;
             sMri.Cube(sMri.Cube == 138) = 141;
-        case 0 % This means BrainSuite labels
-            % Remove 4th decimal place which indicates GM or WM
-            
+        case 0 
+            % This means BrainSuite labels
+            % Remove 4th decimal place which indicates GM or WM            
             sMri.Cube = mod(sMri.Cube,1000);
             if sum(sMri.Cube(:)==370) == 0
                 % Old BrainSuite labels on/before 2018
