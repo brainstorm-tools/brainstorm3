@@ -303,7 +303,7 @@ if ~isempty(TessLhFile)
     end    
     % Downsample
     bst_progress('start', 'Import BrainSuite folder', 'Downsampling: left pial...');
-    [BstTessLhLowFile, iLhLow] = tess_downsize(BstTessLhFile, nVertHemi, 'reducepatch');
+    [BstTessLhLowFile, iLhLow, xLhLow] = tess_downsize(BstTessLhFile, nVertHemi, 'reducepatch');
 end
 % Right pial
 if ~isempty(TessRhFile)
@@ -324,7 +324,7 @@ if ~isempty(TessRhFile)
     end
     % Downsample
     bst_progress('start', 'Import BrainSuite folder', 'Downsampling: right pial...');
-    [BstTessRhLowFile, iRhLow] = tess_downsize(BstTessRhFile, nVertHemi, 'reducepatch');
+    [BstTessRhLowFile, iRhLow, xRhLow] = tess_downsize(BstTessRhFile, nVertHemi, 'reducepatch');
 end
 % Left white matter
 if ~isempty(TessLwFile)
@@ -476,7 +476,7 @@ if isAseg && ~isempty(AsegFile)
     [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
     % Extract cerebellum only
     try
-        BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum L', 'Cerebellum R'}, 'aseg | cerebellum');
+        BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum'}, 'aseg | cerebellum');
     catch
         BstCerebFile = [];
     end
