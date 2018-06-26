@@ -1,4 +1,4 @@
-function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive, sFid)
+function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive, sFid, isExtraMaps, isAseg)
 % IMPORT_ANATOMY_BS: Import a full BrainSuite folder as the subject's anatomy.
 %
 % USAGE:  errorMsg = import_anatomy_bs(iSubject, BsDir=[], nVertices=15000)
@@ -35,6 +35,15 @@ function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive,
 % Modified : Andrew Krause, 2013
 
 %% ===== PARSE INPUTS =====
+% Import ASEG atlas
+if (nargin < 7) || isempty(isAseg)
+    isAseg = 1;
+end
+% Extract cortical maps
+if (nargin < 6) || isempty(isExtraMaps)
+    isExtraMaps = 0;
+end
+
 % Fiducials
 if (nargin < 5) || isempty(sFid)
     sFid = [];
@@ -453,6 +462,44 @@ if ~isempty(rmFiles)
     % Refresh tree
     panel_protocols('UpdateNode', 'Subject', iSubject);
     panel_protocols('SelectNode', [], 'subject', iSubject, -1 );
+end
+
+%% ===== LOAD svreg.label.nii.gz file =====
+if isAseg && ~isempty(AsegFile)
+    % Import atlas
+    [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
+    % Extract cerebellum only
+    try
+        BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum L', 'Cerebellum R'}, 'aseg | cerebellum');
+    catch
+        BstCerebFile = [];
+    end
+    % If the cerebellum surface can be reconstructed
+    if ~isempty(BstCerebFile)
+        % Downsample cerebllum
+        [BstCerebLowFile, iCerLow, xCerLow] = tess_downsize(BstCerebFile, 2000, 'reducepatch');
+        % Merge with low-resolution pial
+        BstMixedLowFile = tess_concatenate({CortexLowFile, BstCerebLowFile}, sprintf('cortex_cereb_%dV', length(xLhLow) + length(xRhLow) + length(xCerLow)), 'Cortex');
+        % Rename mixed file
+        oldBstMixedLowFile = file_fullpath(BstMixedLowFile);
+        BstMixedLowFile    = bst_fullfile(bst_fileparts(oldBstMixedLowFile), 'tess_cortex_pialcereb_low.mat');
+        movefile(oldBstMixedLowFile, BstMixedLowFile);
+        % Delete intermediate files
+        file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
+        db_reload_subjects(iSubject);
+    end
+else
+    BstAsegFile = [];
+end
+
+
+%% ===== IMPORT THICKNESS MAPS =====
+needs to be updated
+if isExtraMaps && ~isempty(CortexHiFile) && ~isempty(ThickLhFile) && ~isempty(ThickLhFile)
+    % Create a condition "FreeSurfer"
+    iStudy = db_add_condition(iSubject, 'FreeSurfer');
+    % Import cortical thickness
+    ThickFile = import_sources(iStudy, CortexHiFile, ThickLhFile, ThickRhFile, 'FS');
 end
 
 

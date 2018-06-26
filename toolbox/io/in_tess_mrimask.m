@@ -35,6 +35,8 @@ end
 if ischar(MriFile)
     % FreeSurfer ASEG?
     isAseg = (~isempty(strfind(MriFile, 'aseg.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto_noCCseg.mgz')));
+    isSVRegLabel = (~isempty(strfind(MriFile, 'svreg.label.nii.gz'));
+
     % Read volume
     isInteractive = ~isAseg;
     if isMni
