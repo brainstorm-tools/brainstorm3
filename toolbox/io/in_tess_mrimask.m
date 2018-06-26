@@ -36,13 +36,17 @@ if ischar(MriFile)
     % FreeSurfer ASEG or BrainSuite SVReg label file? For convenience, both
     % are referred to as isAseg
     isAseg = (~isempty(strfind(MriFile, 'svreg.label.nii.gz')) || ~isempty(strfind(MriFile, 'aseg.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto_noCCseg.mgz')));
-
+    isBrainSuite = ~isempty(strfind(MriFile, 'svreg.label.nii.gz'));
     % Read volume
     isInteractive = ~isAseg;
     if isMni
         sMri = in_mri(MriFile, 'ALL-MNI', isInteractive);
     else
-        sMri = in_mri(MriFile, 'ALL', isInteractive);
+        % Do not normalize the labels for BrainSuite
+        % Labels are normalized for FreeSurfer (default behavior)
+        % For FreeSurfer, the labels go from 0-255 so the normalization
+        % does not have any effect
+        sMri = in_mri(MriFile, 'ALL', isInteractive, ~isBrainSuite);
     end
     if isempty(sMri)
         TessMat = [];
@@ -55,6 +59,10 @@ if ischar(MriFile)
         else
             FsVersion = 5;  % FreeSurfer 5 and 6
         end
+        if isBrainSuite 
+            FsVersion = 0;  % Set Fs version 0 for BrainSuite
+        end
+        
         VolumeLabels = panel_scout('GetVolumeLabels', MriFile, FsVersion);
     else
         % Other file formats
@@ -132,6 +140,21 @@ if (length(allValues) > 10) && ~isempty(MriFile) && isAseg
             % Grouping the cerebellum white+cortex voxels
             sMri.Cube(sMri.Cube == 21) = 24;
             sMri.Cube(sMri.Cube == 138) = 141;
+        case 0 % This means BrainSuite labels
+            % Remove 4th decimal place which indicates GM or WM
+            sMri.Cube = mod(sMri.Cube,1000); 
+            Labels = {...
+               800,  'Brainstem'; ...
+               900,  'Cerebellum'; ...
+               371,  'Hippocampus L'; ...
+               370,  'Hippocampus R'; ...
+               641,  'Pallidum L'; ...
+               640,  'Pallidum R'; ...
+               631,  'Putamen L'; ...
+               630,  'Putamen R'; ...
+               661,  'Thalamus L'; ...
+               660,  'Thalamus R'; ...
+            };
     end
 
     % Keep only the labelled areas
