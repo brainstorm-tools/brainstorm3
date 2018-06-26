@@ -33,9 +33,9 @@ end
 
 % Read MRI volume
 if ischar(MriFile)
-    % FreeSurfer ASEG?
-    isAseg = (~isempty(strfind(MriFile, 'aseg.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto_noCCseg.mgz')));
-    isSVRegLabel = (~isempty(strfind(MriFile, 'svreg.label.nii.gz'));
+    % FreeSurfer ASEG or BrainSuite SVReg label file? For convenience, both
+    % are referred to as isAseg
+    isAseg = (~isempty(strfind(MriFile, 'svreg.label.nii.gz')) || ~isempty(strfind(MriFile, 'aseg.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto_noCCseg.mgz')));
 
     % Read volume
     isInteractive = ~isAseg;
