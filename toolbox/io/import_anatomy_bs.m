@@ -476,7 +476,7 @@ if isAseg && ~isempty(AsegFile)
     [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
     % Extract cerebellum only
     try
-        BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum'}, 'aseg | cerebellum');
+        BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum'}, 'svreg | cerebellum');
     catch
         BstCerebFile = [];
     end
