@@ -133,6 +133,10 @@ MriFile = [MriFile{find(~cellfun(@isempty, MriFile))}];
 if isempty(MriFile)
     errorMsg = [errorMsg 'MRI file was not found: ' FilePrefix '.*' 10];
 end
+
+% Volume segmentation file
+AsegFile = file_find(BsDir, [FilePrefix '.svreg.label.nii.gz']);
+
 % Find surfaces
 HeadFile        = file_find(BsDir, [FilePrefix '.scalp.dfs']);
 InnerSkullFile  = file_find(BsDir, [FilePrefix '.inner_skull.dfs']);
@@ -465,8 +469,10 @@ if ~isempty(rmFiles)
 end
 
 %% ===== LOAD svreg.label.nii.gz file =====
+
 if isAseg && ~isempty(AsegFile)
     % Import atlas
+    OffsetMri=[];
     [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
     % Extract cerebellum only
     try
@@ -490,16 +496,6 @@ if isAseg && ~isempty(AsegFile)
     end
 else
     BstAsegFile = [];
-end
-
-
-%% ===== IMPORT THICKNESS MAPS =====
-needs to be updated
-if isExtraMaps && ~isempty(CortexHiFile) && ~isempty(ThickLhFile) && ~isempty(ThickLhFile)
-    % Create a condition "FreeSurfer"
-    iStudy = db_add_condition(iSubject, 'FreeSurfer');
-    % Import cortical thickness
-    ThickFile = import_sources(iStudy, CortexHiFile, ThickLhFile, ThickRhFile, 'FS');
 end
 
 
