@@ -747,8 +747,10 @@ switch (lower(action))
                 Device = bst_get('ChannelDevice', filenameRelative);
                 % Replace SEEG+ECOG with iEEG
                 if all(ismember({'SEEG','ECOG'}, AllMod))
-                    AllMod     = cat(2, {'ECOG+SEEG'}, setdiff(AllMod,     {'SEEG','ECOG'}));
-                    DisplayMod = cat(2, {'ECOG+SEEG'}, setdiff(DisplayMod, {'SEEG','ECOG'}));
+                    AllMod = cat(2, {'ECOG+SEEG'}, setdiff(AllMod, {'SEEG','ECOG'}));
+                    if ~isempty(DisplayMod)
+                        DisplayMod = cat(2, {'ECOG+SEEG'}, setdiff(DisplayMod, {'SEEG','ECOG'}));
+                    end
                 end
                 % If only one modality
                 if (length(DisplayMod) == 1) && ((length(bstNodes) ~= 1) || isempty(Device)) && ~ismember(Device, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'RICOH'}) && ~ismember(DisplayMod, {'EEG','ECOG','SEEG','ECOG+SEEG','NIRS'})
