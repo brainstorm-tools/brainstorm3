@@ -115,7 +115,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Load input file 
             DataMat = in_bst_data(sInputs(iInput).FileName);
             % Build average reference
-            if (strcmpi(sMontage.Name, 'Average reference'))
+            if ~isempty(strfind(sMontage.Name, 'Average reference'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 0);
             elseif ~isempty(strfind(sMontage.Name, '(local average ref)'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 1);

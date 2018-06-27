@@ -931,9 +931,13 @@ end
 
 %% ===== LOAD DEFAULT MONTAGES ======
 function LoadDefaultMontages() %#ok<DEFNU>
-    % Set average reference montage
+    % Set average reference montages
     sMontage = db_template('Montage');
     sMontage.Name = 'Average reference';
+    sMontage.Type = 'matrix';
+    SetMontage(sMontage.Name, sMontage);
+    sMontage = db_template('Montage');
+    sMontage.Name = 'Average reference (L -> R)';
     sMontage.Type = 'matrix';
     SetMontage(sMontage.Name, sMontage);
     % Set bad channels montage
@@ -982,6 +986,13 @@ function [sMontage, iMontage] = GetMontage(MontageName, hFig)
             iAvgRef = find(strcmpi({sMontage.Name}, 'Average reference'));
             if ~isempty(iAvgRef) && ~isempty(hFig)
                 sTmp = GetMontageAvgRef(sMontage(iAvgRef), hFig, [], 0);    % Global average reference 
+                if ~isempty(sTmp)
+                    sMontage(iAvgRef) = sTmp;
+                end
+            end
+            iAvgRef = find(strcmpi({sMontage.Name}, 'Average reference (L -> R)'));
+            if ~isempty(iAvgRef) && ~isempty(hFig)
+                sTmp = GetMontageAvgRef(sMontage(iAvgRef), hFig, [], 0);  % Global average reference sorted L -> R
                 if ~isempty(sTmp)
                     sMontage(iAvgRef) = sTmp;
                 end
@@ -1101,7 +1112,7 @@ function DeleteMontage(MontageName)
     % Get montage index
     [sMontage, iMontage] = GetMontage(MontageName);
     % If this is a non-editable montage: error
-    if ismember(sMontage.Name, {'Bad channels', 'Average reference'})
+    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)'})
         return;
     end    
     % Remove montage if it exists
@@ -1165,7 +1176,7 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
                 continue;
             end
             % Not EEG: Skip average reference
-            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})
+            if ~isempty(strfind(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference')) && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})
                 continue;
             end
             % Local average reference: Only available for current modality
@@ -1318,9 +1329,10 @@ function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroup
         sMontage = GlobalData.ChannelMontages.Montages(iMontage(1));
     end
     % Update montage
+    numChannels = length(iChannels);
     sMontage.DispNames = {Channels.Name};
     sMontage.ChanNames = {Channels.Name};
-    sMontage.Matrix    = eye(length(iChannels));
+    sMontage.Matrix    = eye(numChannels);
     % Get EEG groups
     [iEEG, GroupNames] = GetEegGroups(Channels, ChannelFlag, isSubGroups);
     % Computation
@@ -1329,6 +1341,32 @@ function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroup
         if (nChan >= 2)
             sMontage.Matrix(iEEG{i},iEEG{i}) = eye(nChan) - ones(nChan) ./ nChan;
         end
+    end
+    % Sort electrodes per hemisphere if required
+    if ~isempty(sMontage) && strcmpi(sMontage.Name, 'Average reference (L -> R)')
+        left  = [];
+        mid   = [];
+        right = [];
+        other = [];
+        % Sort channels by position
+        for iChannel = 1:numChannels
+            % Extract position from channel name
+            eegPos = sMontage.ChanNames{iChannel}(end);
+            eegNum = str2num(eegPos);
+            if eegPos == 'z'
+                mid(end + 1) = iChannel;
+            elseif ~isempty(eegNum) && mod(eegNum, 2) == 1
+                left(end + 1) = iChannel;
+            elseif ~isempty(eegNum) && mod(eegNum, 2) == 0
+                right(end + 1) = iChannel;
+            else
+                other(end + 1) = iChannel;
+            end
+        end
+        iOrder = [left mid right other];
+        % Apply new order
+        sMontage.DispNames = sMontage.DispNames(iOrder);
+        sMontage.ChanNames = sMontage.ChanNames(iOrder);
     end
 end
 
@@ -1461,8 +1499,8 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
             isSelected = 0;
         end
         % Special test for average reference
-        if strcmpi(sFigMontages(i).Name, 'Average reference')
-            DisplayName = 'Average reference';
+        if ~isempty(strfind(sFigMontages(i).Name, 'Average reference'))
+            DisplayName = sFigMontages(i).Name;
             jSubMenu = jMenu;
         % Temporary montages:  Remove the [tmp] tag or display
         elseif ~isempty(strfind(sFigMontages(i).Name, '[tmp]'))
@@ -1536,7 +1574,7 @@ function newName = RenameMontage(oldName, newName)
         error('Condition does not exist.');
     end
     % If this is a non-editable montage: error
-    if ismember(sMontage.Name, {'Bad channels', 'Average reference'})
+    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)'})
         newName = [];
         return;
     end
