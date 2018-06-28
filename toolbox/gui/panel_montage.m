@@ -1176,7 +1176,11 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
                 continue;
             end
             % Not EEG: Skip average reference
-            if ~isempty(strfind(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference')) && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})
+                continue;
+            end
+            % Not 10-20 EEG: Skip average reference L -> R
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference (L -> R)') && ((~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})) || ~Is1020Setup(FigChannels))
                 continue;
             end
             % Local average reference: Only available for current modality
@@ -1351,9 +1355,8 @@ function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroup
         % Sort channels by position
         for iChannel = 1:numChannels
             % Extract position from channel name
-            eegPos = sMontage.ChanNames{iChannel}(end);
-            eegNum = str2num(eegPos);
-            if eegPos == 'z'
+            [tmp, eegNum] = GetEeg1020ChannelParts(sMontage.ChanNames{iChannel});
+            if ~isempty(eegNum) && eegNum == 'z'
                 mid(end + 1) = iChannel;
             elseif ~isempty(eegNum) && mod(eegNum, 2) == 1
                 left(end + 1) = iChannel;
@@ -2230,3 +2233,46 @@ function montageName = CleanMontageName(montageName)
     montageName = strtrim(montageName);
 end
 
+%% ===== EXTRACT LETTERS & NUMBER FROM 10-20 EEG CHANNELS =====
+function [letters, number] = GetEeg1020ChannelParts(channelName)
+    letters = [];
+    number = [];
+    
+    % If we have multiple channels at once, just return the first one
+    split = strfind(channelName, '/');
+    if ~isempty(split)
+        channelName = channelName(1:split - 1);
+    end
+
+    % Break down of regexp:
+    %  ^\s*          : Skip begginning spaces if any
+    %  ([A-Zp]{1,3}) : Extract 1 to 3 letters (all uppercase except 'p')
+    %  (z|[1-9]|10)  : Extract 1-10 number or 'z' for zero
+    %  h?            : The 10-5 extension adds an 'h' to some channels, ignore
+    %  ?\s*$         : Skip ending spaces if any
+    % Example: AFF6h -> AFF, 6
+    match = regexp(channelName, '^\s*([A-Zp]{1,3})(z|[1-9]|10)h?\s*$', 'tokens');
+    if ~isempty(match)
+        letters = match{1}{1};
+        number = match{1}{2};
+        n = str2num(number);
+        if ~isempty(n)
+            number = n;
+        end
+    end
+end
+
+%% ===== CHECK IF CHANNEL SETUP IS EEG 10-20 =====
+function is1020Setup = Is1020Setup(channelNames)
+    numChannels = length(channelNames);
+    num1020Channels = 0;
+    
+    for iChannel = 1:numChannels
+        if ~isempty(GetEeg1020ChannelParts(channelNames{iChannel}))
+            num1020Channels = num1020Channels + 1;
+        end
+    end
+    
+    % If over half of the channels fit, it is the proper setup
+    is1020Setup = (num1020Channels / numChannels) > 0.5;
+end
