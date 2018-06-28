@@ -162,6 +162,9 @@ for iFile = 1:length(SurfaceFiles)
         NewTess = tess_concatenate(Tess);
         if strcmpi(importedBaseName, 'aseg')
             NewTess.Comment = 'aseg atlas';
+        elseif strfind(importedBaseName, 'svreg.label.nii')
+            % subcortical labels for BrainSuite
+            NewTess.Comment = 'subcortical labels';            
         else
             NewTess.Comment = importedBaseName;
         end
