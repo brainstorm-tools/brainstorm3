@@ -152,7 +152,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
     end
     
-    if bst_get('MatlabVersion') == 904
+    if bst_get('MatlabVersion') == 904 && OPTIONS.DisplayMessages
         java_dialog('warning', ['Matlab 2018a changed the behavior of the SVD() function. ' ...
             10 'If issues arise, we recommend using another version.']);
     end
