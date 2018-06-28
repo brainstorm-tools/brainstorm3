@@ -266,8 +266,12 @@ end
 function data = filter_and_downsample(inputFilename, Fs, filterBounds, notchFilterFreqs)
     sMat = load(inputFilename); % Make sure that a variable named data is loaded here. This file is saved as an output from the separator 
     
-    % Apply notch filter
-    data = process_notch('Compute', sMat.data, sMat.sr, notchFilterFreqs);
+    if ~isempty(notchFilterFreqs)
+        % Apply notch filter
+        data = process_notch('Compute', sMat.data, sMat.sr, notchFilterFreqs)';
+    else
+        data = sMat.data';
+    end
     
     % Aplly final filter
     data = bst_bandpass_hfilter(data, Fs, filterBounds(1), filterBounds(2), 0, 0);
@@ -283,8 +287,14 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     %% Instead of just filtering and then downsampling, DeriveLFP is used, as in:
     % https://www.ncbi.nlm.nih.gov/pubmed/21068271
     
-    data_deligned = process_notch('Compute', sMat.data, sMat.sr, notchFilterFreqs)';
+    if ~isempty(notchFilterFreqs)
+        % Apply notch filter
+        data_deligned = process_notch('Compute', sMat.data, sMat.sr, notchFilterFreqs);
+    else
+        data_deligned = sMat.data;
+    end
     
+    Fs = sMat.sr;
     % Assume that a spike lasts 3ms
     nSegment = sMat.sr * 0.003;
     Bs = eye(nSegment); % 60x60
@@ -331,7 +341,7 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
             S(spkSamples - round(nSegment/2)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike    
             data_derived = despikeLFP(data_deligned_temp,S,Bs,g,opts);
             data_derived = data_derived.z';
-   %         data_derived = bst_bandpass_hfilter(data_derived.z', Fs, filterBounds(1), filterBounds(2), 0, 0);
+            data_derived = bst_bandpass_hfilter(data_derived, Fs, filterBounds(1), filterBounds(2), 0, 0);
 
             
         else
@@ -341,13 +351,14 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
 
             data_derived = despikeLFP(data_deligned,S,Bs,g,opts);
             data_derived = data_derived.z';
-   %         data_derived = bst_bandpass_hfilter(data_derived.z', Fs, filterBounds(1), filterBounds(2), 0, 0);
+            data_derived = bst_bandpass_hfilter(data_derived, Fs, filterBounds(1), filterBounds(2), 0, 0);
 
             
         end
     else
 %         data_derived = bst_bandpass_hfilter(data_deligned', Fs, filterBounds(1), filterBounds(2), 0, 0);
         data_derived = data_deligned';
+        data_derived = bst_bandpass_hfilter(data_derived, Fs, filterBounds(1), filterBounds(2), 0, 0);
     end
     
 % % % %     %% Check the difference
