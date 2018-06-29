@@ -2262,13 +2262,31 @@ function [letters, number] = GetEeg1020ChannelParts(channelName)
     end
 end
 
-%% ===== CHECK IF CHANNEL SETUP IS EEG 10-20 =====
+%% ===== CHECK IF CHANNEL SETUP IS EEG 10-10/20 =====
 function is1020Setup = Is1020Setup(channelNames)
+    % Lists the 10-10 setup channel names (includes 10-20 channels)
+    bstDefaults = bst_get('EegDefaults');
+    chans1020 = [];
+    for iDir = 1:length(bstDefaults)
+        fList = bstDefaults(iDir).contents;
+        for iFile = 1:length(fList)
+            if strcmpi(fList(iFile).name, '10-10 65')
+                ChannelFile = fList(iFile).fullpath;
+                ChannelMat = in_bst_channel(ChannelFile);
+                chans1020 = {ChannelMat.Channel.Name};
+                break;
+            end
+        end
+    end
+    if isempty(chans1020)
+        error('Could not find EEG default 10-10 channels.');
+    end
+
+    % Go through active channels and look for 10-10 names
     numChannels = length(channelNames);
     num1020Channels = 0;
-    
     for iChannel = 1:numChannels
-        if ~isempty(GetEeg1020ChannelParts(channelNames{iChannel}))
+        if ismember(channelNames{iChannel}, chans1020)
             num1020Channels = num1020Channels + 1;
         end
     end
