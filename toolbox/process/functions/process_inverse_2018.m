@@ -153,11 +153,6 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
     end
     
-    if bst_get('MatlabVersion') == 904 && OPTIONS.DisplayMessages
-        java_dialog('warning', ['Matlab 2018a changed the behavior of the SVD() function. ' ...
-            10 'If issues arise, we recommend using another version.']);
-    end
-    
     
     %% ===== GET INPUT INFORMATION =====
     isShared = isempty(iDatas);
@@ -639,7 +634,18 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 % NOTE: The output HeadModel param is used here in return to save LOTS of memory in the bst_inverse_linear_2018 function,
                 %       event if it seems to be absolutely useless. Having a parameter in both input and output have the
                 %       effect in Matlab of passing them "by reference".
-                [Results, OPTIONS] = bst_inverse_linear_2018(HeadModel, OPTIONS);
+                try
+                    [Results, OPTIONS] = bst_inverse_linear_2018(HeadModel, OPTIONS);
+                catch e
+                    if bst_get('MatlabVersion') == 904
+                        errMsg = ['Note: Matlab 2018a changed the behavior of the SVD() function. ' ...
+                            10 'If issues arise, we recommend using another version.'];
+                        e = MException(e.identifier, [e.message 10 10 errMsg]);
+                        throw(e);
+                    else
+                        rethrow(e);
+                    end
+                end
             case 'mem'
                 % Add options needed by the MEM functions
                 OPTIONS.DataFile      = DataFile;
