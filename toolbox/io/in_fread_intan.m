@@ -48,7 +48,7 @@ for iChannel = selectedChannels
     ii = ii + 1;
     if sFile.header.chan_headers.AcqType==2
         fid = fopen(fullfile(sFile.filename, sFile.header.chan_files(iChannel).name), 'r');
-        fseek(fid, SamplesBounds(1), 'bof');
+        fseek(fid, SamplesBounds(1)*2, 'bof'); % int16 precision: 1 sample = 2 bytes
         data_channel = fread(fid, nSamples, 'int16');
         F(ii,:) = data_channel * 0.195; % Convert to microvolts
         fclose(fid);
