@@ -1,5 +1,5 @@
 function F = in_fread_intan(sFile, SamplesBounds, selectedChannels)
-% IN_FREAD_INTAN Read a block of recordings from a Intan files
+% IN_FREAD_INTAN Read a block of recordings from Intan files
 %
 % USAGE:  F = in_fread_intan(sFile, SamplesBounds=[], iChannels=[])
 
