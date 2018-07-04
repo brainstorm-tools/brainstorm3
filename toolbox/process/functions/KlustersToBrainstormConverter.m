@@ -67,8 +67,8 @@ fet = dlmread(fet_file);
 % than one clusters are assigned to that electrode, different labels will
 % be created for each neuron.
 
-iChannels = zeros(size(fet,1),1); % The first entry will be zeros. Ignore
-for iSpike = 2:size(fet,1)
+iChannels = zeros(size(fet,1),1); 
+for iSpike = 2:size(fet,1) % The first entry will be zeros. Ignore
     [~,iPCA] = max(abs(fet(iSpike,1:end-3)));
     iChannels(iSpike) = ceil(iPCA/3);
 end
@@ -83,6 +83,8 @@ end
 nChannels = length(ChannelMat.Channel); %Get this from the channelMat
 
 % Initialize
+clear events
+
 events = struct;
 events(2).label = [];
 events(2).epochs = [];
@@ -95,18 +97,20 @@ index = 0;
 
 
 uniqueClusters = unique(clu(2:end))'; % The first entry is just the number of clusters
-uniqueClusters = uniqueClusters(uniqueClusters>1); % Cluster 1 is registered as noise
 
 for iCluster = 1:length(uniqueClusters)
     selectedSpikes = find(clu==uniqueClusters(iCluster));
     
-    [~,iMaxFeature] = max(abs(sum(fet(selectedSpikes,1:end-3))));
+    [~,iMaxFeature] = max(sum(abs(fet(selectedSpikes,1:end-3))));
     iElectrode = ceil(iMaxFeature/3);
     
     index = index+1;
     % Write the packet to events
-    events(index).label       = ['Spikes Channel ' ChannelMat.Channel(iElectrode).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
-    
+    if uniqueClusters(iCluster)==1
+        events(index).label       = 'Spikes Noise |1|';
+    else
+        events(index).label       = ['Spikes Channel ' ChannelMat.Channel(iElectrode).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
+    end    
     events(index).color       = rand(1,3);
     events(index).samples     = fet(selectedSpikes,end)'; % The timestamps are in SAMPLES
     events(index).times       = events(index).samples./sFile.prop.sfreq;

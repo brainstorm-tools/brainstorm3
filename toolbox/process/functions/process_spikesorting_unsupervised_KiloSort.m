@@ -507,7 +507,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Build output structure
         DataMat = struct();
         %DataMat.F          = sFile;
-        DataMat.Comment     = 'Spike Sorting';
+        DataMat.Comment     = 'Spike Sorting Kilosort';
         DataMat.DataType    = 'raw';%'ephys';
         DataMat.Device      = 'KiloSort';
         DataMat.Spikes      = outputPath;
@@ -571,6 +571,7 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
 %     and fifth column is the post auto-merge cluster (if you run the auto-merger).
     spikeTimes     = rez.st3(:,1); % spikes - TIMESTAMPS in SAMPLES
     spikeTemplates = rez.st3(:,2); % spikes - TEMPLATE THEY MATCH WITH
+    uniqueClusters = unique(spikeTemplates);
 
     templates = zeros(length(ChannelMat.Channel), size(rez.W,1), rez.ops.Nfilt, 'single');
     for iNN = 1:rez.ops.Nfilt
@@ -589,39 +590,65 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
     
     
     % Fill the events fields
-    for iElectrode = 1:length(ChannelMat.Channel)
-        if strcmp(ChannelMat.Channel(iElectrode).Type,'EEG') || strcmp(ChannelMat.Channel(iElectrode).Type,'SEEG')
-            NeuronalTemplates = unique(spikeTemplates(spike2ChannelAssignment==iElectrode));
-            if length(NeuronalTemplates)==1
-                index = index+1;
-                % Write the packet to events
-                events(index).label       = ['Spikes Channel ' ChannelMat.Channel(iElectrode).Name];
-                events(index).color       = rand(1,3);
-                events(index).samples     = spikeTimes(spike2ChannelAssignment==iElectrode)'; % The timestamps are in SAMPLES
-                events(index).times       = events(index).samples./sFile.prop.sfreq;
-                events(index).epochs      = ones(1,length(events(index).samples));
-                events(index).reactTimes  = [];
-                events(index).select      = 1;
-
-            elseif NeuronalTemplates>1
-                for ineuron = 1:length(NeuronalTemplates)
-                    % Write the packet to events
-                    index = index+1;
-                    events(index).label = ['Spikes Channel ' ChannelMat.Channel(iElectrode).Name ' |' num2str(ineuron) '|'];
-
-                    events(index).color       = [rand(1,1),rand(1,1),rand(1,1)];
-                    events(index).samples     = spikeTimes(spikeTemplates(spike2ChannelAssignment==iElectrode)==NeuronalTemplates(ineuron))'; % The timestamps are in SAMPLES
-                    events(index).times       = events(index).samples./sFile.prop.sfreq;
-                    events(index).epochs      = ones(1,length(events(index).times));
-                    events(index).reactTimes  = [];
-                    events(index).select      = 1;
-                end
-            elseif NeuronalTemplates == 0
-                disp(['Channel: ' num2str(sFile.header.ChannelID(iElectrode)) ' just picked up noise'])
-                continue % This electrode just picked up noise
-            end
+    for iCluster = 1:length(unique(spikeTemplates))
+        selectedSpikes = find(spikeTemplates==uniqueClusters(iCluster));
+        
+        index = index+1;
+        % Write the packet to events
+        
+        if uniqueClusters(iCluster)==1
+            events(index).label       = 'Spikes Noise |1|';
+        else
+            events(index).label       = ['Spikes Channel ' ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
         end
+        events(index).color       = rand(1,3);
+        events(index).samples     = spikeTimes(selectedSpikes)'; % The timestamps are in SAMPLES
+        events(index).times       = events(index).samples./sFile.prop.sfreq;
+        events(index).epochs      = ones(1,length(events(index).samples));
+        events(index).reactTimes  = [];
+        events(index).select      = 1;
+        
+        
     end
+        
+    
+    
+    
+    
+% % % %     % Fill the events fields
+% % % %     for iElectrode = 1:length(ChannelMat.Channel)
+% % % %         if strcmp(ChannelMat.Channel(iElectrode).Type,'EEG') || strcmp(ChannelMat.Channel(iElectrode).Type,'SEEG')
+% % % %             NeuronalTemplates = unique(spikeTemplates(spike2ChannelAssignment==iElectrode));
+% % % %             if length(NeuronalTemplates)==1
+% % % %                 index = index+1;
+% % % %                 % Write the packet to events
+% % % %                 events(index).label       = ['Spikes Channel ' ChannelMat.Channel(iElectrode).Name];
+% % % %                 events(index).color       = rand(1,3);
+% % % %                 events(index).samples     = spikeTimes(spike2ChannelAssignment==iElectrode)'; % The timestamps are in SAMPLES
+% % % %                 events(index).times       = events(index).samples./sFile.prop.sfreq;
+% % % %                 events(index).epochs      = ones(1,length(events(index).samples));
+% % % %                 events(index).reactTimes  = [];
+% % % %                 events(index).select      = 1;
+% % % % 
+% % % %             elseif NeuronalTemplates>1
+% % % %                 for ineuron = 1:length(NeuronalTemplates)
+% % % %                     % Write the packet to events
+% % % %                     index = index+1;
+% % % %                     events(index).label = ['Spikes Channel ' ChannelMat.Channel(iElectrode).Name ' |' num2str(ineuron) '|'];
+% % % % 
+% % % %                     events(index).color       = [rand(1,1),rand(1,1),rand(1,1)];
+% % % %                     events(index).samples     = spikeTimes(spikeTemplates(spike2ChannelAssignment==iElectrode)==NeuronalTemplates(ineuron))'; % The timestamps are in SAMPLES
+% % % %                     events(index).times       = events(index).samples./sFile.prop.sfreq;
+% % % %                     events(index).epochs      = ones(1,length(events(index).times));
+% % % %                     events(index).reactTimes  = [];
+% % % %                     events(index).select      = 1;
+% % % %                 end
+% % % %             elseif NeuronalTemplates == 0
+% % % %                 disp(['Channel: ' num2str(sFile.header.ChannelID(iElectrode)) ' just picked up noise'])
+% % % %                 continue % This electrode just picked up noise
+% % % %             end
+% % % %         end
+% % % %     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     save(fullfile(parentPath,'events_UNSUPERVISED.mat'),'events')
