@@ -1,8 +1,8 @@
-function converted_raw_File = in_spikesorting_convertForKiloSort( sInput, sProcess )
+function converted_raw_File = in_spikesorting_convertforkilosort( varargin )
 % IN_SPIKESORTING_RAWELECTRODES: Loads and creates if needed separate raw
 % electrode files for spike sorting purposes.
 %
-% USAGE: OutputFiles = process_spikesorting_unsupervised('Run', sProcess, sInputs)
+% USAGE: OutputFiles = in_spikesorting_convertforkilosort(sInputs, ram)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,6 +24,13 @@ function converted_raw_File = in_spikesorting_convertForKiloSort( sInput, sProce
 %
 % Authors: Konstantinos Nasiotis, 2018; Martin Cousineau, 2018
 
+sInput = varargin{1};
+if nargin < 2 || isempty(varargin{2})
+    ram = 1e9; % 1 GB
+else
+    ram = varargin{2};
+end
+
 protocol = bst_get('ProtocolInfo');
 parentPath = bst_fullfile(bst_get('BrainstormTmpDir'), ...
                        'Unsupervised_Spike_Sorting', ...
@@ -40,29 +47,14 @@ ChannelMat = in_bst_channel(sInput.ChannelFile);
 sFile = DataMat.F;
 
 
-% Separate the file to length
-isegment = 1;
-nsegment_max = 0;
+% Separate the file to max length based on RAM
+numChannels = length(ChannelMat.Channel);
+max_samples = ram / 8 / numChannels;
 
-
-nget_samples = sProcess.options.binsize.Value{1}*(10^6);   % This is the length of the segment that will be appended.
-                                                           % The reason why we need this is for
-                                                           % machines that don't have enough RAM. The
-                                                           % larger this number, the faster it saves
-                                                           % the files.
-
-                                                           
-                                                           
+%TODO: clarify sInput.Condition(5:end)
 converted_raw_File = bst_fullfile(parentPath, ['raw_data_no_header_' sInput.Condition(5:end) '.dat']);
-                                                           
-bst_progress('start', 'Spike-sorting', 'Converting to KiloSort Input...', 0, ceil(sFile.prop.samples(2)/nget_samples));
 
-
-% % % % Make sure the file is deleted because everything will be appended.
-% % % if exist(converted_raw_File, 'file') == 2
-% % %     file_delete(converted_raw_File, 1, 3);
-% % %     disp('Previous converted file succesfully deleted')
-% % % end
+bst_progress('start', 'Spike-sorting', 'Converting to KiloSort Input...', 0, ceil(sFile.prop.samples(2)/max_samples));
 
 if exist(converted_raw_File, 'file') == 2
     disp('File already converted')
@@ -71,27 +63,23 @@ end
 
 
 %% Convert the acquisition system file to an int16 without a header.
-fid = fopen(converted_raw_File, 'a');  % THIS JUST APPENDS
+fid = fopen(converted_raw_File, 'a');
 
 isegment = 1;
 nsegment_max = 0;
 
-while nsegment_max<sFile.prop.samples(2)
-    nsegment_min = (isegment-1)*nget_samples;
-    nsegment_max = isegment*nget_samples - 1;
-    if nsegment_max>sFile.prop.samples(2)
+while nsegment_max < sFile.prop.samples(2)
+    nsegment_min = (isegment-1) * max_samples;
+    nsegment_max = isegment * max_samples - 1;
+    if nsegment_max > sFile.prop.samples(2)
         nsegment_max = sFile.prop.samples(2);
     end
     
-    [F, ~] = in_fread(sFile, ChannelMat, [], [nsegment_min,nsegment_max], [], []);
-%   [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions)
+    F = in_fread(sFile, ChannelMat, [], [nsegment_min,nsegment_max], [], []);
 
-    % KILOSORT USES INT16 AS INPUT
-    % THIS IS WHAT THEY HAD IN THE make_eMouseData
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    F = F*10^6 ;  % This assumes that F signals are in V. I convert it to uV there are big numbers and int16 precision doesn't zero it out.            
+    %TODO: read unit from header
+    F = F*10^6 ;  % This assumes that F signals are in V. I convert it to uV there are big numbers and int16 precision doesn't zero it out.
     fwrite(fid, F,'int16');
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     clear F
     isegment = isegment + 1;

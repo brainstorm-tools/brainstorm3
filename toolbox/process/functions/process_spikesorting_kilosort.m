@@ -1,14 +1,14 @@
-function varargout = process_spikesorting_unsupervised_KiloSort( varargin )
-% PROCESS_SPIKESORTING_UNSUPERVISED:
+function varargout = process_spikesorting_kilosort( varargin )
+% PROCESS_SPIKESORTING_KILOSORT:
 % This process separates the initial raw signal to nChannels binary signals
-% and performs spike sorting individually on each channel with the WaveClus
+% and performs spike sorting individually on each channel with the KiloSort
 % spike-sorter. The spikes are clustered and assigned to individual
 % neurons. The code ultimately produces a raw_elec(i)_spikes.mat
 % for each electrode that can be used later for supervised spike-sorting.
 % When all spikes on all electrodes have been clustered, all the spikes for
 % each neuron is assigned to an events file in brainstorm format.
 %
-% USAGE: OutputFiles = process_spikesorting_unsupervised('Run', sProcess, sInputs)
+% USAGE: OutputFiles = process_spikesorting_kilosort('Run', sProcess, sInputs)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -54,13 +54,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.GPU.Comment = 'GPU processing';
     sProcess.options.GPU.Type    = 'checkbox';
     sProcess.options.GPU.Value   = 0;
-    sProcess.options.binsize.Comment = 'Samplesize for appending: ';
+    sProcess.options.binsize.Comment = 'Maximum RAM to use: ';
     sProcess.options.binsize.Type    = 'value';
-    sProcess.options.binsize.Value   = {6, 'million samples', 1};
+    sProcess.options.binsize.Value   = {2, 'GB', 1};
     
     % Options: Edit parameters
     sProcess.options.edit.Comment = {'panel_timefreq_options',  ' Edit parameters file:'};
-    sProcess.options.edit.Type    = 'editpref'; 
+    sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = [];
     % Show warning that pre-spikesorted events will be overwritten
     sProcess.options.warning.Comment = '<B><FONT color="#FF0000">Spike Events created from the acquisition system will be overwritten</FONT></B>';
@@ -86,7 +86,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
 
     % Install KiloSort if missing
-    if ~exist('make_eMouseData.m', 'file')  % This just checks for a file from the Kilosort file that it exists in the path
+    if ~exist('make_eMouseData.m', 'file')
         rmpath(genpath(KiloSortDir));
         isOk = java_dialog('confirm', ...
             ['The KiloSort spike-sorter is not installed on your computer.' 10 10 ...
@@ -115,76 +115,64 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     %% Initialize KiloSort Parameters (This is a copy of StandardConfig_MOVEME)
     
-    ops.GPU                 = sProcess.options.GPU.Value; % whether to run this code on an Nvidia GPU (much faster, mexGPUall first)		
-    ops.parfor              = sProcess.options.paral.Value; % whether to use parfor to accelerate some parts of the algorithm		
-    ops.verbose             = 1; % whether to print command line progress		
-    ops.showfigures         = 1; % whether to plot figures during optimization		
+    ops.GPU                 = sProcess.options.GPU.Value; % whether to run this code on an Nvidia GPU (much faster, mexGPUall first)
+    ops.parfor              = sProcess.options.paral.Value; % whether to use parfor to accelerate some parts of the algorithm
+    ops.verbose             = 1; % whether to print command line progress
+    ops.showfigures         = 1; % whether to plot figures during optimization
 
-    ops.datatype            = 'dat';  % binary ('dat', 'bin') or 'openEphys'		
-%     ops.fbinary             = 'C:\DATA\Spikes\Piroska\piroska_example_short.dat'; % will be created for 'openEphys'		
-%     ops.fproc   = 'C:\DATA\Spikes\Piroska\temp_wh.dat'; % residual from RAM of preprocessed data		
-% ops.fproc is defined later on the code so I have the outputPath
-%     ops.root                = 'C:\DATA\Spikes\Piroska'; % 'openEphys' only: where raw files are		
+    ops.datatype            = 'dat';  % binary ('dat', 'bin') or 'openEphys'
 
-%     ops.fs                  = 25000;        % sampling rate		(omit if already in chanMap file)
-%     ops.NchanTOT            = 32;           % total number of channels (omit if already in chanMap file)
-%     ops.Nchan               = 32;           % number of active channels (omit if already in chanMap file)
+    ops.nNeighPC            = []; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)
+    ops.nNeigh              = []; % visualization only (Phy): number of neighboring templates to retain projections of (16)
 
-    ops.nNeighPC            = [] %12; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)		
-    ops.nNeigh              = [] %16; % visualization only (Phy): number of neighboring templates to retain projections of (16)		
-
-    % options for channel whitening		
-    ops.whitening           = 'full'; % type of whitening (default 'full', for 'noSpikes' set options for spike detection below)		
-    ops.nSkipCov            = 1; % compute whitening matrix from every N-th batch (1)		
-    ops.whiteningRange      = 32; % how many channels to whiten together (Inf for whole probe whitening, should be fine if Nchan<=32)		
-
-    
-
+    % options for channel whitening
+    ops.whitening           = 'full'; % type of whitening (default 'full', for 'noSpikes' set options for spike detection below)
+    ops.nSkipCov            = 1; % compute whitening matrix from every N-th batch (1)
+    ops.whiteningRange      = 32; % how many channels to whiten together (Inf for whole probe whitening, should be fine if Nchan<=32)
     
     % define the channel map as a filename (string) or simply an array	
-%     ops.chanMap = 'C:\DATA\Spikes\Piroska\chanMap.mat'; % make this file using createChannelMapFile.m		
-% ops.chanMap is defined later on the code so I have the outputPath
-    ops.criterionNoiseChannels = 0.2; % fraction of "noise" templates allowed to span all channel groups (see createChannelMapFile for more info). 		
-    % ops.chanMap = 1:ops.Nchan; % treated as linear probe if a chanMap file		
+    % ops.chanMap is defined later on the code so I have the outputPath
+    ops.criterionNoiseChannels = 0.2; % fraction of "noise" templates allowed to span all channel groups (see createChannelMapFile for more info). 
 
-    % other options for controlling the model and optimization		
-    ops.Nrank               = 3;    % matrix rank of spike template model (3)		
-    ops.nfullpasses         = 6;    % number of complete passes through data during optimization (6)		
-    ops.maxFR               = 20000;  % maximum number of spikes to extract per batch (20000)		
-    ops.fshigh              = 300;   % frequency for high pass filtering		
+    % other options for controlling the model and optimization
+    ops.Nrank               = 3;    % matrix rank of spike template model (3)
+    ops.nfullpasses         = 6;    % number of complete passes through data during optimization (6)
+    ops.maxFR               = 20000;  % maximum number of spikes to extract per batch (20000)
+    ops.fshigh              = 300;   % frequency for high pass filtering
     % ops.fslow             = 2000;   % frequency for low pass filtering (optional)
-    ops.ntbuff              = 64;    % samples of symmetrical buffer for whitening and spike detection		
-    ops.scaleproc           = 200;   % int16 scaling of whitened data		
-    ops.NT                  = 32*1024+ ops.ntbuff;% this is the batch size (try decreasing if out of memory) 		
-    % for GPU should be multiple of 32 + ntbuff		
+    ops.ntbuff              = 64;    % samples of symmetrical buffer for whitening and spike detection
+    ops.scaleproc           = 200;   % int16 scaling of whitened data
+    ops.NT                  = 32*1024+ ops.ntbuff;% this is the batch size (try decreasing if out of memory) 
+    % for GPU should be multiple of 32 + ntbuff
 
-    % the following options can improve/deteriorate results. 		
-    % when multiple values are provided for an option, the first two are beginning and ending anneal values, 		
-    % the third is the value used in the final pass. 		
-    ops.Th               = [4 10 10];    % threshold for detecting spikes on template-filtered data ([6 12 12])		
-    ops.lam              = [5 20 20];   % large means amplitudes are forced around the mean ([10 30 30])		
-    ops.nannealpasses    = 4;            % should be less than nfullpasses (4)		
-    ops.momentum         = 1./[20 400];  % start with high momentum and anneal (1./[20 1000])		
-    ops.shuffle_clusters = 1;            % allow merges and splits during optimization (1)		
-    ops.mergeT           = .1;           % upper threshold for merging (.1)		
-    ops.splitT           = .1;           % lower threshold for splitting (.1)		
+    % the following options can improve/deteriorate results. 
+    % when multiple values are provided for an option, the first two are beginning and ending anneal values, 
+    % the third is the value used in the final pass. 
+    ops.Th               = [4 10 10];    % threshold for detecting spikes on template-filtered data ([6 12 12])
+    ops.lam              = [5 20 20];   % large means amplitudes are forced around the mean ([10 30 30])
+    ops.nannealpasses    = 4;            % should be less than nfullpasses (4)
+    ops.momentum         = 1./[20 400];  % start with high momentum and anneal (1./[20 1000])
+    ops.shuffle_clusters = 1;            % allow merges and splits during optimization (1)
+    ops.mergeT           = .1;           % upper threshold for merging (.1)
+    ops.splitT           = .1;           % lower threshold for splitting (.1)
 
-    % options for initializing spikes from data		
-    ops.initialize      = 'no'; %'fromData' or 'no'		
-    ops.spkTh           = -6;      % spike threshold in standard deviations (4)		
-    ops.loc_range       = [3  1];  % ranges to detect peaks; plus/minus in time and channel ([3 1])		
-    ops.long_range      = [30  6]; % ranges to detect isolated peaks ([30 6])		
-    ops.maskMaxChannels = 5;       % how many channels to mask up/down ([5])		
-    ops.crit            = .65;     % upper criterion for discarding spike repeates (0.65)		
-    ops.nFiltMax        = 10000;   % maximum "unique" spikes to consider (10000)		
+    % options for initializing spikes from data
+    ops.initialize      = 'no'; %'fromData' or 'no'
+    ops.spkTh           = -6;      % spike threshold in standard deviations (4)
+    ops.loc_range       = [3  1];  % ranges to detect peaks; plus/minus in time and channel ([3 1])
+    ops.long_range      = [30  6]; % ranges to detect isolated peaks ([30 6])
+    ops.maskMaxChannels = 5;       % how many channels to mask up/down ([5])
+    ops.crit            = .65;     % upper criterion for discarding spike repeates (0.65)
+    ops.nFiltMax        = 10000;   % maximum "unique" spikes to consider (10000)
 
-    % load predefined principal components (visualization only (Phy): used for features)		
-    dd                  = load('PCspikes2.mat'); % you might want to recompute this from your own data		
-    ops.wPCA            = dd.Wi(:,1:7);   % PCs 		
+    % load predefined principal components (visualization only (Phy): used for features)
+    %TODO: ???
+    %dd                  = load('PCspikes2.mat'); % you might want to recompute this from your own data
+    %ops.wPCA            = dd.Wi(:,1:7);   % PCs 
 
-    % options for posthoc merges (under construction)		
-    ops.fracse  = 0.1; % binning step along discriminant axis for posthoc merges (in units of sd)		
-    ops.epu     = Inf;		
+    % options for posthoc merges (under construction)
+    ops.fracse  = 0.1; % binning step along discriminant axis for posthoc merges (in units of sd)
+    ops.epu     = Inf;
 
     ops.ForceMaxRAMforDat   = 20e9; % maximum RAM the algorithm will try to use; on Windows it will autodetect.
 
@@ -215,15 +203,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         sFile = DataMat.F;
         
-        
         %% Adjust the possible clusters based on the number of channels
         doubleChannels = 2*numChannels;
-        nClustersToUse = ceil(doubleChannels/32)*32; % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     
+        ops.Nfilt = ceil(doubleChannels/32)*32; % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)
         
-        ops.Nfilt = nClustersToUse;    %64; % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)    
-        clear doubleChannels nClustersToUse
-        
-        %% %%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
+        %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
         outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_kilosort_spikes']);
         
         % Clear if directory already exists
@@ -245,20 +229,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         connected = true(Nchannels, 1);
         chanMap   = 1:Nchannels;
         chanMap0ind = chanMap - 1;
-
         
         
         %% Use the same algorithm that I use for the 2d channel display for converting 3d to 2d
         
-        Channels = ChannelMat.Channel; % 1x224
+        Channels = ChannelMat.Channel;
         
         try
             Montages = unique({Channels.Group});
-            alreadyAssignedMontages = true;
+            channelsMontage = zeros(1,length(Channels));
             for iChannel = 1:length(Channels)
                 for iMontage = 1:length(Montages)
                     if strcmp(Channels(iChannel).Group, Montages{iMontage})
-                        channelsMontage(iChannel)    = iMontage;
+                        channelsMontage(iChannel) = iMontage;
                     end
                 end
             end
@@ -270,13 +253,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 Channels(iChannel).Group = 'SingleGroup';
             end
             
-            alreadyAssignedMontages = false;
             channelsMontage = ones(1,length(Channels)); % This holds the code of the montage each channel holds 
         end
 
         %% If the coordinates are assigned, convert 3d to 2d
         
-        if sum(sum([ChannelMat.Channel.Loc]'))~=0 % If values are already assigned
+        if sum(sum([ChannelMat.Channel.Loc]))~=0 % If values are already assigned
             alreadyAssignedLocations = 1;
         else
             alreadyAssignedLocations = 0;
@@ -297,7 +279,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % APPLY TRANSORMATION TO A FLAT SURFACE (X-Y COORDINATES: IGNORE Z)
             converted_coordinates = zeros(length(Channels),3);
             for iMontage = 1:length(Montages)
-                clear single_array_coords
                 single_array_coords = channelsCoords(channelsMontage==iMontage,:);
                 % SVD approach
                 [U, S, V] = svd(single_array_coords-mean(single_array_coords));
@@ -316,7 +297,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         fs = sFile.prop.sfreq; % sampling frequency
         
        
-        
+        %TODO ???
 % % %         %%%%%%%%%%%%%  WE HAVE TO FIGURE OUT A SOLUTION FOR THIS %%%%%%%%%%
 % % %         
 % % %         % The datafile I'm using doesnt provide the locations of the
@@ -330,7 +311,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 % % %         kcoords   = ones(Nchannels,1); % grouping of channels (i.e. tetrode groups)
 % % %         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-        save([outputPath '\chanMap.mat'], ...
+        save(bst_fullfile(outputPath, 'chanMap.mat'), ...
             'chanMap','connected', 'xcoords', 'ycoords', 'kcoords', 'chanMap0ind', 'fs')
         
         
@@ -356,15 +337,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         A1 = {'SEE DERIVATION BELOW','','','','','X','Y','','BY VERTICAL POSITION/SHANK (IE FOR DISPLAY)','','','Neuroscope Channel';
               'Neronexus/ Omnetics site','Intan pin','Intan Channel','','','X Coordinates','Y Coordinates','','','Neuronexus/ Omnetics Site','Intan Pin','Intan Channel'};
-%               'Neronexus/ Omnetics site',[DataMat.F.device ' pin'],[DataMat.F.device ' Channel'],'','','X Coordinates','Y Coordinates','','','Neuronexus/ Omnetics Site',[DataMat.F.device ' Pin'],[DataMat.F.device ' Channel']};
         
-        nChannelsInMontage = cell(length(unique(kcoords)),1);
-        for iType = unique(kcoords)'
+        uniqueKCoords = unique(kcoords)';
+        nChannelsInMontage = cell(length(uniqueKCoords),1);
+        for iType = uniqueKCoords
             nChannelsInMontage{iType} = find(kcoords==iType);
         end
 
         ii = 0;
-        for iType = unique(kcoords)'
+        for iType = uniqueKCoords
             for iChannel = nChannelsInMontage{iType}' % 1x96
                 ii = ii+1;
                 A3{ii,1}  = iChannel;
@@ -381,22 +362,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 A3{ii,12} = iChannel-1; % This is for the display - Intan Channel
             end
         end
-
-
-%         for iChannel = 1:length(kcoords) % 1x224
-%             A3{iChannel,1}  = iChannel;
-%             A3{iChannel,2}  = iChannel-1; % Acquisition system codename - INTAN STARTS CHANNEL NUMBERING FROM 0. These .xlsx are made for INTAN I assume
-%             A3{iChannel,3}  = iChannel-1;
-%             A3{iChannel,4}  = ['SHANK ' num2str(kcoords(iChannel))];
-%             A3{iChannel,5}  = '';
-%             A3{iChannel,6}  = xcoords(iChannel); % x coord - THIS PROBABLY SHOULD BE RELATIVE TO EACH ARRAY - NOT GLOBAL COORDINATES
-%             A3{iChannel,7}  = ycoords(iChannel);
-%             A3{iChannel,8}  = '';
-%             A3{iChannel,9}  = ['SHANK ' num2str(kcoords(iChannel))];
-%             A3{iChannel,10} = iChannel; % This is for the display - Neuronexus/Omnetics Site
-%             A3{iChannel,11} = iChannel-1; % This is for the display - Intan Pin
-%             A3{iChannel,12} = iChannel-1; % This is for the display - Intan Channel
-%         end
         
         sheet = 1;
         xlswrite(xml_filename,A1,sheet,'A1')
@@ -418,40 +383,33 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         defaults.PeakPointInWaveform = 16;
         defaults.FeaturesPerWave = 3;
         
-        [~, xmlFileBase] = bst_fileparts(xml_filename);
+        [tmp, xmlFileBase] = bst_fileparts(xml_filename);
         bz_MakeXMLFromProbeMaps({xmlFileBase}, '','',1,defaults) % This creates a Barcode_f096_kilosort_spikes.xml
-%         bz_MakeXMLFromProbeMaps({xmlFileBase}) % This creates a Barcode_f096_kilosort_spikes.xml
         weird_xml_filename = dir('*.xml');
-        [~, weird_xml_fileBase] = bst_fileparts(weird_xml_filename.name);
+        [tmp, weird_xml_fileBase] = bst_fileparts(weird_xml_filename.name);
         movefile([weird_xml_fileBase '.xml'],[xmlFileBase '.xml']); % Barcode_f096.xml
-        
-        
         
         
         %% Convert to the right input for KiloSort
         
         bst_progress('start', 'KiloSort spike-sorting', 'Converting to KiloSort Input...');
         
-        converted_raw_File = in_spikesorting_convertForKiloSort(sInputs(i), sProcess); % This converts into int16.
+        converted_raw_File = in_spikesorting_convertforkilosort(sInputs(i), sProcess.options.binsize.Value{1} * 1e9); % This converts into int16.
         
         %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
         bst_progress('text', 'Spike-sorting...');
         
-        
        
         
         %% Some residual parameters that need the outputPath and the converted Raw signal
-        ops.fbinary =  converted_raw_File; % will be created for 'openEphys'		
-        ops.fproc   = [outputPath '\temp_wh.bin']; % residual from RAM of preprocessed data		% It was .dat, I changed it to .bin - Make sure this is correct
-        ops.chanMap = [outputPath '\chanMap.mat']; % make this file using createChannelMapFile.m		
+        ops.fbinary =  converted_raw_File; % will be created for 'openEphys'
+        ops.fproc   = bst_fullfile(outputPath, 'temp_wh.bin'); % residual from RAM of preprocessed data		% It was .dat, I changed it to .bin - Make sure this is correct
+        ops.chanMap = bst_fullfile(outputPath, 'chanMap.mat'); % make this file using createChannelMapFile.m
         ops.root    = outputPath; % 'openEphys' only: where raw files are
         ops.basename = xmlFileBase;
         
         
-        
-        
         %% KiloSort
-        
         if ops.GPU     
             gpuDevice(1); % initialize GPU (will erase any existing GPU arrays)
         end
@@ -459,20 +417,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         [rez, DATA, uproj] = preprocessData(ops); % preprocess data and extract spikes for initialization
         rez                = fitTemplates(rez, DATA, uproj);  % fit templates iteratively
-        rez                = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)
-
-        
-        
-        %  rez = merge_posthoc2(rez);  
-
-        %% Convert to Phy output
-        
-        % AutoMerge. rez2Phy will use for clusters the new 5th column of st3 if you run this)
-        
-        % save python results file for Phy
-        % rezToPhy(rez, ops.root);
-
-        
+        rez                = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)        
         
         %% save matlab results file
         save(fullfile(ops.root,  'rez.mat'), 'rez', '-v7.3');
@@ -507,7 +452,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Build output structure
         DataMat = struct();
         %DataMat.F          = sFile;
-        DataMat.Comment     = 'Spike Sorting Kilosort';
+        DataMat.Comment     = 'KiloSort Spike Sorting';
         DataMat.DataType    = 'raw';%'ephys';
         DataMat.Device      = 'KiloSort';
         DataMat.Spikes      = outputPath;
@@ -533,11 +478,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if ~isempty(poolobj)
             delete(poolobj);
         end
-    end
-
-    cd(previous_directory)
-    
-    
+    end    
 end
 
 
@@ -555,9 +496,7 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
     events(2).select = [];
     index = 0;
     
-    
-    
-    
+    %TODO ???
 % % %     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % %     THIS IS NOT COMPLETE
 % % %     TRANFORM REZ TO EVENTS
@@ -579,7 +518,7 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
     end
     amplitude_max_channel = [];
     for i = 1:size(templates,3)
-        [~,amplitude_max_channel(i)] = max(range(templates(:,:,i)')); %CHANNEL WHERE EACH TEMPLATE HAS THE BIGGEST AMPLITUDE
+        [tmp, amplitude_max_channel(i)] = max(range(templates(:,:,i)')); %CHANNEL WHERE EACH TEMPLATE HAS THE BIGGEST AMPLITUDE
     end
     
     
@@ -588,6 +527,7 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
     spike2ChannelAssignment = amplitude_max_channel(spikeTemplates);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
+    spikeEventPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
     
     % Fill the events fields
     for iCluster = 1:length(unique(spikeTemplates))
@@ -599,7 +539,7 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
         if uniqueClusters(iCluster)==1
             events(index).label       = 'Spikes Noise |1|';
         else
-            events(index).label       = ['Spikes Channel ' ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
+            events(index).label       = [spikeEventPrefix ' ' ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
         end
         events(index).color       = rand(1,3);
         events(index).samples     = spikeTimes(selectedSpikes)'; % The timestamps are in SAMPLES
@@ -610,45 +550,6 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
         
         
     end
-        
-    
-    
-    
-    
-% % % %     % Fill the events fields
-% % % %     for iElectrode = 1:length(ChannelMat.Channel)
-% % % %         if strcmp(ChannelMat.Channel(iElectrode).Type,'EEG') || strcmp(ChannelMat.Channel(iElectrode).Type,'SEEG')
-% % % %             NeuronalTemplates = unique(spikeTemplates(spike2ChannelAssignment==iElectrode));
-% % % %             if length(NeuronalTemplates)==1
-% % % %                 index = index+1;
-% % % %                 % Write the packet to events
-% % % %                 events(index).label       = ['Spikes Channel ' ChannelMat.Channel(iElectrode).Name];
-% % % %                 events(index).color       = rand(1,3);
-% % % %                 events(index).samples     = spikeTimes(spike2ChannelAssignment==iElectrode)'; % The timestamps are in SAMPLES
-% % % %                 events(index).times       = events(index).samples./sFile.prop.sfreq;
-% % % %                 events(index).epochs      = ones(1,length(events(index).samples));
-% % % %                 events(index).reactTimes  = [];
-% % % %                 events(index).select      = 1;
-% % % % 
-% % % %             elseif NeuronalTemplates>1
-% % % %                 for ineuron = 1:length(NeuronalTemplates)
-% % % %                     % Write the packet to events
-% % % %                     index = index+1;
-% % % %                     events(index).label = ['Spikes Channel ' ChannelMat.Channel(iElectrode).Name ' |' num2str(ineuron) '|'];
-% % % % 
-% % % %                     events(index).color       = [rand(1,1),rand(1,1),rand(1,1)];
-% % % %                     events(index).samples     = spikeTimes(spikeTemplates(spike2ChannelAssignment==iElectrode)==NeuronalTemplates(ineuron))'; % The timestamps are in SAMPLES
-% % % %                     events(index).times       = events(index).samples./sFile.prop.sfreq;
-% % % %                     events(index).epochs      = ones(1,length(events(index).times));
-% % % %                     events(index).reactTimes  = [];
-% % % %                     events(index).select      = 1;
-% % % %                 end
-% % % %             elseif NeuronalTemplates == 0
-% % % %                 disp(['Channel: ' num2str(sFile.header.ChannelID(iElectrode)) ' just picked up noise'])
-% % % %                 continue % This electrode just picked up noise
-% % % %             end
-% % % %         end
-% % % %     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     save(fullfile(parentPath,'events_UNSUPERVISED.mat'),'events')
@@ -665,11 +566,9 @@ function downloadAndInstallKiloSort()
     % 1. KiloSort
     % 2. Phy
     % 3. npy-matlab that enables input-output from Matlab to Python
-    
 
-    KiloSortDir = bst_fullfile(bst_get('BrainstormUserDir'), 'KiloSort');
-    KiloSortTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'KiloSort_tmp');
-    KiloSortWrapperTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'KiloSortWrapper_tmp');
+    KiloSortDir = bst_fullfile(bst_get('BrainstormUserDir'), 'kilosort');
+    KiloSortTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'kilosort_tmp');
     
     % If folders exists: delete
     if isdir(KiloSortDir)
@@ -680,108 +579,68 @@ function downloadAndInstallKiloSort()
     end
     
     % Create folders
-    KiloSortTmp = [KiloSortTmpDir '\KiloSort'];
-    KiloSortWrapperTmp = [KiloSortWrapperTmpDir '\KiloSortWrapper'];
-    PhyTmp = [KiloSortTmpDir '\Phy'];
-    npyTemp = [KiloSortTmpDir '\npy'];
-	mkdir(KiloSortTmp);
-	mkdir(KiloSortWrapperTmp);
-	mkdir(PhyTmp);
-	mkdir(npyTemp);
-    
+    mkdir(KiloSortDir);
+	mkdir(KiloSortTmpDir);
     
     % Download KiloSort
     url_KiloSort = 'https://github.com/cortex-lab/KiloSort/archive/master.zip';
-    KiloSortZipFile = bst_fullfile(KiloSortTmpDir, 'master.zip');
+    KiloSortZipFile = bst_fullfile(KiloSortTmpDir, 'kilosort.zip');
     errMsg = gui_brainstorm('DownloadFile', url_KiloSort, KiloSortZipFile, 'KiloSort download');
     if ~isempty(errMsg)
-        error(['Impossible to download KiloSort:' errMsg]);
+        error(['Impossible to download KiloSort.' 10 errMsg]);
     end
     % Download KiloSortWrapper (For conversion to Neurosuite - Klusters)
     url_KiloSort_wrapper = 'https://github.com/brendonw1/KilosortWrapper/archive/master.zip';
-    KiloSortWrapperZipFile = bst_fullfile(KiloSortWrapperTmpDir, 'master.zip');
+    KiloSortWrapperZipFile = bst_fullfile(KiloSortTmpDir, 'kilosort_wrapper.zip');
     errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSort download');
     if ~isempty(errMsg)
-        error(['Impossible to download KiloSort:' errMsg]);
+        error(['Impossible to download KiloSort Wrapper.' 10 errMsg]);
     end
     
     % Download Phy
     url_Phy = 'https://github.com/kwikteam/phy/archive/master.zip';
-    PhyZipFile = bst_fullfile(KiloSortTmpDir, 'master.zip');
+    PhyZipFile = bst_fullfile(KiloSortTmpDir, 'phy.zip');
     errMsg = gui_brainstorm('DownloadFile', url_Phy, PhyZipFile, 'Phy download');
     if ~isempty(errMsg)
-        error(['Impossible to download Phy:' errMsg]);
+        error(['Impossible to download Phy.' 10 errMsg]);
     end
     % Download npy-matlab
     url_npy = 'https://github.com/kwikteam/npy-matlab/archive/master.zip';
-    npyZipFile = bst_fullfile(KiloSortTmpDir, 'master.zip');
+    npyZipFile = bst_fullfile(KiloSortTmpDir, 'npy.zip');
     errMsg = gui_brainstorm('DownloadFile', url_npy, npyZipFile, 'npy-matlab download');
     if ~isempty(errMsg)
-        error(['Impossible to download npy-Matlab:' errMsg]);
+        error(['Impossible to download npy-Matlab.' 10 errMsg]);
     end
-    
     
     % Unzip KiloSort zip-file
     bst_progress('start', 'KiloSort', 'Installing KiloSort...');
     unzip(KiloSortZipFile, KiloSortTmpDir);
-    % Get parent folder of the unzipped file
-    diropen = dir(fullfile(KiloSortTmpDir, 'MATLAB*'));
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newKiloSortDir = bst_fullfile(KiloSortTmpDir, diropen(idir).name, 'KiloSort-master');
     % Move KiloSort directory to proper location
-    movefile(newKiloSortDir, KiloSortDir);
-    % Delete unnecessary files
-    file_delete(KiloSortTmpDir, 1, 3);
+    movefile(bst_fullfile(KiloSortTmpDir, 'KiloSort-master'), ...
+        bst_fullfile(KiloSortDir, 'kilosort'));
     
     % Unzip KiloSort Wrapper zip-file
-    bst_progress('start', 'KiloSort', 'Installing KiloSortWrapper...');
-    unzip(KiloSortWrapperZipFile, KiloSortWrapperTmpDir);
-    % Get parent folder of the unzipped file
-    diropen = dir(fullfile(KiloSortWrapperTmpDir, 'MATLAB*'));
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newKiloSortWrapperDir = bst_fullfile(KiloSortWrapperTmpDir, diropen(idir).name, 'KiloSortWrapper-master');
-    % Move KiloSort directory to proper location
-    movefile(newKiloSortWrapperDir, KiloSortDir);
-    % Delete unnecessary files
-    file_delete(KiloSortWrapperTmpDir, 1, 3);
+    unzip(KiloSortWrapperZipFile, KiloSortTmpDir);
+    % Move KiloSort Wrapper directory to proper location
+    movefile(bst_fullfile(KiloSortTmpDir, 'KilosortWrapper-master'), ...
+        bst_fullfile(KiloSortDir, 'wrapper'));
     
     % Unzip Phy zip-file
-    bst_progress('start', 'Phy', 'Installing KiloSort...');
-    unzip(PhyZipFile, PhyTmp);
-    % Get parent folder of the unzipped file
-    diropen = dir(fullfile(PhyTmp, 'MATLAB*'));
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newPhyDir = bst_fullfile(PhyTmp, diropen(idir).name, 'phy-master');
-    % Move KiloSort directory to proper location
-    movefile(newKiloSortDir, newPhyDir);
-    % Delete unnecessary files
-    file_delete(PhyTmp, 1, 3);
+    unzip(PhyZipFile, KiloSortTmpDir);
+    % Move Phy directory to proper location
+    movefile(bst_fullfile(KiloSortTmpDir, 'phy-master'), ...
+        bst_fullfile(KiloSortDir, 'phy'));
     
     
     % Unzip npy-matlab zip-file
-    bst_progress('start', 'npy-matlab', 'Installing KiloSort...');
-    unzip(npyZipFile, npyTemp);
-    % Get parent folder of the unzipped file
-    diropen = dir(fullfile(npyTemp, 'MATLAB*'));
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newKiloSortDir = bst_fullfile(npyTemp, diropen(idir).name, 'npy-matlab-master');
-    % Move KiloSort directory to proper location
-    movefile(newKiloSortDir, KiloSortDir);
-    % Delete unnecessary files
-    file_delete(npyTemp, 1, 3);
+    unzip(npyZipFile, KiloSortTmpDir);
+    % Move npy directory to proper location
+    movefile(bst_fullfile(KiloSortTmpDir, 'npy-matlab-master'), ...
+        bst_fullfile(KiloSortDir, 'npy'));
     
+    % Delete unnecessary files
+    file_delete(KiloSortTmpDir, 1, 3);
     % Add KiloSort to Matlab path
     addpath(genpath(KiloSortDir));
-    
-    
 end
-
-
-
-
-
-
-
-
-
 
