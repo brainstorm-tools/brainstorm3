@@ -35,8 +35,6 @@ if (nargin < 2) || isempty(isPerimThresh)
 end
 
 % === TESSELATE ===
-% 2D Projection
-[X,Y] = bst_project_2d(Vertices(:,1), Vertices(:,2), Vertices(:,3), '2dcap');
 % Compute best fitting sphere
 bfs_center = bst_bfs(Vertices)';
 % Center Vertices on BFS center
@@ -47,10 +45,14 @@ coordC = bst_bsxfun(@rdivide, coordC, sqrt(sum(coordC.^2,2)));
 % Tesselation of the sensor array
 Faces = convhulln(coordC);
 
-
 % === REMOVE UNNECESSARY TRIANGLES ===
 % For instance: the holes for the ears on high-density EEG caps
 if isPerimThresh
+    % 2D Projection   
+    % Use centered points in case points are not in SCS coordinates, which
+    % is the case e.g. when doing real-time head position display (dewar
+    % coordinates).
+    [X,Y] = bst_project_2d(coordC(:,1), coordC(:,2), coordC(:,3), '2dcap');
     % Get border of the representation
     border = convhull(X,Y);
     % Keep Faces inside the border

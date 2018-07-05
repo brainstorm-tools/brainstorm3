@@ -31,12 +31,6 @@ end
 % Different projection methods
 switch (Method)
     case '2dcap'
-        % Subtract mean in case points are not in SCS coordinates, which is
-        % the case e.g. when doing real-time head position display (dewar
-        % coordinates).
-        x = x - mean(x);
-        y = y - mean(y);
-        z = z - mean(z);
         % Spherical coordinates
         [TH,PHI,R] = cart2sph(x, y, z);
         % Flat projection
