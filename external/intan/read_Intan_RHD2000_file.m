@@ -6,8 +6,6 @@ function newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSampl
 
 % This file was modified to offer on the fly small segment data selection
 
-
-
 % loadData       : loads the data defined in iSamplesStart and nSamplesToLoad
 % loadEvents     : loads the events from the entire file (loadData has to be set to 1)
 % iSamplesStart  : The starting sample
@@ -20,16 +18,6 @@ function newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSampl
 % When someone is interested only in the events, they should load a small
 % portion of the data (100 samples) and enable the loadEvents flag.
 % e.g. newHeader = read_Intan_RHD2000_file(filename,1,1,1,100);
-
-
-
-
-
-
-
-
-
-
 
 
 % read_Intan_RHD2000_file
@@ -60,6 +48,19 @@ function newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSampl
 % path = 'C:\Users\Reid\Documents\RHD2132\testing\';
 % d = dir([path '*.rhd']);
 % file = d(end).name;
+
+if nargin < 2 || isempty(loadData)
+    loadData = 1;
+end
+if nargin < 3 || isempty(loadEvents)
+    loadEvents = 1;
+end
+if nargin < 4 || isempty(iSamplesStart)
+    iSamplesStart = 1;
+end
+if nargin < 5 || isempty(nSamplesToLoad)
+    nSamplesToLoad = [];
+end
 
 tic;
 % filename = [path,file];
@@ -322,9 +323,11 @@ num_data_blocks_ALL = bytes_remaining / bytes_per_block;
 
 
 %% Check how many data blocks of size num_samples_per_data_block will be loaded
-
-num_data_blocks = ceil(nSamplesToLoad/num_samples_per_data_block);
-
+if ~isempty(nSamplesToLoad)
+    num_data_blocks = ceil(nSamplesToLoad/num_samples_per_data_block);
+else
+    num_data_blocks = num_data_blocks_ALL;
+end
 
 %%
 
@@ -337,18 +340,8 @@ num_board_adc_samples = num_samples_per_data_block * (num_data_blocks + 1);
 
 
 record_time = num_amplifier_samples / sample_rate;
-% % % 
-% % % if (data_present)
-% % %     fprintf(1, 'File contains %0.3f seconds of data.  Amplifiers were sampled at %0.2f kS/s.\n', ...
-% % %         record_time, sample_rate / 1000);
-% % %     fprintf(1, '\n');
-% % % else
-% % %     fprintf(1, 'Header file contains no data.  Amplifiers were sampled at %0.2f kS/s.\n', ...
-% % %         sample_rate / 1000);
-% % %     fprintf(1, '\n');
-% % % end
 
-if (data_present) && loadData
+if data_present && loadData
     
     % Pre-allocate memory for data.
     fprintf(1, 'Allocating memory for data...\n');
@@ -490,39 +483,27 @@ if (data_present) && loadData
     %% The code above imported the blocks that contain the required samples.
     %  Now they need to be chopped since the blocks are not necessarily the
     %  size requested from the iSamplesStart,nSamplesToLoad inputs.
+    if ~isempty(nSamplesToLoad)
+        start = mod(iSamplesStart,num_samples_per_data_block);
+        stop  = start + nSamplesToLoad - 1;
 
-    start = mod(iSamplesStart,num_samples_per_data_block);
-    stop  = start + nSamplesToLoad - 1;
-
-    if ~isempty(t_amplifier)
-        t_amplifier = t_amplifier(start:stop);
+        if ~isempty(t_amplifier)
+            t_amplifier = t_amplifier(start:stop);
+        end
+        if ~isempty(amplifier_data)
+            amplifier_data = amplifier_data(:,start:stop);
+        end
+        if ~isempty(aux_input_data)
+            aux_input_data = aux_input_data(:,ceil(start/4):round(stop/4)); % 9x45   -> 9x25
+        end
     end
-    if ~isempty(amplifier_data)
-        amplifier_data = amplifier_data(:,start:stop);
-    end
-    if ~isempty(aux_input_data)
-        aux_input_data = aux_input_data(:,ceil(start/4):round(stop/4)); % 9x45   -> 9x25
-    end
-%     if ~isempty(supply_voltage_data)
-%         temp_sensor_data = temp_sensor_data(start:stop);  % []
-%     end
-%     if ~isempty(board_adc_data)
-%         board_adc_data = board_adc_data(start:stop);    % []
-%     end
 end
-
-
-
-
-
-
-
 
 
 % Close data file.
 fclose(fid);
 
-if (data_present) && loadData
+if data_present && loadData
     
     fprintf(1, 'Parsing data...\n');
 
@@ -591,82 +572,6 @@ if (data_present) && loadData
 end
 
 
-
-%%%%%%% NAS
-
-% % % % % Move variables to base workspace.
-% % % % 
-% % % % move_to_base_workspace(notes);
-% % % % move_to_base_workspace(frequency_parameters);
-% % % % if (data_file_main_version_number > 1)
-% % % %     move_to_base_workspace(reference_channel);
-% % % % end
-% % % % 
-% % % % if (num_amplifier_channels > 0)
-% % % %     move_to_base_workspace(amplifier_channels);
-% % % %     if (data_present)
-% % % %         move_to_base_workspace(amplifier_data);
-% % % %         move_to_base_workspace(t_amplifier);
-% % % %     end
-% % % %     move_to_base_workspace(spike_triggers);
-% % % % end
-% % % % if (num_aux_input_channels > 0)
-% % % %     move_to_base_workspace(aux_input_channels);
-% % % %     if (data_present)
-% % % %         move_to_base_workspace(aux_input_data);
-% % % %         move_to_base_workspace(t_aux_input);
-% % % %     end
-% % % % end
-% % % % if (num_supply_voltage_channels > 0)
-% % % %     move_to_base_workspace(supply_voltage_channels);
-% % % %     if (data_present)
-% % % %         move_to_base_workspace(supply_voltage_data);
-% % % %         move_to_base_workspace(t_supply_voltage);
-% % % %     end
-% % % % end
-% % % % if (num_board_adc_channels > 0)
-% % % %     move_to_base_workspace(board_adc_channels);
-% % % %     if (data_present)
-% % % %         move_to_base_workspace(board_adc_data);
-% % % %         move_to_base_workspace(t_board_adc);
-% % % %     end
-% % % % end
-% % % % if (num_board_dig_in_channels > 0)
-% % % %     move_to_base_workspace(board_dig_in_channels);
-% % % %     if (data_present)
-% % % %         move_to_base_workspace(board_dig_in_data);
-% % % %         move_to_base_workspace(t_dig);
-% % % %     end
-% % % % end
-% % % % if (num_board_dig_out_channels > 0)
-% % % %     move_to_base_workspace(board_dig_out_channels);
-% % % %     if (data_present)
-% % % %         move_to_base_workspace(board_dig_out_data);
-% % % %         move_to_base_workspace(t_dig);
-% % % %     end
-% % % % end
-% % % % if (num_temp_sensor_channels > 0)
-% % % %     if (data_present)
-% % % %         move_to_base_workspace(temp_sensor_data);
-% % % %         move_to_base_workspace(t_temp_sensor);
-% % % %     end
-% % % % end
-% % % % 
-% % % % fprintf(1, 'Done!  Elapsed time: %0.1f seconds\n', toc);
-% % % % if (data_present)
-% % % %     fprintf(1, 'Extracted data are now available in the MATLAB workspace.\n');
-% % % % else
-% % % %     fprintf(1, 'Extracted waveform information is now available in the MATLAB workspace.\n');
-% % % % end
-% % % % fprintf(1, 'Type ''whos'' to see variables.\n');
-% % % % fprintf(1, '\n');
-
-
-
-
-
-
-
 %%%%%%%%%%%%%%%%%%%%%% NAS - ADDITION FOR BRAINSTORM %%%%%%%%%%%%%%%%%%%%%%
 newHeader = struct;
 newHeader.frequency_parameters        = frequency_parameters;
@@ -695,14 +600,14 @@ newHeader.nSamples                    = num_data_blocks_ALL*num_samples_per_data
 
 
 
-if (data_present) && loadData
+if data_present && loadData
     newHeader.time = t_amplifier;
     for iChannel = 1:length(amplifier_channels)
         newHeader.amplifier_channels(iChannel).amplifier_data = amplifier_data(iChannel,:);
     end
 end
 
-if (data_present) && loadEvents
+if data_present && loadData && loadEvents
     if ~isempty(num_board_dig_in_channels)
         newHeader.board_dig_in_data = board_dig_in_data';
     end

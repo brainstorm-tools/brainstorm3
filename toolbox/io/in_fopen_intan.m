@@ -49,8 +49,6 @@ else
 end
 
 
-
-
 if AcqType==2
     % Event files (.dat) % They are collected from a parallel port and saved as board-DIN-*.dat files
     EventFiles = dir(bst_fullfile(hdr.BaseFolder, '*DIN*.dat'));
@@ -67,7 +65,6 @@ if AcqType==2
     end
     ChanFiles = sort({ampFiles.name, auxFiles.name});
 end
-    
 
 
 %% ===== FILE COMMENT =====
@@ -83,7 +80,6 @@ hdr.chan_files = {};
 
 % Read the header
 newHeader = read_Intan_RHD2000_file(DataFile,1,1,1,100);
-%newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSamplesStart,nSamplesToLoad)
 newHeader.AcqType = AcqType; % This will be used later in in_fread_intan.m
 
 % Check for the magic Number
@@ -188,7 +184,7 @@ areThereEvents = 0;
 if AcqType==2
     if ~isempty(EventFiles)
         % Read blocks of BINARY INPUT channels to create events
-        parallel_input = false(num_samples_time, length(EventFiles)); % 23425920 x 9
+        parallel_input = false(num_samples_time, length(EventFiles));
 
         for iDIN = 1:length(EventFiles)
             fid = fopen(fullfile(base_,dirComment,EventFiles(iDIN).name), 'r');        
@@ -196,22 +192,18 @@ if AcqType==2
             parallel_input(:,iDIN) = logical(temp);
             fclose(fid);
         end
-        events_vector = bi2de(parallel_input,'right-msb'); % Collapse the 9 parallel ports to a vector that shows the events
+        events_vector = bi2de(parallel_input,'right-msb'); % Collapse the parallel ports to a vector that shows the events
         areThereEvents = 1;
     end
 else
     if isfield(newHeader,'board_dig_in_data')
-        events_vector = bi2de(newHeader.board_dig_in_data,'right-msb'); % Collapse the 9 parallel ports to a vector that shows the events
+        events_vector = bi2de(newHeader.board_dig_in_data,'right-msb'); % Collapse the parallel ports to a vector that shows the events
         areThereEvents = 1;
     end
 end
 
-
-
-
     
-if areThereEvents    
-    
+if areThereEvents
     %TODO: change to a toolbox-free function
     [event_labels, event_samples] = findpeaks(events_vector);
     
