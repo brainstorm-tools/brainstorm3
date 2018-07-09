@@ -713,7 +713,7 @@ function LoadRecordingsMatrix(iDS)
     % Load F Matrix
     if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
         % Load stat file
-        StatMat = in_bst_data(DataFile, 'pmap', 'tmap', 'df', 'SPM', 'ChannelFlag', 'Correction', 'StatClusters');
+        StatMat = in_bst_data(DataFile, 'pmap', 'tmap', 'df', 'SPM', 'ChannelFlag', 'Correction', 'StatClusters', 'Time');
         % Get only relevant sensors as multiple tests
         iChannels = good_channel(GlobalData.DataSet(iDS).Channel, StatMat.ChannelFlag, {'MEG', 'EEG', 'SEEG', 'ECOG', 'NIRS'});
         if isfield(StatMat, 'pmap') && ~isempty(StatMat.pmap)

@@ -6,7 +6,7 @@ function varargout = process_extract_pthresh( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% https://neuroimage.usc.edu/brainstorm
+% http://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2018 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
@@ -35,7 +35,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Test';
     sProcess.Index       = 711;
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Statistics#Convert_statistic_results_to_regular_files';
+    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Statistics#Convert_statistic_results_to_regular_files';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'pdata', 'presults', 'ptimefreq', 'pmatrix'};
     sProcess.OutputTypes = {'data',  'results',  'timefreq',  'matrix'};
@@ -292,7 +292,9 @@ function threshmap = Compute(StatMat, StatThreshOptions)
     end
     % Compute pseudo-recordings file : Threshold tmap with pmask
     threshmap = zeros(size(StatMat.tmap));
+    pmask = filter_timewin_signif(pmask,StatThreshOptions.durThreshold/(StatMat.Time(2)-StatMat.Time(1)));
     threshmap(pmask) = StatMat.tmap(pmask);
+   
 end
 
 
