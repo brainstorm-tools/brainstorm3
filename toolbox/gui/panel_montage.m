@@ -931,9 +931,13 @@ end
 
 %% ===== LOAD DEFAULT MONTAGES ======
 function LoadDefaultMontages() %#ok<DEFNU>
-    % Set average reference montage
+    % Set average reference montages
     sMontage = db_template('Montage');
     sMontage.Name = 'Average reference';
+    sMontage.Type = 'matrix';
+    SetMontage(sMontage.Name, sMontage);
+    sMontage = db_template('Montage');
+    sMontage.Name = 'Average reference (L -> R)';
     sMontage.Type = 'matrix';
     SetMontage(sMontage.Name, sMontage);
     % Set bad channels montage
@@ -982,6 +986,13 @@ function [sMontage, iMontage] = GetMontage(MontageName, hFig)
             iAvgRef = find(strcmpi({sMontage.Name}, 'Average reference'));
             if ~isempty(iAvgRef) && ~isempty(hFig)
                 sTmp = GetMontageAvgRef(sMontage(iAvgRef), hFig, [], 0);    % Global average reference 
+                if ~isempty(sTmp)
+                    sMontage(iAvgRef) = sTmp;
+                end
+            end
+            iAvgRef = find(strcmpi({sMontage.Name}, 'Average reference (L -> R)'));
+            if ~isempty(iAvgRef) && ~isempty(hFig)
+                sTmp = GetMontageAvgRef(sMontage(iAvgRef), hFig, [], 0);  % Global average reference sorted L -> R
                 if ~isempty(sTmp)
                     sMontage(iAvgRef) = sTmp;
                 end
@@ -1101,7 +1112,7 @@ function DeleteMontage(MontageName)
     % Get montage index
     [sMontage, iMontage] = GetMontage(MontageName);
     % If this is a non-editable montage: error
-    if ismember(sMontage.Name, {'Bad channels', 'Average reference'})
+    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)'})
         return;
     end    
     % Remove montage if it exists
@@ -1166,6 +1177,10 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             end
             % Not EEG: Skip average reference
             if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})
+                continue;
+            end
+            % Not 10-20 EEG: Skip average reference L -> R
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference (L -> R)') && ((~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})) || ~Is1020Setup(FigChannels))
                 continue;
             end
             % Local average reference: Only available for current modality
@@ -1318,9 +1333,10 @@ function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroup
         sMontage = GlobalData.ChannelMontages.Montages(iMontage(1));
     end
     % Update montage
+    numChannels = length(iChannels);
     sMontage.DispNames = {Channels.Name};
     sMontage.ChanNames = {Channels.Name};
-    sMontage.Matrix    = eye(length(iChannels));
+    sMontage.Matrix    = eye(numChannels);
     % Get EEG groups
     [iEEG, GroupNames] = GetEegGroups(Channels, ChannelFlag, isSubGroups);
     % Computation
@@ -1329,6 +1345,31 @@ function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroup
         if (nChan >= 2)
             sMontage.Matrix(iEEG{i},iEEG{i}) = eye(nChan) - ones(nChan) ./ nChan;
         end
+    end
+    % Sort electrodes per hemisphere if required
+    if ~isempty(sMontage) && strcmpi(sMontage.Name, 'Average reference (L -> R)')
+        left  = [];
+        mid   = [];
+        right = [];
+        other = [];
+        % Sort channels by position
+        for iChannel = 1:numChannels
+            % Extract position from channel name
+            [tmp, eegNum] = GetEeg1020ChannelParts(sMontage.ChanNames{iChannel});
+            if ~isempty(eegNum) && eegNum == 'z'
+                mid(end + 1) = iChannel;
+            elseif ~isempty(eegNum) && mod(eegNum, 2) == 1
+                left(end + 1) = iChannel;
+            elseif ~isempty(eegNum) && mod(eegNum, 2) == 0
+                right(end + 1) = iChannel;
+            else
+                other(end + 1) = iChannel;
+            end
+        end
+        iOrder = [left mid right other];
+        % Apply new order
+        sMontage.DispNames = sMontage.DispNames(iOrder);
+        sMontage.ChanNames = sMontage.ChanNames(iOrder);
     end
 end
 
@@ -1461,8 +1502,8 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
             isSelected = 0;
         end
         % Special test for average reference
-        if strcmpi(sFigMontages(i).Name, 'Average reference')
-            DisplayName = 'Average reference';
+        if ~isempty(strfind(sFigMontages(i).Name, 'Average reference'))
+            DisplayName = sFigMontages(i).Name;
             jSubMenu = jMenu;
         % Temporary montages:  Remove the [tmp] tag or display
         elseif ~isempty(strfind(sFigMontages(i).Name, '[tmp]'))
@@ -1536,7 +1577,7 @@ function newName = RenameMontage(oldName, newName)
         error('Condition does not exist.');
     end
     % If this is a non-editable montage: error
-    if ismember(sMontage.Name, {'Bad channels', 'Average reference'})
+    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)'})
         newName = [];
         return;
     end
@@ -2192,3 +2233,64 @@ function montageName = CleanMontageName(montageName)
     montageName = strtrim(montageName);
 end
 
+%% ===== EXTRACT LETTERS & NUMBER FROM 10-20 EEG CHANNELS =====
+function [letters, number] = GetEeg1020ChannelParts(channelName)
+    letters = [];
+    number = [];
+    
+    % If we have multiple channels at once, just return the first one
+    split = strfind(channelName, '/');
+    if ~isempty(split)
+        channelName = channelName(1:split - 1);
+    end
+
+    % Break down of regexp:
+    %  ^\s*          : Skip begginning spaces if any
+    %  ([A-Zp]{1,3}) : Extract 1 to 3 letters (all uppercase except 'p')
+    %  (z|[1-9]|10)  : Extract 1-10 number or 'z' for zero
+    %  h?            : The 10-5 extension adds an 'h' to some channels, ignore
+    %  ?\s*$         : Skip ending spaces if any
+    % Example: AFF6h -> AFF, 6
+    match = regexp(channelName, '^\s*([A-Zp]{1,3})(z|[1-9]|10)h?\s*$', 'tokens');
+    if ~isempty(match)
+        letters = match{1}{1};
+        number = match{1}{2};
+        n = str2num(number);
+        if ~isempty(n)
+            number = n;
+        end
+    end
+end
+
+%% ===== CHECK IF CHANNEL SETUP IS EEG 10-10/20 =====
+function is1020Setup = Is1020Setup(channelNames)
+    % Lists the 10-10 setup channel names (includes 10-20 channels)
+    bstDefaults = bst_get('EegDefaults');
+    chans1020 = [];
+    for iDir = 1:length(bstDefaults)
+        fList = bstDefaults(iDir).contents;
+        for iFile = 1:length(fList)
+            if strcmpi(fList(iFile).name, '10-10 65')
+                ChannelFile = fList(iFile).fullpath;
+                ChannelMat = in_bst_channel(ChannelFile);
+                chans1020 = {ChannelMat.Channel.Name};
+                break;
+            end
+        end
+    end
+    if isempty(chans1020)
+        error('Could not find EEG default 10-10 channels.');
+    end
+
+    % Go through active channels and look for 10-10 names
+    numChannels = length(channelNames);
+    num1020Channels = 0;
+    for iChannel = 1:numChannels
+        if ismember(channelNames{iChannel}, chans1020)
+            num1020Channels = num1020Channels + 1;
+        end
+    end
+    
+    % If over half of the channels fit, it is the proper setup
+    is1020Setup = (num1020Channels / numChannels) > 0.5;
+end

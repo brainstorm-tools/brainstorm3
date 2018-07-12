@@ -403,7 +403,7 @@ function UpdateFigureName(hFig)
             TsInfo = getappdata(hFig, 'TsInfo');
             if isempty(TsInfo) || isempty(TsInfo.MontageName) || ~isempty(TsInfo.RowNames)
                 strMontage = 'All';
-            elseif strcmpi(TsInfo.MontageName, 'Average reference') || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
+            elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                 strMontage = 'AvgRef';
             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
                 strMontage = 'Bad';
@@ -471,7 +471,7 @@ function UpdateFigureName(hFig)
                             TsInfo = getappdata(hFig, 'TsInfo');
                             if isempty(TsInfo) || isempty(TsInfo.MontageName) || ~isempty(TsInfo.RowNames)
                                 strMontage = 'All';
-                            elseif strcmpi(TsInfo.MontageName, 'Average reference') || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
+                            elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                                 strMontage = 'AvgRef';
                             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
                                 strMontage = 'Bad';
