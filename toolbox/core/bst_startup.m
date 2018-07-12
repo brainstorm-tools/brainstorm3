@@ -257,7 +257,7 @@ if isempty(GlobalData.Colormaps)
     GlobalData.Colormaps = sDefColormaps;
 end
 % Check that default montages are loaded
-if (length(GlobalData.ChannelMontages.Montages) < 5) || ~ismember('CTF LF', {GlobalData.ChannelMontages.Montages.Name}) || ~ismember('Bad channels', {GlobalData.ChannelMontages.Montages.Name})
+if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)'}, {GlobalData.ChannelMontages.Montages.Name}))
     disp('BST> Loading default montages...');
     % Reset list of montages
     GlobalData.ChannelMontages.Montages = [];

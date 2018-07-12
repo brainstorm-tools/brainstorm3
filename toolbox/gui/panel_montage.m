@@ -931,11 +931,12 @@ end
 
 %% ===== LOAD DEFAULT MONTAGES ======
 function LoadDefaultMontages() %#ok<DEFNU>
-    % Set average reference montages
+    % Set average reference montage
     sMontage = db_template('Montage');
     sMontage.Name = 'Average reference';
     sMontage.Type = 'matrix';
     SetMontage(sMontage.Name, sMontage);
+    % Set average reference montage (sorted Left>Right)
     sMontage = db_template('Montage');
     sMontage.Name = 'Average reference (L -> R)';
     sMontage.Type = 'matrix';
@@ -1179,8 +1180,8 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})
                 continue;
             end
-            % Not 10-20 EEG: Skip average reference L -> R
-            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference (L -> R)') && ((~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})) || ~Is1020Setup(FigChannels))
+            % Not 10-20 EEG: Skip average reference L -> R (only available for recordings figures)
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference (L -> R)') && (~strcmpi(FigId.Type, 'DataTimeSeries') || (~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})) || ~Is1020Setup(FigChannels))
                 continue;
             end
             % Local average reference: Only available for current modality
