@@ -22,6 +22,8 @@ function varargout = process_pac_analysis( varargin )
 % Authors: Soheila Samiee, 2014-2017
 %   - 2.0: SS. Aug. 2017 
 %                - Imported in public brainstorm rep
+%   - 2.1: SS. Jul. 2018
+%                - Bug fix in average over sources (mean)
 %
 eval(macro_method);
 end
@@ -174,10 +176,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         elseif length(sInput)>1
             N = length(sInput);
             for iFile = 2:N
-%                 TimefreqMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
+                tPACMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
 %                 TimefreqMat2.sPAC.DynamicPAC = median(TimefreqMat2.sPAC.DynamicPAC,1);
 %                 TimefreqMat2.TF = median(TimefreqMat2.sPAC.DynamicPAC,1);                
-                tPACMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
                 tpac_avg = repmat(mean(tPACMat2.sPAC.DynamicPAC,2),[1,size(tPACMat2.sPAC.DynamicPAC,2),1]);
                 [PACmax,tmp] = max(abs(tpac_avg),[],1);
                 tPACMat2.TF = tpac_avg;%squeeze(PACmax)';
@@ -203,6 +204,13 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             tpacMat.sPAC.DynamicPhase = tpac_avg_phase;
         end
     end
+    
+    tpacMat.TF = tpac_avg;
+    tpacMat.sPAC.DynamicPAC = tpac_avg;
+    if usePhase
+        tpacMat.sPAC.DynamicPhase = tpac_avg_phase;
+    end
+
     % === SAVING THE DATA IN BRAINSTORM ===
     % Getting the study
     [sOutputStudy, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInput(1));
