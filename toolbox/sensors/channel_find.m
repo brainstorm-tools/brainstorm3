@@ -33,7 +33,7 @@ if (nargin < 2) || isempty(target)
 end
 if ~iscell(target)
     if any(target == ',') || any(target == ';')
-        % Split string based on the comas
+        % Split string based on the commas
         target = strtrim(str_split(target, ',;'));
     else
         target = {strtrim(target)};

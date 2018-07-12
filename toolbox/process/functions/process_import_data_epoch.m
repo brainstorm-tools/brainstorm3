@@ -66,7 +66,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.iepochs.Type    = 'value';
     sProcess.options.iepochs.Value   = {[], 'list', 0};
     % Event types
-    sProcess.options.eventtypes.Comment = 'EEGLAB event types (separated with comas):';
+    sProcess.options.eventtypes.Comment = 'EEGLAB event types (separated with commas):';
     sProcess.options.eventtypes.Type    = 'text';
     sProcess.options.eventtypes.Value   = '';
     sProcess.options.eventhelp.Comment  = ['<HTML><I><FONT color="#777777">Enter one or more parameters available in the left list of the window<BR>' ...
