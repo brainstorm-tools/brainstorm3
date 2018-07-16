@@ -91,6 +91,14 @@ if isdir(OpenmeegDir) && file_exist(urlFile)
 else
     prevUrl = '';
 end
+
+% Bug workaround: FT Jul-2018/OM2.4: Change of behavior of OpenMEEG2.4 binaries on macos:
+% Before, all the bin and lib files were moved to $HOME/.brainstorm/openmeeg/mac64, the folder was added to DYLD_LIBRARY_PATH, and it was working.
+% With OM2.4, the dylib files must stay in the /lib subfolder or the OM binaries do not properly find them...
+if strcmpi(osType, 'mac64') && ~isdir(bst_fullfile(OpenmeegDir, 'lib'))
+    prevUrl = '';
+end
+
 % If binary file doesnt exist: download
 if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) || ~strcmpi(prevUrl, url) || isUpdate
     % If folder exists: delete
@@ -144,11 +152,22 @@ if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) ||
     idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
     unzipDir = bst_fullfile(OpenmeegDir, diropen(idir).name);
     % Move all files to OpenmeegDir
-    movefile(bst_fullfile(unzipDir, 'bin', '*'), OpenmeegDir);
-    movefile(bst_fullfile(unzipDir, 'lib', '*'), OpenmeegDir);
-    try
-        movefile(bst_fullfile(unzipDir, 'doc', '*'), OpenmeegDir);
-    catch
+    % Bug workaround: FT Jul-2018/OM2.4: On MacOS, the files must keep their original bin/ and lib/ subfolders
+    if strcmpi(osType, 'mac64')
+        movefile(bst_fullfile(unzipDir, 'bin'), OpenmeegDir);
+        movefile(bst_fullfile(unzipDir, 'lib'), OpenmeegDir);
+        try
+            movefile(bst_fullfile(unzipDir, 'doc'), OpenmeegDir);
+        catch
+        end
+    % Other systems: Move all the files from all the subfolders to the same openmeeg folder
+    else
+        movefile(bst_fullfile(unzipDir, 'bin', '*'), OpenmeegDir);
+        movefile(bst_fullfile(unzipDir, 'lib', '*'), OpenmeegDir);
+        try
+            movefile(bst_fullfile(unzipDir, 'doc', '*'), OpenmeegDir);
+        catch
+        end
     end
     % Delete files
     file_delete({tgzFile, unzipDir}, 1, 3);
@@ -174,8 +193,10 @@ bst_progress('setlink', 'http://openmeeg.github.io');
 if ~ispc
     if ismember(osType, {'linux32', 'linux64', 'sol64'})
         varname = 'LD_LIBRARY_PATH';
+        libDir = OpenmeegDir;
     else
         varname = 'DYLD_LIBRARY_PATH';
+        libDir = bst_fullfile(OpenmeegDir, 'lib');
     end
     libpath = getenv(varname);
     if ~isempty(libpath)
