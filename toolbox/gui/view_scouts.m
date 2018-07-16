@@ -242,6 +242,10 @@ for iResFile = 1:length(ResultsFiles)
             % SORT and select unique vertices
             iVertices = sort(unique(sScouts(k).Vertices));
         end
+        % Fix errors in color definition
+        if isequal(size(sScouts(k).Color), [3,1])
+            sScouts(k).Color = sScouts(k).Color';
+        end
         % Get data (over current time window)
         if ~isTimefreq
             [DataToPlot, nComponents, DataStd] = bst_memory('GetResultsValues', iDS, iResult, iVertices, 'UserTimeWindow', 0, isVolumeAtlas);

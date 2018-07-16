@@ -521,6 +521,8 @@ for iFile = 1:length(LabelFiles)
                 entry = labelMap.get(num2str(id));
                 labelInfo.Name = entry(1);
                 labelInfo.Color = entry(2);
+                % Transpose color vector
+                labelInfo.Color = labelInfo.Color(:)';
                 % Skip the "background" scout
                 if strcmpi(labelInfo.Name, 'background')
                     continue;
