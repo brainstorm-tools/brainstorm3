@@ -1,6 +1,6 @@
 ---------------------------------------------------------------
 July 2018
-- GUI: Headless version of the Brainstorm, for running on distant servers
+- GUI: Headless support, for running scripts on computation clusters and distant servers
 - GUI: New montage "Average reference (L -> R)" for 10-20 EEG caps
 - Anatomy: BrainSuite: Added subcortical structures
 - Inverse: Switched to OpenMEEG 2.4

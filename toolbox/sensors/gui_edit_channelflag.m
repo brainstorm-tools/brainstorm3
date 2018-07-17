@@ -21,7 +21,7 @@ function gui_edit_channelflag( DataFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 global GlobalData;
 ChannelFile = [];
@@ -73,6 +73,9 @@ if isempty(newpanel)
 end
 % Show panel
 bstContainer = gui_show(newpanel, 'JavaWindow', ['Edit ChannelFlag: ', DataFile], 0, 0, 1);
+if isempty(bstContainer)
+    return;
+end
 
 % Get current layout
 [jBstArea, FigArea, nScreens, jFigArea, jInsets] = gui_layout('GetScreenBrainstormAreas');

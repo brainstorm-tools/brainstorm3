@@ -21,7 +21,7 @@ function jFrame = gui_edit_channel( ChannelFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 global GlobalData;
 
@@ -42,6 +42,9 @@ if isempty(bstPanel)
 end
 % Show panel in a Java window
 bstContainer = gui_show(bstPanel, 'JavaWindow', ['Channel editor: ' ChannelFile], [], 0, 0, 1);
+if isempty(bstContainer)
+    return;
+end
 
 % Get current layout
 [jBstArea, FigArea, nScreens, jFigArea, jInsets] = gui_layout('GetScreenBrainstormAreas');
