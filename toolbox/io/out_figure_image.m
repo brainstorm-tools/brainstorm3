@@ -297,8 +297,11 @@ if (~isempty(FileFormat) && strcmpi(FileFormat, 'FIG')) || strcmpi(imgFile, 'Fig
     
 % ===== SAVE IMAGE =====
 else
+    % Headless display: we must print the figure 
+    if (GlobalData.Program.GuiLevel == -1)
+        frameGfx.cdata = print(hFig, '-noui', '-r0', '-RGBImage');
     % Get figure bitmap
-    if (bst_get('MatlabVersion') >= 804)
+    elseif (bst_get('MatlabVersion') >= 804)
         % Matlab function getframe() was finally fixed in R2014b
         frameGfx = getframe(hFig);
         % MRI Viewer: We need to update the figure to redraw all the java objects

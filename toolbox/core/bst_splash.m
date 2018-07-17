@@ -22,7 +22,7 @@ function jSplash = bst_splash(action)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 import org.brainstorm.icon.*;
 global GlobalData BrainstormSplash;

@@ -2,7 +2,8 @@ function tutorial_introduction(tutorial_dir, reports_dir)
 % TUTORIAL_INTRODUCTION: Script that runs all the Brainstorm introduction tutorials.
 %
 % INPUTS: 
-%    - tutorial_dir: Directory where the sample_introduction.zip file has been unzipped
+%    - tutorial_dir : Directory where the sample_introduction.zip file has been unzipped
+%    - reports_dir  : Directory where to save the execution report (instead of displaying it)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

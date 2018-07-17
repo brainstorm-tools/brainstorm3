@@ -3423,7 +3423,7 @@ switch contextName
         if (found)
             argout1 = bst_GUI.panelContainers(iContainer).jHandle;
         else
-            warning('Brainstorm:InvalidContainer', 'Container ''%s'' could not be found.', ContainerName);
+            % warning('Brainstorm:InvalidContainer', 'Container ''%s'' could not be found.', ContainerName);
         end
 
         

@@ -605,6 +605,11 @@ end
 %         jReport = bst_report('Open')
 function jReport = Open(ReportFile, isFullReport)
     global GlobalData;
+    % Headless mode: Cancel call
+    jReport = [];
+    if (GlobalData.Program.GuiLevel == -1)
+        return;
+    end
     % Default: view the file anyway
     if (nargin < 2) || isempty(isFullReport)
         isFullReport = 1;

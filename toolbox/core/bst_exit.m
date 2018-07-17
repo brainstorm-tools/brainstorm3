@@ -24,7 +24,7 @@ function status = bst_exit()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2018
 global GlobalData
 
 % Check that Brainstorm was fully started
@@ -49,39 +49,45 @@ end
 %% ===== REMOVE ALL IMPORTANT CALLBACKS =====
 % Stop execution
 rmappdata(0, 'BrainstormRunning');
-% Protocols list
-if isfield(ctrl, 'jComboBoxProtocols') && ~isempty(ctrl.jComboBoxProtocols)
-    java_setcb(ctrl.jToolButtonSubject,     'ItemStateChangedCallback', []);
-    java_setcb(ctrl.jToolButtonStudiesSubj, 'ItemStateChangedCallback', []);
-    java_setcb(ctrl.jToolButtonStudiesCond, 'ItemStateChangedCallback', []);
-    comboBoxModel = ctrl.jComboBoxProtocols.getModel();
-    java_setcb(comboBoxModel, 'ContentsChangedCallback', []);
-end
-% Panel SCOUTS
-scoutsManagerControls = bst_get('PanelControls', 'Scout');
-if ~isempty(scoutsManagerControls)
-    java_setcb(scoutsManagerControls.jListScouts, 'ValueChangedCallback', []);
-end
-% Panel CLUSTERS
-clustersManagerControls = bst_get('PanelControls', 'Cluster');
-if ~isempty(clustersManagerControls)
-    java_setcb(clustersManagerControls.jListClusters, 'ValueChangedCallback', []);
-end
-% PanelContainer TOOLS
-jTabpaneTools = bst_get('PanelContainer', 'Tools');
-if ~isempty(jTabpaneTools)
-    java_setcb(jTabpaneTools, 'StateChangedCallback', []);
+% Only in the GUI was created
+if (GlobalData.Program.GuiLevel >= 0)
+    % Protocols list
+    if isfield(ctrl, 'jComboBoxProtocols') && ~isempty(ctrl.jComboBoxProtocols)
+        java_setcb(ctrl.jToolButtonSubject,     'ItemStateChangedCallback', []);
+        java_setcb(ctrl.jToolButtonStudiesSubj, 'ItemStateChangedCallback', []);
+        java_setcb(ctrl.jToolButtonStudiesCond, 'ItemStateChangedCallback', []);
+        comboBoxModel = ctrl.jComboBoxProtocols.getModel();
+        java_setcb(comboBoxModel, 'ContentsChangedCallback', []);
+    end
+    % Panel SCOUTS
+    scoutsManagerControls = bst_get('PanelControls', 'Scout');
+    if ~isempty(scoutsManagerControls)
+        java_setcb(scoutsManagerControls.jListScouts, 'ValueChangedCallback', []);
+    end
+    % Panel CLUSTERS
+    clustersManagerControls = bst_get('PanelControls', 'Cluster');
+    if ~isempty(clustersManagerControls)
+        java_setcb(clustersManagerControls.jListClusters, 'ValueChangedCallback', []);
+    end
+    % PanelContainer TOOLS
+    jTabpaneTools = bst_get('PanelContainer', 'Tools');
+    if ~isempty(jTabpaneTools)
+        java_setcb(jTabpaneTools, 'StateChangedCallback', []);
+    end
 end
 
 
 %% ===== CLOSE WINDOW =====
-% Hide all the registered panels
-listPanels = GlobalData.Program.GUI.panels;
-for iPanel = 1:length(listPanels)
-    gui_hide(listPanels(iPanel)); 
+% Only in the GUI was created
+if (GlobalData.Program.GuiLevel >= 0)
+    % Hide all the registered panels
+    listPanels = GlobalData.Program.GUI.panels;
+    for iPanel = 1:length(listPanels)
+        gui_hide(listPanels(iPanel)); 
+    end
+    % Close Brainstorm main window
+    ctrl.jBstFrame.dispose();
 end
-% Close Brainstorm main window
-ctrl.jBstFrame.dispose();
 % Release Brainstorm global mutex
 bst_mutex('release', 'Brainstorm');
 

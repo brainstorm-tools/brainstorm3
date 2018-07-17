@@ -33,7 +33,7 @@ function varargout = panel_surface(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 eval(macro_method);
 end
@@ -914,6 +914,10 @@ end
 
 %% ===== UPDATE SURFACE PROPERTIES =====
 function UpdateSurfaceProperties()
+    % Headless mode: Cancel call
+    if (bst_get('GuiLevel') == -1)
+        return
+    end
     % Get current figure handle
     hFig = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
@@ -2197,8 +2201,10 @@ function SetSurfaceColor(hFig, iSurf, colorCortex, colorSulci)
     setappdata(hFig, 'Surface', TessInfo);
     % Get panel controls
     ctrl = bst_get('PanelControls', 'Surface');
-    % Change button color
-    ctrl.jButtonSurfColor.setBackground(java.awt.Color(colorCortex(1), colorCortex(2), colorCortex(3)));
+    % Change button color (if not in headless mode)
+    if (bst_get('GuiLevel') >= 0)
+        ctrl.jButtonSurfColor.setBackground(java.awt.Color(colorCortex(1), colorCortex(2), colorCortex(3)));
+    end
     % Update panel controls
     UpdateSurfaceProperties();
     % Update color display on the surface

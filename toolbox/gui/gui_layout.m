@@ -28,7 +28,7 @@ function varargout = gui_layout(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 eval(macro_method);
 end
@@ -36,6 +36,10 @@ end
 
 %% ===== UPDATE LAYOUT =====
 function Update() %#ok<DEFNU>
+    % Cancel call in headless mode
+    if (bst_get('GuiLevel') == -1)
+        return;
+    end
     % Call the appropriate function
     switch bst_get('Layout', 'WindowManager')
         case 'WeightWindows'
@@ -155,6 +159,14 @@ end
 %% ===== GET CLIENT SCREEN SIZE =====
 % Process information from GetMaximumWindow
 function ScreenDef = GetScreenClientArea()
+    % If running in headless mode, return a fake configuration
+    if (bst_get('GuiLevel') == -1)
+        ScreenDef.screenInsets = java.awt.Insets(0,0,0,0);
+        ScreenDef.javaPos      = java.awt.Rectangle(1,1,1024,768);
+        ScreenDef.matlabPos    = [0 0 1024 768];
+        ScreenDef.zoomFactor   = 1;
+        return;
+    end
     % Get Java GraphicsEnvironment
     ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment();
     tk = java.awt.Toolkit.getDefaultToolkit();

@@ -1,11 +1,12 @@
-function tutorial_epilepsy(tutorial_dir)
+function tutorial_epilepsy(tutorial_dir, reports_dir)
 % TUTORIAL_EPILEPSY: Script that reproduces the results of the online tutorial "EEG/Epilepsy".
 %
 % CORRESPONDING ONLINE TUTORIALS:
 %     https://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy
 %
 % INPUTS: 
-%     tutorial_dir: Directory where the sample_epilepsy.zip file has been unzipped
+%    - tutorial_dir: Directory where the sample_epilepsy.zip file has been unzipped
+%    - reports_dir  : Directory where to save the execution report (instead of displaying it)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -29,6 +30,10 @@ function tutorial_epilepsy(tutorial_dir)
 
 
 % ===== FILES TO IMPORT =====
+% Output folder for reports
+if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
+    reports_dir = [];
+end
 % You have to specify the folder in which the tutorial dataset is unzipped
 if (nargin == 0) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
     error('The first argument must be the full path to the tutorial dataset folder.');
@@ -416,8 +421,13 @@ bst_process('CallProcess', 'process_snapshot', sAvgTfNorm, [], ...
     'rowname', 'FC1');
 
 
-
 % Save and display report
 ReportFile = bst_report('Save', []);
-bst_report('Open', ReportFile);
+if ~isempty(reports_dir) && ~isempty(ReportFile)
+    bst_report('Export', ReportFile, reports_dir);
+else
+    bst_report('Open', ReportFile);
+end
+
+disp([10 'BST> tutorial_epilepsy: Done.' 10]);
 

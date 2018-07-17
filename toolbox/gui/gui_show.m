@@ -42,6 +42,14 @@ function [panelContainer, bstPanel] = gui_show( bstPanel, contType, contName, co
 import org.brainstorm.icon.*;
 global GlobalData;
 
+% Initialize returned variables
+panelContainer = [];
+% Headless mode: exit
+if (GlobalData.Program.GuiLevel == -1)
+    return
+end
+
+
 %% ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(contType)
     contType = 'JavaWindow';
