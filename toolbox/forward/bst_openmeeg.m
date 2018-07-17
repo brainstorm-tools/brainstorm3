@@ -194,15 +194,19 @@ if ~ispc
     if ismember(osType, {'linux32', 'linux64', 'sol64'})
         varname = 'LD_LIBRARY_PATH';
         libDir = OpenmeegDir;
+        binDir = OpenmeegDir;
     else
         varname = 'DYLD_LIBRARY_PATH';
         libDir = bst_fullfile(OpenmeegDir, 'lib');
+        binDir = bst_fullfile(OpenmeegDir, 'bin');
     end
     libpath = getenv(varname);
     if ~isempty(libpath)
         libpath = [libpath ':'];
     end
     setenv(varname, [libpath  OpenmeegDir]);
+else
+    binDir = OpenmeegDir;
 end
 % Set number of cores used
 try
@@ -271,7 +275,7 @@ om_write_cond(condfile, OPTIONS.BemCond, OPTIONS.BemNames);
 dipdata = [kron(OPTIONS.GridLoc,ones(3,1)), kron(ones(nv,1), eye(3))];
 save(dipfile, 'dipdata', '-ASCII', '-double');  
 % Go to openmeeg folder
-cd(OpenmeegDir);
+cd(binDir);
 
 
 %% ===== GET EXISTING HM FILE =====
