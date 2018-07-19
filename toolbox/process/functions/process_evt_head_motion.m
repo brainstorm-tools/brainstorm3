@@ -97,7 +97,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Process only continuous files for now.
     if ~isempty(sFile.epochs)
-      bst_report('Error', sProcess, sInput, 'This function can only process continuous recordings (no epochs).');
+      bst_report('Error', sProcess, sInputs(iFile), 'This function can only process continuous recordings (no epochs).');
       continue;
     end
         
@@ -283,6 +283,9 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput)
   iHLU = find(strcmp({ChannelMat.Channel.Type}, 'HLU'));
   iFitErr = find(strcmp({ChannelMat.Channel.Type}, 'FitErr'));
   nChannels = numel(iHLU);
+  if nChannels < 9
+    error('Head coil position channels not found.');
+  end
   
   % Load a max of 100Mb into memory to determine HeadSamplePeriod:
   % 100MB = 9chan * samples * 8bytes => samples ~ 1.5e6
@@ -322,6 +325,7 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput)
   %   nS = ceil(nS / HeadSamplePeriod);
   
   if LoadSamples < nSamples
+    Locations = zeros(nChannels, ceil(nSamples/HeadSamplePeriod), nEpochs);
     % Long epoch(s); load by channel.
     % An hour of data at the maximum sampling rate is 330MB per channel.
     % So presume we can always load a single channel into memory.
