@@ -71,23 +71,11 @@ bst_dir =       bst_get('BrainstormHomeDir');
 bst_db_dir =    bst_get('BrainstormDbDir');
 tmp_dir =       bst_get('BrainstormTmpDir');
 
-% FieldTrip
-% find the fieldtrip directory
-d = dir(bst_fullfile(fileparts(bst_dir),'fieldtrip*'));
-if isempty(d)
-    % ask the user for the fieldtrip directory
-    ft_dir = java_getfile( 'open', 'Select FieldTrip Directory...', user_dir, 'single', 'dirs', ...
-            {{'*'}, 'FieldTrip directory', 'directory'}, 0);
-    if isempty(ft_dir)
-        error('Cannot find the FieldTrip Directory');
-    end
-else
-    ft_dir = bst_fullfile(fileparts(bst_dir),d.name);
-end
-
+% Initialize fieldtrip
+bst_ft_init();
+ft_dir = bst_get('FieldTripDir');
 ft_rtbuffer = bst_fullfile(ft_dir, 'realtime', 'src', 'buffer', 'matlab');
 ft_io = bst_fullfile(ft_dir, 'fileio');
-
 if exist(ft_rtbuffer, 'dir') && exist(ft_io, 'dir')
     addpath(ft_rtbuffer);
     addpath(ft_io);
@@ -256,7 +244,7 @@ str=tasks;
 s = regexp(str, pat, 'split'); 
 iMatlab = find(~cellfun(@isempty, strfind(s, 'MATLAB.exe')));
 
-if iMatlab > 1
+if numel(iMatlab) > 1
     % kill the extra matlab(s)
     disp('An old MATLAB process is still running, stopping now...');
     temp = str2double(s(iMatlab+1));
@@ -329,7 +317,7 @@ ColorTable = [1,0,0; 0,1,0; 0,0,1];
 colorInd = 2;
 if ~isempty(sStudyAlign)
     % Display CTF helmet
-    view_helmet(sStudyAlign.Channel.FileName, hFig);
+    view_helmet_local(sStudyAlign.Channel.FileName, hFig);
     % Get the helmet patch
     hHelmetPatch = findobj(hFig, 'Tag', 'HelmetPatch'); 
     color = ColorTable(mod(colorInd-1,size(ColorTable,1))+1,:);
@@ -342,7 +330,7 @@ end
 % Display current position helmet
 colorInd = 1;
 % Display CTF helmet
-view_helmet(SensorPositionFile, hFig);
+view_helmet_local(SensorPositionFile, hFig);
 % Get the helmet patch
 hHelmetPatch = findobj(hFig, 'Tag', 'HelmetPatch');
 color = ColorTable(mod(colorInd-1,size(ColorTable,1))+1,:);
@@ -360,12 +348,14 @@ while (1)
     hdr = buffer('get_hdr', [], hostIP, TCPIP);
     currentSample = hdr.nsamples;
     if currentSample < nSamples-1
+        % Wait
+        pause(.2);
         continue;
     end
     dat = buffer('get_dat', [currentSample-nSamples-1,currentSample-1], hostIP, TCPIP);
     % Average in time
     buf = mean(double(dat.buf), 2);
-    Fid = [buf(1:3), buf(4:6), buf(7:9)] ./ 1e6; %use meters
+    Fid = [buf(1:3), buf(4:6), buf(7:9)] ./ 1e3; % convert to mm
     % Get fiducial positions
     sMri.SCS.NAS = Fid(:,1)';
     sMri.SCS.LPA = Fid(:,2)';
@@ -375,8 +365,9 @@ while (1)
     sMri.SCS.R = transfSCS.R;
     sMri.SCS.T = transfSCS.T;
     sMri.SCS.Origin = transfSCS.Origin;
-    % Apply transformation to helmet vertices (in meters)
-    Vertices = cs_convert(sMri, 'mri', 'scs', InitVertices ./ 1000) .* 1000;
+    % Apply transformation to helmet vertices.  sMri is in mm and vertices
+    % are in m (as it should be according to cs_convert code).
+    Vertices = cs_convert(sMri, 'mri', 'scs', InitVertices);
     % Convert HPI coordinates to Brainstorm coordinates (based on cardinal points)
     Vertices = bst_bsxfun(@plus, R * Vertices', T)';
     % Stop if the window was closed
@@ -493,3 +484,223 @@ function SaveAlignChannelFile(HPChannelFile, iStudyAlign, ChannelMat)
     isSaveAlignChannelFile = 0;
 
 end
+
+
+
+function view_helmet_local(ChannelFile, hFig)
+% Local trimmed down version of view_helmet, such that it also uses
+% channel_tesselate_local which was modified to work in dewar coordinates.
+
+Modality = 'MEG';
+
+% hFig = view_channels(ChannelFile, Modality, 1, 0, hFig);
+  iDS = bst_memory('GetDataSetChannel', ChannelFile);
+  if isempty(hFig)
+      % Prepare FigureId structure
+      FigureId = db_template('FigureId');
+      FigureId.Type     = '3DViz';
+      FigureId.SubType  = '';
+      FigureId.Modality = Modality;
+      % Create figure
+      [hFig, iFig, isNewFig] = bst_figures('CreateFigure', iDS, FigureId);
+      % If figure was not created: Display an error message and return
+      if isempty(hFig)
+          bst_error('Cannot create figure', '3D figure creation...', 0);
+          return;
+      end
+  end
+  
+%   figure_3d('ViewSensors', hFig, 1, 0, 1, Modality);
+    % Load channel file
+    ChannelMat = in_bst_channel(ChannelFile);
+    Channel = ChannelMat.Channel;
+    selChan = good_channel(Channel, [], Modality);
+    % Get sensors positions
+    [tmp, markersLocs] = GetChannelPositions(iDS, selChan);
+    % Markers orientations: only for MEG
+    markersOrient = cell2mat(cellfun(@(c)c(:,1), {Channel(selChan).Orient}, 'UniformOutput', 0))';
+    % Make sure that electrodes locations are in double precision
+    markersLocs = double(markersLocs);
+    markersOrient = double(markersOrient);
+    % Put focus on target figure
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+    
+%     PlotSensorsNet(hAxes, markersLocs, 1, isMesh, markersOrient);  
+      faces = channel_tesselate_local( vertices );
+      % === DISPLAY PATCH ===
+      % Display faces / edges / vertices
+      FaceColor = [.7 .7 .5];
+      EdgeColor = [.4 .4 .3];
+      LineWidth = 1;
+      % Create sensors patch
+      hNet = patch(...
+        'Vertices',         vertices, ...
+        'Faces',            faces, ...
+        'FaceVertexCData',  repmat([1 1 1], [length(vertices), 1]), ...
+        'Parent',           hAxes, ...
+        'Marker',           'o', ...
+        'LineWidth',        LineWidth, ...
+        'FaceColor',        FaceColor, ...
+        'FaceAlpha',        1, ...
+        'EdgeColor',        EdgeColor, ...
+        'EdgeAlpha',        1, ...
+        'MarkerEdgeColor',  [.4 .4 .3], ...
+        'MarkerFaceColor',  'flat', ...
+        'MarkerSize',       6, ...
+        'BackfaceLighting', 'lit', ...
+        'AmbientStrength',  0.5, ...
+        'DiffuseStrength',  0.5, ...
+        'SpecularStrength', 0.2, ...
+        'SpecularExponent', 1, ...
+        'SpecularColorReflectance', 0.5, ...
+        'FaceLighting',     'gouraud', ...
+        'EdgeLighting',     'gouraud', ...
+        'Tag',              'SensorsPatch');
+% End of content from figure_3d.
+
+  % Update lights
+  camlight(findobj(hFig, 'Tag', 'FrontLight'), 'headlight');
+  % Update figure name
+  bst_figures('UpdateFigureName', hFig);
+  % Camera basic orientation
+  if isNewFig
+      figure_3d('SetStandardView', hFig, 'top');
+  end
+  % Show figure
+  set(hFig, 'Visible', 'on');
+% End of content from view_channels.
+
+% Get sensors patch
+hSensorsPatch = findobj(hFig, 'Tag', 'SensorsPatch');
+if isempty(hSensorsPatch)
+    return
+end
+% Get sensors positions
+vert = get(hSensorsPatch, 'Vertices');
+
+% ===== CREATE HELMET SURFACE =====
+% Get the acquisition device
+Device = bst_get('ChannelDevice', ChannelFile);
+% Distance sensors/helmet
+switch (Device)
+    case 'Vectorview306'
+        dist = .019;
+    case 'CTF'
+        dist = .015;
+    case '4D'
+        dist = .015;
+    case 'KIT'
+        dist = .020;
+    case 'KRISS'
+        dist = .025;
+    case 'BabyMEG'
+        dist = .008;
+    case 'RICOH'
+        dist = .020;
+    otherwise
+        dist = 0;
+end
+% Shrink sensor patch to create the inner helmet surface
+if (dist > 0)
+    center = mean(vert);
+    vert = bst_bsxfun(@minus, vert, center);
+    [th,phi,r] = cart2sph(vert(:,1),vert(:,2),vert(:,3));
+    [vert(:,1),vert(:,2),vert(:,3)] = sph2cart(th, phi, r - dist);
+    vert = bst_bsxfun(@plus, vert, center);
+end
+
+% ===== DISPLAY HELMET SURFACE =====
+% Copy sensor patch object
+hHelmetPatch = copyobj(hSensorsPatch, get(hSensorsPatch,'Parent'));
+% Make the sensor patch invisible
+set(hSensorsPatch, 'Visible', 'off');
+% Set patch properties
+set(hHelmetPatch, 'Vertices',   vert, ...
+                   'LineWidth',  1, ...
+                   'EdgeColor',  [.5 .5 .5], ...
+                   'EdgeAlpha',  1, ...
+                   'FaceColor',  'y', ...
+                   'FaceAlpha',  .3, ...
+                   'Marker',     'none', ...
+                   'Tag',        'HelmetPatch');
+                 
+end
+
+
+function Faces = channel_tesselate_local( Vertices, isPerimThresh )
+% Modified copy of channel_tesselate to work in dewar coordinates.
+
+% CHANNEL_TESSELATE: Tesselate a set of EEG or MEG sensors, for display purpose only.
+%
+% USAGE:  Faces = channel_tesselate( Vertices, isPerimThresh=1 )
+%
+% INPUT:  
+%    - Vertices      : [Nx3], set of 3D points (MEG or EEG sensors)
+%    - isPerimThresh : If 1, remove the Faces that are too big
+% OUTPUT:
+%    - Faces    : [Mx3], result of the tesselation
+
+% Parse inputs
+if (nargin < 2) || isempty(isPerimThresh)
+    isPerimThresh = 1;
+end
+
+% === TESSELATE ===
+% Compute best fitting sphere
+bfs_center = bst_bfs(Vertices)';
+% Center Vertices on BFS center
+coordC = bst_bsxfun(@minus, Vertices, bfs_center);
+% Normalize coordinates
+coordC = bst_bsxfun(@rdivide, coordC, sqrt(sum(coordC.^2,2)));
+% Tesselation of the sensor array
+Faces = convhulln(coordC);
+
+% === REMOVE UNNECESSARY TRIANGLES ===
+% For instance: the holes for the ears on high-density EEG caps
+if isPerimThresh
+    % 2D Projection   
+    % Use centered points in case points are not in SCS coordinates, which
+    % is the case e.g. when doing real-time head position display (dewar
+    % coordinates).
+    [X,Y] = bst_project_2d(coordC(:,1), coordC(:,2), coordC(:,3), '2dcap');
+    % Get border of the representation
+    border = convhull(X,Y);
+    % Keep Faces inside the border
+    iInside = find(~(ismember(Faces(:,1),border) & ismember(Faces(:,2),border)& ismember(Faces(:,3),border)));
+    %Faces   = Faces(iInside, :);
+
+    % Compute perimeter
+    triPerimeter = tess_perimeter(Vertices, Faces);
+    % Threshold values
+    thresholdPerim = mean(triPerimeter(iInside)) + 6 * std(triPerimeter(iInside));
+    % Apply threshold
+    iFacesOk = intersect(find(triPerimeter <= thresholdPerim), iInside);
+    % Find Vertices that are not in the Faces matrix
+    iVertNotInFaces = setdiff(1:length(Vertices), unique(Faces(:)));
+    if ~isempty(iVertNotInFaces)
+        disp(['CHANNEL_TESSELATE> WARNING: Some sensors are not in the Faces list: ' sprintf('%d ', iVertNotInFaces)]);
+    end
+    % Loop until all the Vertices are visible
+    isMissing = 1;
+    while isMissing
+        % List all the Vertices ignored by the reduced mesh
+        iVertOk = unique(reshape(Faces(iFacesOk,:),[],1));
+        iVertMissing = setdiff(1:length(Vertices), iVertOk);
+        iVertMissing = setdiff(iVertMissing, iVertNotInFaces);
+        % If all the Vertices are included, next step
+        if isempty(iVertMissing)
+            isMissing = 0;
+        else
+            % Find Faces connected to the first missing vertex
+            iFacesAdd = find(any(Faces == iVertMissing(1), 2));
+            % From the potential candidate Faces, keep the one that has the smaller perimeter
+            [minP, iMinP] = min(triPerimeter(iFacesAdd));
+            % Add the smallest face to the list of Faces we keep
+            iFacesOk(end+1) = iFacesAdd(iMinP);
+        end
+    end
+    % Remove the Faces
+    Faces = Faces(sort(iFacesOk),:);
+end
+end
+
