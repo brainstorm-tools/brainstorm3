@@ -352,6 +352,10 @@ for iFile = 1:length(LabelFiles)
             if isMni
                 % The original volume is in subject space and and the atlas volume is in MNI space
                 vertMni = cs_convert(sMriSubj, 'scs', 'mni', Vertices);
+                if isempty(vertMni)
+                    Messages = [Messages, 'Error: Compute the MNI transformation first.'];
+                    return
+                end
                 vertMri = round(cs_convert(sMriMask, 'mni', 'voxel', vertMni));
             else
                 % Check the compatibility of MRI sizes
