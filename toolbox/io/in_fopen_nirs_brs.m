@@ -178,8 +178,13 @@ if iscell(nirs.SD.Lambda) % Hb measures
     measure_type = 'Hb';
     ChannelMat.Nirs.Hb = nirs.SD.Lambda;
 else
+    
     measure_type = 'WL';
-    ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda;
+    if( size(nirs.SD.Lambda,1) > 1) % Wavelengths have to be stored as a line vector
+        ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda';
+    else
+        ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda;
+    end
 end
 
 %% Channel information
