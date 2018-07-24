@@ -22,7 +22,7 @@ function varargout = process_test_parametric2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Dimitrios Pantazis, 2008-2016
+% Authors: Francois Tadel, Dimitrios Pantazis, 2008-2018
 
 eval(macro_method);
 end
@@ -791,7 +791,7 @@ function p = ComputePvalues(t, df, TestDistrib, TestTail)
     end
     % Default: F-distribution
     if (nargin < 3) || isempty(TestDistrib)
-        TestDistrib = 'two';
+        TestDistrib = 'f';
     end
     % Nothing to test
     if strcmpi(TestTail, 'no')
