@@ -292,8 +292,6 @@ function threshmap = Compute(StatMat, StatThreshOptions)
     end
     % Compute pseudo-recordings file : Threshold tmap with pmask
     threshmap = zeros(size(StatMat.tmap));
+    pmask = filter_timewin_signif(pmask,StatThreshOptions.durThreshold/(StatMat.Time(2)-StatMat.Time(1)));
     threshmap(pmask) = StatMat.tmap(pmask);
 end
-
-
-

@@ -55,6 +55,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jTextPThresh.setHorizontalAlignment(JLabel.RIGHT);
         jTextPThresh.setPreferredSize(java_scaled('dimension', 60,23));
         java_setcb(jTextPThresh, 'ActionPerformedCallback', @(h,ev)SaveOptions(), ...
+                                 'FocusLostCallback',       @(h,ev)SaveOptions());                               
+        % Threshold duration: Title
+        gui_component('Label', jPanelThresh, 'br', 'min duration (sec) : ');
+        % Threshold duration: Value
+        jTextDurThresh = gui_component('Text', jPanelThresh, [], '');
+        jTextDurThresh.setHorizontalAlignment(JLabel.RIGHT);
+        jTextDurThresh.setPreferredSize(java_scaled('dimension', 60,23));
+        java_setcb(jTextDurThresh, 'ActionPerformedCallback', @(h,ev)SaveOptions(), ...
                                  'FocusLostCallback',       @(h,ev)SaveOptions());
     jPanelTop.add('hfill', jPanelThresh);
         
@@ -111,6 +119,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     
     % Controls list
     ctrl = struct('jTextPThresh',       jTextPThresh, ...
+                  'jTextDurThresh',     jTextDurThresh, ...
                   'jPanelOptions',      jPanelOptions, ...
                   'jRadioCorrNo',       jRadioCorrNo, ...
                   'jRadioCorrBonf',     jRadioCorrBonf, ...
@@ -254,6 +263,8 @@ function UpdatePanel(ctrl)
     StatThreshOptions = bst_get('StatThreshOptions');
     % p-threshold
     ctrl.jTextPThresh.setText(num2str(StatThreshOptions.pThreshold, '%g'));
+    % duration threshold
+    ctrl.jTextDurThresh.setText(num2str(StatThreshOptions.durThreshold, '%g'));
     % Multiple comparisons
     switch (StatThreshOptions.Correction)
         case 'no',          ctrl.jRadioCorrNo.setSelected(1);
@@ -399,6 +410,14 @@ function SaveOptions()
         StatThreshOptions.pThreshold = pThresh;
     end
     ctrl.jTextPThresh.setText(num2str(StatThreshOptions.pThreshold, '%g'));
+    % duration
+    durThresh = str2double(char(ctrl.jTextDurThresh.getText()));
+    if isnan(durThresh) || (durThresh <= 0) %|| (durThresh > 1)
+        durThresh = StatThreshOptions.durThreshold;
+    else
+        StatThreshOptions.durThreshold = durThresh;
+    end
+    ctrl.jTextDurThresh.setText(num2str(StatThreshOptions.durThreshold, '%g'));
     % Multiple comparisons
     if ctrl.jRadioCorrBonf.isSelected()
         StatThreshOptions.Correction = 'bonferroni';
