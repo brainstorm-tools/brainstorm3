@@ -292,6 +292,13 @@ function threshmap = Compute(StatMat, StatThreshOptions)
     end
     % Compute pseudo-recordings file : Threshold tmap with pmask
     threshmap = zeros(size(StatMat.tmap));
-    pmask = filter_timewin_signif(pmask,StatThreshOptions.durThreshold/(StatMat.Time(2)-StatMat.Time(1)));
+    % Apply duration threshold if applicable
+    if (StatThreshOptions.durThreshold > 0) && isfield(StatMat, 'Time') && (length(StatMat.Time) > 2)
+        if (size(pmask,3) >= 2)
+            disp('Warning: Duration threshold is not supported for time-frequency results at the moment.');
+        else
+            pmask = filter_timewin_signif(pmask, StatThreshOptions.durThreshold / (StatMat.Time(2)-StatMat.Time(1)));
+        end
+    end
     threshmap(pmask) = StatMat.tmap(pmask);
 end

@@ -22,7 +22,7 @@ function varargout = panel_stat(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2018
 
 eval(macro_method);
 end
@@ -51,19 +51,21 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Threshold p-value: Title
         gui_component('Label', jPanelThresh, [], 'p-value threshold: ');
         % Threshold p-value: Value
-        jTextPThresh = gui_component('Text', jPanelThresh, [], '');
+        jTextPThresh = gui_component('Text', jPanelThresh, 'tab', '');
         jTextPThresh.setHorizontalAlignment(JLabel.RIGHT);
         jTextPThresh.setPreferredSize(java_scaled('dimension', 60,23));
         java_setcb(jTextPThresh, 'ActionPerformedCallback', @(h,ev)SaveOptions(), ...
-                                 'FocusLostCallback',       @(h,ev)SaveOptions());                               
+                                 'FocusLostCallback',       @(h,ev)ev.getSource().getParent().grabFocus());                               
         % Threshold duration: Title
-        gui_component('Label', jPanelThresh, 'br', 'min duration (sec) : ');
+        gui_component('Label', jPanelThresh, 'br', 'Minimum duration: ');
         % Threshold duration: Value
-        jTextDurThresh = gui_component('Text', jPanelThresh, [], '');
+        jTextDurThresh = gui_component('Text', jPanelThresh, 'tab', '');
         jTextDurThresh.setHorizontalAlignment(JLabel.RIGHT);
         jTextDurThresh.setPreferredSize(java_scaled('dimension', 60,23));
         java_setcb(jTextDurThresh, 'ActionPerformedCallback', @(h,ev)SaveOptions(), ...
-                                 'FocusLostCallback',       @(h,ev)SaveOptions());
+                                   'FocusLostCallback',       @(h,ev)ev.getSource().getParent().grabFocus());
+        gui_component('Label', jPanelThresh, '', 'ms');
+        
     jPanelTop.add('hfill', jPanelThresh);
         
     % ===== MULTIPLE COMPARISONS =====
@@ -264,7 +266,7 @@ function UpdatePanel(ctrl)
     % p-threshold
     ctrl.jTextPThresh.setText(num2str(StatThreshOptions.pThreshold, '%g'));
     % duration threshold
-    ctrl.jTextDurThresh.setText(num2str(StatThreshOptions.durThreshold, '%g'));
+    ctrl.jTextDurThresh.setText(num2str(round(StatThreshOptions.durThreshold * 1000), '%d'));
     % Multiple comparisons
     switch (StatThreshOptions.Correction)
         case 'no',          ctrl.jRadioCorrNo.setSelected(1);
@@ -410,14 +412,12 @@ function SaveOptions()
         StatThreshOptions.pThreshold = pThresh;
     end
     ctrl.jTextPThresh.setText(num2str(StatThreshOptions.pThreshold, '%g'));
-    % duration
+    % Duration threshold
     durThresh = str2double(char(ctrl.jTextDurThresh.getText()));
-    if isnan(durThresh) || (durThresh <= 0) %|| (durThresh > 1)
-        durThresh = StatThreshOptions.durThreshold;
-    else
-        StatThreshOptions.durThreshold = durThresh;
+    if ~isnan(durThresh) && (durThresh >= 0)
+        StatThreshOptions.durThreshold = round(durThresh) / 1000;
     end
-    ctrl.jTextDurThresh.setText(num2str(StatThreshOptions.durThreshold, '%g'));
+    ctrl.jTextDurThresh.setText(num2str(round(StatThreshOptions.durThreshold * 1000), '%d'));
     % Multiple comparisons
     if ctrl.jRadioCorrBonf.isSelected()
         StatThreshOptions.Correction = 'bonferroni';

@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 July 2018
+- Stat: Added "Minimum duration" threshold in the stat tab
 - GUI: Headless support, for running scripts on computation clusters and distant servers
 - GUI: New montage "Average reference (L -> R)" for 10-20 EEG caps
 - Anatomy: BrainSuite: Added subcortical structures
