@@ -134,7 +134,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
     % Default options settings
     Def_OPTIONS = struct(...
         'InverseMethod',       'minnorm', ... % A string that specifies the imaging method
-        'InverseMeasure',      'dspm', ...
+        'InverseMeasure',      'dspm2018', ...
         'SourceOrient',        'fixed', ...
         'DataTypes',           [], ...     % Cell array of strings: list of modality to use for the reconstruction (MEG, MEG GRAD, MEG MAG, EEG)
         'Comment',             '', ...     % Inverse solution description (optional)
@@ -478,10 +478,10 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             errMessage = [errMessage 'The noise covariance contains NaN values. Please re-calculate it after tagging correctly the bad channels in the recordings.' 10];
             break;
         end
-        % Divide noise covariance by number of trials
-        if ~isempty(nAvg) && (nAvg > 1)
-            NoiseCovMat.NoiseCov = NoiseCovMat.NoiseCov ./ nAvg;
-        end
+%         % Divide noise covariance by number of trials (DEPRECATED IN THIS VERSION)
+%         if ~isempty(nAvg) && (nAvg > 1)
+%             NoiseCovMat.NoiseCov = NoiseCovMat.NoiseCov ./ nAvg;
+%         end
         
         % ===== LOAD DATA COVARIANCE =====
         % Load DataCov file 
@@ -492,10 +492,10 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 errMessage = [errMessage 'The data covariance contains NaN values. Please re-calculate it after tagging correctly the bad channels in the recordings.' 10];
                 break;
             end
-            % Divide data covariance by number of trials
-            if isempty(nAvg) && (nAvg > 1)
-                DataCovMat.NoiseCov = DataCovMat.NoiseCov ./ nAvg;
-            end
+%             % Divide data covariance by number of trials
+%             if isempty(nAvg) && (nAvg > 1)
+%                 DataCovMat.NoiseCov = DataCovMat.NoiseCov ./ nAvg;
+%             end
         else
             DataCovMat = [];
         end

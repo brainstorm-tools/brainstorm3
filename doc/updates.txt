@@ -1,5 +1,8 @@
 ---------------------------------------------------------------
 July 2018
+- Inverse 2018: Major modification: dSPM values are no longer scaled by number of trials
+  | https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation#Averaging_normalized_values
+- Inverse: Enforce bst_inverse_linear_2018 as the default option
 - Stat: Added "Minimum duration" threshold in the stat tab
 - GUI: Headless support, for running scripts on computation clusters and distant servers
 - GUI: New montage "Average reference (L -> R)" for 10-20 EEG caps

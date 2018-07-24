@@ -58,7 +58,7 @@ function [Results, OPTIONS] = bst_inverse_linear_2016(HeadModel,OPTIONS)
 %         |   |- nSamples       : Number of times samples used to compute those measures
 %         |- ChannelTypes   : Type of each channel (for each row of the Leadfield and the NoiseCov matrix)
 %         |- InverseMethod  : {'minnorm', 'gls', 'lcmv'}
-%         |- InverseMeasure :    | minnorm: {'amplitude',  'dspm', 'sloreta'}
+%         |- InverseMeasure :    | minnorm: {'amplitude',  'dspm2018', 'sloreta'}
 %         |                      |     gls: {'performance'}
 %         |                      |    lcmv: {'performance'}
 %         |- SourceOrient   : String or a cell array of strings specifying the type of orientation constraints for each HeadModel (default: 'fixed')
@@ -844,7 +844,7 @@ switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
         
         Kernel = Lambda * L' * (UL * diag(1./(Lambda * SL2 + 1)) * UL');
 
-        switch OPTIONS.InverseMeasure % {'amplitude',  'dspm', 'sloreta'}
+        switch OPTIONS.InverseMeasure % {'amplitude',  'dspm2018', 'sloreta'}
             case 'amplitude'
                 OPTIONS.FunctionName = 'mn';
                 % xhat = Lambda * L' * inv(Cd)
@@ -853,8 +853,8 @@ switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
                 % apply whitener
                 Kernel = Kernel * iW_noise;
                 
-            case 'dspm'
-                OPTIONS.FunctionName = 'dspm';
+            case 'dspm2018'
+                OPTIONS.FunctionName = 'dspm2018';
                 % ===== dSPM OPERATOR =====
                 % =========== NEEDS REWRITING by JCM ======
                 

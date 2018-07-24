@@ -308,6 +308,7 @@ end
 % situation often arises when the noise covariance was based on "raw"
 % (unaveraged) data, but the kernel is now being applied to an averaged
 % data set.
+% (DEPRECATED AFTER INVERSE 2018) 
 if isfield(Results, 'Function') && ismember(Results.Function, {'dspm','glsp','lcmvp'}) && isfield(Results, 'ImageGridAmp') && ~isempty(DataMat)
     if (DataMat.nAvg ~= Results.nAvg)
         Factor = sqrt(DataMat.nAvg) / sqrt(Results.nAvg);

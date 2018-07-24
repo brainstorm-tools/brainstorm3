@@ -49,11 +49,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(nAvg(i) * x(i)) / sum(nAvg(i))</FONT>';
     sProcess.options.weighted.Type       = 'checkbox';
     sProcess.options.weighted.Value      = 0;
-    % === SCALE NORMALIZE SOURCE MAPS
+    % === SCALE NORMALIZE SOURCE MAPS (DEPRECATED AFTER INVERSE 2018) 
     sProcess.options.scalenormalized.Comment    = 'Adjust normalized source maps for SNR increase.<BR><FONT color="#777777"><I>Example: dSPM(Average) = sqrt(Navg) * Average(dSPM)</I></FONT>';
     sProcess.options.scalenormalized.Type       = 'checkbox';
     sProcess.options.scalenormalized.Value      = 0;
     sProcess.options.scalenormalized.InputTypes = {'results'};
+    sProcess.options.scalenormalized.Hidden     = 1;
 end
 
 
@@ -79,7 +80,7 @@ function sOutput = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     else
         isWeighted = 0;
     end
-    % Scale normalized source maps
+    % Scale normalized source maps (DEPRECATED AFTER INVERSE 2018)
     if isfield(sProcess.options, 'scalenormalized') && isfield(sProcess.options.scalenormalized, 'Value') && ~isempty(sProcess.options.scalenormalized.Value)
         isScaleDspm = sProcess.options.scalenormalized.Value;
     else
@@ -99,7 +100,7 @@ function sOutput = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
         sOutput.nAvg = 2;
     end
     
-    % === SCALE dSPM VALUES ===
+    % === SCALE dSPM VALUES (DEPRECATED AFTER INVERSE 2018) ===
     % Apply a scaling to the dSPM functions, to compensate for the fact that the scaling applied to the NoiseCov was not correct
     if isScaleDspm && strcmpi(sInputA.FileType, 'results')
         % Load what function was used to estimate the sources
