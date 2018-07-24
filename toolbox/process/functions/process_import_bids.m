@@ -442,14 +442,16 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                     if ~isempty(iColFile) && ~isempty(iColTime)
                         tsvFiles = tsvValues{iColFile};
                         for iDate = 1:length(tsvValues{iColTime})
+                            fDate = [];
                             % Date format: YYYY-MM-DDTHH:MM:SS
                             if (length(tsvValues{iColTime}{iDate}) >= 19) && strcmpi(tsvValues{iColTime}{iDate}(11), 'T')
                                 fDate = sscanf(tsvValues{iColTime}{iDate}, '%04d-%02d-%02d');
                             % Date format: YYYYMMDDTHHMMSS
                             elseif (length(tsvValues{iColTime}{iDate}) >= 15) && strcmpi(tsvValues{iColTime}{iDate}(9), 'T')
                                 fDate = sscanf(tsvValues{iColTime}{iDate}, '%04d%02d%02d');
+                            end
                             % Not recognized
-                            else
+                            if (length(fDate) ~= 3)
                                 disp(['BIDS> Warning: Date format not recognized: "' tsvValues{iColTime}{iDate} '"']);
                                 fDate = [0 0 0];
                             end
