@@ -52,6 +52,10 @@ function sProcess = DefineOptions(sProcess)
     sProcess.options.pthresh.Comment = 'p-value threshold: ';
     sProcess.options.pthresh.Type    = 'value';
     sProcess.options.pthresh.Value   = {0.05,'',4};
+    % === DURATION THRESHOLD
+    sProcess.options.durthresh.Comment = 'Minimum duration (ms): ';
+    sProcess.options.durthresh.Type    = 'value';
+    sProcess.options.durthresh.Value   = {0,'',0};
     % === CORRECTION
     sProcess.options.label1.Comment = '<BR>Correction for multiple comparisons:';
     sProcess.options.label1.Type    = 'label';
@@ -86,6 +90,7 @@ end
 function [StatThreshOptions, strCorrect] = GetOptions(sProcess)
     % Get threshold
     StatThreshOptions.pThreshold = sProcess.options.pthresh.Value{1};
+    StatThreshOptions.durThreshold = sProcess.options.durthresh.Value{1} / 1000;
     % Get controlled dimensions
     StatThreshOptions.Control = [];
     if (sProcess.options.control1.Value == 1)
@@ -293,7 +298,7 @@ function threshmap = Compute(StatMat, StatThreshOptions)
     % Compute pseudo-recordings file : Threshold tmap with pmask
     threshmap = zeros(size(StatMat.tmap));
     % Apply duration threshold if applicable
-    if (StatThreshOptions.durThreshold > 0) && isfield(StatMat, 'Time') && (length(StatMat.Time) > 2)
+    if isfield(StatThreshOptions, 'durThreshold') && (StatThreshOptions.durThreshold > 0) && isfield(StatMat, 'Time') && (length(StatMat.Time) > 2)
         if (size(pmask,3) >= 2)
             disp('Warning: Duration threshold is not supported for time-frequency results at the moment.');
         else
