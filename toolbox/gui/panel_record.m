@@ -2736,6 +2736,14 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
     % Update database representation
     sStudy.DateOfStudy = newDate;
     bst_set('Study', iStudy, sStudy);
+    % Update raw links if applicable
+    if ~isempty(strfind(sStudy.FileName, '@raw')) && ~isempty(sStudy.Data) && strcmpi(sStudy.Data(1).DataType, 'raw')
+        % Read link
+        DataMat = in_bst_data(sStudy.Data(1).FileName, 'F');
+        DataMat.F.acq_date = newDate;
+        % Save modified link
+        bst_save(file_fullpath(sStudy.Data(1).FileName), DataMat, 'v6', 1);
+    end
     % Refresh tree
     panel_protocols('UpdateTree');
     panel_protocols('SelectNode', [], sStudy.FileName);
