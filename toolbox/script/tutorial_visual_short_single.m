@@ -1,14 +1,13 @@
-function tutorial_visual_short_single(tutorial_dir, reports_dir)
+function tutorial_visual_short_single(bids_dir, reports_dir)
 % TUTORIAL_VISUAL_SHORT_SINGLE: Runs the Brainstorm/SPM group analysis pipeline (single subject, BIDS) - SHORT VERSION
 %
 % ONLINE TUTORIALS: https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
 %
 % INPUTS:
-%    - tutorial_dir: Directory containing the folder ds000117_R1.0.0  (https://openfmri.org/dataset/ds000117/, version 1.0.0)
-%       |- ds000117_R1.0.0
-%           |- derivatives/freesurfer/sub-XX                         : Segmentation folders generated with FreeSurfer
-%           |- derivatives/meg_derivatives/sub-XX/ses-meg/meg/*.fif  : MEG+EEG recordings (processed with MaxFilter's tSSS)
-%           |- derivatives/meg_derivatives/sub-emptyroom/ses-*/*.fif : Empty room measurements
+%    - bids_dir: Path to folder "Multisubject, multimodal face processing"  (https://openneuro.org/datasets/ds000117/versions/00004)
+%       |- derivatives/freesurfer/sub-XX                               : Segmentation folders generated with FreeSurfer
+%       |- derivatives/meg_derivatives/sub-XX/ses-meg/meg/*.fif        : MEG+EEG recordings (processed with MaxFilter's SSS)
+%       |- derivatives/meg_derivatives/sub-emptyroom/ses-meg/meg/*.fif : Empty room measurements
 %    - reports_dir: If defined, exports all the reports as HTML to this folder
 
 % @=============================================================================
@@ -36,7 +35,10 @@ function tutorial_visual_short_single(tutorial_dir, reports_dir)
 % Full list of subjects to process
 SubjectNames = {'sub-01', 'sub-02', 'sub-03', 'sub-04', 'sub-05', 'sub-06', 'sub-07', 'sub-08', 'sub-09', 'sub-10', ...
                 'sub-11', 'sub-12', 'sub-13', 'sub-14', 'sub-15', 'sub-16'};
-SubjectNoise = 'sub-emptyroom';
+% Empty-room dates for each subject (so that we can match automatically recordings with empty-room)
+EmptyRoomSubj = 'sub-emptyroom';
+AcquisitionDates = {'09-Apr-2009', '05-May-2009', '11-May-2009', '18-May-2009', '15-May-2009', '15-May-2009', '15-May-2009', '15-May-2009', ...
+                    '15-May-2009', '15-May-2009', '01-Jun-2009', '01-Jun-2009', '01-Jun-2009', '26-Nov-2009', '08-Dec-2009', '08-Dec-2009'};
 % Bad channels {iSubj} = {Run01, Run02, Run03, Run04, Run05, Run06}
 BadChannels{1}  = {'EEG016', 'EEG070', 'EEG050',{'EEG008','EEG050'}, [], []};
 BadChannels{2}  = {{'EEG027', 'EEG030', 'EEG038'}, 'EEG010', 'EEG010', 'EEG010', 'EEG010', 'EEG010'};
@@ -82,14 +84,8 @@ end
 if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
     reports_dir = [];
 end
-% Dataset version
-DsVersion = 'ds000117_R1.0.0';
 % You have to specify the folder in which the tutorial dataset is unzipped
-if ~isempty(strfind(tutorial_dir, DsVersion))
-    tutorial_dir = bst_fileparts(tutorial_dir);
-end
-BidsDir = bst_fullfile(tutorial_dir, DsVersion);
-if (nargin < 1) || isempty(tutorial_dir) || ~file_exist(tutorial_dir) || ~file_exist(BidsDir)
+if (nargin < 1) || isempty(bids_dir) || ~file_exist(bids_dir) || ~file_exist(bst_fullfile(bids_dir, 'derivatives')) || ~file_exist(bst_fullfile(bids_dir, 'dataset_description.json'))
     error('The first argument must be the full path to the tutorial folder.');
 end
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
@@ -109,6 +105,7 @@ bst_colormaps('SetMaxMode', 'eeg', 'local');
 for iSubj = 1:16
     % Start a new report (one report per subject)
     bst_report('Start');
+    disp(sprintf('\n===== IMPORT: SUBJECT #%d =====\n', iSubj));
     
     % If subject already exists: delete it
     [sSubject, iSubject] = bst_get('Subject', SubjectNames{iSubj});
@@ -118,8 +115,8 @@ for iSubj = 1:16
     
     % ===== FILES TO IMPORT =====
     % Build the path of the files to import
-    AnatDir    = fullfile(BidsDir, 'derivatives', 'freesurfer', SubjectNames{iSubj}, 'ses-mri', 'anat');
-    DataDir    = fullfile(BidsDir, 'derivatives',  'meg_derivatives', SubjectNames{iSubj}, 'ses-meg', 'meg');
+    AnatDir    = fullfile(bids_dir, 'derivatives', 'freesurfer', SubjectNames{iSubj}, 'ses-mri', 'anat');
+    DataDir    = fullfile(bids_dir, 'derivatives',  'meg_derivatives', SubjectNames{iSubj}, 'ses-meg', 'meg');
     % Check if the folder contains the required files
     if ~file_exist(AnatDir)
         error(['The folder "' AnatDir '" does not exist.']);
@@ -140,7 +137,7 @@ for iSubj = 1:16
     % ===== PROCESS EACH RUN =====
     for iRun = 1:6
         % Files to import
-        FifFile = bst_fullfile(DataDir, sprintf('%s_ses-meg_task-facerecognition_run-%02d_proc-tsss_meg.fif', SubjectNames{iSubj}, iRun));
+        FifFile = bst_fullfile(DataDir, sprintf('%s_ses-meg_task-facerecognition_run-%02d_proc-sss_meg.fif', SubjectNames{iSubj}, iRun));
 
         % ===== LINK CONTINUOUS FILE =====
         % Process: Create link to raw file
@@ -149,7 +146,9 @@ for iSubj = 1:16
             'datafile',       {FifFile, 'FIF'}, ...
             'channelreplace', 1, ...
             'channelalign',   0);
-
+        % Set acquisition date
+        panel_record('SetAcquisitionDate', sFileRaw.iStudy, AcquisitionDates{iSubj});
+        
         % ===== PREPARE CHANNEL FILE =====
         % Process: Set channels type
         bst_process('CallProcess', 'process_channel_settype', sFileRaw, [], ...
@@ -361,14 +360,15 @@ end
 
 
 %% ===== EMPTY ROOM RECORDINGS =====
+disp(sprintf('\n===== IMPORT: EMPTY-ROOM =====\n'));
 % Loop on all the noise sessions
 NoiseFiles = {};
 for ses = {'20090409', '20090506', '20090511', '20090515', '20090518', '20090601', '20091126', '20091208'}
-    NoiseFiles{end+1} = fullfile(BidsDir, 'derivatives', 'meg_derivatives', SubjectNoise, ['ses-' ses{1}], 'meg', ['sub-01_ses-' ses{1} '_task-noise_run-01_proc-tsss_meg.fif']);
+    NoiseFiles{end+1} = fullfile(bids_dir, 'derivatives', 'meg_derivatives', EmptyRoomSubj, ['ses-' ses{1}], 'meg', ['sub-01_ses-' ses{1} '_task-noise_run-01_proc-sss_meg.fif']);
 end
 % Process: Create link to raw file 
 sFilesNoise = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
-    'subjectname',    SubjectNoise, ...
+    'subjectname',    EmptyRoomSubj, ...
     'datafile',       {NoiseFiles, 'FIF'}, ...
     'channelreplace', 1, ...
     'channelalign',   0);
@@ -397,6 +397,8 @@ bst_report('Start');
 % compute the BEM surfaces after importing all the runs, so that the registration is done 
 % using the high resolution head surface, instead of the smooth scalp BEM layer.
 for iSubj = 1:length(SubjectNames)
+    disp(sprintf('\n===== SOURCES: SUBJECT #%d =====\n', iSubj));
+    
     % ===== BEM SURFACES =====
     % Process: Generate BEM surfaces
     bst_process('CallProcess', 'process_generate_bem', [], [], ...
@@ -514,7 +516,7 @@ end
 %         % Process: Select data files in: Subject/Run
 %         sTrialsAll = bst_process('CallProcess', 'process_select_files_data', [], [], ...
 %             'subjectname',   SubjectNames{iSubj}, ...
-%             'condition',     sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-tsss_meg_notch', iSubj, iRun));
+%             'condition',     sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-sss_meg_notch', iSubj, iRun));
 %         % Loop on the conditions
 %         for iCond = 1:length(AllConditions)
 %             % Comment describing this average

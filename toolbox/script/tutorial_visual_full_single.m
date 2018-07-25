@@ -37,9 +37,7 @@ SubjectNames = {'sub-01', 'sub-02', 'sub-03', 'sub-04', 'sub-05', 'sub-06', 'sub
                 'sub-09', 'sub-10', 'sub-11', 'sub-12', 'sub-13', 'sub-14', 'sub-15', 'sub-16'};
 % Empty-room dates for each subject (so that we can match automatically recordings with empty-room)
 EmptyRoomSubj = 'sub-emptyroom';
-% EmptyRoomDates = {'20090409', '20090506', '20090511', '20090518', '20090515', '20090515', '20090515', '20090515', ...
-%                   '20090515', '20090515', '20090601', '20090601', '20090601', '20091126', '20091208', '20091208'};
-AcquisitionDates = {'09-Apr-2009', '05-May-2009', '11-May-2009', '18-May-2009', '15-May-2009', '15-May-2009', '15-May-2009', '15-May-2009', ...
+AcquisitionDates = {'09-Apr-2009', '06-May-2009', '11-May-2009', '18-May-2009', '15-May-2009', '15-May-2009', '15-May-2009', '15-May-2009', ...
                     '15-May-2009', '15-May-2009', '01-Jun-2009', '01-Jun-2009', '01-Jun-2009', '26-Nov-2009', '08-Dec-2009', '08-Dec-2009'};
 % Bad channels {iSubj} = {Run01, Run02, Run03, Run04, Run05, Run06}
 BadChannels{1}  = {'EEG016', 'EEG070', 'EEG050',{'EEG008','EEG050'}, [], []};
@@ -361,7 +359,7 @@ disp(sprintf('\n===== IMPORT: EMPTY-ROOM =====\n'));
 % Loop on all the noise sessions
 NoiseFiles = {};
 for ses = {'20090409', '20090506', '20090511', '20090515', '20090518', '20090601', '20091126', '20091208'}
-    NoiseFiles{end+1} = fullfile(bids_dir, 'derivatives', 'meg_derivatives', EmptyRoomSubj, ['ses-' ses{1}], 'meg', ['sub-01_ses-' ses{1} '_task-noise_run-01_proc-sss_meg.fif']);
+    NoiseFiles{end+1} = fullfile(bids_dir, 'derivatives', 'meg_derivatives', EmptyRoomSubj, ['ses-' ses{1}], 'meg', ['sub-emptyroom_ses-' ses{1} '_task-noise_proc-sss_meg.fif']);
 end
 % Process: Create link to raw file
 sFilesNoise = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
@@ -386,7 +384,6 @@ bst_process('CallProcess', 'process_noisecov', sFileNoiseClean, [], ...
     'copymatch',   1, ...
     'replacefile', 2);  % Merge
        
-
 
 %% ===== SOURCE ESTIMATION =====
 % Start a new report (one report for the source estimation of all the subjects)
