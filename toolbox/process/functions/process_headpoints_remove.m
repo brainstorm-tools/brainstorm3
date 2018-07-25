@@ -95,7 +95,7 @@ function strMsg = RemoveHeadpoints(ChannelFile, zLimit)
         iDelete = 1:nPoints;
     else
         % Get EXTRA points
-        iExtra = find(strcmpi(ChannelMat.HeadPoints.Label, 'EXTRA'));
+        iExtra = find(strcmpi(ChannelMat.HeadPoints.Type, 'EXTRA'));
         % Find the points below the z-threshold
         iDelete = find(ChannelMat.HeadPoints.Loc(3,iExtra) <= zLimit);
         % Remove the points
