@@ -58,18 +58,30 @@ if isempty(EventFile) && isempty(newEvents)
     % Get default directories and formats
     DefaultFormats = bst_get('DefaultFormats');
     % Get file
-    [EventFile, FileFormat] = java_getfile( 'open', 'Import events...', ...    % Window title
-        fPath, ...              % Default directory
-        'single', 'files', ...  % Selection mode
+    [EventFiles, FileFormat] = java_getfile( 'open', 'Import events...', ...    % Window title
+        fPath, ...                % Default directory
+        'multiple', 'files', ...  % Selection mode
         bst_get('FileFilters', 'events'), ...
         DefaultFormats.EventsIn);
     % If no file was selected: exit
-    if isempty(EventFile)
+    if isempty(EventFiles)
         return
     end
     % Save default export format
     DefaultFormats.EventsIn = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
+    
+    % Call this function recursively for each selected event file, and
+    % concatenate the result together
+    for iEventFile = 1:length(EventFiles)
+        [sFile, events] = import_events(sFile, ChannelMat, EventFiles{iEventFile}, FileFormat, EventName);
+        if isempty(newEvents)
+            newEvents = events;
+        else
+            newEvents(end+1:end+length(events)) = events;
+        end
+    end
+    return
 end
 
 %% ===== READ FILE =====
