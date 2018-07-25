@@ -2132,6 +2132,8 @@ switch (lower(action))
             else
                 RawFile = [];
             end
+            % Folders: set acquisition date
+            gui_component('MenuItem', jMenuFile, [], 'Set acquisition date', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('SetAcquisitionDate', iStudy));
             % Raw file menus
             if ~isempty(RawFile)
                 % Files that are not saved in the database
