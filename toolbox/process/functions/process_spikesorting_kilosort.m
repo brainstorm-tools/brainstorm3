@@ -48,9 +48,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 0;
-    sProcess.options.paral.Comment = 'Parallel processing';
-    sProcess.options.paral.Type    = 'checkbox';
-    sProcess.options.paral.Value   = 0;
     sProcess.options.GPU.Comment = 'GPU processing';
     sProcess.options.GPU.Type    = 'checkbox';
     sProcess.options.GPU.Value   = 0;
@@ -79,6 +76,27 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     ProtocolInfo = bst_get('ProtocolInfo');
     
+    % Check for a Windows OS (external dependencies require us to write an Excel document)
+    if ~strcmpi(bst_get('OsType'), 'win32') && ~strcmpi(bst_get('OsType'), 'win64')
+        bst_report('Error', sProcess, sInputs, 'This process requires a Windows operating system.');
+        return;
+    end
+    % Check for the Signal Processing toolbox
+    if ~bst_get('UseSigProcToolbox')
+        bst_report('Error', sProcess, sInputs, 'This process requires the Signal Processing Toolbox.');
+        return;
+    end
+    % Check for the Statistics toolbox
+    if exist('cvpartition', 'file') ~= 2
+        bst_report('Error', sProcess, sInputs, 'This process requires the Statistics and Machine Learning Toolbox.');
+        return;
+    end
+    % Check for the Parallel Computing toolbox (external dependencies)
+    if (exist('matlabpool', 'file') ~= 2) && (exist('parpool', 'file') ~= 2)
+        bst_report('Error', sProcess, sInputs, 'This process requires the Parallel Computing Toolbox.');
+        return;
+    end
+    
     % Ensure we are including the KiloSort folder in the Matlab path
     KiloSortDir = bst_fullfile(bst_get('BrainstormUserDir'), 'KiloSort');
     if exist(KiloSortDir, 'file')
@@ -99,24 +117,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     
-    %% Prepare parallel pool, if requested
-    if sProcess.options.paral.Value
-        try
-            poolobj = gcp('nocreate');
-            if isempty(poolobj)
-                parpool;
-            end
-        catch
-            sProcess.options.paral.Value = 0;
+    %% Prepare parallel pool
+    try
+        poolobj = gcp('nocreate');
+        if isempty(poolobj)
+            parpool;
         end
-    else
+    catch
         poolobj = [];
     end
     
     %% Initialize KiloSort Parameters (This is a copy of StandardConfig_MOVEME)
     
     ops.GPU                 = sProcess.options.GPU.Value; % whether to run this code on an Nvidia GPU (much faster, mexGPUall first)
-    ops.parfor              = sProcess.options.paral.Value; % whether to use parfor to accelerate some parts of the algorithm
+    ops.parfor              = 1; % whether to use parfor to accelerate some parts of the algorithm
     ops.verbose             = 1; % whether to print command line progress
     ops.showfigures         = 1; % whether to plot figures during optimization
 
@@ -473,12 +487,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     %%%%%%%%%%%%%%%%%%%%%%   Prepare to exit    %%%%%%%%%%%%%%%%%%%%%%%
     % Turn off parallel processing and return to the initial directory
-
-    if sProcess.options.paral.Value
-        if ~isempty(poolobj)
-            delete(poolobj);
-        end
-    end    
+    if ~isempty(poolobj)
+        delete(poolobj);
+    end
 end
 
 
