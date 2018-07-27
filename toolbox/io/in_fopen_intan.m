@@ -137,7 +137,7 @@ hdr.SamplingFrequency     = newHeader.sample_rate;
 hdr.chan_headers = newHeader;
 hdr.DataFile     = DataFile;
 
-
+[tmp, folderName] = bst_fileparts(hdr.BaseFolder);
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
@@ -149,6 +149,7 @@ sFile.format    = 'EEG-INTAN';
 sFile.device    = 'Intan';
 sFile.header    = hdr;
 sFile.comment   = Comment;
+sFile.condition = folderName;
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = hdr.SamplingFrequency;
 sFile.prop.samples = [0, hdr.NumSamples - 1];
