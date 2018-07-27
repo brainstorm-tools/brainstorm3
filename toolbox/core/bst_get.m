@@ -3009,6 +3009,13 @@ switch contextName
     case 'MffJarFile'
         argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'mffmatlabio', 'MFF-1.2.2-jar-with-dependencies.jar');
         argout2 = exist(argout1, 'file') == 2;
+
+    case 'KlustersExecutable'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'KlustersExecutable')
+            argout1 = GlobalData.Preferences.KlustersExecutable;
+        else
+            argout1 = [];
+        end
         
         
 %% ===== FILE FILTERS =====

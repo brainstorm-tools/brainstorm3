@@ -106,7 +106,7 @@ end
 %% ===== UPDATE CALLBACK =====
 function UpdatePanel()
     ctrl = bst_get('PanelControls', 'Spikes');
-    if process_spikesorting_supervised('FigureIsOpen')
+    if process_spikesorting_supervised('FigureIsOpen', 1)
         gui_enable(ctrl.jPanel, 1);
         UpdateElectrodesList();
     else
@@ -168,7 +168,12 @@ end
 
 function spikeName = GetSpikeName(i)
     global GlobalData;
-    spikeName = ['Channel ' GlobalData.SpikeSorting.Data.Spikes(i).Name];
+    if strcmpi(GlobalData.SpikeSorting.Data.Device, 'kilosort')
+        prefix = 'Montage';
+    else
+        prefix = 'Channel';
+    end
+    spikeName = [prefix ' ' GlobalData.SpikeSorting.Data.Spikes(i).Name];
     if GlobalData.SpikeSorting.Data.Spikes(i).Mod
         spikeName = [spikeName ' *'];
     end

@@ -261,10 +261,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
                 
         catch
-            Montages = 'SingleGroup';
+            Montages = 'All';
             
             for iChannel = 1:length(Channels)
-                Channels(iChannel).Group = 'SingleGroup';
+                Channels(iChannel).Group = 'All';
             end
             
             channelsMontage = ones(1,length(Channels)); % This holds the code of the montage each channel holds 
@@ -460,6 +460,28 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         cd(previous_directory);
         
+        % Fetch FET files
+        spikes = [];
+        if ~iscell(Montages)
+            Montages = {Montages};
+        end
+        for iMontage = 1:length(Montages)
+            fetFile = dir(bst_fullfile(outputPath, ['*.fet.' num2str(iMontage)]));
+            if isempty(fetFile)
+                continue;
+            end
+            curStruct = struct();
+            curStruct.Path = outputPath;
+            curStruct.File = fetFile.name;
+            curStruct.Name = Montages{iMontage};
+            curStruct.Mod  = 0;
+            if isempty(spikes)
+                spikes = curStruct;
+            else
+                spikes(end+1) = spikes;
+            end
+        end
+        
         % ===== SAVE LINK FILE =====
         % Build output filename
         NewBstFile = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_' fBase '.mat']);
@@ -469,7 +491,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         DataMat.Comment     = 'KiloSort Spike Sorting';
         DataMat.DataType    = 'raw';%'ephys';
         DataMat.Device      = 'KiloSort';
-        DataMat.Spikes      = outputPath;
+        DataMat.Parent      = outputPath;
+        DataMat.Spikes      = spikes;
+        DataMat.RawFile     = sInputs(i).FileName;
+        DataMat.Name        = NewBstFile;
         % Add history field
         DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
         % Save file on hard drive
@@ -499,10 +524,10 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
 
     events = struct;
     events(2).label = [];
-    events(2).epochs = [];
-    events(2).times = [];
     events(2).color = [];
+    events(2).epochs = [];
     events(2).samples = [];
+    events(2).times = [];
     events(2).reactTimes = [];
     events(2).select = [];
     index = 0;
@@ -553,13 +578,11 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
             events(index).label       = [spikeEventPrefix ' ' ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
         end
         events(index).color       = rand(1,3);
+        events(index).epochs      = ones(1,length(spikeTimes(selectedSpikes)));
         events(index).samples     = spikeTimes(selectedSpikes)'; % The timestamps are in SAMPLES
         events(index).times       = events(index).samples./sFile.prop.sfreq;
-        events(index).epochs      = ones(1,length(events(index).samples));
         events(index).reactTimes  = [];
         events(index).select      = 1;
-        
-        
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -655,3 +678,75 @@ function downloadAndInstallKiloSort()
     addpath(genpath(KiloSortDir));
 end
 
+function events = LoadKlustersEvents(SpikeSortedMat, iMontage)
+    % Information about the Neuroscope file can be found here:
+    % http://neurosuite.sourceforge.net/formats.html
+
+    %% Load necessary files
+    ChannelMat = in_bst_channel(bst_get('ChannelFileForStudy', SpikeSortedMat.RawFile));
+    DataMat = in_bst_data(SpikeSortedMat.RawFile, 'F');
+    sFile = DataMat.F;
+    % Extract filename from 'filename.fet.1'
+    [tmp, study] = fileparts(SpikeSortedMat.Spikes(iMontage).File);
+    [tmp, study] = fileparts(study);
+    sMontage = num2str(iMontage);
+    clu = load(bst_fullfile(SpikeSortedMat.Parent, [study '.clu.' sMontage]));
+    res = load(bst_fullfile(SpikeSortedMat.Parent, [study '.res.' sMontage]));
+    fet = dlmread(bst_fullfile(SpikeSortedMat.Parent, [study '.fet.' sMontage]));
+
+
+    %% The combination of the .clu files and the .fet file is enough to use on the converter.
+
+    % Brainstorm assign each spike to a SINGLE NEURON on each electrode. This
+    % converter picks up the electrode that showed the strongest (absolute)
+    % component on the .fet file and assigns the spike to that electrode. Consecutively, it
+    % checks the .clu file to assign the spike to a specific neuron. If more
+    % than one clusters are assigned to that electrode, different labels will
+    % be created for each neuron.
+
+    iChannels = zeros(size(fet,1),1);
+    for iSpike = 2:size(fet,1) % The first entry will be zeros. Ignore
+        [tmp,iPCA] = max(abs(fet(iSpike,1:end-3)));
+        iChannels(iSpike) = ceil(iPCA/3);
+    end
+    
+    % Now iChannels holds the Channel that each spike belongs to, and clu
+    % holds the cluster that each spike belongs to. Assign unique labels to
+    % multiple neurons on the same electrode.
+
+    % Initialize output structure
+    events = struct;
+    events(2).label = [];
+    events(2).epochs = [];
+    events(2).times = [];
+    events(2).color = [];
+    events(2).samples = [];
+    events(2).reactTimes = [];
+    events(2).select = [];
+    index = 0;
+    
+    spikesPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
+
+    uniqueClusters = unique(clu(2:end))'; % The first entry is just the number of clusters
+
+    for iCluster = 1:length(uniqueClusters)
+        selectedSpikes = find(clu==uniqueClusters(iCluster));
+
+        [tmp,iMaxFeature] = max(sum(abs(fet(selectedSpikes,1:end-3))));
+        iElectrode = ceil(iMaxFeature/3);
+
+        index = index+1;
+        % Write the packet to events
+        if uniqueClusters(iCluster)==1 || uniqueClusters(iCluster)==0
+            events(index).label       = ['Spikes Noise |' num2str(uniqueClusters(iCluster)) '|'];
+        else
+            events(index).label       = [spikesPrefix ' ' ChannelMat.Channel(iElectrode).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
+        end
+        events(index).color       = rand(1,3);
+        events(index).samples     = fet(selectedSpikes,end)'; % The timestamps are in SAMPLES
+        events(index).times       = events(index).samples./sFile.prop.sfreq;
+        events(index).epochs      = ones(1,length(events(index).samples));
+        events(index).reactTimes  = [];
+        events(index).select      = 1;
+    end
+end
