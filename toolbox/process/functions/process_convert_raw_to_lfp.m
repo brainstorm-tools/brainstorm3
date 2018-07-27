@@ -317,7 +317,7 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     if isempty(iEventforElectrode)
         iEventforElectrode = find(ismember(allEventLabels, [spike_event_prefix ' ' ChannelMat.Channel(iChannel).Name ' |1|']));% Find the index of the spike-events that correspond to that electrode (Exact string match)
         if ~isempty(iEventforElectrode)
-            iEventforElectrode = find(contains(allEventLabels, [spike_event_prefix ' ' ChannelMat.Channel(iChannel).Name ' |']));
+            iEventforElectrode = find(not(cellfun('isempty', strfind(allEventLabels, [spike_event_prefix ' ' ChannelMat.Channel(iChannel).Name ' |']))));
         end
     end
     
