@@ -154,8 +154,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
     
     %% Subtract mean from each neuron (this is needed for noise correlation)
-    
-    all_binned = all_binned - mean(all_binned);
+    all_binned = all_binned - repmat(mean(all_binned), size(all_binned,1),1);
     
     
     %% Compute the Correlation for nxn Neurons
