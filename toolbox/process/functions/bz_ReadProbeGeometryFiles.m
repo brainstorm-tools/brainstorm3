@@ -66,7 +66,7 @@ function [ChannelsPerGroupSuperficialToDeep,SpatialChannelXY,NumChansPerProbe,Gr
 % channelcountoffset = 0;
 for pmidx = 1:length(probemaplist)
     tpf = probemaplist{pmidx};
-    if ~strcmp(probemaplist{pmidx}(end-4:end),'.xlsx')
+    if length(probemaplist{pmidx}) <= 4 || ~strcmp(probemaplist{pmidx}(end-4:end),'.xlsx')
         tpf = strcat(tpf,'.xlsx');
     end
     tpp = which(tpf);
