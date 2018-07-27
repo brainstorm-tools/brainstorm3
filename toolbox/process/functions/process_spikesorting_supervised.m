@@ -153,6 +153,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                             filters = {'*', 'Klusters executable'};
                         end
                         KlustersExecutable = java_getfile('open', 'Klusters executable', [], 'single', 'files', filters, {});
+                        if isempty(KlustersExecutable) || exist(KlustersExecutable, 'file') ~= 2
+                            return;
+                        end
                     end
                     bst_set('KlustersExecutable', KlustersExecutable);
                 end

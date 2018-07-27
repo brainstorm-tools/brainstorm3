@@ -76,9 +76,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     ProtocolInfo = bst_get('ProtocolInfo');
     
-    % Check for a Windows OS (external dependencies require us to write an Excel document)
-    if ~strcmpi(bst_get('OsType'), 'win32') && ~strcmpi(bst_get('OsType'), 'win64')
-        bst_report('Error', sProcess, sInputs, 'This process requires a Windows operating system.');
+    % Check for Excel writer toolbox
+    TestExcel = 'excelWriterTest.xlsx';
+    try
+        xlswrite(TestExcel, 1);
+        delete(TestExcel);
+    catch
+        bst_report('Error', sProcess, sInputs, 'This process requires Excel installed. Apologies to Linux users.');
         return;
     end
     % Check for the Signal Processing toolbox
