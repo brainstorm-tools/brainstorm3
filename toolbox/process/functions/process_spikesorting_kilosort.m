@@ -464,6 +464,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Delete existing spike events
         process_spikesorting_supervised('DeleteSpikeEvents', sInputs(i).FileName);
         
+        sFile.RawFile = sInputs(i).FileName;
         convertKilosort2BrainstormEvents(sFile, ChannelMat, bst_fullfile(ProtocolInfo.STUDIES, fPath), rez);
         
         cd(previous_directory);
@@ -530,14 +531,7 @@ end
 
 function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
 
-    events = struct;
-    events(2).label = [];
-    events(2).color = [];
-    events(2).epochs = [];
-    events(2).samples = [];
-    events(2).times = [];
-    events(2).reactTimes = [];
-    events(2).select = [];
+    events = struct();
     index = 0;
     
     %TODO ???
@@ -591,6 +585,20 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
         events(index).times       = events(index).samples./sFile.prop.sfreq;
         events(index).reactTimes  = [];
         events(index).select      = 1;
+    end
+    
+    % Add existing non-spike events for backup
+    DataMat = in_bst_data(sFile.RawFile);
+    existingEvents = DataMat.F.events;
+    for iEvent = 1:length(existingEvents)
+        if ~process_spikesorting_supervised('IsSpikeEvent', existingEvents(iEvent).label)
+            if index == 0
+                events = existingEvents(iEvent);
+            else
+                events(index + 1) = existingEvents(iEvent);
+            end
+            index = index + 1;
+        end
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -723,14 +731,7 @@ function events = LoadKlustersEvents(SpikeSortedMat, iMontage)
     % multiple neurons on the same electrode.
 
     % Initialize output structure
-    events = struct;
-    events(2).label = [];
-    events(2).epochs = [];
-    events(2).times = [];
-    events(2).color = [];
-    events(2).samples = [];
-    events(2).reactTimes = [];
-    events(2).select = [];
+    events = struct();
     index = 0;
     
     spikesPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
