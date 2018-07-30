@@ -105,10 +105,16 @@ end
 
 %% ===== UPDATE CALLBACK =====
 function UpdatePanel()
+    global GlobalData;
     ctrl = bst_get('PanelControls', 'Spikes');
     if process_spikesorting_supervised('FigureIsOpen', 1)
         gui_enable(ctrl.jPanel, 1);
         UpdateElectrodesList();
+        if strcmpi(GlobalData.SpikeSorting.Data.Device, 'kilosort')
+            ctrl.jButtonSaveAndNext.setLabel('Save All');
+        else
+            ctrl.jButtonSaveAndNext.setLabel('Save and Next');
+        end
     else
         gui_enable(ctrl.jPanel, 0);
     end
