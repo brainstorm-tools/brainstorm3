@@ -460,6 +460,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         %% %%%%%%%%%%%%%%%%%%%  Create Brainstorm Events %%%%%%%%%%%%%%%%%%%
         
         bst_progress('text', 'Saving events file...');
+        
+        % Delete existing spike events
+        process_spikesorting_supervised('DeleteSpikeEvents', sInputs(i).FileName);
+        
         convertKilosort2BrainstormEvents(sFile, ChannelMat, bst_fullfile(ProtocolInfo.STUDIES, fPath), rez);
         
         cd(previous_directory);
