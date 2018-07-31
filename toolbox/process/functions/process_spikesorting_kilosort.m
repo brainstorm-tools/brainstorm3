@@ -221,11 +221,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         sFile = DataMat.F;
         
-        %% Adjust the possible clusters based on the number of channels
-        doubleChannels = 2*numChannels;
-        ops.Nfilt = ceil(doubleChannels/32)*32; % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)
         
-        %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
+        
+        %% %%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
         outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_kilosort_spikes']);
         
         % Clear if directory already exists
@@ -256,10 +254,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         try
             Montages = unique({Channels.Group});
             channelsMontage = zeros(1,length(Channels));
+            montageOccurences = zeros(1,length(Montages));
             for iChannel = 1:length(Channels)
                 for iMontage = 1:length(Montages)
                     if strcmp(Channels(iChannel).Group, Montages{iMontage})
                         channelsMontage(iChannel) = iMontage;
+                        montageOccurences(iMontage) = montageOccurences(iMontage)+1;
                     end
                 end
             end
@@ -271,9 +271,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 Channels(iChannel).Group = 'All';
             end
             
+            montageOccurences = length(Channels);
             channelsMontage = ones(1,length(Channels)); % This holds the code of the montage each channel holds 
         end
 
+        
+        %% Adjust the possible clusters based on the number of channels
+                
+        doubleChannels = 2*max(montageOccurences); % Each Montage will be treated as its own entity.
+        ops.Nfilt = ceil(doubleChannels/32)*32;    % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)
+        
+        
         %% If the coordinates are assigned, convert 3d to 2d
         
         if sum(sum([ChannelMat.Channel.Loc]))~=0 % If values are already assigned
@@ -487,7 +495,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if isempty(spikes)
                 spikes = curStruct;
             else
-                spikes(end+1) = spikes;
+                spikes(end+1) = curStruct;
             end
         end
         
@@ -572,10 +580,10 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
         selectedSpikes = find(spikeTemplates==uniqueClusters(iCluster));
         
         index = index+1;
-        % Write the packet to events
         
-        if uniqueClusters(iCluster)==1
-            events(index).label       = 'Spikes Noise |1|';
+        % Write the packet to events
+        if uniqueClusters(iCluster)==1 || uniqueClusters(iCluster)==0
+            events(index).label       = ['Spikes Noise |' num2str(uniqueClusters(iCluster)) '|'];
         else
             events(index).label       = [spikeEventPrefix ' ' ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
         end
@@ -711,6 +719,9 @@ function events = LoadKlustersEvents(SpikeSortedMat, iMontage)
     fet = dlmread(bst_fullfile(SpikeSortedMat.Parent, [study '.fet.' sMontage]));
 
 
+    ChannelsInMontage = ChannelMat.Channel(strcmp({ChannelMat.Channel.Group},SpikeSortedMat.Spikes(iMontage).Name)); % Only the channels from the Montage should be loaded here to be used in the spike-events
+    
+    
     %% The combination of the .clu files and the .fet file is enough to use on the converter.
 
     % Brainstorm assign each spike to a SINGLE NEURON on each electrode. This
@@ -749,7 +760,7 @@ function events = LoadKlustersEvents(SpikeSortedMat, iMontage)
         if uniqueClusters(iCluster)==1 || uniqueClusters(iCluster)==0
             events(index).label       = ['Spikes Noise |' num2str(uniqueClusters(iCluster)) '|'];
         else
-            events(index).label       = [spikesPrefix ' ' ChannelMat.Channel(iElectrode).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
+            events(index).label       = [spikesPrefix ' ' ChannelsInMontage(iElectrode).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
         end
         events(index).color       = rand(1,3);
         events(index).samples     = fet(selectedSpikes,end)'; % The timestamps are in SAMPLES
