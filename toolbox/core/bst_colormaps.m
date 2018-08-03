@@ -1326,6 +1326,10 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
             if ~isempty(DisplayUnits)
                 switch(DisplayUnits)
                     case 't',    fFactor = 1;
+                        
+                    case 'mol.l-1', fFactor = 1;
+                    case 'mmol.l-1', fFactor = 1e6;
+                    case 'umol.l-1', fFactor = 1e3;
                     otherwise,   fFactor = 1;
                 end
                 fUnits = DisplayUnits;
