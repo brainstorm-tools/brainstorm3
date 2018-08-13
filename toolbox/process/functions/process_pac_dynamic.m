@@ -75,6 +75,11 @@ function varargout = process_pac_dynamic( varargin )
 %
 %   - 2.4: SS. Aug. 2017 
 %                - "dpac" name changed to "tPAC"
+%   
+%   - 2.5: SS. Aug. 2018: Bug fix
+%                - Adding TimeInit for files with "all recording" option
+%                checked
+%                - Fixing the iPhase estimation in compute function 
 
 eval(macro_method);
 end
@@ -336,10 +341,16 @@ tic
                 sPAC.DynamicPhase = zeros(nSignals, nTime, length(sPACblock.HighFreqs), 1);                
                 sPAC.HighFreqs = sPACblock.HighFreqs;
                 
-                if PACoptions.margin_included
-                    meanInputTime  = PACoptions.margin+OPTIONS.TimeWindow(1)+(sPACblock.TimeOut(end)+OPTIONS.WinLen*(1-PACoptions.overlap))/2; 
+                if ~isempty(OPTIONS.TimeWindow)
+                    TimeInit = OPTIONS.TimeWindow(1);
                 else
-                    meanInputTime  = OPTIONS.TimeWindow(1)+(sPACblock.TimeOut(end)+OPTIONS.WinLen*(1-PACoptions.overlap))/2;
+                    TimeInit = 0;
+                end
+
+                if PACoptions.margin_included
+                    meanInputTime  = PACoptions.margin+TimeInit+(sPACblock.TimeOut(end)+OPTIONS.WinLen*(1-PACoptions.overlap))/2; 
+                else
+                    meanInputTime  = TimeInit+(sPACblock.TimeOut(end)+OPTIONS.WinLen*(1-PACoptions.overlap))/2;
                 end
                 meanOutputTime = (sPACblock.TimeOut(1)+sPACblock.TimeOut(end))/2;
                 sPAC.TimeOut   = sPACblock.TimeOut + (meanInputTime - meanOutputTime);
@@ -755,13 +766,15 @@ for ifreq=1:nFa
         nestingPh = nestingPh(:,nHilMar:fix(winLen*sRate)+nHilMar-1);              % Removing the margin
                 
         for ii=1:length(isources)
-            iphase = find(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))==-2 | ...
-                     sign(nestingPh(ii,2:end)-nestingPh(ii,1))==0 | ...
-                    -(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))-1).*diff(nestingPh(ii,:)-nestingPh(ii,1)) >6 )-1;
+            iphase = find(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))==2 | ...
+                     sign(nestingPh(ii,2:end)-nestingPh(ii,1))==0)-1;            
+%             iphase = find(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))==-2 | ...
+%                      sign(nestingPh(ii,2:end)-nestingPh(ii,1))==0 | ...
+%                     -(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))-1).*diff(nestingPh(ii,:)-nestingPh(ii,1)) >6 )-1;
             if isempty(iphase)
                 iphase = length(nestingPh(ii,:));
             end
-                           
+            
             PAC(ifreq,iTime,isources(ii)) = sum(nestedEnv(ii,1:max(iphase)).*exp(1i*nestingPh(ii,1:max(iphase))),2)...
                 ./max(iphase)./sqrt(mean(nestedEnv(ii,1:max(iphase)).^2,2));
             
