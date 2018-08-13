@@ -517,7 +517,7 @@ for iSubj = 1:length(SubjectNames)
         % Process: Select data files in: Subject/Run
         sTrialsAll = bst_process('CallProcess', 'process_select_files_data', [], [], ...
             'subjectname',   SubjectNames{iSubj}, ...
-            'condition',     sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-tsss_meg_notch', iSubj, iRun));
+            'condition',     sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-sss_meg_notch', iSubj, iRun));
         % Loop on the conditions
         for iCond = 1:length(AllConditions)
             % Comment describing this average

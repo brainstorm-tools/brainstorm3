@@ -364,7 +364,7 @@ disp(sprintf('\n===== IMPORT: EMPTY-ROOM =====\n'));
 % Loop on all the noise sessions
 NoiseFiles = {};
 for ses = {'20090409', '20090506', '20090511', '20090515', '20090518', '20090601', '20091126', '20091208'}
-    NoiseFiles{end+1} = fullfile(bids_dir, 'derivatives', 'meg_derivatives', EmptyRoomSubj, ['ses-' ses{1}], 'meg', ['sub-01_ses-' ses{1} '_task-noise_run-01_proc-sss_meg.fif']);
+    NoiseFiles{end+1} = fullfile(bids_dir, 'derivatives', 'meg_derivatives', EmptyRoomSubj, ['ses-' ses{1}], 'meg', ['sub-emptyroom_ses-' ses{1} '_task-noise_proc-sss_meg.fif']);
 end
 % Process: Create link to raw file 
 sFilesNoise = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
