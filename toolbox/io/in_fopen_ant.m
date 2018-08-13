@@ -83,7 +83,7 @@ else
     TrgFile = bst_fullfile(fPath, [fBase '.trg']);
     % If file exists
     if file_exist(TrgFile)
-        [sFile, newEvents] = import_events(sFile, [], TrgFile, 'ANT');
+        sFile = import_events(sFile, [], TrgFile, 'ANT');
     end
 end
 
