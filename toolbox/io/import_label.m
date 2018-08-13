@@ -312,11 +312,11 @@ for iFile = 1:length(LabelFiles)
             bst_progress('text', 'Reading atlas...');
             % If the file that is loaded has to be interpreted in MNI space
             isMni = strcmpi(FileFormat, 'MRI-MASK-MNI');
-            % Read MRI volume
+            % Read MRI volume  (do not normalize values when reading an atlas)
             if isMni
-                sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI');
+                sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI', [], 0);
             else
-                sMriMask = in_mri(LabelFiles{iFile}, 'ALL');
+                sMriMask = in_mri(LabelFiles{iFile}, 'ALL', [], 0);
             end
             if isempty(sMriMask)
                 return;

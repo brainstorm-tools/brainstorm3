@@ -42,11 +42,14 @@ if ischar(MriFile)
     if isMni
         sMri = in_mri(MriFile, 'ALL-MNI', isInteractive);
     else
-        % Do not normalize the labels for BrainSuite
-        % Labels are normalized for FreeSurfer (default behavior)
-        % For FreeSurfer, the labels go from 0-255 so the normalization
-        % does not have any effect
-        sMri = in_mri(MriFile, 'ALL', isInteractive, ~isBrainSuite);
+%         % Do not normalize the labels for BrainSuite
+%         % Labels are normalized for FreeSurfer (default behavior)
+%         % For FreeSurfer, the labels go from 0-255 so the normalization
+%         % does not have any effect
+%         sMri = in_mri(MriFile, 'ALL', isInteractive, ~isBrainSuite);
+
+        % Actually, when loading an atlas, the values should NEVER be normalized...
+        sMri = in_mri(MriFile, 'ALL', isInteractive, 0);
         
         if isBrainSuite
             sMri.Cube = mod(sMri.Cube,1000);
