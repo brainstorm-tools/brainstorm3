@@ -455,7 +455,7 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
             % Select only the current block of vertices and process it with OpenMEEG
             OPTIONS.GridLoc = bakGridLoc(iVert,:);
             % Call OpenMEEG
-            [tmpGain, errMessage] = bst_openmeeg(OPTIONS);
+            [tmpGain, errMessage] = bst_openmeeg_bin(OPTIONS);
             if isempty(tmpGain)
                 break;
             end
@@ -467,7 +467,7 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
         OPTIONS.GridLoc = bakGridLoc;
     % Do not split
     else
-        [Gain, errMessage] = bst_openmeeg(OPTIONS);
+        [Gain, errMessage] = bst_openmeeg_bin(OPTIONS);
         if isempty(Gain)
             OPTIONS = [];
             bst_progress('stop');
