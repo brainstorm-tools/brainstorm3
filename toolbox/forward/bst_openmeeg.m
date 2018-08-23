@@ -75,12 +75,12 @@ end
 % Get default url
 switch(osType)
     case 'linux32',  url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-Linux32.i386-gcc-4.3.2-static.tar.gz';
-    case 'linux64',  url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.0-Linux.tar.gz';
-    case 'mac32',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.0-MacOSX.tar.gz';
-    case 'mac64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.0-MacOSX.tar.gz';
+    case 'linux64',  url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Linux.tar.gz';
+    case 'mac32',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
+    case 'mac64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
     case 'sol64',    error('Solaris system is not supported');
     case 'win32',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
-    case 'win64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.0-Win64.tar.gz';
+    case 'win64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Win64.tar.gz';
     otherwise,       error('OpenMEEG software does not exist for your operating system.');
 end
 % Read the previous download url information
