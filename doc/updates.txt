@@ -1,4 +1,8 @@
 ---------------------------------------------------------------
+August 2018
+- Distrib: Improved download speed
+- Sources: Updated OpenMEEG to 2.4.1 (bug fixes)
+---------------------------------------------------------------
 July 2018
 - Inverse 2018: Major modification: dSPM values are no longer scaled by number of trials
   | https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation#Averaging_normalized_values
