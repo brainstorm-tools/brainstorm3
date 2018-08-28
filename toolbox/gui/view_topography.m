@@ -97,12 +97,14 @@ switch(fileType)
             ColormapType = GlobalData.DataSet(iDS).Measures.ColormapType;
         else
             switch Modality
-                case {'MEG', 'MEG MAG', 'MEG GRAD', 'MEG GRAD2', 'MEG GRAD3', 'NIRS'}
+                case {'MEG', 'MEG MAG', 'MEG GRAD', 'MEG GRAD2', 'MEG GRAD3'}
                     ColormapType = 'meg';
                 case {'EEG', 'ECOG', 'SEEG', 'ECOG+SEEG'}
                     ColormapType = 'eeg';
                 case {'MEG GRADNORM'}
                     ColormapType = 'timefreq';
+                case 'NIRS'
+                    ColormapType = 'nirs';
                 otherwise
                     error(['Modality "' Modality '" cannot be represented in 2D topography.']);
             end
