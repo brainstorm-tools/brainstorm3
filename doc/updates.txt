@@ -4,6 +4,7 @@ August 2018
 - Distrib: Improved download speed
 - Sources: Updated OpenMEEG to 2.4.1 (bug fixes)
 - GUI: Added NIRS colormap type
+- Anatomy: Added labels for FreeSurfer volume atlases: aparc+aseg, aparc.a2009s, aparc.DKTatlas
 ---------------------------------------------------------------
 July 2018
 - Inverse 2018: Major modification: dSPM values are no longer scaled by number of trials
