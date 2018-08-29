@@ -34,7 +34,7 @@ fprintf(gfid,'                        \n');
 
 for i=1:numbnd
     ind = mod(i,numbnd)+1;
-    fprintf(gfid,'%s                  \n', bndfile{ind});
+    fprintf(gfid,'"%s"                  \n', bndfile{ind});
 end
 
 fprintf(gfid,'                        \n');
