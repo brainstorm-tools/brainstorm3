@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 August 2018
+- Bug fix: All the issues related with OpenMEEG 2.4 should be fixed now
 - Distrib: Improved download speed
 - Sources: Updated OpenMEEG to 2.4.1 (bug fixes)
 - GUI: Added NIRS colormap type
