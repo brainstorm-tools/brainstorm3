@@ -50,7 +50,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                              BorderFactory.createEmptyBorder(3, 10, 10, 10)));
         % ===== TOOLBAR =====
         jToolbar = gui_component('Toolbar', jPanelMontages, BorderLayout.NORTH);
-        jToolbar.setPreferredSize(java_scaled('dimension', 100,25));
+        jToolbar.setPreferredSize(java_scaled('dimension', 200,25));
             TB_SIZE = java_scaled('dimension', 25,25);
             jButtonNew      = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_MONTAGE_MENU, java_scaled('dimension', 35,25)}, 'New montage');
             jButtonLoadFile = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_FOLDER_OPEN, TB_SIZE}, 'Load montage');
