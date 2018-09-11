@@ -21,6 +21,10 @@ function [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions)
 %
 % Authors: Martin Cousineau, 2018
 
+if bst_get('MatlabVersion') < 803
+    error('Importing MFF files requires at least Matlab 2014a.');
+end
+
 %% ===== PARSE INPUTS =====
 if strcmp(DataFile, 'downloadAndInstallMffJar')
     downloadAndInstallMffJar();
