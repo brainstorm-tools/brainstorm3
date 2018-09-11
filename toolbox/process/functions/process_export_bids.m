@@ -104,6 +104,39 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         sStudy   = bst_get('Study', sInput.iStudy);
         sSubject = bst_get('Subject', sStudy.BrainStormSubject);
         
+        % Skip unsupported formats
+        DataMat = in_bst_data(sInput.FileName);
+        sFile = DataMat.F;
+        if (~isempty(sFile.device) && ~ismember(sFile.device, {'CTF'})) || isempty(sFile.format) || ~ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS', 'BST-BIN'})
+            disp(['Skipping file "' sFile.comment '" due to unsupported format...']);
+            continue;
+        end
+        
+        % If BST binary file, try to find original raw file, or skip otherwise
+        if strcmpi(sFile.format, 'BST-BIN')
+            skip = 1;
+            if isfield(DataMat, 'History') && ~isempty(DataMat.History)
+                for iHist = 1:size(DataMat.History, 1)
+                    if strcmpi(DataMat.History{iHist, 2}, 'import')
+                        rawFile = strrep(DataMat.History{iHist, 3}, 'Link to raw file: ', '');
+                        if ~isempty(rawFile) && (exist(rawFile, 'file') == 2 || exist(rawFile, 'dir') == 7)
+                            skip = 0;
+                            sFile.filename = rawFile;
+                            disp(['Warning: File "', sFile.comment, '" already imported in binary format.', ...
+                                  10, '         Using raw link "', rawFile, '" instead.']);
+                            break;
+                        end
+                    end
+                end
+            end
+        else
+            skip = 0;
+        end
+        if skip
+            disp(['Skipping file "' sFile.comment '" due to raw link no longer existing...']);
+            continue;
+        end
+        
         % Extract date of study
         if isfield(sStudy, 'DateOfStudy') && ~isempty(sStudy.DateOfStudy)
             dateOfStudy = datetime(sStudy.DateOfStudy);
@@ -194,8 +227,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         %% Extract task name
-        DataMat = in_bst_data(sInput.FileName);
-        sFile = DataMat.F;
         [rawFolder, rawName, rawExt] = fileparts(sFile.filename);
         prefix = [FormatId(subjectId, 'sub') '_' FormatId(sessionId, 'ses')];
         prefixTask = [prefix '_task-'];
@@ -235,7 +266,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
             end
         end
-        %TODO: Surfaces in derivatives?
         
         %% Save MEG data
         megFolder = bst_fullfile(sessionFolder, 'meg');
