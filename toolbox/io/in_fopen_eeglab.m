@@ -38,7 +38,12 @@ end
 
 %% ===== READER HEADER =====
 % Load .set file
-hdr = load(DataFile, '-mat');
+if isstruct(DataFile)
+    hdr = DataFile;
+    DataFile = hdr.filename;
+else
+    hdr = load(DataFile, '-mat');
+end
 % Add some information
 hdr.isRaw = isempty(hdr.EEG.epoch) && ~isempty(hdr.EEG.data);
 nChannels = hdr.EEG.nbchan;

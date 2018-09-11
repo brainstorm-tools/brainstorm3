@@ -102,6 +102,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_gtec(DataFile);
     case 'EEG-MANSCAN'
         [sFile, ChannelMat] = in_fopen_manscan(DataFile);
+    case 'EEG-MFF'
+        [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions);
     case 'EEG-MICROMED'
         [sFile, ChannelMat] = in_fopen_micromed(DataFile);
     case 'EEG-NEURONE'
