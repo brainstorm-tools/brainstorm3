@@ -271,11 +271,32 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         oldTmpDir = bst_get('BrainstormTmpDir');
         newTmpDir = char(jTextTempDir.getText());
         if ~file_compare(oldTmpDir, newTmpDir)
-            % If temp directory changed: create directory if it doesn't exist
-            if file_exist(newTmpDir) || mkdir(newTmpDir)
-                bst_set('BrainstormTmpDir', newTmpDir);
+            % Make sure it is different from and does not contain the database directory
+            changeDir = 1;
+            dbDir = bst_get('BrainstormDbDir');
+            if file_compare(newTmpDir, dbDir)
+                java_dialog('warning', 'Your temporary and database directories must be different.');
+                changeDir = 0;
             else
-                java_dialog('warning', 'Could not create temporary directory.');
+                parentDir = fileparts(dbDir);
+                lastParent = [];
+                while ~isempty(parentDir) && ~strcmp(lastParent, parentDir)
+                    if file_compare(newTmpDir, parentDir)
+                        java_dialog('warning', 'Your temporary directory cannot contain your database directory.');
+                        changeDir = 0;
+                        break;
+                    end
+                    lastParent = parentDir;
+                    parentDir = fileparts(parentDir);
+                end
+            end
+            if changeDir
+                % If temp directory changed: create directory if it doesn't exist
+                if file_exist(newTmpDir) || mkdir(newTmpDir)
+                    bst_set('BrainstormTmpDir', newTmpDir);
+                else
+                    java_dialog('warning', 'Could not create temporary directory.');
+                end
             end
         end
         % FieldTrip directory
