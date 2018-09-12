@@ -44,7 +44,7 @@ hdr.EEG = mff_import(DataFile);
 
 %% ===== IMPORT FILE USING EEGLAB IMPORTER =====
 [sFile, ChannelMat] = in_fopen_eeglab(hdr, ImportOptions);
-sFile.format       = 'EEG-MFF';
+sFile.format       = 'EEG-EGI-MFF';
 sFile.device       = 'MFF';
 if ~isempty(ChannelMat)
     ChannelMat.Comment = strrep(ChannelMat.Comment, 'EEGLAB', 'MFF');
