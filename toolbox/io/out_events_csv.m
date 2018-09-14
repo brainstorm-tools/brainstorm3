@@ -1,5 +1,5 @@
 function out_events_csv( sFile, EventsFile )
-% OUT_EVENTS_CSV: Export events to a coma-separated text file (CSV).
+% OUT_EVENTS_CSV: Export events to a comma-separated text file (CSV).
 %
 % USAGE:  out_events_csv( sFile, EventsFile )
 

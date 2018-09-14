@@ -51,7 +51,7 @@ switch (FileFormat)
     case 'FreeSurfer+Thick'
         import_anatomy_fs(iSubject, AnatDir, [], 1, [], 1);
     case 'BrainSuite'
-        import_anatomy_bs(iSubject, AnatDir, [], 1);
+        import_anatomy_bs(iSubject, AnatDir, [], 1, [], 0);
     case 'BrainVISA'
         import_anatomy_bv(iSubject, AnatDir, [], 1);
     case 'CIVET'

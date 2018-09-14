@@ -39,7 +39,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Event name
-    sProcess.options.evtnames.Comment  = 'Events to merge (separated with comas): ';
+    sProcess.options.evtnames.Comment  = 'Events to merge (separated with commas): ';
     sProcess.options.evtnames.Type     = 'text';
     sProcess.options.evtnames.Value    = '';
     % New name

@@ -75,12 +75,12 @@ end
 % Get default url
 switch(osType)
     case 'linux32',  url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-Linux32.i386-gcc-4.3.2-static.tar.gz';
-    case 'linux64',  url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-Linux64.amd64-gcc-4.3.2-OpenMP-static.tar.gz';
-    case 'mac32',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-MacOSX-Intel-gcc-4.2.1-static.tar.gz';
-    case 'mac64',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-MacOSX-Intel-gcc-4.2.1-static.tar.gz';
+    case 'linux64',  url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Linux.tar.gz';
+    case 'mac32',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
+    case 'mac64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
     case 'sol64',    error('Solaris system is not supported');
     case 'win32',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
-    case 'win64',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win64-x86_64-cl-OpenMP-shared.tar.gz';
+    case 'win64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Win64.tar.gz';
     otherwise,       error('OpenMEEG software does not exist for your operating system.');
 end
 % Read the previous download url information
@@ -91,6 +91,14 @@ if isdir(OpenmeegDir) && file_exist(urlFile)
 else
     prevUrl = '';
 end
+
+% Bug workaround: FT Jul-2018/OM2.4: Change of behavior of OpenMEEG2.4 binaries on macos:
+% Before, all the bin and lib files were moved to $HOME/.brainstorm/openmeeg/mac64, the folder was added to DYLD_LIBRARY_PATH, and it was working.
+% With OM2.4, the dylib files must stay in the /lib subfolder or the OM binaries do not properly find them...
+if strcmpi(osType, 'mac64') && ~isdir(bst_fullfile(OpenmeegDir, 'lib'))
+    prevUrl = '';
+end
+
 % If binary file doesnt exist: download
 if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) || ~strcmpi(prevUrl, url) || isUpdate
     % If folder exists: delete
@@ -144,11 +152,22 @@ if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) ||
     idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
     unzipDir = bst_fullfile(OpenmeegDir, diropen(idir).name);
     % Move all files to OpenmeegDir
-    movefile(bst_fullfile(unzipDir, 'bin', '*'), OpenmeegDir);
-    movefile(bst_fullfile(unzipDir, 'lib', '*'), OpenmeegDir);
-    try
-        movefile(bst_fullfile(unzipDir, 'doc', '*'), OpenmeegDir);
-    catch
+    % Bug workaround: FT Jul-2018/OM2.4: On MacOS, the files must keep their original bin/ and lib/ subfolders
+    if strcmpi(osType, 'mac64')
+        movefile(bst_fullfile(unzipDir, 'bin'), OpenmeegDir);
+        movefile(bst_fullfile(unzipDir, 'lib'), OpenmeegDir);
+        try
+            movefile(bst_fullfile(unzipDir, 'doc'), OpenmeegDir);
+        catch
+        end
+    % Other systems: Move all the files from all the subfolders to the same openmeeg folder
+    else
+        movefile(bst_fullfile(unzipDir, 'bin', '*'), OpenmeegDir);
+        movefile(bst_fullfile(unzipDir, 'lib', '*'), OpenmeegDir);
+        try
+            movefile(bst_fullfile(unzipDir, 'doc', '*'), OpenmeegDir);
+        catch
+        end
     end
     % Delete files
     file_delete({tgzFile, unzipDir}, 1, 3);
@@ -174,14 +193,20 @@ bst_progress('setlink', 'http://openmeeg.github.io');
 if ~ispc
     if ismember(osType, {'linux32', 'linux64', 'sol64'})
         varname = 'LD_LIBRARY_PATH';
+        libDir = OpenmeegDir;
+        binDir = OpenmeegDir;
     else
         varname = 'DYLD_LIBRARY_PATH';
+        libDir = bst_fullfile(OpenmeegDir, 'lib');
+        binDir = bst_fullfile(OpenmeegDir, 'bin');
     end
     libpath = getenv(varname);
     if ~isempty(libpath)
         libpath = [libpath ':'];
     end
     setenv(varname, [libpath  OpenmeegDir]);
+else
+    binDir = OpenmeegDir;
 end
 % Set number of cores used
 try
@@ -250,7 +275,7 @@ om_write_cond(condfile, OPTIONS.BemCond, OPTIONS.BemNames);
 dipdata = [kron(OPTIONS.GridLoc,ones(3,1)), kron(ones(nv,1), eye(3))];
 save(dipfile, 'dipdata', '-ASCII', '-double');  
 % Go to openmeeg folder
-cd(OpenmeegDir);
+cd(binDir);
 
 
 %% ===== GET EXISTING HM FILE =====
@@ -503,8 +528,8 @@ bst_progress('removeimage');
             % Detail error
             errMsg = ['OpenMEEG call: ',  strrep(strCall, ' "', [10 '      "']),  10 10 ...
                       'OpenMEEG error #' num2str(status) ': ' 10 result 10 10 ...
-                      'Many OpenMEEG crashes are due to a lack of memory.' 10 ...
-                      'Reduce the number of vertices on each BEM layer and try again.'];
+                      'For help with OpenMEEG errors, please refer to the online tutorial:' 10 ...
+                      'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem#Errors'];
             % Check status for standard errors
             if (status == -1073741515)
                 errMsg = [errMsg 10 'This error is probably due to incompatible binaries or missing libraries.' 10 ...

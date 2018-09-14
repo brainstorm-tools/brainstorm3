@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Generate SPM canonical surfaces';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import anatomy';
+    sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 8;
     sProcess.Description = 'https://github.com/neurodebian/spm12/blob/master/spm_eeg_inv_mesh.m';
     % Definition of the input accepted by this process

@@ -28,8 +28,8 @@ global TimeSliderMutex;
 TimeSliderMutex = [];
 % Create main Brainstorm window
 GlobalData.Program.GUI = gui_brainstorm('CreateWindow');
-% Abort if something went wrong
-if isempty(GlobalData.Program.GUI)
+% Abort if something went wrong or if in server mode
+if isempty(GlobalData.Program.GUI) || (GlobalData.Program.GuiLevel == -1)
     return;
 end
     

@@ -28,6 +28,12 @@ function gui_hide( varargin )
 
 global GlobalData;
 
+% Headless mode: exit
+if (GlobalData.Program.GuiLevel == -1)
+    return
+end
+
+
 %% ===== PARSE INPUTS =====
 if (nargin == 1)
     % If panel to hide is referenced by its name

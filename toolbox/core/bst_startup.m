@@ -27,7 +27,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, John C. Mosher, 1999
-%          Francois Tadel, 2008-2017
+%          Francois Tadel, 2008-2018
 
 
 %% ===== MATLAB CHECK =====
@@ -70,6 +70,11 @@ GlobalData.Program.GuiLevel = GuiLevel;
 GlobalData.DataBase.LastSavedTime = tic();   % Save the current time, to know when to save the database
 % Save the software home directory
 bst_set('BrainstormHomeDir', BrainstormHomeDir);
+% Test for headless mode
+if (GuiLevel >= 0) && (java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.isHeadless() || java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.isHeadlessInstance())
+    disp(' ');
+    error(['Cannot create graphic interface.' 10 'If running Brainstorm in headless mode on a distant server, run "brainstorm server".']);
+end
 % Splash screen
 if (GuiLevel == 1)
     bst_splash('show');
@@ -257,7 +262,7 @@ if isempty(GlobalData.Colormaps)
     GlobalData.Colormaps = sDefColormaps;
 end
 % Check that default montages are loaded
-if (length(GlobalData.ChannelMontages.Montages) < 5) || ~ismember('CTF LF', {GlobalData.ChannelMontages.Montages.Name}) || ~ismember('Bad channels', {GlobalData.ChannelMontages.Montages.Name})
+if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)'}, {GlobalData.ChannelMontages.Montages.Name}))
     disp('BST> Loading default montages...');
     % Reset list of montages
     GlobalData.ChannelMontages.Montages = [];
@@ -313,10 +318,12 @@ end
 
 
 %% ===== START BRAINSTORM GUI =====
-disp('BST> Initializing user interface...');
 % Get screen configuration
 GlobalData.Program.ScreenDef = gui_layout('GetScreenClientArea');
-% Create main window
+% Create main window (skipped in server mode)
+if (GuiLevel >= 0)
+    disp('BST> Initializing user interface...');
+end
 gui_initialize();
 % Abort if something went wrong
 if isempty(GlobalData.Program.GUI)
@@ -361,21 +368,22 @@ end
 
 
 %% ===== START OPENGL =====
-fprintf(1, 'BST> Starting OpenGL engine... ');
-[isOpenGL, DisableOpenGL] = panel_options('StartOpenGL');
-% If OpenGL cannot be used: display a warning message
-if ~isOpenGL
-    disp('BST> Warning: No OpenGL support available for this computer.');
-    disp('BST>          Display will be slow and ugly.');
-% If OpenGL is manually disabled
-elseif isOpenGL && (DisableOpenGL == 1)
-    disp('BST> Warning: ');
-    disp('BST>    * Using this option causes the display to be slow and ugly.');
-    disp('BST>    * Select only if you are experiencing serious display bugs with ');
-    disp('BST>    * the full hardware acceleration. To edit this option: ');
-    disp('BST>    * Menu: File > Set preferences... > Disable OpenGL rendering.');
+if (GuiLevel >= 0)
+    fprintf(1, 'BST> Starting OpenGL engine... ');
+    [isOpenGL, DisableOpenGL] = panel_options('StartOpenGL');
+    % If OpenGL cannot be used: display a warning message
+    if ~isOpenGL
+        disp('BST> Warning: No OpenGL support available for this computer.');
+        disp('BST>          Display will be slow and ugly.');
+    % If OpenGL is manually disabled
+    elseif isOpenGL && (DisableOpenGL == 1)
+        disp('BST> Warning: ');
+        disp('BST>    * Using this option causes the display to be slow and ugly.');
+        disp('BST>    * Select only if you are experiencing serious display bugs with ');
+        disp('BST>    * the full hardware acceleration. To edit this option: ');
+        disp('BST>    * Menu: File > Set preferences... > Disable OpenGL rendering.');
+    end
 end
-
 
 %% ===== PARSE PROCESS FOLDER =====
 % Parse process folder
@@ -505,16 +513,24 @@ if (GuiLevel == 1)
         jFrame.setVisible(1);
     end
 end
-% Display Brainstorm version
-jFrame.setTitle(['Brainstorm ' Date]);
-% Read the protocols list in UserDataBase
-gui_brainstorm('UpdateProtocolsList');
-% Load the selected protocol
-gui_brainstorm('SetCurrentProtocol', GlobalData.DataBase.iProtocol);
-% Update permanent panels (to disable them)
-panel_surface('UpdatePanel');
-panel_scout('UpdatePanel');
-panel_cluster('UpdatePanel');
+% Headless mode: load protocol data
+if (GuiLevel == -1)
+    if ~bst_get('isProtocolLoaded')
+        db_load_protocol(GlobalData.DataBase.iProtocol);
+    end
+% Regular GUI: Prepare protocol explorer panel
+else
+    % Display Brainstorm version
+    jFrame.setTitle(['Brainstorm ' Date]);
+    % Read the protocols list in UserDataBase
+    gui_brainstorm('UpdateProtocolsList');
+    % Load the selected protocol
+    gui_brainstorm('SetCurrentProtocol', GlobalData.DataBase.iProtocol);
+    % Update permanent panels (to disable them)
+    panel_surface('UpdatePanel');
+    panel_scout('UpdatePanel');
+    panel_cluster('UpdatePanel');
+end
 disp('BST> =================================');
 disp(' ');
 % Set a flag to mark that brainstorm is now running

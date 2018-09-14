@@ -92,7 +92,7 @@ for iSubj = 1:16
     % Loop on runs
     for iRun = 1:6
         % Run folders
-        RunName = sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-tsss_meg', iSubj, iRun);
+        RunName = sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-sss_meg', iSubj, iRun);
         RunSrc  = bst_fullfile(DataSrc,  RunName);
         RunDest = bst_fullfile(DataDest, RunName);
         % If run folder doesn't exist: skip

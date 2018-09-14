@@ -3,8 +3,8 @@ function varargout = brainstorm( varargin )
 %
 % USAGE: brainstorm               : Start Brainstorm
 %        brainstorm start         : Start Brainstorm
-%        brainstorm nogui         : Start Brainstorm without interface
-%        brainstorm server        : Start Brainstorm on a Matlab server (keeps the environment alive at the end of the execution)
+%        brainstorm nogui         : Start Brainstorm with hidden interface (for scripts)
+%        brainstorm server        : Start Brainstorm on a distant server (completely headless)
 %        brainstorm ... local     : Start Brainstorm with a local database (in .brainstorm folder)
 %        brainstorm stop          : Quit Brainstorm
 %        brainstorm reset         : Re-inialize Brainstorm (delete preferences and database)
@@ -250,9 +250,10 @@ switch action
     otherwise
         disp(' ');
         disp('Usage : brainstorm start         : Start Brainstorm');
-        disp('        brainstorm nogui         : Start Brainstorm without interface (for scripts)');
-        disp('        brainstorm stop          : Stop Brainstorm');
-        disp('        brainstorm server        : Start Brainstorm on a Matlab server');
+        disp('        brainstorm nogui         : Start Brainstorm with hidden interface (for scripts)');
+        disp('        brainstorm server        : Start Brainstorm on a distant server (completely headless)');
+        disp('        brainstorm ... local     : Start Brainstorm with a local database (in .brainstorm folder)');
+        disp('        brainstorm stop          : Quit Brainstorm');
         disp('        brainstorm update        : Download and install latest Brainstorm update (see bst_update)');
         disp('        brainstorm reset         : Re-initialize Brainstorm database and preferences');
         disp('        brainstorm digitize      : Digitize electrodes positions and head shape using a Polhemus system');
@@ -266,6 +267,7 @@ switch action
         disp('        brainstorm deploy        : Create a zip file for distribution (see bst_deploy)');
         disp('        brainstorm deploy 1      : Deploy + compile the current version of Brainstorm with Matlab mcc compiler');
         disp('        brainstorm packagebin    : Create separate zip files for all the currently available binary distributions');
+        disp('  res = brainstorm(''status'')     : Return brainstorm status (1=running, 0=stopped)');
         disp(' ');
 end
 

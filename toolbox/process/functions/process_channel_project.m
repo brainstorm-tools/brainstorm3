@@ -30,7 +30,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Project electrodes on scalp';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import recordings';
+    sProcess.SubGroup    = {'Import', 'Import recordings'};
     sProcess.Index       = 40;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy?highlight=(Project electrodes+on+scalp+surface)#Register_electrodes_with_MRI';
     % Definition of the input accepted by this process

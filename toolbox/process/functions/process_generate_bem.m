@@ -30,7 +30,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Generate BEM surfaces';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import anatomy';
+    sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 7;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};

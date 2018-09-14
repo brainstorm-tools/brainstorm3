@@ -312,11 +312,11 @@ for iFile = 1:length(LabelFiles)
             bst_progress('text', 'Reading atlas...');
             % If the file that is loaded has to be interpreted in MNI space
             isMni = strcmpi(FileFormat, 'MRI-MASK-MNI');
-            % Read MRI volume
+            % Read MRI volume  (do not normalize values when reading an atlas)
             if isMni
-                sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI');
+                sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI', [], 0);
             else
-                sMriMask = in_mri(LabelFiles{iFile}, 'ALL');
+                sMriMask = in_mri(LabelFiles{iFile}, 'ALL', [], 0);
             end
             if isempty(sMriMask)
                 return;
@@ -352,6 +352,10 @@ for iFile = 1:length(LabelFiles)
             if isMni
                 % The original volume is in subject space and and the atlas volume is in MNI space
                 vertMni = cs_convert(sMriSubj, 'scs', 'mni', Vertices);
+                if isempty(vertMni)
+                    Messages = [Messages, 'Error: Compute the MNI transformation first.'];
+                    return
+                end
                 vertMri = round(cs_convert(sMriMask, 'mni', 'voxel', vertMni));
             else
                 % Check the compatibility of MRI sizes
@@ -521,6 +525,8 @@ for iFile = 1:length(LabelFiles)
                 entry = labelMap.get(num2str(id));
                 labelInfo.Name = entry(1);
                 labelInfo.Color = entry(2);
+                % Transpose color vector
+                labelInfo.Color = labelInfo.Color(:)';
                 % Skip the "background" scout
                 if strcmpi(labelInfo.Name, 'background')
                     continue;

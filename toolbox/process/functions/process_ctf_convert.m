@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Convert to continuous (CTF)';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import recordings';
+    sProcess.SubGroup    = {'Import', 'Import recordings'};
     sProcess.Index       = 12;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ReviewRaw#Epoched_vs._continuous';
     % Definition of the input accepted by this process

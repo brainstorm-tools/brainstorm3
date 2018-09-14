@@ -811,6 +811,7 @@ function root = CreateFilterTree(s)
     s = [s ' '];
     root = struct();
     root.word = '';
+    root.children = [];
     path = [];
     numChildren = 0;
     quoting = 0;
@@ -844,12 +845,16 @@ function root = CreateFilterTree(s)
             if ~isempty(word)
                 node = struct();
                 node.word = word;
+                node.children = [];
                 evalString = 'root';
                 for iPath = 1:length(path)
                     evalString = [evalString '.children(' num2str(path(iPath)) ')'];
                 end
-                evalString = [evalString '.children(' num2str(numChildren + 1) ') = node;'];
-                eval(evalString);
+                evalString = [evalString '.children'];
+                if ~isempty(eval(evalString))
+                    evalString = [evalString '(' num2str(numChildren + 1) ')'];
+                end
+                eval([evalString ' = node;']);
                 numChildren = numChildren + 1;
             end
             word = '';
@@ -859,11 +864,17 @@ function root = CreateFilterTree(s)
         if action == ADD_BRANCH
             node = struct();
             node.word = '';
+            node.children = [];
             iChild = numChildren + 1;
             path = [path, iChild];
             evalString = 'root';
+            lastSelector = '';
             for iPath = 1:length(path)
-                evalString = [evalString '.children(' num2str(path(iPath)) ')'];
+                evalString = [evalString lastSelector '.children'];
+                lastSelector = ['(' num2str(path(iPath)) ')'];
+            end
+            if ~isempty(eval(evalString))
+                evalString = [evalString lastSelector];
             end
             eval([evalString ' = node;']);
             numChildren = 0;

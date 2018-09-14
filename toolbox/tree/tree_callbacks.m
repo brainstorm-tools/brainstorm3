@@ -470,7 +470,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Edit protocol', IconLoader.ICON_EDIT,        [], @(h,ev)gui_edit_protocol('edit', iProtocol));
                     gui_component('MenuItem', jPopup, [], 'New subject',   IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)db_edit_subject);
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'));
+                    gui_component('MenuItem', jPopup, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'));
                 end
                 % Export menu (added later)
                 jMenuExport = gui_component('MenuItem', [], [], 'Export',   IconLoader.ICON_SAVE, [], @(h,ev)export_protocol);
@@ -487,7 +487,7 @@ switch (lower(action))
                     end
                     gui_component('MenuItem', jPopup, [], 'New folder', IconLoader.ICON_FOLDER_NEW,  [], @(h,ev)db_add_condition('*'));
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'));
+                    gui_component('MenuItem', jPopup, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Review raw file', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@import_raw));
                     gui_component('MenuItem', jPopup, [], 'Import MEG/EEG',  IconLoader.ICON_EEG_NEW,  [], @(h,ev)bst_call(@import_data));
@@ -747,8 +747,10 @@ switch (lower(action))
                 Device = bst_get('ChannelDevice', filenameRelative);
                 % Replace SEEG+ECOG with iEEG
                 if all(ismember({'SEEG','ECOG'}, AllMod))
-                    AllMod     = cat(2, {'ECOG+SEEG'}, setdiff(AllMod,     {'SEEG','ECOG'}));
-                    DisplayMod = cat(2, {'ECOG+SEEG'}, setdiff(DisplayMod, {'SEEG','ECOG'}));
+                    AllMod = cat(2, {'ECOG+SEEG'}, setdiff(AllMod, {'SEEG','ECOG'}));
+                    if ~isempty(DisplayMod)
+                        DisplayMod = cat(2, {'ECOG+SEEG'}, setdiff(DisplayMod, {'SEEG','ECOG'}));
+                    end
                 end
                 % If only one modality
                 if (length(DisplayMod) == 1) && ((length(bstNodes) ~= 1) || isempty(Device)) && ~ismember(Device, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'RICOH'}) && ~ismember(DisplayMod, {'EEG','ECOG','SEEG','ECOG+SEEG','NIRS'})
@@ -1129,8 +1131,8 @@ switch (lower(action))
                 
                 % === COMPUTE SOURCES ===
                 if ~bst_get('ReadOnly') && isempty(strfind(filenameRelative, 'headmodel_grid_'))
-                    gui_component('MenuItem', jPopup, [], 'Compute sources [2009]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2009'));
-                    gui_component('MenuItem', jPopup, [], 'Compute sources [2016]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2016'));
+                    % gui_component('MenuItem', jPopup, [], 'Compute sources [2009]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2009'));
+                    % gui_component('MenuItem', jPopup, [], 'Compute sources [2016]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2016'));
                     gui_component('MenuItem', jPopup, [], 'Compute sources [2018]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2018'));
                 end
                 % === SET AS DEFAULT HEADMODEL ===
@@ -2130,6 +2132,8 @@ switch (lower(action))
             else
                 RawFile = [];
             end
+            % Folders: set acquisition date
+            gui_component('MenuItem', jMenuFile, [], 'Set acquisition date', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('SetAcquisitionDate', iStudy));
             % Raw file menus
             if ~isempty(RawFile)
                 % Files that are not saved in the database
@@ -2295,8 +2299,8 @@ end % END SWITCH( ACTION )
 %% ===== MENU: COMPUTE SOURCES =====
     function fcnPopupComputeSources()         
         import org.brainstorm.icon.*;
-        gui_component('MenuItem', jPopup, [], 'Compute sources [2009]', IconLoader.ICON_RESULTS, [], @(h,ev)panel_protocols('TreeInverse', bstNodes, '2009'));
-        gui_component('MenuItem', jPopup, [], 'Compute sources [2016]', IconLoader.ICON_RESULTS, [], @(h,ev)panel_protocols('TreeInverse', bstNodes, '2016'));
+        % gui_component('MenuItem', jPopup, [], 'Compute sources [2009]', IconLoader.ICON_RESULTS, [], @(h,ev)panel_protocols('TreeInverse', bstNodes, '2009'));
+        % gui_component('MenuItem', jPopup, [], 'Compute sources [2016]', IconLoader.ICON_RESULTS, [], @(h,ev)panel_protocols('TreeInverse', bstNodes, '2016'));
         gui_component('MenuItem', jPopup, [], 'Compute sources [2018]', IconLoader.ICON_RESULTS, [], @(h,ev)panel_protocols('TreeInverse', bstNodes, '2018'));
     end
 

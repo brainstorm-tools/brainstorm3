@@ -41,7 +41,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Event name: to remove
-    sProcess.options.responses.Comment = 'Response events (separated with comas): ';
+    sProcess.options.responses.Comment = 'Response events (separated with commas): ';
     sProcess.options.responses.Type    = 'text';
     sProcess.options.responses.Value   = '';
     % Minimum delay between events

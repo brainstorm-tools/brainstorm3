@@ -1,4 +1,4 @@
-function tutorial_visual_short(tutorial_dir, reports_dir)
+function tutorial_visual_short(bids_dir, reports_dir)
 % TUTORIAL_VISUAL_SHORT: Runs the Brainstorm/SPM group analysis pipeline (BIDS) - SHORT VERSION
 % 
 % DESCRIPTION:
@@ -14,8 +14,8 @@ function tutorial_visual_short(tutorial_dir, reports_dir)
 %    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
-%    - tutorial_dir : Directory containing the folder ds000117_R1.0.0  (https://openfmri.org/dataset/ds000117/, version 1.0.0)
-%    - reports_dir  : If defined, exports all the reports as HTML to this folder
+%    - bids_dir    : Path to folder "Multisubject, multimodal face processing"  (https://openneuro.org/datasets/ds000117/versions/00004)
+%    - reports_dir : If defined, exports all the reports as HTML to this folder
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -42,7 +42,7 @@ if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
     reports_dir = [];
 end
 % You have to specify the folder in which the tutorial dataset is unzipped
-if (nargin < 1) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
+if (nargin < 1) || isempty(bids_dir) || ~file_exist(bids_dir)
     error('The first argument must be the full path to the tutorial folder.');
 end
 
@@ -66,7 +66,7 @@ bst_set('DisplayGFP', 1);
 ProtocolNameSingle = 'TutorialVisualShort';
 ProtocolNameGroup  = 'TutorialGroupShort';
 % Part 1: Single subject analysis
-tutorial_visual_short_single(tutorial_dir, reports_dir);
+tutorial_visual_short_single(bids_dir, reports_dir);
 % Part 2: Copy to a new protocol for the group analysis
 tutorial_visual_short_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir);
 % Part 3: Group analysis

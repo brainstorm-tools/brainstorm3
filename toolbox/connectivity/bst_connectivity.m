@@ -100,7 +100,7 @@ if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && ismember(OPTION
 end
 % Symmetric storage?
 if isempty(OPTIONS.isSymmetric)
-    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
+    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','aec'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
 end
 % Processing [1xN] or [NxN]
 isConnNN = isempty(FilesB);

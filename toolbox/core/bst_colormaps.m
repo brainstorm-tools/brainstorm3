@@ -79,6 +79,7 @@ function sColormaps = Initialize() %#ok<DEFNU>
     % Create colormaps structures
     sColormaps = struct('eeg',      GetDefaults('eeg'), ...
                         'meg',      GetDefaults('meg'), ...
+                        'nirs',     GetDefaults('nirs'), ...
                         'source',   GetDefaults('source'), ...
                         'anatomy',  GetDefaults('anatomy'), ...
                         'stat1',    GetDefaults('stat1'), ...
@@ -104,7 +105,7 @@ function sColormap = GetDefaults(ColormapType)
     % Get content
     switch lower(ColormapType)
         % EEG Recordings colormap
-        case {'eeg', 'meg'}
+        case {'eeg', 'meg','nirs'}
             sColormap.Name             = 'cmap_rbw';
             sColormap.CMap             = cmap_rbw(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
@@ -816,6 +817,14 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
             CreateColormapMenu(jMenuColormap, 'meg', DisplayUnits);
         end
     end
+    if isempty(hFig) || ismember('nirs', AllTypes)
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'NIRS Recordings'], IconLoader.ICON_COLORMAP_RECORDINGS);
+        if isDynamic
+            java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'nirs', DisplayUnits));
+        else
+            CreateColormapMenu(jMenuColormap, 'nirs', DisplayUnits);
+        end
+    end
     if isempty(hFig) || ismember('source', AllTypes)
         jMenuColormap = gui_component('Menu', jMenu, [], [spre 'Sources'], IconLoader.ICON_COLORMAP_SOURCES);
         if isDynamic
@@ -1309,7 +1318,6 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                 % Get minimum and maximum values in the figure color data
                 dataBounds = get(hAxes(1), 'CLim');
                 DataType = 'stat';
-            % Regular values:  get min/max from the figure
             else
                 % Get minimum and maximum values in the figure color data
                 dataBounds = get(hAxes(1), 'CLim');
@@ -1326,6 +1334,20 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
             if ~isempty(DisplayUnits)
                 switch(DisplayUnits)
                     case 't',    fFactor = 1;
+                    case 'mol.l-1', fFactor = 1;
+                    case 'mmol.l-1', fFactor = 1e3;
+                    case 'umol.l-1', fFactor = 1e6;
+                    case 'U.A.'
+                        fmax = max(abs(dataBounds));
+                        if fmax < 1e3
+                            fFactor=1e6;
+                            DisplayUnits='U.A(*10^6)';
+                        elseif fmax < 1
+                            fFactor=1e3;
+                            DisplayUnits='U.A(*10^3)';
+                        else
+                            fFactor=1;
+                        end
                     otherwise,   fFactor = 1;
                 end
                 fUnits = DisplayUnits;

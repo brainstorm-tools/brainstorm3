@@ -30,7 +30,7 @@ function [FigData, iDS, iFig] = gui_figure_data( hFig, varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2010
+% Authors: Francois Tadel, 2008-2018
 
 % === INITIALIZATIONS ===
 global GlobalData;
@@ -166,8 +166,12 @@ for iAxes = 1:length(Handles)
     % === COMMENTS ===
     % Get title for these axes
     FigData.AxesTitle{iAxes} = get(get(Handles(iAxes).hAxes, 'Title'), 'String');
-    % Get legend of these axes
-    hLegend = legend(Handles(iAxes).hAxes);
+    % Get legend of these axes (newer matlab create legend if does not exist: avoided with this test)
+    if (bst_get('MatlabVersion') >= 903) && isempty(Handles(iAxes).hAxes.Legend)
+        hLegend = [];
+    else
+        hLegend = legend(Handles(iAxes).hAxes);
+    end
     if ~isempty(hLegend)
         if (bst_get('MatlabVersion') < 804)
             legendText = get(findobj(hLegend, 'type','text'), 'string');

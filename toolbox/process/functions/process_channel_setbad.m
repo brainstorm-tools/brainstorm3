@@ -30,7 +30,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Set bad channels';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import recordings';
+    sProcess.SubGroup    = {'Import', 'Import recordings'};
     sProcess.Index       = 38;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/BadChannels';
     % Definition of the input accepted by this process

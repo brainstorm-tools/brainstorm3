@@ -174,11 +174,13 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
         jGroupMnMeasure = ButtonGroup();
         jRadioMnCurrent = gui_component('radio', jPanelMeasureMN, [],   'Current density map',  jGroupMnMeasure, '', @(h,ev)UpdatePanel(1), []);
         jRadioMnDspm    = gui_component('radio', jPanelMeasureMN, 'br', 'dSPM',                 jGroupMnMeasure, '', @(h,ev)UpdatePanel(1), []);
+        jButtonDspmWarning = gui_component('label', jPanelMeasureMN, 'hfill', '<HTML><FONT color="#428bca">&nbsp;&nbsp;&nbsp;&nbsp;<U>Warning</U></FONT>', '', '', @(h,ev)WarningDspm(), []);
+        jButtonDspmWarning.setHorizontalAlignment(jButtonDspmWarning.RIGHT);
         jRadioMnSloreta = gui_component('radio', jPanelMeasureMN, 'br', 'sLORETA',              jGroupMnMeasure, '', @(h,ev)UpdatePanel(1), []);
         % Default selection
         switch lower(OPTIONS.InverseMeasure)
             case 'amplitude',    jRadioMnCurrent.setSelected(1);
-            case 'dspm',         jRadioMnDspm.setSelected(1);
+            case 'dspm2018',     jRadioMnDspm.setSelected(1);
             case 'sloreta',      jRadioMnSloreta.setSelected(1);
             otherwise,           jRadioMnCurrent.setSelected(1);
         end
@@ -725,7 +727,7 @@ function [Method, Measure] = GetSelectedMethod(ctrl)
         if ctrl.jRadioMnCurrent.isSelected()
             Measure = 'amplitude';
         elseif ctrl.jRadioMnDspm.isSelected()
-            Measure = 'dspm';
+            Measure = 'dspm2018';
         elseif ctrl.jRadioMnSloreta.isSelected()
             Measure = 'sloreta';
         end
@@ -747,7 +749,7 @@ function Comment = GetMethodComment(Method, Measure)
         case 'minnorm'
             switch (lower(Measure))
                 case 'amplitude', Comment = 'MN';
-                case 'dspm',      Comment = 'dSPM';
+                case 'dspm2018',  Comment = 'dSPM';
                 case 'sloreta',   Comment = 'sLORETA';
             end
         case 'gls'
@@ -762,5 +764,13 @@ function Comment = GetMethodComment(Method, Measure)
 end
 
 
+%% ===== WARNING DSPM 2018 =====
+function WarningDspm()
+    java_dialog('msgbox', [...
+        'The dSPM implementation in "Compute sources [2018]" changed in July 2018:' 10 ...
+        'The values are not scaled by the number of trials any more.' 10 10 ...
+        'You will be directed to the Brainstorm website for additional information.' 10 10], 'Warning: dSPM update.');
+    web('https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation#Averaging_normalized_values', '-browser');
+end
 
 

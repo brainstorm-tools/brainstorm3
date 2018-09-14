@@ -48,12 +48,20 @@ function out_figure_timeseries( hFig, TSFile, varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008
+% Authors: Francois Tadel, 2008-2018
 
 global GlobalData;
 
 
 %% ===== EXTRACT TIME SERIES =====
+% Check montage 
+TsInfo = getappdata(hFig, 'TsInfo');
+if ~isempty(TsInfo) && isfield(TsInfo, 'MontageName') && ~isempty(TsInfo.MontageName)
+    sMontage = panel_montage('GetMontage', TsInfo.MontageName);
+    if ~isempty(sMontage) && ~isequal(sMontage.DispNames, sMontage.ChanNames)
+        error(['Cannot export selected montage "' TsInfo.MontageName '".' 10 'Select montage "All channels" or use process "Apply montage".']);
+    end
+end
 % Get values  (this takes care of the time selection)
 [TSMat, iDS, iFig] = gui_figure_data(hFig, varargin{:});
 

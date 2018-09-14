@@ -103,7 +103,7 @@ if (nargin < 3)
         case 'addbad'
             % Setting channels to bad: ask which channels
             strChan = java_dialog('input', ['Enter the channel names or indices to mark as BAD in the selected files,' 10, ...
-                                            'separated by comas (example: "MLT41, MRP44" or "12,23"):' 10 10], 'Set bad channels');
+                                            'separated by commas (example: "MLT41, MRP44" or "12,23"):' 10 10], 'Set bad channels');
             % User canceled
             if isempty(strChan)
                 return
@@ -111,7 +111,7 @@ if (nargin < 3)
         case 'clearbad'
             % Setting channels to bad: ask which channels
             strChan = java_dialog('input', ['Enter the channel names or indices to mark as GOOD in the selected files,' 10, ...
-                                            'separated by comas (example: "MLT41, MRP44" or "12,23"):' 10 10], 'Set good channels');
+                                            'separated by commas (example: "MLT41, MRP44" or "12,23"):' 10 10], 'Set good channels');
             % User canceled
             if isempty(strChan)
                 return

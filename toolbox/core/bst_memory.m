@@ -713,7 +713,7 @@ function LoadRecordingsMatrix(iDS)
     % Load F Matrix
     if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
         % Load stat file
-        StatMat = in_bst_data(DataFile, 'pmap', 'tmap', 'df', 'SPM', 'ChannelFlag', 'Correction', 'StatClusters');
+        StatMat = in_bst_data(DataFile, 'pmap', 'tmap', 'df', 'SPM', 'ChannelFlag', 'Correction', 'StatClusters', 'Time');
         % Get only relevant sensors as multiple tests
         iChannels = good_channel(GlobalData.DataSet(iDS).Channel, StatMat.ChannelFlag, {'MEG', 'EEG', 'SEEG', 'ECOG', 'NIRS'});
         if isfield(StatMat, 'pmap') && ~isempty(StatMat.pmap)
@@ -727,8 +727,12 @@ function LoadRecordingsMatrix(iDS)
         end
         % Initialize matrix
         GlobalData.DataSet(iDS).Measures.F = zeros(length(GlobalData.DataSet(iDS).Measures.ChannelFlag), GlobalData.DataSet(iDS).Measures.NumberOfSamples);
-        % Apply threshold
-        GlobalData.DataSet(iDS).Measures.F(iChannels,:,:) = process_extract_pthresh('Compute', StatMat);
+        % Apply threshold, and duplicate time if there is only one time point
+        threshMap = process_extract_pthresh('Compute', StatMat);
+        if ( size(threshMap,2) == 1) && (GlobalData.DataSet(iDS).Measures.NumberOfSamples == 2)
+            threshMap = cat(2, threshMap, threshMap);
+        end
+        GlobalData.DataSet(iDS).Measures.F(iChannels,:,:) = threshMap;
         % Copy stat clusters
         GlobalData.DataSet(iDS).Measures.StatClusters = StatMat.StatClusters;
         GlobalData.DataSet(iDS).Measures.StatClusters.Correction = StatMat.Correction;
@@ -1138,7 +1142,7 @@ function LoadResultsMatrix(iDS, iResult)
     else
         % Load stat matrix
         StatFile = GlobalData.DataSet(iDS).Results(iResult).FileName;
-        FileMat = in_bst_results(StatFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'nComponents', 'GridLoc', 'GridOrient', 'GridAtlas', 'Correction', 'StatClusters');
+        FileMat = in_bst_results(StatFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'nComponents', 'GridLoc', 'GridOrient', 'GridAtlas', 'Correction', 'StatClusters', 'Time');
         % For stat with more than one components: take the maximum t-value
         if (FileMat.nComponents ~= 1)
             % Extract one value at each grid point

@@ -159,7 +159,7 @@ end
 %% ===== LOADING DATA =====
 % INPUTS:
 %    - conditionA/B : sInputsA, sInputsB (the function forces equal number of trials in each group)
-%    - SensorTypes  : List of channel types or names separated with comas
+%    - SensorTypes  : List of channel types or names separated with commas
 %    - LowPass      : Low pass frequency for data filtering
 % Authors: Dimitrios Pantazis, Seyed-Mahdi Khaligh-Razavi
 function [trial,Time] = load_trials_bs(sInputsA, sInputsB, LowPass, SensorTypes)

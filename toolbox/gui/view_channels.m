@@ -113,7 +113,11 @@ else
 end
 
 % ===== LOAD CHANNEL FILE IF NOT DONE =====
-if isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel)
+% Also check if we are processing the same channel file, which can be
+% different when doing real-time head position alignment (2 helmets from
+% different datasets in the same figure).
+if isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel) || ...
+    ~strcmpi(GlobalData.DataSet(iDS).ChannelFile, ChannelFile)
     % Load channel file
     ChannelMat = in_bst_channel(ChannelFile);
     % Copy information in memory

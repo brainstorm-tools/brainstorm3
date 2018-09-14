@@ -85,7 +85,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jPanelNew.add('br hfill', jPanelLayers);
 
     % ===== OPENMEEG OPTIONS ======
-    isSeeg = strcmpi(OPTIONS.SEEGMethod, 'openmeeg') && ~isempty(OPTIONS.iSeeg);
+    isSeeg = isfield(OPTIONS, 'SEEGMethod') && strcmpi(OPTIONS.SEEGMethod, 'openmeeg') && ~isempty(OPTIONS.iSeeg);
     jPanelOpenmeeg = gui_river([3,3], [3,15,10,10], 'OpenMEEG options');
         % Adjoint
         jCheckAdjoint = gui_component('checkbox', jPanelOpenmeeg, [], '<HTML>Use adjoint formulation  <FONT COLOR="#808080"><I>(less memory, longer)</I></FONT>', [], [], @UpdatePanel, []);

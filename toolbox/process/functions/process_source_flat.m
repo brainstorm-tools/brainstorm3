@@ -42,7 +42,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'results'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % === SELECT METHOD
     sProcess.options.label1.Comment = ['Converts unconstrained source files (3 values per vertex: x,y,z)<BR>' 10 ...
                                        'to simpler files with only one value per vertex.<BR><BR>' 10 ...

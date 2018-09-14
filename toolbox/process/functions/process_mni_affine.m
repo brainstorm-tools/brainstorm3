@@ -30,7 +30,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Compute MNI transformation';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import anatomy';
+    sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 8;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ImportAnatomy#MNI_transformation';
     % Definition of the input accepted by this process

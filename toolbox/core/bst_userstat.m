@@ -111,7 +111,7 @@ hFig(end+1) = fig_report(year, nPosts, 0, ...
 % ===== PUBLICATIONS =====
 % Hard coded list of publications
 year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017]; 
-nPubli = [   2    2    1    1    3    5    5   11   10   18   19   33   38   54   78   93  131  210];
+nPubli = [   2    2    1    1    3    5    5   11   10   18   19   33   38   54   78   94  131  210];
 nPubliCurYear = 63;
 % Plot figure
 hFig(end+1) = fig_report(year, nPubli, 1, ...

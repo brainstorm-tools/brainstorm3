@@ -5,6 +5,7 @@ function varargout = panel_record(varargin)
 %                       panel_record('UpdatePanel')
 %                       panel_record('CurrentFigureChanged_Callback')
 %                       panel_record('CopyRawToDatabase', DataFiles)
+%                       panel_record('SetAcquisitionDate', DataFile, strDate)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -683,6 +684,8 @@ function UpdateDisplayOptions(hFig)
         % Average reference
         elseif strcmpi(TsInfo.MontageName, 'Average reference')
             DispName = 'Avg Ref';
+        elseif strcmpi(TsInfo.MontageName, 'Average reference (L -> R)')
+            DispName = 'Avg Ref LR';
         % Regular montages
         else
             DispName = TsInfo.MontageName;
@@ -2678,6 +2681,72 @@ function CopyRawToDatabase(DataFiles) %#ok<DEFNU>
     end
     % Close progress bar
     bst_progress('stop');
+end
+
+
+%% ===== SET ACQUISITION DATE =====
+function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
+    % Parse inputs
+    if (nargin < 2) || isempty(newDate)
+        newDate = [];
+    end
+    % Get data info
+    sStudy = bst_get('Study', iStudy);
+    if isempty(sStudy)
+        return;
+    end
+    % Parse existing string
+    oldDate = [1900, 1, 1];
+    if ~isempty(sStudy.DateOfStudy)
+        try
+            oldDate = datevec(sStudy.DateOfStudy);
+        catch
+        end
+    end
+    % If new date is not given in argument: ask user
+    if isempty(newDate)
+        % Ask for new date
+        res = java_dialog('input', {'Day:', 'Month:', 'Year:'}, 'Set date', [], {num2str(oldDate(3)), num2str(oldDate(2)), num2str(oldDate(1))});
+        if isempty(res) || (length(res) < 3)
+            return;
+        end
+        vecDate = [str2num(res{1}), str2num(res{2}), str2num(res{3})];
+        if (length(vecDate) < 3) || (vecDate(1) <= 0) || (vecDate(1) >= 31) || (vecDate(2) <= 0) || (vecDate(2) >= 12) || (vecDate(3) < 1700)
+            bst_error('Invalid date.', 'Set date', 0);
+            return;
+        end
+        % Get a new date string
+        newDate = datestr(datenum(vecDate(3), vecDate(2), vecDate(1)));
+    else
+        % Fix data format
+        newDate = str_date(newDate);
+        if isempty(newDate)
+            error('Invalid date format. Input must be ''DD-MMM-YYYY''.');
+        end
+    end
+    % If the date didn't change: exit
+    if strcmpi(newDate, sStudy.DateOfStudy)
+        return;
+    end
+    % Save acquisition data in study file
+    StudyFile = file_fullpath(sStudy.FileName);
+    StudyMat = load(StudyFile);
+    StudyMat.DateOfStudy = newDate;
+    bst_save(StudyFile, StudyMat, 'v7');
+    % Update database representation
+    sStudy.DateOfStudy = newDate;
+    bst_set('Study', iStudy, sStudy);
+    % Update raw links if applicable
+    if ~isempty(strfind(sStudy.FileName, '@raw')) && ~isempty(sStudy.Data) && strcmpi(sStudy.Data(1).DataType, 'raw')
+        % Read link
+        DataMat = in_bst_data(sStudy.Data(1).FileName, 'F');
+        DataMat.F.acq_date = newDate;
+        % Save modified link
+        bst_save(file_fullpath(sStudy.Data(1).FileName), DataMat, 'v6', 1);
+    end
+    % Refresh tree
+    panel_protocols('UpdateTree');
+    panel_protocols('SelectNode', [], sStudy.FileName);
 end
 
 

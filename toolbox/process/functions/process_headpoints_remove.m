@@ -29,7 +29,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Remove head points';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import anatomy';
+    sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 26;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ChannelFile#Automatic_registration';
     % Definition of the input accepted by this process
@@ -95,7 +95,7 @@ function strMsg = RemoveHeadpoints(ChannelFile, zLimit)
         iDelete = 1:nPoints;
     else
         % Get EXTRA points
-        iExtra = find(strcmpi(ChannelMat.HeadPoints.Label, 'EXTRA'));
+        iExtra = find(strcmpi(ChannelMat.HeadPoints.Type, 'EXTRA'));
         % Find the points below the z-threshold
         iDelete = find(ChannelMat.HeadPoints.Loc(3,iExtra) <= zLimit);
         % Remove the points

@@ -478,6 +478,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Get existing menu
                     if isfield(hashGroups, hashKey)
                         jParent = hashGroups.(hashKey);
+                        jParentTop = [];
                     % Menu not created yet: create it
                     else
                         % Menu+submenu
@@ -488,7 +489,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             else
                                 jParentTop = gui_component('Menu', jPopup, [], sProcesses(iProc).SubGroup{1}, [], []);
                                 jParentTop.setMargin(Insets(5,0,4,0));
-                                jParentTop.setForeground(Color(.6,.6,.6));
+%                                 jParentTop.setForeground(Color(.6,.6,.6));
+                                jParentTop.setForeground(Color(0,0,0));
                                 hashGroups.(hashParent) = jParentTop;
                             end
                             menuName = sProcesses(iProc).SubGroup{2};
@@ -512,6 +514,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jItem.setForeground(Color(.6,.6,.6));
                 else
                     jParent.setForeground(Color(0,0,0));
+%                     % And two levels up if process with subcategories
+%                     if iscell(sProcesses(iProc).SubGroup) && (length(sProcesses(iProc).SubGroup) >= 2) && ~isempty(jParentTop)
+%                         jParentTop.setForeground(Color(0,0,0));
+%                     end
                 end
                 % Add separator?
                 if sProcesses(iProc).isSeparator

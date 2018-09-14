@@ -28,7 +28,7 @@ function varargout = gui_brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 eval(macro_method);
 end
@@ -44,6 +44,18 @@ function GUI = CreateWindow() %#ok<DEFNU>
     import javax.swing.UIManager;
     global GlobalData;
     
+    % ===== NO GUI =====
+    % In headless mode: do not create any Java object
+    if (GlobalData.Program.GuiLevel == -1)
+        GUI.mainWindow.jBstFrame = [];
+        GUI.mainWindow.jComboBoxProtocols = [];
+        GUI.mainWindow.jComboBoxProtocols = [];
+        GUI.panelContainers = [];
+        GUI.panels = [];
+        GUI.nodelists = [];
+        return;
+    end
+    
     % ===== CREATE GLOBAL MUTEX =====
     % Clone control
     if isequal(GlobalData.Program.CloneLock, 1)
@@ -56,10 +68,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
     end
     % In order to catch when Matlab is closed with Brainstorm still running
     bst_mutex('create', 'Brainstorm');
-    if (GlobalData.Program.GuiLevel >= 0)
-        bst_mutex('setReleaseCallback', 'Brainstorm', @closeWindow_Callback);
-    end
-
+    bst_mutex('setReleaseCallback', 'Brainstorm', @closeWindow_Callback);
+    
     % ===== CREATE JFRAME =====
     % Get interface scaling
     InterfaceScaling = bst_get('InterfaceScaling') / 100;
@@ -68,10 +78,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
     % Set window icon
     jBstFrame.setIconImage(IconLoader.ICON_APP.getImage());
     % Set closing callback
-    if (GlobalData.Program.GuiLevel >= 0)
-        jBstFrame.setDefaultCloseOperation(jBstFrame.DO_NOTHING_ON_CLOSE);
-        java_setcb(jBstFrame, 'WindowClosingCallback', @closeWindow_Callback);
-    end
+    jBstFrame.setDefaultCloseOperation(jBstFrame.DO_NOTHING_ON_CLOSE);
+    java_setcb(jBstFrame, 'WindowClosingCallback', @closeWindow_Callback);
+
     % Get main frame panel
     jFramePanel = jBstFrame.getContentPane();
     % Constants
@@ -102,7 +111,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
             gui_component('MenuItem', jSubMenu, [], 'Load from zip file', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@import_protocol), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Import subject from zip', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@import_subject), fontSize);
             jSubMenu.addSeparator();
-            gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'), fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'), fontSize);
             jSubMenu.addSeparator();
             gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[], fontSize);
@@ -1075,6 +1084,9 @@ function SetSelectedTab(tabTitle, isAutoSelect, containerName)
     end
     % Get Tools panel container
     jTabpaneTools = bst_get('PanelContainer', containerName);
+    if isempty(jTabpaneTools)
+        return;
+    end
     % Check if the requirements are met to allow auto-select
     if isAutoSelect
         % If there are more than one figure: do not allow
@@ -1100,6 +1112,9 @@ end
 function SetToolTabColor(tabTitle, color) %#ok<DEFNU>
     % Get Tools panel container
     jTabpaneTools = bst_get('PanelContainer', 'Tools');
+    if isempty(jTabpaneTools)
+        return;
+    end
     % Look for panel in Tools tabbed panel
     for i = 0:jTabpaneTools.getTabCount()-1
         if strcmpi(char(jTabpaneTools.getTitleAt(i)), tabTitle)
@@ -1111,10 +1126,16 @@ end
 
 %% ===== SHOW TOOL TAB =====
 function ShowToolTab(tabTitle)
+    % Headless mode: return
+    if (bst_get('GuiLevel') == -1)
+        return;
+    end
     % Specific case: Frequency
     if strcmpi(tabTitle, 'FreqPanel')
         jPanelFreq = bst_get('PanelContainer', 'freq');
-        jPanelFreq.setVisible(1);
+        if ~isempty(jPanelFreq)
+            jPanelFreq.setVisible(1);
+        end
         return;
     end
     % Get function
@@ -1305,7 +1326,7 @@ function ChangeDatabaseFolder()
             GlobalData.DataBase.isProtocolLoaded    = [];
             GlobalData.DataBase.isProtocolModified  = [];
             % Select current protocol in combo list
-            gui_brainstorm('SetCurrentProtocol', 0);
+            SetCurrentProtocol(0);
             % Update interface
             UpdateProtocolsList();
             panel_protocols('UpdateTree');
@@ -1416,35 +1437,45 @@ end
 
 %% ===== DOWNLOAD FILE =====
 function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
-    % Parse inputs 
+    errMsg = [];
+    % Parse inputs
     if (nargin < 3) || isempty(wndTitle)
         wndTitle = 'Download file';
     end
-    errMsg = [];
-    % Get system proxy definition, if available
-    if exist('com.mathworks.mlwidgets.html.HTMLPrefs', 'class') && exist('com.mathworks.webproxy.WebproxyFactory', 'class') && ismethod('com.mathworks.webproxy.WebproxyFactory', 'findProxyForURL')
-        com.mathworks.mlwidgets.html.HTMLPrefs.setProxySettings;
-        proxy = com.mathworks.webproxy.WebproxyFactory.findProxyForURL(java.net.URL(srcUrl));
+    % Headless mode: use Matlab base functions
+    if (bst_get('GuiLevel') == -1)
+        % Matlab >= 2014b: websave
+        if (bst_get('MatlabVersion') >= 804)
+            websave(destFile, srcUrl);
+        else
+            urlwrite(srcUrl, destFile);
+        end
     else
-        proxy = [];
-    end
-    % Start the download
-    downloadManager = java_create('org.brainstorm.file.BstDownload', 'Ljava.lang.String;Ljava.lang.String;Ljava.lang.String;)', srcUrl, destFile, wndTitle);
-    if ~isempty(proxy)
-        downloadManager.download(proxy);
-    else
-        downloadManager.download();
-    end
-    % Wait for the termination of the thread
-    while (downloadManager.getResult() == -1)
-        pause(0.2);
-    end
-    % If file was not downloaded correctly
-    if (downloadManager.getResult() ~= 1)
-        errMsg = char(downloadManager.getMessage());
-        % Delete partially downloaded file
-        if file_exist(destFile)
-            file_delete(destFile, 1);
+        % Get system proxy definition, if available
+        if exist('com.mathworks.mlwidgets.html.HTMLPrefs', 'class') && exist('com.mathworks.webproxy.WebproxyFactory', 'class') && ismethod('com.mathworks.webproxy.WebproxyFactory', 'findProxyForURL')
+            com.mathworks.mlwidgets.html.HTMLPrefs.setProxySettings;
+            proxy = com.mathworks.webproxy.WebproxyFactory.findProxyForURL(java.net.URL(srcUrl));
+        else
+            proxy = [];
+        end
+        % Start the download
+        downloadManager = java_create('org.brainstorm.file.BstDownload', 'Ljava.lang.String;Ljava.lang.String;Ljava.lang.String;)', srcUrl, destFile, wndTitle);
+        if ~isempty(proxy)
+            downloadManager.download(proxy);
+        else
+            downloadManager.download();
+        end
+        % Wait for the termination of the thread
+        while (downloadManager.getResult() == -1)
+            pause(0.2);
+        end
+        % If file was not downloaded correctly
+        if (downloadManager.getResult() ~= 1)
+            errMsg = char(downloadManager.getMessage());
+            % Delete partially downloaded file
+            if file_exist(destFile)
+                file_delete(destFile, 1);
+            end
         end
     end
 end

@@ -42,7 +42,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Set channel file';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import recordings';
+    sProcess.SubGroup    = {'Import', 'Import recordings'};
     sProcess.Index       = 30;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy#Prepare_the_channel_file';
     % Definition of the input accepted by this process

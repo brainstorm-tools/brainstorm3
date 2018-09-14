@@ -73,11 +73,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.keepevents.Type       = 'checkbox';
     sProcess.options.keepevents.Value      = 0;
     sProcess.options.keepevents.InputTypes = {'data', 'matrix'};
-    % === SCALE NORMALIZE SOURCE MAPS
+    % === SCALE NORMALIZE SOURCE MAPS (DEPRECATED OPTION AFTER INVERSE 2018)
     sProcess.options.scalenormalized.Comment    = 'Adjust normalized source maps for SNR increase.<BR><FONT color="#777777"><I>Example: dSPM(Average) = sqrt(Navg) * Average(dSPM)</I></FONT>';
     sProcess.options.scalenormalized.Type       = 'checkbox';
     sProcess.options.scalenormalized.Value      = 0;
     sProcess.options.scalenormalized.InputTypes = {'results'};
+    sProcess.options.scalenormalized.Hidden     = 1;
     % === MATCH ROWS WITH NAMES
     sProcess.options.matchrows.Comment    = 'Match signals between files using their names';
     sProcess.options.matchrows.Type       = 'checkbox';
@@ -141,7 +142,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         KeepEvents = 0;
     end
-    % Scale normalized source maps
+    % Scale normalized source maps (DEPRECATED AFTER INVERSE 2018) 
     if isfield(sProcess.options, 'scalenormalized') && isfield(sProcess.options.scalenormalized, 'Value') && ~isempty(sProcess.options.scalenormalized.Value)
         isScaleDspm = sProcess.options.scalenormalized.Value;
     else
@@ -357,7 +358,7 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
     % Load first file of the list
     [sMat, matName] = in_bst(sInputs(iAvgFile(1)).FileName);
     
-    % === SCALE dSPM VALUES ===
+    % === SCALE dSPM VALUES (DEPRECATED AFTER INVERSE 2018) ===
     % Apply a scaling to the dSPM functions, to compensate for the fact that the scaling applied to the NoiseCov was not correct
     if isScaleDspm && isResults && isfield(sMat, 'Function') && ismember(sMat.Function, {'dspm','mnp','glsp','lcmvp'}) && isfield(sMat, 'ImageGridAmp')
         if ~isWeighted

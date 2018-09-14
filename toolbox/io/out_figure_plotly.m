@@ -171,7 +171,7 @@ function downloadAndInstallPlotly()
     zipFile = bst_fullfile(plotlyTmpDir, 'plotly.zip');
     errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Plotly download');
     if ~isempty(errMsg)
-        error(['Impossible to download Plotly:' errMsg]);
+        error(['Impossible to download Plotly: ' errMsg]);
     end
     % Unzip file
     bst_progress('start', 'Plotly', 'Installing Plotly...');
