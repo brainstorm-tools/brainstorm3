@@ -1171,10 +1171,10 @@ end
 
 %% ===== PROCESS: STAT =====
 function OutputFiles = ProcessStat(sProcess, sInputA, sInputB)
-    % Check inputs
-    if ~isempty(strfind(GetFileTag(sInputA(1).FileName), 'connect'))
-        bst_report('Warning', sProcess, sInputA, 'Statistical tests on connectivity results are not supported yet.');
-    end
+%     % Check inputs
+%     if ~isempty(strfind(GetFileTag(sInputA(1).FileName), 'connect'))
+%         bst_report('Warning', sProcess, sInputA, 'Statistical tests on connectivity results are not supported yet.');
+%     end
     
     % ===== GET OUTPUT STUDY =====
     % Display progress bar
