@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 September 2018
+- IO: Support for EGI-Philips MFF recordings
 - Process: Uniform epoch time: Added option "overwrite" and support for source links
 ---------------------------------------------------------------
 August 2018
