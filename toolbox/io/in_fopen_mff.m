@@ -26,8 +26,8 @@ if bst_get('MatlabVersion') < 803
 end
 
 %% ===== PARSE INPUTS =====
-if strcmp(DataFile, 'downloadAndInstallMffJar')
-    downloadAndInstallMffJar();
+if strcmp(DataFile, 'downloadAndInstallMffLibrary')
+    downloadAndInstallMffLibrary();
     return;
 end
 if (nargin < 2) || isempty(ImportOptions)
@@ -35,7 +35,7 @@ if (nargin < 2) || isempty(ImportOptions)
 end
 
 %% ===== DOWNLOAD JAR =====
-downloadAndInstallMffJar();
+downloadAndInstallMffLibrary();
 
 %% ===== READ MFF FILE WITH EEGLAB PLUGIN =====
 hdr = struct();
@@ -54,37 +54,54 @@ end
 
 
 %% ===== DOWNLOAD MFF JAR FILE =====
-function downloadAndInstallMffJar()
+function downloadAndInstallMffLibrary()
     % Check whether JAR file is in Java path
     [jarPath, jarExists] = bst_get('MffJarFile');
+    mffDir = fileparts(jarPath);
     javaPath = javaclasspath('-dynamic');
     if any(strcmp(javaPath, jarPath))
+        % Add library to Matlab path
+        addpath(genpath(mffDir));
         return;
     end
     
-    % Download file if missing
+    % Download library if missing
     if ~jarExists
         % Prompt user
         isOk = java_dialog('confirm', ...
-            ['The MFF importer requires a ~4.5MB JAR dependency file.' 10 10 ...
-             'Would you like to download this file right now?'], 'MFF');
+            ['Reading MFF files requires to download the MFFMatlabIO library.' 10 10 ...
+             'Would you like to download it right now?'], 'MFF');
         if ~isOk
             return;
         end
-
-        [jarDir, jarFile, jarExt] = fileparts(jarPath);
-        url = ['https://neuroimage.usc.edu/bst/getupdate.php?d=', jarFile, jarExt];
+        
         % If folders exists: delete
-        if isdir(jarDir)
-            file_delete(jarDir, 1, 3);
+        mffDirTmp = bst_fullfile(bst_get('BrainstormUserDir'), 'mffTmp');
+        if isdir(mffDir)
+            file_delete(mffDir, 1, 3);
+        end
+        if isdir(mffDirTmp)
+            file_delete(mffDirTmp, 1, 3);
         end
         % Create folder
-        mkdir(jarDir);
+        mkdir(mffDir);
+        mkdir(mffDirTmp);
+
+        zipFile = 'mffmatlabio-1.2.2.zip';
+        url = ['https://neuroimage.usc.edu/bst/getupdate.php?d=' zipFile];
         % Download file
-        errMsg = gui_brainstorm('DownloadFile', url, jarPath, 'MFF JAR download');
+        zipPath = bst_fullfile(mffDirTmp, zipFile);
+        errMsg = gui_brainstorm('DownloadFile', url, zipPath, 'MFF library download');
         if ~isempty(errMsg)
-            error(['Impossible to download MFF JAR file: ' errMsg]);
+            error(['Impossible to download MFF library: ' errMsg]);
         end
+        % Unzip file
+        unzip(zipPath, mffDirTmp);
+        % Move content of zip to proper location
+        libDir = bst_fullfile(mffDirTmp, 'mffmatlabio-master', '*');
+        movefile(libDir, mffDir);
+        % Delete zip
+        file_delete(mffDirTmp, 1, 3);
     end
     
     % Once downloaded, we need to restart Matlab to refresh the java path

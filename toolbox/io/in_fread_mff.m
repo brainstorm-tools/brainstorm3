@@ -26,12 +26,9 @@ function F = in_fread_mff(sFile, iEpoch, SamplesBounds)
 % Author: Martin Cousineau, 2018
 
 %% ===== MAKE SURE JAR IS DOWNLOADED =====
-in_fopen_mff('downloadAndInstallMffJar');
+in_fopen_mff('downloadAndInstallMffLibrary');
 
 %% ===== PARSE INPUTS =====
-nChannels = sFile.header.EEG.nbchan;
-nTime     = sFile.header.EEG.pnts;
-nEpochs   = sFile.header.EEG.trials;
 % Epoch not specified: read only the first one
 if (nargin < 2)
     iEpoch = 1;
