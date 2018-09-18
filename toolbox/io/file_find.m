@@ -64,7 +64,7 @@ else
             foundFiles = bst_fullfile(baseDir, listDir(1).name);
         else
             for i = 1:length(listDir)
-                foundFiles = cat(2, {bst_fullfile(baseDir, listDir(i).name)});
+                foundFiles = cat(2, foundFiles, {bst_fullfile(baseDir, listDir(i).name)});
             end
         end
         return
