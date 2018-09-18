@@ -62,7 +62,7 @@ end
 
 %% ===== OPEN FILE =====
 % Open file (for some formats, it is open in the low-level function)
-if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS'}) 
+if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF'}) 
     sfid = [];
 else
     sfid = fopen(sFile.filename, 'r', sFile.byteorder);
@@ -130,6 +130,11 @@ switch (sFile.format)
         end
     case 'EEG-MANSCAN'
         F = in_fread_manscan(sFile, sfid, iEpoch, SamplesBounds);
+        if ~isempty(iChannels)
+            F = F(iChannels,:);
+        end
+    case 'EEG-EGI-MFF'
+        F = in_fread_mff(sFile, iEpoch, SamplesBounds);
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end

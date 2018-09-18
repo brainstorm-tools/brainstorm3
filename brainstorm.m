@@ -98,6 +98,11 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     if ~isempty(jarfile)
         javaaddpath([BrainstormHomeDir '/java/' jarfile]);
     end
+    % Add MFF JAR file if present
+    [mffJarPath, mffJarExists] = bst_get('MffJarFile');
+    if mffJarExists
+        javaaddpath(mffJarPath);
+    end
 end
 % Deployed: Remove one of the two JOGL packages from the Java classpath
 if exist('isdeployed', 'builtin') && isdeployed
