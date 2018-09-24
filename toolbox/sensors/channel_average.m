@@ -24,7 +24,7 @@ function [MeanChannelMat, Message] = channel_average(ChannelMats)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012
+% Authors: Francois Tadel, 2012-2018
 
 Message = [];
 

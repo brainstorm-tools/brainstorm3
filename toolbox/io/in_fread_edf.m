@@ -28,8 +28,9 @@ function F = in_fread_edf(sFile, sfid, SamplesBounds, ChannelsRange)
 %% ===== PARSE INPUTS =====
 nChannels      = sFile.header.nsignal;
 iChanAnnot     = find(strcmpi({sFile.header.signal.label}, 'EDF Annotations'));
+iBadChan       = find(sFile.channelflag == -1);
 iChanSignal    = setdiff(1:nChannels, iChanAnnot);
-iChanWrongRate = find([sFile.header.signal(iChanSignal).sfreq] < max([sFile.header.signal(iChanSignal).sfreq]));   
+iChanWrongRate = find([sFile.header.signal(iChanSignal).sfreq] ~= max([sFile.header.signal(setdiff(iChanSignal,iBadChan)).sfreq]));   
 iChanSkip      = union(iChanAnnot, iChanWrongRate);
 if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, nChannels];
@@ -67,7 +68,9 @@ end
 if (ChannelsRange(1) ~= ChannelsRange(2))
     allFreq = [sFile.header.signal(ChannelsRange(1):ChannelsRange(2)).nsamples];
     if any(allFreq ~= allFreq(1))
-        error('Cannot read channels with mixed sampling rates at the same time.');
+        error(['Cannot read channels with mixed sampling rates at the same time.' 10 ...
+               'Mark as bad channels with different sampling rates than EEG.' 10 ...
+               '(right-click on data file > Good/bad channels > Edit good/bad channels']);
     end
 end
 
