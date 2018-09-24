@@ -70,7 +70,7 @@ if (ChannelsRange(1) ~= ChannelsRange(2))
     if any(allFreq ~= allFreq(1))
         error(['Cannot read channels with mixed sampling rates at the same time.' 10 ...
                'Mark as bad channels with different sampling rates than EEG.' 10 ...
-               '(right-click on data file > Good/bad channels > Edit good/bad channels']);
+               '(right-click on data file > Good/bad channels > Edit good/bad channels)']);
     end
 end
 

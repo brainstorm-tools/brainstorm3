@@ -1241,11 +1241,23 @@ function ViewStatClusters(hFig)
             case {'3DElectrodes', '3DOptodes'}
                 markersLocs = markersLocs * 1.02;
         end
-        % Time-freq: use all the sensors
+        % Time-freq: use all the channels from the TF file
         if ~isempty(TfInfo) && ~isempty(TfInfo.FileName)
+            % Get channel names from the TF file
             [iDS, iTimefreq] = bst_memory('GetDataSetTimefreq', TfInfo.FileName);
             RowNames = {GlobalData.DataSet(iDS).Channel(selChan).Name};
+            % Get corresponding channel indices
             [Values, iTimeBands, iRow, nComponents] = bst_memory('GetTimefreqValues', iDS, iTimefreq, RowNames);
+            % Get positions of the markers only for the selected channels
+            clusMarkersLocs = zeros(length(iRow), 3);
+            for i = 1:length(iRow)
+                iClusChan = find(strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames(iRow(i)), RowNames));
+                if (length(iClusChan) == 1)
+                    clusMarkersLocs(i,:) = markersLocs(iClusChan,:);
+                end
+            end
+            % Replace current selection of channels
+            markersLocs = clusMarkersLocs;
             selChan = iRow;
         end
         % Plot each cluster separately
