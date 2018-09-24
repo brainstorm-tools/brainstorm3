@@ -92,7 +92,7 @@ for iChan = 1:length(MeanChannelMat.Channel)
 end
 
 % CTF/4D files: Restore the full list of integration points
-if any(strcmpi(DeviceName, {'CTF', '4D'}))
+if any(strcmpi(DeviceName, {'CTF', '4D', 'KRISS'}))
     MeanChannelMat.Channel(iChanInteg) = ctf_add_coil_defs(MeanChannelMat.Channel(iChanInteg), DeviceName);
 end
 
