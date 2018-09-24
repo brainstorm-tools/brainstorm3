@@ -40,7 +40,7 @@ if (nargin < 5) || isempty(ChannelsRange)
 end
 
 % Ascii files not supported
-if (hdr.nASCII == 1)
+if (sFile.header.nASCII == 1)
     error('ASCII files not supported yet: post a message on the Brainstorm user forum to request this feature.');
 end
 
