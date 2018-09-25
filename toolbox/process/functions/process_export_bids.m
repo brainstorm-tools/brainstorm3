@@ -88,12 +88,27 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     % If folder does not exist, try to create it.
     if exist(outputFolder, 'dir') ~= 7
         [success, errMsg] = mkdir(outputFolder);
+        subjectScheme = [];
+        sessionScheme = [];
         if ~success
             bst_report('Error', sProcess, sInputs, ['Could not create output folder:' 10 errMsg]);
         end
     else
-        % If folder exist, extract last subject ID
-        iLastSub = GetLastId(outputFolder, 'sub');
+        % If folder exist, try to figure out naming scheme
+        [subjectScheme, sessionScheme] = DetectNamingScheme(outputFolder);
+        
+        % If numbered subject IDs, extract last subject ID
+        if subjectScheme >= 0
+            iLastSub = GetLastId(outputFolder, 'sub');
+        end
+    end
+    
+    % Default naming schemes
+    if isempty(subjectScheme)
+        subjectScheme = -1; % Char-based
+    end
+    if isempty(sessionScheme)
+        sessionScheme = -2; % Date-based
     end
     
     CreateDatasetDescription(outputFolder, overwrite)
@@ -158,14 +173,14 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             if isempty(iExistingSub)
                 data = AddSubject(data, subjectName, subjectId);
             end
-            subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, 'sub'));
+            subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subjectScheme, 'sub'));
             if exist(subjectFolder, 'dir') ~= 7
                 mkdir(subjectFolder);
             end
             
             % Date of study is the session name for empty room recordings
             sessionId = datestr(dateOfStudy, 'yyyymmdd');
-            sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, 'ses'));
+            sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, -2, 'ses'));
             if exist(sessionFolder, 'dir') ~= 7
                 mkdir(sessionFolder);
             end
@@ -177,8 +192,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 subjectId = iExistingSub;
                 newSubject = 0;
             elseif strncmp(sSubject.Name, 'sub-', 4) && length(sSubject.Name) > 5 && exist(bst_fullfile(outputFolder, sSubject.Name), 'dir') == 7
-                subjectId = str2num(sSubject.Name(5:end));
-                if ~isempty(subjectId)
+                subjectId = sSubject.Name(5:end);
+                if subjectScheme == -1 || ~isempty(str2num(subjectId))
                     data = AddSubject(data, sSubject.Name, subjectId);
                     newSubject = 0;
                 end
@@ -186,13 +201,19 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
 
             %% Create subject if new
             if newSubject
-                subjectId = iLastSub + 1;
-                if subjectId > 9999
-                    bst_report('Error', sProcess, sInput, 'Exceeded maximum number of subjects supported by BIDS (9999).');
+                if subjectScheme == -1
+                    subjectId = FormatId(sSubject.Name, subjectScheme);
+                else
+                    subjectId = iLastSub + 1;
+                    maxSubjects = power(10, subjectScheme);
+                    if subjectScheme > 1 && subjectId >= maxSubjects
+                        bst_report('Error', sProcess, sInput, ...
+                            ['Exceeded maximum number of subjects supported by your naming scheme (' num2str(maxSubjects) ').']);
+                    end
                 end
                 data = AddSubject(data, sSubject.Name, subjectId);
             end
-            subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, 'sub'));
+            subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subjectScheme, 'sub'));
             if newSubject
                 mkdir(subjectFolder);
                 iLastSub = subjectId;
@@ -205,8 +226,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 sessionId = iExistingSes;
                 newSession = 0;
             elseif strncmp(sSubject.Name, 'ses-', 4) && length(sessionName) > 5 && exist(bst_fullfile(subjectFolder, sessionName), 'dir') == 7
-                sessionId = str2num(sessionName(5:end));
-                if ~isempty(sessionId)
+                sessionId = sessionName(5:end);
+                if sessionScheme == -1 || ~isempty(str2num(sessionId))
                     data = AddSession(data, subjectId, sessionName, sessionId);
                     newSession = 0;
                 end
@@ -214,13 +235,21 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
 
             %% Create session if new
             if newSession
-                sessionId = GetLastId(subjectFolder, 'ses') + 1;
-                if sessionId > 9999
-                    bst_report('Error', sProcess, sInput, 'Exceeded maximum number of sessions supported by BIDS (9999).');
+                if sessionScheme == -1 % Char-based naming scheme
+                    sessionId = FormatId(sessionName, sessionScheme);
+                elseif sessionScheme == -2 % Date-based naming scheme
+                    sessionId = datestr(dateOfStudy, 'yyyymmdd');
+                else
+                    sessionId = GetLastId(subjectFolder, 'ses') + 1;
+                    maxSessions = power(10, sessionScheme);
+                    if sessionScheme > 1 && sessionId >= maxSessions
+                        bst_report('Error', sProcess, sInput, ...
+                            ['Exceeded maximum number of sessions supported by your naming scheme (' num2str(maxSubjects) ').']);
+                    end
                 end
                 data = AddSession(data, subjectId, sessionName, sessionId);
             end
-            sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, 'ses'));
+            sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, sessionScheme, 'ses'));
             if newSession
                 mkdir(sessionFolder);
             end
@@ -228,7 +257,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         
         %% Extract task name
         [rawFolder, rawName, rawExt] = fileparts(sFile.filename);
-        prefix = [FormatId(subjectId, 'sub') '_' FormatId(sessionId, 'ses')];
+        prefix = [FormatId(subjectId, subjectScheme, 'sub') '_' FormatId(sessionId, sessionScheme, 'ses')];
         prefixTask = [prefix '_task-'];
         rest = [];
         if isEmptyRoom
@@ -250,7 +279,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         %% If first session, save anatomy
-        if ~isEmptyRoom && sessionId == 1
+        if ~isEmptyRoom && SameIds(sessionId, GetFirstSessionId(data, subjectId), sessionScheme)
             if ~isempty(sSubject.Anatomy) && strcmpi(sSubject.Anatomy.Comment, 'mri') && ~isempty(sSubject.Anatomy.FileName)
                 anatFolder = bst_fullfile(sessionFolder, 'anat');
                 if exist(anatFolder, 'dir') ~= 7
@@ -371,14 +400,31 @@ function sessionId = GetSessionId(data, subjectId, sessionName)
     end
 end
 
+function sessionId = GetFirstSessionId(data, subjectId)
+    iSub = GetPrivateSubjectId(data, subjectId);
+    if ~isempty(data.Subjects(iSub).Sessions)
+        sessionId = data.Subjects(iSub).Sessions(1).Id;
+    else
+        sessionId = [];
+    end
+end
+
+function same = SameIds(id1, id2, namingScheme)
+    if namingScheme < 0
+        same = strcmp(id1, id2);
+    else
+        same = id1 == id2;
+    end
+end
+
 function data = AddSubject(data, subjectName, subjectId)
-    numSubjects = length(data.Subjects);
-    if numSubjects == 0
+    iSub = length(data.Subjects) + 1;
+    if iSub == 1
         data.Subjects = struct();
     end
-    data.Subjects(numSubjects + 1).Name = subjectName;
-    data.Subjects(numSubjects + 1).Id = subjectId;
-    data.Subjects(numSubjects + 1).Sessions = [];
+    data.Subjects(iSub).Name = subjectName;
+    data.Subjects(iSub).Id = subjectId;
+    data.Subjects(iSub).Sessions = [];
 end
 
 function data = AddSession(data, subjectId, sessionName, sessionId)
@@ -391,8 +437,25 @@ function data = AddSession(data, subjectId, sessionName, sessionId)
     data.Subjects(iSub).Sessions(numSessions + 1).Id = sessionId;
 end
 
-function formattedId = FormatId(id, prefix)
-    formattedId = [prefix '-' zero_prefix(id, 4)];
+function formattedId = FormatId(id, namingScheme, prefix)
+    if nargin < 3
+        prefix = [];
+    end
+
+    if namingScheme == -1
+        % Char-based scheme: only keep alphanumeric characters
+        id = id(isstrprop(id, 'alphanum'));
+    elseif namingScheme == 0
+        % Num-based scheme
+        id = num2str(id);
+    elseif namingScheme > 0
+        id = zero_prefix(id, namingScheme);
+    end
+    if ~isempty(prefix)
+        formattedId = [prefix '-' id];
+    else
+        formattedId = id;
+    end
 end
 
 function id = GetLastId(parentFolder, prefix)
@@ -462,4 +525,63 @@ function CreateSessionTsv(tsvFile, megFile, acqDate)
     fprintf(fid, ['filename' 9 'acq_time' 13 10]);
     fprintf(fid, [megFile 9 acqTime]);
     fclose(fid);
+end
+
+% [] : Unknown scheme
+% -2 : Date-based IDs (session only)
+% -1 : Char-based custom IDs
+%  0 : Numbered IDs of variable length
+%  N : Numbered IDs of fixed length N (zero-padded)
+function [subjectScheme, sessionScheme] = DetectNamingScheme(bidsDir)
+    subjects = dir(bst_fullfile(bidsDir, 'sub-*'));
+    if ~isempty(subjects)
+        %% Detect subject scheme
+        subjectName = subjects(1).name(5:end);
+        subjectId   = str2num(subjectName);
+        if ~isempty(subjectId)
+            strLen = length(subjectName);
+            numLen = length(num2str(subjectId));
+            if strLen > numLen
+                % Zero-padded IDs
+                subjectScheme = strLen;
+            else
+                % Non-padded IDs
+                subjectScheme = 0;
+            end
+        else
+            % Char-based scheme
+            subjectScheme = -1;
+        end
+        
+        %% Detect session scheme
+        sessions = dir(bst_fullfile(bidsDir, subjects(1).name, 'ses-*'));
+        if ~isempty(sessions)
+            sessionName = sessions(1).name(5:end);
+            sessionId   = str2num(sessionName);
+            if ~isempty(sessionId)
+                strLen = length(sessionName);
+                numLen = length(num2str(sessionId));
+                if strLen > numLen
+                    % Zero-padded IDs
+                    sessionScheme = strLen;
+                elseif strLen == 8
+                    % Date based IDs (e.g. 20180925)
+                    sessionScheme = -2;
+                else
+                    % Non-padded IDs
+                    sessionScheme = 0;
+                end
+            else
+                % Char-based scheme
+                sessionScheme = -1;
+            end
+        else
+            % Unknown scheme
+            sessionScheme = [];
+        end
+    else
+        % Unknown scheme
+        subjectScheme = [];
+        sessionScheme = [];
+    end
 end
