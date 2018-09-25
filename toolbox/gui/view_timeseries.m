@@ -48,7 +48,7 @@ if (nargin < 2) || isempty(Modality)
     % Get default modality
     [tmp,DispMod,Modality] = bst_get('ChannelModalities', DataFile);
     % Replace SEEG and ECOG with SEEG+ECOG
-    if all(ismember({'SEEG','ECOG'}, DispMod))
+    if ~isempty(DispMod) && all(ismember({'SEEG','ECOG'}, DispMod))
         DispMod = cat(2, {'ECOG+SEEG'}, setdiff(DispMod, {'SEEG','ECOG'}));
         if ismember(Modality, {'SEEG','ECOG'})
             Modality = 'ECOG+SEEG';
