@@ -28,7 +28,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the processc
-    sProcess.Comment     = 'Export BIDS dataset';
+    sProcess.Comment     = 'Export MEG-BIDS dataset';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'File';
     sProcess.Index       = 72;
@@ -56,15 +56,22 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Identifying empty room
     sProcess.options.emptyroom.Comment = 'Keywords to detect empty room recordings: ';
     sProcess.options.emptyroom.Type    = 'text';
-    sProcess.options.emptyroom.Value   = 'emptyroom, noise';   
+    sProcess.options.emptyroom.Value   = 'emptyroom, noise';
     % Replace existing files
     sProcess.options.overwrite.Comment = 'Overwrite existing files?';
     sProcess.options.overwrite.Type    = 'checkbox';
     sProcess.options.overwrite.Value   = 0;
-    % Anonymize CTF files
-    sProcess.options.anonymize.Comment = 'Anonymize raw files (if applicable)?';
-    sProcess.options.anonymize.Type    = 'checkbox';
-    sProcess.options.anonymize.Value   = 0;
+    
+    sProcess.options.label1.Comment = '<U><B>MEG Sidecar required fields</B></U>:';
+    sProcess.options.label1.Type    = 'label';
+    % Powerline frequency
+    sProcess.options.powerline.Comment = {'50 Hz', '60 Hz', 'Power line frequency: '};
+    sProcess.options.powerline.Type    = 'radio_line';
+    sProcess.options.powerline.Value   = 2;
+    % Dewar position during MEG scan
+    sProcess.options.dewarposition.Comment = 'Position of the dewar during the MEG scan: ';
+    sProcess.options.dewarposition.Type    = 'text';
+    sProcess.options.dewarposition.Value   = 'Upright';
 end
 
 
@@ -76,39 +83,55 @@ end
 
 %% ===== RUN =====
 function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
-    outputFolder = sProcess.options.bidsdir.Value{1};
-    overwrite    = sProcess.options.overwrite.Value;
-    anonymize    = sProcess.options.anonymize.Value;
+    % Parse inputs
+    outputFolder  = sProcess.options.bidsdir.Value{1};
+    overwrite     = sProcess.options.overwrite.Value;
+    dewarPosition = sProcess.options.dewarposition.Value;
     emptyRoomKeywords = strtrim(str_split(lower(sProcess.options.emptyroom.Value), ',;'));
     if isempty(outputFolder)
         bst_report('Error', sProcess, sInputs, 'No output folder specified.');
+    end
+    if isfield(sProcess.options, 'powerline') && ~isempty(sProcess.options.powerline.Value)
+        if sProcess.options.powerline.Value == 1
+            powerline = 50;
+        elseif sProcess.options.powerline.Value == 2
+            powerline = 60;
+        else
+            bst_report('Error', sProcess, sInputs, 'Invalid power line selection.');
+        end
+    else
+        powerline = [];
     end
     
     iLastSub = 0;
     % If folder does not exist, try to create it.
     if exist(outputFolder, 'dir') ~= 7
         [success, errMsg] = mkdir(outputFolder);
-        subjectScheme = [];
-        sessionScheme = [];
+        subScheme = [];
+        sesScheme = [];
+        runScheme = [];
         if ~success
             bst_report('Error', sProcess, sInputs, ['Could not create output folder:' 10 errMsg]);
         end
     else
         % If folder exist, try to figure out naming scheme
-        [subjectScheme, sessionScheme] = DetectNamingScheme(outputFolder);
+        [subScheme, sesScheme, runScheme] = DetectNamingScheme(outputFolder);
         
         % If numbered subject IDs, extract last subject ID
-        if subjectScheme >= 0
+        if subScheme >= 0
             iLastSub = GetLastId(outputFolder, 'sub');
         end
     end
     
     % Default naming schemes
-    if isempty(subjectScheme)
-        subjectScheme = -1; % Char-based
+    if isempty(subScheme)
+        subScheme = -1; % Char-based
     end
-    if isempty(sessionScheme)
-        sessionScheme = -2; % Date-based
+    if isempty(sesScheme)
+        sesScheme = -2; % Date-based
+    end
+    if isempty(runScheme)
+        runScheme = 2;  % Index-based, 2 digits
     end
     
     CreateDatasetDescription(outputFolder, overwrite)
@@ -173,7 +196,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             if isempty(iExistingSub)
                 data = AddSubject(data, subjectName, subjectId);
             end
-            subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subjectScheme, 'sub'));
+            subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subScheme, 'sub'));
             if exist(subjectFolder, 'dir') ~= 7
                 mkdir(subjectFolder);
             end
@@ -191,9 +214,10 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             if ~isempty(iExistingSub)
                 subjectId = iExistingSub;
                 newSubject = 0;
-            elseif strncmp(sSubject.Name, 'sub-', 4) && length(sSubject.Name) > 5 && exist(bst_fullfile(outputFolder, sSubject.Name), 'dir') == 7
+            % Detect subject names formatted as "sub-<name>"
+            elseif strncmp(sSubject.Name, 'sub-', 4) && length(sSubject.Name) > 5
                 subjectId = sSubject.Name(5:end);
-                if subjectScheme == -1 || ~isempty(str2num(subjectId))
+                if subScheme == -1 || ~isempty(str2num(subjectId))
                     data = AddSubject(data, sSubject.Name, subjectId);
                     newSubject = 0;
                 end
@@ -201,19 +225,21 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
 
             %% Create subject if new
             if newSubject
-                if subjectScheme == -1
-                    subjectId = FormatId(sSubject.Name, subjectScheme);
+                if subScheme == -1
+                    % Char-based naming scheme
+                    subjectId = FormatId(sSubject.Name, subScheme);
                 else
+                    % Number-based naming scheme, increment from previous
                     subjectId = iLastSub + 1;
-                    maxSubjects = power(10, subjectScheme);
-                    if subjectScheme > 1 && subjectId >= maxSubjects
+                    maxSubjects = power(10, subScheme);
+                    if subScheme > 1 && subjectId >= maxSubjects
                         bst_report('Error', sProcess, sInput, ...
                             ['Exceeded maximum number of subjects supported by your naming scheme (' num2str(maxSubjects) ').']);
                     end
                 end
                 data = AddSubject(data, sSubject.Name, subjectId);
             end
-            subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subjectScheme, 'sub'));
+            subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subScheme, 'sub'));
             if newSubject
                 mkdir(subjectFolder);
                 iLastSub = subjectId;
@@ -221,35 +247,39 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             
             %% Check if session already exists
             newSession = 1;
-            iExistingSes = GetSessionId(data, subjectId, sessionName);
+            [iExistingSes, runId] = GetSessionId(data, subjectId, sessionName);
             if ~isempty(iExistingSes)
                 sessionId = iExistingSes;
                 newSession = 0;
-            elseif strncmp(sSubject.Name, 'ses-', 4) && length(sessionName) > 5 && exist(bst_fullfile(subjectFolder, sessionName), 'dir') == 7
+            % Detect session names formatted as "ses-<name>"
+            elseif strncmp(sSubject.Name, 'ses-', 4) && length(sessionName) > 5
                 sessionId = sessionName(5:end);
-                if sessionScheme == -1 || ~isempty(str2num(sessionId))
-                    data = AddSession(data, subjectId, sessionName, sessionId);
+                if sesScheme == -1 || ~isempty(str2num(sessionId))
+                    [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
                     newSession = 0;
                 end
             end
 
             %% Create session if new
             if newSession
-                if sessionScheme == -1 % Char-based naming scheme
-                    sessionId = FormatId(sessionName, sessionScheme);
-                elseif sessionScheme == -2 % Date-based naming scheme
+                if sesScheme == -1
+                    % Char-based naming scheme
+                    sessionId = FormatId(sessionName, sesScheme);
+                elseif sesScheme == -2
+                    % Date-based naming scheme
                     sessionId = datestr(dateOfStudy, 'yyyymmdd');
                 else
+                    % Number-based naming scheme, increment from previous
                     sessionId = GetLastId(subjectFolder, 'ses') + 1;
-                    maxSessions = power(10, sessionScheme);
-                    if sessionScheme > 1 && sessionId >= maxSessions
+                    maxSessions = power(10, sesScheme);
+                    if sesScheme > 1 && sessionId >= maxSessions
                         bst_report('Error', sProcess, sInput, ...
                             ['Exceeded maximum number of sessions supported by your naming scheme (' num2str(maxSubjects) ').']);
                     end
                 end
-                data = AddSession(data, subjectId, sessionName, sessionId);
+                [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
             end
-            sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, sessionScheme, 'ses'));
+            sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, sesScheme, 'ses'));
             if newSession
                 mkdir(sessionFolder);
             end
@@ -257,7 +287,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         
         %% Extract task name
         [rawFolder, rawName, rawExt] = fileparts(sFile.filename);
-        prefix = [FormatId(subjectId, subjectScheme, 'sub') '_' FormatId(sessionId, sessionScheme, 'ses')];
+        prefix = [FormatId(subjectId, subScheme, 'sub') '_' FormatId(sessionId, sesScheme, 'ses')];
         prefixTask = [prefix '_task-'];
         rest = [];
         if isEmptyRoom
@@ -277,9 +307,12 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         else
             taskName = regexprep(rawName,'[^a-zA-Z0-9]','');
         end
+        if ~isempty(runId) && ~isempty(FormatId(runId, runScheme))
+            rest = [rest '_run-' FormatId(runId, runScheme)];
+        end
         
         %% If first session, save anatomy
-        if ~isEmptyRoom && SameIds(sessionId, GetFirstSessionId(data, subjectId), sessionScheme)
+        if ~isEmptyRoom && SameIds(sessionId, GetFirstSessionId(data, subjectId))
             if ~isempty(sSubject.Anatomy) && strcmpi(sSubject.Anatomy.Comment, 'mri') && ~isempty(sSubject.Anatomy.FileName)
                 anatFolder = bst_fullfile(sessionFolder, 'anat');
                 if exist(anatFolder, 'dir') ~= 7
@@ -296,6 +329,28 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         end
         
+        %% Prepare metadata structure
+        metadata = struct();
+        metadata.TaskName = taskName;
+        metadata.Manufacturer = sFile.device;
+        metadata.SamplingFrequency = sFile.prop.sfreq;
+        if ~isempty(powerline)
+            metadata.PowerLineFrequency = powerline;
+        end
+        metadata.DewarPosition = dewarPosition;
+        [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(sInput.ChannelFile);
+        metadata.DigitizedLandmarks = bool2str(hasLandmarks);
+        metadata.DigitizedHeadPoints = bool2str(hasHeadPoints);
+        
+        % Extract format-specific metadata
+        isCtf = strcmpi(sFile.device, 'CTF');
+        if isCtf
+            customMetadata = ExtractCtfMetadata(sFile.filename);
+        else
+            customMetadata = struct();
+        end
+        metadata = struct_copy_fields(metadata, customMetadata, 0);
+        
         %% Save MEG data
         megFolder = bst_fullfile(sessionFolder, 'meg');
         if exist(megFolder, 'dir') ~= 7
@@ -304,7 +359,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         % Add prefix + suffix to raw file
         newName = [prefixTask taskName rest '_meg'];
         % Copy raw file to output folder
-        isCtf = strcmpi(sFile.format, 'CTF') || strcmpi(sFile.format, 'CTF-CONTINUOUS');
         if isCtf
             rawExt = '.ds';
         end
@@ -315,16 +369,18 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 dsFolder = fileparts(sFile.filename);
                 tempPath = bst_fullfile(megFolder, [rawName, rawExt]);
                 copyfile(dsFolder, tempPath);
-                ctf_rename_ds(tempPath, newPath, [], anonymize);
+                ctf_rename_ds(tempPath, newPath, []);
                 % Save Polhemus file
-                posFile = bst_fullfile(megFolder, [prefix '_headshape.pos']);
-                out_channel_pos(sInput.ChannelFile, posFile);
+                if hasHeadPoints
+                    posFile = bst_fullfile(megFolder, [prefix '_headshape.pos']);
+                    out_channel_pos(sInput.ChannelFile, posFile);
+                end
             else
                 copyfile(sFile.filename, newPath);
             end
             % Create JSON sidecar
             jsonFile = bst_fullfile(megFolder, [newName '.json']);
-            CreateMegJson(jsonFile, sFile, taskName);
+            CreateMegJson(jsonFile, metadata);
             
             % Create session TSV file
             tsvFile = bst_fullfile(sessionFolder, [prefix '_scans.tsv']);
@@ -379,7 +435,7 @@ function iSub = GetPrivateSubjectId(data, subjectId)
     iSub = [];
     if ~isempty(data.Subjects)
         for iSubject = 1:length(data.Subjects)
-            if data.Subjects(iSubject).Id == subjectId
+            if SameIds(data.Subjects(iSubject).Id, subjectId)
                 iSub = iSubject;
                 return;
             end
@@ -387,13 +443,15 @@ function iSub = GetPrivateSubjectId(data, subjectId)
     end
 end
 
-function sessionId = GetSessionId(data, subjectId, sessionName)
+function [sessionId, runId] = GetSessionId(data, subjectId, sessionName)
     iSub = GetPrivateSubjectId(data, subjectId);
     sessionId = [];
+    runId = [];
     if ~isempty(data.Subjects(iSub).Sessions)
         for iSession = 1:length(data.Subjects(iSub).Sessions)
             if strcmp(data.Subjects(iSub).Sessions(iSession).Name, sessionName)
                 sessionId = data.Subjects(iSub).Sessions(iSession).Id;
+                runId = data.Subjects(iSub).Sessions(iSession).Run;
                 return;
             end
         end
@@ -409,8 +467,8 @@ function sessionId = GetFirstSessionId(data, subjectId)
     end
 end
 
-function same = SameIds(id1, id2, namingScheme)
-    if namingScheme < 0
+function same = SameIds(id1, id2)
+    if ischar(id1)
         same = strcmp(id1, id2);
     else
         same = id1 == id2;
@@ -427,14 +485,27 @@ function data = AddSubject(data, subjectName, subjectId)
     data.Subjects(iSub).Sessions = [];
 end
 
-function data = AddSession(data, subjectId, sessionName, sessionId)
+function [data, runId] = AddSession(data, subjectId, sessionName, sessionId)
     iSub = GetPrivateSubjectId(data, subjectId);
-    numSessions = length(data.Subjects(iSub).Sessions);
-    if numSessions == 0
+    iSes = length(data.Subjects(iSub).Sessions) + 1;
+    runId = CountSessionIds(data, iSub, sessionId) + 1;
+    if iSes == 1
         data.Subjects(iSub).Sessions = struct();
     end
-    data.Subjects(iSub).Sessions(numSessions + 1).Name = sessionName;
-    data.Subjects(iSub).Sessions(numSessions + 1).Id = sessionId;
+    data.Subjects(iSub).Sessions(iSes).Name = sessionName;
+    data.Subjects(iSub).Sessions(iSes).Id   = sessionId;
+    data.Subjects(iSub).Sessions(iSes).Run = runId;
+end
+
+function count = CountSessionIds(data, iSub, sessionId)
+    count = 0;
+    if ~isempty(data.Subjects(iSub).Sessions)
+        for iSession = 1:length(data.Subjects(iSub).Sessions)
+            if SameIds(data.Subjects(iSub).Sessions(iSession).Id, sessionId)
+                count = count + 1;
+            end
+        end
+    end
 end
 
 function formattedId = FormatId(id, namingScheme, prefix)
@@ -475,20 +546,11 @@ function id = GetLastId(parentFolder, prefix)
     end
 end
 
-function CreateMegJson(jsonFile, sFile, taskName)
+function CreateMegJson(jsonFile, metadata)
     fid = fopen(jsonFile, 'wt');
-    fprintf(fid, '{');
-    fprintf(fid, ['"TaskName":"' taskName '",']);
-    fprintf(fid, ['"Manufacturer":"' sFile.device '",']);
-    fprintf(fid, '"SamplingFrequency":%d', sFile.prop.sfreq);
-    fprintf(fid, '}');
+    jsonText = bst_jsonencode(metadata);
+    fprintf(fid, jsonText);
     fclose(fid);
-    %TODO: missing some fields...
-    % - PowerLineFrequency
-    % - DewarPosition
-    % - SoftwareFilters
-    % - DigitizedLandmarks
-    % - DigitizedHeadPoints
 end
 
 function CreateDatasetDescription(parentFolder, overwrite)
@@ -496,12 +558,15 @@ function CreateDatasetDescription(parentFolder, overwrite)
     if exist(jsonFile, 'file') == 2 && ~overwrite
         return;
     end
+    
     ProtocolInfo = bst_get('ProtocolInfo');
+    description = {};
+    description.Name = ProtocolInfo.Comment;
+    description.BIDSVersion = '1.1.1';
+    
     fid = fopen(jsonFile, 'wt');
-    fprintf(fid, '{');
-    fprintf(fid, ['"Name":"' ProtocolInfo.Comment '",']);
-    fprintf(fid, '"BIDSVersion":"1.1.1"');
-    fprintf(fid, '}');
+    jsonText = bst_jsonencode(description);
+    fprintf(fid, jsonText);
     fclose(fid);
 end
 
@@ -532,7 +597,12 @@ end
 % -1 : Char-based custom IDs
 %  0 : Numbered IDs of variable length
 %  N : Numbered IDs of fixed length N (zero-padded)
-function [subjectScheme, sessionScheme] = DetectNamingScheme(bidsDir)
+function [subScheme, sesScheme, runScheme] = DetectNamingScheme(bidsDir)
+    % Unknown schemes by default
+    subScheme = [];
+    sesScheme = [];
+    runScheme = [];
+
     subjects = dir(bst_fullfile(bidsDir, 'sub-*'));
     if ~isempty(subjects)
         %% Detect subject scheme
@@ -543,14 +613,14 @@ function [subjectScheme, sessionScheme] = DetectNamingScheme(bidsDir)
             numLen = length(num2str(subjectId));
             if strLen > numLen
                 % Zero-padded IDs
-                subjectScheme = strLen;
+                subScheme = strLen;
             else
                 % Non-padded IDs
-                subjectScheme = 0;
+                subScheme = 0;
             end
         else
             % Char-based scheme
-            subjectScheme = -1;
+            subScheme = -1;
         end
         
         %% Detect session scheme
@@ -563,25 +633,76 @@ function [subjectScheme, sessionScheme] = DetectNamingScheme(bidsDir)
                 numLen = length(num2str(sessionId));
                 if strLen > numLen
                     % Zero-padded IDs
-                    sessionScheme = strLen;
+                    sesScheme = strLen;
                 elseif strLen == 8
                     % Date based IDs (e.g. 20180925)
-                    sessionScheme = -2;
+                    sesScheme = -2;
                 else
                     % Non-padded IDs
-                    sessionScheme = 0;
+                    sesScheme = 0;
                 end
             else
                 % Char-based scheme
-                sessionScheme = -1;
+                sesScheme = -1;
             end
-        else
-            % Unknown scheme
-            sessionScheme = [];
+            
+            %% Detect run scheme
+            megFiles = dir(bst_fullfile(bidsDir, subjects(1).name, sessions(1).name, 'meg'));
+            for iFile = 1:length(megFiles)
+                run = regexp(megFiles(iFile).name, '_run-(\d+)', 'match');
+                if ~isempty(run)
+                    runScheme = length(run{1}) - 5;
+                    break;
+                end
+            end
         end
+    end
+end
+
+function metadata = ExtractCtfMetadata(ds_directory)
+    metadata = struct();
+    [DataSetName, meg4_files, res4_file] = ctf_get_files(ds_directory);
+    [header, ChannelMat] = ctf_read_res4(res4_file);
+    
+    % Software Filters
+    metadata.SoftwareFilters = struct();
+    if isfield(header, 'SensorRes') && ~isempty(header.SensorRes)
+        GradOrder = header.SensorRes(find([header.SensorRes.sensorTypeIndex] == 5, 1)).grad_order_no;
+        metadata.SoftwareFilters.SpatialCompensation = struct('GradientOrder', GradOrder);
+    end
+    if isfield(header, 'filter') && ~isempty(header.filter)
+        for iFilter = 1:length(header.filter)
+            metadata.SoftwareFilters.TemporalFilter(iFilter).Type = header.filter(iFilter).fType;
+            metadata.SoftwareFilters.TemporalFilter(iFilter).Class = header.filter(iFilter).fClass;
+            metadata.SoftwareFilters.TemporalFilter(iFilter).Frequency = header.filter(iFilter).freq;
+            metadata.SoftwareFilters.TemporalFilter(iFilter).Parameters = header.filter(iFilter).params;
+        end
+    end
+end
+
+function [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(channelFile)
+    ChannelMat = in_bst_channel(channelFile);
+    if isfield(ChannelMat, 'HeadPoints') && ~isempty(ChannelMat.HeadPoints) && ~isempty(ChannelMat.HeadPoints.Loc)
+        nHS = size(ChannelMat.HeadPoints.Loc, 2);
     else
-        % Unknown scheme
-        subjectScheme = [];
-        sessionScheme = [];
+        nHS = 0;
+    end
+    
+    hasHeadPoints = nHS > 0;
+    
+    if hasHeadPoints
+        hasLandmarks = any(strcmpi(ChannelMat.HeadPoints.Type, 'CARDINAL'));
+    else
+        hasLandmarks = 0;
+    end
+end
+
+function str = bool2str(bool)
+    if bool == 1
+        str = 'true';
+    elseif bool == 0
+        str = 'false';
+    else
+        error('Unsupported input.');
     end
 end
