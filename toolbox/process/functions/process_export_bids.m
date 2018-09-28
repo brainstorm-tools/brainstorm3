@@ -159,7 +159,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                         rawFile = strrep(DataMat.History{iHist, 3}, 'Link to raw file: ', '');
                         if ~isempty(rawFile) && (exist(rawFile, 'file') == 2 || exist(rawFile, 'dir') == 7)
                             skip = 0;
-                            sFile.filename = rawFile;
+                            [DataSetName, meg4_files] = ctf_get_files(rawFile);
+                            sFile.filename = meg4_files{1};
                             disp(['Warning: File "', sFile.comment, '" already imported in binary format.', ...
                                   10, '         Using raw link "', rawFile, '" instead.']);
                             break;
@@ -345,7 +346,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         % Extract format-specific metadata
         isCtf = strcmpi(sFile.device, 'CTF');
         if isCtf
-            customMetadata = ExtractCtfMetadata(sFile.filename);
+            customMetadata = ExtractCtfMetadata(fileparts(sFile.filename));
         else
             customMetadata = struct();
         end
