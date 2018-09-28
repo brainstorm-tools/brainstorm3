@@ -53,6 +53,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.bidsdir.Comment = 'Output folder:';
     sProcess.options.bidsdir.Type    = 'filename';
     sProcess.options.bidsdir.Value   = SelectOptions;
+    % Identify naming schemes
+    sProcess.options.subscheme.Comment = {'Custom names', 'Number index', 'Subject names (sub-XXXX): '};
+    sProcess.options.subscheme.Type    = 'radio_line';
+    sProcess.options.subscheme.Value   = 2;
+    sProcess.options.sesscheme.Comment = {'Acquisition date', 'Number index', 'Session names (ses-XXXX): '};
+    sProcess.options.sesscheme.Type    = 'radio_line';
+    sProcess.options.sesscheme.Value   = 1;
     % Identifying empty room
     sProcess.options.emptyroom.Comment = 'Keywords to detect empty room recordings: ';
     sProcess.options.emptyroom.Type    = 'text';
@@ -125,10 +132,26 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % Default naming schemes
     if isempty(subScheme)
-        subScheme = -1; % Char-based
+        if isfield(sProcess.options, 'subscheme') && ~isempty(sProcess.options.subscheme.Value)
+            if sProcess.options.subscheme.Value == 1
+                subScheme = -1;
+            else
+                subScheme = 4;
+            end
+        else
+            subScheme = -1; % Char-based
+        end
     end
     if isempty(sesScheme)
-        sesScheme = -2; % Date-based
+        if isfield(sProcess.options, 'sesscheme') && ~isempty(sProcess.options.sesscheme.Value)
+            if sProcess.options.sesscheme.Value == 1
+                sesScheme = -2;
+            else
+                sesScheme = 4;
+            end
+        else
+            sesScheme = -2; % Date-based
+        end
     end
     if isempty(runScheme)
         runScheme = 2;  % Index-based, 2 digits
