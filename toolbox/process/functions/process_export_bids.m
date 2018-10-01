@@ -158,12 +158,15 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     % Sort inputs by subjects and acquisition time
+    bst_progress('start', 'Export', 'Sorting input files...');
     sInputs = SortInputs(sInputs);
+    nInputs = length(sInputs);
     
     CreateDatasetDescription(outputFolder, overwrite)
     data = LoadExistingData(outputFolder);
     
-    for iInput = 1:length(sInputs)
+    bst_progress('start', 'Export', 'Exporting dataset files...', 0, nInputs)
+    for iInput = 1:nInputs
         sInput   = sInputs(iInput);
         sStudy   = bst_get('Study', sInput.iStudy);
         sSubject = bst_get('Subject', sStudy.BrainStormSubject);
@@ -419,6 +422,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             tsvFile = bst_fullfile(sessionFolder, [prefix '_scans.tsv']);
             CreateSessionTsv(tsvFile, newPath, dateOfStudy)
         end
+        
+        bst_progress('inc', 1)
     end
     
     % Save condition to subject/session mapping for future exports.
