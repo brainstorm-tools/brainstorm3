@@ -309,9 +309,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         %% Extract task name
-        %TODO:
-        % infoTag=readCPersist(fullfile(newDs,infoDs.name),0);
-        % Get infoTag.data of infoTag.name == '_DATASET_PROCSTEPPROTOCOL'
+        isCtf = strcmpi(sFile.device, 'CTF');
         [rawFolder, rawName, rawExt] = fileparts(sFile.filename);
         prefix = [FormatId(subjectId, subScheme, 'sub') '_' FormatId(sessionId, sesScheme, 'ses')];
         prefixTask = [prefix '_task-'];
@@ -331,7 +329,17 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 rest = rawNameUnprefixed(endTask(1):end);
             end
         else
-            taskName = regexprep(rawName,'[^a-zA-Z0-9]','');
+            taskName = [];
+            
+            % Find task name from format specific metadata if possible
+            if isCtf
+                taskName = ExtractCtfTaskname(sFile);
+            end
+            
+            % Otherwise, extract task name from condition
+            if isempty(taskName)
+                taskName = regexprep(rawName,'[^a-zA-Z0-9]','');
+            end
         end
         if ~isempty(runId) && ~isempty(FormatId(runId, runScheme))
             rest = [rest '_run-' FormatId(runId, runScheme)];
@@ -369,7 +377,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         metadata.DigitizedHeadPoints = bool2str(hasHeadPoints);
         
         % Extract format-specific metadata
-        isCtf = strcmpi(sFile.device, 'CTF');
         if isCtf
             customMetadata = ExtractCtfMetadata(fileparts(sFile.filename));
         else
@@ -702,6 +709,24 @@ function metadata = ExtractCtfMetadata(ds_directory)
             metadata.SoftwareFilters.TemporalFilter(iFilter).Class = header.filter(iFilter).fClass;
             metadata.SoftwareFilters.TemporalFilter(iFilter).Frequency = header.filter(iFilter).freq;
             metadata.SoftwareFilters.TemporalFilter(iFilter).Parameters = header.filter(iFilter).params;
+        end
+    end
+end
+
+
+function taskName = ExtractCtfTaskname(sFile)
+    taskName = [];
+    infoDs = dir(fullfile(fileparts(sFile.filename), '*.infods'));
+    if ~isempty(infoDs)
+        infoTag = readCPersist(fullfile(infoDs.folder, infoDs.name), 0);
+        if ~isempty(infoTag)
+            iTag = find(strcmp('_DATASET_PROCSTEPPROTOCOL', {infoTag.name}));
+            if ~isempty(iTag)
+                protocol = deblank(infoTag(iTag).data);
+                if ~isempty(protocol)
+                    taskName = protocol;
+                end
+            end
         end
     end
 end
