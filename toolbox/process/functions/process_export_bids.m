@@ -157,6 +157,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         runScheme = 2;  % Index-based, 2 digits
     end
     
+    % Sort inputs by subjects and acquisition time
+    sInputs = SortInputs(sInputs);
+    
     CreateDatasetDescription(outputFolder, overwrite)
     data = LoadExistingData(outputFolder);
     
@@ -182,7 +185,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                         rawFile = strrep(DataMat.History{iHist, 3}, 'Link to raw file: ', '');
                         if ~isempty(rawFile) && (exist(rawFile, 'file') == 2 || exist(rawFile, 'dir') == 7)
                             skip = 0;
-                            [DataSetName, meg4_files] = ctf_get_files(rawFile);
+                            [DataSetName, meg4_files] = ctf_get_files(rawFile, 0);
                             sFile.filename = meg4_files{1};
                             disp(['Warning: File "', sFile.comment, '" already imported in binary format.', ...
                                   10, '         Using raw link "', rawFile, '" instead.']);
@@ -200,11 +203,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         % Extract date of study
-        if isfield(sStudy, 'DateOfStudy') && ~isempty(sStudy.DateOfStudy)
-            dateOfStudy = datetime(sStudy.DateOfStudy);
-        else
-            dateOfStudy = datetime('today');
-        end
+        dateOfStudy = ExtractAcquisitionTime(sFile, sInput.iStudy);
         
         %% Check if this is the empty room subject
         if strncmp(sStudy.Name, '@raw', 4)
@@ -685,7 +684,7 @@ end
 
 function metadata = ExtractCtfMetadata(ds_directory)
     metadata = struct();
-    [DataSetName, meg4_files, res4_file] = ctf_get_files(ds_directory);
+    [DataSetName, meg4_files, res4_file] = ctf_get_files(ds_directory, 0);
     [header, ChannelMat] = ctf_read_res4(res4_file);
     
     % Software Filters
@@ -730,3 +729,67 @@ function str = bool2str(bool)
         error('Unsupported input.');
     end
 end
+
+function sInputs = SortInputs(sInputs)
+    % Group inputs by subject
+    iOrder = zeros(1, length(sInputs));
+    iNext = 1;
+    [uniqueSubj,I,J] = unique({sInputs.SubjectFile});
+    for iUniqueSub = 1:length(uniqueSubj)
+        iSubs = find(J == iUniqueSub);
+        nSubs = length(iSubs);
+        
+        % Within subjects, group inputs by acquisition time
+        for iSub = 1:nSubs
+            sInput = sInputs(iSubs(iSub));
+            % Extract acquisition time
+            DataMat = in_bst_data(sInput.FileName, 'F');
+            acqTime = ExtractAcquisitionTime(DataMat.F, sInput.iStudy);
+            if iSub == 1
+                acqTimes = acqTime;
+            else
+                acqTimes(end + 1) = acqTime;
+            end
+        end
+        [sortedTimes, iSorts] = sort(acqTimes);
+        for iSort = 1:nSubs
+            iOrder(iNext) = iSubs(iSorts(iSort));
+            iNext = iNext + 1;
+        end
+    end
+    sInputs = sInputs(iOrder);
+end
+
+function acqTime = ExtractAcquisitionTime(sFile, iStudy)
+    % Try to detect exact acquisition time from CTF metadata
+    if strcmpi(sFile.device, 'CTF')
+        ds_directory = fileparts(sFile.filename);
+        [DataSetName, meg4_files, res4_file] = ctf_get_files(ds_directory, 0);
+        header = ctf_read_res4(res4_file);
+        if ~isempty(header) && isfield(header, 'res4') && ~isempty(header.res4) ...
+                && isfield(header.res4, 'data_date') && ~isempty(header.res4.data_date) ...
+                && isfield(header.res4, 'data_time') && ~isempty(header.res4.data_time)
+            ctfDate = deblank(header.res4.data_date);
+            ctfTime = deblank(header.res4.data_time);
+            if ~isempty(ctfDate) && ~isempty(ctfTime)
+                try
+                    acqTime = datetime([ctfDate ' ' ctfTime], 'InputFormat', 'dd-MMM-yyyy HH:mm');
+                    if ~isempty(acqTime)
+                        return;
+                    end
+                catch
+                end
+            end
+        end
+    end
+
+    % Otherwise, get study date
+    sStudy = bst_get('Study', iStudy);
+    if isfield(sStudy, 'DateOfStudy') && ~isempty(sStudy.DateOfStudy)
+        acqTime = datetime(sStudy.DateOfStudy);
+    else
+        % When all else fails, return today's date...
+        acqTime = datetime('today');
+    end
+end
+

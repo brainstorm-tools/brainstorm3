@@ -1,8 +1,9 @@
-function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file] = ctf_get_files( ds_directory )
+function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file] = ctf_get_files( ds_directory, verbose)
 % CTF_GET_FILES: Get the name and files of a CTF .DS directory.
 %
 % INPUT: 
 %     - ds_directory : Full path to a .ds CTF directory
+%     - verbose      : Whether to display information in the command window (by default)
 % OUTPUT:
 %     - DataSetName  : Name of the input CTF dataset
 %     - meg4_files   : Cell array of full paths to the recordings files (.meg4, .1_meg4, .2_meg4, ...)
@@ -30,6 +31,11 @@ function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file] = 
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2018
+
+% Parse arguments
+if nargin < 2
+    verbose = 1;
+end
 
 % ===== .MEG4 =====
 % Find the first .meg4 file in this directory
@@ -144,27 +150,30 @@ else
         posDir = dir(bst_fullfile(dspath, [dsname(1:iUnder-1), '*.pos']));
         if (length(posDir) == 1)
             pos_file = bst_fullfile(dspath, posDir(1).name);
-        elseif (length(posDir) >= 2)
+        elseif (length(posDir) >= 2) && verbose
             disp(['CTF> Warning: Multiple .pos head shape points found in: ' dspath]);
         end
     end
 end
 
 % Report which file is used
-if ~isempty(pos_file)
-    disp(['CTF> Using head shape file: ' pos_file]);
-else
-    disp(['CTF> Warning: No head shape imported for dataset: ' dsname]);
+if verbose
+    if ~isempty(pos_file)
+        disp(['CTF> Using head shape file: ' pos_file]);
+    else
+        disp(['CTF> Warning: No head shape imported for dataset: ' dsname]);
+    end
 end
-
 
 % ===== .HC =====
 % Get .hc files
 hc_file = bst_fullfile(ds_directory, [DataSetName,'.hc']);
 % Check that both files are accessible
 if ~file_exist(hc_file)
-   disp(['CTF> Warning: ' hc_file ' missing.']);
-   hc_file = [];
+    if verbose
+        disp(['CTF> Warning: ' hc_file ' missing.']);
+    end
+    hc_file = [];
 end
 
 
