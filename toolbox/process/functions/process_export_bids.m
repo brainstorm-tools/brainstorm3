@@ -309,6 +309,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         %% Extract task name
+        %TODO:
+        % infoTag=readCPersist(fullfile(newDs,infoDs.name),0);
+        % Get infoTag.data of infoTag.name == '_DATASET_PROCSTEPPROTOCOL'
         [rawFolder, rawName, rawExt] = fileparts(sFile.filename);
         prefix = [FormatId(subjectId, subScheme, 'sub') '_' FormatId(sessionId, sesScheme, 'ses')];
         prefixTask = [prefix '_task-'];
