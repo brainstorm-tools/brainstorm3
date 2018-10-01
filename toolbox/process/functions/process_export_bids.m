@@ -79,6 +79,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.dewarposition.Comment = 'Position of the dewar during the MEG scan: ';
     sProcess.options.dewarposition.Type    = 'text';
     sProcess.options.dewarposition.Value   = 'Upright';
+    % Dataset description metadata
+    sProcess.options.datasetmeta.Comment = 'Additional dataset description JSON fields: ';
+    sProcess.options.datasetmeta.Type    = 'textarea';
+    sProcess.options.datasetmeta.Value   = ['{' 10 '  "License": "PD"' 10 '}'];
+    % MEG sidecar metadata
+    sProcess.options.megmeta.Comment = 'Additional MEG sidecar JSON fields: ';
+    sProcess.options.megmeta.Type    = 'textarea';
+    sProcess.options.megmeta.Value   = ['{' 10 '  "InstitutionName": "McGill University"' 10 '}'];
 end
 
 
@@ -108,6 +116,30 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     else
         powerline = [];
+    end
+    datasetMetadata = struct();
+    if isfield(sProcess.options, 'datasetmeta') && ~isempty(sProcess.options.datasetmeta.Value)
+        datasetMeta = strtrim(sProcess.options.datasetmeta.Value);
+        if ~isempty(datasetMeta)
+            try
+                datasetMetadata = bst_jsondecode(datasetMeta);
+            catch e
+                bst_report('Error', sProcess, sInputs, ['Invalid dataset description: ' e.message]);
+                return;
+            end
+        end
+    end
+    megMetadata = struct();
+    if isfield(sProcess.options, 'megmeta') && ~isempty(sProcess.options.megmeta.Value)
+        megMeta = strtrim(sProcess.options.megmeta.Value);
+        if ~isempty(datasetMeta)
+            try
+                megMetadata = bst_jsondecode(megMeta);
+            catch e
+                bst_report('Error', sProcess, sInputs, ['Invalid MEG sidecar metadata: ' e.message]);
+                return;
+            end
+        end
     end
     
     iLastSub = 0;
@@ -162,7 +194,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     sInputs = SortInputs(sInputs);
     nInputs = length(sInputs);
     
-    CreateDatasetDescription(outputFolder, overwrite)
+    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata)
     data = LoadExistingData(outputFolder);
     
     bst_progress('start', 'Export', 'Exporting dataset files...', 0, nInputs)
@@ -367,7 +399,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         %% Prepare metadata structure
-        metadata = struct();
+        metadata = megMetadata;
         metadata.TaskName = taskName;
         metadata.Manufacturer = sFile.device;
         metadata.SamplingFrequency = sFile.prop.sfreq;
@@ -591,14 +623,17 @@ function CreateMegJson(jsonFile, metadata)
     fclose(fid);
 end
 
-function CreateDatasetDescription(parentFolder, overwrite)
+function CreateDatasetDescription(parentFolder, overwrite, description)
+    if nargin < 3
+        description = struct();
+    end
+
     jsonFile = bst_fullfile(parentFolder, 'dataset_description.json');
     if exist(jsonFile, 'file') == 2 && ~overwrite
         return;
     end
     
     ProtocolInfo = bst_get('ProtocolInfo');
-    description = {};
     description.Name = ProtocolInfo.Comment;
     description.BIDSVersion = '1.1.1';
     
