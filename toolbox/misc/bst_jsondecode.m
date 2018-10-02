@@ -190,7 +190,7 @@ for iChar = 1:length(inString)
         else
             err = 1;
         end
-    elseif isspace(c) && valType == VAL.CHAR && (state == STATE.READ_NEXT_VALUE || state == STATE.READ_VALUE)
+    elseif isspace(c) && ~isempty(valType) && valType == VAL.CHAR && (state == STATE.READ_NEXT_VALUE || state == STATE.READ_VALUE)
         % Only read spaces for character values
         value = [value c];
     end
