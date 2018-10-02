@@ -125,7 +125,7 @@ for iChar = 1:length(inString)
             err = 1;
         end
     elseif c == ','
-        if state == STATE.READ_VALUE
+        if state == STATE.READ_VALUE || state == STATE.END_VALUE
             if valType == VAL.LIST
                 if ~isempty(token) && ~isempty(num2str(token))
                     value(end + 1) = str2num(token);
@@ -139,8 +139,6 @@ for iChar = 1:length(inString)
                 value = [];
                 state = STATE.START_FIELD;
             end
-        elseif state == STATE.END_VALUE
-            state = STATE.START_FIELD;
         else
             err = 1;
         end
