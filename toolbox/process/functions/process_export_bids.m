@@ -211,30 +211,11 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             continue;
         end
         
-        % If BST binary file, try to find original raw file, or skip otherwise
-        if strcmpi(sFile.format, 'BST-BIN')
-            skip = 1;
-            if isfield(DataMat, 'History') && ~isempty(DataMat.History)
-                for iHist = 1:size(DataMat.History, 1)
-                    if strcmpi(DataMat.History{iHist, 2}, 'import')
-                        rawFile = strrep(DataMat.History{iHist, 3}, 'Link to raw file: ', '');
-                        if ~isempty(rawFile) && (exist(rawFile, 'file') == 2 || exist(rawFile, 'dir') == 7)
-                            skip = 0;
-                            [DataSetName, meg4_files] = ctf_get_files(rawFile, 0);
-                            sFile.filename = meg4_files{1};
-                            disp(['Warning: File "', sFile.comment, '" already imported in binary format.', ...
-                                  10, '         Using raw link "', rawFile, '" instead.']);
-                            break;
-                        end
-                    end
-                end
-            end
-        else
-            skip = 0;
-        end
-        if skip
-            disp(['Skipping file "' sFile.comment '" due to raw link no longer existing...']);
-            continue;
+        % If BST binary file, find original raw file
+        if strcmpi(sFile.format, 'BST-BIN') && strcmpi(sFile.device, 'CTF')
+            sFile.filename = ExtractOriginalBstFilename(DataMat);
+            disp(['Warning: File "', sFile.comment, '" already imported in binary format.', ...
+                10, '         Using raw link "', sFile.filename, '" instead.']);
         end
         
         % Extract date of study
@@ -806,13 +787,26 @@ function sInputs = SortInputs(sInputs)
     for iUniqueSub = 1:length(uniqueSubj)
         iSubs = find(J == iUniqueSub);
         nSubs = length(iSubs);
+        skip  = zeros(1,nSubs);
         
         % Within subjects, group inputs by acquisition time
         for iSub = 1:nSubs
             sInput = sInputs(iSubs(iSub));
+            DataMat = in_bst_data(sInput.FileName, {'F', 'History'});
+            sFile = DataMat.F;
+            % Try to find original raw file
+            if strcmpi(sFile.format, 'BST-BIN') && strcmpi(sFile.device, 'CTF')
+                origFilename = ExtractOriginalBstFilename(DataMat);
+                if ~isempty(origFilename)
+                    sFile.filename = origFilename;
+                else
+                    % Skip if we can't find original raw file
+                    skip(iSub) = 1;
+                    disp(['Skipping file "' sFile.comment '" due to raw link no longer existing...']);
+                end
+            end
             % Extract acquisition time
-            DataMat = in_bst_data(sInput.FileName, 'F');
-            acqTime = ExtractAcquisitionTime(DataMat.F, sInput.iStudy);
+            acqTime = ExtractAcquisitionTime(sFile, sInput.iStudy);
             if iSub == 1
                 acqTimes = acqTime;
             else
@@ -821,8 +815,10 @@ function sInputs = SortInputs(sInputs)
         end
         [sortedTimes, iSorts] = sort(acqTimes);
         for iSort = 1:nSubs
-            iOrder(iNext) = iSubs(iSorts(iSort));
-            iNext = iNext + 1;
+            if ~skip(iSub)
+                iOrder(iNext) = iSubs(iSorts(iSort));
+                iNext = iNext + 1;
+            end
         end
     end
     sInputs = sInputs(iOrder);
@@ -858,6 +854,24 @@ function acqTime = ExtractAcquisitionTime(sFile, iStudy)
     else
         % When all else fails, return today's date...
         acqTime = datetime('today');
+    end
+end
+
+function filename = ExtractOriginalBstFilename(DataMat)
+    filename = [];
+    if isfield(DataMat, 'History') && ~isempty(DataMat.History)
+        for iHist = 1:size(DataMat.History, 1)
+            if strcmpi(DataMat.History{iHist, 2}, 'import')
+                rawFile = strrep(DataMat.History{iHist, 3}, 'Link to raw file: ', '');
+                if ~isempty(rawFile) && (exist(rawFile, 'file') == 2 || exist(rawFile, 'dir') == 7)
+                    [DataSetName, meg4_files] = ctf_get_files(rawFile, 0);
+                    if ~isempty(meg4_files)
+                        filename = meg4_files{1};
+                        return;
+                    end
+                end
+            end
+        end
     end
 end
 
