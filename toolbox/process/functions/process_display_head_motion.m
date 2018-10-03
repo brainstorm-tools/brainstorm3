@@ -76,42 +76,47 @@ function OutputFiles = Run(sProcess, sInput) %#ok<STOUT,INUSL,DEFNU>
     InitLoc = [sFile.header.hc.SCS.NAS, sFile.header.hc.SCS.LPA, ...
       sFile.header.hc.SCS.RPA]';
     % Continuous head localization, from HLU channels.
-    ReshapeToContinuous = true;
+    ReshapeToContinuous = false;
     [Locations, HeadSamplePeriod, FitErrors] = ...
       process_evt_head_motion('LoadHLU', sInput, ReshapeToContinuous);
-    nSxnT = size(Locations, 2);
-    %     nT = size(Locations, 3);
+    nS = size(Locations, 2);
+    nT = size(Locations, 3);
     
     % Get motion distance from reference location, as most distant point
     % on a sphere that follows the motion defined by the head coils.
     % This replaces the 9 HLU channels and better captures any type of
     % head movement.
     tic
-    D = process_evt_head_motion('RigidDistances', Locations, InitLoc);
+    DistDowns = process_evt_head_motion('RigidDistances', Locations, InitLoc); % [nS, nT]
     toc
     
     % Upsample back to MEG sampling rate.
     tic
-    D = interp1(D, 1:nSxnT*HeadSamplePeriod);
+    Dist = zeros(nS*HeadSamplePeriod, nT);
+    for t = 1:nT
+      Dist(:, t) = interp1(DistDowns(:, t), (1:nS*HeadSamplePeriod)/HeadSamplePeriod);
+    end
     %     D = resample(D, HeadSamplePeriod, 1);
     toc
     
     % Display
     figure();
-    Time = ((1:nSxnT*HeadSamplePeriod)' - 1) / sFile.prop.sfreq + ...
+    Time = ((1:nS*HeadSamplePeriod)' - 1) / sFile.prop.sfreq + ...
       DataMat.Time(1);
-    plot(Time, D);
+    plot(Time, Dist);
     
     % Optionnally display head coil fit errors.
     DoFit = false;
     if DoFit
       % Use maximum error among coils.
       FitErrors = max(FitErrors);
-      FitErrors = interp1(FitErrors, 1:nSxnT*HeadSamplePeriod);
+      FitErrors = interp1(FitErrors, 1:nS*HeadSamplePeriod);
       %       FitErrors = resample(FitErrors, HeadSamplePeriod, 1);
       figure();
       plot(Time, FitErrors);
     end
+    
+    OutputFiles = [];
         
   end
 
