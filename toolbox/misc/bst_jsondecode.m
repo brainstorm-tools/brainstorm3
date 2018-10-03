@@ -63,7 +63,9 @@ for iChar = 1:length(inString)
     
     % Go through state machine depending on character
     if c == '{'
-        if state == STATE.START
+        if state == STATE.READ_VALUE && valType == VAL.CHAR
+            value = [value c];
+        elseif state == STATE.START
             state = STATE.START_FIELD;
         elseif state == STATE.START_VALUE
             path{end + 1} = field;
@@ -73,7 +75,9 @@ for iChar = 1:length(inString)
             err = 1;
         end
     elseif c == '}'
-        if state == STATE.READ_VALUE || state == STATE.END_VALUE
+        if state == STATE.READ_VALUE && valType == VAL.CHAR
+            value = [value c];
+        elseif state == STATE.READ_VALUE || state == STATE.END_VALUE
             % Save if not done already (no comma at the end of group)
             if ~isempty(field)
                 outStruct = saveField(outStruct, path, field, value, valType);
@@ -147,7 +151,9 @@ for iChar = 1:length(inString)
             err = 1;
         end
     elseif c == '['
-        if state == STATE.START_VALUE
+        if state == STATE.READ_VALUE && valType == VAL.CHAR
+            value = [value c];
+        elseif state == STATE.START_VALUE
             valType = VAL.LIST;
             token = [];
             state = STATE.READ_VALUE;
@@ -155,7 +161,9 @@ for iChar = 1:length(inString)
             err = 1;
         end
     elseif c == ']'
-        if state == STATE.READ_VALUE
+        if state == STATE.READ_VALUE && valType == VAL.CHAR
+            value = [value c];
+        elseif state == STATE.READ_VALUE && valType == VAL.LIST
             if ~isempty(token)
                 n = str2num(token);
                 if ~isempty(n)
