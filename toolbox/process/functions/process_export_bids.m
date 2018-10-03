@@ -226,7 +226,10 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         % Detect subject names formatted as "sub-<name>"
         elseif strncmp(sSubject.Name, 'sub-', 4) && length(sSubject.Name) > 5
             subjectId = sSubject.Name(5:end);
-            if subScheme == -1 || ~isempty(str2num(subjectId))
+            if subScheme >= 0
+                subjectId = str2num(subjectId);
+            end
+            if ~isempty(subjectId)
                 data = AddSubject(data, sSubject.Name, subjectId);
                 newSubject = 0;
             end
@@ -271,34 +274,41 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             
             % Date of study is the session name for empty room recordings
             [sessionId, runId] = GetSessionId(data, subjectId, sessionName);
-            newSession = isempty(sessionId);
-            if newSession
+            if isempty(sessionId)
                 sessionId = datestr(dateOfStudy, 'yyyymmdd');
                 [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
             end
             sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, -2, 'ses'));
-            if newSession
+            if exist(sessionFolder, 'dir') ~= 7
                 mkdir(sessionFolder);
             end
         else
             subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subScheme, 'sub'));
-            if newSubject
+            if exist(subjectFolder, 'dir') ~= 7
                 mkdir(subjectFolder);
                 iLastSub = subjectId;
             end
             
             %% Check if session already exists
             newSession = 1;
+            subLen = length(sSubject.Name);
             [iExistingSes, runId] = GetSessionId(data, subjectId, sessionName);
             if ~isempty(iExistingSes)
                 sessionId = iExistingSes;
                 newSession = 0;
             % Detect session names formatted as "ses-<name>"
-            elseif strncmp(sSubject.Name, 'ses-', 4) && length(sessionName) > 5
-                sessionId = sessionName(5:end);
-                if sesScheme == -1 || ~isempty(str2num(sessionId))
-                    [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
-                    newSession = 0;
+            elseif strncmp(sessionName(subLen+1:end), '_ses-', 5) && length(sessionName) > (subLen + 5)
+                sessionId = regexp(sessionName, '_ses-(\w+)_', 'match');
+                if ~isempty(sessionId)
+                    sessionId = sessionId{1};
+                    sessionId = sessionId(6:end-1);
+                    if sesScheme >= 0
+                        sessionId = str2num(sessionId);
+                    end
+                    if ~isempty(sessionId)
+                        [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
+                        newSession = 0;
+                    end
                 end
             end
 
@@ -322,7 +332,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
             end
             sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, sesScheme, 'ses'));
-            if newSession
+            if exist(sessionFolder, 'dir') ~= 7
                 mkdir(sessionFolder);
             end
         end
@@ -343,7 +353,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             endTask = strfind(rawNameUnprefixed, '_');
             if ~isempty(endTask)
                 taskName = rawNameUnprefixed(1:endTask(1) - 1);
-                rest = rawNameUnprefixed(endTask(1):end);
+                %rest = rawNameUnprefixed(endTask(1):end);
             end
         else
             taskName = [];
