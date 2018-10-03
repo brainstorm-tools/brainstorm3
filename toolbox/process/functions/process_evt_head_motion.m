@@ -29,7 +29,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
   % Description of the process
-  sProcess.Comment     = 'Detect head motion events';
+  sProcess.Comment     = 'Detect head motion events (CTF)';
   sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion';
   sProcess.Category    = 'Custom';
   sProcess.SubGroup    = 'Events';
@@ -79,9 +79,10 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
   % Find stable, bad head motion and bad head coil fit segments.
   %
-  % MoveSegments and FitSegments are a list of start samples of these two
-  % kinds of segments.  FitSegments represent the head coil fit error,
-  % below or above the given threshold, with hysteresis.
+  % MoveSegments and FitSegments are a list of extended events, so start
+  % and end samples of these two kinds of segments.  FitSegments represent
+  % the head coil fit error, below or above the given threshold, with
+  % hysteresis.
   
   OutputFiles = {}; %#ok<NASGU>
   isFileOk = false(1, length(sInputs));
@@ -258,10 +259,14 @@ function sFile = CreateEvents(sFile, EvtName, Events)
 end
 
 
-function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput)
+function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, ReshapeContinuous)
   % Load and downsample continuous head localization channels.
   % HeadSamplePeriod is in (MEG) samples per (head) sample, not seconds.
   % Locations are in meters.
+  
+  if nargin < 2 || isempty(ReshapeContinuous)
+    ReshapeContinuous = true;
+  end
   
   % Load the raw file descriptor
   isRaw = strcmpi(sInput.FileType, 'raw');
@@ -329,7 +334,7 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput)
     % Long epoch(s); load by channel.
     % An hour of data at the maximum sampling rate is 330MB per channel.
     % So presume we can always load a single channel into memory.
-    for t = nEpochs:-1:1
+    for t = 1:nEpochs
       for c = 1:nChannels
         ChannelData = in_fread(sFile, ChannelMat, t, ...
           SamplesBounds, iHLU(c));
@@ -338,27 +343,29 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput)
     end
   else
     % Load all channels at once, continue from previously loaded epochs.
-    for t = nEpochs:-1:LoadEpochs+1
+    for t = (LoadEpochs+1):nEpochs
       ChannelData = in_fread(sFile, ChannelMat, t, SamplesBounds, iHLU);
       Locations(:, :, t) = ChannelData(:, 1:HeadSamplePeriod:nSamples);
     end
   end
   
   % size(Locations) is [nChannels, nSamples, nEpochs]
-  % Convert to continuous.
-  Locations = reshape(Locations, nChannels, []);
-  %   nSxnT = floor(nSamples/HeadSamplePeriod) * nEpochs;
+  if ReshapeContinuous
+    % Convert to continuous.
+    Locations = reshape(Locations, nChannels, []);
+    %   nSxnT = floor(nSamples/HeadSamplePeriod) * nEpochs;
+  end
   
   % Also load head coil fitting errors if needed.
   if nargout > 2
     nFitChan = nChannels/3;
-    FitErrors = zeros(nFitChan, size(Locations, 2), nEpochs);
+    FitErrors = zeros(nFitChan, ceil(nSamples/HeadSamplePeriod), nEpochs);
     
     if LoadSamples < nSamples
       % Long epoch(s); load by channel.
       % An hour of data at the maximum sampling rate is 330MB per channel.
       % So presume we can always load a single channel into memory.
-      for t = nEpochs:-1:1
+      for t = 1:nEpochs
         for c = 1:(nChannels/3)
           ChannelData = in_fread(sFile, ChannelMat, t, ...
             SamplesBounds, iFitErr(c));
@@ -367,14 +374,16 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput)
       end
     else
       % Load all channels at once, continue from previously loaded epochs.
-      for t = nEpochs:-1:1
+      for t = (LoadEpochs+1):nEpochs
         ChannelData = in_fread(sFile, ChannelMat, t, SamplesBounds, iFitErr);
         FitErrors(:, :, t) = ChannelData(:, 1:HeadSamplePeriod:nSamples);
       end
     end
     
-    % Convert to continuous.
-    FitErrors = reshape(FitErrors, nFitChan, []);
+    if ReshapeContinuous
+      % Convert to continuous.
+      FitErrors = reshape(FitErrors, nFitChan, []);
+    end
   end
 end
 
@@ -423,7 +432,7 @@ function D = RigidDistances(Locations, Reference, StopThreshold)
   D = zeros([nS, nT]);
   for t = 1:nT
     for s = 1:nS
-      [XO, XR] = RigidCoordinates( reshape(Locations(:, s, t), [3, 3]) );
+      [XO, XR] = RigidCoordinates(Locations(:, s, t));
       % Translation from X "head origin" to Y "head origin".
       T = XO - YO;
       % Rotation from X to Y (both with their "head origin" subtracted, so
@@ -458,10 +467,14 @@ end % RigidDistances
 
 function [O, R] = RigidCoordinates(FidsColumns)
   % Convert head coil locations to origin position and rotation matrix.
+  % Works with 9x1 or 3x3 (columns) input.
   
   R = zeros(3);
-  O = (FidsColumns(:, 2) + FidsColumns(:, 3))/2;
-  R(:, 1:2) = FidsColumns(:, 1:2) - O(:, [1, 1]);
+  O = zeros(3, 1);
+  O(:) = (FidsColumns(4:6) + FidsColumns(7:9))/2;
+  R(1:6) = FidsColumns(1:6); % F(1:6) is row if F is matrix, column if F is column!
+  R(1:3) = R(1:3) - O';
+  R(4:6) = R(4:6) - O';
   %R(:, 3) = cross(R(:, 1), R(:, 2));
   R(:, 3) = [R(2, 1)*R(3, 2) - R(3, 1)*R(2, 2), -R(1, 1)*R(3, 2) + R(3, 1)*R(1, 2), R(1, 1)*R(2, 2) - R(2, 1)*R(1, 2)];
   %R(:, 2) = cross(R(:, 3), R(:, 1));

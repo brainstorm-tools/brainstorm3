@@ -28,7 +28,7 @@ end
 
 function sProcess = GetDescription() %#ok<DEFNU>
   % Description of the process
-  sProcess.Comment     = 'Adjust head position';
+  sProcess.Comment     = 'Adjust head position (CTF)';
   sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadPosition';
   sProcess.Category    = 'Custom';
   sProcess.SubGroup    = 'Events';
@@ -62,27 +62,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<INUSL,DEFNU>
     MedianLoc = MedianLocation(Locations);
     
     ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
-    % We want the small head adjustment transformation, but the HLU
-    % channels are in dewar coordinates.  Thus apply the transformations
-    % that were already applied to the data, e.g. {'Dewar=>Native'
-    % 'Native=>Brainstorm/CTF'}, to the MedianLoc before computing the new
-    % transformation.
-    Loc = reshape(MedianLoc, 3, []);
-    Loc(end+1, :) = 1; %#ok<AGROW>
-    for t = 1:numel(ChannelMat.TransfMeg)
-      % Transformation matrices are in m.
-      Loc = ChannelMat.TransfMeg{t} * Loc;
-    end
-    Loc(end, :) = [];
-    sMri.SCS.NAS = Loc(1:3);
-    sMri.SCS.LPA = Loc(4:6);
-    sMri.SCS.RPA = Loc(7:9);
-    Transf = cs_compute(sMri, 'scs');
     
-    % Repackage as 4x4 matrix.
-    TransfMat = eye(4);
-    TransfMat(1:3,1:3) = Transf.R;
-    TransfMat(1:3,4) = Transf.T;
+    % Compute transformation corresponding to coil position.
+    TransfMat = LocationTransform(MedianLoc, ChannelMat);
     
     % Test and don't apply if it was already corrected.
     TransfDiff = TransfMat - eye(4);
@@ -97,6 +79,34 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<INUSL,DEFNU>
   
   % Return the input files that were processed properly.
   OutputFiles = {sInputs(isFileOk).FileName};
+end
+
+
+
+function TransfMat = LocationTransform(Loc, ChannelMat)
+  % Compute transformation corresponding to coil position.
+  
+  % We want the small head adjustment transformation, but the HLU
+  % channels are in dewar coordinates.  Thus apply the transformations
+  % that were already applied to the data, e.g. {'Dewar=>Native'
+  % 'Native=>Brainstorm/CTF'}, to the Loc before computing the new
+  % transformation.
+  Loc = reshape(Loc, 3, []);
+  Loc(end+1, :) = 1; 
+  for t = 1:numel(ChannelMat.TransfMeg)
+    % Transformation matrices are in m.
+    Loc = ChannelMat.TransfMeg{t} * Loc;
+  end
+  Loc(end, :) = [];
+  sMri.SCS.NAS = Loc(1:3);
+  sMri.SCS.LPA = Loc(4:6);
+  sMri.SCS.RPA = Loc(7:9);
+  Transf = cs_compute(sMri, 'scs');
+  
+  % Repackage as 4x4 matrix.
+  TransfMat = eye(4);
+  TransfMat(1:3,1:3) = Transf.R;
+  TransfMat(1:3,4) = Transf.T;
 end
 
 
