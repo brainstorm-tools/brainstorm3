@@ -270,13 +270,15 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             
             % Date of study is the session name for empty room recordings
-            sessionId = datestr(dateOfStudy, 'yyyymmdd');
+            [sessionId, runId] = GetSessionId(data, subjectId, sessionName);
+            newSession = isempty(sessionId);
+            if newSession
+                sessionId = datestr(dateOfStudy, 'yyyymmdd');
+                [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
+            end
             sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, -2, 'ses'));
-            if exist(sessionFolder, 'dir') ~= 7
+            if newSession
                 mkdir(sessionFolder);
-                runId = 1;
-            else
-                runId = GetLastRunId(sessionFolder) + 1;
             end
         else
             subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subScheme, 'sub'));
@@ -411,7 +413,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             rawExt = '.ds';
         end
         newPath = bst_fullfile(megFolder, [newName, rawExt]);
-        if exist(newPath, 'file') ~= 2 || overwrite
+        if exist(newPath, 'file') == 0 || overwrite
             if isCtf
                 % Rename internal DS files
                 dsFolder = fileparts(sFile.filename);
