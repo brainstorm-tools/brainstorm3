@@ -118,14 +118,18 @@ for iChar = 1:length(inString)
             err = 1;
         end
     elseif c == ':'
-        if state == STATE.READ_FIELD || state == STATE.END_FIELD
+        if state == STATE.READ_VALUE && valType == VAL.CHAR
+            value = [value c];
+        elseif state == STATE.READ_FIELD || state == STATE.END_FIELD
             valType = [];
             state = STATE.START_VALUE;
         else
             err = 1;
         end
     elseif c == ','
-        if state == STATE.READ_VALUE || state == STATE.END_VALUE
+        if state == STATE.READ_VALUE && valType == VAL.CHAR
+            value = [value c];
+        elseif state == STATE.READ_VALUE || state == STATE.END_VALUE
             if valType == VAL.LIST
                 if ~isempty(token) && ~isempty(num2str(token))
                     value(end + 1) = str2num(token);
