@@ -435,6 +435,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     posFile = bst_fullfile(megFolder, [prefix '_headshape.pos']);
                     out_channel_pos(sInput.ChannelFile, posFile);
                 end
+                % Remove internal Polhemus files
+                disp(bst_fullfile(newPath, '*.pos'));
             else
                 copyfile(sFile.filename, newPath);
             end
@@ -891,26 +893,4 @@ function myStruct = addField(myStruct, field, value)
         disp(['Warning: Specified field "' field '" will be ignored.']);
     end
     myStruct.(field) = value;
-end
-
-function runId = GetLastRunId(parentFolder)
-    runId = 0;
-    files = dir(parentFolder);
-    for iFile = 1:length(files)
-        if strncmpi(files(iFile).name, 'sub-', 4)
-            % Extract run ID from folder name
-            runId = regexp(files(iFile).name, '_run-(\d+)', 'match');
-            if ~isempty(runId)
-                runId = runId{1};
-                runId = str2num(runId(6:end));
-                return;
-            end
-        elseif files(iFile).name(1) ~= '.' && files(iFile).isdir
-            % Call on child recursively
-            runId = GetLastRunId(bst_fullfile(parentFolder, files(iFile).name));
-            if runId > 0
-                return;
-            end
-        end
-    end
 end
