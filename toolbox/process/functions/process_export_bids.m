@@ -163,27 +163,23 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     % Default naming schemes
-    if isempty(subScheme)
-        if isfield(sProcess.options, 'subscheme') && ~isempty(sProcess.options.subscheme.Value)
-            if sProcess.options.subscheme.Value == 1
-                subScheme = -1;
-            else
-                subScheme = 4;
-            end
+    if isfield(sProcess.options, 'subscheme') && ~isempty(sProcess.options.subscheme.Value)
+        if sProcess.options.subscheme.Value == 1
+            subScheme = -1;
         else
-            subScheme = -1; % Char-based
+            subScheme = 4;
         end
+    elseif isempty(subScheme)
+        subScheme = -1; % Char-based
     end
-    if isempty(sesScheme)
-        if isfield(sProcess.options, 'sesscheme') && ~isempty(sProcess.options.sesscheme.Value)
-            if sProcess.options.sesscheme.Value == 1
-                sesScheme = -2;
-            else
-                sesScheme = 4;
-            end
+    if isfield(sProcess.options, 'sesscheme') && ~isempty(sProcess.options.sesscheme.Value)
+        if sProcess.options.sesscheme.Value == 1
+            sesScheme = -2;
         else
-            sesScheme = -2; % Date-based
+            sesScheme = 4;
         end
+    elseif isempty(sesScheme)
+        sesScheme = -2; % Date-based
     end
     if isempty(runScheme)
         runScheme = 2;  % Index-based, 2 digits
