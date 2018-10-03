@@ -132,7 +132,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     megMetadata = struct();
     if isfield(sProcess.options, 'megmeta') && ~isempty(sProcess.options.megmeta.Value)
         megMeta = strtrim(sProcess.options.megmeta.Value);
-        if ~isempty(datasetMeta)
+        if ~isempty(megMeta)
             try
                 megMetadata = bst_jsondecode(megMeta);
             catch e
