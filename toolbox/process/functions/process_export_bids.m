@@ -197,7 +197,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     CreateDatasetDescription(outputFolder, overwrite, datasetMetadata)
     data = LoadExistingData(outputFolder);
     
-    bst_progress('start', 'Export', 'Exporting dataset files...', 0, nInputs)
+    bst_progress('start', 'Export', 'Exporting dataset files...', 0, nInputs);
     for iInput = 1:nInputs
         sInput   = sInputs(iInput);
         sStudy   = bst_get('Study', sInput.iStudy);
@@ -381,16 +381,16 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         
         %% Prepare metadata structure
         metadata = megMetadata;
-        metadata.TaskName = taskName;
-        metadata.Manufacturer = sFile.device;
-        metadata.SamplingFrequency = sFile.prop.sfreq;
+        metadata = addField(metadata, 'TaskName', taskName);
+        metadata = addField(metadata, 'Manufacturer', sFile.device);
+        metadata = addField(metadata, 'SamplingFrequency', sFile.prop.sfreq);
         if ~isempty(powerline)
-            metadata.PowerLineFrequency = powerline;
+            metadata = addField(metadata, 'PowerLineFrequency', powerline);
         end
-        metadata.DewarPosition = dewarPosition;
+        metadata = addField(metadata, 'DewarPosition', dewarPosition);
         [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(sInput.ChannelFile);
-        metadata.DigitizedLandmarks = bool2str(hasLandmarks);
-        metadata.DigitizedHeadPoints = bool2str(hasHeadPoints);
+        metadata = addField(metadata, 'DigitizedLandmarks', bool2str(hasLandmarks));
+        metadata = addField(metadata, 'DigitizedHeadPoints', bool2str(hasHeadPoints));
         
         % Extract format-specific metadata
         if isCtf
@@ -436,7 +436,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             CreateSessionTsv(tsvFile, newPath, dateOfStudy)
         end
         
-        bst_progress('inc', 1)
+        bst_progress('inc', 1);
     end
     
     % Save condition to subject/session mapping for future exports.
@@ -615,8 +615,8 @@ function CreateDatasetDescription(parentFolder, overwrite, description)
     end
     
     ProtocolInfo = bst_get('ProtocolInfo');
-    description.Name = ProtocolInfo.Comment;
-    description.BIDSVersion = '1.1.1';
+    description = addField(description, 'Name', ProtocolInfo.Comment);
+    description = addField(description, 'BIDSVersion', '1.1.1');
     
     fid = fopen(jsonFile, 'wt');
     jsonText = bst_jsonencode(description);
@@ -875,3 +875,9 @@ function filename = ExtractOriginalBstFilename(DataMat)
     end
 end
 
+function myStruct = addField(myStruct, field, value)
+    if isfield(myStruct, field)
+        disp(['Warning: Specified field "' field '" will be ignored.']);
+    end
+    myStruct.(field) = value;
+end
