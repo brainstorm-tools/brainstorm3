@@ -217,6 +217,38 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         % Extract date of study
         dateOfStudy = ExtractAcquisitionTime(sFile, sInput.iStudy);
         
+        %% Check if subject already exists
+        newSubject = 1;
+        iExistingSub = GetSubjectId(data, sSubject.Name);
+        if ~isempty(iExistingSub)
+            subjectId = iExistingSub;
+            newSubject = 0;
+        % Detect subject names formatted as "sub-<name>"
+        elseif strncmp(sSubject.Name, 'sub-', 4) && length(sSubject.Name) > 5
+            subjectId = sSubject.Name(5:end);
+            if subScheme == -1 || ~isempty(str2num(subjectId))
+                data = AddSubject(data, sSubject.Name, subjectId);
+                newSubject = 0;
+            end
+        end
+
+        %% Create subject if new
+        if newSubject
+            if subScheme == -1
+                % Char-based naming scheme
+                subjectId = FormatId(sSubject.Name, subScheme);
+            else
+                % Number-based naming scheme, increment from previous
+                subjectId = iLastSub + 1;
+                maxSubjects = power(10, subScheme);
+                if subScheme > 1 && subjectId >= maxSubjects
+                    bst_report('Error', sProcess, sInput, ...
+                        ['Exceeded maximum number of subjects supported by your naming scheme (' num2str(maxSubjects) ').']);
+                end
+            end
+            data = AddSubject(data, sSubject.Name, subjectId);
+        end
+        
         %% Check if this is the empty room subject
         if strncmp(sStudy.Name, '@raw', 4)
             sessionName = sStudy.Name(5:end);
@@ -226,6 +258,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         isEmptyRoom = strcmp(sSubject.Name, 'sub-emptyroom') || (~isempty(emptyRoomKeywords) && containsKeyword(lower(sessionName), emptyRoomKeywords));
         if isEmptyRoom
             subjectName = 'sub-emptyroom';
+            realSubjectId = subjectId;
             subjectId = 'emptyroom';
             iExistingSub = GetSubjectId(data, subjectName);
             if isempty(iExistingSub)
@@ -241,39 +274,11 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, -2, 'ses'));
             if exist(sessionFolder, 'dir') ~= 7
                 mkdir(sessionFolder);
+                runId = 1;
+            else
+                runId = GetLastRunId(sessionFolder) + 1;
             end
         else
-            %% Check if subject already exists
-            newSubject = 1;
-            iExistingSub = GetSubjectId(data, sSubject.Name);
-            if ~isempty(iExistingSub)
-                subjectId = iExistingSub;
-                newSubject = 0;
-            % Detect subject names formatted as "sub-<name>"
-            elseif strncmp(sSubject.Name, 'sub-', 4) && length(sSubject.Name) > 5
-                subjectId = sSubject.Name(5:end);
-                if subScheme == -1 || ~isempty(str2num(subjectId))
-                    data = AddSubject(data, sSubject.Name, subjectId);
-                    newSubject = 0;
-                end
-            end
-
-            %% Create subject if new
-            if newSubject
-                if subScheme == -1
-                    % Char-based naming scheme
-                    subjectId = FormatId(sSubject.Name, subScheme);
-                else
-                    % Number-based naming scheme, increment from previous
-                    subjectId = iLastSub + 1;
-                    maxSubjects = power(10, subScheme);
-                    if subScheme > 1 && subjectId >= maxSubjects
-                        bst_report('Error', sProcess, sInput, ...
-                            ['Exceeded maximum number of subjects supported by your naming scheme (' num2str(maxSubjects) ').']);
-                    end
-                end
-                data = AddSubject(data, sSubject.Name, subjectId);
-            end
             subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subScheme, 'sub'));
             if newSubject
                 mkdir(subjectFolder);
@@ -328,10 +333,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         rest = [];
         if isEmptyRoom
             taskName = 'noise';
-            % Try to figure out the subject this empty room belongs to
-            iExistingSub = GetSubjectId(data, sSubject.Name);
-            if ~isempty(iExistingSub)
-                rest = ['_acq-sub' zero_prefix(iExistingSub, 4)];
+            if ~isempty(realSubjectId)
+                rest = ['_acq-sub' FormatId(realSubjectId, subScheme)];
             end
         elseif strncmp(rawName, prefixTask, length(prefixTask))
             rawNameUnprefixed = rawName(length(prefixTask) + 1:end);
@@ -876,4 +879,26 @@ function myStruct = addField(myStruct, field, value)
         disp(['Warning: Specified field "' field '" will be ignored.']);
     end
     myStruct.(field) = value;
+end
+
+function runId = GetLastRunId(parentFolder)
+    runId = 0;
+    files = dir(parentFolder);
+    for iFile = 1:length(files)
+        if strncmpi(files(iFile).name, 'sub-', 4)
+            % Extract run ID from folder name
+            runId = regexp(files(iFile).name, '_run-(\d+)', 'match');
+            if ~isempty(runId)
+                runId = runId{1};
+                runId = str2num(runId(6:end));
+                return;
+            end
+        elseif files(iFile).name(1) ~= '.' && files(iFile).isdir
+            % Call on child recursively
+            runId = GetLastRunId(bst_fullfile(parentFolder, files(iFile).name));
+            if runId > 0
+                return;
+            end
+        end
+    end
 end
