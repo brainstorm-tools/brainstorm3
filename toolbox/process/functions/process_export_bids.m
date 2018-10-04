@@ -424,7 +424,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 dsFolder = fileparts(sFile.filename);
                 tempPath = bst_fullfile(megFolder, [rawName, rawExt]);
                 copyfile(dsFolder, tempPath);
-                ctf_rename_ds(tempPath, newPath, []);
+                if ~strcmp(tempPath, newPath)
+                    ctf_rename_ds(tempPath, newPath, []);
+                end
                 % Save Polhemus file
                 if hasHeadPoints
                     posFile = bst_fullfile(megFolder, [prefix '_headshape.pos']);
