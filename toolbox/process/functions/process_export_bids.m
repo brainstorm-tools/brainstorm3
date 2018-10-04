@@ -225,13 +225,12 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             newSubject = 0;
         % Detect subject names formatted as "sub-<name>"
         elseif strncmp(sSubject.Name, 'sub-', 4) && length(sSubject.Name) > 5
-            subjectId = sSubject.Name(5:end);
-            if subScheme >= 0
-                subjectId = str2num(subjectId);
-            end
-            if ~isempty(subjectId)
+            if subScheme == -1
+                subjectId = sSubject.Name(5:end);
                 data = AddSubject(data, sSubject.Name, subjectId);
                 newSubject = 0;
+            else
+                disp('Warning: BIDS-formatted subject name detected, but numbered index subject names selected. A new index will be assigned. Select custom names to avoid this.');
             end
         end
 
@@ -297,12 +296,11 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 if ~isempty(sessionId)
                     sessionId = sessionId{1};
                     sessionId = sessionId(6:end-1);
-                    if sesScheme >= 0
-                        sessionId = str2num(sessionId);
-                    end
-                    if ~isempty(sessionId)
+                    if sesScheme == -1
                         [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
                         newSession = 0;
+                    elseif sesScheme >= 0
+                        disp('Warning: BIDS-formatted session name detected, but numbered index session names selected. A new index will be assigned.');
                     end
                 end
             end
@@ -433,7 +431,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     out_channel_pos(sInput.ChannelFile, posFile);
                 end
                 % Remove internal Polhemus files
-                disp(bst_fullfile(newPath, '*.pos'));
+                delete(bst_fullfile(newPath, '*.pos'));
             else
                 copyfile(sFile.filename, newPath);
             end
