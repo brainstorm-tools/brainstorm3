@@ -260,23 +260,18 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         isEmptyRoom = strcmp(sSubject.Name, 'sub-emptyroom') || (~isempty(emptyRoomKeywords) && containsKeyword(lower(sessionName), emptyRoomKeywords));
         if isEmptyRoom
-            subjectName = 'sub-emptyroom';
             realSubjectId = subjectId;
             subjectId = 'emptyroom';
-            iExistingSub = GetSubjectId(data, subjectName);
-            if isempty(iExistingSub)
-                data = AddSubject(data, subjectName, subjectId);
-            end
             subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subScheme, 'sub'));
             if exist(subjectFolder, 'dir') ~= 7
                 mkdir(subjectFolder);
             end
             
             % Date of study is the session name for empty room recordings
-            [sessionId, runId] = GetSessionId(data, subjectId, sessionName);
+            [sessionId, runId] = GetSessionId(data, realSubjectId, sessionName);
             if isempty(sessionId)
                 sessionId = datestr(dateOfStudy, 'yyyymmdd');
-                [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
+                [data, runId] = AddSession(data, realSubjectId, sessionName, sessionId);
             end
             sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, -2, 'ses'));
             if exist(sessionFolder, 'dir') ~= 7
