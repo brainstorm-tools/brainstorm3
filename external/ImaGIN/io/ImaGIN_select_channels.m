@@ -71,6 +71,16 @@ if isSEEG
         % Get channels of this tag
         iChTag = find(strcmpi(uniqueTags{iTag}, AllTags));
         contactInd = AllInd(iChTag);
+        % Reject channels "E" without rejecting "E1"
+        if any(contactInd == 0) && any(contactInd > 0)
+            % Remove unwanted channels
+            iChTagDel = iChTag(contactInd == 0);
+            AllNames(iChTagDel) = {'XXXXX'};
+            AllTags(iChTagDel) = {'XXXXX'};
+            % Remove from the list, so we can process the rest of the channels
+            iChTag(contactInd == 0) = [];
+            contactInd(contactInd == 0) = [];
+        end
         % If the tag is "X": Used by Nihon Kohden for technical tracks, but can be a SEEG electrode too. Keep only indices <= 18
         if isequal(uniqueTags{iTag}, 'X')
             iChTagExtra = iChTag(contactInd > MAX_CONTACTS);
@@ -106,7 +116,8 @@ if isSEEG
                     AllInd(iElec2(i)) = AllInd(iElec2(i)) - 200;
                 end
             end
-        else
+        % Mark as bad all the other channels with Label+Index (but not the channels without labels, because we want to keep the ECG)
+        elseif all(contactInd > 0)
             AllNames(iChTag) = {'XXXXX'};
             AllTags(iChTag) = {'XXXXX'};
         end
