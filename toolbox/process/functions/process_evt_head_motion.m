@@ -259,12 +259,12 @@ function sFile = CreateEvents(sFile, EvtName, Events)
 end
 
 
-function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, ReshapeContinuous)
+function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBounds, ReshapeContinuous)
   % Load and downsample continuous head localization channels.
   % HeadSamplePeriod is in (MEG) samples per (head) sample, not seconds.
   % Locations are in meters.
   
-  if nargin < 2 || isempty(ReshapeContinuous)
+  if nargin < 3 || isempty(ReshapeContinuous)
     ReshapeContinuous = true;
   end
   
@@ -277,8 +277,12 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, ReshapeConti
     sFile = in_fopen(sInput.FileName, 'BST-DATA');
   end
   
+  if nargin < 2 || isempty(SamplesBounds)
+      SamplesBounds = sFile.prop.samples;
+  end
+  
   ChannelMat = in_bst_channel(sInput.ChannelFile);
-  SamplesBounds = sFile.prop.samples;
+  
   nEpochs = numel(sFile.epochs);
   if nEpochs == 0
     nEpochs = 1;
