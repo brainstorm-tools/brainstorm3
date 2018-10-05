@@ -1018,11 +1018,16 @@ function UpdateFigurePlot(hFig, isForced)
     % Case of one frequency point for spectrum: replicate frequency
     if isSpectrum && (size(TF,3) == 1)
         TF = cat(3,TF,TF);
-        X = [X, X + 0.1];
+        replicateFreq = 1;
+    else
+        replicateFreq = 0;
     end
     % Bands (time/freq), or linear axes
     if iscell(X)
         Xbands = process_tf_bands('GetBounds', X);
+        if replicateFreq
+            Xbands(:, end) = Xbands(:, end) + 0.1;
+        end
         if (size(Xbands,1) == 1)
             X    = Xbands;
             XLim = Xbands;
@@ -1031,6 +1036,9 @@ function UpdateFigurePlot(hFig, isForced)
             XLim = [min(Xbands(:)), max(Xbands(:))];
         end
     else
+        if replicateFreq
+            X = [X, X + 0.1];
+        end
         XLim = [X(1), X(end)];
     end
     if (length(XLim) ~= 2) || any(isnan(XLim)) || (XLim(2) <= XLim(1))
