@@ -87,7 +87,7 @@ function downloadAndInstallMffLibrary()
         mkdir(mffDir);
         mkdir(mffDirTmp);
 
-        zipFile = 'mffmatlabio-1.2.2.zip';
+        zipFile = 'mffmatlabio-2.0.zip';
         url = ['https://neuroimage.usc.edu/bst/getupdate.php?d=' zipFile];
         % Download file
         zipPath = bst_fullfile(mffDirTmp, zipFile);
