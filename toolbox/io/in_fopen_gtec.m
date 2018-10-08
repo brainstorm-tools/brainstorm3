@@ -66,9 +66,14 @@ elseif strcmpi(fExt, '.hdf5')
     hdr.format = 'hdf5';
     hdr.numberchannels = str2num(sAcqXml.AcquisitionTaskDescription.NumberOfAcquiredChannels.text);
     hdr.samplingfrequency = str2num(sAcqXml.AcquisitionTaskDescription.SamplingFrequency.text);
-    sChan = [sAcqXml.AcquisitionTaskDescription.ChannelProperties.ChannelProperties(:).ChannelName];
-    hdr.channelname = {sChan.text};
     hdr.nTime = size(Data, 2);
+    % Get channel name
+    sChan = [sAcqXml.AcquisitionTaskDescription.ChannelProperties.ChannelProperties(:).ChannelName];
+    if ~isempty(sChan)
+        hdr.channelname = {sChan.text};
+    else
+        hdr.channelname = [];
+    end
     
     % Information not found (yet)
     hdr.amplifiername = 'gtect';
@@ -138,7 +143,11 @@ ChannelMat.Comment = 'g.tec channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), 1, hdr.numberchannels);
 % Channels information
 for iChan = 1:hdr.numberchannels
-    ChannelMat.Channel(iChan).Name    = hdr.channelname{iChan};
+    if ~isempty(hdr.channelname)
+        ChannelMat.Channel(iChan).Name = hdr.channelname{iChan};
+    else
+        ChannelMat.Channel(iChan).Name = sprintf('E%03d', iChan);
+    end
     ChannelMat.Channel(iChan).Type    = 'EEG';
     ChannelMat.Channel(iChan).Loc     = [0; 0; 0];
     ChannelMat.Channel(iChan).Orient  = [];
