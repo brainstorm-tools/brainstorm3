@@ -55,22 +55,35 @@ end
 
 %% ===== DOWNLOAD MFF JAR FILE =====
 function downloadAndInstallMffLibrary()
+    % Current up-to-date version
+    mffVer  = 2.00;
+    zipFile = 'mffmatlabio-2.0.zip';
     % Check whether JAR file is in Java path
     [jarPath, jarExists] = bst_get('MffJarFile');
     mffDir = fileparts(jarPath);
     javaPath = javaclasspath('-dynamic');
+    needToUpdate = 0;
     if any(strcmp(javaPath, jarPath))
         % Add library to Matlab path
         addpath(genpath(mffDir));
-        return;
+        % Check whether installed library is up to date
+        if checkMffLibraryVersion() < mffVer
+            needToUpdate = 1;
+        else
+            return;
+        end
     end
     
     % Download library if missing
-    if ~jarExists
+    if ~jarExists || needToUpdate
         % Prompt user
+        if needToUpdate
+            diagMsg = 'An update to the MFFMatlabIO library is available.';
+        else
+            diagMsg = 'Reading MFF files requires to download the MFFMatlabIO library.';
+        end
         isOk = java_dialog('confirm', ...
-            ['Reading MFF files requires to download the MFFMatlabIO library.' 10 10 ...
-             'Would you like to download it right now?'], 'MFF');
+            [diagMsg 10 10 'Would you like to download it right now?'], 'MFF');
         if ~isOk
             return;
         end
@@ -87,7 +100,6 @@ function downloadAndInstallMffLibrary()
         mkdir(mffDir);
         mkdir(mffDirTmp);
 
-        zipFile = 'mffmatlabio-2.0.zip';
         url = ['https://neuroimage.usc.edu/bst/getupdate.php?d=' zipFile];
         % Download file
         zipPath = bst_fullfile(mffDirTmp, zipFile);
@@ -98,7 +110,7 @@ function downloadAndInstallMffLibrary()
         % Unzip file
         unzip(zipPath, mffDirTmp);
         % Move content of zip to proper location
-        libDir = bst_fullfile(mffDirTmp, 'mffmatlabio-master', '*');
+        libDir = bst_fullfile(mffDirTmp, 'mffmatlabio', '*');
         movefile(libDir, mffDir);
         % Delete zip
         file_delete(mffDirTmp, 1, 3);
@@ -109,4 +121,19 @@ function downloadAndInstallMffLibrary()
         ['The MFF importer was successfully downloaded.' 10 10 ...
          'Both Brainstorm AND Matlab need to be restarted in order to load the JAR file.'], 'MFF');
     error('Please restart Matlab to reload the Java path.');
+end
+
+function mffver = checkMffLibraryVersion()
+    defaultVer = 1;
+    mffver = defaultVer;
+    if exist('eegplugin_mffmatlabio', 'file') == 2
+        try
+            evalc('mffver = eegplugin_mffmatlabio;');
+            mffver = str2num(mffver);
+            if isempty(mffver)
+                mffver = defaultVer;
+            end
+        catch
+        end
+    end
 end
