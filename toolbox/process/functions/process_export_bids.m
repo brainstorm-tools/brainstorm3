@@ -142,26 +142,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
     
-    iLastSub = 0;
-    % If folder does not exist, try to create it.
-    if exist(outputFolder, 'dir') ~= 7
-        [success, errMsg] = mkdir(outputFolder);
-        subScheme = [];
-        sesScheme = [];
-        runScheme = [];
-        if ~success
-            bst_report('Error', sProcess, sInputs, ['Could not create output folder:' 10 errMsg]);
-        end
-    else
-        % If folder exist, try to figure out naming scheme
-        [subScheme, sesScheme, runScheme] = DetectNamingScheme(outputFolder);
-        
-        % If numbered subject IDs, extract last subject ID
-        if subScheme >= 0
-            iLastSub = GetLastId(outputFolder, 'sub');
-        end
-    end
-    
     % Default naming schemes
     if isfield(sProcess.options, 'subscheme') && ~isempty(sProcess.options.subscheme.Value)
         if sProcess.options.subscheme.Value == 1
@@ -169,7 +149,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         else
             subScheme = 4;
         end
-    elseif isempty(subScheme)
+    else
         subScheme = -1; % Char-based
     end
     if isfield(sProcess.options, 'sesscheme') && ~isempty(sProcess.options.sesscheme.Value)
@@ -178,11 +158,35 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         else
             sesScheme = 4;
         end
-    elseif isempty(sesScheme)
+    else
         sesScheme = -2; % Date-based
     end
-    if isempty(runScheme)
-        runScheme = 2;  % Index-based, 2 digits
+    runScheme = 2;  % Index-based, 2 digits
+    
+    iLastSub = 0;
+    % If folder does not exist, try to create it.
+    if exist(outputFolder, 'dir') ~= 7
+        [success, errMsg] = mkdir(outputFolder);
+        if ~success
+            bst_report('Error', sProcess, sInputs, ['Could not create output folder:' 10 errMsg]);
+        end
+    else
+        
+        % If folder exist, detect existing naming scheme
+        [prevSubScheme, prevSesScheme, prevRunScheme] = DetectNamingScheme(outputFolder);
+        % Warn user for different naming schemes
+        if subScheme ~= prevSubScheme || sesScheme ~= prevSesScheme || runScheme ~= prevRunScheme
+            disp(['Warning: Chosen naming scheme(s) different from existing one.' ...
+                10 '         Ignoring existing subjects/sessions in output folder.']);
+            data = EmptyData();
+        else
+            data = LoadExistingData(outputFolder);
+        end
+        
+        % If numbered subject IDs, extract last subject ID
+        if subScheme >= 0
+            iLastSub = GetLastId(outputFolder, 'sub');
+        end
     end
     
     % Sort inputs by subjects and acquisition time
@@ -191,7 +195,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     nInputs = length(sInputs);
     
     CreateDatasetDescription(outputFolder, overwrite, datasetMetadata)
-    data = LoadExistingData(outputFolder);
     
     bst_progress('start', 'Export', 'Exporting dataset files...', 0, nInputs);
     for iInput = 1:nInputs
@@ -319,7 +322,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     maxSessions = power(10, sesScheme);
                     if sesScheme > 1 && sessionId >= maxSessions
                         bst_report('Error', sProcess, sInput, ...
-                            ['Exceeded maximum number of sessions supported by your naming scheme (' num2str(maxSubjects) ').']);
+                            ['Exceeded maximum number of sessions supported by your naming scheme (' num2str(maxSessions) ').']);
                     end
                 end
                 [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
@@ -464,9 +467,13 @@ function data = LoadExistingData(folder)
         data = load(bstMapping);
         data = data.data;
     else
-        data = struct();
-        data.Subjects = [];
+        data = EmptyData();
     end
+end
+
+function data = EmptyData()
+    data = struct();
+    data.Subjects = [];
 end
 
 function SaveExistingData(data, folder)
@@ -595,10 +602,16 @@ function id = GetLastId(parentFolder, prefix)
         dirs = fliplr(sort({dirs.name}));
         for iDir = 1:length(dirs)
             if length(dirs{iDir}) > 5
-                n = str2num(dirs{iDir}(5:end));
+                suffix = dirs{iDir}(5:end);
+                n = str2num(suffix);
                 if ~isempty(n)
-                    id = n;
-                    return;
+                    % Skip dates
+                    try
+                        datetime(suffix, 'InputFormat', 'yyyyMMdd');
+                    catch
+                        id = n;
+                        return;
+                    end
                 end
             end
         end
