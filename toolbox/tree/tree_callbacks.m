@@ -1222,9 +1222,12 @@ switch (lower(action))
                             % === DISPLAY TIME SERIES ===
                             gui_component('MenuItem', jMenuModality, [], 'Display time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(filenameRelative, AllMod{iMod}, [], 'NewFigure'));
                             gui_component('MenuItem', jMenuModality, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(filenameRelative, 'trialimage', AllMod{iMod}));
-                            if strcmpi(AllMod{iMod}, 'HLU') && strcmpi(Device, 'CTF')
-                                AddSeparator(jMenuModality);
-                                gui_component('MenuItem', jMenuModality, [], 'Display head motion distance', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_headmotion_distance(filenameRelative, AllMod{iMod}));
+                            if strcmpi(AllMod{iMod}, 'HLU') && ~isempty(ChannelFile)
+                                Device = bst_get('ChannelDevice', ChannelFile);
+                                if strcmpi(Device, 'CTF')
+                                    AddSeparator(jMenuModality);
+                                    gui_component('MenuItem', jMenuModality, [], 'Display head motion distance', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_headmotion_distance(filenameRelative, AllMod{iMod}));
+                                end
                             end
                             % == DISPLAY TOPOGRAPHY ==
                             if ismember(AllMod{iMod}, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'}) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
