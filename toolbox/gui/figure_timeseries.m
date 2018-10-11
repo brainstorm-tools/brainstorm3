@@ -1671,6 +1671,9 @@ function [ChannelName, ChannelLabel] = GetChannelName(iDS, iFig, iLine)
                 ChannelName = ChannelName(1:iTag-1);
             end
             ChannelLabel = ['Channel: ' ChannelName];
+        elseif strcmpi(sFig.Id.Modality, 'HLUDist')
+            ChannelName = 'Distance';
+            ChannelLabel = ['Channel: ' ChannelName];
         else
             iChannel = iFigChannels(iLine);
             ChannelName = char(GlobalData.DataSet(iDS).Channel(iChannel).Name);

@@ -64,7 +64,7 @@ end
 Dist = Dist(:, nS * HeadSamplePeriod - length(TimeVector) + 1:end);
 
 % Open figure
-hFig = view_timeseries_matrix(DataFile, Dist, TimeVector, Modality, {}, {'Distance'});
+hFig = view_timeseries_matrix(DataFile, Dist, TimeVector, 'HLUDist', {}, {'Distance'});
 
 end
 
