@@ -30,13 +30,13 @@ end
 % Load necessary data from data file
 DataMat = in_bst_data(DataFile);
 sFile = DataMat.F;
-isContinuous = strcmpi(sFile.format, 'CTF-CONTINUOUS');
+isContinuous = isstruct(sFile) && isfield(sFile, 'format') && strcmpi(sFile.format, 'CTF-CONTINUOUS');
 iDS = bst_memory('LoadDataFile', DataFile);
 [TimeVector, iTime] = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
 TimeVector = TimeVector(iTime);
-SamplesBounds = [iTime(1), iTime(end)];
+SamplesBounds = [iTime(1)-1, iTime(end)-1];
 
-if ~strcmpi(sFile.device, 'CTF')
+if ~strcmpi(DataMat.Device, 'CTF')
     error('Unsupported file format.');
 end
 
@@ -60,6 +60,8 @@ Dist = zeros(nT, nS * HeadSamplePeriod);
 for t = 1:nT
       Dist(t, :) = interp1(DistDowns(:, t), (1:nS * HeadSamplePeriod) / HeadSamplePeriod);
 end
+% Remove NaNs
+Dist = Dist(:, nS * HeadSamplePeriod - length(TimeVector) + 1:end);
 
 % Open figure
 hFig = view_timeseries_matrix(DataFile, Dist, TimeVector, Modality, {}, {'Distance'});
