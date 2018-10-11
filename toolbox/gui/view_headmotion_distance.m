@@ -58,7 +58,9 @@ nS = size(Locations, 2);
 nT = size(Locations, 3);
 Dist = zeros(nT, nS * HeadSamplePeriod);
 for t = 1:nT
-      Dist(t, :) = interp1(DistDowns(:, t), (1:nS * HeadSamplePeriod) / HeadSamplePeriod);
+    Dist(t, :) = interp1(DistDowns(:, t), (1:nS * HeadSamplePeriod) / HeadSamplePeriod);
+    % Replace initial NaNs with first value.
+    Dist(t, isnan(Dist(t, :))) = Dist(t, find(~isnan(Dist(t, :)), 1));
 end
 
 % Open figure
