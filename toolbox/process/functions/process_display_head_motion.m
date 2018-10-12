@@ -72,9 +72,25 @@ function OutputFiles = Run(sProcess, sInput) %#ok<STOUT,INUSL,DEFNU>
     %     end
         
     % Load head coil locations, in m.
-    % Initial location, from .hc file.
-    InitLoc = [sFile.header.hc.SCS.NAS, sFile.header.hc.SCS.LPA, ...
-      sFile.header.hc.SCS.RPA]';
+    % Initial location, from .hc file.  Only available when raw.
+    %     InitLoc = [sFile.header.hc.SCS.NAS, sFile.header.hc.SCS.LPA, ...
+    %       sFile.header.hc.SCS.RPA]';
+    % sInput.ChannelFile = bst_get('ChannelFileForStudy', sInput.FileName);
+    ChannelMat = in_bst_channel(sInput.ChannelFile);
+    
+    if ~strcmp(ChannelMat.TransfMegLabel{1}, 'Dewar=>Native')
+      error('Dewar=>Native transformation not found.');
+    end
+    % Just use the SCS distances from origin, with left and right PA points
+    % symmetrical.
+    LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
+    InitLoc = [[ChannelMat.SCS.NAS(1); 0; 0; 1], [0; LeftRightDist; 0; 1], ...
+      [0; -LeftRightDist; 0; 1]];
+    InitLoc = ChannelMat.TransfMeg{1} \ InitLoc;
+    InitLoc(4, :) = [];
+    InitLoc = InitLoc(:); % Verified gives same transformation as hc.
+
+    
     % Continuous head localization, from HLU channels.
     ReshapeToContinuous = false;
     [Locations, HeadSamplePeriod, FitErrors] = ...
@@ -95,6 +111,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<STOUT,INUSL,DEFNU>
     Dist = zeros(nS*HeadSamplePeriod, nT);
     for t = 1:nT
       Dist(:, t) = interp1(DistDowns(:, t), (1:nS*HeadSamplePeriod)/HeadSamplePeriod);
+      % Replace initial NaNs with first value.
+      Dist(isnan(Dist(:, t)), t) = Dist(find(~isnan(Dist(:, t)), 1), t);
     end
     %     D = resample(D, HeadSamplePeriod, 1);
     toc

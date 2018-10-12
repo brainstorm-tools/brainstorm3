@@ -392,7 +392,6 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
 end
 
 
-
 function D = RigidDistances(Locations, Reference, StopThreshold)
   % Maximum distance traveled by any point in a moving sphere.
   %
@@ -468,6 +467,7 @@ function D = RigidDistances(Locations, Reference, StopThreshold)
   end
   
 end % RigidDistances
+
 
 function [O, R] = RigidCoordinates(FidsColumns)
   % Convert head coil locations to origin position and rotation matrix.

@@ -46,7 +46,22 @@ sInput.FileType = DataMat.DataType;
 sInput.FileName = DataFile;
 sInput.ChannelFile = bst_get('ChannelFileForStudy', DataFile);
 ChannelMat = in_bst_channel(sInput.ChannelFile);
-InitLoc = [ChannelMat.SCS.NAS, ChannelMat.SCS.LPA, ChannelMat.SCS.RPA]';
+% hc only available in raw recording.
+% InitLoc = [sFile.header.hc.SCS.NAS, sFile.header.hc.SCS.LPA, ...
+%     sFile.header.hc.SCS.RPA]';
+% Use Dewar=>Native transformation and SCS distances to give approximate
+% but equivalent initial coil positions.
+if ~strcmp(ChannelMat.TransfMegLabel{1}, 'Dewar=>Native')
+  error('Dewar=>Native transformation not found.');
+end
+% Just use the SCS distances from origin, with left and right PA points
+% symmetrical.
+LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
+InitLoc = [[ChannelMat.SCS.NAS(1); 0; 0; 1], [0; LeftRightDist; 0; 1], ...
+  [0; -LeftRightDist; 0; 1]];
+InitLoc = ChannelMat.TransfMeg{1} \ InitLoc;
+InitLoc(4, :) = [];
+InitLoc = InitLoc(:); % Verified gives same transformation as hc.
 
 % Call head motion process
 [Locations, HeadSamplePeriod, FitErrors] = ...
