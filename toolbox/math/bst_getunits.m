@@ -123,10 +123,6 @@ switch lower(DataType)
         
     case 'timefreq'
         [valFactor, valUnits] = GetExponent(val);
-    
-    case 'hlu'
-        valFactor = 1;
-        valUnits  = 'm';
 
     otherwise
         if isempty(val) || ((val < 1000) && (val > 0.1))
