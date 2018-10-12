@@ -690,7 +690,7 @@ function UpdateEditor(hFig)
         ctrl.jTextMontage.setText(strEdit(iFirstCr+1:end));
         
     % === MATRIX VIEWER ===
-    elseif strcmpi(sMontage.Type, 'matrix') && ~isempty(sMontage.Matrix)
+    elseif (strcmpi(sMontage.Type, 'matrix') || strcmpi(sMontage.Type, 'custom')) && ~isempty(sMontage.Matrix)
         % Make editor panel visible
         ctrl.jButtonValidate.setVisible(0);
         ctrl.jPanelRight.add(ctrl.jPanelMatrix, java.awt.BorderLayout.CENTER);
@@ -1199,7 +1199,8 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             end
             % Not CTF-MEG: Skip head motion distance
             if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Head distance') && ((~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'MEG'})) ...
-                    || (isfield(GlobalData.DataSet(iDS).Measures.sFile, 'device') && ~strcmpi(GlobalData.DataSet(iDS).Measures.sFile.device, 'CTF')))
+                    || ((isfield(GlobalData.DataSet(iDS).Measures.sFile, 'device') && ~strcmpi(GlobalData.DataSet(iDS).Measures.sFile.device, 'CTF')) ...
+                    && isempty(strfind(GlobalData.DataSet(iDS).ChannelFile, 'channel_ctf'))))
                 continue;
             end
             % Local average reference: Only available for current modality
