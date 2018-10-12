@@ -2367,18 +2367,14 @@ end
 function F = ComputeCustomMontage(montageName, F, DataFile)
     if strcmpi(montageName, 'Head distance')
         % Prepare inputs
-        DataMat = in_bst_data(DataFile);
-        sInput = struct();
-        sInput.FileType = DataMat.DataType;
-        sInput.FileName = DataFile;
-        sInput.ChannelFile = bst_get('ChannelFileForStudy', DataFile);
-        ChannelMat = in_bst_channel(sInput.ChannelFile);
-        
-        % Compute initial head location
+        ChannelFile = bst_get('ChannelFileForStudy', DataFile);
+        ChannelMat = in_bst_channel(ChannelFile);
         iTrans = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
         if isempty(iTrans)
             error('Could not find required transformation.');
         end
+        
+        % Compute initial head location
         LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
         InitLoc = [[ChannelMat.SCS.NAS(1); 0; 0; 1], [0; LeftRightDist; 0; 1], ...
           [0; -LeftRightDist; 0; 1]];
