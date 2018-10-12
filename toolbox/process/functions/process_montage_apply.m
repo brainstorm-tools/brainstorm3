@@ -119,6 +119,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 0);
             elseif ~isempty(strfind(sMontage.Name, '(local average ref)'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 1);
+            elseif strcmpi(sMontage.Name, 'Head distance')
+                sMontage = panel_montage('GetMontageHeadDistance', sMontage, ChannelMat.Channel, DataMat.ChannelFlag);
             end
             % Get channels indices for the montage
             [iChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, {ChannelMat.Channel.Name});
@@ -133,13 +135,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             % Apply montage
             if isCreateChan
-                DataMat.F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
+                if strcmpi(sMontage.Type, 'custom')
+                    DataMat.F = panel_montage('ComputeCustomMontage', sMontage.Name, DataMat.F(iChannels,:), GlobalData.DataSet(iDS).DataFile);
+                else
+                    DataMat.F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
+                end
                 % Compute channel flag
                 ChannelFlag = ones(size(DataMat.F,1),1);
                 isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(DataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
                 ChannelFlag(isChanBad) = -1;
             else
-                DataMat.F(iChannels,:) = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
+                if strcmpi(sMontage.Type, 'custom')
+                    DataMat.F(iChannels,:) = panel_montage('ComputeCustomMontage', sMontage.Name, DataMat.F(iChannels,:), GlobalData.DataSet(iDS).DataFile);
+                else
+                    DataMat.F(iChannels,:) = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
+                end
                 ChannelFlag = DataMat.ChannelFlag;
             end
 
