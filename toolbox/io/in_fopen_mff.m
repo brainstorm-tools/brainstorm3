@@ -88,16 +88,12 @@ function downloadAndInstallMffLibrary()
             return;
         end
         
-        % If folders exists: delete
-        mffDirTmp = bst_fullfile(bst_get('BrainstormUserDir'), 'mffTmp');
-        if isdir(mffDir)
-            file_delete(mffDir, 1, 3);
-        end
+        % If folder exists: delete
+        mffDirTmp = bst_fullfile(bst_get('BrainstormUserDir'), 'mffmatlabioNew');
         if isdir(mffDirTmp)
             file_delete(mffDirTmp, 1, 3);
         end
         % Create folder
-        mkdir(mffDir);
         mkdir(mffDirTmp);
 
         url = ['https://neuroimage.usc.edu/bst/getupdate.php?d=' zipFile];
@@ -109,11 +105,8 @@ function downloadAndInstallMffLibrary()
         end
         % Unzip file
         unzip(zipPath, mffDirTmp);
-        % Move content of zip to proper location
-        libDir = bst_fullfile(mffDirTmp, 'mffmatlabio', '*');
-        movefile(libDir, mffDir);
         % Delete zip
-        file_delete(mffDirTmp, 1, 3);
+        file_delete(zipPath, 1);
     end
     
     % Once downloaded, we need to restart Matlab to refresh the java path

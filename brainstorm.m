@@ -100,6 +100,19 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     end
     % Add MFF JAR file if present
     [mffJarPath, mffJarExists] = bst_get('MffJarFile');
+    mffDirTmp = bst_fullfile(bst_get('BrainstormUserDir'), 'mffmatlabioNew');
+    if isdir(mffDirTmp)
+        % A new library version is available, install it
+        mffDir = fileparts(mffJarPath);
+        if isdir(mffDir)
+            rmdir(mffDir, 's');
+        end
+        mkdir(mffDir);
+        libDir = bst_fullfile(mffDirTmp, 'mffmatlabio', '*');
+        movefile(libDir, mffDir);
+        rmdir(mffDirTmp, 's');
+        mffJarExists = 1;
+    end
     if mffJarExists
         javaaddpath(mffJarPath);
     end
