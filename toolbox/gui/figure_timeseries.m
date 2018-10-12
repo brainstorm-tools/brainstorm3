@@ -2291,10 +2291,17 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
     end
     % Apply montage
     if ~isempty(iChannels)
-        % Get display names for the input channels
-        F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall(iChannels,:);
-        if ~isempty(StdAll)
-            Std = sMontage.Matrix(iMatrixDisp,iMatrixChan) * StdAll(iChannels,:);
+        if strcmpi(sMontage.Type, 'custom')
+            F = panel_montage('ComputeCustomMontage', sMontage.Name, Fall(iChannels,:), GlobalData.DataSet(iDS).DataFile);
+            if ~isempty(StdAll)
+                panel_montage('ComputeCustomMontage', sMontage.Name, StdAll(iChannels,:), GlobalData.DataSet(iDS).DataFile);
+            end
+        else
+            % Get display names for the input channels
+            F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall(iChannels,:);
+            if ~isempty(StdAll)
+                Std = sMontage.Matrix(iMatrixDisp,iMatrixChan) * StdAll(iChannels,:);
+            end
         end
         % Modify channel names
         TsInfo.LinesLabels = sMontage.DispNames(iMatrixDisp)';

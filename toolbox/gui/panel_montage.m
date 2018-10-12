@@ -690,7 +690,7 @@ function UpdateEditor(hFig)
         ctrl.jTextMontage.setText(strEdit(iFirstCr+1:end));
         
     % === MATRIX VIEWER ===
-    elseif strcmpi(sMontage.Type, 'matrix') && ~isempty(sMontage.Matrix)
+    elseif (strcmpi(sMontage.Type, 'matrix') || strcmpi(sMontage.Type, 'custom')) && ~isempty(sMontage.Matrix)
         % Make editor panel visible
         ctrl.jButtonValidate.setVisible(0);
         ctrl.jPanelRight.add(ctrl.jPanelMatrix, java.awt.BorderLayout.CENTER);
@@ -941,6 +941,11 @@ function LoadDefaultMontages() %#ok<DEFNU>
     sMontage.Name = 'Average reference (L -> R)';
     sMontage.Type = 'matrix';
     SetMontage(sMontage.Name, sMontage);
+    % Set HLU distance montage
+    sMontage = db_template('Montage');
+    sMontage.Name = 'Head distance';
+    sMontage.Type = 'custom';
+    SetMontage(sMontage.Name, sMontage);
     % Set bad channels montage
     sMontage = db_template('Montage');
     sMontage.Name = 'Bad channels';
@@ -996,6 +1001,14 @@ function [sMontage, iMontage] = GetMontage(MontageName, hFig)
                 sTmp = GetMontageAvgRef(sMontage(iAvgRef), hFig, [], 0);  % Global average reference sorted L -> R
                 if ~isempty(sTmp)
                     sMontage(iAvgRef) = sTmp;
+                end
+            end
+            % Find head motion distance montage
+            iHeadDist = find(strcmpi({sMontage.Name}, 'Head distance'));
+            if ~isempty(iHeadDist) && ~isempty(hFig)
+                sTmp = GetMontageHeadDistance(sMontage(iHeadDist), hFig, []);  % Head motion distance
+                if ~isempty(sTmp)
+                    sMontage(iHeadDist) = sTmp;
                 end
             end
             % Find local average reference montages
@@ -1113,7 +1126,7 @@ function DeleteMontage(MontageName)
     % Get montage index
     [sMontage, iMontage] = GetMontage(MontageName);
     % If this is a non-editable montage: error
-    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)'})
+    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)', 'Head distance'})
         return;
     end    
     % Remove montage if it exists
@@ -1182,6 +1195,12 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             end
             % Not 10-20 EEG: Skip average reference L -> R (only available for recordings figures)
             if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference (L -> R)') && (~strcmpi(FigId.Type, 'DataTimeSeries') || (~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})) || ~Is1020Setup(FigChannels))
+                continue;
+            end
+            % Not CTF-MEG: Skip head motion distance
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Head distance') && ((~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'MEG'})) ...
+                    || ((isfield(GlobalData.DataSet(iDS).Measures.sFile, 'device') && ~strcmpi(GlobalData.DataSet(iDS).Measures.sFile.device, 'CTF')) ...
+                    && isempty(strfind(GlobalData.DataSet(iDS).ChannelFile, 'channel_ctf'))))
                 continue;
             end
             % Local average reference: Only available for current modality
@@ -1372,6 +1391,55 @@ function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroup
         sMontage.DispNames = sMontage.DispNames(iOrder);
         sMontage.ChanNames = sMontage.ChanNames(iOrder);
     end
+end
+
+%% ===== GET HEAD MOTION MONTAGE =====
+% USAGE:  sMontage = GetMontageHeadDistance(sMontage, hFig)
+%         sMontage = GetMontageHeadDistance(sMontage, Channels, ChannelFlag)
+function sMontage = GetMontageHeadDistance(sMontage, Channels, ChannelFlag)
+    global GlobalData;
+    % Get info from figure
+    if (nargin < 2) || isempty(ChannelFlag)
+        hFig = Channels;
+        TsInfo = getappdata(hFig,'TsInfo');
+        if isempty(TsInfo.Modality) || ~ismember(TsInfo.Modality, {'MEG'})
+            sMontage = [];
+            return;
+        end
+        % Get figure description
+        [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+        % Check that this figure can handle montages
+        if isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) || isempty(GlobalData.DataSet(iDS).Channel) || isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
+            sMontage = [];
+            return;
+        end
+        % Get channels
+        Channels = GlobalData.DataSet(iDS).Channel;
+    end
+    % Select HLU channels only
+    iChannels = find(strcmp({Channels.Type}, 'HLU'));
+    if isempty(iChannels)
+        sMontage = [];
+        return;
+    end
+    Channels = Channels(iChannels);
+    % If no montage in input: get the head distance montage
+    if isempty(sMontage)
+        iMontage = find(strcmpi({GlobalData.ChannelMontages.Montages.Name}, 'Head distance'), 1);
+        if isempty(iMontage)
+            return;
+        end
+        sMontage = GlobalData.ChannelMontages.Montages(iMontage(1));
+    end
+    % Computation
+    function F = ComputeDist(Fall, DataFile)
+        F = Fall;
+    end
+    % Update montage
+    numChannels = length(iChannels);
+    sMontage.DispNames = {Channels.Name};
+    sMontage.ChanNames = {Channels.Name};
+    sMontage.Matrix    = eye(numChannels);
 end
 
 
@@ -1578,7 +1646,7 @@ function newName = RenameMontage(oldName, newName)
         error('Condition does not exist.');
     end
     % If this is a non-editable montage: error
-    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)'})
+    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)', 'Head distance'})
         newName = [];
         return;
     end
@@ -2294,4 +2362,29 @@ function is1020Setup = Is1020Setup(channelNames)
     
     % If over half of the channels fit, it is the proper setup
     is1020Setup = (num1020Channels / numChannels) > 0.5;
+end
+
+function F = ComputeCustomMontage(montageName, F, DataFile)
+    if strcmpi(montageName, 'Head distance')
+        % Prepare inputs
+        ChannelFile = bst_get('ChannelFileForStudy', DataFile);
+        ChannelMat = in_bst_channel(ChannelFile);
+        iTrans = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
+        if isempty(iTrans)
+            error('Could not find required transformation.');
+        end
+        
+        % Compute initial head location
+        LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
+        InitLoc = [[ChannelMat.SCS.NAS(1); 0; 0; 1], [0; LeftRightDist; 0; 1], ...
+          [0; -LeftRightDist; 0; 1]];
+        InitLoc = ChannelMat.TransfMeg{iTrans} \ InitLoc;
+        InitLoc(4, :) = [];
+        InitLoc = InitLoc(:);
+        
+        % Compute distance
+        F = process_evt_head_motion('RigidDistances', F, InitLoc)';
+    else
+        error('Unsupported custom montage.');
+    end
 end

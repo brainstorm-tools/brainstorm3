@@ -203,8 +203,6 @@ else
 end
 if ~isempty(strfind(BaseFile, 'matrix_decoding_cv_')) || ~isempty(strfind(BaseFile, 'matrix_decoding_perm_'))
     TsInfo.YLabel = 'Decoding accuracy (%)';
-elseif strcmpi(Modality, 'HLUDist')
-    TsInfo.YLabel = 'Distance (m)';
 else
     TsInfo.YLabel = '';
 end
