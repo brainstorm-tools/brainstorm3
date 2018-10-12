@@ -108,7 +108,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     intcfg = struct();
     intcfg.neighbours = neighbours;
     intcfg.method     = Method;   
-    intcfg.badchannel = badchannel;
+    intcfg.badchannel = badchannel';
     intcfg.trials     = 1;
     interpolatedData = ft_channelrepair(intcfg, ftData);
     
