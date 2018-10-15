@@ -364,7 +364,6 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
     %% Get segments around each spike, FOR EACH NEURON
     for iNeuron = 1:length(spikeEvents) % iNeuron is the iEvent
 
-        try
         % Check that the entire segment around the spikes [-150,150]ms
         % is inside the trial segment and keep only those events
         events_within_segment = trial.Events(spikeEvents(iNeuron)).samples(trial.Events(spikeEvents(iNeuron)).times > trial.Time(1)   + abs(sProcess.options.timewindow.Value{1}(1)) & ...
@@ -387,9 +386,6 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
         all(iNeuron).avgFFT  = squeeze(sum(FFT_allSpike_singleNeuron_singleTrial,1)); % Average of the FFTs of all spike segments
         all(iNeuron).avgLFP  = sum(allSpikeSegments_singleNeuron_singleTrial,1);      % Spike-Triggered-Average. I intentionally leave it 3d so it can be imported in compute_FFT
         all(iNeuron).Used    = 0; % This indicates if this entry has already been used for computing the SFC (some spikes might not appear on every trial imported, so a new Neuron should be identified on a later trial).
-        catch
-            disp('asdfasd')
-        end
 
     end
     
