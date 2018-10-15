@@ -2368,22 +2368,23 @@ function F = ComputeCustomMontage(montageName, F, DataFile)
     if strcmpi(montageName, 'Head distance')
         % Prepare inputs
         ChannelFile = bst_get('ChannelFileForStudy', DataFile);
-        ChannelMat = in_bst_channel(ChannelFile);
-        iTrans = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
-        if isempty(iTrans)
-            error('Could not find required transformation.');
-        end
-        
-        % Compute initial head location
-        LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
-        InitLoc = [[ChannelMat.SCS.NAS(1); 0; 0; 1], [0; LeftRightDist; 0; 1], ...
-          [0; -LeftRightDist; 0; 1]];
-        InitLoc = ChannelMat.TransfMeg{iTrans} \ InitLoc;
-        InitLoc(4, :) = [];
-        InitLoc = InitLoc(:);
-        
-        % Compute distance
-        F = process_evt_head_motion('RigidDistances', F, InitLoc)';
+        F = head_motion_distance(F, ChannelFile);
+%         ChannelMat = in_bst_channel(ChannelFile);
+%         iTrans = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
+%         if isempty(iTrans)
+%             error('Could not find required transformation.');
+%         end
+%         
+%         % Compute initial head location
+%         LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
+%         InitLoc = [[ChannelMat.SCS.NAS(1); 0; 0; 1], [0; LeftRightDist; 0; 1], ...
+%           [0; -LeftRightDist; 0; 1]];
+%         InitLoc = ChannelMat.TransfMeg{iTrans} \ InitLoc;
+%         InitLoc(4, :) = [];
+%         InitLoc = InitLoc(:);
+%         
+%         % Compute distance
+%         F = process_evt_head_motion('RigidDistances', F, InitLoc)';
     else
         error('Unsupported custom montage.');
     end

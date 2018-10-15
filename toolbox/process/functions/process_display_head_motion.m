@@ -78,7 +78,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<STOUT,INUSL,DEFNU>
     % sInput.ChannelFile = bst_get('ChannelFileForStudy', sInput.FileName);
     ChannelMat = in_bst_channel(sInput.ChannelFile);
     
-    if ~strcmp(ChannelMat.TransfMegLabel{1}, 'Dewar=>Native')
+    if ~strcmp(ChannelMat.TransfMegLabels{1}, 'Dewar=>Native')
       error('Dewar=>Native transformation not found.');
     end
     % Just use the SCS distances from origin, with left and right PA points
@@ -94,7 +94,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<STOUT,INUSL,DEFNU>
     % Continuous head localization, from HLU channels.
     ReshapeToContinuous = false;
     [Locations, HeadSamplePeriod, FitErrors] = ...
-      process_evt_head_motion('LoadHLU', sInput, ReshapeToContinuous);
+      process_evt_head_motion('LoadHLU', sInput, [], ReshapeToContinuous);
     nS = size(Locations, 2);
     nT = size(Locations, 3);
     
