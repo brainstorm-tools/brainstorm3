@@ -1198,7 +1198,7 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
                 continue;
             end
             % Not CTF-MEG: Skip head motion distance
-            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Head distance') && ((~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'MEG'})) ...
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Head distance') && ((~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'MEG', 'HLU'})) ...
                     || ((isfield(GlobalData.DataSet(iDS).Measures.sFile, 'device') && ~strcmpi(GlobalData.DataSet(iDS).Measures.sFile.device, 'CTF')) ...
                     && isempty(strfind(GlobalData.DataSet(iDS).ChannelFile, 'channel_ctf'))))
                 continue;
@@ -1402,7 +1402,7 @@ function sMontage = GetMontageHeadDistance(sMontage, Channels, ChannelFlag)
     if (nargin < 2) || isempty(ChannelFlag)
         hFig = Channels;
         TsInfo = getappdata(hFig,'TsInfo');
-        if isempty(TsInfo.Modality) || ~ismember(TsInfo.Modality, {'MEG'})
+        if isempty(TsInfo.Modality) || ~ismember(TsInfo.Modality, {'MEG', 'HLU'})
             sMontage = [];
             return;
         end
