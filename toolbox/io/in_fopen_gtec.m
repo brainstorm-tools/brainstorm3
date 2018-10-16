@@ -39,11 +39,13 @@ if strcmpi(fExt, '.mat')
     % Save file header
     hdr = FileMat.P_C_S;
     hdr.format = 'mat';
+    hdr.nEpochs = size(hdr.data, 1);
+    hdr.nTime = size(hdr.data, 2);
     
 % HDF5
 elseif strcmpi(fExt, '.hdf5')
     % h5disp(DataFile) 
-    % info = hdf5info(DataFile);
+    % info = hdf5info(DataFile);  
     % s = hdf5read(DataFile, '/RawData/AcquisitionTaskDescription')
     % s = hdf5read(DataFile, '/RawData/SessionDescription')
     % s = hdf5read(DataFile, '/RawData/SubjectDescription')
@@ -62,26 +64,50 @@ elseif strcmpi(fExt, '.hdf5')
     catch
         error('Invalid g.tec HDF5 file: Missing dataset "RawData/Samples".');
     end
+    % Read events
+    hdr.markername = [];
+    hdr.marker     = [];
+    try
+        % Get events timing and ID
+        evtTime = double(hdf5read(DataFile, '/AsynchronData/Time'));
+        evtID = double(hdf5read(DataFile, '/AsynchronData/TypeID'));
+        % Get events descriptions
+        sSignalType = hdf5read(DataFile, '/AsynchronData/AsynchronSignalTypes');
+        sSignalTypeXml = in_xml(sSignalType.Data);
+        triggerName = cellfun(@(c)c.text, {sSignalTypeXml.ArrayOfAsynchronSignalDescription.AsynchronSignalDescription.Name}, 'UniformOutput', 0);
+        triggerID = cellfun(@(c)str2num(c.text), {sSignalTypeXml.ArrayOfAsynchronSignalDescription.AsynchronSignalDescription.ID});
+        % Find used trigger types
+        iUsedTrig = find(ismember(triggerID, unique(evtID)));
+        % Keep only used triggers
+        if ~isempty(iUsedTrig)
+            triggerName = triggerName(iUsedTrig);
+            triggerID = triggerID(iUsedTrig);
+            % Create event table
+            triggerTable = zeros(1, max(triggerID));
+            triggerTable(triggerID) = 1:length(triggerID);
+            % Convert to obtain the same marker info as in the .mat files
+            hdr.markername = triggerName;
+            hdr.marker = [evtTime', ones(length(evtTime),1), triggerTable(evtID)'];
+        end
+    catch
+        disp('gtect> No events available in recordings.');
+    end
     % Read information of interest
     hdr.format = 'hdf5';
     hdr.numberchannels = str2num(sAcqXml.AcquisitionTaskDescription.NumberOfAcquiredChannels.text);
     hdr.samplingfrequency = str2num(sAcqXml.AcquisitionTaskDescription.SamplingFrequency.text);
     hdr.nTime = size(Data, 2);
     % Get channel name
-    sChan = [sAcqXml.AcquisitionTaskDescription.ChannelProperties.ChannelProperties(:).ChannelName];
-    if ~isempty(sChan)
-        hdr.channelname = {sChan.text};
-    else
-        hdr.channelname = [];
+    hdr.channelname = cell(1, hdr.numberchannels);
+    for i = 1:hdr.numberchannels
+        if (i <= length(sAcqXml.AcquisitionTaskDescription.ChannelProperties.ChannelProperties)) && ~isempty(sAcqXml.AcquisitionTaskDescription.ChannelProperties.ChannelProperties(i).ChannelName)
+            hdr.channelname{i} = sAcqXml.AcquisitionTaskDescription.ChannelProperties.ChannelProperties(i).ChannelName.text;
+        end
     end
-    
     % Information not found (yet)
     hdr.amplifiername = 'gtect';
     hdr.nEpochs       = 1;
     hdr.pretrigger    = 0;
-    hdr.markername    = [];
-    hdr.marker        = [];
-    
 else
     error('Invalid g.tec file.');
 end
@@ -143,7 +169,7 @@ ChannelMat.Comment = 'g.tec channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), 1, hdr.numberchannels);
 % Channels information
 for iChan = 1:hdr.numberchannels
-    if ~isempty(hdr.channelname)
+    if ~isempty(hdr.channelname) && ~isempty(hdr.channelname{iChan})
         ChannelMat.Channel(iChan).Name = hdr.channelname{iChan};
     else
         ChannelMat.Channel(iChan).Name = sprintf('E%03d', iChan);
