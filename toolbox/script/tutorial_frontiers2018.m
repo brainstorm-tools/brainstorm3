@@ -1,11 +1,11 @@
-function tutorial_visual_short(bids_dir, reports_dir)
-% TUTORIAL_VISUAL_SHORT: Runs the Brainstorm/SPM group analysis pipeline (BIDS) - SHORT VERSION
+function tutorial_frontiers2018(bids_dir, reports_dir)
+% TUTORIAL_FRONTIERS2018: Runs the Brainstorm/SPM group analysis pipeline (BIDS) - FRONTIERS ARTICLE VERSION
 % 
 % DESCRIPTION:
-%    The processing steps are the same as in tutorial_visual_full, except for the following steps:
+%    The processing steps are the same as in tutorial_visual.m, except for the following steps:
 %    - Anatomy: No ASEG atlas imported
 %    - Pre-processing: No notch filtering
-%    - Source analysis: Spherical head model for EEG instead of realistic BEM
+%    - Source analysis: No EEG source analysis
 %    - Source analysis: No individual source snapshots in the reports
 %    - No time-frequency analysis
 %
@@ -14,7 +14,7 @@ function tutorial_visual_short(bids_dir, reports_dir)
 %    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
-%    - bids_dir    : Path to folder "Multisubject, multimodal face processing"  (https://openneuro.org/datasets/ds000117/versions/00004)
+%    - bids_dir    : Path to folder ds000117  (https://openneuro.org/datasets/ds000117)
 %    - reports_dir : If defined, exports all the reports as HTML to this folder
 
 % @=============================================================================
@@ -63,13 +63,13 @@ bst_set('ShowYGrid', 0);
 bst_set('DisplayGFP', 1);
 
 % Protocol names
-ProtocolNameSingle = 'TutorialVisualShort';
-ProtocolNameGroup  = 'TutorialGroupShort';
+ProtocolNameSingle = 'Frontiers2018Single';
+ProtocolNameGroup  = 'Frontiers2018Group';
 % Part 1: Single subject analysis
-tutorial_visual_short_single(bids_dir, reports_dir);
+tutorial_frontiers2018_single(bids_dir, reports_dir);
 % Part 2: Copy to a new protocol for the group analysis
-tutorial_visual_short_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir);
+tutorial_frontiers2018_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir);
 % Part 3: Group analysis
-tutorial_visual_short_group(ProtocolNameGroup, reports_dir);
+tutorial_frontiers2018_group(ProtocolNameGroup, reports_dir);
 
 

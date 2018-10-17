@@ -1,13 +1,13 @@
-function tutorial_visual_full_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir)
-% TUTORIAL_VISUAL_FULL_COPY: Copy the subject averages for the Brainstorm/SPM group tutorial into a new protocol (BIDS VERSION)
+function tutorial_frontiers2018_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir)
+% TUTORIAL_FRONTIERS2018_COPY: Copy the subject averages for the Brainstorm/SPM group tutorial into a new protocol - FRONTIERS ARTICLE VERSION
 %
 % ONLINE TUTORIALS: 
 %    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
 %    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
-%    - ProtocolNameSingle : Name of the protocol created with all the data imported (TutorialVisual)
-%    - ProtocolNameGroup  : Name of the protocol with just the averages, downsampled to 275Hz (TutorialGroup)
+%    - ProtocolNameSingle : Name of the protocol created with all the data imported (Frontiers2018Single)
+%    - ProtocolNameGroup  : Name of the protocol with just the averages, downsampled to 275Hz (Frontiers2018Group)
 %    - reports_dir        : If defined, exports all the reports as HTML to this folder
 
 % @=============================================================================
@@ -41,8 +41,8 @@ if (nargin < 3) || isempty(reports_dir) || ~isdir(reports_dir)
 end
 % You have to specify the folder in which the tutorial dataset is unzipped
 if (nargin < 2) || isempty(ProtocolNameSingle) || isempty(ProtocolNameGroup)
-    ProtocolNameSingle = 'TutorialVisual';
-    ProtocolNameGroup  = 'TutorialGroup';
+    ProtocolNameSingle = 'Frontiers2018Single';
+    ProtocolNameGroup  = 'Frontiers2018Group';
 end
 
 % Output protocol: Delete existing protocol
@@ -92,7 +92,7 @@ for iSubj = 1:16
     % Loop on runs
     for iRun = 1:6
         % Run folders
-        RunName = sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-sss_meg_notch', iSubj, iRun);
+        RunName = sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-sss_meg', iSubj, iRun);
         RunSrc  = bst_fullfile(DataSrc,  RunName);
         RunDest = bst_fullfile(DataDest, RunName);
         % If run folder doesn't exist: skip
@@ -115,9 +115,9 @@ for iSubj = 1:16
         if ~isempty(dir(bst_fullfile(RunSrc, 'results_*.mat')))
             copyfile(bst_fullfile(RunSrc, 'results_*.mat'), RunDest);
         end
-        if ~isempty(dir(bst_fullfile(RunSrc, 'timefreq_*.mat')))
-            copyfile(bst_fullfile(RunSrc, 'timefreq_*.mat'), RunDest);
-        end
+%         if ~isempty(dir(bst_fullfile(RunSrc, 'timefreq_*.mat')))
+%             copyfile(bst_fullfile(RunSrc, 'timefreq_*.mat'), RunDest);
+%         end
     end
 end
 
@@ -154,30 +154,30 @@ for i = 1:length(sDataAll)
         continue;
     end
     newComment = sDataAll(i).Comment(1:iTag-1);
-    % Process: Set comment: AA
+    % Process: Set comment
     bst_process('CallProcess', 'process_set_comment', sDataAll(i), [], ...
         'tag',     newComment, ...
         'isindex', 0);
 end
 
-% ===== RENAME: TIME-FREQ =====
-% Process: Select time-frequency files in: */*
-sTimefreqAll = bst_process('CallProcess', 'process_select_files_timefreq', [], []);
-% Rename timefreq files
-%AllConditions = {'Famous', 'Scrambled', 'Unfamiliar'};
-for i = 1:length(sTimefreqAll)
-    % Remove all the processing tags
-    iTag = strfind(sTimefreqAll(i).Comment, ' |');
-    if isempty(iTag)
-        continue;
-    end
-    newComment = sTimefreqAll(i).Comment(1:iTag-1);
-    %newComment = ['Avg: ', AllConditions{sTimefreqAll(i).iItem}, ', Power, 6-60Hz'];
-    % Process: Set comment
-    bst_process('CallProcess', 'process_set_comment', sTimefreqAll(i), [], ...
-        'tag',     newComment, ...
-        'isindex', 0);
-end
+% % ===== RENAME: TIME-FREQ =====
+% % Process: Select time-frequency files in: */*
+% sTimefreqAll = bst_process('CallProcess', 'process_select_files_timefreq', [], []);
+% % Rename timefreq files
+% %AllConditions = {'Famous', 'Scrambled', 'Unfamiliar'};
+% for i = 1:length(sTimefreqAll)
+%     % Remove all the processing tags
+%     iTag = strfind(sTimefreqAll(i).Comment, ' |');
+%     if isempty(iTag)
+%         continue;
+%     end
+%     newComment = sTimefreqAll(i).Comment(1:iTag-1);
+%     %newComment = ['Avg: ', AllConditions{sTimefreqAll(i).iItem}, ', Power, 6-60Hz'];
+%     % Process: Set comment
+%     bst_process('CallProcess', 'process_set_comment', sTimefreqAll(i), [], ...
+%         'tag',     newComment, ...
+%         'isindex', 0);
+% end
 
 % Save report
 ReportFile = bst_report('Save', []);

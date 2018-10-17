@@ -1,10 +1,10 @@
-function tutorial_visual_full_single(bids_dir, reports_dir)
-% TUTORIAL_VISUAL_FULL_SINGLE: Runs the Brainstorm/SPM group analysis pipeline (single subject, BIDS version).
+function tutorial_visual_single(bids_dir, reports_dir)
+% TUTORIAL_VISUAL_SINGLE: Runs the Brainstorm/SPM group analysis pipeline (single subject, BIDS version).
 %
 % ONLINE TUTORIALS: https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
 %
 % INPUTS:
-%    - bids_dir: Path to folder "Multisubject, multimodal face processing"  (https://openneuro.org/datasets/ds000117/versions/00004)
+%    - bids_dir: Path to folder ds000117 (https://openneuro.org/datasets/ds000117)
 %       |- derivatives/freesurfer/sub-XX                               : Segmentation folders generated with FreeSurfer
 %       |- derivatives/meg_derivatives/sub-XX/ses-meg/meg/*.fif        : MEG+EEG recordings (processed with MaxFilter's SSS)
 %       |- derivatives/meg_derivatives/sub-emptyroom/ses-meg/meg/*.fif : Empty room measurements
@@ -326,7 +326,7 @@ for iSubj = 1:16
             'modality', 4, ...  % EEG
             'time',     0.11, ...
             'Comment',  sprintf('Subject #%d, Run #%d', iSubj, iRun));
-        % Process: Snapshot: Recordings time series
+        % Process: Snapshot: Recordings topography
         bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
             'target',   6, ...  % Recordings topography (one time)
             'modality', 4, ...  % EEG
