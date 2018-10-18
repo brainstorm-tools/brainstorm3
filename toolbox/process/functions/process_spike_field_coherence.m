@@ -132,7 +132,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % === START COMPUTATION ===
         sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
 
-        %TODO: clarify and use sensortypes?
+        % Select the appropriate sensors
         nElectrodes = 0;
         selectedChannels = [];
         for iChannel = 1:length(ChannelMat.Channel)
@@ -172,7 +172,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
 
 
-        % Optimize this
+        % Start Parallel Pool if needed
         if ~isempty(poolobj)
             parfor iFile = 1:nTrials
                 [FFTs_single_trial, Freqs] = get_FFTs(ALL_TRIALS_files(iFile).trial, selectedChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
@@ -204,21 +204,32 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         labelsForDropDownMenu = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
         for iFile = 1:nTrials
             for iNeuron = 1:length(everything(iFile).FFTs_single_trial)
-                all_labels.labels{iNeuron,iFile} = everything(iFile).FFTs_single_trial(iNeuron).label;
-                labelsForDropDownMenu{end+1} = everything(iFile).FFTs_single_trial(iNeuron).label;
+                if ~isempty(everything(iFile).FFTs_single_trial(iNeuron)) % An empty struct here would be caused by no selectrion of spikes. This would be caused by the combination of large windows around the spiking events, and small trial window
+                    all_labels.labels{iNeuron,iFile} = everything(iFile).FFTs_single_trial(iNeuron).label;
+                    labelsForDropDownMenu{end+1} = everything(iFile).FFTs_single_trial(iNeuron).label;
+                end
             end
         end
+        
+        % Give an error if there were no spikes on any of the selected
+        % trials
+        if isempty(labelsForDropDownMenu)
+            error(['No spikes selected for ' uniqueComments{iList} '. Select a smaller time-window around the spikes, or make sure there are spikes on these trials'])
+        end
+        
         all_labels = all_labels.labels;
         labelsForDropDownMenu = unique(labelsForDropDownMenu,'stable');
 
 
 
         SFC = zeros(length(labelsForDropDownMenu), length(everything(1).Freqs), nElectrodes); % Number of neurons x Frequencies x Electrodes : 161x151x192
-        tempAverageLFP = zeros(1,nElectrodes, length(time_segmentAroundSpikes));              %   1 x 192 x 301
-        tempAverageFFT = zeros(length(everything(1).Freqs), nElectrodes);                     % 151 x 192
-
-
+        
         for iNeuron = 1:length(labelsForDropDownMenu)
+            
+            temp_All_trials_sum_LFP = zeros(1,nElectrodes, length(time_segmentAroundSpikes));              %   1 x 192 x 301
+            temp_All_trials_sum_FFT = zeros(length(everything(1).Freqs), nElectrodes);                     % 151 x 192
+            
+            
             %% For each TRIAL, get the index of the label that corresponds to the appropriate neuron.
 %           logicalEvents = ismember(all_labels, labelsForDropDownMenu{iNeuron}); % Find the index of the spike-events that correspond to that electrode (Exact string match). This linearizes the cell. I need to dilenearize it.
             for ii = 1:size(all_labels,1)
@@ -238,24 +249,24 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
 
 
-            %% Take the Averagesof the appropriate indices
+            %% Take the Averages of the appropriate indices
             divideBy = 0;
             for iTrial = 1:size(all_labels,2)
                 if iEvents(iTrial)~=0
-                    tempAverageLFP = tempAverageLFP + everything(iTrial).FFTs_single_trial(iEvents(iTrial)).nSpikes * everything(iTrial).FFTs_single_trial(iEvents(iTrial)).avgLFP; % The avgLFP are sum actually. 
-                    tempAverageFFT = tempAverageFFT + everything(iTrial).FFTs_single_trial(iEvents(iTrial)).nSpikes * everything(iTrial).FFTs_single_trial(iEvents(iTrial)).avgFFT;
+                    temp_All_trials_sum_LFP = temp_All_trials_sum_LFP + everything(iTrial).FFTs_single_trial(iEvents(iTrial)).sumLFP;
+                    temp_All_trials_sum_FFT = temp_All_trials_sum_FFT + everything(iTrial).FFTs_single_trial(iEvents(iTrial)).sumFFT;
                     divideBy = divideBy + everything(iTrial).FFTs_single_trial(iEvents(iTrial)).nSpikes;
                 end
             end
 
-            tempAverageLFP = tempAverageLFP./divideBy;
-            tempAverageFFT = tempAverageFFT./divideBy;
+            average_LFP = temp_All_trials_sum_LFP./divideBy;
+            average_FFT = temp_All_trials_sum_FFT./divideBy;
 
             % Get The FFT of the AverageLFP
 
-            [FFTofAverageLFP, ~] = compute_FFT(tempAverageLFP, time_segmentAroundSpikes);
+            [FFTofAverageLFP, ~] = compute_FFT(average_LFP, time_segmentAroundSpikes);
 
-            SFC_singleNeuron = tempAverageFFT./squeeze(FFTofAverageLFP); % Normalize by the FFT of the average LFP
+            SFC_singleNeuron = squeeze(FFTofAverageLFP)./average_FFT; % Normalize by the FFT of the average LFP
             SFC_singleNeuron(isnan(SFC_singleNeuron))=0; % If the spikes of a neuron only occur at the edges of the window that was selected, the Average LFP would be 0, and the division by 0 would give NaN as an output. This line takes care of that.
 
             SFC(iNeuron,:,:) = SFC_singleNeuron;
@@ -263,18 +274,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         end
 
-%     
-%     
-%     %% Plot an example for proof of concept
-%     iNeuron = 100;
-%     figure(1);
-%     imagesc(squeeze(SFC(iNeuron,:,:))')        % SFC: Number of neurons x Frequencies x Electrodes : 161x151x192
-%     ylabel 'iElectrode'
-%     xlabel 'Frequency (Hz)'
-%     title ({'Spike Field Coherence';['Neuron ' num2str(iNeuron)]})
-%     
-%     
-
+        
+    %% Plot an example for proof of concept
+% % % %    
+% % % %     figure(1);
+% % % %     
+% % % %     iNeuron = 300
+% % % %     
+% % % %     imagesc(everything(1).Freqs,1:nElectrodes,squeeze(SFC(iNeuron,:,:))')        % SFC: Number of neurons x Frequencies x Electrodes : 161x151x192
+% % % % %     imagesc(squeeze(abs(SFC_singleNeuron(:,:)))')        % SFC: Number of neurons x Frequencies x Electrodes : 161x151x192
+% % % %     ylabel 'iElectrode'
+% % % %     xlabel 'Frequency (Hz)'
+% % % %     title ({'Spike Field Coherence';['Neuron ' labelsForDropDownMenu{iNeuron}]})
+% % % %     colorbar
 
         %% Wrap everything into the output file
 
@@ -343,11 +355,20 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
 
     % Important Variable here!
     spikeEvents = []; % The spikeEvents variable holds the indices of the events that correspond to spikes.
-    %%%
 
-    allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
-        {trial.Events.label}, 'UniformOutput', 0);
-    
+    % Added the following snippet to avoid using a call to
+    % process_spikesorting_supervised
+    allChannelEvents = {};
+    for iEvent = 1:length(trial.Events)
+        if strfind(trial.Events(iEvent).label,'Spikes Channel')
+            allChannelEvents{1,iEvent} = erase(trial.Events(iEvent).label,'Spikes Channel ');
+            multiple_neurons_index_start = strfind(allChannelEvents{1,iEvent},'|');
+            if multiple_neurons_index_start
+                allChannelEvents{1,iEvent} = allChannelEvents{1,iEvent}(1:multiple_neurons_index_start(1)-2);
+            end
+        end
+    end
+
     if isempty(allChannelEvents)
         error('No spike event found in this file.');
     end
@@ -362,7 +383,7 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
 
     all = struct();
     %% Get segments around each spike, FOR EACH NEURON
-    for iNeuron = 1:length(spikeEvents) % iNeuron is the iEvent
+    for iNeuron = 1:length(spikeEvents) 
 
         % Check that the entire segment around the spikes [-150,150]ms
         % is inside the trial segment and keep only those events
@@ -374,8 +395,8 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
         allSpikeSegments_singleNeuron_singleTrial = zeros(length(events_within_segment),size(trial.F(selectedChannels,:),1),abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);
 
         for ispike = 1:length(events_within_segment)
-            allSpikeSegments_singleNeuron_singleTrial(ispike,:,:) = trial.F(selectedChannels, round(abs(trial.Time(1))*sampling_rate) + events_within_segment(ispike) - abs(sProcess.options.timewindow.Value{1}(1)) * sampling_rate: ...
-                                                                                              round(abs(trial.Time(1))*sampling_rate) + events_within_segment(ispike) + abs(sProcess.options.timewindow.Value{1}(2)) * sampling_rate  ...
+            allSpikeSegments_singleNeuron_singleTrial(ispike,:,:) = trial.F(selectedChannels, events_within_segment(ispike) - abs(sProcess.options.timewindow.Value{1}(1)) * sampling_rate + round(abs(trial.Time(1))* sampling_rate): ...
+                                                                                              events_within_segment(ispike) + abs(sProcess.options.timewindow.Value{1}(2)) * sampling_rate + round(abs(trial.Time(1))* sampling_rate)  ...
                                                                            );
         end
 
@@ -383,8 +404,8 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
 
         all(iNeuron).label   = trial.Events(spikeEvents(iNeuron)).label;
         all(iNeuron).nSpikes = length(events_within_segment);
-        all(iNeuron).avgFFT  = squeeze(sum(FFT_allSpike_singleNeuron_singleTrial,1)); % Average of the FFTs of all spike segments
-        all(iNeuron).avgLFP  = sum(allSpikeSegments_singleNeuron_singleTrial,1);      % Spike-Triggered-Average. I intentionally leave it 3d so it can be imported in compute_FFT
+        all(iNeuron).sumFFT  = squeeze(sum(FFT_allSpike_singleNeuron_singleTrial,1)); % Sum of the FFTs of all spike segments
+        all(iNeuron).sumLFP  = sum(allSpikeSegments_singleNeuron_singleTrial,1);      % Spike-Triggered-Sum (not average yet). I intentionally leave it 3d so it can be imported in compute_FFT
         all(iNeuron).Used    = 0; % This indicates if this entry has already been used for computing the SFC (some spikes might not appear on every trial imported, so a new Neuron should be identified on a later trial).
 
     end
@@ -491,7 +512,7 @@ function [TF, Freqs] = compute_FFT(F, time)
     
     
     %%%%%%%%%%%% This is added. SFC doesn't need the complex values %%%%%%%
-    TF = TF .^ 2;
+    TF = abs(TF) .^ 2;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     % Permute dimensions: time and frequency
