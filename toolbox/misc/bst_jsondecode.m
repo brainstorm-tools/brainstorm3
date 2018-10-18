@@ -24,7 +24,7 @@ function outStruct = bst_jsondecode(inString)
 % Authors: Martin Cousineau, 2018
 
 % If possible, call built-in function
-if 0%exist('jsondecode', 'builtin') == 5
+if exist('jsondecode', 'builtin') == 5
     outStruct = jsondecode(inString);
     return;
 end
