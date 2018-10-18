@@ -174,8 +174,10 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % If folder exist, detect existing naming scheme
         [prevSubScheme, prevSesScheme, prevRunScheme] = DetectNamingScheme(outputFolder);
+        if isempty(prevSubScheme) || isempty(prevSesScheme) || isempty(prevRunScheme)
+            data = EmptyData();
         % Warn user for different naming schemes
-        if subScheme ~= prevSubScheme || sesScheme ~= prevSesScheme || runScheme ~= prevRunScheme
+        elseif subScheme ~= prevSubScheme || sesScheme ~= prevSesScheme || runScheme ~= prevRunScheme
             disp(['Warning: Chosen naming scheme(s) different from existing one.' ...
                 10 '         Ignoring existing subjects/sessions in output folder.']);
             data = EmptyData();
