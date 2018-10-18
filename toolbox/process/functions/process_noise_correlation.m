@@ -102,6 +102,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     %% Get only the unique neurons along all of the trials
     nTrials = length(sInputs);
     
+    if nTrials == 1
+        error('More trials are needed for Noise Correlation computation')
+    end
+    
     % This loads the information from ALL TRIALS on ALL_TRIALS_files
     % (Shouldn't create a memory problem).
     ALL_TRIALS_files = struct();
@@ -165,16 +169,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     connectivity = bst_correlation(all_binned', all_binned', opts);
     noise_correlation(1,:,:) = connectivity; 
     
-    
-%     figure;
-%     imagesc(squeeze(noise_correlation))
-%     
-%     
-%     myColorMap = jet(256);
-%     myColorMap(1,:) = 1;
-%     colormap(myColorMap);
-%     colorbar
-
     %% Get list of unique conditions for output label
     conditions = unique({sInputs.Condition});
     condition = [];
