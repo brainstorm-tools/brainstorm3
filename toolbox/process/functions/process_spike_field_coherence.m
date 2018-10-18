@@ -172,7 +172,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
 
 
-        % Start Parallel Pool if needed
+        % Start Parallel Pool if requested
         if ~isempty(poolobj)
             parfor iFile = 1:nTrials
                 [FFTs_single_trial, Freqs] = get_FFTs(ALL_TRIALS_files(iFile).trial, selectedChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
@@ -222,16 +222,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
 
 
-        SFC = zeros(length(labelsForDropDownMenu), length(everything(1).Freqs), nElectrodes); % Number of neurons x Frequencies x Electrodes : 161x151x192
+        SFC = zeros(length(labelsForDropDownMenu), length(everything(1).Freqs), nElectrodes); % Number of neurons x Frequencies x Electrodes
         
         for iNeuron = 1:length(labelsForDropDownMenu)
             
-            temp_All_trials_sum_LFP = zeros(1,nElectrodes, length(time_segmentAroundSpikes));              %   1 x 192 x 301
-            temp_All_trials_sum_FFT = zeros(length(everything(1).Freqs), nElectrodes);                     % 151 x 192
+            temp_All_trials_sum_LFP = zeros(1,nElectrodes, length(time_segmentAroundSpikes)); 
+            temp_All_trials_sum_FFT = zeros(length(everything(1).Freqs), nElectrodes);
             
             
             %% For each TRIAL, get the index of the label that corresponds to the appropriate neuron.
-%           logicalEvents = ismember(all_labels, labelsForDropDownMenu{iNeuron}); % Find the index of the spike-events that correspond to that electrode (Exact string match). This linearizes the cell. I need to dilenearize it.
             for ii = 1:size(all_labels,1)
                 for jj = 1:size(all_labels,2)
                     logicalEvents(ii,jj) = strcmp(all_labels{ii,jj}, labelsForDropDownMenu{iNeuron});
@@ -267,26 +266,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             [FFTofAverageLFP, ~] = compute_FFT(average_LFP, time_segmentAroundSpikes);
 
             SFC_singleNeuron = squeeze(FFTofAverageLFP)./average_FFT; % Normalize by the FFT of the average LFP
-            SFC_singleNeuron(isnan(SFC_singleNeuron))=0; % If the spikes of a neuron only occur at the edges of the window that was selected, the Average LFP would be 0, and the division by 0 would give NaN as an output. This line takes care of that.
+            SFC_singleNeuron(isnan(SFC_singleNeuron))=0;              % If the spikes of a neuron only occur at the edges of the window that was selected, the Average LFP would be 0, 
+                                                                      % and the division by 0 would give NaN as an output. This line takes care of that.
 
             SFC(iNeuron,:,:) = SFC_singleNeuron;
 
 
         end
-
-        
-    %% Plot an example for proof of concept
-% % % %    
-% % % %     figure(1);
-% % % %     
-% % % %     iNeuron = 300
-% % % %     
-% % % %     imagesc(everything(1).Freqs,1:nElectrodes,squeeze(SFC(iNeuron,:,:))')        % SFC: Number of neurons x Frequencies x Electrodes : 161x151x192
-% % % % %     imagesc(squeeze(abs(SFC_singleNeuron(:,:)))')        % SFC: Number of neurons x Frequencies x Electrodes : 161x151x192
-% % % %     ylabel 'iElectrode'
-% % % %     xlabel 'Frequency (Hz)'
-% % % %     title ({'Spike Field Coherence';['Neuron ' labelsForDropDownMenu{iNeuron}]})
-% % % %     colorbar
 
         %% Wrap everything into the output file
 
@@ -351,7 +337,7 @@ end
 
 
 function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat)
-    %% Get the events that show NEURONS' activity
+    %% Get the events that show the NEURONS' activity
 
     % Important Variable here!
     spikeEvents = []; % The spikeEvents variable holds the indices of the events that correspond to spikes.
@@ -385,7 +371,7 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
     %% Get segments around each spike, FOR EACH NEURON
     for iNeuron = 1:length(spikeEvents) 
 
-        % Check that the entire segment around the spikes [-150,150]ms
+        % Check that the entire segment around the spikes i.e. :[-150,150]ms
         % is inside the trial segment and keep only those events
         events_within_segment = trial.Events(spikeEvents(iNeuron)).samples(trial.Events(spikeEvents(iNeuron)).times > trial.Time(1)   + abs(sProcess.options.timewindow.Value{1}(1)) & ...
                                                                            trial.Events(spikeEvents(iNeuron)).times < trial.Time(end) - abs(sProcess.options.timewindow.Value{1}(2)));
@@ -424,63 +410,6 @@ end
 
 
 function [TF, Freqs] = compute_FFT(F, time)
-
-% This is for testing the FFT output.
-% Just add in different dimensions of F the created data
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %% Create a 3dimensional matrix to test the fft on it
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % Fs = 1000;                    % Sampling frequency
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % T = 1/Fs;                     % Sampling period
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % L = 301;                     % Length of signal
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % t = (0:L-1)*T;                % Time vector
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % x11 = cos(2*pi*50*t);      
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % x12 = cos(2*pi*150*t);      
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % x13 = cos(2*pi*300*t);
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % x21 = cos(2*pi*10*t); 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % x22 = cos(2*pi*450*t);
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % x23 = cos(2*pi*80*t);
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % all = zeros(2,3,L);
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % all(1,1,:) = x11;
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % all(1,2,:) = x12;
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % all(1,3,:) = x13;
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % all(2,1,:) = x21;
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % all(2,2,:) = x22;
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % all(2,3,:) = x23;
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % n = 2^nextpow2(L);
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % dim = 3;
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % Y = fft(all,n,dim);
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % P2 = abs(Y/n);
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % P1 = P2(:,:,1:n/2+1);
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % P1(:,:,2:end-1) = 2*P1(:,:,2:end-1);
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % for i=1:2
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %     for j = 1:3
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %         disp(num2str((i-1)*3+j))
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %         subplot(3,2,(i-1)*3+j)
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %         plot(0:(Fs/n):(Fs/2-Fs/n),squeeze(P1(i,j,1:n/2)))
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %         title(['Row ',num2str(i), '  Column ',num2str(j),' in the Frequency Domain'])
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %         grid on
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %         xlabel 'Frequency (Hz)'
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %         ylabel 'Power'
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %     end
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % end
-
-
 
     %% This function if made for 3-dimensional F
     dim = 3;

@@ -121,7 +121,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % === START COMPUTATION ===
     sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
     
-    %TODO: clarify and use sensortypes?
     selectedChannels = [];
     nChannels = 0;
     for iChannel = 1:length(ChannelMat.Channel)
@@ -211,7 +210,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     for iNeuron = 1:length(labelsForDropDownMenu)
         %% For each TRIAL, get the index of the label that corresponds to the appropriate neuron.
-%         logicalEvents = ismember(all_labels, labelsForDropDownMenu{iNeuron}); % Find the index of the spike-events that correspond to that electrode (Exact string match). This linearizes the cell. I need to dilenearize it.
         
         for ii = 1:size(all_labels,1)
             for jj = 1:size(all_labels,2)
@@ -230,7 +228,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         end
         
-        STA_single_neuron = zeros(length(ChannelMat.Channel), length(time_segmentAroundSpikes));                  % 192 x 301
+        STA_single_neuron = zeros(length(ChannelMat.Channel), length(time_segmentAroundSpikes)); 
 
         %% Take the Averages of the appropriate indices
         divideBy = 0;
@@ -316,7 +314,6 @@ function all = get_LFPs(trial, nChannels, sProcess, time_segmentAroundSpikes, sa
 
     % Important Variable here!
     spikeEvents = []; % The spikeEvents variable holds the indices of the events that correspond to spikes.
-    %%%
 
     % Added the following snippet to avoid using a call to
     % process_spikesorting_supervised
