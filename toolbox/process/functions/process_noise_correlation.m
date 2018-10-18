@@ -78,7 +78,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Time window
     if isfield(sProcess.options, 'timewindow') && ~isempty(sProcess.options.timewindow) && ~isempty(sProcess.options.timewindow.Value)...
                                                && iscell(sProcess.options.timewindow.Value) && (sProcess.options.timewindow.Value{1}(1) < sProcess.options.timewindow.Value{1}(2))
-        time_window = sProcess.options.timewindow.Value{1}; % [0, 0.2]
+        time_window = sProcess.options.timewindow.Value{1};
     else
         bst_report('Error', sProcess, sInputs, 'Check window inputs');
         return;
@@ -110,19 +110,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         ALL_TRIALS_files(iFile).Events = DataMat.Events;
     end
     
-    % Create a cell that holds all of the labels and one for the unique labels
+    %% Create a cell that holds all of the labels and one for the unique labels
     % This will be used to take the averages using the appropriate indices
     uniqueNeurons = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
     for iFile = 1:nTrials
         for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
-            if process_spikesorting_supervised('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label) && any(ALL_TRIALS_files(iFile).Events(iEvent).times > time_window(1) & ALL_TRIALS_files(iFile).Events(iEvent).times < time_window(2))
+            if ~isempty(strfind(ALL_TRIALS_files(iFile).Events(iEvent).label,'Spikes Channel')) && any(ALL_TRIALS_files(iFile).Events(iEvent).times > time_window(1) & ALL_TRIALS_files(iFile).Events(iEvent).times < time_window(2))
                 uniqueNeurons{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
             end
         end
     end
     uniqueNeurons = unique(uniqueNeurons,'stable');
     
-
     
     %% Sort the neurons based on the array they belong to.
     % The visualization is greatly affected by the order of the neurons.
