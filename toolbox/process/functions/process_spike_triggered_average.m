@@ -243,13 +243,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
 
         %% Get meaningful label from neuron name
-        
-        better_label = erase(labelsForDropDownMenu{iNeuron},'Spikes Channel ');
-        multiple_neurons_index_start = strfind(better_label,'|');
-        if multiple_neurons_index_start
-            better_label = [better_label(1:multiple_neurons_index_start(1)-2) ' #' better_label(multiple_neurons_index_start(1)+1)];
+        better_label = process_spikesorting_supervised('GetChannelOfSpikeEvent', labelsForDropDownMenu{iNeuron});
+        neuron = process_spikesorting_supervised('GetNeuronOfSpikeEvent', labelsForDropDownMenu{iNeuron});
+        if ~isempty(neuron)
+            better_label = [better_label ' #' num2str(neuron)];
         end
-        
             
         %% Fill the fields of the output files
         tfOPTIONS.ParentFiles = {sInputs.FileName};
@@ -314,20 +312,10 @@ function all = get_LFPs(trial, nChannels, sProcess, time_segmentAroundSpikes, sa
 
     % Important Variable here!
     spikeEvents = []; % The spikeEvents variable holds the indices of the events that correspond to spikes.
-
-    % Added the following snippet to avoid using a call to
-    % process_spikesorting_supervised
-    allChannelEvents = {};
-    for iEvent = 1:length(trial.Events)
-        if strfind(trial.Events(iEvent).label,'Spikes Channel')
-            allChannelEvents{1,iEvent} = erase(trial.Events(iEvent).label,'Spikes Channel ');
-            multiple_neurons_index_start = strfind(allChannelEvents{1,iEvent},'|');
-            if multiple_neurons_index_start
-                allChannelEvents{1,iEvent} = allChannelEvents{1,iEvent}(1:multiple_neurons_index_start(1)-2);
-            end
-        end
-    end
     
+    %TODO Kostas: possible bug here for manually imported spikes?
+    allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
+        {trial.Events.label}, 'UniformOutput', 0);
     
     for ielectrode = 1: nChannels %selectedChannels
         iEvents = find(strcmp(allChannelEvents, ChannelMat.Channel(ielectrode).Name)); % Find the index of the spike-events that correspond to that electrode (Exact string match)

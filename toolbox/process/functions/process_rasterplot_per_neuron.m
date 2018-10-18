@@ -129,7 +129,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         labelsForDropDownMenu = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
         for iFile = 1:nTrials
             for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
-                if ~isempty(strfind(ALL_TRIALS_files(iFile).Events(iEvent).label,'Spikes Channel'))
+                if process_spikesorting_supervised('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label)
                     labelsForDropDownMenu{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
                 end
             end

@@ -105,8 +105,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
     if sProcess.options.timewindow.Value{1}(1)>=0 || sProcess.options.timewindow.Value{1}(2)<=0
         bst_report('Error', sProcess, sInputs, 'The time-selection must be around the spikes.');
+        return;
     elseif sProcess.options.timewindow.Value{1}(1)==tfOPTIONS.TimeVector(1) && sProcess.options.timewindow.Value{1}(2)==tfOPTIONS.TimeVector(end)
         bst_report('Error', sProcess, sInputs, 'The spike window has to be smaller than the trial window');
+        return;
     end
     
     % Check how many event groups we're processing
@@ -204,17 +206,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         labelsForDropDownMenu = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
         for iFile = 1:nTrials
             for iNeuron = 1:length(everything(iFile).FFTs_single_trial)
-                if ~isempty(everything(iFile).FFTs_single_trial(iNeuron)) % An empty struct here would be caused by no selectrion of spikes. This would be caused by the combination of large windows around the spiking events, and small trial window
+                if ~isempty(everything(iFile).FFTs_single_trial(iNeuron)) % An empty struct here would be caused by no selection of spikes. This would be caused by the combination of large windows around the spiking events, and small trial window
                     all_labels.labels{iNeuron,iFile} = everything(iFile).FFTs_single_trial(iNeuron).label;
                     labelsForDropDownMenu{end+1} = everything(iFile).FFTs_single_trial(iNeuron).label;
                 end
             end
         end
         
-        % Give an error if there were no spikes on any of the selected
-        % trials
+        % Give an error if there were no spikes on any of the selected trials
         if isempty(labelsForDropDownMenu)
-            error(['No spikes selected for ' uniqueComments{iList} '. Select a smaller time-window around the spikes, or make sure there are spikes on these trials'])
+            bst_report('Error', sProcess, sInputs, ['No spikes selected for ' uniqueComments{iList} '.' ...
+                'Select a smaller time-window around the spikes, or make sure there are spikes on these trials.']);
+            return;
         end
         
         all_labels = all_labels.labels;
@@ -342,21 +345,13 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
     % Important Variable here!
     spikeEvents = []; % The spikeEvents variable holds the indices of the events that correspond to spikes.
 
-    % Added the following snippet to avoid using a call to
-    % process_spikesorting_supervised
-    allChannelEvents = {};
-    for iEvent = 1:length(trial.Events)
-        if strfind(trial.Events(iEvent).label,'Spikes Channel')
-            allChannelEvents{1,iEvent} = erase(trial.Events(iEvent).label,'Spikes Channel ');
-            multiple_neurons_index_start = strfind(allChannelEvents{1,iEvent},'|');
-            if multiple_neurons_index_start
-                allChannelEvents{1,iEvent} = allChannelEvents{1,iEvent}(1:multiple_neurons_index_start(1)-2);
-            end
-        end
-    end
+    %TODO Kostas: possible bug here for manually imported spikes?
+    allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
+        {trial.Events.label}, 'UniformOutput', 0);
 
     if isempty(allChannelEvents)
-        error('No spike event found in this file.');
+        bst_report('Error', sProcess, sInputs, 'No spike event found in this file.');
+        return;
     end
     
     for iElec = 1:length(selectedChannels)
