@@ -28,11 +28,11 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the processc
-    sProcess.Comment     = 'Export MEG-BIDS dataset';
+    sProcess.Comment     = 'Export MEG-BIDS dataset [experimental]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'File';
-    sProcess.Index       = 72;
-    sProcess.Description = '';
+    sProcess.Index       = 982;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/ExportBids';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
     sProcess.OutputTypes = {'raw'};
@@ -86,7 +86,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % MEG sidecar metadata
     sProcess.options.megmeta.Comment = 'Additional MEG sidecar JSON fields: ';
     sProcess.options.megmeta.Type    = 'textarea';
-    sProcess.options.megmeta.Value   = ['{' 10 '  "InstitutionName": "McGill University"' 10 '}'];
+    sProcess.options.megmeta.Value   = ['{' 10 '  "Manufacturer": "CTF"' 10 '}'];
 end
 
 
@@ -105,6 +105,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     emptyRoomKeywords = strtrim(str_split(lower(sProcess.options.emptyroom.Value), ',;'));
     if isempty(outputFolder)
         bst_report('Error', sProcess, sInputs, 'No output folder specified.');
+        return;
     end
     if isfield(sProcess.options, 'powerline') && ~isempty(sProcess.options.powerline.Value)
         if sProcess.options.powerline.Value == 1
@@ -113,6 +114,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             powerline = 60;
         else
             bst_report('Error', sProcess, sInputs, 'Invalid power line selection.');
+            return;
         end
     else
         powerline = [];
@@ -169,6 +171,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         [success, errMsg] = mkdir(outputFolder);
         if ~success
             bst_report('Error', sProcess, sInputs, ['Could not create output folder:' 10 errMsg]);
+            return;
         end
     else
         
@@ -251,6 +254,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 if subScheme > 1 && subjectId >= maxSubjects
                     bst_report('Error', sProcess, sInput, ...
                         ['Exceeded maximum number of subjects supported by your naming scheme (' num2str(maxSubjects) ').']);
+                    return;
                 end
             end
             data = AddSubject(data, sSubject.Name, subjectId);
@@ -325,6 +329,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     if sesScheme > 1 && sessionId >= maxSessions
                         bst_report('Error', sProcess, sInput, ...
                             ['Exceeded maximum number of sessions supported by your naming scheme (' num2str(maxSessions) ').']);
+                        return;
                     end
                 end
                 [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
