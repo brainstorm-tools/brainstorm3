@@ -1,5 +1,10 @@
 function varargout = process_rasterplot_per_electrode( varargin )
 % PROCESS_RASTERPLOT_PER_ELECTRODE: Computes a rasterplot per electrode.
+
+% It displays the binned firing rate on each electrode (of only the first 
+% neuron on each electrode if multiple have been detected). This can be nicely
+% visualized on the cortical surface if the positions of the electrodes
+% have been set, and show real time firing rate.
 % 
 % USAGE:    sProcess = process_rasterplot_per_electrode('GetDescription')
 %        OutputFiles = process_rasterplot_per_electrode('Run', sProcess, sInput)
@@ -121,7 +126,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             for ievent = 1:size(trial.Events,2)
                 
                 % Bin ONLY THE FIRST NEURON'S SPIKES if there are multiple neurons!
-                if process_spikesorting_supervised('IsSpikeEvent', trial.Events(ievent).label) && process_spikesorting_supervised('IsFirstNeuron', trial.Events(ievent).label)
+                first_neuron = true;
+                multiple_neurons = strfind(trial.Events(ievent).label,'|');
+                if multiple_neurons
+                    if trial.Events(ievent).label(multiple_neurons(1)+1) ~= '1'
+                        first_neuron = false;
+                    end
+                end
+                   trial.Events(ievent).label 
+                
+                if ~isempty(strfind(trial.Events(ievent).label,'Spikes Channel')) && first_neuron
                     
                     outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
                     trial.Events(ievent).times(outside_up) = bins(end) - 0.001; % Make sure it is inside the bin. Add 1ms offset
@@ -162,7 +176,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         % Prepare output file structure
         FileMat.F = single_file_binning;
-        FileMat.Time = diff(bins(1:2))/2+bins(1:end-1); % CHECK THIS OUT - IT WILL NOT GO ALL THE WAY BUT IT WILL HAVE THE CORRECT NUMBER OF BINS
+        FileMat.Time = diff(bins(1:2))/2+bins(1:end-1);
 
         FileMat.Std = [];
         FileMat.Comment = ['Raster Plot: ' trial.Comment];

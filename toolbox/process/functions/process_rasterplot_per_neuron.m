@@ -129,15 +129,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         labelsForDropDownMenu = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
         for iFile = 1:nTrials
             for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
-                if process_spikesorting_supervised('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label)
+                if ~isempty(strfind(ALL_TRIALS_files(iFile).Events(iEvent).label,'Spikes Channel'))
                     labelsForDropDownMenu{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
                 end
             end
         end
         labelsForDropDownMenu = unique(labelsForDropDownMenu,'stable');
         labelsForDropDownMenu = sort_nat(labelsForDropDownMenu);
-
-
+        
+        
         %% === START COMPUTATION ===
         sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
 
@@ -183,7 +183,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         % Prepare output file structure
         FileMat.TF = raster;
-        FileMat.Time = diff(bins(1:2))/2+bins(1:end-1); % CHECK THIS OUT - IT WILL NOT GO ALL THE WAY BUT IT WILL HAVE THE CORRECT NUMBER OF BINS
+        FileMat.Time = diff(bins(1:2))/2+bins(1:end-1);
         FileMat.TFmask = true(size(raster, 2), size(raster, 3));
         FileMat.Freqs = 1:size(FileMat.TF, 3);
         FileMat.Std = [];
