@@ -1382,12 +1382,8 @@ function UpdateLabels(hAxes, GraphSelection)
     
     % Electrophysiology figures have different labels
     if ~isempty(strfind(lower(TfInfo.FileName), 'spike_field_coherence'))
-        xLim = get(hAxes, 'XLim');
-        nFreqs = length(GlobalData.UserFrequencies.Freqs);
-        iFreq = round(GraphSelection(1) / xLim(2) * nFreqs);
-        iFreq = min(max(iFreq, 1), nFreqs);
         if numel(GraphSelection) > 0
-            strFreq = ['Frequency: ' num2str(GlobalData.UserFrequencies.Freqs(iFreq)), ' Hz'];
+            strFreq = sprintf('Frequency: %d Hz',  round(GraphSelection(1)));
         else
             strFreq = 'Frequency (Hz)';
         end
@@ -1400,10 +1396,6 @@ function UpdateLabels(hAxes, GraphSelection)
         end
         xlabel(hAxes, strFreq);
         ylabel(hAxes, strElec);
-        % Change x tick labels to use frequencies
-        xTick = get(hAxes, 'XTick');
-        xTickLabel = sprintfc('%d', round(xTick * nFreqs / xLim(2)));
-        set(hAxes, 'XTickLabel', xTickLabel);
     elseif ~isempty(strfind(lower(TfInfo.FileName), 'noise_correlation'))
         if numel(GraphSelection) > 0
             strNeur1 = ['Neuron: ' TfInfo.NeuronNames{GraphSelection(1)}];
