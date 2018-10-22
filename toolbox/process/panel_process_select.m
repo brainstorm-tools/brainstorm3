@@ -792,6 +792,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
         % Set list tooltip
         jListProcess.setToolTipText(pathProcess);
+        % Initialize classes to be toggled off
+        ClassesToToggleOff = {};
         
         % === PROTOCOL OPTIONS ===
         for iOpt = 1:length(optNames)
@@ -808,6 +810,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             end
             % Enclose option line in a River panel
             jPanelOpt = gui_river([2,2], [2,4,2,4]);
+            % Add class name to panel
+            if isfield(option, 'Class')
+                jPanelOpt.setName(option.Class);
+            end
             % Define to which panel it should be added
             if isfield(option, 'Group') && strcmpi(option.Group, 'input')
                 jPanelInput.add(jPanelOpt);
@@ -995,7 +1001,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
 
                 case 'checkbox'
                     jCheck = gui_component('checkbox', jPanelOpt, [], ['<HTML>', option.Comment], [], [], @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, double(ev.getSource().isSelected())));
-                    jCheck.setSelected(logical(option.Value));
+                    isSelected = logical(option.Value);
+                    jCheck.setSelected(isSelected);
+                    % If class controller not selected, toggle off class
+                    if ~isSelected && isfield(option, 'Controller') && ~isempty(option.Controller)
+                        ClassesToToggleOff{end + 1} = option.Controller;
+                    end
                 case 'radio'
                     jButtonGroup = javax.swing.ButtonGroup();
                     constr = [];
@@ -1352,6 +1363,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     gui_component('label', jPanelOpt, 'br', ' ');
             end
             jPanelOpt.setPreferredSize(prefPanelSize);
+        end
+        % Toggle off classes
+        for iClass = 1:length(ClassesToToggleOff)
+            ToggleClass(ClassesToToggleOff{iClass}, 0);
         end
         % If there are no components in the options panel: display "no options"
         isEmptyOptions = (jPanelOptions.getComponentCount() == 0);
@@ -1871,6 +1886,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             % Save processing options
             bst_set('ProcessOptions', ProcessOptions);
         end
+        % If a class controller, toggle class
+        if strcmp(optType, 'checkbox') && isfield(GlobalData.Processes.Current(iProcess).options.(optName), 'Controller')
+            ToggleClass(GlobalData.Processes.Current(iProcess).options.(optName).Controller, value);
+        end
     end
 
     %% ===== TEXT: GET VALUE =====
@@ -2263,6 +2282,17 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         GlobalData.Processes.Current = [];
         % Update pipeline
         UpdatePipeline();
+    end
+
+    %% ===== TOGGLE CLASS PANELS =====
+    function ToggleClass(className, enable)
+        options = jPanelOptions.getComponents();
+        for iOption = 1:length(options)
+            optName = options(iOption).getName();
+            if ~isempty(optName) && strcmpi(optName, className)
+                ToggleJPanel(options(iOption), enable);
+            end
+        end
     end
 end
 
@@ -2833,4 +2863,15 @@ function str = WriteFileNames(FileNames, VarName, isDefault)
     end
 end
 
-
+%% ===== RECURSIVELY TOGGLE A JPANEL =====
+function ToggleJPanel(panel, enable)
+    panel.setEnabled(enable);
+    try
+        components = panel.getComponents();
+    catch
+        components = [];
+    end
+    for iComp = 1:length(components)
+        ToggleJPanel(components(iComp), enable);
+    end
+end
