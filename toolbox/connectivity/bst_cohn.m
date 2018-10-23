@@ -18,8 +18,8 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 %     Gxy:  cross-spectral density between x and y
 %     Gxx:  autospectral density of x
 %     Gyy:  autospectral density of y
-%     Coherence function (C)            : Gxy/sqrt(Gxx*Gxy)
-%     Magnitude-squared Coherence (MSC) : |C|^2 = |Gxy|^2/(Gxx*Gxy) = Gxy*conj(Gxy)/(Gxx*Gxy) 
+%     Coherence function (C)            : Gxy/sqrt(Gxx*Gyy)
+%     Magnitude-squared Coherence (MSC) : |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
 %     Imaginary Coherence (IC)          : imag(C)^2 / (1-real(C)^2)
 %
 % Parametric significance estimation:  
@@ -219,7 +219,7 @@ if ~isSymmetric
     % C = Gxy/sqrt(Gxx*Gxy)
     switch (CohMeasure)
         case 'mscohere'
-            % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gxy) = Gxy*conj(Gxy)/(Gxx*Gxy) 
+            % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
             % Gxy = Gxy .* conj(Gxy);    % SLOWER
             Gxy = abs(Gxy) .^ 2;
             Gxy = bst_bsxfun(@rdivide, Gxy, Gxx);
@@ -231,7 +231,7 @@ if ~isSymmetric
                 pValues = max(0, 1 - Gxy) .^ floor(nSamples / nFFT);    % Max makes sure numerical error is taken care of that may result in -e-15 errors
             end
         case 'icohere'
-            % Coherence function: C = Gxy/sqrt(Gxx*Gxy)
+            % Coherence function: C = Gxy/sqrt(Gxx*Gyy)
             Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gxx));
             Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gyy));
             % Parametric estimation of the significance level
@@ -309,7 +309,7 @@ else
     % Divide by the corresponding autospectra for each frequency
     switch (CohMeasure)
         case 'mscohere'
-            % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gxy) = Gxy*conj(Gxy)/(Gxx*Gxy) 
+            % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
             % Gxy = Gxy .* conj(Gxy);   % SLOWER
             Gxy = abs(Gxy) .^ 2;
             Gxy = Gxy ./ (Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
@@ -320,7 +320,7 @@ else
                 pValues = max(0, 1 - Gxy) .^ floor(nSamples / nFFT);   % Max makes sure numerical error is taken care of that may result in -e-15 errors
             end
         case 'icohere'
-            % Coherence function: C = Gxy/sqrt(Gxx*Gxy)
+            % Coherence function: C = Gxy/sqrt(Gxx*Gyy)
             Gxy = Gxy ./ sqrt(Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
             % Parametric estimation of the significance level
             if (Overlap == 0.5)
