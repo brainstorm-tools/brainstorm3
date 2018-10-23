@@ -82,15 +82,21 @@ elseif strcmpi(fExt, '.hdf5')
         if ~isempty(iUsedTrig)
             triggerName = triggerName(iUsedTrig);
             triggerID = triggerID(iUsedTrig);
-            % Create event table
-            triggerTable = zeros(1, max(triggerID));
-            triggerTable(triggerID) = 1:length(triggerID);
+            % Create list of trigger entries based on trigger IDs
+            evtTrigIndex = zeros(length(evtID), 1);
+            for i = 1:length(triggerID)
+                evtTrigIndex(evtID == triggerID(i)) = i;
+            end
             % Convert to obtain the same marker info as in the .mat files
             hdr.markername = triggerName;
-            hdr.marker = [evtTime', ones(length(evtTime),1), triggerTable(evtID)'];
+            hdr.marker = [evtTime', ones(length(evtTime),1), evtTrigIndex];
         end
     catch
-        disp('gtect> No events available in recordings.');
+        e = lasterr();
+        disp(['gtect> No events could be read from this file.' 10 ...
+              'gtect> Error: ' e]);
+        hdr.markername = [];
+        hdr.marker = [];
     end
     % Read information of interest
     hdr.format = 'hdf5';
