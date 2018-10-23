@@ -345,7 +345,7 @@ elseif ~isScsDefined && ~isequal(isFixUnits, 0)
         MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
         sMri = load(MriFile, 'InitTransf', 'SCS', 'Voxsize');
         % If there is a valid transformation
-        if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember(sMri.InitTransf(:,1), 'vox2ras')
+        if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember('vox2ras', sMri.InitTransf(:,1))
             % Ask user if necessary
             if isempty(isApplyVox2ras)
                 isApplyVox2ras = java_dialog('confirm', ['There is a transformation to subject coordinates available in the MRI.' 10 'Would you like to use it to align the sensors with the MRI?'], 'Apply MRI transformation');
