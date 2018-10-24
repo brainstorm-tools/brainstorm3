@@ -91,6 +91,17 @@ for iChannel = 1:numChannels
     sFiles{end + 1} = bst_fullfile(parentPath, ['raw_elec_' cleanNames{iChannel}]);
 end
 
+% Special case for supported acquisition systems: Save temporary files
+% using single precision instead of double to save disk space
+ImportOptions = db_template('ImportOptions');
+ImportOptions.UseSsp = 0;
+if ismember(sFile.format, {'EEG-BLACKROCK', 'EEG-INTAN', 'EEG-PLEXON'})
+    precision = 'single';
+else
+    precision = 'double';
+end
+ImportOptions.Precision = precision;
+
 % Read data in segments
 for iSegment = 1:num_segments
     samples(1) = (iSegment - 1) * num_samples_per_segment;
@@ -99,16 +110,7 @@ for iSegment = 1:num_segments
     else
         samples(2) = total_samples;
     end
-    
-    % Special case for supported acquisition systems: Save temporary files
-    % using single precision instead of double to save disk space
-    ImportOptions = db_template('ImportOptions');
-    ImportOptions.UseSsp = 0;
-    if ismember(sFile.format, {'EEG-BLACKROCK', 'EEG-INTAN', 'EEG-PLEXON'})
-        ImportOptions.Precision = 'single';
-    else
-        ImportOptions.Precision = 'double';
-    end
+
     F = in_fread(sFile, ChannelMat, [], samples, [], ImportOptions);
 
     % Append segment to individual channel file
@@ -116,14 +118,14 @@ for iSegment = 1:num_segments
         parfor iChannel = 1:numChannels
             electrode_data = F(iChannel,:);
             fid = fopen([sFiles{iChannel} '.bin'], 'a');
-            fwrite(fid, electrode_data, ImportOptions.Precision);
+            fwrite(fid, electrode_data, precision);
             fclose(fid);
         end
     else
         for iChannel = 1:numChannels
             electrode_data = F(iChannel,:);
             fid = fopen([sFiles{iChannel} '.bin'], 'a');
-            fwrite(fid, electrode_data, ImportOptions.Precision);
+            fwrite(fid, electrode_data, precision);
             fclose(fid);
             bst_progress('inc', 1);
         end
@@ -133,13 +135,12 @@ end
 % Convert channel files to Matlab
 bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, (parallel == 0) * numChannels);
 if parallel
-    precision = ImportOptions.Precision;
     parfor iChannel = 1:numChannels
         convert2mat(sFiles{iChannel}, sr, precision);
     end
 else
     for iChannel = 1:numChannels
-        convert2mat(sFiles{iChannel}, sr, ImportOptions.Precision);
+        convert2mat(sFiles{iChannel}, sr, precision);
         bst_progress('inc', 1);
     end
 end
