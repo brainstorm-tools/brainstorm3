@@ -1,4 +1,4 @@
-function F = in_fread_plexon(sFile, SamplesBounds, iChannels)
+function F = in_fread_plexon(sFile, SamplesBounds, iChannels, precision)
 % IN_FREAD_PLEXON Read a block of recordings from a Plexon file
 %
 % USAGE:  F = in_fread_intan(sFile, SamplesBounds=[], iChannels=[])
@@ -28,6 +28,11 @@ function F = in_fread_plexon(sFile, SamplesBounds, iChannels)
 
 
 % Parse inputs
+if (nargin < 4) || isempty(precision)
+    precision = 'double';
+elseif ~ismember(precision, {'single', 'double'})
+    error('Unsupported precision.');
+end
 if (nargin < 3) || isempty(iChannels)
     iChannels = 1:sFile.header.ChannelCount;
 end
@@ -57,13 +62,14 @@ nSamples  = diff(SamplesBounds) + 1;
 data = readPLXFileC(sFile.filename, 'continuous', CHANNELS_SELECTED(iChannels)-1, 'first', SamplesBounds(1), 'num', nSamples); % This loads only the iChannels
 
 % Initialize Brainstorm output
-F = zeros(nChannels, nSamples);
+F = zeros(nChannels, nSamples, precision);
+precFunc = str2func(precision);
 
 ii = 0;
 for iChannel = CHANNELS_SELECTED(iChannels)
     if ~isempty(data.ContinuousChannels(iChannel).Values)
         ii = ii+1;
-        F(ii,:) = double(data.ContinuousChannels(iChannel).Values) / 4096000; % Convert to Volts
+        F(ii,:) = precFunc(data.ContinuousChannels(iChannel).Values) / 4096000; % Convert to Volts
     end
 end
 

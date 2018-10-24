@@ -1,4 +1,4 @@
-function newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSamplesStart,nSamplesToLoad)
+function newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSamplesStart,nSamplesToLoad,precision)
 
 % Modified for Brainstorm
 % Author: Konstantinos Nasiotis 2018
@@ -10,6 +10,7 @@ function newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSampl
 % loadEvents     : loads the events from the entire file (loadData has to be set to 1)
 % iSamplesStart  : The starting sample
 % nSamplesToLoad : How many samples will be loaded
+% precision      : Precision of the output data (single or double)
 
 % e.g. newHeader = read_Intan_RHD2000_file(filename,1,1,1001,10000);
 % This will load the 10000 samples from all channels, starting at sample 1001
@@ -60,6 +61,9 @@ if nargin < 4 || isempty(iSamplesStart)
 end
 if nargin < 5 || isempty(nSamplesToLoad)
     nSamplesToLoad = [];
+end
+if nargin < 6 || isempty(precision)
+    precision = 'double';
 end
 
 tic;
@@ -348,7 +352,7 @@ if data_present && loadData
 
     t_amplifier = zeros(1, num_amplifier_samples);
 
-    amplifier_data = zeros(num_amplifier_channels, num_amplifier_samples);
+    amplifier_data = zeros(num_amplifier_channels, num_amplifier_samples, precision);
     aux_input_data = zeros(num_aux_input_channels, num_aux_input_samples);
     supply_voltage_data = zeros(num_supply_voltage_channels, num_supply_voltage_samples);
     temp_sensor_data = zeros(num_temp_sensor_channels, num_supply_voltage_samples);
@@ -558,7 +562,7 @@ if data_present && loadData
         percent_done = print_increment;
         for iBlock=1:num_amplifier_channels
             amplifier_data(iBlock,:) = ...
-                notch_filter(amplifier_data(iBlock,:), sample_rate, notch_filter_frequency, 10);
+                notch_filter(amplifier_data(iBlock,:), sample_rate, notch_filter_frequency, 10, precision);
 
             fraction_done = 100 * (iBlock / num_amplifier_channels);
             if (fraction_done >= percent_done)
@@ -660,7 +664,7 @@ end
 return
 
 
-function out = notch_filter(in, fSample, fNotch, Bandwidth)
+function out = notch_filter(in, fSample, fNotch, Bandwidth, precision)
 
 % out = notch_filter(in, fSample, fNotch, Bandwidth)
 %
@@ -693,7 +697,7 @@ b0 = 1;
 b1 = -2*cos(2*pi*Fc);
 b2 = 1;
 
-out = zeros(size(in));
+out = zeros(size(in), precision);
 out(1) = in(1);  
 out(2) = in(2);
 % (If filtering a continuous data stream, change out(1) and out(2) to the

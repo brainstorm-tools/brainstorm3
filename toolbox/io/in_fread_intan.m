@@ -1,4 +1,4 @@
-function F = in_fread_intan(sFile, SamplesBounds, selectedChannels)
+function F = in_fread_intan(sFile, SamplesBounds, selectedChannels, precision)
 % IN_FREAD_INTAN Read a block of recordings from Intan files
 %
 % USAGE:  F = in_fread_intan(sFile, SamplesBounds=[], iChannels=[])
@@ -25,6 +25,11 @@ function F = in_fread_intan(sFile, SamplesBounds, selectedChannels)
 
 
 % Parse inputs
+if (nargin < 4) || isempty(precision)
+    precision = 'double';
+elseif ~ismember(precision, {'single', 'double'})
+    error('Unsupported precision.');
+end
 if (nargin < 3) || isempty(selectedChannels)
     selectedChannels = 1:sFile.header.ChannelCount;
 end
@@ -37,11 +42,11 @@ nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
 
 if sFile.header.chan_headers.AcqType==1
     % Read the corresponding recordings
-    data_and_headers = read_Intan_RHD2000_file(sFile.header.DataFile,1,0,SamplesBounds(1) + 1,nSamples); % This loads all the channels. 
+    data_and_headers = read_Intan_RHD2000_file(sFile.header.DataFile,1,0,SamplesBounds(1) + 1,nSamples,precision); % This loads all the channels. 
     %newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSamplesStart,nSamplesToLoad)
 end
     
-F = zeros(nChannels, nSamples);
+F = zeros(nChannels, nSamples, precision);
 
 ii = 0;
 for iChannel = selectedChannels

@@ -1,4 +1,4 @@
-function F = in_fread_blackrock(sFile, SamplesBounds, iChannels)
+function F = in_fread_blackrock(sFile, SamplesBounds, iChannels, precision)
 % IN_FREAD_BLACKROCK Read a block of recordings from a Blackrock NeuroPort file (.nev and .nsX)
 %
 % USAGE:  F = in_fread_blackrock(sFile, SamplesBounds=[], iChannels=[])
@@ -25,6 +25,11 @@ function F = in_fread_blackrock(sFile, SamplesBounds, iChannels)
 
 
 % Parse inputs
+if (nargin < 4) || isempty(precision)
+    precision = 'double';
+elseif ~ismember(precision, {'single', 'double'})
+    error('Unsupported precision.');
+end
 if (nargin < 3) || isempty(iChannels)
     iChannels = 1:sFile.header.ChannelCount;
 end
@@ -51,7 +56,15 @@ strSamples = sprintf('t:%d:%d', SamplesBounds(1) + 1, SamplesBounds(2) + 1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% KONSTANTINOS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Read the corresponding recordings
-rec = openNSx('read', sFile.filename, 'channels', iChannels , 'sample', strSamples, 'p:double');
+if strcmp(precision, 'single')
+    nsPrecision = 'short';
+else
+    nsPrecision = 'double';
+end
+rec = openNSx('read', sFile.filename, 'channels', iChannels , 'sample', strSamples, ['p:' nsPrecision]);
+if strcmp(precision, 'single')
+    rec.Data = single(rec.Data);
+end
 % Get values and convert from uV to V
 F = rec.Data * 1e-6;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

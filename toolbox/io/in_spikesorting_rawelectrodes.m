@@ -100,21 +100,30 @@ for iSegment = 1:num_segments
         samples(2) = total_samples;
     end
     
-    F = in_fread(sFile, ChannelMat, [], samples);
+    % Special case for supported acquisition systems: Save temporary files
+    % using single precision instead of double to save disk space
+    ImportOptions = db_template('ImportOptions');
+    ImportOptions.UseSsp = 0;
+    if ismember(sFile.format, {'EEG-BLACKROCK', 'EEG-INTAN', 'EEG-PLEXON'})
+        ImportOptions.Precision = 'single';
+    else
+        ImportOptions.Precision = 'double';
+    end
+    F = in_fread(sFile, ChannelMat, [], samples, [], ImportOptions);
 
     % Append segment to individual channel file
     if parallel
         parfor iChannel = 1:numChannels
             electrode_data = F(iChannel,:);
             fid = fopen([sFiles{iChannel} '.bin'], 'a');
-            fwrite(fid, electrode_data, 'double');
+            fwrite(fid, electrode_data, ImportOptions.Precision);
             fclose(fid);
         end
     else
         for iChannel = 1:numChannels
             electrode_data = F(iChannel,:);
             fid = fopen([sFiles{iChannel} '.bin'], 'a');
-            fwrite(fid, electrode_data, 'double');
+            fwrite(fid, electrode_data, ImportOptions.Precision);
             fclose(fid);
             bst_progress('inc', 1);
         end
@@ -124,12 +133,13 @@ end
 % Convert channel files to Matlab
 bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, (parallel == 0) * numChannels);
 if parallel
+    precision = ImportOptions.Precision;
     parfor iChannel = 1:numChannels
-        convert2mat(sFiles{iChannel}, sr);
+        convert2mat(sFiles{iChannel}, sr, precision);
     end
 else
     for iChannel = 1:numChannels
-        convert2mat(sFiles{iChannel}, sr);
+        convert2mat(sFiles{iChannel}, sr, ImportOptions.Precision);
         bst_progress('inc', 1);
     end
 end
@@ -138,9 +148,9 @@ sFiles = cellfun(@(x) [x '.mat'], sFiles, 'UniformOutput', 0);
 
 end
 
-function convert2mat(chanFile, sr)
+function convert2mat(chanFile, sr, precision)
     fid = fopen([chanFile '.bin'], 'rb');
-    data = fread(fid, 'double');
+    data = fread(fid, precision);
     fclose(fid);
     save([chanFile '.mat'], 'data', 'sr');
     file_delete([chanFile '.bin'], 1 ,3);
