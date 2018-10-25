@@ -53,7 +53,7 @@ hdr.nchannels = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Num
 % ===== CHECK WHETHER VERSION IS SUPPORTED =====
 bst_version = bst_get('Version');
 bst_version = str2num(bst_version.Release);
-if hdr.version ~= '1' && (hdr.version ~= '2' || bst_version < 180213) %TODO: final version number of BSTv2 support
+if hdr.version ~= '1' && (hdr.version ~= '2' || bst_version < 181017) %TODO: final version number of BSTv2 support
     error(['The selected version of the BST format is currently not supported.' ...
            10 'Please update Brainstorm.']);
 end

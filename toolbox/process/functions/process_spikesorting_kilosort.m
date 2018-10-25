@@ -183,11 +183,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ops.crit            = .65;     % upper criterion for discarding spike repeates (0.65)
     ops.nFiltMax        = 10000;   % maximum "unique" spikes to consider (10000)
 
-    % load predefined principal components (visualization only (Phy): used for features)
-    %TODO: ???
-    %dd                  = load('PCspikes2.mat'); % you might want to recompute this from your own data
-    %ops.wPCA            = dd.Wi(:,1:7);   % PCs 
-
     % options for posthoc merges (under construction)
     ops.fracse  = 0.1; % binning step along discriminant axis for posthoc merges (in units of sd)
     ops.epu     = Inf;
@@ -321,27 +316,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         kcoords = channelsMontage'; % grouping of channels (i.e. tetrode groups)
         fs = sFile.prop.sfreq; % sampling frequency
-        
-       
-        %TODO ???
-% % %         %%%%%%%%%%%%%  WE HAVE TO FIGURE OUT A SOLUTION FOR THIS %%%%%%%%%%
-% % %         
-% % %         % The datafile I'm using doesnt provide the locations of the
-% % %         % electrodes (everything is 0). I create random positions for just
-% % %         % making the spikesorter work. Delete these lines until the save
-% % %         % after corrections
-% % %         xcoords   = repmat([1 2 3 4]', 1, Nchannels/4);
-% % %         xcoords   = xcoords(:);
-% % %         ycoords   = repmat(1:Nchannels/4, 4, 1);
-% % %         ycoords   = ycoords(:);
-% % %         kcoords   = ones(Nchannels,1); % grouping of channels (i.e. tetrode groups)
-% % %         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         save(bst_fullfile(outputPath, 'chanMap.mat'), ...
             'chanMap','connected', 'xcoords', 'ycoords', 'kcoords', 'chanMap0ind', 'fs')
-        
-        
-        
         
         
         %% Width of the spike-waveforms - NEEDS TO BE EVEN
@@ -542,14 +519,6 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
     events = struct();
     index = 0;
     
-    %TODO ???
-% % %     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % %     THIS IS NOT COMPLETE
-% % %     TRANFORM REZ TO EVENTS
-% % %     
-    
-    
-    
 %     st: first column is the spike time in samples, 
 %         second column is the spike template, 
 %         third column is the extracted amplitude, 
@@ -571,7 +540,6 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
     % I assign each spike on the channel that it has the highest amplitude for the template it was matched with
     amplitude_max_channel = amplitude_max_channel';
     spike2ChannelAssignment = amplitude_max_channel(spikeTemplates);
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     spikeEventPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
     
@@ -609,9 +577,7 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
         end
     end
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     save(fullfile(parentPath,'events_UNSUPERVISED.mat'),'events')
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
 
 

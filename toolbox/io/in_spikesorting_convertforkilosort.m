@@ -51,7 +51,6 @@ sFile = DataMat.F;
 numChannels = length(ChannelMat.Channel);
 max_samples = ram / 8 / numChannels;
 
-%TODO: clarify sInput.Condition(5:end)
 converted_raw_File = bst_fullfile(parentPath, ['raw_data_no_header_' sInput.Condition(5:end) '.dat']);
 
 bst_progress('start', 'Spike-sorting', 'Converting to KiloSort Input...', 0, ceil(sFile.prop.samples(2)/max_samples));
@@ -77,14 +76,10 @@ while nsegment_max < sFile.prop.samples(2)
     
     F = in_fread(sFile, ChannelMat, [], [nsegment_min,nsegment_max], [], []);
 
-    %TODO: read unit from header
     F = F*10^6 ;  % This assumes that F signals are in V. I convert it to uV there are big numbers and int16 precision doesn't zero it out.
     fwrite(fid, F,'int16');
     
-    clear F
     isegment = isegment + 1;
-    bst_progress('inc', 1);
-
 end
 fclose(fid);
 

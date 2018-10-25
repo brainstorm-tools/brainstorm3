@@ -313,7 +313,6 @@ function all = get_LFPs(trial, nChannels, sProcess, time_segmentAroundSpikes, sa
     % Important Variable here!
     spikeEvents = []; % The spikeEvents variable holds the indices of the events that correspond to spikes.
     
-    %TODO Kostas: possible bug here for manually imported spikes?
     allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
         {trial.Events.label}, 'UniformOutput', 0);
     

@@ -78,12 +78,7 @@ if ~isfield(newHeader, 'NumSpikeChannels') || ~isfield(newHeader, 'ContinuousCha
     error('Missing fields in the file header');
 end
 
-
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% % THE LASTTIMESTAMP and ADFREQUENCY fields are for the events!
-% Load one channel file and get them from there.
-
-
+% Load one channel file to get required event fields
 CHANNELS_SELECTED = [newHeader.ContinuousChannels.Enabled]; % Only get the channels that have been enabled. The rest won't load any data
 CHANNELS_SELECTED = find(CHANNELS_SELECTED);
 
@@ -178,9 +173,7 @@ if isfield(newHeader, 'EventChannels')
             
             if ~strcmp(newHeader.EventChannels(iEvt).Name, 'Strobed')
                 iNotEmptyEvents = iNotEmptyEvents + 1;
-                %%%%%%%%%%%%%%%%%%%%%%   WARNING   %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                events(iNotEmptyEvents).label      = newHeader.EventChannels(iEvt).Name; % MAKE SURE TO CHECK WHAT THIS MEANS - PLEXON USES DIFFERENT EVENT CHANNEL NAME FOR THE SPIKES, THAN THE ORIGINAL CHANNEL NAME !!!!!!!!!
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                events(iNotEmptyEvents).label      = newHeader.EventChannels(iEvt).Name;
                 events(iNotEmptyEvents).color      = rand(1,3);
                 events(iNotEmptyEvents).samples    = round(double(newHeader.EventChannels(iEvt).Timestamps') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
                 events(iNotEmptyEvents).times      = events(iNotEmptyEvents).samples/channel_Fs; 
@@ -236,10 +229,6 @@ if isfield(newHeader, 'SpikeChannels')
                 end
                 
                 % Fill the event fields
-                %%%%%%%% MAKE SURE THE ALIGNMENT (INDEX) OF SPIKECHANNELS AND
-                %%%%%%%% CONTINUOUS CHANNELS IS THE SAME
-%                 events(last_event_index).label      = [spike_event_prefix ' ' newHeader.SpikeChannels(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
-
                 events(last_event_index).label      = [spike_event_prefix ' ' newHeader.ContinuousChannels(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
                 events(last_event_index).color      = rand(1,3);
                 events(last_event_index).samples    = round(double(newHeader.SpikeChannels(iEvt).Timestamps(double(newHeader.SpikeChannels(iEvt).Units) == iNeuron)') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels

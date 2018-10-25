@@ -1038,27 +1038,27 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 case 'combobox'
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
-                    jSelectedCombo = gui_component('ComboBox', jPanelOpt, [], [], option.Value(2));
-                    jSelectedCombo.setEditable(false);
-                    jPanelOpt.add(jSelectedCombo);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], option.Value(2));
+                    jCombo.setEditable(false);
+                    jPanelOpt.add(jCombo);
                     % Select previously selected item
-                    jSelectedCombo.setSelectedIndex(option.Value{1} - 1);
+                    jCombo.setSelectedIndex(option.Value{1} - 1);
                     % Set validation callbacks
-                    java_setcb(jSelectedCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, {ev.getSource().getSelectedIndex()+1, option.Value{2}}));
+                    java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, {ev.getSource().getSelectedIndex()+1, option.Value{2}}));
                 case 'combobox_label'
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
                     cellValues = option.Value{2};
-                    jSelectedCombo = gui_component('ComboBox', jPanelOpt, [], [], {cellValues(1,:)});
-                    jSelectedCombo.setEditable(false);
-                    jPanelOpt.add(jSelectedCombo);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {cellValues(1,:)});
+                    jCombo.setEditable(false);
+                    jPanelOpt.add(jCombo);
                     % Select previously selected item
                     iSel = find(strcmpi(option.Value{1}, cellValues(2,:)));
                     if ~isempty(iSel)
-                        jSelectedCombo.setSelectedIndex(iSel-1);
+                        jCombo.setSelectedIndex(iSel-1);
                     end
                     % Set validation callbacks
-                    java_setcb(jSelectedCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, {cellValues{2,ev.getSource().getSelectedIndex()+1}, option.Value{2}}));
+                    java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, {cellValues{2,ev.getSource().getSelectedIndex()+1}, option.Value{2}}));
                     
                 case 'freqsel'
                     % Load Freq field from the input file
@@ -1080,15 +1080,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Label
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
-                    jSelectedCombo = gui_component('ComboBox', jPanelOpt, [], [], {comboList});
-                    jSelectedCombo.setEditable(false);
-                    jPanelOpt.add(jSelectedCombo);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {comboList});
+                    jCombo.setEditable(false);
+                    jPanelOpt.add(jCombo);
                     % Select previously selected item
                     if ~isempty(option.Value) && (option.Value <= length(comboList))
-                        jSelectedCombo.setSelectedIndex(option.Value - 1);
+                        jCombo.setSelectedIndex(option.Value - 1);
                     end
                     % Set validation callbacks
-                    java_setcb(jSelectedCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, ev.getSource().getSelectedIndex()+1));
+                    java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, ev.getSource().getSelectedIndex()+1));
                     
                 case 'montage'
                     % Load channel file of first file in input
@@ -1110,21 +1110,21 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Label
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
-                    jSelectedCombo = gui_component('ComboBox', jPanelOpt, [], [], {AllNames});
-                    jSelectedCombo.setEditable(false);
-                    jPanelOpt.add(jSelectedCombo);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {AllNames});
+                    jCombo.setEditable(false);
+                    jPanelOpt.add(jCombo);
                     % Select previously selected montage
                     if ~isempty(option.Value) && ischar(option.Value)
                         iItem = find(strcmpi(AllNames, option.Value));
                         if ~isempty(iItem)
-                            jSelectedCombo.setSelectedIndex(iItem - 1);
+                            jCombo.setSelectedIndex(iItem - 1);
                         end
                     else
                         % If there were no previous options selected: use the first one as a default
                         SetOptionValue(iProcess, optNames{iOpt}, AllNames{1});
                     end
                     % Set validation callbacks
-                    java_setcb(jSelectedCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, AllNames{ev.getSource().getSelectedIndex()+1}));
+                    java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, AllNames{ev.getSource().getSelectedIndex()+1}));
                     
                 case {'cluster', 'cluster_confirm'}
                     % Get available and selected clusters
@@ -1191,7 +1191,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         % Horizontal glue
                         gui_component('label', jPanelOpt, 'hfill', ' ', [],[],[],[]);
                         % Atlas selection box
-                        jSelectedCombo = gui_component('combobox', jPanelOpt, 'right', [], {AtlasList(:,1)}, [], []);
+                        jCombo = gui_component('combobox', jPanelOpt, 'right', [], {AtlasList(:,1)}, [], []);
                         % Try to re-use previously defined atlas
                         if ~isempty(option.Value) && iscell(option.Value) && (size(option.Value,2) >= 2) && ischar(option.Value{1,1}) && ~isempty(AtlasList)
                             iPrev = find(strcmpi(option.Value{1,1}, AtlasList(:,1)));
@@ -1201,20 +1201,20 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         end
                         % Select default atlas
                         if ~isempty(iAtlasList) && (iAtlasList >= 1) && (iAtlasList <= size(AtlasList,1))
-                            jSelectedCombo.setSelectedIndex(iAtlasList - 1);
+                            jCombo.setSelectedIndex(iAtlasList - 1);
                         end
                         % Enable/disable controls
                         jList.setEnabled(isListEnable);
-                        jSelectedCombo.setEnabled(isListEnable);
+                        jCombo.setEnabled(isListEnable);
 
                         % Set current atlas
-                        AtlasSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jSelectedCombo, jList, []);
+                        AtlasSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jCombo, jList, []);
                         drawnow;
                         % Set callbacks
-                        java_setcb(jSelectedCombo, 'ItemStateChangedCallback', @(h,ev)AtlasSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jSelectedCombo, jList, ev));
-                        java_setcb(jList,  'ValueChangedCallback', @(h,ev)ScoutSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jSelectedCombo, jList, jCheck, ev));
+                        java_setcb(jCombo, 'ItemStateChangedCallback', @(h,ev)AtlasSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jCombo, jList, ev));
+                        java_setcb(jList,  'ValueChangedCallback', @(h,ev)ScoutSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jCombo, jList, jCheck, ev));
                         if ~isempty(jCheck)
-                            java_setcb(jCheck, 'ActionPerformedCallback', @(h,ev)ScoutSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jSelectedCombo, jList, jCheck, []));
+                            java_setcb(jCheck, 'ActionPerformedCallback', @(h,ev)ScoutSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jCombo, jList, jCheck, []));
                         end
                         % Create scroll panel
                         jScroll = javax.swing.JScrollPane(jList);
@@ -1226,12 +1226,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 case 'channelname'
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
-                    jSelectedCombo = gui_component('ComboBox', jPanelOpt, [], [], {ChannelNames});
-                    jSelectedCombo.setEditable(true);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {ChannelNames});
+                    jCombo.setEditable(true);
                     % Select previously selected channel
-                    jSelectedCombo.setSelectedItem(option.Value);
+                    jCombo.setSelectedItem(option.Value);
                     % Set validation callbacks
-                    java_setcb(jSelectedCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getSelectedItem())));
+                    java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getSelectedItem())));
                     
                 case 'subjectname'
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
@@ -1251,8 +1251,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     if isempty(listSubj)
                         listSubj = {'NewSubject'};
                     end
-                    jSelectedCombo = gui_component('ComboBox', jPanelOpt, [], [], {listSubj});
-                    jSelectedCombo.setEditable(true);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {listSubj});
+                    jCombo.setEditable(true);
                     % Select previously selected subject
                     if ~isempty(defSubjectName)
                         iDefault = find(strcmp(listSubj, defSubjectName));
@@ -1262,11 +1262,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         iDefault = 1;
                     end
                     % Select element in the combobox
-                    jSelectedCombo.setSelectedIndex(iDefault - 1);
+                    jCombo.setSelectedIndex(iDefault - 1);
                     % Save the selected value
                     SetOptionValue(iProcess, optNames{iOpt}, listSubj{iDefault});
                     % Set validation callbacks
-                    java_setcb(jSelectedCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getSelectedItem())));
+                    java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getSelectedItem())));
                     
                 case 'atlas'
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
@@ -1288,8 +1288,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         end
                     end
                     % Create combo box
-                    jSelectedCombo = gui_component('ComboBox', jPanelOpt, [], [], {atlasNames});
-                    jSelectedCombo.setEditable(true);
+                    jCombo = gui_component('ComboBox', jPanelOpt, [], [], {atlasNames});
+                    jCombo.setEditable(true);
                     % Select previously selected subject
                     iDefault = [];
                     if ~isempty(option.Value) && ~isempty(atlasNames)
@@ -1299,12 +1299,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         iDefault = iAtlas;
                     end
                     if ~isempty(iDefault)
-                        jSelectedCombo.setSelectedIndex(iDefault - 1);
+                        jCombo.setSelectedIndex(iDefault - 1);
                     else
                         SetOptionValue(iProcess, optNames{iOpt}, atlasNames{1});
                     end
                     % Set validation callbacks
-                    java_setcb(jSelectedCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getSelectedItem())));
+                    java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, char(ev.getSource().getSelectedItem())));
 
                 case {'filename', 'datafile'}
                     % Get filename

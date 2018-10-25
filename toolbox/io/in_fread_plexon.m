@@ -50,6 +50,22 @@ if SamplesBounds(1) == 0
     SamplesBounds = SamplesBounds + 1;
 end
 
+% THIS IMPORTER COMPILES A C FUNCTION BEFORE RUNNING FOR THE FIRST TIME
+if exist('readPLXFileC','file') ~= 3
+    current_path = pwd;
+    plexon_path = bst_fileparts(which('build_readPLXFileC'));
+    cd(plexon_path);
+    ME = [];
+    try
+        build_readPLXFileC();
+    catch ME
+    end
+    cd(current_path);
+    if ~isempty(ME)
+        rethrow(ME);
+    end
+end
+
 
 %% Read the PLX file and assign it to the Brainstorm format
 header = readPLXFileC(sFile.filename);

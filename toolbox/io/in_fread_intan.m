@@ -42,8 +42,7 @@ nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
 
 if sFile.header.chan_headers.AcqType==1
     % Read the corresponding recordings
-    data_and_headers = read_Intan_RHD2000_file(sFile.header.DataFile,1,0,SamplesBounds(1) + 1,nSamples,precision); % This loads all the channels. 
-    %newHeader = read_Intan_RHD2000_file(filename,loadData,loadEvents,iSamplesStart,nSamplesToLoad)
+    data_and_headers = read_Intan_RHD2000_file(sFile.header.DataFile,1,0,SamplesBounds(1) + 1,nSamples,precision);
 end
     
 F = zeros(nChannels, nSamples, precision);

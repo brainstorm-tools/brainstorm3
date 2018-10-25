@@ -33,7 +33,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Convert Raw to LFP';
     sProcess.Category    = 'custom';
-%     sProcess.FileTag     = 'resample';
     sProcess.SubGroup    = 'Electrophysiology';
     sProcess.Index       = 1203;
     sProcess.Description = 'https://www.ncbi.nlm.nih.gov/pubmed/21068271';
@@ -125,13 +124,11 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
 
         % Check for Signal Processing toolbox
         if ~bst_get('UseSigProcToolbox')
-            %TODO: Confirm this is actually implemented?
             bst_report('Warning', sProcess, [], [...
                 'The Signal Processing Toolbox is not available. Using the EEGLAB method instead (results may be much less accurate).' 10 ...
                 'This method is based on a FFT-based low-pass filter, followed by a spline interpolation.' 10 ...
                 'Make sure you remove the DC offset before resampling; EEGLAB function does not work well when the signals are not centered.']);
         end
-
 
         % Prepare parallel pool, if requested
         if sProcess.options.paral.Value

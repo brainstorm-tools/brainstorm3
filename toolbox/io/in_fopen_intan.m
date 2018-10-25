@@ -203,9 +203,10 @@ else
     end
 end
 
-    
-if areThereEvents
-    %TODO: change to a toolbox-free function
+if areThereEvents && ~bst_get('UseSigProcToolbox')
+    disp('Warning: The Signal Processing Toolbox is required to read events from Intan files.');
+elseif areThereEvents
+    %TODO: change to a toolbox-free function?
     [event_labels, event_samples] = findpeaks(events_vector);
     
     % Create events list
