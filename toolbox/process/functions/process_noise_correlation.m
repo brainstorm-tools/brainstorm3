@@ -36,7 +36,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
     sProcess.Index       = 1508;
-    sProcess.Description = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3586814/';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/functions#Noise_Correlation';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'timefreq'};

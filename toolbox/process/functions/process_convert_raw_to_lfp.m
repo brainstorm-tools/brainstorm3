@@ -35,7 +35,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
     sProcess.Index       = 1203;
-    sProcess.Description = 'https://www.ncbi.nlm.nih.gov/pubmed/21068271';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/RawToLFP';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
     sProcess.OutputTypes = {'raw'};

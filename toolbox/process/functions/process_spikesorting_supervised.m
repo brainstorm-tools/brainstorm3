@@ -36,7 +36,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Electrophysiology';
     sProcess.Index       = 1202;
-    sProcess.Description = 'www.in.gr';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/SpikeSorting#Supervised_Spike_Sorting';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
     sProcess.OutputTypes = {'raw'};

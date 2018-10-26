@@ -51,7 +51,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
     sProcess.Index       = 1607;
-    sProcess.Description = 'http://science.sciencemag.org/content/suppl/2003/05/02/291.5508.1560.DC1';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/functions#Spike_Field_Coherence';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'timefreq'};

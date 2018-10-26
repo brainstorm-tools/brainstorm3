@@ -41,7 +41,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Electrophysiology','Unsupervised Spike Sorting'};
     sProcess.Index       = 1201;
-    sProcess.Description = 'https://github.com/csn-le/wave_clus';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/SpikeSorting';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
     sProcess.OutputTypes = {'raw'};

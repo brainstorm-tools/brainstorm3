@@ -36,7 +36,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
     sProcess.Index       = 1506;
-    sProcess.Description = 'www.in.gr';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/functions#Raster_Plots';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'timefreq'};

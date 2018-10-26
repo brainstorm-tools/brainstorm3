@@ -48,7 +48,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
     sProcess.Index       = 1506;
-    sProcess.Description = 'http://www.in.gr';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/functions#Spike_triggered_Average';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'data'};
