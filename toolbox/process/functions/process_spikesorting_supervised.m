@@ -509,6 +509,11 @@ function neuron = GetNeuronOfSpikeEvent(eventLabel)
 end
 
 function channel = GetChannelOfSpikeEvent(eventLabel)
+    if ~IsSpikeEvent(eventLabel)
+        channel = [];
+        return;
+    end
+    
     eventLabel = strtrim(eventLabel);
     prefix = GetSpikesEventPrefix();
     neuron = GetNeuronOfSpikeEvent(eventLabel);

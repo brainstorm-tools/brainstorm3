@@ -345,9 +345,9 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
     % Important Variable here!
     spikeEvents = []; % The spikeEvents variable holds the indices of the events that correspond to spikes.
 
-    %TODO Kostas: possible bug here for manually imported spikes?
     allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
         {trial.Events.label}, 'UniformOutput', 0);
+    allChannelEvents = allChannelEvents(~cellfun('isempty', allChannelEvents));
 
     if isempty(allChannelEvents)
         bst_report('Error', sProcess, sInputs, 'No spike event found in this file.');
