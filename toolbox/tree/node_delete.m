@@ -323,7 +323,7 @@ switch (lower(nodeType{1}))
                     FullFilesList{end+1} = BinFile;
                 end
                 % Spike sorting files: delete spikes folder
-                if strfind(DataFile, 'data_0ephys_')
+                if ~isempty(strfind(DataFile, 'data_0ephys_'))
                     DataMat = load(DataFile, 'Parent');
                     FullFilesList{end+1} = DataMat.Parent;
                     isRecursive = 1;

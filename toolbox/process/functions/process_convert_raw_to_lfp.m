@@ -149,7 +149,6 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
 
         % Prepare output file
         ProtocolInfo = bst_get('ProtocolInfo');
-        ProcessOptions = bst_get('ProcessOptions');
         newCondition = [sInput.Condition, '_LFP'];
         sMat = in_bst(sInput.FileName, [], 0);
         Fs = 1 / diff(sMat.Time(1:2)); % This is the original sampling rate
@@ -328,7 +327,6 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
         % from-10 samples to +19 samples (3 ms) for 10000 Hz sampling rate compared to its peak
         % Since spktimes are the time of the peak of each spike, we subtract 15
         % from spktimes to obtain the start times of the spikes
-%         S(spktimes - round(nSegment/3)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
   
         if mod(length(data_deligned),2)~=0
             
@@ -353,19 +351,9 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
             
         end
     else
-%         data_derived = bst_bandpass_hfilter(data_deligned', Fs, filterBounds(1), filterBounds(2), 0, 0);
         data_derived = data_deligned';
         data_derived = bst_bandpass_hfilter(data_derived, Fs, filterBounds(1), filterBounds(2), 0, 0);
     end
-    
-% % % %     %% Check the difference
-% % % %     figure(1);
-% % % %     plot(data_deligned)
-% % % %     hold on
-% % % %     plot(data_derived)
-% % % %     plot(spkSamples,zeros(length(spkSamples),1),'*');
-% % % %     legend('Deligned Data','Bayesian Spike Removal','Spike Timestamps')
-    
     
     data_derived = downsample(data_derived, sMat.sr/1000);  % The file now has a different sampling rate (fs/30) = 1000Hz
     

@@ -294,12 +294,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     disp('BST> process_spike_field_coherence: Success');
     
     
-%     % Close parallel pool
-%     if sProcess.options.paral.Value
-%         if ~isempty(poolobj)
-%             delete(poolobj);
-%         end
-%     end
+    % Close parallel pool
+    if sProcess.options.paral.Value
+        if ~isempty(poolobj)
+            delete(poolobj);
+        end
+    end
 end
 
 
