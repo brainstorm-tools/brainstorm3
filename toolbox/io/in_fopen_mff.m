@@ -19,7 +19,7 @@ function [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, 2018
+% Authors: Martin Cousineau, Francois Tadel, 2018
 
 if bst_get('MatlabVersion') < 803
     error('Importing MFF files requires at least Matlab 2014a.');
@@ -43,12 +43,36 @@ hdr.filename = DataFile;
 hdr.EEG = mff_import(DataFile);
 
 %% ===== IMPORT FILE USING EEGLAB IMPORTER =====
+% Convert electrodes positions from cm to mm, to avoid the interactive question about the spatial scaling
+if isfield(hdr.EEG, 'chanlocs') && ~isempty(hdr.EEG.chanlocs) && isfield(hdr.EEG.chanlocs(1), 'X')
+    for iChan = 1:length(hdr.EEG.chanlocs)
+        hdr.EEG.chanlocs(iChan).X = hdr.EEG.chanlocs(iChan).X * 10;
+        hdr.EEG.chanlocs(iChan).Y = hdr.EEG.chanlocs(iChan).Y * 10;
+        hdr.EEG.chanlocs(iChan).Z = hdr.EEG.chanlocs(iChan).Z * 10;
+    end
+end
+% Convert EEGLAB structure in Brainstorm structures
 [sFile, ChannelMat] = in_fopen_eeglab(hdr, ImportOptions);
 sFile.format       = 'EEG-EGI-MFF';
 sFile.device       = 'MFF';
 if ~isempty(ChannelMat)
     ChannelMat.Comment = strrep(ChannelMat.Comment, 'EEGLAB', 'MFF');
 end
+% Rectify sensors positions: mff_import saves the orientation with nose a +Y, brainstorm needs the nose as +X axis
+if ~isempty(ChannelMat) && ~isempty(ChannelMat.Channel)
+    % Define transformation: Rotation(-90deg/Z)  +  Translation(+40mm/Z)
+    angleZ = -pi/2;
+    Transf90Z = [cos(angleZ), -sin(angleZ), 0, 0; ...
+                 sin(angleZ),  cos(angleZ), 0, 0; ...
+                           0,            0, 1, 0.040; ...
+                           0,            0, 0, 1];
+    % Apply transformation
+    ChannelMatFix = channel_apply_transf({ChannelMat}, Transf90Z);
+    if ~isempty(ChannelMatFix)
+        ChannelMat = ChannelMatFix{1};
+    end
+end
+
 
 end
 
