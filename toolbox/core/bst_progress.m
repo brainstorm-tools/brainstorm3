@@ -77,7 +77,7 @@ if ~bst_get('isGUI')
     return;
 end
 % Get progress bar
-if ~isempty(GlobalData) && ~isempty(GlobalData.Program)
+if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Program, 'ProgressBar') && ~isempty(GlobalData.Program.ProgressBar)
     pBar = GlobalData.Program.ProgressBar;
 else
     pBar = [];
