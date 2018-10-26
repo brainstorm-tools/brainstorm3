@@ -109,7 +109,7 @@ if (nargin < 4)
         OPTIONS.Quality   = str2num(userOptions{3});
     end
 end
-nbSamples = OPTIONS.Duration .* OPTIONS.FrameRate;
+nbSamples = round(OPTIONS.Duration .* OPTIONS.FrameRate);
 
 
 %% ===== PREPARE MOVIE =====
@@ -200,6 +200,8 @@ end
 
 
 %% ===== LOOP ON SAMPLES =====
+hAxes = findobj(hFig, 'Tag', 'Axes3D');
+hLight = findobj(hFig, 'Tag', 'FrontLight');
 for iSample = 1:nbSamples
     % Update image
     switch lower(movieType)
@@ -207,11 +209,11 @@ for iSample = 1:nbSamples
             % Set new time value
             panel_time('SetCurrentTime', samplesTime(iSample));  
         case 'horizontal'
-            camorbit(-incDegree, 0, 'camera');
-            camlight(findobj(hFig, 'Tag', 'FrontLight'), 'headlight');
+            camorbit(hAxes, -incDegree, 0, 'camera');
+            camlight(hLight, 'headlight');
         case 'vertical'
-            camorbit(0, -incDegree, 'camera');
-            camlight(findobj(hFig, 'Tag', 'FrontLight'), 'headlight');
+            camorbit(hAxes, 0, -incDegree, 'camera');
+            camlight(hLight, 'headlight');
     end
     % Extract figure display
     if (length(hFigSnap) == 1)

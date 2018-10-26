@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 October 2018
+- IO: BIDS export process
 ---------------------------------------------------------------
 September 2018
 - IO: Support for EGI-Philips MFF recordings
