@@ -125,16 +125,22 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     while iStart < nSxnT
       % Reference location is position at start of current segment.
       InitLoc = Locations(:, iStart);
-      % Get motion distance from reference location, as most distant point
-      % on a sphere that follows the motion defined by the head coils.
-      % This replaces the 9 HLU channels and better captures any type of
-      % head movement.
-      D(iStart:end) = RigidDistances(Locations(:, iStart:end), ...
-        InitLoc, Thresh);
-      iMove = find(D(iStart:end) > Thresh, 1, 'first') + iStart - 1;
-      if isempty(iMove)
-        % Last segment.
+      % Deal with aborted recordings, where all channels, including head
+      % coil locations, are zeros.  This will be the last segment.
+      if all(InitLoc == 0)
         iMove = nSxnT+1;
+      else
+        % Get motion distance from reference location, as most distant point
+        % on a sphere that follows the motion defined by the head coils.
+        % This replaces the 9 HLU channels and better captures any type of
+        % head movement.
+        D(iStart:end) = RigidDistances(Locations(:, iStart:end), ...
+          InitLoc, Thresh);
+        iMove = find(D(iStart:end) > Thresh, 1, 'first') + iStart - 1;
+        if isempty(iMove)
+          % Last segment.
+          iMove = nSxnT+1;
+        end
       end
       if iMove - iStart < MinLength
         if m > 0 && isBadMove(m)
@@ -277,16 +283,16 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
     sFile = in_fopen(sInput.FileName, 'BST-DATA');
   end
   
-  if nargin < 2 || isempty(SamplesBounds)
-      SamplesBounds = sFile.prop.samples;
-  end
-  
-  ChannelMat = in_bst_channel(sInput.ChannelFile);
-  
   nEpochs = numel(sFile.epochs);
   if nEpochs == 0
     nEpochs = 1;
   end
+  if nargin < 2 || isempty(SamplesBounds)
+    SamplesBounds = sFile.prop.samples; % This is single epoch samples if epoched.
+  end
+  
+  ChannelMat = in_bst_channel(sInput.ChannelFile);
+  
   nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
   
   iHLU = find(strcmp({ChannelMat.Channel.Type}, 'HLU'));
@@ -327,7 +333,9 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
     if numel(TrueSamples) <= 1
       continue; % to avoid empty which propagates in min and "erases" our previous good min.
     end
-    HeadSamplePeriod = min(HeadSamplePeriod, min(diff(TrueSamples)));
+    % TO DO: The last diff(TrueSamples) is wrong somehow.  Need to figure
+    % this out but for now just ignore it.
+    HeadSamplePeriod = min(HeadSamplePeriod, min(diff(TrueSamples(1:end-1))));
   end
   % Downsample.
   Locations = Locations(:, 1:HeadSamplePeriod:LoadSamples, :);
@@ -388,7 +396,7 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
       % Convert to continuous.
       FitErrors = reshape(FitErrors, nFitChan, []);
     end
-  end
+  end % if do FitError
 end
 
 

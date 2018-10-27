@@ -79,7 +79,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<STOUT,INUSL,DEFNU>
     ChannelMat = in_bst_channel(sInput.ChannelFile);
     
     if ~strcmp(ChannelMat.TransfMegLabels{1}, 'Dewar=>Native')
-      error('Dewar=>Native transformation not found.');
+      bst_error('Dewar=>Native transformation not first.');
     end
     % Just use the SCS distances from origin, with left and right PA points
     % symmetrical.

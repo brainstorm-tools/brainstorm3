@@ -41,10 +41,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
   % Option [to do: ignore bad segments]
   sProcess.options.warning.Comment = 'Only for CTF MEG recordings with HLC channels recorded.<BR><BR>';
   sProcess.options.warning.Type    = 'label';
-  sProcess.options.action.Type    = 'radio_label';
-  sProcess.options.action.Comment = {'Adjust head position to median location.', ...
+  sProcess.options.action.Type     = 'radio_label';
+  sProcess.options.action.Comment  = {'Adjust head position to median location.', ...
     'Remove last position correction (using median or head points).'; 'Adjust', 'Undo'};
-  sProcess.options.action.Value   = 'Adjust';
+  sProcess.options.action.Value    = 'Adjust';
+  sProcess.options.display.Type    = 'checkbox';
+  sProcess.options.display.Comment = 'Display "before" and "after" alignment figures.';
+  sProcess.options.display.Value   = 1;
 end
 
 
@@ -57,41 +60,94 @@ end
 
 function OutputFiles = Run(sProcess, sInputs) 
   
-  %   OutputFiles = {};
+  isDisplay = sProcess.options.display.Value;
+  nFiles = length(sInputs);
   
-  isFileOk = false(1, length(sInputs));
+  isFileOk = false(1, nFiles);
+  if isDisplay
+    % We can't do before/after because the figure updates when we draw the
+    % second one.
+    hFigAfter = [];
+    hFigBefore = [];
+  end
   switch sProcess.options.action.Value
     case 'Adjust'
-      for iFile = 1:length(sInputs)
-        % Load head coil locations, in m.
-        Locations = process_evt_head_motion('LoadHLU', sInputs(iFile));
-        
-        MedianLoc = MedianLocation(Locations);
-        
-        ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
-        
-        % Compute transformation corresponding to coil position.
-        TransfMat = LocationTransform(MedianLoc, ChannelMat);
-        
-        % Test and don't apply if it was already corrected.
-        TransfDiff = TransfMat - eye(4);
-        if max(TransfDiff(:)) > 1e-8
-          % Apply this transformation to the current head position.
-          % By giving the file as input, it will be saved.
-          % This is a correction to the 'Dewar->Native' transformation so
-          % applies to MEG channels only.
-          iMeg  = sort([good_channel(ChannelMat.Channel, [], 'MEG'), ...
-            good_channel(ChannelMat.Channel, [], 'MEG REF')]);
-          channel_apply_transf({sInputs(iFile).ChannelFile}, TransfMat, iMeg, false);
+      if isDisplay
+        bst_memory('UnloadAll', 'Forced'); % Close all the existing figures. (Including progress?)
+      end
+      bst_progress('start', 'Adjust head position', 'Loading HLU locations...', 0, 2*nFiles);
+      for iFile = 1:nFiles
+        if isDisplay
+          % Display "before" results.
+          close(hFigBefore); %, hFigAfter]);
+          hFigBefore = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+          % Need to "disconnect" this figure now so it doesn't update when
+          % we save the channel file.
         end
         
+        % First, verify if this has already been done.  If a user changed
+        % the data such that the head position could be readjusted (e.g. by
+        % deleting segments), then the previous adjustment should be
+        % removed.
+        ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
+        if any(strcmp(ChannelMat.TransfMegLabels, 'AdjustedNative'))
+          fprintf('Head position already adjusted. Undo first if you wish to adjust again.\n');
+          bst_progress('inc', 2);
+          continue;
+        end
+        
+        % Load head coil locations, in m.
+        bst_progress('text', 'Loading HLU locations...');
+        bst_progress('inc', 1);
+        Locations = process_evt_head_motion('LoadHLU', sInputs(iFile), [], false);
+        bst_progress('text', 'Correcting position...');
+        bst_progress('inc', 1);
+        % If a collection was aborted, the channels will be filled with
+        % zeros. We must remove these locations.
+        % This reshapes to continuous if in epochs, but works either way.
+        Locations(:, all(Locations == 0, 1)) = [];
+        
+        MedianLoc = MedianLocation(Locations);
+        %         disp(MedianLoc);
+        
+        % Compute transformation corresponding to coil position.
+        if ~strcmp(ChannelMat.TransfMegLabels{1}, 'Dewar=>Native')
+          bst_error('Dewar=>Native transformation not first.');
+        end
+        TransfMat = LocationTransform(MedianLoc, ChannelMat.TransfMeg);
+        % This transformation would be identical even if the process was
+        % allowed to run multiple times; it would not automatically give an
+        % identity transformation. So "over-adjusting" is prevented by
+        % checking for our specific label above.
+        
+        % Apply this transformation to the current head position.
+        % This is a correction to the 'Dewar=>Native' transformation so it
+        % applies to MEG channels only.
+        iMeg  = sort([good_channel(ChannelMat.Channel, [], 'MEG'), ...
+          good_channel(ChannelMat.Channel, [], 'MEG REF')]);
+        ChannelMat = channel_apply_transf({sInputs(iFile).ChannelFile}, ...
+          TransfMat, iMeg, false); % Don't apply to head points.
+        ChannelMat = ChannelMat{1};
+        % Change transformation label to something unique to this process.
+        ChannelMat.TransfMegLabels{end} = 'AdjustedNative';
+        bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
         isFileOk(iFile) = true;
-        % Display results.
-        channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+
+        if isDisplay
+          % Display "after" results, besides the "before" figure.
+          close(hFigAfter);
+          hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+        end
+        bst_progress('stop');
       end
       
     case 'Undo'
-      for iFile = 1:length(sInputs)
+      for iFile = 1:nFiles
+        if isDisplay
+          % Display "before" results.
+          close(hFigBefore); %, hFigAfter]);
+          hFigBefore = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+        end
         ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
         
         nTransf = numel(ChannelMat.TransfMeg);
@@ -100,7 +156,7 @@ function OutputFiles = Run(sProcess, sInputs)
         iEEG = sort([good_channel(ChannelMat.Channel, [], 'EEG'), ...
           good_channel(ChannelMat.Channel, [], 'SEEG'), good_channel(ChannelMat.Channel, [], 'ECOG')]);
         switch ChannelMat.TransfMegLabels{nTransf}
-          case 'manual correction'
+          case {'AdjustedNative', 'manual correction'}
             iChan = sort([good_channel(ChannelMat.Channel, [], 'MEG'), ...
               good_channel(ChannelMat.Channel, [], 'MEG REF')]);
             % Check if EEG has the same last transformation.
@@ -115,7 +171,8 @@ function OutputFiles = Run(sProcess, sInputs)
             end
           case 'refine registration: head points'
             isHeadPoints = true;
-            % This applies to all channels.
+            % This applies to all channels and is "listed" under TransfEeg
+            % even if there are no EEG channels.
             iChan = [];
             if ~isempty(iEEG)
               isEEG = 2;
@@ -131,7 +188,7 @@ function OutputFiles = Run(sProcess, sInputs)
         ChannelMat = channel_apply_transf(ChannelMat, ...
           inv(ChannelMat.TransfMeg{nTransf}), iChan, isHeadPoints);
         ChannelMat = ChannelMat{1};
-        % Remove last two cancelling tranformations.
+        % Remove last two tranformations that cancel each other.
         ChannelMat.TransfMegLabels(nTransf:end) = [];
         ChannelMat.TransfMeg(nTransf:end) = [];
         if isEEG
@@ -145,8 +202,11 @@ function OutputFiles = Run(sProcess, sInputs)
         bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
         
         isFileOk(iFile) = true;
-        % Display results.
-        channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+        if isDisplay
+          % Display results.
+          close(hFigAfter);
+          hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+        end
       end
       
   end
@@ -157,36 +217,40 @@ end
 
 
 
-function TransfMat = LocationTransform(Loc, ChannelMat)
-  % Compute transformation corresponding to coil position.
+function TransfMat = LocationTransform(Loc, TransfMeg)
+  % Compute transformation corresponding to head coil positions.
+  % We want this to be as efficient as possible, since used many times by
+  % process_sss. 
   
   % The HLU channels are in dewar coordinates.  Thus apply the
   % transformations 'Dewar=>Native' and then compute the small head
-  % position adjustment.  
-  Loc = reshape(Loc, 3, []);
-  Loc(end+1, :) = 1;
-  if ~strcmp(ChannelMat.TransfMegLabels{1}, 'Dewar=>Native')
-    error('Dewar=>Native transformation not first.');
-  end
+  % position adjustment.  For efficiency, we should verify that this
+  % transformation is first, outside this function.
   % Transformation matrices are in m, as are HLU channels.
-  Loc = ChannelMat.TransfMeg{1} * Loc;
+  Loc = TransfMeg{1}(1:3, :) * [reshape(Loc, 3, 3); 1, 1, 1];
+
+  % For efficiency, use these local functions.
+  CrossProduct = @(a, b) [a(2).*b(3)-a(3).*b(2); a(3).*b(1)-a(1).*b(3); a(1).*b(2)-a(2).*b(1)];
+  Norm = @(a) sqrt(sum(a.^2));
   
-  Loc(end, :) = [];
-  sMri.SCS.NAS = Loc(1:3);
-  sMri.SCS.LPA = Loc(4:6);
-  sMri.SCS.RPA = Loc(7:9);
-  Transf = cs_compute(sMri, 'scs');
-  
-  % Repackage as 4x4 matrix.
+  Origin = (Loc(4:6)' + Loc(7:9)') / 2;
+  X = Loc(1:3)' - Origin;
+  X = X / Norm(X);
+  Y = Loc(4:6)' - Origin; % Not yet perpendicular to X in general.
+  Z = CrossProduct(X, Y);
+  Z = Z / Norm(Z); 
+  Y = CrossProduct(Z, X); % Doesn't go through ears anymore in general.
+  %     Y = Y / Norm(Y); % Not necessary
   TransfMat = eye(4);
-  TransfMat(1:3,1:3) = Transf.R;
-  TransfMat(1:3,4) = Transf.T;
-  
-  % The following transformations, e.g. 'Native=>Brainstorm/CTF' need to be
-  % removed and reapplied when applying this new transformation.
+  TransfMat(1:3,1:3) = [X, Y, Z]';
+  TransfMat(1:3,4) = - [X, Y, Z]' * Origin;
+
+  % "Insert" this transformation at the right spot, i.e. right after
+  % 'Dewar=>Native'. The following transformations, e.g.
+  % 'Native=>Brainstorm/CTF' need to be removed and reapplied after.
   U = eye(4);
-  for t = 2:numel(ChannelMat.TransfMeg)
-    U = ChannelMat.TransfMeg{t} * U;
+  for t = 2:numel(TransfMeg)
+    U = U * TransfMeg{t};
   end
   TransfMat = U * TransfMat / U;
 end
@@ -197,7 +261,7 @@ function MedianLoc = MedianLocation(Locations)
   % Overall geometric median location of each head coil.
 
   if size(Locations, 1) ~= 9
-    error('Expecting 9 HLU channels in first dimension.');
+    bst_error('Expecting 9 HLU channels in first dimension.');
   end
   
   nSxnT = size(Locations, 2) * size(Locations, 3);
@@ -229,7 +293,7 @@ function M = GeoMedian(X, Precision)
   % (if at any iteration the approximation of M equals a data point).
   %
   % 
-  % © Copyright 2018 Marc Lalancette
+  % © Copyright 2018 Marc Lalancetteerror
   % The Hospital for Sick Children, Toronto, Canada
   % 
   % This file is part of a free repository of Matlab tools for MEG 
