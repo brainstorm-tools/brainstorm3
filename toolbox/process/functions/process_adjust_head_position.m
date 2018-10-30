@@ -21,6 +21,18 @@ function varargout = process_adjust_head_position(varargin)
   %
   % Authors: Marc Lalancette, 2018
   
+  %   TO DO:
+  % Are the head points kept in their original coordinate system or do they
+  % follow the EEG transformations?  Not clear from channel_apply_transf.
+  % Can test by applying/removing refine with head points (multiple times
+  % if needed)
+  %
+  % Should we return all files or only the ones that were modified?
+  %
+  % BUG: when importing channel file, we get:
+  % {'Dewar=>Native', 'Native=>Brainstorm/CTF', 'Native=>Brainstorm/CTF'}
+  % Is the second one identity? Otherwise screws these computations.
+  
   eval(macro_method);
 end
 
@@ -43,7 +55,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
   sProcess.options.warning.Type    = 'label';
   sProcess.options.action.Type     = 'radio_label';
   sProcess.options.action.Comment  = {'Adjust head position to median location.', ...
-    'Remove last position correction (using median or head points).'; 'Adjust', 'Undo'};
+    'Remove head position adjustment.', 'Undo coregistration refinement using head points.'; ...
+    'Adjust', 'UndoAdjust', 'UndoRefine'};
   sProcess.options.action.Value    = 'Adjust';
   sProcess.options.display.Type    = 'checkbox';
   sProcess.options.display.Comment = 'Display "before" and "after" alignment figures.';
@@ -65,24 +78,19 @@ function OutputFiles = Run(sProcess, sInputs)
   
   isFileOk = false(1, nFiles);
   if isDisplay
-    % We can't do before/after because the figure updates when we draw the
-    % second one.
     hFigAfter = [];
     hFigBefore = [];
+    bst_memory('UnloadAll', 'Forced'); % Close all the existing figures. (Including progress?)
   end
   switch sProcess.options.action.Value
     case 'Adjust'
-      if isDisplay
-        bst_memory('UnloadAll', 'Forced'); % Close all the existing figures. (Including progress?)
-      end
-      bst_progress('start', 'Adjust head position', 'Loading HLU locations...', 0, 2*nFiles);
+      bst_progress('start', 'Adjust head position', ...
+        'Loading HLU locations...', 0, 2*nFiles);
       for iFile = 1:nFiles
         if isDisplay
           % Display "before" results.
-          close(hFigBefore); %, hFigAfter]);
+          close([hFigBefore, hFigAfter]); 
           hFigBefore = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
-          % Need to "disconnect" this figure now so it doesn't update when
-          % we save the channel file.
         end
         
         % First, verify if this has already been done.  If a user changed
@@ -110,11 +118,12 @@ function OutputFiles = Run(sProcess, sInputs)
         MedianLoc = MedianLocation(Locations);
         %         disp(MedianLoc);
         
+        % Extract transformations that are applied before and after the
+        % head position adjustment.  Any previous adjustment will be
+        % ignored here and replaced later.
+        [TransfBefore, TransfAfter] = GetTransforms(ChannelMat);
         % Compute transformation corresponding to coil position.
-        if ~strcmp(ChannelMat.TransfMegLabels{1}, 'Dewar=>Native')
-          bst_error('Dewar=>Native transformation not first.');
-        end
-        TransfMat = LocationTransform(MedianLoc, ChannelMat.TransfMeg);
+        TransfMat = LocationTransform(MedianLoc, TransfBefore, TransfAfter);
         % This transformation would be identical even if the process was
         % allowed to run multiple times; it would not automatically give an
         % identity transformation. So "over-adjusting" is prevented by
@@ -125,78 +134,110 @@ function OutputFiles = Run(sProcess, sInputs)
         % applies to MEG channels only.
         iMeg  = sort([good_channel(ChannelMat.Channel, [], 'MEG'), ...
           good_channel(ChannelMat.Channel, [], 'MEG REF')]);
-        ChannelMat = channel_apply_transf({sInputs(iFile).ChannelFile}, ...
-          TransfMat, iMeg, false); % Don't apply to head points.
+        ChannelMat = channel_apply_transf(ChannelMat, TransfMat, iMeg, false); % Don't apply to head points.
         ChannelMat = ChannelMat{1};
+        
+        % After much thought, it was decided to save this transformation
+        % separately and at its logical place: between 'Dewar=>Native' and
+        % 'Native=>Brainstorm/CTF'.  In particular, this allows us to use
+        % it directly when displaying head motion distance.  This however
+        % means we must correctly (matrix multiplication doesn't commute)
+        % move the transformation from the end to its logical place.
+        iAdjust = 1 + find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'), 1);
+        ChannelMat.TransfMegLabels(iAdjust+1:end) = ...
+          ChannelMat.TransfMegLabels(iAdjust:end-1); % reject last one
+        ChannelMat.TransfMeg(iAdjust+1:end) = ChannelMat.TransfMeg(iAdjust:end-1);
         % Change transformation label to something unique to this process.
-        ChannelMat.TransfMegLabels{end} = 'AdjustedNative';
+        ChannelMat.TransfMegLabels{iAdjust} = 'AdjustedNative';
+        ChannelMat.TransfMeg{iAdjust} = TransfAfter \ TransfMat * TransfAfter;
+        
+        % Note: All of this does not apply to EEG or head points, which
+        % start in Native, and the adjustment we make concerns the
+        % 'Dewar=>Native' step.
         bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
         isFileOk(iFile) = true;
 
         if isDisplay
           % Display "after" results, besides the "before" figure.
-          close(hFigAfter);
           hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
         end
-        bst_progress('stop');
       end
+      bst_progress('stop');
       
-    case 'Undo'
+    case {'UndoAdjust', 'UndoRefine'}
+      isHeadPoints = strcmp(sProcess.options.action.Value, 'UndoRefine');
+      
       for iFile = 1:nFiles
         if isDisplay
           % Display "before" results.
-          close(hFigBefore); %, hFigAfter]);
+          close([hFigBefore, hFigAfter]); 
           hFigBefore = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
         end
         ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
         
-        nTransf = numel(ChannelMat.TransfMeg);
-        isHeadPoints = false;
-        isEEG = 0;
-        iEEG = sort([good_channel(ChannelMat.Channel, [], 'EEG'), ...
-          good_channel(ChannelMat.Channel, [], 'SEEG'), good_channel(ChannelMat.Channel, [], 'ECOG')]);
-        switch ChannelMat.TransfMegLabels{nTransf}
-          case {'AdjustedNative', 'manual correction'}
-            iChan = sort([good_channel(ChannelMat.Channel, [], 'MEG'), ...
-              good_channel(ChannelMat.Channel, [], 'MEG REF')]);
-            % Check if EEG has the same last transformation.
-            if strcmp(ChannelMat.TransfMegLabels{nTransf}, ChannelMat.TransfEegLabels{end}) && ...
-                max(ChannelMat.TransfEeg{end}(:) - ChannelMat.TransfMeg{nTransf}(:)) > 1e-8
-              if ~isempty(iEEG)
-                iChan = [iChan, iEEG]; %#ok<AGROW>
-                isEEG = 2;
-              else
-                isEEG = 1;
-              end
-            end
-          case 'refine registration: head points'
-            isHeadPoints = true;
-            % This applies to all channels and is "listed" under TransfEeg
-            % even if there are no EEG channels.
-            iChan = [];
-            if ~isempty(iEEG)
-              isEEG = 2;
-            else
-              isEEG = 1;
-            end
-          otherwise
-            fprintf('BST> No position correction found for %s.\n', sInputs(iFile).FileName);
-            continue;
+        if isHeadPoints
+          TransfLabel = 'refine registration: head points';
+        else
+          TransfLabel = 'AdjustedNative';
+        end
+        
+        Found = false;
+        iUndo = find(strcmpi(ChannelMat.TransfMegLabels, TransfLabel), 1, 'last');
+        if ~isempty(iUndo)
+          TransfAfter = eye(4);
+          for t = iUndo+1:numel(ChannelMat.TransfMeg)
+            TransfAfter = TransfAfter * ChannelMat.TransfMeg{t};
+          end
+          % Only remove the selected transform, reapply the following ones.
+          Transf = (TransfAfter / ChannelMat.TransfMeg{iUndo}) / TransfAfter; % T * inv(U) * inv(T), associativity is importanat here.
+          % Apply inverse transformation.
+          iChan = sort([good_channel(ChannelMat.Channel, [], 'MEG'), ...
+            good_channel(ChannelMat.Channel, [], 'MEG REF')]);
+          % Need to check for empty, otherwise applies to all channels!
+          if ~isempty(iChan)
+            ChannelMat = channel_apply_transf(ChannelMat, Transf, iChan, isHeadPoints);
+            ChannelMat = ChannelMat{1};
+          end
+          % Remove last tranformation we just added and the one it cancels.
+          ChannelMat.TransfMegLabels([iUndo, end]) = [];
+          ChannelMat.TransfMeg([iUndo, end]) = [];
+          Found = true;
         end
           
-        % Apply inverse transformation.
-        ChannelMat = channel_apply_transf(ChannelMat, ...
-          inv(ChannelMat.TransfMeg{nTransf}), iChan, isHeadPoints);
-        ChannelMat = ChannelMat{1};
-        % Remove last two tranformations that cancel each other.
-        ChannelMat.TransfMegLabels(nTransf:end) = [];
-        ChannelMat.TransfMeg(nTransf:end) = [];
-        if isEEG
-          % The inverse transformation is there only if there are EEG
-          % channels.  But others can be there even in that case, e.g.
-          % 'refine registration: head points'.
-          ChannelMat.TransfEegLabels(end+1-isEEG:end) = [];
-          ChannelMat.TransfEeg(end+1-isEEG:end) = [];
+        % Redo for EEG.  Can't be certain that the following
+        % transformations are the same, just do it independently.
+        iUndo = find(strcmpi(ChannelMat.TransfEegLabels, TransfLabel), 1, 'last');
+        if ~isempty(iUndo)
+          TransfAfter = eye(4);
+          for t = iUndo+1:numel(ChannelMat.TransfEeg)
+            TransfAfter = TransfAfter * ChannelMat.TransfEeg{t};
+          end
+          % Only remove the selected transform, reapply the following ones.
+          Transf = (TransfAfter / ChannelMat.TransfEeg{iUndo}) / TransfAfter; % T * inv(U) * inv(T), associativity is importanat here.
+          % Apply inverse transformation.
+          iChan = sort([good_channel(ChannelMat.Channel, [], 'EEG'), ...
+            good_channel(ChannelMat.Channel, [], 'SEEG'), ...
+            good_channel(ChannelMat.Channel, [], 'ECOG')]);
+          % Need to check for empty, otherwise applies to all channels!
+          if ~isempty(iChan)
+            % Don't apply the transformation twice to head points!
+            if Found % head points were done with MEG channels, if applicable.
+              ChannelMat = channel_apply_transf(ChannelMat, Transf, iChan, false);
+            else
+              ChannelMat = channel_apply_transf(ChannelMat, Transf, iChan, isHeadPoints);
+            end
+            ChannelMat = ChannelMat{1};
+          end
+          % Remove last tranformation we just added and the one it cancels.
+          ChannelMat.TransfEegLabels([iUndo, end]) = [];
+          ChannelMat.TransfEeg([iUndo, end]) = [];
+          Found = true;
+        end
+        
+        if ~Found
+          fprintf('BST> No position correction found for %s.\n', ...
+            sInputs(iFile).FileName);
+          continue;
         end
         
         bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
@@ -204,7 +245,6 @@ function OutputFiles = Run(sProcess, sInputs)
         isFileOk(iFile) = true;
         if isDisplay
           % Display results.
-          close(hFigAfter);
           hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
         end
       end
@@ -217,17 +257,67 @@ end
 
 
 
-function TransfMat = LocationTransform(Loc, TransfMeg)
+function [TransfBefore, TransfAfter] = GetTransforms(ChannelMat)
+  % Extract transformations that are applied before and after the head
+  % position adjustment we are creating now.  We keep the 'Dewar=>Native'
+  % transformation intact and separate from the adjustment for no deep
+  % reason, but it is the only remaining trace of the initial head coil
+  % positions in Brainstorm.
+  
+  % The reason this function was split from LocationTransform is that it
+  % can be called only once outside the head sample loop in process_sss,
+  % whereas LocationTransform is called many times within the loop.
+  
+  % When this is called from process_sss, we are possibly working on a
+  % second head adjustment, this time based on the instantaneous head
+  % position, so we need to keep the global adjustment based on the entire
+  % recording if it is there.
+  
+  % Check order of transformations.  These situations should not happen
+  % unless there was some manual editing.
+  iDewToNat = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
+  if isempty(iDewToNat) || numel(iDewToNat) > 1
+    bst_error('Could not find required transformation.');
+  end
+  if iDewToNat > 1
+    fprintf('BST> Unexpected transformations found before ''Dewar=>Native''; ignoring them.');
+  end
+  iAdjust = find(strcmpi(ChannelMat.TransfMegLabels, 'AdjustedNative'));
+  if numel(iAdjust) > 1
+    bst_error('Could not find required transformation.');
+  elseif isempty(iAdjust)
+    iAdjust = iDewToNat;
+  end
+  if iAdjust < iDewToNat
+    bst_error('Unable to interpret order of transformations.');
+  elseif iAdjust - iDewToNat > 1
+    fprintf('BST> Unexpected transformations found between ''Dewar=>Native'' and ''AdjustedNative''; assuming they make sense there.');
+  end  
+  
+  TransfBefore = eye(4);
+  for t = iDewToNat:iAdjust
+    TransfBefore = ChannelMat.TransfMeg{t} * TransfBefore;
+  end
+  TransfAfter = eye(4);
+  for t = iAdjust+1:numel(ChannelMat.TransfMeg)
+    TransfAfter = ChannelMat.TransfMeg{t} * TransfAfter;
+  end
+end
+
+
+
+function TransfMat = LocationTransform(Loc, TransfBefore, TransfAfter)
   % Compute transformation corresponding to head coil positions.
   % We want this to be as efficient as possible, since used many times by
   % process_sss. 
   
-  % The HLU channels are in dewar coordinates.  Thus apply the
-  % transformations 'Dewar=>Native' and then compute the small head
-  % position adjustment.  For efficiency, we should verify that this
-  % transformation is first, outside this function.
   % Transformation matrices are in m, as are HLU channels.
-  Loc = TransfMeg{1}(1:3, :) * [reshape(Loc, 3, 3); 1, 1, 1];
+  % The HLU channels (here Loc) are in dewar coordinates.  Bring them to
+  % the current system by applying all saved transformations, starting with
+  % 'Dewar=>Native'.  This will save us from having to use inverse
+  % transformations later.
+  Loc = TransfAfter(1:3, :) * TransfBefore * [reshape(Loc, 3, 3); 1, 1, 1];
+  %   Loc = TransfBefore{1}(1:3, :) * [[Loc(1:3), Loc(4:6), Loc(5:9)]; 1, 1, 1]; % test if efficiency difference.
 
   % For efficiency, use these local functions.
   CrossProduct = @(a, b) [a(2).*b(3)-a(3).*b(2); a(3).*b(1)-a(1).*b(3); a(1).*b(2)-a(2).*b(1)];
@@ -239,20 +329,16 @@ function TransfMat = LocationTransform(Loc, TransfMeg)
   Y = Loc(4:6)' - Origin; % Not yet perpendicular to X in general.
   Z = CrossProduct(X, Y);
   Z = Z / Norm(Z); 
-  Y = CrossProduct(Z, X); % Doesn't go through ears anymore in general.
+  Y = CrossProduct(Z, X); % Doesn't go through PA points anymore in general.
   %     Y = Y / Norm(Y); % Not necessary
   TransfMat = eye(4);
   TransfMat(1:3,1:3) = [X, Y, Z]';
   TransfMat(1:3,4) = - [X, Y, Z]' * Origin;
-
-  % "Insert" this transformation at the right spot, i.e. right after
-  % 'Dewar=>Native'. The following transformations, e.g.
-  % 'Native=>Brainstorm/CTF' need to be removed and reapplied after.
-  U = eye(4);
-  for t = 2:numel(TransfMeg)
-    U = U * TransfMeg{t};
-  end
-  TransfMat = U * TransfMat / U;
+  
+  % TransfMat at this stage is a transformation from the current system
+  % back to the now adjusted Native system.  We thus need to reapply the
+  % following tranformations.
+  TransfMat = TransfAfter * TransfMat;
 end
 
 

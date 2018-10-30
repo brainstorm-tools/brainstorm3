@@ -1,5 +1,5 @@
 function varargout = process_sss( varargin )
-  % PROCESS_SSS: Spatiotemporal signal space separation with optional motion correction.
+  % PROCESS_SSS: Spatiotemporal signal space separation and motion correction.
   %
   % DESCRIPTION:
   %
@@ -28,13 +28,13 @@ function varargout = process_sss( varargin )
   % Authors: Marc Lalancette, 2018
   
   % TO DO: 
-  % Deal with aborted recordings; all zeros.
+  % Finish changing due to adjust_head_position changes.
   % Temporal SSS.
   % Translation for where to put harmonic expansion origin?
   % Units/dimensions for spherical harmonics?
   % tSSS, how long of chunks do we need for stable separation?
-  % SSS, we need to keep track of the empty subspace as in SSP, for source modeling?
-  % How would that work in combination?
+  % SSS, (and tSSS!) we need to keep track of the empty subspace as in SSP, for source modeling?
+  % How would that work in combination with SSP/ICA?
   
   eval(macro_method);
 end
@@ -154,7 +154,6 @@ function sInput = Run(sProcess, sInput)
   % It is not obvious how to best combine reference channels and SSS.  For
   % head motion correction only, it makes sense to treat them as regular
   % channels, thus undo the compensation before and reapply it after.
-  % 
   iRef = good_channel(ChannelMat.Channel, [], 'MEG REF');
   iMeg = good_channel(ChannelMat.Channel, ChannelMat.ChannelFlag, 'MEG');
   if strcmpi(sInput.FileType, 'raw')
@@ -260,7 +259,7 @@ function sInput = Run(sProcess, sInput)
     HeadSamplePeriod = nSamples;
     TrueSamples = find(any(diff(HeadCoilLoc, 1, 2), 1)) + 1;
     if numel(TrueSamples) > 1 % to avoid empty which propagates in min.
-      HeadSamplePeriod = min(HeadSamplePeriod, min(diff(TrueSamples)));
+      HeadSamplePeriod = min(HeadSamplePeriod, min(diff(TrueSamples(1:end-1))));
     end
     HeadCoilLoc = HeadCoilLoc(:, 1:HeadSamplePeriod:nSamples);
       
@@ -274,7 +273,7 @@ function sInput = Run(sProcess, sInput)
     for iHeadSample = 1:nHeadSamples
       % If a collection was aborted, the channels will be filled with
       % zeros. We must ignore these samples.
-      if all(HeadCoilLoc(:, iHeadSample)) == 0
+      if all(HeadCoilLoc(:, iHeadSample) == 0)
         iLastSample = (iHeadSample - 1) * HeadSamplePeriod;
         break;
       end
@@ -282,7 +281,7 @@ function sInput = Run(sProcess, sInput)
       %           B = in_fread(sFile, ChannelMat, iEpoch, SampleBounds, iMegRef);
       % Compute transformation corresponding to coil position.
       TransfMat = process_adjust_head_position('LocationTransform', ...
-        HeadCoilLoc(:, iHeadSample), ChannelMat.TransfMeg);
+        HeadCoilLoc(:, iHeadSample), ChannelMat.TransfMeg, iDewar);
       
       % Modify channel positions.
       %       ChannelMat = channel_apply_transf(ChannelMat, TransfMat, [], false);
@@ -294,7 +293,7 @@ function sInput = Run(sProcess, sInput)
       
       % Get data corresponding to this head sample.
       SampleStart = (iHeadSample - 1) * HeadSamplePeriod + 1;
-      SampleBounds = [SampleStart, min(SampleStart+HeadSamplePeriod, nSamples)];
+      SampleBounds = [SampleStart, min(SampleStart+HeadSamplePeriod, iLastSample)];
       
       % Compute coefficients as function of time.
       SpherCoeffs = [SIn, SOut] \ sInput.A(iMegRef, SampleBounds);

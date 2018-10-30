@@ -84,8 +84,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
   % the head coil fit error, below or above the given threshold, with
   % hysteresis.
   
-  OutputFiles = {}; %#ok<NASGU>
+  nFiles = length(sInputs);
+
   isFileOk = false(1, length(sInputs));
+  bst_progress('start', 'Detect head motion events', ...
+    'Loading HLU locations...', 0, 2*nFiles);
   for iFile = 1:length(sInputs)
     % Load the raw file descriptor
     isRaw = strcmpi(sInputs(iFile).FileType, 'raw');
@@ -98,12 +101,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Process only continuous files for now.
     if ~isempty(sFile.epochs)
-      bst_report('Error', sProcess, sInputs(iFile), 'This function can only process continuous recordings (no epochs).');
+      bst_report('Error', sProcess, sInputs(iFile), ...
+        'This function can only process continuous recordings (no epochs).');
       continue;
     end
         
     % Load head coil locations.
+    bst_progress('text', 'Loading HLU locations...');
+    bst_progress('inc', 1);
     [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInputs(iFile));
+    bst_progress('text', 'Detecting motion events...');
+    bst_progress('inc', 1);
     nSxnT = size(Locations, 2); % floor(nSamples/HeadSamplePeriod) * nEpochs
     
     % Find motion events, high motion and bad fit segments.
@@ -231,6 +239,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     isFileOk(iFile) = true;
   end
+  bst_progress('stop');
+
   % Return the input files that were processed properly.
   OutputFiles = {sInputs(isFileOk).FileName};
   
@@ -263,6 +273,7 @@ function sFile = CreateEvents(sFile, EvtName, Events)
     sFile.events(iEvt).epochs  = ones(1, size(sFile.events(iEvt).times,2));
     sFile.events(iEvt).reactTimes = [];
 end
+
 
 
 function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBounds, ReshapeContinuous)
@@ -400,6 +411,7 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
 end
 
 
+
 function D = RigidDistances(Locations, Reference, StopThreshold)
   % Maximum distance traveled by any point in a moving sphere.
   %
@@ -475,6 +487,7 @@ function D = RigidDistances(Locations, Reference, StopThreshold)
   end
   
 end % RigidDistances
+
 
 
 function [O, R] = RigidCoordinates(FidsColumns)
