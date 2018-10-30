@@ -2304,7 +2304,18 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
             end
         end
         % Modify channel names
-        TsInfo.LinesLabels = sMontage.DispNames(iMatrixDisp)';
+        if strcmpi(sMontage.Name, 'Head distance')
+            % Head distance montage: hide channel labels
+            TsInfo.LinesLabels = [];
+            % DC corrected distances don't make much sense, warn user
+            RawViewerOptions = bst_get('RawViewerOptions');
+            if ~isempty(RawViewerOptions) && isfield(RawViewerOptions, 'RemoveBaseline') && ~strcmpi(RawViewerOptions.RemoveBaseline, 'no')
+                java_dialog('warning', ['This montage requires DC offset correction to be off.' 10 ...
+                    'Make sure to turn it off before interpreting the results.']);
+            end
+        else
+            TsInfo.LinesLabels = sMontage.DispNames(iMatrixDisp)';
+        end
     % No montage to apply: Keep only the figure data
     else
         % Keep only the selected sensors
@@ -2929,7 +2940,13 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % ===== YLIM =====
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName );
+    if strcmpi(TsInfo.MontageName, 'Head distance')
+        % Head distance montage: force special unit
+        unitMod = 'HLU';
+    else
+        unitMod = TsInfo.Modality;
+    end
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, unitMod, TsInfo.FileName );
     % Plot factor has changed
     isFactorChanged = ~isequal(fFactor, PlotHandles.DisplayFactor);
     % Set display Factor
