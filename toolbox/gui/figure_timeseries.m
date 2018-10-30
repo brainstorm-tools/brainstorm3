@@ -2306,7 +2306,7 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
         % Modify channel names
         if strcmpi(sMontage.Name, 'Head distance')
             % Head distance montage: hide channel labels
-            TsInfo.LinesLabels = [];
+            TsInfo.LinesLabels = {'Dist'};
             % DC corrected distances don't make much sense, warn user
             RawViewerOptions = bst_get('RawViewerOptions');
             if ~isempty(RawViewerOptions) && isfield(RawViewerOptions, 'RemoveBaseline') && ~strcmpi(RawViewerOptions.RemoveBaseline, 'no')
@@ -2483,7 +2483,7 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
                 LinesLabels = TsInfo.LinesLabels;
             end
         else
-            LinesLabels = [];
+            LinesLabels = {};
         end
         % Lines colors
         if ~isempty(TsInfo.LinesColor) 
@@ -3365,7 +3365,11 @@ function UpdateScaleBar(iDS, iFig, TsInfo)
          'Tag',     'ColumnScaleBar', ...
          'Parent',  PlotHandles.hColumnScale);
     % Plot data units
-    txtAmp = sprintf('%d %s', round(barMeasure), fUnits);
+    if barMeasure < 10
+      txtAmp = sprintf('%1.1f %s', barMeasure, fUnits);
+    else
+      txtAmp = sprintf('%d %s', round(barMeasure), fUnits);
+    end
     if ~isempty(PlotHandles.hColumnScaleText) && ishandle(PlotHandles.hColumnScaleText)
         set(PlotHandles.hColumnScaleText, 'String', txtAmp);
     else

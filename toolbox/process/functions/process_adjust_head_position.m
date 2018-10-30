@@ -117,6 +117,10 @@ function OutputFiles = Run(sProcess, sInputs)
         
         MedianLoc = MedianLocation(Locations);
         %         disp(MedianLoc);
+
+        % Also get the initial reference position.  We only use it to see
+        % how much the adjustment moves.
+        InitRefLoc = ReferenceHeadLocation(ChannelMat);
         
         % Extract transformations that are applied before and after the
         % head position adjustment.  Any previous adjustment will be
@@ -163,6 +167,11 @@ function OutputFiles = Run(sProcess, sInputs)
         end
       end
       bst_progress('stop');
+      
+      % Give an idea of the distance we moved.
+      AfterRefLoc = ReferenceHeadLocation(ChannelMat);
+      DistanceAdjusted = process_evt_head_motion('RigidDistances', AfterRefLoc, InitRefLoc);
+      fprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3);
       
     case {'UndoAdjust', 'UndoRefine'}
       isHeadPoints = strcmp(sProcess.options.action.Value, 'UndoRefine');
@@ -253,6 +262,42 @@ function OutputFiles = Run(sProcess, sInputs)
   
   % Return the input files that were processed properly.
   OutputFiles = {sInputs(isFileOk).FileName};
+end
+
+
+
+function InitLoc = ReferenceHeadLocation(ChannelMat)
+  % Compute initial head location in Dewar coordinates.  
+  
+  % This isn't exactly the coil positions in the .hc file, but was verified
+  % to give the same transformation. Use the SCS distances from origin,
+  % with left and right PA points symmetrical.
+  LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
+  InitLoc = [[ChannelMat.SCS.NAS(1); 0; 0; 1], [0; LeftRightDist/2; 0; 1], ...
+    [0; -LeftRightDist/2; 0; 1]];
+  % That InitLoc is in Native coordiates.  Bring it back to Dewar
+  % coordinates to compare with HLU channels.
+  %
+  % Take into account if the initial/reference head position was
+  % "adjusted", i.e. replaced by the median position throughout the
+  % recording.  If so, use all transformations between 'Dewar=>Native' to
+  % this adjustment transformation.  (In practice there shouldn't be any
+  % between them.)
+  iDewToNat = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
+  if isempty(iDewToNat) || numel(iDewToNat) > 1
+    bst_error('Could not find required transformation.');
+  end
+  iAdjust = find(strcmpi(ChannelMat.TransfMegLabels, 'AdjustedNative'));
+  if numel(iAdjust) > 1
+    bst_error('Could not find required transformation.');
+  elseif isempty(iAdjust)
+    iAdjust = iDewToNat;
+  end
+  for t = iAdjust:-1:iDewToNat
+    InitLoc = ChannelMat.TransfMeg{t} \ InitLoc;
+  end
+  InitLoc(4, :) = [];
+  InitLoc = InitLoc(:);
 end
 
 

@@ -5,39 +5,13 @@ function Distance = head_motion_distance(Locations, ChannelFile)
   % saved as a transformation.
 
   
-  % Compute initial head location.  This isn't exactly the coil positions
-  % in the .hc file, but was verified to give the same transformation.
-  % Use the SCS distances from origin, with left and right PA points
-  % symmetrical.
   ChannelMat = in_bst_channel(ChannelFile);
-  LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
-  InitLoc = [[ChannelMat.SCS.NAS(1); 0; 0; 1], [0; LeftRightDist; 0; 1], ...
-    [0; -LeftRightDist; 0; 1]];
-  % That InitLoc is in Native coordiates.  Bring it back to Dewar
-  % coordinates to compare with HLU channels.
-  %
-  % Take into account if the initial/reference head position was
-  % "adjusted", i.e. replaced by the median position throughout the
-  % recording.  If so, use all transformations between 'Dewar=>Native' to
-  % this adjustment transformation.  (In practice there shouldn't be any
-  % between them.)
-  iAdjust = find(strcmpi(ChannelMat.TransfMegLabels, 'AdjustedNative'));
-  if isempty(iAdjust) || numel(iAdjust) > 1
-    bst_error('Could not find required transformation.');
-  end
-  iDewToNat = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
-  if isempty(iDewToNat) || numel(iDewToNat) > 1
-    bst_error('Could not find required transformation.');
-  end
-  for t = iDewToNat:iAdjust
-    InitLoc = ChannelMat.TransfMeg{t} \ InitLoc;
-  end
-  InitLoc(4, :) = [];
-  InitLoc = InitLoc(:);
+  % Get the initial/reference head position, to which we compare the
+  % instantaneous ones.
+  InitLoc = process_adjust_head_position('ReferenceHeadLocation', ChannelMat);
   
   nSamples = size(Locations, 2);
-  nChannels = size(Locations, 1);
-  if nChannels < 9
+  if size(Locations, 1) < 9
     bst_error('Unexpected number of head coil position channels.');
   end
   
