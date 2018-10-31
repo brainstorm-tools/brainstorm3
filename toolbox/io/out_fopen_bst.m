@@ -36,7 +36,7 @@ sFileOut.header.device    = sFileOut.device;
 sFileOut.header.sfreq     = sFileOut.prop.sfreq;
 sFileOut.header.starttime = sFileOut.prop.times(1);
 sFileOut.header.navg      = sFileOut.prop.nAvg;
-sFileOut.header.version   = '2';
+sFileOut.header.version   = 50;
 sFileOut.header.nsamples  = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
 sFileOut.header.epochsize = EpochSize;
 sFileOut.header.nchannels = length(ChannelMat.Channel);
@@ -51,7 +51,7 @@ end
 
 % ===== FORMAT HEADER =====
 fwrite(fid, 'BSTBIN', 'char');                               % CHAR(6)    : Format
-fwrite(fid, sFileOut.header.version, 'char');                % CHAR(1)    : Version of the format
+fwrite(fid, sFileOut.header.version, 'uint8');               % UINT8(1)   : Version of the format
 fwrite(fid, str_zeros(sFileOut.header.device, 40), 'char');  % CHAR(40)   : Device used for recording
 fwrite(fid, sFileOut.header.sfreq, 'float32');               % UINT32(1)  : Sampling frequency
 fwrite(fid, sFileOut.header.starttime, 'float32');           % FLOAT32(1) : Start time

@@ -40,7 +40,7 @@ magic = fread(fid, [1 6], '*char');                           % CHAR(6)    : For
 if ~isequal(magic, 'BSTBIN')
     error('File is not a valid Brainstorm binary file.');
 end
-hdr.version   = fread(fid, [1 1], '*char');                   % CHAR(1)    : Version of the format
+hdr.version   = fread(fid, [1 1], 'uint8');                   % UINT8(1)   : Version of the format, starting at uint8('1') = 49 for legacy reasons
 hdr.device    = str_read(fid, 40);                            % CHAR(40)   : Device used for recording
 hdr.sfreq     = double(fread(fid, [1 1], 'float32'));         % FLOAT32(1) : Sampling frequency
 hdr.starttime = double(fread(fid, [1 1], 'float32'));         % FLOAT32(1) : Start time
@@ -51,9 +51,7 @@ hdr.epochsize = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Num
 hdr.nchannels = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of channels
 
 % ===== CHECK WHETHER VERSION IS SUPPORTED =====
-bst_version = bst_get('Version');
-bst_version = str2num(bst_version.Release);
-if hdr.version ~= '1' && (hdr.version ~= '2' || bst_version < 181017) %TODO: final version number of BSTv2 support
+if hdr.version > 50
     error(['The selected version of the BST format is currently not supported.' ...
            10 'Please update Brainstorm.']);
 end
@@ -135,7 +133,7 @@ end
 nevt = double(fread(fid, [1 1], 'uint32'));                         % UINT32(1)  : Number of event categories
 events = repmat(db_template('event'), [1, nevt]);
 for i = 1:nevt
-    if hdr.version == '1'
+    if hdr.version < 50
         labelLength = 20;
     else
         labelLength = fread(fid, [1 1], 'uint8');                   % UINT8(1)   : Length of event name (1 to 255)
