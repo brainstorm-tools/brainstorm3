@@ -35,7 +35,7 @@ if (nargin < 2) || isempty(isSEEG)
 end
 
 % Get all names: remove special characters
-AllNames = str_remove_spec_chars(chNames);
+AllNames = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), chNames, 'UniformOutput', 0);
 AllTags  = cell(size(AllNames));
 AllInd   = cell(size(AllNames));
 isNoInd  = zeros(size(AllNames));
