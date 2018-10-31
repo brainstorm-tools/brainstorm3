@@ -2759,7 +2759,8 @@ switch contextName
     case 'ProcessOptions'
         defPref = struct(...
             'SavedParam',    struct(), ...
-            'MaxBlockSize',  100 / 8 * 1024 * 1024);   % 100Mb
+            'MaxBlockSize',  100 / 8 * 1024 * 1024, ...   % 100Mb
+            'LastMaxBlockSize',  100 / 8 * 1024 * 1024);  % 100Mb
         argout1 = FillMissingFields(contextName, defPref);
         
     case 'ImportEegRawOptions'
