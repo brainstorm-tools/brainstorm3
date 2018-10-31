@@ -191,10 +191,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 if ismember(char(targetNodes(1).getType()), {'subjectdb', 'studydbsubj', 'studydbcond'})
                     % Cancel action
                 else
-                    % Replace the "Link to raw file" nodes with their parent
+                    % Replace the "Link to raw file" nodes with their
+                    % parent, except for spike-sorted raw files
                     if strcmpi(char(targetNodes(1).getType()), 'rawdata') ...
                             && strcmpi(char(targetNodes(1).getParent().getType()), 'rawcondition') ...
-                            && targetNodes(1).getParent().getChildCount() <= 1
+                            && isempty(strfind(targetNodes(1).getFileName(), '_0ephys'))
                         for iNode = 1:length(targetNodes)
                             targetNodes(iNode) = targetNodes(iNode).getParent();
                         end
