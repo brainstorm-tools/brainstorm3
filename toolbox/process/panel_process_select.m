@@ -747,6 +747,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     %% ===== PANEL: UPDATE PROCESS OPTIONS =====
     function UpdateProcessOptions()
         import java.awt.Dimension;
+        import javax.swing.BoxLayout;
         % Starting the update
         isUpdatingPipeline = 1;
         % Font size for the options
@@ -1350,6 +1351,109 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jsep.setOpaque(1);
                     jsep.setPreferredSize(java_scaled('dimension', 1,1));
                     gui_component('label', jPanelOpt, 'br', ' ');
+                
+                case 'event_ordered'
+                    if isfield(option, 'Spikes')
+                        spikesOption = option.Spikes;
+                    else
+                        spikesOption = [];
+                    end
+                    
+                    optionPanel = gui_component('Panel');
+                    optionPanel.setLayout(BoxLayout(optionPanel, BoxLayout.Y_AXIS));
+                    gui_component('label', optionPanel, [], ['<html><b><u>', option.Comment, '</u></b>&nbsp;&nbsp;&nbsp;']);
+                    
+                    subPanel = gui_component('Panel');
+                    subPanel.setLayout(BoxLayout(subPanel, BoxLayout.Y_AXIS));
+                    
+                    %Get event list
+                    eventList = gui_component('Panel');
+                    eventList.setLayout(BoxLayout(eventList, BoxLayout.X_AXIS));
+                    events = GetEventList(spikesOption);
+                    
+                    %%%%
+                    % Create a list of the existing clusters/scouts
+                    %%%%
+                    listModel = javax.swing.DefaultListModel();
+                    for iEvent = 1:length(events)
+                        listModel.addElement(events{iEvent});
+                    end
+
+                    % Create list
+                    jList = javax.swing.JList();
+                    jList.setModel(listModel);
+                    jList.setVisibleRowCount(-1);
+                    
+                    % Create scroll panel
+                    jScroll = javax.swing.JScrollPane(jList);
+                    jScroll.setPreferredSize(java_scaled('dimension', 150,100));
+                    eventList.add('br', jScroll);
+                    
+                    %%%
+                    % Create a list of the selected clusters/scouts
+                    %%%
+                    selectedListModel = javax.swing.DefaultListModel();
+
+                    % Create list
+                    jSelectedList = javax.swing.JList();
+                    jSelectedList.setModel(selectedListModel);
+                    jSelectedList.setVisibleRowCount(-1);
+                    
+                    % Create scroll panel
+                    jSelectedScroll = javax.swing.JScrollPane(jSelectedList);
+                    jSelectedScroll.setPreferredSize(java_scaled('dimension', 150,100));
+                    eventList.add('br', jSelectedScroll);
+
+                    
+                    %% Buttons
+                    eventButtons = gui_river([1,2]);
+                    eventButtons.setLayout(BoxLayout(eventButtons, BoxLayout.X_AXIS));
+                    gui_component('button', eventButtons, [], '<', [],[], @(h,ev)RemoveEvent_Callback(iProcess, optNames{iOpt}, jSelectedList, jList));
+                    gui_component('button', eventButtons, [], '>', [],[], @(h,ev)AddEvent_Callback(iProcess, optNames{iOpt}, jSelectedList, jList));
+                    
+                    subPanel.add(eventButtons);
+                    subPanel.add(eventList);
+                    optionPanel.add(subPanel);
+                    jPanelOpt.add(optionPanel);
+                    
+                case 'event'
+                    if isfield(option, 'Spikes')
+                        spikesOption = option.Spikes;
+                    else
+                        spikesOption = [];
+                    end
+                    
+                    optionPanel = gui_component('Panel');
+                    optionPanel.setLayout(BoxLayout(optionPanel, BoxLayout.Y_AXIS));
+                    label = gui_component('label', optionPanel, [], ['<html><b><u>', option.Comment, '</u></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;']);
+                    label.setHorizontalAlignment(javax.swing.JLabel.CENTER); % Sorry for the hack above. Wasn't being centered otherwise. Strangely, it works for any string length.
+                    
+                    %Get event list
+                    eventList = gui_component('Panel');
+                    eventList.setLayout(BoxLayout(eventList, BoxLayout.Y_AXIS));
+                    events = GetEventList(spikesOption);
+
+                    %%%%
+                    % Create a list of the existing clusters/scouts
+                    %%%%
+                    listModel = javax.swing.DefaultListModel();
+                    for iEvent = 1:length(events)
+                        listModel.addElement(events{iEvent});
+                    end
+
+                    % Create list
+                    jList = javax.swing.JList();
+                    jList.setLayoutOrientation(jList.VERTICAL_WRAP);
+                    jList.setModel(listModel);
+                    jList.setVisibleRowCount(-1);
+                    java_setcb(jList, 'ValueChangedCallback', @(h,ev)EventSelection_Callback(iProcess, optNames{iOpt}, jList));
+                    
+                    % Create scroll panel
+                    jScroll = javax.swing.JScrollPane(jList);
+                    jScroll.setPreferredSize(java_scaled('dimension', 301,80));
+                    eventList.add('br', jScroll);
+                    optionPanel.add(eventList);
+                    jPanelOpt.add(optionPanel);
             end
             jPanelOpt.setPreferredSize(prefPanelSize);
         end
@@ -1378,6 +1482,71 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
         % Stopping the update
         isUpdatingPipeline = 0;
+    end
+
+    %% ===== OPTIONS: ADD EVENT CALLBACK =====
+    function AddEvent_Callback(iProcess, optName, jSelectedList, jOtherList)
+        selectedListModel = jSelectedList.getModel();
+        otherListModel = jOtherList.getModel();
+        iSels = jOtherList.getSelectedIndices();
+        elems = {};
+        
+        % Get selected elements
+        for iSel = 1:length(iSels)
+            elems{end + 1} = otherListModel.getElementAt(iSels(iSel));
+        end
+        
+        % Move from other to selected list
+        for iElem = 1:length(elems)
+            selectedListModel.addElement(elems{iElem});
+            otherListModel.removeElement(elems{iElem});
+        end
+        
+        % Update saved selected list
+        elems = {};
+        for iElem = 1:selectedListModel.getSize()
+            elems{end + 1} = selectedListModel.elementAt(iElem - 1);
+        end
+        SetOptionValue(iProcess, optName, elems);
+    end
+
+    %% ===== OPTIONS: REMOVE EVENT CALLBACK =====
+    function RemoveEvent_Callback(iProcess, optName, jSelectedList, jOtherList)
+        selectedListModel = jSelectedList.getModel();
+        otherListModel = jOtherList.getModel();
+        iSels = jSelectedList.getSelectedIndices();
+        elems = {};
+        
+        % Get selected elements
+        for iSel = 1:length(iSels)
+            elems{end + 1} = selectedListModel.getElementAt(iSels(iSel));
+        end
+        
+        % Move from other to selected list
+        for iElem = 1:length(elems)
+            otherListModel.addElement(elems{iElem});
+            selectedListModel.removeElement(elems{iElem});
+        end
+        
+        % Update saved selected list
+        elems = {};
+        for iElem = 1:selectedListModel.getSize()
+            elems{end + 1} = selectedListModel.elementAt(iElem - 1);
+        end
+        SetOptionValue(iProcess, optName, elems);
+    end
+
+    %% ===== OPTIONS: SELECT EVENT CALLBACK =====
+    function EventSelection_Callback(iProcess, optName, jList)
+        listModel = jList.getModel();
+        iSels = jList.getSelectedIndices();
+        elems = {};
+        
+        % Update saved selected list
+        for iSel = 1:length(iSels)
+            elems{end + 1} = listModel.elementAt(iSels(iSel));
+        end
+        SetOptionValue(iProcess, optName, elems);
     end
 
     %% ===== OPTIONS: FREQ BANDS CALLBACK =====
@@ -1845,6 +2014,33 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             newList{1,2} = AtlasList{iAtlasList,2}(iSel);
             % Set value
             SetOptionValue(iProcess, optName, newList);
+        end
+    end
+
+
+    %% ===== OPTIONS: GET EVENT LIST =====
+    function EventList = GetEventList(varargin)
+        excludeSpikes = 0;
+        onlySpikes = 0;
+        if nargin > 0
+            if strcmpi(varargin{1}, 'only')
+                onlySpikes = 1;
+            elseif strcmpi(varargin{1}, 'exclude')
+                excludeSpikes = 1;
+            end
+        end
+        
+        DataMat = in_bst_data(sFiles(1).FileName, 'F');
+        DataEvents = DataMat.F.events;
+        EventList = {};
+        
+        for iEvent = 1:length(DataEvents)
+            label = DataEvents(iEvent).label;
+            isSpikeEvent = process_spikesorting_supervised('IsSpikeEvent', label);
+            
+            if (excludeSpikes && ~isSpikeEvent) || (onlySpikes && isSpikeEvent)
+                EventList{end + 1} = label;
+            end
         end
     end
 

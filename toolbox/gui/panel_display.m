@@ -358,7 +358,8 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFunPhase.setEnabled(1);            
         end
         % Entire panel
-        if ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'none', 'power', 'magnitude', 'log', 'phase'})
+        if ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'none', 'power', 'magnitude', 'log', 'phase'}) ...
+                || (isfield(TfInfo, 'DisplayMeasure') && ~TfInfo.DisplayMeasure)
             ctrl.jPanelFunction.setVisible(0);
         else
             ctrl.jPanelFunction.setVisible(1);
@@ -380,7 +381,7 @@ function UpdatePanel(hFig)
 
         % === SELECTED DATA ===
         % Hide edge effects
-        if strcmpi(FigureId.Type, 'Timefreq') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TimeBands) % && ~iscell(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs)
+        if strcmpi(FigureId.Type, 'Timefreq') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TimeBands) && (~isfield(TfInfo, 'DisableHideEdgeEffects') || TfInfo.DisableHideEdgeEffects == 0)
             isEnabledEdge = 1;
             ctrl.jCheckHideEdge.setSelected(TfInfo.HideEdgeEffects);
         else

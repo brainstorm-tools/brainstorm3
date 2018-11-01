@@ -71,6 +71,13 @@ else
 %     end
 end
 
+% Check whether optional field precision is available
+if ~isempty(ImportOptions) && isfield(ImportOptions, 'Precision')
+    precision = ImportOptions.Precision;
+else
+    precision = [];
+end
+
 %% ===== READ RECORDINGS BLOCK =====
 switch (sFile.format)
     case 'FIF'
@@ -99,7 +106,7 @@ switch (sFile.format)
             F = F(iChannels,:);
         end
     case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
-        F = in_fread_blackrock(sFile, SamplesBounds, iChannels);
+        F = in_fread_blackrock(sFile, SamplesBounds, iChannels, precision);
     case 'EEG-BRAINAMP'
         F = in_fread_brainamp(sFile, sfid, SamplesBounds);
         if ~isempty(iChannels)
@@ -191,12 +198,20 @@ switch (sFile.format)
             iChannels = 1:size(sFile.header.F,1);
         end
         F = sFile.header.F(iChannels, iTimes);
+    case 'EEG-INTAN'
+        F = in_fread_intan(sFile, SamplesBounds, iChannels, precision);
+    case 'EEG-PLEXON'
+        F = in_fread_plexon(sFile, SamplesBounds, iChannels, precision);
     otherwise
         error('Cannot read data from this file');
 end
 
 % Force the recordings to be in double precision
-F = double(F);
+if ~isempty(precision) && strcmp(precision, 'single')
+    F = single(F);
+else
+    F = double(F);
+end
 % Remove channels that were not supposed to be read
 if isChanRange && ~isempty(iChanRemove)
     F(iChanRemove,:) = [];

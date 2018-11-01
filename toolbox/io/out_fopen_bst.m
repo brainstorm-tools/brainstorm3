@@ -19,7 +19,7 @@ function sFileOut = out_fopen_bst(OutputFile, sFileIn, ChannelMat, EpochSize)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2017
+% Authors: Francois Tadel, 2014-2017; Martin Cousineau, 2018
 
 % Get file comment
 [fPath, fBase, fExt] = bst_fileparts(OutputFile);
@@ -36,7 +36,7 @@ sFileOut.header.device    = sFileOut.device;
 sFileOut.header.sfreq     = sFileOut.prop.sfreq;
 sFileOut.header.starttime = sFileOut.prop.times(1);
 sFileOut.header.navg      = sFileOut.prop.nAvg;
-sFileOut.header.version   = '1';
+sFileOut.header.version   = 50;
 sFileOut.header.nsamples  = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
 sFileOut.header.epochsize = EpochSize;
 sFileOut.header.nchannels = length(ChannelMat.Channel);
@@ -51,7 +51,7 @@ end
 
 % ===== FORMAT HEADER =====
 fwrite(fid, 'BSTBIN', 'char');                               % CHAR(6)    : Format
-fwrite(fid, sFileOut.header.version, 'char');                % CHAR(1)    : Version of the format
+fwrite(fid, sFileOut.header.version, 'uint8');               % UINT8(1)   : Version of the format
 fwrite(fid, str_zeros(sFileOut.header.device, 40), 'char');  % CHAR(40)   : Device used for recording
 fwrite(fid, sFileOut.header.sfreq, 'float32');               % UINT32(1)  : Sampling frequency
 fwrite(fid, sFileOut.header.starttime, 'float32');           % FLOAT32(1) : Start time
@@ -143,15 +143,17 @@ else
 end
 
 % ===== EVENTS =====
-fwrite(fid, length(sFileOut.events), 'uint32');                      % UINT32(1)  : Number of event categories
+fwrite(fid, length(sFileOut.events), 'uint32');                              % UINT32(1)  : Number of event categories
 for i = 1:length(sFileOut.events)
     isExtended = (size(sFileOut.events(i).times,1) == 2);
-    fwrite(fid, str_zeros(sFileOut.events(i).label, 20), 'char');    % CHAR(20)   : Event name
-    fwrite(fid, sFileOut.events(i).color, 'float32');                % FLOAT32(3) : Event color
-    fwrite(fid, isExtended, 'int8');                                 % INT8(1)    : Event type (0=regular, 1=extended)
-    fwrite(fid, size(sFileOut.events(i).times,2), 'uint32');         % UINT32(1)  : Number of occurrences
+    labelLength = length(sFileOut.events(i).label);
+    fwrite(fid, labelLength, 'uint8');                                       % UINT8(1)   : Length of event name (1 to 255)
+    fwrite(fid, str_zeros(sFileOut.events(i).label, labelLength), 'char');   % CHAR(20)   : Event name
+    fwrite(fid, sFileOut.events(i).color, 'float32');                        % FLOAT32(3) : Event color
+    fwrite(fid, isExtended, 'int8');                                         % INT8(1)    : Event type (0=regular, 1=extended)
+    fwrite(fid, size(sFileOut.events(i).times,2), 'uint32');                 % UINT32(1)  : Number of occurrences
     if ~isempty(sFileOut.events(i).times)
-        fwrite(fid, sFileOut.events(i).times, 'float32');            % FLOAT32(2*N) : Time in seconds
+        fwrite(fid, sFileOut.events(i).times, 'float32');                   % FLOAT32(2*N) : Time in seconds
     end
 end
 

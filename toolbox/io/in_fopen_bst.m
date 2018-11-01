@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_bst(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2015
+% Authors: Francois Tadel, 2014-2015; Martin Cousineau, 2018
         
 
 %% ===== READ HEADER =====
@@ -40,7 +40,7 @@ magic = fread(fid, [1 6], '*char');                           % CHAR(6)    : For
 if ~isequal(magic, 'BSTBIN')
     error('File is not a valid Brainstorm binary file.');
 end
-hdr.version   = fread(fid, [1 1], '*char');                   % CHAR(1)    : Version of the format
+hdr.version   = fread(fid, [1 1], 'uint8');                   % UINT8(1)   : Version of the format, starting at uint8('1') = 49 for legacy reasons
 hdr.device    = str_read(fid, 40);                            % CHAR(40)   : Device used for recording
 hdr.sfreq     = double(fread(fid, [1 1], 'float32'));         % FLOAT32(1) : Sampling frequency
 hdr.starttime = double(fread(fid, [1 1], 'float32'));         % FLOAT32(1) : Start time
@@ -51,7 +51,7 @@ hdr.epochsize = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Num
 hdr.nchannels = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of channels
 
 % ===== CHECK WHETHER VERSION IS SUPPORTED =====
-if hdr.version ~= '1'
+if hdr.version > 50
     error(['The selected version of the BST format is currently not supported.' ...
            10 'Please update Brainstorm.']);
 end
@@ -133,7 +133,12 @@ end
 nevt = double(fread(fid, [1 1], 'uint32'));                         % UINT32(1)  : Number of event categories
 events = repmat(db_template('event'), [1, nevt]);
 for i = 1:nevt
-    events(i).label = str_read(fid, 20);                            % CHAR(20)   : Event name
+    if hdr.version < 50
+        labelLength = 20;
+    else
+        labelLength = fread(fid, [1 1], 'uint8');                   % UINT8(1)   : Length of event name (1 to 255)
+    end
+    events(i).label = str_read(fid, labelLength);                   % CHAR(??)   : Event name
     events(i).color = double(fread(fid, [1,3], 'float32'));         % FLOAT32(3) : Event color
     isExtended  = fread(fid, [1 1], 'int8');                        % INT8(1)    : Event type (0=regular, 1=extended)
     nocc = double(fread(fid, [1 1], 'uint32'));                     % UINT32(1)  : Number of occurrences

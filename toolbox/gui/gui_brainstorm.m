@@ -631,7 +631,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Create popup
         jPopupTab = java_create('javax.swing.JPopupMenu');
         % List possible tabs
-        panelList = {'Record', 'Filter', 'Surface', 'Scout', 'Cluster', 'Coordinates', 'Dipinfo', 'iEEG', 'Command'};
+        panelList = {'Record', 'Filter', 'Surface', 'Scout', 'Cluster', 'Coordinates', 'Dipinfo', 'iEEG', 'Command', 'Spikes'};
         panelRemove = {};
         % List missing tabs
         for iPanel = 1:length(GlobalData.Program.GUI.panels)

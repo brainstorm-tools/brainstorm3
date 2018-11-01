@@ -2955,6 +2955,8 @@ function isCancel = UnloadAll(varargin)
         if ~isempty(hFigHist)
             delete(hFigHist);
         end
+        % Close spike sorting figure
+        process_spikesorting_supervised('CloseFigure');
         % Restore default window manager
         if ~ismember(bst_get('Layout', 'WindowManager'), {'TileWindows', 'WeightWindows', 'FullArea', 'FullScreen', 'None'})
             bst_set('Layout', 'WindowManager', 'TileWindows');
