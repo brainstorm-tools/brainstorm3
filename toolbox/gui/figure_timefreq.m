@@ -89,9 +89,7 @@ end
 %% ===== FIGURE CLOSED CALLBACK =====
 function FigureClosedCallback(hFig, ev)
     global GlobalData;
-    if isfield(GlobalData.UserFrequencies, 'HideFreqPanel')
-        GlobalData.UserFrequencies.HideFreqPanel = 0;
-    end
+    GlobalData.UserFrequencies.HideFreqPanel = 0;
     bst_figures('DeleteFigure', hFig, ev);
 end
 
