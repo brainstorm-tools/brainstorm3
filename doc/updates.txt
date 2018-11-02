@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+November 2018
+- New electrophysiology toolbox
+---------------------------------------------------------------
 October 2018
 - IO: BIDS export process
 ---------------------------------------------------------------
@@ -23,7 +26,6 @@ July 2018
 - GUI: New menu "Set acquisition date" (for automatic matching with empty-room recordings)
 - Anatomy: BrainSuite: Added subcortical structures
 - Inverse: Switched to OpenMEEG 2.4
-- Doc: Submitted article "MEG/EEG group analysis with Brainstorm"
 ---------------------------------------------------------------
 June 2018
 - Distrib: New electrophysiology toolbox

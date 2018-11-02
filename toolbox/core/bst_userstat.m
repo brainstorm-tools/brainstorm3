@@ -74,8 +74,8 @@ iUpdate = find(strcmpi(action, 'Auto-update') | strcmpi(action, 'Login') | strcm
 % Look for all dates in the current year (exclude current month)
 cur = clock;
 iAvg = find((xUpdate >= 2017) & (xUpdate < (2017 + (cur(2)-2)./12)));
-% % Remove invalid data
-% nUpdate(nUpdate < 100) = interp1(xUpdate(nUpdate >= 100), nUpdate(nUpdate >= 100), xUpdate(nUpdate < 100), 'spline', 'extrap');
+% Remove invalid data
+nUpdate(nUpdate < 100) = interp1(xUpdate(nUpdate >= 100), nUpdate(nUpdate >= 100), xUpdate(nUpdate < 100), 'pchip');
 
 % Plot number of downloads
 [hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
@@ -103,8 +103,8 @@ dates = dates(:,1) + (dates(:,2)-1)./12;
 % Create histogram
 [nPosts,year] = hist(dates, length(unique(dates)));
 % Plot figure
-hFig(end+1) = fig_report(year, nPosts, 0, ...
-           [2005, max(year)], [0 ceil(max(nPosts)/100)*100], ...
+hFig(end+1) = fig_report(year(1:end-1), nPosts(1:end-1), 0, ...
+           [2005, max(year)], [0 ceil(max(nPosts(1:end-1))/100)*100], ...
            sprintf('Posts on the forum: %d', length(dates)), [], 'Forum posts per month', ...
            [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'posts.png'));
 
@@ -112,7 +112,7 @@ hFig(end+1) = fig_report(year, nPosts, 0, ...
 % Hard coded list of publications
 year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017]; 
 nPubli = [   2    2    1    1    3    5    5   11   10   18   19   33   38   54   78   94  131  210];
-nPubliCurYear = 63;
+nPubliCurYear = 159;
 % Plot figure
 hFig(end+1) = fig_report(year, nPubli, 1, ...
            [2000 max(year)], [], ...
