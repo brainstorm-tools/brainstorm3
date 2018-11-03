@@ -62,7 +62,9 @@ for iFile = 1:length(meg4_files)
     end
     % Record all the trials contained in this meg4 file
     header.meg4_epochs{iFile} = (1:nTrials) + nTotal;
-    nTotal = header.meg4_epochs{iFile}(end);
+    if ~isempty(header.meg4_epochs{iFile})
+        nTotal = header.meg4_epochs{iFile}(end);
+    end
 end
 
 
