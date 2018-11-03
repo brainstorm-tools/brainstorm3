@@ -614,7 +614,7 @@ function id = GetLastId(parentFolder, prefix)
                 if ~isempty(n)
                     % Skip dates
                     try
-                        datetime(suffix, 'InputFormat', 'yyyyMMdd');
+                        datenum(suffix, 'yyyymmdd');
                     catch
                         id = n;
                         return;
@@ -765,9 +765,10 @@ end
 
 function taskName = ExtractCtfTaskname(sFile)
     taskName = [];
-    infoDs = dir(fullfile(fileparts(sFile.filename), '*.infods'));
+    dsFolder = fileparts(sFile.filename);
+    infoDs = dir(fullfile(dsFolder, '*.infods'));
     if ~isempty(infoDs)
-        infoTag = readCPersist(fullfile(infoDs.folder, infoDs.name), 0);
+        infoTag = readCPersist(fullfile(dsFolder, infoDs.name), 0);
         if ~isempty(infoTag)
             iTag = find(strcmp('_DATASET_PROCSTEPPROTOCOL', {infoTag.name}));
             if ~isempty(iTag)
@@ -865,7 +866,7 @@ function acqTime = ExtractAcquisitionTime(sFile, iStudy)
             ctfTime = deblank(header.res4.data_time);
             if ~isempty(ctfDate) && ~isempty(ctfTime)
                 try
-                    acqTime = datetime([ctfDate ' ' ctfTime], 'InputFormat', 'dd-MMM-yyyy HH:mm');
+                    acqTime = datenum([ctfDate ' ' ctfTime], 'dd-mmm-yyyy HH:MM');
                     if ~isempty(acqTime)
                         return;
                     end
@@ -878,10 +879,10 @@ function acqTime = ExtractAcquisitionTime(sFile, iStudy)
     % Otherwise, get study date
     sStudy = bst_get('Study', iStudy);
     if isfield(sStudy, 'DateOfStudy') && ~isempty(sStudy.DateOfStudy)
-        acqTime = datetime(sStudy.DateOfStudy);
+        acqTime = datenum(sStudy.DateOfStudy);
     else
         % When all else fails, return today's date...
-        acqTime = datetime('today');
+        acqTime = now;
     end
 end
 
