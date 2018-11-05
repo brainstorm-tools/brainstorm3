@@ -186,6 +186,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         updatesfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'updates.txt');
         gui_component('MenuItem', jMenuSupport, [], 'Release notes', IconLoader.ICON_EDIT, [], @(h,ev)view_text(updatesfile, 'Release notes', 1), fontSize);
         jMenuSupport.addSeparator();
+        % Prepare workshop
+        gui_component('MenuItem', jMenuSupport, [], 'Workshop preparation', IconLoader.ICON_SCREEN1, [], @(h,ev)brainstorm('workshop'), fontSize);
+        jMenuSupport.addSeparator();
         % Guidelines
         jMenuGuidelines = gui_component('Menu', jMenuSupport, [], 'Guidelines', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
         gui_component('MenuItem', jMenuGuidelines, [], 'Epileptogenicity maps', IconLoader.ICON_EDIT, [], @(h,ev)ShowGuidelines('epileptogenicity'), fontSize);
