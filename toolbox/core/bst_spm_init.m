@@ -65,7 +65,7 @@ if ~exist('spm.m', 'file')
         isStop = 0;
         while ~isStop
             % Open 'Select directory' dialog
-            SpmDir = bst_uigetdir(SpmDir, 'Select SPM directory');
+            SpmDir = uigetdir(SpmDir, 'Select SPM directory');
             % Exit if not set
             if isempty(SpmDir) || ~ischar(SpmDir)
                 SpmDir = [];

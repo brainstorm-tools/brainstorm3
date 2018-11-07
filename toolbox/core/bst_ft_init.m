@@ -58,7 +58,7 @@ if ~exist('ft_defaults', 'file')
         isStop = 0;
         while ~isStop
             % Open 'Select directory' dialog
-            FieldTripDir = bst_uigetdir(FieldTripDir, 'Select FieldTrip directory');
+            FieldTripDir = uigetdir(FieldTripDir, 'Select FieldTrip directory');
             % Exit if not set
             if isempty(FieldTripDir) || ~ischar(FieldTripDir)
                 FieldTripDir = [];

@@ -1288,7 +1288,7 @@ function BrainstormDbDir = SetDatabaseFolder(varargin) %#ok<DEFNU>
     isStop = 0;
     while ~isStop
         % Open 'Select directory' dialog
-        BrainstormDbDir = bst_uigetdir(BrainstormDbDir, ['Please select Brainstorm database directory.' 10 10 'This is where all the new protocols will be created.']);
+        BrainstormDbDir = uigetdir(BrainstormDbDir, ['Please select Brainstorm database directory.' 10 10 'This is where all the new protocols will be created.']);
         % Exit if not set
         if isempty(BrainstormDbDir) || ~ischar(BrainstormDbDir)
             BrainstormDbDir = [];
