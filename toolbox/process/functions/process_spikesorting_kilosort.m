@@ -48,6 +48,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 0;
+    sProcess.options.spikesorter.Type   = 'text';
+    sProcess.options.spikesorter.Value  = 'kilosort';
+    sProcess.options.spikesorter.Hidden = 1;
     sProcess.options.GPU.Comment = 'GPU processing';
     sProcess.options.GPU.Type    = 'checkbox';
     sProcess.options.GPU.Value   = 0;
@@ -56,7 +59,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.binsize.Value   = {2, 'GB', 1};
     
     % Options: Edit parameters
-    sProcess.options.edit.Comment = {'panel_timefreq_options',  ' Edit parameters file:'};
+    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Parameters</B></U>: '};
     sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = [];
     % Show warning that pre-spikesorted events will be overwritten
@@ -102,7 +105,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     % Ensure we are including the KiloSort folder in the Matlab path
-    KiloSortDir = bst_fullfile(bst_get('BrainstormUserDir'), 'KiloSort');
+    KiloSortDir = bst_fullfile(bst_get('BrainstormUserDir'), 'kilosort');
     if exist(KiloSortDir, 'file')
         addpath(genpath(KiloSortDir));
     end
@@ -120,7 +123,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         downloadAndInstallKiloSort();
     end
     
-    
     %% Prepare parallel pool
     try
         poolobj = gcp('nocreate');
@@ -132,64 +134,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     %% Initialize KiloSort Parameters (This is a copy of StandardConfig_MOVEME)
+    KilosortStandardConfig();
+    ops.GPU = sProcess.options.GPU.Value;
     
-    ops.GPU                 = sProcess.options.GPU.Value; % whether to run this code on an Nvidia GPU (much faster, mexGPUall first)
-    ops.parfor              = 1; % whether to use parfor to accelerate some parts of the algorithm
-    ops.verbose             = 1; % whether to print command line progress
-    ops.showfigures         = 1; % whether to plot figures during optimization
-
-    ops.datatype            = 'dat';  % binary ('dat', 'bin') or 'openEphys'
-
-    ops.nNeighPC            = []; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)
-    ops.nNeigh              = []; % visualization only (Phy): number of neighboring templates to retain projections of (16)
-
-    % options for channel whitening
-    ops.whitening           = 'full'; % type of whitening (default 'full', for 'noSpikes' set options for spike detection below)
-    ops.nSkipCov            = 1; % compute whitening matrix from every N-th batch (1)
-    ops.whiteningRange      = 32; % how many channels to whiten together (Inf for whole probe whitening, should be fine if Nchan<=32)
-    
-    % define the channel map as a filename (string) or simply an array	
-    % ops.chanMap is defined later on the code so I have the outputPath
-    ops.criterionNoiseChannels = 0.2; % fraction of "noise" templates allowed to span all channel groups (see createChannelMapFile for more info). 
-
-    % other options for controlling the model and optimization
-    ops.Nrank               = 3;    % matrix rank of spike template model (3)
-    ops.nfullpasses         = 6;    % number of complete passes through data during optimization (6)
-    ops.maxFR               = 20000;  % maximum number of spikes to extract per batch (20000)
-    ops.fshigh              = 300;   % frequency for high pass filtering
-    % ops.fslow             = 2000;   % frequency for low pass filtering (optional)
-    ops.ntbuff              = 64;    % samples of symmetrical buffer for whitening and spike detection
-    ops.scaleproc           = 200;   % int16 scaling of whitened data
-    ops.NT                  = 32*1024+ ops.ntbuff;% this is the batch size (try decreasing if out of memory) 
-    % for GPU should be multiple of 32 + ntbuff
-
-    % the following options can improve/deteriorate results. 
-    % when multiple values are provided for an option, the first two are beginning and ending anneal values, 
-    % the third is the value used in the final pass. 
-    ops.Th               = [4 10 10];    % threshold for detecting spikes on template-filtered data ([6 12 12])
-    ops.lam              = [5 20 20];   % large means amplitudes are forced around the mean ([10 30 30])
-    ops.nannealpasses    = 4;            % should be less than nfullpasses (4)
-    ops.momentum         = 1./[20 400];  % start with high momentum and anneal (1./[20 1000])
-    ops.shuffle_clusters = 1;            % allow merges and splits during optimization (1)
-    ops.mergeT           = .1;           % upper threshold for merging (.1)
-    ops.splitT           = .1;           % lower threshold for splitting (.1)
-
-    % options for initializing spikes from data
-    ops.initialize      = 'no'; %'fromData' or 'no'
-    ops.spkTh           = -6;      % spike threshold in standard deviations (4)
-    ops.loc_range       = [3  1];  % ranges to detect peaks; plus/minus in time and channel ([3 1])
-    ops.long_range      = [30  6]; % ranges to detect isolated peaks ([30 6])
-    ops.maskMaxChannels = 5;       % how many channels to mask up/down ([5])
-    ops.crit            = .65;     % upper criterion for discarding spike repeates (0.65)
-    ops.nFiltMax        = 10000;   % maximum "unique" spikes to consider (10000)
-
-    % options for posthoc merges (under construction)
-    ops.fracse  = 0.1; % binning step along discriminant axis for posthoc merges (in units of sd)
-    ops.epu     = Inf;
-
-    ops.ForceMaxRAMforDat   = 20e9; % maximum RAM the algorithm will try to use; on Windows it will autodetect.
-
-
     
     %% Compute on each raw input independently
     for i = 1:length(sInputs)
@@ -598,42 +545,49 @@ function downloadAndInstallKiloSort()
     if isdir(KiloSortDir)
         file_delete(KiloSortDir, 1, 3);
     end
-    if isdir(KiloSortTmpDir)
-        file_delete(KiloSortTmpDir, 1, 3);
-    end
-    
+
     % Create folders
     mkdir(KiloSortDir);
-	mkdir(KiloSortTmpDir);
+    if ~isdir(KiloSortTmpDir)
+        mkdir(KiloSortTmpDir);
+    end
     
     % Download KiloSort
     url_KiloSort = 'https://github.com/cortex-lab/KiloSort/archive/master.zip';
     KiloSortZipFile = bst_fullfile(KiloSortTmpDir, 'kilosort.zip');
-    errMsg = gui_brainstorm('DownloadFile', url_KiloSort, KiloSortZipFile, 'KiloSort download');
-    if ~isempty(errMsg)
-        error(['Impossible to download KiloSort.' 10 errMsg]);
+    if exist(KiloSortZipFile, 'file') ~= 2
+        errMsg = gui_brainstorm('DownloadFile', url_KiloSort, KiloSortZipFile, 'KiloSort download');
+        if ~isempty(errMsg)
+            error(['Impossible to download KiloSort.' 10 errMsg]);
+        end
     end
     % Download KiloSortWrapper (For conversion to Neurosuite - Klusters)
     url_KiloSort_wrapper = 'https://github.com/brendonw1/KilosortWrapper/archive/master.zip';
     KiloSortWrapperZipFile = bst_fullfile(KiloSortTmpDir, 'kilosort_wrapper.zip');
-    errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSort download');
-    if ~isempty(errMsg)
-        error(['Impossible to download KiloSort Wrapper.' 10 errMsg]);
+    if exist(KiloSortWrapperZipFile, 'file') ~= 2
+        errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSort download');
+        if ~isempty(errMsg)
+            error(['Impossible to download KiloSort Wrapper.' 10 errMsg]);
+        end
     end
     
     % Download Phy
     url_Phy = 'https://github.com/kwikteam/phy/archive/master.zip';
     PhyZipFile = bst_fullfile(KiloSortTmpDir, 'phy.zip');
-    errMsg = gui_brainstorm('DownloadFile', url_Phy, PhyZipFile, 'Phy download');
-    if ~isempty(errMsg)
-        error(['Impossible to download Phy.' 10 errMsg]);
+    if exist(PhyZipFile, 'file') ~= 2
+        errMsg = gui_brainstorm('DownloadFile', url_Phy, PhyZipFile, 'Phy download');
+        if ~isempty(errMsg)
+            error(['Impossible to download Phy.' 10 errMsg]);
+        end
     end
     % Download npy-matlab
     url_npy = 'https://github.com/kwikteam/npy-matlab/archive/master.zip';
     npyZipFile = bst_fullfile(KiloSortTmpDir, 'npy.zip');
-    errMsg = gui_brainstorm('DownloadFile', url_npy, npyZipFile, 'npy-matlab download');
-    if ~isempty(errMsg)
-        error(['Impossible to download npy-Matlab.' 10 errMsg]);
+    if exist(npyZipFile, 'file') ~= 2
+        errMsg = gui_brainstorm('DownloadFile', url_npy, npyZipFile, 'npy-matlab download');
+        if ~isempty(errMsg)
+            error(['Impossible to download npy-Matlab.' 10 errMsg]);
+        end
     end
     
     % Unzip KiloSort zip-file
@@ -642,6 +596,9 @@ function downloadAndInstallKiloSort()
     % Move KiloSort directory to proper location
     movefile(bst_fullfile(KiloSortTmpDir, 'KiloSort-master'), ...
         bst_fullfile(KiloSortDir, 'kilosort'));
+    % Copy config file
+    copyKilosortConfig(bst_fullfile(KiloSortDir, 'kilosort', 'configFiles', 'StandardConfig_MOVEME.m'), ...
+        bst_fullfile(KiloSortDir, 'KilosortStandardConfig.m'));
     
     % Unzip KiloSort Wrapper zip-file
     unzip(KiloSortWrapperZipFile, KiloSortTmpDir);
@@ -735,4 +692,25 @@ function events = LoadKlustersEvents(SpikeSortedMat, iMontage)
         events(index).reactTimes  = [];
         events(index).select      = 1;
     end
+end
+
+function copyKilosortConfig(defaultFile, outputFile)
+    if exist(outputFile, 'file') == 2
+        delete(outputFile);
+    end
+
+    inFid  = fopen(defaultFile, 'r');
+    outFid = fopen(outputFile, 'w');
+    
+    while ~feof(inFid)
+        line = fgets(inFid);
+        % Remove calls to load external files and their references later
+        if ~isempty(strfind(line, 'load(')) || ~isempty(strfind(line, 'dd.'))
+            line = ['%' line];
+        end
+        fprintf(outFid, '%s', line);
+    end
+    
+    fclose(inFid);
+    fclose(outFid);
 end
