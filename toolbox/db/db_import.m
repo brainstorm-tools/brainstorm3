@@ -34,7 +34,7 @@ if (nargin < 1) || isempty(BrainstormDbDir)
         defDir = bst_get('UserDir');
     end
     % Open 'Select directory' dialog
-    BrainstormDbDir = uigetdir(defDir, 'Please select database directory.');
+    BrainstormDbDir = bst_uigetdir(defDir, 'Please select database directory.');
     if isempty(BrainstormDbDir) || ~ischar(BrainstormDbDir)
         return
     end
