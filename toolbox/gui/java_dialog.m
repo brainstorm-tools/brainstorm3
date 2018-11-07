@@ -86,6 +86,39 @@ if isProgress
     bst_progress('hide');
 end
 
+% Headless dialog displayed in command line
+if bst_get('GuiLevel') < 0
+    switch(lower(msgType))
+        case 'error'
+            disp(['Error: ' msg]);
+            isCancel = 0;
+            res = 1;
+        case 'warning'
+            disp(['Warning: ' msg]);
+            isCancel = 0;
+            res = 1;
+        case 'msgbox'
+            disp(msg);
+            isCancel = 0;
+            res = 1;
+        case 'confirm'
+            response = lower(strtrim(input([msg ' (y/n) '], 's')));
+            if ismember(response, {'y', 'yes'})
+                isCancel = 0;
+                res = 1;
+            elseif ismember(response, {'n', 'no'}) 
+                isCancel = 0;
+                res = 0;
+            else
+                isCancel = 1;
+                res = 0;
+            end
+        otherwise
+            error('Unsupported call of java_dialog in headless mode.');
+    end
+    return;
+end
+
 % Get all the modal JDialogs
 if ~isempty(jBstFrame)
     jDialogModal = [];
