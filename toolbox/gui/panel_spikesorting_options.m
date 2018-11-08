@@ -42,7 +42,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     end
     
     % Check chosen spike sorter
-    spikeSorter = sProcess.options.spikesorter;
+    spikeSorter = sProcess.options.spikesorter.Value;
     
     % Create main main panel
     jPanelNew = gui_river();
@@ -110,6 +110,13 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     function UpdatePanel(varargin)
         [optionFile, skipLines] = GetSpikeSorterOptionFile(spikeSorter);
         
+        if exist(optionFile, 'file') ~= 2
+            java_dialog('error', 'Could not find spike-sorter''s parameters file.');
+            bstPanelNew = [];
+            bst_mutex('release', panelName);
+            return;
+        end
+        
         fid = fopen(optionFile,'rt');
         idx = 1;
         optionText = {};
@@ -124,8 +131,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
         fclose(fid);
         jTextOptions.setText(char(join(optionText, newline)));
-        
-        disp('Updated panel.');
     end
 end
 
@@ -142,9 +147,33 @@ function [optionFile, skipLines, skipValidate] = GetSpikeSorterOptionFile(spikeS
             optionFile = bst_fullfile(bst_get('BrainstormUserDir'), 'UltraMegaSort2000', 'ss_default_params.m');
             skipLines = 2;
             skipValidate = 1;
+            
+        case 'kilosort'
+            optionFile = bst_fullfile(bst_get('BrainstormUserDir'), 'kilosort', 'KilosortStandardConfig.m');
 
         otherwise
-            bst_error('The chosen spike sorter is currently unsupported by Brainstorm.');
+            error('The chosen spike sorter is currently unsupported by Brainstorm.');
+    end
+    
+    % Check whether the file exists, i.e. the spike sorter is installed
+    if exist(optionFile, 'file') ~= 2
+        if java_dialog('confirm', ...
+                ['The ' spikeSorter ' spike-sorter is not installed on your computer.' 10 10 ...
+                 'Download and install the latest version?'], spikeSorter)
+            switch lower(spikeSorter)
+                case 'waveclus'
+                    process_spikesorting_waveclus('downloadAndInstallWaveClus');
+
+                case 'ultramegasort2000'
+                    process_spikesorting_ultramegasort2000('downloadAndInstallUltraMegaSort2000');
+
+                case 'kilosort'
+                    process_spikesorting_kilosort('downloadAndInstallKiloSort');
+
+                otherwise
+                    error('The chosen spike sorter is currently unsupported by Brainstorm.');
+            end
+        end
     end
 end
 
