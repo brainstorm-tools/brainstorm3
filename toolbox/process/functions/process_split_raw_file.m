@@ -73,10 +73,7 @@ function sOutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         bst_report('Error', sProcess, sInput, ['Event "' evtName '" does not exist in file.']);
         return;
     end
-    sEvent = sFile.events(iEvt);
     keepBadSegments = sProcess.options.keepbadsegments.Value;
-    [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent);
-    numTargets = length(SampleTargets);
     % Get maximum size of a data block
     ProcessOptions = bst_get('ProcessOptions');
     MaxSize = ProcessOptions.MaxBlockSize;
@@ -86,12 +83,15 @@ function sOutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     nCol = length(sMat.Time);
     % Get data matrix
     sFileIn = sMat.(matName);
+    sEvent = sFile.events(iEvt);
     % Make sure required samples are within range
-    if any(or(SampleTargets < sFileIn.prop.samples(1)+1, SampleTargets > sFileIn.prop.samples(2)+1))
+    if any(or(sEvent.samples(:) < sFileIn.prop.samples(1), sEvent.samples(:) > sFileIn.prop.samples(2)))
         bst_report('Error', sProcess, sInput, ['Event sample(s) are not all within the range of the input file: ' ...
             '[' num2str(sFileIn.prop.samples(1)+1) ' - ' num2str(sFileIn.prop.samples(2)+1) '].']);
         return;
     end
+    [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent, sFileIn.prop.samples, sFileIn.prop.times);
+    numTargets = length(SampleTargets);
     % Read the channel file
     if ~isempty(sInput.ChannelFile)
         ChannelMat = in_bst_channel(sInput.ChannelFile);
@@ -230,8 +230,8 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, sInput, sFil
     sFileOut = out_fwrite(sFileOut, ChannelMatOut, 1, SamplesBounds - 1, [], sInput.A(:, SamplesBounds(1)-iFirstSample+1:SamplesBounds(2)-iFirstSample+1));
 end
 
-function [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent, badSegmentPrefix)
-    if nargin < 2 || isempty(badSegmentPrefix)
+function [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent, InputSamples, InputTimes, badSegmentPrefix)
+    if nargin < 4 || isempty(badSegmentPrefix)
         badSegmentPrefix = 'bad_';
     end
 
@@ -244,48 +244,64 @@ function [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent
     end
     % Sort samples
     [samples, indices] = sort(sEvent.samples(1,:));
-    % Convert continuous events to periodic events
+    % Convert extended events to a list of samples representing the sample
+    % after the end of each event.  Overlap is not permitted, and the
+    % entire recording is included in the final list.
     if dimSamples == 2
         samples = sEvent.samples(:,indices);
         times   = round(sEvent.times(:,indices));
-        current = samples(1:2,1);
         SegmentNames = {};
-        BadSegments = [];
-        iGood = 1;
         numZeros = length(num2str(numSamples));
-        % First segment is bad if events doesn't start at 0
-        if current(1) > 0
-            SegmentNames{end + 1} = [badSegmentPrefix zeroPrefix(0, numZeros) '-' zeroPrefix(1, numZeros) '_' GetTimeSuffix([0, times(1,1)])];
-            BadSegments(end + 1) = 1;
-            skipFirst = 0;
-        else
-            skipFirst = 1;
-        end
-        for iSample = 1:numSamples
-            if samples(1,iSample) <= current(2)
-                % Contains previous event, skip
-                current(2) = max(samples(2,iSample), current(2));
-            else
-                % Separate from previous event, save boundaries
-                SampleTargets(end + 1:end + 2) = current(:);
-                SegmentNames{end + 1} = [sEvent.label '_' zeroPrefix(iGood, numZeros) '_' GetTimeSuffix(times(:,iSample-1))];
-                SegmentNames{end + 1} = [badSegmentPrefix zeroPrefix(iGood, numZeros) '-' zeroPrefix(iGood + 1, numZeros) '_' GetTimeSuffix([times(2,iSample-1), times(2,iSample)])];
-                BadSegments(end + 1:end + 2) = [0, 1];
-                iGood = iGood + 1;
-                current = samples(1:2,iSample);
+        BadSegments = [];
+        
+        % Add "start" event, just before the first recording sample.
+        samples = [[InputSamples(1)-1; InputSamples(1)-1], samples];
+        times = [round([InputTimes(1); InputTimes(1)]), times];
+        % Add "end" event, right after last recording sample.
+        samples(:, end + 1) = [InputSamples(2)+1; InputSamples(2)+1];
+        times(:, end + 1) = round([InputTimes(2); InputTimes(2)]);
+        
+        isOverlap = false;
+        iGood = 0;
+        for iSample = 2:size(samples, 2)
+          if samples(1, iSample) <= samples(2, iSample-1)
+            % This extended event overlaps with the previous one. There will be a warning later.
+            isOverlap = true;
+            if samples(2, iSample) > samples(1, iSample-1)
+              % Keep the non-overlapping part. 
+              samples(1, iSample) = samples(2, iSample-1) + 1;
+              times(1, iSample) = times(2, iSample-1);
+            else % entirely contained in previous event.
+              continue;
             end
+          elseif samples(1, iSample) > samples(2, iSample-1) + 1 % +1 because end sample of extended event boundaries are inclusive
+            % There are samples between the two events, add them as bad.
+            SampleTargets(end + 1) = samples(2, iSample-1) + 1;
+            BadSegments(end + 1) = 1;
+            SegmentNames{end + 1} = [badSegmentPrefix zeroPrefix(iGood, numZeros) '-' zeroPrefix(iGood + 1, numZeros) '_' GetTimeSuffix([times(2,iSample-1), times(1,iSample)])];
+          end
+          % Add the event current event.
+          SampleTargets(end + 1) = samples(1, iSample);
+          BadSegments(end + 1) = 0;
+          iGood = iGood + 1;
+          SegmentNames{end + 1} = [sEvent.label '_' zeroPrefix(iGood, numZeros) '_' GetTimeSuffix(times(:,iSample))];
         end
-        % Save last event
-        SampleTargets(end + 1:end + 2) = current(:);
-        SegmentNames{end + 1} = [sEvent.label '_' zeroPrefix(iGood, numZeros) '_' GetTimeSuffix(times(:,numSamples))];
-        SegmentNames{end + 1} = [badSegmentPrefix zeroPrefix(iGood, numZeros) '_' GetTimeSuffix({times(2,numSamples), 'end'})];
-        BadSegments(end + 1:end + 2) = [0, 1];
-        % Remove zero if included in first segment
-        if skipFirst
-            SampleTargets = SampleTargets(2:end);
+        
+        if isOverlap
+          fprintf('BST> Split raw file does not allow overlaping events.  Some events were truncated.\n');
         end
+
+        % We don't need the first start sample, which is the first sample of the recording.
+        SampleTargets(1) = [];
+        % Also remove the "end" event name and bad flag.
+        BadSegments(end) = [];
+        SegmentNames(end) = [];
     else
+        samples(end+1) = InputSamples(2)+1;
         SampleTargets = samples;
+        if SampleTargets(1) == InputSamples(1)
+          SampleTargets(1) = [];
+        end
         SegmentNames = CreateCellNumberList(numSamples + 1);
         BadSegments = zeros(1, numSamples + 1);
     end
