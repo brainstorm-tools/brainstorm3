@@ -42,19 +42,31 @@ while 1
     if isempty(strLine)
         continue;
     end
-    % The line must contain the column names (eg. "Trial") before we start reading values
+    % The line must contain the column names (eg. "Event Type") before we start reading values
     if isHeader
-        if ~isempty(strfind(strLine, 'Trial'))
+        if ~isempty(strfind(strLine, 'Event Type'))
+            % Figure out position of columns we need
+            cellLine = str_split(strLine, sprintf('\t'));
+            iCode = find(strcmpi(cellLine, 'Code'));
+            iTime = find(strcmpi(cellLine, 'Time'));
+            % Default positions if we can't figure them out
+            if isempty(iCode)
+                iCode = 3;
+            end
+            if isempty(iTime)
+                iTime = 4;
+            end
+            numCells = max(iCode, iTime);
             isHeader = 0;
         end
         continue;
     end
     % Split line
-    cellLine = str_split(strLine, sprintf(' \t'));
+    cellLine = str_split(strLine, sprintf('\t'));
     % If the line contains enough entries: use it
-    if (length(cellLine) >= 4) && ~isempty(str2num(cellLine{4}))
-        mrkType{end+1} = cellLine{3};
-        mrkTime(end+1) = str2num(cellLine{4});
+    if (length(cellLine) >= numCells) && ~isempty(str2num(cellLine{iTime}))
+        mrkType{end+1} = cellLine{iCode};
+        mrkTime(end+1) = str2num(cellLine{iTime});
     end
 end
 % Close file
