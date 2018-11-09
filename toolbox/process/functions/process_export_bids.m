@@ -86,7 +86,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % MEG sidecar metadata
     sProcess.options.megmeta.Comment = 'Additional MEG sidecar JSON fields: ';
     sProcess.options.megmeta.Type    = 'textarea';
-    sProcess.options.megmeta.Value   = ['{' 10 '  "TaskDescription": "My task"' 10 '}'];
+    sProcess.options.megmeta.Value   = ['{' 10 '  "Manufacturer": "CTF"' 10 '}'];
 end
 
 
@@ -210,13 +210,13 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         % Skip unsupported formats
         DataMat = in_bst_data(sInput.FileName);
         sFile = DataMat.F;
-        if ~isempty(sFile.device) && ~ismember(lower(sFile.device), {'ctf', 'neuromag'})
-            disp(['Skipping file "' sFile.filename '" due to unsupported format...']);
+        if (~isempty(sFile.device) && ~ismember(sFile.device, {'CTF'})) || isempty(sFile.format) || ~ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS', 'BST-BIN'})
+            disp(['Skipping file "' sFile.comment '" due to unsupported format...']);
             continue;
         end
         
         % If BST binary file, find original raw file
-        if strcmpi(sFile.format, 'BST-BIN')
+        if strcmpi(sFile.format, 'BST-BIN') && strcmpi(sFile.device, 'CTF')
             sFile.filename = ExtractOriginalBstFilename(DataMat);
             disp(['Warning: File "', sFile.comment, '" already imported in binary format.', ...
                 10, '         Using raw link "', sFile.filename, '" instead.']);
@@ -342,7 +342,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         
         %% Extract task name
         isCtf = strcmpi(sFile.device, 'CTF');
-        isElekta = strcmpi(sFile.device, 'Neuromag');
         [rawFolder, rawName, rawExt] = fileparts(sFile.filename);
         prefix = [FormatId(subjectId, subScheme, 'sub') '_' FormatId(sessionId, sesScheme, 'ses')];
         prefixTask = [prefix '_task-'];
@@ -365,8 +364,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             % Find task name from format specific metadata if possible
             if isCtf
                 taskName = ExtractCtfTaskname(sFile);
-            elseif isElekta
-                taskName = ExtractFifTaskname(sFile);
             end
             
             % Otherwise, extract task name from condition
@@ -412,8 +409,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         % Extract format-specific metadata
         if isCtf
             customMetadata = ExtractCtfMetadata(fileparts(sFile.filename));
-        elseif isElekta
-            customMetadata = ExtractFifMetadata(sFile.filename);
         else
             customMetadata = struct();
         end
@@ -767,16 +762,6 @@ function metadata = ExtractCtfMetadata(ds_directory)
     end
 end
 
-function metadata = ExtractFifMetadata(fifFile)
-    metadata = struct();
-    metadata.SoftwareFilters = 'n/a';
-    %TODO: Current MNE matlab readers do not import the processing history
-    % and SSS info from FIF files. Someone more experienced with the format
-    % could implement something similar to mne/io/proc_history.py and add
-    % that information here under SoftwareFilters. For now, let the user
-    % enter them manually if they so desire, like other BIDS exporters.
-end
-
 
 function taskName = ExtractCtfTaskname(sFile)
     taskName = [];
@@ -793,17 +778,6 @@ function taskName = ExtractCtfTaskname(sFile)
                 end
             end
         end
-    end
-end
-
-function taskName = ExtractFifTaskname(sFile)
-    try
-        [fid, tree] = fiff_open(sFile.filename);
-        info = fiff_read_meas_info(fid, tree);
-        fclose(fid);
-        taskName = info.proj_name;
-    catch
-        taskName = [];
     end
 end
 

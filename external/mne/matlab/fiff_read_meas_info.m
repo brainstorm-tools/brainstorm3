@@ -110,8 +110,6 @@ end
 dev_head_t=[];
 ctf_head_t=[];
 meas_date=[];
-proj_id = [];
-proj_name = [];
 p = 0;
 for k = 1:meas_info.nent
     kind = meas_info.dir(k).kind;
@@ -146,12 +144,6 @@ for k = 1:meas_info.nent
                     cand.to == FIFF.FIFFV_COORD_HEAD
                 ctf_head_t = cand;
             end
-        case FIFF.FIFF_PROJ_ID
-            tag = fiff_read_tag(fid,pos);
-            proj_id = tag.data;
-        case FIFF.FIFF_PROJ_NAME
-            tag = fiff_read_tag(fid,pos);
-            proj_name = tag.data;
     end
 end
 %
@@ -347,8 +339,6 @@ info.projs = projs;
 info.comps = comps;
 info.acq_pars = acq_pars;
 info.acq_stim = acq_stim;
-info.proj_id = proj_id;
-info.proj_name = proj_name;
 
 if open_here
     fclose(fid);

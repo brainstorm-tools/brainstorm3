@@ -535,12 +535,6 @@ FIFF.FIFF_UNITM_P    = -12;
 FIFF.FIFF_UNITM_F    = -15;
 FIFF.FIFF_UNITM_A    = -18;
 
-%
-% Project info
-%
-FIFF.FIFF_PROJ_ID   = 500;
-FIFF.FIFF_PROJ_NAME = 501;
-
 return
 
 end
