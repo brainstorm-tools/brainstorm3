@@ -28,11 +28,8 @@ function varargout = process_sss( varargin )
   % Authors: Marc Lalancette, 2018
   
   % TO DO: 
-  % Finish changing due to adjust_head_position changes.
-  % Temporal SSS.
-  % Translation for where to put harmonic expansion origin?
-  % Units/dimensions for spherical harmonics?
   % tSSS, how long of chunks do we need for stable separation?
+  % tSSS, how do we avoid jumps between chunks?
   % SSS, (and tSSS!) we need to keep track of the empty subspace as in SSP, for source modeling?
   % How would that work in combination with SSP/ICA?
   
@@ -99,6 +96,9 @@ function Comment = FormatComment(sProcess)
   % Seems no word wrap and no color.  Need small comments.
   if sProcess.options.temporal.Value && (LIn < 1 || LOut < 1)
     Comment = 'Error: tSSS cleaning requires orders [1, 1] or more.';
+    % For now allow temporal without spatial, though it is strange.
+    %   elseif sProcess.options.temporal.Value && ~sProcess.options.spatial.Value
+    %     Comment = 'Error: tSSS cleaning requires spatial SSS as well.';
   elseif sProcess.options.spatial.Value && (LIn < 1 || LOut < 0)
     Comment = 'Error: SSS cleaning requires orders [0, 1] or more.';
   elseif sProcess.options.temporal.Value && sProcess.options.spatial.Value
@@ -135,7 +135,11 @@ function sInput = Run(sProcess, sInput)
   LIn = sProcess.options.exporder.Value{1}(2);
   LOut = sProcess.options.exporder.Value{1}(1);
   if sProcess.options.temporal.Value && (LIn < 1 || LOut < 1)
-    bst_error('tSSS requires SSS cleaning and expansion orders at minimum [1, 1].');
+    bst_error('tSSS cleaning requires expansion orders at minimum [1, 1].');
+  end
+  if sProcess.options.temporal.Value && ~sProcess.options.spatial.Value
+    fprintf(['BST> tSSS without spatial SSS is unusual: it would in theory only remove artefacts \n', ...
+      'that are very close to the sensors and keep those originating from further away.\n']);
   end
   if sProcess.options.spatial.Value && (LIn < 1 || LOut < 0)
     bst_error('SSS cleaning requires expansion orders at minimum [0, 1].');
@@ -154,8 +158,8 @@ function sInput = Run(sProcess, sInput)
   % It is not obvious how to best combine reference channels and SSS.  For
   % head motion correction only, it makes sense to treat them as regular
   % channels, thus undo the compensation before and reapply it after.
-  iRef = good_channel(ChannelMat.Channel, [], 'MEG REF');
-  iMeg = good_channel(ChannelMat.Channel, ChannelMat.ChannelFlag, 'MEG');
+  iRef = good_channel(ChannelMat.Channel, sInput.ChannelFlag, 'MEG REF');
+  iMeg = good_channel(ChannelMat.Channel, sInput.ChannelFlag, 'MEG');
   if strcmpi(sInput.FileType, 'raw')
     DataMat = in_bst_data(sInput.FileName, 'F');
     sFile = DataMat.F;
@@ -176,7 +180,7 @@ function sInput = Run(sProcess, sInput)
     iRef = [];
   end
   if isUndoCtfComp
-    sInput.A(iMeg,:) = sInput.A(iMeg,:) + ChannelMat.MegRefCoef * sInput.A(iRef,:);
+    sInput.A(iMeg, :) = sInput.A(iMeg, :) + ChannelMat.MegRefCoef(iMeg, iRef) * sInput.A(iRef, :);
   end
    
   % Need to keep this after CTF compensation.
@@ -214,25 +218,32 @@ function sInput = Run(sProcess, sInput)
   
     
   % Get channel locations and orientations per sensor coil. 
-  [InitLoc, InitOrient, CoilToChannel] = ...
-    CoilGeometry(ChannelMat.Channel, ChannelMat.ChannelFlag);
-  
+  [InitLoc, InitOrient, CoilToChannel, ExpansionOrigin] = ...
+    CoilGeometry(ChannelMat.Channel, iMegRef);
   % We may want to translate the coil locations such that the origin of the
-  % spherical harmonic expansion is better centered on the brain.
-  %   InitLoc = bsxfun(@minus, InitLoc, ExpansionOrigin);
+  % spherical harmonic expansion is better centered on the brain.  For now,
+  % use the approximate center of the MEG sensor coils.
+  %   InitLoc -> bsxfun(@minus, InitLoc, ExpansionOrigin);
+  % Also, for numerical stability we want the values of r to be close to 1,
+  % so that the expansion coefficients are also of that order.  Locations
+  % are in meters, maybe better in dm?
+  %   InitLoc -> InitLoc * ExpansionScale;
+  ExpansionScale = 10;
+  
   
   % Get the SSS basis matrix for inside and outside sources at the
   % reference head position.
-  [InitSIn, InitSOut] = SphericalBasis(LIn, LOut, InitLoc, InitOrient, CoilToChannel);
+  [InitSIn, InitSOut] = SphericalBasis(LIn, LOut, ...
+    bsxfun(@minus, InitLoc, ExpansionOrigin) * ExpansionScale, ...
+    InitOrient, CoilToChannel);
   
   if sProcess.options.motion.Value
     % For head motion correction, compute sensor locations through time.
     
     % Verify that we can compute the transformation from initial to
-    % each continuous head tracking position.
-    if ~strcmp(ChannelMat.TransfMegLabels{1}, 'Dewar=>Native')
-      bst_error('Dewar=>Native transformation not first.');
-    end
+    % each continuous head tracking position, and get required
+    % transformation matrices.
+    [TransfBefore, TransfAfter] = GetTransforms(ChannelMat);
     
     % Compute initial head location.  This isn't exactly the coil positions
     % in the .hc file, but was verified to give the same transformation.
@@ -270,6 +281,7 @@ function sInput = Run(sProcess, sInput)
 %         nSamples = diff(sFile.prop.samples) + 1; % This is single epoch samples if epoched.
     % In case the recording was aborted.
     iLastSample = nSamples;
+    SpherCoeffs = zeros(nChannels, nSamples);
     for iHeadSample = 1:nHeadSamples
       % If a collection was aborted, the channels will be filled with
       % zeros. We must ignore these samples.
@@ -281,7 +293,7 @@ function sInput = Run(sProcess, sInput)
       %           B = in_fread(sFile, ChannelMat, iEpoch, SampleBounds, iMegRef);
       % Compute transformation corresponding to coil position.
       TransfMat = process_adjust_head_position('LocationTransform', ...
-        HeadCoilLoc(:, iHeadSample), ChannelMat.TransfMeg, iDewar);
+        HeadCoilLoc(:, iHeadSample), TransfBefore, TransfAfter);
       
       % Modify channel positions.
       %       ChannelMat = channel_apply_transf(ChannelMat, TransfMat, [], false);
@@ -289,27 +301,18 @@ function sInput = Run(sProcess, sInput)
       Orient = TransfMat(1:3, 1:3) * InitOrient;
       
       % Get the SSS basis matrix for inside and outside sources.
-      [SIn, SOut] = SphericalBasis(LIn, LOut, Loc, Orient, CoilToChannel);
+      [SIn, SOut] = SphericalBasis(LIn, LOut, ...
+        bsxfun(@minus, Loc, ExpansionOrigin) * ExpansionScale, ...
+        Orient, CoilToChannel);
       
       % Get data corresponding to this head sample.
       SampleStart = (iHeadSample - 1) * HeadSamplePeriod + 1;
       SampleBounds = [SampleStart, min(SampleStart+HeadSamplePeriod, iLastSample)];
       
       % Compute coefficients as function of time.
-      SpherCoeffs = [SIn, SOut] \ sInput.A(iMegRef, SampleBounds);
+      SpherCoeffs(:, SampleBounds) = [SIn, SOut] \ sInput.A(iMegRef, SampleBounds);
       
-      % Project back to sensor space and at reference head position.
-      if sProcess.options.spatial.Value
-        % Clean using inside basis only.
-        sInput.A(iMegRef, SampleBounds) = InitSIn * SpherCoeffs(1:size(InitSIn, 2), :);
-      else
-        % Use complete basis.
-        sInput.A(iMegRef, SampleBounds) = [InitSIn, InitSOut] * SpherCoeffs;
-      end
-      
-      %       SampleStart = SampleStart + SampleBounds(2) - SampleBounds(1) + 1;
     end % Head samples loop
-    %       end % Epochs loop
     
     % Also modify the head coil channels, such that the fact we
     % corrected for motion is known by other processes.
@@ -318,64 +321,60 @@ function sInput = Run(sProcess, sInput)
     end
     
   else % don't correct for head motion
-%       % Get all the data, possibly in chunks.
-%       nEpochs = numel(sFile.epochs);
-%       if nEpochs == 0
-%         nEpochs = 1;
-%       end
-%       for iEpoch = 1:nEpochs
-%         % Samples in this trial.
-%         nSamples = diff(sFile.prop.samples) + 1; % This is single epoch samples if epoched.
-%         % Current starting sample.
-%         SampleStart = 1;
-%         ChunkSize = nSamples;
-%         while SampleStart <= nSamples
-%           B = in_fread(sFile, ChannelMat, iEpoch, ...
-%             [SampleStart, min(SampleStart + ChunkSize - 1, nSamples)], iMeg);
     % Compute coefficients as function of time.
     SpherCoeffs = [InitSIn, InitSOut] \ sInput.A(iMegRef, :);
     % Can split them into In and Out components.
     
-    if sProcess.options.spatial.Value
-      % Project back to sensor space using inside basis only.
-      sInput.A(iMegRef, :) = InitSIn * SpherCoeffs(1:size(InitSIn, 2), :);
-    end
-    
-%           SampleStart = SampleStart + size(B, 2);
-%         end
-%       end
-      
   end % if correct for head motion
     
+  
+  nIn = size(InitSIn, 2);
   if sProcess.options.temporal.Value
     % Temporal SSS
-    nIn = size(InitSIn, 2);
+    % Intersection of in and out temporal subspaces.
     L = Intersect(SpherCoeffs(1:nIn, :), SpherCoeffs((nIn+1):end, :), ...
       TemporalIntersectAllowance);
   end
     
+  % Project back to sensor space and at reference head position.
+  if sProcess.options.spatial.Value
+    if sProcess.options.temporal.Value
+      % Remove in and out intersection from coefficients first.
+      SpherCoeffs(1:nIn, :) = SpherCoeffs(1:nIn, :) - ...
+        SpherCoeffs(1:nIn, :) * L * L'; %#ok<*MHERM>
+    end
+    % Project back to sensor space using inside basis only.
+    sInput.A(iMegRef, :) = InitSIn * SpherCoeffs(1:nIn, :);
+  else
+    if sProcess.options.temporal.Value
+      % Remove in and out intersection from coefficients first.
+      SpherCoeffs = SpherCoeffs - SpherCoeffs * L * L';
+    end
+    % Use complete basis.
+    sInput.A(iMegRef, :) = [InitSIn, InitSOut] * SpherCoeffs;
+  end
     
   if isUndoCtfComp
-    sInput.A(iMeg,:) = sInput.A(iMeg,:) - ChannelMat.MegRefCoef * sInput.A(iRef,:);
+    sInput.A(iMeg, :) = sInput.A(iMeg, :) - ChannelMat.MegRefCoef(iMeg, iRef) * sInput.A(iRef, :);
   end
-%   end
   
 end
 
 
 
-function [Loc, Orient, CoilToChannel] = CoilGeometry(Channel, Flag)
+function [Loc, Orient, CoilToChannel, Origin] = CoilGeometry(Channel, iMegRef)
   % Get channel locations and orientations per coil. They were converted to
   % 4 points per coil when the dataset was first loaded. We could have an
   % option to keep the 4 points, but it really seems unnecessary, so for
   % efficiency, keep one location and one orientation per coil.
-  iMegRef = sort([good_channel(Channel, [], 'MEG REF'), ...
-    good_channel(Channel, Flag, 'MEG')]);
+  
   nChannels = numel(iMegRef);
-
   Loc = zeros(3, 2*nChannels);
   Orient = Loc;
   CoilToChannel = zeros(nChannels, 2*nChannels);
+  % Find the approximate center of all "inner" MEG coils.
+  Origin = zeros(3, 2);
+  
   iCoil = 1;
   for c = 1:nChannels
     cc = iMegRef(c);
@@ -385,6 +384,10 @@ function [Loc, Orient, CoilToChannel] = CoilGeometry(Channel, Flag)
         Loc(:, iCoil) = mean(Channel(cc).Loc(:, 1:4), 2);
         Orient(:, iCoil) = Channel(cc).Orient(:, 1);
         CoilToChannel(c, iCoil) = sum(Channel(cc).Weight(:, 1:4), 2);
+        if strcmp(Channel(cc).Type, 'MEG')
+          Origin(:, 1) = min([Origin(:, 1), Loc(:, iCoil)], [], 2);
+          Origin(:, 2) = max([Origin(:, 2), Loc(:, iCoil)], [], 2);
+        end
         iCoil = iCoil + 1;
       case 8
         Loc(:, iCoil+(0:1)) = [ mean(Channel(cc).Loc(:, 1:4), 2), ...
@@ -392,6 +395,10 @@ function [Loc, Orient, CoilToChannel] = CoilGeometry(Channel, Flag)
         Orient(:, iCoil+(0:1)) = Channel(cc).Orient(:, [1,5]);
         CoilToChannel(c, iCoil+(0:1)) = [ sum(Channel(cc).Weight(:, 1:4), 2), ...
           sum(Channel(cc).Weight(:, 5:8), 2) ];
+        if strcmp(Channel(cc).Type, 'MEG')
+          Origin(:, 1) = min([Origin(:, 1), max(Loc(:, iCoil+(0:1)), [], 2)], [], 2);
+          Origin(:, 2) = max([Origin(:, 2), min(Loc(:, iCoil+(0:1)), [], 2)], [], 2);
+        end
         iCoil = iCoil + 2;
       otherwise
         bst_error('Unexpected number of coil location points.');
@@ -401,6 +408,8 @@ function [Loc, Orient, CoilToChannel] = CoilGeometry(Channel, Flag)
   Loc(:, nCoils+1:end) = [];
   Orient(:, nCoils+1:end) = [];
   CoilToChannel(:, nCoils+1:end) = [];
+  % Center between max and min.
+  Origin = (Origin(:, 2) - Origin(:, 1)) / 2;
 end
 
 
@@ -416,7 +425,7 @@ function [SIn, SOut] = SphericalBasis(LIn, LOut, Loc, Orient, CoilToChannel, isR
   if nargin < 5
     error('Expecting more arguments.');
   end
-  
+
   % Convert sensor locations to spherical coordinates.
   [r, t, p] = cart2spher(Loc'); % Column vectors.
   

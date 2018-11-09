@@ -165,13 +165,14 @@ function OutputFiles = Run(sProcess, sInputs)
           % Display "after" results, besides the "before" figure.
           hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
         end
+        
+        % Give an idea of the distance we moved.
+        AfterRefLoc = ReferenceHeadLocation(ChannelMat);
+        DistanceAdjusted = process_evt_head_motion('RigidDistances', AfterRefLoc, InitRefLoc);
+        fprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3);
+        
       end
       bst_progress('stop');
-      
-      % Give an idea of the distance we moved.
-      AfterRefLoc = ReferenceHeadLocation(ChannelMat);
-      DistanceAdjusted = process_evt_head_motion('RigidDistances', AfterRefLoc, InitRefLoc);
-      fprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3);
       
     case {'UndoAdjust', 'UndoRefine'}
       isHeadPoints = strcmp(sProcess.options.action.Value, 'UndoRefine');

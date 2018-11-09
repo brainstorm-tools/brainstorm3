@@ -58,6 +58,7 @@ end
 %% ===== RUN =====
 function sOutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     sOutputFiles = {};
+    bst_progress('start', 'Split raw file', 'Preparing file...');
     % Extract event
     evtName = strtrim(sProcess.options.eventname.Value);
     if isempty(evtName)
@@ -122,13 +123,13 @@ function sOutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Loop on samples
     iFile = 1;
     iNextSample = 1;
-    newFile = ~BadSegments(1) || keepBadSegments;
+    newFile = 1;
     sFileOut = [];
+    bst_progress('start', 'Split raw file', 'Splitting file...', 0, nBlockCol);
     
     for iBlockCol = 1:nBlockCol
         % Indices of columns to process
-        iCol = 1 + (((iBlockCol-1)*BlockSizeCol) : min(iBlockCol * BlockSizeCol - 1, nCol - 1));
-        SamplesBounds = sFileIn.prop.samples(1) + iCol([1,end]);
+        SamplesBounds = sFileIn.prop.samples(1) + [(iBlockCol-1) * BlockSizeCol + 1, min(iBlockCol * BlockSizeCol, nCol)];
         % Read block
         sInput.A = in_fread(sFileIn, ChannelMat, 1, SamplesBounds-1);
         % Check whether current block contains a sample of interest
@@ -136,7 +137,7 @@ function sOutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         while iNextSample <= numTargets && SampleTargets(iNextSample) < SamplesBounds(2)
             % Get chunk before sample of interest
             [sFileOut, iFile, sOutputFiles] = SaveBlock([iBeforeSample, SampleTargets(iNextSample)-1], ...
-                sInput, sFileIn, sFileOut, ChannelMat, newCondition, sMat, iFile, newFile, sOutputFiles, iNextSample, SampleTargets, SegmentNames, BadSegments, keepBadSegments);
+                sInput, sFileIn, sFileOut, ChannelMat, newCondition, sMat, iFile, newFile, sOutputFiles, iNextSample, SampleTargets, SegmentNames, BadSegments, keepBadSegments, SamplesBounds(1));
             iBeforeSample = SampleTargets(iNextSample);
             newFile = 1;
             iNextSample = iNextSample + 1;
@@ -144,15 +145,16 @@ function sOutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % Get chunk after sample of interest
         if iBeforeSample < SamplesBounds(2)
             [sFileOut, iFile, sOutputFiles] = SaveBlock([iBeforeSample, SamplesBounds(2)], ...
-                sInput, sFileIn, sFileOut, ChannelMat, newCondition, sMat, iFile, newFile, sOutputFiles, iNextSample, SampleTargets, SegmentNames, BadSegments, keepBadSegments);
+                sInput, sFileIn, sFileOut, ChannelMat, newCondition, sMat, iFile, newFile, sOutputFiles, iNextSample, SampleTargets, SegmentNames, BadSegments, keepBadSegments, SamplesBounds(1));
         end
         newFile = 0;
+        bst_progress('inc', 1);
     end
 end
 
-function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, sInput, sFileIn, sFileOut, ChannelMat, newCondition, sMat, iFile, newFile, sOutputFiles, iNextSample, SampleTargets, SegmentNames, BadSegments, keepBadSegments)
+function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, sInput, sFileIn, sFileOut, ChannelMat, newCondition, sMat, iFile, newFile, sOutputFiles, iNextSample, SampleTargets, SegmentNames, BadSegments, keepBadSegments, iFirstSample)
     % If this is a bad segment, skip when appropriate
-    iSegmentFile = min(iFile, length(BadSegments));
+    iSegmentFile = min(iNextSample, length(BadSegments));
     if BadSegments(iSegmentFile) && ~keepBadSegments
         if newFile
             iFile = iFile + 1;
@@ -161,10 +163,6 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, sInput, sFil
     end
     
     if newFile
-        % Make sure we're not creating more segments than expected
-        if iSegmentFile ~= iFile
-            error('Incoherent number of segments.');
-        end
         ProtocolInfo = bst_get('ProtocolInfo');
         % Get new condition name
         newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInput.SubjectName, [newCondition '_' SegmentNames{iFile}]));
@@ -203,6 +201,9 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, sInput, sFil
         sOutMat.F = sFileOut;
         % Remove events out of bounds
         for iEvent = 1:length(sOutMat.F.events)
+            if isempty(sOutMat.F.events(iEvent).times)
+                continue
+            end
             iKeepEvents = find(and(sOutMat.F.events(iEvent).times(1,:) >= sOutMat.Time(1), sOutMat.F.events(iEvent).times(end,:) <= sOutMat.Time(2)));
             sOutMat.F.events(iEvent).epochs = sOutMat.F.events(iEvent).epochs(iKeepEvents);
             sOutMat.F.events(iEvent).samples = sOutMat.F.events(iEvent).samples(:,iKeepEvents);
@@ -226,7 +227,7 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, sInput, sFil
     % Output channel file
     ChannelMatOut = ChannelMat;
     % Write block
-    sFileOut = out_fwrite(sFileOut, ChannelMatOut, 1, SamplesBounds - 1, [], sInput.A);
+    sFileOut = out_fwrite(sFileOut, ChannelMatOut, 1, SamplesBounds - 1, [], sInput.A(:, SamplesBounds(1)-iFirstSample+1:SamplesBounds(2)-iFirstSample+1));
 end
 
 function [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent, badSegmentPrefix)
@@ -251,9 +252,10 @@ function [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent
         SegmentNames = {};
         BadSegments = [];
         iGood = 1;
+        numZeros = length(num2str(numSamples));
         % First segment is bad if events doesn't start at 0
         if current(1) > 0
-            SegmentNames{end + 1} = [badSegmentPrefix '1_' GetTimeSuffix([0, times(1,1)])];
+            SegmentNames{end + 1} = [badSegmentPrefix zeroPrefix(0, numZeros) '-' zeroPrefix(1, numZeros) '_' GetTimeSuffix([0, times(1,1)])];
             BadSegments(end + 1) = 1;
             skipFirst = 0;
         else
@@ -266,8 +268,8 @@ function [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent
             else
                 % Separate from previous event, save boundaries
                 SampleTargets(end + 1:end + 2) = current(:);
-                SegmentNames{end + 1} = [sEvent.label '_' num2str(iGood) '_' GetTimeSuffix(times(:,iSample-1))];
-                SegmentNames{end + 1} = [badSegmentPrefix num2str(iGood) '-' num2str(iGood + 1) '_' GetTimeSuffix([times(2,iSample-1), times(2,iSample)])];
+                SegmentNames{end + 1} = [sEvent.label '_' zeroPrefix(iGood, numZeros) '_' GetTimeSuffix(times(:,iSample-1))];
+                SegmentNames{end + 1} = [badSegmentPrefix zeroPrefix(iGood, numZeros) '-' zeroPrefix(iGood + 1, numZeros) '_' GetTimeSuffix([times(2,iSample-1), times(2,iSample)])];
                 BadSegments(end + 1:end + 2) = [0, 1];
                 iGood = iGood + 1;
                 current = samples(1:2,iSample);
@@ -275,8 +277,8 @@ function [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent
         end
         % Save last event
         SampleTargets(end + 1:end + 2) = current(:);
-        SegmentNames{end + 1} = [sEvent.label '_' num2str(iGood) '_' GetTimeSuffix(times(:,numSamples))];
-        SegmentNames{end + 1} = [badSegmentPrefix num2str(iGood) '_' GetTimeSuffix({times(2,numSamples), 'end'})];
+        SegmentNames{end + 1} = [sEvent.label '_' zeroPrefix(iGood, numZeros) '_' GetTimeSuffix(times(:,numSamples))];
+        SegmentNames{end + 1} = [badSegmentPrefix zeroPrefix(iGood, numZeros) '_' GetTimeSuffix({times(2,numSamples), 'end'})];
         BadSegments(end + 1:end + 2) = [0, 1];
         % Remove zero if included in first segment
         if skipFirst
@@ -309,5 +311,12 @@ function Suffix = GetTimeSuffix(time)
         else
             Suffix = [Suffix '-' time{2}];
         end
+    end
+end
+
+function str = zeroPrefix(n, numZeros)
+    str = num2str(n);
+    while length(str) < numZeros
+        str = ['0' str];
     end
 end
