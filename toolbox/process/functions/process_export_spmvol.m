@@ -31,7 +31,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Export to SPM8 (volume)';
+    sProcess.Comment     = 'Export to SPM8/SPM12 (volume)';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'File';
     sProcess.Index       = 980;
@@ -379,7 +379,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         if isfield(sMriOut, 'SCS') 
                             for fidname = {'NAS','LPA','RPA','T','Origin'}
                                 if isfield(sMriOut.SCS, fidname{1}) && ~isempty(sMriOut.SCS.(fidname{1}))
-                                    sMriOut.SCS.(fidname{1}) = FixFiducials(sMriOut.Voxsize, isEmptySlice, sMriOut.SCS.(fidname{1}));
+                                    sMriOut.SCS.(fidname{1}) = FixFiducials(sMriOut.Voxsize, isEmptySlice, sMriOut.SCS.(fidname{1}), VolDownsample);
                                 end
                             end
 %                             sMriOut.SCS.T = [];
@@ -389,7 +389,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         if isfield(sMriOut, 'NCS') 
                             for fidname = {'AC','PC','IH','T','Origin'}
                                 if isfield(sMriOut.NCS, fidname{1}) && ~isempty(sMriOut.NCS.(fidname{1}))
-                                    sMriOut.NCS.(fidname{1}) = FixFiducials(sMriOut.Voxsize, isEmptySlice, sMriOut.NCS.(fidname{1}));
+                                    sMriOut.NCS.(fidname{1}) = FixFiducials(sMriOut.Voxsize, isEmptySlice, sMriOut.NCS.(fidname{1}), VolDownsample);
                                 end
                             end
 %                             sMriOut.NCS.T = [];
@@ -451,9 +451,9 @@ end
 
 
 %% ===== FIX FIDUCIALS =====
-function P = FixFiducials(Voxsize, isEmptySlice, P)
+function P = FixFiducials(Voxsize, isEmptySlice, P, VolDownsample)
     for dim = 1:3
-        P(dim) = P(dim) - nnz(isEmptySlice{dim} <= P(dim) ./ Voxsize(dim)) .* Voxsize(dim);
+        P(dim) = P(dim) - nnz(isEmptySlice{dim} <= P(dim) ./ Voxsize(dim)) .* Voxsize(dim) ./ VolDownsample;
     end
 end
 

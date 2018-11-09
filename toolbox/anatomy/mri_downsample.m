@@ -36,7 +36,7 @@ if any(size(Cube) < 3) || (n <= 1)
 end
 
 % Get current size
-oldSize = size(Cube);
+% oldSize = size(Cube);
 % Create smoothing kernel for uniform smoothing
 K = ones(n,n,n) ./ n^3;
 % Apply convolution kernel
@@ -48,8 +48,49 @@ Cube = Cube(1:n:end, 1:n:end, 1:n:end);
 if isstruct(sMri)
     sMri.Cube = Cube;
     % Update voxel size
-    fscale = oldSize ./ size(sMri.Cube);
+%     fscale = oldSize ./ size(sMri.Cube);
+    fscale = [n n n];
     sMri.Voxsize = fscale .* sMri.Voxsize;
+    Tdownsample = diag([fscale, 1]);
+    % Update vox2mri transformation in Brainstorm structure
+    if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && any(ismember(sMri.InitTransf(:,1), 'vox2ras'))
+        iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
+        sMri.InitTransf{iTransf(1),2} = Tdownsample * sMri.InitTransf{iTransf(1),2};
+    end
+    % Update vox2mri transformation in nifti header
+    if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'vox2ras', 'srow_x', 'srow_y', 'srow_z'}))
+        sMri.Header.nifti.vox2ras = Tdownsample * sMri.Header.nifti.vox2ras;
+        sMri.Header.nifti.vox2ras = Tdownsample(1,1) * sMri.Header.nifti.srow_x;
+        sMri.Header.nifti.vox2ras = Tdownsample(2,2) * sMri.Header.nifti.srow_y;
+        sMri.Header.nifti.vox2ras = Tdownsample(3,3) * sMri.Header.nifti.srow_z;
+    end
+    % Update the fiducial coordinates (used as the origin of the volume)
+    if isfield(sMri, 'SCS') 
+        for fidname = {'NAS','LPA','RPA','Origin'}
+            if isfield(sMri.SCS, fidname{1}) && ~isempty(sMri.SCS.(fidname{1}))
+                sMri.SCS.(fidname{1}) = sMri.SCS.(fidname{1}) ./ fscale;
+            end
+            if isfield(sMri.SCS, 'T') && ~isempty(sMri.SCS.T)
+                sMri.SCS.T = sMri.SCS.T ./ fscale';
+            end
+            if isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R)
+                sMri.SCS.R = diag(1./fscale) * sMri.SCS.R;
+            end
+        end
+    end
+    if isfield(sMri, 'NCS') 
+        for fidname = {'AC','PC','IH','Origin'}
+            if isfield(sMri.NCS, fidname{1}) && ~isempty(sMri.NCS.(fidname{1}))
+                sMri.NCS.(fidname{1}) = sMri.NCS.(fidname{1}) ./ fscale;
+            end
+            if isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
+                sMri.NCS.T = sMri.NCS.T ./ fscale';
+            end
+            if isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R)
+                sMri.NCS.R = diag(1./fscale) * sMri.NCS.R;
+            end
+        end
+    end
 else
     sMri = Cube;
 end
