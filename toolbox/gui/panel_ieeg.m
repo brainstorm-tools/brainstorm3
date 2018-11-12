@@ -1070,7 +1070,7 @@ function sModels = GetElectrodeModels()
     global GlobalData;
     % Get existing preferences
     if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'IntraElectrodeModels') && ~isempty(GlobalData.Preferences.IntraElectrodeModels) ...
-            && (length(GlobalData.Preferences.IntraElectrodeModels) > 13)
+            && (length(GlobalData.Preferences.IntraElectrodeModels) > 18)
         sModels = GlobalData.Preferences.IntraElectrodeModels;
     % Get default list of known electrodes
     else
@@ -1139,6 +1139,33 @@ function sModels = GetElectrodeModels()
         sMod(1).ContactNumber   = 6;
         sMod(2).Model          = 'AdTech MM16D-SP05X';
         sMod(2).ContactNumber   = 8;
+        sModels = [sModels, sMod];
+        
+        % === Huake-Hengsheng ===
+        % Common values
+        sTemplate = db_template('intraelectrode');
+        sTemplate.Type = 'SEEG';
+        sTemplate.ContactSpacing  = 0.0035;
+        sTemplate.ContactDiameter = 0.0008;
+        sTemplate.ContactLength   = 0.002;
+        sTemplate.ElecDiameter    = 0.00079;
+        % All models
+        sMod = repmat(sTemplate, 1, 5);
+        sMod(1).Model          = 'Huake-Hengsheng SDE-08-S08';
+        sMod(1).ContactNumber  = 8;
+        sMod(1).ElecLength     = 0.0265;
+        sMod(2).Model          = 'Huake-Hengsheng SDE-08-S10';
+        sMod(2).ContactNumber  = 8;
+        sMod(2).ElecLength     = 0.0335;
+        sMod(3).Model          = 'Huake-Hengsheng SDE-08-S12';
+        sMod(3).ContactNumber  = 8;
+        sMod(3).ElecLength     = 0.0405;
+        sMod(4).Model          = 'Huake-Hengsheng SDE-08-S14';
+        sMod(4).ContactNumber  = 8;
+        sMod(4).ElecLength     = 0.0475;
+        sMod(5).Model          = 'Huake-Hengsheng SDE-08-S16';
+        sMod(5).ContactNumber  = 8;
+        sMod(5).ElecLength     = 0.0545;
         sModels = [sModels, sMod];
     end
 end
