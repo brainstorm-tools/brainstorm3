@@ -37,6 +37,12 @@ end
 %% ===== DOWNLOAD JAR =====
 downloadAndInstallMffLibrary();
 
+%% ===== EXTRACT MFF DIRECTORY =====
+[parentFolder, file, ext] = bst_fileparts(DataFile);
+if strcmpi(ext, '.bin')
+    DataFile = parentFolder;
+end
+
 %% ===== READ MFF FILE WITH EEGLAB PLUGIN =====
 hdr = struct();
 hdr.filename = DataFile;
