@@ -29,7 +29,10 @@ end
 % Inialize event list
 mrkType = {};
 mrkTime = [];
-isHeader = 1;
+% Default column positions if we can't figure them out
+iCode = 3;
+iTime = 4;
+numCells = max(iCode, iTime);
 % Loop to skip the first comment lines
 while 1
     % Read one line
@@ -42,27 +45,16 @@ while 1
     if isempty(strLine)
         continue;
     end
-    % The line must contain the column names (eg. "Event Type") before we start reading values
-    if isHeader
-        if ~isempty(strfind(strLine, 'Event Type'))
-            % Figure out position of columns we need
-            cellLine = str_split(strLine, sprintf('\t'));
-            iCode = find(strcmpi(cellLine, 'Code'));
-            iTime = find(strcmpi(cellLine, 'Time'));
-            % Default positions if we can't figure them out
-            if isempty(iCode)
-                iCode = 3;
-            end
-            if isempty(iTime)
-                iTime = 4;
-            end
-            numCells = max(iCode, iTime);
-            isHeader = 0;
-        end
+    % Split line
+    cellLine = str_split(strLine, sprintf('\t'), 0);
+    if isHeader(cellLine)
+        % Figure out position of columns we need
+        iCode = find(strcmpi(cellLine, 'Code'));
+        iTime = find(strcmpi(cellLine, 'Time'));
+        numCells = max(iCode, iTime);
         continue;
     end
-    % Split line
-    cellLine = str_split(strLine, sprintf('\t'));
+
     % If the line contains enough entries: use it
     if (length(cellLine) >= numCells) && ~isempty(str2num(cellLine{iTime}))
         mrkType{end+1} = cellLine{iCode};
@@ -89,5 +81,10 @@ for iEvt = 1:length(uniqueEvt)
     events(iEvt).select      = 1;
 end
 
+end
 
+
+function res = isHeader(cellLine)
+    res = length(cellLine) >= 2 && any(strcmpi(cellLine, 'Code')) && any(strcmpi(cellLine, 'Time'));
+end
 
