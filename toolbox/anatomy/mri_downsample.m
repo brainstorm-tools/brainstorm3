@@ -22,7 +22,7 @@ function sMri = mri_downsample( sMri, n )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013
+% Authors: Francois Tadel, 2013-2018
 
 % If input is a structure: Get cube
 if isstruct(sMri)
@@ -67,28 +67,36 @@ if isstruct(sMri)
     % Update the fiducial coordinates (used as the origin of the volume)
     if isfield(sMri, 'SCS') 
         for fidname = {'NAS','LPA','RPA','Origin'}
-            if isfield(sMri.SCS, fidname{1}) && ~isempty(sMri.SCS.(fidname{1}))
-                sMri.SCS.(fidname{1}) = sMri.SCS.(fidname{1}) ./ fscale;
+            if isfield(sMri.SCS, fidname{1}) && (length(sMri.SCS.(fidname{1})) == 3)
+                sMri.SCS.(fidname{1})(1) = sMri.SCS.(fidname{1})(1) ./ fscale(1);
+                sMri.SCS.(fidname{1})(2) = sMri.SCS.(fidname{1})(2) ./ fscale(2);
+                sMri.SCS.(fidname{1})(3) = sMri.SCS.(fidname{1})(3) ./ fscale(3);
             end
-            if isfield(sMri.SCS, 'T') && ~isempty(sMri.SCS.T)
-                sMri.SCS.T = sMri.SCS.T ./ fscale';
-            end
-            if isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R)
-                sMri.SCS.R = diag(1./fscale) * sMri.SCS.R;
-            end
+        end
+        if isfield(sMri.SCS, 'T') && (length(sMri.SCS.T) == 3)
+            sMri.SCS.T(1) = sMri.SCS.T(1) ./ fscale(1);
+            sMri.SCS.T(2) = sMri.SCS.T(2) ./ fscale(2);
+            sMri.SCS.T(3) = sMri.SCS.T(3) ./ fscale(3);
+        end
+        if isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R)
+            sMri.SCS.R = diag(1./fscale) * sMri.SCS.R;
         end
     end
     if isfield(sMri, 'NCS') 
         for fidname = {'AC','PC','IH','Origin'}
-            if isfield(sMri.NCS, fidname{1}) && ~isempty(sMri.NCS.(fidname{1}))
-                sMri.NCS.(fidname{1}) = sMri.NCS.(fidname{1}) ./ fscale;
+            if isfield(sMri.NCS, fidname{1}) && (length(sMri.NCS.(fidname{1})) == 3)
+                sMri.NCS.(fidname{1})(1) = sMri.NCS.(fidname{1})(1) ./ fscale(1);
+                sMri.NCS.(fidname{1})(2) = sMri.NCS.(fidname{1})(2) ./ fscale(2);
+                sMri.NCS.(fidname{1})(3) = sMri.NCS.(fidname{1})(3) ./ fscale(3);
             end
-            if isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
-                sMri.NCS.T = sMri.NCS.T ./ fscale';
-            end
-            if isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R)
-                sMri.NCS.R = diag(1./fscale) * sMri.NCS.R;
-            end
+        end
+        if isfield(sMri.NCS, 'T') && (length(sMri.NCS.T) == 3)
+            sMri.NCS.T(1) = sMri.NCS.T(1) ./ fscale(1);
+            sMri.NCS.T(2) = sMri.NCS.T(2) ./ fscale(2);
+            sMri.NCS.T(3) = sMri.NCS.T(3) ./ fscale(3);
+        end
+        if isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R)
+            sMri.NCS.R = diag(1./fscale) * sMri.NCS.R;
         end
     end
 else
