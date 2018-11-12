@@ -19,7 +19,7 @@ function events = in_events_presentation(sFile, EventFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Robert Oostenveld, 2017
+% Authors: Francois Tadel, 2017; Martin Cousineau, 2018
 
 % Open file
 fid = fopen(EventFile, 'r');
