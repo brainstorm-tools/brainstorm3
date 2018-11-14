@@ -208,7 +208,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             for iNeuron = 1:length(everything(iFile).FFTs_single_trial)
                 if ~isempty(everything(iFile).FFTs_single_trial(iNeuron)) % An empty struct here would be caused by no selection of spikes. This would be caused by the combination of large windows around the spiking events, and small trial window
                     all_labels.labels{iNeuron,iFile} = everything(iFile).FFTs_single_trial(iNeuron).label;
-                    labelsForDropDownMenu{end+1} = everything(iFile).FFTs_single_trial(iNeuron).label;
+                    if process_spikesorting_supervised('IsSpikeEvent', everything(iFile).FFTs_single_trial(iNeuron).label)
+                        labelsForDropDownMenu{end+1} = everything(iFile).FFTs_single_trial(iNeuron).label;
+                    end
                 end
             end
         end
