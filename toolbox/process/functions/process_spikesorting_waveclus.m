@@ -161,13 +161,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         if sProcess.options.paral.Value  
             parfor ielectrode = 1:numChannels
-                if strcmpi(ChannelMat.Channel(ielectrode).Type, 'EEG') % Perform spike sorting only on the channels that are EEG
+                if ismember(upper(ChannelMat.Channel(ielectrode).Type), {'EEG', 'SEEG'}) % Perform spike sorting only on the channels that are (S)EEG
                     Get_spikes(sFiles{ielectrode});
                 end
             end
         else
             for ielectrode = 1:numChannels
-                if strcmpi(ChannelMat.Channel(ielectrode).Type, 'EEG')
+                if ismember(upper(ChannelMat.Channel(ielectrode).Type), {'EEG', 'SEEG'})
                     Get_spikes(sFiles{ielectrode});
                 end
                 bst_progress('inc', 1);
