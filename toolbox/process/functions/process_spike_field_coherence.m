@@ -122,7 +122,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
         % === OUTPUT STUDY ===
         % Get output study
-        [~, iStudy, ~] = bst_process('GetOutputStudy', sProcess, sCurrentInputs);
+        [tmp, iStudy] = bst_process('GetOutputStudy', sProcess, sCurrentInputs);
         tfOPTIONS.iTargetStudy = iStudy;
 
         % Get channel file
@@ -244,7 +244,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
             iEvents = zeros(size(all_labels,2),1);
             for iTrial = 1:size(all_labels,2)
-                [temp, ~] = find(logicalEvents(:,iTrial));
+                temp = find(logicalEvents(:,iTrial));
                 if ~isempty(temp)
                     iEvents(iTrial) = temp;
                 else
@@ -268,7 +268,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
             % Get The FFT of the AverageLFP
 
-            [FFTofAverageLFP, ~] = compute_FFT(average_LFP, time_segmentAroundSpikes);
+            FFTofAverageLFP = compute_FFT(average_LFP, time_segmentAroundSpikes);
 
             SFC_singleNeuron = squeeze(FFTofAverageLFP)./average_FFT; % Normalize by the FFT of the average LFP
             SFC_singleNeuron(isnan(SFC_singleNeuron))=0;              % If the spikes of a neuron only occur at the edges of the window that was selected, the Average LFP would be 0, 

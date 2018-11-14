@@ -109,7 +109,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % === OUTPUT STUDY ===
     % Get output study
-    [~, iStudy, ~] = bst_process('GetOutputStudy', sProcess, sInputs);
+    [tmp, iStudy] = bst_process('GetOutputStudy', sProcess, sInputs);
     tfOPTIONS.iTargetStudy = iStudy;
     
     % Get channel file
@@ -220,7 +220,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         iEvents = zeros(size(all_labels,2),1);
         for iTrial = 1:size(all_labels,2)
-            [temp, ~] = find(logicalEvents(:,iTrial));
+            temp = find(logicalEvents(:,iTrial));
             if ~isempty(temp)
                 iEvents(iTrial) = temp;
             else

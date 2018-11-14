@@ -102,7 +102,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
         % === OUTPUT STUDY ===
         % Get output study
-        [~, iStudy, ~] = bst_process('GetOutputStudy', sProcess, sCurrentInputs);
+        [tmp, iStudy] = bst_process('GetOutputStudy', sProcess, sCurrentInputs);
         tfOPTIONS.iTargetStudy = iStudy;
 
 
@@ -141,7 +141,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         %% === START COMPUTATION ===
         sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
 
-        [temp, ~] = in_bst(sCurrentInputs(1).FileName);
+        temp = in_bst(sCurrentInputs(1).FileName);
         nElectrodes = size(temp.ChannelFlag,1);
         nBins = floor(length(tfOPTIONS.TimeVector) / (bin_size * sampling_rate));
         raster = zeros(length(labelsForDropDownMenu), nBins, nTrials);
@@ -163,7 +163,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         outside_down = trial.Events(ievent).times <= bins(1);
                         trial.Events(ievent).times(outside_down) = bins(1) + 0.001; % I assign those spikes just 1ms inside the bin
 
-                        [~, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
+                        [tmp, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
 
                         unique_bin = unique(bin_it_belongs_to);
                         occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];

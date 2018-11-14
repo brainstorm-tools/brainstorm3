@@ -89,7 +89,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % === OUTPUT STUDY ===
     % Get output study
-    [~, iStudy, ~] = bst_process('GetOutputStudy', sProcess, sInputs);
+    [tmp, iStudy] = bst_process('GetOutputStudy', sProcess, sInputs);
     tfOPTIONS.iTargetStudy = iStudy;
     
    
