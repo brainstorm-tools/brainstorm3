@@ -32,6 +32,7 @@ mrkTime = [];
 % Default column positions if we can't figure them out
 iCode = 3;
 iTime = 4;
+isHeader=1;
 numCells = max(iCode, iTime);
 % Loop to skip the first comment lines
 while 1
@@ -45,20 +46,27 @@ while 1
     if isempty(strLine)
         continue;
     end
-    % Split line
-    cellLine = str_split(strLine, sprintf('\t'), 0);
-    if isHeader(cellLine)
-        % Figure out position of columns we need
-        iCode = find(strcmpi(cellLine, 'Code'));
-        iTime = find(strcmpi(cellLine, 'Time'));
-        numCells = max(iCode, iTime);
+
+    % The line must contain the column names (eg. "Trial") before we start reading values
+    if isHeader
+        if ~isempty(strfind(strLine, 'Trial'))
+            headerFields=strsplit(strLine,'\t');
+            isHeader = 0;
+            [tmp_,typeColIdxinHeader] = ismember('Event Type',headerFields);
+            [tmp_,codeColIdxinHeader] = ismember('Code',headerFields);
+            [tmp_,timeColIdxinHeader] = ismember('Time',headerFields);
+        end
         continue;
     end
-
+     
+    % Split line
+    cellLine = str_split(strLine, sprintf(' \t'));
     % If the line contains enough entries: use it
-    if (length(cellLine) >= numCells) && ~isempty(str2num(cellLine{iTime}))
-        mrkType{end+1} = cellLine{iCode};
-        mrkTime(end+1) = str2num(cellLine{iTime});
+    if (length(cellLine) >= 4) && ~isempty(str2num(cellLine{timeColIdxinHeader})) 
+        mrkType{end+1} = strjoin([cellLine(typeColIdxinHeader),cellLine(codeColIdxinHeader)],'_');
+        mrkTime(end+1) = str2double(cellLine{timeColIdxinHeader});
+    elseif any(~ismember(cellLine,'Trial'))
+        break
     end
 end
 % Close file
@@ -84,7 +92,6 @@ end
 end
 
 
-function res = isHeader(cellLine)
-    res = length(cellLine) >= 2 && any(strcmpi(cellLine, 'Code')) && any(strcmpi(cellLine, 'Time'));
-end
-
+% function res = isHeader(cellLine)
+%     res = length(cellLine) >= 2 && any(strcmpi(cellLine, 'Code')) && any(strcmpi(cellLine, 'Time'));
+% end
