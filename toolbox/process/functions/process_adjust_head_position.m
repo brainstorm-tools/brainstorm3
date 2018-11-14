@@ -41,7 +41,7 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
   % Description of the process
   sProcess.Comment     = 'Adjust head position (CTF)';
-  sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadPosition';
+  sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion';
   sProcess.Category    = 'Custom';
   sProcess.SubGroup    = 'Events';
   sProcess.Index       = 70;
