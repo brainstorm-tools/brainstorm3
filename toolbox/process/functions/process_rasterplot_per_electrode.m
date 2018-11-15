@@ -125,8 +125,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         for ielectrode = 1:size(trial.F,1)
             for ievent = 1:size(trial.Events,2)
                 
+                stripped_neuron_event = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
+                                            {trial.Events(ievent).label}, 'UniformOutput', 0);
+                
                 % Bin ONLY THE FIRST NEURON'S SPIKES if there are multiple neurons!
-                if process_spikesorting_supervised('IsSpikeEvent', trial.Events(ievent).label) && process_spikesorting_supervised('IsFirstNeuron', trial.Events(ievent).label)
+                if process_spikesorting_supervised('IsSpikeEvent', trial.Events(ievent).label) && process_spikesorting_supervised('IsFirstNeuron', trial.Events(ievent).label) && strcmp(ChannelMat.Channel(ielectrode).Name, stripped_neuron_event)
                     
                     outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
                     trial.Events(ievent).times(outside_up) = bins(end) - 0.001; % Make sure it is inside the bin. Add 1ms offset
