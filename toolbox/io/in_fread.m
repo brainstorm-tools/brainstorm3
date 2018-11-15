@@ -271,7 +271,14 @@ if ~isempty(ImportOptions) && ImportOptions.UseSsp && ~strcmpi(sFile.format, 'BS
         end
         % Apply projector
         if ~isempty(iChannels)
-            F = Projector(iChannels, iChannels) * F;
+            % If there are projectors involved and only subselection of channels: 
+            % We must have all data needed to apply the projector, otherwise it doesn't make sense
+            missingChannels = setdiff(find(any(Projector(iChannels,:), 1)), iChannels);
+            if ~isempty(missingChannels)
+                bst_report('Warning', 'process_import_data_raw', [], ['Missing channels in order to apply existing SSP/ICA projectors. To read the corrected values for channel "' ChannelMat.Channel(iChannels(1)).Name '", first apply the existing projectors with the process Artifacts > Apply SSP and CTF compensation']); 
+            else
+                F = Projector(iChannels, iChannels) * F;
+            end
         else
             F = Projector * F;
         end
