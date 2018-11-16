@@ -195,6 +195,10 @@ switch (FileFormat)
         ChannelMat = in_channel_ascii(ChannelFile, {'Name','-Y','X','Z'}, 0, .01);
         ChannelMat.Comment = 'EGI channels';
         FileUnits = 'cm';
+    
+    case 'MFF'  % (coordinates.xml)
+        [tmp, ChannelMat] = in_fopen_mff(ChannelFile, ImportOptions, 1);
+        FileUnits = 'mm';
         
     case 'EMSE'  % (*.elp)
         ChannelMat = in_channel_emse_elp(ChannelFile);
