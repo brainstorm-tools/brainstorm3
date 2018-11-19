@@ -1420,24 +1420,29 @@ function DisplayFigurePopup(hFig)
 
     % ==== DISPLAY OTHER FIGURES ====
     if ~isempty(TfFile)
-        % Get selected vertex
-        iVertex = panel_coordinates('SelectPoint', hFig, 0);
-        % Menu for selected vertex
-        if ~isempty(iVertex)
-            if isempty(strfind(TfFile, '_psd')) && isempty(strfind(TfFile, '_fft')) && isempty(strfind(TfFile, '_pac'))
-                jItem = gui_component('MenuItem', jPopup, [], 'Source: Time-frequency', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@view_timefreq, TfFile, 'SingleSensor', iVertex, 1));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_SHIFT, 0));
-                gui_component('MenuItem', jPopup, [], 'Source: Time series',    IconLoader.ICON_DATA,     [], @(h,ev)bst_call(@view_spectrum, TfFile, 'TimeSeries', iVertex, 1));
-            end
-            if isempty(strfind(TfFile, '_pac'))
-                gui_component('MenuItem', jPopup, [], 'Source: Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)bst_call(@view_spectrum, TfFile, 'Spectrum', iVertex, 1));
-            end
-            if ~isempty(strfind(TfFile, '_pac_fullmaps'))
-                jItem = gui_component('MenuItem', jPopup, [], 'Sensor PAC map', IconLoader.ICON_PAC, [], @(h,ev)view_pac(TfFile, iVertex, 'DynamicPAC', [], 1));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_SHIFT, 0));
-            end
-            if (jPopup.getComponentCount() > 0)
-                jPopup.addSeparator();
+        % Check the type of data: recordings or sources
+        [sStudyTf, iStudyTf, iTf] = bst_get('TimefreqFile', TfFile);
+        % Display source menus only for sources
+        if ~isempty(sStudyTf) && strcmpi(sStudyTf.Timefreq(iTf).DataType, 'results')
+            % Get selected vertex
+            iVertex = panel_coordinates('SelectPoint', hFig, 0);
+            % Menu for selected vertex
+            if ~isempty(iVertex)
+                if isempty(strfind(TfFile, '_psd')) && isempty(strfind(TfFile, '_fft')) && isempty(strfind(TfFile, '_pac'))
+                    jItem = gui_component('MenuItem', jPopup, [], 'Source: Time-frequency', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@view_timefreq, TfFile, 'SingleSensor', iVertex, 1));
+                    jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_SHIFT, 0));
+                    gui_component('MenuItem', jPopup, [], 'Source: Time series',    IconLoader.ICON_DATA,     [], @(h,ev)bst_call(@view_spectrum, TfFile, 'TimeSeries', iVertex, 1));
+                end
+                if isempty(strfind(TfFile, '_pac'))
+                    gui_component('MenuItem', jPopup, [], 'Source: Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)bst_call(@view_spectrum, TfFile, 'Spectrum', iVertex, 1));
+                end
+                if ~isempty(strfind(TfFile, '_pac_fullmaps'))
+                    jItem = gui_component('MenuItem', jPopup, [], 'Sensor PAC map', IconLoader.ICON_PAC, [], @(h,ev)view_pac(TfFile, iVertex, 'DynamicPAC', [], 1));
+                    jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_SHIFT, 0));
+                end
+                if (jPopup.getComponentCount() > 0)
+                    jPopup.addSeparator();
+                end
             end
         end
     end
