@@ -1,4 +1,4 @@
-function [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions)
+function [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions, channelsOnly)
 % IN_FOPEN_MFF: Open a Philips .MFF file
 
 % @=============================================================================
@@ -33,20 +33,27 @@ end
 if (nargin < 2) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
 end
+if (nargin < 3) || isempty(channelsOnly)
+    channelsOnly = 0;
+end
 
 %% ===== DOWNLOAD JAR =====
 downloadAndInstallMffLibrary();
 
 %% ===== EXTRACT MFF DIRECTORY =====
 [parentFolder, file, ext] = bst_fileparts(DataFile);
-if strcmpi(ext, '.bin')
+if ismember(lower(ext), {'.bin', '.xml'})
     DataFile = parentFolder;
 end
 
 %% ===== READ MFF FILE WITH EEGLAB PLUGIN =====
 hdr = struct();
 hdr.filename = DataFile;
-hdr.EEG = mff_import(DataFile);
+if channelsOnly
+    hdr.EEG = LoadChanlocsOnly(DataFile);
+else
+    hdr.EEG = mff_import(DataFile);
+end
 
 %% ===== IMPORT FILE USING EEGLAB IMPORTER =====
 % Convert electrodes positions from cm to mm, to avoid the interactive question about the spatial scaling
@@ -58,12 +65,23 @@ if isfield(hdr.EEG, 'chanlocs') && ~isempty(hdr.EEG.chanlocs) && isfield(hdr.EEG
     end
 end
 % Convert EEGLAB structure in Brainstorm structures
-[sFile, ChannelMat] = in_fopen_eeglab(hdr, ImportOptions);
-sFile.format       = 'EEG-EGI-MFF';
-sFile.device       = 'MFF';
-if ~isempty(ChannelMat)
-    ChannelMat.Comment = strrep(ChannelMat.Comment, 'EEGLAB', 'MFF');
+if channelsOnly
+    sFile = [];
+    if isempty(hdr.EEG)
+        ChannelMat = [];
+    else
+        ChannelMat = in_channel_eeglab_set(hdr);
+    end
+else
+    [sFile, ChannelMat] = in_fopen_eeglab(hdr, ImportOptions);
+    sFile.format       = 'EEG-EGI-MFF';
+    sFile.device       = 'MFF';
 end
+
+if ~isempty(ChannelMat)
+    ChannelMat.Comment = 'MFF channels';
+end
+
 % Rectify sensors positions: mff_import saves the orientation with nose a +Y, brainstorm needs the nose as +X axis
 if ~isempty(ChannelMat) && ~isempty(ChannelMat.Channel)
     % Define transformation: Rotation(-90deg/Z)  +  Translation(+40mm/Z)
@@ -78,7 +96,6 @@ if ~isempty(ChannelMat) && ~isempty(ChannelMat.Channel)
         ChannelMat = ChannelMatFix{1};
     end
 end
-
 
 end
 
@@ -159,4 +176,24 @@ function mffver = checkMffLibraryVersion()
         catch
         end
     end
+end
+
+function EEG = LoadChanlocsOnly(mffFile)
+    % If we're only importing the channel file, create a EEG structure
+    % ourselves, just like calling mff_import() without loading the data.
+    EEG = struct();
+    EEG.data = [];
+    EEG.chaninfo = struct();
+    EEG.chaninfo.nosedir = '+Y';
+    try
+        [EEG.chanlocs, EEG.ref] = mff_importcoordinates(mffFile);
+    catch
+        EEG = [];
+        return;
+    end
+    try
+        EEG = eeg_checkchanlocs(EEG);
+    catch
+    end
+    EEG.nbchan = length(EEG.chanlocs);
 end
