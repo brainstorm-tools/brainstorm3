@@ -676,13 +676,15 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     else
         TimeVector = Time;
     end
-    % Center time vector on the CurrentTime
-    TimeVector = TimeVector - GlobalData.UserTimeWindow.CurrentTime;
     % Get 2DLayout display options
     TopoLayoutOptions = bst_get('TopoLayoutOptions');
     % Default time window: all the window
     if isempty(TopoLayoutOptions.TimeWindow)
-        TopoLayoutOptions.TimeWindow = abs(GlobalData.UserTimeWindow.Time(2) - GlobalData.UserTimeWindow.Time(1)) .* [-1, 1];
+        TopoLayoutOptions.TimeWindow = GlobalData.UserTimeWindow.Time;
+    % Otherwise, center the time window around the current time
+    else
+        winLen = (TopoLayoutOptions.TimeWindow(2) - TopoLayoutOptions.TimeWindow(1));
+        TopoLayoutOptions.TimeWindow = bst_saturate(GlobalData.UserTimeWindow.CurrentTime + winLen ./ 2 .* [-1, 1] , GlobalData.UserTimeWindow.Time, 1);
     end
     % Get only the 2DLayout time window
     iTime = find((TimeVector >= TopoLayoutOptions.TimeWindow(1)) & (TimeVector <= TopoLayoutOptions.TimeWindow(2)));
@@ -704,7 +706,8 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     % Flip Time vector (it's the way the data will be represented too)
     TimeVector = fliplr(TimeVector);
     % Look for current time in TimeVector
-    iCurrentTime = bst_closest(0, TimeVector);
+    %iCurrentTime = bst_closest(0, TimeVector);
+    iCurrentTime = bst_closest(GlobalData.UserTimeWindow.CurrentTime, TimeVector);
     if isempty(iCurrentTime)
         iCurrentTime = 1;
     end
@@ -771,7 +774,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     elseif all(Vertices(:,3) < 0.0001)
         X = Vertices(:,1);
         Y = Vertices(:,2);
-    % Rgular sensors with 3D ccordinates: Project in 2D
+    % Regular sensors with 3D coordinates: Project in 2D
     else
         [X,Y] = bst_project_2d(Vertices(:,1), Vertices(:,2), Vertices(:,3), '2dlayout');
     end
@@ -803,7 +806,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         PlotHandles.ChannelOffsets(i) = Xi;
         % Define lines to trace
         XData  = plotSize(1) * dat(end:-1:1)    * DispFactor + Xi;
-        Xrange = plotSize(1) * [datMin, datMax] * DispFactor + Xi;
+        Xrange = plotSize(1) * [min(0,datMin), max(0,datMax)] * DispFactor + Xi;
         YData  = plotSize(2) * (TimeVector - 0.5) + Yi;
         ZData  = 0;
         
@@ -815,7 +818,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                         'Tag',    '2DLayoutZeroLines', ...
                         'Parent', hAxes);
                 % Time cursor
-                PlotHandles.hCursors(i) = line([Xrange(1), Xrange(2)], [Yi, Yi], [ZData, ZData], ...
+                PlotHandles.hCursors(i) = line([Xrange(1), Xrange(2)], [YData(iCurrentTime), YData(iCurrentTime)], [ZData, ZData], ...
                         'Tag',    '2DLayoutTimeCursor', ...
                         'Parent', hAxes);
             else
@@ -823,10 +826,14 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                 set(PlotHandles.hCursors(i), 'XData', [Xrange(1), Xrange(2)], 'YData', [YData(iCurrentTime), YData(iCurrentTime)]);
             end
         else
-            delete(findobj(hAxes, '-depth', 1, 'Tag', '2DLayoutZeroLines'));
-            delete(findobj(hAxes, '-depth', 1, 'Tag', '2DLayoutTimeCursor'));
-            PlotHandles.hZeroLines   = [];
-            PlotHandles.hCursors = [];
+            if ~isempty(PlotHandles.hZeroLines)
+                delete(PlotHandles.hZeroLines);
+                PlotHandles.hZeroLines = [];
+            end
+            if ~isempty(PlotHandles.hCursors)
+                delete(PlotHandles.hCursors);
+                PlotHandles.hCursors = [];
+            end
         end
         
         % === DATA LINE ===
@@ -995,14 +1002,30 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     PlotHandles.Vertices = Vertices;
     PlotHandles.ModChan  = modChan;
     PlotHandles.SelChanGlobal = selChanGlobal;
-
     GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotHandles;
+    
+    % Create scale buttons
+    if isDrawLegend
+        CreateButtons2dLayout(iDS, iFig);
+    else    
+        hButtons = [findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainPlus'), ...
+                    findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainMinus'), ...
+                    findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetTimeWindow'), ...
+                    findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus'), ...
+                    findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus')];
+        if ~isempty(hButtons) && TopoLayoutOptions.ShowLegend
+            set(hButtons, 'Visible', 'on');
+        else
+            set(hButtons, 'Visible', 'off');
+        end
+    end
+
     % Update selected channels
     figure_3d('UpdateFigSelectedRows', iDS, iFig);
 end
 
 
-%% ===== UPDATE 2DLAYOUT =====
+%% ===== 2D LAYOUT: UPDATE =====
 function UpdateTopo2dLayout(iDS, iFig)
     global GlobalData;
     % Get plot handles
@@ -1013,6 +1036,68 @@ function UpdateTopo2dLayout(iDS, iFig)
         CreateTopo2dLayout(iDS, iFig, hAxes, PlotHandles.Channel, PlotHandles.Vertices, PlotHandles.ModChan);
     end
 end
+
+
+
+
+%% ===== 2D LAYOUT: CREATE BUTTONS =====
+function CreateButtons2dLayout(iDS, iFig)
+    import org.brainstorm.icon.*;
+    global GlobalData;
+    % Get figure
+    hFig  = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+%     % Get figure background color
+%     bgColor = get(hFig, 'Color');
+    % Get fixed font
+    jFontDefault = bst_get('Font');
+    jFont = java.awt.Font(jFontDefault.getFamily(), java.awt.Font.PLAIN, 11);
+    % Create scale buttons
+    jButton = javaArray('java.awt.Component', 5);
+    jButton(1) = javax.swing.JButton('^');
+    jButton(2) = javax.swing.JButton('v');
+    jButton(3) = javax.swing.JButton('...');
+    jButton(4) = javax.swing.JButton('<');
+    jButton(5) = javax.swing.JButton('>');
+    % Configure buttons
+    for i = 1:length(jButton)
+%         jButton(i).setBackground(java.awt.Color(bgColor(1), bgColor(2), bgColor(3)));
+        jButton(i).setFocusPainted(0);
+        jButton(i).setFocusable(0);
+        jButton(i).setMargin(java.awt.Insets(0,0,0,0));
+        jButton(i).setFont(jFont);
+    end
+    % Create Matlab objects
+    [j1, h1] = javacomponent(jButton(1), [0, 0, .01, .01], hFig);
+    [j2, h2] = javacomponent(jButton(2), [0, 0, .01, .01], hFig);
+    [j3, h3] = javacomponent(jButton(3), [0, 0, .01, .01], hFig);
+    [j4, h4] = javacomponent(jButton(4), [0, 0, .01, .01], hFig);
+    [j5, h5] = javacomponent(jButton(5), [0, 0, .01, .01], hFig);
+    % Configure Gain buttons
+    set(h1,  'Tag', 'ButtonGainPlus',  'Units', 'pixels');
+    set(h2,  'Tag', 'ButtonGainMinus', 'Units', 'pixels');
+    set(h3,  'Tag', 'ButtonSetTimeWindow', 'Units', 'pixels');
+    set(h4,  'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
+    set(h5,  'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
+    j1.setToolTipText('<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [SHIFT + Mouse wheel]</B></TD></TR></TABLE>');
+    j2.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [SHIFT + Mouse wheel]</B></TD></TR></TABLE>');
+    j3.setToolTipText('Set time window manually');
+    j4.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [CTRL + Mouse wheel]</B></TD></TR></TABLE>');
+    j5.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [CTRL + Mouse wheel]</B></TD></TR></TABLE>');
+    java_setcb(j1, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1));
+    java_setcb(j2, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, .9091));
+    java_setcb(j3, 'ActionPerformedCallback', @(h,ev)SetTopoLayoutOptions('TimeWindow'));
+    java_setcb(j4, 'ActionPerformedCallback', @(h,ev)UpdateTopoTimeWindow(hFig, .9091));
+    java_setcb(j5, 'ActionPerformedCallback', @(h,ev)UpdateTopoTimeWindow(hFig, 1.1));
+    % Up button
+    j1.setMargin(java.awt.Insets(3,0,0,0));
+    j1.setFont(bst_get('Font', 12));    
+    % Visible / not visible
+    TopoLayoutOptions = bst_get('TopoLayoutOptions');
+    if ~TopoLayoutOptions.ShowLegend
+        set([h1 h2 h3 h4 h5], 'Visible', 'off');
+    end
+end
+
 
 
 %% ===== CREATE 3D ELECTRODES =====
@@ -1104,7 +1189,7 @@ end
 
 
 %% ===== UPDATE TIME SERIES FACTOR =====
-function UpdateTimeSeriesFactor(hFig, changeFactor) %#ok<DEFNU>
+function UpdateTimeSeriesFactor(hFig, changeFactor)
     global GlobalData;
     % Get figure description
     [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
@@ -1137,10 +1222,13 @@ function UpdateTopoTimeWindow(hFig, changeFactor) %#ok<DEFNU>
     TopoLayoutOptions = bst_get('TopoLayoutOptions');
     % If the window hasn't been changed yet: use the full time definition
     if isempty(TopoLayoutOptions.TimeWindow)
-        TopoLayoutOptions.TimeWindow = abs(GlobalData.UserTimeWindow.Time(2) - GlobalData.UserTimeWindow.Time(1)) .* [-1, 1];
+        TopoLayoutOptions.TimeWindow = GlobalData.UserTimeWindow.Time;
     end
-    % Increase time window by a given factor in each direction
-    newTimeWindow = changeFactor * TopoLayoutOptions.TimeWindow;
+    % Apply zoom factor
+    Xlength =  TopoLayoutOptions.TimeWindow(2) - TopoLayoutOptions.TimeWindow(1);
+    newTimeWindow = GlobalData.UserTimeWindow.CurrentTime + Xlength/changeFactor/2 * [-1, 1];
+    % New time window cannot exceed initial time window
+    newTimeWindow = bst_saturate(newTimeWindow, GlobalData.UserTimeWindow.Time, 1);
     % Set new time window
     SetTopoLayoutOptions('TimeWindow', newTimeWindow);
 end
@@ -1148,6 +1236,7 @@ end
 
 %% ===== SET 2DLAYOUT OPTIONS =====
 function SetTopoLayoutOptions(option, value)
+    global GlobalData;
     % Parse inputs
     if (nargin < 2)
         value = [];
@@ -1162,12 +1251,15 @@ function SetTopoLayoutOptions(option, value)
                 newTimeWindow = value;
             % Else: Ask user for new time window
             else
-                maxTimeWindow = [-Inf, Inf];
-                newTimeWindow = panel_time('InputTimeWindow', maxTimeWindow, 'Time window around the current time in the 2DLayout views:', TopoLayoutOptions.TimeWindow, 'ms');
+                newTimeWindow = panel_time('InputTimeWindow', GlobalData.UserTimeWindow.Time, 'Time window in the 2DLayout view:', TopoLayoutOptions.TimeWindow, 'ms');
                 if isempty(newTimeWindow)
                     return;
                 end
             end
+            % Check time window consistency
+            newTimeWindow = bst_saturate(newTimeWindow, GlobalData.UserTimeWindow.Time, 1);
+            % Set the current time to the center of this new time window
+            panel_time('SetCurrentTime', (newTimeWindow(2) + newTimeWindow(1)) / 2);
             % Save new time window
             TopoLayoutOptions.TimeWindow = newTimeWindow;
             isLayout = 1;

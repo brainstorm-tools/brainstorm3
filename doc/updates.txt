@@ -1,6 +1,8 @@
 ---------------------------------------------------------------
 November 2018
 - New electrophysiology toolbox
+- GUI: 2DLayout: Added new controls, new time window management
+- GUI: 2DLayout: Overlay of multiple conditions
 ---------------------------------------------------------------
 October 2018
 - IO: BIDS export process

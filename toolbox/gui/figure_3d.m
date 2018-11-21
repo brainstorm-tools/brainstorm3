@@ -196,6 +196,30 @@ function ResizeCallback(hFig, ev)
         set(hAxes, 'Units',    'normalized', ...
                    'Position', [.05, .05, .9, .9]);
     end
+    
+    % ===== 2DLAYOUT: REPOSITION SCALE CONTROLS =====
+    FigureId = getappdata(hFig, 'FigureId');
+    if isequal(FigureId.SubType, '2DLayout')
+        % Get buttons
+        hButtonGainMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainMinus');
+        hButtonGainPlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainPlus');
+        hButtonSetTimeWindow = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetTimeWindow');
+        hButtonZoomTimePlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus');
+        hButtonZoomTimeMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus');
+        % Reposition buttons
+        butSize = 22;
+        if ~isempty(hButtonZoomTimePlus)
+            set(hButtonZoomTimePlus,   'Position', [figPos(3) - 3*(butSize+3) + 1, 3, butSize, butSize]);
+            set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 2*(butSize+3) + 1, 3, butSize, butSize]);
+        end
+        if ~isempty(hButtonSetTimeWindow)
+            set(hButtonSetTimeWindow, 'Position', [figPos(3) - butSize - 1, 3, butSize, butSize]);
+        end
+        if ~isempty(hButtonGainMinus)
+            set(hButtonGainMinus, 'Position', [figPos(3)-butSize-1, 3 + (butSize+3), butSize, butSize]);
+            set(hButtonGainPlus,  'Position', [figPos(3)-butSize-1, 3 + 2*(butSize+3), butSize, butSize]);
+        end
+    end
 end
     
 %% =========================================================================================
