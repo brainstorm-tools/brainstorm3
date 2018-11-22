@@ -186,6 +186,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         updatesfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'updates.txt');
         gui_component('MenuItem', jMenuSupport, [], 'Release notes', IconLoader.ICON_EDIT, [], @(h,ev)view_text(updatesfile, 'Release notes', 1), fontSize);
         jMenuSupport.addSeparator();
+        % Prepare workshop
+        gui_component('MenuItem', jMenuSupport, [], 'Workshop preparation', IconLoader.ICON_SCREEN1, [], @(h,ev)brainstorm('workshop'), fontSize);
+        jMenuSupport.addSeparator();
         % Guidelines
         jMenuGuidelines = gui_component('Menu', jMenuSupport, [], 'Guidelines', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
         gui_component('MenuItem', jMenuGuidelines, [], 'Epileptogenicity maps', IconLoader.ICON_EDIT, [], @(h,ev)ShowGuidelines('epileptogenicity'), fontSize);
@@ -631,7 +634,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Create popup
         jPopupTab = java_create('javax.swing.JPopupMenu');
         % List possible tabs
-        panelList = {'Record', 'Filter', 'Surface', 'Scout', 'Cluster', 'Coordinates', 'Dipinfo', 'iEEG', 'Command'};
+        panelList = {'Record', 'Filter', 'Surface', 'Scout', 'Cluster', 'Coordinates', 'Dipinfo', 'iEEG', 'Command', 'Spikes'};
         panelRemove = {};
         % List missing tabs
         for iPanel = 1:length(GlobalData.Program.GUI.panels)
@@ -1285,7 +1288,7 @@ function BrainstormDbDir = SetDatabaseFolder(varargin) %#ok<DEFNU>
     isStop = 0;
     while ~isStop
         % Open 'Select directory' dialog
-        BrainstormDbDir = uigetdir(BrainstormDbDir, ['Please select Brainstorm database directory.' 10 10 'This is where all the new protocols will be created.']);
+        BrainstormDbDir = bst_uigetdir(BrainstormDbDir, ['Please select Brainstorm database directory.' 10 10 'This is where all the new protocols will be created.']);
         % Exit if not set
         if isempty(BrainstormDbDir) || ~ischar(BrainstormDbDir)
             BrainstormDbDir = [];

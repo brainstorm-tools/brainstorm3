@@ -4,6 +4,7 @@ function [sMri, errMsg] = bst_normalize_mni(MriFile)
 % 
 % USAGE:  [sMri, errMsg] = bst_normalize_mni(MriFile)
 %         [sMri, errMsg] = bst_normalize_mni(sMri)
+%                          bst_normalize_mni('install')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -29,15 +30,21 @@ function [sMri, errMsg] = bst_normalize_mni(MriFile)
 % Inializations
 global GlobalData;
 errMsg = [];
-% Usage: bst_normalize_mni(sMri)
-if ~ischar(MriFile)
-    sMri = MriFile;
-    MriFile = [];
-% Usage: bst_normalize_mni(MriFile)
-else
+% Usage: bst_normalize_mni('install')
+if isequal(MriFile, 'install')
+    isInstall = 1;
     sMri = [];
+else
+    isInstall = 0;
+    % Usage: bst_normalize_mni(sMri)
+    if ~ischar(MriFile)
+        sMri = MriFile;
+        MriFile = [];
+    % Usage: bst_normalize_mni(MriFile)
+    else
+        sMri = [];
+    end
 end
-    
 
 %% ===== GET SPM TEMPLATE =====
 % Get template file
@@ -73,6 +80,10 @@ if ~file_exist(tpmFile)
     end
     % Delete zip file
     file_delete(tpmZip, 1);
+end
+% If only installing: exit
+if isInstall
+    return;
 end
 
 

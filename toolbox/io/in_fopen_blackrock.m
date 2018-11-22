@@ -102,6 +102,8 @@ if ~isempty(NevFile)
     events = repmat(db_template('event'), 0);
     % Time factor 
     tFactor = double(rec.MetaTags.SamplingFreq) / double(nev.MetaTags.TimeRes);
+    % Get spike event BST prefix
+    spikeEventPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
     
     % Use spikes
     if ~isempty(nev.Data.Spikes.TimeStamp)
@@ -111,7 +113,7 @@ if ~isempty(NevFile)
         for i = 1:length(uniqueType)
             iEvt = length(events) + 1;
             iOcc = (nev.Data.Spikes.Electrode == uniqueType(i));
-            events(iEvt).label      = sprintf('Spike%03d', uniqueType(i));
+            events(iEvt).label      = sprintf([spikeEventPrefix ' raw %d'], uniqueType(i));
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;

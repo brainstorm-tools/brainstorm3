@@ -102,6 +102,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_gtec(DataFile);
     case 'EEG-MANSCAN'
         [sFile, ChannelMat] = in_fopen_manscan(DataFile);
+    case 'EEG-EGI-MFF'
+        [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions);
     case 'EEG-MICROMED'
         [sFile, ChannelMat] = in_fopen_micromed(DataFile);
     case 'EEG-NEURONE'
@@ -130,6 +132,11 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_bst(DataFile);
     case 'SPM-DAT'
         [sFile, ChannelMat] = in_fopen_spm(DataFile);
+    case 'EEG-INTAN'
+        [sFile, ChannelMat] = in_fopen_intan(DataFile);
+    case 'EEG-PLEXON'
+        [sFile, ChannelMat] = in_fopen_plexon(DataFile);
+        
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);

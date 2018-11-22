@@ -117,6 +117,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % ===== RIGHT: SIGNAL PROCESSING =====
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
         jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', []);
+        jBlockSizeLabel = gui_component('Label',  jPanelProc, 'br', 'Memory block size in Mb (default: 100Mb): ', [], [], []);
+        blockSizeTooltip = '<HTML>Maximum size of data blocks to be read in memory, in megabytes.<BR>Ensure this does not exceed the available RAM in your computer.';
+        jBlockSize = gui_component('Text',  jPanelProc, [], '', [], [], []);
+        jBlockSizeLabel.setToolTipText(blockSizeTooltip);
+        jBlockSize.setToolTipText(blockSizeTooltip);
         % jCheckOrigFolder = gui_component('CheckBox', jPanelProc, 'br', 'Store continuous files in original folder', [], '<HTML>If selected, the continuous files processed with the Process1 tab are stored in the same folder as the input raw files. <BR>Else, they are stored directly in the Brainstorm database.', @UpdateProcessOptions_Callback);
         % jCheckOrigFormat = gui_component('CheckBox', jPanelProc, 'br', 'Save continuous files in original format',  [], '<HTML>If selected, the continuous files processed with the Process1 tab are saved in the same data format as the input raw files.<BR>Else, they are saved in the Brainstorm binary format.<BR>This option is available only for FIF and CTF files.', []);
     jPanelRight.add('br hfill', jPanelProc);
@@ -202,6 +207,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         isToolboxInstalled = (exist('fir2', 'file') > 0);
         jCheckUseSigProc.setEnabled(isToolboxInstalled);
         jCheckUseSigProc.setSelected(bst_get('UseSigProcToolbox'));
+        processOptions = bst_get('ProcessOptions');
+        jBlockSize.setText(num2str(processOptions.MaxBlockSize * 8 / 1024 / 1024));
     end
 
 
@@ -271,11 +278,32 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         oldTmpDir = bst_get('BrainstormTmpDir');
         newTmpDir = char(jTextTempDir.getText());
         if ~file_compare(oldTmpDir, newTmpDir)
-            % If temp directory changed: create directory if it doesn't exist
-            if file_exist(newTmpDir) || mkdir(newTmpDir)
-                bst_set('BrainstormTmpDir', newTmpDir);
+            % Make sure it is different from and does not contain the database directory
+            changeDir = 1;
+            dbDir = bst_get('BrainstormDbDir');
+            if file_compare(newTmpDir, dbDir)
+                java_dialog('warning', 'Your temporary and database directories must be different.');
+                changeDir = 0;
             else
-                java_dialog('warning', 'Could not create temporary directory.');
+                parentDir = fileparts(dbDir);
+                lastParent = [];
+                while ~isempty(parentDir) && ~strcmp(lastParent, parentDir)
+                    if file_compare(newTmpDir, parentDir)
+                        java_dialog('warning', 'Your temporary directory cannot contain your database directory.');
+                        changeDir = 0;
+                        break;
+                    end
+                    lastParent = parentDir;
+                    parentDir = fileparts(parentDir);
+                end
+            end
+            if changeDir
+                % If temp directory changed: create directory if it doesn't exist
+                if file_exist(newTmpDir) || mkdir(newTmpDir)
+                    bst_set('BrainstormTmpDir', newTmpDir);
+                else
+                    java_dialog('warning', 'Could not create temporary directory.');
+                end
             end
         end
         % FieldTrip directory
@@ -308,6 +336,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % ===== PROCESSING OPTIONS =====
         % Use signal processing toolbox
         bst_set('UseSigProcToolbox', jCheckUseSigProc.isSelected());
+        % Memory block size (Valid values: between 1MB and 1TB)
+        blockSize = str2num(jBlockSize.getText());
+        if ~isempty(blockSize) && blockSize >= 1 && blockSize <= 1e6
+            processOptions = bst_get('ProcessOptions');
+            processOptions.MaxBlockSize = blockSize * 1024 * 1024 / 8; % Mb to bytes
+            bst_set('ProcessOptions', processOptions);
+        end
         
         bst_progress('stop');
         

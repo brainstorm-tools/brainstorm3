@@ -1,4 +1,3 @@
-
 function varargout = panel_process1(varargin)
 % PANEL_PROCESS1: Creation and management of list of files to apply some batch proccess.
 %

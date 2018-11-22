@@ -618,6 +618,12 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     OutputTFmask = [];
     % Get maximum size of a data block
     MaxSize = ProcessOptions.MaxBlockSize;
+    if isfield(ProcessOptions, 'LastMaxBlockSize') && MaxSize ~= ProcessOptions.LastMaxBlockSize
+        bst_report('Warning', sProcess, sInput, ['The memory block size was modified since the last process.' 10 ...
+            'If you encounter issues, be sure to revert it to its previous value in the Brainstorm preferences.']);
+        ProcessOptions.LastMaxBlockSize = MaxSize;
+        bst_set('ProcessOptions', ProcessOptions);
+    end
     % Split the block size in rows and columns
     if (nRow * nCol > MaxSize) && ~isempty(sProcess.processDim)
         % Split max block by row blocks
@@ -1171,10 +1177,10 @@ end
 
 %% ===== PROCESS: STAT =====
 function OutputFiles = ProcessStat(sProcess, sInputA, sInputB)
-    % Check inputs
-    if ~isempty(strfind(GetFileTag(sInputA(1).FileName), 'connect'))
-        bst_report('Warning', sProcess, sInputA, 'Statistical tests on connectivity results are not supported yet.');
-    end
+%     % Check inputs
+%     if ~isempty(strfind(GetFileTag(sInputA(1).FileName), 'connect'))
+%         bst_report('Warning', sProcess, sInputA, 'Statistical tests on connectivity results are not supported yet.');
+%     end
     
     % ===== GET OUTPUT STUDY =====
     % Display progress bar

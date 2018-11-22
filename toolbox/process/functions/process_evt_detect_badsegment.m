@@ -92,7 +92,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Time window to process
     RefTimeWindow = 1; %seconds
    
-    % Option structure for function LoadInputFile()
+    % Option structure for function in_fread()
     ImportOptions = db_template('ImportOptions');
     ImportOptions.ImportMode = 'Time';
     ImportOptions.RemoveBaseline = 'no';

@@ -38,7 +38,12 @@ end
 
 %% ===== READER HEADER =====
 % Load .set file
-hdr = load(DataFile, '-mat');
+if isstruct(DataFile)
+    hdr = DataFile;
+    DataFile = hdr.filename;
+else
+    hdr = load(DataFile, '-mat');
+end
 % Add some information
 hdr.isRaw = isempty(hdr.EEG.epoch) && ~isempty(hdr.EEG.data);
 nChannels = hdr.EEG.nbchan;
@@ -112,8 +117,9 @@ if ~hdr.isRaw
     while (iParam <= length(listParam))
         % Get all the unique values
         tmpValues = {hdr.EEG.event.(listParam{iParam})};
-        % If not a cell and not all the values are the same
-        if ~iscell(tmpValues{1}) && ~all(cellfun(@(c)isequal(c,tmpValues{1}), tmpValues))
+        % If char and not all the values are the same
+%         if ~iscell(tmpValues{1}) && ~all(cellfun(@(c)isequal(c,tmpValues{1}), tmpValues))
+        if ischar(tmpValues{1}) && ~all(cellfun(@(c)isequal(c,tmpValues{1}), tmpValues))
             % Latency: keep the native order
             if isequal(listParam{iParam}, 'latency')
                 [tmp,I,J] = unique(tmpValues);

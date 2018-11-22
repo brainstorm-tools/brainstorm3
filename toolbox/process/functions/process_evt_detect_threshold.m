@@ -138,6 +138,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         TimeWindow = [];
     end
     
+    % Option structure for function in_fread()
+    ImportOptions = db_template('ImportOptions');
+    ImportOptions.ImportMode      = 'Time';
+    ImportOptions.UseCtfComp      = 1;
+    ImportOptions.UseSsp          = 1;
+    ImportOptions.EventsMode      = 'ignore';
+    ImportOptions.DisplayMessages = 0;
+    ImportOptions.RemoveBaseline  = 'no';
+    
     % Get current progressbar position
     progressPos = bst_progress('get');
     nEvents = 0;
@@ -193,7 +202,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         else
             SamplesBounds = [];
         end
-        [F, TimeVector] = in_fread(sFile, ChannelMat, 1, SamplesBounds, iChannels);
+        [F, TimeVector] = in_fread(sFile, ChannelMat, 1, SamplesBounds, iChannels, ImportOptions);
         % Apply weights if reading multiple channels
         if (length(iChannels) > 1)
             F = iChanWeights * F;

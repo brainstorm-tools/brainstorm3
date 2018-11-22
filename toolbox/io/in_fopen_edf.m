@@ -143,11 +143,11 @@ end
 iAnnotChans = find(strcmpi({hdr.signal.label}, 'EDF Annotations'));  % Mutliple "EDF Annotation" channels allowed in EDF+
 iStatusChan = find(strcmpi({hdr.signal.label}, 'Status'), 1);        % Only one "Status" channel allowed in BDF
 iOtherChan = setdiff(1:hdr.nsignal, [iAnnotChans iStatusChan]);
-% Remove channels with lower sampling rates
-iIgnoreChan = find([hdr.signal(iOtherChan).sfreq] < max([hdr.signal(iOtherChan).sfreq]));    % Ignore all the channels with lower sampling rate
-if ~isempty(iIgnoreChan)
-    iOtherChan = setdiff(iOtherChan, iIgnoreChan);
-end
+% % Remove channels with lower sampling rates
+% iIgnoreChan = find([hdr.signal(iOtherChan).sfreq] < max([hdr.signal(iOtherChan).sfreq]));    % Ignore all the channels with lower sampling rate
+% if ~isempty(iIgnoreChan)
+%     iOtherChan = setdiff(iOtherChan, iIgnoreChan);
+% end
 % Get all the other channels
 if isempty(iOtherChan)
     error('This file does not contain any data channel.');
@@ -189,11 +189,6 @@ end
 sFile.header = hdr;
 % Comment: short filename
 [tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
-% Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.signal(iOtherChan(1)).sfreq;
-sFile.prop.samples = [0, hdr.signal(iOtherChan(1)).nsamples * hdr.nrec - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nsignal,1);
 % Acquisition date
@@ -300,7 +295,31 @@ iMisc = find(strcmpi({ChannelMat.Channel.Type}, 'Misc'));
 iEeg  = find(strcmpi({ChannelMat.Channel.Type}, 'EEG'));
 if ~isempty(iMisc) && isempty(iEeg)
     [ChannelMat.Channel(iMisc).Type] = deal('EEG');
+    iEeg = iMisc;
 end
+
+
+%% ===== DETECT MULTIPLE SAMPLING RATES =====
+% Use the first "EEG" channel as the reference sampling rate (or the first channel if no "EEG" channels available)
+if ~isempty(iEeg) && ismember(iEeg(1), iOtherChan)
+    iChanFreqRef = iEeg(1);
+else
+    iChanFreqRef = iOtherChan(1);
+end
+% Mark as bad channels with sampling rates different from EEG
+iChanWrongRate = find([sFile.header.signal.sfreq] ~= sFile.header.signal(iChanFreqRef).sfreq);
+iChanWrongRate = intersect(iChanWrongRate, iOtherChan);
+if ~isempty(iChanWrongRate)
+    sFile.channelflag(iChanWrongRate) = -1;
+end
+
+% Consider that the sampling rate of the file is the sampling rate of the first signal
+sFile.prop.sfreq   = hdr.signal(iChanFreqRef).sfreq;
+sFile.prop.samples = [0, hdr.signal(iChanFreqRef).nsamples * hdr.nrec - 1];
+sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.nAvg    = 1;
+
+
 
 
 %% ===== READ EDF ANNOTATION CHANNEL =====

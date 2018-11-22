@@ -62,13 +62,20 @@ end
 
 %% ===== OPEN FILE =====
 % Open file (for some formats, it is open in the low-level function)
-if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS'}) 
+if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF'}) 
     sfid = [];
 else
     sfid = fopen(sFile.filename, 'r', sFile.byteorder);
 %     if (sfid == -1)
 %         error(['The following file has been removed or is used by another program:' 10 sFile.filename]);
 %     end
+end
+
+% Check whether optional field precision is available
+if ~isempty(ImportOptions) && isfield(ImportOptions, 'Precision')
+    precision = ImportOptions.Precision;
+else
+    precision = [];
 end
 
 %% ===== READ RECORDINGS BLOCK =====
@@ -99,7 +106,7 @@ switch (sFile.format)
             F = F(iChannels,:);
         end
     case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
-        F = in_fread_blackrock(sFile, SamplesBounds, iChannels);
+        F = in_fread_blackrock(sFile, SamplesBounds, iChannels, precision);
     case 'EEG-BRAINAMP'
         F = in_fread_brainamp(sFile, sfid, SamplesBounds);
         if ~isempty(iChannels)
@@ -130,6 +137,11 @@ switch (sFile.format)
         end
     case 'EEG-MANSCAN'
         F = in_fread_manscan(sFile, sfid, iEpoch, SamplesBounds);
+        if ~isempty(iChannels)
+            F = F(iChannels,:);
+        end
+    case 'EEG-EGI-MFF'
+        F = in_fread_mff(sFile, iEpoch, SamplesBounds);
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
@@ -186,12 +198,20 @@ switch (sFile.format)
             iChannels = 1:size(sFile.header.F,1);
         end
         F = sFile.header.F(iChannels, iTimes);
+    case 'EEG-INTAN'
+        F = in_fread_intan(sFile, SamplesBounds, iChannels, precision);
+    case 'EEG-PLEXON'
+        F = in_fread_plexon(sFile, SamplesBounds, iChannels, precision);
     otherwise
         error('Cannot read data from this file');
 end
 
 % Force the recordings to be in double precision
-F = double(F);
+if ~isempty(precision) && strcmp(precision, 'single')
+    F = single(F);
+else
+    F = double(F);
+end
 % Remove channels that were not supposed to be read
 if isChanRange && ~isempty(iChanRemove)
     F(iChanRemove,:) = [];
@@ -251,7 +271,14 @@ if ~isempty(ImportOptions) && ImportOptions.UseSsp && ~strcmpi(sFile.format, 'BS
         end
         % Apply projector
         if ~isempty(iChannels)
-            F = Projector(iChannels, iChannels) * F;
+            % If there are projectors involved and only subselection of channels: 
+            % We must have all data needed to apply the projector, otherwise it doesn't make sense
+            missingChannels = setdiff(find(any(Projector(iChannels,:), 1)), iChannels);
+            if ~isempty(missingChannels)
+                bst_report('Warning', 'process_import_data_raw', [], ['Missing channels in order to apply existing SSP/ICA projectors. To read the corrected values for channel "' ChannelMat.Channel(iChannels(1)).Name '", first apply the existing projectors with the process Artifacts > Apply SSP and CTF compensation']); 
+            else
+                F = Projector(iChannels, iChannels) * F;
+            end
         else
             F = Projector * F;
         end

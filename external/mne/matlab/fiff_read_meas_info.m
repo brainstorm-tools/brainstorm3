@@ -110,6 +110,8 @@ end
 dev_head_t=[];
 ctf_head_t=[];
 meas_date=[];
+proj_id = [];
+proj_name = [];
 p = 0;
 for k = 1:meas_info.nent
     kind = meas_info.dir(k).kind;
@@ -143,7 +145,16 @@ for k = 1:meas_info.nent
             elseif cand.from == FIFF.FIFFV_MNE_COORD_CTF_HEAD && ...
                     cand.to == FIFF.FIFFV_COORD_HEAD
                 ctf_head_t = cand;
+            elseif cand.from == FIFF.FIFFV_COORD_HEAD && ...
+                    cand.to == FIFF.FIFFV_COORD_DEVICE
+                dev_head_t = fiff_invert_transform(cand);
             end
+        case FIFF.FIFF_PROJ_ID
+            tag = fiff_read_tag(fid,pos);
+            proj_id = tag.data;
+        case FIFF.FIFF_PROJ_NAME
+            tag = fiff_read_tag(fid,pos);
+            proj_name = tag.data;
     end
 end
 %
@@ -223,8 +234,9 @@ if length(isotrak) == 1
     end
 end
 for k = 1:length(dig)
-    dig(p).coord_frame = coord_frame;
+    dig(k).coord_frame = coord_frame;
 end
+
 if exist('dig_trans','var')
     if (dig_trans.from ~= coord_frame && dig_trans.to ~= coord_frame)
         clear('dig_trans');
@@ -339,6 +351,8 @@ info.projs = projs;
 info.comps = comps;
 info.acq_pars = acq_pars;
 info.acq_stim = acq_stim;
+info.proj_id = proj_id;
+info.proj_name = proj_name;
 
 if open_here
     fclose(fid);

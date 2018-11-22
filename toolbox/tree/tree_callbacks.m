@@ -238,7 +238,11 @@ switch (lower(action))
             % ===== DATA =====
             % View data file (MEG and EEG)
             case {'data', 'pdata', 'rawdata'}
-                view_timeseries(filenameRelative);
+                if ~isempty(strfind(filenameRelative, '_0ephys_'))
+                    bst_process('CallProcess', 'process_spikesorting_supervised', filenameRelative, []);
+                else
+                    view_timeseries(filenameRelative);
+                end
 
             % ===== DATA/MATRIX LIST =====
             % Expand node
@@ -1294,13 +1298,26 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Review as raw', IconLoader.ICON_RAW_DATA, [], @(h,ev)import_raw(filenameFull, 'BST-DATA', iSubject));
                     end
                 else
-                    % === ERP IMAGE ===
+                    % Display of multiple files
                     if ~isempty(AllMod)
+                        % === ERP IMAGE ===
                         jMenuErp = gui_component('Menu', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], []);
                         % For each modality, display a menu
                         for iMod = 1:length(AllMod)
                             channelTypeDisplay = getChannelTypeDisplay(AllMod{iMod}, AllMod);
-                            gui_component('MenuItem', jMenuErp, [], channelTypeDisplay, IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes), 'erpimage', AllMod{iMod}));
+                            gui_component('MenuItem', jMenuErp, [], channelTypeDisplay, IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes, 'data'), 'erpimage', AllMod{iMod}));
+                        end
+                        % === 2DLAYOUT ===
+                        mod2D = intersect(DisplayMod, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'});
+                        if (length(mod2D) == 1)
+                            channelTypeDisplay = getChannelTypeDisplay(mod2D{1}, AllMod);
+                            gui_component('MenuItem', jPopup, [], ['2D Layout: ' channelTypeDisplay], IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{1}, '2DLayout'));
+                        elseif (length(mod2D) > 1)
+                            jMenu2d = gui_component('Menu', jPopup, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], []);
+                            for iMod = 1:length(mod2D)
+                                channelTypeDisplay = getChannelTypeDisplay(mod2D{iMod}, AllMod);
+                                gui_component('MenuItem', jMenu2d, [], channelTypeDisplay, IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{iMod}, '2DLayout'));
+                            end
                         end
                         AddSeparator(jPopup);
                     end
@@ -1369,7 +1386,7 @@ switch (lower(action))
                                 ~(strcmpi(AllMod{iMod}, 'MEG') && all(ismember({'MEG MAG', 'MEG GRAD'}, AllMod))) && ...
                                 ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
                                 %fcnPopupDisplayTopography(jMenuModality, filenameRelative, AllMod, AllMod{iMod}, 1);
-                                fcnPopupTopoNoInterp(jMenuModality, filenameRelative, AllMod(iMod), 0, 0, 0);
+                                fcnPopupTopoNoInterp(jMenuModality, filenameRelative, AllMod(iMod), 1, 0, 0);
                             end
                             % === DISPLAY ON SCALP ===
                             if strcmpi(AllMod{iMod}, 'EEG') && ~isempty(sSubject) && ~isempty(sSubject.iScalp) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
@@ -1421,24 +1438,49 @@ switch (lower(action))
                         % === DISPLAY TIME SERIES ===
                         gui_component('MenuItem', jPopup, [], 'Display time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(filenameRelative));
                     end
+                else
+                    % === 2DLAYOUT ===
+                    mod2D = intersect(DisplayMod, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'});
+                    if (length(mod2D) == 1)
+                        channelTypeDisplay = getChannelTypeDisplay(mod2D{1}, AllMod);
+                        gui_component('MenuItem', jPopup, [], ['2D Layout: ' channelTypeDisplay], IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'pdata', 1, 0), mod2D{1}, '2DLayout'));
+                    elseif (length(mod2D) > 1)
+                        jMenu2d = gui_component('Menu', jPopup, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], []);
+                        for iMod = 1:length(mod2D)
+                            channelTypeDisplay = getChannelTypeDisplay(mod2D{iMod}, AllMod);
+                            gui_component('MenuItem', jMenu2d, [], channelTypeDisplay, IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'pdata', 1, 0), mod2D{iMod}, '2DLayout'));
+                        end
+                    end
                 end
 
                 
 %% ===== POPUP: DATA LIST =====
             case 'datalist'                
                 if ~bst_get('ReadOnly')
-                    % === ERP IMAGE ===
                     % Get protocol description
                     iStudy = bstNodes(1).getStudyIndex();
                     sStudy = bst_get('Study', iStudy);
                     % Get avaible modalities for these data files
                     [AllMod, DisplayMod] = bst_get('ChannelModalities', sStudy.Data(1).FileName);
                     if ~isempty(AllMod)
+                        % === ERP IMAGE ===
                         jMenuErp = gui_component('Menu', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], []);
                         % For each modality, display a menu
                         for iMod = 1:length(AllMod)
                             channelTypeDisplay = getChannelTypeDisplay(AllMod{iMod}, AllMod);
                             gui_component('MenuItem', jMenuErp, [], channelTypeDisplay, IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes, 'data'), 'erpimage', AllMod{iMod}));
+                        end
+                        % === 2DLAYOUT ===
+                        mod2D = intersect(DisplayMod, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'});
+                        if (length(mod2D) == 1)
+                            channelTypeDisplay = getChannelTypeDisplay(mod2D{1}, AllMod);
+                            gui_component('MenuItem', jPopup, [], ['2D Layout: ' channelTypeDisplay], IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{1}, '2DLayout'));
+                        elseif (length(mod2D) > 1)
+                            jMenu2d = gui_component('Menu', jPopup, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], []);
+                            for iMod = 1:length(mod2D)
+                                channelTypeDisplay = getChannelTypeDisplay(mod2D{iMod}, AllMod);
+                                gui_component('MenuItem', jMenu2d, [], channelTypeDisplay, IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{iMod}, '2DLayout'));
+                            end
                         end
                         AddSeparator(jPopup);
                     end
@@ -2135,7 +2177,7 @@ switch (lower(action))
             % Folders: set acquisition date
             gui_component('MenuItem', jMenuFile, [], 'Set acquisition date', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('SetAcquisitionDate', iStudy));
             % Raw file menus
-            if ~isempty(RawFile)
+            if ~isempty(RawFile) && isempty(strfind(RawFile, '_0ephys_'))
                 % Files that are not saved in the database
                 if isempty(dir(bst_fullfile(bst_fileparts(file_fullpath(RawFile)), '*.bst')))
                     if ~bst_get('ReadOnly')
@@ -2566,7 +2608,7 @@ function fcnPopupDisplayTopography(jMenu, FileName, AllMod, Modality, isStat)
             gui_component('MenuItem', jMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, Modality, '2DDisc'));
         end
     end
-    gui_component('MenuItem', jMenu, [], '2D Layout',     IconLoader.ICON_2DLAYOUT,   [], @(h,ev)view_topography(FileName, Modality, '2DLayout'));
+    gui_component('MenuItem', jMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(FileName, Modality, '2DLayout'));
     % 3D Electrodes
     if ismember(Modality, {'EEG', 'ECOG'})
         gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes'));
@@ -2651,8 +2693,11 @@ end
     
 %% ===== SURFACE CALLBACKS =====
 %% ===== GET ALL FILENAMES =====
-function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad)
+function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad, isFullPath)
     % Parse inputs
+    if (nargin < 4) || isempty(isFullPath)
+        isFullPath = 1;
+    end
     if (nargin < 3) || isempty(isExcludeBad)
         isExcludeBad = 1;
     end
@@ -2669,7 +2714,10 @@ function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad)
                 for i = 1:length(iDepStudies)
                     sStudy = bst_get('Study', iDepStudies(i));
                     if (~isExcludeBad || ~sStudy.Data(iDepItems(i)).BadTrial)
-                        FileNames{end+1} = file_fullpath(sStudy.Data(iDepItems(i)).FileName);
+                        FileNames{end+1} = sStudy.Data(iDepItems(i)).FileName;
+                        if isFullPath
+                            FileNames{end} = file_fullpath(FileNames{end});
+                        end
                     end
                 end
             case 'matrixlist'
@@ -2680,12 +2728,18 @@ function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad)
                 end
                 for i = 1:length(iDepStudies)
                     sStudy = bst_get('Study', iDepStudies(i));
-                    FileNames{end+1} = file_fullpath(sStudy.Matrix(iDepItems(i)).FileName);
+                    FileNames{end+1} = sStudy.Matrix(iDepItems(i)).FileName;
+                    if isFullPath
+                        FileNames{end} = file_fullpath(FileNames{end});
+                    end
                 end
             case 'link'
                 FileNames{end+1} = char(bstNodes(iNode).getFileName());
             otherwise
-                FileNames{end+1} = file_fullpath(char(bstNodes(iNode).getFileName()));
+                FileNames{end+1} = char(bstNodes(iNode).getFileName());
+                if isFullPath
+                    FileNames{end} = file_fullpath(FileNames{end});
+                end
         end
     end
 end

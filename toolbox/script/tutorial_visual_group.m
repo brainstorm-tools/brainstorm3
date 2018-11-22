@@ -1,5 +1,5 @@
-function tutorial_visual_full_group(ProtocolName, reports_dir)
-% TUTORIAL_VISUAL_FULL_GROUP: Runs the Brainstorm/SPM group analysis pipeline (group analysis, BIDS VERSION)
+function tutorial_visual_group(ProtocolName, reports_dir)
+% TUTORIAL_VISUAL_GROUP: Runs the Brainstorm/SPM group analysis pipeline (group analysis, BIDS VERSION)
 %
 % ONLINE TUTORIALS: 
 %    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle

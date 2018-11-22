@@ -1,9 +1,9 @@
-function tutorial_visual_old_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir)
-% TUTORIAL_VISUAL_OLD_COPY: Copy the subject averages for the Brainstorm/SPM group tutorial into a new protocol (old distribution).
+function tutorial_visual_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir)
+% TUTORIAL_VISUAL_COPY: Copy the subject averages for the Brainstorm/SPM group tutorial into a new protocol (BIDS VERSION)
 %
 % ONLINE TUTORIALS: 
-%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingleOrig
-%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroupOrig
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
 %    - ProtocolNameSingle : Name of the protocol created with all the data imported (TutorialVisual)
@@ -28,9 +28,9 @@ function tutorial_visual_old_copy(ProtocolNameSingle, ProtocolNameGroup, reports
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, Elizabeth Bock, 2016
+% Author: Francois Tadel, Elizabeth Bock, 2016-2018
 
-% ===== CHECK PROTOCOL =====
+% ===== CHECK PROTOCOLS =====
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
@@ -44,37 +44,39 @@ if (nargin < 2) || isempty(ProtocolNameSingle) || isempty(ProtocolNameGroup)
     ProtocolNameSingle = 'TutorialVisual';
     ProtocolNameGroup  = 'TutorialGroup';
 end
-% Input protocol: Check that it exists
-iProtocolSingle = bst_get('Protocol', ProtocolNameSingle);
-if isempty(iProtocolSingle)
-    error(['Unknown protocol: ' ProtocolNameSingle]);
-end
+
 % Output protocol: Delete existing protocol
 gui_brainstorm('DeleteProtocol', ProtocolNameGroup);
 % Output protocol: Create new protocol
 iProtocolGroup = gui_brainstorm('CreateProtocol', ProtocolNameGroup, 0, 0);
 % Output protocol: Get protocol information
 ProtocolInfoGroup = bst_get('ProtocolInfo');
+
+% Input protocol: Check that it exists
+iProtocolSingle = bst_get('Protocol', ProtocolNameSingle);
+if isempty(iProtocolSingle)
+    error(['Unknown protocol: ' ProtocolNameSingle]);
+end
 % Select input protocol 
 gui_brainstorm('SetCurrentProtocol', iProtocolSingle);
 % Input protocol: Get protocol information
 ProtocolInfoSingle = bst_get('ProtocolInfo');
-% Start a new report (one report per subject)
-bst_report('Start');
+
 
 % ===== COPY ONLY GOOD SUBJECTS =====
-% List of good subjects: all but sub001, sub005 and sub016
-iSubjList = setdiff(1:19, [1 5 16]);
+% Start a new report (one report per subject)
+bst_report('Start');
 % Loop on subjects
-for iSubj = iSubjList
+for iSubj = 1:16
     % Subject folders
-    AnatSrc  = bst_fullfile(ProtocolInfoSingle.SUBJECTS, sprintf('sub%03d', iSubj));
-    DataSrc  = bst_fullfile(ProtocolInfoSingle.STUDIES,  sprintf('sub%03d', iSubj));
-    AnatDest = bst_fullfile(ProtocolInfoGroup.SUBJECTS,  sprintf('sub%03d', iSubj));
-    DataDest = bst_fullfile(ProtocolInfoGroup.STUDIES,   sprintf('sub%03d', iSubj));
+    SubjectName = sprintf('sub-%02d', iSubj);
+    AnatSrc  = bst_fullfile(ProtocolInfoSingle.SUBJECTS, SubjectName);
+    DataSrc  = bst_fullfile(ProtocolInfoSingle.STUDIES,  SubjectName);
+    AnatDest = bst_fullfile(ProtocolInfoGroup.SUBJECTS,  SubjectName);
+    DataDest = bst_fullfile(ProtocolInfoGroup.STUDIES,   SubjectName);
     % If subject folder doesn't exist: skip
     if ~file_exist(AnatSrc) || ~file_exist(DataSrc)
-        disp(sprintf('Subject "sub%03d" does not exist or is incomplete.', iSubj));
+        disp(['Subject "' SubjectName '" does not exist or is incomplete.']);
         continue;
     end
     % Copy anatomy files
@@ -90,11 +92,12 @@ for iSubj = iSubjList
     % Loop on runs
     for iRun = 1:6
         % Run folders
-        RunSrc  = bst_fullfile(DataSrc,  sprintf('run_%02d_sss_notch', iRun));
-        RunDest = bst_fullfile(DataDest, sprintf('run_%02d_sss_notch', iRun));
+        RunName = sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-sss_meg_notch', iSubj, iRun);
+        RunSrc  = bst_fullfile(DataSrc,  RunName);
+        RunDest = bst_fullfile(DataDest, RunName);
         % If run folder doesn't exist: skip
         if ~file_exist(RunSrc)
-            disp(sprintf('Run "sub%03d/run_%02d_sss_notch" does not exist or is incomplete.', iSubj, iRun));
+            disp(['Run "' SubjectName '/' RunName '" does not exist or is incomplete.']);
             continue;
         end
         % Copy files

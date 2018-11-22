@@ -165,7 +165,7 @@ if isfield(srcSurfMat, 'Reg')  && isfield(srcSurfMat.Reg, 'Sphere')  && isfield(
     % Basic version: doesn't work because the the Reg.Sphere contains only the vertices of the cortex hemispheres, not all the surface, therefore the indices do not match
     % But rehabilitated in Sept 2018 to handle some old databases from 2015, where the order of the vertices is not preserved in the downsampling
     % Old surfaces can be identified with Cortex scouts with vertex indices that are not sorted
-    if (~isequal(1:length(iVertLsrc), iVertLsrc) && ~isequal(1:length(iVertRsrc), iVertRsrc)) || (~isequal(1:length(iVertLdest), iVertLdest) && ~isequal(1:length(iVertRdest), iVertRdest))
+    if (length(destSurfMat.Atlas(iStructDest).Scouts) == 2) && ((~isequal(1:length(iVertLsrc), iVertLsrc) && ~isequal(1:length(iVertRsrc), iVertRsrc)) || (~isequal(1:length(iVertLdest), iVertLdest) && ~isequal(1:length(iVertRdest), iVertRdest)))
         % This old version of the code works only if there are only the two hemispheres in the cortex surface
         if (length(srcSurfMat.Reg.Sphere.Vertices) == length(srcSurfMat.Vertices)) && (length(destSurfMat.Reg.Sphere.Vertices) == length(destSurfMat.Vertices))
             vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices(iVertLsrc, :);

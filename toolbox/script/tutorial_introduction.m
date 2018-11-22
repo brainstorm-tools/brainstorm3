@@ -683,7 +683,7 @@ sFilesSrcUnconst = bst_process('CallProcess', 'process_inverse_2018', sFilesAvgD
 % === NORMALIZED SOURCES ===
 % dSPM
 InverseOptions.Comment        = 'dSPM: MEG';
-InverseOptions.InverseMeasure = 'dspm';
+InverseOptions.InverseMeasure = 'dspm2018';
 InverseOptions.SourceOrient   = {'fixed'};
 sFilesSrcDspm = bst_process('CallProcess', 'process_inverse_2018', sFilesAvgDeviant01, [], ...
     'output',  2, ...  % Kernel only: one per file

@@ -1,12 +1,12 @@
-function tutorial_visual_full(bids_dir, reports_dir)
-% TUTORIAL_VISUAL_FULL: Runs the Brainstorm/SPM group analysis pipeline (BIDS version).
+function tutorial_visual(bids_dir, reports_dir)
+% TUTORIAL_VISUAL: Runs the Brainstorm/SPM group analysis pipeline (BIDS version).
 %
 % ONLINE TUTORIALS: 
 %    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
 %    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
-%    - bids_dir    : Path to folder "Multisubject, multimodal face processing"  (https://openneuro.org/datasets/ds000117/versions/00004)
+%    - bids_dir    : Path to folder ds000117  (https://openneuro.org/datasets/ds000117)
 %    - reports_dir : If defined, exports all the reports as HTML to this folder
 
 % @=============================================================================
@@ -58,10 +58,10 @@ bst_set('DisplayGFP', 1);
 ProtocolNameSingle = 'TutorialVisual';
 ProtocolNameGroup  = 'TutorialGroup';
 % Part 1: Single subject analysis
-tutorial_visual_full_single(bids_dir, reports_dir);
+tutorial_visual_single(bids_dir, reports_dir);
 % Part 2: Copy to a new protocol for the group analysis
-tutorial_visual_full_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir);
+tutorial_visual_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir);
 % Part 3: Group analysis
-tutorial_visual_full_group(ProtocolNameGroup, reports_dir);
+tutorial_visual_group(ProtocolNameGroup, reports_dir);
 
 

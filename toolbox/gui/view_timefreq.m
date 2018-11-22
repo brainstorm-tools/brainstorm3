@@ -55,7 +55,15 @@ end
 if (nargin < 5) || isempty(Function)
     Function = [];
 end
-   
+
+if ~isempty(strfind(lower(TimefreqFile), 'spike_field_coherence')) ...
+        || ~isempty(strfind(lower(TimefreqFile), 'noise_correlation')) ...
+        || ~isempty(strfind(lower(TimefreqFile), 'rasterplot'))
+    isEphysFile = 1;
+    GlobalData.UserFrequencies.HideFreqPanel = 1;
+else
+    isEphysFile = 0;
+end
 
 %% ===== GET ALL ACCESSIBLE DATA =====
 % Get study
@@ -164,10 +172,19 @@ else
     TfInfo.RowName = AllRows(1);
 end
 % Default function
-if ~isempty(Function)
+if isEphysFile
+    TfInfo.Function = 'power';
+    TfInfo.DisplayMeasure = 0;
+    TfInfo.DisableHideEdgeEffects = 1;
+elseif ~isempty(Function)
     TfInfo.Function = Function;
 else
     TfInfo.Function = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));
+end
+% EPhys specific fields
+if ~isempty(strfind(lower(TimefreqFile), 'noise_correlation'))
+    DataMat = in_bst_data(TimefreqFile, 'NeuronNames');
+    TfInfo.NeuronNames = DataMat.NeuronNames;
 end
 % Set figure data
 setappdata(hFig, 'Timefreq', TfInfo);

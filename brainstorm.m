@@ -20,6 +20,7 @@ function varargout = brainstorm( varargin )
 %        brainstorm test          : Run a coverage test
 %        brainstorm deploy        : Create a zip file for distribution (see bst_deploy for options)
 %        brainstorm deploy 1      : Compile the current version of Brainstorm with Matlab mcc compiler
+%        brainstorm workshop      : Download OpenMEEG and the SPM atlases, and run some small tests
 %  res = brainstorm('status')     : Return brainstorm status (1=running, 0=stopped)
 
 % @=============================================================================
@@ -97,6 +98,24 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     % Add JOGL package
     if ~isempty(jarfile)
         javaaddpath([BrainstormHomeDir '/java/' jarfile]);
+    end
+    % Add MFF JAR file if present
+    [mffJarPath, mffJarExists] = bst_get('MffJarFile');
+    mffDirTmp = bst_fullfile(bst_get('BrainstormUserDir'), 'mffmatlabioNew');
+    if isdir(mffDirTmp)
+        % A new library version is available, install it
+        mffDir = fileparts(mffJarPath);
+        if isdir(mffDir)
+            rmdir(mffDir, 's');
+        end
+        mkdir(mffDir);
+        libDir = bst_fullfile(mffDirTmp, 'mffmatlabio', '*');
+        movefile(libDir, mffDir);
+        rmdir(mffDirTmp, 's');
+        mffJarExists = 1;
+    end
+    if mffJarExists
+        javaaddpath(mffJarPath);
     end
 end
 % Deployed: Remove one of the two JOGL packages from the Java classpath
@@ -210,6 +229,7 @@ switch action
                 bst_report('Close');
             end
         end
+        
     case 'test'
         bst_set_path(BrainstormHomeDir);
         if (nargin < 2)
@@ -217,6 +237,37 @@ switch action
         end
         test_dir = varargin{2};
         test_all(test_dir);
+        
+    case 'workshop'
+        % Runs Brainstorm normally (asks for brainstorm_db)
+        if ~isappdata(0, 'BrainstormRunning')
+            bst_set_path(BrainstormHomeDir);
+            bst_startup(BrainstormHomeDir, 1, BrainstormDbDir);
+        end
+        % Message
+        java_dialog('msgbox', 'Brainstorm will now download additional files needed for the workshop.', 'Workshop');
+        % Downloads OpenMEEG
+        bst_openmeeg('download');
+        % Downloads the TMP.nii SPM atlas
+        bst_normalize_mni('install');
+        % Message
+        java_dialog('msgbox', ['Brainstorm will now test your display and open a 3D figure:' 10 10 ... 
+                               ' - You should see two surfaces: a brain surface and a transparent head.' 10 ...
+                               ' - Make sure you can rotate the brain with your mouse, ' 10 ...
+                               ' - Then close the figure.' 10 10], 'Workshop');
+        % Creates an empty test protocol
+        ProtocolName = 'TestWorkshop';
+        gui_brainstorm('DeleteProtocol', ProtocolName);
+        gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
+        % Display the default anatomy cortex and head 
+        hFig = view_surface('@default_subject/tess_cortex_pial_low.mat');
+        hFig = view_surface('@default_subject/tess_head.mat', [], [], hFig);
+        waitfor(hFig);
+        % Delete test protocol
+        gui_brainstorm('DeleteProtocol', ProtocolName);
+        % Confirmation message
+        java_dialog('msgbox', 'You computer is ready for the workshop.', 'Workshop');
+        
     case 'deploy'
         % Close Brainstorm
         if isappdata(0, 'BrainstormRunning')
@@ -241,6 +292,7 @@ switch action
         else
             bst_deploy_java();
         end
+        
     case 'packagebin'
         bst_set_path(BrainstormHomeDir);
         deployPath = fullfile(BrainstormHomeDir, 'deploy');

@@ -29,10 +29,11 @@ end
 
 %% ===== CREATE FIGURE =====
 function hFig = CreateFigure(FigureId) %#ok<DEFNU>
+    MatlabVersion = bst_get('MatlabVersion');
     % Get renderer name
     if (bst_get('DisableOpenGL') ~= 1)
         rendererName = 'opengl';
-    elseif (bst_get('MatlabVersion') <= 803)   % zbuffer was removed in Matlab 2014b
+    elseif (MatlabVersion <= 803)   % zbuffer was removed in Matlab 2014b
         rendererName = 'zbuffer';
     else
         rendererName = 'painters';
@@ -58,6 +59,10 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     % Define Mouse wheel callback separately (not supported by old versions of Matlab)
     if isprop(hFig, 'WindowScrollWheelFcn')
         set(hFig, 'WindowScrollWheelFcn',  @FigureMouseWheelCallback);
+    end
+    % Disable automatic legends (after 2017a)
+    if (MatlabVersion >= 902) 
+        set(hFig, 'defaultLegendAutoUpdate', 'off');
     end
     % Create axes
     hAxes = axes('Units',         'normalized', ...

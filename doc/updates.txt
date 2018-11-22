@@ -1,5 +1,14 @@
 ---------------------------------------------------------------
+November 2018
+- New electrophysiology toolbox
+- GUI: 2DLayout: Added new controls, new time window management
+- GUI: 2DLayout: Overlay of multiple conditions
+---------------------------------------------------------------
+October 2018
+- IO: BIDS export process
+---------------------------------------------------------------
 September 2018
+- IO: Support for EGI-Philips MFF recordings
 - Process: Uniform epoch time: Added option "overwrite" and support for source links
 ---------------------------------------------------------------
 August 2018
@@ -19,7 +28,6 @@ July 2018
 - GUI: New menu "Set acquisition date" (for automatic matching with empty-room recordings)
 - Anatomy: BrainSuite: Added subcortical structures
 - Inverse: Switched to OpenMEEG 2.4
-- Doc: Submitted article "MEG/EEG group analysis with Brainstorm"
 ---------------------------------------------------------------
 June 2018
 - Distrib: New electrophysiology toolbox

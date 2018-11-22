@@ -43,8 +43,9 @@ end
 %% ===== CREATE FIGURE =====
 function hFig = CreateFigure(FigureId)
     import org.brainstorm.icon.*;
+    MatlabVersion = bst_get('MatlabVersion');
     % Get renderer name
-    if (bst_get('MatlabVersion') <= 803)   % zbuffer was removed in Matlab 2014b
+    if (MatlabVersion <= 803)   % zbuffer was removed in Matlab 2014b
         rendererName = 'zbuffer';
     elseif (bst_get('DisableOpenGL') == 1)
         rendererName = 'painters';
@@ -76,6 +77,10 @@ function hFig = CreateFigure(FigureId)
     if isprop(hFig, 'WindowKeyPressFcn') && isprop(hFig, 'WindowKeyReleaseFcn')
         set(hFig, 'WindowKeyPressFcn',    @WindowKeyPressedCallback, ...
                   'WindowKeyReleaseFcn',  @WindowKeyReleaseCallback);
+    end
+    % Disable automatic legends (after 2017a)
+    if (MatlabVersion >= 902) 
+        set(hFig, 'defaultLegendAutoUpdate', 'off');
     end
     % Prepare figure appdata
     setappdata(hFig, 'hasMoved', 0);
@@ -3461,8 +3466,8 @@ function CreateScaleButtons(iDS, iFig)
     j3.setToolTipText('Set scale manually');
     j4.setToolTipText('Auto-scale amplitude when changing page');
     j5.setToolTipText('<HTML><B>Flips the Y axis when displaying the recordings</B>:<BR><BR>Negative values are displayed oriented towards the top of the figures.');
-    j6.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
-    j7.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
+    j6.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
+    j7.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
     j8.setToolTipText('Set X scale to log scale');
     j9.setToolTipText('Show grids');
     j10.setToolTipText('<HTML><TABLE><TR><TD>Scroll up</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse up]<BR> &nbsp; [Middle click + Mouse up]</B></TD></TR></TABLE>');

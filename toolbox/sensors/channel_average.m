@@ -24,7 +24,7 @@ function [MeanChannelMat, Message] = channel_average(ChannelMats)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012
+% Authors: Francois Tadel, 2012-2018
 
 Message = [];
 
@@ -92,7 +92,7 @@ for iChan = 1:length(MeanChannelMat.Channel)
 end
 
 % CTF/4D files: Restore the full list of integration points
-if any(strcmpi(DeviceName, {'CTF', '4D'}))
+if any(strcmpi(DeviceName, {'CTF', '4D', 'KRISS'}))
     MeanChannelMat.Channel(iChanInteg) = ctf_add_coil_defs(MeanChannelMat.Channel(iChanInteg), DeviceName);
 end
 

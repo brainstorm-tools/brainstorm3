@@ -36,7 +36,7 @@ for i = 1:length(Files)
     if isdir(Files{i})
         isDirFile = 0;
         % If CTF/ERP format
-        if ismember(FileFormat, {'CTF', 'EEG-ERPCENTER', 'EEG-NEURALYNX', 'EEG-NEURONE'})
+        if ismember(FileFormat, {'CTF', 'EEG-ERPCENTER', 'EEG-NEURALYNX', 'EEG-NEURONE', 'EEG-EGI-MFF'})
             switch (FileFormat)
                 case 'CTF'
                     % Check if there are .meg4 or .res4 files in directory
@@ -53,6 +53,9 @@ for i = 1:length(Files)
                     % Get binary files 1-9.bin
                     dirFiles = [dir(bst_fullfile(Files{i}, '1.bin')); dir(bst_fullfile(Files{i}, '2.bin')); dir(bst_fullfile(Files{i}, '3.bin')); dir(bst_fullfile(Files{i}, '4.bin')); dir(bst_fullfile(Files{i}, '5.bin'));
                                 dir(bst_fullfile(Files{i}, '6.bin')); dir(bst_fullfile(Files{i}, '7.bin')); dir(bst_fullfile(Files{i}, '8.bin')); dir(bst_fullfile(Files{i}, '9.bin'))];
+                case 'EEG-EGI-MFF'
+                    % Check if there are .bin files in directory
+                    dirFiles = dir(bst_fullfile(Files{i}, '*.bin'));
             end
             j = 1;
             while (~isDirFile && (j <= length(dirFiles)))

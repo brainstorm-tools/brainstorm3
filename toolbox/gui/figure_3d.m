@@ -43,10 +43,11 @@ end
 
 %% ===== CREATE FIGURE =====
 function hFig = CreateFigure(FigureId) %#ok<DEFNU>
+    MatlabVersion = bst_get('MatlabVersion');
     % Get renderer name
     if (bst_get('DisableOpenGL') ~= 1)
         rendererName = 'opengl';
-    elseif (bst_get('MatlabVersion') <= 803)   % zbuffer was removed in Matlab 2014b
+    elseif (MatlabVersion <= 803)   % zbuffer was removed in Matlab 2014b
         rendererName = 'zbuffer';
     else
         rendererName = 'painters';
@@ -75,6 +76,10 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     if isprop(hFig, 'WindowScrollWheelFcn')
         set(hFig, 'WindowScrollWheelFcn',  @FigureMouseWheelCallback);
     end
+    % Disable automatic legends (after 2017a)
+    if (MatlabVersion >= 902) 
+        set(hFig, 'defaultLegendAutoUpdate', 'off')
+    end
     
     % === CREATE AXES ===
     hAxes = axes('Parent',        hFig, ...
@@ -88,7 +93,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     if isequal(FigureId.SubType, '2DLayout')
         axis off
         % Recent versions of Matlab: set zoom behavior
-        if bst_get('MatlabVersion') >= 900
+        if (MatlabVersion >= 900)
             z = zoom(hFig);
             setAxes3DPanAndZoomStyle(z,hAxes,'camera');
         end
@@ -97,7 +102,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
         axis equal 
         axis off
         % Recent versions of Matlab: set zoom behavior
-        if bst_get('MatlabVersion') >= 900
+        if (MatlabVersion >= 900)
             z = zoom(hFig);
             setAxes3DPanAndZoomStyle(z,hAxes,'camera');
         end
@@ -195,6 +200,30 @@ function ResizeCallback(hFig, ev)
         % Reposition the axes
         set(hAxes, 'Units',    'normalized', ...
                    'Position', [.05, .05, .9, .9]);
+    end
+    
+    % ===== 2DLAYOUT: REPOSITION SCALE CONTROLS =====
+    FigureId = getappdata(hFig, 'FigureId');
+    if isequal(FigureId.SubType, '2DLayout')
+        % Get buttons
+        hButtonGainMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainMinus');
+        hButtonGainPlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainPlus');
+        hButtonSetTimeWindow = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetTimeWindow');
+        hButtonZoomTimePlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus');
+        hButtonZoomTimeMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus');
+        % Reposition buttons
+        butSize = 22;
+        if ~isempty(hButtonZoomTimePlus)
+            set(hButtonZoomTimePlus,   'Position', [figPos(3) - 3*(butSize+3) + 1, 3, butSize, butSize]);
+            set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 2*(butSize+3) + 1, 3, butSize, butSize]);
+        end
+        if ~isempty(hButtonSetTimeWindow)
+            set(hButtonSetTimeWindow, 'Position', [figPos(3) - butSize - 1, 3, butSize, butSize]);
+        end
+        if ~isempty(hButtonGainMinus)
+            set(hButtonGainMinus, 'Position', [figPos(3)-butSize-1, 3 + (butSize+3), butSize, butSize]);
+            set(hButtonGainPlus,  'Position', [figPos(3)-butSize-1, 3 + 2*(butSize+3), butSize, butSize]);
+        end
     end
 end
     
@@ -1087,8 +1116,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     end
                 % DELETE: SET CHANNELS AS BAD
                 case {'delete', 'backspace'}
+                    isMulti2dLayout = (isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hLines') && (length(GlobalData.DataSet(iDS).Figure(iFig).Handles.hLines) >= 2));
                     if ~isAlignFig && ~isempty(SelChan) && ~AllChannelsDisplayed && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
-                            (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(iSelChan))
+                            (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(iSelChan)) && ~isMulti2dLayout
                         % Shift+Delete: Mark non-selected as bad
                         newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
                         if ismember('shift', keyEvent.Modifier)
@@ -1420,24 +1450,29 @@ function DisplayFigurePopup(hFig)
 
     % ==== DISPLAY OTHER FIGURES ====
     if ~isempty(TfFile)
-        % Get selected vertex
-        iVertex = panel_coordinates('SelectPoint', hFig, 0);
-        % Menu for selected vertex
-        if ~isempty(iVertex)
-            if isempty(strfind(TfFile, '_psd')) && isempty(strfind(TfFile, '_fft')) && isempty(strfind(TfFile, '_pac'))
-                jItem = gui_component('MenuItem', jPopup, [], 'Source: Time-frequency', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@view_timefreq, TfFile, 'SingleSensor', iVertex, 1));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_SHIFT, 0));
-                gui_component('MenuItem', jPopup, [], 'Source: Time series',    IconLoader.ICON_DATA,     [], @(h,ev)bst_call(@view_spectrum, TfFile, 'TimeSeries', iVertex, 1));
-            end
-            if isempty(strfind(TfFile, '_pac'))
-                gui_component('MenuItem', jPopup, [], 'Source: Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)bst_call(@view_spectrum, TfFile, 'Spectrum', iVertex, 1));
-            end
-            if ~isempty(strfind(TfFile, '_pac_fullmaps'))
-                jItem = gui_component('MenuItem', jPopup, [], 'Sensor PAC map', IconLoader.ICON_PAC, [], @(h,ev)view_pac(TfFile, iVertex, 'DynamicPAC', [], 1));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_SHIFT, 0));
-            end
-            if (jPopup.getComponentCount() > 0)
-                jPopup.addSeparator();
+        % Check the type of data: recordings or sources
+        [sStudyTf, iStudyTf, iTf] = bst_get('TimefreqFile', TfFile);
+        % Display source menus only for sources
+        if ~isempty(sStudyTf) && strcmpi(sStudyTf.Timefreq(iTf).DataType, 'results')
+            % Get selected vertex
+            iVertex = panel_coordinates('SelectPoint', hFig, 0);
+            % Menu for selected vertex
+            if ~isempty(iVertex)
+                if isempty(strfind(TfFile, '_psd')) && isempty(strfind(TfFile, '_fft')) && isempty(strfind(TfFile, '_pac'))
+                    jItem = gui_component('MenuItem', jPopup, [], 'Source: Time-frequency', IconLoader.ICON_TIMEFREQ, [], @(h,ev)bst_call(@view_timefreq, TfFile, 'SingleSensor', iVertex, 1));
+                    jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_SHIFT, 0));
+                    gui_component('MenuItem', jPopup, [], 'Source: Time series',    IconLoader.ICON_DATA,     [], @(h,ev)bst_call(@view_spectrum, TfFile, 'TimeSeries', iVertex, 1));
+                end
+                if isempty(strfind(TfFile, '_pac'))
+                    gui_component('MenuItem', jPopup, [], 'Source: Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)bst_call(@view_spectrum, TfFile, 'Spectrum', iVertex, 1));
+                end
+                if ~isempty(strfind(TfFile, '_pac_fullmaps'))
+                    jItem = gui_component('MenuItem', jPopup, [], 'Sensor PAC map', IconLoader.ICON_PAC, [], @(h,ev)view_pac(TfFile, iVertex, 'DynamicPAC', [], 1));
+                    jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_SHIFT, 0));
+                end
+                if (jPopup.getComponentCount() > 0)
+                    jPopup.addSeparator();
+                end
             end
         end
     end
@@ -1516,6 +1551,8 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: CHANNELS =====
     % Check if it is a realignment figure
     isAlignFig = ~isempty(findobj(hFig, '-depth', 1, 'Tag', 'AlignToolbar'));
+    % Are there multiple 2DLayout overlays in this figure
+    isMulti2dLayout = (isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hLines') && (length(GlobalData.DataSet(iDS).Figure(iFig).Handles.hLines) >= 2));
     % Not for align figures
     if ~isAlignFig && ~isempty(GlobalData.DataSet(iDS).ChannelFile)
         jMenuChannels = gui_component('Menu', jPopup, [], 'Channels', IconLoader.ICON_CHANNEL);
@@ -1528,23 +1565,26 @@ function DisplayFigurePopup(hFig)
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)); % ENTER
         end
         % Excludes figures without selection and display-only figures (modality name starts with '$')
-        if ~isempty(DataFile) && isMarkers && ~isempty(SelChan) && ~isempty(Modality) && (Modality(1) ~= '$')
+        if ~isempty(DataFile) && isMarkers && ~isempty(SelChan) && ~isempty(Modality) && (Modality(1) ~= '$') 
             % === VIEW TIME SERIES ===
             jItem = gui_component('MenuItem', jMenuChannels, [], 'View selected', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)figure_timeseries('DisplayDataSelectedChannels', iDS, SelChan, Modality));
             if isempty(TfFile)
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)); % ENTER
             end
-            % === SET SELECTED AS BAD CHANNELS ===
-            newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
-            newChannelFlag(iSelChan) = -1;
-            jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark selected as bad', IconLoader.ICON_BAD, [], @(h,ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag));
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0)); % DEL
-            % === SET NON-SELECTED AS BAD CHANNELS ===
-            newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
-            newChannelFlag(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) = -1;
-            newChannelFlag(iSelChan) = 1;
-            jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark non-selected as bad', IconLoader.ICON_BAD, [], @(h,ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag));
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, KeyEvent.SHIFT_MASK));
+            % Not for multiple 2DLayout
+            if ~isMulti2dLayout
+                % === SET SELECTED AS BAD CHANNELS ===
+                newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
+                newChannelFlag(iSelChan) = -1;
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark selected as bad', IconLoader.ICON_BAD, [], @(h,ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0)); % DEL
+                % === SET NON-SELECTED AS BAD CHANNELS ===
+                newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
+                newChannelFlag(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) = -1;
+                newChannelFlag(iSelChan) = 1;
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark non-selected as bad', IconLoader.ICON_BAD, [], @(h,ev)panel_channel_editor('UpdateChannelFlag', DataFile, newChannelFlag));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, KeyEvent.SHIFT_MASK));
+            end
             % === RESET SELECTION ===
             jItem = gui_component('MenuItem', jMenuChannels, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h,ev)bst_figures('SetSelectedRows', []));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0)); % ESCAPE
@@ -1555,7 +1595,7 @@ function DisplayFigurePopup(hFig)
         end
         
         % ==== CHANNEL FLAG =====
-        if ~isempty(DataFile) && isMarkers
+        if ~isempty(DataFile) && isMarkers && ~isMulti2dLayout
             % ==== MARK ALL CHANNELS AS GOOD ====
             ChannelFlagGood = ones(size(GlobalData.DataSet(iDS).Measures.ChannelFlag));
             jItem = gui_component('MenuItem', jMenuChannels, [], 'Mark all channels as good', IconLoader.ICON_GOOD, [], @(h, ev)panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, ChannelFlagGood));
@@ -2047,7 +2087,7 @@ function UpdateFigSelectedRows(iDS, iFig)
         iSelLines = find(ismember(sHandles.SelChanGlobal, iDispChan(iSelChan)));
         % Selected channels : Paint lines in red
         if ~isempty(iSelLines)
-            set(sHandles.hLines(iSelLines), 'Color', 'r');
+            set(sHandles.hLines{1}(iSelLines), 'Color', 'r');
             set(sHandles.hSensorLabels(iSelLines), ...
                 'Color',      [.2 1 .4], ...
                 'FontUnits', 'points', ...
@@ -2058,7 +2098,7 @@ function UpdateFigSelectedRows(iDS, iFig)
         iUnselLines = find(ismember(sHandles.SelChanGlobal, iDispChan(iUnselChan)));
         % Deselected channels : Restore initial color
         if ~isempty(iUnselLines)
-            set(sHandles.hLines(iUnselLines), 'Color', sHandles.LinesColor(1,:));
+            set(sHandles.hLines{1}(iUnselLines), 'Color', sHandles.LinesColor{1}(1,:));
             set(sHandles.hSensorLabels(iUnselLines), ...
                 'Color',      .8*[1 1 1], ...
                 'FontUnits', 'points', ...

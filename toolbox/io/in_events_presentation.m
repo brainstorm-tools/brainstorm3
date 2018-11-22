@@ -19,7 +19,7 @@ function events = in_events_presentation(sFile, EventFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Robert Oostenveld, 2017
+% Authors: Francois Tadel, 2017; Martin Cousineau, 2018
 
 % Open file
 fid = fopen(EventFile, 'r');
@@ -29,7 +29,10 @@ end
 % Inialize event list
 mrkType = {};
 mrkTime = [];
-isHeader = 1;
+% Default column positions if we can't figure them out
+iCode = 3;
+iTime = 4;
+numCells = max(iCode, iTime);
 % Loop to skip the first comment lines
 while 1
     % Read one line
@@ -42,19 +45,20 @@ while 1
     if isempty(strLine)
         continue;
     end
-    % The line must contain the column names (eg. "Trial") before we start reading values
-    if isHeader
-        if ~isempty(strfind(strLine, 'Trial'))
-            isHeader = 0;
-        end
+    % Split line
+    cellLine = str_split(strLine, sprintf('\t'), 0);
+    if isHeader(cellLine)
+        % Figure out position of columns we need
+        iCode = find(strcmpi(cellLine, 'Code'));
+        iTime = find(strcmpi(cellLine, 'Time'));
+        numCells = max(iCode, iTime);
         continue;
     end
-    % Split line
-    cellLine = str_split(strLine, sprintf(' \t'));
+
     % If the line contains enough entries: use it
-    if (length(cellLine) >= 4) && ~isempty(str2num(cellLine{4}))
-        mrkType{end+1} = cellLine{3};
-        mrkTime(end+1) = str2num(cellLine{4});
+    if (length(cellLine) >= numCells) && ~isempty(str2num(cellLine{iTime}))
+        mrkType{end+1} = cellLine{iCode};
+        mrkTime(end+1) = str2num(cellLine{iTime});
     end
 end
 % Close file
@@ -70,12 +74,17 @@ for iEvt = 1:length(uniqueEvt)
     iMrk = find(strcmpi(mrkType, uniqueEvt{iEvt}));
     % Add event structure
     events(iEvt).label   = uniqueEvt{iEvt};
-    events(iEvt).epochs  = ones(1, length(iMrk));
-    events(iEvt).times   = double(mrkTime(iMrk)) .* 1e-4;
+    events(iEvt).times   = sort(unique(double(mrkTime(iMrk)))) .* 1e-4;
+    events(iEvt).epochs  = ones(1, length(events(iEvt).times));
     events(iEvt).samples = round(events(iEvt).times .* sFile.prop.sfreq);
     events(iEvt).reactTimes  = [];
     events(iEvt).select      = 1;
 end
 
+end
 
+
+function res = isHeader(cellLine)
+    res = length(cellLine) >= 2 && any(strcmpi(cellLine, 'Code')) && any(strcmpi(cellLine, 'Time'));
+end
 

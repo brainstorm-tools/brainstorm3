@@ -1,12 +1,12 @@
-function tutorial_visual_old_group(ProtocolName, reports_dir)
-% TUTORIAL_VISUAL_OLD_GROUP: Runs the Brainstorm/SPM group analysis pipeline (group analysis, old distribution).
+function tutorial_frontiers2018_group(ProtocolName, reports_dir)
+% TUTORIAL_FRONTIERS2018_GROUP: Runs the Brainstorm/SPM group analysis pipeline (group analysis) - FRONTIERS ARTICLE VERSION
 %
 % ONLINE TUTORIALS: 
-%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingleOrig
-%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroupOrig
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
-%    - ProtocolName : Name of the protocol in which the recordings for the 19 subjects have been imported (TutorialVisual or TutorialGroup)
+%    - ProtocolName : Name of the protocol in which the recordings for the 16 subjects have been imported (Frontiers2018Single or Frontiers2018Group)
 %                     This folder must include: the run-level averages (recordings and time-frequency) and the source kernels for each run
 %    - reports_dir  : If defined, exports all the reports as HTML to this folder
 
@@ -28,7 +28,7 @@ function tutorial_visual_old_group(ProtocolName, reports_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, Elizabeth Bock, 2016
+% Author: Francois Tadel, Elizabeth Bock, 2016-2018
 
 % ===== CHECK PROTOCOL =====
 % Start Brainstorm without the GUI
@@ -41,7 +41,7 @@ if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
 end
 % You have to specify the folder in which the tutorial dataset is unzipped
 if (nargin < 1) || isempty(ProtocolName)
-    ProtocolName = 'TutorialGroup';
+    ProtocolName = 'Frontiers2018Group';
 end
 % Select current protocol
 iProtocol = bst_get('Protocol', ProtocolName);
@@ -51,14 +51,14 @@ end
 if (iProtocol ~= bst_get('iProtocol'))
     gui_brainstorm('SetCurrentProtocol', iProtocol);
 end
-% Process: Select results files in: sub002/run_01_sss_notch
+% Process: Select results files in: sub-01/sub-01_ses-meg_task-facerecognition_run-01_proc-sss_meg
 sFiles = bst_process('CallProcess', 'process_select_files_results', [], [], ...
-    'subjectname', 'sub002', ...
-    'condition',   'run_01_sss_notch');
+    'subjectname', 'sub-01', ...
+    'condition',   'sub-01_ses-meg_task-facerecognition_run-01_proc-sss_meg');
 if isempty(sFiles)
-    error(['No source files available in folder: sub002/run_01_sss_notch.' 10 ...
+    error(['No source files available in folder: sub-01/sub-01_ses-meg_task-facerecognition_run-01_proc-sss_meg.' 10 ...
            'You should run tutorial_visual_single first, or download the ' 10 ...
-           'protocol TutorialGroup.zip from the Brainstorm website.']);
+           'protocol Frontiers2018Group.zip from the Brainstorm website.']);
 end
 % Process: Select file comments with tag: Unconstr
 sFiles = bst_process('CallProcess', 'process_select_tag', sFiles, [], 'tag', 'Unconstr');
@@ -126,19 +126,19 @@ sAvgGroup = bst_process('CallProcess', 'process_average', sAvgSubj, [], ...
     'weighted',   0, ...
     'keepevents', 0);
 
-% ===== SUBJECT AVERAGES: SOURCES (EEG) =====
-% Process: Select source files in: */*/EEG
-sAvgRunSrcEeg = bst_process('CallProcess', 'process_select_files_results', [], [], 'tag', 'EEG');
-% Process: Weighted Average: By trial group (subject average) - EEG
-sAvgSubjSrcEeg = bst_process('CallProcess', 'process_average', sAvgRunSrcEeg, [], ...
-    'avgtype',         6, ...  % By trial group (subject average)
-    'avg_func',        1, ...  % Arithmetic average:  mean(x)
-    'weighted',        1, ...
-    'scalenormalized', 0);
-% Process: Add tag: EEG
-sAvgSubjSrcEeg = bst_process('CallProcess', 'process_add_tag', sAvgSubjSrcEeg, [], ...
-    'tag',    'EEG', ...
-    'output', 1);  % Add to comment
+% % ===== SUBJECT AVERAGES: SOURCES (EEG) =====
+% % Process: Select source files in: */*/EEG
+% sAvgRunSrcEeg = bst_process('CallProcess', 'process_select_files_results', [], [], 'tag', 'EEG');
+% % Process: Weighted Average: By trial group (subject average) - EEG
+% sAvgSubjSrcEeg = bst_process('CallProcess', 'process_average', sAvgRunSrcEeg, [], ...
+%     'avgtype',         6, ...  % By trial group (subject average)
+%     'avg_func',        1, ...  % Arithmetic average:  mean(x)
+%     'weighted',        1, ...
+%     'scalenormalized', 0);
+% % Process: Add tag: EEG
+% sAvgSubjSrcEeg = bst_process('CallProcess', 'process_add_tag', sAvgSubjSrcEeg, [], ...
+%     'tag',    'EEG', ...
+%     'output', 1);  % Add to comment
 
 % ===== SUBJECT AVERAGES: SOURCES (MEG) =====
 % Process: Select source files in: */*/MEG
@@ -196,28 +196,28 @@ sAvgGroupFaces = bst_process('CallProcess', 'process_average', sAvgSubjFaces, []
     'weighted',   0, ...
     'keepevents', 0);
 
-% ===== FACES AVERAGE: SOURCES (EEG) ======
-% Process: Select source files in: */*/EEG
-sSrcEeg = bst_process('CallProcess', 'process_select_files_results', [], [], ...
-    'subjectname',   'All', ...
-    'tag',           'EEG', ...
-    'includeintra',  1);
-% Process: Select file comments with tag: "WAvg: Avg: Famous"
-sAvgSubjFamousSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Famous');
-% Process: Select file comments with tag: "WAvg: Avg: Unfamiliar"
-sAvgSubjUnfamiliarSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Unfamiliar');
-% Process: Weighted Average A&B
-sAvgSubjFacesSrcEeg = bst_process('CallProcess', 'process_average_ab', sAvgSubjFamousSrcEeg, sAvgSubjUnfamiliarSrcEeg, ...
-    'weighted',        1, ...
-    'scalenormalized', 1);
-% Process: Add tag: Faces
-sAvgSubjFacesSrcEeg = bst_process('CallProcess', 'process_add_tag', sAvgSubjFacesSrcEeg, [], ...
-    'tag',    'Faces', ...
-    'output', 2);  % Add to file name
-% Process: Set comment
-sAvgSubjFacesSrcEeg = bst_process('CallProcess', 'process_set_comment', sAvgSubjFacesSrcEeg, [], ...
-    'tag',     'WAvg: Avg: Faces | EEG', ...
-    'isindex', 0);
+% % ===== FACES AVERAGE: SOURCES (EEG) ======
+% % Process: Select source files in: */*/EEG
+% sSrcEeg = bst_process('CallProcess', 'process_select_files_results', [], [], ...
+%     'subjectname',   'All', ...
+%     'tag',           'EEG', ...
+%     'includeintra',  1);
+% % Process: Select file comments with tag: "WAvg: Avg: Famous"
+% sAvgSubjFamousSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Famous');
+% % Process: Select file comments with tag: "WAvg: Avg: Unfamiliar"
+% sAvgSubjUnfamiliarSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Unfamiliar');
+% % Process: Weighted Average A&B
+% sAvgSubjFacesSrcEeg = bst_process('CallProcess', 'process_average_ab', sAvgSubjFamousSrcEeg, sAvgSubjUnfamiliarSrcEeg, ...
+%     'weighted',        1, ...
+%     'scalenormalized', 1);
+% % Process: Add tag: Faces
+% sAvgSubjFacesSrcEeg = bst_process('CallProcess', 'process_add_tag', sAvgSubjFacesSrcEeg, [], ...
+%     'tag',    'Faces', ...
+%     'output', 2);  % Add to file name
+% % Process: Set comment
+% sAvgSubjFacesSrcEeg = bst_process('CallProcess', 'process_set_comment', sAvgSubjFacesSrcEeg, [], ...
+%     'tag',     'WAvg: Avg: Faces | EEG', ...
+%     'isindex', 0);
 
 % ===== FACES AVERAGE: SOURCES (MEG) ======
 % Process: Select source files in: */*
@@ -268,23 +268,23 @@ sAvgSubjFacesTf = bst_process('CallProcess', 'process_set_comment', sAvgSubjFace
 %% ===== SUBJECT AVERAGES: WITHIN-SUBJECT DIFFERENCES =================================
 %  ====================================================================================
 
-% ===== FACES - SCRAMBLED: SOURCES EEG =====
-% Process: Select source files in: */*/EEG
-sSrcEeg = bst_process('CallProcess', 'process_select_files_results', [], [], ...
-    'subjectname',   'All', ...
-    'tag',           'EEG', ...
-    'includeintra',  1);
-% Process: Select file comments with tag: "WAvg: Avg: Faces"
-sAvgSubjFacesSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Faces');
-% Process: Select file comments with tag: "WAvg: Avg: Scrambled"
-sAvgSubjScrambledSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Scrambled');
-% Process: Difference: A-B
-sDiffFacesSubjSrcEeg = bst_process('CallProcess', 'process_diff_ab', sAvgSubjFacesSrcEeg, sAvgSubjScrambledSrcEeg, ...
-    'source_abs', 0);
-% Process: Set comment
-sDiffFacesSubjSrcEeg = bst_process('CallProcess', 'process_set_comment', sDiffFacesSubjSrcEeg, [], ...
-    'tag',     'Faces - Scrambled | EEG', ...
-    'isindex', 0);
+% % ===== FACES - SCRAMBLED: SOURCES EEG =====
+% % Process: Select source files in: */*/EEG
+% sSrcEeg = bst_process('CallProcess', 'process_select_files_results', [], [], ...
+%     'subjectname',   'All', ...
+%     'tag',           'EEG', ...
+%     'includeintra',  1);
+% % Process: Select file comments with tag: "WAvg: Avg: Faces"
+% sAvgSubjFacesSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Faces');
+% % Process: Select file comments with tag: "WAvg: Avg: Scrambled"
+% sAvgSubjScrambledSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Scrambled');
+% % Process: Difference: A-B
+% sDiffFacesSubjSrcEeg = bst_process('CallProcess', 'process_diff_ab', sAvgSubjFacesSrcEeg, sAvgSubjScrambledSrcEeg, ...
+%     'source_abs', 0);
+% % Process: Set comment
+% sDiffFacesSubjSrcEeg = bst_process('CallProcess', 'process_set_comment', sDiffFacesSubjSrcEeg, [], ...
+%     'tag',     'Faces - Scrambled | EEG', ...
+%     'isindex', 0);
 
 % ===== FACES - SCRAMBLED: SOURCES MEG =====
 % Process: Select source files in: */*/MEG
@@ -304,18 +304,18 @@ sDiffFacesSubjSrcMeg = bst_process('CallProcess', 'process_set_comment', sDiffFa
     'tag',     'Faces - Scrambled | MEG', ...
     'isindex', 0);
 
-% ===== FAMOUS - UNFAMILIAR: SOURCE EEG =====
-% Process: Select file comments with tag: "WAvg: Avg: Famous"
-sAvgSubjFamousSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Famous');
-% Process: Select file comments with tag: "WAvg: Avg: Unfamiliar"
-sAvgSubjUnfamiliarSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Unfamiliar');
-% Process: Difference: A-B
-sDiffFamousSubjSrcEeg = bst_process('CallProcess', 'process_diff_ab', sAvgSubjFamousSrcEeg, sAvgSubjUnfamiliarSrcEeg, ...
-    'source_abs', 0);
-% Process: Set comment
-sDiffFamousSubjSrcEeg = bst_process('CallProcess', 'process_set_comment', sDiffFamousSubjSrcEeg, [], ...
-    'tag',     'Famous - Unfamiliar | EEG', ...
-    'isindex', 0);
+% % ===== FAMOUS - UNFAMILIAR: SOURCE EEG =====
+% % Process: Select file comments with tag: "WAvg: Avg: Famous"
+% sAvgSubjFamousSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Famous');
+% % Process: Select file comments with tag: "WAvg: Avg: Unfamiliar"
+% sAvgSubjUnfamiliarSrcEeg = bst_process('CallProcess', 'process_select_tag', sSrcEeg, [], 'tag', 'WAvg: Avg: Unfamiliar');
+% % Process: Difference: A-B
+% sDiffFamousSubjSrcEeg = bst_process('CallProcess', 'process_diff_ab', sAvgSubjFamousSrcEeg, sAvgSubjUnfamiliarSrcEeg, ...
+%     'source_abs', 0);
+% % Process: Set comment
+% sDiffFamousSubjSrcEeg = bst_process('CallProcess', 'process_set_comment', sDiffFamousSubjSrcEeg, [], ...
+%     'tag',     'Famous - Unfamiliar | EEG', ...
+%     'isindex', 0);
 
 % ===== FAMOUS - UNFAMILIAR: SOURCE MEG =====
 % Process: Select file comments with tag: "WAvg: Avg: Famous"
@@ -378,17 +378,17 @@ sAvgSrc = bst_process('CallProcess', 'process_baseline_norm', sAvgSrc, [], ...
     'method',     'zscore', ...  % Z-score transformation:    x_std = (x - &mu;) / &sigma;
     'overwrite',  1);
 
-% ===== NORMALIZE: TIMEFREQ =====
-% Process: Select time-frequency files in: */Intra
-sAvgTf = bst_process('CallProcess', 'process_select_files_timefreq', [], [], ...
-    'subjectname',   'All', ...
-    'condition',     DirIntra, ...
-    'includeintra',  1);
-% Process: Event-related perturbation (ERS/ERD): [-200ms,-4ms]
-sAvgTf = bst_process('CallProcess', 'process_baseline_norm', sAvgTf, [], ...
-    'baseline',  [-0.2, -0.004], ...
-    'method',    'ersd', ...  % Event-related perturbation (ERS/ERD):    x_std = (x - &mu;) / &mu; * 100
-    'overwrite', 1);
+% % ===== NORMALIZE: TIMEFREQ =====
+% % Process: Select time-frequency files in: */Intra
+% sAvgTf = bst_process('CallProcess', 'process_select_files_timefreq', [], [], ...
+%     'subjectname',   'All', ...
+%     'condition',     DirIntra, ...
+%     'includeintra',  1);
+% % Process: Event-related perturbation (ERS/ERD): [-200ms,-4ms]
+% sAvgTf = bst_process('CallProcess', 'process_baseline_norm', sAvgTf, [], ...
+%     'baseline',  [-0.2, -0.004], ...
+%     'method',    'ersd', ...  % Event-related perturbation (ERS/ERD):    x_std = (x - &mu;) / &mu; * 100
+%     'overwrite', 1);
 
 % Save report
 ReportFile = bst_report('Save', []);
@@ -435,17 +435,17 @@ bst_process('CallProcess', 'process_snapshot', sAvgFacesSrcMeg, [], ...
     'time',           0.1055, ...
     'threshold',      10);
 
-% ===== FACES: TIME-FREQ EEG ======
-% Process: Select time-frequency files in: */*/WAvg: Avg: Faces
-sAvgFacesTf = bst_process('CallProcess', 'process_select_files_timefreq', [], [], ...
-    'subjectname',   'All', ...
-    'tag',           'WAvg: Avg: Faces', ...
-    'includeintra',  1);
-% Process: Snapshot: Time-frequency maps
-bst_process('CallProcess', 'process_snapshot', sAvgFacesTf, [], ...
-    'target',         14, ...  % Time-frequency maps
-    'time',           0.1055, ...
-    'rowname',        'EEG070');
+% % ===== FACES: TIME-FREQ EEG ======
+% % Process: Select time-frequency files in: */*/WAvg: Avg: Faces
+% sAvgFacesTf = bst_process('CallProcess', 'process_select_files_timefreq', [], [], ...
+%     'subjectname',   'All', ...
+%     'tag',           'WAvg: Avg: Faces', ...
+%     'includeintra',  1);
+% % Process: Snapshot: Time-frequency maps
+% bst_process('CallProcess', 'process_snapshot', sAvgFacesTf, [], ...
+%     'target',         14, ...  % Time-frequency maps
+%     'time',           0.1055, ...
+%     'rowname',        'EEG070');
 
 % Save report
 ReportFile = bst_report('Save', []);
@@ -602,13 +602,15 @@ sStatClustFacesData = bst_process('CallProcess', 'process_ft_timelockstatistics'
     'correctiontype', 2, ...  % cluster
     'minnbchan',      0, ...
     'clusteralpha',   0.05);
-% Process: Set comment
-sStatClustFacesData = bst_process('CallProcess', 'process_set_comment', sStatClustFacesData, [], ...
-    'tag',     'Faces - Scrambled: Cluster t-test EEG', ...
-    'isindex', 0);
-% Take screen captures
-DataScreenCapture(sStatClustFacesData, 0, 1, sStatClustFacesData.Comment);
-
+% If FieldTrip is available and results were returned
+if ~isempty(sStatClustFacesData)
+    % Process: Set comment
+    sStatClustFacesData = bst_process('CallProcess', 'process_set_comment', sStatClustFacesData, [], ...
+        'tag',     'Faces - Scrambled: Cluster t-test EEG', ...
+        'isindex', 0);
+    % Take screen captures
+    DataScreenCapture(sStatClustFacesData, 0, 1, sStatClustFacesData.Comment);
+end
 
 
 %% ===== GROUP ANALYSIS: FACES-SCRAMBLED: MEG/EEG =====================================
@@ -669,12 +671,15 @@ sStatClustFamousData = bst_process('CallProcess', 'process_ft_timelockstatistics
     'correctiontype', 2, ...  % cluster
     'minnbchan',      0, ...
     'clusteralpha',   0.05);
-% Process: Set comment
-sStatClustFamousData = bst_process('CallProcess', 'process_set_comment', sStatClustFamousData, [], ...
-    'tag',     'Famous - Unfamiliar: Cluster t-test EEG', ...
-    'isindex', 0);
-% Take screen captures
-DataScreenCapture(sStatClustFamousData, 0, 1, sStatClustFamousData.Comment);
+% If FieldTrip is available and results were returned
+if ~isempty(sStatClustFacesData)
+    % Process: Set comment
+    sStatClustFamousData = bst_process('CallProcess', 'process_set_comment', sStatClustFamousData, [], ...
+        'tag',     'Famous - Unfamiliar: Cluster t-test EEG', ...
+        'isindex', 0);
+    % Take screen captures
+    DataScreenCapture(sStatClustFamousData, 0, 1, sStatClustFamousData.Comment);
+end
 
 % Save report
 ReportFile = bst_report('Save', []);
@@ -742,7 +747,8 @@ end
 
 
 % ===== LOOP ON MODALITY =====
-AllModalities = {'MEG','EEG'};
+% AllModalities = {'MEG','EEG'};
+AllModalities = {'MEG'}
 for iMod = 1:length(AllModalities)
     % Selected modality for this loop
     Mod = AllModalities{iMod};
@@ -850,7 +856,7 @@ for iMod = 1:length(AllModalities)
         'tail',          'two');  % Two-tailed
     % Process: Set comment
     sChiParamFacesLog = bst_process('CallProcess', 'process_set_comment', sChiParamFacesLog, [], ...
-        'tag',     'log(|Faces-Scrambled|)=0: Parametric Chi2 test | MEG', ...
+        'tag',     ['log(|Faces-Scrambled|)=0: Parametric Chi2 test | ' Mod], ...
         'isindex', 0);
     % Process: Move files
     sChiParamFacesLog = bst_process('CallProcess', 'process_movefile', sChiParamFacesLog, [], ...
@@ -889,7 +895,7 @@ for iMod = 1:length(AllModalities)
         'weighted',   0);
     % Process: Set comment
     sDiffAbsFaces = bst_process('CallProcess', 'process_set_comment', sDiffAbsFaces, [], ...
-        'tag',     'mean(|Faces|)-mean(|Scrambled|) | MEG', ...
+        'tag',     ['mean(|Faces|)-mean(|Scrambled|) | ' Mod], ...
         'isindex', 0);
     % Colormap: Custom max: [-10,+10] Z
     bst_colormaps('SetMaxCustom', 'stat2', [], -10, 10);
