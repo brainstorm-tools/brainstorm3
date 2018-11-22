@@ -28,6 +28,8 @@ function varargout = process_sss( varargin )
   % and phi (or p) is the longitude angle or azimuth.
   
   % TO DO: 
+  % SphericalBasis: bad condition number means very sensitive to noise?  Do
+  % we always need more than full rank?
   % tSSS, how long of chunks do we need for stable separation?
   % tSSS, how do we avoid jumps between chunks?
   % SSS, (and tSSS!) we need to keep track of the empty subspace as in SSP, for source modeling?
@@ -37,7 +39,7 @@ function varargout = process_sss( varargin )
 end
 
 
-%% ===== GET DESCRIPTION =====
+% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() 
   % Description the process
   sProcess.Comment     = 'Signal space separation';
@@ -75,11 +77,11 @@ function sProcess = GetDescription()
   % Spatial cleaning
   sProcess.options.spatial.Comment = 'Spatial SSS: reject "outside" spherical harmonics.';
   sProcess.options.spatial.Type    = 'checkbox';
-  sProcess.options.spatial.Value   = 1;
+  sProcess.options.spatial.Value   = 0;
   % Temporal cleaning
   sProcess.options.temporal.Comment = 'Temporal SSS: project out artefact timecourses.';
   sProcess.options.temporal.Type    = 'checkbox';
-  sProcess.options.temporal.Value   = 1;
+  sProcess.options.temporal.Value   = 0;
   % Spherical harmonic expansion order
   sProcess.options.exporder.Comment = 'Expansion order (out, in): ';
   sProcess.options.exporder.Type    = 'range';
@@ -88,19 +90,19 @@ function sProcess = GetDescription()
 end
 
 
-%% ===== FORMAT COMMENT =====
+% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) 
   LIn = sProcess.options.exporder.Value{1}(2);
   LOut = sProcess.options.exporder.Value{1}(1);
   nHarmonics = (LIn + 1)^2 + (LOut + 1)^2 - 2;
   % Seems no word wrap and no color.  Need small comments.
-  if sProcess.options.temporal.Value && (LIn < 1 || LOut < 1)
-    Comment = 'Error: tSSS cleaning requires orders [1, 1] or more.';
+  if sProcess.options.temporal.Value && (LIn < 2 || LOut < 2)
+    Comment = 'Error: tSSS cleaning requires orders 2 or more.';
     % For now allow temporal without spatial, though it is strange.
     %   elseif sProcess.options.temporal.Value && ~sProcess.options.spatial.Value
     %     Comment = 'Error: tSSS cleaning requires spatial SSS as well.';
-  elseif sProcess.options.spatial.Value && (LIn < 1 || LOut < 0)
-    Comment = 'Error: SSS cleaning requires orders [0, 1] or more.';
+  elseif sProcess.options.spatial.Value && (LIn < 2 || LOut < 2)
+    Comment = 'Error: SSS cleaning requires orders 2 or more.';
   elseif sProcess.options.temporal.Value && sProcess.options.spatial.Value
     if sProcess.options.motion.Value
       Comment = sprintf('SSS: spatio-temporal cleaning (%d harmonics) + motion correction', nHarmonics);
@@ -128,21 +130,21 @@ function Comment = FormatComment(sProcess)
 end
 
 
-%% ===== RUN =====
+% ===== RUN =====
 function sInput = Run(sProcess, sInput)
   
   % Parse options.
   LIn = sProcess.options.exporder.Value{1}(2);
   LOut = sProcess.options.exporder.Value{1}(1);
-  if sProcess.options.temporal.Value && (LIn < 1 || LOut < 1)
-    bst_error('tSSS cleaning requires expansion orders at minimum [1, 1].');
+  if sProcess.options.temporal.Value && (LIn < 2 || LOut < 2)
+    bst_error('tSSS cleaning requires expansion orders at minimum 2.');
   end
   if sProcess.options.temporal.Value && ~sProcess.options.spatial.Value
     fprintf(['BST> tSSS without spatial SSS is unusual: it would in theory only remove artefacts \n', ...
       'that are very close to the sensors and keep those originating from further away.\n']);
   end
-  if sProcess.options.spatial.Value && (LIn < 1 || LOut < 0)
-    bst_error('SSS cleaning requires expansion orders at minimum [0, 1].');
+  if sProcess.options.spatial.Value && (LIn < 2 || LOut < 2)
+    bst_error('SSS cleaning requires expansion orders at minimum 2.');
   end
   if ~sProcess.options.temporal.Value && ~sProcess.options.spatial.Value && ...
       ~sProcess.options.motion.Value
@@ -187,8 +189,11 @@ function sInput = Run(sProcess, sInput)
   iMegRef = sort([iRef, iMeg]);
   nChannels = numel(iMegRef);
   
-  % Adjust the maximum expansion orders based on number of channels. 
-  nHarmonics = @(L1, L2) (L1 + 1)^2 + (L2 + 1)^2 - 2;
+  % Adjust the maximum expansion orders based on number of channels.
+  % Actually, there is a lot of redundancy among harmonics.  For only head
+  % motion correction, we will want to keep the full rank of the data, with
+  % as many harmonics as needed, and use a minimum-norm solution.
+  %   nHarmonics = @(L1, L2) (L1 + 1)^2 + (L2 + 1)^2 - 2; % but not if we must reject LOut=1.
   if sProcess.options.motion.Value && ~sProcess.options.spatial.Value && ...
       ~sProcess.options.temporal.Value
     % Only doing head motion correction, use as many harmonics as channels.
@@ -196,25 +201,28 @@ function sInput = Run(sProcess, sInput)
     % channels, probably best to have at least some "out" harmonics.
     LIn = ceil(sqrt(nChannels + 1) - 1);
     LOut = ceil(LIn / 3);
+    isFullRank = true;
+  else
+    isFullRank = false;
   end
-  % Don't use more harmonics than needed.
-  if nHarmonics(LIn, LOut) > nChannels
-    while nHarmonics(LIn, LOut) >= nChannels
-      if LOut >= LIn
-        LOut = LOut - 1;
-      else
-        LIn = LIn - 1;
-      end
-    end
-    LIn = LIn + 1;
-    if LIn < sProcess.options.exporder.Value{1}(2)
-      fprintf(['BST> SSS: Asked for too many harmonics; expansion order [%d, %d] => %d harmonics.\n', ...
-        'Using [%d, %d] => %d harmonics instead, more than enough for %d channels.\n'], ...
-        sProcess.options.exporder.Value{1}, ...
-        nHarmonics(sProcess.options.exporder.Value{1}(1), sProcess.options.exporder.Value{1}(2)), ...
-        LOut, LIn, nHarmonics(LIn, LOut), nChannels);
-    end
-  end
+  %   % Don't use more harmonics than needed.
+  %   if nHarmonics(LIn, LOut) > nChannels
+  %     while nHarmonics(LIn, LOut) >= nChannels
+  %       if LOut >= LIn
+  %         LOut = LOut - 1;
+  %       else
+  %         LIn = LIn - 1;
+  %       end
+  %     end
+  %     LIn = LIn + 1;
+  %     if LIn < sProcess.options.exporder.Value{1}(2)
+  %       fprintf(['BST> SSS: Asked for too many harmonics; expansion order [%d, %d] => %d harmonics.\n', ...
+  %         'Using [%d, %d] => %d harmonics instead, more than enough for %d channels.\n'], ...
+  %         sProcess.options.exporder.Value{1}, ...
+  %         nHarmonics(sProcess.options.exporder.Value{1}(1), sProcess.options.exporder.Value{1}(2)), ...
+  %         LOut, LIn, nHarmonics(LIn, LOut), nChannels);
+  %     end
+  %   end
   
     
   % Get channel locations and orientations per sensor coil. 
@@ -233,15 +241,21 @@ function sInput = Run(sProcess, sInput)
   
   % Get the SSS basis matrix for inside and outside sources at the
   % reference head position.
-  [InitSIn, InitSOut] = SphericalBasis(LIn, LOut, ...
+  [InitSIn, InitSOut, LIn, LOut] = SphericalBasis(LIn, LOut, ...
     bsxfun(@minus, InitLoc, ExpansionOrigin) * ExpansionScale, ...
-    InitOrient, CoilToChannel);
+    InitOrient, CoilToChannel, true, isFullRank); 
   % We may want to further normalize the basis vectors to improve the
   % matrix condition.
   InitSInNorms = sqrt(sum(InitSIn.^2, 1));
   InitSOutNorms = sqrt(sum(InitSOut.^2, 1));
   InitSIn = bsxfun(@rdivide, InitSIn, InitSInNorms);
   InitSOut = bsxfun(@rdivide, InitSOut, InitSOutNorms);
+  
+  nHarmonics = size(InitSIn, 2) + size(InitSOut, 2);
+  
+  fprintf(['BST> SSS: Spherical harmonics expansion order [%d, %d] => %d harmonics.\n', ...
+    'Rank = %d, compared to %d channels.\n'], ...
+    LIn, LOut, nHarmonics, rank([InitSIn, InitSOut]), nChannels);
   
   
   if sProcess.options.motion.Value
@@ -250,18 +264,11 @@ function sInput = Run(sProcess, sInput)
     % Verify that we can compute the transformation from initial to
     % each continuous head tracking position, and get required
     % transformation matrices.
-    [TransfBefore, TransfAfter] = GetTransforms(ChannelMat); % This function was copied from process_adjust_head_position.m
+    %     [TransfBefore, TransfAfter] = GetTransforms(ChannelMat); % This function was copied from process_adjust_head_position.m
+    [TransfBefore, TransfAfter] = process_adjust_head_position('GetTransforms', ChannelMat);
     
-    % Compute initial head location.  This isn't exactly the coil positions
-    % in the .hc file, but was verified to give the same transformation.
-    % Use the SCS distances from origin, with left and right PA points
-    % symmetrical.
-    LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
-    InitHeadCoilLoc = [[ChannelMat.SCS.NAS(1); 0; 0; 1], [0; LeftRightDist; 0; 1], ...
-      [0; -LeftRightDist; 0; 1]];
-    InitHeadCoilLoc = ChannelMat.TransfMeg{1} \ InitHeadCoilLoc;
-    InitHeadCoilLoc(4, :) = [];
-    InitHeadCoilLoc = InitHeadCoilLoc(:);
+    % Get "equivalent" initial/reference head location. 
+    InitHeadCoilLoc = process_adjust_head_position('ReferenceHeadLocation', ChannelMat);
         
     % We already have the HLU channels loaded.
     %       [HeadCoilLoc, HeadSamplePeriod] = process_evt_head_motion('LoadHLU', ...
@@ -288,7 +295,7 @@ function sInput = Run(sProcess, sInput)
 %         nSamples = diff(sFile.prop.samples) + 1; % This is single epoch samples if epoched.
     % In case the recording was aborted.
     iLastSample = nSamples;
-    SpherCoeffs = zeros(nChannels, nSamples);
+    SpherCoeffs = zeros(nHarmonics, nSamples);
     for iHeadSample = 1:nHeadSamples
       % If a collection was aborted, the channels will be filled with
       % zeros. We must ignore these samples.
@@ -321,7 +328,10 @@ function sInput = Run(sProcess, sInput)
       SampleBounds = [SampleStart, min(SampleStart+HeadSamplePeriod, iLastSample)];
       
       % Compute coefficients as function of time.
-      SpherCoeffs(:, SampleBounds) = [SIn, SOut] \ sInput.A(iMegRef, SampleBounds);
+      
+      SpherCoeffs(:, SampleBounds(1):SampleBounds(2)) = ...
+        lsqminnorm([SIn, SOut], sInput.A(iMegRef, SampleBounds(1):SampleBounds(2)));
+      %       SpherCoeffs(:, SampleBounds) = [SIn, SOut] \ sInput.A(iMegRef, SampleBounds);
       
     end % Head samples loop
     
@@ -333,7 +343,8 @@ function sInput = Run(sProcess, sInput)
     
   else % don't correct for head motion
     % Compute coefficients as function of time.
-    SpherCoeffs = [InitSIn, InitSOut] \ sInput.A(iMegRef, :);
+    SpherCoeffs = lsqminnorm([InitSIn, InitSOut], sInput.A(iMegRef, :));
+    %     SpherCoeffs = [InitSIn, InitSOut] \ sInput.A(iMegRef, :);
     % Can split them into In and Out components.
     
   end % if correct for head motion
@@ -343,7 +354,7 @@ function sInput = Run(sProcess, sInput)
   if sProcess.options.temporal.Value
     % Temporal SSS
     % Intersection of in and out temporal subspaces.
-    L = Intersect(SpherCoeffs(1:nIn, :), SpherCoeffs((nIn+1):end, :), ...
+    M = Intersect(SpherCoeffs(1:nIn, :), SpherCoeffs((nIn+1):end, :), ...
       TemporalIntersectAllowance);
   end
     
@@ -352,16 +363,16 @@ function sInput = Run(sProcess, sInput)
     if sProcess.options.temporal.Value
       % Remove in and out intersection from coefficients first.
       SpherCoeffs(1:nIn, :) = SpherCoeffs(1:nIn, :) - ...
-        SpherCoeffs(1:nIn, :) * L * L'; %#ok<*MHERM>
+        SpherCoeffs(1:nIn, :) * M * M'; %#ok<*MHERM>
     end
     % Project back to sensor space using inside basis only.
     sInput.A(iMegRef, :) = InitSIn * SpherCoeffs(1:nIn, :);
-  else
+  else % don't use spatial cleaning.
     if sProcess.options.temporal.Value
       % Remove in and out intersection from coefficients first.
-      SpherCoeffs = SpherCoeffs - SpherCoeffs * L * L';
+      SpherCoeffs = SpherCoeffs - SpherCoeffs * M * M';
     end
-    % Use complete basis.
+    % Project back to sensor space using complete basis.
     sInput.A(iMegRef, :) = [InitSIn, InitSOut] * SpherCoeffs;
   end
     
@@ -419,23 +430,30 @@ function [Loc, Orient, CoilToChannel, Origin] = CoilGeometry(Channel, iMegRef)
   Loc(:, nCoils+1:end) = [];
   Orient(:, nCoils+1:end) = [];
   CoilToChannel(:, nCoils+1:end) = [];
-  % Center between max and min.
-  Origin = (Origin(:, 2) - Origin(:, 1)) / 2;
+  % Center between max and min. Though for z, keep center top as far as
+  % lower edge, which after a bit of geometry gives 3/8 of the way from the
+  % bottom.
+  Origin = [(Origin(1:2, 2) + Origin(1:2, 1)) / 2; ...
+    1/8 * (5 * Origin(3, 1) + 3 * Origin(3, 2))];
 end
 
 
 
-function [SIn, SOut] = SphericalBasis(LIn, LOut, Loc, Orient, CoilToChannel, isRealBasis)
+function [SIn, SOut, LIn, LOut] = SphericalBasis(LIn, LOut, Loc, Orient, ...
+    CoilToChannel, isRealBasis, isFullRank)
   % Build the S matrix that relates the measured magnetic field
   % to the spherical harmonic coefficients: B = S * x, so
   % size(S)=[nChannels, (L + 1)^2 - 1]
   %  Loc and Orient are size 3 x nSensors.
   % Orient is in tangential spherical coordinates.
   
+  if nargin < 7 || isempty(isFullRank)
+    isFullRank = false;
+  end
   if nargin < 6 || isempty(isRealBasis)
     isRealBasis = true;
   end
-  if nargin < 5 || isepmty(CoilToChannel)
+  if nargin < 5 || isempty(CoilToChannel)
     CoilToChannel = eye(size(Loc, 2));
   end
   if nargin < 4
@@ -449,12 +467,13 @@ function [SIn, SOut] = SphericalBasis(LIn, LOut, Loc, Orient, CoilToChannel, isR
   % defined by the unit spherical vectors a each location.
   [OR, OT, OP] = CartToTangentSpher([], t, p, Orient(1, :)', Orient(2, :)', Orient(3, :)'); % Column vectors
   
-  
+  nChannels = size(CoilToChannel, 1);
   % Evaluate spherical harmonics at sensor locations.
   SIn = zeros(size(Loc, 2), (LIn+1)^2 - 1);
   SOut = zeros(size(Loc, 2), (LOut+1)^2 - 1);
   iS = 1;
-  for l = 1:max(LIn, LOut) % Why do we not include l=0? Maybe we don't expect monopoles? We could, but doesn't matter.
+  l = 1; % Why do we not include l=0? Maybe we don't expect monopoles? We could, but doesn't matter.
+  while l <= max(LIn, LOut) 
     [Y, m, dYdt] = SphericalHarmonics(l, t, p, isRealBasis); % size [nLoc, 2*l+1]
     
     % Compute the "magnetic field harmonics" = - gradient of "potential harmonics".
@@ -510,16 +529,58 @@ function [SIn, SOut] = SphericalBasis(LIn, LOut, Loc, Orient, CoilToChannel, isR
       % Since we don't include l=0, no problem at r=0 here.
     end
     
+%     EndIn = min(iS+2*l, size(SIn,2));
+%     EndOut = min(iS+2*l, size(SOut,2));
+%     S = CoilToChannel * ([SIn(:, 1:EndIn), SOut(:, 1:EndOut)]);
+%     SNorms = sqrt(sum(S.^2, 1));
+%     S = bsxfun(@rdivide, S, SNorms);
+%     Rank = rank(S);
+%     fprintf('l=%d, nH=%d, rank=%d, cond=%g\n', ...
+%       l, size(S, 2), Rank, cond(S));
+    if isFullRank && l == max(LIn, LOut)
+      %       Rank = rank(S);
+      %       s = svd(S);
+      %       Tol = max(size(S)) * eps(max(s));
+      %       fprintf('l=%d, nH=%d, rank=%d, cond=%g\n', ...
+      %         l, size(S, 2), Rank, cond(S));
+      %       %       fprintf('l=%d, nH=%d, rank=%d, ranktol=%d, %d Sing=[%g, %g], cond=%g\n', ...
+      %       %         l, size(S, 2), Rank, Tol, numel(s), min(s), max(s), cond(S));
+      S = CoilToChannel * ([SIn, SOut]);
+      SNorms = sqrt(sum(S.^2, 1));
+      S = bsxfun(@rdivide, S, SNorms);
+      Rank = rank(S);
+      if Rank < nChannels
+        % Increment the max order.
+        if LIn > LOut
+          LIn = LIn + 1;
+        elseif LOut > LIn
+          LOut = LOut + 1;
+        else % ==
+          LIn = LIn + 1;
+          LOut = LOut + 1;
+        end
+      end
+    end
+    
     iS = iS + 2 * l + 1;
+    l = l + 1;
   end % l loop
   
   % Convert coil values to channels.
   SIn = CoilToChannel * SIn;
   SOut = CoilToChannel * SOut;
-  % Remove basis vectors beyond number of channels.
-  nChannels = size(CoilToChannel, 1);
-  nOut = size(SOut, 2);
-  SIn(:, (nChannels - nOut + 1):end) = [];
+  
+  % Turns out that the l=1 out harmonics are constant vectors, thus for any
+  % gradiometer, these will give zero.  If we only have gradiometers, we
+  % must exclude them.  
+  if any(sum(SOut(:, 1:3).^2, 1) < nChannels * 1000 * eps(1))
+    SOut(:, 1:3) = [];
+  end
+  
+  %   % Remove basis vectors beyond number of channels.
+  %   nChannels = size(CoilToChannel, 1);
+  %   nOut = size(SOut, 2);
+  %   SIn(:, (nChannels - nOut + 1):end) = [];
 end
 
 

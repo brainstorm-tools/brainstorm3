@@ -39,9 +39,14 @@ function Distance = head_motion_distance(Locations, ChannelFile)
   % Compute distance
   DistDowns = process_evt_head_motion('RigidDistances', Locations, InitLoc)';
 
-  % Upsample back to MEG sampling rate.
-  Distance = interp1(DistDowns, (1:nSamples)/HeadSamplePeriod);
-  % Replace initial NaNs with first value.
-  Distance(isnan(Distance)) = Distance(find(~isnan(Distance), 1));
+  if numel(DistDowns) == 1
+    % Special case where movement was removed, either manually or with SSS.
+    Distance = DistDowns * ones(1, nSamples);
+  else
+    % Upsample back to MEG sampling rate.
+    Distance = interp1(DistDowns, (1:nSamples)/HeadSamplePeriod);
+    % Replace initial NaNs with first value.
+    Distance(isnan(Distance)) = Distance(find(~isnan(Distance), 1));
+  end
   
 end
