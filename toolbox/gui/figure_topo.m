@@ -175,8 +175,10 @@ function UpdateTopoPlot(iDS, iFig)
         iDataCmap(iDataCmap > size(sColormap.CMap,1)) = size(sColormap.CMap,1);
         dataRGB = sColormap.CMap(iDataCmap, :);
         % Set lines colors
-        for i = 1:length(TopoHandles.hLines)
-            set(TopoHandles.hLines(i), 'Color', dataRGB(i,:));
+        if (length(TopoHandles.hLines) == 1)
+            for i = 1:length(TopoHandles.hLines{1})
+                set(TopoHandles.hLines{1}(i), 'Color', dataRGB(i,:));
+            end
         end
     end
     
@@ -224,15 +226,25 @@ end
 
 %% ===== GET FIGURE DATA =====
 % Warning: Time output is only defined for the time-frequency plots
-function [F, Time, selChan] = GetFigureData(iDS, iFig, isAllTime)
+function [F, Time, selChan, overlayLabels] = GetFigureData(iDS, iFig, isAllTime, isMultiOutput)
     global GlobalData;
     Time = [];
+    % Parse inputs
+    if (nargin < 4) || isempty(isMultiOutput)
+        isMultiOutput = 0;
+    end
     % ===== GET INFORMATION =====
     hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
     TopoInfo = getappdata(hFig, 'TopoInfo');
-    TsInfo   = getappdata(hFig, 'TsInfo');
+    TsInfo = getappdata(hFig, 'TsInfo');
     if isempty(TopoInfo)
         return
+    end
+    % Get multiple data files
+    if ~isempty(TopoInfo.MultiDataFiles)
+        ReadFiles = TopoInfo.MultiDataFiles;
+    else
+        ReadFiles = {TopoInfo.FileName};
     end
     % Get selected channels for topography
     selChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
@@ -243,63 +255,86 @@ function [F, Time, selChan] = GetFigureData(iDS, iFig, isAllTime)
         TimeDef = 'CurrentTimeIndex';
     end
     Fall = [];
+    overlayLabels = {};
     % Get data description
     if ~isempty(TopoInfo.DataToPlot)
-        F = TopoInfo.DataToPlot;
+        F = {TopoInfo.DataToPlot};
     else
-        switch lower(TopoInfo.FileType)
-            case {'data', 'pdata'}
-                % Do not apply Meg/Grad correction if the field is extrapolated (this function already scales the sensors values)
-                isGradMagScale = ~TopoInfo.UseSmoothing && ~strcmpi(TopoInfo.FileType, 'pdata');
-                % Gradiometers norm
-                if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'MEG GRADNORM')
-                    % Get Grad2 and Grad3 gradiometers
-                    iGrad2 = good_channel(GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag, 'MEG GRAD2');
-                    iGrad3 = good_channel(GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag, 'MEG GRAD3');
-                    [iGrad2,I,J] = intersect(iGrad2, selChan);
-                    iGrad3 = iGrad3(I);
-                    % Get recordings
-                    F2 = bst_memory('GetRecordingsValues', iDS, iGrad2, TimeDef, isGradMagScale);
-                    F3 = bst_memory('GetRecordingsValues', iDS, iGrad3, TimeDef, isGradMagScale);
-                    % Use the norm of the two
-                    F = sqrt(F2.^2 + F3.^2);
-                    % Error if montages are applied on this
-                    if ~isempty(TsInfo.MontageName)
-                        error('You cannot apply a montagne when displaying the norm of the gradiometers.');
+        F = cell(1, length(ReadFiles));
+        for iFile = 1:length(ReadFiles)
+            switch lower(TopoInfo.FileType)
+                case {'data', 'pdata'}
+                    % Get file comment
+                    switch (file_gettype(ReadFiles{iFile}))
+                        case 'data'
+                            [sStudy, iStudy, iData] = bst_get('DataFile', ReadFiles{iFile});
+                            if ~isempty(sStudy)
+                                overlayLabels{iFile} = sStudy.Data(iData).Comment;
+                            end
+                        case 'pdata'
+                            [sStudy, iStudy, iStat] = bst_get('StatFile', ReadFiles{iFile});
+                            if ~isempty(sStudy)
+                                overlayLabels{iFile} = sStudy.Stat(iStat).Comment;
+                            end
                     end
-                % Regular recordings
-                else
-                    % Get recordings (ALL the sensors, for re-referencing montages)
-                    Fall = bst_memory('GetRecordingsValues', iDS, [], TimeDef, isGradMagScale);
-                    % Select only a subset of sensors
-                    F = Fall(selChan,:);
-                end
-            case 'timefreq'
-                % Get timefreq values
-                [Time, Freqs, TfInfo, TF, RowNames] = figure_timefreq('GetFigureData', hFig, TimeDef);
-                % Initialize returned matrix
-                F = zeros(length(selChan), size(TF, 2));
-                % Re-order channels
-                for i = 1:length(selChan)
-                    selrow = GlobalData.DataSet(iDS).Channel(selChan(i)).Name;
-                    % If displaying the norm of the gradiometers (Neuromag only)
+                    % Get loaded recordings
+                    iDSread = bst_memory('LoadDataFile', ReadFiles{iFile});
+                    % If data matrix is not loaded: load it now
+                    if isempty(GlobalData.DataSet(iDSread).Measures) || isempty(GlobalData.DataSet(iDSread).Measures.F)
+                        bst_memory('LoadRecordingsMatrix', iDSread);
+                    end
+                    % Do not apply Meg/Grad correction if the field is extrapolated (this function already scales the sensors values)
+                    isGradMagScale = ~TopoInfo.UseSmoothing && ~strcmpi(TopoInfo.FileType, 'pdata');
+                    % Gradiometers norm
                     if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'MEG GRADNORM')
-                        iRow2 = find(strcmpi(RowNames, [selrow(1:end-1), '2']));
-                        iRow3 = find(strcmpi(RowNames, [selrow(1:end-1), '3']));
-                        % If bock gradiometers were found
-                        if ~isempty(iRow2) && ~isempty(iRow3)
-                            F(i,:) = sqrt(TF(iRow2(1),:).^2 + TF(iRow3(1),:).^2);
+                        % Get Grad2 and Grad3 gradiometers
+                        iGrad2 = good_channel(GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag, 'MEG GRAD2');
+                        iGrad3 = good_channel(GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag, 'MEG GRAD3');
+                        [iGrad2,I,J] = intersect(iGrad2, selChan);
+                        iGrad3 = iGrad3(I);
+                        % Get recordings
+                        F2 = bst_memory('GetRecordingsValues', iDSread, iGrad2, TimeDef, isGradMagScale);
+                        F3 = bst_memory('GetRecordingsValues', iDSread, iGrad3, TimeDef, isGradMagScale);
+                        % Use the norm of the two
+                        F{iFile} = sqrt(F2.^2 + F3.^2);
+                        % Error if montages are applied on this
+                        if ~isempty(TsInfo.MontageName)
+                            error('You cannot apply a montagne when displaying the norm of the gradiometers.');
                         end
-                    % Reglar map
+                    % Regular recordings
                     else
-                        % Look for a sensor that is required in TF matrix
-                        iRow = find(strcmpi(selrow, RowNames));
-                        % If channel was found (if there is time-freq decomposition available for it)
-                        if ~isempty(iRow)
-                            F(i,:) = TF(iRow(1),:);
+                        % Get recordings (ALL the sensors, for re-referencing montages)
+                        Fall = bst_memory('GetRecordingsValues', iDSread, [], TimeDef, isGradMagScale);
+                        % Select only a subset of sensors
+                        F{iFile} = Fall(selChan,:);
+                    end
+                case 'timefreq'
+                    % Get timefreq values
+                    [Time, Freqs, TfInfo, TF, RowNames] = figure_timefreq('GetFigureData', hFig, TimeDef);
+                    % Initialize returned matrix
+                    F{iFile} = zeros(length(selChan), size(TF, 2));
+                    % Re-order channels
+                    for i = 1:length(selChan)
+                        selrow = GlobalData.DataSet(iDS).Channel(selChan(i)).Name;
+                        % If displaying the norm of the gradiometers (Neuromag only)
+                        if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'MEG GRADNORM')
+                            iRow2 = find(strcmpi(RowNames, [selrow(1:end-1), '2']));
+                            iRow3 = find(strcmpi(RowNames, [selrow(1:end-1), '3']));
+                            % If bock gradiometers were found
+                            if ~isempty(iRow2) && ~isempty(iRow3)
+                                F{iFile}(i,:) = sqrt(TF(iRow2(1),:).^2 + TF(iRow3(1),:).^2);
+                            end
+                        % Reglar map
+                        else
+                            % Look for a sensor that is required in TF matrix
+                            iRow = find(strcmpi(selrow, RowNames));
+                            % If channel was found (if there is time-freq decomposition available for it)
+                            if ~isempty(iRow)
+                                F{iFile}(i,:) = TF(iRow(1),:);
+                            end
                         end
                     end
-                end
+            end
         end
     end
     % Get time if required and not defined yet
@@ -308,43 +343,56 @@ function [F, Time, selChan] = GetFigureData(iDS, iFig, isAllTime)
     end
     
     % ===== APPLY MONTAGE =====
-    % Not available when the data is already saved in the figure (TopoInfo.DataToPlot)
-    if strcmpi(TopoInfo.FileType, 'data') && ~isempty(TsInfo) && ~isempty(TsInfo.MontageName) && isempty(TopoInfo.DataToPlot)
-        % Get channel names 
-        ChanNames = {GlobalData.DataSet(iDS).Channel.Name};
-        % Get montage
-        sMontage = panel_montage('GetMontage', TsInfo.MontageName, hFig);
-        % Do not do anything with the sensor selection only
-        if ~isempty(sMontage) % && ismember(sMontage.Type, {'text','matrix'})
+    for iFile = 1:length(F)
+        % Not available when the data is already saved in the figure (TopoInfo.DataToPlot)
+        if strcmpi(TopoInfo.FileType, 'data') && ~isempty(TsInfo) && ~isempty(TsInfo.MontageName) && isempty(TopoInfo.DataToPlot)
+            % Get channel names 
+            ChanNames = {GlobalData.DataSet(iDS).Channel.Name};
             % Get montage
-            [iChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, ChanNames);
-            % Matrix: must be a full transformation, same list of inputs and outputs
-            if strcmpi(sMontage.Type, 'matrix') && isequal(sMontage.DispNames, sMontage.ChanNames) && (length(iChannels) == size(F,1))
-                F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall(iChannels,:);
-            % Text: Bipolar montages only
-            elseif strcmpi(sMontage.Type, 'text') && all(sum(sMontage.Matrix,2) < eps) && all(sum(sMontage.Matrix > 0,2) == 1)
-                % Find the first channel in the bipolar montage (the one with the "+")
-                iChanPlus = sum(bst_bsxfun(@times, sMontage.Matrix(iMatrixDisp,iMatrixChan) > 0, 1:length(iMatrixChan)), 2);
-                % Warning
-                if (length(iChanPlus) ~= length(unique(iChanPlus)))
-                    disp(['BST> Error: Montage "' sMontage.Name '" contains repeated channels, topography contains errors.']);
+            sMontage = panel_montage('GetMontage', TsInfo.MontageName, hFig);
+            % Do not do anything with the sensor selection only
+            if ~isempty(sMontage) % && ismember(sMontage.Type, {'text','matrix'})
+                % Get montage
+                [iChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, ChanNames);
+                % Matrix: must be a full transformation, same list of inputs and outputs
+                if strcmpi(sMontage.Type, 'matrix') && isequal(sMontage.DispNames, sMontage.ChanNames) && (length(iChannels) == size(F,1))
+                    F{iFile} = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall(iChannels,:);
+                % Text: Bipolar montages only
+                elseif strcmpi(sMontage.Type, 'text') && all(sum(sMontage.Matrix,2) < eps) && all(sum(sMontage.Matrix > 0,2) == 1)
+                    % Find the first channel in the bipolar montage (the one with the "+")
+                    iChanPlus = sum(bst_bsxfun(@times, sMontage.Matrix(iMatrixDisp,iMatrixChan) > 0, 1:length(iMatrixChan)), 2);
+                    % Warning
+                    if (length(iChanPlus) ~= length(unique(iChanPlus)))
+                        disp(['BST> Error: Montage "' sMontage.Name '" contains repeated channels, topography contains errors.']);
+                    end
+                    % Apply montage (all the channels that not defined are set to zero)
+                    Ftmp = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall(iChannels,:);
+                    F{iFile} = zeros(size(Fall));
+                    F{iFile}(iChannels(iChanPlus),:) = Ftmp;
+                    % JUSTIFICATIONS OF THOSE INDICES: The two statements below are equivalent
+                    %ChanPlusNames = sMontage.ChanNames(iMatrixChan(iChanPlus))
+                    %ChanPlusNames = ChanNames(iChannels(iChanPlus))
+                    % Return only the channels selected in this figure
+                    F{iFile} = F{iFile}(selChan,:);
+                elseif strcmpi(sMontage.Type, 'selection')
+                    [selChan, I, J] = intersect(iChannels, selChan);
+                    F{iFile} = F{iFile}(J,:);
+                elseif ~strcmpi(sMontage.Name, 'NIRS overlay[tmp]')
+                    disp(['BST> Montage "' sMontage.Name '" cannot be used for the 2D/3D topography views.']);
                 end
-                % Apply montage (all the channels that not defined are set to zero)
-                Ftmp = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall(iChannels,:);
-                F = zeros(size(Fall));
-                F(iChannels(iChanPlus),:) = Ftmp;
-                % JUSTIFICATIONS OF THOSE INDICES: The two statements below are equivalent
-                %ChanPlusNames = sMontage.ChanNames(iMatrixChan(iChanPlus))
-                %ChanPlusNames = ChanNames(iChannels(iChanPlus))
-                % Return only the channels selected in this figure
-                F = F(selChan,:);
-            elseif strcmpi(sMontage.Type, 'selection')
-                [selChan, I, J] = intersect(iChannels, selChan);
-                F = F(J,:);
-            elseif ~strcmpi(sMontage.Name, 'NIRS overlay[tmp]')
-                disp(['BST> Montage "' sMontage.Name '" cannot be used for the 2D/3D topography views.']);
             end
         end
+    end
+    % If same comments: replace labels with file names
+    if (length(overlayLabels) > 1)
+        if (length(overlayLabels) ~= length(unique(overlayLabels)))
+            overlayLabels = ReadFiles;
+        end
+        [commonLabel, overlayLabels] = str_common_path(overlayLabels);
+    end
+    % Return only one file if required
+    if ~isMultiOutput
+        F = F{1};
     end
 end
 
@@ -657,9 +705,10 @@ end
 %% ===== CREATE 2D LAYOUT =====
 function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     global GlobalData;
+    
     % ===== GET ALL DATA ===== 
     % Get data
-    [F, Time, selChanGlobal] = GetFigureData(iDS, iFig, 1);
+    [F, Time, selChanGlobal, overlayLabels] = GetFigureData(iDS, iFig, 1, 1);
     selChan = bst_closest(selChanGlobal, modChan);
     if isempty(selChan)
         disp('2DLAYOUT> No good sensor to display...');
@@ -702,7 +751,6 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     end
     % Keep only the selected time indices
     TimeVector = TimeVector(iTime);
-    F = F(:, iTime);
     % Flip Time vector (it's the way the data will be represented too)
     TimeVector = fliplr(TimeVector);
     % Look for current time in TimeVector
@@ -711,14 +759,42 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     if isempty(iCurrentTime)
         iCurrentTime = 1;
     end
+    % Normalize time between 0 and 1
+    TimeVector = (TimeVector - TimeVector(1)) ./ (TimeVector(end) - TimeVector(1));
     % Get graphic objects handles
     PlotHandles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
     hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
     isDrawZeroLines   = isempty(PlotHandles.hZeroLines)    || any(~ishandle(PlotHandles.hZeroLines));
-    isDrawLines       = isempty(PlotHandles.hLines)        || any(~ishandle(PlotHandles.hLines));
+    isDrawLines       = isempty(PlotHandles.hLines)        || any(~ishandle(PlotHandles.hLines{1}));
     isDrawLegend      = isempty(PlotHandles.hLabelLegend);
     isDrawSensorLabels= isempty(PlotHandles.hSensorLabels) || any(~ishandle(PlotHandles.hSensorLabels));
 
+    % Default figure colors
+    if TopoLayoutOptions.WhiteBackground
+        figColor  = [1,1,1];
+        dataColor = [0,0,0];
+        refColor  = .8 * [1,1,1];
+        textColor = .7 * [1 1 1];
+    else
+        figColor  = [0,0,0];
+        dataColor = [1,1,1];
+        refColor  = .4 * [1,1,1];
+        textColor = .8 * [1 1 1];
+    end
+    % If multiple files, get default color table
+    if (length(F) > 1)
+        % ColorTable = panel_scout('GetScoutsColorTable');
+        ColorTable = [...
+                 0    0.4470    0.7410
+            0.8500    0.3250    0.0980
+            0.9290    0.6940    0.1250
+            0.4940    0.1840    0.5560
+            0.4660    0.6740    0.1880
+            0.3010    0.7450    0.9330
+            0.6350    0.0780    0.1840];
+        dataColor = ColorTable(mod(0:length(F)-1, length(ColorTable)) + 1, :);
+    end
+    
     % ===== CREATE SURFACE =====
     LabelRows = {};
     LabelRowsRef = [];
@@ -769,7 +845,6 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         % Flip both axes
         X = -X;
         Y = -Y;
-        
     % 2D Projection
     elseif all(Vertices(:,3) < 0.0001)
         X = Vertices(:,1);
@@ -787,29 +862,58 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     % Normalize positions between 0 and 1
     X = (X - min(X)) ./ (max(X) - min(X)) .* (1-plotSize(1))   + plotSize(1) ./ 2;
     Y = (Y - min(Y)) ./ (max(Y) - min(Y)) .* (1-plotSize(2)*2) + plotSize(2);
-    % Normalize data
-    M = double(max(abs(F(:))));
-    F = F ./ M;
-    % Normalize time between 0 and 1
-    TimeVector = (TimeVector - TimeVector(1)) ./ (TimeVector(end) - TimeVector(1));
     % Get display factor
     DispFactor = PlotHandles.DisplayFactor; % * figure_timeseries('GetDefaultFactor', GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
+    
+    % Loop on multiple files
+    for iFile = 1:length(F)
+        % Keep only selected time points
+        F{iFile} = F{iFile}(:, iTime);
+        % Normalize data
+        M = double(max(abs(F{iFile}(:))));
+        F{iFile} = F{iFile} ./ M;
+    end
+
     % Draw each sensor
     for i = 1:length(selChan)
         Xi = X(selChan(i));
         Yi = Y(selChan(i));
-        % Get sensor data
-        dat = F(i,:);
-        datMin = min(dat);
-        datMax = max(dat);
-        % Draw sensor time serie
-        PlotHandles.ChannelOffsets(i) = Xi;
-        % Define lines to trace
-        XData  = plotSize(1) * dat(end:-1:1)    * DispFactor + Xi;
-        Xrange = plotSize(1) * [min(0,datMin), max(0,datMax)] * DispFactor + Xi;
-        YData  = plotSize(2) * (TimeVector - 0.5) + Yi;
-        ZData  = 0;
-        
+        % Loop on multiple files
+        for iFile = 1:length(F)
+            % Get sensor data
+            dat = F{iFile}(i,:);
+            datMin = min(dat);
+            datMax = max(dat);
+            % Draw sensor time serie
+            PlotHandles.ChannelOffsets(i) = Xi;
+            % Define lines to trace
+            XData  = plotSize(1) * dat(end:-1:1) * DispFactor + Xi;
+            Xrange = plotSize(1) * [min(0,datMin), max(0,datMax)] * DispFactor + Xi;
+            YData  = plotSize(2) * (TimeVector - 0.5) + Yi;
+            ZData  = 0;
+            
+            % === DATA LINE ===
+            if isDrawLines
+                % Draw new lines
+                PlotHandles.hLines{iFile}(i) = line(XData, YData, 0*XData + ZData + 0.001, ...
+                        'Tag',           'Lines2DLayout', ...
+                        'Parent',        hAxes, ...
+                        'UserData',      selChanGlobal(i), ...
+                        'ButtonDownFcn', @(h,ev)LineClickedCallback(h,selChanGlobal(i)));
+                % Color: default if only one, colors otherwise
+                set(PlotHandles.hLines{iFile}, 'Color', dataColor(iFile,:));
+                PlotHandles.LinesColor{iFile} = dataColor(iFile,:);
+            else
+                % Update existing lines
+                set(PlotHandles.hLines{iFile}(i), ...
+                    'XData', XData, ...
+                    'YData', YData, ...
+                    'ZData', 0*XData + ZData + 0.001);
+            end
+        end
+        % Save position of each graph
+        PlotHandles.BoxesCenters(i,:) = [Xi, mean(YData([1,end]))];
+            
         % === ZERO LINE / TIME CURSOR ===
         if TopoLayoutOptions.ShowRefLines
             if isDrawZeroLines
@@ -835,23 +939,6 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                 PlotHandles.hCursors = [];
             end
         end
-        
-        % === DATA LINE ===
-        if isDrawLines
-            % Draw new lines
-            PlotHandles.hLines(i) = line(XData, YData, 0*XData + ZData + 0.001, ...
-                    'Tag',           'Lines2DLayout', ...
-                    'Parent',        hAxes, ...
-                    'UserData',      selChanGlobal(i), ...
-                    'ButtonDownFcn', @(h,ev)LineClickedCallback(h,selChanGlobal(i)));
-        else
-            % Update existing lines
-            set(PlotHandles.hLines(i), ...
-                'XData', XData, ...
-                'YData', YData, ...
-                'ZData', 0*XData + ZData + 0.001);
-        end
-        PlotHandles.BoxesCenters(i,:) = [Xi, mean(YData([1,end]))];
         
         % === SENSOR NAME ===
         Xtext = 1.2 * plotSize(2) * datMax + Xi;
@@ -899,7 +986,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         % Create legend label
         if isDrawLegend
             % Get figure color
-            figColor = get(hFig, 'Color');
+            % figColor = get(hFig, 'Color');
             figPos   = get(hFig, 'Position');
             % Find opposite colors
             if (sum(figColor .^ 2) > 0.8)
@@ -940,6 +1027,11 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                 'Parent',      PlotHandles.hAxesLegend);
             % Reset current axes
             set(hFig, 'CurrentAxes', hAxes);
+            % Overlay legend
+            if (length(overlayLabels) > 1)
+                hFirstLines = cellfun(@(c)c(1), PlotHandles.hLines, 'UniformOutput', 0);
+                PlotHandles.hOverlayLegend = legend([hFirstLines{:}], strrep(overlayLabels, '_', '-'), 'Interpreter', 'None', 'Location', 'NorthEast');
+            end
         end
         % Get data type
         if isappdata(hFig, 'Timefreq')
@@ -961,8 +1053,10 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                             round(fScaled), fUnits, msTime(1), msTime(2));
         % Update legend
         set(PlotHandles.hLabelLegend, 'String', strLegend, 'Visible', 'on');
+        set(PlotHandles.hOverlayLegend, 'Visible', 'on');
     elseif ~isDrawLegend
         set(PlotHandles.hLabelLegend, 'Visible', 'off');
+        set(PlotHandles.hOverlayLegend, 'Visible', 'off');
     end
     
     % ===== AXES LIMITS =====
@@ -970,23 +1064,11 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     set(hAxes, 'XLim', [0 1], 'YLim', [0 1]);
     
     % ===== FIGURE COLORS =====
-    if TopoLayoutOptions.WhiteBackground
-        figColor  = [1,1,1];
-        dataColor = [0,0,0];
-        refColor  = .8 * [1,1,1];
-        textColor = .7 * [1 1 1];
-    else
-        figColor  = [0,0,0];
-        dataColor = [1,1,1];
-        refColor  = .4 * [1,1,1];
-        textColor = .8 * [1 1 1];
-    end
     % Set figure background
     set(hFig, 'Color', figColor);
     % Set objects lines color (only the non-selected ones, selected channels remain red)
-    set(PlotHandles.hLines, 'Color', dataColor);
     if ~isempty(PlotHandles.hZeroLines)
-        set(PlotHandles.hZeroLines,   'Color', refColor);
+        set(PlotHandles.hZeroLines, 'Color', refColor);
         set(PlotHandles.hCursors, 'Color', refColor);
     end
     if ~isempty(PlotHandles.hSensorLabels)
@@ -995,8 +1077,6 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     if ~isempty(PlotHandles.hLabelLegend)
         set(PlotHandles.hLabelLegend, 'Color', textColor);
     end
-    % Save lines color
-    PlotHandles.LinesColor = dataColor;
     % Save properties
     PlotHandles.Channel  = Channel;
     PlotHandles.Vertices = Vertices;
@@ -1194,15 +1274,25 @@ function UpdateTimeSeriesFactor(hFig, changeFactor)
     % Get figure description
     [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
     Handles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
-
     % Update figure lines
-    for iLine = 1:length(Handles.hLines)
+    for iFile = 1:length(Handles.hLines)
+        for iLine = 1:length(Handles.hLines{iFile})
+            % Get values
+            XData = get(Handles.hLines{iFile}(iLine), 'XData');
+            % Re-center them on zero, and change the factor
+            XData = (XData - Handles.ChannelOffsets(iLine)) * changeFactor + Handles.ChannelOffsets(iLine);
+            % Update value
+            set(Handles.hLines{iFile}(iLine), 'XData', XData);
+        end
+    end
+    % Update time cursors
+    for iLine = 1:length(Handles.hCursors)
         % Get values
-        XData = get(Handles.hLines(iLine), 'XData');
+        XData = get(Handles.hCursors(iLine), 'XData');
         % Re-center them on zero, and change the factor
         XData = (XData - Handles.ChannelOffsets(iLine)) * changeFactor + Handles.ChannelOffsets(iLine);
         % Update value
-        set(Handles.hLines(iLine), 'XData', XData);
+        set(Handles.hCursors(iLine), 'XData', XData);
     end
     % Update factor value
     GlobalData.DataSet(iDS).Figure(iFig).Handles.DisplayFactor = Handles.DisplayFactor * changeFactor;
@@ -1216,7 +1306,7 @@ end
 
 
 %% ===== UPDATE TIME SERIES FACTOR =====
-function UpdateTopoTimeWindow(hFig, changeFactor) %#ok<DEFNU>
+function UpdateTopoTimeWindow(hFig, changeFactor)
     global GlobalData;
     % Get current time window
     TopoLayoutOptions = bst_get('TopoLayoutOptions');

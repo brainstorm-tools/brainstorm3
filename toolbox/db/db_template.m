@@ -746,6 +746,7 @@ switch lower(structureName)
             'hZeroLines',     [], ...  % 2D Layout
             'hAxesLegend',    [], ...  % 2D Layout
             'hLabelLegend',   [], ...  % 2D Layout
+            'hOverlayLegend', [], ...  % 2D Layout
             'Channel',        [], ...  % 2D Layout
             'Vertices',       [], ...  % 2D Layout
             'SelChan',        [], ...  % 2D Layout

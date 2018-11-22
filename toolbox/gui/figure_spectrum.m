@@ -30,8 +30,9 @@ end
 %% ===== CREATE FIGURE =====
 function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     import org.brainstorm.icon.*;
+    MatlabVersion = bst_get('MatlabVersion');
     % Get renderer name
-    if (bst_get('MatlabVersion') <= 803)   % zbuffer was removed in Matlab 2014b
+    if (MatlabVersion <= 803)   % zbuffer was removed in Matlab 2014b
         rendererName = 'zbuffer';
     elseif (bst_get('DisableOpenGL') == 1)
         rendererName = 'painters';
@@ -60,7 +61,11 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     if isprop(hFig, 'WindowScrollWheelFcn')
         set(hFig, 'WindowScrollWheelFcn',  @FigureMouseWheelCallback);
     end
-
+    % Disable automatic legends (after 2017a)
+    if (MatlabVersion >= 902) 
+        set(hFig, 'defaultLegendAutoUpdate', 'off');
+    end
+    
     % Prepare figure appdata
     setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'hasMoved', 0);

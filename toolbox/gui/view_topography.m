@@ -5,15 +5,17 @@ function [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType, F, Us
 % USAGE:  [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType, F, UseSmoothing, 'NewFigure', RefRowName)
 %         [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType, F)
 %         [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType)
+%         [hFig, iDS, iFig] = view_topography(MultiDataFiles, Modality, '2DLayout')
 %
 % INPUT: 
-%     - DataFile     :  Full or relative path to data file to visualize.
-%     - Modality     : {'MEG', 'MEG GRAD', 'MEG MAG', 'EEG', 'ECOG', 'SEEG', 'NIRS'}
-%     - TopoType     : {'3DSensorCap', '2DDisc', '2DSensorCap', 2DLayout', '3DElectrodes', '3DElectrodes-Cortex', '3DElectrodes-Head', '3DElectrodes-MRI', '3DOptodes'}
-%     - F            : Data matrix to display instead of the real values from the file
-%     - UseSmoothing : Extrapolate magnetic values (for MEG only)
-%     - hFig         : Specify the figure in which to display the MRI, or "NewFigure"
-%     - RefRowName   : Reference sensor name, when displaying a NxN connectivity matrix
+%     - DataFile       : Full or relative path to data file to visualize.
+%     - MultiDataFiles : Cell array of files to display as overlays in a 2DLayout view  
+%     - Modality       : {'MEG', 'MEG GRAD', 'MEG MAG', 'EEG', 'ECOG', 'SEEG', 'NIRS'}
+%     - TopoType       : {'3DSensorCap', '2DDisc', '2DSensorCap', 2DLayout', '3DElectrodes', '3DElectrodes-Cortex', '3DElectrodes-Head', '3DElectrodes-MRI', '3DOptodes'}
+%     - F              : Data matrix to display instead of the real values from the file
+%     - UseSmoothing   : Extrapolate magnetic values (for MEG only)
+%     - hFig           : Specify the figure in which to display the MRI, or "NewFigure"
+%     - RefRowName     : Reference sensor name, when displaying a NxN connectivity matrix
 %
 % OUTPUT: 
 %     - hFig : Matlab handle to the 3DViz figure that was created or updated
@@ -64,6 +66,19 @@ end
 if (nargin < 2) || isempty(Modality)
     Modality = '';
 end
+% Check for multiple files in 2DLayout
+MultiDataFiles = {};
+if iscell(DataFile)
+    if ~strcmpi(TopoType, '2DLayout')
+        error('Only 2DLayout display type accepts multiple input files.');
+    end
+    if (length(DataFile) == 1)
+        DataFile = DataFile{1};
+    else
+        MultiDataFiles = DataFile;
+        DataFile = DataFile{1};
+    end
+end
 % Detect surface type in the topo type string
 switch (TopoType)
     case '3DElectrodes-Cortex'
@@ -91,6 +106,21 @@ switch(fileType)
         iDS = bst_memory('LoadDataFile', DataFile);
         if isempty(iDS)
             return;
+        end
+        % Load additional files
+        for iFile = 2:length(MultiDataFiles)
+            iDSmulti = bst_memory('LoadDataFile', MultiDataFiles{iFile});
+            if isempty(iDSmulti)
+                bst_error(['An error occurred loading file: ', 10, file_short(MultiDataFiles{iFile})], 'View topography', 0);
+                return;
+            end
+            % Channel names must be the same for all the files
+            if ~isequal({GlobalData.DataSet(iDS).Channel.Name}, {GlobalData.DataSet(iDSmulti).Channel.Name})
+                bst_error(['All the files must have the same list of channels.', 10, 'Consider using the process "Standardize > Uniform list of channels".'], 'View topography', 0);
+                return;
+            end
+            % Add bad channels to the common list of bad channels (first file)
+            GlobalData.DataSet(iDS).Measures.ChannelFlag(GlobalData.DataSet(iDSmulti).Measures.ChannelFlag == -1) = -1;
         end
         % Colormap type
         if ~isempty(GlobalData.DataSet(iDS).Measures.ColormapType)
@@ -125,6 +155,13 @@ switch(fileType)
         if isempty(iDS)
             return;
         end
+        % Load additional files
+        for iFile = 2:length(MultiDataFiles)
+            iDSmulti = bst_memory('LoadDataFile', MultiDataFiles{iFile});
+            if isempty(iDSmulti)
+                error(['An error occurred loading file: ' MultiDataFiles{iFile}]);
+            end
+        end
         % Colormap type
         if ~isempty(GlobalData.DataSet(iDS).Measures.ColormapType)
             ColormapType = GlobalData.DataSet(iDS).Measures.ColormapType;
@@ -142,6 +179,10 @@ switch(fileType)
         [iDS, iTimefreq] = bst_memory('LoadTimefreqFile', DataFile);
         if isempty(iDS)
             return;
+        end
+        % Additional files: not supported
+        if ~isempty(MultiDataFiles)
+            error('Multiple time-frequency files are not yet supported in 2DLayout.');
         end
         % Colormap type
         if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).ColormapType)
@@ -271,6 +312,7 @@ TopoInfo.Modality   = Modality;
 TopoInfo.TopoType   = TopoType;
 TopoInfo.DataToPlot = F;
 TopoInfo.UseSmoothing = UseSmoothing;
+TopoInfo.MultiDataFiles = MultiDataFiles;
 setappdata(hFig, 'TopoInfo', TopoInfo);
 % Create recordings info structure
 TsInfo = db_template('TsInfo');
