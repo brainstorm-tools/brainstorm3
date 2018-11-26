@@ -28,8 +28,6 @@ function varargout = process_sss( varargin )
   % and phi (or p) is the longitude angle or azimuth.
   
   % TO DO: 
-  % SphericalBasis: bad condition number means very sensitive to noise?  Do
-  % we always need more than full rank?
   % tSSS, how long of chunks do we need for stable separation?
   % tSSS, how do we avoid jumps between chunks?
   % SSS, (and tSSS!) we need to keep track of the empty subspace as in SSP, for source modeling?
