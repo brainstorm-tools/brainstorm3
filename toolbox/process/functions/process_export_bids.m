@@ -87,6 +87,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.megmeta.Comment = 'Additional MEG sidecar JSON fields: ';
     sProcess.options.megmeta.Type    = 'textarea';
     sProcess.options.megmeta.Value   = ['{' 10 '  "TaskDescription": "My task"' 10 '}'];
+    % Options: Additional metadata
+    sProcess.options.edit.Comment = {'panel_export_bids', ' Additional metadata :'};
+    sProcess.options.edit.Type    = 'editpref';
+    sProcess.options.edit.Value   = [];
 end
 
 
@@ -199,7 +203,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     sInputs = SortInputs(sInputs);
     nInputs = length(sInputs);
     
-    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata)
+    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata);
+    CreateDatasetReadme(outputFolder, overwrite, datasetMetadata);
     
     bst_progress('start', 'Export', 'Exporting dataset files...', 0, nInputs);
     for iInput = 1:nInputs
@@ -657,6 +662,23 @@ function CreateDatasetDescription(parentFolder, overwrite, description)
     fclose(fid);
 end
 
+function CreateDatasetReadme(parentFolder, overwrite, description)
+    if nargin < 3
+        description = struct();
+    end
+
+    txtFile = bst_fullfile(parentFolder, 'README.txt');
+    if exist(txtFile, 'file') == 2 && ~overwrite
+        return;
+    end
+    
+    fid = fopen(txtFile, 'wt');
+    %TODO
+    fprintf(fid, ['This is my first test.' 10]);
+    fprintf(fid, ['This is my second test.']);
+    fclose(fid);
+end
+
 function res = containsKeyword(str, keywords)
     res = 0;
     for iKey = 1:length(keywords)
@@ -935,4 +957,16 @@ function myStruct = addField(myStruct, field, value)
         disp(['Warning: Specified field "' field '" will be ignored.']);
     end
     myStruct.(field) = value;
+end
+
+function metadata = ExtractGeneralMetadata()
+    % ProjectName = ProtocolName
+    % ProjectID = ProtocolName
+    % AdditionalJsonDatasetDescription = Empty
+    % AdditionalJsonMegSidecar = Empty
+    % ExperimentStartDate = OldestFile
+    % ExperimentEndData = NewestFile
+    % Project Description: N/A
+    % Participant Groups: N/A
+    % Trigger channels: All channels
 end

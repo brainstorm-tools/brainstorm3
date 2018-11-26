@@ -188,6 +188,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
 %    - bst_get('PlotlyCredentials')       : Get the credentials and URL to connect to plot.ly server
 %    - bst_get('MffJarFile')              : Get the path to the MFF JAR file and whether it exists
+%    - bst_get('ExportBidsOptions')       : Additional metadata for BIDS export
 %
 % SEE ALSO bst_set
 
@@ -2907,6 +2908,15 @@ switch contextName
         if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
             argout1.FreqBands = defPref.FreqBands;
         end
+    
+    case 'ExportBidsOptions'
+        defPref.ProjName    = [];
+        defPref.ProjID      = [];
+        defPref.ProjDesc    = [];
+        defPref.Groups      = [];
+        defPref.JsonDataset = ['{' 10 '  "License": "PD"' 10 '}'];
+        defPref.JsonMeg     = ['{' 10 '  "TaskDescription": "My task"' 10 '}'];
+        argout1 = FillMissingFields(contextName, defPref);        
         
     case 'OpenMEEGOptions'
         defPref.BemFiles     = {};
