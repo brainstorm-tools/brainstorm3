@@ -88,13 +88,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jPanelJson.add(jPanelOpt);
     c.gridy = 2;
     jPanelMain.add(jPanelJson, c);
-    %        defPref.ProjName    = [];
-    %    defPref.ProjID      = [];
-    %    defPref.ProjDesc    = [];
-    %    defPref.Groups      = [];
-    %    defPref.JsonDataset = [];
-    %   defPref.JsonMeg     = [];
-    
     
     % ===== VALIDATION BUTTON =====
     jPanelOk = gui_river();
@@ -127,14 +120,30 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
 %  =================================================================================
 %% ===== OK BUTTON =====
     function ButtonOk_Callback(varargin)
+        % Validate JSON
+        jsonDataset = char(jTextJsonDataset.getText());
+        jsonMeg = char(jTextJsonMeg.getText());
+        if ~ValidateJson(jsonDataset)
+            jsonError = 'dataset description';
+        elseif ~ValidateJson(jsonMeg)
+            jsonError = 'MEG sidecar files';
+        else
+            jsonError = [];
+        end
+        if ~isempty(jsonError)
+            java_dialog('error', ['The JSON you entered for the ', jsonError, ' is invalid.', ...
+                10, 'Please check your syntax and try again.'], 'Invalid JSON', jPanelMain);
+            return;
+        end
+        
         % Save new options
         ExportBidsOptions = bst_get('ExportBidsOptions');
         ExportBidsOptions.ProjName = char(jTextProjName.getText());
         ExportBidsOptions.ProjID = char(jTextProjID.getText());
         ExportBidsOptions.ProjDesc = char(jTextProjDesc.getText());
         ExportBidsOptions.Groups = char(jTextGroups.getText());
-        ExportBidsOptions.JsonDataset = char(jTextJsonDataset.getText());
-        ExportBidsOptions.JsonMeg = char(jTextJsonMeg.getText());
+        ExportBidsOptions.JsonDataset = jsonDataset;
+        ExportBidsOptions.JsonMeg = jsonMeg;
         bst_set('ExportBidsOptions', ExportBidsOptions);
         
         % Release mutex and keep the panel opened
@@ -154,3 +163,16 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
 
 end
 
+function isValid = ValidateJson(jsonText)
+    if isempty(jsonText)
+        isValid = 1;
+        return;
+    else
+        try
+            bst_jsondecode(jsonText);
+            isValid = 1;
+        catch
+            isValid = 0;
+        end
+    end
+end
