@@ -1128,7 +1128,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         else
                             newChannelFlag(iSelChan) = -1;
                         end
-                        % Update channel flage
+                        % Update channel flag
                         panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
                         % Reset selection
                         bst_figures('SetSelectedRows', []);

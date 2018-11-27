@@ -442,7 +442,7 @@ if strcmpi(FileType, 'Timefreq')
     bst_figures('SetCurrentFigure', hFig, 'TF');
 end
 % 3DElectrodes: Open tab "iEEG"
-if strcmpi(TopoType, '3DElectrodes')
+if strcmpi(TopoType, '3DElectrodes') && ismember(Modality, {'SEEG', 'ECOG'})
     gui_brainstorm('ShowToolTab', 'iEEG');
 end
 % Set figure visible
