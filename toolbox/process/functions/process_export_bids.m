@@ -79,14 +79,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.dewarposition.Comment = 'Position of the dewar during the MEG scan: ';
     sProcess.options.dewarposition.Type    = 'text';
     sProcess.options.dewarposition.Value   = 'Upright';
-    % Dataset description metadata
-    sProcess.options.datasetmeta.Comment = 'Additional dataset description JSON fields: ';
-    sProcess.options.datasetmeta.Type    = 'textarea';
-    sProcess.options.datasetmeta.Value   = ['{' 10 '  "License": "PD"' 10 '}'];
-    % MEG sidecar metadata
-    sProcess.options.megmeta.Comment = 'Additional MEG sidecar JSON fields: ';
-    sProcess.options.megmeta.Type    = 'textarea';
-    sProcess.options.megmeta.Value   = ['{' 10 '  "TaskDescription": "My task"' 10 '}'];
     % Options: Additional metadata
     sProcess.options.edit.Comment = {'panel_export_bids', ' Additional metadata :'};
     sProcess.options.edit.Type    = 'editpref';
@@ -107,6 +99,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     overwrite     = sProcess.options.overwrite.Value;
     dewarPosition = sProcess.options.dewarposition.Value;
     emptyRoomKeywords = strtrim(str_split(lower(sProcess.options.emptyroom.Value), ',;'));
+    ExportBidsOptions = bst_get('ExportBidsOptions');
     if isempty(outputFolder)
         bst_report('Error', sProcess, sInputs, 'No output folder specified.');
         return;
@@ -123,29 +116,25 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         powerline = [];
     end
-    datasetMetadata = struct();
-    if isfield(sProcess.options, 'datasetmeta') && ~isempty(sProcess.options.datasetmeta.Value)
-        datasetMeta = strtrim(sProcess.options.datasetmeta.Value);
-        if ~isempty(datasetMeta)
-            try
-                datasetMetadata = bst_jsondecode(datasetMeta);
-            catch e
-                bst_report('Error', sProcess, sInputs, ['Invalid dataset description: ' e.message]);
-                return;
-            end
+    if ~isempty(ExportBidsOptions.JsonDataset)
+        try
+            datasetMetadata = bst_jsondecode(ExportBidsOptions.JsonDataset);
+        catch e
+            bst_report('Error', sProcess, sInputs, ['Invalid dataset description: ' e.message]);
+            return;
         end
+    else
+        datasetMetadata = struct();
     end
-    megMetadata = struct();
-    if isfield(sProcess.options, 'megmeta') && ~isempty(sProcess.options.megmeta.Value)
-        megMeta = strtrim(sProcess.options.megmeta.Value);
-        if ~isempty(megMeta)
-            try
-                megMetadata = bst_jsondecode(megMeta);
-            catch e
-                bst_report('Error', sProcess, sInputs, ['Invalid MEG sidecar metadata: ' e.message]);
-                return;
-            end
+    if ~isempty(ExportBidsOptions.JsonMeg)
+        try
+            megMetadata = bst_jsondecode(ExportBidsOptions.JsonMeg);
+        catch e
+            bst_report('Error', sProcess, sInputs, ['Invalid MEG sidecar metadata: ' e.message]);
+            return;
         end
+    else
+        megMetadata = struct();
     end
     
     % Default naming schemes
@@ -204,7 +193,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     nInputs = length(sInputs);
     
     CreateDatasetDescription(outputFolder, overwrite, datasetMetadata);
-    CreateDatasetReadme(outputFolder, overwrite, datasetMetadata);
+    firstAcq = [];
+    lastAcq = [];
+    StimChannelNames = {};
     
     bst_progress('start', 'Export', 'Exporting dataset files...', 0, nInputs);
     for iInput = 1:nInputs
@@ -229,6 +220,12 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % Extract date of study
         dateOfStudy = ExtractAcquisitionTime(sFile, sInput.iStudy);
+        if isempty(firstAcq) || dateOfStudy < firstAcq
+            firstAcq = dateOfStudy;
+        end
+        if isempty(lastAcq) || dateOfStudy > lastAcq
+            lastAcq = dateOfStudy;
+        end
         
         %% Check if subject already exists
         newSubject = 1;
@@ -401,6 +398,16 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         end
         
+        %% Extract all stimulation channels
+        ChannelMat = in_bst_channel(sInput.ChannelFile);
+        iStimChans = find(strcmpi('stim', {ChannelMat.Channel.Type}));
+        for iStimChan = 1:length(iStimChans)
+            chan = ChannelMat.Channel(iStimChans(iStimChan)).Name;
+            if ~any(strcmpi(chan, StimChannelNames))
+                StimChannelNames{end + 1} = chan;
+            end
+        end
+        
         %% Prepare metadata structure
         metadata = megMetadata;
         metadata = addField(metadata, 'TaskName', taskName);
@@ -410,7 +417,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             metadata = addField(metadata, 'PowerLineFrequency', powerline);
         end
         metadata = addField(metadata, 'DewarPosition', dewarPosition);
-        [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(sInput.ChannelFile);
+        [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(ChannelMat);
         metadata = addField(metadata, 'DigitizedLandmarks', bool2str(hasLandmarks));
         metadata = addField(metadata, 'DigitizedHeadPoints', bool2str(hasHeadPoints));
         
@@ -466,6 +473,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         
         bst_progress('inc', 1);
     end
+    
+    % Create README
+    CreateDatasetReadme(outputFolder, overwrite, ExportBidsOptions, firstAcq, lastAcq, StimChannelNames);
     
     % Save condition to subject/session mapping for future exports.
     SaveExistingData(data, outputFolder);
@@ -662,20 +672,65 @@ function CreateDatasetDescription(parentFolder, overwrite, description)
     fclose(fid);
 end
 
-function CreateDatasetReadme(parentFolder, overwrite, description)
-    if nargin < 3
-        description = struct();
-    end
-
+function CreateDatasetReadme(parentFolder, overwrite, ExportBidsOptions, firstAcq, lastAcq, AllChannelNames)
+    % Skip if it exists and we're not overwriting
     txtFile = bst_fullfile(parentFolder, 'README.txt');
     if exist(txtFile, 'file') == 2 && ~overwrite
         return;
     end
+
+    % Default Project name/ID: Protocol name
+    ProtocolInfo = bst_get('ProtocolInfo');
+    if isempty(ExportBidsOptions.ProjName)
+        ExportBidsOptions.ProjName = ProtocolInfo.Comment;
+    end
+    if isempty(ExportBidsOptions.ProjID)
+        ExportBidsOptions.ProjID = ProtocolInfo.Comment;
+    end
     
+    % Default Project description / participant groups: N/A
+    if isempty(ExportBidsOptions.ProjDesc)
+        ExportBidsOptions.ProjDesc = 'N/A';
+    end
+    if isempty(ExportBidsOptions.Groups)
+        ExportBidsOptions.Groups = 'N/A';
+    end
+    
+    % Default acquisition dates: N/A
+    if isempty(firstAcq)
+        firstAcq = 'N/A';
+    else
+        firstAcq = datestr(firstAcq, 'dd/mm/yyyy');
+    end
+    if isempty(lastAcq)
+        lastAcq = 'N/A';
+    else
+        lastAcq = datestr(lastAcq, 'dd/mm/yyyy');
+    end
+    
+    % Channels
+    if isempty(AllChannelNames)
+        channels = 'N/A';
+    else
+        channels = [];
+        for iChannel = 1:length(AllChannelNames)
+            channels = [channels num2str(iChannel) '. ' AllChannelNames{iChannel} 10];
+        end
+    end
+    
+    % Create README file
     fid = fopen(txtFile, 'wt');
-    %TODO
-    fprintf(fid, ['This is my first test.' 10]);
-    fprintf(fid, ['This is my second test.']);
+    fprintf(fid, ['Project Title: ' ExportBidsOptions.ProjName 10]);
+    fprintf(fid, ['Project ID: ' ExportBidsOptions.ProjID 10 10]);
+    fprintf(fid, ['Expected experimentation period:' 10]);
+    fprintf(fid, ['Start date: ' firstAcq 10]);
+    fprintf(fid, ['End date: ' lastAcq 10 10]);
+    fprintf(fid, ['Project Description:' 10]);
+    fprintf(fid, [ExportBidsOptions.ProjDesc 10 10]);
+    fprintf(fid, ['Participant groups:' 10]);
+    fprintf(fid, [ExportBidsOptions.Groups 10 10]);
+    fprintf(fid, ['Trigger channels:' 10]);
+    fprintf(fid, channels);
     fclose(fid);
 end
 
@@ -829,8 +884,7 @@ function taskName = ExtractFifTaskname(sFile)
     end
 end
 
-function [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(channelFile)
-    ChannelMat = in_bst_channel(channelFile);
+function [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(ChannelMat)
     if isfield(ChannelMat, 'HeadPoints') && ~isempty(ChannelMat.HeadPoints) && ~isempty(ChannelMat.HeadPoints.Loc)
         nHS = size(ChannelMat.HeadPoints.Loc, 2);
     else
@@ -959,14 +1013,3 @@ function myStruct = addField(myStruct, field, value)
     myStruct.(field) = value;
 end
 
-function metadata = ExtractGeneralMetadata()
-    % ProjectName = ProtocolName
-    % ProjectID = ProtocolName
-    % AdditionalJsonDatasetDescription = Empty
-    % AdditionalJsonMegSidecar = Empty
-    % ExperimentStartDate = OldestFile
-    % ExperimentEndData = NewestFile
-    % Project Description: N/A
-    % Participant Groups: N/A
-    % Trigger channels: All channels
-end

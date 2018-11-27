@@ -138,15 +138,15 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         
         % Save new options
         ExportBidsOptions = bst_get('ExportBidsOptions');
-        ExportBidsOptions.ProjName = char(jTextProjName.getText());
-        ExportBidsOptions.ProjID = char(jTextProjID.getText());
-        ExportBidsOptions.ProjDesc = char(jTextProjDesc.getText());
-        ExportBidsOptions.Groups = char(jTextGroups.getText());
-        ExportBidsOptions.JsonDataset = jsonDataset;
-        ExportBidsOptions.JsonMeg = jsonMeg;
+        ExportBidsOptions.ProjName = strtrim(char(jTextProjName.getText()));
+        ExportBidsOptions.ProjID = strtrim(char(jTextProjID.getText()));
+        ExportBidsOptions.ProjDesc = strtrim(char(jTextProjDesc.getText()));
+        ExportBidsOptions.Groups = strtrim(char(jTextGroups.getText()));
+        ExportBidsOptions.JsonDataset = strtrim(jsonDataset);
+        ExportBidsOptions.JsonMeg = strtrim(jsonMeg);
         bst_set('ExportBidsOptions', ExportBidsOptions);
         
-        % Release mutex and keep the panel opened
+        % Release mutex to close the panel
         bst_mutex('release', panelName);
     end
 
@@ -166,7 +166,6 @@ end
 function isValid = ValidateJson(jsonText)
     if isempty(jsonText)
         isValid = 1;
-        return;
     else
         try
             bst_jsondecode(jsonText);
