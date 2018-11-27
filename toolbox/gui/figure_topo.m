@@ -937,14 +937,6 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                         'Parent',        hAxes, ...
                         'UserData',      selChanGlobal(i), ...
                         'ButtonDownFcn', @(h,ev)LineClickedCallback(h,selChanGlobal(i)));
-                % Color: default if only one, colors otherwise
-                if ~isempty(linesColor) && (length(selChan) == size(linesColor,1))
-                    curColor = linesColor(i,:);
-                else
-                    curColor = dataColor(iFile,:);
-                end
-                set(PlotHandles.hLines{iFile}(i), 'Color', curColor);
-                PlotHandles.LinesColor{iFile}(i,:) = curColor;
             else
                 % Update existing lines
                 set(PlotHandles.hLines{iFile}(i), ...
@@ -952,6 +944,14 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                     'YData', YData, ...
                     'ZData', 0*XData + ZData + 0.001);
             end
+            % Set color: default if only one, colors otherwise
+            if ~isempty(linesColor) && (length(selChan) == size(linesColor,1))
+                curColor = linesColor(i,:);
+            else
+                curColor = dataColor(iFile,:);
+            end
+            set(PlotHandles.hLines{iFile}(i), 'Color', curColor);
+            PlotHandles.LinesColor{iFile}(i,:) = curColor;
         end
         % Save position of each graph
         PlotHandles.BoxesCenters(i,:) = [Xi, mean(YData([1,end]))];
