@@ -69,8 +69,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jTextProjDesc.setColumns(java_scaled('value', 30));
     jPanelProj.add(jPanelOpt);
     jPanelOpt = gui_river([2,2], [2,4,2,4]);
-    gui_component('label', jPanelOpt, 'br', 'Participant Groups: ');
-    jTextGroups = gui_component('textfreq', jPanelOpt, 'br hfill', '');
+    gui_component('label', jPanelOpt, 'br', 'Participant Categories: ');
+    jTextCategories = gui_component('textfreq', jPanelOpt, 'br hfill', '');
     jPanelProj.add(jPanelOpt);
     c.gridy = 1;
     jPanelMain.add(jPanelProj, c);
@@ -106,7 +106,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     ctrl = struct('jTextProjName',    jTextProjName, ...
                   'jTextProjID',      jTextProjID, ...
                   'jTextProjDesc',    jTextProjDesc, ...
-                  'jTextGroups',      jTextGroups, ...
+                  'jTextCategories',  jTextCategories, ...
                   'jTextJsonDataset', jTextJsonDataset, ...
                   'jTextJsonMeg',     jTextJsonMeg);
     % Create the BstPanel object that is returned by the function
@@ -141,7 +141,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jTextProjName.setText(ExportBidsOptions.ProjName);
         jTextProjID.setText(ExportBidsOptions.ProjID);
         jTextProjDesc.setText(ExportBidsOptions.ProjDesc);
-        jTextGroups.setText(ExportBidsOptions.Categories);
+        jTextCategories.setText(ExportBidsOptions.Categories);
         jTextJsonDataset.setText(ExportBidsOptions.JsonDataset);
         jTextJsonMeg.setText(ExportBidsOptions.JsonMeg);
     end
@@ -176,7 +176,7 @@ function s = GetPanelContents() %#ok<DEFNU>
     s.ProjName = strtrim(char(ctrl.jTextProjName.getText()));
     s.ProjID = strtrim(char(ctrl.jTextProjID.getText()));
     s.ProjDesc = strtrim(char(ctrl.jTextProjDesc.getText()));
-    s.Categories = strtrim(char(ctrl.jTextGroups.getText()));
+    s.Categories = strtrim(char(ctrl.jTextCategories.getText()));
     s.JsonDataset = strtrim(jsonDataset);
     s.JsonMeg = strtrim(jsonMeg);
 end
