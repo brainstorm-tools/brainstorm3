@@ -1017,7 +1017,7 @@ if strcmpi(OPTIONS.InverseMeasure, 'amplitude')
         if NumDipoleComponents(kk) == 3 % we are in three-d,
             Kernel(Ndx,:) = WQ{kk} * Kernel(Ndx,:); % put the source prior back into the solution
         elseif NumDipoleComponents(kk) == 1
-            Kernel(Ndx,:) = diag(Alpha{kk})*Kernel(Ndx,:);  % put possible alpha weighting back in
+            Kernel(Ndx,:) = spdiags(Alpha{kk}',0,length(Ndx),length(Ndx))*Kernel(Ndx,:);  % put possible alpha weighting back in
         end
         
         StartNdx = EndNdx; % next loop
