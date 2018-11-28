@@ -613,7 +613,7 @@ if ~isempty(sStatClustFacesData)
 end
 
 
-%% ===== GROUP ANALYSIS: FACES-SCRAMBLED: MEG/EEG =====================================
+%% ===== GROUP ANALYSIS: FAMOUS-UNFAMILIAR: MEG/EEG =====================================
 %  ====================================================================================
 % ===== FAMOUS-UNFAMILIAR: MEAN DIFF =====
 % Process: Select data files in: */DirIntra/"Avg: Famous | "
