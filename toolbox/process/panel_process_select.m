@@ -2361,10 +2361,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         % Time-freq: If the additional options are not defined, get them
                         elseif isfield(opt, 'Type') && strcmpi(opt.Type, 'editpref') && isempty(opt.Value)
                             switch (procFunc)
-                                case 'process_timefreq',   optValue = bst_get('TimefreqOptions_morlet');
-                                case 'process_hilbert',    optValue = bst_get('TimefreqOptions_hilbert');
-                                case 'process_psd',        optValue = bst_get('TimefreqOptions_psd');
-                                case 'process_headmodel',  optValue = bst_get('GridOptions_headmodel');
+                                case 'process_timefreq',    optValue = bst_get('TimefreqOptions_morlet');
+                                case 'process_hilbert',     optValue = bst_get('TimefreqOptions_hilbert');
+                                case 'process_psd',         optValue = bst_get('TimefreqOptions_psd');
+                                case 'process_headmodel',   optValue = bst_get('GridOptions_headmodel');
+                                case 'process_export_bids', optValue = bst_get('ExportBidsOptions');
                             end
                         else
                             optValue = opt.Value;
