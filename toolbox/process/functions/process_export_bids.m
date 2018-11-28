@@ -99,7 +99,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     overwrite     = sProcess.options.overwrite.Value;
     dewarPosition = sProcess.options.dewarposition.Value;
     emptyRoomKeywords = strtrim(str_split(lower(sProcess.options.emptyroom.Value), ',;'));
-    ExportBidsOptions = bst_get('ExportBidsOptions');
+    OPTIONS = struct_copy_fields(bst_get('ExportBidsOptions'), sProcess.options.edit.Value, 1);
     if isempty(outputFolder)
         bst_report('Error', sProcess, sInputs, 'No output folder specified.');
         return;
@@ -116,9 +116,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         powerline = [];
     end
-    if ~isempty(ExportBidsOptions.JsonDataset)
+    if ~isempty(OPTIONS.JsonDataset)
         try
-            datasetMetadata = bst_jsondecode(ExportBidsOptions.JsonDataset);
+            datasetMetadata = bst_jsondecode(OPTIONS.JsonDataset);
         catch e
             bst_report('Error', sProcess, sInputs, ['Invalid dataset description: ' e.message]);
             return;
@@ -126,9 +126,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         datasetMetadata = struct();
     end
-    if ~isempty(ExportBidsOptions.JsonMeg)
+    if ~isempty(OPTIONS.JsonMeg)
         try
-            megMetadata = bst_jsondecode(ExportBidsOptions.JsonMeg);
+            megMetadata = bst_jsondecode(OPTIONS.JsonMeg);
         catch e
             bst_report('Error', sProcess, sInputs, ['Invalid MEG sidecar metadata: ' e.message]);
             return;
@@ -475,7 +475,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     % Create README
-    CreateDatasetReadme(outputFolder, overwrite, ExportBidsOptions, firstAcq, lastAcq, StimChannelNames);
+    CreateDatasetReadme(outputFolder, overwrite, OPTIONS, firstAcq, lastAcq, StimChannelNames);
     
     % Save condition to subject/session mapping for future exports.
     SaveExistingData(data, outputFolder);
@@ -672,7 +672,7 @@ function CreateDatasetDescription(parentFolder, overwrite, description)
     fclose(fid);
 end
 
-function CreateDatasetReadme(parentFolder, overwrite, ExportBidsOptions, firstAcq, lastAcq, AllChannelNames)
+function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq, AllChannelNames)
     % Skip if it exists and we're not overwriting
     txtFile = bst_fullfile(parentFolder, 'README.txt');
     if exist(txtFile, 'file') == 2 && ~overwrite
@@ -681,19 +681,19 @@ function CreateDatasetReadme(parentFolder, overwrite, ExportBidsOptions, firstAc
 
     % Default Project name/ID: Protocol name
     ProtocolInfo = bst_get('ProtocolInfo');
-    if isempty(ExportBidsOptions.ProjName)
-        ExportBidsOptions.ProjName = ProtocolInfo.Comment;
+    if isempty(OPTIONS.ProjName)
+        OPTIONS.ProjName = ProtocolInfo.Comment;
     end
-    if isempty(ExportBidsOptions.ProjID)
-        ExportBidsOptions.ProjID = ProtocolInfo.Comment;
+    if isempty(OPTIONS.ProjID)
+        OPTIONS.ProjID = ProtocolInfo.Comment;
     end
     
     % Default Project description / participant groups: N/A
-    if isempty(ExportBidsOptions.ProjDesc)
-        ExportBidsOptions.ProjDesc = 'N/A';
+    if isempty(OPTIONS.ProjDesc)
+        OPTIONS.ProjDesc = 'N/A';
     end
-    if isempty(ExportBidsOptions.Groups)
-        ExportBidsOptions.Groups = 'N/A';
+    if isempty(OPTIONS.Groups)
+        OPTIONS.Groups = 'N/A';
     end
     
     % Default acquisition dates: N/A
@@ -720,15 +720,15 @@ function CreateDatasetReadme(parentFolder, overwrite, ExportBidsOptions, firstAc
     
     % Create README file
     fid = fopen(txtFile, 'wt');
-    fprintf(fid, ['Project Title: ' ExportBidsOptions.ProjName 10]);
-    fprintf(fid, ['Project ID: ' ExportBidsOptions.ProjID 10 10]);
+    fprintf(fid, ['Project Title: ' OPTIONS.ProjName 10]);
+    fprintf(fid, ['Project ID: ' OPTIONS.ProjID 10 10]);
     fprintf(fid, ['Expected experimentation period:' 10]);
     fprintf(fid, ['Start date: ' firstAcq 10]);
     fprintf(fid, ['End date: ' lastAcq 10 10]);
     fprintf(fid, ['Project Description:' 10]);
-    fprintf(fid, [ExportBidsOptions.ProjDesc 10 10]);
+    fprintf(fid, [OPTIONS.ProjDesc 10 10]);
     fprintf(fid, ['Participant groups:' 10]);
-    fprintf(fid, [ExportBidsOptions.Groups 10 10]);
+    fprintf(fid, [OPTIONS.Groups 10 10]);
     fprintf(fid, ['Trigger channels:' 10]);
     fprintf(fid, channels);
     fclose(fid);

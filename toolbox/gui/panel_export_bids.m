@@ -103,7 +103,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     % Return a mutex to wait for panel close
     bst_mutex('create', panelName);
     % Controls list
-    ctrl = struct('jTextComment',     jTextProjName, ...
+    ctrl = struct('jTextProjName',    jTextProjName, ...
                   'jTextProjID',      jTextProjID, ...
                   'jTextProjDesc',    jTextProjDesc, ...
                   'jTextGroups',      jTextGroups, ...
@@ -121,29 +121,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
 %% ===== OK BUTTON =====
     function ButtonOk_Callback(varargin)
         % Validate JSON
-        jsonDataset = char(jTextJsonDataset.getText());
-        jsonMeg = char(jTextJsonMeg.getText());
-        if ~ValidateJson(jsonDataset)
-            jsonError = 'dataset description';
-        elseif ~ValidateJson(jsonMeg)
-            jsonError = 'MEG sidecar files';
-        else
-            jsonError = [];
-        end
-        if ~isempty(jsonError)
-            java_dialog('error', ['The JSON you entered for the ', jsonError, ' is invalid.', ...
-                10, 'Please check your syntax and try again.'], 'Invalid JSON', jPanelMain);
+        try
+            ExportBidsOptions = GetPanelContents();
+        catch e
+            java_dialog('error', e.message, 'Invalid JSON', jPanelMain);
             return;
         end
         
         % Save new options
-        ExportBidsOptions = bst_get('ExportBidsOptions');
-        ExportBidsOptions.ProjName = strtrim(char(jTextProjName.getText()));
-        ExportBidsOptions.ProjID = strtrim(char(jTextProjID.getText()));
-        ExportBidsOptions.ProjDesc = strtrim(char(jTextProjDesc.getText()));
-        ExportBidsOptions.Groups = strtrim(char(jTextGroups.getText()));
-        ExportBidsOptions.JsonDataset = strtrim(jsonDataset);
-        ExportBidsOptions.JsonMeg = strtrim(jsonMeg);
         bst_set('ExportBidsOptions', ExportBidsOptions);
         
         % Release mutex to close the panel
@@ -161,6 +146,39 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jTextJsonMeg.setText(ExportBidsOptions.JsonMeg);
     end
 
+end
+
+
+%% =================================================================================
+%  === EXTERNAL CALLBACKS ==========================================================
+%  =================================================================================   
+%% ===== GET PANEL CONTENTS =====
+function s = GetPanelContents() %#ok<DEFNU>
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'ExportBidsOptions');
+    
+    % Validate JSON
+    jsonDataset = char(ctrl.jTextJsonDataset.getText());
+    jsonMeg = char(ctrl.jTextJsonMeg.getText());
+    if ~ValidateJson(jsonDataset)
+        jsonError = 'dataset description';
+    elseif ~ValidateJson(jsonMeg)
+        jsonError = 'MEG sidecar files';
+    else
+        jsonError = [];
+    end
+    if ~isempty(jsonError)
+        error(['The JSON you entered for the ', jsonError, ' is invalid.', ...
+            10, 'Please check your syntax and try again.']);
+    end
+    
+    % Extract entered values
+    s.ProjName = strtrim(char(ctrl.jTextProjName.getText()));
+    s.ProjID = strtrim(char(ctrl.jTextProjID.getText()));
+    s.ProjDesc = strtrim(char(ctrl.jTextProjDesc.getText()));
+    s.Groups = strtrim(char(ctrl.jTextGroups.getText()));
+    s.JsonDataset = strtrim(jsonDataset);
+    s.JsonMeg = strtrim(jsonMeg);
 end
 
 function isValid = ValidateJson(jsonText)
