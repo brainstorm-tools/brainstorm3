@@ -2913,7 +2913,7 @@ switch contextName
         defPref.ProjName    = [];
         defPref.ProjID      = [];
         defPref.ProjDesc    = [];
-        defPref.Groups      = [];
+        defPref.Categories  = [];
         defPref.JsonDataset = ['{' 10 '  "License": "PD"' 10 '}'];
         defPref.JsonMeg     = ['{' 10 '  "TaskDescription": "My task"' 10 '}'];
         argout1 = FillMissingFields(contextName, defPref);        

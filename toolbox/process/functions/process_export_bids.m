@@ -196,6 +196,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     firstAcq = [];
     lastAcq = [];
     StimChannelNames = {};
+    EventNames = {};
     
     bst_progress('start', 'Export', 'Exporting dataset files...', 0, nInputs);
     for iInput = 1:nInputs
@@ -408,6 +409,14 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         end
         
+        %% Extract all event names
+        for iEvent = 1:length(sFile.events)
+            event = sFile.events(iEvent).label;
+            if ~any(strcmpi(event, EventNames))
+                EventNames{end + 1} = event;
+            end
+        end
+        
         %% Prepare metadata structure
         metadata = megMetadata;
         metadata = addField(metadata, 'TaskName', taskName);
@@ -475,7 +484,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     % Create README
-    CreateDatasetReadme(outputFolder, overwrite, OPTIONS, firstAcq, lastAcq, StimChannelNames);
+    CreateDatasetReadme(outputFolder, overwrite, OPTIONS, firstAcq, lastAcq, StimChannelNames, EventNames);
     
     % Save condition to subject/session mapping for future exports.
     SaveExistingData(data, outputFolder);
@@ -672,7 +681,7 @@ function CreateDatasetDescription(parentFolder, overwrite, description)
     fclose(fid);
 end
 
-function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq, AllChannelNames)
+function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq, AllChannelNames, AllEventNames)
     % Skip if it exists and we're not overwriting
     txtFile = bst_fullfile(parentFolder, 'README.txt');
     if exist(txtFile, 'file') == 2 && ~overwrite
@@ -688,12 +697,12 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
         OPTIONS.ProjID = ProtocolInfo.Comment;
     end
     
-    % Default Project description / participant groups: N/A
+    % Default Project description / participant categories: N/A
     if isempty(OPTIONS.ProjDesc)
         OPTIONS.ProjDesc = 'N/A';
     end
-    if isempty(OPTIONS.Groups)
-        OPTIONS.Groups = 'N/A';
+    if isempty(OPTIONS.Categories)
+        OPTIONS.Categories = 'N/A';
     end
     
     % Default acquisition dates: N/A
@@ -708,13 +717,21 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
         lastAcq = datestr(lastAcq, 'dd/mm/yyyy');
     end
     
-    % Channels
+    % Channels & Events
     if isempty(AllChannelNames)
         channels = 'N/A';
     else
         channels = [];
         for iChannel = 1:length(AllChannelNames)
             channels = [channels num2str(iChannel) '. ' AllChannelNames{iChannel} 10];
+        end
+    end
+    if isempty(AllEventNames)
+        events = 'N/A';
+    else
+        events = [];
+        for iEvent = 1:length(AllEventNames)
+            events = [events num2str(iEvent) '. ' AllEventNames{iEvent} 10];
         end
     end
     
@@ -727,10 +744,12 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
     fprintf(fid, ['End date: ' lastAcq 10 10]);
     fprintf(fid, ['Project Description:' 10]);
     fprintf(fid, [OPTIONS.ProjDesc 10 10]);
-    fprintf(fid, ['Participant groups:' 10]);
-    fprintf(fid, [OPTIONS.Groups 10 10]);
+    fprintf(fid, ['Participant categories:' 10]);
+    fprintf(fid, [OPTIONS.Categories 10 10]);
     fprintf(fid, ['Trigger channels:' 10]);
-    fprintf(fid, channels);
+    fprintf(fid, [channels 10]);
+    fprintf(fid, ['Events:' 10]);
+    fprintf(fid, events);
     fclose(fid);
 end
 

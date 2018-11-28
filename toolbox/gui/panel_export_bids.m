@@ -141,7 +141,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jTextProjName.setText(ExportBidsOptions.ProjName);
         jTextProjID.setText(ExportBidsOptions.ProjID);
         jTextProjDesc.setText(ExportBidsOptions.ProjDesc);
-        jTextGroups.setText(ExportBidsOptions.Groups);
+        jTextGroups.setText(ExportBidsOptions.Categories);
         jTextJsonDataset.setText(ExportBidsOptions.JsonDataset);
         jTextJsonMeg.setText(ExportBidsOptions.JsonMeg);
     end
@@ -176,7 +176,7 @@ function s = GetPanelContents() %#ok<DEFNU>
     s.ProjName = strtrim(char(ctrl.jTextProjName.getText()));
     s.ProjID = strtrim(char(ctrl.jTextProjID.getText()));
     s.ProjDesc = strtrim(char(ctrl.jTextProjDesc.getText()));
-    s.Groups = strtrim(char(ctrl.jTextGroups.getText()));
+    s.Categories = strtrim(char(ctrl.jTextGroups.getText()));
     s.JsonDataset = strtrim(jsonDataset);
     s.JsonMeg = strtrim(jsonMeg);
 end
