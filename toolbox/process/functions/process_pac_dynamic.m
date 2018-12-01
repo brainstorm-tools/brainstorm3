@@ -268,7 +268,6 @@ tic
             return;
         end
         
-        
         % Get sampling frequency
         sRate = 1 / (sInput.Time(2) - sInput.Time(1));
         % Check the nested frequencies
@@ -344,7 +343,7 @@ tic
                 if ~isempty(OPTIONS.TimeWindow)
                     TimeInit = OPTIONS.TimeWindow(1);
                 else
-                    TimeInit = 0;
+                    TimeInit = sInput.Time(1);
                 end
 
                 if PACoptions.margin_included

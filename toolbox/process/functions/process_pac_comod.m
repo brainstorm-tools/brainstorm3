@@ -98,6 +98,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     window_length = sProcess.options.windowChunck.Value{1};
     output_type = sProcess.options.output_type.Value;
     inputTime = t{1};
+    
     doInterpolation = sProcess.options.doInterp.Value; 
     if anal_type == 1
         cat_dim = 1;
@@ -111,6 +112,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
 
     % Load TF file
     tPACMat = in_bst_timefreq(sInput(1).FileName, 0);
+    if isempty(inputTime)
+        inputTime =  tPACMat.Time([1,end]);
+    end
     % Error
     if isempty(tPACMat)
         bst_report('Error', 'process_pac_comod', sInput, Messages);
@@ -125,6 +129,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         if length(sInput)>1
             
             for iFile=1:length(sInput)
+                
                 % check the file format
                 indices = [];
                 tPACMat = in_bst_timefreq(sInput(iFile).FileName, 0);
@@ -135,6 +140,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                     indices = [indices,k];
                 end
                 
+                if isempty(inputTime)
+                    inputTime =  tPACMat.Time([1,end]);
+                end
                 if ~isempty(indices) % ignore file because it is a processed tpac map (e.g. comod or fp_map)
                     Message = ['File#',num2str(iFile),' is ignored becauase it is not a raw tPAC file'];
                     bst_report('Warning', 'process_pac_comod', sInput, Message); 
@@ -179,6 +187,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                         end
                     end
                 end
+                
             end
             tPACMat.nAvg = length(sInput);
             tPACMat.sPAC.DynamicNesting = Nesting;
@@ -192,7 +201,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
 
 
         % == EXTRACTING COMODULOGRAM ==
-        tPACMat = Compute(tPACMat, t, window_length, anal_type, doInterpolation);
+        tPACMat = Compute(tPACMat, inputTime, window_length, anal_type, doInterpolation);
 
         % === PLAYING THE RESULTS ===
         if tPACMat.time_resolved_comod
@@ -253,7 +262,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             else
             
                 % == EXTRACTING COMODULOGRAM ==
-                tPACMat = Compute(tPACMat, t, window_length, anal_type, doInterpolation);
+                tPACMat = Compute(tPACMat, inputTime, window_length, anal_type, doInterpolation);
                 
                 % === PLAYING THE RESULTS ===
                 if tPACMat.time_resolved_comod
@@ -267,7 +276,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 
                 % === SAVING THE DATA IN BRAINSTORM ===
                 % Comment
-                inputTime = t{1};
+%                 inputTime = t{1};
                 if isequal(inputTime,tPACMat.Time)
                     tPACMat.Comment = [tPACMat.Comment, ' | ',tag];
                 else
@@ -293,7 +302,7 @@ end
 
 
 % == EXTRACTING COMODULOGRAM ==
-function tPACMatOutput = Compute(tPACMat, t, window_length, anal_type, doInterpolation)
+function tPACMatOutput = Compute(tPACMat, inputTime, window_length, anal_type, doInterpolation)
 
     extract_phasePAC = 0;
     P = 98;         % percentile factor
@@ -325,7 +334,7 @@ function tPACMatOutput = Compute(tPACMat, t, window_length, anal_type, doInterpo
 
     
     nA = length(highFreq); 
-    inputTime = t{1};
+%     inputTime = t{1};
     timeRange = bst_closest(inputTime, tPACMat.Time);
     if length(timeRange)==1
        timeRange = [timeRange, timeRange]; 
