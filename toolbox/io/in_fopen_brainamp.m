@@ -110,7 +110,7 @@ while 1
                 hdr.chgain(iChan) = chFactor * chUnit;
                 
             elseif strcmpi(curBlock, 'Coordinates')
-                tmpLoc = str2num(argLine{2}); 
+                tmpLoc = str2num(argLine{2});
                 % Spherical (R,TH,PHI)
                 if (length(tmpLoc) == 3) && (tmpLoc(1) == 1)
                     % Convert Spherical(degrees) => Spherical(radians) => Cartesian
@@ -160,13 +160,13 @@ if (strcmpi(hdr.DataFormat, 'BINARY') && strcmpi(hdr.DataOrientation, 'MULTIPLEX
     dirInfo = dir(DataFile);
     % Get number of samples
     switch lower(hdr.BinaryFormat)
-        case 'int_16';
+        case 'int_16'
             hdr.bytesize   = 2;
             hdr.byteformat = 'int16';
-        case 'int_32';
+        case 'int_32'
             hdr.bytesize   = 4;
             hdr.byteformat = 'int32';
-        case 'ieee_float_32';
+        case 'ieee_float_32'
             hdr.bytesize   = 4;
             hdr.byteformat = 'float32';
     end

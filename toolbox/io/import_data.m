@@ -10,7 +10,7 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 %    - sFile         : Structure representing a RAW file already open in Brainstorm
 %    - ChannelMat    : Channel file structure (only when passing a sFile structure)
 %    - FileFormat    : String that represent the file format of the files to import
-%                      Possible values: {FIF, EEG-EGI-RAW, EEG-EEGLAB, EEG-CARTOOL, EEG-ERPCENTER, EEG-BRAINAMP, EEG_DELTAMED, EEG-NEUROSCOPE,
+%                      Possible values: {FIF, EEG-EGI-RAW, EEG-EEGLAB, EEG-CARTOOL, EEG-ERPCENTER, EEG-BRAINAMP, EEG_DELTAMED, EEG-NEUROSCOPE, EEG-BRAINAMP,
 %                                        EEG-NEUROSCAN-CNT, EEG-NEUROSCAN-AVG, EEG-NEUROSCAN-DAT, EEG-NEUROSCAN-EEG, EEG-MAT, EEG-ASCII, EEG-EDF}
 %                      Must be specified if and only if DataFiles is defined.
 %    - iStudyInit    : Indice of the study where to import the files

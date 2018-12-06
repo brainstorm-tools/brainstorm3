@@ -77,6 +77,7 @@ if (nargin < 2) || isempty(TSFile)
     % Get default extension
     switch (DefaultFormats.DataOut)
         case 'BST-BIN',         DefaultExt = '.bst';
+        case 'EEG-BRAINAMP',    DefaultExt = '.eeg';
         case 'EEG-CARTOOL-EPH', DefaultExt = '.eph';
         case 'EEG-EGI-RAW',     DefaultExt = '.raw';
         case 'EEG-EDF',         DefaultExt = '.edf';

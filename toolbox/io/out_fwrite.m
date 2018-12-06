@@ -31,7 +31,7 @@ function sFile = out_fwrite(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2014
+% Authors: Francois Tadel, 2009-2018
 
 
 %% ===== PARSE INPUTS =====
@@ -88,6 +88,13 @@ switch (sFile.format)
         end
         % Save data
         out_fwrite_egi(sFile, sfid, SamplesBounds, ChannelRange, F);
+    case 'EEG-BRAINAMP'
+        % Removing the EDF/BDF annotation channels
+        if ~isempty(iAnnot)
+            F(iAnnot,:) = 0 .* F(iAnnot,:);
+        end
+        % Save data
+        out_fwrite_brainamp(sFile, sfid, SamplesBounds, F);
     case 'BST-BIN'
         out_fwrite_bst(sFile, sfid, SamplesBounds, ChannelRange, F);
     case 'SPM-DAT'

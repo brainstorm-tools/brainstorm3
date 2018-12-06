@@ -53,7 +53,7 @@ elseif (strcmpi(sFile.header.DataFormat, 'ASCII') && strcmpi(sFile.header.DataOr
         % Reached the end of the file: exit the loop
         if feof(fid)
             break; 
-        end;
+        end
         % Read one line
         strChan = strtrim(fgetl(fid));
         if isempty(strChan)

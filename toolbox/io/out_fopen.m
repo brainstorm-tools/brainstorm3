@@ -25,7 +25,7 @@ function [sFileOut, errMsg] = out_fopen(RawFile, FileFormat, sFileIn, ChannelMat
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2017
+% Authors: Francois Tadel, 2014-2018
 
 % Output variables
 sFileOut = [];
@@ -39,6 +39,8 @@ try
     switch (FileFormat)
         case 'EEG-EGI-RAW'
             sFileOut = out_fopen_egi(RawFile, sFileIn, ChannelMat);
+        case 'EEG-BRAINAMP'
+            sFileOut = out_fopen_brainamp(RawFile, sFileIn, ChannelMat);
         case 'BST-BIN'
             sFileOut = out_fopen_bst(RawFile, sFileIn, ChannelMat, EpochSize);
         case 'SPM-DAT'

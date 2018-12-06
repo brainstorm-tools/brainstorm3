@@ -120,6 +120,7 @@ if isempty(ExportFile)
         case {'', 'BST-BIN'},   DefaultExt = '.bst';
         case 'FT-TIMELOCK',     DefaultExt = '.mat';
         case 'SPM-DAT',         DefaultExt = '.mat';
+        case 'EEG-BRAINAMP',    DefaultExt = '.eeg';
         case 'EEG-CARTOOL-EPH', DefaultExt = '.eph';
         case 'EEG-EGI-RAW',     DefaultExt = '.raw';
         case 'EEG-EDF',         DefaultExt = '.edf';
@@ -172,6 +173,7 @@ elseif isempty(FileFormat)
     [BstPath, BstBase, BstExt] = bst_fileparts(ExportFile);
     switch lower(BstExt)
         case '.bst',   FileFormat = 'BST-BIN';
+        case '.eeg',   FileFormat = 'EEG-BRAINAMP';
         case '.eph',   FileFormat = 'EEG-CARTOOL-EPH';
         case '.raw',   FileFormat = 'EEG-EGI-RAW';
         case '.edf',   FileFormat = 'EEG-EDF';
@@ -197,7 +199,7 @@ if isRawIn
     ImportOptions.RemoveBaseline  = 'no';
 end
 % Output data as raw file (continuous writers routines)
-isRawOut = ismember(FileFormat, {'BST-BIN', 'EEG-EGI-RAW', 'SPM-DAT', 'EEG-EDF'});
+isRawOut = ismember(FileFormat, {'BST-BIN', 'EEG-EGI-RAW', 'SPM-DAT', 'EEG-EDF', 'EEG-BRAINAMP'});
 % Open output file 
 if isRawOut
     [sFileOut, errMsg] = out_fopen(ExportFile, FileFormat, sFileIn, ChannelMat);

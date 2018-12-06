@@ -4,6 +4,7 @@ November 2018
 - GUI: 2DLayout: Added new controls, new time window management
 - GUI: 2DLayout: Overlay of multiple conditions
 - GUI: 2DLayout: Overlay of NIRS wavelengths and oxy/deoxy
+- IO: Export EEG to BrainVision BrainAmp format (.eeg) for iEEG-BIDS
 ---------------------------------------------------------------
 October 2018
 - IO: BIDS export process
