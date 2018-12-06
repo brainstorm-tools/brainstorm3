@@ -1170,6 +1170,12 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Check source grid (volume)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull, 'V'));
                     gui_component('MenuItem', jPopup, [], 'Check source grid (surface)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull, 'S'));
                 end
+                % Copy to other conditions/subjects 
+                if ~bst_get('ReadOnly')
+                    AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Copy to other folders', IconLoader.ICON_HEADMODEL, [], @(h,ev)db_set_headmodel(filenameRelative, 'AllConditions'));
+                    gui_component('MenuItem', jPopup, [], 'Copy to other subjects', IconLoader.ICON_HEADMODEL, [], @(h,ev)db_set_headmodel(filenameRelative, 'AllSubjects'));
+                end
                 
                 
 %% ===== POPUP: DATA =====
