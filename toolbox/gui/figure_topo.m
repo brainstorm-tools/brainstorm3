@@ -179,7 +179,7 @@ function UpdateTopoPlot(iDS, iFig)
             for i = 1:length(TopoHandles.hLines{1})
                 set(TopoHandles.hLines{1}(i), 'Color', dataRGB(i,:));
             end
-        elseif (length(TopoHandles.hLines) >= 1)
+        else
             for i = 1:size(TopoHandles.hLines, 1)
                 set(TopoHandles.hLines(i), 'Color', dataRGB(i,:));
             end
