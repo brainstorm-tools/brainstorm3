@@ -175,9 +175,13 @@ function UpdateTopoPlot(iDS, iFig)
         iDataCmap(iDataCmap > size(sColormap.CMap,1)) = size(sColormap.CMap,1);
         dataRGB = sColormap.CMap(iDataCmap, :);
         % Set lines colors
-        if (length(TopoHandles.hLines) == 1)
+        if iscell(TopoHandles.hLines) && length(TopoHandles.hLines) == 1
             for i = 1:length(TopoHandles.hLines{1})
                 set(TopoHandles.hLines{1}(i), 'Color', dataRGB(i,:));
+            end
+        elseif (length(TopoHandles.hLines) >= 1)
+            for i = 1:size(TopoHandles.hLines, 1)
+                set(TopoHandles.hLines(i), 'Color', dataRGB(i,:));
             end
         end
     end
