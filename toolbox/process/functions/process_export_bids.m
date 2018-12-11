@@ -383,7 +383,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         
         %% If first session, save anatomy
         if ~isEmptyRoom && SameIds(sessionId, GetFirstSessionId(data, subjectId))
-            if ~isempty(sSubject.Anatomy) && strcmpi(sSubject.Anatomy.Comment, 'mri') && ~isempty(sSubject.Anatomy.FileName)
+            if ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy.FileName)
                 anatFolder = bst_fullfile(sessionFolder, 'anat');
                 if exist(anatFolder, 'dir') ~= 7
                     mkdir(anatFolder);
