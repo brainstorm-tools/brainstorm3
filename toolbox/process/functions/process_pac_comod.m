@@ -394,16 +394,16 @@ function tPACMatOutput = Compute(tPACMat, inputTime, window_length, anal_type, d
 
     % Former algorithm    
     fPcenters = freqCent;%(h>median(h(h>0))/4);
-        
-    % Adding first and last point to the range
-    fPcenters = [(tPACMat.Options.BandNesting(1)+fPcenters(1))/2, fPcenters, (tPACMat.Options.BandNesting(end)+fPcenters(end))/2];%making similar range for all cases
-    
-        % Setting the maximum resolution
-    if length(fPcenters)>OutputmaxRes
+            
+    % Setting the maximum resolution
+    if length(fPcenters)>(OutputmaxRes-2)
         fPcenters =  fPcenters(1:fix(length(fPcenters)/OutputmaxRes):end);   % downsampling for the map
     end 
     fPcenters = unique(fPcenters);        
-    
+
+    % Adding first and last point to the range
+    fPcenters = [(tPACMat.Options.BandNesting(1)+fPcenters(1))/2, fPcenters, (tPACMat.Options.BandNesting(end)+fPcenters(end))/2];%making similar range for all cases
+
     fP = [tPACMat.Options.BandNesting(1), ...
         (fPcenters(1:end-1) + fPcenters(2:end))/2, ...
         tPACMat.Options.BandNesting(2)];
