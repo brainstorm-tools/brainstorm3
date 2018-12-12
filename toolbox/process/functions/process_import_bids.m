@@ -423,7 +423,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                 tsvDir = dir(fullfile(SubjectSessDir{iSubj}{isess}, '*_scans.tsv'));
                 if (length(tsvDir) == 1)
                     % Read tsv file
-                    tsvValues = in_tsv(tsvDir, {'filename', 'acq_time'});
+                    tsvValues = in_tsv(fullfile(SubjectSessDir{iSubj}{isess}, tsvDir.name), {'filename', 'acq_time'});
                     % If the files and times are defined
                     if ~isempty(tsvValues) && ~isempty(tsvValues{1})
                         tsvFiles = tsvValues(:,1);
