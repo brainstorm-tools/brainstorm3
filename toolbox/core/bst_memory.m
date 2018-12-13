@@ -1615,8 +1615,17 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
             GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality = Modality{1};
             % If the good/bad channels for the dataset are not defined yet
             if isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
-                % Set all the channels as good by default
-                GlobalData.DataSet(iDS).Measures.ChannelFlag = ones(length(GlobalData.DataSet(iDS).Channel), 1);
+                % PSD: Remove bad channels defined in parent data file
+                if strcmpi(Timefreq.Method, 'psd') && ~isempty(Timefreq.DataFile) && strcmpi(file_gettype(Timefreq.DataFile), 'data')
+                    ParentMat = in_bst_data(Timefreq.DataFile, 'ChannelFlag');
+                    if ~isempty(ParentMat) && ~isempty(ParentMat.ChannelFlag)
+                        GlobalData.DataSet(iDS).Measures.ChannelFlag = ParentMat.ChannelFlag;
+                    end
+                end
+                % Otherwise: Set all the channels as good by default
+                if isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
+                    GlobalData.DataSet(iDS).Measures.ChannelFlag = ones(length(GlobalData.DataSet(iDS).Channel), 1);
+                end
                 % Set all the channel in the file as good, and the other channels from the same modality as bad
                 iChanMod = good_channel(GlobalData.DataSet(iDS).Channel, [], Modality{1});
                 iBadChan = setdiff(iChanMod, iChannels);

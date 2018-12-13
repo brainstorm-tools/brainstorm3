@@ -1128,7 +1128,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         else
                             newChannelFlag(iSelChan) = -1;
                         end
-                        % Update channel flage
+                        % Update channel flag
                         panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
                         % Reset selection
                         bst_figures('SetSelectedRows', []);
@@ -2098,7 +2098,9 @@ function UpdateFigSelectedRows(iDS, iFig)
         iUnselLines = find(ismember(sHandles.SelChanGlobal, iDispChan(iUnselChan)));
         % Deselected channels : Restore initial color
         if ~isempty(iUnselLines)
-            set(sHandles.hLines{1}(iUnselLines), 'Color', sHandles.LinesColor{1}(1,:));
+            for i = 1:length(iUnselLines)
+                set(sHandles.hLines{1}(iUnselLines(i)), 'Color', sHandles.LinesColor{1}(iUnselLines(i),:));
+            end
             set(sHandles.hSensorLabels(iUnselLines), ...
                 'Color',      .8*[1 1 1], ...
                 'FontUnits', 'points', ...

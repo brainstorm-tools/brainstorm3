@@ -395,7 +395,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
             end
         end
             
-        % === IMPORT MEG FILES ===
+        % === IMPORT MEG/EEG FILES ===
         % Import options
         ImportOptions = db_template('ImportOptions');
         ImportOptions.ChannelReplace  = 1;
@@ -422,37 +422,23 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                 % Try to read the _scans.tsv file in the session folder, to get the acquisition date
                 tsvDir = dir(fullfile(SubjectSessDir{iSubj}{isess}, '*_scans.tsv'));
                 if (length(tsvDir) == 1)
-                    % Open file
-                    fid = fopen(fullfile(SubjectSessDir{iSubj}{isess}, tsvDir(1).name), 'r');
-                    if (fid < 0)
-                        disp(['BIDS> Warning: Cannot open file: ' tsvDir(1).name]);
-                        continue;
-                    end
-                    % Read header
-                    tsvHeader = str_split(fgetl(fid), sprintf('\t'));
-                    tsvFormat = repmat('%s ', 1, length(tsvHeader));
-                    tsvFormat(end) = [];
-                    % Read file
-                    tsvValues = textscan(fid, tsvFormat, 'Delimiter', '\t');
-                    % Close file
-                    fclose(fid);
-                    % Get the columns "filename" and "acq_time"
-                    iColFile = find(strcmpi(tsvHeader, 'filename'));
-                    iColTime = find(strcmpi(tsvHeader, 'acq_time'));
-                    if ~isempty(iColFile) && ~isempty(iColTime)
-                        tsvFiles = tsvValues{iColFile};
-                        for iDate = 1:length(tsvValues{iColTime})
+                    % Read tsv file
+                    tsvValues = in_tsv(fullfile(SubjectSessDir{iSubj}{isess}, tsvDir.name), {'filename', 'acq_time'});
+                    % If the files and times are defined
+                    if ~isempty(tsvValues) && ~isempty(tsvValues{1})
+                        tsvFiles = tsvValues(:,1);
+                        for iDate = 1:size(tsvValues,1)
                             fDate = [];
                             % Date format: YYYY-MM-DDTHH:MM:SS
-                            if (length(tsvValues{iColTime}{iDate}) >= 19) && strcmpi(tsvValues{iColTime}{iDate}(11), 'T')
-                                fDate = sscanf(tsvValues{iColTime}{iDate}, '%04d-%02d-%02d');
+                            if (length(tsvValues{iDate,2}) >= 19) && strcmpi(tsvValues{iDate,2}(11), 'T')
+                                fDate = sscanf(tsvValues{iDate,2}, '%04d-%02d-%02d');
                             % Date format: YYYYMMDDTHHMMSS
-                            elseif (length(tsvValues{iColTime}{iDate}) >= 15) && strcmpi(tsvValues{iColTime}{iDate}(9), 'T')
-                                fDate = sscanf(tsvValues{iColTime}{iDate}, '%04d%02d%02d');
+                            elseif (length(tsvValues{iDate,2}) >= 15) && strcmpi(tsvValues{iDate,2}(9), 'T')
+                                fDate = sscanf(tsvValues{iDate,2}, '%04d%02d%02d');
                             end
                             % Not recognized
                             if (length(fDate) ~= 3)
-                                disp(['BIDS> Warning: Date format not recognized: "' tsvValues{iColTime}{iDate} '"']);
+                                disp(['BIDS> Warning: Date format not recognized: "' tsvValues{iDate,2} '"']);
                                 fDate = [0 0 0];
                             end
                             tsvDates{iDate} = datestr(datenum(fDate(1), fDate(2), fDate(3)), 'dd-mmm-yyyy');

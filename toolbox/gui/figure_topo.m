@@ -226,9 +226,14 @@ end
 
 %% ===== GET FIGURE DATA =====
 % Warning: Time output is only defined for the time-frequency plots
-function [F, Time, selChan, overlayLabels] = GetFigureData(iDS, iFig, isAllTime, isMultiOutput)
+function [F, Time, selChan, overlayLabels, dispNames] = GetFigureData(iDS, iFig, isAllTime, isMultiOutput)
     global GlobalData;
+    % Initialize returned values
+    F = [];
     Time = [];
+    selChan = [];
+    overlayLabels = {};
+    dispNames = {};
     % Parse inputs
     if (nargin < 4) || isempty(isMultiOutput)
         isMultiOutput = 0;
@@ -254,8 +259,7 @@ function [F, Time, selChan, overlayLabels] = GetFigureData(iDS, iFig, isAllTime,
     else
         TimeDef = 'CurrentTimeIndex';
     end
-    Fall = [];
-    overlayLabels = {};
+    Fall = {};
     % Get data description
     if ~isempty(TopoInfo.DataToPlot)
         F = {TopoInfo.DataToPlot};
@@ -304,9 +308,9 @@ function [F, Time, selChan, overlayLabels] = GetFigureData(iDS, iFig, isAllTime,
                     % Regular recordings
                     else
                         % Get recordings (ALL the sensors, for re-referencing montages)
-                        Fall = bst_memory('GetRecordingsValues', iDSread, [], TimeDef, isGradMagScale);
+                        Fall{iFile} = bst_memory('GetRecordingsValues', iDSread, [], TimeDef, isGradMagScale);
                         % Select only a subset of sensors
-                        F{iFile} = Fall(selChan,:);
+                        F{iFile} = Fall{iFile}(selChan,:);
                     end
                 case 'timefreq'
                     % Get timefreq values
@@ -343,42 +347,61 @@ function [F, Time, selChan, overlayLabels] = GetFigureData(iDS, iFig, isAllTime,
     end
     
     % ===== APPLY MONTAGE =====
-    for iFile = 1:length(F)
-        % Not available when the data is already saved in the figure (TopoInfo.DataToPlot)
-        if strcmpi(TopoInfo.FileType, 'data') && ~isempty(TsInfo) && ~isempty(TsInfo.MontageName) && isempty(TopoInfo.DataToPlot)
-            % Get channel names 
-            ChanNames = {GlobalData.DataSet(iDS).Channel.Name};
+    % Not available when the data is already saved in the figure (TopoInfo.DataToPlot)
+    if strcmpi(TopoInfo.FileType, 'data') && ~isempty(TsInfo) && ~isempty(TsInfo.MontageName) && isempty(TopoInfo.DataToPlot)
+        % Get channel names 
+        ChanNames = {GlobalData.DataSet(iDS).Channel.Name};
+        % Get montage
+        sMontage = panel_montage('GetMontage', TsInfo.MontageName, hFig);
+        % Do not do anything with the sensor selection only
+        if ~isempty(sMontage) % && ismember(sMontage.Type, {'text','matrix'})
             % Get montage
-            sMontage = panel_montage('GetMontage', TsInfo.MontageName, hFig);
-            % Do not do anything with the sensor selection only
-            if ~isempty(sMontage) % && ismember(sMontage.Type, {'text','matrix'})
-                % Get montage
-                [iChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, ChanNames);
+            [iChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, ChanNames);
+            % Loop on files
+            for iFile = 1:length(F)
                 % Matrix: must be a full transformation, same list of inputs and outputs
-                if strcmpi(sMontage.Type, 'matrix') && isequal(sMontage.DispNames, sMontage.ChanNames) && (length(iChannels) == size(F,1))
-                    F{iFile} = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall(iChannels,:);
+                if strcmpi(sMontage.Type, 'matrix') && isequal(sMontage.DispNames, sMontage.ChanNames) && (length(iChannels) == size(F{iFile},1))
+                    F{iFile} = zeros(size(Fall{iFile}));
+                    F{iFile}(iChannels,:) = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall{iFile}(iChannels,:);
+                    F{iFile} = F{iFile}(selChan,:);
+                    % Select channel names (number of channels does not change)
+                    dispNames = ChanNames;
+                    dispNames(iChannels) = sMontage.DispNames(iMatrixDisp);
+                    dispNames = dispNames(selChan);
                 % Text: Bipolar montages only
                 elseif strcmpi(sMontage.Type, 'text') && all(sum(sMontage.Matrix,2) < eps) && all(sum(sMontage.Matrix > 0,2) == 1)
                     % Find the first channel in the bipolar montage (the one with the "+")
                     iChanPlus = sum(bst_bsxfun(@times, sMontage.Matrix(iMatrixDisp,iMatrixChan) > 0, 1:length(iMatrixChan)), 2);
-                    % Warning
+                    % Cannot apply montages that give non-unique lists of channels
                     if (length(iChanPlus) ~= length(unique(iChanPlus)))
-                        disp(['BST> Error: Montage "' sMontage.Name '" contains repeated channels, topography contains errors.']);
+                        disp(['BST> Error: Montage "' sMontage.Name '" cannot be represented in a 2D/3D topography: it gives non-unique list of channels.']);
                     end
                     % Apply montage (all the channels that not defined are set to zero)
-                    Ftmp = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall(iChannels,:);
-                    F{iFile} = zeros(size(Fall));
+                    Ftmp = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall{iFile}(iChannels,:);
+                    F{iFile} = zeros(size(Fall{iFile}));
                     F{iFile}(iChannels(iChanPlus),:) = Ftmp;
                     % JUSTIFICATIONS OF THOSE INDICES: The two statements below are equivalent
                     %ChanPlusNames = sMontage.ChanNames(iMatrixChan(iChanPlus))
                     %ChanPlusNames = ChanNames(iChannels(iChanPlus))
                     % Return only the channels selected in this figure
                     F{iFile} = F{iFile}(selChan,:);
+                    % Keep channel names that were not changed (same logic as above)
+                    dispNames = ChanNames;
+                    dispNames(iChannels(iChanPlus)) = sMontage.DispNames(iMatrixDisp);
+                    dispNames = dispNames(selChan);
                 elseif strcmpi(sMontage.Type, 'selection')
-                    [selChan, I, J] = intersect(iChannels, selChan);
-                    F{iFile} = F{iFile}(J,:);
-                elseif ~strcmpi(sMontage.Name, 'NIRS overlay[tmp]')
-                    disp(['BST> Montage "' sMontage.Name '" cannot be used for the 2D/3D topography views.']);
+                    selChan = intersect(iChannels, selChan);
+                    F{iFile} = Fall{iFile}(selChan,:);
+                    dispNames = ChanNames(selChan);
+                % NIRS: Represent the multiple data types as overlay, with legends
+                elseif strcmpi(sMontage.Name, 'NIRS overlay[tmp]') && (length(F) == 1)
+                    overlayLabels = unique({GlobalData.DataSet(iDS).Channel(selChan).Group});
+                    % Select channel names (number of channels does not change)
+                    dispNames = ChanNames;
+                    dispNames(iChannels) = sMontage.DispNames(iMatrixDisp);
+                    dispNames = dispNames(selChan);
+                else
+                    disp(['BST> Montage "' sMontage.Name '" cannot be used for this view.']);
                 end
             end
         end
@@ -708,7 +731,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     
     % ===== GET ALL DATA ===== 
     % Get data
-    [F, Time, selChanGlobal, overlayLabels] = GetFigureData(iDS, iFig, 1, 1);
+    [F, Time, selChanGlobal, overlayLabels, dispNames] = GetFigureData(iDS, iFig, 1, 1);
     selChan = bst_closest(selChanGlobal, modChan);
     if isempty(selChan)
         disp('2DLAYOUT> No good sensor to display...');
@@ -794,6 +817,13 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             0.6350    0.0780    0.1840];
         dataColor = ColorTable(mod(0:length(F)-1, length(ColorTable)) + 1, :);
     end
+    % If a montage was used: name and color are redefined
+    if ~isempty(dispNames)
+        [linesLabels, linesColor] = panel_montage('ParseMontageLabels', dispNames, dataColor);
+    else
+        linesLabels = {Channel(selChan).Name};
+        linesColor = [];
+    end
     
     % ===== CREATE SURFACE =====
     LabelRows = {};
@@ -854,8 +884,14 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         [X,Y] = bst_project_2d(Vertices(:,1), Vertices(:,2), Vertices(:,3), '2dlayout');
     end
     % Zoom factor: size of each signal depends on the number of signals
-    if (length(selChan) < 60)
-        plotSize = [0.05, 0.05] .* sqrt(120 ./ length(selChan));
+    
+    if strcmpi(Channel(selChan(1)).Type, 'NIRS')
+        nPlots = length(selChan) ./ length(unique({Channel(selChan).Group}));
+    else
+        nPlots = length(selChan);
+    end
+    if (nPlots < 60)
+        plotSize = [0.05, 0.05] .* sqrt(120 ./ nPlots);
     else
         plotSize = [0.05, 0.05];
     end
@@ -875,6 +911,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     end
 
     % Draw each sensor
+    displayedLabels = {};
     for i = 1:length(selChan)
         Xi = X(selChan(i));
         Yi = Y(selChan(i));
@@ -900,9 +937,6 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                         'Parent',        hAxes, ...
                         'UserData',      selChanGlobal(i), ...
                         'ButtonDownFcn', @(h,ev)LineClickedCallback(h,selChanGlobal(i)));
-                % Color: default if only one, colors otherwise
-                set(PlotHandles.hLines{iFile}, 'Color', dataColor(iFile,:));
-                PlotHandles.LinesColor{iFile} = dataColor(iFile,:);
             else
                 % Update existing lines
                 set(PlotHandles.hLines{iFile}(i), ...
@@ -910,6 +944,14 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                     'YData', YData, ...
                     'ZData', 0*XData + ZData + 0.001);
             end
+            % Set color: default if only one, colors otherwise
+            if ~isempty(linesColor) && (length(selChan) == size(linesColor,1))
+                curColor = linesColor(i,:);
+            else
+                curColor = dataColor(iFile,:);
+            end
+            set(PlotHandles.hLines{iFile}(i), 'Color', curColor);
+            PlotHandles.LinesColor{iFile}(i,:) = curColor;
         end
         % Save position of each graph
         PlotHandles.BoxesCenters(i,:) = [Xi, mean(YData([1,end]))];
@@ -941,11 +983,18 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         end
         
         % === SENSOR NAME ===
-        Xtext = 1.2 * plotSize(2) * datMax + Xi;
-        Ytext = Yi;
         if isDrawSensorLabels
+            Xtext = 1.2 * plotSize(2) * datMax + Xi;
+            Ytext = Yi;
+            % Display empty object for labels that are already displayed
+            if ismember(linesLabels{i}, displayedLabels)
+                curLabel = '';
+            else
+                curLabel = linesLabels{i};
+                displayedLabels{end+1} = linesLabels{i};
+            end
             PlotHandles.hSensorLabels(i) = text(Xtext, Ytext, 0*Xtext + ZData, ...
-                       Channel(selChan(i)).Name, ...
+                       curLabel, ...
                        'VerticalAlignment',   'baseline', ...
                        'HorizontalAlignment', 'center', ...
                        'FontSize',            bst_get('FigFont'), ...
@@ -1029,8 +1078,32 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             set(hFig, 'CurrentAxes', hAxes);
             % Overlay legend
             if (length(overlayLabels) > 1)
-                hFirstLines = cellfun(@(c)c(1), PlotHandles.hLines, 'UniformOutput', 0);
-                PlotHandles.hOverlayLegend = legend([hFirstLines{:}], strrep(overlayLabels, '_', '-'), 'Interpreter', 'None', 'Location', 'NorthEast');
+                TsInfo = getappdata(hFig, 'TsInfo');
+                % NIRS: One label per signal type (attach legend to first channel found)
+                if (length(F) == 1) && isequal(TsInfo.MontageName, 'NIRS overlay[tmp]')
+                    % Legend should be the channel Group
+                    hFirstLines = {};
+                    iRemove = [];
+                    for iGroup = 1:length(overlayLabels)
+                        iChanGroup = find(strcmpi(overlayLabels{iGroup}, {Channel(selChan).Group}));
+                        if ~isempty(iChanGroup)
+                            hFirstLines{end+1} = PlotHandles.hLines{1}(iChanGroup(1));
+                        else
+                            iRemove(end+1) = iGroup;
+                        end
+                    end
+                    % Remove groups that were not found
+                    overlayLabels(iRemove) = [];
+                % Otherwise: Represents multiple files (one legend per file)
+                else
+                    hFirstLines = cellfun(@(c)c(1), PlotHandles.hLines, 'UniformOutput', 0);
+                end
+                PlotHandles.hOverlayLegend = legend([hFirstLines{:}], strrep(overlayLabels, '_', '-'), ...
+                    'Interpreter', 'None', ...
+                    'Location',    'NorthEast', ...
+                    'Tag',         'LegendOverlay');
+            else
+                delete(findobj(hFig, '-depth', 1, 'Tag', 'LegendOverlay'));
             end
         end
         % Get data type

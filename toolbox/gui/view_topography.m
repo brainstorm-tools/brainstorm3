@@ -296,9 +296,14 @@ if UseMontage
                 MontageName = sMontage.Name;
             end
         end
-        % For NIRS (3DOptodes and 3DSensorCap): Force the selection of a montage, because not all can be displayed at once
-        if strcmpi(Modality, 'NIRS') && ismember(TopoType, {'3DSensorCap', '3DOptodes'}) && isempty(MontageName)
-            MontageName = sFigMontages(1).Name;
+        % For NIRS (: Force the selection of a montage
+        if strcmpi(Modality, 'NIRS') && isempty(MontageName)
+            % 3DOptodes and 3DSensorCap: Only one value can be displayed at a time
+            if ismember(TopoType, {'3DSensorCap', '3DOptodes'}) 
+                MontageName = sFigMontages(2).Name;
+            elseif strcmpi(TopoType, '2DLayout')
+                MontageName = sFigMontages(1).Name;
+            end
         end
     end
 end
@@ -437,7 +442,7 @@ if strcmpi(FileType, 'Timefreq')
     bst_figures('SetCurrentFigure', hFig, 'TF');
 end
 % 3DElectrodes: Open tab "iEEG"
-if strcmpi(TopoType, '3DElectrodes')
+if strcmpi(TopoType, '3DElectrodes') && ismember(Modality, {'SEEG', 'ECOG'})
     gui_brainstorm('ShowToolTab', 'iEEG');
 end
 % Set figure visible

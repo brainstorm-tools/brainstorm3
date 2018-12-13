@@ -606,6 +606,19 @@ function FigureKeyPressedCallback(hFig, ev)
         % RETURN: VIEW SELECTED CHANNELS
         case 'return'
             DisplaySelectedRows(hFig);
+        % DELETE: SET CHANNELS AS BAD
+        case {'delete', 'backspace'}
+            % Get figure description
+            [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+            % Get selected rows
+            SelChan = figure_timeseries('GetFigSelectedRows', hFig);
+            % Only for PSD attached directly to a data file
+            if ~isempty(SelChan) && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
+                    (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(SelChan)) && ...
+                    ~isempty(strfind(TfFile, '_psd')) && ...
+                    strcmpi(file_gettype(GlobalData.DataSet(iDS).DataFile), 'data')
+                AddParentBadChannels(hFig, SelChan);
+            end
         % ESCAPE: CLEAR SELECTION
         case 'escape'
             bst_figures('SetSelectedRows', []);
@@ -629,6 +642,31 @@ function FigureKeyPressedCallback(hFig, ev)
     end
 end
 
+
+%% ===== ADD BAD CHANNELS =====
+function AddParentBadChannels(hFig, BadChan)
+    global GlobalData;
+    % Get figure description
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    if isempty(hFig)
+        return;
+    end
+    % Get indices in the channel file
+    iBad = [];
+    for i = 1:length(BadChan)
+        iBad = [iBad, find(strcmpi(BadChan{i}, {GlobalData.DataSet(iDS).Channel.Name}))];
+    end
+    % Get selected rows
+    if ~isempty(iBad) && strcmpi(file_gettype(GlobalData.DataSet(iDS).DataFile), 'data') && ~isempty(GlobalData.DataSet(iDS).DataFile)
+        % Add new bad channels
+        newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
+        newChannelFlag(iBad) = -1;
+        % Update channel flag
+        panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
+        % Reset selection
+        bst_figures('SetSelectedRows', []);
+    end
+end
 
 %% ===== GET DEFAULT FACTOR =====
 function defaultFactor = GetDefaultFactor(Modality)
@@ -828,6 +866,18 @@ function DisplayFigurePopup(hFig, menuTitle)
     % === VIEW SELECTED ===
     jItem = gui_component('MenuItem', jPopup, [], 'View selected', IconLoader.ICON_SPECTRUM, [], @(h,ev)DisplaySelectedRows(hFig));
     jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)); % ENTER  
+    % === SET SELECTED AS BAD CHANNELS ===
+    % Get selected rows
+    SelChan = figure_timeseries('GetFigSelectedRows', hFig);
+    % Only for PSD attached directly to a data file
+    if ~isempty(SelChan) && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
+            (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(SelChan)) && ...
+            ~isempty(strfind(TfFile, '_psd')) && ...
+            strcmpi(file_gettype(GlobalData.DataSet(iDS).DataFile), 'data')
+        jItem = gui_component('MenuItem', jPopup, [], 'Mark selected as bad', IconLoader.ICON_BAD, [], @(h,ev)AddParentBadChannels(hFig, SelChan));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_DELETE), 0)); % DEL
+    end
+
     % === RESET SELECTION ===
     jItem = gui_component('MenuItem', jPopup, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h,ev)bst_figures('SetSelectedRows',[]));
     jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0)); % ESCAPE
