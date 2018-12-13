@@ -1,5 +1,5 @@
-function varargout = process_adjust_head_position(varargin)
-    %
+function varargout = process_adjust_coordinates(varargin)
+    % Adjust, recompute, or remove various coordinate transformations.
     
     % @=============================================================================
     % This function is part of the Brainstorm software:
@@ -31,7 +31,7 @@ function varargout = process_adjust_head_position(varargin)
     %
     % BUG: when importing channel file, we get:
     % {'Dewar=>Native', 'Native=>Brainstorm/CTF', 'Native=>Brainstorm/CTF'}
-    % Is the second one identity? Otherwise screws these computations.
+    % But the second one is identity.
     
     eval(macro_method);
 end
@@ -40,23 +40,30 @@ end
 
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description of the process
-    sProcess.Comment     = 'Adjust head position (CTF)';
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion';
+    sProcess.Comment     = 'Adjust coordinate transformations';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/CoordinateSystems';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Events';
-    sProcess.Index       = 70;
+    sProcess.SubGroup    = 'Standardize';
+    sProcess.Index       = 304;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Option [to do: ignore bad segments]
-    sProcess.options.warning.Comment = 'Only for CTF MEG recordings with HLC channels recorded.<BR><BR>';
-    sProcess.options.warning.Type    = 'label';
+%     sProcess.options.warning.Comment = 'Only for CTF MEG recordings with HLC channels recorded.<BR><BR>';
+%     sProcess.options.warning.Type    = 'label';
+    sProcess.options.info.Comment = ['Order of coordinate system transformations: <BR>', ...
+        'Dewar=>Native, AdjustedNative, Native=>Brainstorm/CTF, refine registration: head points'];
+    sProcess.options.info.Type    = 'label';
     sProcess.options.action.Type     = 'radio_label';
-    sProcess.options.action.Comment  = {'Adjust head position to median location.', ...
-        'Remove head position adjustment.', 'Undo coregistration refinement using head points.'; ...
-        'Adjust', 'UndoAdjust', 'UndoRefine'};
+    sProcess.options.action.Comment  = {'Adjust head position to median location - CTF only (AdjustedNative).', ...
+        'Remove head position adjustment (AdjustedNative).', ...
+        'Compute Native to SCS/CTF transformation using digitized landmarks.', ...
+        'Remove Native to SCS/CTF transformation.', ...
+        'Refine MRI coregistration using digitized head points.', ...
+        'Remove MRI coregistration refinement.'; ...
+        'Adjust', 'UndoAdjust', 'SCS', 'UndoSCS', 'Refine', 'UndoRefine'};
     sProcess.options.action.Value    = 'Adjust';
     sProcess.options.display.Type    = 'checkbox';
     sProcess.options.display.Comment = 'Display "before" and "after" alignment figures.';
@@ -200,9 +207,128 @@ function OutputFiles = Run(sProcess, sInputs)
             end % file loop
             bst_progress('stop');
             
-        case {'UndoAdjust', 'UndoRefine'}
-            isHeadPoints = strcmp(sProcess.options.action.Value, 'UndoRefine');
+        case 'SCS'
+            bst_progress('start', 'Native to SCS/CTF transformation', ...
+                'Loading data...', 0, 2*nFiles);
+            for iFile = 1:nFiles
+                if isDisplay
+                    % Display "before" results.
+                    close([hFigBefore, hFigAfter]);
+                    hFigBefore = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+                end
+                
+                ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
+                if any(strcmp(ChannelMat.TransfMegLabels, 'Native=>Brainstorm/CTF'))
+                    bst_report('Info', sProcess, sInputs(iFile), ...
+                        'Re-computing and replacing existing native to SCS/CTF transformation.');
+                end
+                
+                % Find existing SCS transformation.
+                % Otherwise look for head point refinment.
+                
+                % Load head coil locations, in m.
+                bst_progress('text', 'Loading data...');
+                bst_progress('inc', 1);
+%                 Locations = process_evt_head_motion('LoadHLU', sInputs(iFile), [], false);
+                bst_progress('text', 'Correcting position...');
+                bst_progress('inc', 1);
+                % If a collection was aborted, the channels will be filled with
+                % zeros. We must remove these locations.
+                % This reshapes to continuous if in epochs, but works either way.
+                Locations(:, all(Locations == 0, 1)) = [];
+                
+                MedianLoc = MedianLocation(Locations);
+                %         disp(MedianLoc);
+                
+                % Also get the initial reference position.  We only use it to see
+                % how much the adjustment moves.
+                InitRefLoc = ReferenceHeadLocation(ChannelMat, sInputs(iFile));
+                if isempty(InitRefLoc) 
+                    % There was an error, already reported. Skip this file.
+                    continue;
+                end
+                
+                % Extract transformations that are applied before and after the
+                % head position adjustment.  Any previous adjustment will be
+                % ignored here and replaced later.
+                [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
+                    GetTransforms(ChannelMat, sInputs(iFile));
+                if isempty(TransfBefore) 
+                    % There was an error, already reported. Skip this file.
+                    continue;
+                end
+                % Compute transformation corresponding to coil position.
+                [TransfMat, TransfAdjust] = LocationTransform(MedianLoc, ...
+                    TransfBefore, TransfAdjust, TransfAfter);
+                % This TransfMat would automatically give an identity
+                % transformation if the process is run multiple times, and
+                % TransfAdjust would not change. 
+                
+                % This transformation applies to MEG, EEG and head points.
+                iMeg = sort([good_channel(ChannelMat.Channel, [], 'MEG'), ...
+                    good_channel(ChannelMat.Channel, [], 'MEG REF')]);
+                iEeg = ;
+                ChannelMat = channel_apply_transf(ChannelMat, TransfMat, [iMeg, iEeg], true); % Apply to head points.
+                ChannelMat = ChannelMat{1};
+                
+                % After much thought, it was decided to save this
+                % adjustment transformation separately and at its logical
+                % place: between 'Dewar=>Native' and
+                % 'Native=>Brainstorm/CTF'.  In particular, this allows us
+                % to use it directly when displaying head motion distance.
+                % This however means we must correctly move the
+                % transformation from the end where it was just applied to
+                % its logical place. This "moved" transformation is also
+                % computed in LocationTransform above.
+                if isempty(iAdjust)
+                    iAdjust = iDewToNat + 1;
+                    % Shift transformations to make room for the new
+                    % adjustment, and reject the last one, that we just
+                    % applied.
+                    ChannelMat.TransfMegLabels(iDewToNat+2:end) = ...
+                        ChannelMat.TransfMegLabels(iDewToNat+1:end-1); % reject last one
+                    ChannelMat.TransfMeg(iDewToNat+2:end) = ChannelMat.TransfMeg(iDewToNat+1:end-1);
+                else
+                    ChannelMat.TransfMegLabels(end) = []; % reject last one
+                    ChannelMat.TransfMeg(end) = [];
+                end
+                % Change transformation label to something unique to this process.
+                ChannelMat.TransfMegLabels{iAdjust} = 'AdjustedNative';
+                % Insert or replace the adjustment.
+                ChannelMat.TransfMeg{iAdjust} = TransfAdjust;
+                
+                bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
+                isFileOk(iFile) = true;
+                
+                if isDisplay
+                    % Display "after" results, besides the "before" figure.
+                    hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+                end
+                
+                % Give an idea of the distance we moved.
+                AfterRefLoc = ReferenceHeadLocation(ChannelMat, sInputs(iFile));
+                if isempty(AfterRefLoc) 
+                    % There was an error, already reported. Skip this file.
+                    continue;
+                end
+                DistanceAdjusted = process_evt_head_motion('RigidDistances', AfterRefLoc, InitRefLoc);
+                fprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3);
+                bst_report('Info', sProcess, sInputs(iFile), ...
+                    sprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3));
+                
+            end % file loop
+            bst_progress('stop');
             
+        case {'UndoAdjust', 'UndoSCS', 'UndoRefine'}
+            isHeadPoints = strcmp(sProcess.options.action.Value, {'UndoSCS', 'UndoRefine'});
+            switch sProcess.options.action.Value
+                case 'UndoAdjust'
+                    TransfLabel = 'AdjustedNative';
+                case 'UndoSCS'
+                    TransfLabel = 'Native=>Brainstorm/CTF';
+                case 'UndoRefine'
+                    TransfLabel = 'refine registration: head points';
+            end
             for iFile = 1:nFiles
                 if isDisplay
                     % Display "before" results.
@@ -211,11 +337,6 @@ function OutputFiles = Run(sProcess, sInputs)
                 end
                 ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
                 
-                if isHeadPoints
-                    TransfLabel = 'refine registration: head points';
-                else
-                    TransfLabel = 'AdjustedNative';
-                end
                 
                 Found = false;
                 iUndo = find(strcmpi(ChannelMat.TransfMegLabels, TransfLabel), 1, 'last');
@@ -271,7 +392,7 @@ function OutputFiles = Run(sProcess, sInputs)
                 end
                 
                 if ~Found
-                    bst_report('Warning', sprintf('No position correction found for %s.\n', ...
+                    bst_report('Warning', sprintf('Coordinate transformation not found for %s.\n', ...
                         sInputs(iFile).FileName));
                     continue;
                 end
