@@ -485,7 +485,7 @@ if strcmpi(matName, 'F')
     OutChannelFlag  = ones(NbChannels, 1);
     OutChannelFlag(MeanBadChannels) = -1;
 else
-    OutChannelFlag = [];
+    OutChannelFlag = ChannelFlag;
 end
 
 % === FINALIZE COMPUTATION ===
