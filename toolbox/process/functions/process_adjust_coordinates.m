@@ -20,19 +20,7 @@ function varargout = process_adjust_coordinates(varargin)
     % =============================================================================@
     %
     % Authors: Marc Lalancette, 2018
-    
-    %   TO DO:
-    % Are the head points kept in their original coordinate system or do they
-    % follow the EEG transformations?  Not clear from channel_apply_transf.
-    % Can test by applying/removing refine with head points (multiple times
-    % if needed)
-    %
-    % Should we return all files or only the ones that were modified?
-    %
-    % BUG: when importing channel file, we get:
-    % {'Dewar=>Native', 'Native=>Brainstorm/CTF', 'Native=>Brainstorm/CTF'}
-    % But the second one is identity.
-    
+        
     eval(macro_method);
 end
 
@@ -40,7 +28,7 @@ end
 
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description of the process
-    sProcess.Comment     = 'Adjust coordinate transformations';
+    sProcess.Comment     = 'Adjust coordinate system';
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/CoordinateSystems';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Standardize';
@@ -53,21 +41,29 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option [to do: ignore bad segments]
 %     sProcess.options.warning.Comment = 'Only for CTF MEG recordings with HLC channels recorded.<BR><BR>';
 %     sProcess.options.warning.Type    = 'label';
-    sProcess.options.info.Comment = ['Order of coordinate system transformations: <BR>', ...
-        'Dewar=>Native, AdjustedNative, Native=>Brainstorm/CTF, refine registration: head points'];
-    sProcess.options.info.Type    = 'label';
+%     sProcess.options.info.Comment = ['Coordinate system transformations: <BR>', ...
+%         'Dewar=>Native, AdjustedNative, Native=>Brainstorm/CTF, refine registration: head points'];
+%     sProcess.options.info.Type    = 'label';
     sProcess.options.action.Type     = 'radio_label';
-    sProcess.options.action.Comment  = {'Adjust head position to median location - CTF only (AdjustedNative).', ...
-        'Remove head position adjustment (AdjustedNative).', ...
-        'Compute Native to SCS/CTF transformation using digitized landmarks.', ...
-        'Remove Native to SCS/CTF transformation.', ...
+    sProcess.options.action.Comment  = {...
+        'Adjust head position to median location - CTF only.', ...
+        'Remove head position adjustment.', ...
         'Refine MRI coregistration using digitized head points.', ...
-        'Remove MRI coregistration refinement.'; ...
-        'Adjust', 'UndoAdjust', 'SCS', 'UndoSCS', 'Refine', 'UndoRefine'};
-    sProcess.options.action.Value    = 'Adjust';
+        'Remove MRI coregistration refinement.', ...
+        'Reset coordinates using original channel file (removes all adjustments: head, points, manual).'; ...
+        'Head', 'UndoHead', 'Points', 'UndoPoints', 'Reset'};
+%         'Compute Native to SCS/CTF transformation using digitized landmarks.', ...
+%         'Remove Native to SCS/CTF transformation.', ...
+    sProcess.options.action.Value    = 'Head';
     sProcess.options.display.Type    = 'checkbox';
     sProcess.options.display.Comment = 'Display "before" and "after" alignment figures.';
     sProcess.options.display.Value   = 1;
+    
+    % Need the file format for SCS since we re-import a channel file.
+    FileFormatsChan = bst_get('FileFilters', 'channel');
+    sProcess.options.format.Type = 'combobox';
+    sProcess.options.format.Comment = 'For reset option, specify the channel file format:';
+    sProcess.options.format.Value = {1, FileFormatsChan(:, 2)'};
 end
 
 
@@ -81,19 +77,28 @@ end
 function OutputFiles = Run(sProcess, sInputs)
     
     isDisplay = sProcess.options.display.Value;
-    nFiles = length(sInputs);
+    nInFiles = length(sInputs);
     
-    isFileOk = false(1, nFiles);
+    isFileOk = false(1, nInFiles);
     if isDisplay
         hFigAfter = [];
         hFigBefore = [];
         bst_memory('UnloadAll', 'Forced'); % Close all the existing figures. (Including progress?)
     end
+    
+    [UniqueChan, iUniqFiles] = unique({sInputs.ChannelFile});
+    nFiles = numel(iUniqFiles);
+
     switch sProcess.options.action.Value
-        case 'Adjust'
+        case 'Head'
+            if nFiles < nInFiles
+                bst_report('Warning', sProcess, sInputs, ...
+                    'Multiple inputs were found for a single channel file. Only the first one will be used for adjusting the head position.');
+            end
+            
             bst_progress('start', 'Adjust head position', ...
                 'Loading HLU locations...', 0, 2*nFiles);
-            for iFile = 1:nFiles
+            for iFile = iUniqFiles % Only use the head position from one data file.
                 if isDisplay
                     % Display "before" results.
                     close([hFigBefore, hFigAfter]);
@@ -184,6 +189,8 @@ function OutputFiles = Run(sProcess, sInputs)
                 ChannelMat.TransfMegLabels{iAdjust} = 'AdjustedNative';
                 % Insert or replace the adjustment.
                 ChannelMat.TransfMeg{iAdjust} = TransfAdjust;
+
+                ChannelMat = bst_history('add', ChannelMat, 'align', 'Added adjustment to Native coordinates based on median head position');
                 
                 bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
                 isFileOk(iFile) = true;
@@ -208,128 +215,174 @@ function OutputFiles = Run(sProcess, sInputs)
             bst_progress('stop');
             
         case 'SCS'
-            bst_progress('start', 'Native to SCS/CTF transformation', ...
-                'Loading data...', 0, 2*nFiles);
-            for iFile = 1:nFiles
+            % This not yet implemented option could apply the Native to SCS
+            % transformation for head points loaded after the raw data was
+            % imported.
+%                 % Find existing SCS transformation. If it's missing, make a
+%                 % place for it before head point refinement, or at the end.
+%                 iTransf = find(strcmp(ChannelMat.TransfMegLabels, 'Native=>Brainstorm/CTF'));
+%                 if numel(iTransf) > 1
+%                     % Remove duplicates.
+%                     ChannelMat.TransfMeg(iTransf(2:end)) = [];
+%                     ChannelMat.TransfMegLabels(iTransf(2:end)) = [];
+%                 elseif isempty(iTransf)
+%                     % Look for head point refinment.
+%                     iTransf = find(strcmp(ChannelMat.TransfMegLabels, 'refine registration: head points'));
+%                     if isempty(iTransf)
+%                         iTransf = end+1;
+%                         ChannelMat.TransfMeg(iTransf) = eye(4);
+%                         ChannelMat.TransfMegLabels(iTransf) = 'Native=>Brainstorm/CTF';
+%                     else
+%                         ChannelMat.TransfMeg(iTransf+1:end+1) = ChannelMat.TransfMeg(iTransf:end);
+%                         ChannelMat.TransfMegLabels(iTransf+1:end+1) = ChannelMat.TransfMegLabels(iTransf:end);
+%                         ChannelMat.TransfMeg(iTransf) = eye(4);
+%                         ChannelMat.TransfMegLabels(iTransf) = 'Native=>Brainstorm/CTF';
+%                     end
+%                 end
+%                 % Repeat for EEG transformations.
+%                 iTransf = find(strcmp(ChannelMat.TransfEegLabels, 'Native=>Brainstorm/CTF'));
+%                 if numel(iTransf) > 1
+%                     % Remove duplicates.
+%                     ChannelMat.TransfEeg(iTransf(2:end)) = [];
+%                     ChannelMat.TransfEegLabels(iTransf(2:end)) = [];
+%                 elseif isempty(iTransf)
+%                     % Look for head point refinment.
+%                     iTransf = find(strcmp(ChannelMat.TransfEegLabels, 'refine registration: head points'));
+%                     if isempty(iTransf)
+%                         iTransf = end+1;
+%                         ChannelMat.TransfEeg(iTransf) = eye(4);
+%                         ChannelMat.TransfEegLabels(iTransf) = 'Native=>Brainstorm/CTF';
+%                     else
+%                         ChannelMat.TransfEeg(iTransf+1:end+1) = ChannelMat.TransfMeg(iTransf:end);
+%                         ChannelMat.TransfEegLabels(iTransf+1:end+1) = ChannelMat.TransfMegLabels(iTransf:end);
+%                         ChannelMat.TransfEeg(iTransf) = eye(4);
+%                         ChannelMat.TransfEegLabels(iTransf) = 'Native=>Brainstorm/CTF';
+%                     end
+%                 end
+
+        case 'Reset'
+            % The main goal of this option is to fix a bug in a previous
+            % version: when importing a channel file, when going to SCS
+            % coordinates based on digitized coils and anatomical
+            % fiducials, the channel orientation was wrong.  We wish to fix
+            % this but keep as much pre-processing that was previously
+            % done.  Thus we will re-import the channel file, and copy the
+            % projectors from the old one.
+            bst_progress('start', 'Reset coordinates', ...
+                'Importing channel file...', 0, nFiles);
+            for iFile = iUniqFiles % no need to repeat on same channel file.
                 if isDisplay
                     % Display "before" results.
                     close([hFigBefore, hFigAfter]);
                     hFigBefore = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
                 end
                 
+                bst_progress('inc', 1);
+
                 ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
-                if any(strcmp(ChannelMat.TransfMegLabels, 'Native=>Brainstorm/CTF'))
-                    bst_report('Info', sProcess, sInputs(iFile), ...
-                        'Re-computing and replacing existing native to SCS/CTF transformation.');
-                end
+                % Extract original data file from channel file history.
                 
-                % Find existing SCS transformation.
-                % Otherwise look for head point refinment.
-                
-                % Load head coil locations, in m.
-                bst_progress('text', 'Loading data...');
-                bst_progress('inc', 1);
-%                 Locations = process_evt_head_motion('LoadHLU', sInputs(iFile), [], false);
-                bst_progress('text', 'Correcting position...');
-                bst_progress('inc', 1);
-                % If a collection was aborted, the channels will be filled with
-                % zeros. We must remove these locations.
-                % This reshapes to continuous if in epochs, but works either way.
-                Locations(:, all(Locations == 0, 1)) = [];
-                
-                MedianLoc = MedianLocation(Locations);
-                %         disp(MedianLoc);
-                
-                % Also get the initial reference position.  We only use it to see
-                % how much the adjustment moves.
-                InitRefLoc = ReferenceHeadLocation(ChannelMat, sInputs(iFile));
-                if isempty(InitRefLoc) 
-                    % There was an error, already reported. Skip this file.
-                    continue;
-                end
-                
-                % Extract transformations that are applied before and after the
-                % head position adjustment.  Any previous adjustment will be
-                % ignored here and replaced later.
-                [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
-                    GetTransforms(ChannelMat, sInputs(iFile));
-                if isempty(TransfBefore) 
-                    % There was an error, already reported. Skip this file.
-                    continue;
-                end
-                % Compute transformation corresponding to coil position.
-                [TransfMat, TransfAdjust] = LocationTransform(MedianLoc, ...
-                    TransfBefore, TransfAdjust, TransfAfter);
-                % This TransfMat would automatically give an identity
-                % transformation if the process is run multiple times, and
-                % TransfAdjust would not change. 
-                
-                % This transformation applies to MEG, EEG and head points.
-                iMeg = sort([good_channel(ChannelMat.Channel, [], 'MEG'), ...
-                    good_channel(ChannelMat.Channel, [], 'MEG REF')]);
-                iEeg = ;
-                ChannelMat = channel_apply_transf(ChannelMat, TransfMat, [iMeg, iEeg], true); % Apply to head points.
-                ChannelMat = ChannelMat{1};
-                
-                % After much thought, it was decided to save this
-                % adjustment transformation separately and at its logical
-                % place: between 'Dewar=>Native' and
-                % 'Native=>Brainstorm/CTF'.  In particular, this allows us
-                % to use it directly when displaying head motion distance.
-                % This however means we must correctly move the
-                % transformation from the end where it was just applied to
-                % its logical place. This "moved" transformation is also
-                % computed in LocationTransform above.
-                if isempty(iAdjust)
-                    iAdjust = iDewToNat + 1;
-                    % Shift transformations to make room for the new
-                    % adjustment, and reject the last one, that we just
-                    % applied.
-                    ChannelMat.TransfMegLabels(iDewToNat+2:end) = ...
-                        ChannelMat.TransfMegLabels(iDewToNat+1:end-1); % reject last one
-                    ChannelMat.TransfMeg(iDewToNat+2:end) = ChannelMat.TransfMeg(iDewToNat+1:end-1);
+                if any(size(ChannelMat.History) < [1, 3]) || ...
+                        ~strcmp(ChannelMat.History{1, 2}, 'import')
+                    NotFound = true;
                 else
-                    ChannelMat.TransfMegLabels(end) = []; % reject last one
-                    ChannelMat.TransfMeg(end) = [];
+                    ChannelFile = regexp(ChannelMat.History{1, 3}, ...
+                        '(?<=: )(.*)(?= \()', 'match');
+                    if isempty(ChannelFile)
+                        NotFound = true;
+                    else
+                        ChannelFile = ChannelFile{1};
+                        if exist(ChannelFile, 'file')
+                        NotFound = false;
+                        else
+                            NotFound = true;
+                        end
+                    end
                 end
-                % Change transformation label to something unique to this process.
-                ChannelMat.TransfMegLabels{iAdjust} = 'AdjustedNative';
-                % Insert or replace the adjustment.
-                ChannelMat.TransfMeg{iAdjust} = TransfAdjust;
+                if NotFound
+                    bst_report('Error', 'process_adjust_coordinates', sInputs(iFile), ...
+                        'Could not find original channel file, try importing manually.');
+                    continue;
+                end
                 
-                bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
+                % Import from original file. 
+                FileFormatsChan = bst_get('FileFilters', 'channel');
+                FileFormat = FileFormatsChan{sProcess.options.format.Value{1}, 3};                
+                NewChannelMat = import_channel([], ChannelFile, FileFormat, 0, 1, 0, 1, 0);
+                    % iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras)
+                    % ChannelReplace is for replacing the file.
+                
+                % See if it worked.
+                if isempty(NewChannelMat) 
+                    bst_report('Error', 'process_adjust_coordinates', sInputs(iFile), ...
+                        'Unable to import original channel file.');
+                    continue;
+                end
+                if numel(NewChannelMat.Channel) ~= numel(ChannelMat.Channel)
+                    bst_report('Error', 'process_adjust_coordinates', sInputs(iFile), ...
+                        'Original channel file has different channels than current one, aborting.');
+                    continue;
+                end
+                % Copy the new old projectors to the new structure.
+                NewChannelMat.Projector = ChannelMat.Projector;
+                % Add number of channels to comment, like in db_set_channel.
+                NewChannelMat.Comment = [NewChannelMat.Comment, sprintf(' (%d)', length(NewChannelMat.Channel))];
+                NewChannelMat = bst_history('add', NewChannelMat, 'import', ...
+                    ['Reset from: ' ChannelFile ' (Format: ' FileFormat ')']);
+         
+                % Save channel file.
+                bst_save(file_fullpath(sInputs(iFile).ChannelFile), NewChannelMat, 'v7');
                 isFileOk(iFile) = true;
                 
                 if isDisplay
                     % Display "after" results, besides the "before" figure.
                     hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
                 end
-                
-                % Give an idea of the distance we moved.
-                AfterRefLoc = ReferenceHeadLocation(ChannelMat, sInputs(iFile));
-                if isempty(AfterRefLoc) 
-                    % There was an error, already reported. Skip this file.
-                    continue;
-                end
-                DistanceAdjusted = process_evt_head_motion('RigidDistances', AfterRefLoc, InitRefLoc);
-                fprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3);
-                bst_report('Info', sProcess, sInputs(iFile), ...
-                    sprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3));
-                
+                                
             end % file loop
             bst_progress('stop');
             
-        case {'UndoAdjust', 'UndoSCS', 'UndoRefine'}
-            isHeadPoints = strcmp(sProcess.options.action.Value, {'UndoSCS', 'UndoRefine'});
+        case 'Points'
+            % Redundant, but makes sense to have it here also.
+            bst_progress('start', 'Refine MRI registration', ...
+                'Fitting head surface to points...', 0, nFiles);
+            for iFile = iUniqFiles % no need to repeat on same channel file.
+                if isDisplay
+                    % Display "before" results.
+                    close([hFigBefore, hFigAfter]);
+                    hFigBefore = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+                end
+                
+                bst_progress('inc', 1);
+
+                [ChannelMat, R, T, isSkip] = ...
+                    channel_align_auto(sInputs(iFile).ChannelFile, [], 0, 0); % No warning or confirmation
+                if isSkip
+                    bst_report('Error', 'process_adjust_coordinates', sInputs(iFile), ...
+                        'Error trying to refine registration using head points.');
+                    continue;
+                end
+                
+                isFileOk(iFile) = true;
+                if isDisplay
+                    % Display "after" results, besides the "before" figure.
+                    hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+                end
+                                
+            end % file loop
+
+        case {'UndoHead', 'UndoSCS', 'UndoPoints'}
+            % This is fast, don't bother with progress bar.
+            isHeadPoints = strcmp(sProcess.options.action.Value, {'UndoSCS', 'UndoPoints'});
             switch sProcess.options.action.Value
-                case 'UndoAdjust'
+                case 'UndoHead'
                     TransfLabel = 'AdjustedNative';
                 case 'UndoSCS'
                     TransfLabel = 'Native=>Brainstorm/CTF';
-                case 'UndoRefine'
+                case 'UndoPoints'
                     TransfLabel = 'refine registration: head points';
             end
-            for iFile = 1:nFiles
+            for iFile = iUniqFiles % don't repeat on same channel file, wouldn't find the transform.
                 if isDisplay
                     % Display "before" results.
                     close([hFigBefore, hFigAfter]);
@@ -362,7 +415,10 @@ function OutputFiles = Run(sProcess, sInputs)
                 end
                 
                 % Redo for EEG.  Can't be certain that the following
-                % transformations are the same, just do it independently.
+                % transformations are the same as for MEG, just do it
+                % independently.  NIRS doesn't have a separate set of
+                % transformations, but "refine" and "SCS" are applied to
+                % NIRS as well.
                 iUndo = find(strcmpi(ChannelMat.TransfEegLabels, TransfLabel), 1, 'last');
                 if ~isempty(iUndo)
                     TransfAfter = eye(4);
@@ -374,7 +430,8 @@ function OutputFiles = Run(sProcess, sInputs)
                     % Apply inverse transformation.
                     iChan = sort([good_channel(ChannelMat.Channel, [], 'EEG'), ...
                         good_channel(ChannelMat.Channel, [], 'SEEG'), ...
-                        good_channel(ChannelMat.Channel, [], 'ECOG')]);
+                        good_channel(ChannelMat.Channel, [], 'ECOG'), ...
+                        good_channel(ChannelMat.Channel, [], 'NIRS')]);
                     % Need to check for empty, otherwise applies to all channels!
                     if ~isempty(iChan)
                         % Don't apply the transformation twice to head points!
@@ -396,6 +453,8 @@ function OutputFiles = Run(sProcess, sInputs)
                         sInputs(iFile).FileName));
                     continue;
                 end
+                
+                ChannelMat = bst_history('add', ChannelMat, 'align', ['Removed transform: ' TransfLabel]);
                 
                 bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
                 
@@ -446,14 +505,14 @@ function InitLoc = ReferenceHeadLocation(ChannelMat, sInput)
     % between them.)
     iDewToNat = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
     if isempty(iDewToNat) || numel(iDewToNat) > 1
-        bst_report('Error', 'process_adjust_head_position', sInput, ...
+        bst_report('Error', 'process_adjust_coordinates', sInput, ...
             'Could not find required transformation.');
         InitLoc = [];
         return;
     end
     iAdjust = find(strcmpi(ChannelMat.TransfMegLabels, 'AdjustedNative'));
     if numel(iAdjust) > 1
-        bst_report('Error', 'process_adjust_head_position', sInput, ...
+        bst_report('Error', 'process_adjust_coordinates', sInput, ...
             'Could not find required transformation.');
         InitLoc = [];
         return;
@@ -494,16 +553,16 @@ function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
     TransfAfter = [];
     TransfAdjust = [];
     if isempty(iDewToNat) || numel(iDewToNat) > 1
-        bst_report('Error', 'process_adjust_head_position', sInput, ...
+        bst_report('Error', 'process_adjust_coordinates', sInput, ...
             'Could not find required transformation.');
         return;
     end
     if iDewToNat > 1
-        bst_report('Warning', 'process_adjust_head_position', sInput, ...
+        bst_report('Warning', 'process_adjust_coordinates', sInput, ...
             'Unexpected transformations found before ''Dewar=>Native''; ignoring them.');
     end
     if numel(iAdjust) > 1
-        bst_report('Error', 'process_adjust_head_position', sInput, ...
+        bst_report('Error', 'process_adjust_coordinates', sInput, ...
             'Could not find required transformation.');
         return;
     elseif isempty(iAdjust)
@@ -512,11 +571,11 @@ function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
         TransfAdjust = eye(4);
     else
         if iAdjust < iDewToNat
-            bst_report('Error', 'process_adjust_head_position', sInput, ...
+            bst_report('Error', 'process_adjust_coordinates', sInput, ...
                 'Unable to interpret order of transformations.');
             return;
         elseif iAdjust - iDewToNat > 1
-            bst_report('Warning', 'process_adjust_head_position', sInput, ...
+            bst_report('Warning', 'process_adjust_coordinates', sInput, ...
                 'Unexpected transformations found between ''Dewar=>Native'' and ''AdjustedNative''; assuming they make sense there.');
         end
         iBef = iAdjust - 1;
