@@ -383,14 +383,14 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         
         %% If first session, save anatomy
         if ~isEmptyRoom && SameIds(sessionId, GetFirstSessionId(data, subjectId))
-            if ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy.FileName)
+            if ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(1).FileName)
                 anatFolder = bst_fullfile(sessionFolder, 'anat');
                 if exist(anatFolder, 'dir') ~= 7
                     mkdir(anatFolder);
                 end
                 mriFile = bst_fullfile(anatFolder, [prefix '_T1w.nii']);
                 if (exist(mriFile, 'file') ~= 2 && exist([mriFile '.gz'], 'file') ~= 2) || overwrite
-                    export_mri(sSubject.Anatomy.FileName, mriFile);
+                    export_mri(sSubject.Anatomy(1).FileName, mriFile);
                     mriGzFile = gzip(mriFile);
                     if ~isempty(mriGzFile)
                         delete(mriFile);
