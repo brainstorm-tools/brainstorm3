@@ -1279,7 +1279,9 @@ function CreateTopo3dOptodes(iDS, iFig, Channel, ChanLoc)
     % Get figure handles
     PlotHandles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
     % Display the electrodes
-    PlotHandles.hLines = figure_3d('PlotNirsCap', GlobalData.DataSet(iDS).Figure(iFig).hFigure, 1);
+    hPairs = figure_3d('PlotNirsCap', GlobalData.DataSet(iDS).Figure(iFig).hFigure, 1);
+    % Save as a cell array, for compatibility with the newer version of the 2DLayout
+    PlotHandles.hLines = {hPairs};
     % Set plot handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotHandles;
     % Update display
