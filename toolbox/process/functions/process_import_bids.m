@@ -403,9 +403,9 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         ImportOptions.DisplayMessages = isInteractive;
         ImportOptions.EventsMode      = 'ignore';
         ImportOptions.EventsTrackMode = 'value';
-        % Get all the files in the meg folder
-        allMegFiles = {};
-        allMegDates = {};
+        % Get all the files in the session folder
+        allMeegFiles = {};
+        allMeegDates = {};
         subjConditions = bst_get('ConditionsForSubject', sSubject.FileName);
         for isess = 1:length(SubjectSessDir{iSubj})
             if isdir(SubjectSessDir{iSubj}{isess})
@@ -423,7 +423,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                 tsvDir = dir(fullfile(SubjectSessDir{iSubj}{isess}, '*_scans.tsv'));
                 if (length(tsvDir) == 1)
                     % Read tsv file
-                    tsvValues = in_tsv(fullfile(SubjectSessDir{iSubj}{isess}, tsvDir.name), {'filename', 'acq_time'});
+                    tsvValues = in_tsv(fullfile(SubjectSessDir{iSubj}{isess}, tsvDir(1).name), {'filename', 'acq_time'});
                     % If the files and times are defined
                     if ~isempty(tsvValues) && ~isempty(tsvValues{1})
                         tsvFiles = tsvValues(:,1);
@@ -445,45 +445,50 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                         end
                     end
                 end
-                % Read the contents of the 'meg' folder
-                megDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, 'meg', '*.*'));
-                for iFile = 1:length(megDir)
-                    % Skip hidden files
-                    if (megDir(iFile).name(1) == '.')
-                        continue;
-                    end
-                    % Get full file name
-                    allMegFiles{end+1} = bst_fullfile(SubjectSessDir{iSubj}{isess}, 'meg', megDir(iFile).name);
-                    % Try to get the recordings date from the tsv file
-                    if ~isempty(tsvFiles)
-                        iFileTsv = find(strcmp(['meg', '/', megDir(iFile).name], tsvFiles));
-                        if ~isempty(iFileTsv)
-                            allMegDates{length(allMegFiles)} = tsvDates{iFileTsv};
+                % Loop on the supported modalities
+                for mod = {'meg', 'eeg', 'ieeg'}
+                    % Read the contents of the 'meg' folder
+                    meegDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*.*'));
+                    for iFile = 1:length(meegDir)
+                        % Skip hidden files
+                        if (meegDir(iFile).name(1) == '.')
+                            continue;
+                        end
+                        % Get full file name
+                        allMeegFiles{end+1} = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, meegDir(iFile).name);
+                        % Try to get the recordings date from the tsv file
+                        if ~isempty(tsvFiles)
+                            iFileTsv = find(strcmp([mod{1}, '/', meegDir(iFile).name], tsvFiles));
+                            if ~isempty(iFileTsv)
+                                allMeegDates{length(allMeegFiles)} = tsvDates{iFileTsv};
+                            end
                         end
                     end
                 end
             end
         end
         % Try import them all, one by one
-        for iFile = 1:length(allMegFiles)
+        for iFile = 1:length(allMeegFiles)
             % Acquisition date
-            if (length(allMegDates) >= iFile) && ~isempty(allMegDates{iFile})
-                DateOfStudy = allMegDates{iFile};
+            if (length(allMeegDates) >= iFile) && ~isempty(allMeegDates{iFile})
+                DateOfStudy = allMeegDates{iFile};
             else
                 DateOfStudy = [];
             end
             % Get file extension
-            [tmp, fBase, fExt] = bst_fileparts(allMegFiles{iFile});
+            [tmp, fBase, fExt] = bst_fileparts(allMeegFiles{iFile});
             % Import depending on this extension
             switch (fExt)
-                case '.ds'
-                    RawFiles = [RawFiles{:}, import_raw(allMegFiles{iFile}, 'CTF', iSubject, ImportOptions, DateOfStudy)];
-                case '.fif'
-                    RawFiles = [RawFiles{:}, import_raw(allMegFiles{iFile}, 'FIF', iSubject, ImportOptions, DateOfStudy)];
-                case {'.json', '.tsv'}
-                    % Nothing to do
-                otherwise
-                    % disp(['BST> Skipping unsupported file: ' megFile]);
+                case '.ds',    FileFormat = 'CTF';
+                case '.fif',   FileFormat = 'FIF';
+                case '.eeg',   FileFormat = 'EEG-BRAINAMP';
+                case '.edf',   FileFormat = 'EEG-EDF';
+                case '.set',   FileFormat = 'EEG-EEGLAB';
+                otherwise,     FileFormat = [];
+            end
+            % Import file if file was identified
+            if ~isempty(FileFormat)
+                RawFiles = [RawFiles{:}, import_raw(allMeegFiles{iFile}, FileFormat, iSubject, ImportOptions, DateOfStudy)];
             end
         end
     end
