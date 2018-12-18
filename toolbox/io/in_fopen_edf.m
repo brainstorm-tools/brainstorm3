@@ -169,7 +169,9 @@ end
 % Detect interrupted signals (time non-linear)
 hdr.interrupted = ischar(hdr.unknown1) && (length(hdr.unknown1) >= 5) && isequal(hdr.unknown1(1:5), 'EDF+D');
 if hdr.interrupted
-    warning('Interrupted EDF file ("EDF+D"): requires conversion to "EDF+C"');
+    warning(['Interrupted EDF file ("EDF+D"): requires conversion to "EDF+C". ' 10 ...
+             'Brainstorm will read this file as a continuous file ("EDF+C"), the timing of the samples after the first discontinuity will be wrong.' 10 ...
+             'This may not cause any major problem unless there are time markers in the file, they might be inaccurate in all the segments >= 2.']);
 end
 
 
