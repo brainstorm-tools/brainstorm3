@@ -1424,6 +1424,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
         if exist('isdeployed', 'builtin') && isdeployed && (Digitize.Mode ~= 8)
             sound(Digitize.BeepWav(6000:2:16000,1), 22000);
         else
+            beep on;
             beep();
         end
     end
