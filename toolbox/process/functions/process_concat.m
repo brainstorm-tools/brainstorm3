@@ -372,7 +372,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         timeComment = sprintf('(%dms,%dms)', round(1000 * NewMat.Time(1)), round(1000 * NewMat.Time(end)));
     end
     NewMat.Comment = [str_remove_parenth(NewMat.Comment), ' | concat' timeComment];
-    % Get output filename
+    % Get output filename, but already have it if 'raw'.
     if isempty(OutputFiles)
         OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sInputs(1).FileName), fileTag);
     end

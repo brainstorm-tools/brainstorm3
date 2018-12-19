@@ -120,10 +120,6 @@ if isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iD
     ~strcmpi(GlobalData.DataSet(iDS).ChannelFile, ChannelFile)
     % Load channel file
     ChannelMat = in_bst_channel(ChannelFile);
-    % Use continuous head localization position.
-    if false %CHL
-      ChannelMat = view_channel_head_motion(ChannelMat);
-    end
     % Copy information in memory
     GlobalData.DataSet(iDS).ChannelFile     = ChannelFile;
     GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
