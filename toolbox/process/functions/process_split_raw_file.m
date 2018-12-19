@@ -19,7 +19,7 @@ function varargout = process_split_raw_file( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, 2018
+% Authors: Martin Cousineau, Marc Lalancette, 2018
 
 eval(macro_method);
 end
@@ -29,6 +29,7 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Split Raw File';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion#Split_the_recording';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'File';
     sProcess.Index       = 72;

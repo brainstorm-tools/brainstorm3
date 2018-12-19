@@ -30,7 +30,7 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description of the process
     sProcess.Comment     = 'Detect head motion events (CTF)';
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion#Mark_head_motion_events';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 70;
