@@ -2368,7 +2368,7 @@ function F = ComputeCustomMontage(montageName, F, DataFile)
     if strcmpi(montageName, 'Head distance')
         % Prepare inputs
         ChannelFile = bst_get('ChannelFileForStudy', DataFile);
-        F = head_motion_distance(F, ChannelFile);
+        F = process_evt_head_motion('HeadMotionDistance', F, ChannelFile);
     else
         error('Unsupported custom montage.');
     end
