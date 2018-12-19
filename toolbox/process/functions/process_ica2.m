@@ -22,7 +22,8 @@ function varargout = process_ica2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2017
+% Authors: Francois Tadel, 2015-2018
+%          Peter Donhauser, 2017
 
 eval(macro_method);
 end
@@ -75,6 +76,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'EEG';
+    % Select components
+    sProcess.options.icasort.Comment = 'Sort components based on correlation with (empty=none):';
+    sProcess.options.icasort.Type    = 'text';
+    sProcess.options.icasort.Value   = 'EOG, ECG';
     % Use existing SSPs
     sProcess.options.usessp.Comment    = 'Compute using existing SSP/ICA projectors';
     sProcess.options.usessp.Type       = 'checkbox';

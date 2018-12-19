@@ -22,7 +22,8 @@ function varargout = process_ica( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
+%          Peter Donhauser, 2017
 
 eval(macro_method);
 end
