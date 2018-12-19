@@ -19,7 +19,7 @@ function varargout = process_concat( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2016
+% Authors: Francois Tadel, Marc Lalancette, 2013-2018
 
 eval(macro_method);
 end

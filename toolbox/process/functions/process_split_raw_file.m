@@ -1,5 +1,5 @@
 function varargout = process_split_raw_file( varargin )
-% PROCESS_ABSOLUTE: Splits a raw file around specific time segments.
+% PROCESS_SPLIT_RAW_FILE: Splits a raw file around specific time segments.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
