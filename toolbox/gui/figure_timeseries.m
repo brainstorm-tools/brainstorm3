@@ -2313,10 +2313,12 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
             % Head distance montage: hide channel labels
             TsInfo.LinesLabels = {'Dist'};
             % DC corrected distances don't make much sense, warn user
-            RawViewerOptions = bst_get('RawViewerOptions');
-            if ~isempty(RawViewerOptions) && isfield(RawViewerOptions, 'RemoveBaseline') && ~strcmpi(RawViewerOptions.RemoveBaseline, 'no')
-                java_dialog('warning', ['This montage requires DC offset correction to be off.' 10 ...
-                    'Make sure to turn it off before interpreting the results.']);
+            if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw')
+                RawViewerOptions = bst_get('RawViewerOptions');
+                if ~isempty(RawViewerOptions) && isfield(RawViewerOptions, 'RemoveBaseline') && ~strcmpi(RawViewerOptions.RemoveBaseline, 'no')
+                    java_dialog('warning', ['This montage requires DC offset correction to be off.' 10 ...
+                        'Make sure to turn it off before interpreting the results.']);
+                end
             end
         else
             TsInfo.LinesLabels = sMontage.DispNames(iMatrixDisp)';
