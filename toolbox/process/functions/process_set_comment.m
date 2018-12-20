@@ -47,6 +47,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.isindex.Comment = 'Add a file index to the comment';
     sProcess.options.isindex.Type    = 'checkbox';
     sProcess.options.isindex.Value   = 1;
+    % === WARNING
+    sProcess.options.label_warning.Comment    = '&nbsp;<FONT color=#7F7F7F>Warning: Comments cannot contain square brackets.</FONT>';
+    sProcess.options.label_warning.Type       = 'label';
 end
 
 
@@ -68,6 +71,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     Comment = sProcess.options.tag.Value;
     if isempty(Comment)
         bst_report('Error', sProcess, sInputs, 'Comment is not defined.');
+        return
+    elseif ~isempty(strfind(Comment, '[')) || ~isempty(strfind(Comment, ']'))
+        bst_report('Error', sProcess, sInputs, 'Comments cannot contain square brackets.');
         return
     end
     % Add index

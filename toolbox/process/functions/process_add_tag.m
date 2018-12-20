@@ -50,6 +50,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.output.Comment = {'Add to comment', 'Add to file name'};
     sProcess.options.output.Type    = 'radio';
     sProcess.options.output.Value   = 1;
+    % === WARNING
+    sProcess.options.label_warning.Comment    = '&nbsp;<FONT color=#7F7F7F>Warning: Tags cannot contain square brackets.</FONT>';
+    sProcess.options.label_warning.Type       = 'label';
 end
 
 
@@ -71,6 +74,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     tag = sProcess.options.tag.Value;
     if isempty(tag)
         bst_report('Error', sProcess, sInputs, 'Tag is not defined.');
+        return
+    elseif ~isempty(strfind(tag, '[')) || ~isempty(strfind(tag, ']'))
+        bst_report('Error', sProcess, sInputs, 'Tags cannot contain square brackets.');
         return
     end
     
