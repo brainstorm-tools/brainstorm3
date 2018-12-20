@@ -435,12 +435,6 @@ for iChan = 1:nChannels
     chname = strrep(hdr.electrode(iChan).label, '.', '');
     chname(chname == 0) = [];
     if ~isempty(chname)
-        % Replace "g,1" and "g,2" with "g1" and "g2"
-        if isequal(chname, 'g,1') && ~ismember('g1', {hdr.electrode.label})
-            chname = 'g1';
-        elseif isequal(chname, 'g,2') && ~ismember('g2', {hdr.electrode.label})
-            chname = 'g2';
-        end
         ChannelMat.Channel(iChan).Name = chname;
     else
         ChannelMat.Channel(iChan).Type = 'MISC';
