@@ -1030,8 +1030,8 @@ function UpdateFigurePlot(hFig, isForced)
         % If the edge effects map is available from the time-frequency file
         if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTf).TFmask)
             TFmask = GlobalData.DataSet(iDS).Timefreq(iTf).TFmask;
-        % Else: If the options of the wavelets were saved in the file
-        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTf).Options)
+        % Else: If the options of the wavelets were saved in the file (not for stat files)
+        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTf).Options) && ~strcmpi(file_gettype(TfInfo.FileName), 'ptimefreq')
             TFmask = process_timefreq('GetEdgeEffectMask', Time, Freqs, GlobalData.DataSet(iDS).Timefreq(iTf).Options);
         end
     end

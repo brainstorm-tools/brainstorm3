@@ -139,6 +139,9 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             iTime = panel_time('GetTimeIndices', TimefreqMat.Time, OPT.TimeWindow);
             ftAllFiles{i}.powspctrm = ftAllFiles{i}.powspctrm(:,iTime,:);
             ftAllFiles{i}.time      = ftAllFiles{i}.time(iTime);
+            if ~isempty(TimefreqMat.TFmask)
+                TimefreqMat.TFmask = TimefreqMat.TFmask(:,iTime);
+            end
         end
         % Save time vector for output
         if (i == 1)
@@ -150,6 +153,13 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             OutTime = ftAllFiles{i}.time;
             if (length(OutTime) == 1)
                 OutTime = OutTime + [0, 1/sfreq];
+            end
+            TFmask = TimefreqMat.TFmask;
+        % Following files
+        else
+            % Combine TFmasks
+            if ~isempty(TFmask) && isequal(size(TFmask), size(TimefreqMat.TFmask))
+                TFmask = TFmask & TimefreqMat.TFmask;
             end
         end
         % Absolue value
@@ -285,7 +295,8 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     sOutput.Correction    = OPT.Correction;
     sOutput.ColormapType  = 'stat2';
     sOutput.DisplayUnits  = 't';
-      
+    sOutput.TFmask        = TFmask;
+    
     % Save clusters
     if isfield(ftStat, 'posclusters')
         sOutput.StatClusters.posclusters         = ftStat.posclusters;
