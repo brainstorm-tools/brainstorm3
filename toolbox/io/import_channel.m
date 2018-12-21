@@ -125,6 +125,16 @@ switch (FileFormat)
         FileUnits = 'm';
         
     % ===== EEG ONLY =====
+    case {'BIDS-ORIG-MM', 'BIDS-MNI-MM'}
+        ChannelMat = in_channel_bids(ChannelFile, 0.001);
+        FileUnits = 'm';
+    case {'BIDS-ORIG-CM', 'BIDS-MNI-CM'}
+        ChannelMat = in_channel_bids(ChannelFile, 0.01);
+        FileUnits = 'm';
+    case {'BIDS-ORIG-M', 'BIDS-MNI-M'}
+        ChannelMat = in_channel_bids(ChannelFile, 1);
+        FileUnits = 'm';
+        
     case 'BESA' % (*.sfp;*.elp;*.eps/*.ela)
         switch (fExt)
             case 'sfp'
@@ -297,8 +307,7 @@ end
 
 
 %% ===== MNI TRANSFORMATION =====
-prevSubject = [];
-if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'INTRANAT_MNI'})
+if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'INTRANAT_MNI', 'BIDS-MNI-MM', 'BIDS-MNI-CM', 'BIDS-MNI-M'})
     % Warning for multiple studies
     if (length(iStudies) > 1)
         warning(['WARNING: When importing MNI positions for multiple subjects: the MNI transformation from the first subject is used for all of them.' 10 ...
@@ -333,7 +342,7 @@ if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'I
 %% ===== MRI/NII TRANSFORMATION =====
 % If the SCS coordinates are not defined (NAS/LPA/RPA fiducials), try to use the MRI=>subject transformation available in the MRI (eg. NIfTI sform/qform)
 % Only available if there is one study in output
-elseif ~isScsDefined && ~isequal(isFixUnits, 0)
+elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0)
     % Get the folders
     sStudies = bst_get('Study', iStudies);
     if (length(sStudies) > 1) && ~all(strcmpi(sStudies(1).BrainStormSubject, {sStudies.BrainStormSubject}))

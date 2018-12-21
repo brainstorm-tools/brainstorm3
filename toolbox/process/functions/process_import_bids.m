@@ -406,6 +406,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % Get all the files in the session folder
         allMeegFiles = {};
         allMeegDates = {};
+        allMeegElecFiles = {};
+        allMeegElecFormats = {};
         subjConditions = bst_get('ConditionsForSubject', sSubject.FileName);
         for isess = 1:length(SubjectSessDir{iSubj})
             if isdir(SubjectSessDir{iSubj}{isess})
@@ -447,11 +449,49 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                 end
                 % Loop on the supported modalities
                 for mod = {'meg', 'eeg', 'ieeg'}
-                    % Read the contents of the 'meg' folder
+                    posUnits = 'mm';
+                    electrodesFile = [];
+                    electrodesSpace = 'orig';
+                    % Get _coordsystem.json files
+                    coordsystemDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_coordsystem.json'));
+                    if (length(coordsystemDir) == 1)
+                        sCoordsystem = bst_jsondecode(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, coordsystemDir(1).name));
+                        if isfield(sCoordsystem, 'iEEGCoordinateUnits') && ~isempty(sCoordsystem.iEEGCoordinateUnits) && ismember(sCoordsystem.iEEGCoordinateUnits, {'mm','cm','m'})
+                            posUnits = sCoordsystem.iEEGCoordinateUnits;
+                        end
+                    end
+                    % Get electrodes positions
+                    electrodesDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_electrodes.tsv'));
+                    if (length(electrodesDir) >= 1)
+                        % If there are multiple files: pick the "orig" one if available, or a "MNI" one
+                        if (length(electrodesDir) > 1)
+                            % Orig
+                            iOrig = find(~cellfun(@(c)isempty(strfind(lower(c),'-orig')), {electrodesDir.name}));
+                            if ~isempty(iOrig)
+                                electrodesFile = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, electrodesDir(iOrig(1)).name);
+                                electrodesSpace = 'orig';
+                            end
+                            % MNI
+                            if isempty(electrodesFile)
+                                iMni = find(~cellfun(@(c)isempty(strfind(lower(c),'-mni')), {electrodesDir.name}));
+                                if ~isempty(iMni)
+                                    electrodesFile = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, electrodesDir(iMni(1)).name);
+                                    electrodesSpace = 'mni';
+                                end
+                            end
+                            % Nothing interpretable found: Use first in the list
+                            if isempty(electrodesFile)
+                                electrodesFile = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, electrodesDir(1).name);
+                                electrodesSpace = 'orig';
+                            end
+                        end
+                    end
+                    % Read the contents of the session folder
                     meegDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*.*'));
                     for iFile = 1:length(meegDir)
-                        % Skip hidden files
-                        if (meegDir(iFile).name(1) == '.')
+                        % Skip hidden files and .json/.tsv files
+                        [fPath,fBase,fExt] = bst_fileparts(meegDir(iFile).name);
+                        if (meegDir(iFile).name(1) == '.') || ismember(fExt, {'.json','.tsv'})
                             continue;
                         end
                         % Get full file name
@@ -463,6 +503,9 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                                 allMeegDates{length(allMeegFiles)} = tsvDates{iFileTsv};
                             end
                         end
+                        % Add electrodes file
+                        allMeegElecFiles{end+1} = electrodesFile;
+                        allMeegElecFormats{end+1} = ['BIDS-' upper(electrodesSpace) '-' upper(posUnits)];
                     end
                 end
             end
@@ -488,7 +531,20 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
             end
             % Import file if file was identified
             if ~isempty(FileFormat)
-                RawFiles = [RawFiles{:}, import_raw(allMeegFiles{iFile}, FileFormat, iSubject, ImportOptions, DateOfStudy)];
+                % Import files to database
+                newFiles = import_raw(allMeegFiles{iFile}, FileFormat, iSubject, ImportOptions, DateOfStudy);
+                RawFiles = [RawFiles{:}, newFiles];
+                % Add electrodes positions if available
+                if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
+                    % Is is subject or MNI coordinates
+                    isVox2ras = ~isempty(strfind(allMeegElecFormats{iFile}, '-ORIG-'));
+                    % Import 
+                    bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
+                        'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
+                        'usedefault',  1, ...
+                        'fixunits',    0, ...
+                        'vox2ras',     isVox2ras);
+                end
             end
         end
     end

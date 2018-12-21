@@ -2,6 +2,7 @@ function outStruct = bst_jsondecode(inString)
 % BST_JSONDECODE: Decodes a JSON string as a Matlab structure
 %
 % USAGE: outStruct = bst_jsondecode(inString)
+%        outStruct = bst_jsondecode(filename)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,7 +22,24 @@ function outStruct = bst_jsondecode(inString)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, 2018
+% Authors: Martin Cousineau, Francois Tadel, 2018
+
+% If the input is an existing filename: read it
+if exist(inString, 'file')
+    % Open file
+    fid = fopen(inString, 'r');
+    if (fid < 0)
+        error(['Cannot open JSON file: ' inString]);
+    end
+    % Read file
+    inString = fread(fid, [1, Inf], '*char');
+    % Close file
+    fclose(fid);
+    % Check that something was read
+    if isempty(inString)
+        error(['File is empty: ' inString]);
+    end
+end
 
 % If possible, call built-in function
 if exist('jsondecode', 'builtin') == 5
