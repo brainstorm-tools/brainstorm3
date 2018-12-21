@@ -690,7 +690,7 @@ function UpdateEditor(hFig)
         ctrl.jTextMontage.setText(strEdit(iFirstCr+1:end));
         
     % === MATRIX VIEWER ===
-    elseif (strcmpi(sMontage.Type, 'matrix') || strcmpi(sMontage.Type, 'custom')) && ~isempty(sMontage.Matrix)
+    elseif ismember(sMontage.Type, {'custom', 'matrix'}) && ~isempty(sMontage.Matrix)
         % Make editor panel visible
         ctrl.jButtonValidate.setVisible(0);
         ctrl.jPanelRight.add(ctrl.jPanelMatrix, java.awt.BorderLayout.CENTER);
@@ -1302,7 +1302,7 @@ function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroup
         isSubGroups = 0;
     end
     % Get info from figure
-    if (nargin < 2) || isempty(ChannelFlag)
+    if (nargin < 3) || isempty(ChannelFlag)
         hFig = Channels;
         % Create EEG average reference menus
         TsInfo = getappdata(hFig,'TsInfo');
@@ -1399,7 +1399,7 @@ end
 function sMontage = GetMontageHeadDistance(sMontage, Channels, ChannelFlag)
     global GlobalData;
     % Get info from figure
-    if (nargin < 2) || isempty(ChannelFlag)
+    if (nargin < 3) || isempty(ChannelFlag)
         hFig = Channels;
         TsInfo = getappdata(hFig,'TsInfo');
         if isempty(TsInfo.Modality) || ~ismember(TsInfo.Modality, {'MEG', 'HLU'})
@@ -1431,15 +1431,12 @@ function sMontage = GetMontageHeadDistance(sMontage, Channels, ChannelFlag)
         end
         sMontage = GlobalData.ChannelMontages.Montages(iMontage(1));
     end
-    % Computation
-    function F = ComputeDist(Fall, DataFile)
-        F = Fall;
-    end
+    % Computation done with custom montage, use identity matrix.
     % Update montage
     numChannels = length(iChannels);
-    sMontage.DispNames = {Channels.Name};
+    sMontage.DispNames = {'Dist'}; %{Channels.Name};
     sMontage.ChanNames = {Channels.Name};
-    sMontage.Matrix    = eye(numChannels);
+    sMontage.Matrix    = ones(1, numChannels); %eye(numChannels);
 end
 
 
@@ -2364,12 +2361,26 @@ function is1020Setup = Is1020Setup(channelNames)
     is1020Setup = (num1020Channels / numChannels) > 0.5;
 end
 
-function F = ComputeCustomMontage(montageName, F, DataFile)
-    if strcmpi(montageName, 'Head distance')
-        % Prepare inputs
-        ChannelFile = bst_get('ChannelFileForStudy', DataFile);
-        F = process_evt_head_motion('HeadMotionDistance', F, ChannelFile);
-    else
-        error('Unsupported custom montage.');
+%% ===== COMPUTE CUSTOM MONTAGE =====
+function F = ApplyMontage(sMontage, F, DataFile, iMatrixDisp, iMatrixChan)
+    if strcmp(sMontage.Type, 'custom')
+        if strcmpi(sMontage.Name, 'Head distance')
+            % DC corrected distances don't make much sense, warn user
+            DataMat = in_bst_data(DataFile, 'DataType');
+            if strcmpi(DataMat.DataType, 'raw')
+                RawViewerOptions = bst_get('RawViewerOptions');
+                if ~isempty(RawViewerOptions) && isfield(RawViewerOptions, 'RemoveBaseline') && ~strcmpi(RawViewerOptions.RemoveBaseline, 'no')
+                    java_dialog('warning', ['This montage requires DC offset correction to be off.' 10 ...
+                        'Make sure to turn it off before interpreting the results.']);
+                end
+            end
+            % Prepare inputs
+            ChannelFile = bst_get('ChannelFileForStudy', DataFile);
+            F = process_evt_head_motion('HeadMotionDistance', F, ChannelFile);
+        else
+            error('Unsupported custom montage.');
+        end
+    else % matrix, selection, text
+        F = sMontage.Matrix(iMatrixDisp, iMatrixChan) * F;
     end
 end

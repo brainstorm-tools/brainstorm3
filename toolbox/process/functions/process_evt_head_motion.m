@@ -93,11 +93,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Load the raw file descriptor
         isRaw = strcmpi(sInputs(iFile).FileType, 'raw');
         if isRaw
-            DataMat = in_bst_data(sInputs(iFile).FileName, 'F', 'Time');
+            DataMat = in_bst_data(sInputs(iFile).FileName, 'F', 'Time', 'Device');
             sFile = DataMat.F;
         else
-            DataMat = in_bst_data(sInputs(iFile).FileName, 'Time');
+            DataMat = in_bst_data(sInputs(iFile).FileName, 'Time', 'Device');
             sFile = in_fopen(sInputs(iFile).FileName, 'BST-DATA');
+        end
+        % Check for CTF.
+        if ~strcmp(DataMat.Device, 'CTF')
+            bst_report('Error', sProcess, sInputs(iFile), ...
+                'Detect head motion events is currently only available for CTF data.');
         end
         % Process only continuous files for now.
         if ~isempty(sFile.epochs)
@@ -110,6 +115,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_progress('text', 'Loading HLU locations...');
         bst_progress('inc', 1);
         [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInputs(iFile));
+        if isempty(Locations)
+            % No HLU channels.  Error already reported.
+            continue;
+        end
         bst_progress('text', 'Detecting motion events...');
         bst_progress('inc', 1);
         nSxnT = size(Locations, 2); % floor(nSamples/HeadSamplePeriod) * nEpochs
@@ -123,7 +132,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         ThreshAllowance = 0.05; %sProcess.options.allowance.Value{1} / 100; % percent to decimal
         
         if Thresh <= 0
-            error('Thresh should be a positive value.');
+            bst_error('Movement threshold should be a positive value.');
         end
         m = 0;
         iStart = 1;
@@ -310,7 +319,12 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
     iFitErr = find(strcmp({ChannelMat.Channel.Type}, 'FitErr'));
     nChannels = numel(iHLU);
     if nChannels < 9
-        error('Head coil position channels not found.');
+        bst_report('Error', 'process_evt_head_motion', sInput, ...
+            'LoadHLU > Head coil position channels not found.');
+        Locations = [];
+        HeadSamplePeriod = [];
+        FitErrors = [];
+        return;
     end
     
     % Load a max of 100Mb into memory to determine HeadSamplePeriod:
@@ -432,7 +446,7 @@ function D = RigidDistances(Locations, Reference, StopThreshold)
     end
     
     if size(Locations, 1) ~= 9 || size(Reference, 1) ~= 9
-        error('Expecting 9 HLU channels in first dimension.');
+        bst_error('Expecting 9 HLU channels in first dimension.');
     end
     nS = size(Locations, 2);
     nT = size(Locations, 3);

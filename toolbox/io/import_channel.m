@@ -379,7 +379,7 @@ elseif ~isScsDefined && ~isequal(isFixUnits, 0)
         end
     end
     isAlignScs = 1;
-elseif isfield(ChannelMat, 'TransfMegLabels') && ismember('Native=>Brainstorm/CTF', ChannelMat.TransfMegLabels)
+elseif isfield(ChannelMat, 'TransfMegLabels') && iscell(ChannelMat.TransfMegLabels) && ismember('Native=>Brainstorm/CTF', ChannelMat.TransfMegLabels)
     % No need to duplicate this transformation if it was previously
     % computed, e.g. in in_channel_ctf. (It would be identity the second
     % time.)

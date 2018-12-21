@@ -2296,33 +2296,12 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
     end
     % Apply montage
     if ~isempty(iChannels)
-        if strcmpi(sMontage.Type, 'custom')
-            F = panel_montage('ComputeCustomMontage', sMontage.Name, Fall(iChannels,:), GlobalData.DataSet(iDS).DataFile);
-            if ~isempty(StdAll)
-                panel_montage('ComputeCustomMontage', sMontage.Name, StdAll(iChannels,:), GlobalData.DataSet(iDS).DataFile);
-            end
-        else
-            % Get display names for the input channels
-            F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall(iChannels,:);
-            if ~isempty(StdAll)
-                Std = sMontage.Matrix(iMatrixDisp,iMatrixChan) * StdAll(iChannels,:);
-            end
+        F = panel_montage('ApplyMontage', sMontage, Fall(iChannels,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
+        if ~isempty(StdAll)
+            Std = panel_montage('ApplyMontage', sMontage, StdAll(iChannels,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
         end
         % Modify channel names
-        if strcmpi(sMontage.Name, 'Head distance')
-            % Head distance montage: hide channel labels
-            TsInfo.LinesLabels = {'Dist'};
-            % DC corrected distances don't make much sense, warn user
-            if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw')
-                RawViewerOptions = bst_get('RawViewerOptions');
-                if ~isempty(RawViewerOptions) && isfield(RawViewerOptions, 'RemoveBaseline') && ~strcmpi(RawViewerOptions.RemoveBaseline, 'no')
-                    java_dialog('warning', ['This montage requires DC offset correction to be off.' 10 ...
-                        'Make sure to turn it off before interpreting the results.']);
-                end
-            end
-        else
-            TsInfo.LinesLabels = sMontage.DispNames(iMatrixDisp)';
-        end
+        TsInfo.LinesLabels = sMontage.DispNames(iMatrixDisp)';
     % No montage to apply: Keep only the figure data
     else
         % Keep only the selected sensors
@@ -2947,13 +2926,7 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % ===== YLIM =====
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    if strcmpi(TsInfo.MontageName, 'Head distance')
-        % Head distance montage: force special unit
-        unitMod = 'HLU';
-    else
-        unitMod = TsInfo.Modality;
-    end
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, unitMod, TsInfo.FileName );
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName );
     % Plot factor has changed
     isFactorChanged = ~isequal(fFactor, PlotHandles.DisplayFactor);
     % Set display Factor

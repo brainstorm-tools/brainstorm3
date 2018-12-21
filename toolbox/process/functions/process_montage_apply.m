@@ -135,21 +135,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             % Apply montage
             if isCreateChan
-                if strcmpi(sMontage.Type, 'custom')
-                    DataMat.F = panel_montage('ComputeCustomMontage', sMontage.Name, DataMat.F(iChannels,:), GlobalData.DataSet(iDS).DataFile);
-                else
-                    DataMat.F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
-                end
+                DataMat.F = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
                 % Compute channel flag
                 ChannelFlag = ones(size(DataMat.F,1),1);
                 isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(DataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
                 ChannelFlag(isChanBad) = -1;
             else
-                if strcmpi(sMontage.Type, 'custom')
-                    DataMat.F(iChannels,:) = panel_montage('ComputeCustomMontage', sMontage.Name, DataMat.F(iChannels,:), GlobalData.DataSet(iDS).DataFile);
-                else
-                    DataMat.F(iChannels,:) = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
-                end
+                DataMat.F(iChannels,:) = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
                 ChannelFlag = DataMat.ChannelFlag;
             end
 

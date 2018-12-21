@@ -98,7 +98,7 @@ function OutputFiles = Run(sProcess, sInputs)
     if isDisplay
         hFigAfter = [];
         hFigBefore = [];
-        bst_memory('UnloadAll', 'Forced'); % Close all the existing figures. (Including progress?)
+        bst_memory('UnloadAll', 'Forced'); % Close all the existing figures.
     end
     
     [UniqueChan, iUniqFiles, iUniqInputs] = unique({sInputs.ChannelFile});
@@ -112,15 +112,27 @@ function OutputFiles = Run(sProcess, sInputs)
     bst_progress('start', 'Adjust coordinate system', ...
         ' ', 0, nFiles);
     for iFile = iUniqFiles % no need to repeat on same channel file.
-        if isDisplay
+        
+        ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
+        % Get the leading modality
+        [tmp, DispMod] = channel_get_modalities(ChannelMat.Channel);
+        % 'MEG' is added when 'MEG GRAD' or 'MEG MAG'.
+        ModPriority = {'MEG', 'EEG', 'SEEG', 'ECOG', 'NIRS'};
+        iMod = find(ismember(ModPriority, DispMod), 1, 'first');
+        if isempty(iMod)
+            Modality = [];
+        else
+            Modality = ModPriority{iMod};
+        end
+
+        if isDisplay && ~isempmty(Modality)
             % Display "before" results.
             close([hFigBefore, hFigAfter]);
-            hFigBefore = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+            hFigBefore = channel_align_manual(sInputs(iFile).ChannelFile, Modality, 0);
         end
         
         bst_progress('inc', 1);
         
-        ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
         
         % ----------------------------------------------------------------
         if sProcess.options.reset.Value
@@ -144,7 +156,7 @@ function OutputFiles = Run(sProcess, sInputs)
                     NotFound = true;
                 else
                     ChannelFile = ChannelFile{1};
-                    if exist(ChannelFile, 'file')
+                    if exist(ChannelFile, 'file') == 2
                         NotFound = false;
                     else
                         NotFound = true;
@@ -282,21 +294,30 @@ function OutputFiles = Run(sProcess, sInputs)
         % ----------------------------------------------------------------
         if ~sProcess.options.remove.Value && sProcess.options.head.Value
                 
+            % Check the input is CTF. 
+            DataMat = in_bst_data(sInputs(iFile).FileName, 'Device');
+            if ~strcmp(DataMat.Device, 'CTF')
+                bst_report('Error', sProcess, sInputs(iFile), ...
+                    'Adjust head position is currently only available for CTF data.');
+            end
+            
             % The data could be changed such that the head position
             % could be readjusted (e.g. by deleting segments).  This is
-            % now allowed and the previous adjustment will be replaced.
-            if any(strcmp(ChannelMat.TransfMegLabels, 'AdjustedNative'))
+            % allowed and the previous adjustment will be replaced.
+            if isfield(ChannelMat, 'TransfMegLabels') && iscell(ChannelMat.TransfMegLabels) && ...
+                    ismember('AdjustedNative', ChannelMat.TransfMegLabels)
                 bst_report('Info', sProcess, sInputs(iFile), ...
                     'Head position already adjusted. Previous adjustment will be replaced.');
-                %                     fprintf('Head position already adjusted. Undo first if you wish to adjust again.\n');
-                %                     bst_progress('inc', 2);
-                %                     continue;
             end
             
             % Load head coil locations, in m.
             bst_progress('text', 'Loading HLU locations...');
             %                 bst_progress('inc', 1);
             Locations = process_evt_head_motion('LoadHLU', sInputs(iFile), [], false);
+            if isempty(Locations)
+                % No HLU channels. Error already reported. Skip this file.
+                continue;
+            end
             bst_progress('text', 'Correcting head position...');
             % If a collection was aborted, the channels will be filled with
             % zeros. We must remove these locations.
@@ -450,9 +471,9 @@ function OutputFiles = Run(sProcess, sInputs)
         bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
         isFileOk(iFile) = true;
         
-        if isDisplay
+        if isDisplay && ~isempmty(Modality)
             % Display "after" results, besides the "before" figure.
-            hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+            hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, Modality, 0);
         end
         
     end % file loop
