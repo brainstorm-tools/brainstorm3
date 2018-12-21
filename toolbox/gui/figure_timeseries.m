@@ -3061,7 +3061,27 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
         end
         PlotHandles.hLinesZeroY = line([TimeVector(1), TimeVector(end)], [0 0], [0.5 0.5], 'Color', color0, 'Parent', hAxes);
     end
-
+    
+    % Decoding: Y=50%
+    if ~isempty(strfind(TsInfo.FileName, 'matrix_decoding_')) && (all(F(:) >= 0) && all(F(:) <= 100))
+        if isFastUpdate && (length(PlotHandles.hLineDecodingY) == 1) && ishandle(PlotHandles.hLineDecodingY)
+            set(PlotHandles.hLineDecodingY, 'XData', [TimeVector(1), TimeVector(end)]);
+        else
+            % Delete existing Y=50 (left from a previous 'Column' display)
+            if ~isempty(PlotHandles.hLineDecodingY) && all(ishandle(PlotHandles.hLineDecodingY))
+                delete(PlotHandles.hLineDecodingY);
+                PlotHandles.hLineDecodingY = [];
+            end
+            % Create new lines
+            PlotHandles.hLineDecodingY = line([TimeVector(1), TimeVector(end)], [50 50], [0.5 0.5], ...
+                'LineWidth', 1, ...
+                'LineStyle', '--', ...
+                'Color',     .8*[1 1 1], ...
+                'Parent',    hAxes, ...
+                'Tag',       'LineDecoding50');
+        end
+    end
+    
     % ===== DISPLAY GFP =====
     % If there are more than 5 channel
     if bst_get('DisplayGFP') && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat') ...

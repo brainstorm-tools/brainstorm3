@@ -1,11 +1,14 @@
 ---------------------------------------------------------------
+December 2018
+- IO: BIDS import: Support for EEG and iEEG
+- IO: Export EEG to BrainVision BrainAmp format (.eeg) for iEEG-BIDS
+- Bug fix: Fixed coil orientations when reading CTF .ds folders including a .pos file (MNI only)
+---------------------------------------------------------------
 November 2018
 - New electrophysiology toolbox
 - GUI: 2DLayout: Added new controls, new time window management
 - GUI: 2DLayout: Overlay of multiple conditions
 - GUI: 2DLayout: Overlay of NIRS wavelengths and oxy/deoxy
-- IO: Export EEG to BrainVision BrainAmp format (.eeg) for iEEG-BIDS
-- Bug fix: Fixed coil orientations when reading CTF .ds folders including a .pos file (MNI only)
 ---------------------------------------------------------------
 October 2018
 - IO: BIDS export process
