@@ -6,7 +6,7 @@
 # in the file ~/.brainstorm/MATLABROOTXX.txt.
 # Else, MATLABROOT is read from this file
 #
-# AUTHOR: Francois Tadel, 2011-2015
+# AUTHOR: Francois Tadel, 2011-2018
 
 # Configuration
 VER_NAME="2015b"
