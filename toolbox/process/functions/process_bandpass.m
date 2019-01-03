@@ -3,7 +3,7 @@ function varargout = process_bandpass( varargin )
 %
 % USAGE:                sProcess = process_bandpass('GetDescription')
 %                         sInput = process_bandpass('Run', sProcess, sInput, method=[])
-%        [x, FiltSpec, Messages] = process_bandpass('Compute', x, sfreq, HighPass, LowPass, Method=[], isMirror=0, isRelax=0)
+%        [x, FiltSpec, Messages] = process_bandpass('Compute', x, sfreq, HighPass, LowPass, Method=[], isMirror=0, isRelax=0, UpTranBand=0.05)
 %                              x = process_bandpass('Compute', x, sfreq, FiltSpec)
 
 % @=============================================================================
@@ -24,7 +24,7 @@ function varargout = process_bandpass( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Hossein Shahabi, John Mosher, Richard Leahy, 2010-2016
+% Authors: Francois Tadel, Hossein Shahabi, John Mosher, Richard Leahy, 2010-2019
 
 eval(macro_method);
 end
@@ -62,6 +62,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.lowpass.Comment = 'Upper cutoff frequency (0=disable):';
     sProcess.options.lowpass.Type    = 'value';
     sProcess.options.lowpass.Value   = {40,'Hz ',3};
+    % === Upper transition band (2019)
+    sProcess.options.lowpasstran.Comment = 'Upper transition band:';
+    sProcess.options.lowpasstran.Type    = 'value';
+    sProcess.options.lowpasstran.Value   = {5,'% ',3};
     % === Relax
     sProcess.options.attenuation.Comment = {'60dB', '40dB (relaxed)', 'Stopband attenuation:'; ...
                                             'strict', 'relax', ''};
@@ -71,10 +75,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mirror.Comment = '<FONT color="#999999">Mirror signal before filtering (not recommended)</FONT>';
     sProcess.options.mirror.Type    = 'checkbox';
     sProcess.options.mirror.Value   = 0;
-    % === Legacy
-    sProcess.options.useold.Comment = '<FONT color="#999999">Use old filter implementation (before Oct 2016)</FONT>';
-    sProcess.options.useold.Type    = 'checkbox';
-    sProcess.options.useold.Value   = 0;
+    % === Filter Version
+    sProcess.options.ver.Comment = {'2019','<FONT color="#999999">Oct 2016-18<FONT color="#999999">',...
+        '<FONT color="#999999">Before Oct 2016<FONT color="#999999">', 'Filter version:'; ...
+                                            '2019', 'Oct 2016-18', 'Before Oct 2016', ''};
+    sProcess.options.ver.Type    = 'radio_linelabel';
+    sProcess.options.ver.Value   = '2019';
     % === Display properties
     sProcess.options.display.Comment = {'process_bandpass(''DisplaySpec'',iProcess,sfreq);', '<BR>', 'View filter response'};
     sProcess.options.display.Type    = 'button';
@@ -83,7 +89,7 @@ end
 
 
 %% ===== GET OPTIONS =====
-function [HighPass, LowPass, isMirror, isRelax, Method] = GetOptions(sProcess)
+function [HighPass, LowPass, isMirror, isRelax, Method, UpTranBand] = GetOptions(sProcess)
     HighPass = sProcess.options.highpass.Value{1};
     LowPass  = sProcess.options.lowpass.Value{1};
     if (HighPass == 0) 
@@ -95,10 +101,16 @@ function [HighPass, LowPass, isMirror, isRelax, Method] = GetOptions(sProcess)
     isMirror = sProcess.options.mirror.Value;
     isRelax  = isequal(sProcess.options.attenuation.Value, 'relax');
     % Method selection
-    if (sProcess.options.useold.Value)
-        Method = 'bst-fft-fir';
-    else
-        Method = 'bst-hfilter';
+    switch (sProcess.options.ver.Value)
+        case '2019'
+            Method = 'bst-hfilter-cascade';
+            UpTranBand = sProcess.options.lowpasstran.Value{1}/100 ;
+        case 'Oct 2016-18'
+            Method = 'bst-hfilter';
+            UpTranBand = NaN ;
+        case 'Before Oct 2016'
+            Method = 'bst-fft-fir';
+            UpTranBand = NaN ;
     end
 end
 
@@ -132,10 +144,10 @@ end
 %% ===== RUN =====
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Get options
-    [HighPass, LowPass, isMirror, isRelax, Method] = GetOptions(sProcess);
+    [HighPass, LowPass, isMirror, isRelax, Method, UpTranBand] = GetOptions(sProcess);
     % Filter signals
     sfreq = 1 ./ (sInput.TimeVector(2) - sInput.TimeVector(1));
-    [sInput.A, FiltSpec, Messages] = Compute(sInput.A, sfreq, HighPass, LowPass, Method, isMirror, isRelax);
+    [sInput.A, FiltSpec, Messages] = Compute(sInput.A, sfreq, HighPass, LowPass, Method, isMirror, isRelax, UpTranBand);
     
     % Process warnings
     if ~isempty(Messages)
@@ -148,7 +160,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
                  sInput.TimeVector(1) + FiltSpec.transient, sInput.TimeVector(end)];
         % Create a new event type
         sInput.Events = db_template('event');
-        sInput.Events.label   = 'transient';
+        sInput.Events.label   = 'transient_bandpass';
         sInput.Events.color   = [.8 0 0];
         sInput.Events.epochs  = [1 1];
         sInput.Events.samples = round(trans .* sfreq);
@@ -174,15 +186,18 @@ end
 
 
 %% ===== EXTERNAL CALL =====
-% USAGE: [x, FiltSpec, Messages] = process_bandpass('Compute', x, sfreq, HighPass, LowPass, Method=[], isMirror=0, isRelax=0)
+% USAGE: [x, FiltSpec, Messages] = process_bandpass('Compute', x, sfreq, HighPass, LowPass, Method=[], isMirror=0, isRelax=0, UpTranBand=0.05)
 %                              x = process_bandpass('Compute', x, sfreq, FiltSpec)             
-function [x, FiltSpec, Messages] = Compute(x, sfreq, HighPass, LowPass, Method, isMirror, isRelax)
+function [x, FiltSpec, Messages] = Compute(x, sfreq, HighPass, LowPass, Method, isMirror, isRelax, UpTranBand)
     % Filter is already computed
     if (nargin == 3)
         FiltSpec = HighPass;
-        Method   = 'bst-hfilter';
+        Method   = 'bst-hfilter-cascade';
     % Default filter options
     else
+        if (nargin < 8) || isempty(UpTranBand)
+            UpTranBand = 0.05 ; 
+        end
         if (nargin < 7) || isempty(isRelax)
             isRelax = 0;
         end
@@ -190,7 +205,7 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, HighPass, LowPass, Method, 
             isMirror = 0;
         end
         if (nargin < 5) || isempty(Method)
-            Method = 'bst-hfilter';
+            Method = 'bst-hfilter-cascade';
         end
         FiltSpec = [];
     end
@@ -198,7 +213,15 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, HighPass, LowPass, Method, 
     
     % Filtering using the selected method
     switch (Method)
-        % Shahabi/Leahy, 2016    [DEFAULT IN BRAINSTORM AFTER 2016]
+        % Shahabi/Leahy, 2019    [DEFAULT IN BRAINSTORM 2019]
+        case 'bst-hfilter-cascade'
+            if ~isempty(FiltSpec)
+                [x, tmp, Messages] = bst_bandpass_hfilter_cascade(x, sfreq, FiltSpec);
+            else
+                [x, FiltSpec, Messages] = bst_bandpass_hfilter_cascade(x, sfreq, HighPass, LowPass, isMirror, isRelax, UpTranBand);
+            end
+            
+        % Shahabi/Leahy, 2016-2018
         case 'bst-hfilter'
             if ~isempty(FiltSpec)
                 [x, tmp, Messages] = bst_bandpass_hfilter(x, sfreq, FiltSpec);
@@ -240,9 +263,20 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     % Progress bar
     bst_progress('start', 'Filter specifications', 'Updating graphs...');
     % Get options
-    [HighPass, LowPass, isMirror, isRelax, Method] = GetOptions(sProcess);    
+    [HighPass, LowPass, isMirror, isRelax, Method, UpTranBand] = GetOptions(sProcess);    
     % Compute filter specification
-    if strcmpi(Method, 'bst-hfilter')
+    if strcmpi(Method, 'bst-hfilter-cascade')
+        if bst_get('UseSigProcToolbox')
+            [tmp, FiltSpec, Messages] = bst_bandpass_hfilter_cascade([], sfreq, HighPass, LowPass, isMirror, isRelax, UpTranBand);
+            if isempty(FiltSpec)
+                bst_error(Messages, 'Filter response', 0);
+            end
+        else
+            bst_error(['This method cannot be used without Signal Processing Toolbox at this time.' ...
+                ' Please use the older version (Oct 2016-18)'], 'Filter response', 0);
+            return;
+        end
+    elseif strcmpi(Method, 'bst-hfilter')
         [tmp, FiltSpec, Messages] = bst_bandpass_hfilter([], sfreq, HighPass, LowPass, isMirror, isRelax);
         if isempty(FiltSpec)
             bst_error(Messages, 'Filter response', 0);
@@ -327,7 +361,7 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
         'Parent',              hAxesImpz);
     
     % Filter description: Left panel
-    strFilter1 = ['<HTML>Even-order linear phase <B>FIR filter</B>' '<BR>'];
+    strFilter1 = ['<HTML>Linear phase <B>FIR filter</B>' '<BR>'];
     if ~isempty(HighPass) && (HighPass > 0) && ~isempty(LowPass) && (LowPass > 0)
         strFilter1 = [strFilter1 'Band-pass: &nbsp;&nbsp;<B>' num2str(HighPass) '-' num2str(LowPass) ' Hz</B><BR>'];
         strFilter1 = [strFilter1 'Low transition: &nbsp;&nbsp;<B>' num2str(FiltSpec.fcuts(1)) '-' num2str(FiltSpec.fcuts(2)) ' Hz</B><BR>'];
@@ -341,11 +375,26 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     end
     if isRelax
         strFilter1 = [strFilter1 'Stopband attenuation: &nbsp;&nbsp;<B>40 dB</B><BR>'];
+        strFilter1 = [strFilter1 'Passband ripple: &nbsp;&nbsp;<B>1%</B><BR>'] ; 
     else
         strFilter1 = [strFilter1 'Stopband attenuation: &nbsp;&nbsp;<B>60 dB</B><BR>'];
+        strFilter1 = [strFilter1 'Passband ripple: &nbsp;&nbsp;<B>0.1%</B><BR>'] ; 
     end
+
+    
     % Filter description: Right panel
     strFilter2 = '<HTML>';
+    if strcmpi(Method, 'bst-hfilter-cascade')
+        if ~isempty(HighPass) && (HighPass > 0) && ~isempty(LowPass) && (LowPass > 0)
+            strFilter2 = [strFilter2 'Filter type: &nbsp;&nbsp;<B> Kaiser * Equiripple  </B><BR>'];
+        elseif ~isempty(HighPass) && (HighPass > 0)
+            strFilter2 = [strFilter2 'Filter type: &nbsp;&nbsp;<B> Kaiser </B><BR>'];
+        elseif ~isempty(LowPass) && (LowPass > 0)
+            strFilter2 = [strFilter2 'Filter type: &nbsp;&nbsp;<B> Equiripple </B><BR>'];
+        end
+    elseif strcmpi(Method, 'bst-hfilter')
+        strFilter2 = [strFilter2 'Filter type: &nbsp;&nbsp;<B> Kaiser </B><BR>'];
+    end
     strFilter2 = [strFilter2 'Filter order: &nbsp;&nbsp;<B>' num2str(FiltSpec.order) '</B><BR>'];
     strFilter2 = [strFilter2 'Transient (full): &nbsp;&nbsp;<B>' num2str(FiltSpec.order / 2 / sfreq, '%1.3f') ' s</B><BR>'];
     strFilter2 = [strFilter2 'Transient (99% energy): &nbsp;&nbsp;<B>' num2str(FiltSpec.transient, '%1.3f') ' s</B><BR>'];
@@ -375,7 +424,7 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     function ResizeCallback(hFig, ev)
         % Get figure position
         figpos = get(hFig, 'Position');
-        textH = 90;
+        textH = 110;        % Text Height 
         marginL = 70;
         marginR = 30;
         marginT = 30;
@@ -388,5 +437,3 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
         set(hLabel2,    'Position', max(1, [round(figpos(3)/2),  1,  round(figpos(3)/2),       textH]));
     end
 end
-
-
