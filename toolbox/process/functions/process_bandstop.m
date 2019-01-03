@@ -333,7 +333,7 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     % Filter description: Right panel
     strFilter2 = '<HTML>';
     strFilter2 = [strFilter2 'Filter order (# of poles): &nbsp;&nbsp;<B>' num2str(FiltSpec.order) '</B><BR>'];
-    strFilter2 = [strFilter2 'Transient (full): &nbsp;&nbsp;<B>' num2str(length(Ht) / 2 / sfreq, '%1.3f') ' s</B><BR>'];
+    strFilter2 = [strFilter2 'Transient (full): &nbsp;&nbsp;<B>' num2str(length(Ht) / sfreq, '%1.3f') ' s</B><BR>'];
     strFilter2 = [strFilter2 'Transient (99% energy): &nbsp;&nbsp;<B>' num2str(FiltSpec.transient, '%1.3f') ' s</B><BR>'];
     strFilter2 = [strFilter2 'Sampling frequency: &nbsp;&nbsp;<B>', num2str(sfreq), ' Hz</B><BR>'];
 
