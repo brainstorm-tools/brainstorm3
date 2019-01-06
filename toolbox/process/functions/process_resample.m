@@ -54,7 +54,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === Resample frequency
     sProcess.options.freq.Comment = 'New frequency:  ';
     sProcess.options.freq.Type    = 'value';
-    sProcess.options.freq.Value   = {1000,'Hz',2};
+    sProcess.options.freq.Value   = {1000,'Hz',4};
 end
 
 
