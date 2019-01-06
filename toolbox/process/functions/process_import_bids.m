@@ -510,6 +510,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                 end
             end
         end
+        
+        % === IMPORT RECORDINGS ===
         % Try import them all, one by one
         for iFile = 1:length(allMeegFiles)
             % Acquisition date
@@ -544,6 +546,76 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                         'usedefault',  1, ...
                         'fixunits',    0, ...
                         'vox2ras',     isVox2ras);
+                end
+                % Get base file name
+                iLast = find(allMeegFiles{iFile} == '_', 1, 'last');
+                if isempty(iLast)
+                    continue;
+                end
+                baseName = allMeegFiles{iFile}(1:iLast-1);
+                
+                % Load _events.tsv
+                EventsFile = [baseName, '_events.tsv'];
+                if file_exist(EventsFile)
+                    bst_process('CallProcess', 'process_evt_import', newFiles, [], ...
+                        'evtfile', {EventsFile, 'BIDS'});
+                end
+                
+                % Load _channels.tsv
+                ChannelsFile = [baseName, '_channels.tsv'];
+                if file_exist(ChannelsFile)
+                    % Read tsv file
+                    ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'});
+                    % Try to add info to the existing Brainstorm channel file
+                    if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
+                        % For all the loaded files
+                        for iRaw = 1:length(newFiles)
+                            % Get channel file
+                            ChannelFile = bst_get('ChannelFileForStudy', newFiles{iRaw});
+                            % Load channel file
+                            ChannelMat = in_bst_channel(ChannelFile);
+                            % Get current list of good/bad channels
+                            DataMat = in_bst_data(newFiles{iRaw}, 'ChannelFlag', 'F');
+                            % Modified flags
+                            isModifiedChan = 0;
+                            isModifiedData = 0;
+                            % Loop to find matching channels
+                            for iChanBids = 1:size(ChanInfo,1)
+                                % Look for corresponding channel in Brainstorm channel file
+                                iChanBst = find(strcmpi(ChanInfo{iChanBids,1}, {ChannelMat.Channel.Name}));
+                                if isempty(iChanBst)
+                                    continue;
+                                end
+                                % Copy type
+                                if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
+                                    ChannelMat.Channel(iChanBst).Type = upper(ChanInfo{iChanBids,2});
+                                    isModifiedChan = 1;
+                                end
+                                % Copy group
+                                if ~isempty(ChanInfo{iChanBids,3}) && ~strcmpi(ChanInfo{iChanBids,3},'n/a')
+                                    ChannelMat.Channel(iChanBst).Group = ChanInfo{iChanBids,3};
+                                    isModifiedChan = 1;
+                                end
+                                % Copy channel status
+                                if ~isempty(ChanInfo{iChanBids,4}) && strcmpi(ChanInfo{iChanBids,4}, 'good')
+                                    DataMat.ChannelFlag(iChanBst) = 1;
+                                    isModifiedData = 1;
+                                elseif ~isempty(ChanInfo{iChanBids,4}) && strcmpi(ChanInfo{iChanBids,4}, 'bad')
+                                    DataMat.ChannelFlag(iChanBst) = -1;
+                                    isModifiedData = 1;
+                                end
+                            end
+                            % Save channel file modifications
+                            if isModifiedChan
+                                bst_save(file_fullpath(ChannelFile), ChannelMat, 'v7');
+                            end
+                            % Save data file modifications
+                            if isModifiedData
+                                DataMat.F.channelflag = DataMat.ChannelFlag;
+                                bst_save(newFiles{iRaw}, DataMat, 'v6', 1);
+                            end
+                        end
+                    end                   
                 end
             end
         end

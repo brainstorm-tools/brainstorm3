@@ -94,6 +94,8 @@ if isempty(newEvents)
             newEvents = in_events_ant(sFile, EventFile);
         case 'BESA'
             newEvents = in_events_besa(sFile, EventFile);
+        case 'BIDS'
+            newEvents = in_events_bids(sFile, EventFile);
         case 'BRAINAMP'
             newEvents = in_events_brainamp(sFile, EventFile);
         case 'BST'
