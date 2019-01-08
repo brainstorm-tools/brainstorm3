@@ -956,12 +956,12 @@ function LoadDefaultMontages() %#ok<DEFNU>
     % Load MNE selection files
     MontageFiles = dir(bst_fullfile(MontagePath, '*.sel'));
     for i = 1:length(MontageFiles)
-        LoadMontageFiles(bst_fullfile(MontagePath, MontageFiles(i).name), 'MNE');
+        LoadMontageFiles(bst_fullfile(MontagePath, MontageFiles(i).name), 'MNE', 1);
     end
     % Load Brainstorm EEG montage files
     MontageFiles = dir(bst_fullfile(MontagePath, '*.mon'));
     for i = 1:length(MontageFiles)
-        LoadMontageFiles(bst_fullfile(MontagePath, MontageFiles(i).name), 'MON');
+        LoadMontageFiles(bst_fullfile(MontagePath, MontageFiles(i).name), 'MON', 1);
     end
 end
    
@@ -1706,10 +1706,14 @@ end
 
 
 %% ===== LOAD MONTAGE FILE =====
-% USAGE:  LoadMontageFiles(FileNames, FileFormat)
+% USAGE:  LoadMontageFiles(FileNames, FileFormat, isOverwrite=0)
 %         LoadMontageFiles()   : Ask user the file to load
-function sMontages = LoadMontageFiles(FileNames, FileFormat)
+function sMontages = LoadMontageFiles(FileNames, FileFormat, isOverwrite)
     sMontages = [];
+    % Parse inputs
+    if (nargin < 3) || isempty(isOverwrite)
+        isOverwrite = 0;
+    end
     % Ask filename to user
     if (nargin < 2) || isempty(FileNames) || isempty(FileFormat)
         % Get default import directory
@@ -1771,7 +1775,7 @@ function sMontages = LoadMontageFiles(FileNames, FileFormat)
     end
     % Loop to add all montages 
     for i = 1:length(sMontages)
-        sMontages(i).Name = SetMontage(sMontages(i).Name, sMontages(i), 1);
+        sMontages(i).Name = SetMontage(sMontages(i).Name, sMontages(i), isOverwrite);
     end
 end
 
