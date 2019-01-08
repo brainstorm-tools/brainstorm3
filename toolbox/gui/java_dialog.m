@@ -113,6 +113,30 @@ if bst_get('GuiLevel') < 0
                 isCancel = 1;
                 res = 0;
             end
+        case 'question'
+            if length(varargin) < 1 || isempty(varargin{1})
+                answers = {'Yes', 'No'};
+            else
+                answers = varargin{1};
+            end
+            nAnswers = length(answers);
+            
+            % Display question and possible answers
+            disp(msg);
+            for iAnswer = 1:nAnswers
+                disp([num2str(iAnswer) '. ' answers{iAnswer}]);
+            end
+            disp(' ');
+            
+            % Validate user selection
+            response = str2num(input('Select the number of your answer: ', 's'));
+            if ~isempty(response) && response >= 1 && response <= nAnswers
+                res = answers{response};
+                isCancel = 0;
+            else
+                res = [];
+                isCancel = 1;
+            end
         otherwise
             error('Unsupported call of java_dialog in headless mode.');
     end
