@@ -1771,7 +1771,7 @@ function sMontages = LoadMontageFiles(FileNames, FileFormat)
     end
     % Loop to add all montages 
     for i = 1:length(sMontages)
-        sMontages(i).Name = SetMontage(sMontages(i).Name, sMontages(i), 0);
+        sMontages(i).Name = SetMontage(sMontages(i).Name, sMontages(i), 1);
     end
 end
 

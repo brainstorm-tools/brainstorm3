@@ -264,8 +264,6 @@ end
 % Check that default montages are loaded
 if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)', 'Head distance'}, {GlobalData.ChannelMontages.Montages.Name}))
     disp('BST> Loading default montages...');
-    % Reset list of montages
-    GlobalData.ChannelMontages.Montages = [];
     % Load default selections
     panel_montage('LoadDefaultMontages');
 end
