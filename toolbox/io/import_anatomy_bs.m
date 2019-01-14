@@ -489,7 +489,7 @@ if isAseg && ~isempty(AsegFile)
         % Rename mixed file
         oldBstMixedLowFile = file_fullpath(BstMixedLowFile);
         BstMixedLowFile    = bst_fullfile(bst_fileparts(oldBstMixedLowFile), 'tess_cortex_pialcereb_low.mat');
-        movefile(oldBstMixedLowFile, BstMixedLowFile);
+        file_move(oldBstMixedLowFile, BstMixedLowFile);
         % Delete intermediate files
         file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
         db_reload_subjects(iSubject);

@@ -117,7 +117,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             OutputFiles{i} = strrep(OutputFiles{i}, '.mat', [fileTag '.mat']);
             if ~strcmpi(OldFileName, NewFileName)
                 try 
-                    movefile(OldFileName, NewFileName);
+                    file_move(OldFileName, NewFileName);
                     FileName = NewFileName;
                 catch
                     bst_report('Error', sProcess, sInputs, ['Cannot rename file "' OldFileName '" to "' NewFileName '".']);

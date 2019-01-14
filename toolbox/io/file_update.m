@@ -62,7 +62,7 @@ switch (action)
         end
         % Add new filetype marker
         newFileName = bst_fullfile(filePath, [filetype, '_', fileBase, fileExt]);
-        % Makie new filename unique
+        % Make new filename unique
         newFileName = file_unique(newFileName);
         % Try name to rename file
         [status,errmsg,errmsgid] = movefile(fileName, newFileName);

@@ -90,19 +90,19 @@ newDs = fullfile(newPath, [newName '.ds']);
 % Must check if exists, otherwise would move a duplicate inside newDs.
 if exist(newDs, 'dir')
   % Move all files inside dataset.
-  movefile(fullfile(originalDs, '*'), newDs);
+  file_move(fullfile(originalDs, '*'), newDs);
   % Delete empty original dataset folder.
   rmdir(originalDs);
 else
   % Rename dataset folder.
-  movefile(originalDs, newDs);
+  file_move(originalDs, newDs);
 end
 
 %% rename files inside parent folder
 files = dir(fullfile(newDs, [origName '*']));
 for iFiles = 1:length(files)
     repName = regexprep(files(iFiles).name, origName, newName);
-    movefile(fullfile(newDs,files(iFiles).name), fullfile(newDs,repName));
+    file_move(fullfile(newDs,files(iFiles).name), fullfile(newDs,repName));
 end
 
 %% ClassFile.cls

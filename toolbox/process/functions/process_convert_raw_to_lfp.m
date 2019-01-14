@@ -386,7 +386,7 @@ function downloadAndInstallDeriveLFP()
     unzip(zipFile, DeriveLFPTmpDir);
     newDeriveLFPDir = bst_fullfile(DeriveLFPTmpDir);
     % Move directory to proper location
-    movefile(newDeriveLFPDir, DeriveLFPDir);
+    file_move(newDeriveLFPDir, DeriveLFPDir);
     % Delete unnecessary files
     file_delete(DeriveLFPTmpDir, 1, 3);
     % Add to Matlab path

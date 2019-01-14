@@ -279,7 +279,7 @@ function downloadAndInstallUltraMegaSort2000()
     idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
     newUltraMegaSort2000Dir = bst_fullfile(UltraMegaSort2000TmpDir, diropen(idir).name, 'UMS2K-master');
     % Move UltraMegaSort2000 directory to proper location
-    movefile(newUltraMegaSort2000Dir, UltraMegaSort2000Dir);
+    file_move(newUltraMegaSort2000Dir, UltraMegaSort2000Dir);
     % Delete unnecessary files
     file_delete(UltraMegaSort2000TmpDir, 1, 3);
     % Add UltraMegaSort2000 to Matlab path

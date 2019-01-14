@@ -110,7 +110,7 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
         end
         mkdir(mffDir);
         libDir = bst_fullfile(mffDirTmp, 'mffmatlabio', '*');
-        movefile(libDir, mffDir);
+        file_move(libDir, mffDir);
         rmdir(mffDirTmp, 's');
         mffJarExists = 1;
     end

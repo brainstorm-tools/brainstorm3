@@ -96,9 +96,9 @@ MriPre = fullfile(AnatDir, 'subjectimage_pre.mat');
 MriPost = fullfile(AnatDir, 'subjectimage_post_orig.mat');
 MriPostReslice = fullfile(AnatDir, 'subjectimage_post.mat');
 % Rename imported volumes
-movefile(file_fullpath(DbMriFilePre), MriPre);
-movefile(file_fullpath(DbMriFilePostReg), MriPost);
-movefile(file_fullpath(DbMriFilePostReslice), MriPostReslice);
+file_move(file_fullpath(DbMriFilePre), MriPre);
+file_move(file_fullpath(DbMriFilePostReg), MriPost);
+file_move(file_fullpath(DbMriFilePostReslice), MriPostReslice);
 sSubject.Anatomy(1).FileName = file_short(MriPre);
 sSubject.Anatomy(2).FileName = file_short(MriPost);
 sSubject.Anatomy(3).FileName = file_short(MriPostReslice);

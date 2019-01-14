@@ -296,7 +296,7 @@ function downloadAndInstallWaveClus()
     idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
     newWaveclusDir = bst_fullfile(waveclusTmpDir, diropen(idir).name, 'wave_clus-testing');
     % Move WaveClus directory to proper location
-    movefile(newWaveclusDir, waveclusDir);
+    file_move(newWaveclusDir, waveclusDir);
     % Delete unnecessary files
     file_delete(waveclusTmpDir, 1, 3);
     % Add WaveClus to Matlab path

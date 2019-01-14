@@ -181,7 +181,7 @@ function downloadAndInstallPlotly()
     idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
     newPlotlyDir = bst_fullfile(plotlyTmpDir, diropen(idir).name, 'plotly');
     % Move plotly directory to proper location
-    movefile(newPlotlyDir, plotlyDir);
+    file_move(newPlotlyDir, plotlyDir);
     % Delete unnecessary files
     file_delete(plotlyTmpDir, 1, 3);
     % Add Plotly to Matlab path

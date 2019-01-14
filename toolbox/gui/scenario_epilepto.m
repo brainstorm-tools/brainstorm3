@@ -388,9 +388,9 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
             file_delete(DbMriFilePost, 1);
             sSubject.Anatomy(2) = [];
             % Rename imported volumes
-            movefile(file_fullpath(DbMriFilePre), MriPre);
-            movefile(file_fullpath(DbMriFilePostReg), MriPostOrig);
-            movefile(file_fullpath(DbMriFilePostReslice), MriPostReslice);
+            file_move(file_fullpath(DbMriFilePre), MriPre);
+            file_move(file_fullpath(DbMriFilePostReg), MriPostOrig);
+            file_move(file_fullpath(DbMriFilePostReslice), MriPostReslice);
             sSubject.Anatomy(1).FileName = file_short(MriPre);
             sSubject.Anatomy(2).FileName = file_short(MriPostOrig);
             sSubject.Anatomy(3).FileName = file_short(MriPostReslice);

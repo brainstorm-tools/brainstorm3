@@ -264,7 +264,7 @@ atlasDir = bst_fileparts(file_fullpath(sDefSubject.FileName));
 dirScout = dir(bst_fullfile(atlasDir, 'scout_*.mat'));
 % Copy all the files file
 for i = 1:length(dirScout)
-    copyfile(bst_fullfile(atlasDir, dirScout(i).name), bst_fullfile(OutputDir, dirScout(i).name))
+    file_copy(bst_fullfile(atlasDir, dirScout(i).name), bst_fullfile(OutputDir, dirScout(i).name))
 end
 
 

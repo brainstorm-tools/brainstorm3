@@ -190,8 +190,8 @@ function [destName, Messages] = DuplicateSubject(srcName, Tag, isRefresh)
         file_delete(tmpDataDir, 1, 1);
     end
     % Copy src folders to tmp folders
-    isOk1 = copyfile(srcAnatDir, tmpAnatDir, 'f');
-    isOk2 = copyfile(srcDataDir, tmpDataDir, 'f');
+    isOk1 = file_copy(srcAnatDir, tmpAnatDir);
+    isOk2 = file_copy(srcDataDir, tmpDataDir);
     if ~isOk1 || ~isOk2
         Messages = ['Could not copy files: ' 10 srcAnatDir 10 srcDataDir];
         disp(['DUPLICATE> Error: ' Messages]);
@@ -207,8 +207,8 @@ function [destName, Messages] = DuplicateSubject(srcName, Tag, isRefresh)
     % Rename src subject to dest subject
     db_rename_subject(srcName, destName, 0);
     % Copy contents tmp folders into new subjects
-    movefile(tmpAnatDir, srcAnatDir, 'f');
-    movefile(tmpDataDir, srcDataDir, 'f');
+    file_move(tmpAnatDir, srcAnatDir);
+    file_move(tmpDataDir, srcDataDir);
     % Add new subject
     ProtocolSubjects = bst_get('ProtocolSubjects');
     ProtocolSubjects.Subject(end+1) = sSrcSubj;
@@ -271,7 +271,7 @@ function [sSubjectDest, iSubjectDest, Messages] = CopySubjectAnat(srcName, destN
             if (dirFiles(i).name(1) == '.') || ~isempty(strfind(dirFiles(i).name(1), 'brainstormsubject'))
                 continue;
             end
-            copyfile(fullfile(srcAnatDir, dirFiles(i).name), fullfile(destAnatDir, dirFiles(i).name), 'f');
+            file_copy(fullfile(srcAnatDir, dirFiles(i).name), fullfile(destAnatDir, dirFiles(i).name));
         end
         % Reload subejct anatomy
         db_reload_subjects(iSubjectDest);
@@ -316,7 +316,7 @@ function [destPath, Messages] = DuplicateCondition(srcPath, Tag, isRefresh)
         file_delete(tmpDir, 1, 1);
     end
     % Copy src folders to tmp folders
-    isOk = copyfile(srcDir, tmpDir, 'f');
+    isOk = file_copy(srcDir, tmpDir);
     if ~isOk
         Messages = ['Could not copy file:' srcDir];
         disp(['DUPLICATE> Error: ' Messages]);
@@ -331,7 +331,7 @@ function [destPath, Messages] = DuplicateCondition(srcPath, Tag, isRefresh)
     % Rename src subject to dest subject
     db_rename_condition(srcPath, destPath);
     % Copy contents tmp folder into new condition
-    movefile(tmpDir, srcDir, 'f');
+    file_move(tmpDir, srcDir);
     % Add new study
     ProtocolStudy = bst_get('ProtocolStudies');
     ProtocolStudy.Study(end+1) = sSrcStudy;

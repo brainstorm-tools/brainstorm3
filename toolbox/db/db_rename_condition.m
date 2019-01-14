@@ -89,7 +89,7 @@ end
 %% ===== RENAME FOLDER =====
 % Move the folder
 if isMove
-    isOk = movefile(bst_fullfile(ProtocolInfo.STUDIES, oldPath), bst_fullfile(ProtocolInfo.STUDIES, newPath), 'f');
+    isOk = file_move(bst_fullfile(ProtocolInfo.STUDIES, oldPath), bst_fullfile(ProtocolInfo.STUDIES, newPath));
     if ~isOk
         bst_error(['Error: Could not rename "' oldPath '" to "' newPath '".'], 'Rename', 0);
         return;

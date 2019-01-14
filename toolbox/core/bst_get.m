@@ -147,6 +147,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('DisableOpenGL')         : {0,1,2} - If 1, do not use OpenGL renderer; if 2, use software OpenGL
 %    - bst_get('InterfaceScaling')      : {100,125,150,...} - Scales the Brainstorm GUI by a fixed factor
 %    - bst_get('GraphicsSmoothing')     : {0,1} - If 1, uses the graphics smoothing (Matlab >= 2014b)
+%    - bst_get('SystemCopy')            : {0,1} - If 1, uses the system calls mv/cp instead of movefile/copyfile (Linux only)
 %    - bst_get('JOGLVersion')           : {0,1,2}, Detect the current version of JOGL available in Matlab
 %    - bst_get('DefaultFormats')        : Default formats for importing/exporting data, channels, ... (last used)
 %    - bst_get('BFSProperties')         : Conductivities and thicknesses for 3-shell spherical forward model
@@ -2431,6 +2432,13 @@ switch contextName
         else
             argout1 = 0;
         end 
+        
+    case 'SystemCopy'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'SystemCopy')
+            argout1 = GlobalData.Preferences.SystemCopy;
+        else
+            argout1 = 0;
+        end
         
     case 'ExpertMode'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ExpertMode')

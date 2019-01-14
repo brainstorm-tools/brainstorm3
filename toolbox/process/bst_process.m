@@ -2205,7 +2205,7 @@ function [sFileOut, errMsg] = CreateRawOut(sFileIn, RawFileOut, ImportOptions, i
             % Define output filename
             sFileOut.filename = RawFileOut;
             % Copy in file to out file
-            res = copyfile(sFileIn.filename, sFileOut.filename, 'f');
+            res = file_copy(sFileIn.filename, sFileOut.filename);
             if ~res
                 error(['Could not create output file: ' sFileOut.filename]);
             end
@@ -2285,7 +2285,7 @@ function [sFileOut, errMsg] = CreateRawOut(sFileIn, RawFileOut, ImportOptions, i
                 end
                 % Copy file, replacing the name of the DS
                 if ~isempty(destfile)
-                    res = copyfile(bst_fullfile(pathIn, dirDs(iFile).name), destfile, 'f');
+                    res = file_copy(bst_fullfile(pathIn, dirDs(iFile).name), destfile);
                     if ~res
                         errMsg = ['Could not create output file: ' destfile];
                         sFileOut = [];

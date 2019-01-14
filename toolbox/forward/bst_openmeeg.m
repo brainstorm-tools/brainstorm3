@@ -135,7 +135,7 @@ if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) ||
         origTgzFile = tgzFile;
         [fPath, fName, fExt] = bst_fileparts(origTgzFile);
         tgzFile = bst_fullfile(OpenmeegDir, [fName, fExt]);
-        copyfile(origTgzFile, tgzFile);
+        file_copy(origTgzFile, tgzFile);
     end
     % Display again progress bar
     bst_progress('start', 'OpenMEEG', 'Installing OpenMEEG...');
@@ -154,18 +154,18 @@ if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) ||
     % Move all files to OpenmeegDir
     % Bug workaround: FT Jul-2018/OM2.4: On MacOS, the files must keep their original bin/ and lib/ subfolders
     if strcmpi(osType, 'mac64')
-        movefile(bst_fullfile(unzipDir, 'bin'), OpenmeegDir);
-        movefile(bst_fullfile(unzipDir, 'lib'), OpenmeegDir);
+        file_move(bst_fullfile(unzipDir, 'bin'), OpenmeegDir);
+        file_move(bst_fullfile(unzipDir, 'lib'), OpenmeegDir);
         try
-            movefile(bst_fullfile(unzipDir, 'doc'), OpenmeegDir);
+            file_move(bst_fullfile(unzipDir, 'doc'), OpenmeegDir);
         catch
         end
     % Other systems: Move all the files from all the subfolders to the same openmeeg folder
     else
-        movefile(bst_fullfile(unzipDir, 'bin', '*'), OpenmeegDir);
-        movefile(bst_fullfile(unzipDir, 'lib', '*'), OpenmeegDir);
+        file_move(bst_fullfile(unzipDir, 'bin', '*'), OpenmeegDir);
+        file_move(bst_fullfile(unzipDir, 'lib', '*'), OpenmeegDir);
         try
-            movefile(bst_fullfile(unzipDir, 'doc', '*'), OpenmeegDir);
+            file_move(bst_fullfile(unzipDir, 'doc', '*'), OpenmeegDir);
         catch
         end
     end

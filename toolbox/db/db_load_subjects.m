@@ -106,7 +106,7 @@ elseif ~isempty(rootSubjectFiles)
         % If directory was created successfully 
         if (status)
             % Move all files in the newly created directory
-            status = movefile(bst_fullfile(ProtocolInfo.SUBJECTS, '*.*'), bst_fullfile(ProtocolInfo.SUBJECTS, newDirName), 'f');
+            status = file_move(bst_fullfile(ProtocolInfo.SUBJECTS, '*.*'), bst_fullfile(ProtocolInfo.SUBJECTS, newDirName));
             if (~status)
                 warning('Brainstorm:CannotMoveFile', 'Cannot move subject file ''%s'' to directory ''%s''.', bst_fullfile(ProtocolInfo.SUBJECTS, rootSubjectFiles(1).name), bst_fullfile(ProtocolInfo.SUBJECTS, newDirName));
             end

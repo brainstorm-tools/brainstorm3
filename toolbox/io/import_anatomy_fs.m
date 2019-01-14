@@ -406,12 +406,12 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile)
     % Rename high-res file
     oldCortexHiFile = file_fullpath(CortexHiFile);
     CortexHiFile    = bst_fullfile(bst_fileparts(oldCortexHiFile), 'tess_cortex_pial_high.mat');
-    movefile(oldCortexHiFile, CortexHiFile);
+    file_move(oldCortexHiFile, CortexHiFile);
     CortexHiFile = file_short(CortexHiFile);
     % Rename high-res file
     oldCortexLowFile = file_fullpath(CortexLowFile);
     CortexLowFile    = bst_fullfile(bst_fileparts(oldCortexLowFile), 'tess_cortex_pial_low.mat');
-    movefile(oldCortexLowFile, CortexLowFile);
+    file_move(oldCortexLowFile, CortexLowFile);
     CortexHiFile = file_short(CortexHiFile);
 else
     CortexHiFile = [];
@@ -427,11 +427,11 @@ if ~isempty(TessLwFile) && ~isempty(TessRwFile)
     % Rename high-res file
     oldWhiteHiFile = file_fullpath(WhiteHiFile);
     WhiteHiFile    = bst_fullfile(bst_fileparts(oldWhiteHiFile), 'tess_cortex_white_high.mat');
-    movefile(oldWhiteHiFile, WhiteHiFile);
+    file_move(oldWhiteHiFile, WhiteHiFile);
     % Rename high-res file
     oldWhiteLowFile = file_fullpath(WhiteLowFile);
     WhiteLowFile    = bst_fullfile(bst_fileparts(oldWhiteLowFile), 'tess_cortex_white_low.mat');
-    movefile(oldWhiteLowFile, WhiteLowFile);
+    file_move(oldWhiteLowFile, WhiteLowFile);
 end
 % Merge hemispheres: mid-surface
 if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
@@ -443,11 +443,11 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isem
     % Rename high-res file
     oldMidHiFile = file_fullpath(MidHiFile);
     MidHiFile    = bst_fullfile(bst_fileparts(oldMidHiFile), 'tess_cortex_mid_high.mat');
-    movefile(oldMidHiFile, MidHiFile);
+    file_move(oldMidHiFile, MidHiFile);
     % Rename high-res file
     oldMidLowFile = file_fullpath(MidLowFile);
     MidLowFile    = bst_fullfile(bst_fileparts(oldMidLowFile), 'tess_cortex_mid_low.mat');
-    movefile(oldMidLowFile, MidLowFile);
+    file_move(oldMidLowFile, MidLowFile);
 %     % Use by default instead of the cortex surface
 %     CortexHiFile  = MidHiFile;
 %     CortexLowFile = MidLowFile;
@@ -484,7 +484,7 @@ if isAseg && ~isempty(AsegFile)
         % Rename mixed file
         oldBstMixedLowFile = file_fullpath(BstMixedLowFile);
         BstMixedLowFile    = bst_fullfile(bst_fileparts(oldBstMixedLowFile), 'tess_cortex_pialcereb_low.mat');
-        movefile(oldBstMixedLowFile, BstMixedLowFile);
+        file_move(oldBstMixedLowFile, BstMixedLowFile);
         % Delete intermediate files
         file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
         db_reload_subjects(iSubject);

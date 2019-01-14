@@ -137,7 +137,7 @@ for i = 1:length(dirFiles)
         bst_save(targetSubjFile, targetSubjMat, 'v7');
     % Else: plain copy of the file
     else
-        copyfile(bst_fullfile(templateDir, dirFiles(i).name), targetDir);
+        file_copy(bst_fullfile(templateDir, dirFiles(i).name), targetDir);
     end
 end
 

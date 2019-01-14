@@ -457,7 +457,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Rename internal DS files
                 dsFolder = fileparts(sFile.filename);
                 tempPath = bst_fullfile(megFolder, [rawName, rawExt]);
-                copyfile(dsFolder, tempPath);
+                file_copy(dsFolder, tempPath);
                 if ~strcmp(tempPath, newPath)
                     ctf_rename_ds(tempPath, newPath, []);
                 end
@@ -469,7 +469,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Remove internal Polhemus files
                 delete(bst_fullfile(newPath, '*.pos'));
             else
-                copyfile(sFile.filename, newPath);
+                file_copy(sFile.filename, newPath);
             end
             % Create JSON sidecar
             jsonFile = bst_fullfile(megFolder, [newName '.json']);

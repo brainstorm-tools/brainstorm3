@@ -90,7 +90,7 @@ if (length(NiiFiles) > 1) && isInteractive
         strFiles{i} = [strId ' | ' strDate ' | ' strProtocol ' | ' num2str(fInfo.bytes/1024/1024,'%1.1f') 'Mb'];
         % Rename file to Date-Protocol.nii
         newFile = file_unique(fullfile(fPath, [strDate, '_', strProtocol, '.nii']));
-        movefile(NiiFiles{i}, newFile);
+        file_move(NiiFiles{i}, newFile);
         NiiFiles{i} = newFile;
     end
     % Ask user which volumes to import

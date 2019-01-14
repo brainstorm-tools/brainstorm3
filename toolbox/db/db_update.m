@@ -305,7 +305,7 @@ end
             DbFile = bst_get('BrainstormDbFile');
             BakDbFile = file_unique(strrep(DbFile, '.mat', sprintf('_%02.0f%02.0f%02.0f_%02.0f%02.0f.bak', c(1)-2000, c(2:5))));
             try
-                copyfile(DbFile, BakDbFile, 'f');
+                file_copy(DbFile, BakDbFile);
             catch
                 disp(['UPDATE> Cannot write backup file "' BakDbFile '".']);
             end

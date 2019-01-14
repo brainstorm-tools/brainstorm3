@@ -82,13 +82,13 @@ for iSubj = 1:16
     % Copy anatomy files
     mkdir(AnatDest);
     disp(['Copying: ' AnatSrc ' to ' AnatDest '...']);
-    copyfile(bst_fullfile(AnatSrc, '*.mat'), AnatDest);
+    file_copy(bst_fullfile(AnatSrc, '*.mat'), AnatDest);
     % Copy analysis folders
     mkdir(bst_fullfile(DataDest, '@default_study'));
     mkdir(bst_fullfile(DataDest, '@intra'));
     disp(['Copying: ' DataSrc ' to ' DataDest '...']);
-    copyfile(bst_fullfile(DataSrc, '@default_study', '*.mat'), bst_fullfile(DataDest, '@default_study'));
-    copyfile(bst_fullfile(DataSrc, '@intra', '*.mat'), bst_fullfile(DataDest, '@intra'));
+    file_copy(bst_fullfile(DataSrc, '@default_study', '*.mat'), bst_fullfile(DataDest, '@default_study'));
+    file_copy(bst_fullfile(DataSrc, '@intra', '*.mat'), bst_fullfile(DataDest, '@intra'));
     % Loop on runs
     for iRun = 1:6
         % Run folders
@@ -103,20 +103,20 @@ for iSubj = 1:16
         % Copy files
         mkdir(RunDest);
         disp(['Copying: ' RunSrc ' to ' RunDest '...']);
-        copyfile(bst_fullfile(RunSrc, 'brainstormstudy.mat'), RunDest);
-        copyfile(bst_fullfile(RunSrc, 'channel_*.mat'), RunDest);
-        copyfile(bst_fullfile(RunSrc, '*_average_*.mat'), RunDest);
+        file_copy(bst_fullfile(RunSrc, 'brainstormstudy.mat'), RunDest);
+        file_copy(bst_fullfile(RunSrc, 'channel_*.mat'), RunDest);
+        file_copy(bst_fullfile(RunSrc, '*_average_*.mat'), RunDest);
         if ~isempty(dir(bst_fullfile(RunSrc, 'headmodel_*.mat')))
-            copyfile(bst_fullfile(RunSrc, 'headmodel_*.mat'), RunDest);
+            file_copy(bst_fullfile(RunSrc, 'headmodel_*.mat'), RunDest);
         end
         if ~isempty(dir(bst_fullfile(RunSrc, 'noisecov_full.mat')))
-            copyfile(bst_fullfile(RunSrc, 'noisecov_full.mat'), RunDest);
+            file_copy(bst_fullfile(RunSrc, 'noisecov_full.mat'), RunDest);
         end
         if ~isempty(dir(bst_fullfile(RunSrc, 'results_*.mat')))
-            copyfile(bst_fullfile(RunSrc, 'results_*.mat'), RunDest);
+            file_copy(bst_fullfile(RunSrc, 'results_*.mat'), RunDest);
         end
         if ~isempty(dir(bst_fullfile(RunSrc, 'timefreq_*.mat')))
-            copyfile(bst_fullfile(RunSrc, 'timefreq_*.mat'), RunDest);
+            file_copy(bst_fullfile(RunSrc, 'timefreq_*.mat'), RunDest);
         end
     end
 end

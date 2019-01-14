@@ -85,7 +85,7 @@ end
 ft_pthreadlib = bst_fullfile(ft_dir, 'realtime', 'src', 'external', 'pthreads-win64', 'lib'); 
 if ispc && ~exist(bst_fullfile(ft_rtbuffer, 'pthreadGC2-w64.dll'), 'file') && ...
         exist(bst_fullfile(ft_pthreadlib, 'pthreadGC2-w64.dll'), 'file') 
-    copyfile(bst_fullfile(ft_pthreadlib, 'pthreadGC2-w64.dll'), ...
+    file_copy(bst_fullfile(ft_pthreadlib, 'pthreadGC2-w64.dll'), ...
         bst_fullfile(ft_rtbuffer, 'pthreadGC2-w64.dll'));
 end
 
@@ -161,7 +161,7 @@ if isWarp
     
     % Copy default channel file to this condition
     DefChannelFile = bst_fullfile(bst_dir, 'defaults', 'meg', 'channel_ctf_default.mat');
-    copyfile(DefChannelFile, bst_fileparts(file_fullpath(sStudy.FileName)));
+    file_copy(DefChannelFile, bst_fileparts(file_fullpath(sStudy.FileName)));
     % Reload condition
     db_reload_studies(iStudy);
 

@@ -192,7 +192,7 @@ origCortexFile = tess_concatenate({BstTessLhFile, BstTessRhFile}, sprintf('corte
 % Rename high-res file
 origCortexFile = file_fullpath(origCortexFile);
 CortexFile     = bst_fullfile(bst_fileparts(origCortexFile), 'tess_cortex_mid.mat');
-movefile(origCortexFile, CortexFile);
+file_move(origCortexFile, CortexFile);
 % Keep relative path only
 CortexFile = file_short(CortexFile);
 % Delete original files

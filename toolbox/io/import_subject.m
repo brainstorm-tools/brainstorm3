@@ -135,13 +135,13 @@ for i = 1:length(subjectNames)
         continue;
     end
     % Copy the anat folder
-    isOk = copyfile(tmpSubjectDir, destSubjectDir, 'f');
+    isOk = file_copy(tmpSubjectDir, destSubjectDir);
     if ~isOk
         errMsg = [errMsg, 'Could not create subject folder: ' destSubjectDir];
         continue;
     end
     % Copy the data folder
-    isOk = copyfile(tmpStudyDir, destStudyDir, 'f');
+    isOk = file_copy(tmpStudyDir, destStudyDir);
     if ~isOk
         errMsg = [errMsg, 'Could not create study folder: ' destStudyDir];
         continue;

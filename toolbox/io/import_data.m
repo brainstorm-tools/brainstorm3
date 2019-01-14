@@ -384,7 +384,7 @@ for iFile = 1:length(DataFiles)
         end
         % If data file is not in study subdirectory : need to move it
         if ~file_compare(importedPath, bst_fileparts(finalImportedFile))
-            movefile(ImportedDataMat(iImported).FileName, finalImportedFile, 'f');
+            file_move(ImportedDataMat(iImported).FileName, finalImportedFile);
             ImportedDataMat(iImported).FileName = file_short(finalImportedFile);
         end
     

@@ -156,7 +156,7 @@ for iSubj = 1:length(uniqueSubjectFiles)
             % Build full source filename
             srcFilename = bst_fullfile(dirStudy, studyFiles(iFile).name);
             % Move file physically
-            movefile(srcFilename, destFilename);
+            file_move(srcFilename, destFilename);
         end
     end
 end

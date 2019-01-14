@@ -64,7 +64,7 @@ if isdir(bst_fullfile(ProtocolInfo.STUDIES, newName))
 end
 
 %% ===== MOVE ANATOMY FOLDER =====
-isOk = movefile(bst_fullfile(ProtocolInfo.SUBJECTS, oldName), bst_fullfile(ProtocolInfo.SUBJECTS, newName), 'f');
+isOk = file_move(bst_fullfile(ProtocolInfo.SUBJECTS, oldName), bst_fullfile(ProtocolInfo.SUBJECTS, newName));
 if ~isOk
     bst_error(['Could not rename anat/"' oldName '" to anat/"' newName '".'], 'Rename', 0);
     return;
@@ -86,7 +86,7 @@ for iDir = 1:length(listDir)
 end
 
 %% ===== MOVE DATA FOLDER =====
-isOk = movefile(bst_fullfile(ProtocolInfo.STUDIES, oldName), bst_fullfile(ProtocolInfo.STUDIES, newName), 'f');
+isOk = file_move(bst_fullfile(ProtocolInfo.STUDIES, oldName), bst_fullfile(ProtocolInfo.STUDIES, newName));
 if ~isOk
     bst_error(['Error: Could not rename data/"' oldName '" to data/"' newName '".'], 'Rename', 0);
     return;

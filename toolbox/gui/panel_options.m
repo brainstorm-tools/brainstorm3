@@ -53,6 +53,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckGfp        = gui_component('CheckBox', jPanelSystem, 'br', 'Display GFP over time series', [], [], []);
         jCheckForceComp  = gui_component('CheckBox', jPanelSystem, 'br', 'Force mat-files compression (slower)', [], [], []);
         jCheckIgnoreMem  = gui_component('CheckBox', jPanelSystem, 'br', 'Ignore memory warnings', [], [], []);
+        if ~ispc
+            jCheckSystemCopy  = gui_component('CheckBox', jPanelSystem, 'br', 'Use system calls to copy/move files', [], [], []);
+        else
+            jCheckSystemCopy = [];
+        end
     jPanelLeft.add('hfill', jPanelSystem);
     % ===== LEFT: OPEN GL =====
     jPanelOpengl = gui_river([5 2], [0 15 8 15], 'OpenGL rendering');
@@ -177,6 +182,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         if ~isempty(jCheckSmooth)
             jCheckSmooth.setSelected(bst_get('GraphicsSmoothing') > 0);
         end
+        if ~isempty(jCheckSystemCopy)
+            jCheckSystemCopy.setSelected(bst_get('SystemCopy'));
+        end
         switch bst_get('DisableOpenGL')
             case 0
                 jRadioOpenHard.setSelected(1);
@@ -224,6 +232,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             bst_set('DownsampleTimeSeries', 5);
         else
             bst_set('DownsampleTimeSeries', 0);
+        end
+        if ~isempty(jCheckSystemCopy)
+            bst_set('SystemCopy', jCheckSystemCopy.isSelected());
         end
         if ~isempty(jCheckSmooth)
             % Update value

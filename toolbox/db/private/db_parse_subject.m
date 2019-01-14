@@ -290,7 +290,7 @@ end
                 % An error occured during the 'load' operation
                 warning('Brainstorm:CannotOpenFile', 'Cannot open surface file ''%s''. Adding ''.bak'' to the filename.', relativeFilename);
                 fullfilename = bst_fullfile(subjectsDir, relativeFilename);
-                movefile(fullfilename, [fullfilename, '.bak']);
+                file_move(fullfilename, [fullfilename, '.bak']);
             end
         else
             % File does not exist

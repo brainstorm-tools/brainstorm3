@@ -57,7 +57,7 @@ if ~file_exist(mexFile) && ~file_exist(mexFileUser)
         % Copy file to user's mex directory 
         userMexDir = bst_get('UserMexDir');
         % Copy current C-file and m-file to this directory
-        copyfile(cFile, userMexDir);
+        file_copy(cFile, userMexDir);
         % Move to this user's mex directory
         cd(userMexDir);
         mexFile = strrep(mexFile, fileparts(mexFile), userMexDir);

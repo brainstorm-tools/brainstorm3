@@ -337,7 +337,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bz_MakeXMLFromProbeMaps({xmlFileBase}, '','',1,defaults) % This creates a Barcode_f096_kilosort_spikes.xml
         weird_xml_filename = dir('*.xml');
         [tmp, weird_xml_fileBase] = bst_fileparts(weird_xml_filename.name);
-        movefile([weird_xml_fileBase '.xml'],[xmlFileBase '.xml']); % Barcode_f096.xml
+        file_move([weird_xml_fileBase '.xml'],[xmlFileBase '.xml']); % Barcode_f096.xml
         
         
         %% Convert to the right input for KiloSort
@@ -594,7 +594,7 @@ function downloadAndInstallKiloSort()
     bst_progress('start', 'KiloSort', 'Installing KiloSort...');
     unzip(KiloSortZipFile, KiloSortTmpDir);
     % Move KiloSort directory to proper location
-    movefile(bst_fullfile(KiloSortTmpDir, 'KiloSort-master'), ...
+    file_move(bst_fullfile(KiloSortTmpDir, 'KiloSort-master'), ...
         bst_fullfile(KiloSortDir, 'kilosort'));
     % Copy config file
     copyKilosortConfig(bst_fullfile(KiloSortDir, 'kilosort', 'configFiles', 'StandardConfig_MOVEME.m'), ...
@@ -603,20 +603,20 @@ function downloadAndInstallKiloSort()
     % Unzip KiloSort Wrapper zip-file
     unzip(KiloSortWrapperZipFile, KiloSortTmpDir);
     % Move KiloSort Wrapper directory to proper location
-    movefile(bst_fullfile(KiloSortTmpDir, 'KilosortWrapper-master'), ...
+    file_move(bst_fullfile(KiloSortTmpDir, 'KilosortWrapper-master'), ...
         bst_fullfile(KiloSortDir, 'wrapper'));
     
     % Unzip Phy zip-file
     unzip(PhyZipFile, KiloSortTmpDir);
     % Move Phy directory to proper location
-    movefile(bst_fullfile(KiloSortTmpDir, 'phy-master'), ...
+    file_move(bst_fullfile(KiloSortTmpDir, 'phy-master'), ...
         bst_fullfile(KiloSortDir, 'phy'));
     
     
     % Unzip npy-matlab zip-file
     unzip(npyZipFile, KiloSortTmpDir);
     % Move npy directory to proper location
-    movefile(bst_fullfile(KiloSortTmpDir, 'npy-matlab-master'), ...
+    file_move(bst_fullfile(KiloSortTmpDir, 'npy-matlab-master'), ...
         bst_fullfile(KiloSortDir, 'npy'));
     
     % Delete unnecessary files
