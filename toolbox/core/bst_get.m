@@ -26,6 +26,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('FileFilters', DataType) : Get the list of import filters for a specific data type
 %    - bst_get('FieldTripDir')          : Full path to a local installation of FieldTrip
 %    - bst_get('SpmDir')                : Full path to a local installation of SPM
+%    - bst_get('SpmTpmAtlas')           : Full path to the SPM atlas TPM.nii
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_get('iProtocol')             : Indice of current protocol 
@@ -211,7 +212,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 %          Martin Cousineau, 2017
 
 %% ==== PARSE INPUTS ====
@@ -2530,6 +2531,17 @@ switch contextName
                 argout1 = [];
             end
         else
+            argout1 = [];
+        end
+        
+    case 'SpmTpmAtlas'
+        % Get template file
+        argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
+        % If it does not exist: check in brainstorm3 folder
+        if ~file_exist(argout1)
+            argout1 = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
+        end
+        if ~file_exist(argout1)
             argout1 = [];
         end
         

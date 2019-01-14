@@ -19,12 +19,15 @@ function Transf = mri_register_maff(sMri)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2019
 
 
 bst_progress('start', 'Normalize anatomy', 'Loading tissue probability map...');
 % Get template file
-tpmFile = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
+tpmFile = bst_get('SpmTpmAtlas');
+if isempty(tpmFile)
+    error('Missing file TPM.nii');
+end
 % Loading the tissue probability map
 tpm = bst_spm_load_priors8(tpmFile);
 

@@ -22,7 +22,7 @@ function varargout = process_import_bids( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2018; Martin Cousineau, 2018
+% Authors: Francois Tadel, 2016-2019; Martin Cousineau, 2018
 
 eval(macro_method);
 end
