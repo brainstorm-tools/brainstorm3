@@ -49,6 +49,10 @@ end
 %% ===== GET SPM TEMPLATE =====
 % Get template file
 tpmFile = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
+% If it does not exist: check in brainstorm3 folder
+if ~file_exist(tpmFile)
+    tpmFile = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
+end
 % If it does not exist: download
 if ~file_exist(tpmFile)
     % Create folder

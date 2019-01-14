@@ -55,9 +55,17 @@ curdir = pwd;
 
 
 %% ===== DOWNLOAD OPENMEEG =====
-% Get openmeeg folder
+% Get openmeeg folder 
 osType = bst_get('OsType', 0);
 OpenmeegDir = bst_fullfile(bst_get('BrainstormUserDir'), 'openmeeg', osType);
+% If openmeeg dir doesn't exist in user folder, try to look for it in the Brainstorm folder
+if ~isdir(OpenmeegDir)
+    OpenmeegDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'openmeeg', osType);
+    if isdir(OpenmeegDirMaster)
+        OpenmeegDir = OpenmeegDirMaster;
+    end
+end
+% URL file defines the current version
 urlFile = bst_fullfile(OpenmeegDir, 'url');
 % Force manual update: select tar.gz file
 if isUpdate
