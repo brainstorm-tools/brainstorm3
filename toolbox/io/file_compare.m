@@ -40,11 +40,10 @@ end
 
 % Check for empty matrices in cell arrays
 if iscell(f1)
-    % [f1{cellfun(@isempty, f1)}] = deal('');
-    f1(cellfun(@isempty, f1)) = '';
+    f1(cellfun(@isempty, f1)) = {''};
 end
 if iscell(f2)
-    f2(cellfun(@isempty, f2)) = '';
+    f2(cellfun(@isempty, f2)) = {''};
 end
 
 % Remove all OS-dependent characters : '\' and '/'
