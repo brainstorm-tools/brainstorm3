@@ -814,7 +814,7 @@ end
 
 fprintf('BST_INVERSE > Confirm units\n')
 if exist('engunits', 'file')
-    [LambdaY,~,LambdaU] = engunits(sqrt(Lambda));
+    [LambdaY,ignore,LambdaU] = engunits(sqrt(Lambda));
     fprintf('BST_INVERSE > Assumed RMS of the sources is %.3g %sA-m\n',LambdaY,LambdaU);
 else
     fprintf('BST_INVERSE > Assumed RMS of the sources is %g A-m\n', sqrt(Lambda));
