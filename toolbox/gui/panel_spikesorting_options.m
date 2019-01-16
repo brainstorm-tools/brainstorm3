@@ -82,15 +82,13 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             if skipLines > 0
                 fid = fopen(optionFile,'rt');
                 idx = 1;
-                while ~feof(fid) && idx < skipLines
+                while ~feof(fid) && idx <= skipLines
                     line = fgetl(fid);
                     header{idx,1} = line;
                     idx = idx + 1;
-                    skipLines = skipLines - 1;
                 end
                 fclose(fid);
-                header{idx} = newline;
-                header = char(join(header, newline));
+                header = [char(join(header, newline)) newline];
             else
                 header = '';
             end
