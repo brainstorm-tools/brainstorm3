@@ -43,7 +43,12 @@ mkdir(BrainstormDbDir);
 bst_startup(BrainstormHomeDir, 0, BrainstormDbDir);
 
 % Initialize random generator
-rng('default');
+if exist('rng', 'file')
+    rng('default');
+else
+    sRnd = RandStream.getDefaultStream;
+    sRnd.reset();
+end
 
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
 ProtocolName = 'ProtocolTest';
@@ -106,7 +111,6 @@ pause(0.5);
 bst_report('Snapshot', hFigSurf, [], 'view_surface');
 bst_report('Snapshot', hFigMriSurf, [], 'view_mri + surface');
 close([hFigSurf hFigMriSurf]);
-
 
 %% ===== DATA SIMULATION =====
 % Process: Simulate generic signals

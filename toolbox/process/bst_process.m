@@ -2080,7 +2080,7 @@ end
 %         OutputFiles = bst_process('CallProcess', ProcessName, sInputs,   sInputs2,   OPTIONS)
 %         OutputFiles = bst_process('CallProcess', ProcessName, FileNames, FileNames2, OPTIONS)
 %         [OutputFiles, OutputFiles2] = bst_process('CallProcess', ...)
-function [OutputFiles, OutputFiles2] = CallProcess(sProcess, sInputs, sInputs2, varargin)
+function [OutputFiles, OutputFiles2, sInputs, sInputs2] = CallProcess(sProcess, sInputs, sInputs2, varargin)
     % Check if Brainstorm is running
     if ~isappdata(0, 'BrainstormRunning')
         error('Please start Brainstorm before calling bst_process().');

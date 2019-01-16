@@ -28,10 +28,10 @@ if (bst_get('MatlabVersion') == 903)
     % Share the vertices manually
     relative_tolerance = 1e-12;
     sz = size(Vertices);
-    [C, ~, IC] = uniquetol(Vertices, relative_tolerance);
+    [C, ignore, IC] = uniquetol(Vertices, relative_tolerance);
     Vertices = reshape(C(IC),sz);
     % Collapse duplicate vertices.
-    [Vertices, ~, IC] = unique(Vertices, 'rows', 'stable');
+    [Vertices, ignore, IC] = unique(Vertices, 'rows', 'stable');
     Faces = IC(Faces);
 else
     [Faces, Vertices] = isosurface(mrimask, tol);
