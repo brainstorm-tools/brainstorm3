@@ -27,6 +27,8 @@ nEvents   = length(sFile.events);
 if isempty(ChannelsRange)
     ChannelsRange = [1, nChannels];
     isSaveAll = 1;
+elseif isequal(ChannelsRange, [1, nChannels])
+    isSaveAll = 1;
 else
     ChannelsRange = double(ChannelsRange);
     isSaveAll = 0;
