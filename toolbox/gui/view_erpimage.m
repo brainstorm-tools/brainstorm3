@@ -132,7 +132,7 @@ switch (FileType)
             % Some channels are selected in this montage
             if ~isempty(iMatrixDisp)
                 % Get display names for the input channels
-                F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * F(iChanSel,:);
+                F = panel_montage('ApplyMontage', sMontage, F(iChanSel,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
                 % Replace row names
                 RowNames = sMontage.DispNames(iMatrixDisp);
                 % Save channel selections for next files
@@ -224,7 +224,7 @@ switch lower(DisplayMode)
             end
             % Apply montage to the data
             if ~isempty(TsInfo.MontageName) && ~isempty(sMontage)
-                F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * F;
+                F = panel_montage('ApplyMontage', sMontage, F, GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
             end
             % Copy recordings
             ERP(i,1,:,:) = F';

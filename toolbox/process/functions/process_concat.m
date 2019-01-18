@@ -19,7 +19,7 @@ function varargout = process_concat( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2016
+% Authors: Francois Tadel, Marc Lalancette, 2013-2018
 
 eval(macro_method);
 end
@@ -34,8 +34,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 305;
     sProcess.Description = '';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'matrix', 'timefreq'};
-    sProcess.OutputTypes = {'data', 'matrix', 'timefreq'};
+    sProcess.InputTypes  = {'raw', 'data', 'matrix', 'timefreq'};
+    sProcess.OutputTypes = {'raw', 'data', 'matrix', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 2;
     % Definition of the options
@@ -54,8 +54,178 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+    OutputFiles = {};
     % Process separately the different input types
     switch (sInputs(1).FileType)
+        case 'raw'
+            
+            % Load the first file, as the reference
+            fields = fieldnames(db_template('datamat'))'; % and F here is an 'sfile'
+            NewMat = in_bst_data(sInputs(1).FileName, fields{:});
+            
+            
+            % Get input raw path and name
+            if ismember(NewMat.F.format, {'CTF', 'CTF-CONTINUOUS'})
+                [rawPathIn, rawBaseIn] = bst_fileparts(bst_fileparts(NewMat.F.filename));
+            else
+                [rawPathIn, rawBaseIn] = bst_fileparts(NewMat.F.filename);
+            end
+            % Make sure that there are not weird characters in the folder names
+            rawBaseIn = file_standardize(rawBaseIn);
+            % New folder name
+            % Output file tag
+            fileTag = '_concat';
+            if isfield(NewMat.F, 'condition') && ~isempty(NewMat.F.condition)
+                newCondition = ['@raw', NewMat.F.condition, fileTag];
+            else
+                newCondition = ['@raw', rawBaseIn, fileTag];
+            end
+            % Get new condition name
+            ProtocolInfo = bst_get('ProtocolInfo');
+            newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInputs(1).SubjectName, newCondition));
+            % Output file name derives from the condition name
+            [tmp, rawBaseOut] = bst_fileparts(newStudyPath);
+            rawBaseOut = strrep(rawBaseOut, '@raw', '');
+            % Full output filename
+            RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
+            % Get input study (to copy the creation date)
+            sInputStudy = bst_get('AnyFile', sInputs(1).FileName);
+            
+            % Get new condition name
+            [tmp, ConditionName] = bst_fileparts(newStudyPath, 1);
+            % Create output condition
+            iOutputStudy = db_add_condition(sInputs(1).SubjectName, ConditionName, [], sInputStudy.DateOfStudy);
+            if isempty(iOutputStudy)
+                bst_report('Error', sProcess, sInputs(1), ['Output folder could not be created:' 10 newPath]);
+                return;
+            end
+            % Get output study
+            sOutputStudy = bst_get('Study', iOutputStudy);
+            % Full file name
+            OutputFiles{1} = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sOutputStudy.FileName), ['data_0raw_' rawBaseOut '.mat']);
+            
+            % Check all the input files.  We need the total data length first to create the output file.
+            nSamplesTotal = 0;
+            nChannels = numel(NewMat.ChannelFlag);
+            for iInput = 1:numel(sInputs)
+                % Load the next file
+                DataMat = in_bst_data(sInputs(iInput).FileName, {'F'});
+                nSamplesTotal = nSamplesTotal + DataMat.F.prop.samples(2) - DataMat.F.prop.samples(1) + 1;
+                % Only accept continuous files
+                if ~isempty(DataMat.F.epochs) && (numel(DataMat.F.epochs) > 1)
+                    if strcmpi(DataMat.F.format, 'CTF')
+                        % Convert to continuous first.
+                        [DataMat.F, Messages] = process_ctf_convert('Compute', DataMat.F);
+                        if isempty(DataMat.F) && ~isempty(Messages)
+                            bst_report('Error', sProcess, sInputs(iInput), Messages);
+                            return;
+                        elseif ~isempty(Messages)
+                            bst_report('Warning', sProcess, sInputs(iInput), Messages);
+                        end
+                    else
+                        bst_report('Error', sProcess, sInputs(iInput), 'Only continuous raw files can be concatenated.');
+                        return;
+                    end
+                end
+                % Check consistency with the number of sensors
+                if nChannels ~= numel(DataMat.ChannelFlag)
+                    bst_report('Error', sProcess, sInputs(iInput), ['This file has a different number of channels than the previous ones: "' sInputs(iInput).FileName '".']);
+                    return;
+                end
+            end
+            
+            % Create the empty binary file.
+            NewMat.F.prop.samples = NewMat.F.prop.samples(1) + [1, nSamplesTotal] - 1;
+            sfreq = NewMat.F.prop.sfreq;
+            NewMat.F.prop.times =  NewMat.F.prop.times(1) + ([1, nSamplesTotal] - 1) ./ sfreq;
+            NewChannelMat = in_bst_channel(sInputs(1).ChannelFile);
+            [NewMat.F, errMsg] = out_fopen(RawFileOut, 'BST-BIN', NewMat.F, NewChannelMat);
+            % Error processing
+            if isempty(NewMat.F) && ~isempty(errMsg)
+                bst_report('Error', sProcess, sInputs(1), errMsg);
+                return;
+            elseif ~isempty(errMsg)
+                bst_report('Warning', sProcess, sInputs(1), errMsg);
+            end
+            
+            % Set the final time vector
+            NewMat.Time = NewMat.F.prop.times;
+
+            % Set history field
+            NewMat = bst_history('add', NewMat, 'concat', 'Contatenate time from files:');
+            
+            ProcessOptions = bst_get('ProcessOptions'); % for block size.
+            MaxSize = ProcessOptions.MaxBlockSize;
+            
+            BlockSizeCol = max(floor(MaxSize / nChannels), 1);
+            nBlockCol = ceil(nSamplesTotal / BlockSizeCol);
+            bst_progress('start', 'Concatenate raw files', 'Joining files...', 0, nBlockCol);
+
+            % Go through all the input files again to copy the data.
+            nSamplesTotal = 0;
+            for iInput = 1:numel(sInputs)
+                % Load the next file
+                DataMat = in_bst_data(sInputs(iInput).FileName, fields{:});
+                ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
+                
+                if iInput > 1
+                    % Concatenate the events.
+                    if ~isempty(DataMat.F.events)
+                        % Convert the events timing
+                        for iEvt = 1:numel(DataMat.F.events)
+                            DataMat.F.events(iEvt).times   = DataMat.F.events(iEvt).times - ...
+                                DataMat.Time(1) + NewMat.Time(1) + nSamplesTotal ./ sfreq;
+                            DataMat.F.events(iEvt).samples = round(DataMat.F.events(iEvt).times .* sfreq);
+                        end
+                        % Add the events to the new file
+                        if isempty(NewMat.F.events)
+                            NewMat.F.events = DataMat.F.events;
+                        else
+                            % Trick import_events() to work for event concatenation
+                            sFile.events = NewMat.F.events;
+                            sFile.prop.sfreq = sfreq;
+                            sFile = import_events(sFile, [], DataMat.F.events);
+                            NewMat.F.events = sFile.events;
+                        end
+                    end
+                    
+                    % Add the bad channels.
+                    NewMat.ChannelFlag(DataMat.ChannelFlag == -1) = -1;
+                end
+                % History field
+                NewMat = bst_history('add', NewMat, 'concat', [' - ' sInputs(iInput).FileName]);
+                
+                % Concatenate the actual data.
+                nCol = numel(DataMat.Time);
+                if (nChannels * nCol > MaxSize)
+                    BlockSizeCol = max(floor(MaxSize / nChannels), 1);
+                else
+                    BlockSizeCol = nCol;
+                end
+                % Split data in blocks
+                nBlockCol = ceil(nCol / BlockSizeCol);
+                for iBlockCol = 1:nBlockCol
+                    % Indices of columns to process
+                    SamplesBounds = DataMat.F.prop.samples(1) - 1 + ...
+                        [(iBlockCol-1) * BlockSizeCol + 1, min(iBlockCol * BlockSizeCol, nCol)];
+                    % Read block.
+                    A = in_fread(DataMat.F, ChannelMat, 1, SamplesBounds);
+                    % Write block.
+                    NewMat.F = out_fwrite(NewMat.F, NewChannelMat, 1, ...
+                        SamplesBounds - DataMat.F.prop.samples(1) + NewMat.F.prop.samples(1) + nSamplesTotal, [], A);
+                    bst_progress('inc', 1);
+                end
+                nSamplesTotal = nSamplesTotal + DataMat.F.prop.samples(2) - DataMat.F.prop.samples(1) + 1;
+            end
+
+            % If no default channel file: create new channel file
+            if ~isempty(NewChannelMat)
+                db_set_channel(iOutputStudy, NewChannelMat, 2, 0);
+            end
+            
+            % Trick the last line of this function to register in the output study.
+            sInputs(1).iStudy = iOutputStudy;
+            
         case 'data'
             % Load the first file, as the reference
             fields = fieldnames(db_template('datamat'))';
@@ -202,12 +372,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         timeComment = sprintf('(%dms,%dms)', round(1000 * NewMat.Time(1)), round(1000 * NewMat.Time(end)));
     end
     NewMat.Comment = [str_remove_parenth(NewMat.Comment), ' | concat' timeComment];
-    % Get output filename
-    OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sInputs(1).FileName), fileTag);
+    % Get output filename, but already have it if 'raw'.
+    if isempty(OutputFiles)
+        OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sInputs(1).FileName), fileTag);
+    end
     % Save file
     bst_save(OutputFiles{1}, NewMat, 'v6');
     % Register in database
     db_add_data(sInputs(1).iStudy, OutputFiles{1}, NewMat);
+    
 end
 
 

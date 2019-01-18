@@ -686,6 +686,9 @@ function UpdateDisplayOptions(hFig)
             DispName = 'Avg Ref';
         elseif strcmpi(TsInfo.MontageName, 'Average reference (L -> R)')
             DispName = 'Avg Ref LR';
+        % Head distance
+        elseif strcmpi(TsInfo.MontageName, 'Head distance')
+            DispName = 'Head';
         % Regular montages
         else
             DispName = TsInfo.MontageName;
