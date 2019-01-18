@@ -388,6 +388,11 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0)
         end
     end
     isAlignScs = 1;
+elseif isfield(ChannelMat, 'TransfMegLabels') && iscell(ChannelMat.TransfMegLabels) && ismember('Native=>Brainstorm/CTF', ChannelMat.TransfMegLabels)
+    % No need to duplicate this transformation if it was previously
+    % computed, e.g. in in_channel_ctf. (It would be identity the second
+    % time.)
+    isAlignScs = 0;
 else
     isAlignScs = 1;
 end

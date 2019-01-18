@@ -1676,6 +1676,9 @@ function [ChannelName, ChannelLabel] = GetChannelName(iDS, iFig, iLine)
                 ChannelName = ChannelName(1:iTag-1);
             end
             ChannelLabel = ['Channel: ' ChannelName];
+        elseif strcmpi(sFig.Id.Modality, 'HLUDist')
+            ChannelName = 'Distance';
+            ChannelLabel = ['Channel: ' ChannelName];
         else
             iChannel = iFigChannels(iLine);
             ChannelName = char(GlobalData.DataSet(iDS).Channel(iChannel).Name);
@@ -2293,10 +2296,9 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
     end
     % Apply montage
     if ~isempty(iChannels)
-        % Get display names for the input channels
-        F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall(iChannels,:);
+        F = panel_montage('ApplyMontage', sMontage, Fall(iChannels,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
         if ~isempty(StdAll)
-            Std = sMontage.Matrix(iMatrixDisp,iMatrixChan) * StdAll(iChannels,:);
+            Std = panel_montage('ApplyMontage', sMontage, StdAll(iChannels,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
         end
         % Modify channel names
         TsInfo.LinesLabels = sMontage.DispNames(iMatrixDisp)';
@@ -2467,7 +2469,7 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
                 LinesLabels = TsInfo.LinesLabels;
             end
         else
-            LinesLabels = [];
+            LinesLabels = {};
         end
         % Lines colors
         if ~isempty(TsInfo.LinesColor) 
@@ -3363,7 +3365,11 @@ function UpdateScaleBar(iDS, iFig, TsInfo)
          'Tag',     'ColumnScaleBar', ...
          'Parent',  PlotHandles.hColumnScale);
     % Plot data units
-    txtAmp = sprintf('%d %s', round(barMeasure), fUnits);
+    if barMeasure < 10
+      txtAmp = sprintf('%1.1f %s', barMeasure, fUnits);
+    else
+      txtAmp = sprintf('%d %s', round(barMeasure), fUnits);
+    end
     if ~isempty(PlotHandles.hColumnScaleText) && ishandle(PlotHandles.hColumnScaleText)
         set(PlotHandles.hColumnScaleText, 'String', txtAmp);
     else

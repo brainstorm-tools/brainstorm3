@@ -405,6 +405,8 @@ function UpdateFigureName(hFig)
                 strMontage = 'All';
             elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                 strMontage = 'AvgRef';
+            elseif strcmpi(TsInfo.MontageName, 'Head distance')
+                strMontage = 'Head';
             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
                 strMontage = 'Bad';
             elseif strcmpi(TsInfo.MontageName, 'ICA components[tmp]')
@@ -473,6 +475,8 @@ function UpdateFigureName(hFig)
                                 strMontage = 'All';
                             elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                                 strMontage = 'AvgRef';
+                            elseif strcmpi(TsInfo.MontageName, 'Head distance')
+                                strMontage = 'Head';
                             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
                                 strMontage = 'Bad';
                             else
