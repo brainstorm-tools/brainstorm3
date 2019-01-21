@@ -37,7 +37,7 @@ function [sFile, ChannelMat] = in_fopen_plexon(DataFile)
 if isdir(DataFile)
     hdr.BaseFolder = DataFile;
     plexonFormat = '.plx';
-elseif ismember(rawExt, {'.plx', '.pl2'})
+elseif ismember(plexonFormat, {'.plx', '.pl2'})
     hdr.BaseFolder = rawFolder;
 else
     error('Invalid Plexon folder.');
