@@ -33,45 +33,51 @@ function [sFile, ChannelMat] = in_fopen_plexon(DataFile)
 
 %% ===== GET FILES =====
 % Get base dataset folder
+[rawFolder, rawFile, plexonFormat] = bst_fileparts(DataFile);
 if isdir(DataFile)
     hdr.BaseFolder = DataFile;
-elseif strcmpi(DataFile(end-3:end), '.plx')
-    hdr.BaseFolder = bst_fileparts(DataFile);
+    plexonFormat = '.plx';
+elseif ismember(rawExt, {'.plx', '.pl2'})
+    hdr.BaseFolder = rawFolder;
 else
     error('Invalid Plexon folder.');
 end
 
 
 %% ===== FILE COMMENT =====
-% Get base folder name
-[base_, dirComment, extension] = bst_fileparts(DataFile);
-% Comment: BaseFolder + number or files
-Comment = dirComment;
+% Comment: BaseFolder
+Comment = rawFile;
 
 
 %% ===== READ DATA HEADERS =====
 hdr.chan_headers = {};
 hdr.chan_files = {};
 
-% Read the header
-% THIS IMPORTER COMPILES A C FUNCTION BEFORE RUNNING FOR THE FIRST TIME
-if exist('readPLXFileC','file') ~= 3
-    current_path = pwd;
-    plexon_path = bst_fileparts(which('build_readPLXFileC'));
-    cd(plexon_path);
-    ME = [];
-    try
-        build_readPLXFileC();
-    catch ME
+if strcmpi(plexonFormat, '.plx')
+    %% Read using Kraus importer
+    % Read the header
+    % THIS IMPORTER COMPILES A C FUNCTION BEFORE RUNNING FOR THE FIRST TIME
+    if exist('readPLXFileC','file') ~= 3
+        current_path = pwd;
+        plexon_path = bst_fileparts(which('build_readPLXFileC'));
+        cd(plexon_path);
+        ME = [];
+        try
+            build_readPLXFileC();
+        catch ME
+        end
+        cd(current_path);
+        if ~isempty(ME)
+            rethrow(ME);
+        end
     end
-    cd(current_path);
-    if ~isempty(ME)
-        rethrow(ME);
-    end
+
+    newHeader = readPLXFileC(DataFile,'events','spikes');
+elseif strcmpi(plexonFormat, '.pl2')
+    %% Read using Plexon SDK
+    newHeader = struct();
+    error('TODO');
 end
-
-newHeader = readPLXFileC(DataFile,'events','spikes');
-
 
 % Check for some important fields
 if ~isfield(newHeader, 'NumSpikeChannels') || ~isfield(newHeader, 'ContinuousChannels')
@@ -90,7 +96,7 @@ channel_Fs = one_channel.ContinuousChannels(1).ADFrequency; % There is a differe
 hdr.FirstTimeStamp    = 0;
 hdr.LastTimeStamp     = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values)*one_channel.ContinuousChannels(1).ADFrequency;
 hdr.NumSamples        = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values); % newHeader.LastTimestamp is in samples. Brainstorm header is in seconds.
-hdr.extension         = extension;
+hdr.extension         = plexonFormat;
 hdr.SamplingFrequency = one_channel.ContinuousChannels(1).ADFrequency;
 
 % Get only the channels from electrodes, not auxillary channels %% FIX THIS ON A LATER VERSION
@@ -142,7 +148,7 @@ end
 
 % Read the events
 if isfield(newHeader, 'EventChannels')
-        
+
     % General events
     unique_events = 0;
     for i = 1:length(newHeader.EventChannels)
@@ -150,8 +156,8 @@ if isfield(newHeader, 'EventChannels')
             unique_events = unique_events + 1;
         end
     end
-    
-    
+
+
     %% Plexon has an event named: Strobed
     % This takes different values (it works like a parallel port event generator). 
     % Create a unique event for each of these values.
@@ -160,17 +166,17 @@ if isfield(newHeader, 'EventChannels')
         uniqueStrobed = double(sort(unique(newHeader.EventChannels(iStrobed).Values)));
         unique_events = unique_events+length(uniqueStrobed)-1;
     end
-    
+
     % Initialize list of events
     events = repmat(db_template('event'), 1, unique_events);
-    
+
     % Format list
     iNotEmptyEvents = 0;
-    
+
     for iEvt = 1:length(newHeader.EventChannels)
         if ~isempty(newHeader.EventChannels(iEvt).Timestamps)
             % Fill the event fields
-            
+
             if ~strcmp(newHeader.EventChannels(iEvt).Name, 'Strobed')
                 iNotEmptyEvents = iNotEmptyEvents + 1;
                 events(iNotEmptyEvents).label      = newHeader.EventChannels(iEvt).Name;
@@ -192,7 +198,7 @@ if isfield(newHeader, 'EventChannels')
                     events(iNotEmptyEvents).epochs     = ones(1, length(events(iNotEmptyEvents).samples));
                 end
             end
-                
+
         end
     end
     % Import this list
@@ -202,32 +208,32 @@ end
 
 % Read the Spikes events
 if isfield(newHeader, 'SpikeChannels')
-        
+
     unique_events = 0;
     for i = 1:length(newHeader.SpikeChannels)
         if ~isempty(newHeader.SpikeChannels(i).Timestamps)
             unique_events = unique_events + 1;
         end
     end
-    
+
     spike_event_prefix = process_spikesorting_supervised('GetSpikesEventPrefix');
-    
+
     for iEvt = 1:length(newHeader.SpikeChannels)
         if ~isempty(newHeader.SpikeChannels(iEvt).Timestamps)
-            
+
             nNeurons = double(unique(newHeader.SpikeChannels(iEvt).Units));
             nNeurons = nNeurons(nNeurons~=0);
-            
+
             for iNeuron = 1:length(nNeurons)
-            
+
                 last_event_index = length(events) + 1;
-                
+
                 if length(nNeurons)>1
                     event_label_postfix = ['|' num2str(iNeuron) '|'];
                 else
                     event_label_postfix = '';
                 end
-                
+
                 % Fill the event fields
                 events(last_event_index).label      = [spike_event_prefix ' ' newHeader.ContinuousChannels(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
                 events(last_event_index).color      = rand(1,3);
