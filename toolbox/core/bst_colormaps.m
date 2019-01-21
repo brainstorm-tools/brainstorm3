@@ -739,6 +739,10 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     CreateSeparator(jMenu, isPermanent);
     jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
     jCheck.setSelected(sColormap.DisplayColorbar);
+    
+    jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Use stat threshold', [], [], @(h,ev)SetUseStatThreshold(ColormapType, ev.getSource.isSelected()));
+    jCheck.setSelected(sColormap.UseStatThreshold);
+    
     % Open menu in a new window
     if ~isPermanent
         gui_component('MenuItem', jMenu, [], 'Permanent menu', [], [], @(h,ev)CreatePermanentMenu(ColormapType));
@@ -1249,7 +1253,13 @@ function SetDisplayColorbar(ColormapType, status)
     % Fire change notificiation to all figures (3DViz and Topography)
     FireColormapChanged(ColormapType);
 end
-
+function SetUseStatThreshold(ColormapType, status)
+    sColormap = GetColormap(ColormapType);
+    sColormap.UseStatThreshold = status;
+    SetColormap(ColormapType, sColormap);
+    % Fire change notificiation to all figures (3DViz and Topography)
+    FireColormapChanged(ColormapType);
+end
 
 %% ====== SLIDERS CALLBACKS ======
 function SpinnerCallback(ev, ColormapType, Modifier)

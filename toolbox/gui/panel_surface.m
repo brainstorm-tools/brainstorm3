@@ -1437,6 +1437,12 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                         end
                         TessInfo(iTess).Data(~mask) = 0;
                     end
+                    
+                    % Add Stat threshold if available
+                    if isfield(GlobalData.DataSet(iDS).Results(iResult), 'StatThreshOver')
+                        TessInfo(iTess).StatThreshOver = GlobalData.DataSet(iDS).Results(iResult).StatThreshOver;
+                        TessInfo(iTess).StatThreshUnder = GlobalData.DataSet(iDS).Results(iResult).StatThreshUnder;
+                    end
                 end
 
                 % === CHECKS ===
