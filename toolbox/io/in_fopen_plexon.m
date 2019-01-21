@@ -52,6 +52,7 @@ Comment = rawFile;
 %% ===== READ DATA HEADERS =====
 hdr.chan_headers = {};
 hdr.chan_files = {};
+hdr.extension = plexonFormat;
 
 if strcmpi(plexonFormat, '.plx')
     %% Read using Kraus importer
@@ -73,39 +74,54 @@ if strcmpi(plexonFormat, '.plx')
     end
 
     newHeader = readPLXFileC(DataFile,'events','spikes');
+    
+    % Load one channel file to get required event fields
+    CHANNELS_SELECTED = [newHeader.ContinuousChannels.Enabled]; % Only get the channels that have been enabled. The rest won't load any data
+    CHANNELS_SELECTED = find(CHANNELS_SELECTED);
+
+    one_channel = readPLXFileC(DataFile,'continuous',CHANNELS_SELECTED(1)-1);
+    channel_Fs = one_channel.ContinuousChannels(1).ADFrequency; % There is a different sampling rate for channels and (events and spikes events)
+
+
+    % Extract information needed for opening the file
+    hdr.FirstTimeStamp    = 0;
+    hdr.LastTimeStamp     = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values)*one_channel.ContinuousChannels(1).ADFrequency;
+    hdr.NumSamples        = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values); % newHeader.LastTimestamp is in samples. Brainstorm header is in seconds.
+    hdr.SamplingFrequency = one_channel.ContinuousChannels(1).ADFrequency;
+
+    % Get only the channels from electrodes, not auxillary channels %% FIX THIS ON A LATER VERSION
+    just_recording_channels = newHeader.ContinuousChannels;
+
+    % Assign important fields
+    hdr.chan_headers  = just_recording_channels;
+    hdr.ChannelCount  = length(CHANNELS_SELECTED);
+    hdr.isMiscChannels = zeros(1, hdr.ChannelCount);
+    
 elseif strcmpi(plexonFormat, '.pl2')
     %% Read using Plexon SDK
-    newHeader = struct();
-    error('TODO');
+    if exist('PL2GetFileIndex', 'file') ~= 2
+        error('Please install Plexon''s Matlab offline files SDK.');
+    end
+    
+    % Read metadata
+    newHeader = PL2GetFileIndex(DataFile);
+    hdr.chan_headers = cell2mat(newHeader.AnalogChannels);
+    newHeader.EventChannels = cell2mat(newHeader.EventChannels);
+    CHANNELS_SELECTED = find([hdr.chan_headers.Enabled]);
+    one_channel = hdr.chan_headers(CHANNELS_SELECTED(1));
+    
+    % Look for 'Plexon' device names for actual data, rest is 'Misc'
+    findPlexon = strfind(lower({hdr.chan_headers(CHANNELS_SELECTED).SourceDeviceName}), 'plexon');
+    isMiscChannels = cellfun('isempty', findPlexon);
+    
+    % Extract header
+    hdr.NumSamples        = one_channel.NumValues;
+    hdr.SamplingFrequency = one_channel.SamplesPerSecond;
+    hdr.FirstTimeStamp    = 0;
+    hdr.LastTimeStamp     = hdr.NumSamples / hdr.SamplingFrequency;
+    hdr.ChannelCount      = length(CHANNELS_SELECTED);
+    hdr.isMiscChannels    = isMiscChannels;
 end
-
-% Check for some important fields
-if ~isfield(newHeader, 'NumSpikeChannels') || ~isfield(newHeader, 'ContinuousChannels')
-    error('Missing fields in the file header');
-end
-
-% Load one channel file to get required event fields
-CHANNELS_SELECTED = [newHeader.ContinuousChannels.Enabled]; % Only get the channels that have been enabled. The rest won't load any data
-CHANNELS_SELECTED = find(CHANNELS_SELECTED);
-
-one_channel = readPLXFileC(DataFile,'continuous',CHANNELS_SELECTED(1)-1);
-channel_Fs = one_channel.ContinuousChannels(1).ADFrequency; % There is a different sampling rate for channels and (events and spikes events)
-
-
-% Extract information needed for opening the file
-hdr.FirstTimeStamp    = 0;
-hdr.LastTimeStamp     = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values)*one_channel.ContinuousChannels(1).ADFrequency;
-hdr.NumSamples        = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values); % newHeader.LastTimestamp is in samples. Brainstorm header is in seconds.
-hdr.extension         = plexonFormat;
-hdr.SamplingFrequency = one_channel.ContinuousChannels(1).ADFrequency;
-
-% Get only the channels from electrodes, not auxillary channels %% FIX THIS ON A LATER VERSION
-just_recording_channels = newHeader.ContinuousChannels;
-
-% Assign important fields
-hdr.chan_headers = just_recording_channels;
-hdr.ChannelCount = length(CHANNELS_SELECTED);
-
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
@@ -137,7 +153,11 @@ for i = CHANNELS_SELECTED
     ii = ii+1;
     ChannelMat.Channel(ii).Name    = hdr.chan_headers(i).Name;
     ChannelMat.Channel(ii).Loc     = [0; 0; 0];
-    ChannelMat.Channel(ii).Type    = 'EEG';
+    if hdr.isMiscChannels(ii)
+        ChannelMat.Channel(ii).Type    = 'Misc';
+    else
+        ChannelMat.Channel(ii).Type    = 'EEG';
+    end
     ChannelMat.Channel(ii).Orient  = [];
     ChannelMat.Channel(ii).Weight  = 1;
     ChannelMat.Channel(ii).Comment = [];
@@ -147,7 +167,7 @@ end
 %% ===== READ EVENTS =====
 
 % Read the events
-if isfield(newHeader, 'EventChannels')
+if isfield(newHeader, 'EventChannels') && strcmpi(plexonFormat, '.plx')
 
     % General events
     unique_events = 0;
@@ -207,7 +227,7 @@ end
 
 
 % Read the Spikes events
-if isfield(newHeader, 'SpikeChannels')
+if isfield(newHeader, 'SpikeChannels') && strcmpi(plexonFormat, '.plx')
 
     unique_events = 0;
     for i = 1:length(newHeader.SpikeChannels)
@@ -235,7 +255,7 @@ if isfield(newHeader, 'SpikeChannels')
                 end
 
                 % Fill the event fields
-                events(last_event_index).label      = [spike_event_prefix ' ' newHeader.ContinuousChannels(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
+                events(last_event_index).label      = [spike_event_prefix ' ' hdr.chan_headers(iEvt).Name ' ' event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
                 events(last_event_index).color      = rand(1,3);
                 events(last_event_index).samples    = round(double(newHeader.SpikeChannels(iEvt).Timestamps(double(newHeader.SpikeChannels(iEvt).Units) == iNeuron)') * channel_Fs/newHeader.ADFrequency); % The events are sampled with different sampling rate than the Channels
                 events(last_event_index).times      = events(last_event_index).samples/channel_Fs; 
