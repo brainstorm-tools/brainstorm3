@@ -19,7 +19,7 @@ function varargout = process_export_bids( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, 2018
+% Authors: Martin Cousineau, 2018-2019
 
 eval(macro_method);
 end
@@ -28,7 +28,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the processc
-    sProcess.Comment     = 'Export MEG-BIDS dataset [experimental]';
+    sProcess.Comment     = 'Export BIDS dataset [experimental]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'File';
     sProcess.Index       = 982;
@@ -69,16 +69,20 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.overwrite.Type    = 'checkbox';
     sProcess.options.overwrite.Value   = 0;
     
-    sProcess.options.label1.Comment = '<U><B>MEG Sidecar required fields</B></U>:';
+    sProcess.options.label1.Comment = '<U><B>Sidecar required fields</B></U>:';
     sProcess.options.label1.Type    = 'label';
     % Powerline frequency
     sProcess.options.powerline.Comment = {'50 Hz', '60 Hz', 'Power line frequency: '};
     sProcess.options.powerline.Type    = 'radio_line';
     sProcess.options.powerline.Value   = 2;
     % Dewar position during MEG scan
-    sProcess.options.dewarposition.Comment = 'Position of the dewar during the MEG scan: ';
+    sProcess.options.dewarposition.Comment = '<B>MEG:</B> Position of the dewar during the scan: ';
     sProcess.options.dewarposition.Type    = 'text';
     sProcess.options.dewarposition.Value   = 'Upright';
+    % EEG Reference
+    sProcess.options.eegreference.Comment = '<B>EEG:</B> Electrode reference used: ';
+    sProcess.options.eegreference.Type    = 'text';
+    sProcess.options.eegreference.Value   = 'Average';
     % Options: Additional metadata
     sProcess.options.edit.Comment = {'panel_export_bids', ' Additional metadata :'};
     sProcess.options.edit.Type    = 'editpref';
@@ -98,6 +102,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     outputFolder  = sProcess.options.bidsdir.Value{1};
     overwrite     = sProcess.options.overwrite.Value;
     dewarPosition = sProcess.options.dewarposition.Value;
+    eegReference  = sProcess.options.eegreference.Value;
     emptyRoomKeywords = strtrim(str_split(lower(sProcess.options.emptyroom.Value), ',;'));
     OPTIONS = struct_copy_fields(bst_get('ExportBidsOptions'), sProcess.options.edit.Value, 1);
     if isempty(outputFolder)
@@ -130,7 +135,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         try
             megMetadata = bst_jsondecode(OPTIONS.JsonMeg);
         catch e
-            bst_report('Error', sProcess, sInputs, ['Invalid MEG sidecar metadata: ' e.message]);
+            bst_report('Error', sProcess, sInputs, ['Invalid sidecar metadata: ' e.message]);
             return;
         end
     else
@@ -207,7 +212,12 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         % Skip unsupported formats
         DataMat = in_bst_data(sInput.FileName);
         sFile = DataMat.F;
-        if ~isempty(sFile.device) && ~ismember(lower(sFile.device), {'ctf', 'neuromag'})
+        isCtf = strcmpi(sFile.device, 'CTF');
+        isElekta = strcmpi(sFile.device, 'Neuromag');
+        isMeg = isCtf || isElekta;
+        isEeg = strncmpi(sFile.format, 'EEG-', 4);
+        isEegBids = ismember(sFile.format, {'EEG-EDF', 'EEG-BRAINAMP', 'EEG-EEGLAB', 'EEG-BDF'});
+        if ~isMeg && ~isEeg
             disp(['Skipping file "' sFile.filename '" due to unsupported format...']);
             continue;
         end
@@ -344,8 +354,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         %% Extract task name
-        isCtf = strcmpi(sFile.device, 'CTF');
-        isElekta = strcmpi(sFile.device, 'Neuromag');
         [rawFolder, rawName, rawExt] = fileparts(sFile.filename);
         prefix = [FormatId(subjectId, subScheme, 'sub') '_' FormatId(sessionId, sesScheme, 'ses')];
         prefixTask = [prefix '_task-'];
@@ -425,7 +433,11 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         if ~isempty(powerline)
             metadata = addField(metadata, 'PowerLineFrequency', powerline);
         end
-        metadata = addField(metadata, 'DewarPosition', dewarPosition);
+        if isMeg
+            metadata = addField(metadata, 'DewarPosition', dewarPosition);
+        elseif isEeg
+            metadata = addField(metadata, 'EEGReference', eegReference);
+        end
         [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(ChannelMat);
         metadata = addField(metadata, 'DigitizedLandmarks', bool2str(hasLandmarks));
         metadata = addField(metadata, 'DigitizedHeadPoints', bool2str(hasHeadPoints));
@@ -436,20 +448,33 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         elseif isElekta
             customMetadata = ExtractFifMetadata(sFile.filename);
         else
-            customMetadata = struct();
+            customMetadata = struct('SoftwareFilters', 'N/A');
         end
         metadata = struct_copy_fields(metadata, customMetadata, 0);
         
-        %% Save MEG data
-        megFolder = bst_fullfile(sessionFolder, 'meg');
+        %% Save data
+        % Get modality
+        if isMeg
+            modFolder = 'meg';
+            modSuffix = '_meg';
+        elseif isEeg
+            modFolder = 'eeg';
+            modSuffix = '_eeg';
+        else
+            modFolder = 'data';
+            modSuffix = [];
+        end
+        megFolder = bst_fullfile(sessionFolder, modFolder);
         if exist(megFolder, 'dir') ~= 7
             mkdir(megFolder);
         end
-        % Add prefix + suffix to raw file
-        newName = [prefixTask taskName rest '_meg'];
+
+        newName = [prefixTask taskName rest modSuffix];
         % Copy raw file to output folder
         if isCtf
             rawExt = '.ds';
+        elseif isEeg && ~isEegBids
+            rawExt = '.edf';
         end
         newPath = bst_fullfile(megFolder, [newName, rawExt]);
         if exist(newPath, 'file') == 0 || overwrite
@@ -468,6 +493,11 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 % Remove internal Polhemus files
                 delete(bst_fullfile(newPath, '*.pos'));
+            elseif isEeg && ~isEegBids
+                % For EEG-BIDS, only a handful of formats are supported.
+                % Convert unsupported formats to EDF.
+                disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to EDF.']);
+                export_data(sInput.FileName, [], newPath, 'EEG-EDF');
             else
                 file_copy(sFile.filename, newPath);
             end
@@ -719,7 +749,7 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
     
     % Channels & Events
     if isempty(AllChannelNames)
-        channels = 'N/A';
+        channels = ['N/A' 10];
     else
         channels = [];
         for iChannel = 1:length(AllChannelNames)
@@ -750,6 +780,12 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
     fprintf(fid, [channels 10]);
     fprintf(fid, ['Events:' 10]);
     fprintf(fid, events);
+    fclose(fid);
+    
+    % Create .bidsignore file to pass validation
+    bidsIgnoreFile = bst_fullfile(parentFolder, '.bidsignore');
+    fid = fopen(bidsIgnoreFile, 'wt');
+    fprintf(fid, 'README.txt');
     fclose(fid);
 end
 
@@ -831,6 +867,9 @@ function [subScheme, sesScheme, runScheme] = DetectNamingScheme(bidsDir)
             
             %% Detect run scheme
             megFiles = dir(bst_fullfile(bidsDir, subjects(1).name, sessions(1).name, 'meg'));
+            if isempty(megFiles)
+                megFiles = dir(bst_fullfile(bidsDir, subjects(1).name, sessions(1).name, 'eeg'));
+            end
             for iFile = 1:length(megFiles)
                 run = regexp(megFiles(iFile).name, '_run-(\d+)', 'match');
                 if ~isempty(run)
