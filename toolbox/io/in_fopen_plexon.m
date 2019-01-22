@@ -120,6 +120,7 @@ elseif strcmpi(plexonFormat, '.pl2')
     hdr.FirstTimeStamp    = 0;
     hdr.LastTimeStamp     = hdr.NumSamples / hdr.SamplingFrequency;
     hdr.ChannelCount      = length(CHANNELS_SELECTED);
+    hdr.EnabledChannels   = CHANNELS_SELECTED;
     hdr.isMiscChannels    = isMiscChannels;
 end
 

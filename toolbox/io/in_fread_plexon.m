@@ -95,23 +95,21 @@ elseif strcmpi(sFile.header.extension, '.pl2')
         error('Please install Plexon''s Matlab offline files SDK.');
     end
     
-    header = PL2GetFileIndex(sFile.filename);
-    header.AnalogChannels = cell2mat(header.AnalogChannels);
-    CHANNELS_SELECTED = find([header.AnalogChannels.Enabled]);
-    
-    nChannels = length(CHANNELS_SELECTED(iChannels));
+    nChannels = length(iChannels);
     nSamples  = diff(SamplesBounds) + 1;
     
     % Initialize Brainstorm output
     F = zeros(nChannels, nSamples, precision);
     precFunc = str2func(precision);
     
-    ii = 0;
-    for iChannel = CHANNELS_SELECTED(iChannels)
-        ad = PL2AdSpan(sFile.filename, iChannel, SamplesBounds(1), SamplesBounds(2));
-        if ~isempty(ad.Values)
-            ii = ii+1;
-            F(ii,:) = precFunc(ad.Values) / 4096000; % Convert to Volts
+    for ii = 1:nChannels
+        % Skip non-analog channels which won't have proper data
+        if ~sFile.header.isMiscChannels(iChannels(ii))
+            iChannel = sFile.header.EnabledChannels(iChannels(ii));
+            ad = PL2AdSpan(sFile.filename, iChannel, SamplesBounds(1), SamplesBounds(2));
+            if ~isempty(ad.Values)
+                F(ii,:) = precFunc(ad.Values) / 4096000; % Convert to Volts
+            end
         end
     end
 
