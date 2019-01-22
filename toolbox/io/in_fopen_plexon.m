@@ -78,10 +78,7 @@ if strcmpi(plexonFormat, '.plx')
     % Load one channel file to get required event fields
     CHANNELS_SELECTED = [newHeader.ContinuousChannels.Enabled]; % Only get the channels that have been enabled. The rest won't load any data
     CHANNELS_SELECTED = find(CHANNELS_SELECTED);
-    
-    % Look for 'WB' device names for actual data, rest is 'Misc'
-    findWB = strfind(upper({newHeader.ContinuousChannels(CHANNELS_SELECTED).Name}), 'WB');
-    isMiscChannels = cellfun('isempty', findWB);
+    isMiscChannels = ~isDataChannel({newHeader.ContinuousChannels(CHANNELS_SELECTED).Name});
 
     one_channel = readPLXFileC(DataFile,'continuous',CHANNELS_SELECTED(1)-1);
     channel_Fs = one_channel.ContinuousChannels(1).ADFrequency; % There is a different sampling rate for channels and (events and spikes events)
@@ -113,10 +110,7 @@ elseif strcmpi(plexonFormat, '.pl2')
     newHeader.EventChannels = cell2mat(newHeader.EventChannels);
     CHANNELS_SELECTED = find([hdr.chan_headers.Enabled]);
     one_channel = hdr.chan_headers(CHANNELS_SELECTED(1));
-    
-    % Look for 'WB' device names for actual data, rest is 'Misc'
-    findWB = strfind(upper({hdr.chan_headers(CHANNELS_SELECTED).Name}), 'WB');
-    isMiscChannels = cellfun('isempty', findWB);
+    isMiscChannels = ~isDataChannel({hdr.chan_headers(CHANNELS_SELECTED).Name});
     
     % Extract header
     hdr.NumSamples        = one_channel.NumValues;
@@ -354,4 +348,23 @@ if isfield(newHeader, 'SpikeChannels')
     % Import this list
     sFile = import_events(sFile, [], events);
 end
+end
 
+
+function isData = isDataChannel(channelNames)
+    dataChannelPrefixes = {'WB', 'AD'};
+    nPrefixes = length(dataChannelPrefixes);
+    prefixLens = cellfun('length', dataChannelPrefixes);
+    
+    nChannels = length(channelNames);
+    isData = zeros(1,nChannels);
+    
+    for iChannel = 1:length(channelNames)
+        for iPrefix = 1:nPrefixes
+            if strncmpi(channelNames{iChannel}, dataChannelPrefixes{iPrefix}, prefixLens(iPrefix))
+                isData(iChannel) = 1;
+                break;
+            end
+        end
+    end
+end
