@@ -28,7 +28,7 @@ function [sFile, ChannelMat] = in_fopen_plexon(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis 2018
+% Authors: Konstantinos Nasiotis, 2018-2019; Martin Cousineau, 2019
 
 
 %% ===== GET FILES =====
@@ -78,6 +78,10 @@ if strcmpi(plexonFormat, '.plx')
     % Load one channel file to get required event fields
     CHANNELS_SELECTED = [newHeader.ContinuousChannels.Enabled]; % Only get the channels that have been enabled. The rest won't load any data
     CHANNELS_SELECTED = find(CHANNELS_SELECTED);
+    
+    % Look for 'WB' device names for actual data, rest is 'Misc'
+    findWB = strfind(upper({newHeader.ContinuousChannels(CHANNELS_SELECTED).Name}), 'WB');
+    isMiscChannels = cellfun('isempty', findWB);
 
     one_channel = readPLXFileC(DataFile,'continuous',CHANNELS_SELECTED(1)-1);
     channel_Fs = one_channel.ContinuousChannels(1).ADFrequency; % There is a different sampling rate for channels and (events and spikes events)
@@ -89,13 +93,13 @@ if strcmpi(plexonFormat, '.plx')
     hdr.NumSamples        = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values); % newHeader.LastTimestamp is in samples. Brainstorm header is in seconds.
     hdr.SamplingFrequency = one_channel.ContinuousChannels(1).ADFrequency;
 
-    % Get only the channels from electrodes, not auxillary channels %% FIX THIS ON A LATER VERSION
+    % Get only the channels from electrodes, not auxillary channels
     just_recording_channels = newHeader.ContinuousChannels;
 
     % Assign important fields
-    hdr.chan_headers  = just_recording_channels;
-    hdr.ChannelCount  = length(CHANNELS_SELECTED);
-    hdr.isMiscChannels = zeros(1, hdr.ChannelCount);
+    hdr.chan_headers   = just_recording_channels;
+    hdr.ChannelCount   = length(CHANNELS_SELECTED);
+    hdr.isMiscChannels = isMiscChannels;
     
 elseif strcmpi(plexonFormat, '.pl2')
     %% Read using Plexon SDK
@@ -110,9 +114,9 @@ elseif strcmpi(plexonFormat, '.pl2')
     CHANNELS_SELECTED = find([hdr.chan_headers.Enabled]);
     one_channel = hdr.chan_headers(CHANNELS_SELECTED(1));
     
-    % Look for 'Plexon' device names for actual data, rest is 'Misc'
-    findPlexon = strfind(lower({hdr.chan_headers(CHANNELS_SELECTED).SourceDeviceName}), 'plexon');
-    isMiscChannels = cellfun('isempty', findPlexon);
+    % Look for 'WB' device names for actual data, rest is 'Misc'
+    findWB = strfind(upper({hdr.chan_headers(CHANNELS_SELECTED).Name}), 'WB');
+    isMiscChannels = cellfun('isempty', findWB);
     
     % Extract header
     hdr.NumSamples        = one_channel.NumValues;

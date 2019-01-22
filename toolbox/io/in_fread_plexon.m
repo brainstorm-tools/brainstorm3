@@ -24,7 +24,7 @@ function F = in_fread_plexon(sFile, SamplesBounds, iChannels, precision)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis 2018
+% Authors: Konstantinos Nasiotis, 2018-2019; Martin Cousineau, 2019
 
 
 % Parse inputs
@@ -82,10 +82,10 @@ if strcmpi(sFile.header.extension, '.plx')
     F = zeros(nChannels, nSamples, precision);
     precFunc = str2func(precision);
 
-    ii = 0;
-    for iChannel = CHANNELS_SELECTED(iChannels)
-        if ~isempty(data.ContinuousChannels(iChannel).Values)
-            ii = ii+1;
+    for ii = 1:nChannels
+        iChannel = CHANNELS_SELECTED(iChannels(ii));
+        % Skip non-analog channels which won't have proper data
+        if ~sFile.header.isMiscChannels(ii) && ~isempty(data.ContinuousChannels(iChannel).Values)
             F(ii,:) = precFunc(data.ContinuousChannels(iChannel).Values) / 4096000; % Convert to Volts
         end
     end
