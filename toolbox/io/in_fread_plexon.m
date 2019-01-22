@@ -92,7 +92,8 @@ if strcmpi(sFile.header.extension, '.plx')
 elseif strcmpi(sFile.header.extension, '.pl2')
     %% Read using Plexon SDK
     if exist('PL2GetFileIndex', 'file') ~= 2
-        error('Please install Plexon''s Matlab offline files SDK.');
+        error(['Please install Plexon''s Matlab offline files SDK.' 10 ...
+            'More information here: https://neuroimage.usc.edu/brainstorm/e-phys/Introduction#Importing_PL2_Plexon_files']);
     end
     
     nChannels = length(iChannels);
