@@ -25,7 +25,7 @@ function Transf = mri_register_maff(sMri)
 bst_progress('start', 'Normalize anatomy', 'Loading tissue probability map...');
 % Get template file
 tpmFile = bst_get('SpmTpmAtlas');
-if isempty(tpmFile)
+if ~file_exist(tpmFile)
     error('Missing file TPM.nii');
 end
 % Loading the tissue probability map

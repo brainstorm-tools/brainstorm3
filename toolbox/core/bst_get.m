@@ -2539,10 +2539,10 @@ switch contextName
         argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
         % If it does not exist: check in brainstorm3 folder
         if ~file_exist(argout1)
-            argout1 = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
-        end
-        if ~file_exist(argout1)
-            argout1 = [];
+            distribTpm = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
+            if file_exist(distribTpm)
+                argout1 = distribTpm;
+            end
         end
         
     case 'ElectrodeConfig'
