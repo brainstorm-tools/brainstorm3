@@ -320,7 +320,8 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
     elseif isempty(tThreshUnder) && isempty(tThreshUnder) 
         
         df = max(StatMat.df);
-        [t_tmp, i_t_tmp] = getMinNonZeroPositive(threshmap);
+        [t_tmp, i_t_tmp] = getMinNonZeroPositive(abs(threshmap)); %#ok<ASGLU>
+        t_tmp = threshmap(i_t_tmp);
         if ~isempty(t_tmp) % There is at least one non-zero t value
             tol = 1e-10;
             if pmap(i_t_tmp) < 1e-8
