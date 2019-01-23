@@ -654,8 +654,13 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     % Not for anatomy or time colormap
     if ~strcmpi(ColormapType, 'Anatomy') && ~strcmpi(ColormapType, 'Time') && ~strcmpi(ColormapType, 'Overlay')
         % Options : Absolute values
-        jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Absolute values', [], [], @(h,ev)SetColormapAbsolute(ColormapType, ev.getSource.isSelected()));
-        jCheck.setSelected(sColormap.isAbsoluteValues);
+        jCheckAbs = gui_component('CheckBoxMenuItem', jMenu, [], 'Absolute values', [], [], @(h,ev)SetColormapAbsolute(ColormapType, ev.getSource.isSelected()));
+        jCheckAbs.setSelected(sColormap.isAbsoluteValues);
+        
+        % Options : use statistics threshold(s)
+        jCheckStatThresh = gui_component('CheckBoxMenuItem', jMenu, [], 'Use stat threshold', [], [], @(h,ev)SetUseStatThreshold(ColormapType, ev.getSource.isSelected()));
+        jCheckStatThresh.setSelected(sColormap.UseStatThreshold);
+        
         CreateSeparator(jMenu, isPermanent);
         % Options : Maximum
         jRadioGlobal = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Global',    [], [], @(h,ev)SetMaxMode(ColormapType, 'global', DisplayUnits));
@@ -737,11 +742,10 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
 
     % Display/hide colorbar
     CreateSeparator(jMenu, isPermanent);
-    jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
-    jCheck.setSelected(sColormap.DisplayColorbar);
+    jCheckDisp = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
+    jCheckDisp.setSelected(sColormap.DisplayColorbar);
     
-    jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Use stat threshold', [], [], @(h,ev)SetUseStatThreshold(ColormapType, ev.getSource.isSelected()));
-    jCheck.setSelected(sColormap.UseStatThreshold);
+
     
     % Open menu in a new window
     if ~isPermanent
