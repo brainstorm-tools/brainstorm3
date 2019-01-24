@@ -193,12 +193,12 @@ if AcqType==2
             parallel_input(:,iDIN) = logical(temp);
             fclose(fid);
         end
-        events_vector = bi2de(parallel_input,'right-msb'); % Collapse the parallel ports to a vector that shows the events
+        events_vector = bst_bi2de(parallel_input,'right-msb'); % Collapse the parallel ports to a vector that shows the events
         areThereEvents = 1;
     end
 else
     if isfield(newHeader,'board_dig_in_data')
-        events_vector = bi2de(newHeader.board_dig_in_data,'right-msb'); % Collapse the parallel ports to a vector that shows the events
+        events_vector = bst_bi2de(newHeader.board_dig_in_data,'right-msb'); % Collapse the parallel ports to a vector that shows the events
         areThereEvents = 1;
     end
 end
@@ -236,5 +236,32 @@ elseif areThereEvents
         sFile = import_events(sFile, [], events);
     end
 end
+end
 
+
+function de = bst_bi2de(bi, flg)
+    if nargin < 2 || isempty(flg)
+        flg = 'right-msb';
+    end
+
+    % Call toolbox function if available
+    if exist('bi2de', 'file') == 2
+        de = bi2de(bi, flg);
+        return;
+    end
+
+    % Initialize array of powers of two
+    [numElems, numDecimals] = size(bi);
+    pows = zeros(numDecimals, 1);
+    for iDec = 1:numDecimals
+        pows(iDec) = 2 ^ (iDec - 1);
+    end
+    
+    % Flip if required
+    if strcmp(flg, 'left-msb')
+        pows = flipud(pows);
+    end
+    
+    de = bi * pows;
+end
 
