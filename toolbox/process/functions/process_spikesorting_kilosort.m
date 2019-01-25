@@ -352,11 +352,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
        
         
         %% Some residual parameters that need the outputPath and the converted Raw signal
-        ops.fbinary =  converted_raw_File; % will be created for 'openEphys'
-        ops.fproc   = bst_fullfile(outputPath, 'temp_wh.bin'); % residual from RAM of preprocessed data		% It was .dat, I changed it to .bin - Make sure this is correct
-        ops.chanMap = bst_fullfile(outputPath, 'chanMap.mat'); % make this file using createChannelMapFile.m
-        ops.root    = outputPath; % 'openEphys' only: where raw files are
+        ops.fbinary  =  converted_raw_File; % will be created for 'openEphys'
+        ops.fproc    = bst_fullfile(outputPath, 'temp_wh.bin'); % residual from RAM of preprocessed data		% It was .dat, I changed it to .bin - Make sure this is correct
+        ops.chanMap  = bst_fullfile(outputPath, 'chanMap.mat'); % make this file using createChannelMapFile.m
+        ops.root     = outputPath; % 'openEphys' only: where raw files are
         ops.basename = xmlFileBase;
+        ops.fs       = fs; % sampling rate
+        ops.NchanTOT = numChannels; % total number of channels
+        ops.Nchan    = numChannels; % number of active channels
         
         
         %% KiloSort
