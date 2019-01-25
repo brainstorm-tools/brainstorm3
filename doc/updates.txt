@@ -1,4 +1,8 @@
 ---------------------------------------------------------------
+January 2019
+- IO: BIDS export process supports EEG-BIDS
+- IO: Plexon 2 (.pl2) files can now be read if Plexon SDK installed
+---------------------------------------------------------------
 December 2018
 - IO: BIDS import: Support for EEG and iEEG
 - IO: Export EEG to BrainVision BrainAmp format (.eeg) for iEEG-BIDS
