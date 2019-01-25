@@ -337,7 +337,7 @@ if isfield(newHeader, 'SpikeChannels')
                 events(iEnteredEvent).label      = [spike_event_prefix ' ' newHeader.AnalogChannels{iSpikesChannel}.Name event_label_postfix];
                 events(iEnteredEvent).color      = rand(1,3);
                 events(iEnteredEvent).epochs     = ones(1,length(times));
-                events(iEnteredEvent).samples    = round(times * newHeader.SpikeChannels{iSpikesChannel}.SamplesPerSecond);
+                events(iEnteredEvent).samples    = round(times * sFile.prop.sfreq);
                 events(iEnteredEvent).times      = times;
                 events(iEnteredEvent).reactTimes = [];
                 events(iEnteredEvent).select     = 1;
