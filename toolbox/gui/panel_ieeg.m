@@ -25,7 +25,7 @@ function varargout = panel_ieeg(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2018
+% Authors: Francois Tadel, 2017-2019
 
 eval(macro_method);
 end
@@ -710,8 +710,9 @@ end
 %% ===== EDIT ELECTRODE LABEL =====
 % Rename one and only one selected electrode
 function EditElectrodeLabel(varargin)
+    global GlobalData;
     % Get selected electrodes
-    [sSelElec, iSelElec] = GetSelectedElectrodes();
+    [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes();
     % Get all electrodes
     sAllElec = GetElectrodes();
     % Warning message if no electrode selected
@@ -734,8 +735,13 @@ function EditElectrodeLabel(varargin)
     if any(strcmpi({sAllElec.Name}, newLabel))
         java_dialog('warning', ['Electrode "' newLabel '" already exists.'], 'Rename selected electrode');
         return;
+    % Check that name do not include a digit
+    elseif any(ismember(newLabel, '0123456789-,:;.*+=?!<>''"`&%$()[]{}/\_@ áÁàÀâÂäÄãÃåÅæÆçÇéÉèÈêÊëËíÍìÌîÎïÏñÑóÓòÒôÔöÖõÕøØœŒßúÚùÙûÛüÜ'))
+        java_dialog('warning', 'New electrode name should not include digits, spaces or special characters.', 'Rename selected electrode');
+        return;
     end
     % Update electrode definition
+    oldLabel = sSelElec.Name;
     sSelElec.Name = newLabel;
     % Save modifications
     SetElectrodes(iSelElec, sSelElec);
@@ -743,6 +749,22 @@ function EditElectrodeLabel(varargin)
     UpdateElecList();
     % Select again electrode
     SetSelectedElectrodes(iSelElec);
+    
+    % Get the channel names to update
+    iDSchan = iDS(1);
+    iChan = find(strcmp({GlobalData.DataSet(iDSchan).Channel.Group}, oldLabel));
+    % Rename all the corresponding data channels
+    for i = 1:length(iChan)
+        chName = GlobalData.DataSet(iDSchan).Channel(iChan(i)).Name;
+        newName = [newLabel, chName(length(oldLabel)+1:end)];
+        % If the updated channel name does not exist yet
+        if ((length(chName) > length(oldLabel)) && strcmp(chName(1:length(oldLabel)), oldLabel)) && ~any(strcmpi(newName, {GlobalData.DataSet(iDSchan).Channel.Name}))
+            % Update channel group
+            GlobalData.DataSet(iDSchan).Channel(iChan(i)).Group = newLabel;
+            % Update channel name
+            GlobalData.DataSet(iDSchan).Channel(iChan(i)).Name = [newLabel, chName(length(oldLabel)+1:end)];
+        end
+    end
     % Update figures
     UpdateFigures();
 end
@@ -953,6 +975,10 @@ function AddElectrode()
     % Check if label already exists
     if ~isempty(sAllElec) && any(strcmpi({sAllElec.Name}, newLabel))
         java_dialog('warning', ['Electrode "' newLabel '" already exists.'], 'New electrode');
+        return;
+    % Check if labels include invalid characters
+    elseif any(ismember(newLabel, '0123456789-,:;.*+=?!<>''"`&%$()[]{}/\_@ áÁàÀâÂäÄãÃåÅæÆçÇéÉèÈêÊëËíÍìÌîÎïÏñÑóÓòÒôÔöÖõÕøØœŒßúÚùÙûÛüÜ'))
+        java_dialog('warning', 'New electrode name should not include digits, spaces or special characters.', 'New electrode');
         return;
     end
     % Create new electrode structure
