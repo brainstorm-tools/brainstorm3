@@ -1158,7 +1158,10 @@ function LoadResultsMatrix(iDS, iResult)
             disp('BST> This file is based on an unconstrained source model. Using the lowest p-value at each point.');
         end
         % Store results in GlobalData
-        GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp  = process_extract_pthresh('Compute', FileMat);
+        [thresholdedStatMap, tThreshUnder, tThreshOver] = process_extract_pthresh('Compute', FileMat);
+        GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp  = thresholdedStatMap;
+        GlobalData.DataSet(iDS).Results(iResult).StatThreshUnder = tThreshUnder;
+        GlobalData.DataSet(iDS).Results(iResult).StatThreshOver = tThreshOver;        
         GlobalData.DataSet(iDS).Results(iResult).ImagingKernel = [];
         % Copy stat clusters
         GlobalData.DataSet(iDS).Results(iResult).StatClusters = FileMat.StatClusters;

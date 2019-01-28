@@ -249,7 +249,7 @@ end
 
 
 %% ===== APPLY THRESHOLD =====
-function threshmap = Compute(StatMat, StatThreshOptions)
+function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOptions)
     % If options not provided, read them from the interface
     if (nargin < 2) || isempty(StatThreshOptions)
         StatThreshOptions = bst_get('StatThreshOptions');
@@ -259,15 +259,18 @@ function threshmap = Compute(StatMat, StatThreshOptions)
         % disp('BST> Statistics maps are already corrected for multiple comparisons.');
         StatThreshOptions.Correction = 'no';
     end
+    tThreshOver = [];
+    tThreshUnder = [];
+    testSide = '';
     % Get or calculate p-values map
     if isfield(StatMat, 'pmap') && ~isempty(StatMat.pmap)
         pmap = StatMat.pmap;
         % Correction for multiple comparisons
-        pmask = bst_stat_thresh(pmap, StatThreshOptions);
+        [pmask, pthresh] = bst_stat_thresh(pmap, StatThreshOptions);
     elseif isfield(StatMat, 'df') && ~isempty(StatMat.df)
         pmap = process_test_parametric2('ComputePvalues', StatMat.tmap, StatMat.df, 't', 'two');
         % Correction for multiple comparisons
-        pmask = bst_stat_thresh(pmap, StatThreshOptions);
+        [pmask, pthresh] = bst_stat_thresh(pmap, StatThreshOptions);
     elseif isfield(StatMat, 'SPM') && ~isempty(StatMat.SPM)
         % Initialize SPM
         bst_spm_init();
@@ -282,15 +285,17 @@ function threshmap = Compute(StatMat, StatThreshOptions)
             R = StatMat.SPM.xVol.R;    %-search Volume {resels}
             % Correction
             switch (StatThreshOptions.Correction)
+                % Note: always one-sided t-test, really the case?
                 case {'none', 'no'}
-                    u = spm_u(StatThreshOptions.pThreshold, df, 'T');
+                    tThreshOver = spm_u(StatThreshOptions.pThreshold, df, 'T');
                 case 'bonferroni'
-                    u = spm_uc_Bonf(StatThreshOptions.pThreshold, df, 'T', S, 1);
+                    tThreshOver = spm_uc_Bonf(StatThreshOptions.pThreshold, df, 'T', S, 1);
                 case 'fdr'
-                    u = spm_uc(StatThreshOptions.pThreshold, df, 'T', R, 1, S);
+                    tThreshOver = spm_uc(StatThreshOptions.pThreshold, df, 'T', R, 1, S);
             end
             % Activated voxels
-            pmask = (StatMat.tmap >= u);
+            pmask = (StatMat.tmap >= tThreshOver);
+            tThreshUnder = [];
         end
     else
         error('Missing information to apply a statistical threshold.');
@@ -305,5 +310,73 @@ function threshmap = Compute(StatMat, StatThreshOptions)
             pmask = filter_timewin_signif(pmask, StatThreshOptions.durThreshold / (StatMat.Time(2)-StatMat.Time(1)));
         end
     end
+   
     threshmap(pmask) = StatMat.tmap(pmask);
+    
+    if length(setdiff(unique(StatMat.df), 0)) > 1 % df is not constant -> no unique theoretical t_threshold
+        % Use lowest and highest non-zero t_values as thresholds
+        tThreshUnder = getMaxNonZeroNegative(threshmap);
+        tThreshOver = getMinNonZeroPositive(threshmap);
+    elseif isempty(tThreshUnder) && isempty(tThreshUnder) 
+        
+        df = max(StatMat.df);
+        [t_tmp, i_t_tmp] = getMinNonZeroPositive(abs(threshmap)); %#ok<ASGLU>
+        t_tmp = threshmap(i_t_tmp);
+        if ~isempty(t_tmp) % There is at least one non-zero t value
+            tol = 1e-10;
+            if pmap(i_t_tmp) < 1e-8
+                tol = eps;
+            end
+            if isempty(testSide)
+                if abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, df, 't', 'two')) < tol
+                    testSide = 'two';
+                elseif t_tmp > 0 && abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, df, 't', 'one+')) < tol
+                    testSide = 'one+';
+                elseif abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, StatMat.df(i_t_tmp), 't', 'one-')) < tol
+                    testSide = 'one-';
+                else
+                    testSide = '';
+                end
+            end
+        end
+        switch(testSide)
+                case 'one-'
+                    tThreshUnder = fzero(@(t) 0.5 .* ( 1 + sign(t) .* betainc( t.^2 ./ (df + t.^2), 0.5, 0.5.*df ) ) - pthresh, 0);
+                    tThreshOver = [];
+                case 'two'
+                    t_thresh = fzero(@(t) betainc( df ./ (df + t .^ 2), df./2, 0.5) - pthresh, 0);
+                    if t_thresh < 0
+                        tThreshUnder = t_thresh;
+                        tThreshOver = -t_thresh;
+                    else
+                        tThreshUnder = -t_thresh;
+                        tThreshOver = t_thresh;
+                    end
+                case 'one+'
+                    tThreshOver = fzero(@(t) 0.5 .* ( 1 - sign(t) .* betainc( t.^2 ./ (df + t.^2), 0.5, 0.5.*df ) ) - pthresh, 0);
+                    tThreshUnder = [];
+            otherwise
+                warning('Cannot determine t-test side');
+                tThreshUnder = [];
+                tThreshOver = [];                
+        end   
+    end
+end
+
+function [minOver, iMinOver] = getMinNonZeroPositive(values)
+values(values<=0) = Inf;
+[minOver, iMinOver] = min(values);
+if isinf(minOver)
+    minOver = [];
+    iMinOver = [];
+end
+end
+
+function [maxUnder, iMaxUnder] = getMaxNonZeroNegative(values)
+values(values>=0) = -Inf;
+[maxUnder, iMaxUnder] = max(values);
+if isinf(maxUnder)
+    maxUnder = [];
+    iMaxUnder = [];
+end
 end

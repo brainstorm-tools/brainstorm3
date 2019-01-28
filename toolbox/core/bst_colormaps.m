@@ -604,10 +604,10 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     end
     
     % Colormap list: Standard
-    cmapList = {'cmap_rbw', 'hot', 'cmap_hot2', 'cmap_gin', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_nih', 'jet', 'cmap_jetinv', 'cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_ge', 'cmap_tpac', 'cool', 'cmap_parula', 'cmap_cluster', 'cmap_atlas'};
+    cmapList = {'cmap_rbw', 'hot', 'cmap_hot2', 'cmap_gin', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_nih', 'jet', 'cmap_jetinv', 'cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey', 'cmap_ovun', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_ge', 'cmap_tpac', 'cool', 'cmap_parula', 'cmap_cluster', 'cmap_atlas'};
     iconList = [IconLoader.ICON_COLORMAP_RBW, IconLoader.ICON_COLORMAP_HOT, IconLoader.ICON_COLORMAP_HOT2, IconLoader.ICON_COLORMAP_GIN, IconLoader.ICON_COLORMAP_BONE, IconLoader.ICON_COLORMAP_GREY, ...
                 IconLoader.ICON_COLORMAP_PINK, IconLoader.ICON_COLORMAP_COPPER, IconLoader.ICON_COLORMAP_NIHFIRE, IconLoader.ICON_COLORMAP_NIH, IconLoader.ICON_COLORMAP_JET, IconLoader.ICON_COLORMAP_JETINV, ...
-                IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, ...
+                IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_OVUN, ...
                 IconLoader.ICON_COLORMAP_HSV, IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_GE,  IconLoader.ICON_COLORMAP_TPAC, ...
                 IconLoader.ICON_COLORMAP_COOL, IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_CLUSTER, IconLoader.ICON_COLORMAP_ATLAS];
     for i = 1:length(cmapList)
@@ -654,8 +654,13 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     % Not for anatomy or time colormap
     if ~strcmpi(ColormapType, 'Anatomy') && ~strcmpi(ColormapType, 'Time') && ~strcmpi(ColormapType, 'Overlay')
         % Options : Absolute values
-        jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Absolute values', [], [], @(h,ev)SetColormapAbsolute(ColormapType, ev.getSource.isSelected()));
-        jCheck.setSelected(sColormap.isAbsoluteValues);
+        jCheckAbs = gui_component('CheckBoxMenuItem', jMenu, [], 'Absolute values', [], [], @(h,ev)SetColormapAbsolute(ColormapType, ev.getSource.isSelected()));
+        jCheckAbs.setSelected(sColormap.isAbsoluteValues);
+        
+        % Options : use statistics threshold(s)
+        jCheckStatThresh = gui_component('CheckBoxMenuItem', jMenu, [], 'Use stat threshold', [], [], @(h,ev)SetUseStatThreshold(ColormapType, ev.getSource.isSelected()));
+        jCheckStatThresh.setSelected(sColormap.UseStatThreshold);
+        
         CreateSeparator(jMenu, isPermanent);
         % Options : Maximum
         jRadioGlobal = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Global',    [], [], @(h,ev)SetMaxMode(ColormapType, 'global', DisplayUnits));
@@ -737,8 +742,11 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
 
     % Display/hide colorbar
     CreateSeparator(jMenu, isPermanent);
-    jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
-    jCheck.setSelected(sColormap.DisplayColorbar);
+    jCheckDisp = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
+    jCheckDisp.setSelected(sColormap.DisplayColorbar);
+    
+
+    
     % Open menu in a new window
     if ~isPermanent
         gui_component('MenuItem', jMenu, [], 'Permanent menu', [], [], @(h,ev)CreatePermanentMenu(ColormapType));
@@ -1249,7 +1257,13 @@ function SetDisplayColorbar(ColormapType, status)
     % Fire change notificiation to all figures (3DViz and Topography)
     FireColormapChanged(ColormapType);
 end
-
+function SetUseStatThreshold(ColormapType, status)
+    sColormap = GetColormap(ColormapType);
+    sColormap.UseStatThreshold = status;
+    SetColormap(ColormapType, sColormap);
+    % Fire change notificiation to all figures (3DViz and Topography)
+    FireColormapChanged(ColormapType);
+end
 
 %% ====== SLIDERS CALLBACKS ======
 function SpinnerCallback(ev, ColormapType, Modifier)
