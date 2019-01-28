@@ -728,11 +728,13 @@ function LoadRecordingsMatrix(iDS)
         % Initialize matrix
         GlobalData.DataSet(iDS).Measures.F = zeros(length(GlobalData.DataSet(iDS).Measures.ChannelFlag), GlobalData.DataSet(iDS).Measures.NumberOfSamples);
         % Apply threshold, and duplicate time if there is only one time point
-        threshMap = process_extract_pthresh('Compute', StatMat);
+        [threshMap, tThreshUnder, tThreshOver] = process_extract_pthresh('Compute', StatMat);
         if ( size(threshMap,2) == 1) && (GlobalData.DataSet(iDS).Measures.NumberOfSamples == 2)
             threshMap = cat(2, threshMap, threshMap);
         end
         GlobalData.DataSet(iDS).Measures.F(iChannels,:,:) = threshMap;
+        GlobalData.DataSet(iDS).Measures.StatThreshUnder = tThreshUnder;
+        GlobalData.DataSet(iDS).Measures.StatThreshOver = tThreshOver;
         % Copy stat clusters
         GlobalData.DataSet(iDS).Measures.StatClusters = StatMat.StatClusters;
         GlobalData.DataSet(iDS).Measures.StatClusters.Correction = StatMat.Correction;
@@ -1435,7 +1437,7 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         % Load stat matrix
         TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TF', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'Correction', 'StatClusters');
         % Report thresholded maps
-        TimefreqMat.TF = process_extract_pthresh('Compute', TimefreqMat);
+        [TimefreqMat.TF, tThreshUnder, tThreshOver] = process_extract_pthresh('Compute', TimefreqMat);
         % Open the "Stat" tab
         gui_brainstorm('ShowToolTab', 'Stat');
     end

@@ -2369,11 +2369,9 @@ function UpdateSurfaceColor(hFig, iTess)
     % === ColorMap ===
     % Get best colormap to display data
     sColormap = bst_colormaps('GetColormap', TessInfo(iTess).ColormapType);
-    if sColormap.UseStatThreshold && isfield(TessInfo(iTess), 'StatThreshOver') && ...
-            (~isempty(TessInfo(iTess).StatThreshUnder) || ~isempty(TessInfo(iTess).StatThreshOver))
-        % Extend the color of null value to non-significant values 
-        % and put all the color dynamics for significant values (~isempty(TessInfo(iTess).StatThreshUnder) || ~isempty(TessInfo(iTess).StatThreshOver))
-        sColormap.CMap = cmapThreshold(sColormap.CMap, TessInfo(iTess).DataLimitValue(1), TessInfo(iTess).DataLimitValue(2), ...
+    if sColormap.UseStatThreshold && (~isempty(TessInfo(iTess).StatThreshUnder) || ~isempty(TessInfo(iTess).StatThreshOver))
+        % Extend the color of null value to non-significant values and put all the color dynamics for significant values
+        sColormap.CMap = bst_colormaps('StatThreshold', sColormap.CMap, TessInfo(iTess).DataLimitValue(1), TessInfo(iTess).DataLimitValue(2), ...
                                        sColormap.isAbsoluteValues, TessInfo(iTess).StatThreshUnder, TessInfo(iTess).StatThreshOver, ...
                                        [0.7 0.7 0.7]);
         
@@ -2492,90 +2490,6 @@ function UpdateSurfaceColor(hFig, iTess)
             PlotGrid(hFig, GridLoc, GridValues, GridInd, TessInfo(iTess).DataAlpha, TessInfo(iTess).DataLimitValue, sColormap);
         end
     end
-end
-
-function cmapThreshed = cmapThreshold(cMap, vMin, vMax, isAbs, tUnder, tOver, nsColor)
-% Apply double thresholding to given cmap so that the color of values between
-% given thresholds is set to the color of the null value. 
-% Original color dynamics is tranfered to significant values.
-
-if vMin > vMax
-    error('Bad value range: vMin > vMax');
-end
-
-if isempty(tUnder) && isempty(tOver)
-    error('Both thresholds are undefined');
-end
-
-if tUnder == tOver % no thresholding -> nothing to do
-    cmapThreshed = cMap;
-    return;
-end
-
-if isempty(tUnder) % one-sided+
-   tUnder = vMin; 
-end
-
-if isempty(tOver) % one-sided-
-   tOver = vMax; 
-end
-
-if tUnder > tOver
-    error('Bad thresholds: tUnder > tOver');
-end
-
-
-if isAbs
-    % In case abs wasn't already applied to limits
-    if vMin < 0 && vMax <= 0
-        vMin = abs(vMax);
-        vMax = abs(vMin);
-    elseif vMin < 0 && vMax >= 0
-        vMin = 0;
-        vMax = max(abs(vMin), vMax);
-    end
-    
-    % In case thresholds are not symetrical
-    if tUnder < 0 && tOver <= 0
-        tUnder = abs(tOver);
-        tOver = abs(tUnder);
-    elseif tUnder <  0 && tOver >= 0
-        tOver = min(abs(tUnder), tOver); 
-        tUnder = vMin;
-    end
-end
-
-nc = length(cMap);
-% Convert value to color index, with clipping
-v2ci = @(v) max(1, min(round((nc-1)/(vMax-vMin) * (v-vMin) + 1), nc ));
-
-if nargin < 6
-    nsColor = cMap(v2ci(0), :); % Take color of value=zero for non-significant
-end
-
-assert(all(size(nsColor) == [1, 3]));
-
-cmapThreshed = zeros(size(cMap));
-
-% Set non-significant range
-nsIndexes = v2ci(tUnder):v2ci(tOver);
-cmapThreshed(nsIndexes, :) = repmat(nsColor, length(nsIndexes), 1);
-
-% Compress initial color dynamics into significant range
-ci0 = v2ci(0);
-if tOver < vMax
-    sigOverIndexes = v2ci(tOver):nc;
-    posIndexes = (ci0+1):nc;
-    targetOver = round(linspace(posIndexes(1), posIndexes(end), length(sigOverIndexes)));
-    cmapThreshed(sigOverIndexes, :) = interp1(posIndexes,cMap(posIndexes,:), targetOver);
-end
-if tUnder > vMin
-    sigUnderIndexes = 1:v2ci(tUnder);
-    negIndexes = 1:(ci0-1);
-    targetUnder = round(linspace(negIndexes(1), negIndexes(end), length(sigUnderIndexes)));
-    cmapThreshed(sigUnderIndexes, :) = interp1(negIndexes,cMap(negIndexes, :), targetUnder);
-end
-
 end
 
 

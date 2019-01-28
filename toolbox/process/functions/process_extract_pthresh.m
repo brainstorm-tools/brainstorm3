@@ -22,7 +22,8 @@ function varargout = process_extract_pthresh( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2016
+% Authors: Francois Tadel, 2013-2019
+%          Thomas Vincent, 2019
 
 eval(macro_method);
 end
@@ -313,24 +314,26 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
    
     threshmap(pmask) = StatMat.tmap(pmask);
     
-    if length(setdiff(unique(StatMat.df), 0)) > 1 % df is not constant -> no unique theoretical t_threshold
+    % Detect lower and higher t-value thresholds
+    allTval = threshmap(:);
+    if isempty(StatMat.df) || length(setdiff(unique(StatMat.df), 0)) > 1 % df is not constant -> no unique theoretical t_threshold
         % Use lowest and highest non-zero t_values as thresholds
-        tThreshUnder = getMaxNonZeroNegative(threshmap);
-        tThreshOver = getMinNonZeroPositive(threshmap);
+        tThreshUnder = getMaxNonZeroNegative(allTval);
+        tThreshOver = getMinNonZeroPositive(allTval);
     elseif isempty(tThreshUnder) && isempty(tThreshUnder) 
         
-        df = max(StatMat.df);
-        [t_tmp, i_t_tmp] = getMinNonZeroPositive(abs(threshmap)); %#ok<ASGLU>
-        t_tmp = threshmap(i_t_tmp);
+        df = max(StatMat.df(:));
+        [t_tmp, i_t_tmp] = getMinNonZeroPositive(abs(allTval)); %#ok<ASGLU>
+        t_tmp = allTval(i_t_tmp);
         if ~isempty(t_tmp) % There is at least one non-zero t value
             tol = 1e-10;
             if pmap(i_t_tmp) < 1e-8
                 tol = eps;
             end
             if isempty(testSide)
-                if abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, df, 't', 'two')) < tol
+                if (abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, df, 't', 'two')) < tol)
                     testSide = 'two';
-                elseif t_tmp > 0 && abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, df, 't', 'one+')) < tol
+                elseif (t_tmp > 0) && (abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, df, 't', 'one+')) < tol)
                     testSide = 'one+';
                 elseif abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, StatMat.df(i_t_tmp), 't', 'one-')) < tol
                     testSide = 'one-';

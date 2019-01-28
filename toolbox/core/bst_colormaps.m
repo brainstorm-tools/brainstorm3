@@ -68,7 +68,8 @@ function varargout = bst_colormaps( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2019
+%          Thomas Vincent, 2019
 
 eval(macro_method);
 end
@@ -134,6 +135,7 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.CMap             = cmap_rbw(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'local';
+            sColormap.UseStatThreshold = 0;
         % Time colormap
         case 'time'
             sColormap.Name             = 'jet';
@@ -658,8 +660,10 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         jCheckAbs.setSelected(sColormap.isAbsoluteValues);
         
         % Options : use statistics threshold(s)
-        jCheckStatThresh = gui_component('CheckBoxMenuItem', jMenu, [], 'Use stat threshold', [], [], @(h,ev)SetUseStatThreshold(ColormapType, ev.getSource.isSelected()));
-        jCheckStatThresh.setSelected(sColormap.UseStatThreshold);
+        if strcmpi(ColormapType, 'stat2')
+            jCheckStatThresh = gui_component('CheckBoxMenuItem', jMenu, [], 'Use stat threshold', [], [], @(h,ev)SetUseStatThreshold(ColormapType, ev.getSource.isSelected()));
+            jCheckStatThresh.setSelected(sColormap.UseStatThreshold);
+        end
         
         CreateSeparator(jMenu, isPermanent);
         % Options : Maximum
@@ -1221,6 +1225,10 @@ function SetColormapAbsolute(ColormapType, status)
     % Fire change notificiation to all figures (3DViz and Topography)
     isAbsoluteChanged = 1;
     FireColormapChanged(ColormapType, isAbsoluteChanged);
+    % Mutually exclusive with UseStatThreshold
+    if status && sColormap.UseStatThreshold
+        SetUseStatThreshold(ColormapType, 0);
+    end
 end
 function SetColormapRealMin(ColormapType, status)
     sColormap = GetColormap(ColormapType);
@@ -1263,6 +1271,10 @@ function SetUseStatThreshold(ColormapType, status)
     SetColormap(ColormapType, sColormap);
     % Fire change notificiation to all figures (3DViz and Topography)
     FireColormapChanged(ColormapType);
+    % Mutually exclusive with Absolute
+    if status && sColormap.isAbsoluteValues
+        SetColormapAbsolute(ColormapType, 0);
+    end
 end
 
 %% ====== SLIDERS CALLBACKS ======
@@ -1664,6 +1676,81 @@ function RemoveColormapFromFigure(hFig, ColormapType) %#ok<DEFNU>
     end
     % Update figure app data
     setappdata(hFig, 'Colormap', ColormapInfo);
+end
+
+
+%% ===== THRESHOLD COLORMAP =====
+function cmapThreshed = StatThreshold(cMap, vMin, vMax, isAbs, tUnder, tOver, nsColor) %#ok<DEFNU>
+    % Apply double thresholding to given cmap so that the color of values between
+    % given thresholds is set to the color of the null value. 
+    % Original color dynamics is tranfered to significant values.
+    if vMin > vMax
+        error('Bad value range: vMin > vMax');
+    end
+    if isempty(tUnder) && isempty(tOver)
+        error('Both thresholds are undefined');
+    end
+    if tUnder == tOver % no thresholding -> nothing to do
+        cmapThreshed = cMap;
+        return;
+    end
+    if isempty(tUnder) % one-sided+
+       tUnder = vMin; 
+    end
+    if isempty(tOver) % one-sided-
+       tOver = vMax; 
+    end
+    if tUnder > tOver
+        error('Bad thresholds: tUnder > tOver');
+    end
+
+    if isAbs
+        % In case abs wasn't already applied to limits
+        if vMin < 0 && vMax <= 0
+            vMin = abs(vMax);
+            vMax = abs(vMin);
+        elseif vMin < 0 && vMax >= 0
+            vMin = 0;
+            vMax = max(abs(vMin), vMax);
+        end
+        % In case thresholds are not symetrical
+        if tUnder < 0 && tOver <= 0
+            tUnder = abs(tOver);
+            tOver = abs(tUnder);
+        elseif tUnder <  0 && tOver >= 0
+            tOver = min(abs(tUnder), tOver); 
+            tUnder = vMin;
+        end
+    end
+
+    nc = length(cMap);
+    % Convert value to color index, with clipping
+    v2ci = @(v) max(1, min(round((nc-1)/(vMax-vMin) * (v-vMin) + 1), nc ));
+
+    if nargin < 6
+        nsColor = cMap(v2ci(0), :); % Take color of value=zero for non-significant
+    end
+    assert(all(size(nsColor) == [1, 3]));
+    cmapThreshed = zeros(size(cMap));
+
+    % Set non-significant range
+    nsIndexes = v2ci(tUnder):v2ci(tOver);
+    cmapThreshed(nsIndexes, :) = repmat(nsColor, length(nsIndexes), 1);
+
+    % Compress initial color dynamics into significant range
+    ci0 = v2ci(0);
+    if tOver < vMax
+        sigOverIndexes = v2ci(tOver):nc;
+        posIndexes = (ci0+1):nc;
+        targetOver = round(linspace(posIndexes(1), posIndexes(end), length(sigOverIndexes)));
+        cmapThreshed(sigOverIndexes, :) = interp1(posIndexes,cMap(posIndexes,:), targetOver);
+    end
+    if tUnder > vMin
+        sigUnderIndexes = 1:v2ci(tUnder);
+        negIndexes = 1:(ci0-1);
+        targetUnder = round(linspace(negIndexes(1), negIndexes(end), length(sigUnderIndexes)));
+        cmapThreshed(sigUnderIndexes, :) = interp1(negIndexes,cMap(negIndexes, :), targetUnder);
+    end
 end
 
 

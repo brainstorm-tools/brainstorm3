@@ -98,7 +98,7 @@ function UpdateTopoPlot(iDS, iFig)
     hAxes       = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     TopoHandles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
     % Get data to display
-    [DataToPlot, Time, selChan] = GetFigureData(iDS, iFig, 0);
+    [DataToPlot, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThreshOver] = GetFigureData(iDS, iFig, 0);
     if isempty(DataToPlot)
         disp('BST> Warning: No data to update the topography surface.');
         % Remove color in topography display
@@ -161,6 +161,18 @@ function UpdateTopoPlot(iDS, iFig)
     % Absolute values
     if sColormap.isAbsoluteValues
         DataToPlot = abs(DataToPlot);
+    end
+    % Adapt colormap for stat threshold
+    if sColormap.UseStatThreshold && (~isempty(StatThreshUnder) || ~isempty(StatThreshOver))
+        % Extend the color of null value to non-significant values and put all the color dynamics for significant values
+        sColormap.CMap = bst_colormaps('StatThreshold', sColormap.CMap, CLim(1), CLim(2), ...
+                                       sColormap.isAbsoluteValues, StatThreshUnder, StatThreshOver, ...
+                                       [0.7 0.7 0.7]);
+
+        % Update figure colorbar accordingly
+        set(hFig, 'Colormap', sColormap.CMap);
+        % Create/Delete colorbar
+        bst_colormaps('SetColorbarVisible', hFig, sColormap.DisplayColorbar);
     end
     
     % ===== Map data on target patch =====
@@ -226,7 +238,7 @@ end
 
 %% ===== GET FIGURE DATA =====
 % Warning: Time output is only defined for the time-frequency plots
-function [F, Time, selChan, overlayLabels, dispNames] = GetFigureData(iDS, iFig, isAllTime, isMultiOutput)
+function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThreshOver] = GetFigureData(iDS, iFig, isAllTime, isMultiOutput)
     global GlobalData;
     % Initialize returned values
     F = [];
@@ -234,6 +246,8 @@ function [F, Time, selChan, overlayLabels, dispNames] = GetFigureData(iDS, iFig,
     selChan = [];
     overlayLabels = {};
     dispNames = {};
+    StatThreshUnder = [];
+    StatThreshOver = [];
     % Parse inputs
     if (nargin < 4) || isempty(isMultiOutput)
         isMultiOutput = 0;
@@ -311,6 +325,11 @@ function [F, Time, selChan, overlayLabels, dispNames] = GetFigureData(iDS, iFig,
                         Fall{iFile} = bst_memory('GetRecordingsValues', iDSread, [], TimeDef, isGradMagScale);
                         % Select only a subset of sensors
                         F{iFile} = Fall{iFile}(selChan,:);
+                    end
+                    % Stat threshold
+                    if strcmpi(file_gettype(ReadFiles{iFile}), 'pdata')
+                        StatThreshOver = GlobalData.DataSet(iDS).Measures.StatThreshOver;
+                        StatThreshUnder = GlobalData.DataSet(iDS).Measures.StatThreshUnder;
                     end
                 case 'timefreq'
                     % Get timefreq values

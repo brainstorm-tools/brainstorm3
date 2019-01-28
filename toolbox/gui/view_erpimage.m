@@ -63,7 +63,7 @@ isNewFig = isempty(hFig) || isequal(hFig, 'NewFigure');
 % ===== LOAD DATA =====
 switch (FileType)
     % ===== RECORDINGS =====
-    case 'data'
+    case {'data','pdata'}
         % Load data file
         iDS = bst_memory('LoadDataFile', DataFiles{1});
         if isempty(iDS)
