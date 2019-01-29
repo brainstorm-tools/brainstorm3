@@ -6,6 +6,7 @@ January 2019
 - IO: Export EEG/SEEG electrode positions in MNI or world coordinates
 - Stat: Colormaps adapted to t-value threshold
 - GUI: Added colormap ovun (now default for stat2 files)
+- GUI: Reorganization of the management of multiple screens for Matlab>2015b
 ---------------------------------------------------------------
 December 2018
 - IO: BIDS import: Support for EEG and iEEG

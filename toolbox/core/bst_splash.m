@@ -47,7 +47,9 @@ switch lower(action)
             jSplash.setUndecorated(1);
             jSplash.setAlwaysOnTop(1);
             jSplash.setDefaultCloseOperation(jSplash.DISPOSE_ON_CLOSE);
-            jSplash.setPreferredSize(java.awt.Dimension(400, 226));
+            frameW = 400;
+            frameH = 226;
+            jSplash.setPreferredSize(java.awt.Dimension(frameW, frameH));
             % Set icon
             try
                 jSplash.setIconImage(IconLoader.ICON_APP.getImage());
@@ -67,9 +69,19 @@ switch lower(action)
             jLabel.setIcon(javax.swing.ImageIcon(logo_file));
             jPanel.add(jLabel, java.awt.BorderLayout.CENTER);
 
-            % Display figure
+            % Finalize figure layouts
             jSplash.pack();
-            jSplash.setLocationRelativeTo(jSplash.getParent());
+            % Center on first screen
+            try 
+                ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment();
+                jBounds = ge.getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+                frameX = (jBounds.getX() + jBounds.getWidth() - frameW) ./ 2;
+                frameY = (jBounds.getY() + jBounds.getHeight() - frameH) ./ 2;
+                jSplash.setLocation(frameX, frameY);
+            catch
+                jSplash.setLocationRelativeTo([]);
+            end
+            % Display figure
             jSplash.setVisible(1);
             BrainstormSplash.jDialog = jSplash;
         end
