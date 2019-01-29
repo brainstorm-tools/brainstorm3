@@ -203,11 +203,14 @@ else
     end
 end
 
-if areThereEvents && ~bst_get('UseSigProcToolbox')
-    disp('Warning: The Signal Processing Toolbox is required to read events from Intan files.');
-elseif areThereEvents
-    %TODO: change to a toolbox-free function?
-    [event_labels, event_samples] = findpeaks(events_vector);
+if areThereEvents
+    if bst_get('UseSigProcToolbox')
+        [event_labels, event_samples] = findpeaks(events_vector);
+    else
+        [event_samples, event_labels] = peakseek(events_vector, min(events_vector));
+        event_labels = event_labels';
+        event_samples = event_samples';
+    end
     
     % Create events list
     if ~isempty(event_labels)
