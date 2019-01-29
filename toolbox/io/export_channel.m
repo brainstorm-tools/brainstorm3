@@ -141,11 +141,11 @@ switch FileFormat
     case 'POLHEMUS-HS'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'name','X','Y','Z'}, 0, 1, 1, .01);
     case 'ASCII_XYZ-HS'
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z'}, 0, 1, 0, .01, Transf);
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z'}, 0, 1, 0, .001, Transf);
     case 'ASCII_NXYZ-HS'
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 0, 1, 0, .01, Transf);
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 0, 1, 0, .001, Transf);
     case 'ASCII_XYZN-HS'
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 0, 1, 0, .01, Transf);
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 0, 1, 0, .001, Transf);
         
     % === EEG ONLY ===
     case 'CARTOOL-XYZ'
@@ -161,11 +161,11 @@ switch FileFormat
     case 'EGI'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'name','-Y','X','Z'}, 1, 0, 0, .01);
     case {'ASCII_XYZ-EEG', 'ASCII_XYZ_MNI-EEG', 'ASCII_XYZ_WORLD-EEG'}
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z'}, 1, 0, 0, .01, Transf);
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z'}, 1, 0, 0, .001, Transf);
     case {'ASCII_NXYZ-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_NXYZ_WORLD-EEG'}
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 1, 0, 0, .01, Transf);
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 1, 0, 0, .001, Transf);
     case {'ASCII_XYZN-EEG', 'ASCII_XYZN_MNI-EEG', 'ASCII_XYZN_WORLD-EEG'}
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 1, 0, 0, .01, Transf);
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 1, 0, 0, .001, Transf);
     
     % === NIRS ===
     case 'BRAINSIGHT-TXT'

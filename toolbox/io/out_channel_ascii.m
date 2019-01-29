@@ -115,7 +115,7 @@ for i = 1:nLoc
         fwrite(fid, str);
         % Add separator (space)
         if (iF ~= length(Format))
-            fwrite(fid, ' ');
+            fwrite(fid, sprintf('\t'));
         % Terminate line
         else
             fwrite(fid, 10);
