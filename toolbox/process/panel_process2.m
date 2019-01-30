@@ -64,11 +64,12 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
     % Get files
     sFilesA = panel_nodelist('GetFiles', nodelistNameA);
     sFilesB = panel_nodelist('GetFiles', nodelistNameB);
-%     if isempty(sFilesA) || isempty(sFilesB)
-%         return
-%     end
-    if isempty(sFilesA), sFilesA = db_template('importfile'); end
-    if isempty(sFilesB), sFilesB = db_template('importfile'); end
+    if isempty(sFilesA)
+        sFilesA = db_template('importfile'); 
+    end
+    if isempty(sFilesB)
+        sFilesB = db_template('importfile');
+    end
     
     % Warning for read-only
     if bst_get('ReadOnly')
