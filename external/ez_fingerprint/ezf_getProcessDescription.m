@@ -22,7 +22,7 @@
 function d = ezf_getProcessDescription()
 
     f = ezf_checkMaltabVersion();
-    [isEZFInstalled, ~] = ezf_checkEZFInstallation();
+    [isEZFInstalled, tmp] = ezf_checkEZFInstallation();
     
     d = '';
     if f == -1
