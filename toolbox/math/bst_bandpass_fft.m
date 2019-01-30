@@ -64,7 +64,7 @@ Norig = size(x,2);
 % Nmirror = round(.1 * Norig);
 if isMirror
     Nmirror = Norig;
-    if rem(size(x,2),2)
+    if rem(Norig,2)
         if (Nmirror == Norig)
             x = [x(:,Nmirror:-1:1), x, x(:,end:-1:end-Nmirror+2)];
         else
