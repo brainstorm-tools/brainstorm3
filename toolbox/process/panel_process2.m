@@ -64,9 +64,13 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
     % Get files
     sFilesA = panel_nodelist('GetFiles', nodelistNameA);
     sFilesB = panel_nodelist('GetFiles', nodelistNameB);
-    if isempty(sFilesA) || isempty(sFilesB)
-        return
+    if isempty(sFilesA)
+        sFilesA = db_template('importfile'); 
     end
+    if isempty(sFilesB)
+        sFilesB = db_template('importfile');
+    end
+    
     % Warning for read-only
     if bst_get('ReadOnly')
         java_dialog('warning', ['The protocol is opened in read-only mode.' 10 ...
