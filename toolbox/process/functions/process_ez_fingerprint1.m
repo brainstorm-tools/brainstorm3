@@ -45,8 +45,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 0;
     
     % Definition of the options
-    sProcess.options.desc.Type = 'label';
-    sProcess.options.desc.Comment = ezf_getProcessDescription();
+    %sProcess.options.desc.Type = 'label';
+    %sProcess.options.desc.Comment = ezf_getProcessDescription();
 end
 
 
