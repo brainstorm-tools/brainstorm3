@@ -1,4 +1,4 @@
-function [TessMat, TessFile] = in_tess_bst( TessFile, isComputeMissing )
+    function [TessMat, TessFile] = in_tess_bst( TessFile, isComputeMissing )
 % IN_TESS_BST: Load a Brainstorm surface file, and compute missing fields.
 %
 % USAGE:  TessMat = in_tess_bst(TessFile, isComputeMissing);

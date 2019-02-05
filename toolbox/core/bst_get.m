@@ -2019,7 +2019,7 @@ switch contextName
                     sItem = sStudy.Image(iItem);
                 end
             % ===== ANATOMY =====
-            case {'cortex','scalp','innerskull','outerskull','tess'}
+            case {'cortex','scalp','innerskull','outerskull','tess','fibers'}
                 [sStudy, iStudy, iItem] = bst_get('SurfaceFile', FileName);
                 if (nargout >= 5) && ~isempty(sStudy)
                     sItem = sStudy.Surface(iItem);
@@ -2658,7 +2658,8 @@ switch contextName
             'MatrixIn',    '', ...
             'MatrixOut',   '', ...
             'MontageIn',   '', ...
-            'MontageOut',  '');
+            'MontageOut',  '', ...
+            'FibersIn',    '');
         argout1 = FillMissingFields(contextName, defPref);
 
     case 'OsType'
@@ -3388,6 +3389,10 @@ switch contextName
                     {'.sel'},     'MNE selection files (*.sel)',              'MNE'; ...
                     {'.mon'},     'Text montage files (*.mon)',               'MON'; ...
                     {'_montage'}, 'Brainstorm montage files (montage_*.mat)', 'BST'};
+            case 'fibers'
+                argout1 = {...
+                    {'.trk'},    'TrackVis (*.trk)',                       'TRK'; ...
+                    {'_fibers'}, 'Brainstorm fibers files (fibers_*.mat)', 'BST'};
         end
         
 

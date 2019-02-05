@@ -2267,6 +2267,19 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
     end
 end
 
+%% ===== PLOT FIBERS =====
+function varargout = PlotFibers(hFig, FibPoints)
+    % Set figure as current
+    set(0, 'CurrentFigure', hFig);
+    
+    % Plot fibers
+    line(FibPoints(1:10,:,1)', FibPoints(1:10,:,2)', FibPoints(1:10,:,3)');
+    
+    % Set output variables
+    if nargout > 0
+        varargout{1} = hFig;
+    end
+end
 
 %% ===== PLOT SQUARE/CUT =====
 % USAGE:  PlotSquareCut(hFig, TessInfo, dim, pos)

@@ -99,6 +99,8 @@ if ischar(fileName)
                 fileType = 'innerskull';
             elseif ~isempty(strfind(fileName, '_skull'))
                 fileType = 'outerskull';
+            elseif ~isempty(strfind(fileName, '_fibers'))
+                fileType = 'fibers';
             else
                 fileType = 'tess';
             end
@@ -168,6 +170,8 @@ elseif isstruct(fileName)
         fileType = 'videolink';
     elseif isfield(sMat, 'Spikes')
         fileType = 'spikes';
+    elseif isfield(sMat, 'Points')
+        fileType = 'fibers';
     else
         fileType = 'unknown';
     end

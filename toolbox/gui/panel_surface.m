@@ -876,6 +876,8 @@ function nbSurfaces = CreateSurfaceList(jToolbar, hFig)
                     iconButton = IconLoader.ICON_SURFACE_INNERSKULL;
                 case 'outerskull'
                     iconButton = IconLoader.ICON_SURFACE_OUTERSKULL;
+                case 'fibers'
+                    iconButton = IconLoader.ICON_FIBERS;
                 case 'other'
                     iconButton = IconLoader.ICON_SURFACE;
                 case 'anatomy'
@@ -1126,6 +1128,25 @@ function iTess = AddSurface(hFig, surfaceFile)
         end
         % Plot MRI
         PlotMri(hFig);
+    % === FIBERS ===
+    elseif strcmpi(fileType, 'fibers')
+        % Load fibers
+        FibMat = in_fibers(surfaceFile);
+        
+        TessInfo(iTess).Name = 'Fibers';
+        % Update figure's surfaces list and current surface pointer
+        setappdata(hFig, 'Surface',  TessInfo);
+
+        % === PLOT SURFACE ===
+        switch (FigureId.Type)
+            case 'MriViewer'
+                % Nothing to do: surface will be displayed as an overlay slice in figure_mri.m
+            case {'3DViz', 'Topography'}
+                % Create and display surface patch
+                hFig = figure_3d('PlotFibers', hFig, FibMat.Points);
+        end
+        %line(FibMat.Points(1,:,1), FibMat.Points(1,:,2), FibMat.Points(1,:,3));
+        %error('todo');
     end
     % Update default surface
     setappdata(hFig, 'iSurface', iTess);

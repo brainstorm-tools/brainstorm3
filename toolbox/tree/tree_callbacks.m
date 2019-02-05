@@ -67,7 +67,7 @@ nodeType = char(bstNodes(1).getType());
 filenameRelative = char(bstNodes(1).getFileName());
 % Build full filename (depends on the file type)
 switch lower(nodeType)
-    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'other', 'subject', 'studysubject', 'anatomy'}
+    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'other', 'subject', 'studysubject', 'anatomy'}
         filenameFull = bst_fullfile(ProtocolInfo.SUBJECTS, filenameRelative);
     case {'study', 'condition', 'rawcondition', 'channel', 'headmodel', 'data','rawdata', 'datalist', 'results', 'kernel', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'image', 'video', 'videolink', 'noisecov', 'ndatacov', 'dipoles','timefreq', 'spectrum', 'matrix', 'matrixlist', 'pmatrix'}
         filenameFull = bst_fullfile(ProtocolInfo.STUDIES, filenameRelative);
@@ -167,7 +167,7 @@ switch (lower(action))
     
             % ===== SURFACE ===== 
             % Mark/unmark (items selected : 1/category)
-            case {'scalp', 'outerskull', 'innerskull', 'cortex'}
+            case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers'}
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
                 iSurface = bstNodes(1).getItemIndex();
@@ -177,6 +177,7 @@ switch (lower(action))
                     case 'innerskull', SurfaceType = 'InnerSkull';
                     case 'outerskull', SurfaceType = 'OuterSkull';
                     case 'cortex',     SurfaceType = 'Cortex';
+                    case 'fibers',     SurfaceType = 'Fibers';
                     case 'other',      SurfaceType = 'Other';
                 end
                 if (~ismember(iSurface, sSubject.(['i' SurfaceType])) || ~bstNodes(1).isMarked())
@@ -526,6 +527,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
                     gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
+                    gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
                     AddSeparator(jPopup);
                     % === USE DEFAULT ===
                     % Get registered Brainstorm anatomy defaults
@@ -999,6 +1001,7 @@ switch (lower(action))
                     jItemSetSurfTypeCortex     = gui_component('MenuItem', jItemSetSurfType, [], 'Cortex',      IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)node_set_type(bstNodes(1), 'Cortex'));
                     jItemSetSurfTypeOuterSkull = gui_component('MenuItem', jItemSetSurfType, [], 'Outer skull', IconLoader.ICON_SURFACE_OUTERSKULL, [], @(h,ev)node_set_type(bstNodes(1), 'OuterSkull'));
                     jItemSetSurfTypeInnerSkull = gui_component('MenuItem', jItemSetSurfType, [], 'Inner skull', IconLoader.ICON_SURFACE_INNERSKULL, [], @(h,ev)node_set_type(bstNodes(1), 'InnerSkull'));
+                    jItemSetSurfTypeFibers     = gui_component('MenuItem', jItemSetSurfType, [], 'Fibers',      IconLoader.ICON_FIBERS, [], @(h,ev)node_set_type(bstNodes(1), 'Fibers'));
                     jItemSetSurfTypeOther      = gui_component('MenuItem', jItemSetSurfType, [], 'Other',       IconLoader.ICON_SURFACE, [], @(h,ev)node_set_type(bstNodes(1), 'Other'));
                     % Check current type
                     switch (nodeType)
@@ -1010,6 +1013,8 @@ switch (lower(action))
                             jItemSetSurfTypeOuterSkull.setSelected(1);
                         case 'innerskull'
                             jItemSetSurfTypeInnerSkull.setSelected(1);
+                        case 'fibers'
+                            jItemSetSurfTypeFibers.setSelected(1);
                         case 'other'
                             jItemSetSurfTypeOther.setSelected(1);
                     end
@@ -1090,7 +1095,16 @@ switch (lower(action))
                 % === MENU: EXPORT ===
                 % Export menu (added later)
                 jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_surfaces(filenameFull));
+             
+%% ===== POPUP: FIBERS =====
+            case {'fibers'}
+                % Get subject
+                iSubject = bstNodes(1).getStudyIndex();
+                sSubject = bst_get('Subject', iSubject);
                 
+                % === DISPLAY ===
+                gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
+
                 
 %% ===== POPUP: NOISECOV =====
             case {'noisecov', 'ndatacov'}
