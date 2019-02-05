@@ -97,6 +97,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         DataMatP.Time = sResultP.Time;
         DataMatP.F = [];
         DataMatP.Comment = sResultP.Comment;
+        DataMatP.nAvg = sResultP.nAvg;
     else
         DataMatP = in_bst_data(sResultP.DataFile);
     end
@@ -115,7 +116,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % But we need to calculate the possible Factor here for any other
     % manipulation of the data, as needed below.
     Factor = sqrt(DataMatP.nAvg / sResultP.nAvg); % is unity if both equal.
-    if Factor ~= 1,
+    if Factor ~= 1
         fprintf('BST Dipole Scanning> Need additional factor of %.2f (sqrt of %.1f) to account for average.\n',Factor, Factor^2);
     end
     
