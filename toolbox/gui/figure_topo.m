@@ -910,7 +910,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         nPlots = length(selChan);
     end
     if (nPlots < 60)
-        plotSize = [0.05, 0.05] .* sqrt(120 ./ nPlots);
+        plotSize = [0.05, 0.044] .* sqrt(120 ./ nPlots);
     else
         plotSize = [0.05, 0.05];
     end
