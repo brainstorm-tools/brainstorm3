@@ -38,11 +38,11 @@ end
 readDim = [sFile.header.numberchannels, SamplesBounds(2)-SamplesBounds(1)+1];
 readOffset = [0, SamplesBounds(1)];
 % Read only the requested time points
-fid = H5F.open(sFile.filename);
+fid = H5F.open(sFile.filename, 'H5F_ACC_RDONLY', 'H5P_DEFAULT');
 dset_id = H5D.open(fid, [sFile.header.acquisitionname '/data/']);
 file_space_id = H5D.get_space(dset_id);
 mem_space_id = H5S.create_simple(2, fliplr(readDim), []);
-H5S.select_hyperslab(file_space_id, 'H5S_SELECT_SET', fliplr(readOffset), [], [], fliplr(readDim));
+H5S.select_hyperslab(file_space_id, 'H5S_SELECT_SET', fliplr(readOffset), [], [1 1], fliplr(readDim));
 F = H5D.read(dset_id, 'H5ML_DEFAULT', mem_space_id ,file_space_id, 'H5P_DEFAULT');
 H5D.close(dset_id);
 H5F.close(fid);
