@@ -2273,11 +2273,14 @@ function varargout = PlotFibers(hFig, FibPoints)
     set(0, 'CurrentFigure', hFig);
     
     % Plot fibers
-    line(FibPoints(1:10,:,1)', FibPoints(1:10,:,2)', FibPoints(1:10,:,3)');
+    %TODO: Only plotting the first 10k for now
+    nF = min(size(FibPoints,1),10000);
+    lines = line(FibPoints(1:nF,:,1)', FibPoints(1:nF,:,2)', FibPoints(1:nF,:,3)');
     
     % Set output variables
     if nargout > 0
         varargout{1} = hFig;
+        varargout{2} = lines;
     end
 end
 
@@ -2403,6 +2406,10 @@ function UpdateSurfaceColor(hFig, iTess)
     if strcmpi(TessInfo(iTess).Name, 'Anatomy')
         % Update display
         UpdateMriDisplay(hFig, [], TessInfo, iTess);
+        
+    % === FIBERS ===
+    elseif strcmpi(TessInfo(iTess).Name, 'Fibers')
+        % Do nothing for now
         
     % === SURFACE ===
     else
@@ -2933,7 +2940,7 @@ function UpdateSurfaceAlpha(hFig, iTess)
     Surface = TessInfo(iTess);
        
     % Ignore empty surfaces and MRI slices
-    if strcmpi(Surface.Name, 'Anatomy') || isempty(Surface.hPatch) || ~ishandle(Surface.hPatch)
+    if strcmpi(Surface.Name, 'Anatomy') || strcmpi(Surface.Name, 'Fibers') || isempty(Surface.hPatch) || ~ishandle(Surface.hPatch)
         return 
     end
     % Apply current smoothing

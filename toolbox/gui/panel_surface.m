@@ -644,6 +644,9 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(sSubject.iCortex)
             typesList{end+1} = 'Cortex';
         end
+        if ~isempty(sSubject.iFibers)
+            typesList{end+1} = 'Fibers';
+        end
         
         % Get low resolution white surface
         iWhite = find(~cellfun(@(c)isempty(strfind(lower(c),'white')), {sSubject.Surface.Comment}));
@@ -696,6 +699,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(sSubject.iInnerSkull(1)).FileName;
         case 'OuterSkull'
             SurfaceFile = sSubject.Surface(sSubject.iOuterSkull(1)).FileName;
+        case 'Fibers'
+            SurfaceFile = sSubject.Surface(sSubject.iFibers).FileName;
         case 'ASEG'
             SurfaceFile = sSubject.Surface(iAseg).FileName;
         case 'White'
@@ -1143,10 +1148,11 @@ function iTess = AddSurface(hFig, surfaceFile)
                 % Nothing to do: surface will be displayed as an overlay slice in figure_mri.m
             case {'3DViz', 'Topography'}
                 % Create and display surface patch
-                hFig = figure_3d('PlotFibers', hFig, FibMat.Points);
+                [hFig, TessInfo(iTess).hPatch] = figure_3d('PlotFibers', hFig, FibMat.Points);
         end
-        %line(FibMat.Points(1,:,1), FibMat.Points(1,:,2), FibMat.Points(1,:,3));
-        %error('todo');
+        
+        % Update figure's surfaces list and current surface pointer
+        setappdata(hFig, 'Surface',  TessInfo);
     end
     % Update default surface
     setappdata(hFig, 'iSurface', iTess);

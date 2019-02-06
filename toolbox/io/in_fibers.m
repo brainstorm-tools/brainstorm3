@@ -96,20 +96,23 @@ for iFib = 1:length(FibMat)
     end
     % Add coordinates offset
     if ~isempty(OffsetMri) && ~isempty(sMri)
-        FibMat(iFib).Points = bst_bsxfun(@plus, FibMat(iFib).Points, OffsetMri .* sMri.Voxsize ./ 1000 );
+        % Convert to 2D matrix to do it in one go
+        [pts2D, shape3D] = conv3Dto2D(FibMat(iFib).Points);
+        pts2D = bst_bsxfun(@plus, pts2D, OffsetMri .* sMri.Voxsize ./ 1000);
+        FibMat(iFib).Points = conv2Dto3D(pts2D, shape3D);
     end
 end
-
         
 %% ===== CONVERSION MRI TO SCS =====
 if isConvertScs
     if ~isempty(sMri) && isfield(sMri, 'SCS') && isfield(sMri.SCS, 'NAS') && ~isempty(sMri.SCS.NAS)
-        bst_progress('start', 'Importing fibers' , 'Converting coordinates to SCS...', 0, length(FibMat) * N);
+        bst_progress('start', 'Importing fibers' , 'Converting coordinates to SCS...', 0, length(FibMat));
         for iFib = 1:length(FibMat)
-            for iPt = 1:N
-                FibMat(iFib).Points(:, iPt, :) = cs_convert(sMri, 'mri', 'scs', squeeze(FibMat(iFib).Points(:, iPt, :)));
-                bst_progress('inc', 1);
-            end
+            % Convert to 2D matrix to do it in one go using cs_convert()
+            [pts2D, shape3D] = conv3Dto2D(FibMat(iFib).Points);
+            pts2D = cs_convert(sMri, 'mri', 'scs', pts2D);
+            FibMat(iFib).Points = conv2Dto3D(pts2D, shape3D);
+            bst_progress('inc', 1);
         end
     else
         disp(['IN_FIBERS> Warning: MRI is missing, or fiducials are not defined.' 10 ...
@@ -125,5 +128,20 @@ for iFib = 1:length(FibMat)
         FibMat(iFib).Comment = sprintf('fibers_%dPt_%dFib', N, size(FibMat(iFib).Points, 1));
     end
 end
+end
 
+function [mat2d, shape3d] = conv3Dto2D(mat3d, iDimToKeep)
+    shape3d = size(mat3d);
+    nDims = length(shape3d);
+    
+    if nargin < 2 || isempty(iDimToKeep)
+        iDimToKeep = nDims;
+    end
+    
+    iMergeDims = 1:nDims ~= iDimToKeep;
+    mat2d = reshape(mat3d, [prod(shape3d(iMergeDims)), shape3d(iDimToKeep)]);
+end
 
+function mat3d = conv2Dto3D(mat2d, shape3d)
+    mat3d = reshape(mat2d, shape3d);
+end

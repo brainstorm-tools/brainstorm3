@@ -135,6 +135,22 @@ if isempty(isApplyMriOrient) && ~isempty(sMri) && isfield(sMri, 'InitTransf') &&
     isApplyMriOrient = java_dialog('confirm', ['MRI orientation was non-standard and had to be reoriented.' 10 10 ...
                                    'Apply the same transformation to the fibers?' 10 ...
                                    'Default answer is: NO', 10 10], 'Import fibers');
+                               
+    % Add MRI translation to the OffsetMri variable
+    if isApplyMriOrient
+        for i = 1:size(sMri.InitTransf,1)
+            ttype = sMri.InitTransf{i,1};
+            val   = sMri.InitTransf{i,2};
+            if strcmpi(ttype, 'vox2ras')
+                MyOffsetMri = -val(1:3,4)';
+                if isempty(OffsetMri)
+                    OffsetMri = MyOffsetMri;
+                else
+                    OffsetMri = OffsetMri + MyOffsetMri;
+                end
+            end
+        end
+    end
 else
     isApplyMriOrient = 0;
 end
@@ -210,7 +226,8 @@ end
 %  ======================================================================================
 %% ===== APPLY MRI ORIENTATION =====
 function sSurf = applyMriTransf(MriTransf, sSurf)
-    pts = sSurf.Points;
+    % Convert points matrix to 2D for transformation.
+    [pts, shape3d] = conv3Dto2D(sSurf.Points);
     % Apply step by step all the transformations that have been applied to the MRI
     for i = 1:size(MriTransf,1)
         ttype = MriTransf{i,1};
@@ -231,15 +248,11 @@ function sSurf = applyMriTransf(MriTransf, sSurf)
             case 'permute'
                 pts = pts(:,val);
             case 'vox2ras'
-                
+                % Do nothing, applied earlier
         end
     end
     % Report changes in structure
-    sSurf.Vertices = pts;
-    % Update faces order: If the surfaces were flipped an odd number of times, invert faces orientation
-    if (mod(nnz(strcmpi(MriTransf(:,1), 'flipdim')), 2) == 1)
-        sSurf.Faces = sSurf.Faces(:,[1 3 2]);
-    end
+    sSurf.Points = conv2Dto3D(pts, shape3d);
 end
 
 
@@ -254,5 +267,21 @@ function NewFibers = fib_concatenate(Fibers)
             NewFibers.Points(:, end+1:end+nFibers) = Fibers(iFib).Points;
         end
     end
+end
+
+function [mat2d, shape3d] = conv3Dto2D(mat3d, iDimToKeep)
+    shape3d = size(mat3d);
+    nDims = length(shape3d);
+    
+    if nargin < 2 || isempty(iDimToKeep)
+        iDimToKeep = nDims;
+    end
+    
+    iMergeDims = 1:nDims ~= iDimToKeep;
+    mat2d = reshape(mat3d, [prod(shape3d(iMergeDims)), shape3d(iDimToKeep)]);
+end
+
+function mat3d = conv2Dto3D(mat2d, shape3d)
+    mat3d = reshape(mat2d, shape3d);
 end
     

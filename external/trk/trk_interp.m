@@ -75,11 +75,8 @@ parfor iTrk=1:length(tracks)
     [dist I J]= unique(dist);
     
     % Fit spline
-    try
-        pp{iTrk} = spline(dist, tracks_tmp.matrix(I,:)');
-    catch
-        disp('oops');
-    end
+    % Martin: bugfix for fibers with more than 3 dimensions
+    pp{iTrk} = spline(dist, tracks_tmp.matrix(I,1:3)');
     
     % Resample streamline along the spline
     tracks_interp(:,:,iTrk) = ppval(pp{iTrk}, linspace(0, max(dist), nPoints_new))';
