@@ -2409,7 +2409,10 @@ function UpdateSurfaceColor(hFig, iTess)
         
     % === FIBERS ===
     elseif strcmpi(TessInfo(iTess).Name, 'Fibers')
-        % Do nothing for now
+        % Set line color
+        for iFib = 1:length(TessInfo(iTess).hPatch)
+            TessInfo(iTess).hPatch(iFib).Color(1:3) = TessInfo(iTess).AnatomyColor(1,1:3);
+        end
         
     % === SURFACE ===
     else
@@ -2940,8 +2943,20 @@ function UpdateSurfaceAlpha(hFig, iTess)
     Surface = TessInfo(iTess);
        
     % Ignore empty surfaces and MRI slices
-    if strcmpi(Surface.Name, 'Anatomy') || strcmpi(Surface.Name, 'Fibers') || isempty(Surface.hPatch) || ~ishandle(Surface.hPatch)
+    if strcmpi(Surface.Name, 'Anatomy') || isempty(Surface.hPatch) || all(~ishandle(Surface.hPatch))
         return 
+    end
+    % Fibers
+    if strcmpi(Surface.Name, 'Fibers')
+        lineAlpha = 1 - Surface.SurfAlpha;
+        lineWidth = 0.5 + 2.5 * Surface.SurfSmoothValue;
+        for iFib = 1:length(Surface.hPatch)
+            % Transparency
+            Surface.hPatch(iFib).Color(4) = lineAlpha;
+            % Smoothing
+            Surface.hPatch(iFib).LineWidth = lineWidth;
+        end
+        return;
     end
     % Apply current smoothing
     SmoothSurface(hFig, iTess, Surface.SurfSmoothValue);
