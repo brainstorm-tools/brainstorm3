@@ -216,6 +216,18 @@ for iChan = 1:nb_channels
     Channel(iChan).Group = measure_tag;
 end
 
+% Check uniqueness
+chan_names = {Channel.Name};
+[~, i_unique] = unique(chan_names);
+duplicates = chan_names;
+duplicates(i_unique) = [];
+duplicates(strcmp(duplicates, '')) = []; %remove unrecognized channels
+i_duplicates = ismember(chan_names, unique(duplicates));
+if ~isempty(duplicates)
+    msg = sprintf('Non-unique channels: "%s".', strjoin(sort(chan_names(i_duplicates)), ', '));
+    throw(MException('NIRSTORM:NonUniqueChannels', msg));
+end
+
 % AUX signals
 iChan = nb_channels+1;
 for iaux=1:size(nirs.aux,2)
