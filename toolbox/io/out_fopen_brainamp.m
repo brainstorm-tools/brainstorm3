@@ -1,4 +1,4 @@
-function sFileOut = out_fopen_brainamp(OutputFile, sFileIn, ChannelMat, EpochSize)
+function sFileOut = out_fopen_brainamp(OutputFile, sFileIn, ChannelMat)
 % OUT_FOPEN_BRAINAMP: Saves the header of a new empty BrainVision file (.vhdr/.vmrk)
 
 % @=============================================================================

@@ -1,4 +1,4 @@
-function sFileOut = out_fopen_edf(OutputFile, sFileIn, ChannelMat, EpochSize)
+function sFileOut = out_fopen_edf(OutputFile, sFileIn, ChannelMat, EpochSize, iChannels)
 % OUT_FOPEN_EDF: Saves the header of a new empty EDF file.
 
 % @=============================================================================
@@ -19,10 +19,14 @@ function sFileOut = out_fopen_edf(OutputFile, sFileIn, ChannelMat, EpochSize)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau & Francois Tadel, 2017
+% Authors: Martin Cousineau & Francois Tadel, 2017-2019
 
 
 %% ===== PARSE INPUTS =====
+% iChannels is set only if exporting only a subset of the input channels
+if (nargin < 5) || isempty(iChannels)
+    iChannels = [];
+end
 % Reject files with epochs
 if (length(sFileIn.epochs) > 1)
     error('Cannot export epoched files to continuous EDF files.');
@@ -30,6 +34,12 @@ end
 % Is the input file a native EDF file
 isRawEdf = strcmpi(sFileIn.format, 'EEG-EDF') && ~isempty(sFileIn.header) && isfield(sFileIn.header, 'patient_id') && isfield(sFileIn.header, 'signal');
 nSamples = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
+% Modify input headers (EDF export reuses the input header info directly)
+if isRawEdf && ~isempty(iChannels)
+    sFileIn.header.nsignal = length(iChannels);
+    sFileIn.header.signal = sFileIn.header.signal(iChannels);
+end
+
 
 %% ===== GET MAXIMUM VALUES =====
 if ~isRawEdf
@@ -46,6 +56,10 @@ if ~isRawEdf
         SamplesBounds = [(iBlock - 1) * BlockSize + sFileIn.prop.samples(1), min(sFileIn.prop.samples(2), sFileIn.prop.samples(1) + iBlock * BlockSize)];
         % Read the block from the file
         Fblock = in_fread(sFileIn, ChannelMat, 1, SamplesBounds);
+        % Keep only the files to be saved in the output file
+        if ~isempty(iChannels)
+            Fblock = Fblock(iChannels, :);
+        end
         % Extract absolute max
         Fmax = max(Fmax, max(abs(Fblock),[],2));
     end

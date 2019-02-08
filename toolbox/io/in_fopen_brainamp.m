@@ -211,7 +211,7 @@ for i = 1:hdr.NumberOfChannels
     else
         ChannelMat.Channel(i).Name = sprintf('E%d', i);
     end
-    if ~isempty(hdr.chloc)
+    if ~isempty(hdr.chloc) && (i <= size(hdr.chloc,1))
         ChannelMat.Channel(i).Loc = hdr.chloc(i,:)';
     else
         ChannelMat.Channel(i).Loc = [0; 0; 0];
