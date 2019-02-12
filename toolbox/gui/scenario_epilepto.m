@@ -97,7 +97,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jRadioSurf2 = gui_component('radio', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">8196V</FONT>', jButtonGroupSurf);
     ctrl.jRadioSurf3 = gui_component('radio', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">20484V</FONT>', jButtonGroupSurf);
     ctrl.jRadioSurf4 = gui_component('radio', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">7861V+hip+amyg</FONT>', jButtonGroupSurf);
-    ctrl.jRadioSurf4.setSelected(1);
+    ctrl.jRadioSurf3.setSelected(1);
     % Event names
     gui_component('label', ctrl.jPanels(i), 'br', '<HTML><FONT color="#a0a0a0">Onset event name: </FONT>');
     ctrl.jTextEvtOnset = gui_component('text', ctrl.jPanels(i), '', 'Onset');
