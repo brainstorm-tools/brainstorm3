@@ -1,7 +1,7 @@
 function F = in_fread_nwb(sFile, SamplesBounds, selectedChannels)
 % IN_FREAD_INTAN Read a block of recordings from nwb files
 %
-% USAGE:  F = in_fread_intan(sFile, SamplesBounds=[], iChannels=[])
+% USAGE:  F = in_fread_nwb(sFile, SamplesBounds=[], iChannels=[])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,7 +21,7 @@ function F = in_fread_nwb(sFile, SamplesBounds, selectedChannels)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis 2019
+% Author: Konstantinos Nasiotis 2019
 
 
 % Parse inputs
@@ -42,15 +42,23 @@ nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead 
 
 if sFile.header.RawDataPresent
     
-    
-    
-    
-    
+    % Sequential reading is faster
+    if sum(diff(selectedChannels) == ones(1,length(selectedChannels)-1)) == length(selectedChannels)-1
+        F = nwb2.acquisition.get(sFile.header.RawKey).data.load([selectedChannels(1), SamplesBounds(1) + 1], [selectedChannels(end), SamplesBounds(2)+1]);
+    % If not sequential channels, read one by one
+    else    
+        F = zeros(length(selectedChannels), nSamples);
+        for iChannel = 1:nChannels
+            F(iChannel,:) = nwb2.acquisition.get(sFile.header.RawKey).data.load([selectedChannels(iChannel), SamplesBounds(1)+1], [selectedChannels(iChannel), SamplesBounds(2)+1]);
+        end
+    end
     
     
 elseif sFile.header.LFPDataPresent
+    % Sequential reading is faster
     if sum(diff(selectedChannels) == ones(1,length(selectedChannels)-1)) == length(selectedChannels)-1
         F = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([selectedChannels(1), SamplesBounds(1) + 1], [selectedChannels(end), SamplesBounds(2)+1]);
+    % If not sequential channels, read one by one
     else    
         F = zeros(length(selectedChannels), nSamples);
         for iChannel = 1:nChannels

@@ -26,7 +26,7 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis 2019
+% Author: Konstantinos Nasiotis 2019
 
 
 
@@ -233,14 +233,88 @@ end
 
 
 
-%% Read the Spikes events
-
-%THERE IS NO INFO ABOUT WHICH CHANNEL EACH NEURON BELONGS TO
-% ONLY INFO ABOUT ITS SHANK IS AVAILABLE
-% FIX THIS
+%% Read the Spikes' events
 
 
+try
+    nNeurons = nwb2.units.id.data.load;
+    SpikesExist = 1;
+catch
+    disp('No spikes in this .nwb file')
+    SpikesExist = 0;
+end
 
+
+try
+    nwb2.units.maxWaveformCh;
+    SpikesExist = 1;
+catch
+    warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm')
+    warning('The field "nwb2.units.maxWaveformCh" that assigns spikes to specific electrodes is needed')
+    SpikesExist = 0;
+end
+    
+
+
+if SpikesExist
+ 
+    
+    %%%%%% For the checking with the spikes.mat I did this substitution
+    %%%%%% nwb2.units.maxWaveformCh ----- spikes.maxWaveformCh
+    
+    
+
+    nNeurons = length(nwb2.units.id.data.load);
+    
+    
+
+    if ~exist('events')
+        events_spikes = repmat(db_template('event'), 1, nNeurons);
+    end
+
+    for iNeuron = 1:nNeurons
+
+        if iNeuron == 1
+            times = nwb2.units.spike_times.data.load(1:sum(nwb2.units.spike_times_index.data.load(iNeuron)));
+        else
+            times = nwb2.units.spike_times.data.load(sum(nwb2.units.spike_times_index.data.load(iNeuron-1))+1:sum(nwb2.units.spike_times_index.data.load(iNeuron)));
+        end
+        times = times(times~=0)';
+
+        
+        % Check if a channel has multiple neurons:
+        nNeuronsOnChannel = sum(nwb2.units.maxWaveformCh ==nwb2.units.maxWaveformCh(iNeuron));
+        iNeuronsOnChannel = find(nwb2.units.maxWaveformCh==nwb2.units.maxWaveformCh(iNeuron));
+           
+        
+        theChannel = find(amp_channel_IDs==nwb2.units.maxWaveformCh(iNeuron));
+        
+        if nNeuronsOnChannel == 1
+            events_spikes(iNeuron).label  = ['Spikes Channel ' ChannelMat.Channel(theChannel).Name];
+        else
+            iiNeuron = find(iNeuronsOnChannel==iNeuron);
+            events_spikes(iNeuron).label  = ['Spikes Channel ' ChannelMat.Channel(theChannel).Name ' |' num2str(iiNeuron) '|'];
+        end
+
+        % % %     events_spikes(iNeuron).label      = ['Spikes Channel ' nwb2.units.maxWaveformCh(iNeuron)]; % THIS IS ALMOST WHAT SHOULD BE FILLED
+        % % %     events_spikes(iNeuron).label      = ['Spikes Channel ' ChannelMat.Channel(iNeuron).Name]; % THIS IS WRONG - CHECK HOW THIS SHOULD BE FILLED - I ASSIGN A RANDOM CHANNEL FOR NOW
+        events_spikes(iNeuron).color      = rand(1,3);
+        events_spikes(iNeuron).epochs     = ones(1,length(times));
+        events_spikes(iNeuron).samples    = times * sFile.prop.sfreq;
+        events_spikes(iNeuron).times      = times;
+        events_spikes(iNeuron).reactTimes = [];
+        events_spikes(iNeuron).select     = 1;
+    end
+        
+        
+    if exist('events')
+        events = [events events_spikes];
+    else
+        events = events_spikes;
+    end
+
+
+end
 
 
 
