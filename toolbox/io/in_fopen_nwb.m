@@ -58,8 +58,13 @@ if exist('generateCore','file') ~= 2
     ME = [];
     try
         % Generate the NWB Schema (First time run)
-        generateCore('schema/core/nwb.namespace.yaml')
+        generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
     catch ME
+        try
+            % Try once more (for some reason sometimes there is a mkdir access denial the first time)
+            generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
+        catch ME
+        end
     end
     cd(current_path);
     if ~isempty(ME)
