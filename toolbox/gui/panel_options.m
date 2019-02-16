@@ -34,6 +34,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     global GlobalData;
     % Constants
     panelName = 'Preferences';
+    isCompiled = exist('isdeployed', 'builtin') && isdeployed;
     
     % Create main main panel
     jPanelNew = gui_river();
@@ -105,18 +106,24 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jButtonTempDir = gui_component('Button', jPanelImport, [], '...', [], [], @TempDirectory_Callback);
         jButtonTempDir.setMargin(Insets(2,2,2,2));
         jButtonTempDir.setFocusable(0);
-        % FieldTrip folder
-        gui_component('Label', jPanelImport, 'br', 'FieldTrip toolbox: ', [], [], []);
-        jTextFtDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
-        jButtonFtDir = gui_component('Button', jPanelImport, [], '...', [], [], @FtDirectory_Callback);
-        jButtonFtDir.setMargin(Insets(2,2,2,2));
-        jButtonFtDir.setFocusable(0);
-        % SPM folder
-        gui_component('Label', jPanelImport, 'br', 'SPM toolbox: ', [], [], []);
-        jTextSpmDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
-        jButtonSpmDir = gui_component('Button', jPanelImport, [], '...', [], [], @SpmDirectory_Callback);
-        jButtonSpmDir.setMargin(Insets(2,2,2,2));
-        jButtonSpmDir.setFocusable(0);
+        % External toolboxes (only in non-compiled mode)
+        if ~isCompiled
+            % FieldTrip folder
+            gui_component('Label', jPanelImport, 'br', 'FieldTrip toolbox: ', [], [], []);
+            jTextFtDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
+            jButtonFtDir = gui_component('Button', jPanelImport, [], '...', [], [], @FtDirectory_Callback);
+            jButtonFtDir.setMargin(Insets(2,2,2,2));
+            jButtonFtDir.setFocusable(0);
+            % SPM folder
+            gui_component('Label', jPanelImport, 'br', 'SPM toolbox: ', [], [], []);
+            jTextSpmDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
+            jButtonSpmDir = gui_component('Button', jPanelImport, [], '...', [], [], @SpmDirectory_Callback);
+            jButtonSpmDir.setMargin(Insets(2,2,2,2));
+            jButtonSpmDir.setFocusable(0);
+        else
+            jTextFtDir = [];
+            jTextSpmDir = [];
+        end
     jPanelRight.add('br hfill', jPanelImport);
     
     % ===== RIGHT: SIGNAL PROCESSING =====
@@ -209,8 +216,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end    
         % Directory
         jTextTempDir.setText(bst_get('BrainstormTmpDir'));
-        jTextFtDir.setText(bst_get('FieldTripDir'));
-        jTextSpmDir.setText(bst_get('SpmDir'));
+        if ~isempty(jTextFtDir)
+            jTextFtDir.setText(bst_get('FieldTripDir'));
+        end
+        if ~isempty(jTextSpmDir)
+            jTextSpmDir.setText(bst_get('SpmDir'));
+        end
         % Use signal processing toolbox
         isToolboxInstalled = (exist('fir2', 'file') > 0);
         jCheckUseSigProc.setEnabled(isToolboxInstalled);
@@ -318,29 +329,33 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             end
         end
         % FieldTrip directory
-        oldFtDir = bst_get('FieldTripDir');
-        newFtDir = char(jTextFtDir.getText());
-        if ~file_compare(oldFtDir, newFtDir)
-            % Folder doesn't exist
-            if ~isempty(newFtDir) && ~file_exist(newFtDir)
-                java_dialog('warning', 'Selected FieldTrip folder doesn''t exist. Ignoring...');
-            elseif ~isempty(newFtDir) && ~file_exist(bst_fullfile(newFtDir, 'ft_defaults.m'))
-                java_dialog('warning', 'Selected folder does not contain a valid FieldTrip install. Ignoring...');
-            else
-                bst_set('FieldTripDir', newFtDir);
+        if ~isempty(jTextFtDir)
+            oldFtDir = bst_get('FieldTripDir');
+            newFtDir = char(jTextFtDir.getText());
+            if ~file_compare(oldFtDir, newFtDir)
+                % Folder doesn't exist
+                if ~isempty(newFtDir) && ~file_exist(newFtDir)
+                    java_dialog('warning', 'Selected FieldTrip folder doesn''t exist. Ignoring...');
+                elseif ~isempty(newFtDir) && ~file_exist(bst_fullfile(newFtDir, 'ft_defaults.m'))
+                    java_dialog('warning', 'Selected folder does not contain a valid FieldTrip install. Ignoring...');
+                else
+                    bst_set('FieldTripDir', newFtDir);
+                end
             end
         end
         % SPM directory
-        oldSpmDir = bst_get('SpmDir');
-        newSpmDir = char(jTextSpmDir.getText());
-        if ~file_compare(oldSpmDir, newSpmDir)
-            % Folder doesn't exist
-            if ~isempty(newSpmDir) && ~file_exist(newSpmDir)
-                java_dialog('warning', 'Selected SPM folder doesn''t exist. Ignoring...');
-            elseif ~isempty(newSpmDir) && ~file_exist(bst_fullfile(newSpmDir, 'spm.m'))
-                java_dialog('warning', 'Selected folder does not contain a valid SPM install. Ignoring...');
-            else
-                bst_set('SpmDir', newSpmDir);
+        if ~isempty(jTextSpmDir)
+            oldSpmDir = bst_get('SpmDir');
+            newSpmDir = char(jTextSpmDir.getText());
+            if ~file_compare(oldSpmDir, newSpmDir)
+                % Folder doesn't exist
+                if ~isempty(newSpmDir) && ~file_exist(newSpmDir)
+                    java_dialog('warning', 'Selected SPM folder doesn''t exist. Ignoring...');
+                elseif ~isempty(newSpmDir) && ~file_exist(bst_fullfile(newSpmDir, 'spm.m'))
+                    java_dialog('warning', 'Selected folder does not contain a valid SPM install. Ignoring...');
+                else
+                    bst_set('SpmDir', newSpmDir);
+                end
             end
         end
         

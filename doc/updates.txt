@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 February 2019
 - Distrib: Compiled Brainstorm now include all SPM and FieldTrip dependencies
+- Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
 - IO: Added support for York Instruments MEGSCAN recordings (.hdf5)
 ---------------------------------------------------------------
 January 2019
