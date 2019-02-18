@@ -56,13 +56,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     % Definition of the options
     % === Freq list
-    sProcess.options.freqlist.Comment = 'Frequencies to remove:';
+    sProcess.options.freqlist.Comment = 'Center of bandstop filter:';
     sProcess.options.freqlist.Type    = 'value';
-    sProcess.options.freqlist.Value   = {[], 'list', 2};
+    sProcess.options.freqlist.Value   = {[], 'Hz', 2};
     % === Freq width
     sProcess.options.freqwidth.Comment = '3-dB bandstop bandwidth:';
     sProcess.options.freqwidth.Type    = 'value';
-    sProcess.options.freqwidth.Value   = {1.5, 'Hz', 1};
+    sProcess.options.freqwidth.Value   = {1.5, 'Hz', 2};
     % === Display properties
     sProcess.options.display.Comment = {'process_bandstop(''DisplaySpec'',iProcess,sfreq);', '<BR>', 'View filter response'};
     sProcess.options.display.Type    = 'button';
@@ -85,10 +85,15 @@ end
 %% ===== RUN =====
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Get options
-    FreqList  = sProcess.options.freqlist.Value{1};
+    FreqList  = sProcess.options.freqlist.Value{1}; % It is no longer a list (only a single frequency)
     FreqWidth = sProcess.options.freqwidth.Value{1};
     if isempty(FreqList) || isequal(FreqList, 0) || (FreqWidth <= 0)
         bst_report('Error', sProcess, [], 'No frequency in input.');
+        sInput = [];
+        return;
+    end
+    if length(FreqList)>1
+        bst_report('Error', sProcess, [], 'Only one frequency band is allowed.');
         sInput = [];
         return;
     end
@@ -151,7 +156,7 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, FreqWidth, method
     end
     
     % Remove all the frequencies sequencially
-    for ifreq = 1:length(FreqList)
+    for ifreq = 1 %:length(FreqList)
         % Frequency band to remove
         FreqBand = [FreqList(ifreq) - FreqWidth/2, FreqList(ifreq) + FreqWidth/2];
         % Filtering using the selected method
@@ -217,12 +222,12 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, FreqWidth, method
         case 'fieldtrip_butter'
             FiltSpec.NumT = FiltSpec.b(1,:) ; 
             FiltSpec.DenT = FiltSpec.a(1,:) ; 
-            if length(FreqList)>1
-                for ifreq = 2:length(FreqList)
-                    FiltSpec.NumT = conv(FiltSpec.NumT,FiltSpec.b(ifreq,:)) ; 
-                    FiltSpec.DenT = conv(FiltSpec.DenT,FiltSpec.a(ifreq,:)) ; 
-                end
-            end
+%             if length(FreqList)>1
+%                 for ifreq = 2:length(FreqList)
+%                     FiltSpec.NumT = conv(FiltSpec.NumT,FiltSpec.b(ifreq,:)) ; 
+%                     FiltSpec.DenT = conv(FiltSpec.DenT,FiltSpec.a(ifreq,:)) ; 
+%                 end
+%             end
             FiltSpec.order = length(FiltSpec.DenT)-1 ;
 %             FiltSpec.cutoffBand = FreqBand ; 
             % Compute the cumulative energy of the impulse response
@@ -254,7 +259,10 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     if isempty(FiltSpec)
         bst_error(Messages, 'Filter response', 0);
     end
-
+    if length(FreqList)>1
+        bst_error('Only one frequency band is allowed.','Filter response', 0);
+        return ; 
+    end
     % Get existing specification figure
     hFig = findobj(0, 'Type', 'Figure', 'Tag', 'FilterSpecs');
     % If the figure doesn't exist yet: create it
