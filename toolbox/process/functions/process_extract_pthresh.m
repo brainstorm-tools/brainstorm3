@@ -168,7 +168,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             
         case 'presults'
             % Load input stat file
-            StatMat = in_bst_results(sInput.FileName, 0, 'pmap', 'tmap', 'df', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType');
+            StatMat = in_bst_results(sInput.FileName, 0, 'pmap', 'tmap', 'df', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType', 'SPM');
             % New results structure
             DataMat = db_template('resultsmat');
             DataMat.ImageGridAmp  = Compute(StatMat, StatThreshOptions);

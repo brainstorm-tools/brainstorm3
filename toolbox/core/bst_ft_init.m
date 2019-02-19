@@ -19,13 +19,12 @@ function isOk = bst_ft_init(isInteractive)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2017
+% Authors: Francois Tadel, 2015-2019
 
-% Deployed: does not work
+% Deployed: Code already included in the compiled version
 if exist('isdeployed', 'builtin') && isdeployed
-    error(['FieldTrip functions cannot be called from the compiled version of Brainstorm.' 10 ...
-           'We would need to compile Brainstorm and FieldTrip together. Doable but complicated.' 10 ...
-           'Please post a message on the forum if you are interested in contributing.']);
+    isOk = 1;
+    return;
 end
 % Default behavior
 if (nargin < 1) || isempty(isInteractive)

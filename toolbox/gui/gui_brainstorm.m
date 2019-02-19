@@ -28,7 +28,7 @@ function varargout = gui_brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 
 eval(macro_method);
 end
@@ -135,10 +135,13 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % === SET PREFERENCES ===
         gui_component('MenuItem', jMenuFile, [], 'Edit preferences', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@gui_show, 'panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0), fontSize);
         jMenuFile.addSeparator();
-        % === DIGITIZE ===
+        % === EXECUTE SCRIPTS IN COMPILED VERSION ===
         if exist('isdeployed', 'builtin') && isdeployed
             gui_component('MenuItem', jMenuFile, [], 'Command window', IconLoader.ICON_TERMINAL, [], @(h,ev)gui_show('panel_command', 'JavaWindow', 'MATLAB command window', [], 0, 1, 0), fontSize);
+            gui_component('MenuItem', jMenuFile, [], 'Execute script', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@panel_command, 'ExecuteScript'), fontSize);
+            jMenuFile.addSeparator();
         end
+        % === DIGITIZE ===  
         gui_component('MenuItem', jMenuFile, [], 'Digitize', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@panel_digitize, 'Start'), fontSize);
         gui_component('MenuItem', jMenuFile, [], 'Batch MRI fiducials', IconLoader.ICON_LOBE, [], @(h,ev)bst_call(@bst_batch_fiducials), fontSize);
         jMenuFile.addSeparator();

@@ -33,7 +33,7 @@ function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, I
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2019
 
 if (nargin < 3) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
@@ -78,6 +78,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_kdf(DataFile);
     case 'ITAB'
         [sFile, ChannelMat] = in_fopen_itab(DataFile);
+    case 'MEGSCAN-HDF5'
+        [sFile, ChannelMat] = in_fopen_megscan(DataFile);
     case 'EEG-ANT-CNT'
         [sFile, ChannelMat] = in_fopen_ant(DataFile);
     case 'EEG-ANT-MSR'

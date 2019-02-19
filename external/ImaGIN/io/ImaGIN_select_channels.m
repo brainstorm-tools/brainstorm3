@@ -24,15 +24,17 @@ function [iSel, iEcg, chTags, chInd] = ImaGIN_select_channels(chNames, isSEEG)
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE AUTHORS
 % DO NOT ASSUME ANY LIABILITY OR RESPONSIBILITY FOR ITS USE IN ANY CONTEXT.
 %
-% Copyright (c) 2000-2018 Inserm U1216
+% Copyright (c) 2000-2019 Inserm U1216
 % =============================================================================-
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2019
 
 % Parse inputs
 if (nargin < 2) || isempty(isSEEG)
     isSEEG = 1;
 end
+% Make sure the names are in one row
+chNames = chNames(:)';
 
 % Get all names: remove special characters
 AllNames = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), chNames, 'UniformOutput', 0);
@@ -66,7 +68,7 @@ AllInd = cellfun(@str2num, AllInd);
 % Tolerance for indices 101-118 and 201-218 (examples: electrode "T1" contact "11" => "T11",  electrode "T1" contact "2" => "T12" or "T02")
 MAX_CONTACTS = 18;
 if isSEEG
-    uniqueTags = unique(AllTags);
+    uniqueTags = unique(upper(AllTags));
     for iTag = 1:length(uniqueTags)
         % Get channels of this tag
         iChTag = find(strcmpi(uniqueTags{iTag}, AllTags));
@@ -185,7 +187,7 @@ end
 % Sort channels by tag and index
 AllTags = AllTags(iSel);
 AllInd = AllInd(iSel);
-uniqueTags = unique(AllTags);
+uniqueTags = unique(upper(AllTags));
 iOrderSel = [];
 for iTag = 1:length(uniqueTags)
     iChTag = find(strcmpi(AllTags, uniqueTags{iTag}));

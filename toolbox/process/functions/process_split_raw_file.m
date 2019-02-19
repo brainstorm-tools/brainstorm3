@@ -5,7 +5,7 @@ function varargout = process_split_raw_file( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -176,8 +176,8 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, ...
         % Get new condition name
         newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInput.SubjectName, [newCondition '_' SegmentNames{iFile}]));
         % Output file name derives from the condition name
-        [tmp, rawBaseOut] = bst_fileparts(newStudyPath);
-        rawBaseOut = strrep(rawBaseOut, '@raw', '');
+        [tmp, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
+        rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
         % Full output filename
         RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
         % Get input study (to copy the creation date)

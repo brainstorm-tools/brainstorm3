@@ -1,4 +1,4 @@
-function [sFileOut, errMsg] = out_fopen(RawFile, FileFormat, sFileIn, ChannelMat)
+function [sFileOut, errMsg] = out_fopen(RawFile, FileFormat, sFileIn, ChannelMat, iChannels)
 % OUT_FOPEN: Saves the header of a new empty binary file.
 %
 % INPUTS:
@@ -6,6 +6,7 @@ function [sFileOut, errMsg] = out_fopen(RawFile, FileFormat, sFileIn, ChannelMat
 %    - FileFormat : String ('EEG-EDF', 'BST-BIN', ...)
 %    - sFileIn    : Structure of the header of the file to create
 %    - ChannelMat : Channel file associated with the file to save
+%    - iChannels  : Subset of channels from input file to save in output file
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -25,13 +26,22 @@ function [sFileOut, errMsg] = out_fopen(RawFile, FileFormat, sFileIn, ChannelMat
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2018
+% Authors: Francois Tadel, 2014-2019
 
+% Parse inputs
+if (nargin < 5) || isempty(iChannels)
+    iChannels = [];
+end
 % Output variables
 sFileOut = [];
 errMsg = [];
 % Get default epoch size
 EpochSize = bst_process('GetDefaultEpochSize', sFileIn);
+
+% Select channels in channel file
+if ~isempty(iChannels)
+    sFileIn.channelflag = sFileIn.channelflag(iChannels);
+end
 
 % Trying to open the output file
 try
@@ -46,7 +56,7 @@ try
         case 'SPM-DAT'
             sFileOut = out_fopen_spm(RawFile, sFileIn, ChannelMat);
         case 'EEG-EDF'
-            sFileOut = out_fopen_edf(RawFile, sFileIn, ChannelMat, EpochSize);
+            sFileOut = out_fopen_edf(RawFile, sFileIn, ChannelMat, EpochSize, iChannels);
         case 'FIF'
             error('copy input file');
         case 'CTF-CONTINUOUS'

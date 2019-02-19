@@ -4,12 +4,12 @@ function varargout = process_adjust_coordinates(varargin)
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
-%
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% 
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
-%
+% 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
 % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
 % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
@@ -39,11 +39,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Option [to do: ignore bad segments]
-    %     sProcess.options.warning.Comment = 'Only for CTF MEG recordings with HLC channels recorded.<BR><BR>';
-    %     sProcess.options.warning.Type    = 'label';
-    %     sProcess.options.info.Comment = ['Coordinate system transformations: <BR>', ...
-    %         'Dewar=>Native, AdjustedNative, Native=>Brainstorm/CTF, refine registration: head points'];
-    %     sProcess.options.info.Type    = 'label';
     sProcess.options.reset.Type    = 'checkbox';
     sProcess.options.reset.Comment = 'Reset coordinates using original channel file (removes all adjustments: head, points, manual).';
     sProcess.options.reset.Value   = 0;
@@ -54,7 +49,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.format.Comment = 'For reset option, specify the channel file format:';
     sProcess.options.format.Value = {1, FileFormatsChan(:, 2)'};
     sProcess.options.format.Class = 'Reset';
-
     sProcess.options.head.Type    = 'checkbox';
     sProcess.options.head.Comment = 'Adjust head position to median location - CTF only.';
     sProcess.options.head.Value   = 0;
@@ -64,17 +58,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.remove.Type    = 'checkbox';
     sProcess.options.remove.Comment = 'Remove selected adjustments (if present) instead of adding them.';
     sProcess.options.remove.Value   = 0;
-    %     sProcess.options.action.Type     = 'radio_label';
-    %     sProcess.options.action.Comment  = {...
-    %         'Adjust head position to median location - CTF only.', ...
-    %         'Remove head position adjustment.', ...
-    %         'Refine MRI coregistration using digitized head points.', ...
-    %         'Remove MRI coregistration refinement.', ...
-    %         'Reset coordinates using original channel file (removes all adjustments: head, points, manual).'; ...
-    %         'Head', 'UndoHead', 'Points', 'UndoPoints', 'Reset'};
-    %         'Compute Native to SCS/CTF transformation using digitized landmarks.', ...
-    %         'Remove Native to SCS/CTF transformation.', ...
-    %     sProcess.options.action.Value    = 'Head';
     sProcess.options.display.Type    = 'checkbox';
     sProcess.options.display.Comment = 'Display "before" and "after" alignment figures.';
     sProcess.options.display.Value   = 0;
@@ -111,7 +94,11 @@ function OutputFiles = Run(sProcess, sInputs)
     end
     bst_progress('start', 'Adjust coordinate system', ...
         ' ', 0, nFiles);
-    for iFile = iUniqFiles % no need to repeat on same channel file.
+    % If resetting, in case the original data moved, and because the same
+    % channel file may appear in many places for processed data, keep track
+    % of user file selections.
+    NewChannelFiles = cell(0, 2);
+    for iFile = iUniqFiles(:)' % no need to repeat on same channel file.
         
         ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
         % Get the leading modality
@@ -142,13 +129,14 @@ function OutputFiles = Run(sProcess, sInputs)
             % fiducials, the channel orientation was wrong.  We wish to fix
             % this but keep as much pre-processing that was previously
             % done.  Thus we will re-import the channel file, and copy the
-            % projectors from the old one.
+            % projectors (and history) from the old one.
             
             bst_progress('text', 'Importing channel file...');
             % Extract original data file from channel file history.
             if any(size(ChannelMat.History) < [1, 3]) || ...
                     ~strcmp(ChannelMat.History{1, 2}, 'import')
                 NotFound = true;
+                ChannelFile = '';
             else
                 ChannelFile = regexp(ChannelMat.History{1, 3}, ...
                     '(?<=: )(.*)(?= \()', 'match');
@@ -163,29 +151,65 @@ function OutputFiles = Run(sProcess, sInputs)
                     end
                 end
             end
-            if NotFound
-                bst_report('Error', 'process_adjust_coordinates', sInputs(iFile), ...
-                    'Could not find original channel file, try importing manually.');
-                continue;
+            if NotFound && ~isempty(ChannelFile)
+                % See if the user already gave the new file location.
+                [NewFound, iNew] = ismember(ChannelFile, NewChannelFiles(:, 1));
+                if NewFound
+                    ChannelFile = NewChannelFiles{iNew, 2};
+                    NotFound = false;
+                    bst_report('Info', 'process_adjust_coordinates', sInputs(iFile), ...
+                        sprintf('Using channel file in new location: %s.', ChannelFile));
+                end
             end
-            
-            % Import from original file.
             FileFormatsChan = bst_get('FileFilters', 'channel');
             FileFormat = FileFormatsChan{sProcess.options.format.Value{1}, 3};
-            NewChannelMat = import_channel([], ChannelFile, FileFormat, 0, 1, 0, 1, 0);
-            % iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras)
-            % ChannelReplace is for replacing the file.
+            if NotFound
+                bst_report('Info', 'process_adjust_coordinates', sInputs(iFile), ...
+                    sprintf('Could not find original channel file: %s.', ChannelFile));
+                % import_channel will prompt the user, but they will not
+                % know which file to pick!  And prompt is modal for Matlab,
+                % so likely can't look at command window (e.g. if
+                % Brainstorm is in front).
+                [ChanPath, ChanName, ChanExt] = fileparts(ChannelFile);
+                MsgFig = msgbox(sprintf('Select the new location of channel file %s %s to reset %s.', ...
+                    ChanPath, [ChanName, ChanExt], sInputs(iFile).ChannelFile), ...
+                    'Reset channel file', 'replace');
+                movegui(MsgFig, 'north');
+                figure(MsgFig); % bring it to front.
+                % Adjust default format to the one selected.
+                DefaultFormats = bst_get('DefaultFormats');
+                DefaultFormats.ChannelIn = FileFormat;
+                bst_set('DefaultFormats',  DefaultFormats);
+
+                [NewChannelMat, NewChannelFile] = import_channel(...
+                    sInputs(iFile).iStudy, '', FileFormat, 0, 0, 0, [], []);
+            else            
+                
+                % Import from original file.
+                [NewChannelMat, NewChannelFile] = import_channel(...
+                    sInputs(iFile).iStudy, ChannelFile, FileFormat, 0, 0, 0, [], []);
+                % iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras)
+                % iStudy index is needed to avoid error for noise recordings with missing SCS transform.
+                % ChannelReplace is for replacing the file, only if isSave.
+                % ChannelAlign is for headpoints, but also ONLY if isSave.  We do it later if user selected.
+            end
             
             % See if it worked.
-            if isempty(NewChannelMat)
+            if isempty(NewChannelFile)
                 bst_report('Error', 'process_adjust_coordinates', sInputs(iFile), ...
-                    'Unable to import original channel file.');
+                    'No file channel file selected.');
                 continue;
-            end
-            if numel(NewChannelMat.Channel) ~= numel(ChannelMat.Channel)
+            elseif isempty(NewChannelMat)
+                bst_report('Error', 'process_adjust_coordinates', sInputs(iFile), ...
+                    sprintf('Unable to import channel file: %s', NewChannelFile));
+                continue;
+            elseif numel(NewChannelMat.Channel) ~= numel(ChannelMat.Channel)
                 bst_report('Error', 'process_adjust_coordinates', sInputs(iFile), ...
                     'Original channel file has different channels than current one, aborting.');
                 continue;
+            elseif NotFound && ~isempty(ChannelFile)
+                % Save the selected new location.
+                NewChannelFiles(end+1, :) = {ChannelFile, NewChannelFile}; 
             end
             % Copy the new old projectors and history to the new structure.
             NewChannelMat.Projector = ChannelMat.Projector;
@@ -195,7 +219,7 @@ function OutputFiles = Run(sProcess, sInputs)
             % Add number of channels to comment, like in db_set_channel.
             ChannelMat.Comment = [ChannelMat.Comment, sprintf(' (%d)', length(ChannelMat.Channel))];
             ChannelMat = bst_history('add', ChannelMat, 'import', ...
-                ['Reset from: ' ChannelFile ' (Format: ' FileFormat ')']);
+                ['Reset from: ' NewChannelFile ' (Format: ' FileFormat ')']);
             
         % ----------------------------------------------------------------
         elseif sProcess.options.remove.Value

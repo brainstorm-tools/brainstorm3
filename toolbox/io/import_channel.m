@@ -114,7 +114,7 @@ switch (FileFormat)
     case 'CTF'
         ChannelMat = in_channel_ctf(ChannelFile);
         FileUnits = 'm';
-    case {'FIF', '4D', 'KIT', 'BST-BIN', 'KDF', 'RICOH'}
+    case {'FIF', '4D', 'KIT', 'BST-BIN', 'KDF', 'RICOH', 'ITAB', 'MEGSCAN-HDF5'}
         [sFile, ChannelMat] = in_fopen(ChannelFile, FileFormat, ImportOptions);
         if isempty(ChannelMat)
             return;

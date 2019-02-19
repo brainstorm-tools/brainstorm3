@@ -34,7 +34,7 @@ function [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iC
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2015
+% Authors: Francois Tadel, 2009-2019
 
 %% ===== PARSE INPUTS =====
 if (nargin < 6)
@@ -95,6 +95,11 @@ switch (sFile.format)
         F = in_fread_kdf(sFile, sfid, SamplesBounds, ChannelRange);
     case 'ITAB'
         F = in_fread_itab(sFile, sfid, SamplesBounds, iChannels);
+    case 'MEGSCAN-HDF5'
+        F = in_fread_megscan(sFile, SamplesBounds);
+        if ~isempty(iChannels)
+            F = F(iChannels,:);
+        end
     case 'EEG-ANT-CNT'
         F = in_fread_ant(sFile, SamplesBounds);
         if ~isempty(iChannels)

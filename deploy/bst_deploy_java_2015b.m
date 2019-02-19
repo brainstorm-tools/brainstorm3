@@ -1,10 +1,12 @@
 function bst_deploy_java_2015b(IS_BIN)
-% BST_DEPLOY_JAVA - Brainstorm deployment script.
+% BST_DEPLOY_JAVA - Brainstorm deployment script (including SPM and FieldTrip).
 %
-% USAGE:  bst_deploy_java_2015b(IS_BIN=0)
+% USAGE:  bst_deploy_java_2015b_spm(IS_BIN=0)
 %
 % INPUTS:
-%    - IS_BIN : Flag to compile Brainstorm using the MCC compiler
+%    - IS_BIN : 0=Package the sources and push the modifications to github
+%               1=Compile Brainstorm using the MCC compiler
+%               2=Compile including SPM and FieldTrip functions
 %
 % STEPS:
 %    - Update doc/version.txt
@@ -22,7 +24,7 @@ function bst_deploy_java_2015b(IS_BIN)
 % This software is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPL
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,16 +38,24 @@ function bst_deploy_java_2015b(IS_BIN)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2015
+% Authors: Francois Tadel, 2011-2019
 
 
 %% ===== PARSE INPUTS =====
 if (nargin < 1) || isempty(IS_BIN)
     IS_BIN = 0;
+    IS_FT_SPM = 0;
 elseif ischar(IS_BIN)
     switch(IS_BIN)
-        case '0',   IS_BIN = 0;
-        case '1',   IS_BIN = 1;
+        case '0'
+            IS_BIN = 0;
+            IS_FT_SPM = 0;
+        case '1'
+            IS_BIN = 1;
+            IS_FT_SPM = 0;
+        case '2'
+            IS_BIN = 1;
+            IS_FT_SPM = 1;
         otherwise,  error('Invalid value for IS_BIN.');
     end
 end
@@ -53,6 +63,7 @@ end
 if IS_BIN && ~exist('deploytool', 'file')
     disp('DEPLOY> No compiler available: cannot produce standalone application.');
     IS_BIN = 0;
+    IS_FT_SPM = 0;
 end
 % Get Matlab version
 ReleaseName = bst_get('MatlabReleaseName');
@@ -76,12 +87,24 @@ tic;
 if IS_BIN
     % Clear command window
     clc
+    
+    % FieldTrip / SPM
+    if IS_FT_SPM
+    %     % Add FieldTrip to path
+    %     addpath(FieldTripDir);
+    %     % Add SPM to PATH
+    %     addpath(SpmDir);
+        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2015b_spm.prj');
+    else
+        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2015b.prj');
+    end
+    
     % JDK folder
     jdkDir = 'C:\Program Files\Java\jdk1.7.0_80';
     % Set JAVA_HOME environment variable
     setenv('JAVA_HOME', jdkDir);
     % Javabuilder output
-    compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2015b.prj');
+    
     compilerDir = fullfile(deployDir, ReleaseName, 'bst_javabuilder');
     compilerOutputDir = fullfile(compilerDir, 'for_testing');
     % Packaging folders

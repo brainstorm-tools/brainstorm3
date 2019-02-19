@@ -2989,6 +2989,7 @@ function isCancel = UnloadAll(varargin)
         gui_hide('Display');
         gui_hide('Stat');
         gui_hide('iEEG');
+        gui_hide('Spikes');
     end
     if isNewProgress
         bst_progress('stop');

@@ -64,6 +64,10 @@ elseif strfind(lower(ChannelMat.Comment), 'kriss')
 elseif strfind(lower(ChannelMat.Comment), 'itab')
     DeviceTag = '_itab';
     DeviceName = 'ITAB';
+% MEGSCAN
+elseif strfind(lower(ChannelMat.Comment), 'megscan')
+    DeviceTag = '_megscan';
+    DeviceName = 'MEGASCAN';
 % NIRS-BRS
 elseif strfind(lower(ChannelMat.Comment), 'nirs-brs')
     DeviceTag = '_nirsbrs';

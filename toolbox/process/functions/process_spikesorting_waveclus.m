@@ -57,7 +57,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.paral.Comment = 'Parallel processing';
     sProcess.options.paral.Type    = 'checkbox';
     sProcess.options.paral.Value   = 0;
-    sProcess.options.make_plots.Comment = 'Create Images';
+    sProcess.options.make_plots.Comment = 'Create images';
     sProcess.options.make_plots.Type    = 'checkbox';
     sProcess.options.make_plots.Value   = 0;
     % Channel name comment
