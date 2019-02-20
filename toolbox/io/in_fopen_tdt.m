@@ -193,6 +193,11 @@ if are_there_events
 
     for iEvent = 1:length(all_event_Labels)
         
+        
+        MARYSE MENTIONED THAT .DATA = 31 INDICATES AN ARTIFACT
+        TAKE THAT INTO ACCOUNT
+        
+        
         if sum(ismember({'Tick','Swep','Swe+'},NO_data.epocs.(all_event_Labels{iEvent}).name))~=0
             iindex = iindex + 1;
             
