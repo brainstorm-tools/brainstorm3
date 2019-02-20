@@ -33,7 +33,7 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 
 %% ===== GET FILES =====
 % Get base dataset folder
-[~, FileName] = bst_fileparts(DataFile);
+[tmp, FileName] = bst_fileparts(DataFile);
 
 hdr.BaseFolder = DataFile;
 
