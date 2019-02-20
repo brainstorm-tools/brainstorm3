@@ -1,12 +1,13 @@
 #!/bin/bash
 # USAGE:  brainstorm3.command <MATLABROOT>
 #         brainstorm3.command
+#         brainstorm3.command <MATLABROOT> <script.m> <arguments>
 #
 # If MATLABROOT argument is specified, the Matlab root path is saved
 # in the file ~/.brainstorm/MATLABROOTXX.txt.
 # Else, MATLABROOT is read from this file
 #
-# AUTHOR: Francois Tadel, 2011-2018
+# AUTHOR: Francois Tadel, 2011-2019
 
 # Configuration
 VER_NAME="2015b"
@@ -130,7 +131,7 @@ export XAPPLRESDIR=$MATLABROOT/X11/app-defaults
 
 ##########################################################################
 # Run Brainstorm
-"$JAVA_EXE" -jar "$JAR_FILE"
+"$JAVA_EXE" -jar "$JAR_FILE" "${@:2}"
 
 # Force shell death on MacOSX
 if [ $SYST == "maci64" ]; then
