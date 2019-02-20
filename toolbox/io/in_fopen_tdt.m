@@ -65,22 +65,12 @@ end
 
 %% ===== READ DATA HEADERS =====
 
-% % % %  
-% % % % DataFolder = 'F:\Tucker Davis\FiPho-180416';
-% % % % % DataFolder = 'F:\Tucker Davis\Algernon-180308-130351';
-% % % % % DataFolder = 'F:\Tucker Davis\Subject1-180426-120951';
-% % % % 
-
-
 % Load one second segment to see what type of signals exist in this dataset
 % Use as general sampling rate the rate of the HIGHEST sampled signal
 % The signals that have a lower sampling rate will be interpolated to match
 % the general sampling rate
 
-% % % % data_all = TDTbin2mat(DataFolder);
-
 headers = TDTbin2mat(DataFolder, 'HEADERS', 1);
-
 
 data = TDTbin2mat(DataFolder, 'T1', 0, 'T2', 1); % 1 second segment
 all_streams = fieldnames(data.streams);
@@ -90,7 +80,7 @@ total_channels         = [];
 
 % The sampling rates present are the weirdest numbers I have ever seen:
 % e.g. Fs = 3051.7578125 Hz !!!
-% Those numbers might create problems when loading segments of data.
+% Those numbers create problems when loading segments of data.
 % The segment loading is in TimeBounds, not SampleBounds that makes it even
 % worse with those sampling rates
 for iStream = 1:length(all_streams)
@@ -176,14 +166,10 @@ end
 
 
 %% Check for acquisition events
-% The entire length of one channel needs to be loaded for this
 
-NO_data = TDTbin2mat(DataFolder, 'NODATA',1); 
-
-
+NO_data = TDTbin2mat(DataFolder, 'NODATA',1); % Memory Management???
 
 are_there_events = ~isempty(NO_data.epocs);
-
 
 if are_there_events
     
@@ -192,11 +178,6 @@ if are_there_events
     iindex = 0;
 
     for iEvent = 1:length(all_event_Labels)
-        
-        
-        MARYSE MENTIONED THAT .DATA = 31 INDICATES AN ARTIFACT
-        TAKE THAT INTO ACCOUNT
-        
         
         if sum(ismember({'Tick','Swep','Swe+'},NO_data.epocs.(all_event_Labels{iEvent}).name))~=0
             iindex = iindex + 1;
@@ -230,10 +211,6 @@ if are_there_events
 
         end
             
-        
-
-        
-        
     end
 end
     
@@ -256,32 +233,36 @@ if are_there_spikes
 
     for iSpikeDetectedField = 1:length(all_spike_event_Labels)
         
-        
         for iChannel = 1:length(channels_are_EEG)
-            
             
             NeuronIDs = unique(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).sortcode(find(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).chan == iChannel)));
             
-            
-            
+            if length(NeuronIDs)>1 && sum(ismember(NeuronIDs,0))~=0
+                warning('There are Sorted AND Unsorted Spikes in this Dataset - Probably the selection for Online sorting was made mid-Recording - THE UNSORTED SPIKES WILL BE IGNORED')
+                NeuronIDs = NeuronIDs(~ismember(NeuronIDs,[0,31]));
+            end
+           
             for iNeuron = 1:length(NeuronIDs)
-                last_event_index = last_event_index + 1;
                 
+                if NeuronIDs(iNeuron) ~= 31 && (length(NeuronIDs) > 1 && NeuronIDs(iNeuron) ~= 0) % MARYSE MENTIONED THAT .DATA = 31 INDICATES ARTIFACTS - NOISE
+                
+                    last_event_index = last_event_index + 1;
 
-                if length(NeuronIDs) == 1
-                    SpikesOfThatNeuronOnChannel_Indices = find(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).chan == iChannel & NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).sortcode == 0); % Unsorted
-                    events(last_event_index).label = ['Spikes Channel ' ChannelMat.Channel(channels_are_EEG(iChannel)).Name];
-                else
-                    SpikesOfThatNeuronOnChannel_Indices = find(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).chan == iChannel & NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).sortcode == iNeuron); % Sorted
-                    events(last_event_index).label = ['Spikes Channel ' ChannelMat.Channel(channels_are_EEG(iChannel)).Name ' |' num2str(iNeuron) '|'];                    
+                    if length(NeuronIDs) == 1
+                        SpikesOfThatNeuronOnChannel_Indices = find(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).chan == iChannel & NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).sortcode == 0); % Unsorted
+                        events(last_event_index).label = ['Spikes Channel ' ChannelMat.Channel(channels_are_EEG(iChannel)).Name];
+                    else
+                        SpikesOfThatNeuronOnChannel_Indices = find(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).chan == iChannel & NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).sortcode == iNeuron); % Sorted
+                        events(last_event_index).label = ['Spikes Channel ' ChannelMat.Channel(channels_are_EEG(iChannel)).Name ' |' num2str(iNeuron) '|'];                    
+                    end
+
+                    events(last_event_index).color      = rand(1,3);
+                    events(last_event_index).epochs     = ones(1,length(SpikesOfThatNeuronOnChannel_Indices));
+                    events(last_event_index).times      = NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).ts(SpikesOfThatNeuronOnChannel_Indices)';
+                    events(last_event_index).samples    = round(events(last_event_index).times * general_sampling_rate);
+                    events(last_event_index).reactTimes = [];
+                    events(last_event_index).select     = 1;
                 end
-                
-                events(last_event_index).color      = rand(1,3);
-                events(last_event_index).epochs     = ones(1,length(SpikesOfThatNeuronOnChannel_Indices));
-                events(last_event_index).times      = NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).ts(SpikesOfThatNeuronOnChannel_Indices)';
-                events(last_event_index).samples    = round(events(last_event_index).times * general_sampling_rate);
-                events(last_event_index).reactTimes = [];
-                events(last_event_index).select     = 1;
                 
                 
             end
@@ -344,7 +325,6 @@ end
     file_delete(TDTTmpDir, 1, 3);
     % Add TDT to Matlab path
     addpath(genpath(TDTDir));
-
 
  end
 
