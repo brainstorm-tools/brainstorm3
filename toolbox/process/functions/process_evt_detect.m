@@ -331,7 +331,7 @@ function evt = Compute(F, TimeVector, OPTIONS, Fmask)
     % ===== FILTER RECORDINGS =====
     % Filter recordings
     if ~isempty(OPTIONS.bandpass)
-        [F, FiltSpec] = process_bandpass('Compute', F, sFreq, OPTIONS.bandpass(1), OPTIONS.bandpass(2), 'bst-hfilter', 0);
+        [F, FiltSpec] = process_bandpass('Compute', F, sFreq, OPTIONS.bandpass(1), OPTIONS.bandpass(2), 'bst-hfilter-2019', 0);
         smpTransient = round(FiltSpec.transient * sFreq);
     else
         FiltSpec = [];
