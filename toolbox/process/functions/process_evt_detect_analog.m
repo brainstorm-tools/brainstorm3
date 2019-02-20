@@ -368,7 +368,7 @@ function evt = Compute(F, TimeVector, EventSamps, OPTIONS, Fmask)
     
      % Filter recordings
     if ~isempty(OPTIONS.highpass) || ~isempty(OPTIONS.lowpass)
-        F = process_bandpass('Compute', F, sFreq, OPTIONS.highpass, OPTIONS.lowpass, 'bst-hfilter', 0);
+        F = process_bandpass('Compute', F, sFreq, OPTIONS.highpass, OPTIONS.lowpass, 'bst-hfilter-2019', 0);
     end
     
     % Absolute value
