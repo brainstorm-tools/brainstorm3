@@ -162,8 +162,8 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         % Get new condition name
         newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInput.SubjectName, newCondition));
         % Output file name derives from the condition name
-        [tmp, rawBaseOut] = bst_fileparts(newStudyPath);
-        rawBaseOut = strrep(rawBaseOut, '@raw', '');
+        [tmp, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
+        rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
         % Full output filename
         RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']); % ***
         RawFileFormat = 'BST-BIN'; % ***

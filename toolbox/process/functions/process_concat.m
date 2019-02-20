@@ -84,8 +84,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             ProtocolInfo = bst_get('ProtocolInfo');
             newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInputs(1).SubjectName, newCondition));
             % Output file name derives from the condition name
-            [tmp, rawBaseOut] = bst_fileparts(newStudyPath);
-            rawBaseOut = strrep(rawBaseOut, '@raw', '');
+            [tmp, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
+            rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
             % Full output filename
             RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
             % Get input study (to copy the creation date)
