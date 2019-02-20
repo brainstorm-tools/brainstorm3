@@ -240,6 +240,8 @@ if are_there_spikes
             if length(NeuronIDs)>1 && sum(ismember(NeuronIDs,0))~=0
                 warning('There are Sorted AND Unsorted Spikes in this Dataset - Probably the selection for Online sorting was made mid-Recording - THE UNSORTED SPIKES WILL BE IGNORED')
                 NeuronIDs = NeuronIDs(~ismember(NeuronIDs,[0,31]));
+            else
+                NeuronIDs = NeuronIDs(~ismember(NeuronIDs, 31));
             end
            
             for iNeuron = 1:length(NeuronIDs)
