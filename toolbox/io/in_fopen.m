@@ -138,6 +138,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_intan(DataFile);
     case 'EEG-PLEXON'
         [sFile, ChannelMat] = in_fopen_plexon(DataFile);
+    case 'EEG-TDT'
+        [sFile, ChannelMat] = in_fopen_tdt(DataFile);
         
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'

@@ -1,0 +1,349 @@
+function [sFile, ChannelMat] = in_fopen_tdt(DataFile)
+
+%% IN_FOPEN_TDT: Open recordings saved in the Tucker Davis Technologies format
+
+% The importer needs the folder that the files are in. I selected one type
+% of files to work as the "raw file" - (.Tbk)
+
+
+ %% 
+ % @=============================================================================
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c)2000-2019 University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Author: Konstantinos Nasiotis 2019
+
+
+
+
+ %% ===== GET FILES =====
+% Get base dataset folder
+[DataFolder, FileName] = bst_fileparts(DataFile);
+
+hdr.BaseFolder = DataFolder;
+
+
+
+
+ %% ===== FILE COMMENT =====
+% Comment: BaseFolder
+Comment = DataFolder;
+
+
+
+
+ %% Check if the TDT builder has already been downloaded and properly set up
+if exist('TDTbin2mat','file') ~= 2
+    isOk = java_dialog('confirm', ...
+        ['The Tucker Davis Technologies SDK is not installed on your computer.' 10 10 ...
+             'Download and install the latest version?'], 'Tucker Davis Technologies');
+    if ~isOk
+        bst_report('Error', sProcess, sInputs, 'This process requires the Tucker Davis Technologies SDK.');
+        return;
+    end
+    downloadAndInstallTDT()
+end
+
+
+
+
+
+
+%% ===== READ DATA HEADERS =====
+
+% % % %  
+% % % % DataFolder = 'F:\Tucker Davis\FiPho-180416';
+% % % % % DataFolder = 'F:\Tucker Davis\Algernon-180308-130351';
+% % % % % DataFolder = 'F:\Tucker Davis\Subject1-180426-120951';
+% % % % 
+
+
+% Load one second segment to see what type of signals exist in this dataset
+% Use as general sampling rate the rate of the HIGHEST sampled signal
+% The signals that have a lower sampling rate will be interpolated to match
+% the general sampling rate
+
+% % % % data_all = TDTbin2mat(DataFolder);
+
+headers = TDTbin2mat(DataFolder, 'HEADERS', 1);
+
+
+data = TDTbin2mat(DataFolder, 'T1', 0, 'T2', 1); % 1 second segment
+all_streams = fieldnames(data.streams);
+
+several_sampling_rates = [];
+total_channels         = [];
+
+% The sampling rates present are the weirdest numbers I have ever seen:
+% e.g. Fs = 3051.7578125 Hz !!!
+% Those numbers might create problems when loading segments of data.
+% The segment loading is in TimeBounds, not SampleBounds that makes it even
+% worse with those sampling rates
+for iStream = 1:length(all_streams)
+    several_sampling_rates = [several_sampling_rates data.streams.(all_streams{iStream}).fs];
+    total_channels         = [total_channels, size(data.streams.(all_streams{iStream}).data,1)];
+end
+
+[general_sampling_rate iHighestSampledChannel] = max(several_sampling_rates);
+
+nChannels = sum(total_channels);
+
+ %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
+% Initialize returned file structure
+sFile = db_template('sfile');
+
+
+
+ % Add information read from header
+sFile.prop.sfreq   =  general_sampling_rate;
+sFile.byteorder    = 'l';
+sFile.filename     = DataFolder;
+sFile.format       = 'EEG-TDT';
+sFile.device       = 'Tucker Davis Technologies';
+sFile.header.tdt   = headers;
+sFile.comment      = FileName;
+sFile.prop.times   = [0, headers.stopTime-headers.startTime];
+sFile.prop.nAvg    = 1;
+% No info on bad channels
+sFile.channelflag  = ones(nChannels, 1);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                           THIS NEEDS FIXING
+% I load the entire signal from a channel so I can find the number of
+% samples
+% The sampling rates on the examples don't make any sense
+% sFile.prop.samples = [0, round(sFile.prop.times(2)*sFile.prop.sfreq) - 1];
+
+% I LOAD THE ENTIRE CHANNEL HERE FOR TWO REASONS:
+% 1. IT GIVES ME THE TOTAL NUMBER OF SAMPLES (THIS INFO IS NOT STORED ANYWHERE ELSE)
+% 2. ALL THE EVENTS ARE LOADED
+
+data_1_channel = TDTbin2mat(DataFolder, 'CHANNEL',1);
+nSamples = size(data_1_channel.streams.(all_streams{iHighestSampledChannel}).data,2);
+sFile.prop.samples = [0, nSamples - 1];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+sFile.header.several_sampling_rates = several_sampling_rates;
+sFile.header.total_channels         = total_channels;
+sFile.header.all_streams            = all_streams;
+
+ %% ===== CREATE EMPTY CHANNEL FILE =====
+ChannelMat = db_template('channelmat');
+ChannelMat.Comment = 'TDT channels';
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
+
+ii = 0;
+for iStream = 1:length(all_streams)
+     for iChannel = 1:total_channels(iStream)
+         ii = ii+1;
+         if ~(total_channels(iStream)==1)
+            ChannelMat.Channel(ii).Name = [all_streams{iStream} '_' num2str(iChannel)];
+         else
+             ChannelMat.Channel(ii).Name= [all_streams{iStream}];
+         end
+         ChannelMat.Channel(ii).Loc     = [0;0;0];
+
+         ChannelMat.Channel(ii).Group   = all_streams{iStream};
+         
+         if ~(total_channels(iStream) == 1)
+            ChannelMat.Channel(ii).Type = 'EEG'; % Not all are EEGs - NOT SURE WHAT TO PUT HERE - AS A STARTING POINT, I PUT WHATEVER IS ONLY ONE CHANNEL SET IT AS Misc
+         else
+            ChannelMat.Channel(ii).Type = 'Misc';
+         end
+         ChannelMat.Channel(ii).Orient  = [];
+         ChannelMat.Channel(ii).Weight  = 1;
+         ChannelMat.Channel(ii).Comment = [];
+     end
+end
+
+
+%% Check for acquisition events
+% The entire length of one channel needs to be loaded for this
+
+NO_data = TDTbin2mat(DataFolder, 'NODATA',1); 
+
+
+
+are_there_events = ~isempty(NO_data.epocs);
+
+
+if are_there_events
+    
+    all_event_Labels = fieldnames(NO_data.epocs);
+    
+    iindex = 0;
+
+    for iEvent = 1:length(all_event_Labels)
+        
+        if sum(ismember({'Tick','Swep','Swe+'},NO_data.epocs.(all_event_Labels{iEvent}).name))~=0
+            iindex = iindex + 1;
+            
+            events(iindex).label      = NO_data.epocs.(all_event_Labels{iEvent}).name;
+            events(iindex).color      = rand(1,3);
+            events(iindex).epochs     = ones(1,length(NO_data.epocs.(all_event_Labels{iEvent}).onset))  ;
+            events(iindex).times      = NO_data.epocs.(all_event_Labels{iEvent}).onset';
+            events(iindex).samples    = round(events(iEvent).times * general_sampling_rate);
+            events(iindex).reactTimes = [];
+            events(iindex).select     = 1;
+            
+        else
+            conditions_in_event = unique(NO_data.epocs.(all_event_Labels{iEvent}).data);
+            
+            for iCondition = 1:length(conditions_in_event)
+                
+                selected_Events_for_condition = find(NO_data.epocs.(all_event_Labels{iEvent}).data == conditions_in_event(iCondition));
+                
+                iindex = iindex+1;
+                
+                events(iindex).label      = [NO_data.epocs.(all_event_Labels{iEvent}).name num2str(conditions_in_event(iCondition))];
+                events(iindex).color      = rand(1,3);
+                events(iindex).epochs     = ones(1,length(selected_Events_for_condition))  ;
+                events(iindex).times      = NO_data.epocs.(all_event_Labels{iEvent}).onset(selected_Events_for_condition)';
+                events(iindex).samples    = round(events(iindex).times * general_sampling_rate);
+                events(iindex).reactTimes = [];
+                events(iindex).select     = 1;
+                
+            end
+
+        end
+            
+        
+
+        
+        
+    end
+end
+    
+    
+%% Check for spike events
+
+are_there_spikes = ~isempty(NO_data.snips);
+
+if  ~exist ('events','var')
+    events = struct;
+    last_event_index = 0;
+else
+    last_event_index = length(events);
+end
+
+
+if are_there_spikes
+    all_spike_event_Labels = fieldnames(NO_data.snips);
+    channels_are_EEG = find(strcmp({ChannelMat.Channel.Type}, 'EEG'));
+
+    for iSpikeDetectedField = 1:length(all_spike_event_Labels)
+        
+        
+        for iChannel = 1:length(channels_are_EEG)
+            
+            
+            NeuronIDs = unique(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).sortcode(find(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).chan == iChannel)));
+            
+            
+            
+            for iNeuron = 1:length(NeuronIDs)
+                last_event_index = last_event_index + 1;
+                
+
+                if length(NeuronIDs) == 1
+                    SpikesOfThatNeuronOnChannel_Indices = find(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).chan == iChannel & NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).sortcode == 0); % Unsorted
+                    events(last_event_index).label = ['Spikes Channel ' ChannelMat.Channel(channels_are_EEG(iChannel)).Name];
+                else
+                    SpikesOfThatNeuronOnChannel_Indices = find(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).chan == iChannel & NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).sortcode == iNeuron); % Sorted
+                    events(last_event_index).label = ['Spikes Channel ' ChannelMat.Channel(channels_are_EEG(iChannel)).Name ' |' num2str(iNeuron) '|'];                    
+                end
+                
+                events(last_event_index).color      = rand(1,3);
+                events(last_event_index).epochs     = ones(1,length(SpikesOfThatNeuronOnChannel_Indices));
+                events(last_event_index).times      = NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).ts(SpikesOfThatNeuronOnChannel_Indices)';
+                events(last_event_index).samples    = round(events(last_event_index).times * general_sampling_rate);
+                events(last_event_index).reactTimes = [];
+                events(last_event_index).select     = 1;
+                
+                
+            end
+            
+            
+        end
+        
+    end
+
+end
+
+% Import this list
+sFile = import_events(sFile, [], events);
+end
+
+
+
+
+
+
+
+
+ function downloadAndInstallTDT()
+
+    TDTDir = bst_fullfile(bst_get('BrainstormUserDir'), 'TDT');
+    TDTTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'TDT_tmp');
+    url = 'https://www.tdt.com/support/examples/TDTMatlabSDK.zip';
+    % If folders exists: delete
+    if isdir(TDTDir)
+        file_delete(TDTDir, 1, 3);
+    end
+    if isdir(TDTTmpDir)
+        file_delete(TDTTmpDir, 1, 3);
+    end
+    % Create folder
+	mkdir(TDTTmpDir);
+    % Download file
+    zipFile = bst_fullfile(TDTTmpDir, 'TDT.zip');
+    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'TDT download');
+    if ~isempty(errMsg)
+        % Try twice before giving up
+        pause(0.1);
+        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'TDT download');
+        if ~isempty(errMsg)
+            error(['Impossible to download TDT.' 10 errMsg]);
+        end
+    end
+    % Unzip file
+    bst_progress('start', 'TDT', 'Installing TDT...');
+    unzip(zipFile, TDTTmpDir);
+    % Get parent folder of the unzipped file
+    diropen = dir(TDTTmpDir);
+    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}));
+    idir = idir(find(strcmp({diropen(idir).name}, 'TDTSDK')));
+    
+    newTDTDir = bst_fullfile(TDTTmpDir, diropen(idir).name, 'TDTbin2mat');
+    % Move TDT directory to proper location
+    file_move(newTDTDir, TDTDir);
+    % Delete unnecessary files
+    file_delete(TDTTmpDir, 1, 3);
+    % Add TDT to Matlab path
+    addpath(genpath(TDTDir));
+
+
+ end
+
+
+
+
+
