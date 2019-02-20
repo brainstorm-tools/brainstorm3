@@ -840,7 +840,7 @@ function F = FilterLoadedData(F, sfreq)
         end
         % Filter data
         isRelax = 1;
-        [F, FiltSpec, Messages] = process_bandpass('Compute', F, sfreq, HighPass, LowPass, 'bst-hfilter', isMirror, isRelax);
+        [F, FiltSpec, Messages] = process_bandpass('Compute', F, sfreq, HighPass, LowPass, 'bst-hfilter-2019', isMirror, isRelax);
         if ~isempty(Messages)
             disp(['Warning: ' Messages]);
         end
