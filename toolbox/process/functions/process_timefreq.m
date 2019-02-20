@@ -320,7 +320,7 @@ function TFmask = GetEdgeEffectMask(Time, Freqs, tfOptions) %#ok<DEFNU>
             TFmask = zeros(size(Freqs,1), length(t));
             for i = 1:size(Freqs,1)
                 % Compute the filter specifications
-                [tmp, FiltSpec] = process_bandpass('Compute', [], sfreq, FreqBands(i,1), FreqBands(i,2), 'bst-hfilter');
+                [tmp, FiltSpec] = process_bandpass('Compute', [], sfreq, FreqBands(i,1), FreqBands(i,2), 'bst-hfilter-2019');
                 % Only the values outside of the transients are valid
                 TFmask(i,(t - t(1) > FiltSpec.transient) & (t(end) - t > FiltSpec.transient)) = 1;
             end
