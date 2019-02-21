@@ -4230,6 +4230,8 @@ function SelectFiberScouts(hFigConn, iScouts, Color)
         GlobalData.Fibers(iFib) = FibMat;
     end
     
+    bst_progress('start', 'Fibers Connectivity', 'Selecting appropriate fibers...');
+    
     % Get scout assignment
     iFile = find(ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile}));
     assign = FibMat.Scouts(iFile).Assignment;
@@ -4252,5 +4254,6 @@ function SelectFiberScouts(hFigConn, iScouts, Color)
     [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:), Color(iFoundScouts,:));
     % Update figure's surfaces list and current surface pointer
     setappdata(hFigFib, 'Surface',  TessInfo);
+    bst_progress('stop');
 end
 

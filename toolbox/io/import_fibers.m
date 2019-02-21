@@ -302,7 +302,7 @@ function FibMat = AssignToScouts(FibMat, ConnectFile, ScoutCentroids)
     numPoints = size(FibMat.Points, 1);
     closestPts = zeros(numPoints, 2);
     
-    bst_progress('start', 'Fibers Connectivity', 'Assigning fibers to scouts of atlas...', 0, numPoints);
+    bst_progress('start', 'Fibers Connectivity', 'Assigning fibers to scouts of atlas...');
     
     parfor iPt = 1:numPoints
         for iPos = 1:2

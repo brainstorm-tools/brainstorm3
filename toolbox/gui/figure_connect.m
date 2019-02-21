@@ -1150,7 +1150,7 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
         Surface = [];
     end
     % Maximum number of data allowed
-    MaximumNumberOfData = 500;
+    MaximumNumberOfData = 5000;
    
     % === GET DATA ===
     [Time, Freqs, TfInfo, M, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig);

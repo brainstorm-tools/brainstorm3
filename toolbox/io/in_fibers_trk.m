@@ -36,7 +36,7 @@ bst_progress('text', 'Reading TRK...');
 [header, tracks] = trk_read(FibFile);
 
 %TEMP
-tracks = tracks(1:min(10000, length(tracks)));
+%tracks = tracks(1:min(10000, length(tracks)));
 
 % Convert to N points
 bst_progress('text', ['Interpolating fibers to ' num2str(N) ' points...']);
