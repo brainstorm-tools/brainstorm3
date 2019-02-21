@@ -109,7 +109,7 @@ try
     all_lfp_keys = keys(nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries);
 
     for iKey = 1:length(all_lfp_keys)
-        if ismember(all_lfp_keys{iKey}, {'all_lfp','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
+        if ismember(all_lfp_keys{iKey}, {'lfp','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
             iLFPDataKey = iKey;
             LFPDataPresent = 1;
             break % Once you find the data don't look for other keys/trouble
@@ -154,7 +154,7 @@ nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electrica
 sFile.byteorder    = 'l';
 sFile.filename     = DataFile;
 sFile.format       = 'EEG-NWB';
-sFile.device       = nwb2.general_devices.get('device');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
+sFile.device       = nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
 sFile.header.nwb   = nwb2;
 sFile.comment      = nwb2.identifier;
 sFile.prop.samples = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1];
@@ -169,11 +169,11 @@ sFile.header.RawDataPresent = RawDataPresent;
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
-ChannelMat.Comment = 'Plexon channels';
+ChannelMat.Comment = 'NWB channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
 
 
-amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel_id').data.load;
+amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load;
 group_name      = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data;
 
 % Get coordinates and set to 0 if they are not available
@@ -254,8 +254,7 @@ try
     nwb2.units.maxWaveformCh;
     SpikesExist = 1;
 catch
-    warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm')
-    warning('The field "nwb2.units.maxWaveformCh" that assigns spikes to specific electrodes is needed')
+    warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm - The field "nwb2.units.maxWaveformCh" that assigns spikes to specific electrodes is needed')
     SpikesExist = 0;
 end
     
