@@ -1,4 +1,4 @@
-function [iNewFibers, OutputFibersFiles, nFibers] = import_fibers(iSubject, FibersFiles, FileFormat, N, isApplyMriOrient, OffsetMri)
+function varargout = process_absolute(varargin)
 % IMPORT_FIBERS: Import a set of fibers in a Subject of Brainstorm database.
 % 
 % USAGE: iNewFibers = import_fibers(iSubject, FibersFiles, FileFormat, offset=[])
@@ -38,6 +38,10 @@ function [iNewFibers, OutputFibersFiles, nFibers] = import_fibers(iSubject, Fibe
 %
 % Authors: Martin Cousineau, 2019
 
+eval(macro_method);
+end
+
+function [iNewFibers, OutputFibersFiles, nFibers] = Import(iSubject, FibersFiles, FileFormat, N, isApplyMriOrient, OffsetMri)
 %% ===== PARSE INPUTS =====
 % Check command line
 if ~isnumeric(iSubject) || (iSubject < 0)
@@ -181,7 +185,7 @@ for iFile = 1:length(FibersFiles)
         NewFibers = Fibers;
     % Multiple files
     else
-        NewFibers = fib_concatenate(Fibers);
+        NewFibers = FibConcatenate(Fibers);
         NewFibers.Comment = sprintf('fibers_%dPt_%dF', N, size(NewFibers.Points, 1));
     end
 
@@ -190,7 +194,7 @@ for iFile = 1:length(FibersFiles)
         % History: Apply MRI transformation
         NewFibers = bst_history('add', NewFibers, 'import', 'Apply transformation that was applied to the MRI volume');
         % Apply MRI transformation
-        NewFibers = applyMriTransf(sMri.InitTransf, NewFibers);
+        NewFibers = ApplyMriTransf(sMri.InitTransf, NewFibers);
     end
 
     % ===== SAVE BST FILE =====
@@ -225,9 +229,9 @@ end
 %  ===== HELPER FUNCTIONS ===============================================================
 %  ======================================================================================
 %% ===== APPLY MRI ORIENTATION =====
-function sSurf = applyMriTransf(MriTransf, sSurf)
+function sSurf = ApplyMriTransf(MriTransf, sSurf)
     % Convert points matrix to 2D for transformation.
-    [pts, shape3d] = conv3Dto2D(sSurf.Points);
+    [pts, shape3d] = Conv3Dto2D(sSurf.Points);
     % Apply step by step all the transformations that have been applied to the MRI
     for i = 1:size(MriTransf,1)
         ttype = MriTransf{i,1};
@@ -252,12 +256,12 @@ function sSurf = applyMriTransf(MriTransf, sSurf)
         end
     end
     % Report changes in structure
-    sSurf.Points = conv2Dto3D(pts, shape3d);
+    sSurf.Points = Conv2Dto3D(pts, shape3d);
 end
 
 
 %% ===== CONCATENATE FIBERS FILES =====
-function NewFibers = fib_concatenate(Fibers)
+function NewFibers = FibConcatenate(Fibers)
     for iFib = 1:length(Fibers)
         if iFib == 1
             NewFibers = Fibers(iFib);
@@ -269,7 +273,9 @@ function NewFibers = fib_concatenate(Fibers)
     end
 end
 
-function [mat2d, shape3d] = conv3Dto2D(mat3d, iDimToKeep)
+
+%% ===== CONVERT 3D MATRICES TO 2D IN A REVERSIBLE WAY =====
+function [mat2d, shape3d] = Conv3Dto2D(mat3d, iDimToKeep)
     shape3d = size(mat3d);
     nDims = length(shape3d);
     
@@ -281,7 +287,40 @@ function [mat2d, shape3d] = conv3Dto2D(mat3d, iDimToKeep)
     mat2d = reshape(mat3d, [prod(shape3d(iMergeDims)), shape3d(iDimToKeep)]);
 end
 
-function mat3d = conv2Dto3D(mat2d, shape3d)
+
+%% ===== CONVERT 2D MATRICES BACK TO 3D =====
+function mat3d = Conv2Dto3D(mat2d, shape3d)
     mat3d = reshape(mat2d, shape3d);
 end
+
+
+%% ===== ASSIGN FIBERS TO VERTICES =====
+function FibMat = AssignToScouts(FibMat, ConnectFile, ScoutCentroids)
+    %TODO: nargin < 3, load ScoutCentroids from ConnectFile
+
+    endPoints = FibMat.Points(:, [1,end], :);
+    numPoints = size(FibMat.Points, 1);
+    closestPts = zeros(numPoints, 2);
     
+    bst_progress('start', 'Fibers Connectivity', 'Assigning fibers to scouts of atlas...', 0, numPoints);
+    
+    parfor iPt = 1:numPoints
+        for iPos = 1:2
+            % Compute Euclidean distances:
+            distances = sqrt(sum(bst_bsxfun(@minus, squeeze(endPoints(iPt, iPos, :))', ScoutCentroids).^2, 2));
+            % Assign points to the vertex with the smallest distance
+            [minVal, iMin] = min(distances);
+            closestPts(iPt, iPos) = iMin;
+        end
+        bst_progress('inc', 1);
+    end
+    
+    numSurfaces = length(FibMat.Scouts);
+    if numSurfaces <= 1 && isempty(FibMat.Scouts(1).ConnectFile)
+        numSurfaces = 0;
+    end
+    
+    FibMat.Scouts(numSurfaces + 1).ConnectFile = ConnectFile;
+    FibMat.Scouts(numSurfaces + 1).Assignment = closestPts;
+    bst_progress('stop');
+end

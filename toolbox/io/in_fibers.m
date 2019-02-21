@@ -97,9 +97,9 @@ for iFib = 1:length(FibMat)
     % Add coordinates offset
     if ~isempty(OffsetMri) && ~isempty(sMri)
         % Convert to 2D matrix to do it in one go
-        [pts2D, shape3D] = conv3Dto2D(FibMat(iFib).Points);
+        [pts2D, shape3D] = import_fibers('Conv3Dto2D', FibMat(iFib).Points);
         pts2D = bst_bsxfun(@plus, pts2D, OffsetMri .* sMri.Voxsize ./ 1000);
-        FibMat(iFib).Points = conv2Dto3D(pts2D, shape3D);
+        FibMat(iFib).Points = import_fibers('Conv2Dto3D', pts2D, shape3D);
     end
 end
         
@@ -109,9 +109,9 @@ if isConvertScs
         bst_progress('start', 'Importing fibers' , 'Converting coordinates to SCS...', 0, length(FibMat));
         for iFib = 1:length(FibMat)
             % Convert to 2D matrix to do it in one go using cs_convert()
-            [pts2D, shape3D] = conv3Dto2D(FibMat(iFib).Points);
+            [pts2D, shape3D] = import_fibers('Conv3Dto2D', FibMat(iFib).Points);
             pts2D = cs_convert(sMri, 'mri', 'scs', pts2D);
-            FibMat(iFib).Points = conv2Dto3D(pts2D, shape3D);
+            FibMat(iFib).Points = import_fibers('Conv2Dto3D', pts2D, shape3D);
             bst_progress('inc', 1);
         end
     else
@@ -127,21 +127,4 @@ for iFib = 1:length(FibMat)
     if ~isfield(FibMat(iFib), 'Comment') || isempty(FibMat(iFib).Comment)
         FibMat(iFib).Comment = sprintf('fibers_%dPt_%dFib', N, size(FibMat(iFib).Points, 1));
     end
-end
-end
-
-function [mat2d, shape3d] = conv3Dto2D(mat3d, iDimToKeep)
-    shape3d = size(mat3d);
-    nDims = length(shape3d);
-    
-    if nargin < 2 || isempty(iDimToKeep)
-        iDimToKeep = nDims;
-    end
-    
-    iMergeDims = 1:nDims ~= iDimToKeep;
-    mat2d = reshape(mat3d, [prod(shape3d(iMergeDims)), shape3d(iDimToKeep)]);
-end
-
-function mat3d = conv2Dto3D(mat2d, shape3d)
-    mat3d = reshape(mat2d, shape3d);
 end

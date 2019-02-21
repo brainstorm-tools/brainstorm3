@@ -2598,6 +2598,26 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         bst_figures('SetSelectedRows', []);
         panel_scout('SetSelectedScoutLabels', []);
     end
+    if isSelected
+        % If we're plotting fibers, send pairs of scouts that are to be displayed
+        plotFibers = getappdata(hFig, 'plotFibers');
+        if plotFibers
+            % Get color information
+            CMap = get(hFig, 'Colormap');
+            CLim = getappdata(hFig, 'CLim');
+            if isempty(CLim)
+                CLim = [0, 1];
+            end
+            Color = InterpolateColorMap(hFig, DataToFilter(DataMask,:), CMap, CLim);
+            
+            % Get scout information
+            nAgregatingNode = size(AgregatingNodes, 2);
+            iScouts = DataToFilter(iData + 1, 1:2) - nAgregatingNode;
+            
+            % Send to 3D fibers
+            figure_3d('SelectFiberScouts', hFig, iScouts, Color);
+        end
+    end
 end
 
 

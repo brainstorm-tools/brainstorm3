@@ -15,6 +15,7 @@ function varargout = figure_3d( varargin )
 %                 figure_3d('UpdateSurfaceColor',    hFig, iTess)
 %                 figure_3d('ViewSensors',           hFig, isMarkers, isLabels, isMesh=1, Modality=[])
 %                 figure_3d('ViewAxis',              hFig, isVisible)
+%                 figure_3d('SelectFiberScouts',     iDS, iFig, iScouts, Color)
 %     [hFig,hs] = figure_3d('PlotSurface',           hFig, faces, verts, cdata, dataCMap, transparency)
 
 % @=============================================================================
@@ -2268,7 +2269,11 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
 end
 
 %% ===== PLOT FIBERS =====
-function varargout = PlotFibers(hFig, FibPoints)
+function varargout = PlotFibers(hFig, FibPoints, Color)
+    if nargin < 3
+        Color = [];
+    end
+
     % Set figure as current
     set(0, 'CurrentFigure', hFig);
     
@@ -2276,6 +2281,13 @@ function varargout = PlotFibers(hFig, FibPoints)
     %TODO: Only plotting the first 10k for now
     nF = min(size(FibPoints,1),10000);
     lines = line(FibPoints(1:nF,:,1)', FibPoints(1:nF,:,2)', FibPoints(1:nF,:,3)');
+    
+    % Set color
+    if ~isempty(Color)
+        for iFib = 1:nF
+            lines(iFib).Color = Color(iFib,:);
+        end
+    end
     
     % Set output variables
     if nargout > 0
@@ -4196,5 +4208,49 @@ function JumpMaximum(hFig)
     UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
 end
 
-
+%% ===== SELECT FIBER SCOUTS =====
+function SelectFiberScouts(hFigConn, iScouts, Color)
+    %% Get fibers information
+    global GlobalData;
+    iDSFib          = getappdata(hFigConn, 'iDSFib');
+    iFigFib         = getappdata(hFigConn, 'iFigFib');
+    TfInfo = getappdata(hFigConn, 'Timefreq');
+    hFigFib = GlobalData.DataSet(iDSFib).Figure(iFigFib).hFigure;
+    TessInfo = getappdata(hFigFib, 'Surface');
+    iTess = find(ismember({TessInfo.Name}, 'Fibers'));
+    [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
+    
+    
+    %% If fibers not yet assigned to atlas, do so now
+    if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
+        ScoutNames     = getappdata(hFigConn, 'RowNames');
+        ScoutCentroids = getappdata(hFigConn, 'RowLocs');
+        FibMat = import_fibers('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
+        % Save in memory to avoid recomputing
+        GlobalData.Fibers(iFib) = FibMat;
+    end
+    
+    % Get scout assignment
+    iFile = find(ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile}));
+    assign = FibMat.Scouts(iFile).Assignment;
+    
+    %% Find pair of scouts in list fiber assignments
+    % Reshape iScouts to use bsxfun
+    iScoutsBsx = reshape(iScouts', [1 size(iScouts')]);
+    % Get the matches for the pairs and for the flipped pairs
+    indices =  all(bsxfun(@eq, assign, iScoutsBsx), 2) | all( bsxfun(@eq, assign, flip(iScoutsBsx,2)), 2);
+    % Find the indices of the rows with a match
+    iFibers = find(any(indices,3));
+    [iFoundFibers,iFoundScouts] = find(indices(iFibers,:,:));
+    [tmp, iFoundFibers] = sort(iFoundFibers);
+    iFoundScouts = iFoundScouts(iFoundFibers);
+    
+    %% Plot selected fibers
+    % Remove old fibers
+    delete(TessInfo(iTess).hPatch);
+    % Plot fibers
+    [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:), Color(iFoundScouts,:));
+    % Update figure's surfaces list and current surface pointer
+    setappdata(hFigFib, 'Surface',  TessInfo);
+end
 

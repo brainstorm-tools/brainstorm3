@@ -1136,23 +1136,27 @@ function iTess = AddSurface(hFig, surfaceFile)
     % === FIBERS ===
     elseif strcmpi(fileType, 'fibers')
         % Load fibers
-        FibMat = in_fibers(surfaceFile);
+        FibMat = bst_memory('LoadFibers', surfaceFile);
         
         TessInfo(iTess).Name = 'Fibers';
         % Update figure's surfaces list and current surface pointer
         setappdata(hFig, 'Surface',  TessInfo);
+        
+        isEmptyFigure = getappdata(hFig, 'EmptyFigure');
 
         % === PLOT SURFACE ===
-        switch (FigureId.Type)
-            case 'MriViewer'
-                % Nothing to do: surface will be displayed as an overlay slice in figure_mri.m
-            case {'3DViz', 'Topography'}
-                % Create and display surface patch
-                [hFig, TessInfo(iTess).hPatch] = figure_3d('PlotFibers', hFig, FibMat.Points);
+        if isempty(isEmptyFigure) || ~isEmptyFigure
+            switch (FigureId.Type)
+                case 'MriViewer'
+                    % Nothing to do: surface will be displayed as an overlay slice in figure_mri.m
+                case {'3DViz', 'Topography'}
+                    % Create and display surface patch
+                    [hFig, TessInfo(iTess).hPatch] = figure_3d('PlotFibers', hFig, FibMat.Points);
+            end
+            
+            % Update figure's surfaces list and current surface pointer
+            setappdata(hFig, 'Surface',  TessInfo);
         end
-        
-        % Update figure's surfaces list and current surface pointer
-        setappdata(hFig, 'Surface',  TessInfo);
     end
     % Update default surface
     setappdata(hFig, 'iSurface', iTess);

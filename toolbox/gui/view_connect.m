@@ -5,7 +5,7 @@ function [hFig, iDS, iFig] = view_connect(TimefreqFile, DisplayMode, hFig)
 %
 % INPUT: 
 %     - TimefreqFile : Path to connectivity file to visualize
-%     - DisplayMode  : {'Image', 'GraphFull', '3DGraph'}
+%     - DisplayMode  : {'Image', 'GraphFull', '3DGraph', 'Fibers'}
 %     - hFig         : If defined, display file in existing figure
 %
 % OUTPUT : 
@@ -44,6 +44,14 @@ if (nargin < 3) || isempty(hFig) || isequal(hFig,0)
 elseif isequal(hFig,'NewFigure')
     hFig = [];
     CreateMode = 'AlwaysCreate';
+end
+
+% If fibers are requested, plot the graph as well
+if strcmpi(DisplayMode, 'Fibers')
+    DisplayMode = 'GraphFull';
+    plotFibers = 1;
+else
+    plotFibers = 0;
 end
 
 % Initializations
@@ -141,6 +149,7 @@ if strcmpi(DisplayMode, 'Image')
     % Close progress bar and return
     bst_progress('stop');
     return;
+
 end
 
 % Check numbers of rows
@@ -172,12 +181,40 @@ if ~isNewFig
     figure_connect('ResetDisplay', hFig);
 end
 
+%% ===== DISPLAY FIBERS =====
+if plotFibers
+    bst_progress('start', 'View connectivity map', 'Loading fibers...');
+    % Get necessary surface files
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    try
+        surfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+        fibersFile = sSubject.Surface(sSubject.iFibers).FileName;
+        assert(~isempty(surfaceFile) && ~isempty(fibersFile));
+    catch
+        bst_error('Cannot display connectivity results on fibers without fibers and cortex files.');
+        return;
+    end
+    
+    % Prepare fibers figure
+    iDSFib = bst_memory('GetDataSetSubject', sSubject.FileName, 1);
+    FigureFibId = db_template('FigureId');
+    FigureFibId.Type = '3DViz';
+    hFigFib = bst_figures('CreateFigure', iDSFib, FigureFibId);
+    setappdata(hFigFib, 'EmptyFigure', 1);
+
+    % Display fibers
+    [hFigFib, iDSFib, iFigFib] = view_surface(fibersFile, [], [], hFigFib);
+    setappdata(hFig, 'iDSFib', iDSFib);
+    setappdata(hFig, 'iFigFib', iFigFib);
+end
+
 
 %% ===== INITIALIZE FIGURE =====
 % Configure app data
 setappdata(hFig, 'DataFile',     GlobalData.DataSet(iDS).DataFile);
 setappdata(hFig, 'StudyFile',    GlobalData.DataSet(iDS).StudyFile);
 setappdata(hFig, 'SubjectFile',  GlobalData.DataSet(iDS).SubjectFile);
+setappdata(hFig, 'plotFibers',   plotFibers);
 % Static dataset
 setappdata(hFig, 'isStatic', (GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples <= 2));
 isStaticFreq = (size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF,3) <= 1);
@@ -229,10 +266,8 @@ setappdata(hFig, 'Timefreq', TfInfo);
 % Display options panel
 gui_brainstorm('ShowToolTab', 'Display');
 
-
 %% ===== DRAW FIGURE =====
 figure_connect('LoadFigurePlot', hFig);
-
 
 %% ===== UPDATE ENVIRONMENT =====
 % Update figure selection
