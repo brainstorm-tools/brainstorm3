@@ -21,11 +21,10 @@ function isOk = bst_spm_init(isInteractive, SpmFunction)
 %
 % Authors: Francois Tadel, 2017
 
-% Deployed: does not work
+% Deployed: Code already included in the compiled version
 if exist('isdeployed', 'builtin') && isdeployed
-    error(['SPM functions cannot be called from the compiled version of Brainstorm.' 10 ...
-           'We would need to compile Brainstorm and SPM together. Doable but complicated.' 10 ...
-           'Please post a message on the forum if you are interested in contributing.']);
+    isOk = 1;
+    return;
 end
 % Default behavior
 if (nargin < 1) || isempty(isInteractive)

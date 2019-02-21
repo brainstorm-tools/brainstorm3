@@ -47,6 +47,7 @@ isProgress = bst_progress('isVisible');
 bst_progress('start', 'DICOM converter (SPM)', 'Loading DICOM headers...', 0, length(DicomFiles));
 
 % Read SPM DICOM dictionnary
+disp(['Openin: ' fullfile(spm('Dir'),'spm_dicom_dict.txt')])
 dictFile = fullfile(fileparts(which('spm_dicom_convert')), 'spm_dicom_dict.txt');
 dict = spm_dicom_text_to_dict(dictFile);
 

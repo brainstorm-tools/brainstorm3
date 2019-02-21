@@ -1,12 +1,14 @@
 ---------------------------------------------------------------
 February 2019
+- Distrib: Compiled Brainstorm now include all SPM and FieldTrip dependencies
+- Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
 - IO: Added support for York Instruments MEGSCAN recordings (.hdf5)
 ---------------------------------------------------------------
 January 2019
 - IO: BIDS export process supports EEG-BIDS
 - IO: Plexon 2 (.pl2) files can now be read if Plexon SDK installed
-- Anatomy: Handle better world coordinates (cs_convert, import/export of channel files)
 - IO: Export EEG/SEEG electrode positions in MNI or world coordinates
+- Anatomy: Handle better world coordinates (cs_convert, import/export of channel files)
 - Stat: Colormaps adapted to t-value threshold
 - GUI: Added colormap ovun (now default for stat2 files)
 - GUI: Reorganization of the management of multiple screens for Matlab>2015b
@@ -15,6 +17,7 @@ December 2018
 - IO: BIDS import: Support for EEG and iEEG
 - IO: Export EEG to BrainVision BrainAmp format (.eeg) for iEEG-BIDS
 - Bug fix: Fixed coil orientations when reading CTF .ds folders including a .pos file (MNI only)
+  https://neuroimage.usc.edu/brainstorm/Tutorials/CtfCoilOrientBugFix
 ---------------------------------------------------------------
 November 2018
 - New electrophysiology toolbox
