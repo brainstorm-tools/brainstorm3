@@ -690,6 +690,7 @@ function SetListEnabled(isEnabled) %#ok<DEFNU>
     sControls.jButtonSourcesB.setEnabled(isEnabled);
     sControls.jButtonTimefreqB.setEnabled(isEnabled);
     sControls.jButtonMatrixB.setEnabled(isEnabled);
+    sControls.jButtonReload.setEnabled(isEnabled);
 end
 
 
