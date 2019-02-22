@@ -73,7 +73,11 @@ if ~isempty(iEeg)
     % Electrode position
     elec.chanpos = zeros(length(iEeg),3);
     for i = 1:length(iEeg)
-        elec.chanpos(i,:) = ChannelMat.Channel(iEeg(i)).Loc(:,1);
+        if all(size(ChannelMat.Channel(iEeg(i)).Loc) > [3,1])
+            elec.chanpos(i,:) = ChannelMat.Channel(iEeg(i)).Loc(:,1);
+        else
+            elec.chanpos(i,:) = [0;0;0];
+        end
     end
     elec.elecpos = elec.chanpos;
     % Default montage
