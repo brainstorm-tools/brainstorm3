@@ -103,7 +103,7 @@ try
 catch
     Name = 'Brainstorm';
     Version = '?';
-    Release = '?';
+    Release = '??????';
     Date    = '?';
 end
 % Save version in matlab preferences

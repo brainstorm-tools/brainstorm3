@@ -90,10 +90,6 @@ if IS_BIN
     
     % FieldTrip / SPM
     if IS_FT_SPM
-    %     % Add FieldTrip to path
-    %     addpath(FieldTripDir);
-    %     % Add SPM to PATH
-    %     addpath(SpmDir);
         compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2015b_spm.prj');
     else
         compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2015b.prj');
