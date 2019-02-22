@@ -213,12 +213,10 @@ end
 
 
 if additionalChannelsPresent
-    position_labels = ['x' 'y'];
-    
     nChannels = nChannels + nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').data.dims(2);
     for iChannel = 1:nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').data.dims(2)
         
-        ChannelMat.Channel(iChannel).Name    = ['OpenFieldPosition' num2str(position_labels(iChannel))]; % This gives the AMP labels (it is not in order, but it seems to be the correct values - COME BACK TO THAT)
+        ChannelMat.Channel(iChannel).Name    = ['OpenFieldPosition' num2str(iChannel)]; % This gives the AMP labels (it is not in order, but it seems to be the correct values - COME BACK TO THAT)
         ChannelMat.Channel(iChannel).Loc     = [0;0;0];
 
         ChannelMat.Channel(iChannel).Group   = 'Position';
