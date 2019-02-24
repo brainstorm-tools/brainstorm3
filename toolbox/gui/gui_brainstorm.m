@@ -280,7 +280,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     jToolbarA = gui_component('Toolbar', jPanelProcess);
     jToolbarA.setOrientation(javax.swing.JToolBar.VERTICAL);
         TB_SIZE = Dimension(28*InterfaceScaling, 26*InterfaceScaling);
-        TB_FLAT = Dimension(28*InterfaceScaling, 24*InterfaceScaling);
+        TB_FLAT = Dimension(28*InterfaceScaling, 22*InterfaceScaling);
         jButtonGroupType = java_create('javax.swing.ButtonGroup');
         % Buttons
         jButtonRecordingsA = gui_component('toolbartoggle', jToolbarA, [], '', {IconLoader.ICON_DATA_LIST,     TB_SIZE, jButtonGroupType}, 'Process recordings',  @(h,ev)bst_call(@ProcessDataType_Callback, 'data', 'A', ev));
@@ -290,7 +290,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jButtonRecordingsA.setSelected(1);
         jToolbarA.addSeparator();
         % Button "RUN"
-        gui_component('toolbarbutton', jToolbarA, [], '', {IconLoader.ICON_RUN, TB_FLAT}, 'Start', @(h,ev)bst_call(@ProcessRun_Callback));
+        gui_component('toolbarbutton', jToolbarA, [], '', {IconLoader.ICON_RUN, TB_SIZE}, 'Start', @(h,ev)bst_call(@ProcessRun_Callback));
         jButtonReload = gui_component('toolbarbutton', jToolbarA, [], '', {IconLoader.ICON_RELOAD, TB_FLAT}, 'Reload last pipeline', @(h,ev)bst_call(@bst_report, 'Recall', 'current'));
     jPanelProcess.add(jToolbarA, java.awt.BorderLayout.WEST);
        
