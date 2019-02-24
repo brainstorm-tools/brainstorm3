@@ -342,7 +342,9 @@ if strcmpi(FileType, 'Timefreq')
         gui_brainstorm('ShowToolTab', 'Display');
     end
     % Static dataset
-    setappdata(hFig, 'isStatic', (GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples <= 2));
+    isStatic = (GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples <= 1) || ...
+               ((GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples == 2) && isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:,1,:,:,:), GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:,2,:,:,:)));
+    setappdata(hFig, 'isStatic', isStatic);
     isStaticFreq = (size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF,3) <= 1);
     setappdata(hFig, 'isStaticFreq', isStaticFreq);
     % Create options structure

@@ -19,7 +19,8 @@ function varargout = process_concat( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Marc Lalancette, 2013-2018
+% Authors: Francois Tadel, 2013-2019
+%          Marc Lalancette, 2018
 
 eval(macro_method);
 end
@@ -338,6 +339,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Set history field
             NewMat = bst_history('add', NewMat, 'concat', 'Contatenate time from files:');
             NewMat = bst_history('add', NewMat, 'concat', [' - ' sInputs(1).FileName]);
+            % Removing time bands, because they would conflict with the display
+            NewMat.TimeBands = [];
             % Check all the input files
             for iInput = 2:length(sInputs)
                 % Load the next file
@@ -352,13 +355,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 % Concatenate the data matrices
                 NewMat.TF = cat(2, NewMat.TF, MatrixMat.TF);
+                % REMOVING TIME BANDS BECAUSE IT MAKES OUTPUT FILES DIFFICULT TO VIEW
+                % % Concatenate time bands
+                % if ~isempty(NewMat.TimeBands) && ~isempty(MatrixMat.TimeBands)
+                %     NewMat.TimeBands = cat(1, NewMat.TimeBands, MatrixMat.TimeBands);
+                % end
                 % History field
                 NewMat = bst_history('add', NewMat, 'concat', [' - ' sInputs(iInput).FileName]);
             end
             % Set the final time vector
             NewMat.Time = NewMat.Time(1) + (0:size(NewMat.TF,2)-1) ./ sfreq;
             % Output file tag
-            fileTag = 'timefreq_concat';
+            fileTag = [bst_process('GetFileTag', sInputs(1).FileName), '_concat'];
             
         otherwise
             bst_report('Error', sProcess, sInputs(1), ['Unsupported file type: "' sInputs(1).FileType '".']);
