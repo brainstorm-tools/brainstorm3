@@ -63,7 +63,11 @@ sFile.header       = hdr;
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
 % Acquisition date
-sFile.acq_date = datestr(datenum(hdr.obj.segments.startDate), 'dd-mmm-yyyy');
+try
+    sFile.acq_date = datestr(datenum(hdr.obj.segments.startDate), 'dd-mmm-yyyy');
+catch
+    sFile.acq_date = '01-Jan-2000';
+end
 
 % Multiple segments
 if (hdr.nSegments > 1)
