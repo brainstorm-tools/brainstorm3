@@ -181,7 +181,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             % Filter file
             % Fbp = process_bandpass('Compute', Fraw, sfreq, FiltSpec);
-            Fbp = process_bandpass('Compute', Fraw, sfreq, lowCut, highCut, 'bst-fft-fir', 1);
+            Fbp = process_bandpass('Compute', Fraw, sfreq, lowCut, highCut, 'bst-hfilter-2019', 1);
             if isempty(Fbp)
                 return;
             end
@@ -241,7 +241,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 % Apply filtering if requested, otherwise remove the DC
                 %F = process_bandpass('Compute', F, sfreq, FiltSpec);
-                F = process_bandpass('Compute', F, sfreq, lowCut, highCut, 'bst-fft-fir', 1);
+                F = process_bandpass('Compute', F, sfreq, lowCut, highCut, 'bst-hfilter-2019', 1);
                 if isempty(F)
                     return;
                 end

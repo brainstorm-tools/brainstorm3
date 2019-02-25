@@ -268,7 +268,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         end
         % Design the filter
         isMirror = 0;
-        [tmp, FiltSpec] = process_bandpass('Compute', [], filterFreq, BandPass(1), BandPass(2), 'bst-hfilter', isMirror);
+        [tmp, FiltSpec] = process_bandpass('Compute', [], filterFreq, BandPass(1), BandPass(2), 'bst-hfilter-2019', isMirror);
         % Estimate transient period (before and after resampling)
         nTransientLoad    = round(FiltSpec.transient * sfreq);
         nTransientDiscard = round(FiltSpec.transient * filterFreq);

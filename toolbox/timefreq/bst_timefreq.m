@@ -536,7 +536,7 @@ for iData = 1:length(Data)
                 % Band-pass filter in one frequency band
                 isMirror = 0;
                 isRelax = 0;
-                Fband = process_bandpass('Compute', F, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter', isMirror, isRelax);
+                Fband = process_bandpass('Compute', F, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', isMirror, isRelax);
                 % Fband = process_bandpass('Compute', F, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
                 % Apply Hilbert transform
                 if UseSigProcToolbox

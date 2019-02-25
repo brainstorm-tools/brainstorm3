@@ -493,12 +493,12 @@ for iFile = 1:length(FilesA)
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 if isConnNN
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                     HA = hilbert_fcn(DataAband')';
                     HB = HA;
                 else
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
-                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
+                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                     HA = hilbert_fcn(DataAband')';
                     HB = hilbert_fcn(DataBband')';
                 end
@@ -535,12 +535,12 @@ for iFile = 1:length(FilesA)
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 if isConnNN
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                     HA = hilbert_fcn(DataAband')';
                     HB = HA;
                 else
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
-                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
+                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                     HA = hilbert_fcn(DataAband')';
                     HB = hilbert_fcn(DataBband')';
                 end
@@ -572,7 +572,7 @@ for iFile = 1:length(FilesA)
             % Loop on each frequency band
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
-                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                 % Compute PTE
                 [dPTE, PTE] = PhaseTE_MF(permute(DataAband, [2 1]));
                 if OPTIONS.isNormalized

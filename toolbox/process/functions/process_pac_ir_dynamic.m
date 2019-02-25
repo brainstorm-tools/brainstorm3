@@ -792,7 +792,7 @@ for ifreq=1:nFa
     bandNested = [nestedCenters(ifreq)-Fstep(ifreq),nestedCenters(ifreq)+Fstep(ifreq+1)];
     
     % Filtering in fA band
-    Xnested = bst_bandpass_hfilter(XinputA, sRate,bandNested(1), bandNested(2), isMirror, isRelax, fArolloff);    % Filtering
+    Xnested = bst_bandpass_hfilter(XinputA, sRate,bandNested(1), bandNested(2), isMirror, isRelax, [], fArolloff);    % Filtering
     Xnested = Xnested(:,nMargin-nHilMar+1:end-nMargin+nHilMar);               % Removing part of the margin
     
     % Hilbert transform
@@ -886,11 +886,11 @@ for ifreq=1:nFa
         
         % Filtering in nesting band
         if length(unique(bandNesting(:,1)))==1 && length(unique(bandNesting(:,2)))==1
-            Xnesting = bst_bandpass_hfilter(XP, sRate,bandNesting(1,1), bandNesting(1,2), isMirror, isRelax, fProlloff);    % Filtering
+            Xnesting = bst_bandpass_hfilter(XP, sRate,bandNesting(1,1), bandNesting(1,2), isMirror, isRelax, [], fProlloff);    % Filtering
         else
             Xnesting = zeros(size(XP));
             for i=1:length(isources)
-                Xnesting(i,:) = bst_bandpass_hfilter(XP(i,:), sRate, bandNesting(i,1), bandNesting(i,2),isMirror, isRelax, fProlloff);    % Filtering
+                Xnesting(i,:) = bst_bandpass_hfilter(XP(i,:), sRate, bandNesting(i,1), bandNesting(i,2),isMirror, isRelax, [], fProlloff);    % Filtering
             end
         end        
         Xnesting = Xnesting(:,nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin        
