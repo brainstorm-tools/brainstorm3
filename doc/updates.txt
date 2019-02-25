@@ -4,6 +4,7 @@ February 2019
 - Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
 - IO: Added support for York Instruments MEGSCAN recordings (.hdf5)
 - IO: Added support for Tucker Davis Technologies (.tdt)
+- Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)
 ---------------------------------------------------------------
 January 2019
 - IO: BIDS export process supports EEG-BIDS

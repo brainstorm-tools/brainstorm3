@@ -72,15 +72,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.attenuation.Type    = 'radio_linelabel';
     sProcess.options.attenuation.Value   = 'strict';
     % === Filter Version
-    sProcess.options.ver.Comment = {'2019','<FONT color="#999999">Oct 2016-18<FONT color="#999999">',...
+    sProcess.options.ver.Comment = {'2019','<FONT color="#999999">2016-2018<FONT color="#999999">',...
         '<FONT color="#999999">Before Oct 2016<FONT color="#999999">', 'Filter version:'; ...
-        '2019', 'Oct 2016-18', 'Before Oct 2016', ''};
+        '2019', '2016', '2011', ''};
     sProcess.options.ver.Type    = 'radio_linelabel';
     sProcess.options.ver.Value   = '2019';
     % === Mirror
     sProcess.options.mirror.Comment = '<FONT color="#999999">Mirror signal before filtering (not recommended)</FONT>';
     sProcess.options.mirror.Type    = 'checkbox';
     sProcess.options.mirror.Value   = 0;
+    sProcess.options.mirror.Hidden  = 1;
     % === Display properties
     sProcess.options.display.Comment = {'process_bandpass(''DisplaySpec'',iProcess,sfreq);', '<BR>', 'View filter response'};
     sProcess.options.display.Type    = 'button';
@@ -109,10 +110,10 @@ function [HighPass, LowPass, isMirror, isRelax, Method, TranBand] = GetOptions(s
             else
                 TranBand = sProcess.options.tranband.Value{1} ;  % In Hz 
             end
-        case 'Oct 2016-18'
+        case '2016'
             Method = 'bst-hfilter-2016';
             TranBand = NaN ;
-        case 'Before Oct 2016'
+        case '2011'
             Method = 'bst-fft-fir';
             TranBand = NaN ;
     end
@@ -210,6 +211,8 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, HighPass, LowPass, Method, 
         end
         if (nargin < 5) || isempty(Method)
             Method = 'bst-hfilter-2019';
+        elseif strcmpi(Method, 'bst-hfilter')
+            Method = 'bst-hfilter-2016';
         end
         FiltSpec = [];
     end
