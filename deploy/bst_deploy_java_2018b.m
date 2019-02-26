@@ -1,7 +1,7 @@
-function bst_deploy_java_2015b(IS_BIN)
+function bst_deploy_java_2018b(IS_BIN)
 % BST_DEPLOY_JAVA - Brainstorm deployment script (including SPM and FieldTrip).
 %
-% USAGE:  bst_deploy_java_2015b(IS_BIN=0)
+% USAGE:  bst_deploy_java_2018b(IS_BIN=0)
 %
 % INPUTS:
 %    - IS_BIN : 0=Package the sources and push the modifications to github
@@ -13,6 +13,7 @@ function bst_deploy_java_2015b(IS_BIN)
 %    - Update doc/license.html (update block: "Version: ...")
 %    - Update *.m inital comments (replace block "@=== ... ===@" with deploy/autocomment.txt)
 %    - Remove *.asv files
+%    - Copy files to GIT folder and open GitGUI
 %    - Zip brainstorm3 directory (output file: <bstMakeDir>/brainstorm_yymmdd.zip)
 %    - Restore defaults/* directories
 %    (optional)
@@ -90,9 +91,9 @@ if IS_BIN
     
     % FieldTrip / SPM
     if IS_FT_SPM
-        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2015b_spm.prj');
+        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2018b_spm.prj');
     else
-        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2015b.prj');
+        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2018b.prj');
     end
     
     % JDK folder
@@ -145,7 +146,7 @@ end
 
 %% ===== GET ALL DIRECTORIES =====
 % Get all the Brainstorm subdirectories
-bstPath = [bstDir, ';', GetPath(bstDir)];
+bstPath = GetPath(bstDir);
 % Split string
 jPath = java.lang.String(bstPath);
 jSplitPath = jPath.split(';');
@@ -272,7 +273,7 @@ if IS_BIN
     % === PACKAGING ===
     disp('DEPLOY> Packaging binary distribution...');
     % Compiled jar
-    compiledJar = fullfile(compilerOutputDir, 'bst_javabuilder_2015b.jar');
+    compiledJar = fullfile(compilerOutputDir, 'bst_javabuilder_2018b.jar');
     % Find the JAR created by the compiler
     if ~file_exist(compiledJar)
         error('Compilation is incomplete: cannot package the binary distribution.');
@@ -295,20 +296,27 @@ if IS_BIN
     appJar = fullfile(bstDir, 'java', 'brainstorm.jar');
     % Unjar in "javabuilder" folder, just to get the SelectMcr class
     unzip(appJar, compilerDir);
-    classFile = fullfile('org', 'brainstorm', 'file', 'SelectMcr2015b.class');
+    classFile = fullfile('org', 'brainstorm', 'file', 'SelectMcr2018b.class');
     destFolder = fullfile(jarDir, fileparts(classFile));
     mkdir(destFolder);
     copyfile(fullfile(compilerDir, classFile), destFolder);
     % Copy application runner
     classFile = fullfile(deployDir, ReleaseName, 'brainstorm_run', 'org', 'brainstorm', 'RunCompiled.class');
-    destFolder = fullfile(jarDir, 'org', 'brainstorm');
-    copyfile(classFile, destFolder);
+    if file_exist(classFile)
+        destFolder = fullfile(jarDir, 'org', 'brainstorm');
+        copyfile(classFile, destFolder);
+    else
+        disp(['WARNING: Packaging without the installation runner, you must:' 10 ... 
+              ' - Create and compile the Java project brainstorm_run_2018b' 10 ...
+              ' - Copy RunCompiled.class to the packaging folder: ' 10 ...
+              '   brainstorm3_deploy\R2018b\brainstorm_run\org\brainstorm']);
+    end
     % Re-jar files together
     bstJar = fullfile(binDir, 'brainstorm3.jar');
     if file_exist(bstJar)
         delete(bstJar);
     end
-    system(['cd "' jarDir '" & "' jdkDir '\bin\jar.exe" cmf manifest.txt "' bstJar '" bst_javabuilder_2015b org com']);
+    system(['cd "' jarDir '" & "' jdkDir '\bin\jar.exe" cmf manifest.txt "' bstJar '" bst_javabuilder_2018b org com']);
 end
 
 
@@ -455,6 +463,3 @@ function [nComment, nCode] = CountLines(fName, strExclude)
         end
     end
 end
-
-
-
