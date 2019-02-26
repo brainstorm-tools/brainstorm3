@@ -35,37 +35,44 @@ end
 nChannels = length(selectedChannels);
 nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
 
+timeBounds = SamplesBounds./sFile.prop.sfreq;
 
 
-% Load the nwbFile object that holds the info of the .nwb
+%% Load the nwbFile object that holds the info of the .nwb
 nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch
 
-if sFile.header.RawDataPresent
+%% Find the indices of the timestamps that are selected
+position_timestamps =  nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').timestamps.load;
+
+[~, iPositionTimestamps] = histc(timeBounds, position_timestamps);
+
+%% Get the signals
+
+F = zeros(nChannels, nSamples);
+
+iEEG = 0;
+iAdditionalChannel = 0;
+for iChannel = 1:nChannels
+    if strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'EEG')
+        iEEG = iEEG + 1;
+        F(iChannel,:) = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
+    elseif strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'OpenFieldPosition')
+        iAdditionalChannel = iAdditionalChannel + 1;
     
-    % Sequential reading is faster
-    if sum(diff(selectedChannels) == ones(1,length(selectedChannels)-1)) == length(selectedChannels)-1
-        F = nwb2.acquisition.get(sFile.header.RawKey).data.load([selectedChannels(1), SamplesBounds(1) + 1], [selectedChannels(end), SamplesBounds(2)+1]);
-    % If not sequential channels, read one by one
-    else    
-        F = zeros(length(selectedChannels), nSamples);
-        for iChannel = 1:nChannels
-            F(iChannel,:) = nwb2.acquisition.get(sFile.header.RawKey).data.load([selectedChannels(iChannel), SamplesBounds(1)+1], [selectedChannels(iChannel), SamplesBounds(2)+1]);
+        if length(iPositionTimestamps) < 2 || sum(iPositionTimestamps == 0) > 0 % If not both values are within the range
+            F(iChannel,:) = nan(1, nSamples);
+            
+            disp('selection is outside the timestamps for the additional channels')
+        else
+            temp = nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').data.load([iAdditionalChannel, iPositionTimestamps(1)], [iAdditionalChannel, iPositionTimestamps(2)]);
+            upsampled_position = interp(temp,ceil(nSamples/length(temp)));
+        
+            logical_keep = true(1,length(upsampled_position));
+            random_points_to_remove = randperm(length(upsampled_position),length(upsampled_position)-nSamples);
+            logical_keep(random_points_to_remove) = false;
+
+            F(iChannel,:) = upsampled_position(logical_keep);
         end
-    end
-    
-    
-elseif sFile.header.LFPDataPresent
-    % Sequential reading is faster
-    if sum(diff(selectedChannels) == ones(1,length(selectedChannels)-1)) == length(selectedChannels)-1
-        F = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([selectedChannels(1), SamplesBounds(1) + 1], [selectedChannels(end), SamplesBounds(2)+1]);
-    % If not sequential channels, read one by one
-    else    
-        F = zeros(length(selectedChannels), nSamples);
-        for iChannel = 1:nChannels
-            F(iChannel,:) = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([selectedChannels(iChannel), SamplesBounds(1)+1], [selectedChannels(iChannel), SamplesBounds(2)+1]);
-        end
+        
     end
 end
-
-
-

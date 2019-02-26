@@ -137,9 +137,11 @@ try
     position = nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').data;
 
     additionalChannelsPresent = 1;
+    nAdditionalChannels = nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').data.dims(2);
     
 catch
     additionalChannelsPresent = 0;
+    nAdditionalChannels = 0;
 end
 
 
@@ -164,27 +166,10 @@ end
 nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2);
 
 
-% Add information read from header
-sFile.byteorder    = 'l';
-sFile.filename     = DataFile;
-sFile.format       = 'EEG-NWB';
-sFile.device       = nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
-sFile.header.nwb   = nwb2;
-sFile.comment      = nwb2.identifier;
-sFile.prop.samples = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
-% No info on bad channels
-sFile.channelflag  = ones(nChannels, 1);
-
-sFile.header.LFPDataPresent            = LFPDataPresent;
-sFile.header.RawDataPresent            = RawDataPresent;
-sFile.header.additionalChannelsPresent = additionalChannelsPresent;
-
 %% ===== CREATE EMPTY CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NWB channels';
-ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels + nAdditionalChannels]);
 
 
 amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load;
@@ -199,6 +184,8 @@ x(isnan(x)) = 0;
 y(isnan(y)) = 0;
 z(isnan(z)) = 0;
 
+ChannelType = cell(nChannels + nAdditionalChannels, 1);
+
 for iChannel = 1:nChannels
     ChannelMat.Channel(iChannel).Name    = ['amp' num2str(amp_channel_IDs(iChannel))]; % This gives the AMP labels (it is not in order, but it seems to be the correct values - COME BACK TO THAT)
     ChannelMat.Channel(iChannel).Loc     = [x(iChannel);y(iChannel);z(iChannel)];
@@ -209,29 +196,58 @@ for iChannel = 1:nChannels
     ChannelMat.Channel(iChannel).Orient  = [];
     ChannelMat.Channel(iChannel).Weight  = 1;
     ChannelMat.Channel(iChannel).Comment = [];
+    
+    ChannelType{iChannel} = 'EEG';
 end
 
 
 if additionalChannelsPresent
     position_labels = ['x' 'y'];
     
-    nChannels = nChannels + nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').data.dims(2);
-    for iChannel = 1:nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').data.dims(2)
+    for iChannel = 1:nAdditionalChannels
         
-        ChannelMat.Channel(iChannel).Name    = ['OpenFieldPosition' num2str(position_labels(iChannel))]; % This gives the AMP labels (it is not in order, but it seems to be the correct values - COME BACK TO THAT)
-        ChannelMat.Channel(iChannel).Loc     = [0;0;0];
+        ChannelMat.Channel(nChannels + iChannel).Name    = ['OpenFieldPosition' num2str(position_labels(iChannel))]; % This gives the AMP labels (it is not in order, but it seems to be the correct values - COME BACK TO THAT)
+        ChannelMat.Channel(nChannels + iChannel).Loc     = [0;0;0];
 
-        ChannelMat.Channel(iChannel).Group   = 'Position';
-        ChannelMat.Channel(iChannel).Type    = 'OpenFieldPosition';
+        ChannelMat.Channel(nChannels + iChannel).Group   = 'Position';
+        ChannelMat.Channel(nChannels + iChannel).Type    = 'OpenFieldPosition';
 
-        ChannelMat.Channel(iChannel).Orient  = [];
-        ChannelMat.Channel(iChannel).Weight  = 1;
-        ChannelMat.Channel(iChannel).Comment = [];
+        ChannelMat.Channel(nChannels + iChannel).Orient  = [];
+        ChannelMat.Channel(nChannels + iChannel).Weight  = 1;
+        ChannelMat.Channel(nChannels + iChannel).Comment = [];
+        
+        ChannelType{nChannels + iChannel} = 'OpenFieldPosition';
     end
 end
     
     
     
+
+
+
+
+
+
+
+%% Add information read from header
+sFile.byteorder    = 'l';
+sFile.filename     = DataFile;
+sFile.format       = 'EEG-NWB';
+sFile.device       = nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
+sFile.header.nwb   = nwb2;
+sFile.comment      = nwb2.identifier;
+sFile.prop.samples = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1];
+sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.nAvg    = 1;
+% No info on bad channels
+sFile.channelflag  = ones(nChannels + nAdditionalChannels, 1);
+
+sFile.header.LFPDataPresent            = LFPDataPresent;
+sFile.header.RawDataPresent            = RawDataPresent;
+sFile.header.additionalChannelsPresent = additionalChannelsPresent;
+sFile.header.ChannelType               = ChannelType;
+
+
 
 
 %% ===== READ EVENTS =====
@@ -296,18 +312,15 @@ end
     
 
 
+%%%%%% For the checking with the spikes.mat I did this substitution
+%%%%%% nwb2.units.maxWaveformCh ----- spikes.maxWaveformCh
+%%%%%% Also load: load('YutaMouse41-150903.spikes.cellinfo.mat')
+  
+
 if SpikesExist
  
-    
-    %%%%%% For the checking with the spikes.mat I did this substitution
-    %%%%%% nwb2.units.maxWaveformCh ----- spikes.maxWaveformCh
-    
-    
-
     nNeurons = length(nwb2.units.id.data.load);
     
-    
-
     if ~exist('events')
         events_spikes = repmat(db_template('event'), 1, nNeurons);
     end
