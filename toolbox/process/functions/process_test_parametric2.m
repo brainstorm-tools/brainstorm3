@@ -22,7 +22,7 @@ function varargout = process_test_parametric2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Dimitrios Pantazis, 2008-2018
+% Authors: Francois Tadel, Dimitrios Pantazis, 2008-2019
 
 eval(macro_method);
 end
@@ -590,6 +590,11 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
                     % Compute t-test
                     tmap = mean_diff ./ std_diff .* sqrt(nA);
                     df = nA - 1;
+                    % Test if the statistics make sense
+                    if all(tmap(:) == 0)
+                        bst_report('Error', sProcess, [], 'The T-statistics is zero for all the tests.');
+                        return;
+                    end
                     % Calculate p-values from t-values
                     pmap = ComputePvalues(tmap, df, 't', OPTIONS.TestTail);
                     % Units: t

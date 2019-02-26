@@ -60,7 +60,7 @@ function [Stat, Messages, iOutFiles, AllEvents] = bst_avg_files(FilesListA, File
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 
 
 %% ===== PARSE INPUTS =====
@@ -351,7 +351,7 @@ for iFile = 1:nFiles
     % Else: Apply absolute values if necessary
     else
         switch (Function)
-            case 'mean',         % Nothing to do
+            case 'mean'          % Nothing to do
             case 'rms',          matValues = matValues .^ 2;
             case {'abs','norm'}, matValues = abs(matValues);
         end
@@ -481,7 +481,7 @@ else
     MeanBadChannels = [];
 end
 % Output bad channels
-if strcmpi(matName, 'F')
+if strcmpi(matName, 'F') || (strcmpi(matName, 'Value') && isstruct(FilesListA{iFile}) && isfield(FilesListA{iFile}, 'ChannelFlag') && ~isempty(FilesListA{iFile}.ChannelFlag))
     OutChannelFlag  = ones(NbChannels, 1);
     OutChannelFlag(MeanBadChannels) = -1;
 else
