@@ -19,7 +19,7 @@ function varargout = process_stdtime( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -40,7 +40,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 2;
     sProcess.isSeparator = 1;
     % Help
-    sProcess.options.help.Comment = ['Apply the time vector of the first file to all the other files.<BR>' ...
+    sProcess.options.help.Comment = ['Apply the time vector of the <B>first file</B> to all the <B>other files</B>.<BR><BR>' ...
                                      'If the number of samples is the same, it simply replaces the Time field.<BR>' ...
                                      'If the number of samples is different, it reinterpolates the values with<BR>' ...
                                      'Matlab function interp1.'];
@@ -48,8 +48,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === Interpolation method
     sProcess.options.method.Comment = 'Interpolation method: ';
     sProcess.options.method.Type    = 'combobox_label';
-    sProcess.options.method.Value   = {'spline', {'linear', 'spline', 'pchip', 'v5cubic', 'makima'; ...
-                                                  'linear', 'spline', 'pchip', 'v5cubic', 'makima'}};
+    sProcess.options.method.Value   = {'spline', {'nearest', 'linear', 'spline', 'pchip', 'v5cubic', 'makima'; ...
+                                                  'nearest', 'linear', 'spline', 'pchip', 'v5cubic', 'makima'}};
     % === OVERWRITE
     sProcess.options.overwrite.Comment = 'Overwrite input files';
     sProcess.options.overwrite.Type    = 'checkbox';
@@ -136,6 +136,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Regular files
                 else
                     OutputFile = file_fullpath(sInputs(iFile).FileName);
+                    sMatrix.Comment = [sMatrix.Comment, ' | stdtime'];
                 end
                 % Save file: add file tag
                 OutputFile = file_unique(strrep(OutputFile, '.mat', '_stdtime.mat'));

@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 February 2019
+- New process2: "Standardize > Interpolate time" (+ new option 'nearest' in process_stdtime.m)
 - Distrib: Compiled Brainstorm now include all SPM and FieldTrip dependencies
 - Distrib: Compiled 2018a and 2018b versions
 - Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
