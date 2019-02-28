@@ -1,29 +1,33 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="805395868" file="C:\Work\Dev\brainstorm3\deploy\bst_javabuilder_2018b_spm.prj" location="C:\Work\Dev\brainstorm3\deploy" name="bst_javabuilder_2018b_spm" target="target.ezdeploy.library" target-name="Library Compiler">
-    <param.appname>bst_javabuilder_2018b</param.appname>
+  <configuration build-checksum="805395868" file="C:\Work\Dev\brainstorm3\deploy\bst_javabuilder_2018a.prj" location="C:\Work\Dev\brainstorm3\deploy" name="bst_javabuilder_2018a" target="target.ezdeploy.library" target-name="Library Compiler">
+    <param.appname>bst_javabuilder_2018a</param.appname>
     <param.icon />
     <param.icons />
     <param.version>1.0</param.version>
-    <param.authnamewatermark />
-    <param.email />
-    <param.company />
+    <param.authnamewatermark>Francois Tadel</param.authnamewatermark>
+    <param.email>francois.tadel@mcgill.ca</param.email>
+    <param.company>McGill University</param.company>
     <param.summary />
     <param.description />
     <param.screenshot />
     <param.guid />
-    <param.installpath.string>\bst_javabuilder_2018b\</param.installpath.string>
+    <param.installpath.string>\McGill University\bst_javabuilder_2018a\</param.installpath.string>
     <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
     <param.logo />
     <param.install.notes />
     <param.target.install.notes />
-    <param.intermediate>C:\Work\Dev\brainstorm3_deploy\R2018b\bst_javabuilder\for_testing</param.intermediate>
-    <param.files.only>C:\Work\Dev\brainstorm3_deploy\R2018b\bst_javabuilder\for_redistribution_files_only</param.files.only>
-    <param.output>C:\Work\Dev\brainstorm3_deploy\R2018b\bst_javabuilder\for_redistribution</param.output>
-    <param.logdir>${PROJECT_ROOT}\bst_javabuilder_2018b_spm</param.logdir>
+    <param.intermediate>C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing</param.intermediate>
+    <param.files.only>C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_redistribution_files_only</param.files.only>
+    <param.output>C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_redistribution</param.output>
     <param.enable.clean.build>false</param.enable.clean.build>
     <param.user.defined.mcr.options />
+    <param.embed.ctf>true</param.embed.ctf>
     <param.target.type>subtarget.java.package</param.target.type>
     <param.support.packages />
+    <param.required.mcr.products>
+      <item>35000</item>
+      <item>35010</item>
+    </param.required.mcr.products>
     <param.namespace />
     <param.classorg />
     <param.web.mcr>false</param.web.mcr>
@@ -36,6 +40,7 @@
     <param.create.log>false</param.create.log>
     <param.log.file />
     <param.user.only.registration>false</param.user.only.registration>
+    <param.net.framework>option.net.framework.default</param.net.framework>
     <param.assembly.type>false</param.assembly.type>
     <param.encryption.key.file />
     <param.net.enable.remoting>false</param.net.enable.remoting>
@@ -45,9 +50,8 @@
     <param.net.tsa.namespace />
     <param.net.tsa.superclass>Run</param.net.tsa.superclass>
     <param.net.tsa.metadata />
-    <param.net.tsa.metadata.assembly>C:\Work\Dev\brainstorm3\deploy</param.net.tsa.metadata.assembly>
+    <param.net.tsa.metadata.assembly>C:\Work\Dev\brainstorm3</param.net.tsa.metadata.assembly>
     <param.net.saved.interface />
-    <param.cpp.api>option.cpp.all</param.cpp.api>
     <unset>
       <param.icon />
       <param.icons />
@@ -62,11 +66,10 @@
       <param.installpath.string />
       <param.installpath.combo />
       <param.logo />
-      <param.install.notes />
       <param.target.install.notes />
-      <param.logdir />
       <param.enable.clean.build />
       <param.user.defined.mcr.options />
+      <param.embed.ctf />
       <param.support.packages />
       <param.namespace />
       <param.classorg />
@@ -79,6 +82,7 @@
       <param.create.log />
       <param.log.file />
       <param.user.only.registration />
+      <param.net.framework />
       <param.assembly.type />
       <param.encryption.key.file />
       <param.net.enable.remoting />
@@ -90,7 +94,6 @@
       <param.net.tsa.metadata />
       <param.net.tsa.metadata.assembly />
       <param.net.saved.interface />
-      <param.cpp.api />
     </unset>
     <fileset.exports>
       <file>C:\Work\Dev\brainstorm3\brainstorm.m</file>
@@ -108,21 +111,19 @@
       <file>C:\Work\Dev\brainstorm3\external</file>
       <file>C:\Work\Dev\brainstorm3\java</file>
       <file>C:\Work\Dev\brainstorm3\toolbox</file>
-      <file>C:\Work\Dev\brainstorm3_deploy\R2018b\sigproc</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\R2018a\sigproc</file>
       <file>C:\Work\Dev\brainstorm3_deploy\spmtrip</file>
     </fileset.resources>
     <fileset.depfun />
     <fileset.package />
-    <fileset.examples />
-    <fileset.documentation />
     <build-deliverables>
-      <file location="C:\Work\Dev\brainstorm3_deploy\R2018b\bst_javabuilder\for_testing" name="doc" optional="false">C:\Work\Dev\brainstorm3_deploy\R2018b\bst_javabuilder\for_testing\doc</file>
-      <file location="C:\Work\Dev\brainstorm3_deploy\R2018b\bst_javabuilder\for_testing" name="readme.txt" optional="true">C:\Work\Dev\brainstorm3_deploy\R2018b\bst_javabuilder\for_testing\readme.txt</file>
-      <file location="C:\Work\Dev\brainstorm3_deploy\R2018b\bst_javabuilder\for_testing" name="bst_javabuilder_2018b.jar" optional="false">C:\Work\Dev\brainstorm3_deploy\R2018b\bst_javabuilder\for_testing\bst_javabuilder_2018b.jar</file>
+      <file location="C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing" name="bst_javabuilder_2018a.jar" optional="false">C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing\bst_javabuilder_2018a.jar</file>
+      <file location="C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing" name="doc" optional="false">C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing\doc</file>
+      <file location="C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing" name="readme.txt" optional="true">C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing\readme.txt</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\Program Files\MATLAB\R2018b</root>
+      <root>C:\Program Files\MATLAB\R2018a</root>
       <toolboxes />
     </matlab>
     <platform>
@@ -134,7 +135,7 @@
       <vista>false</vista>
       <linux>false</linux>
       <solaris>false</solaris>
-      <osver>10.0</osver>
+      <osver>6.1</osver>
       <os32>false</os32>
       <os64>true</os64>
       <arch>win64</arch>
