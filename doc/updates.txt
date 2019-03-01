@@ -1,12 +1,15 @@
 ---------------------------------------------------------------
+March 2019
+- Anatomy: Deface MRI with FreeSurfer or SPM
+---------------------------------------------------------------
 February 2019
+- Process: Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)
 - New process2: "Standardize > Interpolate time" (+ new option 'nearest' in process_stdtime.m)
-- Distrib: Compiled Brainstorm now include all SPM and FieldTrip dependencies
-- Distrib: Compiled 2018a and 2018b versions
-- Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
 - IO: Added support for York Instruments MEGSCAN recordings (.hdf5)
 - IO: Added support for Tucker Davis Technologies (.tdt)
-- Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)
+- Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
+- Distrib: Compiled Brainstorm now includes all SPM and FieldTrip dependencies
+- Distrib: Compiled 2018a and 2018b versions
 ---------------------------------------------------------------
 January 2019
 - IO: BIDS export process supports EEG-BIDS

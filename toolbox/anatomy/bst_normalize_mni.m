@@ -47,6 +47,11 @@ else
 end
 
 %% ===== GET SPM TEMPLATE =====
+% Open progress bar
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'Normalize anatomy', 'Initialization...');
+end
 % Get template file
 tpmFile = bst_get('SpmTpmAtlas');
 % If it does not exist: download
@@ -67,7 +72,7 @@ if ~file_exist(tpmFile)
         return;
     end
     % Progress bar
-    bst_progress('start', 'Import template', 'Unzipping file...');
+    bst_progress('text', 'Importing SPM template...');
     % URL: Download zip file
     try
         unzip(tpmZip, bst_fileparts(tpmZip));
@@ -75,7 +80,9 @@ if ~file_exist(tpmFile)
         errMsg = ['Could not unzip anatomy template: ' 10 10 lasterr];
         disp(['BST> Error: ' errMsg]);
         file_delete(tpmZip, 1);
-        bst_progress('stop');
+        if ~isProgress
+            bst_progress('stop');
+        end
         return;
     end
     % Delete zip file
@@ -90,7 +97,7 @@ end
 %% ===== LOAD ANATOMY =====
 if isempty(sMri)
     % Progress bar
-    bst_progress('start', 'Normalize anatomy', 'Loading input MRI...');
+    bst_progress('text', 'Loading input MRI...');
     % Check if it is loaded in memory
     [sMri, iLoadedMri] = bst_memory('GetMri', MriFile);
     % If not: load it from the file
@@ -101,7 +108,7 @@ else
     iLoadedMri = [];
 end
 % Progress bar
-bst_progress('start', 'Normalize anatomy', 'Resampling MRI...');
+bst_progress('text', 'Resampling MRI...');
 % Resample volume if needed
 if any(abs(sMri.Voxsize - [1 1 1]) > 0.001)
     [sMriRes, Tres] = mri_resample(sMri, [256 256 256], [1 1 1]);
@@ -128,7 +135,7 @@ end
 
 
 %% ===== SAVE RESULTS =====
-bst_progress('start', 'Normalize anatomy', 'Saving results...');
+bst_progress('text', 'Saving normalization...');
 % Save results into the MRI structure
 sMri.NCS.R = Tmni(1:3,1:3);
 sMri.NCS.T = Tmni(1:3,4);
@@ -158,8 +165,9 @@ if ~isempty(iLoadedMri)
     GlobalData.Mri(iLoadedMri).SCS.Origin = sMri.SCS.Origin;
 end
 % Close progress bar
-bst_progress('stop');
-
+if ~isProgress
+    bst_progress('stop');
+end
 
 end    
 

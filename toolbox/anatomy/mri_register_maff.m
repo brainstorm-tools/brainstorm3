@@ -21,8 +21,13 @@ function Transf = mri_register_maff(sMri)
 %
 % Authors: Francois Tadel, 2015-2019
 
+% Open progress bar
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'Normalize anatomy', 'Initialization...');
+end
+bst_progress('text', 'Loading tissue probability map...');
 
-bst_progress('start', 'Normalize anatomy', 'Loading tissue probability map...');
 % Get template file
 tpmFile = bst_get('SpmTpmAtlas');
 if ~file_exist(tpmFile)
@@ -37,12 +42,17 @@ mriTransf(1:3,1:3) = diag(sMri.Voxsize);
 mriTransf(1:3,4) = - ceil(size(sMri.Cube) / 2);
 % Registration
 samp = 3;
-bst_progress('start', 'Normalize anatomy', 'SPM registration (maff): First pass...');
+bst_progress('text', 'SPM registration (maff): First pass...');
 Affine = bst_spm_maff8(sMri, mriTransf, samp, 16, tpm, []);      % Closer to rigid
-bst_progress('start', 'Normalize anatomy', 'SPM registration (maff): Second pass...');
+bst_progress('text', 'SPM registration (maff): Second pass...');
 Affine = bst_spm_maff8(sMri, mriTransf, samp, 0,  tpm, Affine);
 % Final transformation
 Transf = Affine * mriTransf;
+
+% Close progress bar
+if ~isProgress
+    bst_progress('stop');
+end
 
 end
 

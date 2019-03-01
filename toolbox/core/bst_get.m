@@ -1089,7 +1089,7 @@ switch contextName
         ProtocolSubjects = GlobalData.DataBase.ProtocolSubjects(GlobalData.DataBase.iProtocol);
         if isempty(ProtocolSubjects)
             return
-        end;
+        end
         
         % Parse inputs
         if (nargin == 2)

@@ -565,6 +565,12 @@ switch (lower(action))
                     if isempty(sSubject.Anatomy)
                         jItem.setEnabled(0);
                     end
+                    % === DEFACE MRI ===
+                    OPTIONS = struct('isDefaceHead', 1);
+                    jItem = gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, OPTIONS));
+                    if isempty(sSubject.Anatomy)
+                        jItem.setEnabled(0);
+                    end
 
                     % Export menu (added later)
                     if (iSubject ~= 0)
@@ -960,6 +966,7 @@ switch (lower(action))
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Compute MNI transformation', IconLoader.ICON_ANATOMY, [], @(h,ev)NormalizeMri(filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
+                    gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
                     if ~bstNodes(1).isMarked()
                         jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
                         gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 1));
