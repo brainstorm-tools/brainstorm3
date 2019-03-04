@@ -51,12 +51,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        'spm', 'freesurfer'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'spm';
-    % Option: Equation of the plane to remove
-    sProcess.options.options_title.Comment = '<BR>Options:';
-    sProcess.options.options_title.Type    = 'label';
-    sProcess.options.mniplane.Comment = 'Equation of the plane (0 -1.1 0.98 100):';
-    sProcess.options.mniplane.Type    = 'value';
-    sProcess.options.mniplane.Value   = {[0 -1.1 0.98 100], 'list', 2};
     % Option: Recompute head surface
     sProcess.options.defacehead.Comment = 'Recompute head surface';
     sProcess.options.defacehead.Type    = 'checkbox';
@@ -91,13 +85,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Subject name is empty.');
         return;
     end
-    % MNI plane equation
-    OPTIONS.MNIplane = sProcess.options.mniplane.Value{1};
-    if isempty(OPTIONS.MNIplane) || (length(OPTIONS.MNIplane) ~= 4)
-        bst_report('Error', sProcess, [], 'Invalid values for the equation of the plane.');
-        return;
-    end
-
       
     % ===== GET SUBJECT =====
     % Get subject 
@@ -157,7 +144,7 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
         % Other OS: Ask for choice
         else
             res = java_dialog('combo', '<HTML>Select the defacing method:<BR>', 'Deface volume', [], {'spm', 'freesurfer'}, 'freesurfer');
-            if ~isempty(res)
+            if isempty(res)
                 errMsg = 'Aborted by user.';
                 return;
             end
@@ -167,7 +154,7 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
     % Default options
     Def_OPTIONS = struct(...
         'Method',        'spm', ...
-        'MNIplane',      [0 -1.1 0.98 100], ...
+        'MNIplane',      [-0.00036476, -0.01128325, 0.00980049, 0.001025580777], ...
         'isOverwrite',   0, ...
         'isInteractive', 1, ...
         'isDefaceHead',  1);
@@ -189,7 +176,7 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
         % Get subject index
         [sSubject, iSubject, iAnatomy] = bst_get('MriFile', MriFiles{iFile});
         % If MRI was already defaced: skip
-        if ~isempty(strfind(sSubject.Anatomy(iAnatomy).Comment, fileTag))
+        if (length(MriFiles) > 1) && ~isempty(strfind(sSubject.Anatomy(iAnatomy).Comment, fileTag))
             continue;
         end
         % Check if it is loaded in memory
@@ -198,21 +185,24 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
         if isempty(sMri)
             sMri = in_mri_bst(MriFiles{iFile});
         end
-        % Compute MNI transformation if not available (first volume only)
-        if (iFile == 1) && (~isfield(sMri, 'NCS') || isempty(sMri.NCS) || isempty(sMri.NCS.R) || isempty(sMri.NCS.T))
-            [sMri, errMsg] = bst_normalize_mni(MriFiles{iFile});
-            if ~isempty(errMsg)
-                return;
-            end
-        end
         
         % Switch depending on the method
         switch (OPTIONS.Method)
             case 'spm'
+                % Compute MNI transformation if not available (first volume only)
+                if (iFile == 1) && (~isfield(sMri, 'NCS') || isempty(sMri.NCS) || ~isfield(sMri.NCS, 'R') || ~isfield(sMri.NCS, 'T') || isempty(sMri.NCS.R) || isempty(sMri.NCS.T))
+                    [sMri, errMsg] = bst_normalize_mni(MriFiles{iFile});
+                    if ~isempty(errMsg)
+                        if ~isProgress
+                            bst_progress('stop');
+                        end
+                        return;
+                    end
+                end
                 % Compute cut mask on first volume only
                 if (iFile == 1)
                     % Get MNI transformation
-                    vox2mni = [sMri.NCS.R, sMri.NCS.T; 0 0 0 1];
+                    vox2mni = cs_convert(sMri, 'voxel', 'mni');
                     % Get cut plane in MRI coordinates
                     cutPlane = OPTIONS.MNIplane * vox2mni;
                     % Get voxel indices under the MNI plane defined in input
@@ -226,33 +216,46 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
                 % Get path to mri_deface (download if necessary)
                 [exePath, talFile, faceFile, errMsg] = InstallMriDeface(OPTIONS.isInteractive);
                 if ~isempty(errMsg)
+                    if ~isProgress
+                        bst_progress('stop');
+                    end
                     return;
                 end
                 disp(['BST> Deface: Using ' exePath]);
                 % Save temporary MRI file
+                bst_progress('text', 'Saving temporary nii file...');
                 fileNii = bst_fullfile(bst_get('BrainstormTmpDir'), 'orig.nii');
-                export_mri(sMri, fileNii);
+                out_mri_nii(sMri, fileNii, 'int16');
                 % Call mri_deface
+                bst_progress('text', 'Running mri_deface...');
                 fileNiiDefaced = bst_fullfile(bst_get('BrainstormTmpDir'), 'orig_defaced.nii');
                 cmdDeface = [exePath ' ' fileNii ' ' talFile ' ' faceFile ' ' fileNiiDefaced];
-                [status, output] = system(cmdDeface);
+                status = system(cmdDeface);
                 if (status ~= 0)
-                    errMsg = ['Error calling mri_deface: ' 10 output];
+                    errMsg = 'Error calling mri_deface (see console for details).';
+                    if ~isProgress
+                        bst_progress('stop');
+                    end
                     return;
                 end
                 % Read defaced file
+                bst_progress('text', 'Reading defaced file...');
                 sMriDefaced = in_mri_nii(fileNiiDefaced);
                 % Saves defaced volume
                 sMri.Cube = sMriDefaced.Cube;
                 
             otherwise
                 errMsg = ['Invalid defacing method: ' OPTIONS.Method];
+                if ~isProgress
+                    bst_progress('stop');
+                end
                 return;
         end
         % Add comment tag
         sMri.Comment = [sMri.Comment, fileTag];
 
         % Save defaced MRI
+        bst_progress('text', 'Saving results to database...');
         if OPTIONS.isOverwrite
             % Update file structure
             bst_save(file_fullpath(MriFile), sMri, 'v6');
