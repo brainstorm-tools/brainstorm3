@@ -226,6 +226,9 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
                 bst_progress('text', 'Saving temporary nii file...');
                 fileNii = bst_fullfile(bst_get('BrainstormTmpDir'), 'orig.nii');
                 out_mri_nii(sMri, fileNii, 'int16');
+                % Change current folder to .brainstorm/tmp, because mri_deface saves a useless log in the current folder
+                curdir = pwd;
+                cd(bst_get('BrainstormTmpDir'));
                 % Call mri_deface
                 bst_progress('text', 'Running mri_deface...');
                 fileNiiDefaced = bst_fullfile(bst_get('BrainstormTmpDir'), 'orig_defaced.nii');
@@ -238,6 +241,8 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
                     end
                     return;
                 end
+                % Restore initial folder
+                cd(curdir);
                 % Read defaced file
                 bst_progress('text', 'Reading defaced file...');
                 sMriDefaced = in_mri_nii(fileNiiDefaced);
@@ -372,8 +377,11 @@ function [exePath, talFile, faceFile, errMsg] = InstallMriDeface(isInteractive)
         prevUrl = '';
     end
 
-    % If binary file doesnt exist: download
+    % Local installation
     exePath = bst_fullfile(mriDefaceDir, 'mri_deface');
+    talFile = bst_fullfile(mriDefaceDir, 'talairach_mixed_with_skull.gca');
+    faceFile = bst_fullfile(mriDefaceDir, 'face.gca');
+    % If binary file doesnt exist: download
     if ~isdir(mriDefaceDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
         % If folder exists: delete
         if isdir(mriDefaceDir)
@@ -385,25 +393,20 @@ function [exePath, talFile, faceFile, errMsg] = InstallMriDeface(isInteractive)
             errMsg = ['Error: Cannot create folder' 10 mriDefaceDir];
             return
         end
-        % Download file from URL if not done already by user
-        gzFile = bst_fullfile(mriDefaceDir, 'mri_deface.gz');
-        talFile = bst_fullfile(mriDefaceDir, 'talairach_mixed_with_skull.gca.gz');
-        faceFile = bst_fullfile(mriDefaceDir, 'face.gca.gz');
-        
         % Message
         if isInteractive
             isOk = java_dialog('confirm', ...
                 ['FreeSurfer or mri_deface are not installed on your computer (or out-of-date).' 10 10 ...
-                 'Download and the latest version?'], 'mri_deface');
+                 'Download and the latest version of mri_deface?'], 'mri_deface');
             if ~isOk
                 errMsg = 'Download aborted by user';
                 return;
             end
         end
         % Download file
-        errMsg1 = gui_brainstorm('DownloadFile', url, gzFile, 'Download mri_deface');
-        errMsg2 = gui_brainstorm('DownloadFile', talUrl, talFile, 'Download mri_deface');
-        errMsg3 = gui_brainstorm('DownloadFile', faceUrl, faceFile, 'Download mri_deface');
+        errMsg1 = gui_brainstorm('DownloadFile', url, [exePath '.gz'], 'Download mri_deface');
+        errMsg2 = gui_brainstorm('DownloadFile', talUrl, [talFile '.gz'], 'mri_deface template (1)');
+        errMsg3 = gui_brainstorm('DownloadFile', faceUrl, [faceFile '.gz'], 'mri_deface template (2)');
         % If file was not downloaded correctly
         if ~isempty(errMsg1) || ~isempty(errMsg2) || ~isempty(errMsg3)
             errMsg = ['Impossible to download mri_deface:' 10 errMsg1];
@@ -413,9 +416,9 @@ function [exePath, talFile, faceFile, errMsg] = InstallMriDeface(isInteractive)
         bst_progress('text', 'Installing mri_deface...');
         % Unzip file
         cd(mriDefaceDir);
-        system(['gunzip -xf ' gzFile]);
-        system(['gunzip -xf ' talFile]);
-        system(['gunzip -xf ' faceFile]);
+        system(['gunzip ' exePath '.gz']);
+        system(['gunzip ' talFile '.gz']);
+        system(['gunzip ' faceFile '.gz']);
         system(['chmod a+x ' exePath]);
         cd(curdir);
         % Save download URL in folder
@@ -426,7 +429,6 @@ function [exePath, talFile, faceFile, errMsg] = InstallMriDeface(isInteractive)
     % If the executable is still not accessible
     if ~file_exist(exePath)
         errMsg = ['mri_convert could not be installed in: ' mriDefaceDir];
-        exePath = [];
     end
 end
 
