@@ -1,6 +1,8 @@
 ---------------------------------------------------------------
 March 2019
 - Anatomy: Deface MRI with FreeSurfer or SPM
+- IO: Support for synchronized EEG-video (link raw and import epochs)
+- GUI: Review of synchronized EEG-video with VLC ActiveX plugin
 ---------------------------------------------------------------
 February 2019
 - Process: Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)

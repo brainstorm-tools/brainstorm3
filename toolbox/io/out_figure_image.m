@@ -28,7 +28,7 @@ function varargout = out_figure_image( hFig, imgFile, imgLegend)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2019
 
 global GlobalData;
 drawnow;
@@ -297,11 +297,13 @@ if (~isempty(FileFormat) && strcmpi(FileFormat, 'FIG')) || strcmpi(imgFile, 'Fig
     
 % ===== SAVE IMAGE =====
 else
+    % If figure contains a video in an ActiveX control: must be extracted with screencapture()
+    isForceScreencapture = strcmpi(FigureId.Type, 'Video') && ~isempty(iDS) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Handles.PlayerType, {'VLC', 'WMPlayer'});
     % Headless display: we must print the figure 
     if (GlobalData.Program.GuiLevel == -1)
-        frameGfx.cdata = print(hFig, '-noui', '-r0', '-RGBImage');
+        frameGfx.cdata = print(hFig, '-noui', '-r0', '-RGBImage');        
     % Get figure bitmap
-    elseif (bst_get('MatlabVersion') >= 804)
+    elseif (bst_get('MatlabVersion') >= 804) && ~isForceScreencapture
         % Matlab function getframe() was finally fixed in R2014b
         frameGfx = getframe(hFig);
         % MRI Viewer: We need to update the figure to redraw all the java objects

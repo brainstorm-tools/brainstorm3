@@ -30,7 +30,7 @@ function jPopup = tree_callbacks( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
@@ -445,10 +445,21 @@ switch (lower(action))
             % ===== VIDEO =====
             case 'video'
                 if ispc
-                    view_video(filenameFull, 'WMPlayer', 1);
+                    % Get list of ActiveX controls
+                    bst_progress('start', 'Open video', 'Getting installed ActiveX controls...');
+                    actxList = actxcontrollist;
+                    bst_progress('stop');
+                    % Default if available: VLC
+                    if ismember('VideoLAN.VLCPlugin.2', actxList(:,2))
+                        PlayerType = 'VLC';
+                    else
+                        % PlayerType = 'WMPlayer';
+                        PlayerType = 'VideoReader';
+                    end
                 else
-                    view_video(filenameFull, 'VideoReader', 1);
+                    PlayerType = 'VideoReader';
                 end
+                view_video(filenameFull, PlayerType, 1);
         end
         % Repaint tree
         panel_protocols('RepaintTree');
@@ -2084,10 +2095,15 @@ switch (lower(action))
 %% ===== POPUP: VIDEO =====
             case 'video'
                 if (length(bstNodes) == 1)
+                    gui_component('MenuItem', jPopup, [], 'MATLAB VideoReader', IconLoader.ICON_VIDEO, [], @(h,ev)view_video(filenameFull, 'VideoReader', 1));
                     if ispc
+                        gui_component('MenuItem', jPopup, [], 'VLC ActiveX plugin', IconLoader.ICON_VIDEO, [], @(h,ev)view_video(filenameFull, 'VLC', 1));
                         gui_component('MenuItem', jPopup, [], 'Windows Media Player', IconLoader.ICON_VIDEO, [], @(h,ev)view_video(filenameFull, 'WMPlayer', 1));
                     end
-                    gui_component('MenuItem', jPopup, [], 'MATLAB VideoReader', IconLoader.ICON_VIDEO, [], @(h,ev)view_video(filenameFull, 'VideoReader', 1));
+                    AddSeparator(jPopup);
+                    if strcmpi(file_gettype(filenameRelative), 'videolink')
+                        gui_component('MenuItem', jPopup, [], 'Set start time', IconLoader.ICON_VIDEO, [], @(h,ev)figure_video('SetVideoStart', filenameFull));
+                    end
                 end
                 
 %% ===== POPUP: MATRIX =====
@@ -2188,7 +2204,9 @@ switch (lower(action))
                 RawFile = [];
             end
             % Folders: set acquisition date
-            gui_component('MenuItem', jMenuFile, [], 'Set acquisition date', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('SetAcquisitionDate', iStudy));
+            if ~bst_get('ReadOnly') && (~isempty(RawFile) || isstudy)
+                gui_component('MenuItem', jMenuFile, [], 'Set acquisition date', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('SetAcquisitionDate', iStudy));
+            end
             % Raw file menus
             if ~isempty(RawFile) && isempty(strfind(RawFile, '_0ephys_'))
                 % Files that are not saved in the database
@@ -2200,10 +2218,10 @@ switch (lower(action))
                     end
                     gui_component('Menu', jMenuFile, [], 'Extra acquisition files', IconLoader.ICON_RAW_DATA, [], @(h,ev)CreateMenuExtraFiles(ev.getSource(), RawFile));
                 end
-                % Add video
-                if ~bst_get('ReadOnly')
-                    gui_component('MenuItem', jMenuFile, [], 'Add synchronized video', IconLoader.ICON_VIDEO, [], @(h,ev)import_video(iStudy));
-                end
+            end
+            % Add video
+            if ~bst_get('ReadOnly') && (~isempty(RawFile) || isstudy) 
+                gui_component('MenuItem', jMenuFile, [], 'Add synchronized video', IconLoader.ICON_VIDEO, [], @(h,ev)import_video(iStudy));
                 AddSeparator(jMenuFile);
             end
 
