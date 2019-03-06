@@ -82,10 +82,6 @@ hdr.extension = '.nwb';
 nwb2 = nwbRead(DataFile);
 
 
-
-
-
-
 try
     all_raw_keys = keys(nwb2.acquisition);
 
@@ -100,8 +96,6 @@ try
 catch
     RawDataPresent = 0;
 end
-
-
 
 
 try
@@ -125,8 +119,6 @@ end
 if ~RawDataPresent && ~LFPDataPresent
     error 'There is no data in this .nwb - Maybe check if the Keys are labeled correctly'
 end
-
-
 
 
 
@@ -221,16 +213,10 @@ if additionalChannelsPresent
 end
     
     
-    
-
-
-
-
-
 
 
 %% Add information read from header
-sFile.byteorder    = 'l';
+sFile.byteorder    = 'l';  % Not confirmed - just assigned a value
 sFile.filename     = DataFile;
 sFile.format       = 'EEG-NWB';
 sFile.device       = nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
@@ -254,11 +240,11 @@ sFile.header.ChannelType               = ChannelType;
 
 % Check if an events field exists in the dataset
 try
-    events_exist = ~isempty(nwb2.processing.get('events').nwbdatainterface);
+    events_exist = ~isempty(nwb2.stimulus_presentation);
     if ~events_exist
         disp('No events in this .nwb file')
     else
-        all_event_keys = keys(nwb2.processing.get('events').nwbdatainterface);
+        all_event_keys = keys(nwb2.stimulus_presentation);
         disp(' ')
         disp('The following event types are present in this dataset')
         disp('------------------------------------------------')
@@ -280,7 +266,7 @@ if events_exist
     for iEvent = 1:length(all_event_keys)
         events(iEvent).label   = all_event_keys{iEvent};
         events(iEvent).color   = rand(1,3);
-        events(iEvent).times   = nwb2.processing.get('events').nwbdatainterface.get(all_event_keys{iEvent}).timestamps.load';
+        events(iEvent).times   = nwb2.stimulus_presentation.get(all_event_keys{iEvent}).timestamps.load';
         events(iEvent).samples = round(events(iEvent).times * sFile.prop.sfreq);
         events(iEvent).epochs  = ones(1, length(events(iEvent).samples));
     end 
@@ -291,35 +277,17 @@ end
 
 
 %% Read the Spikes' events
-
-
 try
-    nNeurons = nwb2.units.id.data.load;
+    nNeurons = length(nwb2.units.vectordata.get('max_electrode').data.load);
     SpikesExist = 1;
 catch
-    disp('No spikes in this .nwb file')
-    SpikesExist = 0;
-end
-
-
-try
-    nwb2.units.maxWaveformCh;
-    SpikesExist = 1;
-catch
-    warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm - The field "nwb2.units.maxWaveformCh" that assigns spikes to specific electrodes is needed')
+    warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm - The field "nwb2.units.vectordata.get("max_electrode")" that assigns spikes to specific electrodes is needed')
     SpikesExist = 0;
 end
     
-
-
-%%%%%% For the checking with the spikes.mat I did this substitution
-%%%%%% nwb2.units.maxWaveformCh ----- spikes.maxWaveformCh
-%%%%%% Also load: load('YutaMouse41-150903.spikes.cellinfo.mat')
-  
-
 if SpikesExist
- 
-    nNeurons = length(nwb2.units.id.data.load);
+     
+    maxWaveformCh = nwb2.units.vectordata.get('max_electrode').data.load; % The channels on which each Neuron had the maximum amplitude on its waveforms - Assigning each neuron to an electrode
     
     if ~exist('events')
         events_spikes = repmat(db_template('event'), 1, nNeurons);
@@ -336,11 +304,11 @@ if SpikesExist
 
         
         % Check if a channel has multiple neurons:
-        nNeuronsOnChannel = sum(nwb2.units.maxWaveformCh ==nwb2.units.maxWaveformCh(iNeuron));
-        iNeuronsOnChannel = find(nwb2.units.maxWaveformCh==nwb2.units.maxWaveformCh(iNeuron));
+        nNeuronsOnChannel = sum( maxWaveformCh == maxWaveformCh(iNeuron));
+        iNeuronsOnChannel = find(maxWaveformCh == maxWaveformCh(iNeuron));
            
         
-        theChannel = find(amp_channel_IDs==nwb2.units.maxWaveformCh(iNeuron));
+        theChannel = find(amp_channel_IDs==maxWaveformCh(iNeuron));
         
         if nNeuronsOnChannel == 1
             events_spikes(iNeuron).label  = ['Spikes Channel ' ChannelMat.Channel(theChannel).Name];
@@ -348,9 +316,7 @@ if SpikesExist
             iiNeuron = find(iNeuronsOnChannel==iNeuron);
             events_spikes(iNeuron).label  = ['Spikes Channel ' ChannelMat.Channel(theChannel).Name ' |' num2str(iiNeuron) '|'];
         end
-
-        % % %     events_spikes(iNeuron).label      = ['Spikes Channel ' nwb2.units.maxWaveformCh(iNeuron)]; % THIS IS ALMOST WHAT SHOULD BE FILLED
-        % % %     events_spikes(iNeuron).label      = ['Spikes Channel ' ChannelMat.Channel(iNeuron).Name]; % THIS IS WRONG - CHECK HOW THIS SHOULD BE FILLED - I ASSIGN A RANDOM CHANNEL FOR NOW
+        
         events_spikes(iNeuron).color      = rand(1,3);
         events_spikes(iNeuron).epochs     = ones(1,length(times));
         events_spikes(iNeuron).samples    = times * sFile.prop.sfreq;
@@ -365,21 +331,12 @@ if SpikesExist
     else
         events = events_spikes;
     end
-
-
 end
-
-
 
 % Import this list
 sFile = import_events(sFile, [], events);
 
 end
-
-
-
-
-
 
 
 
@@ -422,12 +379,4 @@ function downloadAndInstallNWB()
     % Add NWB to Matlab path
     addpath(genpath(NWBDir));
 
-    
 end
-
-
-
-
-
-
-

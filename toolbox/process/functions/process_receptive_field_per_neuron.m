@@ -72,13 +72,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensornames.Type    = 'text';
     sProcess.options.sensornames.Value   = 'OpenFieldPositionx, OpenFieldPositiony';
     % Options: Bin size
-    sProcess.options.binsize.Comment = 'Grid bin size: ';
-    sProcess.options.binsize.Type    = 'text'; % I HAD VALUE HERE AND IT DOESNT LET ME PUT 2 DECIMAL VALUES
-    sProcess.options.binsize.Value   = '0.01';
-%     % Options: Bin size
 %     sProcess.options.binsize.Comment = 'Grid bin size: ';
-%     sProcess.options.binsize.Type    = 'value'; % I HAD VALUE HERE AND IT DOESNT LET ME PUT 2 DECIMAL VALUES
-%     sProcess.options.binsize.Value   = {0.01, 'cm', 10};
+%     sProcess.options.binsize.Type    = 'text'; % I HAD VALUE HERE AND IT DOESNT LET ME PUT 2 DECIMAL VALUES
+%     sProcess.options.binsize.Value   = '0.01';
+%     % Options: Bin size
+    sProcess.options.binsize.Comment = 'Grid bin size: ';
+    sProcess.options.binsize.Type    = 'value';
+    sProcess.options.binsize.Value   = {0.01, 'cm', 2}; % The last value is the number of decimals
     % Options: Parallel Processing
     sProcess.options.paral.Comment = 'Parallel processing';
     sProcess.options.paral.Type    = 'checkbox';
@@ -239,6 +239,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             
             
             if events_exist
+                
+                % ADD THIS SUPPORT
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
                 
             
             
