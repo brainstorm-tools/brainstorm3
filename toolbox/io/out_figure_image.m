@@ -316,7 +316,7 @@ else
         decoSize = gui_layout('GetDecorationSize');
         % Get the screen definition 
         ScreenDef = bst_get('ScreenDef');
-        % Single screen
+        % Single screen (TODO: Handle the cases where the two screens are organized in different ways)
         if (length(ScreenDef) == 1)
             ZoomFactor = ScreenDef(1).zoomFactor;
         elseif (figPos(1) < ScreenDef(1).matlabPos(1) + ScreenDef(1).matlabPos(3))
