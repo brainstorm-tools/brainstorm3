@@ -82,10 +82,6 @@ hdr.extension = '.nwb';
 nwb2 = nwbRead(DataFile);
 
 
-
-
-
-
 try
     all_raw_keys = keys(nwb2.acquisition);
 
@@ -102,14 +98,12 @@ catch
 end
 
 
-
-
 try
     % Check if the data is in LFP format
     all_lfp_keys = keys(nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries);
 
     for iKey = 1:length(all_lfp_keys)
-        if ismember(all_lfp_keys{iKey}, {'all_lfp','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
+        if ismember(all_lfp_keys{iKey}, {'lfp','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
             iLFPDataKey = iKey;
             LFPDataPresent = 1;
             break % Once you find the data don't look for other keys/trouble
@@ -127,6 +121,52 @@ if ~RawDataPresent && ~LFPDataPresent
 end
 
 
+
+%% Check for additional channels
+
+% Check if behavior fields/channels exists in the dataset
+try
+    nwb2.processing.get('behavior').nwbdatainterface;
+    
+    
+    allBehaviorKeys = keys(nwb2.processing.get('behavior').nwbdatainterface)';
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Reject states "channel" - THIS IS HARDCODED - IMPROVE
+    allBehaviorKeys = allBehaviorKeys(~strcmp(allBehaviorKeys,'states'));
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+    behavior_exist_here = ~isempty(allBehaviorKeys);
+    if ~behavior_exist_here
+        disp('No behavior in this .nwb file')
+    else
+        disp(' ')
+        disp('The following behavior types are present in this dataset')
+        disp('------------------------------------------------')
+        for iBehavior = 1:length(allBehaviorKeys)
+            disp(allBehaviorKeys{iBehavior})
+        end
+        disp(' ')
+    end
+    
+    nAdditionalChannels = 0;
+    for iBehavior = 1:length(allBehaviorKeys)
+        allBehaviorKeys{iBehavior,2} = keys(nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries);
+        
+        for jBehavior = 1:length(allBehaviorKeys{iBehavior,2})
+            nAdditionalChannels = nAdditionalChannels + nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries.get(allBehaviorKeys{iBehavior,2}(jBehavior)).data.dims(2);
+        end    
+    end
+    
+    additionalChannelsPresent = 1;
+catch
+    disp('No behavior in this .nwb file')
+    additionalChannelsPresent = 0;
+    nAdditionalChannels = 0;
+end
+    
 
 
 
@@ -150,30 +190,13 @@ end
 nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2);
 
 
-% Add information read from header
-sFile.byteorder    = 'l';
-sFile.filename     = DataFile;
-sFile.format       = 'EEG-NWB';
-sFile.device       = nwb2.general_devices.get('device');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
-sFile.header.nwb   = nwb2;
-sFile.comment      = nwb2.identifier;
-sFile.prop.samples = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
-% No info on bad channels
-sFile.channelflag  = ones(nChannels, 1);
-
-sFile.header.LFPDataPresent = LFPDataPresent;
-sFile.header.RawDataPresent = RawDataPresent;
-
-
 %% ===== CREATE EMPTY CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
-ChannelMat.Comment = 'Plexon channels';
-ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
+ChannelMat.Comment = 'NWB channels';
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels + nAdditionalChannels]);
 
 
-amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel_id').data.load;
+amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load;
 group_name      = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data;
 
 % Get coordinates and set to 0 if they are not available
@@ -185,6 +208,8 @@ x(isnan(x)) = 0;
 y(isnan(y)) = 0;
 z(isnan(z)) = 0;
 
+ChannelType = cell(nChannels + nAdditionalChannels, 1);
+
 for iChannel = 1:nChannels
     ChannelMat.Channel(iChannel).Name    = ['amp' num2str(amp_channel_IDs(iChannel))]; % This gives the AMP labels (it is not in order, but it seems to be the correct values - COME BACK TO THAT)
     ChannelMat.Channel(iChannel).Loc     = [x(iChannel);y(iChannel);z(iChannel)];
@@ -195,18 +220,70 @@ for iChannel = 1:nChannels
     ChannelMat.Channel(iChannel).Orient  = [];
     ChannelMat.Channel(iChannel).Weight  = 1;
     ChannelMat.Channel(iChannel).Comment = [];
+    
+    ChannelType{iChannel} = 'EEG';
 end
+
+
+if additionalChannelsPresent
+    
+    iChannel = 0;
+    for iBehavior = 1:size(allBehaviorKeys,1)
+        
+        for jBehavior = 1:size(allBehaviorKeys{iBehavior,2},2)
+            
+            for zChannel = 1:nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries.get(allBehaviorKeys{iBehavior,2}(jBehavior)).data.dims(2)
+                iChannel = iChannel+1;
+
+                ChannelMat.Channel(nChannels + iChannel).Name    = [allBehaviorKeys{iBehavior,2}{jBehavior} '_' num2str(zChannel)];
+                ChannelMat.Channel(nChannels + iChannel).Loc     = [0;0;0];
+
+                ChannelMat.Channel(nChannels + iChannel).Group   = allBehaviorKeys{iBehavior,1};
+                ChannelMat.Channel(nChannels + iChannel).Type    = 'Misc';
+
+                ChannelMat.Channel(nChannels + iChannel).Orient  = [];
+                ChannelMat.Channel(nChannels + iChannel).Weight  = 1;
+                ChannelMat.Channel(nChannels + iChannel).Comment = [];
+
+                ChannelType{nChannels + iChannel,1} = allBehaviorKeys{iBehavior,1}; 
+                ChannelType{nChannels + iChannel,2} = allBehaviorKeys{iBehavior,2}{jBehavior};
+            end
+        end
+    end
+end
+    
+    
+
+
+%% Add information read from header
+sFile.byteorder    = 'l';  % Not confirmed - just assigned a value
+sFile.filename     = DataFile;
+sFile.format       = 'EEG-NWB';
+sFile.device       = nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
+sFile.header.nwb   = nwb2;
+sFile.comment      = nwb2.identifier;
+sFile.prop.samples = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1];
+sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.nAvg    = 1;
+% No info on bad channels
+sFile.channelflag  = ones(nChannels + nAdditionalChannels, 1);
+
+sFile.header.LFPDataPresent            = LFPDataPresent;
+sFile.header.RawDataPresent            = RawDataPresent;
+sFile.header.additionalChannelsPresent = additionalChannelsPresent;
+sFile.header.ChannelType               = ChannelType;
+sFile.header.allBehaviorKeys           = allBehaviorKeys;
 
 
 %% ===== READ EVENTS =====
 
 % Check if an events field exists in the dataset
 try
-    events_exist = ~isempty(nwb2.processing.get('events').nwbdatainterface);
+    events_exist = ~isempty(nwb2.stimulus_presentation);
     if ~events_exist
         disp('No events in this .nwb file')
     else
-        all_event_keys = keys(nwb2.processing.get('events').nwbdatainterface);
+        all_event_keys = keys(nwb2.stimulus_presentation);
         disp(' ')
         disp('The following event types are present in this dataset')
         disp('------------------------------------------------')
@@ -228,7 +305,7 @@ if events_exist
     for iEvent = 1:length(all_event_keys)
         events(iEvent).label   = all_event_keys{iEvent};
         events(iEvent).color   = rand(1,3);
-        events(iEvent).times   = nwb2.processing.get('events').nwbdatainterface.get(all_event_keys{iEvent}).timestamps.load';
+        events(iEvent).times   = nwb2.stimulus_presentation.get(all_event_keys{iEvent}).timestamps.load';
         events(iEvent).samples = round(events(iEvent).times * sFile.prop.sfreq);
         events(iEvent).epochs  = ones(1, length(events(iEvent).samples));
     end 
@@ -239,40 +316,18 @@ end
 
 
 %% Read the Spikes' events
-
-
 try
-    nNeurons = nwb2.units.id.data.load;
+    nNeurons = length(nwb2.units.vectordata.get('max_electrode').data.load);
     SpikesExist = 1;
 catch
-    disp('No spikes in this .nwb file')
-    SpikesExist = 0;
-end
-
-
-try
-    nwb2.units.maxWaveformCh;
-    SpikesExist = 1;
-catch
-    warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm')
-    warning('The field "nwb2.units.maxWaveformCh" that assigns spikes to specific electrodes is needed')
+    warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm - The field "nwb2.units.vectordata.get("max_electrode")" that assigns spikes to specific electrodes is needed')
     SpikesExist = 0;
 end
     
-
-
 if SpikesExist
- 
+     
+    maxWaveformCh = nwb2.units.vectordata.get('max_electrode').data.load; % The channels on which each Neuron had the maximum amplitude on its waveforms - Assigning each neuron to an electrode
     
-    %%%%%% For the checking with the spikes.mat I did this substitution
-    %%%%%% nwb2.units.maxWaveformCh ----- spikes.maxWaveformCh
-    
-    
-
-    nNeurons = length(nwb2.units.id.data.load);
-    
-    
-
     if ~exist('events')
         events_spikes = repmat(db_template('event'), 1, nNeurons);
     end
@@ -288,11 +343,11 @@ if SpikesExist
 
         
         % Check if a channel has multiple neurons:
-        nNeuronsOnChannel = sum(nwb2.units.maxWaveformCh ==nwb2.units.maxWaveformCh(iNeuron));
-        iNeuronsOnChannel = find(nwb2.units.maxWaveformCh==nwb2.units.maxWaveformCh(iNeuron));
+        nNeuronsOnChannel = sum( maxWaveformCh == maxWaveformCh(iNeuron));
+        iNeuronsOnChannel = find(maxWaveformCh == maxWaveformCh(iNeuron));
            
         
-        theChannel = find(amp_channel_IDs==nwb2.units.maxWaveformCh(iNeuron));
+        theChannel = find(amp_channel_IDs==maxWaveformCh(iNeuron));
         
         if nNeuronsOnChannel == 1
             events_spikes(iNeuron).label  = ['Spikes Channel ' ChannelMat.Channel(theChannel).Name];
@@ -300,9 +355,7 @@ if SpikesExist
             iiNeuron = find(iNeuronsOnChannel==iNeuron);
             events_spikes(iNeuron).label  = ['Spikes Channel ' ChannelMat.Channel(theChannel).Name ' |' num2str(iiNeuron) '|'];
         end
-
-        % % %     events_spikes(iNeuron).label      = ['Spikes Channel ' nwb2.units.maxWaveformCh(iNeuron)]; % THIS IS ALMOST WHAT SHOULD BE FILLED
-        % % %     events_spikes(iNeuron).label      = ['Spikes Channel ' ChannelMat.Channel(iNeuron).Name]; % THIS IS WRONG - CHECK HOW THIS SHOULD BE FILLED - I ASSIGN A RANDOM CHANNEL FOR NOW
+        
         events_spikes(iNeuron).color      = rand(1,3);
         events_spikes(iNeuron).epochs     = ones(1,length(times));
         events_spikes(iNeuron).samples    = times * sFile.prop.sfreq;
@@ -317,21 +370,12 @@ if SpikesExist
     else
         events = events_spikes;
     end
-
-
 end
-
-
 
 % Import this list
 sFile = import_events(sFile, [], events);
 
 end
-
-
-
-
-
 
 
 
@@ -374,12 +418,4 @@ function downloadAndInstallNWB()
     % Add NWB to Matlab path
     addpath(genpath(NWBDir));
 
-    
 end
-
-
-
-
-
-
-
