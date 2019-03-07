@@ -123,18 +123,50 @@ end
 
 
 %% Check for additional channels
-% This is hardcoded until we figure out what should be done here
 
+% Check if behavior fields/channels exists in the dataset
 try
-    position = nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').data;
-
-    additionalChannelsPresent = 1;
-    nAdditionalChannels = nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').data.dims(2);
+    nwb2.processing.get('behavior').nwbdatainterface;
     
+    
+    allBehaviorKeys = keys(nwb2.processing.get('behavior').nwbdatainterface)';
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Reject states "channel" - THIS IS HARDCODED - IMPROVE
+    allBehaviorKeys = allBehaviorKeys(~strcmp(allBehaviorKeys,'states'));
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+    behavior_exist_here = ~isempty(allBehaviorKeys);
+    if ~behavior_exist_here
+        disp('No behavior in this .nwb file')
+    else
+        disp(' ')
+        disp('The following behavior types are present in this dataset')
+        disp('------------------------------------------------')
+        for iBehavior = 1:length(allBehaviorKeys)
+            disp(allBehaviorKeys{iBehavior})
+        end
+        disp(' ')
+    end
+    
+    nAdditionalChannels = 0;
+    for iBehavior = 1:length(allBehaviorKeys)
+        allBehaviorKeys{iBehavior,2} = keys(nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries);
+        
+        for jBehavior = 1:length(allBehaviorKeys{iBehavior,2})
+            nAdditionalChannels = nAdditionalChannels + nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries.get(allBehaviorKeys{iBehavior,2}(jBehavior)).data.dims(2);
+        end    
+    end
+    
+    additionalChannelsPresent = 1;
 catch
+    disp('No behavior in this .nwb file')
     additionalChannelsPresent = 0;
     nAdditionalChannels = 0;
 end
+    
 
 
 
@@ -194,21 +226,29 @@ end
 
 
 if additionalChannelsPresent
-    position_labels = ['x' 'y'];
     
-    for iChannel = 1:nAdditionalChannels
+    iChannel = 0;
+    for iBehavior = 1:size(allBehaviorKeys,1)
         
-        ChannelMat.Channel(nChannels + iChannel).Name    = ['OpenFieldPosition' num2str(position_labels(iChannel))]; % This gives the AMP labels (it is not in order, but it seems to be the correct values - COME BACK TO THAT)
-        ChannelMat.Channel(nChannels + iChannel).Loc     = [0;0;0];
+        for jBehavior = 1:size(allBehaviorKeys{iBehavior,2},2)
+            
+            for zChannel = 1:nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries.get(allBehaviorKeys{iBehavior,2}(jBehavior)).data.dims(2)
+                iChannel = iChannel+1;
 
-        ChannelMat.Channel(nChannels + iChannel).Group   = 'Position';
-        ChannelMat.Channel(nChannels + iChannel).Type    = 'OpenFieldPosition';
+                ChannelMat.Channel(nChannels + iChannel).Name    = [allBehaviorKeys{iBehavior,2}{jBehavior} '_' num2str(zChannel)];
+                ChannelMat.Channel(nChannels + iChannel).Loc     = [0;0;0];
 
-        ChannelMat.Channel(nChannels + iChannel).Orient  = [];
-        ChannelMat.Channel(nChannels + iChannel).Weight  = 1;
-        ChannelMat.Channel(nChannels + iChannel).Comment = [];
-        
-        ChannelType{nChannels + iChannel} = 'OpenFieldPosition';
+                ChannelMat.Channel(nChannels + iChannel).Group   = allBehaviorKeys{iBehavior,1};
+                ChannelMat.Channel(nChannels + iChannel).Type    = 'Misc';
+
+                ChannelMat.Channel(nChannels + iChannel).Orient  = [];
+                ChannelMat.Channel(nChannels + iChannel).Weight  = 1;
+                ChannelMat.Channel(nChannels + iChannel).Comment = [];
+
+                ChannelType{nChannels + iChannel,1} = allBehaviorKeys{iBehavior,1}; 
+                ChannelType{nChannels + iChannel,2} = allBehaviorKeys{iBehavior,2}{jBehavior};
+            end
+        end
     end
 end
     
@@ -232,8 +272,7 @@ sFile.header.LFPDataPresent            = LFPDataPresent;
 sFile.header.RawDataPresent            = RawDataPresent;
 sFile.header.additionalChannelsPresent = additionalChannelsPresent;
 sFile.header.ChannelType               = ChannelType;
-
-
+sFile.header.allBehaviorKeys           = allBehaviorKeys;
 
 
 %% ===== READ EVENTS =====

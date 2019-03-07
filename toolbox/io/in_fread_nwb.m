@@ -41,38 +41,62 @@ timeBounds = SamplesBounds./sFile.prop.sfreq;
 %% Load the nwbFile object that holds the info of the .nwb
 nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch
 
-%% Find the indices of the timestamps that are selected
-position_timestamps =  nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').timestamps.load;
 
-[~, iPositionTimestamps] = histc(timeBounds, position_timestamps);
+nEEGChannels        = sum(strcmp(sFile.header.ChannelType,'EEG'));
 
+allBehaviorKeys = sFile.header.ChannelType;
 %% Get the signals
+
+% HERE THE ASSUMPTION IS THAT THE LABELING OF THE CHANNELS HAS NOT CHANGED
+% FROM WHAT THE IMPORTER POPULATED
+% This could lead to problems
 
 F = zeros(nChannels, nSamples);
 
+% Get the Intracranial signals
 iEEG = 0;
-iAdditionalChannel = 0;
 for iChannel = 1:nChannels
-    if strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'EEG')
+    if strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'EEG') 
         iEEG = iEEG + 1;
         F(iChannel,:) = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
-    elseif strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'OpenFieldPosition')
-        iAdditionalChannel = iAdditionalChannel + 1;
     
-        if length(iPositionTimestamps) < 2 || sum(iPositionTimestamps == 0) > 0 % If not both values are within the range
-            F(iChannel,:) = nan(1, nSamples);
-            
-            disp('selection is outside the timestamps for the additional channels')
-        else
-            temp = nwb2.processing.get('behavior').nwbdatainterface.get('OpenFieldPosition_New_position').spatialseries.get('OpenFieldPosition_New_norm_spatial_series').data.load([iAdditionalChannel, iPositionTimestamps(1)], [iAdditionalChannel, iPositionTimestamps(2)]);
-            upsampled_position = interp(temp,ceil(nSamples/length(temp)));
-        
-            logical_keep = true(1,length(upsampled_position));
-            random_points_to_remove = randperm(length(upsampled_position),length(upsampled_position)-nSamples);
-            logical_keep(random_points_to_remove) = false;
+    else
+        % Get the additional/behavioral channels
+        if ~isempty(sFile.header.allBehaviorKeys)
+            position_timestamps =  nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iChannel,1}).spatialseries.get(allBehaviorKeys{iChannel,2}).timestamps.load; % I use only the first subkey - subkeys should have the same timestamps
+            % Get the indices of the samples that are within the time-selection
+            selected_timestamps = find(position_timestamps>timeBounds(1) & position_timestamps<timeBounds(2));
 
-            F(iChannel,:) = upsampled_position(logical_keep);
+
+            if length(selected_timestamps)<2 % There is not a start and a stop sample present at least
+                F(iChannel,:) = nan(1, nSamples);
+                disp(['Time selection is outside the timestamps for the ' allBehaviorKeys{iChannel,1} ' channels'])
+            else
+
+                selected_timestamps_bounds = [selected_timestamps(1) selected_timestamps(end)];
+
+                % These Behavioral channels have different sampling rates -
+                % they need to be upsampled
+                % Moreover, there are multiple channels within each
+                % Behavioral description                
+                iAdditionalChannel = find(find(strcmp(allBehaviorKeys(:,2), allBehaviorKeys{iChannel,2}))==iChannel); % This gives the index of the channel selected with the behavior channels
+                
+                temp = nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iChannel,1}).spatialseries.get(allBehaviorKeys{iChannel,2}).data.load([iAdditionalChannel, selected_timestamps_bounds(1)], [iAdditionalChannel, selected_timestamps_bounds(2)]);
+                temp = temp(~isnan(temp)); % Some entries might be nans
+                
+                upsampled_position = interp(temp,ceil(nSamples/length(temp)));
+
+                logical_keep = true(1,length(upsampled_position));
+                random_points_to_remove = randperm(length(upsampled_position),length(upsampled_position)-nSamples);
+                logical_keep(random_points_to_remove) = false;
+
+                F(iChannel,:) = upsampled_position(logical_keep);
+            end
+
         end
-        
     end
+end
+
+
+
 end
