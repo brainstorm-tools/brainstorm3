@@ -1105,6 +1105,10 @@ switch (lower(action))
                 % === DISPLAY ===
                 gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
 
+                % === SUBSAMPLE ===
+                if ~bst_get('ReadOnly')
+                    gui_component('MenuItem', jPopup, [], 'Less fibers...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)fibers_downsample(filenameFull, [], []));
+                end
                 
 %% ===== POPUP: NOISECOV =====
             case {'noisecov', 'ndatacov'}
