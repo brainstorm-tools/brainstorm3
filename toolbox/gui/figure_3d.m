@@ -2277,10 +2277,27 @@ function varargout = PlotFibers(hFig, FibPoints, Color)
     % Set figure as current
     set(0, 'CurrentFigure', hFig);
     
+    % If we are displaying too many fibers, warn user...
+    numMaxFibers = 5000;
+    numFibers = size(FibPoints,1);
+    if numFibers > numMaxFibers
+        [res, isCancel] = java_dialog('question', ...
+            ['You are trying to display ', num2str(numFibers), ...
+            ' fibers. Displaying this' 10 'amount of fibers at the same time ', ...
+            'can be challenging for the' 10 'average computer. We recommend ', ...
+            'you downsample them first.'], 'Display fibers', [], ...
+            {'Display a subset', 'Display all anyway'});
+        if isCancel || strcmp(res, 'Display a subset')
+            iFibers = sort(randsample(numFibers, numMaxFibers));
+        else
+            iFibers = 1:numFibers;
+        end
+    else
+        iFibers = 1:numFibers;
+    end
+    
     % Plot fibers
-    %TODO: Only plotting the first 10k for now
-    nF = min(size(FibPoints,1),10000);
-    lines = line(FibPoints(1:nF,:,1)', FibPoints(1:nF,:,2)', FibPoints(1:nF,:,3)');
+    lines = line(FibPoints(iFibers,:,1)', FibPoints(iFibers,:,2)', FibPoints(iFibers,:,3)');
     
     % Set color
     if ~isempty(Color)
