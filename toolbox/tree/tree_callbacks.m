@@ -1107,7 +1107,8 @@ switch (lower(action))
 
                 % === SUBSAMPLE ===
                 if ~bst_get('ReadOnly')
-                    gui_component('MenuItem', jPopup, [], 'Less fibers...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)fibers_downsample(filenameFull, [], []));
+                    gui_component('MenuItem', jPopup, [], 'Less fibers...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)fibers_downsample(filenameFull));
+                    gui_component('MenuItem', jPopup, [], 'Interpolate points...', IconLoader.ICON_FLIP, [], @(h,ev)fibers_interp(filenameFull));
                 end
                 
 %% ===== POPUP: NOISECOV =====

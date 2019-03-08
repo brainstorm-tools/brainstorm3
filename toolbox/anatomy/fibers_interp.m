@@ -1,15 +1,14 @@
-function [NewFibFile, iSurface, I, J] = fibers_downsample(FibFile, newNbFibers)
-% FIBERS_DOWNSAMPLE: Reduces the number of fibers in a fiber file.
+function [NewFibFile, iSurface] = fibers_interp(FibFile, newNbPoints)
+% FIBERS_INTERP: Interpolates the points of all fibers in a fiber file.
 %
-% USAGE:  [NewFibFile, iSurface, I, J] = fibers_downsample(FibFile, newNbFibers=[ask]);
+% USAGE:  [NewFibFile, iSurface] = fibers_interp(FibFile, newNbPoints=[ask]);
 % 
 % INPUT: 
-%    - FibFile       : Full path to fiber file to downsample
-%    - newNbFibers   : Desired number of fibers
+%    - FibFile       : Full path to fiber file to interpolate
+%    - newNbPoints   : Desired number of points
 % OUTPUT:
 %    - NewFibFile  : Filename of the newly created file
 %    - iSurface    : Index of the new surface file
-%    - I,J         : Indices of the vertices that were kept (see intersect function)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -33,8 +32,8 @@ function [NewFibFile, iSurface, I, J] = fibers_downsample(FibFile, newNbFibers)
 
 
 %% ===== PARSE INPUTS =====
-if (nargin < 2) || isempty(newNbFibers)
-    newNbFibers = [];
+if (nargin < 2) || isempty(newNbPoints)
+    newNbPoints = [];
 end
 % File name: string or cell array of strings
 MultipleFiles = [];
@@ -47,84 +46,72 @@ end
 % Initialize returned values
 NewFibFile = '';
 iSurface = [];
-I = [];
-J = [];
-
 
 %% ===== ASK FOR MISSING OPTIONS =====
 % Get the number of vertices
 VarInfo = whos('-file',file_fullpath(FibFile),'Points');
-oldNbFibers = VarInfo.size(1);
+oldNbPoints = VarInfo.size(2);
 % If new number of vertices was not provided: ask user
-if isempty(newNbFibers)
+if isempty(newNbPoints)
     % Ask user the new number of vertices
-    newNbFibers = java_dialog('input', 'New number of fibers:', ...
-                                         'Resample fibers', [], num2str(oldNbFibers));
-    if isempty(newNbFibers)
+    newNbPoints = java_dialog('input', 'New number of points:', ...
+                                         'Interpolate fibers', [], num2str(oldNbPoints));
+    if isempty(newNbPoints)
         return
     end
     % Read user input
-    newNbFibers = str2double(newNbFibers);
+    newNbPoints = str2double(newNbPoints);
 end
 % Check if new number of vertices is valid
-if isempty(newNbFibers) || isnan(newNbFibers)
-    error('Invalid fibers number');
-end
-if (newNbFibers >= oldNbFibers)
-    NewFibFile = FibFile;
-    disp(sprintf('FIBERS> Fibers file has %d fibers, cannot downsample to %d fibers.', oldNbFibers, newNbFibers));
-    return;
+if isempty(newNbPoints) || isnan(newNbPoints) || newNbPoints < 2
+    error('Invalid points number');
 end
 
 
 %% ===== PROCESS MULTIPLE FILES =====
 if ~isempty(MultipleFiles)
     for i = 1:length(MultipleFiles)
-        [NewFibFile, iSurface, I, J] = fibers_downsample(MultipleFiles{i}, newNbFibers);
+        [NewFibFile, iSurface] = fibers_interp(MultipleFiles{i}, newNbPoints);
     end
     return;
 end
     
 %% ===== LOAD FILE =====
 % Progress bar
-bst_progress('start', 'Resample fibers', 'Loading file...');
+bst_progress('start', 'Interpolate fibers', 'Loading file...');
 % Load file
 FibMat = in_fibers_bst(FibFile);
 NewFibMat = db_template('fibers');
 
 
-%% ===== RESAMPLE =====
-bst_progress('start', 'Resample fibers', ['Resampling fibers: ' FibMat.Comment '...']);
-% Select random fibers
-I = randsample(oldNbFibers, newNbFibers);
-% Re-order the fibers so that they are in the same order in the output file
-I = sort(I);
-NewFibMat.Points = FibMat.Points(I,:,:);
-J = 1:newNbFibers;
+%% ===== INTERPOLATE =====
+bst_progress('text', 'Creating data structure...');
+% Build structure for trk_interp()
+tracks = struct('nPoints', 0, 'matrix', []);
+nFib = size(FibMat.Points, 1);
+for iFib = 1:nFib
+    tracks(iFib).matrix = squeeze(FibMat.Points(iFib,:,:));
+    tracks(iFib).nPoints = oldNbPoints;
+end
+% Interpolate fibers
+bst_progress('text', 'Interpolating fibers...');
+tracks_interp = trk_interp(tracks, newNbPoints);
+NewFibMat.Points = permute(tracks_interp, [3,1,2]);
 
 
 %% ===== CREATE NEW FIBER STRUCTURE =====
 % Build new filename and Comment
 [filepath, filebase, fileext] = bst_fileparts(file_fullpath(FibFile));
-NewComment = FibMat.Comment;
-% Remove previous '_nbfibFib' tags from Comment field
-if length(NewComment) > 3 && all(NewComment(end-2:end) == 'Fib')
-    iUnderscore = strfind(NewComment, '_');
-    if isempty(iUnderscore)
-        iUnderscore = strfind(NewComment, ' ');
-    end
-    if ~isempty(~iUnderscore)
-        NewComment = NewComment(1:iUnderscore(end)-1);
-    end
-end
-% Remove previous '_nbfibFib' tags from filename
-if length(filebase) > 3 && all(filebase(end-2:end) == 'Fib')
+% Remove previous '_nbptPt' tags from Comment field
+NewComment = regexprep(FibMat.Comment, '_\d+Pt_', sprintf('_%dPt_', newNbPoints));
+
+% Remove previous '_nbptPt' tags from filename
+if length(filebase) > 2 && all(filebase(end-1:end) == 'Pt')
     iUnderscore = strfind(filebase, '_');
     filebase = filebase(1:iUnderscore(end)-1);
 end
-% Add a '_nbfibFib' tag
-NewFibFile = file_unique(bst_fullfile(filepath, sprintf('%s_%dFib%s', filebase, newNbFibers, fileext)));
-NewComment  = sprintf('%s_%dFib', NewComment, newNbFibers);
+% Add a '_nbptPt' tag
+NewFibFile = file_unique(bst_fullfile(filepath, sprintf('%s_%dPt%s', filebase, newNbPoints, fileext)));
 NewFibMat.Comment  = NewComment;
 % Copy Header field
 if isfield(FibMat, 'Header')
@@ -134,12 +121,12 @@ end
 if isfield(FibMat, 'History')
     NewFibMat.History = FibMat.History;
 end
-% History: Downsample surface
-NewFibMat = bst_history('add', NewFibMat, 'downsample', sprintf('Downsample fibers: %d -> %d fibers', oldNbFibers, newNbFibers));
+% History: Interpolate fibers
+NewFibMat = bst_history('add', NewFibMat, 'interpolate', sprintf('Interpolate fibers: %d -> %d points', oldNbPoints, newNbPoints));
 
 
 %% ===== UPDATE DATABASE =====
-% Save downsized fiber file
+% Save interpolated fiber file
 bst_save(NewFibFile, NewFibMat, 'v7');
 % Make output filename relative
 NewFibFile = file_short(NewFibFile);

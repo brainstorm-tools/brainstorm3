@@ -2281,13 +2281,13 @@ function varargout = PlotFibers(hFig, FibPoints, Color)
     numMaxFibers = 5000;
     numFibers = size(FibPoints,1);
     if numFibers > numMaxFibers
+        questionOptions = {'Display a subset for now', 'Display all anyway'};
         [res, isCancel] = java_dialog('question', ...
             ['You are trying to display ', num2str(numFibers), ...
             ' fibers. Displaying this' 10 'amount of fibers at the same time ', ...
             'can be challenging for the' 10 'average computer. We recommend ', ...
-            'you downsample them first.'], 'Display fibers', [], ...
-            {'Display a subset', 'Display all anyway'});
-        if isCancel || strcmp(res, 'Display a subset')
+            'you downsample them first.'], 'Display fibers', [], questionOptions);
+        if isCancel || strcmp(res, questionOptions{1})
             iFibers = sort(randsample(numFibers, numMaxFibers));
         else
             iFibers = 1:numFibers;
@@ -2301,7 +2301,7 @@ function varargout = PlotFibers(hFig, FibPoints, Color)
     
     % Set color
     if ~isempty(Color)
-        for iFib = 1:nF
+        for iFib = 1:length(iFibers)
             lines(iFib).Color = Color(iFib,:);
         end
     end

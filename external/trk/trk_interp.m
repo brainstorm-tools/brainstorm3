@@ -73,6 +73,11 @@ parfor iTrk=1:length(tracks)
     
     % Remove duplicates
     [dist I J]= unique(dist);
+    % Martin: bugfix for fibers with same points
+    if length(dist) == 1
+        dist = 0:1;
+        I = 1:2;
+    end
     
     % Fit spline
     % Martin: bugfix for fibers with more than 3 dimensions
