@@ -170,6 +170,10 @@ end
 
 
 
+
+
+
+
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
 sFile = db_template('sfile');
@@ -188,6 +192,58 @@ end
 
 
 nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2);
+
+
+
+
+
+%%
+%% Check for epochs/trials
+
+all_conditions   = nwb2.intervals_trials.vectordata.get('condition').data;
+uniqueConditions = unique(nwb2.intervals_trials.vectordata.get('condition').data);
+timeBoundsTrials = double([nwb2.intervals_trials.start_time.data.load nwb2.intervals_trials.stop_time.data.load]);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THIS FIELD MIGHT NOT BE PRESENT ON ALL DATASETS
+% I'M KEEPING IT HERE FOR REFERENCE
+% % Get error trials
+% badTrials = nwb2.intervals_trials.vectordata.get('error_run').data.load;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+iUniqueConditionsTrials = zeros(length(uniqueConditions),1); % This will hold the index of each trial for each condition
+
+% Get number of epochs
+nEpochs = length(nwb2.intervals_trials.start_time.data.load);
+% Get number of averaged trials
+nAvg = 1;
+
+
+% === EPOCHS FILE ===
+if (nEpochs > 1)
+    % Build epochs structure
+    for iEpoch = 1:nEpochs
+
+        ii = find(strcmp(uniqueConditions, all_conditions{iEpoch}));
+        iUniqueConditionsTrials(ii) =  iUniqueConditionsTrials(ii)+1;
+        sFile.epochs(iEpoch).label       = [all_conditions{iEpoch} ' (#' num2str(iUniqueConditionsTrials(ii)) ')'];
+        sFile.epochs(iEpoch).times       = timeBoundsTrials(iEpoch,:);
+        sFile.epochs(iEpoch).samples     = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
+        sFile.epochs(iEpoch).nAvg        = nAvg;
+        sFile.epochs(iEpoch).select      = 1;
+        sFile.epochs(iEpoch).bad         = 0;
+%         sFile.epochs(iEpoch).bad         = badTrials(iEpoch); 
+        sFile.epochs(iEpoch).channelflag = [];
+    end
+    
+    sFile.format    = 'NWB';
+elseif (nEpochs == 1)
+    sFile.prop.nAvg = nAvg;
+    sFile.format    = 'NWB-CONTINUOUS';
+end
+    
+
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
@@ -258,7 +314,6 @@ end
 %% Add information read from header
 sFile.byteorder    = 'l';  % Not confirmed - just assigned a value
 sFile.filename     = DataFile;
-sFile.format       = 'EEG-NWB';
 sFile.device       = nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
 sFile.header.nwb   = nwb2;
 sFile.comment      = nwb2.identifier;
