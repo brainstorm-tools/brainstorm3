@@ -210,7 +210,7 @@ switch (sFile.format)
     case 'EEG-TDT'
         F = in_fread_tdt(sFile, SamplesBounds, iChannels);
     case {'NWB', 'NWB-CONTINUOUS'}
-        isContinuous = strcmpi(sFile.format, 'CTF-CONTINUOUS');
+        isContinuous = strcmpi(sFile.format, 'NWB-CONTINUOUS');
         F = in_fread_nwb(sFile, iEpoch, SamplesBounds, iChannels, isContinuous);
         
     otherwise
