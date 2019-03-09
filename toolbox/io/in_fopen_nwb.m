@@ -188,6 +188,14 @@ nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electrica
 %%
 %% Check for epochs/trials
 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHANGES IN THE EPOCHS SECTION SHOULD ALSO BE COPIED TO
+% PROCESS_NWB_CONVERT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 all_conditions   = nwb2.intervals_trials.vectordata.get('condition').data;
 uniqueConditions = unique(nwb2.intervals_trials.vectordata.get('condition').data);
 timeBoundsTrials = double([nwb2.intervals_trials.start_time.data.load nwb2.intervals_trials.stop_time.data.load]);

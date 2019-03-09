@@ -147,70 +147,9 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
             sFile = [];
             return;
         end
-        % Process each epoch
-        for i = 1:length(sFile.epochs)
-            % Rebuild absolute sample indices for this file
-            nSamples = sFile.epochs(i).samples(2) - sFile.epochs(i).samples(1) + 1;
-            if (i == 1)
-                epochSmp = [0, nSamples-1];
-            else
-                epochSmp = [epochSmp; epochSmp(i-1,2) + [1, nSamples]];
-            end
-        end
-        % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % %%% DETECTION OF DOUBLED EVENTS IS NOW DONW IN IN_EVENTS_CTF %%%
-        % %%% Kept here for compatibility purposes, not necessary      %%%
-        % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % Update events
-        for iEvt = 1:length(sFile.events)
-            % Detect events that appear a the last sample of a trial and at the first one of the next one (only for simple events)
-            if (size(sFile.events(iEvt).times,1) == 1)
-                % Get the length of the epoch in samples for each event occurrence
-                smpEpoch = [sFile.epochs(sFile.events(iEvt).epochs).samples];
-                % Detect if the occurrence is at the first sample or in the last 5 samples
-                isLast  = (smpEpoch(2:2:end) - sFile.events(iEvt).samples < 5);
-                isFirst = (sFile.events(iEvt).samples - smpEpoch(1:2:end) == 0);
-                % Detect the markers that are doubled: last sample of epoch #i and first of epoch #i+1 
-                iDouble = find(isFirst(2:end) & isLast(1:end-1)) + 1;
-            else
-                iDouble = [];
-            end
-            % Process each occurrence of each independent separately
-            for iOcc = 1:size(sFile.events(iEvt).samples,2)
-                % Identify the epoch in which this event is occurring
-                iEpoch = sFile.events(iEvt).epochs(iOcc);
-                adjustSmp = epochSmp(iEpoch,1) - sFile.epochs(iEpoch).samples(1);
-                % Re-refence this event occurrence starting from the beginning of the continuous file (sample 0)
-                sFile.events(iEvt).samples(:,iOcc) = sFile.events(iEvt).samples(:,iOcc) + adjustSmp;
-            end
-            % Update times and epoch indice
-            sFile.events(iEvt).times  = sFile.events(iEvt).samples ./ sFile.prop.sfreq;
-            sFile.events(iEvt).epochs = ones(size(sFile.events(iEvt).epochs));
-            % Remove those doubled markers (remove the first sample of epoch #i+1)
-            if ~isempty(iDouble)
-                % Get the times to remove
-                tRemoved = sFile.events(iEvt).times(1,iDouble);
-                % Remove the events occurrences
-                sFile.events(iEvt).times(:,iDouble)   = [];
-                sFile.events(iEvt).samples(:,iDouble) = [];
-                sFile.events(iEvt).epochs(:,iDouble)  = [];
-                if ~isempty(sFile.events(iEvt).reactTimes)
-                    sFile.events(iEvt).reactTimes(:,iDouble) = [];
-                end
-                % Display message
-                Messages = [Messages, 10, 'Removed ' num2str(length(iDouble)) ' x "' sFile.events(iEvt).label, '": ', sprintf('%1.3fs ', tRemoved)];
-            end
-        end
-        % Display message
-        if ~isempty(Messages)
-            Messages = ['Errors detected in the events of the .nwb file (duplicate markers): ' Messages];
-        end
-        
-%         % Remove epochs 
+       
+        % Remove epochs 
         sFile.epochs = [];
-        % Update the other fields
-        sFile.prop.samples = [epochSmp(1,1), epochSmp(end,2)];
-        sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
         sFile.format = 'NWB-CONTINUOUS';
 
     % ===== CONVERT => EPOCHED =====
@@ -220,49 +159,52 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
             Messages = 'Only the files that are forced to continuous mode can be converted back to epoched mode.';
             return;
         end
-        % Initialize epochs structure
-        nEpochs = sFile.header.gSetUp.no_trials;
-        nSamples = sFile.header.gSetUp.no_samples;
-        sFile.epochs = repmat(db_template('epoch'), [1 nEpochs]);
-        epochSmp = [0, nSamples - 1] - sFile.header.gSetUp.preTrigPts;
-        % Loop on each epoch
-        for iEpoch = 1:nEpochs
-            % Create new epoch
-            sFile.epochs(iEpoch).label   = sprintf('Epoch #%d', iEpoch);
-            sFile.epochs(iEpoch).samples = epochSmp;
-            sFile.epochs(iEpoch).times   = sFile.epochs(iEpoch).samples ./ sFile.prop.sfreq;
-            % Rebuild initial position of the epoch in the continuous file
-            epochCont = [0, nSamples-1] + (iEpoch - 1) * nSamples;
-            % Update events
-            for iEvt = 1:length(sFile.events)
-                % Ignore empty events
-                if ~isempty(sFile.events(iEvt).times)
-                    % Find occurrences that are included in this epoch
-                    evtSmp = sFile.events(iEvt).samples;
-                    iOcc = find((evtSmp(1,:) >= epochCont(1)) & (evtSmp(1,:) <= epochCont(2)));
-                    % Update times and epoch indice
-                    if ~isempty(iOcc)
-                        % Recompute sample indices
-                        sFile.events(iEvt).samples(:,iOcc) = evtSmp(:,iOcc) - epochCont(1) + epochSmp(1);
-                        sFile.events(iEvt).epochs(iOcc)    = repmat(iEpoch, [1, length(iOcc)]);
-                        % In case of extended events: end of the event has to be at max the last sample of the epoch
-                        if (size(evtSmp,1) == 2)
-                            iOutside = find(sFile.events(iEvt).samples(2,iOcc) > epochSmp(2));
-                            if ~isempty(iOutside)
-                                Messages = [Messages 'Some extended events had to be cropped to fit a single epoch.' 10];
-                                sFile.events(iEvt).samples(2,iOcc(iOutside)) = epochSmp(2);
-                            end
-                        end
-                        % Convert samples indices in times
-                        sFile.events(iEvt).times(:,iOcc) = sFile.events(iEvt).samples(:,iOcc) ./ sFile.prop.sfreq;
-                    end
-                end
+        
+        %% Initialize epochs structure
+        %%% Copied from in_fopen_NWB
+
+        nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch
+
+        all_conditions   = nwb2.intervals_trials.vectordata.get('condition').data;
+        uniqueConditions = unique(nwb2.intervals_trials.vectordata.get('condition').data);
+        timeBoundsTrials = double([nwb2.intervals_trials.start_time.data.load nwb2.intervals_trials.stop_time.data.load]);
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % THIS FIELD MIGHT NOT BE PRESENT ON ALL DATASETS
+        % I'M KEEPING IT HERE FOR REFERENCE
+        % % Get error trials
+        % badTrials = nwb2.intervals_trials.vectordata.get('error_run').data.load;
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        iUniqueConditionsTrials = zeros(length(uniqueConditions),1); % This will hold the index of each trial for each condition
+
+        % Get number of epochs
+        nEpochs = length(nwb2.intervals_trials.start_time.data.load);
+        % Get number of averaged trials
+        nAvg = 1;
+
+
+        % === EPOCHS FILE ===
+        if (nEpochs > 1)
+            % Build epochs structure
+            for iEpoch = 1:nEpochs
+
+                ii = find(strcmp(uniqueConditions, all_conditions{iEpoch}));
+                iUniqueConditionsTrials(ii) =  iUniqueConditionsTrials(ii)+1;
+                sFile.epochs(iEpoch).label       = [all_conditions{iEpoch} ' (#' num2str(iUniqueConditionsTrials(ii)) ')'];
+                sFile.epochs(iEpoch).times       = timeBoundsTrials(iEpoch,:);
+                sFile.epochs(iEpoch).samples     = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
+                sFile.epochs(iEpoch).nAvg        = nAvg;
+                sFile.epochs(iEpoch).select      = 1;
+                sFile.epochs(iEpoch).bad         = 0;
+        %         sFile.epochs(iEpoch).bad         = badTrials(iEpoch); 
+                sFile.epochs(iEpoch).channelflag = [];
             end
+
+            sFile.format    = 'NWB';
+        elseif (nEpochs == 1)
+            sFile.prop.nAvg = nAvg;
+            sFile.format    = 'NWB-CONTINUOUS';
         end
-        % Update the other fields
-        sFile.prop.samples = [epochSmp(1), epochSmp(2)];
-        sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-        sFile.format = 'NWB';
     end
 end
 
