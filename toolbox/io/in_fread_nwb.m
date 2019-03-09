@@ -31,23 +31,24 @@ end
 
 nChannels = length(selectedChannels);
 
-
 %% Load the nwbFile object that holds the info of the .nwb
 nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch
 
-%% Assign the bounds based on the trials or the continious selection
+%% Assign the bounds based on the trials or the continuous selection
 if isempty(SamplesBounds) && isContinuous
     SamplesBounds = sFile.prop.samples;
-    nSamples      = SamplesBounds(2) - SamplesBounds(1) + 1;
     timeBounds    = SamplesBounds./sFile.prop.sfreq;
-else
+elseif (~isempty(SamplesBounds) && isContinuous) || (~isempty(SamplesBounds) && ~isContinuous)
+    timeBounds    = SamplesBounds./sFile.prop.sfreq;
+elseif isempty(SamplesBounds) && ~isContinuous
     iEpoch = double(iEpoch);
     % Get sample bounds
     all_TrialsTimeBounds = double([nwb2.intervals_trials.start_time.data.load nwb2.intervals_trials.stop_time.data.load]);
     timeBounds = all_TrialsTimeBounds(iEpoch,:);
-    SamplesBounds = round(timeBounds.* sFile.prop.sfreq);
-    nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
+    SamplesBounds = round(timeBounds.* sFile.prop.sfreq);    
 end
+
+nSamples      = SamplesBounds(2) - SamplesBounds(1) + 1;
 
 %% Get the signals
 
