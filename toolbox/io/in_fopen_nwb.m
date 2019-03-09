@@ -46,30 +46,18 @@ Comment = FileName;
 
 
 
-
 %% Check if the NWB builder has already been downloaded and properly set up
-if exist('generateCore','file') ~= 2
-    
+NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
+
+if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
+    isOk = java_dialog('confirm', ...
+        ['The NWB SDK is not installed on your computer.' 10 10 ...
+             'Download and install the latest version?'], 'Neurodata Without Borders');
+    if ~isOk
+        bst_report('Error', sProcess, sInputs, 'This process requires the Neurodata Without Borders SDK.');
+        return;
+    end
     downloadAndInstallNWB()
-    
-    current_path = pwd;
-    nwb_path = bst_fileparts(which('generateCore'));
-    cd(nwb_path);
-    ME = [];
-    try
-        % Generate the NWB Schema (First time run)
-        generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
-    catch ME
-        try
-            % Try once more (for some reason sometimes there is a mkdir access denial the first time)
-            generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
-        catch ME
-        end
-    end
-    cd(current_path);
-    if ~isempty(ME)
-        rethrow(ME);
-    end
 end
 
 
@@ -362,13 +350,27 @@ if events_exist
         events(iEvent).color   = rand(1,3);
         events(iEvent).times   = nwb2.stimulus_presentation.get(all_event_keys{iEvent}).timestamps.load';
         events(iEvent).samples = round(events(iEvent).times * sFile.prop.sfreq);
-        events(iEvent).epochs  = ones(1, length(events(iEvent).samples));
+        
+        
+        % Check on which epoch each event belongs to
+        if nEpochs > 1
+            % Initialize to first epoch - if some events are not within the
+            % epoch bounds, they will stay assigned to the first epoch
+            events(iEvent).epochs  = ones(1, length(events(iEvent).samples));
+            
+            
+            % CHECK IF THE INITIALIZATION AS 0 AFFECTS THE CONTINUOUS
+            % SIGNALS
+            
+            for iEpoch = 1:nEpochs
+                eventsInThisEpoch = find((events(iEvent).times >= sFile.epochs(iEpoch).times(1)) & (events(iEvent).times < sFile.epochs(iEpoch).times(2)));
+                events(iEvent).epochs(eventsInThisEpoch) = iEpoch;
+            end
+        else
+            events(iEvent).epochs  = ones(1, length(events(iEvent).samples));
+        end
     end 
 end
-
-
-
-
 
 %% Read the Spikes' events
 try
@@ -417,6 +419,23 @@ if SpikesExist
         events_spikes(iNeuron).times      = times;
         events_spikes(iNeuron).reactTimes = [];
         events_spikes(iNeuron).select     = 1;
+        
+        
+        % Check on which epoch each event belongs to
+        if nEpochs > 1
+            % Initialize to first epoch - if some events are not within the
+            % epoch bounds, they will stay assigned to the first epoch
+            events_spikes(iNeuron).epochs  = ones(1, length(events_spikes(iNeuron).samples));
+            
+            for iEpoch = 1:nEpochs
+                eventsInThisEpoch = find(events_spikes(iNeuron).times >= sFile.epochs(iEpoch).times(1) & events_spikes(iNeuron).times < sFile.epochs(iEpoch).times(2));
+                events_spikes(iNeuron).epochs(eventsInThisEpoch) = iEpoch;
+            end
+        else
+            events_spikes(iNeuron).epochs  = ones(1, length(events_spikes(iNeuron).samples));
+        end
+        
+        
     end
         
         
@@ -436,6 +455,7 @@ end
 
 function downloadAndInstallNWB()
 
+    %% Download and extract the necessary files
     NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
     NWBTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB_tmp');
     url = 'https://github.com/NeurodataWithoutBorders/matnwb/archive/master.zip';
@@ -456,6 +476,7 @@ function downloadAndInstallNWB()
         pause(0.1);
         errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'NWB download');
         if ~isempty(errMsg)
+            file_delete(NWBTmpDir, 1, 3);
             error(['Impossible to download NWB.' 10 errMsg]);
         end
     end
@@ -470,7 +491,43 @@ function downloadAndInstallNWB()
     file_move(newNWBDir, NWBDir);
     % Delete unnecessary files
     file_delete(NWBTmpDir, 1, 3);
+    
+    
+    
+    %% Initialize NWB toolbox
+    current_path = pwd;
+    cd(NWBDir);
+    ME = [];
+    
     % Add NWB to Matlab path
     addpath(genpath(NWBDir));
+    try
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %% There is a java issue here
+        % GenerateCore can not be initialized with Brainstorm open
+        % making the automated installation impossible
+        
+        % Generate the NWB Schema (First time run)
+        generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+        
+    catch ME
+        try
+            % Try once more (for some reason sometimes there is a mkdir access denial the first time)
+            generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
+        catch ME
+            rmpath(genpath(NWBDir));
+            file_delete(NWBDir, 1, 3);
+        end
+    end
+    cd(current_path);
+    if ~isempty(ME)
+        rethrow(ME);
+    end
+    
+    
+    
+    
 end

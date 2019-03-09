@@ -28,24 +28,26 @@ function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isCont
 if (nargin < 3) || isempty(selectedChannels)
     selectedChannels = 1:length(sFile.channelflag);
 end
-if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
-end
 
 nChannels = length(selectedChannels);
-nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
-
-timeBounds = SamplesBounds./sFile.prop.sfreq;
 
 
 %% Load the nwbFile object that holds the info of the .nwb
 nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch
 
-
-nEEGChannels        = sum(strcmp(sFile.header.ChannelType,'EEG'));
-
-allBehaviorKeys = sFile.header.ChannelType;
-
+%% Assign the bounds based on the trials or the continious selection
+if isempty(SamplesBounds) && isContinuous
+    SamplesBounds = sFile.prop.samples;
+    nSamples      = SamplesBounds(2) - SamplesBounds(1) + 1;
+    timeBounds    = SamplesBounds./sFile.prop.sfreq;
+else
+    iEpoch = double(iEpoch);
+    % Get sample bounds
+    all_TrialsTimeBounds = double([nwb2.intervals_trials.start_time.data.load nwb2.intervals_trials.stop_time.data.load]);
+    timeBounds = all_TrialsTimeBounds(iEpoch,:);
+    SamplesBounds = round(timeBounds.* sFile.prop.sfreq);
+    nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
+end
 
 %% Get the signals
 
@@ -54,6 +56,9 @@ allBehaviorKeys = sFile.header.ChannelType;
 % FROM WHAT THE IMPORTER POPULATED
 % This could lead to problems
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+allBehaviorKeys = sFile.header.ChannelType;
+
 
 F = zeros(nChannels, nSamples);
 
