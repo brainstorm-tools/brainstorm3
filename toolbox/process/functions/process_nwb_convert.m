@@ -150,6 +150,12 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
        
         % Remove epochs 
         sFile.epochs = [];
+        
+        % Assign all events to epoch1
+        for iEvent = 1:length(sFile.events)
+            sFile.events(iEvent).epochs =ones(1,length(sFile.events(iEvent).epochs));
+        end
+            
         sFile.format = 'NWB-CONTINUOUS';
 
     % ===== CONVERT => EPOCHED =====
@@ -160,7 +166,7 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
             return;
         end
         
-        %% Initialize epochs structure
+        %% Initialize EPOCHS and EVENTS structure
         %%% Copied from in_fopen_NWB
 
         nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch
@@ -199,6 +205,10 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
         %         sFile.epochs(iEpoch).bad         = badTrials(iEpoch); 
                 sFile.epochs(iEpoch).channelflag = [];
             end
+            
+            % Assign events to the appropriate epochs
+            events = in_events_nwb(sFile, nwb2, nEpochs);
+            sFile.events = events;
 
             sFile.format    = 'NWB';
         elseif (nEpochs == 1)
