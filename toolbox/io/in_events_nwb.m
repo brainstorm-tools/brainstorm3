@@ -1,4 +1,4 @@
-function events = in_events_nwb(sFile, nwb2, nEpochs)
+function events = in_events_nwb(sFile, nwb2, nEpochs, ChannelMat)
 
 %% Reads spiking and acquisition events
 
@@ -65,7 +65,6 @@ end
     
 if SpikesExist
      
-    ChannelMat = sFile.ChannelMat;
     amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load;
     maxWaveformCh = nwb2.units.vectordata.get('max_electrode').data.load; % The channels on which each Neuron had the maximum amplitude on its waveforms - Assigning each neuron to an electrode
     

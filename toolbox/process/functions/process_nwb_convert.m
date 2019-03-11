@@ -65,6 +65,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         case 3,  recType = 'switch';
     end
     isInteractive = isfield(sProcess.options, 'interactive') && isequal(sProcess.options.interactive.Value, 1);
+    
+    ChannelFile = sProcess.options.ChannelFile;
+    ChannelMat = in_bst_channel(ChannelFile.Value);
+    
     % Convert all the files in input
     for i = 1:length(sInputs)
         % Load file
@@ -73,7 +77,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         sFile = DataMat.F;
 
         % Convert
-        [sFile, Messages, outRecType] = Compute(sFile, recType);
+        [sFile, Messages, outRecType] = Compute(sFile, recType, ChannelMat);
         % Error handling
         if isempty(sFile) && ~isempty(Messages)
             if isInteractive
@@ -116,7 +120,7 @@ end
 
     
 %% ===== COMPUTE =====
-function [sFile, Messages, recType] = Compute(sFile, recType)
+function [sFile, Messages, recType] = Compute(sFile, recType, ChannelMat)
     % ===== PARSE INPUTS =====
     if (nargin < 2)
         recType = 'continuous';
@@ -207,7 +211,7 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
             end
             
             % Assign events to the appropriate epochs
-            events = in_events_nwb(sFile, nwb2, nEpochs);
+            events = in_events_nwb(sFile, nwb2, nEpochs, ChannelMat);
             sFile.events = events;
 
             sFile.format    = 'NWB';

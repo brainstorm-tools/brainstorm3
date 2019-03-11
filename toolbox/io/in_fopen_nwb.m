@@ -331,24 +331,9 @@ sFile.header.ChannelType               = ChannelType;
 sFile.header.allBehaviorKeys           = allBehaviorKeys;
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%         FRANCOIS/MARTIN         %%%%%%%%%%%%%%%%%%%%%%%%
-
-%%%%%%% THIS DOESN'T SEEM TO BE AVOIDED - EVENTS HAVE TO BE LINKED TO THE
-%%%%%%% CHANNELS THEY BELONG TO IN ORDER TO USE THE CONVERSION FROM
-%%%%%%% CONTINUOUS TO EPOCHED
-
-% ONE WAY WOULD BE TO JUST KEEP THE events.epochs VALUES WITHIN THE
-% CONTINUOUS STATUS - IS THAT OK???
-
-sFile.ChannelMat = ChannelMat;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
 %% ===== READ EVENTS =====
 
-events = in_events_nwb(sFile, nwb2, nEpochs);
+events = in_events_nwb(sFile, nwb2, nEpochs, ChannelMat);
 
 % Import this list
 sFile = import_events(sFile, [], events);
