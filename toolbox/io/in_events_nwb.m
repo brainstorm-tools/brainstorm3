@@ -79,7 +79,7 @@ if SpikesExist
         else
             times = nwb2.units.spike_times.data.load(sum(nwb2.units.spike_times_index.data.load(iNeuron-1))+1:sum(nwb2.units.spike_times_index.data.load(iNeuron)));
         end
-        times = times(times~=0)';
+        times = times(times~=0);
 
         
         % Check if a channel has multiple neurons:
