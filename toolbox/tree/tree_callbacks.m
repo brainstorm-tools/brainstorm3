@@ -1234,7 +1234,7 @@ switch (lower(action))
                             % If CTF file format
                             if strcmpi(Device, 'CTF')
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_ctf_convert', filenameFull, [], 'rectype', 3, 'interactive', 1));
-                            elseif strcmpi(Device, 'NWB')
+                            elseif contains(ChannelFile, 'channel_nwb') % Check for NWB file format
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_nwb_convert', filenameFull, [], 'rectype', 3, 'interactive', 1, 'ChannelFile', ChannelFile));
                             end
                         end

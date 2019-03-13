@@ -1330,8 +1330,6 @@ switch contextName
             Device = 'KRISS';
         elseif ~isempty(strfind(ChannelFile, 'nirsbrs'))
             Device = 'NIRS-BRS';
-        elseif ~isempty(strfind(ChannelFile, 'nwb'))
-            Device = 'NWB';
         else
             Device = '';
         end
