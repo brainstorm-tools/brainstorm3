@@ -22,7 +22,7 @@ function [elec, grad] = out_fieldtrip_channel(ChannelFile, isIncludeRef)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2019
 
 
 % ===== PARSE INPUT =====
@@ -73,7 +73,7 @@ if ~isempty(iEeg)
     % Electrode position
     elec.chanpos = zeros(length(iEeg),3);
     for i = 1:length(iEeg)
-        if all(size(ChannelMat.Channel(iEeg(i)).Loc) > [3,1])
+        if all(size(ChannelMat.Channel(iEeg(i)).Loc) >= [3,1])
             elec.chanpos(i,:) = ChannelMat.Channel(iEeg(i)).Loc(:,1);
         else
             elec.chanpos(i,:) = [0;0;0];

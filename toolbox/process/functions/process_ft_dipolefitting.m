@@ -170,6 +170,10 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     HeadModelMat = in_bst_headmodel(sHeadModel.FileName);
     % Convert head model
     ftHeadmodel = out_fieldtrip_headmodel(HeadModelMat, ChannelMat, iChannels);
+    if strcmpi(ftHeadmodel.type, 'openmeeg')
+        bst_report('Error', sProcess, sInput, 'OpenMEEG headmodel not supported for dipole fitting: Compute another head model first.');
+        return;
+    end
     % Convert data file
     ftData = out_fieldtrip_data(DataMat, ChannelMat, iChannels, 1);
     % Generate rough grid for first estimation
