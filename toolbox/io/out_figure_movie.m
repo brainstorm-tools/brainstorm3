@@ -184,10 +184,10 @@ end
 % Get screen definition
 ScreenDef = bst_get('ScreenDef');
 % Single screen (TODO: Handle the cases where the two screens are organized in different ways)
-firstPos = get(hFigSnap, 'Position');
+firstPos = get(hFigSnap(1), 'Position');
 if (length(ScreenDef) == 1)
     ZoomFactor = ScreenDef(1).zoomFactor;
-elseif (firstPos{1}(1) < ScreenDef(1).matlabPos(1) + ScreenDef(1).matlabPos(3))
+elseif (firstPos(1) < ScreenDef(1).matlabPos(1) + ScreenDef(1).matlabPos(3))
     ZoomFactor = ScreenDef(1).zoomFactor;
 else
     ZoomFactor = ScreenDef(2).zoomFactor;
