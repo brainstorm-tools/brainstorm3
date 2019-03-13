@@ -1231,10 +1231,11 @@ switch (lower(action))
                         ChannelFile = bst_get('ChannelFileForStudy', filenameRelative);
                         if ~isempty(ChannelFile) && strcmpi(DataType, 'raw')
                             Device = bst_get('ChannelDevice', ChannelFile);
+                            ChannelMat_Comment = in_bst_channel(ChannelFile,'Comment');
                             % If CTF file format
                             if strcmpi(Device, 'CTF')
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_ctf_convert', filenameFull, [], 'rectype', 3, 'interactive', 1));
-                            elseif contains(ChannelFile, 'channel_nwb') % Check for NWB file format
+                            elseif contains(ChannelMat_Comment.Comment, 'NWB') % Check for NWB file format
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_nwb_convert', filenameFull, [], 'rectype', 3, 'interactive', 1, 'ChannelFile', ChannelFile));
                             end
                         end

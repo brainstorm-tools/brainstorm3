@@ -72,9 +72,6 @@ elseif strfind(lower(ChannelMat.Comment), 'megscan')
 elseif strfind(lower(ChannelMat.Comment), 'nirs-brs')
     DeviceTag = '_nirsbrs';
     DeviceName = 'NIRS-BRS';
-% NWB
-elseif strfind(lower(ChannelMat.Comment), 'nwb')
-    DeviceTag = '_nwb';
 % If comment is not useful: detect based on number of MEG references
 % CTF: 29 references
 elseif (nMegRef > 25)
