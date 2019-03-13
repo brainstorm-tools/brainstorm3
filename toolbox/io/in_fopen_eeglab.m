@@ -383,7 +383,13 @@ if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) % && hdr.isRaw
             events(iEvt).epochs = ones(1, length(listOcc));
         end
         % Get samples
-        allSmp = {hdr.EEG.event(listOcc).latency};
+        if isfield(hdr.EEG.event(listOcc(1)), 'latency')
+            allSmp = {hdr.EEG.event(listOcc).latency};
+        elseif isfield(hdr.EEG.event(listOcc(1)), 'sample')
+            allSmp = {hdr.EEG.event(listOcc).sample};
+        else
+            disp(['EEGLAB> Missing fields "latency" or "sample" in event "', hdr.EEG.event(listOcc(1)).type, '".']);
+        end
         % Convert to values if available as strings
         iChar = find(cellfun(@ischar, allSmp));
         if ~isempty(iChar)
