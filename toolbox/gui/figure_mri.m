@@ -1801,7 +1801,8 @@ function PlotSensors3D(iDS, iFig, Channel, ChanLoc)
     
     % === DEPTH ELECTRODES ===
     % Create objects geometry
-    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc);
+    sElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes);
     % Plot depth electrodes
     for iElec = 1:length(ElectrodeDepth)
         % Get coordinates

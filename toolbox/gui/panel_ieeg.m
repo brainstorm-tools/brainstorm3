@@ -264,8 +264,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             UpdateElecProperties();
             % Get the selected electrode
             [sSelElec, iSelElec] = GetSelectedElectrodes();
-            % Center MRI view on 
-            CenterMriOnElectrode(sSelElec);
+            % Center MRI view on electrode tip
+            if (length(sSelElec) == 1)
+                CenterMriOnElectrode(sSelElec);
+            end
         end
     end
 
@@ -1541,7 +1543,7 @@ end
 %  =================================================================================
 
 %% ===== CREATE 3D ELECTRODE GEOMETRY =====
-function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = CreateGeometry3DElectrode(iDS, iFig, Channel, ChanLoc) %#ok<DEFNU>
+function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = CreateGeometry3DElectrode(iDS, iFig, Channel, ChanLoc, sElectrodes) %#ok<DEFNU>
     global GlobalData;
     % Initialize returned values
     ElectrodeDepth = [];
@@ -1580,7 +1582,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
         FaceLighting = 'flat';
     end
     % Compute contact normals: ECOG and EEG
-    if isSurface && (ismember(Modality, {'ECOG','EEG'}) || (~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && any(strcmpi({GlobalData.DataSet(iDS).IntraElectrodes.Type}, 'ECOG'))))
+    if isSurface && (ismember(Modality, {'ECOG','EEG'}) || (~isempty(sElectrodes) && any(strcmpi({sElectrodes.Type}, 'ECOG'))))
         ChanNormal = GetChannelNormal(sSubject, ChanLoc, Modality);
     end
     
@@ -1592,12 +1594,12 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
     VertexAlpha = [];
     VertexRGB   = [];
     % Get electrode configuration
-    if ~isempty(GlobalData.DataSet(iDS).IntraElectrodes)
+    if ~isempty(sElectrodes)
         % Get electrode groups
         [iEeg, GroupNames] = panel_montage('GetEegGroups', Channel, [], 1);
         % Display the electrodes one by one
-        for iElec = 1:length(GlobalData.DataSet(iDS).IntraElectrodes)
-            sElec = GlobalData.DataSet(iDS).IntraElectrodes(iElec);
+        for iElec = 1:length(sElectrodes)
+            sElec = sElectrodes(iElec);
             % Get contacts for this electrode
             iGroup = find(strcmpi(sElec.Name, GroupNames));
             % If there are contacts to plot
@@ -1939,43 +1941,50 @@ end
 
 
 %% ===== ALIGN CONTACTS =====
-function AlignContacts(iDS, iFig, Method)
+function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
     global GlobalData;
-    % Check if this is an new implantation folder
-    [fPath, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
-    isImplantation = ~isempty(strfind(folderName, 'Implantation'));
-    % Check if there are channels available
-    Channels = GlobalData.DataSet(iDS(1)).Channel;
-    if isempty(GlobalData.DataSet(iDS(1)).IntraElectrodes)
-        return;
-    end
-    % Get selected electrode
-    [sSelElec, iSelElec] = GetSelectedElectrodes();
-    if isempty(iSelElec)
-        java_dialog('warning', 'No electrode selected.', 'Align contacts');
-        return
+    % If using electrodes in input
+    if (nargin >= 5) && ~isempty(sElectrodes) && ~isempty(Channels)
+        isImplantation = 0;
+        isUpdateDS = 0;
+    else
+        % Get selected electrode
+        sElectrodes = GetSelectedElectrodes();
+        if isempty(sElectrodes)
+            java_dialog('warning', 'No electrode selected.', 'Align contacts');
+            return
+        end
+        % Check if this is an new implantation folder
+        [fPath, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
+        isImplantation = ~isempty(strfind(folderName, 'Implantation'));
+        % Check if there are channels available
+        Channels = GlobalData.DataSet(iDS(1)).Channel;
+        if isempty(GlobalData.DataSet(iDS(1)).IntraElectrodes)
+            return;
+        end
+        isUpdateDS = 1;
     end
     % Get subject description
     sSubject = bst_get('Subject', GlobalData.DataSet(iDS(1)).SubjectFile);
     % Process all the electrodes
-    for iElec = 1:length(sSelElec)
+    for iElec = 1:length(sElectrodes)
         % Number of landmarks that have been set
-        nPoints = size(sSelElec(iElec).Loc,2);
+        nPoints = size(sElectrodes(iElec).Loc,2);
         % Check all the electrodes properties are defined
-        if isempty(sSelElec(iElec).ContactNumber)
-            disp(['BST> Warning: Number of contacts is not defined for electrode "' sSelElec(iElec).Name '".']);
+        if isempty(sElectrodes(iElec).ContactNumber)
+            disp(['BST> Warning: Number of contacts is not defined for electrode "' sElectrodes(iElec).Name '".']);
             continue;
         end
         % Get contacts for this electrode
-        iChan = find(strcmpi({Channels.Group}, sSelElec(iElec).Name));
+        iChan = find(strcmpi({Channels.Group}, sElectrodes(iElec).Name));
         if isempty(iChan)
             % Add new channels
             if isImplantation
                 sChannel = db_template('channeldesc');
-                sChannel.Type  = sSelElec(iElec).Type;
-                sChannel.Group = sSelElec(iElec).Name;
-                for i = 1:prod(sSelElec(iElec).ContactNumber)
-                    sChannel.Name = sprintf('%s%d', sSelElec(iElec).Name, i);
+                sChannel.Type  = sElectrodes(iElec).Type;
+                sChannel.Group = sElectrodes(iElec).Name;
+                for i = 1:prod(sElectrodes(iElec).ContactNumber)
+                    sChannel.Name = sprintf('%s%d', sElectrodes(iElec).Name, i);
                     Channels(end+1) = sChannel;
                     iChan(end+1) = length(Channels);
                 end
@@ -1984,7 +1993,7 @@ function AlignContacts(iDS, iFig, Method)
                     GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels = [GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels, iChan];
                 end
             else
-                disp(['BST> Warning: No contact for electrode "' sSelElec(iElec).Name '".']);
+                disp(['BST> Warning: No contact for electrode "' sElectrodes(iElec).Name '".']);
                 continue;
             end
         end
@@ -1993,31 +2002,31 @@ function AlignContacts(iDS, iFig, Method)
         % Call the function to align electodes
         Modality = Channels(iChan(1)).Type;
         % Remove dimension "1" if any
-        if (length(sSelElec(iElec).ContactNumber) > 1)
-            sSelElec(iElec).ContactNumber(sSelElec(iElec).ContactNumber == 1) = [];
+        if (length(sElectrodes(iElec).ContactNumber) > 1)
+            sElectrodes(iElec).ContactNumber(sElectrodes(iElec).ContactNumber == 1) = [];
         end
         
         % === SEEG ===
         if strcmpi(Modality, 'SEEG')
             % Check number of available points
             if (nPoints < 2)
-                disp(['BST> Warning: Positions are not defined for electrode "' sSelElec(iElec).Name '".']);
+                disp(['BST> Warning: Positions are not defined for electrode "' sElectrodes(iElec).Name '".']);
                 continue;
             % Contact spacing must be available for default positions
-            elseif strcmpi(Method, 'default') && isempty(sSelElec(iElec).ContactSpacing)
-                disp(['BST> Warning: Contact spacing is not defined for electrode "' sSelElec(iElec).Name '".']);
+            elseif strcmpi(Method, 'default') && isempty(sElectrodes(iElec).ContactSpacing)
+                disp(['BST> Warning: Contact spacing is not defined for electrode "' sElectrodes(iElec).Name '".']);
                 continue;
             end
             % Get electrode orientation
-            elecTip = sSelElec(iElec).Loc(:,1);
-            orient = (sSelElec(iElec).Loc(:,2) - elecTip);
+            elecTip = sElectrodes(iElec).Loc(:,1);
+            orient = (sElectrodes(iElec).Loc(:,2) - elecTip);
             orient = orient ./ sqrt(sum(orient .^ 2));
             % Process each contact
             for i = 1:length(iChan)
                 switch (Method)
                     case 'default'
                         % Compute the default position of the contact
-                        Channels(iChan(i)).Loc = elecTip + (AllInd(i) - 1) * sSelElec(iElec).ContactSpacing * orient;
+                        Channels(iChan(i)).Loc = elecTip + (AllInd(i) - 1) * sElectrodes(iElec).ContactSpacing * orient;
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
@@ -2025,28 +2034,28 @@ function AlignContacts(iDS, iFig, Method)
             end
          
         % === ECOG STRIPS ===
-        elseif (strcmpi(Modality, 'ECOG') && (length(sSelElec(iElec).ContactNumber) == 1))
+        elseif (strcmpi(Modality, 'ECOG') && (length(sElectrodes(iElec).ContactNumber) == 1))
             % Check number of available points
             if (nPoints < 2)
-                disp(['BST> Warning: Positions are not defined for ECOG strip "' sSelElec(iElec).Name '".']);
+                disp(['BST> Warning: Positions are not defined for ECOG strip "' sElectrodes(iElec).Name '".']);
                 continue;
             end
             % Compute contacts positions
-            Loc1 = sSelElec(iElec).Loc(:,1);
-            Loc2 = sSelElec(iElec).Loc(:,2);
-            w1 = sSelElec(iElec).ContactNumber-1:-1:0;
-            w2 = 0:sSelElec(iElec).ContactNumber-1;
-            NewLoc = ((sSelElec(iElec).Loc(:,1) * w1 + sSelElec(iElec).Loc(:,2) * w2) ./ (w1 + w2))';
+            Loc1 = sElectrodes(iElec).Loc(:,1);
+            Loc2 = sElectrodes(iElec).Loc(:,2);
+            w1 = sElectrodes(iElec).ContactNumber-1:-1:0;
+            w2 = 0:sElectrodes(iElec).ContactNumber-1;
+            NewLoc = ((sElectrodes(iElec).Loc(:,1) * w1 + sElectrodes(iElec).Loc(:,2) * w2) ./ (w1 + w2))';
 
             % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
             % ECOG only (no ECOG-mid)
-            if strcmpi(sSelElec(iElec).Type, 'ECOG')
+            if strcmpi(sElectrodes(iElec).Type, 'ECOG')
                 % Project all points on the surface
                 [tmp, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG');
-                [tmp, ProjElecLoc] = GetChannelNormal(sSubject, sSelElec(iElec).Loc', 'ECOG');
+                [tmp, ProjElecLoc] = GetChannelNormal(sSubject, sElectrodes(iElec).Loc', 'ECOG');
                 % Compute the distance between the original points and the projection 
                 dChan = sqrt(sum((ProjLoc - NewLoc) .^2, 2));
-                dElec = sqrt(sum((sSelElec(iElec).Loc' - ProjElecLoc) .^2, 2));
+                dElec = sqrt(sum((sElectrodes(iElec).Loc' - ProjElecLoc) .^2, 2));
                 % Get distance associated with each corner
                 d1 = dElec(1,:);
                 d2 = dElec(2,:);
@@ -2056,7 +2065,7 @@ function AlignContacts(iDS, iFig, Method)
                 NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
             end
             % Get the list of channels in the channel file
-            if (all(AllInd) <= sSelElec(iElec).ContactNumber) && (length(unique(AllInd)) == length(AllInd))
+            if (all(AllInd <= sElectrodes(iElec).ContactNumber)) && (length(unique(AllInd)) == length(AllInd))
                 iChanList = AllInd;
             else
                 iChanList = 1:length(iChan);
@@ -2080,12 +2089,12 @@ function AlignContacts(iDS, iFig, Method)
             
             % Check number of available points
             if (nPoints < 4)
-                disp(['BST> Warning: Positions are not defined for electrode "' sSelElec(iElec).Name '".']);
+                disp(['BST> Warning: Positions are not defined for electrode "' sElectrodes(iElec).Name '".']);
                 continue;
             end
             % Get grid dimensions
-            nRows = sSelElec(iElec).ContactNumber(1);
-            nCols = sSelElec(iElec).ContactNumber(2);
+            nRows = sElectrodes(iElec).ContactNumber(1);
+            nCols = sElectrodes(iElec).ContactNumber(2);
             % Get the electrodes indices
             [I,J] = meshgrid(1:nRows, 1:nCols);
             % Get list of indices, for the approriate orientation
@@ -2099,10 +2108,10 @@ function AlignContacts(iDS, iFig, Method)
             J = J(:);
             
             % Get four corners of the grid
-            P = sSelElec(iElec).Loc(:,1)';
-            S = sSelElec(iElec).Loc(:,2)';
-            Q = sSelElec(iElec).Loc(:,3)';
-            T = sSelElec(iElec).Loc(:,4)';
+            P = sElectrodes(iElec).Loc(:,1)';
+            S = sElectrodes(iElec).Loc(:,2)';
+            Q = sElectrodes(iElec).Loc(:,3)';
+            T = sElectrodes(iElec).Loc(:,4)';
             % Get 4 possible coordinates for the point, from the four corners
             Xp = bst_bsxfun(@plus, P,     (I-1)/(nRows-1)*(S-P) +     (J-1)/(nCols-1)*(T-P));
             Xt = bst_bsxfun(@plus, T,     (I-1)/(nRows-1)*(Q-T) + (nCols-J)/(nCols-1)*(P-T));
@@ -2122,13 +2131,13 @@ function AlignContacts(iDS, iFig, Method)
 
             % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
             % ECOG only (no ECOG-mid)
-            if strcmpi(sSelElec(iElec).Type, 'ECOG')
+            if strcmpi(sElectrodes(iElec).Type, 'ECOG')
                 % Project all points on the surface
                 [tmp, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG');
-                [tmp, ProjElecLoc] = GetChannelNormal(sSubject, sSelElec(iElec).Loc', 'ECOG');
+                [tmp, ProjElecLoc] = GetChannelNormal(sSubject, sElectrodes(iElec).Loc', 'ECOG');
                 % Compute the distance between the original points and the projection 
                 dChan = sqrt(sum((ProjLoc - NewLoc) .^2, 2));
-                dElec = sqrt(sum((sSelElec(iElec).Loc' - ProjElecLoc) .^2, 2));
+                dElec = sqrt(sum((sElectrodes(iElec).Loc' - ProjElecLoc) .^2, 2));
                 % Get distance associated with each corner
                 dp = dElec(1,:);
                 dt = dElec(2,:);
@@ -2148,7 +2157,9 @@ function AlignContacts(iDS, iFig, Method)
                 end
             % Else: Match contact names with indices
             else
-                error('todo.');
+                for i = 1:length(iChan)
+                    Channels(iChan(i)).Loc = NewLoc(AllInd(i),:)';
+                end
             end
         end
 
@@ -2165,14 +2176,19 @@ function AlignContacts(iDS, iFig, Method)
 %             disp('Warning: No inner skull surface available for this subject, cannot project the contacts on the skull.');
 %         end
         % Mark channel file as modified
-        GlobalData.DataSet(iDS(1)).isChannelModified = 1;
+        if isUpdateDS
+            GlobalData.DataSet(iDS(1)).isChannelModified = 1;
+        end
     end
-    % Update electrode position
-    for i = 1:length(iDS)
-        GlobalData.DataSet(iDS(i)).Channel = Channels;
+    % If loaded datasets should be updated
+    if isUpdateDS
+        % Update electrode position
+        for i = 1:length(iDS)
+            GlobalData.DataSet(iDS(i)).Channel = Channels;
+        end
+        % Update figures
+        UpdateFigures();
     end
-    % Update figures
-    UpdateFigures();
 end
 
 

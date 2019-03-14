@@ -253,7 +253,8 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
                            GlobalData.DataSet(iDS).Measures.ChannelFlag, ...
                            Modality);
     % If opening EEG/SEEG/ECOG topography or 3D view: exclude (0,0,0) points
-    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(Modality, {'EEG','SEEG','ECOG'})
+    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(Modality, {'EEG','SEEG','ECOG'}) ...
+        && ~(ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, {'2DLayout', '2DElectrodes'}) && ismember(Modality, {'SEEG','ECOG'}))
         % Get the locations for all the channels
         chanLoc = {GlobalData.DataSet(iDS).Channel(selChan).Loc};
         % Detect the channels without location or at (0,0,0)

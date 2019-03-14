@@ -11,7 +11,7 @@ function [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType, F, Us
 %     - DataFile       : Full or relative path to data file to visualize.
 %     - MultiDataFiles : Cell array of files to display as overlays in a 2DLayout view  
 %     - Modality       : {'MEG', 'MEG GRAD', 'MEG MAG', 'EEG', 'ECOG', 'SEEG', 'NIRS'}
-%     - TopoType       : {'3DSensorCap', '2DDisc', '2DSensorCap', 2DLayout', '3DElectrodes', '3DElectrodes-Cortex', '3DElectrodes-Head', '3DElectrodes-MRI', '3DOptodes'}
+%     - TopoType       : {'3DSensorCap', '2DDisc', '2DSensorCap', 2DLayout', '3DElectrodes', '3DElectrodes-Cortex', '3DElectrodes-Head', '3DElectrodes-MRI', '3DOptodes', '2DElectrodes'}
 %     - F              : Data matrix to display instead of the real values from the file
 %     - UseSmoothing   : Extrapolate magnetic values (for MEG only)
 %     - hFig           : Specify the figure in which to display the MRI, or "NewFigure"
@@ -444,7 +444,7 @@ if strcmpi(FileType, 'Timefreq')
     bst_figures('SetCurrentFigure', hFig, 'TF');
 end
 % 3DElectrodes: Open tab "iEEG"
-if strcmpi(TopoType, '3DElectrodes') && ismember(Modality, {'SEEG', 'ECOG'})
+if ismember(TopoType, {'3DElectrodes','2DElectrodes'}) && ismember(Modality, {'SEEG', 'ECOG'})
     gui_brainstorm('ShowToolTab', 'iEEG');
 end
 % Set figure visible

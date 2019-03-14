@@ -267,7 +267,7 @@ function FigureClickCallback(hFig, varargin)
         % Left click
         case 'normal'
             % 2DLayout: pan
-            if strcmpi(FigureId.SubType, '2DLayout')
+            if ismember(FigureId.SubType, {'2DLayout', '2DElectrodes'})
                 clickAction = 'pan';
             % 2D: nothing
             elseif ismember(FigureId.SubType, {'2DDisc', '2DSensorCap'})
@@ -405,7 +405,7 @@ function FigureMouseMoveCallback(hFig, varargin)
         case {'moveSlices', 'popup'}
             FigureId = getappdata(hFig, 'FigureId');
             % TOPO: Select channels
-            if strcmpi(FigureId.Type, 'Topography') && ismember(FigureId.SubType, {'2DLayout', '2DDisc', '2DSensorCap'})
+            if strcmpi(FigureId.Type, 'Topography') && ismember(FigureId.SubType, {'2DLayout', '2DDisc', '2DSensorCap', '2DElectrodes'})
                 % Get current point
                 curPt = curptAxes(1,:);
                 % Limit selection to current display
@@ -788,7 +788,7 @@ function FigureMouseUpCallback(hFig, varargin)
         % === RIGHT-CLICK + MOVE ===
         elseif strcmpi(clickAction, 'popup')
             % === TOPO: Select channels ===
-            if strcmpi(Figure.Id.Type, 'Topography') && ismember(Figure.Id.SubType, {'2DLayout', '2DDisc', '2DSensorCap'});
+            if strcmpi(Figure.Id.Type, 'Topography') && ismember(Figure.Id.SubType, {'2DLayout', '2DDisc', '2DSensorCap', '2DElectrodes'})
                 % Get selection patch
                 hSelPatch = findobj(hAxes, '-depth', 1, 'Tag', 'TopoSelectionPatch');
                 if isempty(hSelPatch)
@@ -1558,7 +1558,7 @@ function DisplayFigurePopup(hFig)
         jMenuChannels = gui_component('Menu', jPopup, [], 'Channels', IconLoader.ICON_CHANNEL);
         % ==== Selected channels submenu ====
         isMarkers = ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSensorMarkers) || ...
-                    ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, {'2DLayout', '3DElectrodes', '3DOptodes'});
+                    ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, {'2DLayout', '3DElectrodes', '3DOptodes', '2DElectrodes'});
         % Time-frequency: Show selected sensor
         if ~isempty(TfFile) && isMarkers && ~isempty(SelChan)
             jItem = gui_component('MenuItem', jMenuChannels, [], 'View selected', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(TfFile, 'SingleSensor', SelChan{1}));
@@ -2575,9 +2575,12 @@ end
 
 
 %% ===== PLOT 3D ELECTRODES =====
-function hElectrodeGrid = PlotSensors3D(iDS, iFig, Channel, ChanLoc) %#ok<DEFNU>
+function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, TopoType) %#ok<DEFNU>
     global GlobalData;
     % Get current electrodes positions
+    if (nargin < 4) || isempty(TopoType)
+        TopoType = '3DElectrodes';
+    end
     if (nargin < 3) || isempty(Channel) || isempty(ChanLoc)
         selChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
         Channel = GlobalData.DataSet(iDS).Channel(selChan);
@@ -2594,9 +2597,71 @@ function hElectrodeGrid = PlotSensors3D(iDS, iFig, Channel, ChanLoc) %#ok<DEFNU>
     delete(findobj(hFig, 'Tag', 'ElectrodeDepth'));
     delete(findobj(hFig, 'Tag', 'ElectrodeWire'));
     delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
+    % Get electrodes definitions
+    sElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
+    iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
+    iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
+    % Remove all SEEG if no SEEG channels are available (same for ECOG)
+    if ~isempty(iSeeg) && ~any(strcmpi({Channel.Type}, 'SEEG'))
+        sElectrodes(iSeeg) = [];
+    end
+    if ~isempty(iEcog) && ~any(strcmpi({Channel.Type}, 'ECOG') | strcmpi({Channel.Type}, 'ECOG-mid'))
+        sElectrodes(iEcog) = [];
+    end
+    iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
+    iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
+    
+    
+    % === 2D ELECTRODES ===
+    % If using a 2D plot: use standard positions for electrodes and contacts
+    if strcmpi(TopoType, '2DElectrodes')
+        % Extract SEEG global properties
+        maxContactNumberSeeg = max([sElectrodes(iSeeg).ContactNumber]);
+        maxLengthSeeg = max([sElectrodes(iSeeg).ElecLength]);
+        % Extract ECOG global properties
+        maxContactsEcog = max(cellfun(@(c)c(1), {sElectrodes.ContactNumber}));
+        nRows = 0;
+        % Display electrodes in successive rows
+        for iElec = length(sElectrodes):-1:1
+            % Define default electrode properties just for display
+            switch (sElectrodes(iElec).Type)
+                case 'SEEG'
+                    if isempty(sElectrodes(iElec).ContactSpacing) || (sElectrodes(iElec).ContactSpacing == 0) || (sElectrodes(iElec).ContactSpacing * sElectrodes(iElec).ContactNumber > sElectrodes(iElec).ElecLength)
+                        sElectrodes(iElec).ContactSpacing = sElectrodes(iElec).ElecLength / maxContactNumberSeeg;
+                    end
+                    X = 2 * nRows * sElectrodes(iElec).ContactLength * [1 1];
+                    Y = [maxLengthSeeg - sElectrodes(iElec).ElecLength, maxLengthSeeg];
+                    sElectrodes(iElec).Loc = [X; Y; 0, 0];
+                    nRows = nRows + 1;
+                case {'ECOG', 'ECOG-mid'}
+                    % Force to be ECOG-mid to prevent any projection on the cortex
+                    maxDiameterEcog = 0.004;
+                    sElectrodes(iElec).Type = 'ECOG-mid';
+                    sElectrodes(iElec).ElecDiameter = 0.004;
+                    sElectrodes(iElec).ContactDiameter = maxDiameterEcog;
+                    % ECOG strip
+                    if (length(sElectrodes(iElec).ContactNumber) == 1)
+                        X = 1.5 * nRows * maxDiameterEcog * [1 1];
+                        Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber + 1];
+                        sElectrodes(iElec).Loc = [X; Y; 0, 0];
+                        nRows = nRows + 1;
+                    % ECOG grid
+                    else
+                        nRowsElec = sElectrodes(iElec).ContactNumber(2);
+                        X = 1.5 * maxDiameterEcog * (nRows + [0, nRowsElec - 1]);
+                        Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber + 1];
+                        sElectrodes(iElec).Loc = [X(2), X(2), X(1), X(1); Y(1), Y(2), Y(2), Y(1); 0, 0, 0, 0];
+                        nRows = nRows + nRowsElec;
+                    end
+            end
+        end
+        % Set corresponding contact positions
+        Channel = panel_ieeg('AlignContacts', iDS, iFig, 'default', sElectrodes, Channel);
+        ChanLoc = [Channel.Loc]';
+    end
     
     % Create objects geometry
-    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc);
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes);
     % Plot depth electrodes
     for iElec = 1:length(ElectrodeDepth)
         if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Topography')
@@ -2611,6 +2676,19 @@ function hElectrodeGrid = PlotSensors3D(iDS, iFig, Channel, ChanLoc) %#ok<DEFNU>
             'FaceAlpha', ElectrodeDepth(iElec).FaceAlpha, ...
             'Parent',    hAxes, ...
             ElectrodeDepth(iElec).Options{:});
+    end
+    % 2DElectrodes: Add ECOG labels
+    if strcmpi(TopoType, '2DElectrodes') && ~isempty(iEcog) && isempty(ElectrodeLabel)
+        for i = 1:length(iEcog)
+            ElectrodeLabel(i).Loc   = sElectrodes(iEcog(i)).Loc(:,1) + [0; 2*sElectrodes(iEcog(i)).ContactDiameter; 0];
+            ElectrodeLabel(i).Name  = sElectrodes(iEcog(i)).Name;
+            ElectrodeLabel(i).Color = sElectrodes(iEcog(i)).Color;
+            ElectrodeLabel(i).Options = {...
+                'FontUnits',   'points', ...
+                'Tag',         'ElectrodeLabel', ...
+                'Interpreter', 'none', ...
+                'UserData',    sElectrodes(iEcog(i)).Name};
+        end
     end
     % Plot electrode labels
     for iElec = 1:length(ElectrodeLabel)
@@ -3190,7 +3268,7 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
     end
     Figure = GlobalData.DataSet(iDS).Figure(iFig);
     PlotHandles = Figure.Handles;
-    isTopography = strcmpi(Figure.Id.Type, 'Topography') && ~ismember(Figure.Id.SubType, {'3DElectrodes', '3DOptodes'});
+    isTopography = strcmpi(Figure.Id.Type, 'Topography') && ~ismember(Figure.Id.SubType, {'3DElectrodes', '3DOptodes', '2DElectrodes'});
     is2D = 0;
     
     % ===== MARKERS LOCATIONS =====
