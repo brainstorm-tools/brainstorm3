@@ -2705,7 +2705,14 @@ function isOk = CheckTimeWindows()
     GlobalData.UserTimeWindow.NumberOfSamples = round((GlobalData.UserTimeWindow.Time(2)-GlobalData.UserTimeWindow.Time(1)) / GlobalData.UserTimeWindow.SamplingRate) + 1;
     % Try to reuse the same current time
     if isempty(GlobalData.UserTimeWindow.CurrentTime)
-        GlobalData.UserTimeWindow.CurrentTime = GlobalData.UserTimeWindow.Time(1);
+        % Set time at t=0s if there is a baseline
+        if (GlobalData.UserTimeWindow.Time(1) < 0) && (GlobalData.UserTimeWindow.Time(2) > 0)
+            % Find the closest time sample to zero
+            GlobalData.UserTimeWindow.CurrentTime = GlobalData.UserTimeWindow.Time(1) - round(GlobalData.UserTimeWindow.Time(1) ./ GlobalData.UserTimeWindow.SamplingRate) .* GlobalData.UserTimeWindow.SamplingRate;
+        % Otherwise use the first time point available
+        else
+            GlobalData.UserTimeWindow.CurrentTime = GlobalData.UserTimeWindow.Time(1);
+        end
     end
     panel_time('SetCurrentTime', GlobalData.UserTimeWindow.CurrentTime);
 
