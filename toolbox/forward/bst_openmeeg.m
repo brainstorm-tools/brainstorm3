@@ -387,7 +387,7 @@ if isMeg
     for iChan = 1:length(OPTIONS.iMeg)
         sChan = OPTIONS.Channel(OPTIONS.iMeg(iChan));
         for iInteg = 1:size(sChan.Loc, 2)
-            fprintf(fid, '%d %g %g %g %g %g %g %g %g', iChan, sChan.Loc(:,iInteg)', sChan.Orient(:,iInteg)', sChan.Weight(iInteg));
+            fprintf(fid, 'M%d %g %g %g %g %g %g %g %g', iChan, sChan.Loc(:,iInteg)', sChan.Orient(:,iInteg)', sChan.Weight(iInteg));
             fprintf(fid, '\n');
         end
     end
