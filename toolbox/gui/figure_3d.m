@@ -2629,7 +2629,7 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
                     if isempty(sElectrodes(iElec).ContactSpacing) || (sElectrodes(iElec).ContactSpacing == 0) || (sElectrodes(iElec).ContactSpacing * sElectrodes(iElec).ContactNumber > sElectrodes(iElec).ElecLength)
                         sElectrodes(iElec).ContactSpacing = sElectrodes(iElec).ElecLength / maxContactNumberSeeg;
                     end
-                    X = 2 * nRows * sElectrodes(iElec).ContactLength * [1 1];
+                    X = 2 * nRows * sElectrodes(iElec).ContactLength * [1 1] + 0.0001;
                     Y = [maxLengthSeeg - sElectrodes(iElec).ElecLength, maxLengthSeeg];
                     sElectrodes(iElec).Loc = [X; Y; 0, 0];
                     nRows = nRows + 1;
@@ -2641,7 +2641,7 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
                     sElectrodes(iElec).ContactDiameter = maxDiameterEcog;
                     % ECOG strip
                     if (length(sElectrodes(iElec).ContactNumber) == 1)
-                        X = 1.5 * nRows * maxDiameterEcog * [1 1];
+                        X = 1.5 * nRows * maxDiameterEcog * [1 1] + 0.0001;
                         Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber + 1];
                         sElectrodes(iElec).Loc = [X; Y; 0, 0];
                         nRows = nRows + 1;
