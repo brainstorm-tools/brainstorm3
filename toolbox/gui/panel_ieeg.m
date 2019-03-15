@@ -513,7 +513,7 @@ function UpdateElecProperties(isUpdateModelList)
     end
     % Update panel
     gui_validate_text(ctrl.jTextNcontacts,     [], [], {1,1024,1}, 'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
-    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,10}, 'list',     1, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
+    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,10}, 'optional', 1, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
     gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,10},  'optional', 1, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
     gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,10},  'optional', 1, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
     gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,10},  'optional', 1, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
@@ -710,7 +710,7 @@ end
 
 
 %% ===== EDIT ELECTRODE LABEL =====
-% Rename one and only one selected electrode
+% Rename one selected electrode
 function EditElectrodeLabel(varargin)
     global GlobalData;
     % Get selected electrodes
@@ -738,7 +738,7 @@ function EditElectrodeLabel(varargin)
         java_dialog('warning', ['Electrode "' newLabel '" already exists.'], 'Rename selected electrode');
         return;
     % Check that name do not include a digit
-    elseif any(ismember(newLabel, '0123456789-,:;.*+=?!<>''"`&%$()[]{}/\_@ ·¡‡¿‚¬‰ƒ„√Â≈Ê∆Á«È…Ë»Í ÎÀÌÕÏÃÓŒÔœÒ—Û”Ú“Ù‘ˆ÷ı’¯ÿúåﬂ˙⁄˘Ÿ˚€¸‹'))
+    elseif any(ismember(newLabel, '0123456789:;*=?!<>"`&%$()[]{}/\_@ ·¡‡¿‚¬‰ƒ„√Â≈Ê∆Á«È…Ë»Í ÎÀÌÕÏÃÓŒÔœÒ—Û”Ú“Ù‘ˆ÷ı’¯ÿúåﬂ˙⁄˘Ÿ˚€¸‹'))
         java_dialog('warning', 'New electrode name should not include digits, spaces or special characters.', 'Rename selected electrode');
         return;
     end
@@ -757,15 +757,22 @@ function EditElectrodeLabel(varargin)
     iChan = find(strcmp({GlobalData.DataSet(iDSchan).Channel.Group}, oldLabel));
     % Rename all the corresponding data channels
     for i = 1:length(iChan)
+        % Check that the channel has really the old name in its label
         chName = GlobalData.DataSet(iDSchan).Channel(iChan(i)).Name;
-        newName = [newLabel, chName(length(oldLabel)+1:end)];
-        % If the updated channel name does not exist yet
-        if ((length(chName) > length(oldLabel)) && strcmp(chName(1:length(oldLabel)), oldLabel)) && ~any(strcmpi(newName, {GlobalData.DataSet(iDSchan).Channel.Name}))
-            % Update channel group
-            GlobalData.DataSet(iDSchan).Channel(iChan(i)).Group = newLabel;
-            % Update channel name
-            GlobalData.DataSet(iDSchan).Channel(iChan(i)).Name = [newLabel, chName(length(oldLabel)+1:end)];
+        if (length(chName) <= length(oldLabel)) || ~strcmp(chName(1:length(oldLabel)), oldLabel)
+            disp(['BST> Channel "' chName '" does not match the name of the group "' oldLabel '": Not reaming to "' newName '"...']);
+            continue;
         end
+        % Check that new channel name does not exist yet
+        newName = [newLabel, chName(length(oldLabel)+1:end)];
+        if any(strcmpi(newName, {GlobalData.DataSet(iDSchan).Channel.Name}))
+            disp(['BST> Channel "' chName '" cannot be renamed: a channel named "' newName '" already exists.']);
+            continue;
+        end
+        % Update channel group
+        GlobalData.DataSet(iDSchan).Channel(iChan(i)).Group = newLabel;
+        % Update channel name
+        GlobalData.DataSet(iDSchan).Channel(iChan(i)).Name = newName;
     end
     % Update figures
     UpdateFigures();
@@ -822,11 +829,20 @@ function ValidateOptions(optName, jControl)
         return;
     end
     sSelElec = sElectrodes(iSelElec);
+    isModified = 0;
     % Get new value
     if strcmpi(optName, 'Type')
         val = char(jControl.getText());
     elseif strcmpi(optName, 'ContactNumber')
-        val = str2num(jControl.getText());
+        val = round(str2num(jControl.getText()));
+        % SEEG electrode can have only one dimension, others two dimensions max
+        if (length(val) >= 2) && strcmpi(sElectrodes.Type, 'SEEG')
+            val = val(1);
+            jControl.setText(sprintf('%d', val));
+        elseif (length(val) >= 3)
+            val = val(1:2);
+            jControl.setText(sprintf('%d ', val));
+        end
     else
         val = str2num(jControl.getText()) / 1000;
     end
@@ -835,7 +851,6 @@ function ValidateOptions(optName, jControl)
         return;
     end
     % Update field for all the selected electrodes
-    isModified = 0;
     for i = 1:length(sSelElec)
         if ~isequal(sSelElec(i).(optName), val)
             sSelElec(i).(optName) = val;
@@ -845,6 +860,10 @@ function ValidateOptions(optName, jControl)
     % Save electrodes
     if isModified
         SetElectrodes(iSelElec, sSelElec);
+        % Update iEEG panel if needed
+        if ismember(optName, {'Type', 'ContactNumber'})
+            UpdateElecProperties(1);
+        end
         % Update figures
         UpdateFigures();
     end
@@ -979,7 +998,7 @@ function AddElectrode()
         java_dialog('warning', ['Electrode "' newLabel '" already exists.'], 'New electrode');
         return;
     % Check if labels include invalid characters
-    elseif any(ismember(newLabel, '0123456789-,:;.*+=?!<>''"`&%$()[]{}/\_@ ·¡‡¿‚¬‰ƒ„√Â≈Ê∆Á«È…Ë»Í ÎÀÌÕÏÃÓŒÔœÒ—Û”Ú“Ù‘ˆ÷ı’¯ÿúåﬂ˙⁄˘Ÿ˚€¸‹'))
+    elseif any(ismember(newLabel, '0123456789:;*=?!<>"`&%$()[]{}/\_@ ·¡‡¿‚¬‰ƒ„√Â≈Ê∆Á«È…Ë»Í ÎÀÌÕÏÃÓŒÔœÒ—Û”Ú“Ù‘ˆ÷ı’¯ÿúåﬂ˙⁄˘Ÿ˚€¸‹'))
         java_dialog('warning', 'New electrode name should not include digits, spaces or special characters.', 'New electrode');
         return;
     end
@@ -1384,13 +1403,14 @@ function UpdateFigures(hFigTarget)
                 hElectrodeObjects = [findobj(hFig, 'Tag', 'ElectrodeGrid'); findobj(hFig, 'Tag', 'ElectrodeDepth'); findobj(hFig, 'Tag', 'ElectrodeWire')];
                 if ~isempty(hElectrodeObjects) || ismember(Modality, {'ECOG','SEEG'})
                     % figure_3d('PlotSensors3D', iDS, iFig);
-                    view_channels(GlobalData.DataSet(iDS).ChannelFile, Modality, 1, 0, hFig, 1);
+                    isLabels = isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hSensorLabels') && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSensorLabels);
+                    view_channels(GlobalData.DataSet(iDS).ChannelFile, Modality, 1, isLabels, hFig, 1);
                 end
             case 'MriViewer'
                 hElectrodeObjects = [findobj(hFig, 'Tag', 'ElectrodeGrid'); findobj(hFig, 'Tag', 'ElectrodeDepth'); findobj(hFig, 'Tag', 'ElectrodeWire')];
                 if ~isempty(hElectrodeObjects) || ismember(Modality, {'ECOG','SEEG'})
                     figure_mri('PlotSensors3D', iDS, iFig);
-                    GlobalData.DataSet(iDS).Figure(iFig).Handles = figure_mri('PlotElectrodes', iDS, iFig, GlobalData.DataSet(iDS).Figure(iFig).Handles);
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles = figure_mri('PlotElectrodes', iDS, iFig, GlobalData.DataSet(iDS).Figure(iFig).Handles, 1);
                     figure_mri('UpdateVisibleSensors3D', hFig);
                     figure_mri('UpdateVisibleLandmarks', hFig);
                 end
@@ -1981,7 +2001,12 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
             % Add new channels
             if isImplantation
                 sChannel = db_template('channeldesc');
-                sChannel.Type  = sElectrodes(iElec).Type;
+                switch (sElectrodes(iElec).Type)
+                    case 'SEEG'
+                        sChannel.Type = 'SEEG';
+                    case {'ECOG','ECOG-mid'}
+                        sChannel.Type = 'ECOG';
+                end
                 sChannel.Group = sElectrodes(iElec).Name;
                 for i = 1:prod(sElectrodes(iElec).ContactNumber)
                     sChannel.Name = sprintf('%s%d', sElectrodes(iElec).Name, i);
@@ -2034,7 +2059,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
             end
          
         % === ECOG STRIPS ===
-        elseif (strcmpi(Modality, 'ECOG') && (length(sElectrodes(iElec).ContactNumber) == 1))
+        elseif (ismember(Modality, {'ECOG','ECOG-mid'}) && (length(sElectrodes(iElec).ContactNumber) == 1))
             % Check number of available points
             if (nPoints < 2)
                 disp(['BST> Warning: Positions are not defined for ECOG strip "' sElectrodes(iElec).Name '".']);
@@ -2076,7 +2101,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
             end
 
         % === ECOG GRIDS ===
-        elseif strcmpi(Modality, 'ECOG')
+        elseif ismember(Modality, {'ECOG','ECOG-mid'})
             % Two different representations for the same grid (U=rows, V=cols)
             %                             |              V ->
             %    Q ___________ S          |        P ___________ T
@@ -2283,8 +2308,8 @@ function SetElectrodeLoc(iLoc, jButton)
     % Update contact positions
 %     if (~isempty(iChan) || isImplantation) && ...
     if ((strcmpi(sSelElec.Type, 'SEEG') && (size(sSelElec.Loc,2) >= 2)) || ...
-          (ismember(sSelElec.Type, {'ECOG','ECOG-mid'}) && (length(sSelElec.ContactNumber) == 1) && (size(sSelElec.Loc,2) >= 2)) || ...
-          (ismember(sSelElec.Type, {'ECOG','ECOG-mid'}) && (size(sSelElec.Loc,2) >= 4)))
+        (ismember(sSelElec.Type, {'ECOG','ECOG-mid'}) && (length(sSelElec.ContactNumber) == 1) && (size(sSelElec.Loc,2) >= 2)) || ...
+        (ismember(sSelElec.Type, {'ECOG','ECOG-mid'}) && (size(sSelElec.Loc,2) >= 4)))
         % Warnings and checks
         if strcmpi(sSelElec.Type, 'SEEG') && isempty(sSelElec.ContactSpacing)
             bst_error(['Contact spacing is not defined for electrode "' sSelElec.Name '".'], 'Set electrode position', 0);
@@ -2434,7 +2459,7 @@ function ExportChannelFile()
     end
     % Get the channels corresponding to these contacts
     iChannels = find(ismember({GlobalData.DataSet(iDS(1)).Channel.Group}, {sElec.Name}));
-    if isempty(iChannels)
+    if isempty(iChannels)s
         bst_error('No contact positions to export.', 'Export contacts', 0);
         return;
     end
