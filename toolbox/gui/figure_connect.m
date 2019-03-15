@@ -2608,7 +2608,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             if isempty(CLim)
                 CLim = [0, 1];
             end
-            Color = InterpolateColorMap(hFig, DataToFilter(DataMask,:), CMap, CLim);
+            Color = InterpolateColorMap(hFig, abs(DataToFilter(DataMask,:)), CMap, CLim);
             
             % Get scout information
             nAgregatingNode = size(AgregatingNodes, 2);
