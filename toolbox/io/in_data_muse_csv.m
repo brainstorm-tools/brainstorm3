@@ -1,6 +1,9 @@
 function [DataMat, ChannelMat] = in_data_muse_csv(DataFile, sfreq)
 % IN_DATA_MUSE_CSV: Imports a Muse CSV file.
 %
+% Muse file format specification:
+% http://developer.choosemuse.com/tools/windows-tools/available-data-muse-direct
+%    
 % USAGE: [DataMat, ChannelMat] = in_data_muse_csv(DataFile, sfreq=[ask]);
 
 % @=============================================================================
@@ -21,7 +24,7 @@ function [DataMat, ChannelMat] = in_data_muse_csv(DataFile, sfreq)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2018
+% Authors: Francois Tadel, 2018-2019
 
 
 % ===== PARSE INPUTS =====
@@ -47,8 +50,15 @@ if (fid == -1)
 end
 % Read header line
 Labels = fgetl(fid);
+% Detect type of separator (, or ;)
+if (nnz(Labels == ';') > nnz(Labels == ','))
+    disp('BST> Muse: Using ";" as a separator instead of ",".');
+    colSeparator = ';';
+else
+    colSeparator = ',';
+end
 % Split labels
-Labels = strtrim(str_split(Labels, ','));
+Labels = strtrim(str_split(Labels, colSeparator));
 % Default reading pattern
 cellFormat = repmat({'%f'}, 1, length(Labels));
 % Find timestamp
@@ -68,8 +78,18 @@ end
 % Final reading format for the rest of the file
 strFormat = sprintf('%s ', cellFormat{:});
 strFormat(end) = [];
-% Read the rest of the file
-RecMat = textscan(fid, strFormat, 'Delimiter', ',');
+% When using the ";" as a separator, some "," might be used instead of "."
+if (colSeparator == ';')
+    % Read the rest of the file as plain text
+    RecMat = fread(fid, [1, Inf], '*char');
+    % Replace all commas "," with dots "." in the values
+    RecMat(RecMat == ',') = '.';
+    % Parse the fixed string
+    RecMat = textscan(RecMat, strFormat, 'Delimiter', colSeparator);
+else
+    % Read the rest of the file
+    RecMat = textscan(fid, strFormat, 'Delimiter', colSeparator);
+end
 % Close file
 fclose(fid);
 % Check for errors
@@ -93,6 +113,18 @@ bst_progress('text', 'Reconstructing data matrix...');
 % Find a column that has non-empty values that is not a special column
 iColAll = setdiff(1:length(Labels), [iTimestamp, iElements]);
 iColRec = iColAll(~cellfun(@(c)all(isnan(c)), RecMat(iColAll)));
+% If the last line is incomplete: delete it
+lastFullRow = length(RecMat{iColRec(end)});
+if (length(RecMat{iColRec(1)}) > lastFullRow)
+    for i = 1:length(RecMat)
+        if (length(RecMat{i}) > lastFullRow)
+            RecMat{i} = RecMat{i}(1:lastFullRow);
+        end
+    end
+    if (length(rawTime) > lastFullRow)
+        rawTime = rawTime(1:lastFullRow);
+    end
+end
 % Rebuild data matrix
 rawF = [RecMat{iColRec}]';
 % Find events
@@ -113,16 +145,11 @@ rawTime(iTimeEvt) = [];
 % ===== REINTERPOLATE =====
 bst_progress('text', 'Inteprolating recordings...');
 % Remove duplicated time points
-uniqueTime = unique(rawTime);
+[uniqueTime,iUnique] = unique(rawTime);
 if (length(uniqueTime) < length(rawTime))
-    % Detect duplicates
-    countTime = hist(rawTime, uniqueTime);
-    iRepeated = find(countTime ~= 1);
-    % Remove duplicates
-    rawTime(iRepeated) = [];
-    rawF(:,iRepeated) = [];
-    % Dispay message
-    disp(sprintf('BST> Muse: Removed %d time samples.', length(iRepeated)));
+    disp(sprintf('BST> Muse: Removed %d duplicated time samples.', length(rawTime) - length(uniqueTime)));
+    rawTime = rawTime(iUnique);
+    rawF = rawF(:,iUnique);
 end
 % Define time vector
 Time = 0:1/sfreq:max(rawTime);
@@ -140,7 +167,7 @@ end
 % Create empty structure
 DataMat = db_template('DataMat');
 % Fill structure
-DataMat.F           = F ./ 1000;
+DataMat.F           = F .* 1e-6;  % Data stored in microV: http://developer.choosemuse.com/tools/windows-tools/available-data-muse-direct
 DataMat.Time        = Time;
 DataMat.Comment     = fBase;
 DataMat.ChannelFlag = ones(nChannels, 1);
