@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 March 2019
 - Anatomy: Deface MRI with FreeSurfer or SPM
+- Anatomy: World coordinates made available in MRI viewer
 - IO: Support for synchronized EEG-video (link raw and import epochs)
 - GUI: Review of synchronized EEG-video with VLC ActiveX plugin
 - GUI: SEEG 2DElectrode topography (and 2DLayout without 3D positions)

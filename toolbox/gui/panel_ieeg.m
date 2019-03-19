@@ -2066,8 +2066,6 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
                 continue;
             end
             % Compute contacts positions
-            Loc1 = sElectrodes(iElec).Loc(:,1);
-            Loc2 = sElectrodes(iElec).Loc(:,2);
             w1 = sElectrodes(iElec).ContactNumber-1:-1:0;
             w2 = 0:sElectrodes(iElec).ContactNumber-1;
             NewLoc = ((sElectrodes(iElec).Loc(:,1) * w1 + sElectrodes(iElec).Loc(:,2) * w2) ./ (w1 + w2))';
