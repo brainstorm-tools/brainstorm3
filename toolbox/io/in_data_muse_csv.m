@@ -85,10 +85,10 @@ if (colSeparator == ';')
     % Replace all commas "," with dots "." in the values
     RecMat(RecMat == ',') = '.';
     % Parse the fixed string
-    RecMat = textscan(RecMat, strFormat, 'Delimiter', colSeparator);
+    RecMat = textscan(RecMat, strFormat, 'Delimiter', colSeparator, 'TreatAsEmpty', '#NOM?');
 else
     % Read the rest of the file
-    RecMat = textscan(fid, strFormat, 'Delimiter', colSeparator);
+    RecMat = textscan(fid, strFormat, 'Delimiter', colSeparator, 'TreatAsEmpty', '#NOM?');
 end
 % Close file
 fclose(fid);
@@ -96,10 +96,26 @@ fclose(fid);
 if isempty(RecMat) || isempty(RecMat{1})
     error('File is could not be read as CSV.');
 end
+% If the last line is incomplete: delete it
+lastFullRow = length(RecMat{end});
+if (length(RecMat{1}) > lastFullRow)
+    for i = 1:length(RecMat)
+        if (length(RecMat{i}) > lastFullRow)
+            RecMat{i} = RecMat{i}(1:lastFullRow);
+        end
+    end
+end
 
 
 % ===== CONVERT TIMESTAMPS TO TIME =====
 bst_progress('text', 'Processing time stamps...');
+% Remove the empty timestamps
+iNoTime = find(cellfun(@isempty, RecMat{iTimestamp}));
+if ~isempty(iNoTime)
+    for i = 1:length(RecMat)
+        RecMat{i}(iNoTime) = [];
+    end
+end
 % Convert time stamps to datenum
 rawTime = datenum(RecMat{iTimestamp})';
 % Set t=0 at the first sample
@@ -113,22 +129,10 @@ bst_progress('text', 'Reconstructing data matrix...');
 % Find a column that has non-empty values that is not a special column
 iColAll = setdiff(1:length(Labels), [iTimestamp, iElements]);
 iColRec = iColAll(~cellfun(@(c)all(isnan(c)), RecMat(iColAll)));
-% If the last line is incomplete: delete it
-lastFullRow = length(RecMat{iColRec(end)});
-if (length(RecMat{iColRec(1)}) > lastFullRow)
-    for i = 1:length(RecMat)
-        if (length(RecMat{i}) > lastFullRow)
-            RecMat{i} = RecMat{i}(1:lastFullRow);
-        end
-    end
-    if (length(rawTime) > lastFullRow)
-        rawTime = rawTime(1:lastFullRow);
-    end
-end
 % Rebuild data matrix
 rawF = [RecMat{iColRec}]';
 % Find events
-iTimeEvt = find(isnan(rawF(1,:)));
+iTimeEvt = find(all(isnan(rawF),1));
 % Get event timing
 evtTime = rawTime(iTimeEvt);
 % Get event labels
@@ -140,7 +144,12 @@ end
 % Remove events from data matrix
 rawF(:,iTimeEvt) = [];
 rawTime(iTimeEvt) = [];
-
+% Remove other missing values: replacing with values
+iMissing = find(any(isnan(rawF),1));
+if ~isempty(iMissing)
+    disp(sprintf('BST> Muse: Missing data at %d time points. Replacing with zeros...', length(iMissing)));
+    rawF(isnan(rawF)) = 0;
+end
 
 % ===== REINTERPOLATE =====
 bst_progress('text', 'Inteprolating recordings...');
