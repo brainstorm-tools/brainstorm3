@@ -365,16 +365,8 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0)
             end
             % Apply transformation
             if isApplyVox2ras
-                % Get the transformation
-                iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
-                vox2ras = sMri.InitTransf{iTransf,2};
-                % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-                vox2ras = vox2ras * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-                % 1st operation: Convert from MRI(mm) to voxels
-                vox2ras = vox2ras * diag(1 ./ [sMri.Voxsize, 1]);
-                % Compute the transformation SUBJECT=>MRI (in meters)
-                Transf = inv(vox2ras);
-                Transf(1:3,4) = Transf(1:3,4) ./ 1000;
+                % Get the transformation WORLD=>MRI (in meters)
+                Transf = cs_convert(sMri, 'world', 'mri');
                 % Add the transformation MRI=>SCS
                 if isfield(sMri,'SCS') && isfield(sMri.SCS,'R') && ~isempty(sMri.SCS.R) && isfield(sMri.SCS,'T') && ~isempty(sMri.SCS.T)
                     Transf = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1] * Transf;

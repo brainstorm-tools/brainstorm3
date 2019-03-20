@@ -90,12 +90,10 @@ if ischar(TransfSrc)
         if ~isfield(sMriSrc, 'InitTransf') || isempty(sMriSrc.InitTransf) || ~any(ismember(sMriSrc.InitTransf(:,1), 'vox2ras'))
             errMsg = 'No vox2ras transformation available for the input volume.';
         else
-            iTransfSrc = find(strcmpi(sMriSrc.InitTransf(:,1), 'vox2ras'));
-            TransfSrc = sMriSrc.InitTransf{iTransfSrc(1),2};
-            % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-            TransfSrc = TransfSrc * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-            % 1st operation: Convert from MRI(mm) to voxels
-            TransfSrc = TransfSrc * diag(1 ./ [sMriSrc.Voxsize, 1]);
+            % Get transformation MRI=>WORLD
+            TransfSrc = cs_convert(sMriSrc, 'mri', 'world');
+            % Convert to millimeters (to match the fiducials storage)
+            TransfSrc(1:3,4) = TransfSrc(1:3,4) .* 1000;
         end
         fileTag = '';
     end
@@ -118,13 +116,11 @@ if ischar(TransfRef)
     elseif strcmpi(TransfRef, 'vox2ras')
         if ~isfield(sMriRef, 'InitTransf') || isempty(sMriRef.InitTransf) || ~any(ismember(sMriRef.InitTransf(:,1), 'vox2ras'))
             errMsg = 'No vox2ras transformation available for the reference volume.';
-        else
-            iTransfRef = find(strcmpi(sMriRef.InitTransf(:,1), 'vox2ras'));
-            TransfRef = sMriRef.InitTransf{iTransfRef(1),2};
-            % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-            TransfRef = TransfRef * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-            % 1st operation: Convert from MRI(mm) to voxels
-            TransfRef = TransfRef * diag(1 ./ [sMriRef.Voxsize, 1]);
+        else           
+            % Get transformation MRI=>WORLD
+            TransfRef = cs_convert(sMriRef, 'mri', 'world');
+            % Convert to millimeters (to match the fiducials storage)
+            TransfRef(1:3,4) = TransfRef(1:3,4) .* 1000;
         end
     end
 end
