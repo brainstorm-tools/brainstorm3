@@ -4224,7 +4224,7 @@ function JumpMaximum(hFig)
 end
 
 %% ===== SELECT FIBER SCOUTS =====
-function SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
+function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     global GlobalData;
     % Parse arguments
     if nargin < 4
@@ -4267,14 +4267,14 @@ function SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     iFoundScouts = iFoundScouts(iFoundFibers);
     
     %% Plot selected fibers
-    if ColorOnly
-        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
-    else
+    if ~ColorOnly
         % Remove old fibers
         delete(TessInfo(iTess).hPatch);
         % Plot fibers
         [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:));
     end
+    TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
+
     % Update figure's surfaces list and current surface pointer
     setappdata(hFigFib, 'Surface',  TessInfo);
     bst_progress('stop');

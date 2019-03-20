@@ -2343,7 +2343,6 @@ function UpdateColormap(hFig)
             iData = find(DataMask == 1) - 1;
             iScouts = DataPair(iData + 1, 1:2) - nAgregatingNode;
             figure_3d('SelectFiberScouts', hFig, iScouts, StartColor, 1);
-            disp('colored')
         end
     end
     
@@ -2618,9 +2617,17 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             nAgregatingNode = size(AgregatingNodes, 2);
             iScouts = DataToFilter(iData + 1, 1:2) - nAgregatingNode;
             
+            % Get color information
+            CMap = get(hFig, 'Colormap');
+            CLim = getappdata(hFig, 'CLim');
+            if isempty(CLim)
+                CLim = [0, 1];
+            end
+            Color = InterpolateColorMap(hFig, abs(DataToFilter(DataMask,:)), CMap, CLim);
+            
             % Send to 3D fibers
             if ~isempty(iScouts)
-                figure_3d('SelectFiberScouts', hFig, iScouts);
+                figure_3d('SelectFiberScouts', hFig, iScouts, Color);
             end
         end
     end
