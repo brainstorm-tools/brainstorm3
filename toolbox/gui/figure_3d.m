@@ -2269,11 +2269,7 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
 end
 
 %% ===== PLOT FIBERS =====
-function varargout = PlotFibers(hFig, FibPoints, Color)
-    if nargin < 3
-        Color = [];
-    end
-
+function varargout = PlotFibers(hFig, FibPoints)
     % Set figure as current
     set(0, 'CurrentFigure', hFig);
     
@@ -2295,21 +2291,23 @@ function varargout = PlotFibers(hFig, FibPoints, Color)
     else
         iFibers = 1:numFibers;
     end
-    
+
     % Plot fibers
     lines = line(FibPoints(iFibers,:,1)', FibPoints(iFibers,:,2)', FibPoints(iFibers,:,3)');
-    
-    % Set color
-    if ~isempty(Color)
-        for iFib = 1:length(iFibers)
-            lines(iFib).Color = Color(iFib,:);
-        end
-    end
     
     % Set output variables
     if nargout > 0
         varargout{1} = hFig;
         varargout{2} = lines;
+    end
+end
+
+function lines = ColorFibers(lines, Color)
+    % Set color
+    if ~isempty(Color)
+        for iFib = 1:length(lines)
+            lines(iFib).Color = Color(iFib,:);
+        end
     end
 end
 
@@ -4226,9 +4224,13 @@ function JumpMaximum(hFig)
 end
 
 %% ===== SELECT FIBER SCOUTS =====
-function SelectFiberScouts(hFigConn, iScouts, Color)
-    %% Get fibers information
+function SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     global GlobalData;
+    % Parse arguments
+    if nargin < 4
+        ColorOnly = 0;
+    end
+    %% Get fibers information
     iDSFib          = getappdata(hFigConn, 'iDSFib');
     iFigFib         = getappdata(hFigConn, 'iFigFib');
     TfInfo = getappdata(hFigConn, 'Timefreq');
@@ -4265,12 +4267,15 @@ function SelectFiberScouts(hFigConn, iScouts, Color)
     iFoundScouts = iFoundScouts(iFoundFibers);
     
     %% Plot selected fibers
-    % Remove old fibers
-    delete(TessInfo(iTess).hPatch);
-    % Plot fibers
-    [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:), Color(iFoundScouts,:));
+    if ColorOnly
+        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
+    else
+        % Remove old fibers
+        delete(TessInfo(iTess).hPatch);
+        % Plot fibers
+        [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:));
+    end
     % Update figure's surfaces list and current surface pointer
     setappdata(hFigFib, 'Surface',  TessInfo);
     bst_progress('stop');
 end
-

@@ -2239,7 +2239,7 @@ end
 
 
 %% ===== UPDATE COLORMAP =====
-function UpdateColormap(hFig)   
+function UpdateColormap(hFig)
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
     if isempty(TfInfo)
@@ -2332,6 +2332,18 @@ function UpdateColormap(hFig)
         if (~is3DDisplay)
             % Offset is always in absolute
             OGL.setMeasureLinkOffset(find(DataMask) - 1, Offset(:).^2 * 2);
+        end
+        
+        % === UPDATE FIBER COLORS ===
+        plotFibers = getappdata(hFig, 'plotFibers');
+        if plotFibers
+            % Get scout information
+            AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
+            nAgregatingNode = size(AgregatingNodes, 2);
+            iData = find(DataMask == 1) - 1;
+            iScouts = DataPair(iData + 1, 1:2) - nAgregatingNode;
+            figure_3d('SelectFiberScouts', hFig, iScouts, StartColor, 1);
+            disp('colored')
         end
     end
     
@@ -2602,20 +2614,14 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         % If we're plotting fibers, send pairs of scouts that are to be displayed
         plotFibers = getappdata(hFig, 'plotFibers');
         if plotFibers
-            % Get color information
-            CMap = get(hFig, 'Colormap');
-            CLim = getappdata(hFig, 'CLim');
-            if isempty(CLim)
-                CLim = [0, 1];
-            end
-            Color = InterpolateColorMap(hFig, abs(DataToFilter(DataMask,:)), CMap, CLim);
-            
             % Get scout information
             nAgregatingNode = size(AgregatingNodes, 2);
             iScouts = DataToFilter(iData + 1, 1:2) - nAgregatingNode;
             
             % Send to 3D fibers
-            figure_3d('SelectFiberScouts', hFig, iScouts, Color);
+            if ~isempty(iScouts)
+                figure_3d('SelectFiberScouts', hFig, iScouts);
+            end
         end
     end
 end
