@@ -153,6 +153,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelDistance.setMaximumSize(java.awt.Dimension(jPanelDistance.getMaximumSize().getWidth(), jPanelDistance.getPreferredSize().getHeight()));
     jPanelLinks.setMaximumSize(java.awt.Dimension(jPanelLinks.getMaximumSize().getWidth(), jPanelLinks.getPreferredSize().getHeight()));
     jPanelAnatomical.setMaximumSize(java.awt.Dimension(jPanelAnatomical.getMaximumSize().getWidth(), jPanelAnatomical.getPreferredSize().getHeight()));
+    jPanelFiber.setMaximumSize(java.awt.Dimension(jPanelFiber.getMaximumSize().getWidth(), jPanelFiber.getPreferredSize().getHeight()));
     
     % Add an extra glue at the end, so that panel stay small
     jPanelNew.add(Box.createVerticalGlue());
