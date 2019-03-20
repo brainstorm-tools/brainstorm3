@@ -134,6 +134,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jPanelAnatomical.add('br', jToggleHemi);
         jPanelAnatomical.add('br', jToggleLobe);
     jPanelNew.add(jPanelAnatomical);
+    % Fiber filtering
+    jPanelFiber = gui_river([1,1], [2,2,2,2], 'Show connections');
+        jToggleAllConns  = gui_component('radio', [], [], 'All',   [], [], @ToggleFiberFiltering_Callback);
+        jToggleAnatConsistConns = gui_component('radio', [], [], 'Anatomically accurate',  [], [], @ToggleFiberFiltering_Callback);
+        jToggleAnatInconsistConns = gui_component('radio', [], [], 'Anatomically inaccurate', [], [], @ToggleFiberFiltering_Callback);
+        jPanelFiber.add('', jToggleAllConns);
+        jPanelFiber.add('br', jToggleAnatConsistConns);
+        jPanelFiber.add('br', jToggleAnatInconsistConns);
+    jPanelNew.add(jPanelFiber);
     
     % Set max panel sizes
     drawnow;
@@ -167,6 +176,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jPanelDistance',         jPanelDistance, ...
                                   'jPanelLinks',            jPanelLinks, ...
                                   'jPanelAnatomical',       jPanelAnatomical, ...
+                                  'jPanelFiber',            jPanelFiber, ...
                                   'jComboRows',             jComboRows, ...
                                   'jRadioFunPower',         jRadioFunPower, ...
                                   'jRadioFunMag',           jRadioFunMag, ...
@@ -186,7 +196,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jToggleBiDir',           jToggleBiDir, ...
                                   'jToggleAll',             jToggleAll, ...
                                   'jToggleHemi',            jToggleHemi, ...
-                                  'jToggleLobe',            jToggleLobe));
+                                  'jToggleLobe',            jToggleLobe, ...
+                                  'jToggleAllConns',        jToggleAllConns, ...
+                                  'jToggleAnatConsistConns', jToggleAnatConsistConns, ...
+                                  'jToggleAnatInconsistConns', jToggleAnatInconsistConns));
 
     
 %% =================================================================================
@@ -231,6 +244,18 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             AnatomicalFilter = 2;
         end
         SetAnatomicalFilteringOptions([], AnatomicalFilter);
+    end
+
+    function ToggleFiberFiltering_Callback(varargin)
+        FiberFilter = 0;
+        if (jToggleAllConns.hasFocus())
+            FiberFilter = 0;
+        elseif (jToggleAnatConsistConns.hasFocus())
+            FiberFilter = 1;
+        elseif (jToggleAnatInconsistConns.hasFocus())
+            FiberFilter = 2;
+        end
+        SetFiberFilteringOptions([], FiberFilter);
     end
 end
 
@@ -287,6 +312,7 @@ function UpdatePanel(hFig)
         ctrl.jPanelThreshold.setVisible(0);
         ctrl.jPanelDistance.setVisible(0);
         ctrl.jPanelAnatomical.setVisible(0);
+        ctrl.jPanelFiber.setVisible(0);
         ctrl.jPanelLinks.setVisible(0);
         return
     end
@@ -320,6 +346,7 @@ function UpdatePanel(hFig)
         ctrl.jPanelThreshold.setVisible(0);
         ctrl.jPanelDistance.setVisible(0);
         ctrl.jPanelAnatomical.setVisible(0);
+        ctrl.jPanelFiber.setVisible(0);
         ctrl.jPanelLinks.setVisible(0);
         
     % ===== UPDATE FREQUENCY =====
@@ -438,6 +465,11 @@ function UpdatePanel(hFig)
             ctrl.jToggleAll.setSelected(MeasureAnatomicalFilter == 0);
             ctrl.jToggleHemi.setSelected(MeasureAnatomicalFilter == 1);
             ctrl.jToggleLobe.setSelected(MeasureAnatomicalFilter == 2);
+            % Update fiber filtering
+            MeasureFiberFilter = getappdata(hFig, 'MeasureFiberFilter');
+            ctrl.jToggleAllConns.setSelected(MeasureFiberFilter == 0);
+            ctrl.jToggleAnatConsistConns.setSelected(MeasureFiberFilter == 1);
+            ctrl.jToggleAnatInconsistConns.setSelected(MeasureFiberFilter == 2);
             % Update filtering title
             MinIntensity = sprintf('%1.3f',ThresholdMinMax(1));
             MaxIntensity = sprintf('%1.3f',ThresholdMinMax(2));
@@ -465,12 +497,19 @@ function UpdatePanel(hFig)
                 DisplayInRegion = 0;
             end
             ctrl.jPanelAnatomical.setVisible(DisplayInRegion);
+            % Filter fiber panel
+            plotFibers = getappdata(hFig, 'plotFibers');
+            if isempty(plotFibers)
+                plotFibers = 0;
+            end
+            ctrl.jPanelFiber.setVisible(plotFibers);
 
         else
             ctrl.jPanelThreshold.setVisible(0);
             ctrl.jPanelDistance.setVisible(0);
             ctrl.jPanelLinks.setVisible(0);
             ctrl.jPanelAnatomical.setVisible(0);
+            ctrl.jPanelFiber.setVisible(0);
         end
     end
     % Repaint just in case
@@ -1066,6 +1105,25 @@ function SetAnatomicalFilteringOptions(sOptions, AnatomicalFilter)
     figure_connect('UpdateColormap', hFig);
     % Update panel
     UpdatePanel(hFig);
+end
+
+function SetFiberFilteringOptions(sOptions, FiberFilter)
+    % Get current display options
+    if (nargin < 1) || isempty(sOptions)
+        %sOptions = GetDisplayOptions();
+    end
+    % Get current figure
+    hFig = bst_figures('GetCurrentFigure', 'TF');
+    if isempty(hFig)
+        return
+    end
+    bst_progress('start', 'Fibers Connectivity', 'Selecting appropriate connections...');
+    % Update figure
+    figure_connect('SetMeasureFiberFilterTo', hFig, FiberFilter);
+    figure_connect('UpdateColormap', hFig);
+    % Update panel
+    UpdatePanel(hFig);
+    bst_progress('stop');
 end
 
 

@@ -1666,6 +1666,8 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     SetMeasureDistanceFilter(hFig, 20, 150, Refresh);
     % Anatomy filter
     SetMeasureAnatomicalFilterTo(hFig, 0, Refresh);
+    % Fiber filter
+    SetMeasureFiberFilterTo(hFig, 0, Refresh);
     % Causality direction filter
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     if (IsDirectionalData)
@@ -2067,6 +2069,29 @@ function SetMeasureAnatomicalFilterTo(hFig, NewMeasureAnatomicalFilter, Refresh)
     end
 end
 
+function SetMeasureFiberFilterTo(hFig, NewMeasureFiberFilter, Refresh)
+    % Refresh by default
+    if (nargin < 3)
+        Refresh = 1;
+    end
+    DataPair = getappdata(hFig, 'DataPair');
+    % Get selected rows
+    selNodes = getappdata(hFig, 'SelectedNodes');
+    % Compute new mask
+    NewMeasureFiberMask = GetMeasureFiberMask(hFig, DataPair, NewMeasureFiberFilter);
+    if (Refresh)
+        % Remove previous links
+        SetSelectedNodes(hFig, selNodes, 0, 0);
+    end
+    % Update variable
+    setappdata(hFig, 'MeasureFiberFilter', NewMeasureFiberFilter);
+    setappdata(hFig, 'MeasureFiberMask', NewMeasureFiberMask);
+    if (Refresh)
+        % Redraw selected nodes
+        SetSelectedNodes(hFig, selNodes, 1, Refresh);
+    end
+end
+
 function MeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, DataPair, MeasureAnatomicalFilter)
     ChannelData = getappdata(hFig, 'ChannelData');
     MeasureAnatomicalMask = zeros(size(DataPair,1),1);
@@ -2077,6 +2102,55 @@ function MeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, DataPair, Measur
             MeasureAnatomicalMask = ChannelData(DataPair(:,1),3) ~= ChannelData(DataPair(:,2),3);
         case 2 % 2 - Between Lobe == Not Same Region
             MeasureAnatomicalMask = ChannelData(DataPair(:,1),1) ~= ChannelData(DataPair(:,2),1);
+    end
+end
+
+function MeasureFiberMask = GetMeasureFiberMask(hFig, DataPair, MeasureFiberFilter)
+    global GlobalData;
+    ChannelData = getappdata(hFig, 'ChannelData');
+    MeasureFiberMask = zeros(size(DataPair,1),1);
+    
+    % Only filter if there are fibers shown
+    plotFibers = getappdata(hFig, 'plotFibers');
+    if MeasureFiberFilter == 0 || isempty(plotFibers) || ~plotFibers
+        MeasureFiberMask(:) = 1;
+        return;
+    end
+    
+    %% Get fibers information
+    iDSFib = getappdata(hFig, 'iDSFib');
+    iFigFib = getappdata(hFig, 'iFigFib');
+    TfInfo = getappdata(hFig, 'Timefreq');
+    hFigFib = GlobalData.DataSet(iDSFib).Figure(iFigFib).hFigure;
+    TessInfo = getappdata(hFigFib, 'Surface');
+    iTess = find(ismember({TessInfo.Name}, 'Fibers'));
+    [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
+    
+    %% If fibers not yet assigned to atlas, do so now
+    if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
+        ScoutNames     = getappdata(hFig, 'RowNames');
+        ScoutCentroids = getappdata(hFig, 'RowLocs');
+        FibMat = import_fibers('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
+        % Save in memory to avoid recomputing
+        GlobalData.Fibers(iFib) = FibMat;
+    end
+    
+    % Get scout assignment
+    iFile = find(ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile}));
+    assign = FibMat.Scouts(iFile).Assignment;
+    AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
+    nAgregatingNode = size(AgregatingNodes, 2);
+    DataPair = DataPair(:,1:2) - nAgregatingNode;
+    
+    %% Find nodes that have fiber assignments
+    assignBsx = reshape(assign', [1 size(assign')]);
+    % Get the matches for the pairs and for the flipped pairs
+    indices =  all(bsxfun(@eq, DataPair, assignBsx), 2) | all( bsxfun(@eq, DataPair, flip(assignBsx,2)), 2);
+    % Find the indices of the rows with a match
+    MeasureFiberMask = any(indices,3);
+        
+    if MeasureFiberFilter == 2 % Anatomically inaccurate
+        MeasureFiberMask = ~MeasureFiberMask;
     end
 end
 
@@ -2188,6 +2262,7 @@ function [DataPair, DataMask] = GetPairs(hFig)
         MeasureDisplayMask = getappdata(hFig, 'MeasureDisplayMask');
         MeasureDistanceMask = getappdata(hFig, 'MeasureDistanceMask');
         MeasureAnatomicalMask = getappdata(hFig, 'MeasureAnatomicalMask');
+        MeasureFiberMask = getappdata(hFig, 'MeasureFiberMask');
         MeasureThresholdMask = getappdata(hFig, 'MeasureThresholdMask'); 
         
         DataMask = ones(size(DataPair,1),1);
@@ -2202,6 +2277,10 @@ function [DataPair, DataMask] = GetPairs(hFig)
         % Anatomical filter
         if ~isempty(MeasureAnatomicalMask)
             DataMask =  DataMask == 1 & MeasureAnatomicalMask == 1;
+        end
+        % Fiber filter
+        if ~isempty(MeasureFiberMask)
+            DataMask = DataMask == 1 & MeasureFiberMask == 1;
         end
         % Intensity Threshold filter
         if ~isempty(MeasureThresholdMask)
@@ -2233,6 +2312,13 @@ function [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig)
             % Compute new mask
             NewMeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, RegionDataPair, MeasureAnatomicalFilter);
             RegionDataMask = RegionDataMask & NewMeasureAnatomicalMask;
+        end
+        % Get fiber filter
+        MeasureFiberFilter = getappdata(hFig, 'MeasureFiberFilter');
+        if (~isempty(MeasureFiberFilter))
+            % Compute new mask
+            NewMeasureFiberFilterMask = GetMeasureFiberMask(hFig, RegionDataPair, MeasureFiberFilter);
+            RegionDataMask = RegionDataMask & NewMeasureFiberFilterMask;
         end
     end
 end
