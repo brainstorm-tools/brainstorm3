@@ -22,7 +22,7 @@ function varargout = panel_export_bids(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, 2018
+% Authors: Martin Cousineau, 2018-2019
 
 eval(macro_method);
 end
@@ -83,7 +83,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jTextJsonDataset = gui_component('textfreq', jPanelOpt, 'br hfill', '');
     jPanelJson.add(jPanelOpt);
     jPanelOpt = gui_river([2,2], [2,4,2,4]);
-    gui_component('label', jPanelOpt, 'br', 'Additional MEG sidecar JSON fields: ');
+    gui_component('label', jPanelOpt, 'br', 'Additional data sidecar JSON fields: ');
     jTextJsonMeg = gui_component('textfreq', jPanelOpt, 'br hfill', '');
     jPanelJson.add(jPanelOpt);
     c.gridy = 2;
