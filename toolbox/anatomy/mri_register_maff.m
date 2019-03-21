@@ -214,7 +214,7 @@ function Affine = bst_spm_maff8(sMri, MG,samp,fwhm,tpm,Affine)
 
         ssh   = sum(h0(:));
         ll1   = (sum(sum(h0.*log(h1))) - penalty)/ssh/log(2);
-        disp(sprintf('SPM> Interation #%d: Log-likelihood %f', iter, ll1));
+        disp(sprintf('SPM> Iteration #%d: Log-likelihood %f', iter, ll1));
 
         if (abs(ll1-ll) < 1e-5)
             break; 
