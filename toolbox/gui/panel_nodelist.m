@@ -33,7 +33,7 @@ function varargout = panel_nodelist( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2017; Martin Cousineau, 2017-2019
 
 eval(macro_method);
 end
@@ -126,6 +126,8 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
             jPopup = java_create('javax.swing.JPopupMenu');
             % Menu "Copy file list"
             gui_component('MenuItem', jPopup, [], 'Copy list to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopyPathList());
+            % Menu "Paste file list"
+            gui_component('MenuItem', jPopup, [], 'Paste list from clipboard', IconLoader.ICON_PASTE, [], @(h,ev)PastePathList());
             jPopup.addSeparator();
             % Menu "Remove from list"
             gui_component('MenuItem', jPopup, [], 'Clear list', IconLoader.ICON_DELETE, [], @(h,ev)ResetAllLists());
@@ -274,6 +276,77 @@ function CopyPathList()
     end
     % Copy to clipboard
     clipboard('copy', str);
+end
+
+%% ===== PASTE PATH LIST FROM CLIPBOARD  =====
+function PastePathList()
+    % Get clipboard data
+    str = strtrim(clipboard('paste'));
+    if isempty(str)
+        return;
+    end
+    
+    % Get selected process panel
+    jTabProcess = bst_get('PanelContainer', 'process');
+    selPanel = char(jTabProcess.getTitleAt(jTabProcess.getSelectedIndex()));
+    isProcess1 = strcmpi(selPanel, 'Process1');
+    
+    % Parse clipboard data
+    try
+        eval(str);
+        numEmptyVars = 0;
+        if exist('sFiles', 'var') ~= 1
+            if exist('sFiles1', 'var') ~= 1
+                if isProcess1
+                    error('No files.');
+                end
+                sFiles = [];
+                numEmptyVars = numEmptyVars + 1;
+            else
+                sFiles = sFiles1;
+            end
+        end
+        if exist('sFiles2', 'var') ~= 1
+            sFiles2 = [];
+            numEmptyVars = numEmptyVars + 1;
+        end
+        assert(numEmptyVars < 2);
+    catch
+        java_dialog('error', ['Could not properly parse your list of files.' 10 ...
+            'Try to copy some files to see the proper format.']);
+        return;
+    end
+    
+    % Check whether we're overwriting files
+    if isProcess1
+        sPrevFiles = panel_nodelist('GetFiles', selPanel);
+        overwrite = ~isempty(sPrevFiles);
+    else
+        sPrevFilesA = panel_nodelist('GetFiles', [selPanel 'A']);
+        sPrevFilesB = panel_nodelist('GetFiles', [selPanel 'B']);
+        overwrite = ~isempty(sPrevFilesA) || ~isempty(sPrevFilesB);
+    end
+    
+    % Warn user if we're overwriting files
+    if overwrite
+        [res, isCancel] = java_dialog('question', ...
+            ['This will overwrite the files you currently have' 10 ...
+             'in the process box. Do you want to continue?']);
+        if isCancel || ~strcmpi(res, 'Yes')
+            return;
+        end
+    end
+    
+    % Clear process box
+    ResetAllLists();
+    
+    % Add new files
+    if isProcess1
+        AddFiles('Process1', sFiles);
+    else
+        AddFiles('Process2A', sFiles);
+        AddFiles('Process2B', sFiles2);
+    end
 end
 
 
