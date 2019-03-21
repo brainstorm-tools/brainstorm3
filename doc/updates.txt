@@ -5,6 +5,7 @@ March 2019
 - IO: Support for synchronized EEG-video (link raw and import epochs)
 - GUI: Review of synchronized EEG-video with VLC ActiveX plugin
 - GUI: SEEG 2DElectrode topography (and 2DLayout without 3D positions)
+- Distrib: Updating Brainstorm now downloads only the scripts (skips the compiled version)
 ---------------------------------------------------------------
 February 2019
 - Process: Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)
