@@ -2129,12 +2129,20 @@ function UpdateFigSelectedRows(iDS, iFig)
             end
             % Make initial object copy
             hElectrodeSelect = copyobj(hElectrodeGrid, get(hElectrodeGrid, 'Parent'));
+            % Selected color depends on the figure colormap
+            sColormap = bst_colormaps('GetColormap', hFig);
+            if ~isempty(sColormap) && ismember(sColormap.Name, {'cmap_rbw'})
+                selColor = [0 1 0];
+            else
+                selColor = [1 0 0];
+            end
+            
             % Change properties
             set(hElectrodeSelect, ...
-                'FaceColor', [1 0 0], ...
+                'FaceColor', selColor, ...
                 'EdgeColor', 'none', ...
                 'FaceAlpha', 'flat', ...
-                'FaceVertexAlphaData', 0.1*zeros(size(sphVertices,1),1), ...
+                'FaceVertexAlphaData', zeros(size(sphVertices,1),1), ...
                 'Vertices', sphVertices, ...
                 'Tag',      'ElectrodeSelect');
         end
@@ -2144,7 +2152,7 @@ function UpdateFigSelectedRows(iDS, iFig)
             AlphaData = get(hElectrodeSelect, 'FaceVertexAlphaData');
             % Selected channels: Make visible
             for i = 1:length(iSelChan)
-                AlphaData(sphUserData == iSelChan(i)) = 0.6;
+                AlphaData(sphUserData == iSelChan(i)) = 0.7;
             end
             % Deselected channels: Hide them
             for i = 1:length(iUnselChan)

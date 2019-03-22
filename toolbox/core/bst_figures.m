@@ -1880,20 +1880,27 @@ end
 %  ===== MOUSE SELECTION ===================================================================
 %  =========================================================================================
 % ===== TOGGLE SELECTED ROW =====
-function ToggleSelectedRow(RowName)
+function ToggleSelectedRow(RowNames)
     global GlobalData;
     % Convert to cell
-    if ~iscell(RowName)
-        RowName = {RowName};
+    if ~iscell(RowNames)
+        RowNames = {RowNames};
     end
     % Remove spaces in channel names
-    RowName = cellfun(@(c)strrep(c,' ',''), RowName, 'UniformOutput', 0);
+    RowNames = cellfun(@(c)strrep(c,' ',''), RowNames, 'UniformOutput', 0);
+    % Expand bipolar montages
+    for i = 1:length(RowNames)
+        bipNames = str_split(RowNames{i}, '-');
+        if (length(bipNames) == 2)
+            RowNames = cat(2, RowNames, bipNames);
+        end
+    end
     % If row name is already in list: remove it
-    if ismember(RowName, GlobalData.DataViewer.SelectedRows)
-        SetSelectedRows(setdiff(GlobalData.DataViewer.SelectedRows, RowName));
+    if ismember(RowNames, GlobalData.DataViewer.SelectedRows)
+        SetSelectedRows(setdiff(GlobalData.DataViewer.SelectedRows, RowNames));
     % Else: add it
     else
-        SetSelectedRows(union(GlobalData.DataViewer.SelectedRows, RowName));
+        SetSelectedRows(union(GlobalData.DataViewer.SelectedRows, RowNames));
     end
 end
 
