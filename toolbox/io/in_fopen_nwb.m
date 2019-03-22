@@ -46,7 +46,7 @@ Comment = FileName;
 
 
 
-%% Check if the NWB builder has already been downloaded and properly set up
+%% Check if the NWB builder has already been downloaded
 NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
 
 if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
@@ -57,9 +57,8 @@ if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
         bst_report('Error', sProcess, sInputs, 'This process requires the Neurodata Without Borders SDK.');
         return;
     end
-    downloadAndInstallNWB()
+    downloadNWB()
 end
-
 
 
 %% ===== READ DATA HEADERS =====
@@ -342,7 +341,7 @@ end
 
 
 
-function downloadAndInstallNWB()
+function downloadNWB()
 
     %% Download and extract the necessary files
     NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
@@ -382,41 +381,16 @@ function downloadAndInstallNWB()
     file_delete(NWBTmpDir, 1, 3);
     
     
-    
-    %% Initialize NWB toolbox
-    current_path = pwd;
-    cd(NWBDir);
-    ME = [];
-    
-    % Add NWB to Matlab path
-    addpath(genpath(NWBDir));
-    try
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %% There is a java issue here
-        % GenerateCore can not be initialized with Brainstorm open
-        % making the automated installation impossible
-        
-        % Generate the NWB Schema (First time run)
-        generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-        
-    catch ME
-        try
-            % Try once more (for some reason sometimes there is a mkdir access denial the first time)
-            generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
-        catch ME
-            rmpath(genpath(NWBDir));
-            file_delete(NWBDir, 1, 3);
-        end
-    end
-    cd(current_path);
-    if ~isempty(ME)
-        rethrow(ME);
-    end
+    % Matlab needs to restart before initialization
+    NWB_initialized = 0;
+    save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
     
     
+    % Once downloaded, we need to restart Matlab to refresh the java path
+    java_dialog('warning', ...
+        ['The NWB importer was successfully downloaded.' 10 10 ...
+         'Both Brainstorm AND Matlab need to be restarted in order to load the JAR file.'], 'NWB');
+    error('Please restart Matlab to reload the Java path.');
     
     
 end
