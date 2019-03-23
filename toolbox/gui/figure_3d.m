@@ -2269,7 +2269,12 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
 end
 
 %% ===== PLOT FIBERS =====
-function varargout = PlotFibers(hFig, FibPoints)
+function varargout = PlotFibers(hFig, FibPoints, Colors)
+    dims = size(Colors);
+    if length(dims) < 3
+        Colors = permute(repmat(Colors, 1, 1, size(FibPoints, 2)), [1,3,2]);
+    end
+
     % Set figure as current
     set(0, 'CurrentFigure', hFig);
     
@@ -2291,9 +2296,21 @@ function varargout = PlotFibers(hFig, FibPoints)
     else
         iFibers = 1:numFibers;
     end
-
+    
+    numFibers = length(iFibers);
+    
     % Plot fibers
-    lines = line(FibPoints(iFibers,:,1)', FibPoints(iFibers,:,2)', FibPoints(iFibers,:,3)');
+    for iFib = 1:numFibers
+        lines(iFib) = surface([FibPoints(iFibers(iFib),:,1); FibPoints(iFibers(iFib),:,1)], ...
+            [FibPoints(iFibers(iFib),:,2); FibPoints(iFibers(iFib),:,2)], ...
+            [FibPoints(iFibers(iFib),:,3); FibPoints(iFibers(iFib),:,3)], ...
+            [Colors(iFibers(iFib),:,1:3); Colors(iFibers(iFib),:,1:3)], ...
+            'FaceColor','none',...
+            'EdgeColor','flat');
+    end
+    if numFibers == 0
+        lines = [];
+    end
     
     % Set output variables
     if nargout > 0
@@ -2303,12 +2320,34 @@ function varargout = PlotFibers(hFig, FibPoints)
 end
 
 function lines = ColorFibers(lines, Color)
-    % Set color
-    if ~isempty(Color)
-        for iFib = 1:length(lines)
-            lines(iFib).Color = Color(iFib,:);
+    if isempty(Color) || isempty(lines)
+        return;
+    end
+    
+    bst_progress('start', 'Fiber viewer', 'Coloring fibers...');
+    
+    dims = size(Color);
+    nFibers = length(lines);
+    
+    % Create a full Color matrix if required
+    if length(dims) < 3
+        nPoints = size(lines(1).XData, 2);
+        if dims(1) == 1
+            % One color value for all fibers and points
+            Color = permute(repmat(Color, nFibers, 1, nPoints), [1,3,2]);
+        else
+            % One color value per fiber
+            Color = permute(repmat(Color, 1, 1, nPoints), [1,3,2]);
         end
     end
+    
+    % Set color
+    for iFib = 1:length(lines)
+        lines(iFib).CData = [Color(iFib,:,:); Color(iFib,:,:)];
+    end
+    
+    drawnow;
+    bst_progress('stop');
 end
 
 %% ===== PLOT SQUARE/CUT =====
@@ -2437,9 +2476,7 @@ function UpdateSurfaceColor(hFig, iTess)
     % === FIBERS ===
     elseif strcmpi(TessInfo(iTess).Name, 'Fibers')
         % Set line color
-        for iFib = 1:length(TessInfo(iTess).hPatch)
-            TessInfo(iTess).hPatch(iFib).Color(1:3) = TessInfo(iTess).AnatomyColor(1,1:3);
-        end
+        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, TessInfo(iTess).AnatomyColor(1,1:3));
         
     % === SURFACE ===
     else
@@ -2979,7 +3016,7 @@ function UpdateSurfaceAlpha(hFig, iTess)
         lineWidth = 0.5 + 2.5 * Surface.SurfSmoothValue;
         for iFib = 1:length(Surface.hPatch)
             % Transparency
-            Surface.hPatch(iFib).Color(4) = lineAlpha;
+            Surface.hPatch(iFib).EdgeAlpha = lineAlpha;
             % Smoothing
             Surface.hPatch(iFib).LineWidth = lineWidth;
         end
@@ -4271,9 +4308,10 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
         % Remove old fibers
         delete(TessInfo(iTess).hPatch);
         % Plot fibers
-        [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:));
+        [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:), Color(iFoundScouts,:));
+    else
+        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
     end
-    TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
 
     % Update figure's surfaces list and current surface pointer
     setappdata(hFigFib, 'Surface',  TessInfo);

@@ -1151,7 +1151,7 @@ function iTess = AddSurface(hFig, surfaceFile)
                     % Nothing to do: surface will be displayed as an overlay slice in figure_mri.m
                 case {'3DViz', 'Topography'}
                     % Create and display surface patch
-                    [hFig, TessInfo(iTess).hPatch] = figure_3d('PlotFibers', hFig, FibMat.Points);
+                    [hFig, TessInfo(iTess).hPatch] = figure_3d('PlotFibers', hFig, FibMat.Points, FibMat.Colors);
             end
             
             % Update figure's surfaces list and current surface pointer

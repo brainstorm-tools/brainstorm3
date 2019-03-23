@@ -50,5 +50,6 @@ tracks_interp = tracks_interp / 1000;
 FibMat = db_template('fibers');
 FibMat.Points = permute(tracks_interp, [3,1,2]);
 FibMat.Header = header;
+FibMat = import_fibers('ComputeColor', FibMat);
 
 

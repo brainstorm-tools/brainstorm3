@@ -268,7 +268,8 @@ function NewFibers = FibConcatenate(Fibers)
             continue;
         else
             nFibers = size(Fibers(iFib).Points, 2);
-            NewFibers.Points(:, end+1:end+nFibers) = Fibers(iFib).Points;
+            NewFibers.Points(end+1:end+nFibers, :, :) = Fibers(iFib).Points;
+            NewFibers.Colors(end+1:end+nFibers, :, :) = Fibers(iFib).Colors;
         end
     end
 end
@@ -323,4 +324,30 @@ function FibMat = AssignToScouts(FibMat, ConnectFile, ScoutCentroids)
     FibMat.Scouts(numSurfaces + 1).ConnectFile = ConnectFile;
     FibMat.Scouts(numSurfaces + 1).Assignment = closestPts;
     bst_progress('stop');
+end
+
+
+%% ===== COMPUTE COLOR BASED ON CURVATURE =====
+function FibMat = ComputeColor(FibMat)
+    nFibers = size(FibMat.Points, 1);
+    nPoints = size(FibMat.Points, 2);
+    FibMat.Colors = zeros(nFibers, nPoints, 3, 'uint8');
+    
+    % Compute RGB based on current and next point
+    for iPt = 1:nPoints - 1
+        r = abs(FibMat.Points(:, iPt, 1) - FibMat.Points(:, iPt+1, 1));
+        g = abs(FibMat.Points(:, iPt, 2) - FibMat.Points(:, iPt+1, 2));
+        b = abs(FibMat.Points(:, iPt, 3) - FibMat.Points(:, iPt+1, 3));
+
+        norm = sqrt(r .* r + g .* g + b .* b);
+
+        FibMat.Colors(:, iPt, 1) = 255.0 .* r ./ norm;
+        FibMat.Colors(:, iPt, 2) = 255.0 .* g ./ norm;
+        FibMat.Colors(:, iPt, 3) = 255.0 .* b ./ norm;
+    end
+    
+    % Apply same color to last point
+    FibMat.Colors(:, nPoints, 1) = FibMat.Colors(:, nPoints-1, 1);
+    FibMat.Colors(:, nPoints, 2) = FibMat.Colors(:, nPoints-1, 2);
+    FibMat.Colors(:, nPoints, 3) = FibMat.Colors(:, nPoints-1, 3);
 end

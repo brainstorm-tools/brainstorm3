@@ -100,6 +100,7 @@ I = randsample(oldNbFibers, newNbFibers);
 % Re-order the fibers so that they are in the same order in the output file
 I = sort(I);
 NewFibMat.Points = FibMat.Points(I,:,:);
+NewFibMat.Colors = FibMat.Colors(I,:,:);
 J = 1:newNbFibers;
 
 
