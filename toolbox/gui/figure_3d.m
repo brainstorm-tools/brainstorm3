@@ -661,9 +661,9 @@ function FigureMouseUpCallback(hFig, varargin)
             % Selecting from 3DElectrodes patch
             if ~isempty(hElectrodeGrid)
                 % Select the nearest sensor from the mouse
-                [p, v, vi] = select3d(hElectrodeGrid);
+                [p, v, vi] = select3d(hElectrodeGrid(1));
                 % Get the correspondance electrodes/vertex
-                UserData = get(hElectrodeGrid, 'UserData');
+                UserData = get(hElectrodeGrid(1), 'UserData');
                 % If sensor index is not valid
                 if isempty(vi) || (vi > length(UserData)) || (vi <= 0)
                     return
