@@ -1,13 +1,9 @@
 function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
-
-%% IN_FOPEN_NWB: Open recordings saved in the Neurodata Without Borders format
-
+% IN_FOPEN_NWB: Open recordings saved in the Neurodata Without Borders format
+%
 % This format can save raw signals and/or LFP signals
 % If both are present on the .nwb file, only the RAW signals will be loaded
-
-
-%% 
-
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -29,26 +25,10 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 % Author: Konstantinos Nasiotis 2019
 
 
-
-
-%% ===== GET FILES =====
-% Get base dataset folder
-[tmp, FileName] = bst_fileparts(DataFile);
-
-hdr.BaseFolder = DataFile;
-
-
-
-
-%% ===== FILE COMMENT =====
-% Comment: BaseFolder
-Comment = FileName;
-
-
-
-%% Check if the NWB builder has already been downloaded
+%% ===== INSTALL NWB LIBRARY =====
+% Check if the NWB builder has already been downloaded
 NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
-
+% Install toolbox
 if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
     isOk = java_dialog('confirm', ...
         ['The NWB SDK is not installed on your computer.' 10 10 ...
@@ -57,17 +37,16 @@ if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
         bst_report('Error', sProcess, sInputs, 'This process requires the Neurodata Without Borders SDK.');
         return;
     end
-    downloadNWB()
+    downloadNWB();
+% If installed: add folder to path
+elseif isempty(strfind(NWBDir, path))
+    addpath(genpath(NWBDir));
 end
 
 
 %% ===== READ DATA HEADERS =====
-% hdr.chan_headers = {};
-% hdr.chan_files = {};
-hdr.extension = '.nwb';
-
+% Read header
 nwb2 = nwbRead(DataFile);
-
 
 try
     all_raw_keys = keys(nwb2.acquisition);
@@ -211,20 +190,13 @@ iUniqueConditionsTrials = zeros(length(uniqueConditions),1); % This will hold th
 
 % Get number of epochs
 nEpochs = length(nwb2.intervals_trials.start_time.data.load);
-if nEpochs>1
-    isContinuous = 0; % This is used for assigning events to epochs later
-else
-    isContinuous = 1;
-end
 % Get number of averaged trials
 nAvg = 1;
-
 
 % === EPOCHS FILE ===
 if (nEpochs > 1)
     % Build epochs structure
     for iEpoch = 1:nEpochs
-
         ii = find(strcmp(uniqueConditions, all_conditions{iEpoch}));
         iUniqueConditionsTrials(ii) =  iUniqueConditionsTrials(ii)+1;
         sFile.epochs(iEpoch).label       = [all_conditions{iEpoch} ' (#' num2str(iUniqueConditionsTrials(ii)) ')'];
@@ -236,7 +208,6 @@ if (nEpochs > 1)
 %         sFile.epochs(iEpoch).bad         = badTrials(iEpoch); 
         sFile.epochs(iEpoch).channelflag = [];
     end
-    
     sFile.format    = 'NWB';
 elseif (nEpochs == 1)
     sFile.prop.nAvg = nAvg;
