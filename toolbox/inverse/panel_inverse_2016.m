@@ -80,9 +80,12 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
         % Get inverse options
         OPTIONS = sProcess.options.inverse.Value;
         % List of sensors
-        Modalities = intersect(sFiles(1).ChannelTypes, {'MEG MAG', 'MEG GRAD', 'MEG', 'EEG', 'ECOG', 'SEEG'});
-        if any(ismember({'MEG MAG','MEG GRAD'}, Modalities))
-            Modalities = setdiff(Modalities, 'MEG');
+        Modalities = {'MEG MAG', 'MEG GRAD', 'MEG', 'EEG', 'ECOG', 'SEEG'};
+        if ~isempty(sFiles(1).ChannelTypes)
+            Modalities = intersect(sFiles(1).ChannelTypes, Modalities);
+            if any(ismember({'MEG MAG','MEG GRAD'}, Modalities))
+                Modalities = setdiff(Modalities, 'MEG');
+            end
         end
         % Shared kernel
         isShared = (sProcess.options.output.Value == 1);
