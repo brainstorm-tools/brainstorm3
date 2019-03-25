@@ -46,32 +46,19 @@ Comment = FileName;
 
 
 
+%% Check if the NWB builder has already been downloaded
+NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
 
-%% Check if the NWB builder has already been downloaded and properly set up
-if exist('generateCore','file') ~= 2
-    
-    downloadAndInstallNWB()
-    
-    current_path = pwd;
-    nwb_path = bst_fileparts(which('generateCore'));
-    cd(nwb_path);
-    ME = [];
-    try
-        % Generate the NWB Schema (First time run)
-        generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
-    catch ME
-        try
-            % Try once more (for some reason sometimes there is a mkdir access denial the first time)
-            generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
-        catch ME
-        end
+if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
+    isOk = java_dialog('confirm', ...
+        ['The NWB SDK is not installed on your computer.' 10 10 ...
+             'Download and install the latest version?'], 'Neurodata Without Borders');
+    if ~isOk
+        bst_report('Error', sProcess, sInputs, 'This process requires the Neurodata Without Borders SDK.');
+        return;
     end
-    cd(current_path);
-    if ~isempty(ME)
-        rethrow(ME);
-    end
+    downloadNWB()
 end
-
 
 
 %% ===== READ DATA HEADERS =====
@@ -170,6 +157,10 @@ end
 
 
 
+
+
+
+
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
 sFile = db_template('sfile');
@@ -188,6 +179,71 @@ end
 
 
 nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2);
+
+
+
+
+
+%%
+%% Check for epochs/trials
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHANGES IN THE EPOCHS SECTION SHOULD ALSO BE COPIED TO
+% PROCESS_NWB_CONVERT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+all_conditions   = nwb2.intervals_trials.vectordata.get('condition').data;
+uniqueConditions = unique(nwb2.intervals_trials.vectordata.get('condition').data);
+timeBoundsTrials = double([nwb2.intervals_trials.start_time.data.load nwb2.intervals_trials.stop_time.data.load]);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THIS FIELD MIGHT NOT BE PRESENT ON ALL DATASETS
+% I'M KEEPING IT HERE FOR REFERENCE
+% % Get error trials
+% badTrials = nwb2.intervals_trials.vectordata.get('error_run').data.load;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+iUniqueConditionsTrials = zeros(length(uniqueConditions),1); % This will hold the index of each trial for each condition
+
+% Get number of epochs
+nEpochs = length(nwb2.intervals_trials.start_time.data.load);
+if nEpochs>1
+    isContinuous = 0; % This is used for assigning events to epochs later
+else
+    isContinuous = 1;
+end
+% Get number of averaged trials
+nAvg = 1;
+
+
+% === EPOCHS FILE ===
+if (nEpochs > 1)
+    % Build epochs structure
+    for iEpoch = 1:nEpochs
+
+        ii = find(strcmp(uniqueConditions, all_conditions{iEpoch}));
+        iUniqueConditionsTrials(ii) =  iUniqueConditionsTrials(ii)+1;
+        sFile.epochs(iEpoch).label       = [all_conditions{iEpoch} ' (#' num2str(iUniqueConditionsTrials(ii)) ')'];
+        sFile.epochs(iEpoch).times       = timeBoundsTrials(iEpoch,:);
+        sFile.epochs(iEpoch).samples     = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
+        sFile.epochs(iEpoch).nAvg        = nAvg;
+        sFile.epochs(iEpoch).select      = 1;
+        sFile.epochs(iEpoch).bad         = 0;
+%         sFile.epochs(iEpoch).bad         = badTrials(iEpoch); 
+        sFile.epochs(iEpoch).channelflag = [];
+    end
+    
+    sFile.format    = 'NWB';
+elseif (nEpochs == 1)
+    sFile.prop.nAvg = nAvg;
+    sFile.format    = 'NWB-CONTINUOUS';
+end
+    
+
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
@@ -258,7 +314,6 @@ end
 %% Add information read from header
 sFile.byteorder    = 'l';  % Not confirmed - just assigned a value
 sFile.filename     = DataFile;
-sFile.format       = 'EEG-NWB';
 sFile.device       = nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
 sFile.header.nwb   = nwb2;
 sFile.comment      = nwb2.identifier;
@@ -277,100 +332,7 @@ sFile.header.allBehaviorKeys           = allBehaviorKeys;
 
 %% ===== READ EVENTS =====
 
-% Check if an events field exists in the dataset
-try
-    events_exist = ~isempty(nwb2.stimulus_presentation);
-    if ~events_exist
-        disp('No events in this .nwb file')
-    else
-        all_event_keys = keys(nwb2.stimulus_presentation);
-        disp(' ')
-        disp('The following event types are present in this dataset')
-        disp('------------------------------------------------')
-        for iEvent = 1:length(all_event_keys)
-            disp(all_event_keys{iEvent})
-        end
-        disp(' ')
-    end
-catch
-    disp('No events in this .nwb file')
-    return
-end
-
-
-if events_exist    
-    % Initialize list of events
-    events = repmat(db_template('event'), 1, length(all_event_keys));
-
-    for iEvent = 1:length(all_event_keys)
-        events(iEvent).label   = all_event_keys{iEvent};
-        events(iEvent).color   = rand(1,3);
-        events(iEvent).times   = nwb2.stimulus_presentation.get(all_event_keys{iEvent}).timestamps.load';
-        events(iEvent).samples = round(events(iEvent).times * sFile.prop.sfreq);
-        events(iEvent).epochs  = ones(1, length(events(iEvent).samples));
-    end 
-end
-
-
-
-
-
-%% Read the Spikes' events
-try
-    nNeurons = length(nwb2.units.vectordata.get('max_electrode').data.load);
-    SpikesExist = 1;
-catch
-    warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm - The field "nwb2.units.vectordata.get("max_electrode")" that assigns spikes to specific electrodes is needed')
-    SpikesExist = 0;
-end
-    
-if SpikesExist
-     
-    maxWaveformCh = nwb2.units.vectordata.get('max_electrode').data.load; % The channels on which each Neuron had the maximum amplitude on its waveforms - Assigning each neuron to an electrode
-    
-    if ~exist('events')
-        events_spikes = repmat(db_template('event'), 1, nNeurons);
-    end
-
-    for iNeuron = 1:nNeurons
-
-        if iNeuron == 1
-            times = nwb2.units.spike_times.data.load(1:sum(nwb2.units.spike_times_index.data.load(iNeuron)));
-        else
-            times = nwb2.units.spike_times.data.load(sum(nwb2.units.spike_times_index.data.load(iNeuron-1))+1:sum(nwb2.units.spike_times_index.data.load(iNeuron)));
-        end
-        times = times(times~=0)';
-
-        
-        % Check if a channel has multiple neurons:
-        nNeuronsOnChannel = sum( maxWaveformCh == maxWaveformCh(iNeuron));
-        iNeuronsOnChannel = find(maxWaveformCh == maxWaveformCh(iNeuron));
-           
-        
-        theChannel = find(amp_channel_IDs==maxWaveformCh(iNeuron));
-        
-        if nNeuronsOnChannel == 1
-            events_spikes(iNeuron).label  = ['Spikes Channel ' ChannelMat.Channel(theChannel).Name];
-        else
-            iiNeuron = find(iNeuronsOnChannel==iNeuron);
-            events_spikes(iNeuron).label  = ['Spikes Channel ' ChannelMat.Channel(theChannel).Name ' |' num2str(iiNeuron) '|'];
-        end
-        
-        events_spikes(iNeuron).color      = rand(1,3);
-        events_spikes(iNeuron).epochs     = ones(1,length(times));
-        events_spikes(iNeuron).samples    = times * sFile.prop.sfreq;
-        events_spikes(iNeuron).times      = times;
-        events_spikes(iNeuron).reactTimes = [];
-        events_spikes(iNeuron).select     = 1;
-    end
-        
-        
-    if exist('events')
-        events = [events events_spikes];
-    else
-        events = events_spikes;
-    end
-end
+events = in_events_nwb(sFile, nwb2, nEpochs, ChannelMat);
 
 % Import this list
 sFile = import_events(sFile, [], events);
@@ -379,8 +341,9 @@ end
 
 
 
-function downloadAndInstallNWB()
+function downloadNWB()
 
+    %% Download and extract the necessary files
     NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
     NWBTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB_tmp');
     url = 'https://github.com/NeurodataWithoutBorders/matnwb/archive/master.zip';
@@ -401,6 +364,7 @@ function downloadAndInstallNWB()
         pause(0.1);
         errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'NWB download');
         if ~isempty(errMsg)
+            file_delete(NWBTmpDir, 1, 3);
             error(['Impossible to download NWB.' 10 errMsg]);
         end
     end
@@ -415,7 +379,18 @@ function downloadAndInstallNWB()
     file_move(newNWBDir, NWBDir);
     % Delete unnecessary files
     file_delete(NWBTmpDir, 1, 3);
-    % Add NWB to Matlab path
-    addpath(genpath(NWBDir));
-
+    
+    
+    % Matlab needs to restart before initialization
+    NWB_initialized = 0;
+    save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
+    
+    
+    % Once downloaded, we need to restart Matlab to refresh the java path
+    java_dialog('warning', ...
+        ['The NWB importer was successfully downloaded.' 10 10 ...
+         'Both Brainstorm AND Matlab need to be restarted in order to load the JAR file.'], 'NWB');
+    error('Please restart Matlab to reload the Java path.');
+    
+    
 end

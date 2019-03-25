@@ -140,7 +140,7 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_plexon(DataFile);
     case 'EEG-TDT'
         [sFile, ChannelMat] = in_fopen_tdt(DataFile);
-    case 'EEG-NWB'
+    case {'NWB', 'NWB-CONTINUOUS'}
         [sFile, ChannelMat] = in_fopen_nwb(DataFile);
         
     % ===== IMPORTED STRUCTURES =====

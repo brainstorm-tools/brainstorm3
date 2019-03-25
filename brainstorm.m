@@ -119,6 +119,27 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     if mffJarExists
         javaaddpath(mffJarPath);
     end
+    % Add NWB JAR file if present
+    NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');        
+    initialization_flag_file = bst_fullfile(NWBDir,'NWB_initialized.mat');
+    if exist(initialization_flag_file,'file') == 2
+        load(initialization_flag_file)
+        if ~NWB_initialized
+            %% Initialize NWB toolbox
+            current_path = pwd;
+            cd(NWBDir); % The generateCore needs to run from a specific folder
+            % Add NWB to Matlab path
+            addpath(genpath(NWBDir));
+            % Generate the NWB Schema (First time run)
+            generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
+            
+            % Update Initialization flag
+            NWB_initialized = 1;
+            save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
+            cd(current_path);
+        end
+    end
+
 end
 % Deployed: Remove one of the two JOGL packages from the Java classpath
 if exist('isdeployed', 'builtin') && isdeployed
