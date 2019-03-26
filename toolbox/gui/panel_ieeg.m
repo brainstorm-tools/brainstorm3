@@ -1887,7 +1887,7 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
         elseif ~isempty(sSubject.iScalp)
             SurfaceType = 'scalp';
         else
-            error('No inner skull or scalp surface for this subject.');
+            error('No inner skull or scalp surface for this subject. Compute at least the SPM canonical surfaces.');
         end
     end
     % Get surface
@@ -1897,13 +1897,13 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
         if ~isempty(sSubject.iInnerSkull)
             SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
         else
-            error('No innerskull surface for this subject.');
+            error('No innerskull surface for this subject. Compute at least the SPM canonical surfaces.');
         end
     elseif strcmpi(SurfaceType, 'scalp')
         if ~isempty(sSubject.iScalp)
             SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
         else
-            error('No innerskull surface for this subject.');
+            error('No innerskull surface for this subject. Compute at least the SPM canonical surfaces.');
         end
     elseif ismember(SurfaceType, {'cortex','cortexhull','cortexmask'})
         if ~isempty(sSubject.iCortex)
@@ -1914,7 +1914,7 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
                 isMask = 1;
             end
         else
-            error('No cortex surface for this subject.');
+            error('No cortex surface for this subject. Compute at least the SPM canonical surfaces.');
         end
     end
     % Load surface (or get from memory)
@@ -2251,7 +2251,7 @@ function ProjectContacts(iDS, iFig, SurfaceType)
             continue;
         end
         % Project on the targe surface
-        [NewOrient, NewLoc] = GetChannelNormal(sSubject, [Channels(iChan).Loc]', SurfaceType);
+        [tmp, NewLoc] = GetChannelNormal(sSubject, [Channels(iChan).Loc]', SurfaceType);
         % Replace original channel positions
         for i = 1:length(iChan)
             Channels(iChan(i)).Loc = NewLoc(i,:)';
