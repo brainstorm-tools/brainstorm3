@@ -390,7 +390,12 @@ function UpdateModelList(elecType)
     sModels = GetElectrodeModels();
     % Show only the models from the selected modality
     if ~isempty(elecType)
-        iMod = find(strcmpi({sModels.Type}, elecType));
+        switch (elecType)
+            case 'SEEG'
+                iMod = find(strcmpi({sModels.Type}, 'SEEG'));
+            case {'ECOG', 'ECOG-mid'}
+                iMod = find(strcmpi({sModels.Type}, 'ECOG'));
+        end
         sModels = sModels(iMod);
     end
     % Sort names alphabetically
@@ -1286,11 +1291,12 @@ function AddElectrodeModel()
         end
         % Get all the values
         sNew = db_template('intraelectrode');
-        if ctrl.jRadioEcog.isSelected()
-            sNew.Type = 'ECOG';
-        elseif ctrl.jRadioEcogMid.isSelected()
-            sNew.Type = 'ECOG-mid';
-        end
+%         if ctrl.jRadioEcog.isSelected()
+%             sNew.Type = 'ECOG';
+%         elseif ctrl.jRadioEcogMid.isSelected()
+%             sNew.Type = 'ECOG-mid';
+%         end
+        sNew.Type            = 'ECOG';
         sNew.Model           = res{1};
         sNew.ContactNumber   = str2num(res{2});
         sNew.ContactSpacing  = str2num(res{3}) ./ 1000;
@@ -1603,7 +1609,9 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
     end
     % Compute contact normals: ECOG and EEG
     if isSurface && (ismember(Modality, {'ECOG','EEG'}) || (~isempty(sElectrodes) && any(strcmpi({sElectrodes.Type}, 'ECOG'))))
-        ChanNormal = GetChannelNormal(sSubject, ChanLoc, Modality);
+        ChanNormal = GetChannelNormal(sSubject, ChanLoc, Modality, 0);
+    else
+        ChanNormal = [];
     end
     
     % ===== DISPLAY SEEG/ECOG ELECTRODES =====
@@ -1714,7 +1722,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
                 end
                 
             % === ECOG ===
-            elseif strcmpi(sElec.Type, 'ECOG')
+            elseif strcmpi(sElec.Type, 'ECOG') && ~isempty(ChanNormal)
                 % Display ECOG label
                 if sElec.Visible && (length(iElecChan) >= 2) && ~isempty(sElec.ElecDiameter) && (sElec.ElecDiameter > 0)
                     % Add text on top of the 1st contact
@@ -1799,12 +1807,20 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
             ctOrient  = [];
             % Force Gouraud lighting
             FaceLighting = 'gouraud';
-        % ECOG/EEG: Cylinder
-        else
+        % ECOG/EEG: Cylinder (if normals are available)
+        elseif ~isempty(ChanNormal)
             ctSize   = [ElectrodeConfig.ContactDiameter ./ 2, ElectrodeConfig.ContactDiameter ./ 2, ElectrodeConfig.ContactLength];
             ctOrient = ChanNormal(iChanOther,:);
             tmpVertex = ecogVertex;
             tmpFaces  = ecogFaces;
+        % ECOG/EEG: Sphere (if normals are not available)
+        elseif ~isempty(ChanNormal)
+            ctSize    = [1 1 1] .* ElectrodeConfig.ContactDiameter ./ 2;
+            tmpVertex = sphereVertex;
+            tmpFaces  = sphereFaces;
+            ctOrient  = [];
+            % Force Gouraud lighting
+            FaceLighting = 'gouraud';
         end
         % Create contacts geometry
         [ctVertex, ctFaces] = Plot3DContacts(tmpVertex, tmpFaces, ctSize, ChanLoc(iChanOther,:), ctOrient);
@@ -1875,7 +1891,10 @@ end
 %% ===== GET CHANNEL NORMALS =====
 % USAGE: GetChannelNormal(sSubject, ChanLoc, Modality)
 %        GetChannelNormal(sSubject, ChanLoc, SurfaceType)   % SurfaceType={'scalp','innerskull','cortex','cortexhull','cortexmask'}
-function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, SurfaceType)
+function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, SurfaceType, isInteractive)
+    % Initialize returned variables
+    ChanOrient = [];
+    ChanLocProj = ChanLoc;
     % CALL: GetChannelNormal(sSubject, ChanLoc, Modality)
     if ismember(SurfaceType, {'EEG','NIRS'})
         SurfaceType = 'scalp';
@@ -1887,7 +1906,7 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
         elseif ~isempty(sSubject.iScalp)
             SurfaceType = 'scalp';
         else
-            error('No inner skull or scalp surface for this subject. Compute at least the SPM canonical surfaces.');
+            SurfaceType = 'cortexmask';
         end
     end
     % Get surface
@@ -1897,13 +1916,19 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
         if ~isempty(sSubject.iInnerSkull)
             SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
         else
-            error('No innerskull surface for this subject. Compute at least the SPM canonical surfaces.');
+            if isInteractive
+                bst_error(['No inner skull surface for this subject.' 10 'Import full segmented anatomy or compute SPM canonical surfaces.'], 'Compute contact normals', 0);
+            end
+            return;
         end
     elseif strcmpi(SurfaceType, 'scalp')
         if ~isempty(sSubject.iScalp)
             SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
         else
-            error('No innerskull surface for this subject. Compute at least the SPM canonical surfaces.');
+            if isInteractive
+                bst_error(['No head surface for this subject.' 10 'Import full segmented anatomy or compute SPM canonical surfaces.'], 'Compute contact normals', 0);
+            end
+            return;
         end
     elseif ismember(SurfaceType, {'cortex','cortexhull','cortexmask'})
         if ~isempty(sSubject.iCortex)
@@ -1914,7 +1939,10 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
                 isMask = 1;
             end
         else
-            error('No cortex surface for this subject. Compute at least the SPM canonical surfaces.');
+            if isInteractive
+                bst_error(['No cortex surface for this subject.' 10 'Import full segmented anatomy or compute SPM canonical surfaces.'], 'Compute contact normals', 0);
+            end
+            return;
         end
     end
     % Load surface (or get from memory)
@@ -2074,18 +2102,21 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
             % ECOG only (no ECOG-mid)
             if strcmpi(sElectrodes(iElec).Type, 'ECOG')
                 % Project all points on the surface
-                [tmp, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG');
-                [tmp, ProjElecLoc] = GetChannelNormal(sSubject, sElectrodes(iElec).Loc', 'ECOG');
-                % Compute the distance between the original points and the projection 
-                dChan = sqrt(sum((ProjLoc - NewLoc) .^2, 2));
-                dElec = sqrt(sum((sElectrodes(iElec).Loc' - ProjElecLoc) .^2, 2));
-                % Get distance associated with each corner
-                d1 = dElec(1,:);
-                d2 = dElec(2,:);
-                % Compute the distance to the surface we want for each contact
-                dChanTarget = ((w1*d1 + w2*d2) ./ (w1 + w2))';
-                % Project the channels in the direction of the cortex, so that they are at the expected distance
-                NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                [ProjOrient, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG', 1);
+                % Do not go further if it's impossible to project the electrodes on a surface
+                if ~isempty(ProjOrient)
+                    [tmp, ProjElecLoc] = GetChannelNormal(sSubject, sElectrodes(iElec).Loc', 'ECOG', 1);
+                    % Compute the distance between the original points and the projection 
+                    dChan = sqrt(sum((ProjLoc - NewLoc) .^2, 2));
+                    dElec = sqrt(sum((sElectrodes(iElec).Loc' - ProjElecLoc) .^2, 2));
+                    % Get distance associated with each corner
+                    d1 = dElec(1,:);
+                    d2 = dElec(2,:);
+                    % Compute the distance to the surface we want for each contact
+                    dChanTarget = ((w1*d1 + w2*d2) ./ (w1 + w2))';
+                    % Project the channels in the direction of the cortex, so that they are at the expected distance
+                    NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                end
             end
             % Get the list of channels in the channel file
             if (all(AllInd <= sElectrodes(iElec).ContactNumber)) && (length(unique(AllInd)) == length(AllInd))
@@ -2156,20 +2187,23 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
             % ECOG only (no ECOG-mid)
             if strcmpi(sElectrodes(iElec).Type, 'ECOG')
                 % Project all points on the surface
-                [tmp, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG');
-                [tmp, ProjElecLoc] = GetChannelNormal(sSubject, sElectrodes(iElec).Loc', 'ECOG');
-                % Compute the distance between the original points and the projection 
-                dChan = sqrt(sum((ProjLoc - NewLoc) .^2, 2));
-                dElec = sqrt(sum((sElectrodes(iElec).Loc' - ProjElecLoc) .^2, 2));
-                % Get distance associated with each corner
-                dp = dElec(1,:);
-                dt = dElec(2,:);
-                ds = dElec(3,:);
-                dq = dElec(4,:);
-                % Compute the distance to the surface we want for each contact
-                dChanTarget = (wp*dp + wt*dt + ws*ds + wq*dq) ./ (wp + wt + ws + wq);
-                % Project the channels in the direction of the cortex, so that they are at the expected distance
-                NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                [ProjOrient, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG', 1);
+                % Do not go further if it's impossible to project the electrodes on a surface
+                if ~isempty(ProjOrient)
+                    [tmp, ProjElecLoc] = GetChannelNormal(sSubject, sElectrodes(iElec).Loc', 'ECOG', 1);
+                    % Compute the distance between the original points and the projection 
+                    dChan = sqrt(sum((ProjLoc - NewLoc) .^2, 2));
+                    dElec = sqrt(sum((sElectrodes(iElec).Loc' - ProjElecLoc) .^2, 2));
+                    % Get distance associated with each corner
+                    dp = dElec(1,:);
+                    dt = dElec(2,:);
+                    ds = dElec(3,:);
+                    dq = dElec(4,:);
+                    % Compute the distance to the surface we want for each contact
+                    dChanTarget = (wp*dp + wt*dt + ws*ds + wq*dq) ./ (wp + wt + ws + wq);
+                    % Project the channels in the direction of the cortex, so that they are at the expected distance
+                    NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                end
             end
             
             % === MATCH GRID POINTS AND DATA CHANNELS ===
@@ -2190,7 +2224,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
 %         % Only possible if surface is available
 %         if strcmpi(Modality, 'ECOG') && (~isempty(sSubject.iCortex) || ~isempty(sSubject.iInnerSkull) || ~isempty(sSubject.iScalp))
 %             % Project on the surface
-%             [NewOrient, NewLoc] = GetChannelNormal(sSubject, [Channels(iChan).Loc]', 'ECOG');
+%             [NewOrient, NewLoc] = GetChannelNormal(sSubject, [Channels(iChan).Loc]', 'ECOG', 1);
 %             % Replace original channel positions
 %             for i = 1:length(iChan)
 %                 Channels(iChan(i)).Loc = NewLoc(i,:)';
@@ -2250,11 +2284,13 @@ function ProjectContacts(iDS, iFig, SurfaceType)
             disp(['BST> Warning: No contact for electrode "' sSelElec(iElec).Name '".']);
             continue;
         end
-        % Project on the targe surface
-        [tmp, NewLoc] = GetChannelNormal(sSubject, [Channels(iChan).Loc]', SurfaceType);
+        % Project on the target surface
+        [NewOrient, NewLoc] = GetChannelNormal(sSubject, [Channels(iChan).Loc]', SurfaceType, 1);
         % Replace original channel positions
-        for i = 1:length(iChan)
-            Channels(iChan(i)).Loc = NewLoc(i,:)';
+        if ~isempty(NewOrient)
+            for i = 1:length(iChan)
+                Channels(iChan(i)).Loc = NewLoc(i,:)';
+            end
         end
     end
     % Update electrode position
@@ -2286,9 +2322,22 @@ function SetElectrodeLoc(iLoc, jButton)
     % Get selected coordinates
     sMri = panel_surface('GetSurfaceMri', hFig(1));
     XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Handles);
+    % If SCS coordinates are not available
+    if isempty(XYZ)
+        % Ask to compute MNI transformation
+        isComputeMni = java_dialog('confirm', [...
+            'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
+            'Computing the MNI transformation would also define default fiducials.' 10 10 ...
+            'Compute the MNI transformation now?'], 'Set electrode position');
+        % Run computation
+        if isComputeMni
+            figure_mri('ComputeMniCoordinates', hFig);
+        end
+        return;
+    end
     % Make sure the points of the electrode are more than 1cm apart
     iOther = setdiff(1:size(sSelElec.Loc,2), iLoc);
-    if ((size(sSelElec.Loc,2) >= 1) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.01))
+    if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.01))
         bst_error('The two points you selected are less than 1cm away.', 'Set electrode position', 0);
         return;
     end
