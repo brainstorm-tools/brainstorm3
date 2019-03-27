@@ -1,13 +1,9 @@
 function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
-
-%% IN_FOPEN_NWB: Open recordings saved in the Neurodata Without Borders format
-
+% IN_FOPEN_NWB: Open recordings saved in the Neurodata Without Borders format
+%
 % This format can save raw signals and/or LFP signals
 % If both are present on the .nwb file, only the RAW signals will be loaded
-
-
-%% 
-
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -29,26 +25,10 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 % Author: Konstantinos Nasiotis 2019
 
 
-
-
-%% ===== GET FILES =====
-% Get base dataset folder
-[tmp, FileName] = bst_fileparts(DataFile);
-
-hdr.BaseFolder = DataFile;
-
-
-
-
-%% ===== FILE COMMENT =====
-% Comment: BaseFolder
-Comment = FileName;
-
-
-
-%% Check if the NWB builder has already been downloaded
+%% ===== INSTALL NWB LIBRARY =====
+% Check if the NWB builder has already been downloaded
 NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
-
+% Install toolbox
 if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
     isOk = java_dialog('confirm', ...
         ['The NWB SDK is not installed on your computer.' 10 10 ...
@@ -57,17 +37,16 @@ if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
         bst_report('Error', sProcess, sInputs, 'This process requires the Neurodata Without Borders SDK.');
         return;
     end
-    downloadNWB()
+    downloadNWB();
+% If installed: add folder to path
+elseif isempty(strfind(NWBDir, path))
+    addpath(genpath(NWBDir));
 end
 
 
 %% ===== READ DATA HEADERS =====
-% hdr.chan_headers = {};
-% hdr.chan_files = {};
-hdr.extension = '.nwb';
-
+% Read header
 nwb2 = nwbRead(DataFile);
-
 
 try
     all_raw_keys = keys(nwb2.acquisition);
@@ -198,16 +177,11 @@ ChannelMat.Comment = 'NWB channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels + nAdditionalChannels]);
 
 
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Check which one to select here!!!
 % % % % % amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load;
 amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.id.data.load;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
 
 group_name      = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data;
 

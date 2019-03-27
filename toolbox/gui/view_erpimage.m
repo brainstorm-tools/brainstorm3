@@ -122,7 +122,7 @@ switch (FileType)
         % Apply to the data
         if ~isempty(TsInfo.MontageName) && ~isempty(sMontage)
             % Get channel indices in the figure montage
-            if ~isempty(strfind(sMontage.Name, 'Average reference')) || strcmpi(sMontage.Type, 'selection')
+            if ~isempty(strfind(sMontage.Name, 'Average reference')) || ~isempty(strfind(sMontage.Name, 'Scalp current density')) || strcmpi(sMontage.Type, 'selection')
                 [iChanSel, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, RowNames);
             else
                 [iChanSel, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, RowNames, ChannelFlag);

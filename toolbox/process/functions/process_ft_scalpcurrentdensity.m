@@ -5,6 +5,9 @@ function varargout = process_ft_scalpcurrentdensity( varargin )
 %    Computes an estimate of the SCD using the second-order derivative (the surface Laplacian)
 %    of the EEG potential distribution.
 %    Reference documentation: http://www.fieldtriptoolbox.org/reference/ft_scalpcurrentdensity
+%
+%    Output units are arbitrary: 
+%    https://github.com/fieldtrip/fieldtrip/issues/1043
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,7 +27,8 @@ function varargout = process_ft_scalpcurrentdensity( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Svetlana Pinet, Francois Tadel, 2015
+% Authors: Svetlana Pinet, 2015
+%          Francois Tadel, 2015-2019
 
 eval(macro_method);
 end
@@ -49,11 +53,25 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Method
     sProcess.options.method_label.Comment = '<B>Interpolation method</B>';
     sProcess.options.method_label.Type    = 'label';
-    sProcess.options.method.Comment = {'Finite-difference', 'Spherical spline', 'Hjorth approximation (ignores the parameters below)'};
+    sProcess.options.method.Comment = {'Finite-difference', 'Spherical spline', 'Hjorth approximation'};
     sProcess.options.method.Type    = 'radio';
     sProcess.options.method.Value   = 2;
-    sProcess.options.param_label.Comment = '<BR><B>Methods parameters</B>';
-    sProcess.options.param_label.Type    = 'label';
+    % === SENSOR TYPES
+    sProcess.options.sensortypes.Comment = 'Sensor types (empty=all): ';
+    sProcess.options.sensortypes.Type    = 'text';
+    sProcess.options.sensortypes.Value   = 'EEG';
+    
+    % Param title
+    sProcess.options.param_label1.Comment = '<BR><BR><B>Options: Hjorth approximation</B>';
+    sProcess.options.param_label1.Type    = 'label';
+    % Max distance between neighbors
+    sProcess.options.maxdist.Comment = 'Maximal distance between neighbours: ';
+    sProcess.options.maxdist.Type    = 'value';
+    sProcess.options.maxdist.Value   = {5, 'cm', 1};
+    
+    % Param title
+    sProcess.options.param_label2.Comment = '<BR><B>Options: Finite-difference / Spherical spline</B>';
+    sProcess.options.param_label2.Type    = 'label';
     % Lambda
     sProcess.options.lambda.Comment = 'Regularization parameter (lambda): ';
     sProcess.options.lambda.Type    = 'value';
@@ -68,10 +86,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.degree.Value   = {20, '', 0};
     sProcess.options.label.Comment = '<FONT color="#777777">9 for less than 32 channels, 14 for less than 64 channels<BR>20 for less than 128 channels, 32 for more than 128 channels</I><BR><BR>';
     sProcess.options.label.Type    = 'label';
-    % === SENSOR TYPES
-    sProcess.options.sensortypes.Comment = 'Sensor types (empty=all): ';
-    sProcess.options.sensortypes.Type    = 'text';
-    sProcess.options.sensortypes.Value   = 'EEG';
+
 end
 
 
@@ -93,6 +108,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     Lambda       = sProcess.options.lambda.Value{1};
     Order        = sProcess.options.order.Value{1};
     Degree       = sProcess.options.degree.Value{1};
+    MaxDist      = sProcess.options.maxdist.Value{1} / 100;   % Convert from centimeters to meters
     SensorTypes  = sProcess.options.sensortypes.Value;
     switch (sProcess.options.method.Value)
         case 1,    Method  = 'finite';   
@@ -104,7 +120,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % ===== CALL FIELDTRIP FUNCTION =====
     % Convert input to FieldTrip structure
     [ftData, DataMat, ChannelMat, iChannels] = out_fieldtrip_data(sInput.FileName, sInput.ChannelFile, SensorTypes, 0);
-    
+
     % Prepare options according to method chosen
     scdcfg.method = Method;
     switch Method
@@ -117,7 +133,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             % Prepare structure of neighbouring electrodes
             neicfg = struct();
             neicfg.method        = 'distance';
-            neicfg.neighbourdist = 4;
+            neicfg.neighbourdist = MaxDist;
             if isfield(ftData, 'elec')
                 neicfg.elec = ftData.elec;
             end
@@ -126,16 +142,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             end
             scdcfg.neighbours = ft_prepare_neighbours(neicfg);
     end
+    
     % Call FieldTrip function
     scdData = ft_scalpcurrentdensity(scdcfg, ftData);
-%     % Compensate for FieldTrip's weird compensation to uV/mm
-%     if ismember(Method, {'finite','spline'})
-%         scdData.trial{1} = 1e-3 * scdData.trial{1};
-%     end
+
     
     % ===== GET RESULTS =====
-    % Get indices of the channels that were updated
-%     chans = find(ismember({ChannelMat.Channel(:).Type}, SensorTypes));
     % Replace channels
     DataMat.F(iChannels,:) = scdData.trial{1}; 
     % Add history comment

@@ -101,7 +101,8 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     if ~isempty(jarfile)
         javaaddpath([BrainstormHomeDir '/java/' jarfile]);
     end
-    % Add MFF JAR file if present
+    
+    % === INITIALIZE MFFMATLABIO LIBRARY ===
     [mffJarPath, mffJarExists] = bst_get('MffJarFile');
     mffDirTmp = bst_fullfile(bst_get('BrainstormUserDir'), 'mffmatlabioNew');
     if isdir(mffDirTmp)
@@ -116,23 +117,25 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
         rmdir(mffDirTmp, 's');
         mffJarExists = 1;
     end
+    % Add MFF JAR file if present
     if mffJarExists
         javaaddpath(mffJarPath);
     end
-    % Add NWB JAR file if present
+    
+    % === INITIALIZE NWB LIBRARY ===
     NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');        
     initialization_flag_file = bst_fullfile(NWBDir,'NWB_initialized.mat');
     if exist(initialization_flag_file,'file') == 2
-        load(initialization_flag_file)
+        load(initialization_flag_file);
         if ~NWB_initialized
-            %% Initialize NWB toolbox
+            disp('Installing NWB library...');
+            % The generateCore needs to run from a specific folder
             current_path = pwd;
-            cd(NWBDir); % The generateCore needs to run from a specific folder
+            cd(NWBDir);
             % Add NWB to Matlab path
             addpath(genpath(NWBDir));
             % Generate the NWB Schema (First time run)
             generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
-            
             % Update Initialization flag
             NWB_initialized = 1;
             save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
