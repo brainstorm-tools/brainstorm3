@@ -1058,10 +1058,10 @@ function RemoveElectrode()
     if ~java_dialog('confirm', strConfirm)
         return;
     end
-    % Loop on electrodes to delete
-    for iElec = 1:length(sSelElec)
-        % Loop on datasets
-        for iDS = unique(iDSall)
+    % Loop on datasets
+    for iDS = unique(iDSall)
+        % Loop on electrodes to delete
+        for iElec = 1:length(sSelElec)
             % If new implantation scheme: delete all the contacts for this electrode
             if isImplantation
                 % Get contacts for this electrode
@@ -1099,9 +1099,9 @@ function RemoveElectrode()
                 % Remove channels
                 GlobalData.DataSet(iDS).Channel(iChan) = [];
             end
-            % Delete electrode
-            GlobalData.DataSet(iDS).IntraElectrodes(iSelElec) = [];
         end
+        % Delete selected electrodes
+        GlobalData.DataSet(iDS).IntraElectrodes(iSelElec) = [];
     end
     % Mark channel file as modified (only the first one)
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;

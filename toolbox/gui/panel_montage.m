@@ -1211,7 +1211,7 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
                 continue;
             end
             % Not EEG or no 3D positions: Skip scalp current density
-            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Scalp current density') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG'}) && any(cellfun(@isempty, {FigChannels.Loc}))
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Scalp current density') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG'}) && any(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iFigChannels).Loc}))
                 continue;
             end
             % Not CTF-MEG: Skip head motion distance
