@@ -34,54 +34,103 @@ try
     end
     
 catch
-    error('Loading the .nwb file failed. Have you already installed the NWB SDK? If not, try loading a dataset before importing the anatomy')
+    error('Loading the .nwb file failed. Have you already installed the NWB SDK? Try loading a dataset before importing the anatomy')
 end
 
 
 
-TessMat.Comment = 'NWB SURFACES'; % aseg atlas
-TessMat.iAtlas = length(all_surface_keys);
+%% I create the cortex surface based on the lh_pial and the rh_pial
+iCortexSurfaces = [];
+iOtherSurfaces  = [];
+for iSurface = 1:length(all_surface_keys)
+    if ~isempty(strfind(all_surface_keys{iSurface},'lh_pial'))
+        iCortexSurfaces = [iCortexSurfaces iSurface];
+    elseif ~isempty(strfind(all_surface_keys{iSurface},'rh_pial'))
+        iCortexSurfaces = [iCortexSurfaces iSurface];
+    else
+        iOtherSurfaces = [iOtherSurfaces iSurface];
+    end
+        
+end
 
 
-accumulated_index   = 0;
-cummulativeVertices = [];
-cummulativeFaces    = [];
+%% Create separately in the struct 
+separated_surfaces = {iCortexSurfaces ; iOtherSurfaces};
 
-
-
-
-
-selectedSurfaces = [7 9];
-TessMat.iAtlas = length(selectedSurfaces);
-
-
-
-
-
-
-
-for iSurface = selectedSurfaces % 1:length(all_surface_keys)
-    nVerticesSurface = nwb2.general_subject.cortical_surfaces.surface.get(all_surface_keys{iSurface}).vertices.dims(1);
-    Scouts(iSurface).Vertices  = accumulated_index + [1:nVerticesSurface];
-    Scouts(iSurface).Seed      = Scouts(iSurface).Vertices(1);
-    Scouts(iSurface).Color     = rand(1,3);
-    Scouts(iSurface).Label     = all_surface_keys{iSurface};
-    Scouts(iSurface).Function  = 'Mean';
-    Scouts(iSurface).Region    = 'DEEP';%all_surface_keys{iSurface};
-    Scouts(iSurface).Handles   = [];
+currentStructure = 0;
+for iStructure = 1 % Just do the cortex surface          1:2
     
-    
-    cummulativeVertices = [cummulativeVertices; nwb2.general_subject.cortical_surfaces.surface.get(all_surface_keys{iSurface}).vertices.load' + 1]; % NWB vertices start from 0 ????? THIS IS NOT CONFIRMED YET, but it's probably true]
-    cummulativeFaces    = [cummulativeFaces   ; nwb2.general_subject.cortical_surfaces.surface.get(all_surface_keys{iSurface}).faces.load'    + 1 + accumulated_index];    % NWB faces start from 0 ????? THIS IS NOT CONFIRMED YET, but it's probably true
+    if ~isempty(separated_surfaces{iStructure})
+        currentStructure = currentStructure+1;
 
-    accumulated_index = accumulated_index + nVerticesSurface;
+       
+            
+        TessMat(currentStructure).iAtlas = length(iCortexSurfaces);
+
+
+        accumulated_index   = 0;
+        cummulativeVertices = [];
+        cummulativeFaces    = [];
+
+
+        for iSurface = 1:length(separated_surfaces{iStructure})
+            nVerticesSurface = nwb2.general_subject.cortical_surfaces.surface.get(all_surface_keys{separated_surfaces{iStructure}(iSurface)}).vertices.dims(1);
+            Scouts(iSurface).Vertices  = accumulated_index + [1:nVerticesSurface];
+            Scouts(iSurface).Seed      = Scouts(iSurface).Vertices(1);
+            Scouts(iSurface).Color     = rand(1,3);
+            Scouts(iSurface).Label     = all_surface_keys{separated_surfaces{iStructure}(iSurface)};
+            Scouts(iSurface).Function  = 'Mean';
+            Scouts(iSurface).Region    = 'DEEP';%all_surface_keys{iSurface};
+            Scouts(iSurface).Handles   = [];
+
+
+            cummulativeVertices = [cummulativeVertices; nwb2.general_subject.cortical_surfaces.surface.get(all_surface_keys{separated_surfaces{iStructure}(iSurface)}).vertices.load' + 1]; % NWB vertices start from 0 ????? THIS IS NOT CONFIRMED YET, but it's probably true]
+            cummulativeFaces    = [cummulativeFaces   ; nwb2.general_subject.cortical_surfaces.surface.get(all_surface_keys{separated_surfaces{iStructure}(iSurface)}).faces.load'    + 1 + accumulated_index];    % NWB faces start from 0 ????? THIS IS NOT CONFIRMED YET, but it's probably true
+
+            accumulated_index = accumulated_index + nVerticesSurface;
+
+        end
+
+
+        %% Invert the Face that the nwb files are saved in
+        % Brainstorm uses the opposite side
+        cummulativeFaces = cummulativeFaces(:,[3,2,1]);
+
+
+        TessMat(currentStructure).Atlas(1).Name   = 'User scouts';
+        TessMat(currentStructure).Atlas(1).Scouts = [];
+        TessMat(currentStructure).Atlas(2).Name   = 'Structures';
+        TessMat(currentStructure).Atlas(2).Scouts = Scouts;
+
+        TessMat(currentStructure).Vertices = cummulativeVertices./1000; % Vertices in NWB are saved in meters, Brainstorm uses mm
+        TessMat(currentStructure).Faces    = cummulativeFaces;
+
+         if iStructure == 1
+            TessMat(currentStructure).Comment = ['cortex_' num2str(size(TessMat(currentStructure).Vertices,1)) 'V']; % cortex surface
+        else
+            TessMat(currentStructure).Comment = 'aseg atlas';
+        end
+
+        %% Field the rest of the fields
+        % ===== VERTEX CONNECTIVITY =====
+        % If vertex connectivity field is not available for this surface: Compute it
+        TessMat(currentStructure).VertConn = tess_vertconn(TessMat(currentStructure).Vertices, TessMat(currentStructure).Faces);
+
+
+        % ===== VERTEX NORMALS =====
+        % If VertexNormal field is not available for this surface: Compute it
+        TessMat(currentStructure).VertNormals = tess_normals(TessMat(currentStructure).Vertices, TessMat(currentStructure).Faces, TessMat(currentStructure).VertConn);
+
+        % ===== CURVATURE =====
+        % If Curvature field is not available for this surface: Compute it
+        TessMat(currentStructure).Curvature = single(tess_curvature(TessMat(currentStructure).Vertices, TessMat(currentStructure).VertConn, TessMat(currentStructure).VertNormals, .1));
+
+        % ===== SULCI MAP =====
+        % If Curvature field is not available for this surface: Compute it
+        TessMat(currentStructure).SulciMap = tess_sulcimap(TessMat(currentStructure));
+    end
 
 end
 
-TessMat.Atlas.Name   = 'Structures';
-TessMat.Atlas.Scouts = Scouts;
-
-TessMat.Vertices = cummulativeVertices;
-TessMat.Faces    = cummulativeFaces;
 
 end

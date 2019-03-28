@@ -199,6 +199,7 @@ switch (FileFormat)
         
     case 'NWB'
         TessMat = in_tess_nwb(TessFile);
+%         isConvertScs = 0; %?????? NO IDEA
 end
 % If an error occurred: return
 if isempty(TessMat)

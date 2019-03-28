@@ -186,9 +186,9 @@ amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.id.data.load;
 group_name      = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data;
 
 % Get coordinates and set to 0 if they are not available
-x = nwb2.general_extracellular_ephys_electrodes.vectordata.get('x').data.load'; % NWB saves in m ???
-y = nwb2.general_extracellular_ephys_electrodes.vectordata.get('y').data.load';
-z = nwb2.general_extracellular_ephys_electrodes.vectordata.get('z').data.load';
+x = nwb2.general_extracellular_ephys_electrodes.vectordata.get('x').data.load'./1000; % NWB saves in m ???
+y = nwb2.general_extracellular_ephys_electrodes.vectordata.get('y').data.load'./1000;
+z = nwb2.general_extracellular_ephys_electrodes.vectordata.get('z').data.load'./1000;
 
 x(isnan(x)) = 0;
 y(isnan(y)) = 0;
