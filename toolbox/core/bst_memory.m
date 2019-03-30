@@ -419,6 +419,19 @@ function LoadChannelFile(iDS, ChannelFile)
     global GlobalData;
     % If a channel file is defined
     if ~isempty(ChannelFile)
+        % Check if this channel file is already loaded and modified in another DataSet
+        iDSother = setdiff(1:length(GlobalData.DataSet), iDS);
+        if ~isempty(iDSother) && any([GlobalData.DataSet(iDSother).isChannelModified])
+            % Ask user
+            isSave = java_dialog('confirm', ...
+                ['This channel file is being edited in another window.' 10 ...
+                 'Save the modifications so the new figure can show updated positions?'], 'Save modifications');
+            % Force saving of the modifications
+            if isSave
+                bst_memory('SaveChannelFile', iDSother(1));
+            end
+        end
+
         % Load channel
         ChannelMat = in_bst_channel(ChannelFile);
         % Check coherence between Channel and Measures.F dimensions

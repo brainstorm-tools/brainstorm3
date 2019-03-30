@@ -1790,6 +1790,8 @@ function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
     end
     % Set EEG flag
     SetFigureStatus(hFig, [], [], [], 1, 1);
+    % Update figure name
+    bst_figures('UpdateFigureName', hFig);
 end
 
 
