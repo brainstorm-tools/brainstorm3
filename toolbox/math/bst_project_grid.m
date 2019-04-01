@@ -87,6 +87,7 @@ for iRes = 1:length(ResultsFiles)
     if isempty(sMriSrc) || ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || isempty(sMriSrc.NCS.R)
         errMsg = 'You should compute the MNI transformation for the source MRI first.';
         ResultsFiles = [];
+        break;
     end
 
     % === LOAD SOURCE FILE ===
