@@ -867,7 +867,7 @@ function ValidateOptions(optName, jControl)
     elseif strcmpi(optName, 'ContactNumber')
         val = round(str2num(jControl.getText()));
         % SEEG electrode can have only one dimension, others two dimensions max
-        if (length(val) >= 2) && strcmpi(sElectrodes.Type, 'SEEG')
+        if (length(val) >= 2) && strcmpi(sElectrodes(iSelElec).Type, 'SEEG')
             val = val(1);
             jControl.setText(sprintf('%d', val));
         elseif (length(val) >= 3)
@@ -2208,7 +2208,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
             % Compute contacts positions
             w1 = sElectrodes(iElec).ContactNumber-1:-1:0;
             w2 = 0:sElectrodes(iElec).ContactNumber-1;
-            NewLoc = ((sElectrodes(iElec).Loc(:,1) * w1 + sElectrodes(iElec).Loc(:,2) * w2) ./ (w1 + w2))';
+            NewLoc = bst_bsxfun(@rdivide, sElectrodes(iElec).Loc(:,1) * w1 + sElectrodes(iElec).Loc(:,2) * w2, w1 + w2)';
 
             % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
             % ECOG only (no ECOG-mid)
@@ -2227,7 +2227,11 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
                     % Compute the distance to the surface we want for each contact
                     dChanTarget = ((w1*d1 + w2*d2) ./ (w1 + w2))';
                     % Project the channels in the direction of the cortex, so that they are at the expected distance
-                    NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                    % Normalization with bsxfun, equivalent to: NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                    proj = ProjLoc - NewLoc;
+                    proj = bst_bsxfun(@rdivide, proj, dChan);
+                    proj = bst_bsxfun(@times, proj, dChan - dChanTarget);
+                    NewLoc = NewLoc + proj;
                 end
             end
             % Get the list of channels in the channel file
@@ -2314,7 +2318,11 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
                     % Compute the distance to the surface we want for each contact
                     dChanTarget = (wp*dp + wt*dt + ws*ds + wq*dq) ./ (wp + wt + ws + wq);
                     % Project the channels in the direction of the cortex, so that they are at the expected distance
-                    NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                    % Normalization with bsxfun, equivalent to: NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                    proj = ProjLoc - NewLoc;
+                    proj = bst_bsxfun(@rdivide, proj, dChan);
+                    proj = bst_bsxfun(@times, proj, dChan - dChanTarget);
+                    NewLoc = NewLoc + proj;
                 end
             end
             
@@ -2381,7 +2389,7 @@ function ProjectContacts(iDS, iFig, SurfaceType)
     if strcmpi(SurfaceType, 'innerskull') && (isempty(sSubject.iInnerSkull) || (sSubject.iInnerSkull > length(sSubject.Surface)))
         bst_error('No inner skull surface available for this subject.', 'Project contacts', 0);
     elseif ismember(SurfaceType, {'cortex','cortexhull','cortexmask'}) && (isempty(sSubject.iCortex) || (sSubject.iCortex > length(sSubject.Surface)))
-        bst_error('No inner cortex available for this subject.', 'Project contacts', 0);
+        bst_error('No cortex available for this subject.', 'Project contacts', 0);
     end
     % Process all the electrodes
     for iElec = 1:length(sSelElec)
