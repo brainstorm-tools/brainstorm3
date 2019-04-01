@@ -63,7 +63,7 @@ switch lower(action)
             jSplash.getContentPane.add(jPanel);
 
             % Get logo path
-            logo_file = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'logo_splash.gif');
+            logo_file = bst_fullfile(bst_get('BrainstormDocDir'), 'logo_splash.gif');
             % Image in label
             jLabel = java_create('javax.swing.JLabel');
             jLabel.setIcon(javax.swing.ImageIcon(logo_file));

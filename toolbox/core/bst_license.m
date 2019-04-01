@@ -19,7 +19,7 @@ function isOk = bst_license()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2019
 
 % Initializations
 import java.awt.*;
@@ -28,7 +28,7 @@ import javax.swing.text.*;
 import org.brainstorm.icon.*;
 isOk = 0;
 % Get doc path
-docPath = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc');
+docPath = bst_get('BrainstormDocDir');
 % Background color
 bgColor = Color(0.2039, 0.3059, 0.4275);
 

@@ -9,6 +9,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('BrainstormUserDir')     : User home directory for brainstorm (<home>/.brainstorm/)
 %    - bst_get('BrainstormTmpDir')      : User brainstorm temporary directory (Default: <home>/.brainstorm/tmp/)
 %    - bst_get('BrainstormTmpDir', isForcedDefault)   : User DEFAULT brainstorm temporary directory (<home>/.brainstorm/tmp/)
+%    - bst_get('BrainstormDocDir')      : Doc folder folder of the Brainstorm distribution (may vary in compiled versions)
 %    - bst_get('UserReportsDir')        : User reports directory (<home>/.brainstorm/reports/)
 %    - bst_get('UserMexDir')            : User temporary directory (<home>/.brainstorm/mex/)
 %    - bst_get('UserProcessDir')        : User custom processes directory (<home>/.brainstorm/process/)
@@ -354,6 +355,19 @@ switch contextName
             end
         end
         argout1 = tmpDir;
+        
+    case 'BrainstormDocDir'
+        docDir = bst_fullfile(GlobalData.Program.BrainstormHomeDir, 'doc');
+        if ~exist(docDir, 'file')
+            % Matlab compiler >= 2018b stores 'doc' under 'bst_javabuil'
+            docDir = bst_fullfile(GlobalData.Program.BrainstormHomeDir, 'bst_javabuil', 'doc');
+            if ~exist(docDir, 'file')
+                docDir = '';
+                disp('BST> Could not find "doc" folder.');
+                disp(['BST> BrainstormHomeDir = ' GlobalData.Program.BrainstormHomeDir]);
+            end
+        end
+        argout1 = docDir;
         
     case 'UserReportsDir'
         reportDir = bst_fullfile(bst_get('BrainstormUserDir'), 'reports');

@@ -97,7 +97,7 @@ if IS_BIN
     end
     
     % JDK folder
-    jdkDir = 'C:\Program Files\Java\jdk1.7.0_80';
+    jdkDir = 'C:\Program Files\Java\jdk1.8.0_112';
     % Set JAVA_HOME environment variable
     setenv('JAVA_HOME', jdkDir);
     % Javabuilder output
@@ -255,20 +255,21 @@ if IS_BIN
     % === COMPILING ===
     disp('DEPLOY> Starting Matlab Compiler...');
     % Starting compiler
-    deploytool('-build', compilerFile);
-    % This stupid call is asynchronous: have to wait manually until it's done
-    % Get the text in the command window, until there is that "Build finished" text in it
-    while(1)
-        pause(2);
-        cmdWinDoc = com.mathworks.mde.cmdwin.CmdWinDocument.getInstance;
-        jString   = cmdWinDoc.getText(cmdWinDoc.getStartPosition.getOffset, cmdWinDoc.getLength);
-        if ~isempty(strfind(char(jString), 'Build finished'))
-            break;
-        elseif ~isempty(strfind(char(jString), 'Build failed'))
-            return;
-        end
-        fprintf(1, '.');
-    end
+%     deploytool('-build', compilerFile);
+    system(['deploytool -build ', compilerFile]);
+%     % This stupid call is asynchronous: have to wait manually until it's done
+%     % Get the text in the command window, until there is that "Build finished" text in it
+%     while(1)
+%         pause(2);
+%         cmdWinDoc = com.mathworks.mde.cmdwin.CmdWinDocument.getInstance;
+%         jString   = cmdWinDoc.getText(cmdWinDoc.getStartPosition.getOffset, cmdWinDoc.getLength);
+%         if ~isempty(strfind(char(jString), 'Build finished'))
+%             break;
+%         elseif ~isempty(strfind(char(jString), 'Build failed'))
+%             return;
+%         end
+%         fprintf(1, '.');
+%     end
 
     % === PACKAGING ===
     disp('DEPLOY> Packaging binary distribution...');

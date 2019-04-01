@@ -186,7 +186,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % LICENSE
         gui_component('MenuItem', jMenuSupport, [], 'License',       IconLoader.ICON_EDIT, [], @(h,ev)bst_license(), fontSize);
         % RELEASE NOTES
-        updatesfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'updates.txt');
+        updatesfile = bst_fullfile(bst_get('BrainstormDocDir'), 'updates.txt');
         gui_component('MenuItem', jMenuSupport, [], 'Release notes', IconLoader.ICON_EDIT, [], @(h,ev)view_text(updatesfile, 'Release notes', 1), fontSize);
         jMenuSupport.addSeparator();
         % Prepare workshop

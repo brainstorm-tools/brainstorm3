@@ -61,9 +61,12 @@ function [res, isCancel] = java_dialog( msgType, msg, msgTitle, jParent, varargi
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2019
 
 global GlobalData;
+
+% Java imports
+import org.brainstorm.dialogs.*;
 
 % Get brainstorm frame
 jBstFrame = bst_get('BstFrame');
@@ -436,7 +439,6 @@ switch(lower(msgType))
         
     % Dialog for hotkey input from user
     case 'hotkey'
-        import org.brainstorm.dialogs.HotkeyDialog;
         % Open up hotkey dialog
         fontSize = round(11 * bst_get('InterfaceScaling') / 100);
         dialog = HotkeyDialog(fontSize);

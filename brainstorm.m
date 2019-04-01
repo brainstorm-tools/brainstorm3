@@ -5,7 +5,7 @@ function varargout = brainstorm( varargin )
 %        brainstorm start           : Start Brainstorm
 %        brainstorm nogui           : Start Brainstorm with hidden interface (for scripts)
 %        brainstorm server          : Start Brainstorm on a distant server (completely headless)
-%        brainstorm <script> <args> : Start Brainstorm in server mode and execute the input script
+%        brainstorm [script] [args] : Start Brainstorm in server mode and execute the input script
 %        brainstorm ... local       : Start Brainstorm with a local database (in .brainstorm folder)
 %        brainstorm stop            : Quit Brainstorm
 %        brainstorm reset           : Re-inialize Brainstorm (delete preferences and database)
