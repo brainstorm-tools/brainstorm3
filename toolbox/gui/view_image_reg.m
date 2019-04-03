@@ -165,7 +165,9 @@ GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName     = PageName;
 % By default: link the 4th dimension of the data to the frequency slider
 isFreq = isequal(PageName, '$freq');
 % Configure figure
-setappdata(hFig, 'isStatic', size(Data,3) <= 2);
+isStatic = (size(Data,3) <= 1) || ...
+           ((size(Data,3) == 2) && isequal(Data(:,:,1,:,:), Data(:,:,2,:,:)));
+setappdata(hFig, 'isStatic', isStatic);
 setappdata(hFig, 'isStaticFreq', ~isFreq || size(Data,4) < 2);
 setappdata(hFig, 'FileName', FileName);
 % Set colormap

@@ -9,6 +9,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('BrainstormUserDir')     : User home directory for brainstorm (<home>/.brainstorm/)
 %    - bst_get('BrainstormTmpDir')      : User brainstorm temporary directory (Default: <home>/.brainstorm/tmp/)
 %    - bst_get('BrainstormTmpDir', isForcedDefault)   : User DEFAULT brainstorm temporary directory (<home>/.brainstorm/tmp/)
+%    - bst_get('BrainstormDocDir')      : Doc folder folder of the Brainstorm distribution (may vary in compiled versions)
 %    - bst_get('UserReportsDir')        : User reports directory (<home>/.brainstorm/reports/)
 %    - bst_get('UserMexDir')            : User temporary directory (<home>/.brainstorm/mex/)
 %    - bst_get('UserProcessDir')        : User custom processes directory (<home>/.brainstorm/process/)
@@ -354,6 +355,19 @@ switch contextName
             end
         end
         argout1 = tmpDir;
+        
+    case 'BrainstormDocDir'
+        docDir = bst_fullfile(GlobalData.Program.BrainstormHomeDir, 'doc');
+        if ~exist(docDir, 'file')
+            % Matlab compiler >= 2018b stores 'doc' under 'bst_javabuil'
+            docDir = bst_fullfile(GlobalData.Program.BrainstormHomeDir, 'bst_javabuil', 'doc');
+            if ~exist(docDir, 'file')
+                docDir = '';
+                disp('BST> Could not find "doc" folder.');
+                disp(['BST> BrainstormHomeDir = ' GlobalData.Program.BrainstormHomeDir]);
+            end
+        end
+        argout1 = docDir;
         
     case 'UserReportsDir'
         reportDir = bst_fullfile(bst_get('BrainstormUserDir'), 'reports');
@@ -1089,7 +1103,7 @@ switch contextName
         ProtocolSubjects = GlobalData.DataBase.ProtocolSubjects(GlobalData.DataBase.iProtocol);
         if isempty(ProtocolSubjects)
             return
-        end;
+        end
         
         % Parse inputs
         if (nargin == 2)
@@ -3211,6 +3225,7 @@ switch contextName
                      {'.csv'},               'EEG: Muse (*.csv)',                    'EEG-MUSE-CSV'; ...
                      {'.trc'},               'EEG: Micromed (*.trc)',                'EEG-MICROMED'; ...
                      {'.ncs'},               'EEG: Neuralynx (*.ncs)',               'EEG-NEURALYNX'; ...
+                     {'.nwb'},               'EEG: Neurodata Without Borders (*.nwb)','NWB'; ...
                      {'.bin'},               'EEG: NeurOne session folder',          'EEG-NEURONE'; ...
                      {'.cnt','.avg','.eeg','.dat'}, 'EEG: Neuroscan (*.cnt;*.eeg;*.avg;*.dat)', 'EEG-NEUROSCAN'; ...
                      {'.eeg','.dat'},        'EEG: NeuroScope (*.eeg;*.dat)',        'EEG-NEUROSCOPE'; ...
@@ -3218,6 +3233,7 @@ switch contextName
                      {'.eeg'},               'EEG: Nihon Kohden (*.eeg)',            'EEG-NK'; ...
                      {'.plx','.pl2'},        'EEG: Plexon (*.plx;.pl2)'              'EEG-PLEXON'; ...
                      {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Ripple Trellis (*.nsX/*.nev)', 'EEG-RIPPLE'; ...
+                     {'.tbk'},               'EEG: Tucker Davis Technologies (*.tbk)',    'EEG-TDT'; ...
                      {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'SEEG: Deltamed/Micromed/NK/Nicolet/BrainAmp/EDF', 'SEEG-ALL'; ...
                      {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'ECOG: Deltamed/Micromed/NK/Nicolet/BrainAmp/EDF', 'ECOG-ALL'; ...
                      {'.nirs'},              'NIRS: Brainsight (*.nirs)',            'NIRS-BRS'; ...

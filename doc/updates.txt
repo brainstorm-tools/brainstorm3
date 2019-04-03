@@ -1,8 +1,22 @@
 ---------------------------------------------------------------
+March 2019
+- Anatomy: Deface MRI with FreeSurfer or SPM
+- Anatomy: World coordinates made available in MRI viewer
+- IO: Support for synchronized EEG-video (link raw and import epochs)
+- GUI: Review of synchronized EEG-video with VLC ActiveX plugin
+- GUI: SEEG 2DElectrode topography (and 2DLayout without 3D positions)
+- GUI: EEG Scalp Current Density (SCD) as a default montage
+- Distrib: Updating Brainstorm now downloads only the scripts (skips the compiled version)
+- Distrib: Compiled 2019a
+---------------------------------------------------------------
 February 2019
-- Distrib: Compiled Brainstorm now include all SPM and FieldTrip dependencies
-- Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
+- Process: Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)
+- New process2: "Standardize > Interpolate time" (+ new option 'nearest' in process_stdtime.m)
 - IO: Added support for York Instruments MEGSCAN recordings (.hdf5)
+- IO: Added support for Tucker Davis Technologies (.tdt)
+- Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
+- Distrib: Compiled Brainstorm now includes all SPM and FieldTrip dependencies
+- Distrib: Compiled 2018a and 2018b versions
 ---------------------------------------------------------------
 January 2019
 - IO: BIDS export process supports EEG-BIDS

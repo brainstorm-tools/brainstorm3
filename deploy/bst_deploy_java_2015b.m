@@ -1,7 +1,7 @@
 function bst_deploy_java_2015b(IS_BIN)
 % BST_DEPLOY_JAVA - Brainstorm deployment script (including SPM and FieldTrip).
 %
-% USAGE:  bst_deploy_java_2015b_spm(IS_BIN=0)
+% USAGE:  bst_deploy_java_2015b(IS_BIN=0)
 %
 % INPUTS:
 %    - IS_BIN : 0=Package the sources and push the modifications to github
@@ -90,10 +90,6 @@ if IS_BIN
     
     % FieldTrip / SPM
     if IS_FT_SPM
-    %     % Add FieldTrip to path
-    %     addpath(FieldTripDir);
-    %     % Add SPM to PATH
-    %     addpath(SpmDir);
         compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2015b_spm.prj');
     else
         compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2015b.prj');
@@ -104,7 +100,6 @@ if IS_BIN
     % Set JAVA_HOME environment variable
     setenv('JAVA_HOME', jdkDir);
     % Javabuilder output
-    
     compilerDir = fullfile(deployDir, ReleaseName, 'bst_javabuilder');
     compilerOutputDir = fullfile(compilerDir, 'for_testing');
     % Packaging folders

@@ -234,17 +234,12 @@ if isUpdateScs || isUpdateNcs
             errMsg = 'No vox2ras transformation available for the reference volume.';
         % If SCS coordinates are defined
         elseif isfield(sMriRef, 'SCS') && all(isfield(sMriRef.SCS, {'NAS','LPA','RPA','T','R'})) && ~isempty(sMriRef.SCS.NAS) && ~isempty(sMriRef.SCS.LPA) && ~isempty(sMriRef.SCS.RPA) && ~isempty(sMriRef.SCS.R) && ~isempty(sMriRef.SCS.T)
-            % Get transformations
-            iTransfReg = find(strcmpi(sMriReg.InitTransf(:,1), 'vox2ras'));
-            iTransfRef = find(strcmpi(sMriRef.InitTransf(:,1), 'vox2ras'));
-            TransfReg = sMriReg.InitTransf{iTransfReg(1),2};
-            TransfRef = sMriRef.InitTransf{iTransfRef(1),2};
-            % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-            TransfReg = TransfReg * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-            TransfRef = TransfRef * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-            % 1st operation: Convert from MRI(mm) to voxels
-            TransfReg = TransfReg * diag(1 ./ [sMriReg.Voxsize, 1]);
-            TransfRef = TransfRef * diag(1 ./ [sMriRef.Voxsize, 1]);
+            % Get transformation MRI=>WORLD
+            TransfReg = cs_convert(sMriReg, 'mri', 'world');
+            TransfRef = cs_convert(sMriRef, 'mri', 'world');
+            % Convert to millimeters (to match the fiducials storage)
+            TransfReg(1:3,4) = TransfReg(1:3,4) .* 1000;
+            TransfRef(1:3,4) = TransfRef(1:3,4) .* 1000;
         end
     end
     % Transform the reference SCS coordinates if possible

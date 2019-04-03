@@ -187,25 +187,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
 
         % Convert channel positions to MRI coordinates (for surface export, keep everything in SCS)
         if strcmpi(OPTIONS.OutputType, 'volume')
-            Tscs2mri = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
-            % Get the MRI=>RAS transformation
-            if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf)
-                iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
-            else
-                iTransf = [];
+            % Get the transformation SCS=>MRI
+            Tscs2mri = cs_convert(sMri, 'scs', 'mri');
+            % Get the MRI=>WORLD transformation
+            Tmri2world = cs_convert(sMri, 'mri', 'world');
+            % If available, compute the transformation SCS=>WORLD
+            if ~isempty(Tmri2world)
+                Tscs2mri = Tmri2world * Tscs2mri;
             end
-            % If there is a transformation MRI=>RAS from a .nii file 
-            if ~isempty(iTransf)
-                vox2ras = sMri.InitTransf{iTransf,2};
-                % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-                vox2ras = vox2ras * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-                % 1st operation: Convert from MRI(mm) to voxels
-                vox2ras = vox2ras * diag(1 ./ [sMri.Voxsize, 1]);
-                % Convert millimeters=>meters
-                vox2ras(1:3,4) = vox2ras(1:3,4) ./ 1000;
-                % Add this transformation
-                Tscs2mri = vox2ras * Tscs2mri;
-            end
+            % Apply to electrodes positions
             ChannelMat = channel_apply_transf(ChannelMat, Tscs2mri, iChan, 1);
             ChannelMat = ChannelMat{1};
         else

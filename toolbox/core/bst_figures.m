@@ -54,7 +54,8 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2019
+%          Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -253,7 +254,8 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
                            GlobalData.DataSet(iDS).Measures.ChannelFlag, ...
                            Modality);
     % If opening EEG/SEEG/ECOG topography or 3D view: exclude (0,0,0) points
-    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(Modality, {'EEG','SEEG','ECOG'})
+    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(Modality, {'EEG','SEEG','ECOG'}) ...
+        && ~(ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, {'2DLayout', '2DElectrodes'}) && ismember(Modality, {'SEEG','ECOG'}))
         % Get the locations for all the channels
         chanLoc = {GlobalData.DataSet(iDS).Channel(selChan).Loc};
         % Detect the channels without location or at (0,0,0)
@@ -405,6 +407,8 @@ function UpdateFigureName(hFig)
                 strMontage = 'All';
             elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                 strMontage = 'AvgRef';
+            elseif ~isempty(strfind(TsInfo.MontageName, 'Scalp current density'))
+                strMontage = 'SCD';
             elseif strcmpi(TsInfo.MontageName, 'Head distance')
                 strMontage = 'Head';
             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
@@ -475,6 +479,8 @@ function UpdateFigureName(hFig)
                                 strMontage = 'All';
                             elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                                 strMontage = 'AvgRef';
+                            elseif ~isempty(strfind(TsInfo.MontageName, 'Scalp current density'))
+                                strMontage = 'SCD';
                             elseif strcmpi(TsInfo.MontageName, 'Head distance')
                                 strMontage = 'Head';
                             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
@@ -1879,20 +1885,27 @@ end
 %  ===== MOUSE SELECTION ===================================================================
 %  =========================================================================================
 % ===== TOGGLE SELECTED ROW =====
-function ToggleSelectedRow(RowName)
+function ToggleSelectedRow(RowNames)
     global GlobalData;
     % Convert to cell
-    if ~iscell(RowName)
-        RowName = {RowName};
+    if ~iscell(RowNames)
+        RowNames = {RowNames};
     end
     % Remove spaces in channel names
-    RowName = cellfun(@(c)strrep(c,' ',''), RowName, 'UniformOutput', 0);
+    RowNames = cellfun(@(c)strrep(c,' ',''), RowNames, 'UniformOutput', 0);
+    % Expand bipolar montages
+    for i = 1:length(RowNames)
+        bipNames = str_split(RowNames{i}, '-');
+        if (length(bipNames) == 2)
+            RowNames = cat(2, RowNames, bipNames);
+        end
+    end
     % If row name is already in list: remove it
-    if ismember(RowName, GlobalData.DataViewer.SelectedRows)
-        SetSelectedRows(setdiff(GlobalData.DataViewer.SelectedRows, RowName));
+    if ismember(RowNames, GlobalData.DataViewer.SelectedRows)
+        SetSelectedRows(setdiff(GlobalData.DataViewer.SelectedRows, RowNames));
     % Else: add it
     else
-        SetSelectedRows(union(GlobalData.DataViewer.SelectedRows, RowName));
+        SetSelectedRows(union(GlobalData.DataViewer.SelectedRows, RowNames));
     end
 end
 

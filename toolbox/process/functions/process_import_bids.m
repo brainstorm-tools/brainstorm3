@@ -68,6 +68,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.channelalign.Comment = 'Align sensors using headpoints';
     sProcess.options.channelalign.Type    = 'checkbox';
     sProcess.options.channelalign.Value   = 1;
+    % Group sessions
+    sProcess.options.groupsessions.Comment = 'Import multiple anat sessions to the same subject';
+    sProcess.options.groupsessions.Type    = 'checkbox';
+    sProcess.options.groupsessions.Value   = 1;
 end
 
 
@@ -89,19 +93,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     % Number of vertices
-    nVertices = sProcess.options.nvertices.Value{1};
-    if isempty(nVertices) || (nVertices < 50)
+    OPTIONS.nVertices = sProcess.options.nvertices.Value{1};
+    if isempty(OPTIONS.nVertices) || (OPTIONS.nVertices < 50)
         bst_report('Error', sProcess, [], 'Invalid number of vertices.');
-        return
+        return;
     end
     % Channels align
-    ChannelAlign = 2 * double(sProcess.options.channelalign.Value);
+    OPTIONS.ChannelAlign = 2 * double(sProcess.options.channelalign.Value);
     % Subject selection
-    SelectedSubjects = strtrim(str_split(sProcess.options.selectsubj.Value, ','));
+    OPTIONS.SelectedSubjects = strtrim(str_split(sProcess.options.selectsubj.Value, ','));
+    % Group sessions
+    OPTIONS.isGroupSessions = sProcess.options.groupsessions.Value;
     
     % === IMPORT DATASET ===
     % Import dataset
-    [OutputFiles, Messages] = ImportBidsDataset(selectedFolders, nVertices, 0, ChannelAlign, SelectedSubjects);
+    [OutputFiles, Messages] = ImportBidsDataset(selectedFolders, OPTIONS);
     % Handling errors
     if ~isempty(Messages)
         if isempty(OutputFiles)
@@ -114,28 +120,27 @@ end
 
 
 %% ===== IMPORT BIDS DATABASE =====
-% USAGE:  [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], nVertices=[ask], isInteractive=1, ChannelAlign=2, SelectedSubjects=[])
-function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteractive, ChannelAlign, SelectedSubjects)
+% USAGE:  [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], OPTIONS=[])
+function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
     % Initialize returned values
     RawFiles = {};
     Messages = [];
     
     % ===== PARSE INPUTS =====
-    if (nargin < 5) || isempty(SelectedSubjects)
-        SelectedSubjects = [];
-    end
-    if (nargin < 4) || isempty(ChannelAlign)
-        ChannelAlign = 0;
-    end
-    if (nargin < 3) || isempty(isInteractive)
-        isInteractive = 1;
-    end
-    if (nargin < 2) || isempty(nVertices)
-        nVertices = [];
-    end
-    if (nargin < 3) || isempty(BidsDir)
+    if (nargin < 1) || isempty(BidsDir)
         BidsDir = [];
     end
+    if (nargin < 2) || isempty(OPTIONS)
+        OPTIONS = struct();
+    end
+    % Default options
+    Def_OPTIONS = struct(...
+        'nVertices',        [], ...
+        'isInteractive',    1, ...
+        'ChannelAlign',     0, ...
+        'SelectedSubjects', [], ...
+        'isGroupSessions',  1);
+    OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 
     % ===== GET THE BIDS FOLDER =====
     % Ask the folder to the user
@@ -155,12 +160,12 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
     % Check the structure of the dataset
     [BidsDir, selSubjects, errorMessage] = GetValidBidsDir(BidsDir);
     if ~isempty(errorMessage)
-        if isInteractive
+        if OPTIONS.isInteractive
             bst_error(errorMessage, 'Import BIDS dataset', 0);
         end
         return;
     end
-    SelectedSubjects = unique([SelectedSubjects, selSubjects]);
+    OPTIONS.SelectedSubjects = unique([OPTIONS.SelectedSubjects, selSubjects]);
     
     % ===== IDENTIFY SUBJECTS =====
     % List all the subject folders
@@ -173,7 +178,6 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*'));
     end
     % Loop on the subjects
-    SubjectTag = {};
     SubjectName = {};
     SubjectAnatDir = {};
     SubjectAnatFormat = {};
@@ -183,7 +187,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % Default subject name
         subjName = subjDir(iSubj).name;
         % Check if this is a subject selected for import
-        if ~isempty(SelectedSubjects) && ((iscell(SelectedSubjects) && ~ismember(subjName, SelectedSubjects)) || (ischar(SelectedSubjects) && ~strcmpi(subjName, SelectedSubjects)))
+        if ~isempty(OPTIONS.SelectedSubjects) && ((iscell(OPTIONS.SelectedSubjects) && ~ismember(subjName, OPTIONS.SelectedSubjects)) || (ischar(OPTIONS.SelectedSubjects) && ~strcmpi(subjName, OPTIONS.SelectedSubjects)))
             disp(['BIDS> Subject "' subjName '" was not selected. Skipping...']);
             continue;
         end
@@ -200,20 +204,33 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
             sessFolders = cellfun(@(c)fullfile(BidsDir, subjName, c), {sessDir.name}, 'UniformOutput', 0);
             derivFolders = cellfun(@(c)fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, c), {sessDir.name}, 'UniformOutput', 0);
         end
+        
         % If there is one unique segmented anatomy: group all the sessions together
         [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName);
         % If there is no segmented folder, try SUBJID_SESSID
         if isempty(AnatDir) && (length(sessDir) == 1)
             [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(1).name]);
         end
+        
+        % Get all MRI files
+        isSessMri = 1;
+        allMriFiles = {};
+        for isess = 1:length(sessFolders)
+            sessMriFiles = GetSubjectMri(bst_fullfile(sessFolders{isess}, 'anat'));
+            if isempty(sessMriFiles)
+                isSessMri = 0;
+            else
+                allMriFiles = cat(2, allMriFiles, sessMriFiles);
+            end
+        end
+        
         % If a single anatomy folder is found
         if ~isempty(AnatDir)
-            SubjectTag{end+1}        = subjName;
             SubjectName{end+1}       = subjName;
             SubjectAnatDir{end+1}    = AnatDir;
             SubjectAnatFormat{end+1} = AnatFormat;
             SubjectSessDir{end+1}    = cat(2, sessFolders, derivFolders);
-            SubjectMriFiles{end+1}   = {};
+            SubjectMriFiles{end+1}   = allMriFiles;
         % Check for multiple sessions
         elseif (length(sessFolders) > 1)
             % Check for multiple session segmentation
@@ -229,31 +246,18 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
             if isSessSeg
                 for isess = 1:length(sessFolders)
                     [sessAnatDir, sessAnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(isess).name]);
-                    SubjectTag{end+1}        = subjName;
                     SubjectName{end+1}       = [subjName, '_', sessDir(isess).name];
                     SubjectAnatDir{end+1}    = sessAnatDir;
                     SubjectAnatFormat{end+1} = sessAnatFormat;
                     SubjectSessDir{end+1}    = {sessFolders{isess}, derivFolders{isess}};
-                    SubjectMriFiles{end+1}   = {};
+                    SubjectMriFiles{end+1}   = allMriFiles;
                 end
             % There are no segmentations, check if there is one T1 volume per sesssion or per subject
             else
-                % Check for multiple session anat
-                isSessSeg = 1;
-                allMriFiles = {};
-                for isess = 1:length(sessFolders)
-                    sessMriFiles = GetSubjectMri(bst_fullfile(sessFolders{isess}, 'anat'));
-                    if isempty(sessMriFiles)
-                        isSessSeg = 0;
-                    else
-                        allMriFiles = cat(2, allMriFiles, sessMriFiles);
-                    end
-                end
                 % If there is one anatomy per session
-                if isSessSeg
+                if isSessMri && ~OPTIONS.isGroupSessions
                     for isess = 1:length(sessFolders)
                         sessMriFiles = GetSubjectMri(bst_fullfile(sessFolders{isess}, 'anat'));
-                        SubjectTag{end+1}        = subjName;
                         SubjectName{end+1}       = [subjName, '_', sessDir(isess).name];
                         SubjectAnatDir{end+1}    = [];
                         SubjectAnatFormat{end+1} = [];
@@ -262,7 +266,6 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                     end
                 % One common anatomy for all the sessions
                 else
-                    SubjectTag{end+1}        = subjName;
                     SubjectName{end+1}       = subjName;
                     SubjectAnatDir{end+1}    = [];
                     SubjectAnatFormat{end+1} = [];
@@ -272,24 +275,32 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
             end
         % One session
         elseif (length(sessFolders) == 1)
-            SubjectTag{end+1}        = subjName;
             SubjectName{end+1}       = subjName;
             SubjectAnatDir{end+1}    = [];
             SubjectAnatFormat{end+1} = [];
             SubjectSessDir{end+1}    = cat(2, sessFolders, derivFolders);
             SubjectMriFiles{end+1}   = GetSubjectMri(bst_fullfile(sessFolders{1}, 'anat'));
         end
+        
+        % Reorder MRI: Add the onesin "ses-pre" in front of the others, so that they are imported first and become the defaults
+        if (length(SubjectMriFiles{end}) > 1)
+            iSesPre = find(~cellfun(@(c)isempty(strfind(c,'ses-pre')), SubjectMriFiles{end}));
+            if ~isempty(iSesPre) && (length(iSesPre) < length(SubjectMriFiles{end}))
+                iReorder = [iSesPre, setdiff(1:length(SubjectMriFiles{end}),iSesPre)];
+                SubjectMriFiles{end} = SubjectMriFiles{end}(iReorder);
+            end
+        end
     end
     
 %     % Perform some checks
 %     % Cannot set the fiducials when calling from a process (non-interactive)
-%     if ~isInteractive && any(isSetFiducials)
+%     if ~OPTIONS.isInteractive && any(isSetFiducials)
 %         Messages = ['You need to set the fiducials interactively before running this process.' 10 ...
 %                     'Use the menu "File > Batch MRI fiducials" for creating fiducials.m files in the segmentation folders.' 10 ...
 %                     'Alternatively, run this import interactively with the menu "File > Load protocol > Import BIDS dataset"'];
 %         return;
 %     % Ask the user whether to set all the fiducials at once
-%     elseif isInteractive && any(isSetFiducials & isSegmentation)
+%     elseif OPTIONS.isInteractive && any(isSetFiducials & isSegmentation)
 %         res = java_dialog('question', ...
 %             ['You need to set the anatomy fiducials interactively for each subject.' 10 10 ...
 %              'There are two ways for doing this, depending if you have write access to the dataset:' 10 ...
@@ -327,7 +338,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         end
         if isempty(iSubject)
             Messages = [Messages, 10, 'Cannot create subject "' SubjectName{iSubj} '".'];
-            if isInteractive
+            if OPTIONS.isInteractive
                 bst_error(Messages, 'Import BIDS dataset', 0);
                 return;
             else
@@ -339,45 +350,51 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % Do not ask interactively for anatomical fiducials: if they are not set, use default positions from MNI template
         isInteractiveAnat = 0;
         % If the anatomy is already set: issue a warning
-        if ~isempty(sSubject.Anatomy)
+        isSkipAnat = ~isempty(sSubject.Anatomy);
+        if isSkipAnat
             msgAnatSet = ['Anatomy is already set for subject "' SubjectName{iSubj} '", not overwriting...'];
             Messages = [Messages, 10, msgAnatSet];
             disp(['BST> ' msgAnatSet]);
+        end
         % Import segmentation
-        elseif ~isempty(SubjectAnatDir{iSubj})
+        if ~isSkipAnat && ~isempty(SubjectAnatDir{iSubj})
             % Ask for number of vertices (so it is not asked multiple times)
-            if isempty(nVertices)
-                nVertices = java_dialog('input', 'Number of vertices on the cortex surface:', 'Import FreeSurfer folder', [], '15000');
-                if isempty(nVertices)
+            if isempty(OPTIONS.nVertices)
+                OPTIONS.nVertices = java_dialog('input', 'Number of vertices on the cortex surface:', 'Import FreeSurfer folder', [], '15000');
+                if isempty(OPTIONS.nVertices)
                     return;
                 end
-                nVertices = str2double(nVertices);
+                OPTIONS.nVertices = str2double(OPTIONS.nVertices);
             end
             % Import subject anatomy
             switch (SubjectAnatFormat{iSubj})
                 case 'FreeSurfer'
-                    errorMsg = import_anatomy_fs(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractiveAnat, [], 0);
+                    errorMsg = import_anatomy_fs(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, [], 0);
                 case 'BrainSuite'
-                    errorMsg = import_anatomy_bs(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractiveAnat, []);
+                    errorMsg = import_anatomy_bs(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, []);
                 case 'BrainVISA'
-                    errorMsg = import_anatomy_bv(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractiveAnat, []);
+                    errorMsg = import_anatomy_bv(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, []);
                 case 'CIVET'
-                    errorMsg = import_anatomy_civet(iSubject, SubjectAnatDir{iSubj}, nVertices, isInteractiveAnat, [], 0);
+                    errorMsg = import_anatomy_civet(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, [], 0);
                 otherwise
                     errorMsg = ['Invalid file format: ' SubjectAnatFormat{iSubj}];
             end
+        end
         % Import MRI
-        elseif ~isempty(SubjectMriFiles{iSubj})
+        if ~isSkipAnat && ~isempty(SubjectMriFiles{iSubj})
             % Import first MRI
             BstMriFile = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractiveAnat, 0);
             if isempty(BstMriFile)
                 errorMsg = ['Could not load MRI file: ' SubjectMriFiles{iSubj}];
             % Compute additional files
             else
-                % Compute MNI transformation
-                [sMri, errorMsg] = bst_normalize_mni(BstMriFile);
-                % Generate head surface
-                tess_isohead(iSubject, 10000, 0, 2);
+                % If there was no segmentation imported before: normalize and create head surface
+                if isempty(SubjectAnatDir{iSubj})
+                    % Compute MNI transformation
+                    [sMri, errorMsg] = bst_normalize_mni(BstMriFile);
+                    % Generate head surface
+                    tess_isohead(iSubject, 10000, 0, 2);
+                end
                 % Add other volumes
                 for i = 2:length(SubjectMriFiles{iSubj})
                     import_mri(iSubject, SubjectMriFiles{iSubj}{i}, 'ALL', 0, 1);
@@ -387,7 +404,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % Error handling
         if ~isempty(errorMsg)
             Messages = [Messages, 10, errorMsg];
-            if isInteractive
+            if OPTIONS.isInteractive
                 bst_error(Messages, 'Import BIDS dataset', 0);
                 return;
             else
@@ -399,8 +416,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         % Import options
         ImportOptions = db_template('ImportOptions');
         ImportOptions.ChannelReplace  = 1;
-        ImportOptions.ChannelAlign    = 2 * (ChannelAlign >= 1) * ~sSubject.UseDefaultAnat;
-        ImportOptions.DisplayMessages = isInteractive;
+        ImportOptions.ChannelAlign    = 2 * (OPTIONS.ChannelAlign >= 1) * ~sSubject.UseDefaultAnat;
+        ImportOptions.DisplayMessages = OPTIONS.isInteractive;
         ImportOptions.EventsMode      = 'ignore';
         ImportOptions.EventsTrackMode = 'value';
         % Get all the files in the session folder
@@ -409,6 +426,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
         allMeegElecFiles = {};
         allMeegElecFormats = {};
         subjConditions = bst_get('ConditionsForSubject', sSubject.FileName);
+%         DefaultMri = [];
         for isess = 1:length(SubjectSessDir{iSubj})
             if isdir(SubjectSessDir{iSubj}{isess})
                 % If the subject already has this session, skip it.
@@ -452,39 +470,31 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
                     posUnits = 'mm';
                     electrodesFile = [];
                     electrodesSpace = 'orig';
+                    
+                    % === COORDSYSTEM.JSON ===
                     % Get _coordsystem.json files
                     coordsystemDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_coordsystem.json'));
+                    if (length(coordsystemDir) > 1)
+                        % Select by order of preference: subject space or MNI space
+                        coordsystemDir = SelectCoordSystem(coordsystemDir);
+                    end
                     if (length(coordsystemDir) == 1)
                         sCoordsystem = bst_jsondecode(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, coordsystemDir(1).name));
                         if isfield(sCoordsystem, 'iEEGCoordinateUnits') && ~isempty(sCoordsystem.iEEGCoordinateUnits) && ismember(sCoordsystem.iEEGCoordinateUnits, {'mm','cm','m'})
                             posUnits = sCoordsystem.iEEGCoordinateUnits;
                         end
+%                         if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor) && file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
+%                             DefaultMri = bst_fullfile(BidsDir, sCoordsystem.IntendedFor);
+%                         end
                     end
+                    
+                    % === ELECTRODES.TSV ===
                     % Get electrodes positions
                     electrodesDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_electrodes.tsv'));
                     if (length(electrodesDir) >= 1)
-                        % If there are multiple files: pick the "orig" one if available, or a "MNI" one
-                        if (length(electrodesDir) > 1)
-                            % Orig
-                            iOrig = find(~cellfun(@(c)isempty(strfind(lower(c),'-orig')), {electrodesDir.name}));
-                            if ~isempty(iOrig)
-                                electrodesFile = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, electrodesDir(iOrig(1)).name);
-                                electrodesSpace = 'orig';
-                            end
-                            % MNI
-                            if isempty(electrodesFile)
-                                iMni = find(~cellfun(@(c)isempty(strfind(lower(c),'-mni')), {electrodesDir.name}));
-                                if ~isempty(iMni)
-                                    electrodesFile = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, electrodesDir(iMni(1)).name);
-                                    electrodesSpace = 'mni';
-                                end
-                            end
-                            % Nothing interpretable found: Use first in the list
-                            if isempty(electrodesFile)
-                                electrodesFile = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, electrodesDir(1).name);
-                                electrodesSpace = 'orig';
-                            end
-                        end
+                        % Select by order of preference: subject space, MNI space or first in the list
+                        [electrodesDir, electrodesSpace] = SelectCoordSystem(electrodesDir);
+                        electrodesFile = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, electrodesDir(1).name);
                     end
                     % Read the contents of the session folder
                     meegDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*.*'));
@@ -623,7 +633,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, nVertices, isInteract
 end
 
 
-% ===== FIND SUBJECT ANATOMY =====
+%% ===== FIND SUBJECT ANATOMY =====
 function [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName)
     % Inialize returned structures
     AnatDir    = [];
@@ -676,6 +686,7 @@ function MriFiles = GetSubjectMri(anatFolder)
     end
 end
 
+%% ===== SELECT BIDS DIR =====
 % Selects a valid BIDS folder and a list of selected subject if applicable.
 function [BidsDir, selectedSubjects, errorMessage] = GetValidBidsDir(inputFolders)
     BidsDir = [];
@@ -717,3 +728,34 @@ function [BidsDir, selectedSubjects, errorMessage] = GetValidBidsDir(inputFolder
         end
     end
 end
+
+
+%% ===== SELECT COORDINATE SYSTEM =====
+% Tries to find the best coordinate system available: subject space, otherwise MNI space
+function [fileList, fileSpace] = SelectCoordSystem(fileList)
+    % Orig subject space
+    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'-orig')), {fileList.name}) | ...
+                ~cellfun(@(c)isempty(strfind(lower(c),'-head')), {fileList.name}) | ...
+                ~cellfun(@(c)isempty(strfind(lower(c),'-subject')), {fileList.name}) | ...
+                ~cellfun(@(c)isempty(strfind(lower(c),'-scanner')), {fileList.name}) | ...
+                ~cellfun(@(c)isempty(strfind(lower(c),'-sform')), {fileList.name}) | ...
+                ~cellfun(@(c)isempty(strfind(lower(c),'-other')), {fileList.name}));
+    if ~isempty(iSel)
+        fileList = fileList(iSel);
+        fileSpace = 'orig';
+        return;
+    end
+    % MNI
+    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'-mni')), {fileList.name}));
+    if ~isempty(iSel)
+        fileList = fileList(iSel);
+        fileSpace = 'mni';
+        return;
+    end
+    % Nothing interpretable found: Use first in the list
+    disp(['BIDS> Warning: Could not detect subject coordinate system, using randomly "' fileList(1).name '".']);
+    fileList = fileList(1);
+    fileSpace = 'unknown';
+end
+
+

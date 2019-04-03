@@ -57,7 +57,7 @@ function varargout = panel_scout(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2019
 
 eval(macro_method);
 end
@@ -3088,7 +3088,7 @@ function CreateScoutMni()
     end
     
     % Get coordinates from the user
-    res = java_dialog('input', {'<HTML>Enter the [x,y,z] coordinates in only one <BR>of the coordinate systems below.<BR><BR>MRI coordinates (millimeters):', 'SCS coordinates (millimeters)', 'MNI coordinates (millimeters)'}, 'Create scout', [], {'', '', ''});
+    res = java_dialog('input', {'<HTML>Enter the [x,y,z] coordinates in only one of<BR>the coordinate systems below (millimeters).<BR><BR>MRI coordinates:', 'SCS coordinates:', 'World coordinates:', 'MNI coordinates:'}, 'Create scout', [], {'', '', '', ''});
     % If user cancelled: return
     if isempty(res) || (length(res) < 3)
         return
@@ -3096,30 +3096,35 @@ function CreateScoutMni()
     % Get new values
     MRI = str2num(res{1}) / 1000;
     SCS = str2num(res{2}) / 1000;
-    MNI = str2num(res{3}) / 1000;
+    World = str2num(res{3}) / 1000;
+    MNI = str2num(res{4}) / 1000;
     
     % Load Mri
     sMri = bst_memory('LoadMri', iSubject);
-    % MRI coordinates
+    % Find the coordinate system that was used
     if (length(MRI) == 3)
-        SCS = cs_convert(sMri, 'mri', 'scs', MRI);
-        ScoutLabel = sprintf('%d_%d_%d', round(MRI.*1000));
-    % SCS coordinates
+        fidPos = MRI;
+        cs = 'mri';
     elseif (length(SCS) == 3)
-        % Keep SCS values unchanged
-        ScoutLabel = sprintf('%d_%d_%d', round(SCS.*1000));
-    % MNI coordinates
+        fidPos = SCS;
+        cs = 'scs';
+    elseif (length(World) == 3)
+        fidPos = World;
+        cs = 'world';
     elseif (length(MNI) == 3)
-        SCS = cs_convert(sMri, 'mni', 'scs', MNI);
-        ScoutLabel = sprintf('%d_%d_%d', round(MNI.*1000));
-        if isempty(SCS)
-            bst_error(['The MNI coordinates are not available for this subject.' 10 'Right-click on the MRI file > Compute MNI transformation.'], 'Create scout', 0);
-            return;
-        end
+        fidPos = MNI;
+        cs = 'mni';
     else
         return;
     end
-    
+    % Convert coordinates
+    SCS = cs_convert(sMri, cs, 'scs', fidPos);
+    if isempty(SCS)
+        bst_error(['The ' upper(cs) ' coordinates are not available for this subject.'], 'Create scout', 0);
+        return;
+    end
+    ScoutLabel = sprintf('%d_%d_%d', round(fidPos.*1000));
+        
     % Get atlas properties: surface or volume
     [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
     % Volume atlas: Get grid of points

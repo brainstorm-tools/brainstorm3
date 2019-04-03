@@ -76,9 +76,10 @@ if strcmpi(src, 'world') || strcmpi(dest, 'world')
     vox2ras = vox2ras * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
     % 1st operation: Convert from MRI(mm) to voxels
     vox2ras = vox2ras * diag(1 ./ [sMri.Voxsize, 1]);
-    % Compute the transformation SUBJECT=>MRI (in meters)
-    world2mri = inv(vox2ras);
-    world2mri(1:3,4) = world2mri(1:3,4) ./ 1000;
+    % Convert to meters: transformation MRI=>WORLD (in meters)
+    mri2world = vox2ras .* [ones(3,3), 1e-3.*ones(3,1); ones(1,4)];
+    % Compute inverse transformation WORLD=>MRI (in meters)
+    world2mri = inv(mri2world);
 end
 
 % ===== CONVERT SRC => MRI =====
@@ -126,7 +127,7 @@ switch lower(dest)
         end
         RT2 = [sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1];
     case 'world'
-        RT2 = inv(world2mri);
+        RT2 = mri2world;
     otherwise
         error(['Invalid coordinate system: ' dest]);
 end

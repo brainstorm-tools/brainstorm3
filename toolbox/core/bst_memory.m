@@ -482,6 +482,19 @@ function LoadChannelFile(iDS, ChannelFile)
     global GlobalData;
     % If a channel file is defined
     if ~isempty(ChannelFile)
+        % Check if this channel file is already loaded and modified in another DataSet
+        iDSother = setdiff(1:length(GlobalData.DataSet), iDS);
+        if ~isempty(iDSother) && any([GlobalData.DataSet(iDSother).isChannelModified])
+            % Ask user
+            isSave = java_dialog('confirm', ...
+                ['This channel file is being edited in another window.' 10 ...
+                 'Save the modifications so the new figure can show updated positions?'], 'Save modifications');
+            % Force saving of the modifications
+            if isSave
+                bst_memory('SaveChannelFile', iDSother(1));
+            end
+        end
+
         % Load channel
         ChannelMat = in_bst_channel(ChannelFile);
         % Check coherence between Channel and Measures.F dimensions
@@ -903,7 +916,7 @@ function F = FilterLoadedData(F, sfreq)
         end
         % Filter data
         isRelax = 1;
-        [F, FiltSpec, Messages] = process_bandpass('Compute', F, sfreq, HighPass, LowPass, 'bst-hfilter', isMirror, isRelax);
+        [F, FiltSpec, Messages] = process_bandpass('Compute', F, sfreq, HighPass, LowPass, 'bst-hfilter-2019', isMirror, isRelax);
         if ~isempty(Messages)
             disp(['Warning: ' Messages]);
         end
@@ -2768,7 +2781,14 @@ function isOk = CheckTimeWindows()
     GlobalData.UserTimeWindow.NumberOfSamples = round((GlobalData.UserTimeWindow.Time(2)-GlobalData.UserTimeWindow.Time(1)) / GlobalData.UserTimeWindow.SamplingRate) + 1;
     % Try to reuse the same current time
     if isempty(GlobalData.UserTimeWindow.CurrentTime)
-        GlobalData.UserTimeWindow.CurrentTime = GlobalData.UserTimeWindow.Time(1);
+        % Set time at t=0s if there is a baseline
+        if (GlobalData.UserTimeWindow.Time(1) < 0) && (GlobalData.UserTimeWindow.Time(2) > 0)
+            % Find the closest time sample to zero
+            GlobalData.UserTimeWindow.CurrentTime = GlobalData.UserTimeWindow.Time(1) - round(GlobalData.UserTimeWindow.Time(1) ./ GlobalData.UserTimeWindow.SamplingRate) .* GlobalData.UserTimeWindow.SamplingRate;
+        % Otherwise use the first time point available
+        else
+            GlobalData.UserTimeWindow.CurrentTime = GlobalData.UserTimeWindow.Time(1);
+        end
     end
     panel_time('SetCurrentTime', GlobalData.UserTimeWindow.CurrentTime);
 

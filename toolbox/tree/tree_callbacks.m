@@ -30,7 +30,7 @@ function jPopup = tree_callbacks( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
@@ -446,10 +446,21 @@ switch (lower(action))
             % ===== VIDEO =====
             case 'video'
                 if ispc
-                    view_video(filenameFull, 'WMPlayer', 1);
+                    % Get list of ActiveX controls
+                    bst_progress('start', 'Open video', 'Getting installed ActiveX controls...');
+                    actxList = actxcontrollist;
+                    bst_progress('stop');
+                    % Default if available: VLC
+                    if ismember('VideoLAN.VLCPlugin.2', actxList(:,2))
+                        PlayerType = 'VLC';
+                    else
+                        % PlayerType = 'WMPlayer';
+                        PlayerType = 'VideoReader';
+                    end
                 else
-                    view_video(filenameFull, 'VideoReader', 1);
+                    PlayerType = 'VideoReader';
                 end
+                view_video(filenameFull, PlayerType, 1);
         end
         % Repaint tree
         panel_protocols('RepaintTree');
@@ -564,6 +575,12 @@ switch (lower(action))
                     end
                     % === GENERATE SPM CANONICAL ===
                     jItem = gui_component('MenuItem', jPopup, [], 'SPM canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, []));
+                    if isempty(sSubject.Anatomy)
+                        jItem.setEnabled(0);
+                    end
+                    % === DEFACE MRI ===
+                    OPTIONS = struct('isDefaceHead', 1);
+                    jItem = gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, OPTIONS));
                     if isempty(sSubject.Anatomy)
                         jItem.setEnabled(0);
                     end
@@ -962,6 +979,7 @@ switch (lower(action))
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Compute MNI transformation', IconLoader.ICON_ANATOMY, [], @(h,ev)NormalizeMri(filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
+                    gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
                     if ~bstNodes(1).isMarked()
                         jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
                         gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 1));
@@ -1217,7 +1235,9 @@ switch (lower(action))
                 end
                 % Add iEEG when SEEG+ECOG 
                 if all(ismember({'SEEG','ECOG'}, AllMod))
-                    AllMod     = cat(2, {'ECOG+SEEG'}, AllMod);
+                    AllMod = cat(2, {'ECOG+SEEG'}, AllMod);
+                end
+                if all(ismember({'SEEG','ECOG'}, DisplayMod))
                     DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
                 end
                 % One data file selected only
@@ -1232,9 +1252,12 @@ switch (lower(action))
                         ChannelFile = bst_get('ChannelFileForStudy', filenameRelative);
                         if ~isempty(ChannelFile) && strcmpi(DataType, 'raw')
                             Device = bst_get('ChannelDevice', ChannelFile);
+                            ChannelMat_Comment = in_bst_channel(ChannelFile,'Comment');
                             % If CTF file format
                             if strcmpi(Device, 'CTF')
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_ctf_convert', filenameFull, [], 'rectype', 3, 'interactive', 1));
+                            elseif ~isempty(strfind(ChannelMat_Comment.Comment, 'NWB')) % Check for NWB file format
+                                gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_nwb_convert', filenameFull, [], 'rectype', 3, 'interactive', 1, 'ChannelFile', ChannelFile));
                             end
                         end
                         % Separator
@@ -1258,6 +1281,10 @@ switch (lower(action))
                                 elseif ~(strcmpi(AllMod{iMod}, 'MEG') && all(ismember({'MEG MAG', 'MEG GRAD'}, AllMod)))
                                     fcnPopupTopoNoInterp(jMenuModality, filenameRelative, AllMod(iMod), 0, 0, 0);
                                 end
+                            elseif ismember(AllMod{iMod}, {'ECOG','SEEG'})
+                                AddSeparator(jMenuModality);
+                                gui_component('MenuItem', jMenuModality, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DLayout'));
+                                gui_component('MenuItem', jMenuModality, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DElectrodes'));
                             end
                             % === DISPLAY ON SCALP ===
                             % => ONLY for EEG, and if a scalp is defined
@@ -1412,6 +1439,10 @@ switch (lower(action))
                                 ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
                                 %fcnPopupDisplayTopography(jMenuModality, filenameRelative, AllMod, AllMod{iMod}, 1);
                                 fcnPopupTopoNoInterp(jMenuModality, filenameRelative, AllMod(iMod), 1, 0, 0);
+                            elseif ismember(AllMod{iMod}, {'ECOG','SEEG'})
+                                AddSeparator(jMenuModality);
+                                gui_component('MenuItem', jMenuModality, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DLayout'));
+                                gui_component('MenuItem', jMenuModality, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DElectrodes'));
                             end
                             % === DISPLAY ON SCALP ===
                             if strcmpi(AllMod{iMod}, 'EEG') && ~isempty(sSubject) && ~isempty(sSubject.iScalp) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
@@ -2099,10 +2130,15 @@ switch (lower(action))
 %% ===== POPUP: VIDEO =====
             case 'video'
                 if (length(bstNodes) == 1)
+                    gui_component('MenuItem', jPopup, [], 'MATLAB VideoReader', IconLoader.ICON_VIDEO, [], @(h,ev)view_video(filenameFull, 'VideoReader', 1));
                     if ispc
+                        gui_component('MenuItem', jPopup, [], 'VLC ActiveX plugin', IconLoader.ICON_VIDEO, [], @(h,ev)view_video(filenameFull, 'VLC', 1));
                         gui_component('MenuItem', jPopup, [], 'Windows Media Player', IconLoader.ICON_VIDEO, [], @(h,ev)view_video(filenameFull, 'WMPlayer', 1));
                     end
-                    gui_component('MenuItem', jPopup, [], 'MATLAB VideoReader', IconLoader.ICON_VIDEO, [], @(h,ev)view_video(filenameFull, 'VideoReader', 1));
+                    AddSeparator(jPopup);
+                    if strcmpi(file_gettype(filenameRelative), 'videolink')
+                        gui_component('MenuItem', jPopup, [], 'Set start time', IconLoader.ICON_VIDEO, [], @(h,ev)figure_video('SetVideoStart', filenameFull));
+                    end
                 end
                 
 %% ===== POPUP: MATRIX =====
@@ -2203,7 +2239,9 @@ switch (lower(action))
                 RawFile = [];
             end
             % Folders: set acquisition date
-            gui_component('MenuItem', jMenuFile, [], 'Set acquisition date', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('SetAcquisitionDate', iStudy));
+            if ~bst_get('ReadOnly') && (~isempty(RawFile) || isstudy)
+                gui_component('MenuItem', jMenuFile, [], 'Set acquisition date', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('SetAcquisitionDate', iStudy));
+            end
             % Raw file menus
             if ~isempty(RawFile) && isempty(strfind(RawFile, '_0ephys_'))
                 % Files that are not saved in the database
@@ -2215,10 +2253,10 @@ switch (lower(action))
                     end
                     gui_component('Menu', jMenuFile, [], 'Extra acquisition files', IconLoader.ICON_RAW_DATA, [], @(h,ev)CreateMenuExtraFiles(ev.getSource(), RawFile));
                 end
-                % Add video
-                if ~bst_get('ReadOnly')
-                    gui_component('MenuItem', jMenuFile, [], 'Add synchronized video', IconLoader.ICON_VIDEO, [], @(h,ev)import_video(iStudy));
-                end
+            end
+            % Add video
+            if ~bst_get('ReadOnly') && (~isempty(RawFile) || isstudy) 
+                gui_component('MenuItem', jMenuFile, [], 'Add synchronized video', IconLoader.ICON_VIDEO, [], @(h,ev)import_video(iStudy));
                 AddSeparator(jMenuFile);
             end
 
@@ -2639,8 +2677,13 @@ function fcnPopupDisplayTopography(jMenu, FileName, AllMod, Modality, isStat)
     gui_component('MenuItem', jMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(FileName, Modality, '2DLayout'));
     % 3D Electrodes
     if ismember(Modality, {'EEG', 'ECOG'})
+        gui_component('MenuItem', jMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '2DElectrodes'));
         gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes'));
-    elseif strcmpi(Modality, 'SEEG') || strcmpi(Modality, 'ECOG+SEEG')
+    end
+    if strcmpi(Modality, 'SEEG')
+        gui_component('MenuItem', jMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '2DElectrodes'));
+    end
+    if strcmpi(Modality, 'SEEG') || strcmpi(Modality, 'ECOG+SEEG')
         gui_component('MenuItem', jMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes-Scalp'));
         gui_component('MenuItem', jMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes-Cortex'));
         gui_component('MenuItem', jMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes-MRI'));
@@ -2710,8 +2753,13 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
             end
             % 3D Electrodes
             if ismember(AllMod{iMod}, {'EEG', 'ECOG'}) && ~AlwaysCreate
+                gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
                 gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
-            elseif ismember(AllMod{iMod}, {'SEEG', 'ECOG+SEEG'}) && ~AlwaysCreate
+            end
+            if strcmpi(AllMod{iMod}, 'SEEG') && ~AlwaysCreate
+                gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
+            end
+            if ismember(AllMod{iMod}, {'SEEG', 'ECOG+SEEG'}) && ~AlwaysCreate
                 gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Scalp'));
                 gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Cortex'));
                 gui_component('MenuItem', jSubMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-MRI'));

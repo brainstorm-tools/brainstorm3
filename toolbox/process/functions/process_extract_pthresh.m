@@ -342,22 +342,23 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
                 end
             end
         end
+        meanPthresh = mean(pthresh(:));
         switch(testSide)
-                case 'one-'
-                    tThreshUnder = fzero(@(t) 0.5 .* ( 1 + sign(t) .* betainc( t.^2 ./ (df + t.^2), 0.5, 0.5.*df ) ) - pthresh, 0);
-                    tThreshOver = [];
-                case 'two'
-                    t_thresh = fzero(@(t) betainc( df ./ (df + t .^ 2), df./2, 0.5) - pthresh, 0);
-                    if t_thresh < 0
-                        tThreshUnder = t_thresh;
-                        tThreshOver = -t_thresh;
-                    else
-                        tThreshUnder = -t_thresh;
-                        tThreshOver = t_thresh;
-                    end
-                case 'one+'
-                    tThreshOver = fzero(@(t) 0.5 .* ( 1 - sign(t) .* betainc( t.^2 ./ (df + t.^2), 0.5, 0.5.*df ) ) - pthresh, 0);
-                    tThreshUnder = [];
+            case 'one-'
+                tThreshUnder = fzero(@(t) 0.5 .* ( 1 + sign(t) .* betainc( t.^2 ./ (df + t.^2), 0.5, 0.5.*df ) ) - meanPthresh, 0);
+                tThreshOver = [];
+            case 'two'
+                t_thresh = fzero(@(t) betainc( df ./ (df + t .^ 2), df./2, 0.5) - meanPthresh, 0);
+                if t_thresh < 0
+                    tThreshUnder = t_thresh;
+                    tThreshOver = -t_thresh;
+                else
+                    tThreshUnder = -t_thresh;
+                    tThreshOver = t_thresh;
+                end
+            case 'one+'
+                tThreshOver = fzero(@(t) 0.5 .* ( 1 - sign(t) .* betainc( t.^2 ./ (df + t.^2), 0.5, 0.5.*df ) ) - meanPthresh, 0);
+                tThreshUnder = [];
             otherwise
                 warning('Cannot determine t-test side');
                 tThreshUnder = [];

@@ -207,6 +207,12 @@ switch (sFile.format)
         F = in_fread_intan(sFile, SamplesBounds, iChannels, precision);
     case 'EEG-PLEXON'
         F = in_fread_plexon(sFile, SamplesBounds, iChannels, precision);
+    case 'EEG-TDT'
+        F = in_fread_tdt(sFile, SamplesBounds, iChannels);
+    case {'NWB', 'NWB-CONTINUOUS'}
+        isContinuous = strcmpi(sFile.format, 'NWB-CONTINUOUS');
+        F = in_fread_nwb(sFile, iEpoch, SamplesBounds, iChannels, isContinuous);
+        
     otherwise
         error('Cannot read data from this file');
 end

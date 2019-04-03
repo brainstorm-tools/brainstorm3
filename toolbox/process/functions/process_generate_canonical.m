@@ -23,7 +23,7 @@ function varargout = process_generate_canonical( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2019
 
 eval(macro_method);
 end

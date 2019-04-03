@@ -29,7 +29,7 @@ function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 % 
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2019
 
 %% ===== PARSE INPUT =====
 if (nargin < 5) || isempty(DateOfStudy)
@@ -139,7 +139,7 @@ for iFile = 1:length(RawFiles)
 
     % ===== OUTPUT STUDY =====
     % Get short filename
-    [tmp, fBase] = bst_fileparts(RawFiles{iFile});
+    [fPath, fBase] = bst_fileparts(RawFiles{iFile});
     % Remove "data_" tag when importing Brainstorm files as raw continuous files
     if strcmpi(FileFormat, 'BST-DATA') && (length(fBase) > 5) && strcmp(fBase(1:5), 'data_')
         fBase = fBase(6:end);
@@ -313,6 +313,16 @@ for iFile = 1:length(RawFiles)
     % Refresh both data node and channel node
     iUpdateStudies = unique([iOutputStudy, iChannelStudy]);
     panel_protocols('UpdateNode', 'Study', iUpdateStudies);
+    
+    % ===== ADD SYNCHRONIZED VIDEOS =====
+    % Look for video files with the same name, add them to the raw folder if found
+    for fExt = {'.avi','.AVI','.mpg','.MPG','.mpeg','.MPEG','.mp4','.MP4','.mp2','.MP2','.mkv','.MKV','.wmv','.WMV','.divx','.DIVX','.mov','.MOV'}
+        VideoFile = bst_fullfile(fPath, [fBase, fExt{1}]);
+        if file_exist(VideoFile)
+            import_video(iOutputStudy, VideoFile);
+            break;
+        end
+    end
 end
 
 % If something was imported

@@ -99,8 +99,8 @@ java_setcb(jTextValid, 'ActionPerformedCallback', @(h,ev)TextValidation_Callback
         if ~isempty(newVal) && strcmpi(TimeUnits, 'Hzlist')
             newVal = setdiff(unique(newVal), 0);
             isChanged = 1;
-        % Int list: accept empty input
-        elseif ismember(TimeUnits, {'list','optional'}) && isempty(newVal)
+        % List/optional: accept empty input
+        elseif isempty(newVal) && ismember(TimeUnits, {'list','optional'})
             isChanged = 1;
         % If no valid value entered, use previous value
         elseif isempty(newVal) && isempty(currentValue)
@@ -121,6 +121,10 @@ java_setcb(jTextValid, 'ActionPerformedCallback', @(h,ev)TextValidation_Callback
         else
             newVal = round(newVal * sfreq) / sfreq;
             newVal = bst_saturate(newVal, bounds);
+            % Accept multiple values only for 'list'
+            if ((length(newVal) >= 2) && ~strcmpi(TimeUnits, 'list'))
+                newVal = newVal(1);
+            end
         end
         % Get min and max values from other text fields
         if ~isempty(jTextMin)

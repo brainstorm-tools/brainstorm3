@@ -89,6 +89,10 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = [];
+    % Not supported in compiled version
+    if exist('isdeployed', 'builtin') && isdeployed
+        error('Not supported in compiled version yet. Post a message on the forum if you need this feature.');
+    end
     % Initialize fieldtrip
     bst_ft_init();
 

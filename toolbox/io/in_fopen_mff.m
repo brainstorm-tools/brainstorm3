@@ -19,7 +19,7 @@ function [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions, channelsOnl
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, Francois Tadel, 2018
+% Authors: Martin Cousineau, Francois Tadel, 2018-2019
 
 if bst_get('MatlabVersion') < 803
     error('Importing MFF files requires at least Matlab 2014a.');
@@ -103,8 +103,8 @@ end
 %% ===== DOWNLOAD MFF JAR FILE =====
 function downloadAndInstallMffLibrary()
     % Current up-to-date version
-    mffVer  = 2.01;
-    zipFile = 'mffmatlabio-2.01.zip';
+    mffVer  = 2.02;
+    zipFile = 'mffmatlabio-2.02.zip';
     % Check whether JAR file is in Java path
     [jarPath, jarExists] = bst_get('MffJarFile');
     mffDir = fileparts(jarPath);
@@ -197,3 +197,5 @@ function EEG = LoadChanlocsOnly(mffFile)
     end
     EEG.nbchan = length(EEG.chanlocs);
 end
+
+

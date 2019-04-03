@@ -49,7 +49,7 @@ else
     % Figure title
     figTitle = [figTitle ': ' helpfile];
     % Get documents path
-    helppath = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'help');
+    helppath = bst_fullfile(bst_get('BrainstormDocDir'), 'help');
     % Get full filename
     helpfile = bst_fullfile(helppath, helpfile);
 end

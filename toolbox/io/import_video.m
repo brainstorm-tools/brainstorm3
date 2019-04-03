@@ -25,7 +25,7 @@ function iNewFiles = import_video(iStudy, VideoFiles)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2019
 
 %% ===== PARSE INPUTS =====
 if (nargin < 2)

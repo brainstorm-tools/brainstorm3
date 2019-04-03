@@ -186,7 +186,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % LICENSE
         gui_component('MenuItem', jMenuSupport, [], 'License',       IconLoader.ICON_EDIT, [], @(h,ev)bst_license(), fontSize);
         % RELEASE NOTES
-        updatesfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'updates.txt');
+        updatesfile = bst_fullfile(bst_get('BrainstormDocDir'), 'updates.txt');
         gui_component('MenuItem', jMenuSupport, [], 'Release notes', IconLoader.ICON_EDIT, [], @(h,ev)view_text(updatesfile, 'Release notes', 1), fontSize);
         jMenuSupport.addSeparator();
         % Prepare workshop
@@ -279,7 +279,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     % Selection toolbar
     jToolbarA = gui_component('Toolbar', jPanelProcess);
     jToolbarA.setOrientation(javax.swing.JToolBar.VERTICAL);
-        TB_SIZE = Dimension(28*InterfaceScaling, 28*InterfaceScaling);
+        TB_SIZE = Dimension(28*InterfaceScaling, 26*InterfaceScaling);
         jButtonGroupType = java_create('javax.swing.ButtonGroup');
         % Buttons
         jButtonRecordingsA = gui_component('toolbartoggle', jToolbarA, [], '', {IconLoader.ICON_DATA_LIST,     TB_SIZE, jButtonGroupType}, 'Process recordings',  @(h,ev)bst_call(@ProcessDataType_Callback, 'data', 'A', ev));
@@ -290,6 +290,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jToolbarA.addSeparator();
         % Button "RUN"
         gui_component('toolbarbutton', jToolbarA, [], '', {IconLoader.ICON_RUN, TB_SIZE}, 'Start', @(h,ev)bst_call(@ProcessRun_Callback));
+        jToolbarA.addSeparator();
+        jButtonReload = gui_component('toolbarbutton', jToolbarA, [], '', {IconLoader.ICON_RELOAD, TB_SIZE}, 'Reload last pipeline', @(h,ev)bst_call(@bst_report, 'Recall', 'current'));
     jPanelProcess.add(jToolbarA, java.awt.BorderLayout.WEST);
        
     % Toolbar B
@@ -468,6 +470,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
              'jButtonSourcesB',         jButtonSourcesB, ...
              'jButtonTimefreqB',        jButtonTimefreqB, ...
              'jButtonMatrixB',          jButtonMatrixB, ...
+             'jButtonReload',           jButtonReload, ...
              'jTextFilter',             jTextFilter),... 
          'panelContainers', [...
                struct('name', 'explorer', ...

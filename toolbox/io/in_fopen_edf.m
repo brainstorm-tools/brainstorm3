@@ -203,6 +203,17 @@ sFile.acq_date = str_date(hdr.startdate);
 SplitType = repmat({''}, 1, hdr.nsignal);
 SplitName = repmat({''}, 1, hdr.nsignal);
 for i = 1:hdr.nsignal
+    % Removing trailing dots (eg. "Fc5." instead of "FC5", as in: https://www.physionet.org/pn4/eegmmidb/)
+    if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
+        hdr.signal(i).label(end) = [];
+        if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
+            hdr.signal(i).label(end) = [];
+            if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
+                hdr.signal(i).label(end) = [];
+            end
+        end
+    end
+    % Remove extra spaces
     signalLabel = strrep(hdr.signal(i).label, ' - ', '-');
     % Find space chars (label format "Type Name")
     iSpace = find(signalLabel == ' ');

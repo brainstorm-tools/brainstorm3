@@ -491,9 +491,9 @@ function isOk = PlotFigure(iDS, iFig, isReset) %#ok<DEFNU>
     if strcmpi(TopoInfo.TopoType, '2DLayout')
         CreateTopo2dLayout(iDS, iFig, hAxes, Channel, markers_loc, modChan);
         return
-    % 3D ELECTRODES: Separate function
-    elseif strcmpi(TopoInfo.TopoType, '3DElectrodes')
-        CreateTopo3dElectrodes(iDS, iFig, Channel(selChan), markers_loc(selChan,:));
+    % 2D/3D ELECTRODES: Separate function
+    elseif strcmpi(TopoInfo.TopoType, '3DElectrodes') || strcmpi(TopoInfo.TopoType, '2DElectrodes')
+        CreateTopo3dElectrodes(iDS, iFig, Channel(selChan), markers_loc(selChan,:), TopoInfo.TopoType);
         return
     % 3D OPTODES: Separate function
     elseif strcmpi(TopoInfo.TopoType, '3DOptodes')
@@ -849,51 +849,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     LabelRowsRef = [];
     % SEEG/ECOG: DO no use real positions
     if ismember(Channel(1).Type, {'SEEG','ECOG'}) && ~isempty(GlobalData.DataSet(iDS).IntraElectrodes)
-        % Parse channel names
-        [AllGroups, AllTags, AllInd, isNoInd] = panel_montage('ParseSensorNames', Channel);
-        % Initialize variables
-        X = zeros(length(Channel),1);
-        Y = zeros(length(Channel),1);
-        iRow = 0;
-        % Plot all the contacts of each electrode in a row
-        for iElec = 1:length(GlobalData.DataSet(iDS).IntraElectrodes)
-            % Get the contacts for this electrode
-            iChan = find(strcmpi(GlobalData.DataSet(iDS).IntraElectrodes(iElec).Name, AllGroups));
-            if isempty(iChan)
-                continue;
-            end
-            % Multiple rows
-            if (length(GlobalData.DataSet(iDS).IntraElectrodes(iElec).ContactNumber) >= 2)
-                Nrows = GlobalData.DataSet(iDS).IntraElectrodes(iElec).ContactNumber(1);
-            elseif (length(iChan) > 16)
-                Nrows = ceil(max(AllInd(iChan)) / 10);
-            else
-                Nrows = 1;
-            end
-            if (Nrows > 1)
-                for iEcogLine = 1:Nrows
-                    iChanLine = find((AllInd(iChan) >= (iEcogLine - 1)*10) & (AllInd(iChan) < iEcogLine*10));
-                    if ~isempty(iChanLine)
-                        iRow = iRow + 1;
-                        X(iChan(iChanLine)) = repmat(iRow, length(iChanLine), 1);
-                        Y(iChan(iChanLine)) = AllInd(iChan(iChanLine)) - (iEcogLine - 1)*10;
-                        LabelRows{iRow} = [GlobalData.DataSet(iDS).IntraElectrodes(iElec).Name, num2str(iEcogLine)];
-                        LabelRowsRef(iRow) = iChan(iChanLine(1));
-                    end
-                end
-            % Single row
-            else
-                % Start new row
-                iRow = iRow + 1;
-                X(iChan) = repmat(iRow, length(iChan), 1);
-                Y(iChan) = AllInd(iChan);
-                LabelRows{iRow} = GlobalData.DataSet(iDS).IntraElectrodes(iElec).Name;
-                LabelRowsRef(iRow) = iChan(1);
-            end
-        end
-        % Flip both axes
-        X = -X;
-        Y = -Y;
+        [X, Y, LabelRows, LabelRowsRef] = GetSeeg2DPositions(Channel, GlobalData.DataSet(iDS).IntraElectrodes);
     % 2D Projection
     elseif all(Vertices(:,3) < 0.0001)
         X = Vertices(:,1);
@@ -1197,6 +1153,72 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
 end
 
 
+%% ===== 2D LAYOUT: GET SEEG/ECOG POSITIONS =====
+function [X, Y, LabelRows, LabelRowsRef] = GetSeeg2DPositions(Channel, sElectrodes)
+    % Parse channel names
+    [AllGroups, AllTags, AllInd, isNoInd] = panel_montage('ParseSensorNames', Channel);
+    % Initialize variables
+    X = zeros(length(Channel),1);
+    Y = zeros(length(Channel),1);
+    iRow = 0;
+    % Plot all the contacts of each electrode in a row
+    for iElec = 1:length(sElectrodes)
+        % Get the contacts for this electrode
+        iChan = find(strcmpi(sElectrodes(iElec).Name, AllGroups));
+        if isempty(iChan)
+            continue;
+        end
+        % Multiple rows
+        if (length(sElectrodes(iElec).ContactNumber) >= 2)
+            Nrows = sElectrodes(iElec).ContactNumber(1);
+            % Continuous numbering of contacts (eg. 1..64)
+            if (max(AllInd(iChan)) < prod(sElectrodes(iElec).ContactNumber)) ...
+                || any(mod(AllInd(iChan), 10) == 0) ...
+                || ((sElectrodes(iElec).ContactNumber(2) < 9) && any(mod(AllInd(iChan), 10) == 9))
+                isContinuous = 1;
+                Ncols = sElectrodes(iElec).ContactNumber(2);
+            % Discontinuous number of contacts (eg. 1..8, 11..18, 21..28, ..., 81..88)
+            else
+                isContinuous = 0;
+                Ncols = 10;
+            end
+        elseif (length(iChan) > 16)
+            Ncols = 10;
+            Nrows = ceil(max(AllInd(iChan)) / Ncols);
+            isContinuous = 0;
+        else
+            Nrows = 1;
+        end
+        if (Nrows > 1)
+            for iEcogLine = 1:Nrows
+                if isContinuous
+                    iChanLine = find((AllInd(iChan) > (iEcogLine - 1) * Ncols) & (AllInd(iChan) <= iEcogLine * Ncols));
+                else
+                    iChanLine = find((AllInd(iChan) >= (iEcogLine - 1) * Ncols) & (AllInd(iChan) < iEcogLine * Ncols));
+                end
+                if ~isempty(iChanLine)
+                    iRow = iRow + 1;
+                    X(iChan(iChanLine)) = repmat(iRow, length(iChanLine), 1);
+                    Y(iChan(iChanLine)) = AllInd(iChan(iChanLine)) - (iEcogLine - 1) * Ncols;
+                    LabelRows{iRow} = [sElectrodes(iElec).Name, num2str(iEcogLine)];
+                    LabelRowsRef(iRow) = iChan(iChanLine(1));
+                end
+           end
+        % Single row
+        else
+            % Start new row
+            iRow = iRow + 1;
+            X(iChan) = repmat(iRow, length(iChan), 1);
+            Y(iChan) = AllInd(iChan);
+            LabelRows{iRow} = sElectrodes(iElec).Name;
+            LabelRowsRef(iRow) = iChan(1);
+        end
+    end
+    % Flip both axes
+    X = -X;
+    Y = -Y;
+end
+
 %% ===== 2D LAYOUT: UPDATE =====
 function UpdateTopo2dLayout(iDS, iFig)
     global GlobalData;
@@ -1273,12 +1295,15 @@ end
 
 
 %% ===== CREATE 3D ELECTRODES =====
-function CreateTopo3dElectrodes(iDS, iFig, Channel, ChanLoc)
+function CreateTopo3dElectrodes(iDS, iFig, Channel, ChanLoc, TopoType)
     global GlobalData;
     % Get figure handles
     PlotHandles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
     % Display the electrodes
-    PlotHandles.hSurf = figure_3d('PlotSensors3D', iDS, iFig, Channel, ChanLoc);
+    [PlotHandles.hSurf, MarkersLocs2D] = figure_3d('PlotSensors3D', iDS, iFig, Channel, ChanLoc, TopoType);
+    if strcmpi(TopoType, '2DElectrodes')
+        PlotHandles.MarkersLocs = MarkersLocs2D;
+    end
     % Create interpolation matrix [Nvertices x Nchannels]
     vert2chan = get(PlotHandles.hSurf, 'UserData');
     Wi = 1:length(vert2chan);
@@ -1514,7 +1539,7 @@ function ViewStatClusters(hFig)
                 markersLocs(:,3) = markersLocs(:,3) + 0.001;
             case '3DSensorCap'
                 markersLocs = markersLocs * 1.01;
-            case {'3DElectrodes', '3DOptodes'}
+            case {'3DElectrodes', '3DOptodes', '2DElectrodes'}
                 markersLocs = markersLocs * 1.02;
         end
         % Time-freq: use all the channels from the TF file

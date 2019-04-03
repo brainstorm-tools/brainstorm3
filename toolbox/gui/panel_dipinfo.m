@@ -19,7 +19,7 @@ function varargout = panel_dipinfo(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2017
+% Authors: Francois Tadel, 2016-2019
 
 eval(macro_method);
 end
@@ -92,6 +92,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jPanelCoordinates.add('tab', jLabelCoordScsX);
             jPanelCoordinates.add('tab', jLabelCoordScsY);
             jPanelCoordinates.add('tab', jLabelCoordScsZ);
+            % === WORLD ===
+            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'World: '));
+            jLabelCoordWrlX = JLabel('-');
+            jLabelCoordWrlY = JLabel('-');
+            jLabelCoordWrlZ = JLabel('-');
+            jLabelCoordWrlX.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
+            jLabelCoordWrlY.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
+            jLabelCoordWrlZ.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
+            jLabelCoordWrlX.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelCoordWrlY.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelCoordWrlZ.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelCoordWrlX.setFont(jFontText);
+            jLabelCoordWrlY.setFont(jFontText);
+            jLabelCoordWrlZ.setFont(jFontText);
+            jPanelCoordinates.add('tab', jLabelCoordWrlX);
+            jPanelCoordinates.add('tab', jLabelCoordWrlY);
+            jPanelCoordinates.add('tab', jLabelCoordWrlZ);
             % === MNI ===
             jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'MNI: '));
             jLabelCoordMniX = JLabel('-');
@@ -168,6 +185,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jLabelCoordScsX',   jLabelCoordScsX, ...
                                   'jLabelCoordScsY',   jLabelCoordScsY, ...
                                   'jLabelCoordScsZ',   jLabelCoordScsZ, ...
+                                  'jLabelCoordWrlX',   jLabelCoordWrlX, ...
+                                  'jLabelCoordWrlY',   jLabelCoordWrlY, ...
+                                  'jLabelCoordWrlZ',   jLabelCoordWrlZ, ...
                                   'jLabelCoordMniX',   jLabelCoordMniX, ...
                                   'jLabelCoordMniY',   jLabelCoordMniY, ...
                                   'jLabelCoordMniZ',   jLabelCoordMniZ, ...
@@ -232,10 +252,12 @@ function UpdatePanel(hFig)
         SCS = sDip.Loc;
         MRI = cs_convert(sMri, 'scs', 'mri', SCS);
         MNI = cs_convert(sMri, 'scs', 'mni', SCS);
+        World = cs_convert(sMri, 'scs', 'world', SCS);
     else
         SCS = [];
         MRI = [];
         MNI = [];
+        World = [];
     end
 
     % Update coordinates (text fields)
@@ -259,7 +281,17 @@ function UpdatePanel(hFig)
         ctrl.jLabelCoordScsY.setText('-');
         ctrl.jLabelCoordScsZ.setText('-');
     end
-    % SCS
+    % World
+    if ~isempty(World)
+        ctrl.jLabelCoordWrlX.setText(sprintf('%3.1f', 1000 * World(1)));
+        ctrl.jLabelCoordWrlY.setText(sprintf('%3.1f', 1000 * World(2)));
+        ctrl.jLabelCoordWrlZ.setText(sprintf('%3.1f', 1000 * World(3)));
+    else
+        ctrl.jLabelCoordWrlX.setText('-');
+        ctrl.jLabelCoordWrlY.setText('-');
+        ctrl.jLabelCoordWrlZ.setText('-');
+    end
+    % MNI
     if ~isempty(MNI)
         ctrl.jLabelCoordMniX.setText(sprintf('%3.1f', 1000 * MNI(1)));
         ctrl.jLabelCoordMniY.setText(sprintf('%3.1f', 1000 * MNI(2)));

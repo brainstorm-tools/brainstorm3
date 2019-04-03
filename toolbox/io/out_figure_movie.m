@@ -31,7 +31,7 @@ function out_figure_movie( hFig, defaultFile, movieType, OPTIONS )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2019
 
 global prevTimeSelection;
                           
@@ -181,11 +181,23 @@ if strcmpi(movieType, 'allfig')
 else
     hFigSnap = hFig;
 end
+% Get screen definition
+ScreenDef = bst_get('ScreenDef');
+% Single screen (TODO: Handle the cases where the two screens are organized in different ways)
+firstPos = get(hFigSnap(1), 'Position');
+if (length(ScreenDef) == 1)
+    ZoomFactor = ScreenDef(1).zoomFactor;
+elseif (firstPos(1) < ScreenDef(1).matlabPos(1) + ScreenDef(1).matlabPos(3))
+    ZoomFactor = ScreenDef(1).zoomFactor;
+else
+    ZoomFactor = ScreenDef(2).zoomFactor;
+end
+        
 % Get the coordinates of all the figures to capture
 if (length(hFigSnap) > 1)
     % Get the coordinates
     for iFig = 1:length(hFigSnap)
-        posSnap(iFig,:) = get(hFigSnap(iFig), 'Position');
+        posSnap(iFig,:) = round(get(hFigSnap(iFig), 'Position') .* ZoomFactor);
     end
     % Inialize the final image
     posWorkspace = [min(posSnap(:,1)), min(posSnap(:,2)), max(posSnap(:,1)+posSnap(:,3))-min(posSnap(:,1)), max(posSnap(:,2)+posSnap(:,4))-min(posSnap(:,2))];
@@ -226,7 +238,7 @@ for iSample = 1:nbSamples
             else
                 tmpImg = out_figure_image(hFigSnap(iFig), [], []);
             end
-            img(posSnap(iFig,2)+(0:posSnap(iFig,4)-1), posSnap(iFig,1)+(0:posSnap(iFig,3)-1), :) = tmpImg;
+            img(posSnap(iFig,2)+(0:size(tmpImg,1)-1), posSnap(iFig,1)+(0:size(tmpImg,2)-1), :) = tmpImg;
         end
     end
     % Add image to movie

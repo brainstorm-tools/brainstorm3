@@ -76,8 +76,10 @@ if strcmpi(plexonFormat, '.plx')
     newHeader = readPLXFileC(DataFile,'events','spikes');
     
     % Load one channel file to get required event fields
-    CHANNELS_SELECTED = [newHeader.ContinuousChannels.Enabled]; % Only get the channels that have been enabled. The rest won't load any data
-    CHANNELS_SELECTED = find(CHANNELS_SELECTED);
+    CHANNELS_SELECTED = find([newHeader.ContinuousChannels.Enabled]); % Only get the channels that have been enabled. The rest won't load any data
+    if isempty(CHANNELS_SELECTED)
+        error('No continuous recordings available in this file.');
+    end
     isMiscChannels = ~isDataChannel({newHeader.ContinuousChannels(CHANNELS_SELECTED).Name});
 
     one_channel = readPLXFileC(DataFile,'continuous',CHANNELS_SELECTED(1)-1);

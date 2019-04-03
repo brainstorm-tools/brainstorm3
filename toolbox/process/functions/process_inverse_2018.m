@@ -19,7 +19,7 @@ function varargout = process_inverse_2018( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -680,6 +680,11 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         if (OPTIONS.ComputeKernel == 0) && ~isempty(ResultsMat.ImagingKernel) && ~isempty(DataFile)
             % Load data
             DataMat = in_bst_data(DataFile, 'F');
+            % Incompatible options: Full results + raw files (impossible to view after)
+            if isstruct(DataMat.F)
+                errMessage = [errMessage 'Cannot compute full results for raw files: import the files first or compute an inversion kernel only.' 10];
+                break;
+            end
             % Multiply inversion kernel with the recordings
             ResultsMat.ImageGridAmp = ResultsMat.ImagingKernel * DataMat.F(GoodChannel, :);
             ResultsMat.ImagingKernel = [];

@@ -68,7 +68,7 @@ else
     Time = (1:size(a_init,2)) / sfreq;
 end
 % List of available methods
-list_methods = {'bst-hfilter', 'bst-fft', 'bst-fft-fir', 'bst-filtfilt-fir', 'bst-filtfilt-iir', 'bst-sos'};
+list_methods = {'bst-hfilter-2019', 'bst-hfilter-2016', 'bst-fft', 'bst-fft-fir', 'bst-filtfilt-fir', 'bst-filtfilt-iir', 'bst-sos'};
 % Intialize arrays
 a  = cell(1,length(list_methods));
 el = a;
