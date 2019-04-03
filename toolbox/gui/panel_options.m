@@ -146,6 +146,20 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jPanelRight.add('br hfill', jPanelReset);
     end
     
+    % ===== RIGHT: REMOTE DATABASE =====
+    jPanelReset = gui_river([5 5], [0 15 15 15], 'Remote Database');
+        isLoggedIn = 1;
+        if isLoggedIn
+            gui_component('Label',  jPanelReset, [], 'Logged in as martin.cousineau @ bic.mni.mcgill.ca', [], [], []);
+            gui_component('Button', jPanelReset, 'br', 'Groups', [], [], @ButtonGroups_Callback);
+            gui_component('Button', jPanelReset, [], 'Logout', [], [], @ButtonLogout_Callback);
+        else
+            gui_component('Label',  jPanelReset, [], 'Not connected to a remote database.', [], [], []);
+            gui_component('Button', jPanelReset, [], 'Login', [], [], @ButtonLogin_Callback);
+            gui_component('Button', jPanelReset, [], 'Register', [], [], @ButtonRegister_Callback);
+        end
+    jPanelRight.add('br hfill', jPanelReset);
+    
     % ===== BOTTOM =====
     jPanelBottom = gui_river();
     jPanelNew.add('br hfill', jPanelBottom);
@@ -641,6 +655,28 @@ function ButtonReset_Callback(varargin)
     brainstorm reset;
     brainstorm;
 end
+
+%% ===== BUTTON: LOGIN =====
+function ButtonLogin_Callback(varargin)
+    gui_show(panel_db_login('CreatePanel', 'login'), 'JavaWindow', 'Login', [], 1, 1);
+end
+
+%% ===== BUTTON: REGISTER =====
+function ButtonRegister_Callback(varargin)
+    gui_show(panel_db_login('CreatePanel', 'register'), 'JavaWindow', 'Register', [], 1, 1);
+end
+
+%% ===== BUTTON: GROUPS =====
+function ButtonGroups_Callback(varargin)
+    gui_show(panel_edit_groups('CreatePanel'), 'JavaWindow', 'Group Memberships', [], 1, 1);
+end
+
+%% ===== BUTTON: LOGOUT =====
+function ButtonLogout_Callback(varargin)
+    disp('TODO: Logout');
+end
+
+
 
 
 
