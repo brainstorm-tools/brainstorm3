@@ -15,24 +15,28 @@ function [bstPanelNew, panelName] = CreatePanel()
     jPanelNew = gui_river();
     jPanelNew.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
     jPanelLogin = gui_river();
-
-    jLabelEmail = gui_component('Label', jPanelLogin,'br', 'Email: ', [], [], []);
-    jTextEmail  = gui_component('Text', jPanelLogin, '', '', [], [], []);
-    jTextEmail.setPreferredSize(java_scaled('dimension', 180, 30));
     
-    jLabelFirstname = gui_component('Label', jPanelLogin,'br', 'Firstname: ', [], [], []);
+    jLabelUrl = gui_component('Label', jPanelLogin,'br', 'Server URL: ', [], [], []);
+    jTextUrl  = gui_component('Text', jPanelLogin, '', '', [], [], []);
+    jTextUrl.setPreferredSize(java_scaled('dimension', 180, 30));
+    
+    jLabelFirstname = gui_component('Label', jPanelLogin,'br', 'First name: ', [], [], []);
     jTextFirstname = gui_component('Text', jPanelLogin, '', '', [], [], []);
     jTextFirstname.setPreferredSize(java_scaled('dimension', 180, 30));
     
-    jLabelLastname = gui_component('Label', jPanelLogin,'br', 'Lastname: ', [], [], []);
+    jLabelLastname = gui_component('Label', jPanelLogin,'br', 'Last name: ', [], [], []);
     jTextLastname = gui_component('Text', jPanelLogin, '', '', [], [], []);
     jTextLastname.setPreferredSize(java_scaled('dimension', 180, 30));
+    
+    jLabelEmail = gui_component('Label', jPanelLogin,'br', 'Email address: ', [], [], []);
+    jTextEmail  = gui_component('Text', jPanelLogin, '', '', [], [], []);
+    jTextEmail.setPreferredSize(java_scaled('dimension', 180, 30));
     
     jLabelPassword = gui_component('Label', jPanelLogin,'br', 'Password: ', [], [], []);
     jTextPassword = gui_component('password', jPanelLogin, '', '', [], [], []);
     jTextPassword.setPreferredSize(java_scaled('dimension', 180, 30));
     
-    jLabelRePassword = gui_component('Label', jPanelLogin,'br', 'Re-Password: ', [], [], []);
+    jLabelRePassword = gui_component('Label', jPanelLogin,'br', 'Confirm password: ', [], [], []);
     jTextRePassword = gui_component('password', jPanelLogin, '', '', [], [], []);
     jTextRePassword.setPreferredSize(java_scaled('dimension', 180, 30));
     
@@ -42,7 +46,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     
     jPanelNew.add(jPanelLogin);
     
-    jPanelLogin.setPreferredSize(java_scaled('dimension', 300, 250));
+    jPanelLogin.setPreferredSize(java_scaled('dimension', 310, 280));
     
     bstPanelNew = BstPanel(panelName, ...
                            jPanelNew, ...
@@ -52,8 +56,10 @@ function [bstPanelNew, panelName] = CreatePanel()
     function ButtonSign_Callback(varargin)
         import matlab.net.*;
         import matlab.net.http.*;
-    
-        if(strcmp(jTextEmail.getText(),'')==1)
+        
+        if(strcmp(jTextUrl.getText(),'')==1)
+            java_dialog('warning', 'Url cannot be empty!');
+        elseif(strcmp(jTextEmail.getText(),'')==1)
             java_dialog('warning', 'Email cannot be empty!');
         elseif (strcmp(jTextFirstname.getText(),'')==1||strcmp(jTextLastname.getText(),'')==1)
             java_dialog('warning', 'Name cannot be empty!');
@@ -73,7 +79,7 @@ function [bstPanelNew, panelName] = CreatePanel()
             method =RequestMethod.POST;
             r=RequestMessage(method,header,body);
             show(r);
-            url=string(bst_get('UrlAdr'));
+            url=string(jTextUrl.getText());
             url=url+"/createuser";
             uri= URI(url);
             try
