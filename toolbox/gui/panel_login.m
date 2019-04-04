@@ -36,10 +36,18 @@ function [bstPanelNew, panelName] = CreatePanel()
     
     jPanelLogin.setPreferredSize(java_scaled('dimension', 310, 200));
     
+    % ===== LOAD OPTIONS =====
+    LoadOptions();
+    
+    % ===== CREATE PANEL ===== 
     bstPanelNew = BstPanel(panelName, ...
                            jPanelNew, ...
                            struct());
     jPanelNew.setVisible(1);
+    
+    function LoadOptions()
+        jTextUrl.setText(bst_get('UrlAdr'));
+    end
     
     function ButtonLogin_Callback(varargin)
         import matlab.net.*;
@@ -52,7 +60,14 @@ function [bstPanelNew, panelName] = CreatePanel()
         elseif strcmp(jTextPassword.getText(),'')==1
             java_dialog('warning', 'Password cannot be empty!');
         else
-            data = struct('email',char(jTextEmail.getText()),'password',char(jTextPassword.getText()));
+            if(isempty(bst_get('DeviceId')))
+                device=string(jTextEmail.getText())+datestr(datetime('now'));
+                bst_set('DeviceId',device);
+            else
+                device=bst_get('DeviceId');
+            end
+            data=struct('email',char(jTextEmail.getText()),'password',char(jTextPassword.getText()),...
+                'deviceid',char(device));
             body=MessageBody(data);
             contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
             type1 = matlab.net.http.MediaType('text/*');
@@ -65,6 +80,7 @@ function [bstPanelNew, panelName] = CreatePanel()
             url=string(jTextUrl.getText());
             url=url+"/createuser";
             uri= URI(url);
+            bst_set('SessionId','1');
             try
                 [resp,~,hist]=send(r,uri);
                 status = resp.StatusCode;
@@ -73,6 +89,8 @@ function [bstPanelNew, panelName] = CreatePanel()
                     content=resp.Body;
                     
                     show(content);
+                    gui_hide(panelName);
+                    gui_hide('Preferences');
                 else
                     java_dialog('warning', 'Check your url or Internet!');
                     f=msgbox(txt);

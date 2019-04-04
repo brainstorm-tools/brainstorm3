@@ -127,13 +127,24 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelRight.add('br hfill', jPanelImport);
     % ===== RIGHT: SHARING =====
     jPanelShare = gui_river([5 5], [0 15 15 15], 'Remote Database');
-        gui_component('Label', jPanelShare, 'br', 'Not connected to a remote database. ', [], [], []);
-        jButtonLogin = gui_component('Button', jPanelShare, [], 'Login', [], [], @(h,ev)bst_call(@gui_show, 'panel_login', 'JavaWindow', 'Login', [], 1, 0, 0));
-        jButtonRegister = gui_component('Button', jPanelShare, [], 'Register', [], [], @(h,ev)bst_call(@gui_show, 'panel_signup', 'JavaWindow', 'Sign Up', [], 1, 0, 0));
-        jButtonLogin.setMargin(Insets(2,2,2,2));
-        jButtonLogin.setFocusable(0);
-        jButtonRegister.setMargin(Insets(2,2,2,2));
-        jButtonRegister.setFocusable(0);
+        if isempty(bst_get('SessionId'))
+            gui_component('Label', jPanelShare, 'br', 'Not connected to a remote database. ', [], [], []);
+            jButtonLogin = gui_component('Button', jPanelShare, [], 'Login', [], [], @(h,ev)bst_call(@gui_show, 'panel_login', 'JavaWindow', 'Login', [], 1, 0, 0));
+            jButtonRegister = gui_component('Button', jPanelShare, [], 'Register', [], [], @(h,ev)bst_call(@gui_show, 'panel_signup', 'JavaWindow', 'Sign Up', [], 1, 0, 0));
+            jButtonLogin.setMargin(Insets(2,2,2,2));
+            jButtonLogin.setFocusable(0);
+            jButtonRegister.setMargin(Insets(2,2,2,2));
+            jButtonRegister.setFocusable(0); 
+        else
+            gui_component('Label', jPanelShare, 'br', 'Logged in as. ', [], [], []);
+            jButtonLogin = gui_component('Button', jPanelShare, 'br', 'Groups', [], [], @(h,ev)bst_call(@gui_show, 'panel_login', 'JavaWindow', 'Login', [], 1, 0, 0));
+            jButtonRegister = gui_component('Button', jPanelShare, [], 'Logout', [], [], @Logout_Callback);
+            jButtonLogin.setMargin(Insets(2,2,2,2));
+            jButtonLogin.setFocusable(0);
+            jButtonRegister.setMargin(Insets(2,2,2,2));
+            jButtonRegister.setFocusable(0); 
+        end
+       
     jPanelRight.add('br hfill', jPanelShare);
     % ===== RIGHT: SIGNAL PROCESSING =====
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
@@ -481,6 +492,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
     end
 
+%% ===== Sharing logout =====
+    function Logout_Callback(varargin)
+        bst_set('SessionId',[]);
+        gui_hide(panelName);
+    end
 % %% ===== UPDATE PROCESS OPTIONS =====
 %     function UpdateProcessOptions_Callback(varargin)
 %         if ~jCheckOrigFolder.isSelected()

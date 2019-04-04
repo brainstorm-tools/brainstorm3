@@ -115,6 +115,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
             jSubMenu.addSeparator();
             gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[], fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Upload protocol to remote database', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@gui_show, 'panel_shareprotocol', 'JavaWindow', 'Share Protocol', [], 1, 0, 0), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Copy raw files to database', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@MakeProtocolPortable), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Export as zip file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_protocol), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Delete protocol', IconLoader.ICON_DELETE, [],[], fontSize);

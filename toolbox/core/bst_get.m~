@@ -2567,7 +2567,7 @@ switch contextName
     
     case 'Email'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences,'Email')&& ~isempty(GlobalData.Preferences.Email)
-            argout1=GlobalData.Preferences.Email;
+            argout1=GlobalData.Preferences.;
         else
             argout1=[];
         end
