@@ -26,7 +26,7 @@ function varargout = panel_display(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017-2019
 
 eval(macro_method);
 end

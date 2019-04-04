@@ -21,8 +21,7 @@ function varargout = figure_connect( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Sebastien Dery, Francois Tadel, 2013
-%          Francois Tadel, 2014
+% Authors: Sebastien Dery, 2013; Francois Tadel, 2013-2014; Martin Cousineau, 2019
 
 eval(macro_method);
 end

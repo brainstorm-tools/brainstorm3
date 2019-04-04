@@ -15,7 +15,9 @@ function varargout = figure_3d( varargin )
 %                 figure_3d('UpdateSurfaceColor',    hFig, iTess)
 %                 figure_3d('ViewSensors',           hFig, isMarkers, isLabels, isMesh=1, Modality=[])
 %                 figure_3d('ViewAxis',              hFig, isVisible)
-%                 figure_3d('SelectFiberScouts',     iDS, iFig, iScouts, Color)
+%                 figure_3d('PlotFibers',            hFig, FibPoints, Colors)
+%                 figure_3d('ColorFibers',           fibLines, Color)
+%                 figure_3d('SelectFiberScouts',     hFigConn, iScouts, Color, ColorOnly)
 %     [hFig,hs] = figure_3d('PlotSurface',           hFig, faces, verts, cdata, dataCMap, transparency)
 
 % @=============================================================================
@@ -36,7 +38,7 @@ function varargout = figure_3d( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2019; Martin Cousineau, 2019
 
 eval(macro_method);
 end

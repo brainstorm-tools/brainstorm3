@@ -1,4 +1,4 @@
-function varargout = process_absolute(varargin)
+function varargout = import_fibers(varargin)
 % IMPORT_FIBERS: Import a set of fibers in a Subject of Brainstorm database.
 % 
 % USAGE: iNewFibers = import_fibers(iSubject, FibersFiles, FileFormat, offset=[])
