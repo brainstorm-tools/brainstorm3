@@ -109,13 +109,14 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Load protocol', IconLoader.ICON_FOLDER_OPEN,[],[], fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Load from folder',   IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@gui_edit_protocol, 'load'), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Load from zip file', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@import_protocol), fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Load from remote database', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@gui_edit_protocol, 'remote'), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Import subject from zip', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@import_subject), fontSize);
             jSubMenu.addSeparator();
             gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'), fontSize);
             jSubMenu.addSeparator();
             gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[], fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Upload protocol to remote database', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@gui_show, 'panel_shareprotocol', 'JavaWindow', 'Share Protocol', [], 1, 0, 0), fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Upload protocol to remote database', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@gui_show, 'panel_shareprotocol', 'JavaWindow', 'Share Protocol', [], 1, 0, 0), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Copy raw files to database', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@MakeProtocolPortable), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Export as zip file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_protocol), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Delete protocol', IconLoader.ICON_DELETE, [],[], fontSize);

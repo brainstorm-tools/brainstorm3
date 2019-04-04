@@ -39,6 +39,11 @@ switch (action)
     case 'load'
         iProtocol = nbProtocols + 1;
         panelTitle = 'Load existing protocol';
+    case 'remote'
+        disp('TODO: Load remote protocol');
+        return;
+        iProtocol = nbProtocols + 1;
+        panelTitle = 'Load remote protocol';    
     case 'edit'
         if (nargin < 2)
             error('Usage:  [iProtocol] = gui_edit_protocol(''edit'', iProtocol)');

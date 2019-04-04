@@ -1,106 +1,273 @@
 function varargout = panel_shareprotocol(varargin)
-%PANEL_LOGIN Summary of this function goes here
-%   Detailed explanation goes here
+% PANEL_SHARE_PROTOCOL:  Edit user group memberships.
+% USAGE:  [bstPanelNew, panelName] = panel_share_protocol('CreatePanel')
+
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c)2000-2019 University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Authors: Martin Cousineau, 2019
+
 eval(macro_method);
 end
 
-function [bstPanelNew, panelName] = CreatePanel()
-    import java.awt.Dimension;
+
+%% ===== CREATE PANEL =====
+function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
+    % Java initializations
     import java.awt.*;
     import javax.swing.*;
-    import org.brainstorm.icon.*;
-    
+    import org.brainstorm.list.*;
+    global GlobalData;
+    % Constants
     panelName = 'ShareProtocol';
-  
-    jPanelNew = gui_river();
-    jPanelNew.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-    jPanelLogin = gui_river();
-    
-    jLabelUrl = gui_component('Label', jPanelLogin,'br', 'Server URL: ', [], [], []);
-    jTextUrl  = gui_component('Text', jPanelLogin, '', '', [], [], []);
-    jTextUrl.setPreferredSize(java_scaled('dimension', 180, 30));
-    
-    jLabelEmail = gui_component('Label', jPanelLogin,'br', 'Email address: ', [], [], []);
-    jTextEmail  = gui_component('Text', jPanelLogin, '', '', [], [], []);
-    jTextEmail.setPreferredSize(java_scaled('dimension', 180, 30));
-    
-    jLabelPassword = gui_component('Label', jPanelLogin,'br', 'Password: ', [], [], []);
-    jTextPassword = gui_component('password', jPanelLogin, '', '', [], [], []);
-    jTextPassword.setPreferredSize(java_scaled('dimension', 180, 30));
-    
-    jButtonSignup = gui_component('Button', jPanelLogin, 'br center', 'Login', [], [],@ButtonLogin_Callback);
-    jButtonSignup.setPreferredSize(java_scaled('dimension', 80, 40));
-    jPanelLogin.setPreferredSize(java_scaled('dimension', 400, 500));
-    
-    jPanelNew.add(jPanelLogin);
-    
-    jPanelLogin.setPreferredSize(java_scaled('dimension', 310, 200));
-    
-    % ===== LOAD OPTIONS =====
-    LoadOptions();
-    
-    % ===== CREATE PANEL ===== 
+
+    % Create main main panel
+    jPanelNew = gui_river([0 0], [0 0 0 0]);
+
+    % Font size for the lists
+    fontSize = round(10 * bst_get('InterfaceScaling') / 100);
+
+    % List of groups
+    jPanelGroups = gui_river([5 0], [0 2 0 2], 'Groups');
+    jPanelNew.add('br hfill', jPanelGroups);
+    jListGroups = JList();
+    jListGroups.setCellRenderer(BstStringListRenderer(fontSize));
+    jPanelGroupsScrollList = JScrollPane();
+    jPanelGroupsScrollList.getLayout.getViewport.setView(jListGroups);
+    jPanelGroups.add('hfill', jPanelGroupsScrollList);
+
+    % Buttons
+    jPanelGroupButtons = gui_river([5 0], [0 2 0 2]);
+    gui_component('Button', jPanelGroupButtons, [], 'Add', [], [], @ButtonAddGroup_Callback);
+    gui_component('Button', jPanelGroupButtons, 'hfill', 'Edit permissions', [], [], @ButtonEditGroup_Callback);
+    gui_component('Button', jPanelGroupButtons, [], 'Remove', [], [], @ButtonRemoveGroup_Callback);
+    jPanelGroups.add('br hfill', jPanelGroupButtons);
+
+    % List of members
+    jPanelMembers = gui_river([5 0], [0 2 0 2], 'Members');
+    jPanelNew.add('br hfill', jPanelMembers);
+    jListMembers = JList();
+    jListMembers.setCellRenderer(BstStringListRenderer(fontSize));
+    jPanelMembersScrollList = JScrollPane();
+    jPanelMembersScrollList.getLayout.getViewport.setView(jListMembers);
+    jPanelMembers.add('hfill', jPanelMembersScrollList);
+
+    % Buttons
+    jPanelMemberButtons = gui_river([5 0], [0 2 0 2]);
+    gui_component('Button', jPanelMemberButtons, [], 'Add', [], [], @ButtonAddMember_Callback);
+    gui_component('Button', jPanelMemberButtons, 'hfill', 'Edit permissions', [], [], @ButtonEditMember_Callback);
+    gui_component('Button', jPanelMemberButtons, [], 'Remove', [], [], @ButtonRemoveMember_Callback);
+    jPanelMembers.add('br hfill', jPanelMemberButtons);
+
+    % ===== LOAD DATA =====
+    UpdateGroupsList();
+    UpdateMembersList();
+
+    % ===== CREATE PANEL =====   
     bstPanelNew = BstPanel(panelName, ...
                            jPanelNew, ...
-                           struct());
-    jPanelNew.setVisible(1);
-    
-    function LoadOptions()
-        jTextUrl.setText(bst_get('UrlAdr'));
+                           struct('jListGroups',  jListGroups, ...
+                                  'jListMembers', jListMembers));
+
+    %% ===== UPDATE GROUPS LIST =====
+    function UpdateGroupsList()
+        % Load groups
+        [groups, permissions] = LoadGroups();
+        % Remove JList callback
+        bakCallback = java_getcb(jListGroups, 'ValueChangedCallback');
+        java_setcb(jListGroups, 'ValueChangedCallback', []);
+
+        % Create a new empty list
+        listModel = java_create('javax.swing.DefaultListModel');
+        % Add an item in list for each group
+        for i = 1:length(groups)
+            listModel.addElement([groups{i} ' [' permissions{i} ']']);
+        end
+        % Update list model
+        jListGroups.setModel(listModel);
+
+        % Restore callback
+        drawnow
+        java_setcb(jListGroups, 'ValueChangedCallback', bakCallback);
     end
-    
-    function ButtonLogin_Callback(varargin)
-        import matlab.net.*;
-        import matlab.net.http.*;
-        
-        if(strcmp(jTextUrl.getText(),'')==1)
-            java_dialog('warning', 'Url cannot be empty!');
-        elseif(strcmp(jTextEmail.getText(),'')==1)
-            java_dialog('warning', 'Email cannot be empty!');
-        elseif strcmp(jTextPassword.getText(),'')==1
-            java_dialog('warning', 'Password cannot be empty!');
-        else
-            if(isempty(bst_get('DeviceId')))
-                device=string(jTextEmail.getText())+datestr(datetime('now'));
-                bst_set('DeviceId',device);
+
+    %% ===== UPDATE MEMBERS LIST =====
+    function UpdateMembersList()
+        % Load members
+        [members, permissions] = LoadMembers();
+        if isempty(members)
+            return
+        end
+        % Remove JList callback
+        bakCallback = java_getcb(jListMembers, 'ValueChangedCallback');
+        java_setcb(jListMembers, 'ValueChangedCallback', []);
+
+        % Create a new empty list
+        listModel = java_create('javax.swing.DefaultListModel');
+        % Add an item in list for each group
+        for i = 1:length(members)
+            listModel.addElement([members{i} ' [' permissions{i} ']']);
+        end
+        % Update list model
+        jListMembers.setModel(listModel);
+
+        % Restore callback
+        drawnow
+        java_setcb(jListMembers, 'ValueChangedCallback', bakCallback);
+    end
+
+
+    %% =================================================================================
+    %  === CONTROLS CALLBACKS  =========================================================
+    %  =================================================================================
+
+    %% ===== BUTTON: ADD GROUP =====
+    function ButtonAddGroup_Callback(varargin)
+        [group, isCancel] = java_dialog('input', 'What is the name of the group you would like to add?', 'Add group', jPanelNew);
+        if ~isCancel && ~isempty(group)
+            [success, error] = AddGroup(group);
+            if success
+                UpdateGroupsList();
             else
-                device=bst_get('DeviceId');
-            end
-            data=struct('email',char(jTextEmail.getText()),'password',char(jTextPassword.getText()),...
-                'deviceid',char(device));
-            body=MessageBody(data);
-            contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
-            type1 = matlab.net.http.MediaType('text/*');
-            type2 = matlab.net.http.MediaType('application/json','q','.5');
-            acceptField = matlab.net.http.field.AcceptField([type1 type2]);
-            header = [acceptField contentTypeField];
-            method =RequestMethod.POST;
-            r=RequestMessage(method,header,body);
-            show(r);
-            url=string(jTextUrl.getText());
-            url=url+"/createuser";
-            uri= URI(url);
-            try
-                [resp,~,hist]=send(r,uri);
-                status = resp.StatusCode;
-                txt=char(status);
-                if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
-                    content=resp.Body;
-                    
-                    show(content);
-                    gui_hide(panelName);
-                else
-                    java_dialog('warning', 'Check your url or Internet!');
-                    f=msgbox(txt);
-                end
-            catch
-                java_dialog('warning', 'Check your url!');              
+                java_dialog('error', error, 'Add group');
             end
         end
     end
 
+    %% ===== BUTTON: ADD MEMBER =====
+    function ButtonAddMember_Callback(varargin)        
+        [member, isCancel] = java_dialog('input', 'What is the name or email of the person you would like to add?', 'Add member', jPanelNew);
+        if ~isCancel && ~isempty(member)
+            [success, error] = AddMember(member);
+            if success
+                UpdateMembersList();
+            else
+                java_dialog('error', error, 'Add member');
+            end
+        end
+    end
+
+    %% ===== BUTTON: EDIT GROUP PERMISSIONS =====
+    function ButtonEditGroup_Callback(varargin)
+        sProtocol = bst_get('ProtocolInfo');
+        group = ExtractName(jListGroups.getSelectedValue());
+        if isempty(sProtocol) || isempty(group)
+            return
+        end
+
+        [res, isCancel] = java_dialog('combo', 'What permissions would you like to give this group?', 'Edit permissions', [], {'Read-only','Read & write'});
+        if ~isCancel
+            disp(['TODO: Edit permissions of group "' group '" of protocol "' sProtocol.Comment '" to "' res '"']);
+            UpdateGroupsList();
+        end
+    end
+
+    %% ===== BUTTON: EDIT MEMBER PERMISSIONS =====
+    function ButtonEditMember_Callback(varargin)
+        sProtocol = bst_get('ProtocolInfo');
+        member = ExtractName(jListMembers.getSelectedValue());
+        if isempty(sProtocol) || isempty(member)
+            return
+        end
+
+        [res, isCancel] = java_dialog('combo', 'What permissions would you like to give this member?', 'Edit permissions', [], {'Read-only','Read & write'});
+        if ~isCancel
+            disp(['TODO: Edit permissions of member "' member '" of protocol "' sProtocol.Comment '" to "' res '"']);
+            UpdateMembersList();
+        end
+    end
+
+    %% ===== BUTTON: REMOVE GROUP =====
+    function ButtonRemoveGroup_Callback(varargin)
+        sProtocol = bst_get('ProtocolInfo');
+        group = ExtractName(jListGroups.getSelectedValue());
+        if isempty(sProtocol) || isempty(group)
+            return
+        end
+
+        disp(['TODO: Remove group "' group '" from protocol "' sProtocol.Comment '"']);
+        UpdateGroupsList();
+    end
+
+    %% ===== BUTTON: REMOVE MEMBER =====
+    function ButtonRemoveMember_Callback(varargin)
+        sProtocol = bst_get('ProtocolInfo');
+        member = ExtractName(jListMembers.getSelectedValue());
+        if isempty(sProtocol) || isempty(member)
+            return
+        end
+
+        disp(['TODO: Remove member "' member '" from protocol "' sProtocol.Comment '"']);
+        UpdateMembersList();
+    end
+
+    %% ===== LOAD GROUPS =====
+    function [groups, permissions] = LoadGroups()
+        sProtocol = bst_get('ProtocolInfo');
+        if isempty(sProtocol)
+            return
+        end
+
+        disp(['TODO: Load groups of protocol "' sProtocol.Comment '"']);
+        groups = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
+        permissions = {'write', 'read', 'write'};
+    end
+    %% ===== LOAD MEMBERS =====
+    function [members, permissions] = LoadMembers()
+        sProtocol = bst_get('ProtocolInfo');
+        if isempty(sProtocol)
+            return
+        end
+
+        disp(['TODO: Load members of protocol "' sProtocol.Comment '"']);
+        members = {'Martin Cousineau', 'Sylvain Baillet', 'Marc Lalancette'};
+        permissions = {'admin', 'write', 'read'};
+    end
+    %% ===== ADD MEMBER =====
+    function [res, error] = AddMember(member)
+        sProtocol = bst_get('ProtocolInfo');
+        if isempty(sProtocol)
+            return
+        end
+
+        disp(['TODO: Share protocol "' sProtocol.Comment '" to member "' member '"']);
+        res = 1;
+        error = [];
+        %error = 'Could not find member.';
+    end
+    %% ===== ADD GROUP =====
+    function [res, error] = AddGroup(group)
+        sProtocol = bst_get('ProtocolInfo');
+        if isempty(sProtocol)
+            return
+        end
+
+        disp(['TODO: Share protocol "' sProtocol.Comment '" to group "' group '"']);
+        res = 1;
+        error = [];
+        %error = 'Could not find group.';
+    end
 end
 
-
-
-
+% Extract group/member name if permission present in brackets
+function member = ExtractName(member)
+    iPermission = strfind(member, ' [');
+    if ~isempty(iPermission) && iPermission > 2
+        member = member(1:iPermission(end)-1);
+    end
+end

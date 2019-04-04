@@ -491,7 +491,15 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             warning('on', 'MATLAB:rmpath:DirNotFound');
         end
     end
-
+%% ===== BUTTON: GROUPS =====
+function ButtonGroups_Callback(varargin)
+    gui_show(panel_edit_groups('CreatePanel'), 'JavaWindow', 'Group Memberships', [], 1, 1);
+end
+%% ===== Sharing logout =====
+    function Logout_Callback(varargin)
+        bst_set('SessionId',[]);
+        gui_hide(panelName);
+    end
 % %% ===== UPDATE PROCESS OPTIONS =====
 %     function UpdateProcessOptions_Callback(varargin)
 %         if ~jCheckOrigFolder.isSelected()

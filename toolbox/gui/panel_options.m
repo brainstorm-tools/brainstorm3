@@ -137,7 +137,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jButtonRegister.setFocusable(0); 
         else
             gui_component('Label', jPanelShare, 'br', 'Logged in as. ', [], [], []);
-            jButtonLogin = gui_component('Button', jPanelShare, 'br', 'Groups', [], [], @(h,ev)bst_call(@gui_show, 'panel_login', 'JavaWindow', 'Login', [], 1, 0, 0));
+            jButtonLogin = gui_component('Button', jPanelShare, 'br', 'Groups', [], [], @ButtonGroups_Callback);
             jButtonRegister = gui_component('Button', jPanelShare, [], 'Logout', [], [], @Logout_Callback);
             jButtonLogin.setMargin(Insets(2,2,2,2));
             jButtonLogin.setFocusable(0);
@@ -491,7 +491,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             warning('on', 'MATLAB:rmpath:DirNotFound');
         end
     end
-
+%% ===== BUTTON: GROUPS =====
+    function ButtonGroups_Callback(varargin)
+        gui_show(panel_edit_groups('CreatePanel'), 'JavaWindow', 'Group Memberships', [], 1, 1);
+    end
 %% ===== Sharing logout =====
     function Logout_Callback(varargin)
         bst_set('SessionId',[]);
