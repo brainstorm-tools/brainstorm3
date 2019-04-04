@@ -40,7 +40,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     jTextRePassword = gui_component('password', jPanelLogin, '', '', [], [], []);
     jTextRePassword.setPreferredSize(java_scaled('dimension', 180, 30));
     
-    jButtonSignup = gui_component('Button', jPanelLogin, 'br center', 'Sign Up', [], [],@ButtonSign_Callback);
+    jButtonSignup = gui_component('Button', jPanelLogin, 'br center', 'Register', [], [],@ButtonSign_Callback);
     jButtonSignup.setPreferredSize(java_scaled('dimension', 80, 40));
     jPanelLogin.setPreferredSize(java_scaled('dimension', 400, 500));
     

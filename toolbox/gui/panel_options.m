@@ -128,7 +128,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % ===== RIGHT: SHARING =====
     jPanelShare = gui_river([5 5], [0 15 15 15], 'Remote Database');
         gui_component('Label', jPanelShare, 'br', 'Not connected to a remote database. ', [], [], []);
-        jButtonLogin = gui_component('Button', jPanelShare, [], 'Login', [], [], @URLaddress_Callback);
+        jButtonLogin = gui_component('Button', jPanelShare, [], 'Login', [], [], @(h,ev)bst_call(@gui_show, 'panel_login', 'JavaWindow', 'Login', [], 1, 0, 0));
         jButtonRegister = gui_component('Button', jPanelShare, [], 'Register', [], [], @(h,ev)bst_call(@gui_show, 'panel_signup', 'JavaWindow', 'Sign Up', [], 1, 0, 0));
         jButtonLogin.setMargin(Insets(2,2,2,2));
         jButtonLogin.setFocusable(0);
