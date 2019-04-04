@@ -82,8 +82,10 @@ end
 
 % === BRAINSTORM VERSION ===
 try
+    % Get doc folder
+    docDir = bst_get('BrainstormDocDir');
     % Read "version.txt"
-    fid = fopen(bst_fullfile(BrainstormHomeDir, 'doc', 'version.txt'),'rt');
+    fid = fopen(bst_fullfile(docDir, 'version.txt'), 'rt');
     Name = fgetl(fid); % the name line
     STR2 = fgetl(fid); % the second line with version, release and date
     % Format should be "Version 2.0 (R14) 27-June-2005" in that order.

@@ -1,7 +1,7 @@
-function bst_deploy_java_2018b(IS_BIN)
+function bst_deploy_java_2019a(IS_BIN)
 % BST_DEPLOY_JAVA - Brainstorm deployment script (including SPM and FieldTrip).
 %
-% USAGE:  bst_deploy_java_2018b(IS_BIN=0)
+% USAGE:  bst_deploy_java_2019a(IS_BIN=0)
 %
 % INPUTS:
 %    - IS_BIN : 0=Package the sources and push the modifications to github
@@ -91,9 +91,9 @@ if IS_BIN
     
     % FieldTrip / SPM
     if IS_FT_SPM
-        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2018b_spm.prj');
+        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2019a_spm.prj');
     else
-        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2018b.prj');
+        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2019a.prj');
     end
     
     % JDK folder
@@ -274,7 +274,7 @@ if IS_BIN
     % === PACKAGING ===
     disp('DEPLOY> Packaging binary distribution...');
     % Compiled jar
-    compiledJar = fullfile(compilerOutputDir, 'bst_javabuilder_2018b.jar');
+    compiledJar = fullfile(compilerOutputDir, 'bst_javabuilder_2019a.jar');
     % Find the JAR created by the compiler
     if ~file_exist(compiledJar)
         error('Compilation is incomplete: cannot package the binary distribution.');
@@ -297,7 +297,7 @@ if IS_BIN
     appJar = fullfile(bstDir, 'java', 'brainstorm.jar');
     % Unjar in "javabuilder" folder, just to get the SelectMcr class
     unzip(appJar, compilerDir);
-    classFile = fullfile('org', 'brainstorm', 'file', 'SelectMcr2018b.class');
+    classFile = fullfile('org', 'brainstorm', 'file', 'SelectMcr2019a.class');
     destFolder = fullfile(jarDir, fileparts(classFile));
     mkdir(destFolder);
     copyfile(fullfile(compilerDir, classFile), destFolder);
@@ -308,16 +308,16 @@ if IS_BIN
         copyfile(classFile, destFolder);
     else
         disp(['WARNING: Packaging without the installation runner, you must:' 10 ... 
-              ' - Create and compile the Java project brainstorm_run_2018b' 10 ...
+              ' - Create and compile the Java project brainstorm_run_2019a' 10 ...
               ' - Copy RunCompiled.class to the packaging folder: ' 10 ...
-              '   brainstorm3_deploy\R2018b\brainstorm_run\org\brainstorm']);
+              '   brainstorm3_deploy\R2019a\brainstorm_run\org\brainstorm']);
     end
     % Re-jar files together
     bstJar = fullfile(binDir, 'brainstorm3.jar');
     if file_exist(bstJar)
         delete(bstJar);
     end
-    system(['cd "' jarDir '" & "' jdkDir '\bin\jar.exe" cmf manifest.txt "' bstJar '" bst_javabuilder_2018b org com']);
+    system(['cd "' jarDir '" & "' jdkDir '\bin\jar.exe" cmf manifest.txt "' bstJar '" bst_javabuilder_2019a org com']);
 end
 
 

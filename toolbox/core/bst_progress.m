@@ -317,7 +317,7 @@ switch (lower(commandName))
         % Get image path
         imagefile = varargin{2};
         if ~file_exist(imagefile)
-            imagefile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', imagefile);
+            imagefile = bst_fullfile(bst_get('BrainstormDocDir'), imagefile);
         end
         if ~file_exist(imagefile)
             warning(['Image not found: ' imagefile]);

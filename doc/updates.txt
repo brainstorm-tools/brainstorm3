@@ -7,6 +7,7 @@ March 2019
 - GUI: SEEG 2DElectrode topography (and 2DLayout without 3D positions)
 - GUI: EEG Scalp Current Density (SCD) as a default montage
 - Distrib: Updating Brainstorm now downloads only the scripts (skips the compiled version)
+- Distrib: Compiled 2019a
 ---------------------------------------------------------------
 February 2019
 - Process: Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)

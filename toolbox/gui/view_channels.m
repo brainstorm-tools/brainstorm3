@@ -26,7 +26,7 @@ function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isL
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 
 global GlobalData;
 % Parse inputs
@@ -116,8 +116,20 @@ end
 % Also check if we are processing the same channel file, which can be
 % different when doing real-time head position alignment (2 helmets from
 % different datasets in the same figure).
-if isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel) || ...
-    ~strcmpi(GlobalData.DataSet(iDS).ChannelFile, ChannelFile)
+if isempty(GlobalData.DataSet(iDS).ChannelFile) || ~strcmpi(GlobalData.DataSet(iDS).ChannelFile, ChannelFile) || ...
+   (~GlobalData.DataSet(iDS).isChannelModified && isempty(GlobalData.DataSet(iDS).Channel))
+    % Check if this channel file is already loaded and modified in another DataSet
+    iDSother = setdiff(1:length(GlobalData.DataSet), iDS);
+    if ~isempty(iDSother) && any([GlobalData.DataSet(iDSother).isChannelModified])
+        % Ask user
+        isSave = java_dialog('confirm', ...
+            ['This channel file is being edited in another window.' 10 ...
+             'Save the modifications so the new figure can show updated positions?'], 'Save modifications');
+        % Force saving of the modifications
+        if isSave
+            bst_memory('SaveChannelFile', iDSother(1));
+        end
+    end
     % Load channel file
     ChannelMat = in_bst_channel(ChannelFile);
     % Copy information in memory
@@ -171,7 +183,7 @@ if isempty(selChannels)
     if ~isempty(iNoLoc)
         selChannels = setdiff(selChannels, iNoLoc);
     end
-    if isempty(selChannels)
+    if isempty(selChannels) && ~isempty(iNoLoc)
         error('None of the channels have positions defined.');
     end
 end
