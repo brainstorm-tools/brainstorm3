@@ -1436,8 +1436,8 @@ function sMontage = GetMontageScd(sMontage, Channels, ChannelFlag)
     end
     % Select EEG channels only
     iChannels = find(strcmp({Channels.Type}, 'EEG'));
-    % Check that there are positions available for all the channels
-    if isempty(iChannels) || any(cellfun(@isempty, {Channels.Loc}))
+    % Check that there are non-zero positions available for all the channels
+    if isempty(iChannels) || any(cellfun(@isempty, {Channels.Loc})) || ~any(cellfun(@any, {Channels.Loc}))
         sMontage = [];
         return;
     end
