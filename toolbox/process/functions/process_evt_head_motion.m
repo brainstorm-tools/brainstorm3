@@ -316,7 +316,9 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
     nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
     
     iHLU = find(strcmp({ChannelMat.Channel.Type}, 'HLU'));
+    [Unused, iSortHlu] = sort({ChannelMat.Channel(iHLU).Name});
     iFitErr = find(strcmp({ChannelMat.Channel.Type}, 'FitErr'));
+    [Unused, iSortFitErr] = sort({ChannelMat.Channel(iFitErr).Name});
     nChannels = numel(iHLU);
     if nChannels < 9
         bst_report('Error', 'process_evt_head_motion', sInput, ...
@@ -393,6 +395,9 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
         %   nSxnT = floor(nSamples/HeadSamplePeriod) * nEpochs;
     end
     
+    % In case channels were renamed to fix swapped coils.
+    Locations = Locations(iSortHlu, :, :);
+    
     % Also load head coil fitting errors if needed.
     if nargout > 2
         nFitChan = nChannels/3;
@@ -421,6 +426,9 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
             % Convert to continuous.
             FitErrors = reshape(FitErrors, nFitChan, []);
         end
+        
+        % In case channels were renamed to fix swapped coils.
+        FitErrors = FitErrors(iSortFitErr, :, :);
     end % if do FitError
 end
 
