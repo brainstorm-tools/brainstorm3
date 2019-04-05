@@ -78,8 +78,17 @@ function [bstPanelNew, panelName] = CreatePanel()
             java_dialog('warning', 'Different password!');
         else
             if(isempty(bst_get('DeviceId')))
-                device=string(jTextEmail.getText())+datestr(datetime('now'));
-                 bst_set('DeviceId',device);
+%                 device = get(com.sun.security.auth.module.NTSystem,'DomainSID');
+                device = '';
+                ni = java.net.NetworkInterface.getNetworkInterfaces;
+                while ni.hasMoreElements
+                    addr = ni.nextElement.getHardwareAddress;
+                    if ~isempty(addr)
+                        addrStr = dec2hex(int16(addr)+128);
+                        device = [device, '.', reshape(addrStr,1,2*length(addr))];
+                    end
+                end
+                bst_set('DeviceId',device);
             else
                 device=bst_get('DeviceId');
             end

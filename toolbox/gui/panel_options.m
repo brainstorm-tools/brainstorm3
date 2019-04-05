@@ -501,6 +501,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     function Logout_Callback(varargin)
         bst_set('SessionId',[]);
         bst_set('Email',[]);
+        bst_set('DeviceId',[]);
         gui_hide(panelName);
     end
 % %% ===== UPDATE PROCESS OPTIONS =====

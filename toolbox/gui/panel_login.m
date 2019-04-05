@@ -62,7 +62,17 @@ function [bstPanelNew, panelName] = CreatePanel()
             java_dialog('warning', 'Password cannot be empty!');
         else
             if(isempty(bst_get('DeviceId')))
-                device=string(jTextEmail.getText())+datestr(datetime('now'));
+%                 device = get(com.sun.security.auth.module.NTSystem,'DomainSID');
+                device = '';
+                ni = java.net.NetworkInterface.getNetworkInterfaces;
+                while ni.hasMoreElements
+                    addr = ni.nextElement.getHardwareAddress;
+                    if ~isempty(addr)
+                        addrStr = dec2hex(int16(addr)+128);
+                        device = [device, '.', reshape(addrStr,1,2*length(addr))];
+                    end
+                end
+
                 bst_set('DeviceId',device);
             else
                 device=bst_get('DeviceId');
@@ -81,7 +91,7 @@ function [bstPanelNew, panelName] = CreatePanel()
             url=string(jTextUrl.getText());
             url=url+"/login";
             uri= URI(url);
-            tryr
+            try
                 [resp,~,hist]=send(r,uri);
                 status = resp.StatusCode;
                 txt=char(status);
