@@ -136,7 +136,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jButtonRegister.setMargin(Insets(2,2,2,2));
             jButtonRegister.setFocusable(0); 
         else
-            gui_component('Label', jPanelShare, 'br', 'Logged in as. ', [], [], []);
+            email=bst_get('Email');
+            labellogin="Logged in as " + string(email);
+            gui_component('Label', jPanelShare, 'br',labellogin , [], [], []);        
             jButtonLogin = gui_component('Button', jPanelShare, 'br', 'Groups', [], [], @ButtonGroups_Callback);
             jButtonRegister = gui_component('Button', jPanelShare, [], 'Logout', [], [], @Logout_Callback);
             jButtonLogin.setMargin(Insets(2,2,2,2));
@@ -498,6 +500,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 %% ===== Sharing logout =====
     function Logout_Callback(varargin)
         bst_set('SessionId',[]);
+        bst_set('Email',[]);
         gui_hide(panelName);
     end
 % %% ===== UPDATE PROCESS OPTIONS =====

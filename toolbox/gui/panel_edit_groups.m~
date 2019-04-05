@@ -32,7 +32,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     import java.awt.*;
     import javax.swing.*;
     import org.brainstorm.list.*;
-    
     global GlobalData;
     % Constants
     panelName = 'EditGroups';
@@ -195,15 +194,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 
     %% ===== LOAD GROUPS =====
     function groups = LoadGroups()
-        import matlab.net.*;
-        import matlab.net.http.*;
-        
         disp('TODO: Load groups');
         url=bst_get('UrlAdr');
         url=string(url)+"/protocol";
         uri=URI(url);
-        data=webread(uri);
-        disp(string(data));
+        data=webread(ur);
         groups = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
     end
     %% ===== LOAD MEMBERS =====

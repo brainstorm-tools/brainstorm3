@@ -59,6 +59,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     
     function LoadOptions()
         jTextUrl.setText(bst_get('UrlAdr'));
+        gui_hide('Preferences');
     end
 
     function ButtonSign_Callback(varargin)
@@ -103,15 +104,18 @@ function [bstPanelNew, panelName] = CreatePanel()
                 status = resp.StatusCode;
                 txt=char(status);
                 if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
-                    newUrlAdr = char(jTextUrlAdr.getText());
+                    newUrlAdr = char(jTextUrl.getText());
                     if ~isempty(newUrlAdr)
                         bst_set('UrlAdr',newUrlAdr)
                     end
                     content=resp.Body;
-                    
                     show(content);
+                    bst_set('Email',jTextEmail.getText());
+                    session=strtok(string(content),',');
+                    session=char(extractAfter(session,":"));
+                    bst_set('SessionId',session);
+                    bst_set('UrlAdr',jTextUrl.getText());
                     gui_hide(panelName);
-                    gui_hide('Preferences');
                 else
                     java_dialog('warning', 'Check your url or Internet!');
                     f=msgbox(txt);

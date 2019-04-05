@@ -81,7 +81,7 @@ function [bstPanelNew, panelName] = CreatePanel()
             url=string(jTextUrl.getText());
             url=url+"/login";
             uri= URI(url);
-            tryr
+            try
                 [resp,~,hist]=send(r,uri);
                 status = resp.StatusCode;
                 txt=char(status);
@@ -93,11 +93,10 @@ function [bstPanelNew, panelName] = CreatePanel()
                     session=strtok(string(content),',');
                     session=char(extractAfter(session,":"));
                     bst_set('SessionId',session);
-                    bst_set('UrlAdr',jTextUrl.getText());
                     gui_hide(panelName);
-                elseif strcmp(txt,'401')==1 || strcmp(txt,'Unauthorized')==1
-                    java_dialog('warning', 'Wrong password!');
-                else 
+                elseif 
+                    java_dialog('warning', 'Wro!');
+                else
                     java_dialog('warning', 'Check your url or Internet!');
                     f=msgbox(txt);
                 end
