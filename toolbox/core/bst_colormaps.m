@@ -220,6 +220,10 @@ function sCMap = GetColormap(ColormapType)
         ColormapInfo = getappdata(ColormapType, 'Colormap');
         ColormapType = ColormapInfo.Type;
     end
+    if isempty(ColormapType)
+        sCMap = db_template('Colormap');
+        return
+    end
     % Get colormaps for a given modality
     ColormapType = lower(ColormapType);
     if ~isfield(GlobalData.Colormaps, ColormapType)
@@ -677,7 +681,6 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     else
         jMenu = jMenuRight;
     end
-
 
     % Not for anatomy or time colormap
     if ~strcmpi(ColormapType, 'Anatomy') && ~strcmpi(ColormapType, 'Time') && ~strcmpi(ColormapType, 'Overlay')
@@ -1777,9 +1780,6 @@ function cmapThreshed = StatThreshold(cMap, vMin, vMax, isAbs, tUnder, tOver, ns
         targetUnder = round(linspace(negIndexes(1), negIndexes(end), length(sigUnderIndexes)));
         cmapThreshed(sigUnderIndexes, :) = interp1(negIndexes,cMap(negIndexes, :), targetUnder);
     end
-
-
-    
 end
 
 
