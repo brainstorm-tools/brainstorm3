@@ -22,7 +22,7 @@ function converted_raw_File = in_spikesorting_convertforkilosort( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018-2019; Martin Cousineau, 2018
 
 sInput = varargin{1};
 if nargin < 2 || isempty(varargin{2})
@@ -61,6 +61,19 @@ if exist(converted_raw_File, 'file') == 2
 end
 
 
+%% Check if a projector has been computed and ask if the selected components
+% should be removed
+if ~isempty(ChannelMat.Projector)
+    isOk = java_dialog('confirm', ...
+        ['(ICA/PCA) Artifact components have been computed for removal.' 10 10 ...
+             'Remove the selected components?'], 'Artifact Removal');
+    if isOk
+        ImportOptions = db_template('ImportOptions');
+        ImportOptions.UseCtfComp     = 0;
+        ImportOptions.UseSsp         = 1;
+    end
+end 
+
 %% Convert the acquisition system file to an int16 without a header.
 fid = fopen(converted_raw_File, 'a');
 
@@ -74,7 +87,7 @@ while nsegment_max < sFile.prop.samples(2)
         nsegment_max = sFile.prop.samples(2);
     end
     
-    F = in_fread(sFile, ChannelMat, [], [nsegment_min,nsegment_max], [], []);
+    F = in_fread(sFile, ChannelMat, [], [nsegment_min,nsegment_max], [], ImportOptions);
 
     F = F*10^6 ;  % This assumes that F signals are in V. I convert it to uV there are big numbers and int16 precision doesn't zero it out.
     fwrite(fid, F,'int16');
