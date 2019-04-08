@@ -82,7 +82,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % EEG Reference
     sProcess.options.eegreference.Comment = '<B>EEG:</B> Electrode reference used: ';
     sProcess.options.eegreference.Type    = 'text';
-    sProcess.options.eegreference.Value   = 'Average';
+    sProcess.options.eegreference.Value   = 'Cz';
     % Options: Additional metadata
     sProcess.options.edit.Comment = {'panel_export_bids', ' Additional metadata :'};
     sProcess.options.edit.Type    = 'editpref';

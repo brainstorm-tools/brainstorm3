@@ -177,7 +177,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     gui_component('Label', ctrl.jPanels(i), '', 'Taper: ');
     ctrl.jComboTaper = gui_component('combobox', ctrl.jPanels(i), '', [], {{'Hanning','DPSS'}});
     % Frequencies
-    gui_component('label', ctrl.jPanels(i), 'br', 'Frequencies (start:stop:end): ');
+    gui_component('label', ctrl.jPanels(i), 'br', 'Frequencies (start:step:stop): ');
     ctrl.jTextFreq = gui_component('texttime', ctrl.jPanels(i), '', '10:3:220');
     % Callbacks
     ctrl.fcnValidate{i} = @(c)ValidateTimefreq();

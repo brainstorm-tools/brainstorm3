@@ -54,7 +54,8 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2019
+%          Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -406,6 +407,8 @@ function UpdateFigureName(hFig)
                 strMontage = 'All';
             elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                 strMontage = 'AvgRef';
+            elseif ~isempty(strfind(TsInfo.MontageName, 'Scalp current density'))
+                strMontage = 'SCD';
             elseif strcmpi(TsInfo.MontageName, 'Head distance')
                 strMontage = 'Head';
             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
@@ -476,6 +479,8 @@ function UpdateFigureName(hFig)
                                 strMontage = 'All';
                             elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                                 strMontage = 'AvgRef';
+                            elseif ~isempty(strfind(TsInfo.MontageName, 'Scalp current density'))
+                                strMontage = 'SCD';
                             elseif strcmpi(TsInfo.MontageName, 'Head distance')
                                 strMontage = 'Head';
                             elseif strcmpi(TsInfo.MontageName, 'Bad channels')

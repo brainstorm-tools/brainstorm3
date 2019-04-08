@@ -119,6 +119,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 0);
             elseif ~isempty(strfind(sMontage.Name, '(local average ref)'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 1);
+            elseif strcmpi(sMontage.Name, 'Scalp current density')
+                sMontage = panel_montage('GetMontageScd', sMontage, ChannelMat.Channel, DataMat.ChannelFlag);
             elseif strcmpi(sMontage.Name, 'Head distance')
                 sMontage = panel_montage('GetMontageHeadDistance', sMontage, ChannelMat.Channel, DataMat.ChannelFlag);
             end

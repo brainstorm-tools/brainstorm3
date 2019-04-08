@@ -19,10 +19,10 @@ function jComp = gui_component(compType, jParent, constrain, compText, compOptio
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 % 
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2019
 
 % Java imports
-import org.brainstorm.icon.IconLoader;
+import org.brainstorm.icon.*;
 % Parse inputs
 if (nargin < 2),  jParent      = []; end
 if (nargin < 3),  constrain    = []; end

@@ -118,8 +118,6 @@
     <fileset.package />
     <build-deliverables>
       <file location="C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing" name="bst_javabuilder_2018a.jar" optional="false">C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing\bst_javabuilder_2018a.jar</file>
-      <file location="C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing" name="doc" optional="false">C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing\doc</file>
-      <file location="C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing" name="readme.txt" optional="true">C:\Work\Dev\brainstorm3_deploy\R2018a\bst_javabuilder\for_testing\readme.txt</file>
     </build-deliverables>
     <workflow />
     <matlab>

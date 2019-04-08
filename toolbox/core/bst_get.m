@@ -9,6 +9,8 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('BrainstormUserDir')     : User home directory for brainstorm (<home>/.brainstorm/)
 %    - bst_get('BrainstormTmpDir')      : User brainstorm temporary directory (Default: <home>/.brainstorm/tmp/)
 %    - bst_get('BrainstormTmpDir', isForcedDefault)   : User DEFAULT brainstorm temporary directory (<home>/.brainstorm/tmp/)
+%    - bst_get('BrainstormDocDir')      : Doc folder folder of the Brainstorm distribution (may vary in compiled versions)
+%    - bst_get('BrainstormDefaultsDir') : Defaults folder folder of the Brainstorm distribution (may vary in compiled versions)
 %    - bst_get('UserReportsDir')        : User reports directory (<home>/.brainstorm/reports/)
 %    - bst_get('UserMexDir')            : User temporary directory (<home>/.brainstorm/mex/)
 %    - bst_get('UserProcessDir')        : User custom processes directory (<home>/.brainstorm/process/)
@@ -354,6 +356,32 @@ switch contextName
             end
         end
         argout1 = tmpDir;
+        
+    case 'BrainstormDocDir'
+        docDir = bst_fullfile(GlobalData.Program.BrainstormHomeDir, 'doc');
+        if ~exist(docDir, 'file')
+            % Matlab compiler >= 2018b stores 'doc' under 'bst_javabuil'
+            docDir = bst_fullfile(GlobalData.Program.BrainstormHomeDir, 'bst_javabuil', 'doc');
+            if ~exist(docDir, 'file')
+                docDir = '';
+                disp('BST> Could not find "doc" folder.');
+                disp(['BST> BrainstormHomeDir = ' GlobalData.Program.BrainstormHomeDir]);
+            end
+        end
+        argout1 = docDir;
+
+    case 'BrainstormDefaultsDir'
+        defaultsDir = bst_fullfile(GlobalData.Program.BrainstormHomeDir, 'defaults');
+        if ~exist(defaultsDir, 'file')
+            % Matlab compiler >= 2018b stores 'defaults' under 'bst_javabuil'
+            defaultsDir = bst_fullfile(GlobalData.Program.BrainstormHomeDir, 'bst_javabuil', 'defaults');
+            if ~exist(defaultsDir, 'file')
+                defaultsDir = '';
+                disp('BST> Could not find "defaults" folder.');
+                disp(['BST> BrainstormHomeDir = ' GlobalData.Program.BrainstormHomeDir]);
+            end
+        end
+        argout1 = defaultsDir;
         
     case 'UserReportsDir'
         reportDir = bst_fullfile(bst_get('BrainstormUserDir'), 'reports');
@@ -2136,7 +2164,7 @@ switch contextName
             AnatName = [];
         end
         % Get templates from the brainstorm3 folder
-        progDir   = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'anatomy');
+        progDir   = bst_fullfile(bst_get('BrainstormDefaultsDir'), 'anatomy');
         progFiles = dir(progDir);
         % Get templates from the user folder
         userDir   = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy');
@@ -2230,7 +2258,7 @@ switch contextName
     % Usage: EegDefaults = bst_get('EegDefaults')
     case 'EegDefaults'
         % Get templates from the brainstorm3 folder
-        progDir   = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'eeg');
+        progDir   = bst_fullfile(bst_get('BrainstormDefaultsDir'), 'eeg');
         progFiles = dir(bst_fullfile(progDir, '*'));
         % Get templates from the user folder
         userDir   = bst_fullfile(bst_get('UserDefaultsDir'), 'eeg');

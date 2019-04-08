@@ -298,7 +298,7 @@ if (~isempty(FileFormat) && strcmpi(FileFormat, 'FIG')) || strcmpi(imgFile, 'Fig
 % ===== SAVE IMAGE =====
 else
     % If figure contains a video in an ActiveX control: must be extracted with screencapture()
-    isForceScreencapture = strcmpi(FigureId.Type, 'Video') && ~isempty(iDS) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Handles.PlayerType, {'VLC', 'WMPlayer'});
+    isForceScreencapture = ~isempty(FigureId) && strcmpi(FigureId.Type, 'Video') && ~isempty(iDS) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Handles.PlayerType, {'VLC', 'WMPlayer'});
     % Headless display: we must print the figure 
     if (GlobalData.Program.GuiLevel == -1)
         frameGfx.cdata = print(hFig, '-noui', '-r0', '-RGBImage');        

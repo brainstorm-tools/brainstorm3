@@ -82,8 +82,10 @@ end
 
 % === BRAINSTORM VERSION ===
 try
+    % Get doc folder
+    docDir = bst_get('BrainstormDocDir');
     % Read "version.txt"
-    fid = fopen(bst_fullfile(BrainstormHomeDir, 'doc', 'version.txt'),'rt');
+    fid = fopen(bst_fullfile(docDir, 'version.txt'), 'rt');
     Name = fgetl(fid); % the name line
     STR2 = fgetl(fid); % the second line with version, release and date
     % Format should be "Version 2.0 (R14) 27-June-2005" in that order.
@@ -262,7 +264,7 @@ if isempty(GlobalData.Colormaps)
     GlobalData.Colormaps = sDefColormaps;
 end
 % Check that default montages are loaded
-if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)', 'Head distance'}, {GlobalData.ChannelMontages.Montages.Name}))
+if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)', 'Scalp current density', 'Head distance'}, {GlobalData.ChannelMontages.Montages.Name}))
     disp('BST> Loading default montages...');
     % Load default selections
     panel_montage('LoadDefaultMontages');
