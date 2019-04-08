@@ -29,16 +29,17 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description of the process
-    sProcess.Comment     = 'Detect head motion events (CTF)';
+    sProcess.Comment     = 'Detect head motion (CTF)';
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion#Mark_head_motion_events';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
-    sProcess.Index       = 70;
+    sProcess.Index       = 48;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % Definition of the options
     sProcess.options.warning.Comment = 'Only for CTF MEG recordings with HLC channels recorded.<BR><BR>';
     sProcess.options.warning.Type    = 'label';

@@ -41,7 +41,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Option: Epoched/continuous
     sProcess.options.rectype.Comment = {'Epoched', 'Continuous'};
     sProcess.options.rectype.Type    = 'radio';
