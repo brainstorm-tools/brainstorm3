@@ -2422,7 +2422,9 @@ function is1020Setup = Is1020Setup(channelNames)
         end
     end
     if isempty(chans1020)
-        error('Could not find EEG default 10-10 channels.');
+        disp('ERROR: Could not find EEG default 10-10 channels.');
+        is1020Setup = 0;
+        return;
     end
 
     % Go through active channels and look for 10-10 names
