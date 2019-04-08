@@ -196,13 +196,6 @@ for iFile = 1:nFiles
     % Get values to process
     matValues = double(sMat.(matName));
     TimeVector = sMat.Time;
-    % Count number of previous averages for weighted average
-    if isWeighted
-        nAvg = sMat.nAvg;
-    else
-        nAvg = 1;
-    end
-    nAvgTotal = nAvgTotal + nAvg;
     
     % Apply default measure to TF values
     if strcmpi(matName, 'TF') && ~isreal(matValues)
@@ -443,6 +436,15 @@ for iFile = 1:nFiles
             iGoodRows = true(size(matValues,1), 1);
         end
     end
+    
+    % Add to count after all checks where we skip a file.
+    % Count number of previous averages for weighted average
+    if isWeighted
+        nAvg = sMat.nAvg;
+    else
+        nAvg = 1;
+    end
+    nAvgTotal = nAvgTotal + nAvg;
     % Count good channels
     nGoodSamples(iGoodRows) = nGoodSamples(iGoodRows) + nAvg;
     % Add file to the list of files used in the average

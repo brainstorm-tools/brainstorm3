@@ -1658,6 +1658,10 @@ function [sStudy, iStudy, Comment, uniqueDataFile] = GetOutputStudy(sProcess, sI
         if ~isempty(Message)
             bst_report('Warning', sProcess, sInputs, Message);
         end
+        if isNewFile
+            % Refresh study with new channel file info.
+            sStudy = bst_get('Study', iStudy);
+        end
     end
 end
 

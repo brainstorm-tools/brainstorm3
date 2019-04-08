@@ -317,7 +317,7 @@ function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThres
                         F{iFile} = sqrt(F2.^2 + F3.^2);
                         % Error if montages are applied on this
                         if ~isempty(TsInfo.MontageName)
-                            error('You cannot apply a montagne when displaying the norm of the gradiometers.');
+                            error('You cannot apply a montage when displaying the norm of the gradiometers.');
                         end
                     % Regular recordings
                     else

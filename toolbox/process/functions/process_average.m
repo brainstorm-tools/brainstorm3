@@ -352,7 +352,11 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
     end
     % Add messages to report
     if ~isempty(Messages)
-        bst_report('Warning', sProcess, sInputs, Messages);
+        if ~isempty(strfind(Messages, 'Error')) 
+            bst_report('Error', sProcess, sInputs, Messages); % make sure errors are recognized
+        else
+            bst_report('Warning', sProcess, sInputs, Messages);
+        end
     end
     
     % Load first file of the list
@@ -380,7 +384,17 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
     
     % === CREATE OUTPUT STRUCTURE ===
     % Get output study
-    [sStudy, iStudy, Comment, uniqueDataFile] = bst_process('GetOutputStudy', sProcess, sInputs);
+    [sStudy, iStudy, Comment, uniqueDataFile] = bst_process('GetOutputStudy', sProcess, sInputs(iAvgFile));
+    
+    % Double check the averaged channels were the same by comparing to the
+    % channel file that was just created and which contains all averaged
+    % input channels.  This will catch channel differences with the same
+    % channel count.
+    if strcmpi(sInputs(1).FileType, 'data') && ...
+            size(Stat.mean, 1) ~= sStudy.Channel.nbChannels
+        bst_report('Error', sProcess, sInputs, 'Input files had different channels and were incorrectly averaged.');
+    end
+    
     % Comment: forced in the options
     if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
         Comment = [strComment ': ' sProcess.options.Comment.Value, ' (' num2str(length(sInputs)) ' files)'];
