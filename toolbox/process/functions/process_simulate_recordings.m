@@ -249,12 +249,14 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         ResultsMat.DataFile      = file_short(DataFile);
         ResultsMat.HeadModelFile = HeadModelFile;
         ResultsMat.HeadModelType = HeadModelMat.HeadModelType;
+        if ~strcmpi(HeadModelMat.HeadModelType, 'surface')
+            ResultsMat.GridLoc    = HeadModelMat.GridLoc;
+            ResultsMat.GridOrient = HeadModelMat.GridOrient;
+            ResultsMat.GridAtlas  = HeadModelMat.GridAtlas;
+        end
         ResultsMat.ChannelFlag   = [];
         ResultsMat.GoodChannel   = iChannels;
         ResultsMat.SurfaceFile   = SurfaceFile;
-        ResultsMat.GridLoc       = HeadModelMat.GridLoc;
-        ResultsMat.GridOrient    = HeadModelMat.GridOrient;
-        ResultsMat.GridAtlas     = HeadModelMat.GridAtlas;
         % Add history entry
         ResultsMat = bst_history('add', ResultsMat, 'simulate', ['Simulated from file: ' sInput.FileName]);
         % Output filename
