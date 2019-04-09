@@ -273,18 +273,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             else
                 % Adjust channel rows.  If some are added, they are empty
                 % and of type "added", so no need to add rows.
-                iRemMeg = intersect(iRemChan, find(strcmpi({ChannelMats{iFile}.Channel.Type}, 'MEG')));
-                tmpChanMat.MegRefCoef(iRemMeg, :) = [];
+                [iRemMeg, iiRC, iiMeg] = intersect(iRemChan, find(strcmpi({ChannelMats{iFile}.Channel.Type}, 'MEG')));
+                tmpChanMat.MegRefCoef(iiMeg, :) = [];
             end
         end
         % Update Projectors
         if isfield(tmpChanMat, 'Projector') && ~isempty(tmpChanMat.Projector)
+            nProjRem = 0;
             for iProj = length(tmpChanMat.Projector):-1:1 % reverse because of potential removal
                 % Find channels involved.  If any are removed, the
                 % projector is no longer valid and removed as well.
                 iProjChan = find(any(ChannelMats{iFile}.Projector(iProj).Components(iChanSrc{iFile},:) ~= 0, 2));
                 if ~isempty(intersect(iProjChan, iRemChan))
                     tmpChanMat.Projector(iProj) = [];
+                    nProjRem = nProjRem + 1;
                 else
                     % New form: decomposed
                     if ~isempty(tmpChanMat.Projector(iProj).CompMask)
@@ -296,6 +298,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         tmpChanMat.Projector(iProj).Components(iChanDest{iFile},iChanDest{iFile}) = ChannelMats{iFile}.Projector(iProj).Components(iChanSrc{iFile},iChanSrc{iFile});
                     end
                 end
+            end
+            if nProjRem > 0
+                bst_report('Warning', sProcess, sInputs, sprintf('Channels removed. Removing %d projectors from channel file.', nProjRem));
             end
         end
         % Update comment (replace channel number)
