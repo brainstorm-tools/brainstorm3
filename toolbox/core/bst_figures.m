@@ -1997,7 +1997,8 @@ end
 function SetBackgroundColor(hFig, newColor) %#ok<*DEFNU>
     % Use previous scout color
     if (nargin < 2) || isempty(newColor)
-        newColor = uisetcolor([0 0 0], 'Select scout color');
+        % newColor = uisetcolor([0 0 0], 'Select scout color');
+        newColor = java_dialog('color');
     end
     % If no color was selected: exit
     if (length(newColor) ~= 3)

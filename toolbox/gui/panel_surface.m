@@ -485,7 +485,8 @@ function ButtonSurfColorCallback(varargin)
         return
     end
     % Ask user to select a color
-    colorCortex = uisetcolor(TessInfo(iSurface).AnatomyColor(2,:), 'Select surface color');
+    % colorCortex = uisetcolor(TessInfo(iSurface).AnatomyColor(2,:), 'Select surface color');
+    colorCortex = java_dialog('color');
     if (length(colorCortex) ~= 3)
         return
     end

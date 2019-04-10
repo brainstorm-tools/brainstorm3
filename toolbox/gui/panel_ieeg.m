@@ -818,7 +818,8 @@ function EditElectrodeColor(newColor)
     % If color is not specified in argument : ask it to user
     if (nargin < 1)
         % Use previous electrode color
-        newColor = uisetcolor(sSelElec(1).Color, 'Select electrode color');
+        % newColor = uisetcolor(sSelElec(1).Color, 'Select electrode color');
+        newColor = java_dialog('color');
         % If no color was selected: exit
         if (length(newColor) ~= 3) || all(sSelElec(1).Color == newColor)
             return
