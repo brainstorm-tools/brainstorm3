@@ -2580,6 +2580,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
             jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
             % Create subfolder for cap manufacturer
             jMenuOther = gui_component('Menu', jMenuDir, [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuAnt = gui_component('Menu', jMenuDir, [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], []);
             jMenuBs  = gui_component('Menu', jMenuDir, [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], []);
             jMenuBp  = gui_component('Menu', jMenuDir, [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], []);
             jMenuEgi = gui_component('Menu', jMenuDir, [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], []);
@@ -2594,7 +2595,9 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
                     fcnCallback = @(h,ev)db_set_channel(iAllStudies, fList(iFile).fullpath, 1, 0);
                 end
                 % Find corresponding submenu
-                if ~isempty(strfind(fList(iFile).name, 'BioSemi'))
+                if ~isempty(strfind(fList(iFile).name, 'ANT'))
+                    jMenuType = jMenuAnt;
+                elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
                     jMenuType = jMenuBs;
                 elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
                     jMenuType = jMenuBp;
