@@ -203,9 +203,8 @@ if plotFibers
     setappdata(hFigFib, 'EmptyFigure', 1);
 
     % Display fibers
-    [hFigFib, iDSFib, iFigFib] = view_surface(fibersFile, [], [], hFigFib);
-    setappdata(hFig, 'iDSFib', iDSFib);
-    setappdata(hFig, 'iFigFib', iFigFib);
+    hFigFib = view_surface(fibersFile, [], [], hFigFib);
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.hFigFib = hFigFib;
     
     % Display cortex surface
     panel_surface('AddSurface', hFigFib, surfaceFile);

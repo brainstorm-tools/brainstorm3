@@ -4357,10 +4357,9 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
         ColorOnly = 0;
     end
     %% Get fibers information
-    iDSFib          = getappdata(hFigConn, 'iDSFib');
-    iFigFib         = getappdata(hFigConn, 'iFigFib');
+    [hFigConn,iFig,iDS] = bst_figures('GetFigure', hFigConn);
+    hFigFib = GlobalData.DataSet(iDS).Figure(iFig).Handles.hFigFib;
     TfInfo = getappdata(hFigConn, 'Timefreq');
-    hFigFib = GlobalData.DataSet(iDSFib).Figure(iFigFib).hFigure;
     TessInfo = getappdata(hFigFib, 'Surface');
     iTess = find(ismember({TessInfo.Name}, 'Fibers'));
     [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
