@@ -53,6 +53,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     InterfaceScaling = bst_get('InterfaceScaling');
     % Get standard font
     stdFont = bst_get('Font');
+    % WIP: tabs for searches
+    jTabpaneSearch = java_create('javax.swing.JTabbedPane', 'II', javax.swing.JTabbedPane.TOP, javax.swing.JTabbedPane.WRAP_TAB_LAYOUT); 
+    jTabpaneSearch.setFont(bst_get('Font', 11));
+    java_setcb(jTabpaneSearch, 'StateChangedCallback', @DatabaseTabChanged_Callback);
+    
     % Creation of the exploration tree
     jTreeProtocols = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100, stdFont.getSize(), stdFont.getFontName());
     jTreeProtocols.setEditable(1);
@@ -80,12 +85,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jScrollPaneNew = java_create('javax.swing.JScrollPane', 'Ljava.awt.Component;', jTreeProtocols);
     jScrollPaneNew.setBorder(javax.swing.BorderFactory.createMatteBorder(1,1,0,1, java.awt.Color(.5,.5,.5)));
     
+    jTabpaneSearch.addTab('Database', jScrollPaneNew);
+    
     % Export panel to Brainstorm environment
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)
     bstPanelNew = BstPanel(panelName, ...
-                           jScrollPaneNew, ...
-                           struct('jTreeProtocols', jTreeProtocols));
+                           jTabpaneSearch, ...
+                           struct('jTreeProtocols', jTreeProtocols, ...
+                           'jTabpaneSearch', jTabpaneSearch));
 
 
 %% =================================================================================
@@ -289,8 +297,18 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             end
         end
     end
-end
 
+    %% ===== SELECT TAB =====
+    function DatabaseTabChanged_Callback(varargin)
+        index = jTabpaneSearch.getSelectedIndex();
+        if index > 0
+            jTreeProtocols.filter(Search('get', index));
+        else
+            jTreeProtocols.filter([]);
+        end
+        ExpandSelectedNode();
+    end
+end
 
 
 
@@ -378,6 +396,12 @@ function UpdateTree()
             SelectStudyNode(defNode);
         end
     end
+    % Apply filter if applicable
+    index = ctrl.jTabpaneSearch.getSelectedIndex();
+    if index > 0
+        ctrl.jTreeProtocols.filter(Search('get', index));
+        ExpandSelectedNode();
+    end
 end
 
 
@@ -412,6 +436,34 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
         return;
     end
     ctrl.jTreeProtocols.getModel.reload(nodeStudy);
+end
+
+%% ===== NODE: CREATE ALL STUDY NODES =====
+function CreateAllStudyNodes() %#ok<DEFNU>
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    % Apply recursively starting at root
+    CreateAllStudyNodesRec(ctrl.jTreeProtocols.getModel.getRoot());
+end
+function CreateAllStudyNodesRec(curNode)
+    if isempty(curNode)
+        return
+    end
+
+    % Create node for study if appropriate type and not yet created
+    if ismember(char(curNode.getType()), {'condition', 'rawcondition', 'studysubject', 'study', 'defaultstudy'}) ...
+            && (curNode.getStudyIndex() ~= 0)
+        CreateStudyNode(curNode)
+    end
+    
+    % Apply recursively
+    for iChild = 0:curNode.getChildCount()-1
+        CreateAllStudyNodesRec(curNode.getChildAt(iChild));
+    end
 end
 
 
@@ -1300,3 +1352,247 @@ function ExpandAll(isExpand) %#ok<DEFNU>
     end
 end
 
+%% ===== ADD DATABASE TAB =====
+function AddDatabaseTab(tabName)
+    import java.awt.GridBagConstraints;
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    % Remove tab callback
+    bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
+    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
+    
+    % Create tab
+    ctrl.jTabpaneSearch.addTab(tabName, []);
+    index = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    jPanelTab = java_create('javax.swing.JPanel');
+    jPanelTab.setLayout(java_create('java.awt.GridBagLayout'));
+    jPanelTab.setOpaque(0);
+    jLabel = gui_component('label', [], [], [tabName ' ']);
+    jBtnClose = gui_component('button', [], [], ' x ', [], [], @(h,ev)bst_call(@CloseDatabaseTab, tabName));
+    jBtnClose.setBorder([]);
+    
+    c = GridBagConstraints();
+    c.gridx = 0;
+    c.gridy = 0;
+    c.weightx = 1;
+    jPanelTab.add(jLabel, c);
+    
+    c.gridx = 1;
+    c.weightx = 0;
+    jPanelTab.add(jBtnClose, c);
+    
+    ctrl.jTabpaneSearch.setTabComponentAt(index, jPanelTab);
+    index = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    ctrl.jTabpaneSearch.setSelectedIndex(index);
+    
+    % Restore callback
+    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', bakCallback);
+end
+
+%% ===== CLOSE DATABASE TAB =====
+function CloseDatabaseTab(tabName)
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    index = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    if index == -1
+        return
+    end
+    
+    ctrl.jTabpaneSearch.removeTabAt(index);
+    Search('remove', index);
+end
+
+function CloseAllDatabaseTabs()
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    ctrl.jTabpaneSearch.setSelectedIndex(0);
+    
+    while ctrl.jTabpaneSearch.getTabCount() > 1
+        ctrl.jTabpaneSearch.removeTabAt(1);
+        Search('remove', 1);
+    end
+end
+
+function Filter(tabName, filterContents)
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    index = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    if index == -1
+        return
+    end
+    
+    % Make sure all nodes are loaded in database
+    CreateAllStudyNodes();
+    
+    % Create filter object
+    nodeFilter = java_create('org.brainstorm.tree.BstNodeFilter');
+    numFilters = size(filterContents, 1);
+    
+    for iFilter = 1:numFilters
+        % Convert strings to numbered values before passing filter info to
+        % Java. This avoids recompiling if we want to change labels of form
+        type = find(strcmp(filterContents{iFilter,1}, {'File name', 'File type'}));
+        if type == 2
+            % For file types, force equality
+            value = GetNodeTypes(filterContents{iFilter,3});
+            equality = 2;
+            caseSensitive = 0;
+        else
+            iEquality = find(strcmp(filterContents{iFilter,2}, {'Contains', 'Contains (case)', 'Equals', 'Equals (case)'}));
+            equalityCases = [0, 1, 0, 1];
+            equalityValues = [1, 1, 2, 2];
+            caseSensitive = equalityCases(iEquality);
+            equality = equalityValues(iEquality);
+            value = filterContents{iFilter,3};
+        end
+        boolOperation = find(strcmp(filterContents{iFilter,4}, {'And', 'Or'}));
+        nodeFilter.addFilter(value, type, equality, boolOperation, caseSensitive);
+    end
+    
+    % Apply filter
+    ctrl.jTreeProtocols.filter(nodeFilter);
+    % Expand database appropriately
+    ExpandSelectedNode();
+    
+    % Save to list of active searches
+    Search('add', index, nodeFilter);
+end
+
+function nodeTypes = GetNodeTypes(typeName)
+    if strcmp(typeName, 'Data')
+        nodeTypes = {'data'};
+    elseif strcmp(typeName, 'Raw data')
+        nodeTypes = {'rawdata'};
+    elseif strcmp(typeName, 'Source')
+        nodeTypes = {'results', 'link'};
+    elseif strcmp(typeName, 'Matrix')
+        nodeTypes = {'matrix'};
+    elseif strcmp(typeName, 'Power spectrum')
+        nodeTypes = {'spectrum'};
+    elseif strcmp(typeName, 'Time-frequency')
+        nodeTypes = {'timefreq'};
+    elseif strcmp(typeName, 'Statistics')
+        nodeTypes = {'pdata', 'presults', 'ptimefreq', 'pmatrix'};
+    elseif strcmp(typeName, 'Subject')
+        nodeTypes = {'subject'};
+    elseif strcmp(typeName, 'Dipoles')
+        nodeTypes = {'dipoles'};
+    elseif strcmp(typeName, 'Noise covariance')
+        nodeTypes = {'noisecov'};
+    elseif strcmp(typeName, 'MRI')
+        nodeTypes = {'anatomy'};
+    elseif strcmp(typeName, 'Surface')
+        nodeTypes = {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'other'};
+    elseif strcmp(typeName, 'Fibers')
+        nodeTypes = {'fibers'};
+    elseif strcmp(typeName, 'Folder')
+        nodeTypes = {'study', 'condition', 'rawcondition'};
+    elseif strcmp(typeName, 'Channel')
+        nodeTypes = {'channel'};
+    elseif strcmp(typeName, 'Head model')
+        nodeTypes = {'headmodel'};
+    elseif strcmp(typeName, 'Kernel')
+        nodeTypes = {'kernel'};
+    elseif strcmp(typeName, 'Video')
+        nodeTypes = {'image', 'video'};
+    else
+        nodeTypes = {typeName};
+    end
+end
+
+function searchNode = Search(func, index, node)
+    global GlobalData
+    if ~isfield(GlobalData.DataBase, 'ActiveSearches')
+        GlobalData.DataBase.ActiveSearches = [];
+    end
+    numActiveSearches = length(GlobalData.DataBase.ActiveSearches);
+    
+    switch lower(func)
+        case 'get'
+            if index > numActiveSearches
+                searchNode = [];
+            else
+                searchNode = GlobalData.DataBase.ActiveSearches(index);
+            end
+        case 'add'
+            if numActiveSearches == 0
+                GlobalData.DataBase.ActiveSearches = node;
+            elseif numActiveSearches == 1
+                GlobalData.DataBase.ActiveSearches = [GlobalData.DataBase.ActiveSearches, node];
+            else
+                GlobalData.DataBase.ActiveSearches(index) = node;
+            end
+            searchNode = node;
+        case 'remove'
+            if numActiveSearches > 0
+                iKeepNodes = 1:length(GlobalData.DataBase.ActiveSearches);
+                iKeepNodes(index) = [];
+                GlobalData.DataBase.ActiveSearches = GlobalData.DataBase.ActiveSearches(iKeepNodes);
+            end
+            searchNode = [];
+    end
+end
+
+function foundNode = findNode(nodeRoot, findType, iStudy)
+    if ismember(char(nodeRoot.getType()), findType) && nodeRoot.getStudyIndex() == iStudy
+        foundNode = nodeRoot;
+        return;
+    end
+    for iChild = 0:nodeRoot.getChildCount()-1
+        childNode = nodeRoot.getChildAt(iChild);
+        if ~isempty(childNode)
+            foundChildNode = findNode(nodeRoot.getChildAt(iChild), findType, iStudy);
+            if ~isempty(foundChildNode)
+                foundNode = foundChildNode;
+                return;
+            end
+        end
+    end
+    foundNode = [];
+end
+
+function ExpandSelectedNode()
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    nodeRoot = ctrl.jTreeProtocols.getModel.getRoot();
+    if strcmp(bst_get('Layout', 'ExplorationMode'), 'StudiesSubj')
+        % Find condition
+        ProtocolInfo = bst_get('ProtocolInfo');
+        defNode = findNode(nodeRoot, {'study', 'condition', 'rawcondition'}, ProtocolInfo.iStudy);
+    else
+        % Find subject
+        [sSubject, iSubject] = bst_get('Subject');
+        defNode = findNode(nodeRoot, {'subject', 'studysubject'}, iSubject);
+    end
+
+    % If a default node is defined : select and expand it
+    if ~isempty(defNode)
+        % Expand default node
+        ExpandPath(defNode, 1);
+        % If default node is a study node
+        if ismember(char(defNode.getType()), {'study', 'studysubject', 'condition', 'rawcondition'})
+            % Select study node
+            SelectStudyNode(defNode);
+        end
+    end
+end

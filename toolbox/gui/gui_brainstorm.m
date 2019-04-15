@@ -248,6 +248,19 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jToolButtonSubject     = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_SUBJECTDB,    TB_DIM, jButtonGroup}, '<HTML><B>Anatomy</B>:<BR>MRI, surfaces</HTML>', [], []);
         jToolButtonStudiesSubj = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_STUDYDB_SUBJ, TB_DIM, jButtonGroup}, '<HTML><B>Functional data</B> (sorted by subjects):<BR>channels, head models, recordings, results</HTML>', [], []);
         jToolButtonStudiesCond = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_STUDYDB_COND, TB_DIM, jButtonGroup}, '<HTML><B>Functional data</B> (sorted by conditions):<BR>channels, head models, recordings, results</HTML>', [], []);
+        % Search button
+        jToolbarSearch      = gui_component('Toolbar', jPanelExplorerTop, java.awt.BorderLayout.EAST, []);
+        
+        %jToolSearchText = gui_component('Text', jToolbarSearch, [], '', [], [], [], 11);
+        %jSize = java_scaled('dimension', 90, 22);
+        %jToolSearchText.setPreferredSize(jSize);
+        %jToolSearchText.setMinimumSize(jSize);
+        %jToolSearchText.setMaximumSize(jSize);
+        %jToolSearchText.setOpaque(0);
+        %jToolSearchText.setBackground(java.awt.Color(0,0,0,0));
+        %jToolSearchText.setBorder([]);
+        
+        jToolSearchDatabase = gui_component('Button', jToolbarSearch, [], [], {IconLoader.ICON_ZOOM, TB_DIM, jButtonGroup}, 'Search Database', @ButtonSearch_Callback, []);
     jPanelExplorer.add(jPanelExplorerTop, java.awt.BorderLayout.NORTH);
 
     % ==== TOOLS CONTAINER ====
@@ -460,6 +473,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
              'jToolButtonSubject',     jToolButtonSubject, ...
              'jToolButtonStudiesSubj', jToolButtonStudiesSubj, ...
              'jToolButtonStudiesCond', jToolButtonStudiesCond, ...
+             'jToolSearchDatabase',    jToolSearchDatabase, ...
              'jComboBoxProtocols',     jComboBoxProtocols, ...
              'jButtonRecordingsA',      jButtonRecordingsA, ...
              'jButtonSourcesA',         jButtonSourcesA, ...
@@ -540,6 +554,37 @@ function GUI = CreateWindow() %#ok<DEFNU>
         end
         % Empty clipboard
         bst_set('Clipboard', []);
+    end
+
+%% ===== SEARCH BUTTON =====
+    function ButtonSearch_Callback(varargin)
+        % Get tree handle
+        ctrl = bst_get('PanelControls', 'protocols');
+        if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+            return;
+        end
+        
+        % Prompt user for search
+        filterContents = gui_show_dialog('Search Database', @panel_search_database);
+        if isempty(filterContents)
+            return;
+        end
+
+        % Extract short and unique tab name
+        name = filterContents{1,3};
+        shortName = name(1:min(length(name),10));
+        tabName = shortName;
+        id = 1;
+        while ctrl.jTabpaneSearch.indexOfTab(tabName) >= 0
+            id = id + 1;
+            tabName = [shortName ' (' num2str(id) ')'];
+        end
+        
+        % Create tab
+        panel_protocols('AddDatabaseTab', tabName);
+        
+        % Apply filter
+        panel_protocols('Filter', tabName, filterContents);
     end
 
 
@@ -933,6 +978,8 @@ function SetCurrentProtocol(iProtocol)
         jComboBoxProtocols.repaint();
     end
     % ===== UPDATE GUI =====
+    % Close any active searches
+    panel_protocols('CloseAllDatabaseTabs');
     % Update tree model
     panel_protocols('UpdateTree');
     % Update "Time Window" 

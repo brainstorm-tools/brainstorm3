@@ -109,6 +109,8 @@ switch (panelName)
         bst_mutex('release', 'SpikesortingOptions');
     case 'ExportBidsOptions'
         bst_mutex('release', 'ExportBidsOptions');
+    case 'SearchDatabase'
+        bst_mutex('release', 'SearchDatabase');
     case 'Coordinates'
         if gui_brainstorm('isTabVisible', 'Coordinates')
             panel_coordinates('RemoveSelection');
