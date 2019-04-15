@@ -77,10 +77,27 @@ end
 % Switch between different import functions 
 switch (FileFormat)
     case 'BST'
-        FibMat = in_fibers_bst(FibersFile, N);
+        FibMat = load(file_fullpath(FibersFile));
         isConvertScs = 0;
+        if ~isempty(N) && (N ~= size(FibMat.Points, 2))
+            error('Cannot interpolate the number of coordinates from an already imported fibers file.');
+        end
     case 'TRK'
-        FibMat = in_fibers_trk(FibersFile, N);
+        % Read using external function
+        bst_progress('text', 'Reading TRK...');
+        [header, tracks] = trk_read(FibersFile);
+        % Convert to N points
+        if ~isempty(N)
+            bst_progress('text', ['Interpolating fibers to ' num2str(N) ' points...']);
+            tracks = trk_interp(tracks, N);
+        end
+        % Convert to meters
+        tracks = tracks / 1000;
+        % Build Brainstorm structure
+        FibMat = db_template('fibers');
+        FibMat.Points = permute(tracks, [3,1,2]);
+        FibMat.Header = header;
+        FibMat = import_fibers('ComputeColor', FibMat);
 end
 % If an error occurred: return
 if isempty(FibMat)

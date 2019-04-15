@@ -178,7 +178,7 @@ function [sFib,iFib] = LoadFibers(FibFile)
         % Create default structure
         sFib = db_template('LoadedFibers');
         % Load fibers matrix
-        FibMat = in_fibers_bst(FibFile);
+        FibMat = in_fibers(FibFile);
         % Build fibers structure
         for field = fieldnames(sFib)'
             if isfield(FibMat, field{1})

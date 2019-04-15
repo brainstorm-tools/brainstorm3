@@ -89,7 +89,7 @@ end
 % Progress bar
 bst_progress('start', 'Resample fibers', 'Loading file...');
 % Load file
-FibMat = in_fibers_bst(FibFile);
+FibMat = in_fibers(FibFile);
 NewFibMat = db_template('fibers');
 
 
