@@ -97,7 +97,7 @@ switch (FileFormat)
         FibMat = db_template('fibers');
         FibMat.Points = permute(tracks, [3,1,2]);
         FibMat.Header = header;
-        FibMat = import_fibers('ComputeColor', FibMat);
+        FibMat = fibers_helper('ComputeColor', FibMat);
 end
 % If an error occurred: return
 if isempty(FibMat)
@@ -114,9 +114,9 @@ for iFib = 1:length(FibMat)
     % Add coordinates offset
     if ~isempty(OffsetMri) && ~isempty(sMri)
         % Convert to 2D matrix to do it in one go
-        [pts2D, shape3D] = import_fibers('Conv3Dto2D', FibMat(iFib).Points);
+        [pts2D, shape3D] = fibers_helper('Conv3Dto2D', FibMat(iFib).Points);
         pts2D = bst_bsxfun(@plus, pts2D, OffsetMri .* sMri.Voxsize ./ 1000);
-        FibMat(iFib).Points = import_fibers('Conv2Dto3D', pts2D, shape3D);
+        FibMat(iFib).Points = fibers_helper('Conv2Dto3D', pts2D, shape3D);
     end
 end
         
@@ -126,9 +126,9 @@ if isConvertScs
         bst_progress('start', 'Importing fibers' , 'Converting coordinates to SCS...', 0, length(FibMat));
         for iFib = 1:length(FibMat)
             % Convert to 2D matrix to do it in one go using cs_convert()
-            [pts2D, shape3D] = import_fibers('Conv3Dto2D', FibMat(iFib).Points);
+            [pts2D, shape3D] = fibers_helper('Conv3Dto2D', FibMat(iFib).Points);
             pts2D = cs_convert(sMri, 'mri', 'scs', pts2D);
-            FibMat(iFib).Points = import_fibers('Conv2Dto3D', pts2D, shape3D);
+            FibMat(iFib).Points = fibers_helper('Conv2Dto3D', pts2D, shape3D);
             bst_progress('inc', 1);
         end
     else

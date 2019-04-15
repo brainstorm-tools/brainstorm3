@@ -4369,7 +4369,7 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
         ScoutNames     = getappdata(hFigConn, 'RowNames');
         ScoutCentroids = getappdata(hFigConn, 'RowLocs');
-        FibMat = import_fibers('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
+        FibMat = fibers_helper('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
         % Save in memory to avoid recomputing
         GlobalData.Fibers(iFib) = FibMat;
     end

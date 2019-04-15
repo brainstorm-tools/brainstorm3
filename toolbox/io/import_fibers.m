@@ -1,7 +1,7 @@
-function varargout = import_fibers(varargin)
+function [iNewFibers, OutputFibersFiles, nFibers] = import_fibers(iSubject, FibersFiles, FileFormat, N, isApplyMriOrient, OffsetMri)
 % IMPORT_FIBERS: Import a set of fibers in a Subject of Brainstorm database.
 % 
-% USAGE: iNewFibers = import_fibers(iSubject, FibersFiles, FileFormat, offset=[])
+% USAGE: iNewFibers = import_fibers(iSubject, FibersFiles, FileFormat, N, isApplyMriOrient, OffsetMri)
 %        iNewFibers = import_fibers(iSubject)   : Ask user the files to import
 %
 % INPUT:
@@ -16,7 +16,9 @@ function varargout = import_fibers(varargin)
 %    - OffsetMri    : (x,y,z) values to add to the coordinates of the fibers before converting it to SCS
 %
 % OUTPUT:
-%    - iNewFibers : Indices of the fibers added in database
+%    - iNewFibers        : Indices of the fibers added in database
+%    - OutputFibersFiles : Path to the newly created tess_fibers_*.mat files
+%    - nFibers           : Number of fibers imported per file
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -38,10 +40,6 @@ function varargout = import_fibers(varargin)
 %
 % Authors: Martin Cousineau, 2019
 
-eval(macro_method);
-end
-
-function [iNewFibers, OutputFibersFiles, nFibers] = Import(iSubject, FibersFiles, FileFormat, N, isApplyMriOrient, OffsetMri)
 %% ===== PARSE INPUTS =====
 % Check command line
 if ~isnumeric(iSubject) || (iSubject < 0)
@@ -185,7 +183,7 @@ for iFile = 1:length(FibersFiles)
         NewFibers = Fibers;
     % Multiple files
     else
-        NewFibers = FibConcatenate(Fibers);
+        NewFibers = fibers_helper('Concatenate', Fibers);
         NewFibers.Comment = sprintf('fibers_%dPt_%dF', N, size(NewFibers.Points, 1));
     end
 
@@ -194,7 +192,7 @@ for iFile = 1:length(FibersFiles)
         % History: Apply MRI transformation
         NewFibers = bst_history('add', NewFibers, 'import', 'Apply transformation that was applied to the MRI volume');
         % Apply MRI transformation
-        NewFibers = ApplyMriTransf(sMri.InitTransf, NewFibers);
+        NewFibers = fibers_helper('ApplyMriTransfToFib', sMri.InitTransf, NewFibers);
     end
 
     % ===== SAVE BST FILE =====
@@ -225,129 +223,3 @@ bst_progress('stop');
 end   
 
 
-%% ======================================================================================
-%  ===== HELPER FUNCTIONS ===============================================================
-%  ======================================================================================
-%% ===== APPLY MRI ORIENTATION =====
-function sSurf = ApplyMriTransf(MriTransf, sSurf)
-    % Convert points matrix to 2D for transformation.
-    [pts, shape3d] = Conv3Dto2D(sSurf.Points);
-    % Apply step by step all the transformations that have been applied to the MRI
-    for i = 1:size(MriTransf,1)
-        ttype = MriTransf{i,1};
-        val   = MriTransf{i,2};
-        switch (ttype)
-            case 'flipdim'
-                % Detect the dimensions that have constantly negative coordinates
-                iDimNeg = find(sum(sign(pts) == -1) == size(pts,1));
-                if ~isempty(iDimNeg)
-                    pts(:,iDimNeg) = -pts(:,iDimNeg);
-                end
-                % Flip dimension
-                pts(:,val(1)) = val(2)/1000 - pts(:,val(1));
-                % Restore initial negative values
-                if ~isempty(iDimNeg)
-                    pts(:,iDimNeg) = -pts(:,iDimNeg);
-                end
-            case 'permute'
-                pts = pts(:,val);
-            case 'vox2ras'
-                % Do nothing, applied earlier
-        end
-    end
-    % Report changes in structure
-    sSurf.Points = Conv2Dto3D(pts, shape3d);
-end
-
-
-%% ===== CONCATENATE FIBERS FILES =====
-function NewFibers = FibConcatenate(Fibers)
-    for iFib = 1:length(Fibers)
-        if iFib == 1
-            NewFibers = Fibers(iFib);
-            continue;
-        else
-            nFibers = size(Fibers(iFib).Points, 2);
-            NewFibers.Points(end+1:end+nFibers, :, :) = Fibers(iFib).Points;
-            NewFibers.Colors(end+1:end+nFibers, :, :) = Fibers(iFib).Colors;
-        end
-    end
-end
-
-
-%% ===== CONVERT 3D MATRICES TO 2D IN A REVERSIBLE WAY =====
-function [mat2d, shape3d] = Conv3Dto2D(mat3d, iDimToKeep)
-    shape3d = size(mat3d);
-    nDims = length(shape3d);
-    
-    if nargin < 2 || isempty(iDimToKeep)
-        iDimToKeep = nDims;
-    end
-    
-    iMergeDims = 1:nDims ~= iDimToKeep;
-    mat2d = reshape(mat3d, [prod(shape3d(iMergeDims)), shape3d(iDimToKeep)]);
-end
-
-
-%% ===== CONVERT 2D MATRICES BACK TO 3D =====
-function mat3d = Conv2Dto3D(mat2d, shape3d)
-    mat3d = reshape(mat2d, shape3d);
-end
-
-
-%% ===== ASSIGN FIBERS TO VERTICES =====
-function FibMat = AssignToScouts(FibMat, ConnectFile, ScoutCentroids)
-    %TODO: nargin < 3, load ScoutCentroids from ConnectFile
-
-    endPoints = FibMat.Points(:, [1,end], :);
-    numPoints = size(FibMat.Points, 1);
-    closestPts = zeros(numPoints, 2);
-    
-    bst_progress('start', 'Fibers Connectivity', 'Assigning fibers to scouts of atlas...');
-    
-    parfor iPt = 1:numPoints
-        for iPos = 1:2
-            % Compute Euclidean distances:
-            distances = sqrt(sum(bst_bsxfun(@minus, squeeze(endPoints(iPt, iPos, :))', ScoutCentroids).^2, 2));
-            % Assign points to the vertex with the smallest distance
-            [minVal, iMin] = min(distances);
-            closestPts(iPt, iPos) = iMin;
-        end
-        bst_progress('inc', 1);
-    end
-    
-    numSurfaces = length(FibMat.Scouts);
-    if numSurfaces <= 1 && isempty(FibMat.Scouts(1).ConnectFile)
-        numSurfaces = 0;
-    end
-    
-    FibMat.Scouts(numSurfaces + 1).ConnectFile = ConnectFile;
-    FibMat.Scouts(numSurfaces + 1).Assignment = closestPts;
-    bst_progress('stop');
-end
-
-
-%% ===== COMPUTE COLOR BASED ON CURVATURE =====
-function FibMat = ComputeColor(FibMat)
-    nFibers = size(FibMat.Points, 1);
-    nPoints = size(FibMat.Points, 2);
-    FibMat.Colors = zeros(nFibers, nPoints, 3, 'uint8');
-    
-    % Compute RGB based on current and next point
-    for iPt = 1:nPoints - 1
-        r = abs(FibMat.Points(:, iPt, 1) - FibMat.Points(:, iPt+1, 1));
-        g = abs(FibMat.Points(:, iPt, 2) - FibMat.Points(:, iPt+1, 2));
-        b = abs(FibMat.Points(:, iPt, 3) - FibMat.Points(:, iPt+1, 3));
-
-        norm = sqrt(r .* r + g .* g + b .* b);
-
-        FibMat.Colors(:, iPt, 1) = 255.0 .* r ./ norm;
-        FibMat.Colors(:, iPt, 2) = 255.0 .* g ./ norm;
-        FibMat.Colors(:, iPt, 3) = 255.0 .* b ./ norm;
-    end
-    
-    % Apply same color to last point
-    FibMat.Colors(:, nPoints, 1) = FibMat.Colors(:, nPoints-1, 1);
-    FibMat.Colors(:, nPoints, 2) = FibMat.Colors(:, nPoints-1, 2);
-    FibMat.Colors(:, nPoints, 3) = FibMat.Colors(:, nPoints-1, 3);
-end

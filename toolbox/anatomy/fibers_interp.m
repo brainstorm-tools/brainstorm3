@@ -98,7 +98,7 @@ bst_progress('text', 'Interpolating fibers...');
 tracks_interp = trk_interp(tracks, newNbPoints);
 NewFibMat.Points = permute(tracks_interp, [3,1,2]);
 % Update color
-NewFibMat = import_fibers('ComputeColor', NewFibMat);
+NewFibMat = fibers_helper('ComputeColor', NewFibMat);
 
 
 %% ===== CREATE NEW FIBER STRUCTURE =====
