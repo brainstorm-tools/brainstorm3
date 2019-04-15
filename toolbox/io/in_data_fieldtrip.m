@@ -54,13 +54,13 @@ DataMat.ChannelFlag = ones(nChannels, 1);
 
 % Data type: timelocked
 if isfield(ftMat, 'avg') && ~isempty(ftMat.avg)
-    DataMat.F    = ftMat.avg;
-    DataMat.Time = ftMat.time;
+    DataMat.F    = double(ftMat.avg);
+    DataMat.Time = double(ftMat.time);
     if isfield(ftMat, 'var')
-        DataMat.Std = sqrt(ftMat.var);
+        DataMat.Std = sqrt(double(ftMat.var));
     end
     if isfield(ftMat, 'dof')
-        DataMat.nAvg = max(ftMat.dof(:));
+        DataMat.nAvg = max(double(ftMat.dof(:)));
     end
 % Data type: raw
 elseif isfield(ftMat, 'trial') && ~isempty(ftMat.trial)
@@ -68,11 +68,11 @@ elseif isfield(ftMat, 'trial') && ~isempty(ftMat.trial)
     DataMat = repmat(DataMat, 1, length(ftMat.trial));
     % Copy the data for each trials
     for i = 1:length(DataMat)
-        DataMat(i).F = ftMat.trial{i};
+        DataMat(i).F = double(ftMat.trial{i});
         if iscell(ftMat.time)
-            DataMat(i).Time = ftMat.time{i};
+            DataMat(i).Time = double(ftMat.time{i});
         else
-            DataMat(i).Time = ftMat.time;
+            DataMat(i).Time = double(ftMat.time);
         end
         % Add trial number to the comment
         DataMat(i).Comment = [DataMat(i).Comment, sprintf(' (#%d)', i)];
