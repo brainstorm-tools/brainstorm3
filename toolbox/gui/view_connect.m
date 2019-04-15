@@ -209,18 +209,8 @@ if plotFibers
     % Display cortex surface
     panel_surface('AddSurface', hFigFib, surfaceFile);
     % Add transparency to cortex surface
-    cortex_transparency = 80; % Percent
     iSurface = getappdata(hFigFib, 'iSurface');
-    TessInfo = getappdata(hFigFib, 'Surface');
-    TessInfo(iSurface).SurfAlpha = cortex_transparency / 100;
-    setappdata(hFigFib, 'Surface', TessInfo);
-    figure_3d('UpdateSurfaceAlpha', hFigFib, iSurface);
-    % Update Surface panel if present
-    ctrl = bst_get('PanelControls', 'Surface');
-    if ~isempty(ctrl)
-        ctrl.jLabelSurfAlpha.setText(sprintf('%d%%', cortex_transparency));
-        ctrl.jSliderSurfAlpha.setValue(cortex_transparency);
-    end
+    panel_surface('SetSurfaceTransparency', hFigFib, iSurface, 0.8);
 end
 
 
