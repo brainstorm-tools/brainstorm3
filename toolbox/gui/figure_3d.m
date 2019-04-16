@@ -2585,6 +2585,8 @@ end
 %% ===== PLOT 3D ELECTRODES =====
 function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, TopoType) %#ok<DEFNU>
     global GlobalData;
+    % Initialize returned variable
+    hElectrodeGrid = [];
     % Get current electrodes positions
     if (nargin < 4) || isempty(TopoType)
         TopoType = '3DElectrodes';
@@ -2634,10 +2636,19 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
             % Define default electrode properties just for display
             switch (sElectrodes(iElec).Type)
                 case 'SEEG'
+                    if isempty(sElectrodes(iElec).ElecLength)
+                        sElectrodes(iElec).ElecLength = 0.070;
+                    end
+                    if isempty(maxLengthSeeg)
+                        maxLengthSeeg = sElectrodes(iElec).ElecLength;
+                    end
                     if isempty(sElectrodes(iElec).ContactSpacing) || (sElectrodes(iElec).ContactSpacing == 0) || (sElectrodes(iElec).ContactSpacing * sElectrodes(iElec).ContactNumber > sElectrodes(iElec).ElecLength)
                         sElectrodes(iElec).ContactSpacing = sElectrodes(iElec).ElecLength / maxContactNumberSeeg;
                     end
-                    X = 2 * nRows * sElectrodes(iElec).ContactLength * [1 1] + 0.0001;
+                    if isempty(sElectrodes(iElec).ElecDiameter)
+                        sElectrodes(iElec).ElecDiameter = 0.0008;
+                    end
+                    X = 2 * nRows * 3 * sElectrodes(iElec).ElecDiameter * [1 1] + 0.0001;
                     Y = [maxLengthSeeg - sElectrodes(iElec).ElecLength, maxLengthSeeg];
                     sElectrodes(iElec).Loc = [X; Y; 0, 0];
                     nRows = nRows + 1;
@@ -2664,7 +2675,10 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
             end
         end
         % Set corresponding contact positions
-        Channel = panel_ieeg('AlignContacts', iDS, iFig, 'default', sElectrodes, Channel);
+        Channel = panel_ieeg('AlignContacts', iDS, iFig, 'default', sElectrodes, Channel, 0);
+        if isempty(Channel)
+            return;
+        end
         ChanLoc = [Channel.Loc]';
     end
     

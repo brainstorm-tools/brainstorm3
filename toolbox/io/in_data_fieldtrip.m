@@ -21,7 +21,7 @@ function [DataMat, ChannelMat] = in_data_fieldtrip(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2017
+% Authors: Francois Tadel, 2015-2019
 
 % Get format
 [fPath, fBase, fExt] = bst_fileparts(DataFile);

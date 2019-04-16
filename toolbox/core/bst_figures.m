@@ -264,7 +264,7 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
         if ~isempty(iChanZero)
             % Display warning
             delNames = {GlobalData.DataSet(iDS).Channel(selChan(iChanZero)).Name};
-            disp(['BST> Warning: The position of the following sensors is not set: ' sprintf('%s ', delNames{:})]);
+            disp(['BST> Warning: The positions of the following sensors are not set: ' sprintf('%s ', delNames{:})]);
             % Remove them from the list
             selChan(iChanZero) = [];
         end

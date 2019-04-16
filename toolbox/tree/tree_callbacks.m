@@ -1266,6 +1266,9 @@ switch (lower(action))
                                 AddSeparator(jMenuModality);
                                 gui_component('MenuItem', jMenuModality, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DLayout'));
                                 gui_component('MenuItem', jMenuModality, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DElectrodes'));
+                            elseif strcmpi(AllMod{iMod}, 'ECOG+SEEG')
+                                AddSeparator(jMenuModality);
+                                gui_component('MenuItem', jMenuModality, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DLayout'));
                             end
                             % === DISPLAY ON SCALP ===
                             % => ONLY for EEG, and if a scalp is defined

@@ -2102,8 +2102,12 @@ end
 
 
 %% ===== ALIGN CONTACTS =====
-function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
+function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate)
     global GlobalData;
+    % Update figures by default
+    if (nargin < 6) || isempty(isUpdate)
+        isUpdate = 1;
+    end
     % If using electrodes in input
     if (nargin >= 5) && ~isempty(sElectrodes) && ~isempty(Channels)
         isImplantation = 0;
@@ -2113,6 +2117,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
         sElectrodes = GetSelectedElectrodes();
         if isempty(sElectrodes)
             java_dialog('warning', 'No electrode selected.', 'Align contacts');
+            Channels = [];
             return
         end
         % Check if this is an new implantation folder
@@ -2354,12 +2359,12 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
 %             disp('Warning: No inner skull surface available for this subject, cannot project the contacts on the skull.');
 %         end
         % Mark channel file as modified
-        if isUpdateDS
+        if isUpdate && isUpdateDS
             GlobalData.DataSet(iDS(1)).isChannelModified = 1;
         end
     end
     % If loaded datasets should be updated
-    if isUpdateDS
+    if isUpdate && isUpdateDS
         % Update electrode position
         for i = 1:length(iDS)
             GlobalData.DataSet(iDS(i)).Channel = Channels;
