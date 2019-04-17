@@ -1,4 +1,8 @@
 ---------------------------------------------------------------
+April 2019
+- GUI: New color picker to replace Matlab's buggy uisetcolor
+- DOC: ECOG tutorial
+---------------------------------------------------------------
 March 2019
 - Anatomy: Deface MRI with FreeSurfer or SPM
 - Anatomy: World coordinates made available in MRI viewer

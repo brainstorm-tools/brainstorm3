@@ -684,6 +684,16 @@ function MriFiles = GetSubjectMri(anatFolder)
         iMpRage = find(isMpRage);
         MriFiles = cat(2, MriFiles(iMpRage), MriFiles(setdiff(1:length(MriFiles), iMpRage)));
     end
+    % Find T2w volumes
+    mriDir = dir(bst_fullfile(anatFolder, '*T2w.nii*'));
+    for i = 1:length(mriDir)
+        MriFiles{end+1} = bst_fullfile(anatFolder, mriDir(i).name);
+    end
+    % Find CT volumes
+    mriDir = dir(bst_fullfile(anatFolder, '*CT.nii*'));
+    for i = 1:length(mriDir)
+        MriFiles{end+1} = bst_fullfile(anatFolder, mriDir(i).name);
+    end
 end
 
 %% ===== SELECT BIDS DIR =====

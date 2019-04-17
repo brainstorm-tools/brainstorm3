@@ -1777,7 +1777,8 @@ function EventTypeSetColor()
     % Get event (ignore current epoch)
     sEvent = GetEvents(iEvent, 1);
     % Ask new color to the user
-    newColor = uisetcolor(sEvent.color, 'Select event color');
+    % newColor = uisetcolor(sEvent.color, 'Select event color');
+    newColor = java_dialog('color');
     % If no color was selected: exit
     if (length(newColor) ~= 3) || all(sEvent.color == newColor)
         return

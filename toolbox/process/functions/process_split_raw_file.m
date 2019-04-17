@@ -28,11 +28,11 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Split Raw File';
+    sProcess.Comment     = 'Split raw file';
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion#Split_the_recording';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'File';
-    sProcess.Index       = 72;
+    sProcess.SubGroup    = {'Import', 'Import recordings'};
+    sProcess.Index       = 70;
     sProcess.Description = '';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};

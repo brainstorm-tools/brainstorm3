@@ -1262,7 +1262,7 @@ switch (lower(action))
                                 elseif ~(strcmpi(AllMod{iMod}, 'MEG') && all(ismember({'MEG MAG', 'MEG GRAD'}, AllMod)))
                                     fcnPopupTopoNoInterp(jMenuModality, filenameRelative, AllMod(iMod), 0, 0, 0);
                                 end
-                            elseif ismember(AllMod{iMod}, {'ECOG','SEEG'})
+                            elseif ismember(AllMod{iMod}, {'ECOG','SEEG','ECOG+SEEG'})
                                 AddSeparator(jMenuModality);
                                 gui_component('MenuItem', jMenuModality, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DLayout'));
                                 gui_component('MenuItem', jMenuModality, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DElectrodes'));
@@ -1420,7 +1420,7 @@ switch (lower(action))
                                 ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
                                 %fcnPopupDisplayTopography(jMenuModality, filenameRelative, AllMod, AllMod{iMod}, 1);
                                 fcnPopupTopoNoInterp(jMenuModality, filenameRelative, AllMod(iMod), 1, 0, 0);
-                            elseif ismember(AllMod{iMod}, {'ECOG','SEEG'})
+                            elseif ismember(AllMod{iMod}, {'ECOG','SEEG','ECOG+SEEG'})
                                 AddSeparator(jMenuModality);
                                 gui_component('MenuItem', jMenuModality, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DLayout'));
                                 gui_component('MenuItem', jMenuModality, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DElectrodes'));
@@ -2580,6 +2580,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
             jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
             % Create subfolder for cap manufacturer
             jMenuOther = gui_component('Menu', jMenuDir, [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuAnt = gui_component('Menu', jMenuDir, [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], []);
             jMenuBs  = gui_component('Menu', jMenuDir, [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], []);
             jMenuBp  = gui_component('Menu', jMenuDir, [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], []);
             jMenuEgi = gui_component('Menu', jMenuDir, [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], []);
@@ -2594,7 +2595,9 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
                     fcnCallback = @(h,ev)db_set_channel(iAllStudies, fList(iFile).fullpath, 1, 0);
                 end
                 % Find corresponding submenu
-                if ~isempty(strfind(fList(iFile).name, 'BioSemi'))
+                if ~isempty(strfind(fList(iFile).name, 'ANT'))
+                    jMenuType = jMenuAnt;
+                elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
                     jMenuType = jMenuBs;
                 elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
                     jMenuType = jMenuBp;
@@ -2657,11 +2660,8 @@ function fcnPopupDisplayTopography(jMenu, FileName, AllMod, Modality, isStat)
     if ismember(Modality, {'EEG', 'ECOG'})
         gui_component('MenuItem', jMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '2DElectrodes'));
         gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes'));
-    end
-    if strcmpi(Modality, 'SEEG')
+    elseif ismember(Modality, {'SEEG', 'ECOG+SEEG'})
         gui_component('MenuItem', jMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '2DElectrodes'));
-    end
-    if strcmpi(Modality, 'SEEG') || strcmpi(Modality, 'ECOG+SEEG')
         gui_component('MenuItem', jMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes-Scalp'));
         gui_component('MenuItem', jMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes-Cortex'));
         gui_component('MenuItem', jMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes-MRI'));
@@ -2733,11 +2733,8 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
             if ismember(AllMod{iMod}, {'EEG', 'ECOG'}) && ~AlwaysCreate
                 gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
                 gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
-            end
-            if strcmpi(AllMod{iMod}, 'SEEG') && ~AlwaysCreate
+            elseif ismember(AllMod{iMod}, {'SEEG', 'ECOG+SEEG'}) && ~AlwaysCreate
                 gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
-            end
-            if ismember(AllMod{iMod}, {'SEEG', 'ECOG+SEEG'}) && ~AlwaysCreate
                 gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Scalp'));
                 gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Cortex'));
                 gui_component('MenuItem', jSubMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-MRI'));

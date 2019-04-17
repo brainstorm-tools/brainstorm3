@@ -40,7 +40,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Event name
     sProcess.options.eventname.Comment = 'Event names: ';
     sProcess.options.eventname.Type    = 'text';
