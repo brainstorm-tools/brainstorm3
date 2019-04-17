@@ -2113,13 +2113,13 @@ function MeasureFiberMask = GetMeasureFiberMask(hFig, DataPair, MeasureFiberFilt
     
     % Only filter if there are fibers shown
     plotFibers = getappdata(hFig, 'plotFibers');
-    if MeasureFiberFilter == 0 || isempty(plotFibers) || ~plotFibers
+    hFigFib = bst_figures('GetFigureHandleField', hFig, 'hFigFib');
+    if MeasureFiberFilter == 0 || isempty(plotFibers) || ~plotFibers || ~ishandle(hFigFib)
         MeasureFiberMask(:) = 1;
         return;
     end
     
     %% Get fibers information
-    hFigFib = bst_figures('GetFigureHandleField', hFig, 'hFigFib');
     TfInfo = getappdata(hFig, 'Timefreq');
     TessInfo = getappdata(hFigFib, 'Surface');
     iTess = find(ismember({TessInfo.Name}, 'Fibers'));
