@@ -4357,8 +4357,7 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
         ColorOnly = 0;
     end
     %% Get fibers information
-    [hFigConn,iFig,iDS] = bst_figures('GetFigure', hFigConn);
-    hFigFib = GlobalData.DataSet(iDS).Figure(iFig).Handles.hFigFib;
+    hFigFib = bst_figures('GetFigureHandleField', hFigConn, 'hFigFib');
     % If the fiber figure is closed, propagate to connectivity figure
     if ~ishandle(hFigFib)
         setappdata(hFigConn, 'plotFibers', 0);

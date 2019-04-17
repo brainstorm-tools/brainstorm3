@@ -2119,10 +2119,8 @@ function MeasureFiberMask = GetMeasureFiberMask(hFig, DataPair, MeasureFiberFilt
     end
     
     %% Get fibers information
-    iDSFib = getappdata(hFig, 'iDSFib');
-    iFigFib = getappdata(hFig, 'iFigFib');
+    hFigFib = bst_figures('GetFigureHandleField', hFig, 'hFigFib');
     TfInfo = getappdata(hFig, 'Timefreq');
-    hFigFib = GlobalData.DataSet(iDSFib).Figure(iFigFib).hFigure;
     TessInfo = getappdata(hFigFib, 'Surface');
     iTess = find(ismember({TessInfo.Name}, 'Fibers'));
     [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
