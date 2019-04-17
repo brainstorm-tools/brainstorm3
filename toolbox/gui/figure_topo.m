@@ -22,7 +22,7 @@ function varargout = figure_topo( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 
 eval(macro_method);
 end

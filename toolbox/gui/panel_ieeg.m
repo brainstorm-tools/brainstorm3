@@ -1679,7 +1679,7 @@ end
 %  =================================================================================
 
 %% ===== CREATE 3D ELECTRODE GEOMETRY =====
-function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = CreateGeometry3DElectrode(iDS, iFig, Channel, ChanLoc, sElectrodes) %#ok<DEFNU>
+function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = CreateGeometry3DElectrode(iDS, iFig, Channel, ChanLoc, sElectrodes, isProjectEcog) %#ok<DEFNU>
     global GlobalData;
     % Initialize returned values
     ElectrodeDepth = [];
@@ -1719,7 +1719,11 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
     end
     % Compute contact normals: ECOG and EEG
     if isSurface && (ismember(Modality, {'ECOG','EEG'}) || (~isempty(sElectrodes) && any(strcmpi({sElectrodes.Type}, 'ECOG'))))
-        ChanNormal = GetChannelNormal(sSubject, ChanLoc, Modality, 0);
+        if isProjectEcog
+            ChanNormal = GetChannelNormal(sSubject, ChanLoc, Modality, 0);
+        else
+            ChanNormal = repmat([0 0 1], size(ChanLoc,1), 1); 
+        end
     else
         ChanNormal = [];
     end
@@ -2102,9 +2106,12 @@ end
 
 
 %% ===== ALIGN CONTACTS =====
-function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate)
+function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog)
     global GlobalData;
-    % Update figures by default
+    % Default values
+    if (nargin < 7) || isempty(isProjectEcog)
+        isProjectEcog = 1;
+    end
     if (nargin < 6) || isempty(isUpdate)
         isUpdate = 1;
     end
@@ -2218,7 +2225,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
 
             % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
             % ECOG only (no ECOG-mid)
-            if strcmpi(sElectrodes(iElec).Type, 'ECOG')
+            if strcmpi(sElectrodes(iElec).Type, 'ECOG') && isProjectEcog
                 % Project all points on the surface
                 [ProjOrient, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG', 1);
                 % Do not go further if it's impossible to project the electrodes on a surface
@@ -2307,7 +2314,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
 
             % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
             % ECOG only (no ECOG-mid)
-            if strcmpi(sElectrodes(iElec).Type, 'ECOG')
+            if strcmpi(sElectrodes(iElec).Type, 'ECOG') && isProjectEcog
                 % Project all points on the surface
                 [ProjOrient, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG', 1);
                 % Do not go further if it's impossible to project the electrodes on a surface
