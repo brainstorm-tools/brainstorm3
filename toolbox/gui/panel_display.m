@@ -440,18 +440,18 @@ function UpdatePanel(hFig)
         if isConnect
             ctrl.jPanelThreshold.setVisible(1);
             % Get Threshold Min/Max
-            ThresholdMinMax = getappdata(hFig, 'ThresholdMinMax');
+            ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
             if isempty(ThresholdMinMax)
                 ThresholdMinMax = getappdata(hFig, 'DataMinMax');
             end
             Diff = ThresholdMinMax(2) - ThresholdMinMax(1);
             % Threshold filter
-            Threshold = getappdata(hFig, 'MeasureThreshold');
+            Threshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
             SliderValue = (Threshold - ThresholdMinMax(1)) / Diff * 100;
             ctrl.jSliderThreshold.setValue(SliderValue);
             ctrl.jLabelConnectThresh.setText(num2str(Threshold,3));
             % Distance filter
-            MinimumDistanceThresh = getappdata(hFig, 'MeasureMinDistanceFilter');
+            MinimumDistanceThresh = bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter');
             ctrl.jSliderMinimumDistance.setValue(MinimumDistanceThresh);
             % Direction filter
             DisplayOutwardMeasure = getappdata(hFig, 'DisplayOutwardMeasure');
@@ -462,12 +462,12 @@ function UpdatePanel(hFig)
             ctrl.jToggleBoth.setSelected(DisplayOutwardMeasure && DisplayInwardMeasure);
             ctrl.jToggleBiDir.setSelected(~DisplayOutwardMeasure && ~DisplayInwardMeasure && DisplayBidirectionalMeasure);
             % Update Anatomical filtering      
-            MeasureAnatomicalFilter = getappdata(hFig, 'MeasureAnatomicalFilter');
+            MeasureAnatomicalFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalFilter');
             ctrl.jToggleAll.setSelected(MeasureAnatomicalFilter == 0);
             ctrl.jToggleHemi.setSelected(MeasureAnatomicalFilter == 1);
             ctrl.jToggleLobe.setSelected(MeasureAnatomicalFilter == 2);
             % Update fiber filtering
-            MeasureFiberFilter = getappdata(hFig, 'MeasureFiberFilter');
+            MeasureFiberFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureFiberFilter');
             ctrl.jToggleAllConns.setSelected(MeasureFiberFilter == 0);
             ctrl.jToggleAnatConsistConns.setSelected(MeasureFiberFilter == 1);
             ctrl.jToggleAnatInconsistConns.setSelected(MeasureFiberFilter == 2);
@@ -963,7 +963,7 @@ function SetThresholdOptions(sOptions)
         isConnect = strcmpi(FigureId.Type, 'Connect');
         if isConnect
             % Threshold min/max
-            ThresholdMinMax = getappdata(hFig, 'ThresholdMinMax');
+            ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
             if isempty(ThresholdMinMax)
                 ThresholdMinMax = getappdata(hFig, 'DataMinMax');
             end
@@ -971,7 +971,7 @@ function SetThresholdOptions(sOptions)
             sOptions.DataThreshold = sOptions.DataThreshold * Diff + ThresholdMinMax(1);
 
             % Get current threshold
-            curDataThreshold = getappdata(hFig, 'MeasureThreshold');
+            curDataThreshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
             if isempty(curDataThreshold)
                 return;
             end
@@ -1017,7 +1017,7 @@ function SetDistanceOptions(sOptions)
         isConnect = strcmpi(FigureId.Type, 'Connect');
         if isConnect
             % Get current threshold
-            curMinDistanceThreshold = getappdata(hFig, 'MeasureMinDistanceFilter');
+            curMinDistanceThreshold = bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter');
             if isempty(curMinDistanceThreshold)
                 return;
             end
@@ -1094,7 +1094,7 @@ function SetAnatomicalFilteringOptions(sOptions, AnatomicalFilter)
         return
     end
     % Get current figure option
-    curMeasureAnatomicalFilter = getappdata(hFig, 'MeasureAnatomicalFilter');
+    curMeasureAnatomicalFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalFilter');
     % Get display option
     MeasureAnatomicalFilter = AnatomicalFilter;
     % Nothing changed

@@ -4359,6 +4359,11 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     %% Get fibers information
     [hFigConn,iFig,iDS] = bst_figures('GetFigure', hFigConn);
     hFigFib = GlobalData.DataSet(iDS).Figure(iFig).Handles.hFigFib;
+    % If the fiber figure is closed, propagate to connectivity figure
+    if ~ishandle(hFigFib)
+        setappdata(hFigConn, 'plotFibers', 0);
+        return;
+    end
     TfInfo = getappdata(hFigConn, 'Timefreq');
     TessInfo = getappdata(hFigFib, 'Surface');
     iTess = find(ismember({TessInfo.Name}, 'Fibers'));
@@ -4367,8 +4372,8 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     
     %% If fibers not yet assigned to atlas, do so now
     if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
-        ScoutNames     = getappdata(hFigConn, 'RowNames');
-        ScoutCentroids = getappdata(hFigConn, 'RowLocs');
+        ScoutNames     = bst_figures('GetFigureHandleField', hFigConn, 'RowNames');
+        ScoutCentroids = bst_figures('GetFigureHandleField', hFigConn, 'RowLocs');
         FibMat = fibers_helper('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
         % Save in memory to avoid recomputing
         GlobalData.Fibers(iFib) = FibMat;
