@@ -2609,6 +2609,9 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
     delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
     % Get electrodes definitions
     sElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
+    if isempty(sElectrodes)
+        sElectrodes = db_template('intraelectrode');
+    end
     iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
     iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
     % Remove all SEEG if no SEEG channels are available (same for ECOG)
