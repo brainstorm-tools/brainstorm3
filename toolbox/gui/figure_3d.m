@@ -2609,20 +2609,24 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
     delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
     % Get electrodes definitions
     sElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
-    if isempty(sElectrodes)
-        sElectrodes = db_template('intraelectrode');
+    % Get SEEG and ECOG devices
+    iSeeg = [];
+    iEcog = [];
+    if ~isempty(sElectrodes)
+        iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
+        iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
+        % Remove all SEEG if no SEEG channels are available (same for ECOG)
+        if ~isempty(iSeeg) && ~any(strcmpi({Channel.Type}, 'SEEG'))
+            sElectrodes(iSeeg) = [];
+        end
+        if ~isempty(iEcog) && ~any(strcmpi({Channel.Type}, 'ECOG') | strcmpi({Channel.Type}, 'ECOG-mid'))
+            sElectrodes(iEcog) = [];
+        end
+        if ~isempty(sElectrodes)
+            iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
+            iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
+        end
     end
-    iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
-    iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
-    % Remove all SEEG if no SEEG channels are available (same for ECOG)
-    if ~isempty(iSeeg) && ~any(strcmpi({Channel.Type}, 'SEEG'))
-        sElectrodes(iSeeg) = [];
-    end
-    if ~isempty(iEcog) && ~any(strcmpi({Channel.Type}, 'ECOG') | strcmpi({Channel.Type}, 'ECOG-mid'))
-        sElectrodes(iEcog) = [];
-    end
-    iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
-    iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
     
     
     % === 2D ELECTRODES ===

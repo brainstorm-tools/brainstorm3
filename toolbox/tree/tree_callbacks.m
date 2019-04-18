@@ -2657,7 +2657,9 @@ function fcnPopupDisplayTopography(jMenu, FileName, AllMod, Modality, isStat)
     end
     gui_component('MenuItem', jMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(FileName, Modality, '2DLayout'));
     % 3D Electrodes
-    if ismember(Modality, {'EEG', 'ECOG'})
+    if strcmpi(Modality, 'EEG')
+        gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes'));
+    elseif strcmpi(Modality, 'ECOG')
         gui_component('MenuItem', jMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '2DElectrodes'));
         gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes'));
     elseif ismember(Modality, {'SEEG', 'ECOG+SEEG'})
@@ -2730,14 +2732,18 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
                 gui_component('MenuItem', jSubMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DLayout'));
             end
             % 3D Electrodes
-            if ismember(AllMod{iMod}, {'EEG', 'ECOG'}) && ~AlwaysCreate
-                gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
-                gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
-            elseif ismember(AllMod{iMod}, {'SEEG', 'ECOG+SEEG'}) && ~AlwaysCreate
-                gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
-                gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Scalp'));
-                gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Cortex'));
-                gui_component('MenuItem', jSubMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-MRI'));
+            if ~AlwaysCreate
+                if strcmpi(AllMod{iMod}, 'EEG')
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
+                elseif strcmpi(AllMod{iMod}, 'ECOG')
+                    gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
+                elseif ismember(AllMod{iMod}, {'SEEG', 'ECOG+SEEG'})
+                    gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Scalp'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Cortex'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-MRI'));
+                end
             end
         end
     else
