@@ -2801,6 +2801,8 @@ function SetElectrodePosition(hFig, ChannelName, scsXYZ)
     GlobalData.DataSet(iDS).Channel(iChannels(iChan)).Loc = scsXYZ(:);
     % Plot electrodes again
     Handles = PlotElectrodes(iDS, iFig, Handles);
+    % Save modified handles
+    bst_figures('SetFigureHandles', hFig, Handles);
     % Update display
     UpdateVisibleLandmarks(sMri, Handles);
     UpdateVisibleSensors3D(hFig);
