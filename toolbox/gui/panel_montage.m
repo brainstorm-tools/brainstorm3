@@ -22,7 +22,7 @@ function varargout = panel_montage(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2019
 
 eval(macro_method);
 end
@@ -1345,14 +1345,16 @@ function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroup
     if isSubGroups && ~isempty(sMontage)
         TargetName = CleanMontageName(sMontage.Name);
         % SEEG/ECOG: Keep only selected modality
-        if ismember(TargetName, {'SEEG', 'ECOG'})
+        if strcmpi(TargetName, 'ECOG_SEEG')
+            iSel = find(ismember({Channels.Type}, {'SEEG', 'ECOG'}));
+        elseif ismember(TargetName, {'SEEG', 'ECOG'})
             iSel = find(strcmpi({Channels.Type}, TargetName));
         else
             iSel = find(strcmpi({Channels.Group}, TargetName));
         end
         % Nothing selected: return
         if isempty(iSel)
-            disp(['BST> Error: No channel correspond to montage "' sMontage.Name '".']);
+            disp(['BST> Error: No channels correspond to montage "' sMontage.Name '".']);
             sMontage = [];
             return;
         end
@@ -2044,6 +2046,13 @@ function AddAutoMontagesSeeg(Comment, ChannelMat) %#ok<DEFNU>
     if isempty(AllModalities) || isempty(iEeg) 
         return;
     end
+    % Add ECOG+SEEG
+    if all(ismember({'SEEG','ECOG'}, AllModalities))
+        AllModalities = cat(2, 'ECOG_SEEG', AllModalities);
+        isEcogSeeg = 1;
+    else
+        isEcogSeeg = 0;
+    end
 
     % === MONTAGES: ALL ===
     for iMod = 1:length(AllModalities)
@@ -2089,6 +2098,9 @@ function AddAutoMontagesSeeg(Comment, ChannelMat) %#ok<DEFNU>
         [AllGroups, AllTags, AllInd] = ParseSensorNames(ChannelMat.Channel(iChan));
         % Count montages
         nMontages.(Mod) = nMontages.(Mod) + 1;
+        if isEcogSeeg && any(ismember({'SEEG','ECOG'}, AllModalities))
+            nMontages.ECOG_SEEG = nMontages.ECOG_SEEG + 1;
+        end
 
         % === MONTAGE: ORIG ===
         % Create montage
@@ -2104,7 +2116,13 @@ function AddAutoMontagesSeeg(Comment, ChannelMat) %#ok<DEFNU>
         sMontageAllOrig.(Mod).ChanNames = cat(2, sMontageAllOrig.(Mod).ChanNames, sMontage.ChanNames);
         sMontageAllOrig.(Mod).DispNames = cat(2, sMontageAllOrig.(Mod).DispNames, sMontage.DispNames);
         sMontageAllOrig.(Mod).Matrix(size(sMontageAllOrig.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllOrig.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
-
+        % Add to ECOG+SEEG montage
+        if isEcogSeeg && any(ismember({'SEEG','ECOG'}, AllModalities))
+            sMontageAllOrig.ECOG_SEEG.ChanNames = cat(2, sMontageAllOrig.ECOG_SEEG.ChanNames, sMontage.ChanNames);
+            sMontageAllOrig.ECOG_SEEG.DispNames = cat(2, sMontageAllOrig.ECOG_SEEG.DispNames, sMontage.DispNames);
+            sMontageAllOrig.ECOG_SEEG.Matrix(size(sMontageAllOrig.ECOG_SEEG.Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllOrig.ECOG_SEEG.Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
+        end
+        
         % Skip bipolar montages if there is only one channel
         if (length(iChan) < 2)
             continue;
@@ -2130,7 +2148,7 @@ function AddAutoMontagesSeeg(Comment, ChannelMat) %#ok<DEFNU>
                 i2 = i+1;
             end
             % SEEG: Skip if the two channels are not consecutive
-            if strcmpi(Mod, 'SEEG') && ~ismember(AllInd(i1) - AllInd(i2), [1,-1])
+            if ismember(Mod, {'SEEG','ECOG'}) && ~ismember(AllInd(i1) - AllInd(i2), [1,-1])
                 continue;
             end
             % Create entry
@@ -2145,7 +2163,13 @@ function AddAutoMontagesSeeg(Comment, ChannelMat) %#ok<DEFNU>
         sMontageAllBip1.(Mod).ChanNames = cat(2, sMontageAllBip1.(Mod).ChanNames, sMontage.ChanNames);
         sMontageAllBip1.(Mod).DispNames = cat(2, sMontageAllBip1.(Mod).DispNames, sMontage.DispNames);
         sMontageAllBip1.(Mod).Matrix(size(sMontageAllBip1.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllBip1.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
-
+        % Add to ECOG+SEEG montage
+        if isEcogSeeg && any(ismember({'SEEG','ECOG'}, AllModalities))
+            sMontageAllBip1.ECOG_SEEG.ChanNames = cat(2, sMontageAllBip1.ECOG_SEEG.ChanNames, sMontage.ChanNames);
+            sMontageAllBip1.ECOG_SEEG.DispNames = cat(2, sMontageAllBip1.ECOG_SEEG.DispNames, sMontage.DispNames);
+            sMontageAllBip1.ECOG_SEEG.Matrix(size(sMontageAllBip1.ECOG_SEEG.Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllBip1.ECOG_SEEG.Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
+        end
+        
         % === MONTAGE: BIPOLAR 2 ===
         % Example: A1-A2, A2-A3, ...
         % Create montage
@@ -2157,7 +2181,7 @@ function AddAutoMontagesSeeg(Comment, ChannelMat) %#ok<DEFNU>
         iDisp = 1;
         for i = 1:length(ChanNames)-1
             % SEEG: Skip if the two channels are not consecutive
-            if strcmpi(Mod, 'SEEG') && ~ismember(AllInd(i) - AllInd(i+1), [1,-1])
+            if ismember(Mod, {'SEEG','ECOG'}) && ~ismember(AllInd(i) - AllInd(i+1), [1,-1])
                 continue;
             end
             % Create entry
@@ -2172,7 +2196,13 @@ function AddAutoMontagesSeeg(Comment, ChannelMat) %#ok<DEFNU>
         sMontageAllBip2.(Mod).ChanNames = cat(2, sMontageAllBip2.(Mod).ChanNames, sMontage.ChanNames);
         sMontageAllBip2.(Mod).DispNames = cat(2, sMontageAllBip2.(Mod).DispNames, sMontage.DispNames);
         sMontageAllBip2.(Mod).Matrix(size(sMontageAllBip2.(Mod).Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllBip2.(Mod).Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
-
+        % Add to ECOG+SEEG montage
+        if isEcogSeeg && any(ismember({'SEEG','ECOG'}, AllModalities))
+            sMontageAllBip2.ECOG_SEEG.ChanNames = cat(2, sMontageAllBip2.ECOG_SEEG.ChanNames, sMontage.ChanNames);
+            sMontageAllBip2.ECOG_SEEG.DispNames = cat(2, sMontageAllBip2.ECOG_SEEG.DispNames, sMontage.DispNames);
+            sMontageAllBip2.ECOG_SEEG.Matrix(size(sMontageAllBip2.ECOG_SEEG.Matrix,1)+(1:size(sMontage.Matrix,1)), size(sMontageAllBip2.ECOG_SEEG.Matrix,2)+(1:size(sMontage.Matrix,2))) = sMontage.Matrix;
+        end
+        
         % === MONTAGE: LOCAL AVG REF ===
         % Create montage
         sMontage = db_template('Montage');
