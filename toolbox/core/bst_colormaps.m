@@ -224,7 +224,6 @@ function sCMap = GetColormap(ColormapType)
         sCMap = db_template('Colormap');
         return
     end
-    % jkhkh
     % Get colormaps for a given modality
     ColormapType = lower(ColormapType);
     if ~isfield(GlobalData.Colormaps, ColormapType)
