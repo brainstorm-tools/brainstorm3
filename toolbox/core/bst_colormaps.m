@@ -23,19 +23,19 @@ function varargout = bst_colormaps( varargin )
 %
 % ==== NOTES ====================================================================
 % Brainstorm manages five colormaps, that are saved in the user brainstorm.mat :
-%    - 'eeg'     : to display the EEG recordings (default: 'div_lin',  relative)
-%    - 'meg'     : to display the MEG recordings (default: 'div_lin',  relative)
-%    - 'source'  : to display the sources        (default: 'semi_iso',  absolute)
+%    - 'eeg'     : to display the EEG recordings (default: 'mandrill',  relative)
+%    - 'meg'     : to display the MEG recordings (default: 'mandrill',  relative)
+%    - 'source'  : to display the sources        (default: 'Royal Gramma',  absolute)
 %    - 'anatomy' : to display the MRIs           (default: 'bone', absolute, no colorbar)
 %    - 'time'    : to display time values        (default: 'viridis',  relative)
-%    - 'stat1'   : to display the statistics / 1 input  (default: 'hot', absolute)
-%    - 'stat2'   : to display the statistics / 2 inputs (default: 'div_lin', relative)
-%    - 'timefreq': time-frequency maps (default: 'viridis2', absolute, normalized)
-%    - 'percent' : percentage values (default: 'hot_lin', absolute)
+%    - 'stat1'   : to display the statistics / 1 input  (default: 'Dory', absolute)
+%    - 'stat2'   : to display the statistics / 2 inputs (default: 'mandrill', relative)
+%    - 'timefreq': time-frequency maps (default: 'magma', absolute, normalized)
+%    - 'percent' : percentage values (default: 'Dory', absolute)
 %    - 'overlay' : plain overlay masks in the MRI Viewer (default: 'cmap_overlay', plain yellow)
 %    - 'connect1': connectivity values on 2D maps and surfaces (default: 'viridis', absolute)
 %    - 'connectn': connectivity graphs (default: 'viridis', absolute)
-%    - 'pac'     : PAC measures (default: 'cmap_ns_green', absolute)
+%    - 'pac'     : PAC measures (default: 'viridis2', absolute)
 %    - 'image'   : Indexed images
 %    - 'cluster' : Statistic clusters
 %
@@ -107,14 +107,14 @@ function sColormap = GetDefaults(ColormapType)
     switch lower(ColormapType)
         % EEG Recordings colormap
         case {'eeg', 'meg','nirs'}
-            sColormap.Name             = 'div_lin';
-            sColormap.CMap             = div_lin(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'mandrill';
+            sColormap.CMap             = mandrill(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'local';
         % Sources colormap
         case 'source'
-            sColormap.Name             = 'semi_iso';
-            sColormap.CMap             = semi_iso(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'Royal Gramma';
+            sColormap.CMap             = Royal_Gramma(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'global';
         % Anatomy colormap
@@ -125,14 +125,14 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.MaxMode          = 'local';
         % Stat colormap (1 inputs)
         case 'stat1'
-            sColormap.Name             = 'hot_lin';
-            sColormap.CMap             = hot_lin(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'Dory';
+            sColormap.CMap             = Dory(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'global';
         % Stat colormap (2 input)
         case 'stat2'
-            sColormap.Name             = 'div_lin';
-            sColormap.CMap             = div_lin(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'mandrill';
+            sColormap.CMap             = mandrill(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'local';
             sColormap.UseStatThreshold = 0;
@@ -144,8 +144,8 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.MaxMode          = 'global';
         % Time-frequency maps
         case 'timefreq'
-            sColormap.Name             = 'viridis2';
-            sColormap.CMap             = viridis2(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'magma';
+            sColormap.CMap             = magma(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Connectivity links 1xN
@@ -162,8 +162,8 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.MaxMode          = 'local';
         % PAC Measures
         case 'pac'
-            sColormap.Name             = 'cmap_ns_green';
-            sColormap.CMap             = cmap_ns_green(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'viridis2';
+            sColormap.CMap             = viridis2(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Image
@@ -181,8 +181,8 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.DisplayColorbar  = 0;
         % Percentage colormap
         case 'percent'
-            sColormap.Name             = 'hot_lin';
-            sColormap.CMap             = hot_lin(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'Dory';
+            sColormap.CMap             = Dory(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'global';
         % Cluster colormap
@@ -612,10 +612,10 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     end
     
     % Colormap list: Standard
-    cmapList_seq = {'hot', 'cmap_hot2', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_ge', 'cmap_tpac', 'cool', 'cmap_parula', 'magma', 'semi_iso','viridis2','viridis','hot_lin'};
+    cmapList_seq = {'hot', 'cmap_hot2', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_ge', 'cmap_tpac', 'cool', 'cmap_parula', 'magma', 'Royal_Gramma','viridis2','viridis','Dory'};
     iconList_seq = [IconLoader.ICON_COLORMAP_HOT, IconLoader.ICON_COLORMAP_HOT2, IconLoader.ICON_COLORMAP_BONE, IconLoader.ICON_COLORMAP_GREY, IconLoader.ICON_COLORMAP_PINK,   ...
                     IconLoader.ICON_COLORMAP_COPPER, IconLoader.ICON_COLORMAP_NIHFIRE, IconLoader.ICON_COLORMAP_GE,  IconLoader.ICON_COLORMAP_TPAC,  IconLoader.ICON_COLORMAP_COOL, ...
-                    IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_MAGMA, IconLoader.ICON_COLORMAP_SEMI_ISO, IconLoader.ICON_COLORMAP_VIRIDIS2, IconLoader.ICON_COLORMAP_VIRIDIS, IconLoader.ICON_COLORMAP_HOT_LIN];
+                    IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_MAGMA, IconLoader.ICON_COLORMAP_ROYAL_GRAMMA, IconLoader.ICON_COLORMAP_VIRIDIS2, IconLoader.ICON_COLORMAP_VIRIDIS, IconLoader.ICON_COLORMAP_DORY];
     for i = 1:length(cmapList_seq)
         % If the colormap #i is currently used for this surface : check the menu
         isSelected = strcmpi(cmapList_seq{i}, sColormap.Name);
@@ -625,9 +625,9 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         jItem.setSelected(isSelected);
     end
 
-    cmapList_div = {'cmap_rbw', 'cmap_gin', 'cmap_ovun', 'cmap_cluster', 'div_lin','cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey'};
+    cmapList_div = {'cmap_rbw', 'cmap_gin', 'cmap_ovun', 'cmap_cluster', 'mandrill','cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey'};
     iconList_div = [IconLoader.ICON_COLORMAP_RBW,   IconLoader.ICON_COLORMAP_GIN, IconLoader.ICON_COLORMAP_OVUN, IconLoader.ICON_COLORMAP_CLUSTER, ...
-                    IconLoader.ICON_COLORMAP_DIV_LIN,IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED];
+                    IconLoader.ICON_COLORMAP_MANDRILL,IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED];
     for i = 1:length(cmapList_div)
         % If the colormap #i is currently used for this surface : check the menu
         isSelected = strcmpi(cmapList_div{i}, sColormap.Name);
