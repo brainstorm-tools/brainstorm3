@@ -1,4 +1,4 @@
-function C = mandrill(N)
+function C = cmap_mandrill(N)
 
 
 cmap = [

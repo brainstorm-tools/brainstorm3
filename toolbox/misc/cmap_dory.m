@@ -1,4 +1,4 @@
-function C = Dory(N)
+function C = cmap_dory(N)
 
   
 

@@ -25,14 +25,14 @@ function varargout = bst_colormaps( varargin )
 % Brainstorm manages five colormaps, that are saved in the user brainstorm.mat :
 %    - 'eeg'     : to display the EEG recordings (default: 'mandrill',  relative)
 %    - 'meg'     : to display the MEG recordings (default: 'mandrill',  relative)
-%    - 'source'  : to display the sources        (default: 'Royal Gramma',  absolute)
+%    - 'source'  : to display the sources        (default: 'royal_gramma',  absolute)
 %    - 'anatomy' : to display the MRIs           (default: 'bone', absolute, no colorbar)
 %    - 'time'    : to display time values        (default: 'viridis',  relative)
-%    - 'stat1'   : to display the statistics / 1 input  (default: 'Dory', absolute)
+%    - 'stat1'   : to display the statistics / 1 input  (default: 'dory', absolute)
 %    - 'stat2'   : to display the statistics / 2 inputs (default: 'mandrill', relative)
 %    - 'timefreq': time-frequency maps (default: 'magma', absolute, normalized)
-%    - 'percent' : percentage values (default: 'Dory', absolute)
-%    - 'overlay' : plain overlay masks in the MRI Viewer (default: 'cmap_overlay', plain yellow)
+%    - 'percent' : percentage values (default: 'dory', absolute)
+%    - 'overlay' : plain overlay masks in the MRI Viewer (default: 'overlay', plain yellow)
 %    - 'connect1': connectivity values on 2D maps and surfaces (default: 'viridis', absolute)
 %    - 'connectn': connectivity graphs (default: 'viridis', absolute)
 %    - 'pac'     : PAC measures (default: 'viridis2', absolute)
@@ -107,14 +107,14 @@ function sColormap = GetDefaults(ColormapType)
     switch lower(ColormapType)
         % EEG Recordings colormap
         case {'eeg', 'meg','nirs'}
-            sColormap.Name             = 'mandrill';
-            sColormap.CMap             = mandrill(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_mandrill';
+            sColormap.CMap             = cmap_mandrill(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'local';
         % Sources colormap
         case 'source'
-            sColormap.Name             = 'Royal Gramma';
-            sColormap.CMap             = Royal_Gramma(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_royal_gramma';
+            sColormap.CMap             = cmap_royal_gramma(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'global';
         % Anatomy colormap
@@ -125,64 +125,64 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.MaxMode          = 'local';
         % Stat colormap (1 inputs)
         case 'stat1'
-            sColormap.Name             = 'Dory';
-            sColormap.CMap             = Dory(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_dory';
+            sColormap.CMap             = cmap_dory(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'global';
         % Stat colormap (2 input)
         case 'stat2'
-            sColormap.Name             = 'mandrill';
-            sColormap.CMap             = mandrill(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_mandrill';
+            sColormap.CMap             = cmap_mandrill(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'local';
             sColormap.UseStatThreshold = 0;
         % Time colormap
         case 'time'
-            sColormap.Name             = 'viridis';
-            sColormap.CMap             = viridis(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_viridis';
+            sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'global';
         % Time-frequency maps
         case 'timefreq'
-            sColormap.Name             = 'magma';
-            sColormap.CMap             = magma(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_magma';
+            sColormap.CMap             = cmap_magma(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Connectivity links 1xN
         case 'connect1'
-            sColormap.Name             = 'viridis';
-            sColormap.CMap             = viridis(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_viridis';
+            sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Connectivity links NxN
         case 'connectn'
-            sColormap.Name             = 'viridis';
-            sColormap.CMap             = viridis(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_viridis';
+            sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % PAC Measures
         case 'pac'
-            sColormap.Name             = 'viridis2';
-            sColormap.CMap             = viridis2(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_viridis2';
+            sColormap.CMap             = cmap_viridis2(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Image
         case 'image'
-            sColormap.Name             = 'viridis';
-            sColormap.CMap             = viridis(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_viridis';
+            sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Overlay colormap
         case 'overlay'
-            sColormap.Name             = 'overlay';
+            sColormap.Name             = 'cmap_overlay';
             sColormap.CMap             = cmap_overlay(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'global';
             sColormap.DisplayColorbar  = 0;
         % Percentage colormap
         case 'percent'
-            sColormap.Name             = 'Dory';
-            sColormap.CMap             = Dory(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_dory';
+            sColormap.CMap             = cmap_dory(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'global';
         % Cluster colormap
@@ -605,14 +605,18 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         jMenuR.add(jMenuRight);
         % Output at the beginning: Left
         jMenuColormap = jMenuLeft;
+        jMenuSeq = jMenuColormap;
+        jMenuDiv = jMenuColormap;
+        jMenuRainbow = jMenuColormap;
     else
-        jMenuSeq = gui_component('Menu', jMenu, [], 'Sequential');
-        jMenuDiv = gui_component('Menu', jMenu, [], 'Diverging');
-        jMenuRainbow = gui_component('Menu', jMenu, [], 'Rainbow');
+        jMenuColormap = gui_component('Menu', jMenu, [], 'Colormap');
+        jMenuSeq = gui_component('Menu', jMenuColormap, [], 'Sequential');
+        jMenuDiv = gui_component('Menu', jMenuColormap, [], 'Diverging');
+        jMenuRainbow = gui_component('Menu', jMenuColormap, [], 'Rainbow');
     end
     
     % Colormap list: Standard
-    cmapList_seq = {'hot', 'cmap_hot2', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_ge', 'cmap_tpac', 'cool', 'cmap_parula', 'magma', 'Royal_Gramma','viridis2','viridis','Dory'};
+    cmapList_seq = {'hot', 'cmap_hot2', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_ge', 'cmap_tpac', 'cool', 'cmap_parula', 'cmap_magma', 'cmap_royal_gramma','cmap_viridis2','cmap_viridis','cmap_dory'};
     iconList_seq = [IconLoader.ICON_COLORMAP_HOT, IconLoader.ICON_COLORMAP_HOT2, IconLoader.ICON_COLORMAP_BONE, IconLoader.ICON_COLORMAP_GREY, IconLoader.ICON_COLORMAP_PINK,   ...
                     IconLoader.ICON_COLORMAP_COPPER, IconLoader.ICON_COLORMAP_NIHFIRE, IconLoader.ICON_COLORMAP_GE,  IconLoader.ICON_COLORMAP_TPAC,  IconLoader.ICON_COLORMAP_COOL, ...
                     IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_MAGMA, IconLoader.ICON_COLORMAP_ROYAL_GRAMMA, IconLoader.ICON_COLORMAP_VIRIDIS2, IconLoader.ICON_COLORMAP_VIRIDIS, IconLoader.ICON_COLORMAP_DORY];
@@ -625,7 +629,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         jItem.setSelected(isSelected);
     end
 
-    cmapList_div = {'cmap_rbw', 'cmap_gin', 'cmap_ovun', 'cmap_cluster', 'mandrill','cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey'};
+    cmapList_div = {'cmap_rbw', 'cmap_gin', 'cmap_ovun', 'cmap_cluster', 'cmap_mandrill','cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey'};
     iconList_div = [IconLoader.ICON_COLORMAP_RBW,   IconLoader.ICON_COLORMAP_GIN, IconLoader.ICON_COLORMAP_OVUN, IconLoader.ICON_COLORMAP_CLUSTER, ...
                     IconLoader.ICON_COLORMAP_MANDRILL,IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED];
     for i = 1:length(cmapList_div)
@@ -652,7 +656,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     % Colormap list: Custom
     CustomColormaps = bst_get('CustomColormaps');
     if ~isempty(CustomColormaps)
-        CreateSeparator(jMenu, isPermanent);
+        CreateSeparator(jMenuColormap, isPermanent);
     end
     isCustom = 0;
     for i = 1:length(CustomColormaps)
@@ -663,15 +667,15 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         end
         % Create menu item
         cmapDispName = strrep(CustomColormaps(i).Name, 'custom_', '');
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], cmapDispName, IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)SetColormapName(ColormapType, CustomColormaps(i).Name));
+        jItem = gui_component('CheckBoxMenuItem', jMenuColormap, [], cmapDispName, IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)SetColormapName(ColormapType, CustomColormaps(i).Name));
         jItem.setSelected(isSelected);
     end
     % Colormap list: Add new colormap
-    CreateSeparator(jMenu, isPermanent);
-    gui_component('MenuItem', jMenu, [], 'New...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)NewCustomColormap(ColormapType));
-    gui_component('MenuItem', jMenu, [], 'Load...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)LoadColormap(ColormapType));
+    CreateSeparator(jMenuColormap, isPermanent);
+    gui_component('MenuItem', jMenuColormap, [], 'New...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)NewCustomColormap(ColormapType));
+    gui_component('MenuItem', jMenuColormap, [], 'Load...', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)LoadColormap(ColormapType));
     % Colormap list: Delete selected colormap
-    jMenuDelete = gui_component('MenuItem', jMenu, [], 'Delete', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)DeleteCustomColormap(ColormapType));
+    jMenuDelete = gui_component('MenuItem', jMenuColormap, [], 'Delete', IconLoader.ICON_COLORMAP_CUSTOM, [], @(h,ev)DeleteCustomColormap(ColormapType));
     if ~isCustom
         jMenuDelete.setEnabled(0);
     end

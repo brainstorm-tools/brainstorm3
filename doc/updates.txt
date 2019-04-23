@@ -2,6 +2,7 @@
 April 2019
 - GUI: New color picker to replace Matlab's buggy uisetcolor
 - GUI: New bipolar and avg ref montages for ECOG+SEEG
+- GUI: New default colormaps: Viridis, Magma, Dory, Royal Gramma, Mandrill
 - DOC: ECOG tutorial
 ---------------------------------------------------------------
 March 2019

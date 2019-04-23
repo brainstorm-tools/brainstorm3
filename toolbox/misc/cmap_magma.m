@@ -1,4 +1,4 @@
-function C = magma(N)
+function C = cmap_magma(N)
 
 %   mpl-colormap by Nathaniel Smith & Stefan van der Walt
 %   Taken from https://bids.github.io/colormap/

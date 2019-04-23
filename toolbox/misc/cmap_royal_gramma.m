@@ -1,4 +1,4 @@
-function C = Royal_Gramma(N)
+function C = cmap_royal_gramma(N)
 
 
 cmap = [

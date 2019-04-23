@@ -1,4 +1,4 @@
-function C = viridis(N)
+function C = cmap_viridis(N)
 %   VIRIDIS Blue-green-yellow colour map
 %   VIRIDIS(N) returns an N-by-3 matrix containing a colormap. 
 %   The colors begin with dark purplish-blue and blue, range

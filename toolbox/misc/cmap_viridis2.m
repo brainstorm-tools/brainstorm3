@@ -1,4 +1,4 @@
-function C = viridis2(N)
+function C =cmap_viridis2(N)
 
 
 viridi =  [
