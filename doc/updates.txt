@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 April 2019
 - GUI: New color picker to replace Matlab's buggy uisetcolor
+- GUI: New bipolar and avg ref montages for ECOG+SEEG
 - DOC: ECOG tutorial
 ---------------------------------------------------------------
 March 2019
