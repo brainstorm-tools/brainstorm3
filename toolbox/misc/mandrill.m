@@ -1,4 +1,4 @@
-function C = div_lin(N)
+function C = mandrill(N)
 
 
 cmap = [

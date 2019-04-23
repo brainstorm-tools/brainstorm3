@@ -1,4 +1,4 @@
-function C = semi_iso(N)
+function C = Royal_Gramma(N)
 
 
 cmap = [
