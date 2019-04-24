@@ -937,7 +937,7 @@ switch (lower(action))
                     end
                     % === MENU: EXPORT ===
                     % Export menu (added later)
-                    jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_channel(filenameFull));
+                    jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_channel, filenameFull));
                 end
                 
 %% ===== POPUP: ANATOMY =====

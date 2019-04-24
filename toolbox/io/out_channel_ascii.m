@@ -65,7 +65,7 @@ Loc    = zeros(3,0);
 Label  = {};
 if isEEG && isfield(BstMat, 'Channel') && ~isempty(BstMat.Channel)
     for i = 1:length(BstMat.Channel)
-        if ~isempty(BstMat.Channel(i).Loc) && ~all(BstMat.Channel(i).Loc == 0)
+        if ~isempty(BstMat.Channel(i).Loc) && ~all(BstMat.Channel(i).Loc(:) == 0)
             Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
             Label{end+1} = strrep(BstMat.Channel(i).Name, ' ', '_');
         end
