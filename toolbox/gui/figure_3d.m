@@ -15,6 +15,9 @@ function varargout = figure_3d( varargin )
 %                 figure_3d('UpdateSurfaceColor',    hFig, iTess)
 %                 figure_3d('ViewSensors',           hFig, isMarkers, isLabels, isMesh=1, Modality=[])
 %                 figure_3d('ViewAxis',              hFig, isVisible)
+%                 figure_3d('PlotFibers',            hFig, FibPoints, Colors)
+%                 figure_3d('ColorFibers',           fibLines, Color)
+%                 figure_3d('SelectFiberScouts',     hFigConn, iScouts, Color, ColorOnly)
 %     [hFig,hs] = figure_3d('PlotSurface',           hFig, faces, verts, cdata, dataCMap, transparency)
 
 % @=============================================================================
@@ -35,7 +38,7 @@ function varargout = figure_3d( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2019; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -2275,6 +2278,87 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
     end
 end
 
+%% ===== PLOT FIBERS =====
+function varargout = PlotFibers(hFig, FibPoints, Colors)
+    dims = size(Colors);
+    if length(dims) < 3
+        Colors = permute(repmat(Colors, 1, 1, size(FibPoints, 2)), [1,3,2]);
+    end
+
+    % Set figure as current
+    set(0, 'CurrentFigure', hFig);
+    
+    % If we are displaying too many fibers, warn user...
+    numMaxFibers = 5000;
+    numFibers = size(FibPoints,1);
+    if numFibers > numMaxFibers
+        questionOptions = {'Display a subset for now', 'Display all anyway'};
+        [res, isCancel] = java_dialog('question', ...
+            ['You are trying to display ', num2str(numFibers), ...
+            ' fibers. Displaying this' 10 'amount of fibers at the same time ', ...
+            'can be challenging for the' 10 'average computer. We recommend ', ...
+            'you downsample them first.'], 'Display fibers', [], questionOptions);
+        if isCancel || strcmp(res, questionOptions{1})
+            iFibers = sort(randsample(numFibers, numMaxFibers));
+        else
+            iFibers = 1:numFibers;
+        end
+    else
+        iFibers = 1:numFibers;
+    end
+    
+    numFibers = length(iFibers);
+    
+    % Plot fibers
+    for iFib = 1:numFibers
+        lines(iFib) = surface([FibPoints(iFibers(iFib),:,1); FibPoints(iFibers(iFib),:,1)], ...
+            [FibPoints(iFibers(iFib),:,2); FibPoints(iFibers(iFib),:,2)], ...
+            [FibPoints(iFibers(iFib),:,3); FibPoints(iFibers(iFib),:,3)], ...
+            [Colors(iFibers(iFib),:,1:3); Colors(iFibers(iFib),:,1:3)], ...
+            'FaceColor','none',...
+            'EdgeColor','flat');
+    end
+    if numFibers == 0
+        lines = [];
+    end
+    
+    % Set output variables
+    if nargout > 0
+        varargout{1} = hFig;
+        varargout{2} = lines;
+    end
+end
+
+function lines = ColorFibers(lines, Color)
+    if isempty(Color) || isempty(lines)
+        return;
+    end
+    
+    bst_progress('start', 'Fiber viewer', 'Coloring fibers...');
+    
+    dims = size(Color);
+    nFibers = length(lines);
+    
+    % Create a full Color matrix if required
+    if length(dims) < 3
+        nPoints = size(lines(1).XData, 2);
+        if dims(1) == 1
+            % One color value for all fibers and points
+            Color = permute(repmat(Color, nFibers, 1, nPoints), [1,3,2]);
+        else
+            % One color value per fiber
+            Color = permute(repmat(Color, 1, 1, nPoints), [1,3,2]);
+        end
+    end
+    
+    % Set color
+    for iFib = 1:length(lines)
+        lines(iFib).CData = [Color(iFib,:,:); Color(iFib,:,:)];
+    end
+    
+    drawnow;
+    bst_progress('stop');
+end
 
 %% ===== PLOT SQUARE/CUT =====
 % USAGE:  PlotSquareCut(hFig, TessInfo, dim, pos)
@@ -2398,6 +2482,11 @@ function UpdateSurfaceColor(hFig, iTess)
     if strcmpi(TessInfo(iTess).Name, 'Anatomy')
         % Update display
         UpdateMriDisplay(hFig, [], TessInfo, iTess);
+        
+    % === FIBERS ===
+    elseif strcmpi(TessInfo(iTess).Name, 'Fibers')
+        % Set line color
+        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, TessInfo(iTess).AnatomyColor(1,1:3));
         
     % === SURFACE ===
     else
@@ -3037,8 +3126,20 @@ function UpdateSurfaceAlpha(hFig, iTess)
     Surface = TessInfo(iTess);
        
     % Ignore empty surfaces and MRI slices
-    if strcmpi(Surface.Name, 'Anatomy') || isempty(Surface.hPatch) || ~ishandle(Surface.hPatch)
+    if strcmpi(Surface.Name, 'Anatomy') || isempty(Surface.hPatch) || all(~ishandle(Surface.hPatch))
         return 
+    end
+    % Fibers
+    if strcmpi(Surface.Name, 'Fibers')
+        lineAlpha = 1 - Surface.SurfAlpha;
+        lineWidth = 0.5 + 2.5 * Surface.SurfSmoothValue;
+        for iFib = 1:length(Surface.hPatch)
+            % Transparency
+            Surface.hPatch(iFib).EdgeAlpha = lineAlpha;
+            % Smoothing
+            Surface.hPatch(iFib).LineWidth = lineWidth;
+        end
+        return;
     end
     % Apply current smoothing
     SmoothSurface(hFig, iTess, Surface.SurfSmoothValue);
@@ -4287,5 +4388,63 @@ function JumpMaximum(hFig)
     UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
 end
 
+%% ===== SELECT FIBER SCOUTS =====
+function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
+    global GlobalData;
+    % Parse arguments
+    if nargin < 4
+        ColorOnly = 0;
+    end
+    %% Get fibers information
+    hFigFib = bst_figures('GetFigureHandleField', hFigConn, 'hFigFib');
+    % If the fiber figure is closed, propagate to connectivity figure
+    if ~ishandle(hFigFib)
+        setappdata(hFigConn, 'plotFibers', 0);
+        return;
+    end
+    TfInfo = getappdata(hFigConn, 'Timefreq');
+    TessInfo = getappdata(hFigFib, 'Surface');
+    iTess = find(ismember({TessInfo.Name}, 'Fibers'));
+    [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
+    
+    
+    %% If fibers not yet assigned to atlas, do so now
+    if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
+        ScoutNames     = bst_figures('GetFigureHandleField', hFigConn, 'RowNames');
+        ScoutCentroids = bst_figures('GetFigureHandleField', hFigConn, 'RowLocs');
+        FibMat = fibers_helper('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
+        % Save in memory to avoid recomputing
+        GlobalData.Fibers(iFib) = FibMat;
+    end
+    
+    bst_progress('start', 'Fibers Connectivity', 'Selecting appropriate fibers...');
+    
+    % Get scout assignment
+    iFile = find(ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile}));
+    assign = FibMat.Scouts(iFile).Assignment;
+    
+    %% Find pair of scouts in list fiber assignments
+    % Reshape iScouts to use bsxfun
+    iScoutsBsx = reshape(iScouts', [1 size(iScouts')]);
+    % Get the matches for the pairs and for the flipped pairs
+    indices =  all(bsxfun(@eq, assign, iScoutsBsx), 2) | all( bsxfun(@eq, assign, flip(iScoutsBsx,2)), 2);
+    % Find the indices of the rows with a match
+    iFibers = find(any(indices,3));
+    [iFoundFibers,iFoundScouts] = find(indices(iFibers,:,:));
+    [tmp, iFoundFibers] = sort(iFoundFibers);
+    iFoundScouts = iFoundScouts(iFoundFibers);
+    
+    %% Plot selected fibers
+    if ~ColorOnly
+        % Remove old fibers
+        delete(TessInfo(iTess).hPatch);
+        % Plot fibers
+        [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:), Color(iFoundScouts,:));
+    else
+        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
+    end
 
-
+    % Update figure's surfaces list and current surface pointer
+    setappdata(hFigFib, 'Surface',  TessInfo);
+    bst_progress('stop');
+end

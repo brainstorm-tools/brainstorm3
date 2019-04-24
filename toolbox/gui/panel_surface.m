@@ -33,7 +33,7 @@ function varargout = panel_surface(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2018; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -645,6 +645,9 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(sSubject.iCortex)
             typesList{end+1} = 'Cortex';
         end
+        if ~isempty(sSubject.iFibers)
+            typesList{end+1} = 'Fibers';
+        end
         
         % Get low resolution white surface
         iWhite = find(~cellfun(@(c)isempty(strfind(lower(c),'white')), {sSubject.Surface.Comment}));
@@ -697,6 +700,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(sSubject.iInnerSkull(1)).FileName;
         case 'OuterSkull'
             SurfaceFile = sSubject.Surface(sSubject.iOuterSkull(1)).FileName;
+        case 'Fibers'
+            SurfaceFile = sSubject.Surface(sSubject.iFibers).FileName;
         case 'ASEG'
             SurfaceFile = sSubject.Surface(iAseg).FileName;
         case 'White'
@@ -877,6 +882,8 @@ function nbSurfaces = CreateSurfaceList(jToolbar, hFig)
                     iconButton = IconLoader.ICON_SURFACE_INNERSKULL;
                 case 'outerskull'
                     iconButton = IconLoader.ICON_SURFACE_OUTERSKULL;
+                case 'fibers'
+                    iconButton = IconLoader.ICON_FIBERS;
                 case 'other'
                     iconButton = IconLoader.ICON_SURFACE;
                 case 'anatomy'
@@ -1127,6 +1134,30 @@ function iTess = AddSurface(hFig, surfaceFile)
         end
         % Plot MRI
         PlotMri(hFig);
+    % === FIBERS ===
+    elseif strcmpi(fileType, 'fibers')
+        % Load fibers
+        FibMat = bst_memory('LoadFibers', surfaceFile);
+        
+        TessInfo(iTess).Name = 'Fibers';
+        % Update figure's surfaces list and current surface pointer
+        setappdata(hFig, 'Surface',  TessInfo);
+        
+        isEmptyFigure = getappdata(hFig, 'EmptyFigure');
+
+        % === PLOT SURFACE ===
+        if isempty(isEmptyFigure) || ~isEmptyFigure
+            switch (FigureId.Type)
+                case 'MriViewer'
+                    % Nothing to do: surface will be displayed as an overlay slice in figure_mri.m
+                case {'3DViz', 'Topography'}
+                    % Create and display surface patch
+                    [hFig, TessInfo(iTess).hPatch] = figure_3d('PlotFibers', hFig, FibMat.Points, FibMat.Colors);
+            end
+            
+            % Update figure's surfaces list and current surface pointer
+            setappdata(hFig, 'Surface',  TessInfo);
+        end
     end
     % Update default surface
     setappdata(hFig, 'iSurface', iTess);
