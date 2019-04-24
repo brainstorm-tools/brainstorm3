@@ -897,8 +897,8 @@ function CurrentFigureChanged_Callback(oldFig, hFig)
     if file_compare(GlobalData.CurrentScoutsSurface, SurfaceFile)
         return;
     end
-    % If surface file is an MRI
-    if ~isempty(iTess) && strcmpi(TessInfo(iTess).Name, 'Anatomy')
+    % If surface file is an MRI or fibers
+    if ~isempty(iTess) && ismember(lower(TessInfo(iTess).Name), {'anatomy', 'fibers'})
         % By default: no attached surface
         SurfaceFile = [];
         % If there are some data associated with this file: get the associated scouts

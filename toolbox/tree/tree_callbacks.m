@@ -67,7 +67,7 @@ nodeType = char(bstNodes(1).getType());
 filenameRelative = char(bstNodes(1).getFileName());
 % Build full filename (depends on the file type)
 switch lower(nodeType)
-    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'other', 'subject', 'studysubject', 'anatomy'}
+    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'other', 'subject', 'studysubject', 'anatomy'}
         filenameFull = bst_fullfile(ProtocolInfo.SUBJECTS, filenameRelative);
     case {'study', 'condition', 'rawcondition', 'channel', 'headmodel', 'data','rawdata', 'datalist', 'results', 'kernel', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'image', 'video', 'videolink', 'noisecov', 'ndatacov', 'dipoles','timefreq', 'spectrum', 'matrix', 'matrixlist', 'pmatrix'}
         filenameFull = bst_fullfile(ProtocolInfo.STUDIES, filenameRelative);
@@ -167,7 +167,7 @@ switch (lower(action))
     
             % ===== SURFACE ===== 
             % Mark/unmark (items selected : 1/category)
-            case {'scalp', 'outerskull', 'innerskull', 'cortex'}
+            case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers'}
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
                 iSurface = bstNodes(1).getItemIndex();
@@ -177,6 +177,7 @@ switch (lower(action))
                     case 'innerskull', SurfaceType = 'InnerSkull';
                     case 'outerskull', SurfaceType = 'OuterSkull';
                     case 'cortex',     SurfaceType = 'Cortex';
+                    case 'fibers',     SurfaceType = 'Fibers';
                     case 'other',      SurfaceType = 'Other';
                 end
                 if (~ismember(iSurface, sSubject.(['i' SurfaceType])) || ~bstNodes(1).isMarked())
@@ -537,6 +538,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
                     gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
+                    gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
                     AddSeparator(jPopup);
                     % === USE DEFAULT ===
                     % Get registered Brainstorm anatomy defaults
@@ -1017,6 +1019,7 @@ switch (lower(action))
                     jItemSetSurfTypeCortex     = gui_component('MenuItem', jItemSetSurfType, [], 'Cortex',      IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)node_set_type(bstNodes(1), 'Cortex'));
                     jItemSetSurfTypeOuterSkull = gui_component('MenuItem', jItemSetSurfType, [], 'Outer skull', IconLoader.ICON_SURFACE_OUTERSKULL, [], @(h,ev)node_set_type(bstNodes(1), 'OuterSkull'));
                     jItemSetSurfTypeInnerSkull = gui_component('MenuItem', jItemSetSurfType, [], 'Inner skull', IconLoader.ICON_SURFACE_INNERSKULL, [], @(h,ev)node_set_type(bstNodes(1), 'InnerSkull'));
+                    jItemSetSurfTypeFibers     = gui_component('MenuItem', jItemSetSurfType, [], 'Fibers',      IconLoader.ICON_FIBERS, [], @(h,ev)node_set_type(bstNodes(1), 'Fibers'));
                     jItemSetSurfTypeOther      = gui_component('MenuItem', jItemSetSurfType, [], 'Other',       IconLoader.ICON_SURFACE, [], @(h,ev)node_set_type(bstNodes(1), 'Other'));
                     % Check current type
                     switch (nodeType)
@@ -1028,6 +1031,8 @@ switch (lower(action))
                             jItemSetSurfTypeOuterSkull.setSelected(1);
                         case 'innerskull'
                             jItemSetSurfTypeInnerSkull.setSelected(1);
+                        case 'fibers'
+                            jItemSetSurfTypeFibers.setSelected(1);
                         case 'other'
                             jItemSetSurfTypeOther.setSelected(1);
                     end
@@ -1108,7 +1113,21 @@ switch (lower(action))
                 % === MENU: EXPORT ===
                 % Export menu (added later)
                 jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_surfaces(filenameFull));
+             
+%% ===== POPUP: FIBERS =====
+            case {'fibers'}
+                % Get subject
+                iSubject = bstNodes(1).getStudyIndex();
+                sSubject = bst_get('Subject', iSubject);
                 
+                % === DISPLAY ===
+                gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
+
+                % === SUBSAMPLE ===
+                if ~bst_get('ReadOnly')
+                    gui_component('MenuItem', jPopup, [], 'Less fibers...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)fibers_downsample(filenameFull));
+                    gui_component('MenuItem', jPopup, [], 'Interpolate points...', IconLoader.ICON_FLIP, [], @(h,ev)fibers_interp(filenameFull));
+                end
                 
 %% ===== POPUP: NOISECOV =====
             case {'noisecov', 'ndatacov'}
@@ -1743,6 +1762,9 @@ switch (lower(action))
                             gui_component('MenuItem', jPopup, [], 'Display as graph     [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, 'GraphFull'));
                             %gui_component('MenuItem', jPopup, [], 'Connectivity graph (3D)',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, '3DGraph'));
                             gui_component('MenuItem', jPopup, [], 'Display as image    [NxN]', IconLoader.ICON_NOISECOV, [], @(h,ev)view_connect(filenameRelative, 'Image'));
+%                             if ~isempty(sSubject) && isfield(sSubject, 'iFibers') && ~isempty(sSubject.iFibers)
+%                                 gui_component('MenuItem', jPopup, [], 'Display fibers [experimental]',   IconLoader.ICON_FIBERS, [], @(h,ev)view_connect(filenameRelative, 'Fibers'));
+%                             end
                             jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [1xN]', IconLoader.ICON_CONNECT1, [], []);
                         else
                             jMenuConn1 = jPopup;
@@ -2657,7 +2679,9 @@ function fcnPopupDisplayTopography(jMenu, FileName, AllMod, Modality, isStat)
     end
     gui_component('MenuItem', jMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(FileName, Modality, '2DLayout'));
     % 3D Electrodes
-    if ismember(Modality, {'EEG', 'ECOG'})
+    if strcmpi(Modality, 'EEG')
+        gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes'));
+    elseif strcmpi(Modality, 'ECOG')
         gui_component('MenuItem', jMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '2DElectrodes'));
         gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes'));
     elseif ismember(Modality, {'SEEG', 'ECOG+SEEG'})
@@ -2730,14 +2754,18 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
                 gui_component('MenuItem', jSubMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DLayout'));
             end
             % 3D Electrodes
-            if ismember(AllMod{iMod}, {'EEG', 'ECOG'}) && ~AlwaysCreate
-                gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
-                gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
-            elseif ismember(AllMod{iMod}, {'SEEG', 'ECOG+SEEG'}) && ~AlwaysCreate
-                gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
-                gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Scalp'));
-                gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Cortex'));
-                gui_component('MenuItem', jSubMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-MRI'));
+            if ~AlwaysCreate
+                if strcmpi(AllMod{iMod}, 'EEG')
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
+                elseif strcmpi(AllMod{iMod}, 'ECOG')
+                    gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
+                elseif ismember(AllMod{iMod}, {'SEEG', 'ECOG+SEEG'})
+                    gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Scalp'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Cortex'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-MRI'));
+                end
             end
         end
     else

@@ -689,6 +689,8 @@ function UpdateDisplayOptions(hFig)
         % Scalp current density
         elseif strcmpi(TsInfo.MontageName, 'Scalp current density')
             DispName = 'SCD';
+        elseif strcmpi(TsInfo.MontageName, 'Scalp current density (L -> R)')
+            DispName = 'SCD LR';
         % Head distance
         elseif strcmpi(TsInfo.MontageName, 'Head distance')
             DispName = 'Head';

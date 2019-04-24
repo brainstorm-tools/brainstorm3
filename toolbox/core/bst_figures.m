@@ -752,6 +752,31 @@ function [Handles,iFig,iDS] = SetFigureHandles(hFig, Handles) %#ok<DEFNU>
     GlobalData.DataSet(iDS).Figure(iFig).Handles = Handles;
 end
 
+%% ===== GET SPECIFIC FIELD OF FIGURE HANDLE =====
+function Value = GetFigureHandleField(hFig, Field) %#ok<DEFNU>
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = GetFigure(hFig);
+    % Return value if figure and field exists
+    if ~isempty(iDS) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, Field)
+        Value = GlobalData.DataSet(iDS).Figure(iFig).Handles.(Field);
+    else
+        Value = [];
+    end
+end
+
+%% ===== SET SPECIFIC FIELD OF FIGURE HANDLE =====
+function SetFigureHandleField(hFig, Field, Value) %#ok<DEFNU>
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = GetFigure(hFig);
+    if isempty(iDS)
+        error('Figure is not registered in Brainstorm');
+    end
+    % Set field
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.(Field) = Value;
+end
+
 
 %% ===== DELETE FIGURE =====
 %  Usage : DeleteFigure(hFigure)

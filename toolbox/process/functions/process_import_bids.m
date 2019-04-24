@@ -72,6 +72,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.groupsessions.Comment = 'Import multiple anat sessions to the same subject';
     sProcess.options.groupsessions.Type    = 'checkbox';
     sProcess.options.groupsessions.Value   = 1;
+    % Register anatomy
+    sProcess.options.anatregister.Comment = {'SPM12', 'No', 'Coregister anatomical volumes:'; ...
+                                             'spm12', 'no', ''};
+    sProcess.options.anatregister.Type    = 'radio_linelabel';
+    sProcess.options.anatregister.Value   = 'spm12';
 end
 
 
@@ -104,6 +109,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OPTIONS.SelectedSubjects = strtrim(str_split(sProcess.options.selectsubj.Value, ','));
     % Group sessions
     OPTIONS.isGroupSessions = sProcess.options.groupsessions.Value;
+    % Register anatomical volumes
+    OPTIONS.RegisterMethod = sProcess.options.anatregister.Value;
     
     % === IMPORT DATASET ===
     % Import dataset
@@ -139,7 +146,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         'isInteractive',    1, ...
         'ChannelAlign',     0, ...
         'SelectedSubjects', [], ...
-        'isGroupSessions',  1);
+        'isGroupSessions',  1, ...
+        'RegisterMethod',   'spm12');
     OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 
     % ===== GET THE BIDS FOLDER =====
@@ -252,7 +260,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     SubjectSessDir{end+1}    = {sessFolders{isess}, derivFolders{isess}};
                     SubjectMriFiles{end+1}   = allMriFiles;
                 end
-            % There are no segmentations, check if there is one T1 volume per sesssion or per subject
+            % There are no segmentations, check if there is one T1 volume per session or per subject
             else
                 % If there is one anatomy per session
                 if isSessMri && ~OPTIONS.isGroupSessions
@@ -382,6 +390,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         end
         % Import MRI
         if ~isSkipAnat && ~isempty(SubjectMriFiles{iSubj})
+            MrisToRegister = {};
             % Import first MRI
             BstMriFile = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractiveAnat, 0);
             if isempty(BstMriFile)
@@ -394,10 +403,37 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     [sMri, errorMsg] = bst_normalize_mni(BstMriFile);
                     % Generate head surface
                     tess_isohead(iSubject, 10000, 0, 2);
+                else
+                    MrisToRegister{end+1} = BstMriFile;
                 end
                 % Add other volumes
                 for i = 2:length(SubjectMriFiles{iSubj})
-                    import_mri(iSubject, SubjectMriFiles{iSubj}{i}, 'ALL', 0, 1);
+                    MrisToRegister{end+1} = import_mri(iSubject, SubjectMriFiles{iSubj}{i}, 'ALL', 0, 1);
+                end
+            end
+            % Register anatomical volumes if requested
+            if strcmpi(OPTIONS.RegisterMethod, 'spm12')
+                for i = 1:length(MrisToRegister)
+                    % If nothing was imported
+                    if isempty(MrisToRegister{i})
+                        continue;
+                    end
+                    % Register MRI onto first MRI imported
+                    MriFileReg = mri_coregister(MrisToRegister{i}, [], 'spm', 0);
+                    % If the registration was successful
+                    if ~isempty(MriFileReg)
+                        % Reslice volume
+                        mri_reslice(MriFileReg, [], 'vox2ras', 'vox2ras');
+                        % Delete original volume
+                        if (file_delete(MrisToRegister{i}, 1) == 1)
+                            % Find file in database
+                            [sSubject, iSubject, iMri] = bst_get('MriFile', MrisToRegister{i});
+                            % Delete reference
+                            sSubject.Anatomy(iMri) = [];
+                            % Update database
+                            bst_set('Subject', iSubject, sSubject);
+                        end
+                    end
                 end
             end
         end
