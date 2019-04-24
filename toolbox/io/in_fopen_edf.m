@@ -169,9 +169,17 @@ end
 % Detect interrupted signals (time non-linear)
 hdr.interrupted = ischar(hdr.unknown1) && (length(hdr.unknown1) >= 5) && isequal(hdr.unknown1(1:5), 'EDF+D');
 if hdr.interrupted
-    warning(['Interrupted EDF file ("EDF+D"): requires conversion to "EDF+C". ' 10 ...
+    [res, isCancel] = java_dialog('question', ...
+        ['Interrupted EDF file ("EDF+D") detected. It is recommended to convert it' 10 ...
+        'to a continuous ("EDF+C") file first. Do you want to continue reading this' 10 ...
+        'file as continuous and attempt to fix the timing of event markers?' 10 ...
+        'NOTE: This may not work as intended, use at your own risk!']);
+    hdr.fixinterrupted = ~isCancel && strcmpi(res, 'yes');
+    if ~hdr.fixinterrupted
+        warning(['Interrupted EDF file ("EDF+D"): requires conversion to "EDF+C". ' 10 ...
              'Brainstorm will read this file as a continuous file ("EDF+C"), the timing of the samples after the first discontinuity will be wrong.' 10 ...
              'This may not cause any major problem unless there are time markers in the file, they might be inaccurate in all the segments >= 2.']);
+    end
 end
 
 
@@ -346,6 +354,7 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
         evtList = {};
         % Process separately the multiple annotation channels
         for ichan = 1:length(iEvtChans)
+            last_sample = 0;
             % Read annotation channel epoch by epoch
             for irec = 1:hdr.nrec
                 bst_progress('text', sprintf('Reading annotations... [%d%%]', round((irec + (ichan-1)*hdr.nrec)/length(iEvtChans)/hdr.nrec*100)));
@@ -359,8 +368,29 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                     continue;
                 end
                 % Get first time stamp
+                f0 = str2double(char(Fsplit{1}));
                 if (irec == 1)
-                    t0 = str2double(char(Fsplit{1}));
+                    t0 = f0;
+                % Find discontinuities
+                elseif abs(f0 - last_sample - hdr.reclen) > 1e-8
+                    bstSample = last_sample + hdr.reclen;
+                    sampleDiff = bstSample - f0;
+                    % If we want to fix timing, apply skip to initial timestamp
+                    if hdr.fixinterrupted
+                        t0 = t0 - sampleDiff;
+                    end
+                    % Warn user of discontinuity
+                    if ichan == 1
+                        if sampleDiff > 0
+                            expectMsg = 'blank data';
+                        else
+                            expectMsg = 'a data skip';
+                        end
+                        fprintf('WARNING: Found discontinuity between %.3fs and %.3fs, expect %s in between.\n', min(f0,bstSample), max(f0,bstSample),  expectMsg);
+                    end
+                    last_sample = f0;
+                else
+                    last_sample = last_sample + hdr.reclen;
                 end
                 % If there is an initial time: 3 values (ex: "+44.00000+44.47200Event1)
                 if (mod(length(Fsplit),2) == 1) && (length(Fsplit) >= 3)
