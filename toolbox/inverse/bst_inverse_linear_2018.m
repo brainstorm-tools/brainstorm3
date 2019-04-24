@@ -933,7 +933,7 @@ switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
                       
                         % This results in the modified pseudo-statistic of
                         % eq.(25) of (PM, 2002).
-                        Kernel = bst_bsxfun(@rdivide, Kernel(Ndx,:), sloretadiag);
+                        Kernel(Ndx,:) = bst_bsxfun(@rdivide, Kernel(Ndx,:), sloretadiag);
                     elseif (NumDipoleComponents(kk)==3 || NumDipoleComponents(kk)==2)
                         for spoint = StartNdx:NumDipoleComponents(kk):EndNdx
                             % For each dipole location 'R' is the matrix
