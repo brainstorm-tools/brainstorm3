@@ -946,6 +946,11 @@ function LoadDefaultMontages() %#ok<DEFNU>
     sMontage.Name = 'Scalp current density';
     sMontage.Type = 'matrix';
     SetMontage(sMontage.Name, sMontage);
+    % Set scalp current density montage (sorted Left>Right)
+    sMontage = db_template('Montage');
+    sMontage.Name = 'Scalp current density (L -> R)';
+    sMontage.Type = 'matrix';
+    SetMontage(sMontage.Name, sMontage);
     % Set HLU distance montage
     sMontage = db_template('Montage');
     sMontage.Name = 'Head distance';
@@ -1010,6 +1015,13 @@ function [sMontage, iMontage] = GetMontage(MontageName, hFig)
             end
             % Find Scalp current density montage
             iScd = find(strcmpi({sMontage.Name}, 'Scalp current density'));
+            if ~isempty(iScd) && ~isempty(hFig)
+                sTmp = GetMontageScd(sMontage(iScd), hFig, []);
+                if ~isempty(sTmp)
+                    sMontage(iScd) = sTmp;
+                end
+            end
+            iScd = find(strcmpi({sMontage.Name}, 'Scalp current density (L -> R)'));  % Sorted L -> R
             if ~isempty(iScd) && ~isempty(hFig)
                 sTmp = GetMontageScd(sMontage(iScd), hFig, []);
                 if ~isempty(sTmp)
@@ -1139,7 +1151,7 @@ function DeleteMontage(MontageName)
     % Get montage index
     [sMontage, iMontage] = GetMontage(MontageName);
     % If this is a non-editable montage: error
-    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)', 'Scalp current density', 'Head distance'})
+    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'})
         return;
     end    
     % Remove montage if it exists
@@ -1207,11 +1219,11 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
                 continue;
             end
             % Not 10-20 EEG: Skip average reference L -> R (only available for recordings figures)
-            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Average reference (L -> R)') && (~strcmpi(FigId.Type, 'DataTimeSeries') || (~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})) || ~Is1020Setup(FigChannels))
+            if ismember(GlobalData.ChannelMontages.Montages(i).Name, {'Average reference (L -> R)', 'Scalp current density (L -> R)'}) && (~strcmpi(FigId.Type, 'DataTimeSeries') || (~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})) || ~Is1020Setup(FigChannels))
                 continue;
             end
             % Not EEG or no 3D positions: Skip scalp current density
-            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Scalp current density') && ~isempty(FigId.Modality) && (~ismember(FigId.Modality, {'EEG'}) || any(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iFigChannels).Loc})))
+            if ismember(GlobalData.ChannelMontages.Montages(i).Name, {'Scalp current density', 'Scalp current density (L -> R)'}) && ~isempty(FigId.Modality) && (~ismember(FigId.Modality, {'EEG'}) || any(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iFigChannels).Loc})))
                 continue;
             end
             % Not CTF-MEG: Skip head motion distance
@@ -1387,31 +1399,38 @@ function sMontage = GetMontageAvgRef(sMontage, Channels, ChannelFlag, isSubGroup
     end
     % Sort electrodes per hemisphere if required
     if ~isempty(sMontage) && strcmpi(sMontage.Name, 'Average reference (L -> R)')
-        left  = [];
-        mid   = [];
-        right = [];
-        other = [];
-        % Sort channels by position
-        for iChannel = 1:numChannels
-            % Extract position from channel name
-            [tmp, eegNum] = GetEeg1020ChannelParts(sMontage.ChanNames{iChannel});
-            if ~isempty(eegNum) && eegNum == 'z'
-                mid(end + 1) = iChannel;
-            elseif ~isempty(eegNum) && mod(eegNum, 2) == 1
-                left(end + 1) = iChannel;
-            elseif ~isempty(eegNum) && mod(eegNum, 2) == 0
-                right(end + 1) = iChannel;
-            else
-                other(end + 1) = iChannel;
-            end
-        end
-        iOrder = [left mid right other];
-        % Apply new order
-        sMontage.DispNames = sMontage.DispNames(iOrder);
-        sMontage.ChanNames = sMontage.ChanNames(iOrder);
+        sMontage = SortLeftRight(sMontage);
     end
 end
 
+
+%% ===== SORT MONTAGE LEFT-RIGHT =====
+% Sort standard 10-20 montages Left-Right
+function sMontage = SortLeftRight(sMontage)
+    left  = [];
+    mid   = [];
+    right = [];
+    other = [];
+    % Sort channels by position
+    for iChannel = 1:length(sMontage.ChanNames)
+        % Extract position from channel name
+        [tmp, eegNum] = GetEeg1020ChannelParts(sMontage.ChanNames{iChannel});
+        if ~isempty(eegNum) && eegNum == 'z'
+            mid(end + 1) = iChannel;
+        elseif ~isempty(eegNum) && mod(eegNum, 2) == 1
+            left(end + 1) = iChannel;
+        elseif ~isempty(eegNum) && mod(eegNum, 2) == 0
+            right(end + 1) = iChannel;
+        else
+            other(end + 1) = iChannel;
+        end
+    end
+    iOrder = [left mid right other];
+    % Apply new order
+    sMontage.DispNames = sMontage.DispNames(iOrder);
+    sMontage.ChanNames = sMontage.ChanNames(iOrder);
+    sMontage.Matrix = sMontage.Matrix(iOrder, iOrder);
+end
 
 %% ===== GET SCALP CURRENT DENSITY MONTAGE =====
 % USAGE:  sMontage = GetMontageScd(sMontage, hFig)
@@ -1453,7 +1472,7 @@ function sMontage = GetMontageScd(sMontage, Channels, ChannelFlag)
     % Normalize matrix to obtain something that keeps the same range of values
     % (no justification for this, but since these are arbitrary units, let's have less disruptive displays)
     Lscp = Lscp ./ mean(sqrt(sum(Lscp.^2, 2)));
-    % If no montage in input: get the head distance montage
+    % If no montage in input: get the SCD montage
     if isempty(sMontage)
         iMontage = find(strcmpi({GlobalData.ChannelMontages.Montages.Name}, 'Scalp current density'), 1);
         if isempty(iMontage)
@@ -1465,6 +1484,10 @@ function sMontage = GetMontageScd(sMontage, Channels, ChannelFlag)
     sMontage.DispNames = {Channels.Name};
     sMontage.ChanNames = {Channels.Name};
     sMontage.Matrix    = Lscp;
+    % Sort electrodes per hemisphere if required
+    if ~isempty(sMontage) && strcmpi(sMontage.Name, 'Scalp current density (L -> R)')
+        sMontage = SortLeftRight(sMontage);
+    end
 end
 
 
@@ -1718,7 +1741,7 @@ function newName = RenameMontage(oldName, newName)
         error('Condition does not exist.');
     end
     % If this is a non-editable montage: error
-    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)', 'Scalp current density', 'Head distance'})
+    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'})
         newName = [];
         return;
     end
