@@ -188,7 +188,7 @@ if plotFibers
     sSubject = bst_get('Subject', sStudy.BrainStormSubject);
     try
         surfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
-        fibersFile = sSubject.Surface(sSubject.iFibers).FileName;
+%         fibersFile = sSubject.Surface(sSubject.iFibers).FileName;
         assert(~isempty(surfaceFile) && ~isempty(fibersFile));
     catch
         bst_error('Cannot display connectivity results on fibers without fibers and cortex files.');

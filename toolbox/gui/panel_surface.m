@@ -645,9 +645,6 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(sSubject.iCortex)
             typesList{end+1} = 'Cortex';
         end
-        if ~isempty(sSubject.iFibers)
-            typesList{end+1} = 'Fibers';
-        end
         
         % Get low resolution white surface
         iWhite = find(~cellfun(@(c)isempty(strfind(lower(c),'white')), {sSubject.Surface.Comment}));
@@ -700,8 +697,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(sSubject.iInnerSkull(1)).FileName;
         case 'OuterSkull'
             SurfaceFile = sSubject.Surface(sSubject.iOuterSkull(1)).FileName;
-        case 'Fibers'
-            SurfaceFile = sSubject.Surface(sSubject.iFibers).FileName;
+%         case 'Fibers'
+%             SurfaceFile = sSubject.Surface(sSubject.iFibers).FileName;
         case 'ASEG'
             SurfaceFile = sSubject.Surface(iAseg).FileName;
         case 'White'
