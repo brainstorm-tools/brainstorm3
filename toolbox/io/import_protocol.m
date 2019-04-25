@@ -75,6 +75,7 @@ end
 isOk = org.brainstorm.file.Unpack.unzip(ZipFile, ProtocolDir);
 if ~isOk
     bst_error('Could not unzip file.', 'Load protocol', 0);
+    rmdir(ProtocolDir,'s');
     return
 end
 
