@@ -60,6 +60,7 @@ if exist(converted_raw_File, 'file') == 2
     return
 end
 
+ImportOptions = db_template('ImportOptions');
 
 %% Check if a projector has been computed and ask if the selected components
 % should be removed
@@ -68,7 +69,6 @@ if ~isempty(ChannelMat.Projector)
         ['(ICA/PCA) Artifact components have been computed for removal.' 10 10 ...
              'Remove the selected components?'], 'Artifact Removal');
     if isOk
-        ImportOptions = db_template('ImportOptions');
         ImportOptions.UseCtfComp     = 0;
         ImportOptions.UseSsp         = 1;
     end
