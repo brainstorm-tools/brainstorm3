@@ -68,7 +68,7 @@ for i = 1:length(iProtocols)
 %     end
 
     % ===== CHECK DATABASE VERSION =====
-    if ~isReload && (GlobalData.DataBase.DbVersion ~= ProtocolMat.DbVersion)
+    if ~isReload && (~isfield(ProtocolMat, 'DbVersion') || ~isfield(GlobalData.DataBase, 'DbVersion') || (GlobalData.DataBase.DbVersion ~= ProtocolMat.DbVersion))
         isReload = 1;
     end
 
