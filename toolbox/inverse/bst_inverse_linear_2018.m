@@ -163,7 +163,7 @@ if (nargin == 0)
     return
 end
 
-fprintf('\nBST_INVERSE (2016) > Modified Apr 2019\n\n');
+fprintf('\nBST_INVERSE (2018) > Modified Apr 2019\n\n');
 
 % How many head models have been passed, if greater than 1, then we are
 % doing a "DBA" or "Deep Brain Analysis"
