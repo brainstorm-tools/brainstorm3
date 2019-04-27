@@ -88,7 +88,7 @@ if ~isOk
     file_delete(tmpProtocolDir, 1, 3); %in case of error during unzip.. rollback
     return
 end
-
+% Unzip went well. Go ahead and copy to db
 file_copy(tmpProtocolDir,ProtocolDir);
 file_delete(tmpProtocolDir,1,3); %clean up
 
