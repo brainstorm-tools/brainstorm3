@@ -202,12 +202,11 @@ if (nEpochs > 1)
     for iEpoch = 1:nEpochs
         ii = find(strcmp(uniqueConditions, all_conditions{iEpoch}));
         iUniqueConditionsTrials(ii) =  iUniqueConditionsTrials(ii)+1;
-        sFile.epochs(iEpoch).label       = [all_conditions{iEpoch} ' (#' num2str(iUniqueConditionsTrials(ii)) ')'];
-        sFile.epochs(iEpoch).times       = timeBoundsTrials(iEpoch,:);
-        sFile.epochs(iEpoch).samples     = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
-        sFile.epochs(iEpoch).nAvg        = nAvg;
-        sFile.epochs(iEpoch).select      = 1;
-        sFile.epochs(iEpoch).bad         = 0;
+        sFile.epochs(iEpoch).label  = [all_conditions{iEpoch} ' (#' num2str(iUniqueConditionsTrials(ii)) ')'];
+        sFile.epochs(iEpoch).times  = timeBoundsTrials(iEpoch,:);
+        sFile.epochs(iEpoch).nAvg   = nAvg;
+        sFile.epochs(iEpoch).select = 1;
+        sFile.epochs(iEpoch).bad    = 0;
 %         sFile.epochs(iEpoch).bad         = badTrials(iEpoch); 
         sFile.epochs(iEpoch).channelflag = [];
     end
@@ -291,8 +290,7 @@ sFile.filename     = DataFile;
 sFile.device       = nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
 sFile.header.nwb   = nwb2;
 sFile.comment      = nwb2.identifier;
-sFile.prop.samples = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag  = ones(nChannels + nAdditionalChannels, 1);

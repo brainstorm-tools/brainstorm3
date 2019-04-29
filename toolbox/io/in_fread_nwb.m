@@ -36,7 +36,7 @@ nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead 
 
 %% Assign the bounds based on the trials or the continuous selection
 if isempty(SamplesBounds) && isContinuous
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
     timeBounds    = SamplesBounds./sFile.prop.sfreq;
 elseif (~isempty(SamplesBounds) && isContinuous) || (~isempty(SamplesBounds) && ~isContinuous)
     timeBounds    = SamplesBounds./sFile.prop.sfreq;

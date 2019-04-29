@@ -27,7 +27,7 @@ function DataMat = in_bst_data( DataFile, varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2015
+% Authors: Francois Tadel, 2009-2019
 
 
 % ===== PARSE INPUTS =====
@@ -135,6 +135,17 @@ end
 if isfield(DataMat, 'Time') && (size(DataMat.Time,1) > 1)
     DataMat.Time = DataMat.Time';
 end
+
+% ===== FIX EVENTS STRUCTURES =====
+% Imported file
+if isfield(DataMat, 'Events') && ~isempty(DataMat.Events)
+    DataMat.Events = struct_fix_events(DataMat.Events);
+end
+% Link to raw file
+if isfield(DataMat, 'F') && ~isempty(DataMat.F) && isstruct(DataMat.F) && isfield(DataMat.F, 'events') && ~isempty(DataMat.F.events)
+    DataMat.F.events = struct_fix_events(DataMat.F.events);
+end
+
 
 
 

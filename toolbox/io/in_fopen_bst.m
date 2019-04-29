@@ -149,7 +149,6 @@ for i = 1:nevt
     end
     % Rebuild missing information
     events(i).epochs  = ones(1, nocc);
-    events(i).samples = round(events(i).times .* hdr.sfreq);
 end
 
 % Save total header size (to allow fast skipping when reading)
@@ -171,8 +170,7 @@ sFile.events       = events;
 sFile.header       = hdr;
 sFile.channelflag  = ChannelFlag;
 sFile.prop.sfreq   = hdr.sfreq;
-sFile.prop.samples = round(hdr.starttime .* hdr.sfreq) + [0, hdr.nsamples-1];
-sFile.prop.times   = sFile.prop.samples ./ hdr.sfreq;
+sFile.prop.times   = (round(hdr.starttime .* hdr.sfreq) + [0, hdr.nsamples-1]) ./ hdr.sfreq;
 sFile.prop.nAvg    = hdr.navg;
 sFile.prop.currCtfComp = hdr.ctfcomp;
 sFile.prop.destCtfComp = 3;

@@ -85,14 +85,17 @@ function sOutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Get data matrix
     sFileIn = sMat.(matName);
     sEvent = sFile.events(iEvt);
+    % Reconstruct removed field "samples" (this event structure should not be added again to the sFile structure)
+    sEvent.samples = round(sEvent.times .* sFile.prop.sfreq);
     % Make sure required samples are within range
-    if any(or(sEvent.samples(:) < sFileIn.prop.samples(1), sEvent.samples(:) > sFileIn.prop.samples(2)))
-        bst_report('Error', sProcess, sInput, ['Event sample(s) are not all within the range of the input file: ' ...
-            '[' num2str(sFileIn.prop.samples(1)+1) ' - ' num2str(sFileIn.prop.samples(2)+1) '].']);
+    if any(or(sEvent.times(:) < sFileIn.prop.times(1), sEvent.times(:) > sFileIn.prop.times(2)))
+        bst_report('Error', sProcess, sInput, ['Event time(s) are not all within the range of the input file: ' ...
+            '[' num2str(sFileIn.prop.times(1)+1) 's - ' num2str(sFileIn.prop.times(2)+1) 's].']);
         return;
     end
+    fileSamplesIn = round(sFileIn.prop.times .* sFileIn.prop.sfreq);
     [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent, ...
-        sFileIn.prop.samples, sFileIn.prop.times, keepBadSegments);
+        fileSamplesIn, sFileIn.prop.times, keepBadSegments);
     % SampleTargets are "file/event samples", often starting at 0, not 1.
     numTargets = length(SampleTargets);
     % Read the channel file
@@ -132,7 +135,7 @@ function sOutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     
     for iBlockCol = 1:nBlockCol
         % Indices of columns to process
-        SamplesBounds = sFileIn.prop.samples(1) + [(iBlockCol-1) * BlockSizeCol + 1, min(iBlockCol * BlockSizeCol, nCol)] - 1;
+        SamplesBounds = fileSamplesIn(1) + [(iBlockCol-1) * BlockSizeCol + 1, min(iBlockCol * BlockSizeCol, nCol)] - 1;
         % SamplesBounds are now also "file/event samples".
         % Check whether current block contains a sample of interest
         iFirstChunkSample = SamplesBounds(1);
@@ -199,9 +202,8 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, ...
         end        
         % Template continuous file (for the output)
         sFileTemplate = sFileIn;
-        sFileTemplate.prop.times   = [sMat.Time(SamplesBounds(1)-sFileIn.prop.samples(1)+1), ...
-          sMat.Time(iNextTime-1-sFileIn.prop.samples(1)+1)];
-        sFileTemplate.prop.samples = round(sFileTemplate.prop.times .* sFileTemplate.prop.sfreq);
+        sFileTemplate.prop.times   = [sMat.Time(SamplesBounds(1)-fileSamplesIn(1)+1), ...
+          sMat.Time(iNextTime-1-fileSamplesIn(1)+1)];
         % Create an empty Brainstorm-binary file
         [sFileOut, errMsg] = out_fopen(RawFileOut, 'BST-BIN', sFileTemplate, ChannelMat);
 
@@ -215,14 +217,15 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, ...
                 continue
             end
             % Compare with samples to avoid precision errors on times.
-            iKeepEvents = find(and(sOutMat.F.events(iEvent).samples(1,:) >= sOutMat.F.prop.samples(1), ...
-                sOutMat.F.events(iEvent).samples(end,:) <= sOutMat.F.prop.samples(2)));
+            iKeepEvents = find(and(sOutMat.F.events(iEvent).times(1,:) >= sOutMat.F.prop.times(1), ...
+                sOutMat.F.events(iEvent).times(end,:) <= sOutMat.F.prop.times(2)));
             sOutMat.F.events(iEvent).epochs = sOutMat.F.events(iEvent).epochs(iKeepEvents);
-            sOutMat.F.events(iEvent).samples = sOutMat.F.events(iEvent).samples(:,iKeepEvents);
             sOutMat.F.events(iEvent).times = sOutMat.F.events(iEvent).times(:,iKeepEvents);
             if ~isempty(sOutMat.F.events(iEvent).reactTimes)
-                sOutMat.F.events(iEvent).reactTimes = sOutMat.F.events(iEvent).reactTimes(:,iKeepEvents);
+                sOutMat.F.events(iEvent).reactTimes = sOutMat.F.events(iEvent).reactTimes(iKeepEvents);
             end
+            sOutMat.F.events(iEvent).channels = sOutMat.F.events(iEvent).channels(iKeepEvents);
+            sOutMat.F.events(iEvent).notes    = sOutMat.F.events(iEvent).notes(iKeepEvents);
         end
 
         % Save new file

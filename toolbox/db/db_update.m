@@ -199,12 +199,10 @@ function sStudy = UpdateFifTimeRef(sStudy)
                     disp('UPDATE> Updating file...');
                     addSamples = double(DataMat.F.header.raw.first_samp);
                     addTime    = addSamples / DataMat.F.prop.sfreq;
-                    DataMat.Time           = DataMat.Time + addTime;
-                    DataMat.F.prop.times   = DataMat.F.prop.times + addTime;
-                    DataMat.F.prop.samples = DataMat.F.prop.samples + addSamples;
+                    DataMat.Time         = DataMat.Time + addTime;
+                    DataMat.F.prop.times = DataMat.F.prop.times + addTime;
                     for iEvt = 1:length(DataMat.F.events)
-                        DataMat.F.events(iEvt).samples = DataMat.F.events(iEvt).samples + addSamples;
-                        DataMat.F.events(iEvt).times   = DataMat.F.events(iEvt).times + addTime;
+                        DataMat.F.events(iEvt).times = DataMat.F.events(iEvt).times + addTime;
                     end
                     % Save file back
                     bst_save(DataFile, DataMat, 'v6');

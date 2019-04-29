@@ -36,7 +36,6 @@ if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, nChannels];
 end
 if (nargin < 3) || isempty(SamplesBounds)
-    %SamplesBounds = sFile.prop.samples;
     SamplesBounds = [0, sFile.header.nrec * sFile.header.signal(ChannelsRange(1)).nsamples - 1];
 end
 nTimes = sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq;

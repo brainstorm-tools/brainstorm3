@@ -50,12 +50,13 @@ for iEvt = 1:length(uniqueEvt)
     % Find all the occurrences of event #iEvt
     iMrk = find(strcmpi(mrk{2}, uniqueEvt{iEvt}));
     % Add event structure
-    events(iEvt).label   = uniqueEvt{iEvt};
-    events(iEvt).epochs  = ones(1, length(iMrk));
-    events(iEvt).times   = mrk{1}(iMrk)';
-    events(iEvt).samples = round(events(iEvt).times .* sFile.prop.sfreq);
-    events(iEvt).reactTimes  = [];
-    events(iEvt).select      = 1;
+    events(iEvt).label      = uniqueEvt{iEvt};
+    events(iEvt).epochs     = ones(1, length(iMrk));
+    events(iEvt).times      = round(mrk{1}(iMrk)' .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+    events(iEvt).reactTimes = [];
+    events(iEvt).select     = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
 

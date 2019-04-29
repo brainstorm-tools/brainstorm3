@@ -39,7 +39,7 @@ nEvt  = sFile.header.numEvents;
 % Epochs and events
 if isempty(SamplesBounds) 
     if ~isempty(sFile.epochs)
-        SamplesBounds = sFile.epochs(iEpoch).samples;
+        SamplesBounds = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
     else
         SamplesBounds = [0, sFile.header.numSamples - 1];
     end

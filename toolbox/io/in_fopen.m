@@ -175,7 +175,6 @@ end
 if isempty(sFile) && ~isempty(DataMat)
     sFile = in_fopen_bstmat(DataMat);
 end
-
 % File could not be opened
 if isempty(sFile) && ischar(DataFile)
     error(['Cannot open data file: ', 10, DataFile]);
@@ -183,6 +182,9 @@ end
 
 % ===== EVENTS =====
 if isfield(sFile, 'events') && ~isempty(sFile.events)
+    % Fix structure
+    sFile.events = struct_fix_events(sFile.events);
+    
     % === SORT BY NAME ===
     % Remove the common components
     [tmp__, evtLabels] = str_common_path({sFile.events.label});
@@ -207,6 +209,16 @@ if isfield(sFile, 'events') && ~isempty(sFile.events)
         end
     end
 end
+
+% Fix output datamat structure if necessary
+if (nargout >= 4) && ~isempty(DataMat) && isfield(DataMat(1), 'Events')
+    for i = 1:length(DataMat)
+        if ~isempty(DataMat(i).Events)
+            DataMat.Events = struct_fix_events(DataMat.Events);
+        end
+    end
+end
+
 
 
 

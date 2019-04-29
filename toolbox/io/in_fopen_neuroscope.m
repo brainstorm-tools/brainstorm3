@@ -81,9 +81,8 @@ if hdr.isDat
 else
     sFile.prop.sfreq = hdr.sRateLfp;
 end
-sFile.prop.samples = [0, hdr.nSamples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.times = [0, hdr.nSamples - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nChannels, 1);
 
@@ -160,9 +159,10 @@ for iFile = 1:length(dirres)
             events(iClu).color      = [];
             events(iClu).reactTimes = [];
             events(iClu).select     = 1;
-            events(iClu).samples    = spikeSmp(iTime);
             events(iClu).times      = spikeSmp(iTime) ./ sFile.prop.sfreq;
             events(iClu).epochs     = ones(1, length(iTime));
+            events(iClu).channels   = cell(1, size(events(iClu).times, 2));
+            events(iClu).notes      = cell(1, size(events(iClu).times, 2));
         end
     % No clusters: one event per file
     else
@@ -171,9 +171,10 @@ for iFile = 1:length(dirres)
         events.color      = [];
         events.reactTimes = [];
         events.select     = 1;
-        events.samples    = spikeSmp;
         events.times      = spikeSmp ./ sFile.prop.sfreq;
         events.epochs     = ones(1, length(spikeSmp));
+        events.channels   = cell(1, size(events.times, 2));
+        events.notes      = cell(1, size(events.times, 2));
     end
     % Import this list
     sFile = import_events(sFile, [], events);

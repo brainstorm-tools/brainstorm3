@@ -34,9 +34,9 @@ else
     isSaveAll = 0;
 end
 if isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
-SamplesBounds = SamplesBounds - sFile.prop.samples(1);
+SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq);
 
 % Convert from Volts to microVolts
 F = F * 1e6;
@@ -53,7 +53,7 @@ if isSaveAll
     % Create events matrix
     Fevt = zeros(nEvents, size(F,2));
     for iEvt = 1:nEvents
-        evtSmp = sFile.events(iEvt).samples - SamplesBounds(1) + 1;
+        evtSmp = round(sFile.events(iEvt).times .* sFile.prop.sfreq) - SamplesBounds(1) + 1;
         % Extended events
         if (size(evtSmp,1) == 2)
             extSmpEvt = [];

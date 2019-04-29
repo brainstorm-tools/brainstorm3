@@ -864,9 +864,9 @@ function [F, TimeVector, BadSegments] = ReadRawRecordings(sFile, TimeVector, Cha
     ImportOptions.DisplayMessages = 0;
     % Get samples to read
     if ~isempty(OPTIONS.TimeWindow)
-        SamplesBounds = sFile.prop.samples(1) + bst_closest(OPTIONS.TimeWindow, TimeVector) - 1;
+        SamplesBounds = round(sFile.prop.times(1) .* sFile.prop.sfreq) + bst_closest(OPTIONS.TimeWindow, TimeVector) - 1;
     else
-        SamplesBounds = sFile.prop.samples;
+        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
     end
     % Read data
     [F, TimeVector] = in_fread(sFile, ChannelMat, 1, SamplesBounds, [], ImportOptions);

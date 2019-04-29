@@ -148,6 +148,13 @@ if isempty(newEvents)
         return
     end
 end
+% Fix events structure
+if ~isempty(newEvents)
+    newEvents = struct_fix_events(newEvents);
+end
+if ~isempty(sFile.events)
+    sFile.events = struct_fix_events(sFile.events);
+end
 
 
 %% ===== MERGE EVENTS LISTS =====
@@ -160,8 +167,7 @@ for iNew = 1:length(newEvents)
         iEvt = [];
     end
     % Make sure that the sample indices are round values
-    newEvents(iNew).samples = round(newEvents(iNew).samples);
-    newEvents(iNew).times   = newEvents(iNew).samples ./ sFile.prop.sfreq;
+    newEvents(iNew).times = round(newEvents(iNew).times * sFile.prop.sfreq) ./ sFile.prop.sfreq;
     % If event does not exist yet: add it at the end of the list
     if isempty(iEvt)
         if isempty(sFile.events)
@@ -175,18 +181,20 @@ for iNew = 1:length(newEvents)
     else
         % Merge events occurrences
         sFile.events(iEvt).times      = [sFile.events(iEvt).times, newEvents(iNew).times];
-        sFile.events(iEvt).samples    = [sFile.events(iEvt).samples, newEvents(iNew).samples];
         sFile.events(iEvt).epochs     = [sFile.events(iEvt).epochs, newEvents(iNew).epochs];
         sFile.events(iEvt).reactTimes = [sFile.events(iEvt).reactTimes, newEvents(iNew).reactTimes];
-        % Sort by sample indices
-        if (size(sFile.events(iEvt).samples, 2) > 1)
-            [tmp__, iSort] = unique(sFile.events(iEvt).samples(1,:));
-            sFile.events(iEvt).samples = sFile.events(iEvt).samples(:,iSort);
+        sFile.events(iEvt).channels   = [sFile.events(iEvt).channels, newEvents(iNew).channels];
+        sFile.events(iEvt).notes      = [sFile.events(iEvt).notes, newEvents(iNew).notes];
+        % Sort by time
+        if (size(sFile.events(iEvt).times, 2) > 1)
+            [tmp__, iSort] = unique(bst_round(sFile.events(iEvt).times(1,:), 9));
             sFile.events(iEvt).times   = sFile.events(iEvt).times(:,iSort);
             sFile.events(iEvt).epochs  = sFile.events(iEvt).epochs(iSort);
             if ~isempty(sFile.events(iEvt).reactTimes)
                 sFile.events(iEvt).reactTimes = sFile.events(iEvt).reactTimes(iSort);
             end
+            sFile.events(iEvt).channels = sFile.events(iEvt).channels(iSort);
+            sFile.events(iEvt).notes = sFile.events(iEvt).notes(iSort);
         end
     end
     % Add color if does not exist yet

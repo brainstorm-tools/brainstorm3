@@ -33,7 +33,7 @@ DatFile = bst_fullfile(fPath, [fBase, '.dat']);
 
 % Create .mat structure
 D.type      = 'continuous';
-D.Nsamples  = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
+D.Nsamples  = round((sFileIn.prop.times(2) - sFileIn.prop.times(1)) .* sFileIn.prop.sfreq) + 1;
 D.Fsample   = sFileIn.prop.sfreq;
 D.timeOnset = sFileIn.prop.times(1);
 % Trials

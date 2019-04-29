@@ -45,7 +45,7 @@ end
 DataMat = in_bst_data(sInput.FileName, 'F');
 ChannelMat = in_bst_channel(sInput.ChannelFile);
 sFile = DataMat.F;
-
+fileSamples = round(sFile.prop.times .* sFile.prop.sfreq);
 
 % Separate the file to max length based on RAM
 numChannels = length(ChannelMat.Channel);
@@ -53,7 +53,7 @@ max_samples = ram / 8 / numChannels;
 
 converted_raw_File = bst_fullfile(parentPath, ['raw_data_no_header_' sInput.Condition(5:end) '.dat']);
 
-bst_progress('start', 'Spike-sorting', 'Converting to KiloSort Input...', 0, ceil(sFile.prop.samples(2)/max_samples));
+bst_progress('start', 'Spike-sorting', 'Converting to KiloSort Input...', 0, ceil(fileSamples(2)/max_samples));
 
 if exist(converted_raw_File, 'file') == 2
     disp('File already converted')
@@ -80,11 +80,11 @@ fid = fopen(converted_raw_File, 'a');
 isegment = 1;
 nsegment_max = 0;
 
-while nsegment_max < sFile.prop.samples(2)
+while (nsegment_max < fileSamples(2))
     nsegment_min = (isegment-1) * max_samples;
     nsegment_max = isegment * max_samples - 1;
-    if nsegment_max > sFile.prop.samples(2)
-        nsegment_max = sFile.prop.samples(2);
+    if (nsegment_max > fileSamples(2))
+        nsegment_max = fileSamples(2);
     end
     
     F = in_fread(sFile, ChannelMat, [], [nsegment_min,nsegment_max], [], ImportOptions);

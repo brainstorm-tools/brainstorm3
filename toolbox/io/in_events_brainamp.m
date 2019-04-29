@@ -86,13 +86,15 @@ for iEvt = 1:length(uniqueEvt)
     % Add event structure
     events(iEvt).label   = uniqueEvt{iEvt};
     events(iEvt).epochs  = ones(1, length(iMrk));   
-    events(iEvt).samples = [Markers{iMrk,3}];
+    samples = [Markers{iMrk,3}];
     if any([Markers{iMrk,4}] > 1)
-        events(iEvt).samples(2,:) = [Markers{iMrk,3}] + [Markers{iMrk,4}];
+        samples(2,:) = [Markers{iMrk,3}] + [Markers{iMrk,4}];
     end
-    events(iEvt).times      = events(iEvt).samples ./ sFile.prop.sfreq;
+    events(iEvt).times      = samples ./ sFile.prop.sfreq;
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
 

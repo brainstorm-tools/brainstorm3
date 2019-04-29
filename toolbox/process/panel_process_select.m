@@ -2930,13 +2930,7 @@ function TimeVector = LoadRawTime(RawFile, FileFormat)
         return;
     end
     % Update time vector
-    if ~isempty(sFile.epochs)
-        NumberOfSamples = sFile.epochs(1).samples(2) - sFile.epochs(1).samples(1) + 1;
-        TimeVector = linspace(sFile.epochs(1).times(1), sFile.epochs(1).times(2), NumberOfSamples);
-    else
-        NumberOfSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
-        TimeVector = linspace(sFile.prop.times(1), sFile.prop.times(2), NumberOfSamples);
-    end
+    TimeVector = panel_time('GetRawTimeVector', sFile);
 end
     
 

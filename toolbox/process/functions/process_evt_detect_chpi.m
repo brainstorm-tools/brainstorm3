@@ -144,10 +144,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % ===== CREATE EVENTS =====
         % Create new event structure
         sEvent = db_template('event');
-        sEvent.label   = evtName;
-        sEvent.samples = [startEve; endEve] + sFile.prop.samples(1) - 1;
-        sEvent.times   = sEvent.samples ./ sFile.prop.sfreq;
-        sEvent.epochs  = ones(1, size(sEvent.times,2));
+        sEvent.label    = evtName;
+        sEvent.times    = ([startEve; endEve] - 1) ./ sFile.prop.sfreq + sFile.prop.times(1);
+        sEvent.epochs   = ones(1, size(sEvent.times,2));
+        sEvent.channels = cell(1, size(sEvent.times, 2));
+        sEvent.notes    = cell(1, size(sEvent.times, 2));
         % Import new events in file structure
         sFile = import_events(sFile, [], sEvent);
         % Report changes in .mat structure

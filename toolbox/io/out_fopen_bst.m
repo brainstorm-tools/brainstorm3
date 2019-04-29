@@ -37,7 +37,7 @@ sFileOut.header.sfreq     = sFileOut.prop.sfreq;
 sFileOut.header.starttime = sFileOut.prop.times(1);
 sFileOut.header.navg      = sFileOut.prop.nAvg;
 sFileOut.header.version   = 50;
-sFileOut.header.nsamples  = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
+sFileOut.header.nsamples  = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) .* sFileOut.prop.sfreq) + 1;
 sFileOut.header.epochsize = EpochSize;
 sFileOut.header.nchannels = length(ChannelMat.Channel);
 % Force the destination compensation level

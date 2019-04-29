@@ -78,10 +78,11 @@ for iEvt = 1:length(uniqueLabel)
     iOcc = find(strcmpi(uniqueLabel{iEvt}, evtLabel));
     events(iEvt).label       = uniqueLabel{iEvt};
     events(iEvt).epochs      = ones(1,length(iOcc));
-    events(iEvt).samples     = round(([evtMat(1,iOcc); evtMat(1,iOcc) + evtMat(2,iOcc)]) .* sFile.prop.sfreq);
-    events(iEvt).times       = events(iEvt).samples ./ sFile.prop.sfreq;
+    events(iEvt).times       = round(([evtMat(1,iOcc); evtMat(1,iOcc) + evtMat(2,iOcc)]) .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
     events(iEvt).reactTimes  = [];
     events(iEvt).select      = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
 

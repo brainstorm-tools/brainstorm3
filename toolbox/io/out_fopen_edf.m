@@ -32,8 +32,9 @@ if (length(sFileIn.epochs) > 1)
     error('Cannot export epoched files to continuous EDF files.');
 end
 % Is the input file a native EDF file
+fileSamples = round(sFileIn.prop.times .* sFileIn.prop.sfreq);
 isRawEdf = strcmpi(sFileIn.format, 'EEG-EDF') && ~isempty(sFileIn.header) && isfield(sFileIn.header, 'patient_id') && isfield(sFileIn.header, 'signal');
-nSamples = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
+nSamples = fileSamples(2) - fileSamples(1) + 1;
 % Modify input headers (EDF export reuses the input header info directly)
 if isRawEdf && ~isempty(iChannels)
     sFileIn.header.nsignal = length(iChannels);
@@ -53,7 +54,7 @@ if ~isRawEdf
     for iBlock = 1:nBlocks
         bst_progress('text', sprintf('Finding maximum values [%d%%]', round(iBlock/nBlocks*100)));
         % Get sample indices for a block of 1s
-        SamplesBounds = [(iBlock - 1) * BlockSize + sFileIn.prop.samples(1), min(sFileIn.prop.samples(2), sFileIn.prop.samples(1) + iBlock * BlockSize)];
+        SamplesBounds = [(iBlock - 1) * BlockSize + fileSamples(1), min(fileSamples(2), fileSamples(1) + iBlock * BlockSize)];
         % Read the block from the file
         Fblock = in_fread(sFileIn, ChannelMat, 1, SamplesBounds);
         % Keep only the files to be saved in the output file

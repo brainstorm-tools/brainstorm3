@@ -49,12 +49,11 @@ iVideo = find(strcmpi({ChannelMat.Channel(:).Type}, 'Video'));
 if isempty(iVideo)
     error('No video time channel in this file');
 end
-[F, TimeVector] = in_fread(sFile, ChannelMat, [], sFile.prop.samples, iVideo);
+[F, TimeVector] = in_fread(sFile, ChannelMat, [], round(sFile.prop.times .* sFile.prop.sfreq), iVideo);
 
 % Read channel data for each event
 iEvents = bst_closest(EventsMat, F);
 eveTimes = TimeVector(iEvents);
-eveSamples = iEvents;
 
 %% ===== CONVERT TO BRAINSTORM STRUCTURE =====
 % Initialize list of events
@@ -66,16 +65,11 @@ if isempty(res)
 else
     events.label = res;
 end
+events.times      = eveTimes;
+events.epochs     = ones(1, length(eveTimes)); % Epoch: set as 1 for all the occurrences
 events.color      = [];
 events.reactTimes = [];
 events.select     = 1;
-% Get time and samples
-events.samples = eveSamples;
-events.times   = eveTimes;
-% Epoch: set as 1 for all the occurrences
-events.epochs = ones(1, length(eveTimes));
-
-
-
-
+events.channels   = cell(1, size(events.times, 2));
+events.notes      = cell(1, size(events.times, 2));
 

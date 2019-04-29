@@ -45,7 +45,7 @@ for i = 1:nChannels
 end
 % Keep only specific time indices
 if ~isempty(SamplesBounds)
-    iTimes = (SamplesBounds(1):SamplesBounds(2)) - sFile.prop.samples(1) + 1;
+    iTimes = (SamplesBounds(1):SamplesBounds(2)) - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
     F = F(:,iTimes);
 end
 % Calibrate data

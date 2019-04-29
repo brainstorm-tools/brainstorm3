@@ -68,11 +68,12 @@ for iEvt = 1:length(uniqueEvt)
     iMrk = find(strcmpi(evtLabel, uniqueEvt{iEvt}));
     % Add event structure
     events(iEvt).label      = uniqueEvt{iEvt};
-    events(iEvt).samples    = unique(round(evtTime(iMrk) .* sFile.prop.sfreq));
-    events(iEvt).times      = events(iEvt).samples ./ sFile.prop.sfreq;
-    events(iEvt).epochs     = ones(1, length(events(iEvt).samples));   
+    events(iEvt).times      = unique(round(evtTime(iMrk) .* sFile.prop.sfreq)) ./ sFile.prop.sfreq;
+    events(iEvt).epochs     = ones(1, length(events(iEvt).times));   
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
 

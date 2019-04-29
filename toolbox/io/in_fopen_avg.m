@@ -42,7 +42,6 @@ sFile.comment = fBase;
 % Time and samples indices
 sFile.prop.times   = linspace(hdr.data.xmin, hdr.data.xmax, hdr.data.pnts + 1);
 sFile.prop.times   = [sFile.prop.times(1), sFile.prop.times(end-1)];
-sFile.prop.samples = round(sFile.prop.times .* sFile.prop.sfreq);
 sFile.prop.nAvg    = hdr.data.acceptcnt;
 % Get bad channels
 sFile.channelflag = ones(length(hdr.electloc),1);

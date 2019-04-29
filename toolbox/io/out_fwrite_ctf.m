@@ -45,14 +45,14 @@ if (nargin < 4) || isempty(ChannelsRange)
 end
 if (nargin < 3) || isempty(SamplesBounds)
     if isContinuous
-        SamplesBounds = sFile.prop.samples + 1;
+        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq) + 1;
         iTimes = SamplesBounds(1):SamplesBounds(2);
     else
         iTimes = 1:nTimes;
         SamplesBounds = [iTimes(1), iTimes(end)];
     end
 else
-    SamplesBounds = double(SamplesBounds - sFile.prop.samples(1) + 1);
+    SamplesBounds = double(SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1);
     iTimes = SamplesBounds(1):SamplesBounds(2);
 end
 % Make sure that everything is stored in double

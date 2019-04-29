@@ -202,7 +202,6 @@ function [sFile, Messages, recType] = Compute(sFile, recType, ChannelMat)
                 iUniqueConditionsTrials(ii) =  iUniqueConditionsTrials(ii)+1;
                 sFile.epochs(iEpoch).label       = [all_conditions{iEpoch} ' (#' num2str(iUniqueConditionsTrials(ii)) ')'];
                 sFile.epochs(iEpoch).times       = timeBoundsTrials(iEpoch,:);
-                sFile.epochs(iEpoch).samples     = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
                 sFile.epochs(iEpoch).nAvg        = nAvg;
                 sFile.epochs(iEpoch).select      = 1;
                 sFile.epochs(iEpoch).bad         = 0;

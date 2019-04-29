@@ -198,7 +198,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % Read channel to process
         if ~isempty(TimeWindow)
-            SamplesBounds = sFile.prop.samples(1) + bst_closest(TimeWindow, DataMat.Time) - 1;
+            SamplesBounds = round(sFile.prop.times(1) .* sFile.prop.sfreq) + bst_closest(TimeWindow, DataMat.Time) - 1;
         else
             SamplesBounds = [];
         end
@@ -240,7 +240,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if ~isempty(iEvt)
                 sEvent = sFile.events(iEvt);
                 sEvent.epochs  = [];
-                sEvent.samples = [];
                 sEvent.times   = [];
                 sEvent.reactTimes = [];
             % Else: create new event
@@ -253,9 +252,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sEvent.color = panel_record('GetNewEventColor', iEvt, sFile.events);
             end
             % Times, samples, epochs
-            sEvent.times   = detectedEvt{i};
-            sEvent.samples = round(sEvent.times .* sFile.prop.sfreq);
-            sEvent.epochs  = ones(1, size(sEvent.times,2));
+            sEvent.times    = detectedEvt{i};
+            sEvent.epochs   = ones(1, size(sEvent.times,2));
+            sEvent.channels = cell(1, size(sEvent.times, 2));
+            sEvent.notes    = cell(1, size(sEvent.times, 2));
             % Add to events structure
             sFile.events(iEvt) = sEvent;
             nEvents = nEvents + 1;

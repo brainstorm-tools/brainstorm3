@@ -146,11 +146,10 @@ if (sFile.header.numEvents >= 1)
 end
 % Get file samples indices
 if ~isempty(sFile.epochs)
-    sFile.prop.samples = [min([sFile.epochs.samples]), max([sFile.epochs.samples])];
+    sFile.prop.times = [min([sFile.epochs.times]), max([sFile.epochs.times])];
 else
-    sFile.prop.samples = [0, header.numSamples - 1];
+    sFile.prop.times = [0, header.numSamples - 1] ./ sFile.prop.sfreq;
 end
-sFile.prop.times = sFile.prop.samples ./ sFile.prop.sfreq;
 % Close data file
 fclose(sfid);
 

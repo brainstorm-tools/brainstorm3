@@ -48,10 +48,11 @@ header.numConvBits   = 0;
 header.ampRange      = 0;
 header.byteformat    = 'real*4';
 header.bytesize      = 4;
-header.numSamples    = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
+fileSamples = round(sFileIn.prop.times .* sFileIn.prop.sfreq);
+header.numSamples    = fileSamples(2) - fileSamples(1) + 1;
 header.numEvents     = length(sFileIn.events);
 header.eventCodes    = {sFileIn.events.label};
-header.epochs_tim0   = sFileIn.prop.samples(1);
+header.epochs_tim0   = fileSamples(1);
 % Copy some values from the original header if possible
 if strcmpi(sFileIn.format, 'EEG-EGI-RAW') && ~isempty(sFileIn.header)
     header.recordingTime = sFileIn.header.recordingTime;
