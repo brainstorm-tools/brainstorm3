@@ -88,11 +88,16 @@ if ~isOk
     file_delete(tmpProtocolDir, 1, 3); %in case of error during unzip.. rollback
     return
 end
+bst_progress('stop');
+
 % Unzip went well. Go ahead and copy to db
+bst_progress('start', 'Load protocol', 'Copying files to database...');
 file_copy(tmpProtocolDir,ProtocolDir);
 file_delete(tmpProtocolDir,1,3); %clean up
+bst_progress('stop');
 
 %% ===== DETECT FOLDERS =====
+bst_progress('start','Load protocol','Parsing protocol info...');
 % Detect anatomy and datasets folders
 subjectFile = file_find(ProtocolDir, 'brainstormsubject*.mat', 3);
 studyFile   = file_find(ProtocolDir, 'brainstormstudy*.mat',   4);
