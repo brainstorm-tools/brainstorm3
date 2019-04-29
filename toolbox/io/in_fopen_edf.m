@@ -356,7 +356,7 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
         % calls epochs records).  So read all annotation channels per epoch.
         for irec = 1:hdr.nrec
             for ichan = 1:length(iEvtChans)
-                bst_progress('text', sprintf('Reading annotations... [%d%%]', round((irec + (ichan-1)*hdr.nrec)/length(iEvtChans)/hdr.nrec*100)));
+                bst_progress('text', sprintf('Reading annotations... [%d%%]', round((ichan + (irec-1)*length(iEvtChans))/length(iEvtChans)/hdr.nrec*100)));
                 % Sample indices for the current epoch (=record)
                 SampleBounds = [irec-1,irec] * sFile.header.signal(iEvtChans(ichan)).nsamples - [0,1];
                 % Read record
@@ -369,12 +369,11 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                 if ichan == 1
                     % Get record time stamp
                     t0_rec = str2double(char(Fsplit{1}));
-                    
                     if (irec == 1)
                         t0_file = t0_rec;
                     % Find discontinuities
                     elseif abs(t0_rec - prev_rec - hdr.reclen) > 1e-8
-                        % Brainstorm fills partial/interrupted records with zeros (?)
+                        % Brainstorm fills partial/interrupted records with zeros
                         bstTime = prev_rec + hdr.reclen;
                         timeDiff = bstTime - t0_rec;
                         % If we want to fix timing, apply skip to initial timestamp
@@ -382,18 +381,21 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                             t0_file = t0_file - timeDiff;
                         end
                         % Warn user of discontinuity
-                        %% Should probably create "EDF discontinuity" events.  Warning may not be necessary.
                         if timeDiff > 0
                             expectMsg = 'blank data';
                         else
                             expectMsg = 'skipped data';
                         end
-                        fprintf('WARNING: Found discontinuity between %.3fs and %.3fs, expect %s in between.\n', min(t0_rec,bstTime), max(t0_rec,bstTime),  expectMsg);
+                        startTime = min(t0_rec, bstTime) - t0_file;
+                        endTime  = max(t0_rec, bstTime) - t0_file;
+                        fprintf('WARNING: Found discontinuity between %.3fs and %.3fs, expect %s in between.\n', startTime, endTime, expectMsg);
+                        % Create event for users information
+                        evtList(end+1,:) = {'EDF+D Discontinuity', [startTime; endTime]};
                     end
                     prev_rec = t0_rec;
                 end
                 
-                %% This needs further fixing.  There can be multiple text annotations (separated by 20) for a single onset/duration.
+                %% FIXME: There can be multiple text annotations (separated by 20) for a single onset/duration.
                 %% The zero characters should not be removed above as they delimit the TALs (Time-stamped Annotations Lists)
                 % If there is an initial time: 3 values (ex: "+44.00000+44.47200Event1Event2)
                 if (mod(length(Fsplit),2) == 1) && (length(Fsplit) >= 3)
