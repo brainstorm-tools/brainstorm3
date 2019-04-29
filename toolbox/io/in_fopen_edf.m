@@ -386,10 +386,13 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                         else
                             expectMsg = 'skipped data';
                         end
-                        startTime = min(t0_rec, bstTime) - t0_file;
-                        endTime  = max(t0_rec, bstTime) - t0_file;
+                        startTime = min(t0_rec - t0_file - [0, timeDiff]); % before and after t0_file adjustment
+                        endTime  = max(t0_rec - t0_file - [0, timeDiff]);
                         fprintf('WARNING: Found discontinuity between %.3fs and %.3fs, expect %s in between.\n', startTime, endTime, expectMsg);
                         % Create event for users information
+                        if timeDiff < 0
+                            endTime = startTime; % no extent in this case, there is skipped time.
+                        end
                         evtList(end+1,:) = {'EDF+D Discontinuity', [startTime; endTime]};
                     end
                     prev_rec = t0_rec;
