@@ -19,7 +19,7 @@ function out_fwrite_egi(sFile, sfid, SamplesBounds, ChannelsRange, F)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2019
 
 % ===== PARSE INPUTS =====
 nChannels = double(sFile.header.numChans);
@@ -53,7 +53,7 @@ if isSaveAll
     % Create events matrix
     Fevt = zeros(nEvents, size(F,2));
     for iEvt = 1:nEvents
-        evtSmp = round(sFile.events(iEvt).times .* sFile.prop.sfreq) - SamplesBounds(1) + 1;
+        evtSmp = round((sFile.events(iEvt).times - sFile.prop.times(1)) .* sFile.prop.sfreq) - SamplesBounds(1) + 1;
         % Extended events
         if (size(evtSmp,1) == 2)
             extSmpEvt = [];

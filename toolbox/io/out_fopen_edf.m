@@ -129,20 +129,16 @@ header.nrec = ceil(header.nrec / header.reclen);
     maxAnnotLength     = 0;
     
     for iEvt = 1:numel(sFileIn.events)
-        event       = sFileIn.events(iEvt);
-        hasDuration = numel(event.epochs) ~= numel(event.times);
+        event = sFileIn.events(iEvt);
+        % EDF file start at 0s: removed the start file time
+        event.times = event.times - sFileIn.prop.times(1);
         
-        for iEpc = 1:numel(event.epochs)
-            if hasDuration
-                startTime = event.times(2 * iEpc - 1);
-            else
-                startTime = event.times(iEpc);
-            end
-            
+        for iEpc = 1:length(event.epochs)
+            startTime = event.times(1,iEpc);
             annot = sprintf('+%f', startTime);
             
-            if hasDuration
-                duration = event.times(2 * iEpc) - startTime;
+            if (size(event.times,1) == 2)
+                duration = event.times(2,iEpc) - startTime;
                 annot    = [annot, sprintf('%c%f', char(21), duration)];
             end
             

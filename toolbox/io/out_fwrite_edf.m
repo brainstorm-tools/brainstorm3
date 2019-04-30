@@ -20,6 +20,7 @@ function out_fwrite_edf(sFile, sfid, SamplesBounds, ChannelsRange, F)
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2017
+%          Francois Tadel, 2019
 
 % ===== PARSE INPUTS =====
 [nSignals, nSamples] = size(F);
