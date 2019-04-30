@@ -31,7 +31,7 @@ function out_fwrite_bst(sFile, sfid, SamplesBounds, ChannelsRange, F)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2019
 
 
 %% ===== PARSE INPUTS =====

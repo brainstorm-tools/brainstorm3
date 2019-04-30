@@ -2120,7 +2120,7 @@ function EventOccurAdd(iEvent)
     sEvent.epochs   = [sEvent.epochs, iEpoch];
     sEvent.times    = [sEvent.times, newTime'];
     sEvent.channels = [sEvent.channels, {{}}];
-    sEvent.notes    = [sEvent.notes, {{}}];
+    sEvent.notes    = [sEvent.notes, {[]}];
     % Sort based on the beginning of each event
     [tmp__, indSort] = sortrows([sEvent.epochs; sEvent.times(1,:)]');
     sEvent.times    = sEvent.times(:,indSort);
