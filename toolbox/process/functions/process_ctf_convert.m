@@ -191,16 +191,12 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
                 % Get the times to remove
                 tRemoved = sFile.events(iEvt).times(1,iDouble);
                 % Remove the events occurrences
-                sFile.events(iEvt).times(:,iDouble)   = [];
-                sFile.events(iEvt).epochs(:,iDouble)  = [];
+                sFile.events(iEvt).times(:,iDouble)  = [];
+                sFile.events(iEvt).epochs(:,iDouble) = [];
+                sFile.events(iEvt).channels(iDouble) = [];
+                sFile.events(iEvt).notes(iDouble)    = [];
                 if ~isempty(sFile.events(iEvt).reactTimes)
                     sFile.events(iEvt).reactTimes(iDouble) = [];
-                end
-                if isfield(sFile.events(iEvt), 'channels') && (size(sFile.events(iEvt).channels, 2) == size(sFile.events(iEvt).times, 2))
-                    sFile.events(iEvt).channels(iDouble) = [];
-                end
-                if isfield(sFile.events(iEvt), 'notes') && (size(sFile.events(iEvt).notes, 2) == size(sFile.events(iEvt).times, 2))
-                    sFile.events(iEvt).notes(iDouble) = [];
                 end
                 % Display message
                 Messages = [Messages, 10, 'Removed ' num2str(length(iDouble)) ' x "' sFile.events(iEvt).label, '": ', sprintf('%1.3fs ', tRemoved)];

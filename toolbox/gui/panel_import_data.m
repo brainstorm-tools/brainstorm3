@@ -1065,14 +1065,10 @@ function s = GetPanelContents() %#ok<DEFNU>
         s.events = ctrl.sFile.events(iSelEvents);
         % Keep only the occurrences selected by the user
         for iEvent = 1:length(s.events)
-            s.events(iEvent).epochs = s.events(iEvent).epochs(iSelSmp{iEvent});
-            s.events(iEvent).times  = s.events(iEvent).times(:, iSelSmp{iEvent});
-            if isfield(s.events(iEvent), 'channels') && (size(s.events(iEvent).channels, 2) == size(s.events(iEvent).times, 2))
-                s.events(iEvent).channels = s.events(iEvent).channels(iSelSmp{iEvent});
-            end
-            if isfield(s.events(iEvent), 'notes') && (size(s.events(iEvent).notes, 2) == size(s.events(iEvent).notes, 2))
-                s.events(iEvent).notes = s.events(iEvent).notes(iSelSmp{iEvent});
-            end
+            s.events(iEvent).epochs   = s.events(iEvent).epochs(iSelSmp{iEvent});
+            s.events(iEvent).times    = s.events(iEvent).times(:, iSelSmp{iEvent});
+            s.events(iEvent).channels = s.events(iEvent).channels(iSelSmp{iEvent});
+            s.events(iEvent).notes    = s.events(iEvent).notes(iSelSmp{iEvent});
         end
         % Import mode
         s.ImportMode = 'Event';

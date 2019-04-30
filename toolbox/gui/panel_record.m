@@ -1432,16 +1432,12 @@ function events = GetEventsInTimeWindow(hFig) %#ok<DEFNU>
             iOccur = find((eTime(2,:) > Time(1)) & (eTime(1,:) < Time(2)));
         end
         % Else keep only the occurrences in time window
-        events(iEvt).times      = events(iEvt).times(:,iOccur);
-        events(iEvt).epochs     = events(iEvt).epochs(iOccur);
+        events(iEvt).times    = events(iEvt).times(:,iOccur);
+        events(iEvt).epochs   = events(iEvt).epochs(iOccur);
+        events(iEvt).channels = events(iEvt).channels(iOccur);
+        events(iEvt).notes    = events(iEvt).notes(iOccur);
         if ~isempty(events(iEvt).reactTimes)
             events(iEvt).reactTimes = events(iEvt).reactTimes(iOccur);
-        end
-        if isfield(events(iEvt), 'channels') && (size(events(iEvt).channels, 2) == size(events(iEvt).times, 2))
-            events(iEvt).channels = events(iEvt).channels(iOccur);
-        end
-        if isfield(events(iEvt), 'notes') && (size(events(iEvt).notes, 2) == size(events(iEvt).notes, 2))
-            events(iEvt).notes = events(iEvt).notes(iOccur);
         end
     end
 end
@@ -1559,16 +1555,12 @@ function [events, iEvent] = GetEvents(target, isIgnoreEpoch, hFig)
     if isRaw && ~isIgnoreEpoch && isfield(GlobalData.DataSet(iDS).Measures.sFile, 'epochs') && (length(GlobalData.DataSet(iDS).Measures.sFile.epochs) > 1)
         for i = 1:length(events)
             iOkEpochs = (events(i).epochs == GlobalData.FullTimeWindow.CurrentEpoch);
-            events(i).times      = events(i).times(:,iOkEpochs);
-            events(i).epochs     = events(i).epochs(iOkEpochs);
+            events(i).times    = events(i).times(:,iOkEpochs);
+            events(i).epochs   = events(i).epochs(iOkEpochs);
+            events(i).channels = events(i).channels(iOkEpochs);
+            events(i).notes    = events(i).notes(iOkEpochs);
             if ~isempty(events(i).reactTimes)
                 events(i).reactTimes = events(i).reactTimes(iOkEpochs);
-            end
-            if isfield(events(i), 'channels') && (size(events(i).channels, 2) == size(events(i).times, 2))
-                events(i).channels = events(i).channels(iOkEpochs);
-            end
-            if isfield(events(i), 'notes') && (size(events(i).notes, 2) == size(events(i).notes, 2))
-                events(i).notes = events(i).notes(iOkEpochs);
             end
         end
     end
@@ -1870,37 +1862,25 @@ function EventTypesMerge()
     
     % Inialize new event group
     newEvent = events(iEvents(1));
-    newEvent.label  = newLabel;
-    newEvent.times  = [events(iEvents).times];
-    newEvent.epochs = [events(iEvents).epochs];
+    newEvent.label    = newLabel;
+    newEvent.times    = [events(iEvents).times];
+    newEvent.epochs   = [events(iEvents).epochs];
+    newEvent.channels = [events(iEvents).channels];
+    newEvent.notes    = [events(iEvents).notes];
     % Reaction time, notes, channels: only if all the events have them
     if all(~cellfun(@isempty, {events(iEvents).reactTimes}))
         newEvent.reactTimes = [events(iEvents).reactTimes];
     else
         newEvent.reactTimes = [];
     end
-    if isfield(events(iEvents(1)), 'channels') && (size(events(iEvents(1)).channels, 2) == size(events(iEvents(1)).times, 2)) && all(~cellfun(@isempty, {events(iEvents).channels}))
-        newEvent.channels = [events(iEvents).channels];
-    else
-        newEvent.channels = [];
-    end
-    if isfield(events(iEvents(1)), 'notes') && (size(events(iEvents(1)).notes, 2) == size(events(iEvents(1)).times, 2)) && all(~cellfun(@isempty, {events(iEvents).notes}))
-        newEvent.notes = [events(iEvents).notes];
-    else
-        newEvent.notes = [];
-    end
     % Sort by samples indices, and remove redundant values
     [tmp__, iSort] = unique(bst_round(newEvent.times(1,:), 9));
-    newEvent.times   = newEvent.times(:,iSort);
-    newEvent.epochs  = newEvent.epochs(iSort);
+    newEvent.times    = newEvent.times(:,iSort);
+    newEvent.epochs   = newEvent.epochs(iSort);
+    newEvent.channels = newEvent.channels(iSort);
+    newEvent.notes    = newEvent.notes(iSort);
     if ~isempty(newEvent.reactTimes)
         newEvent.reactTimes = newEvent.reactTimes(iSort);
-    end
-    if (size(newEvent.channels, 2) == size(newEvent.times, 2))
-        newEvent.channels = newEvent.channels(iSort);
-    end
-    if (size(newEvent.notes, 2) == size(newEvent.times, 2))
-        newEvent.notes = newEvent.notes(iSort);
     end
     
     % Remove merged events
@@ -2137,26 +2117,20 @@ function EventOccurAdd(iEvent)
     end
     
     % Add event: time
-    sEvent.epochs = [sEvent.epochs, iEpoch];
-    sEvent.times  = [sEvent.times, newTime'];
-    
+    sEvent.epochs   = [sEvent.epochs, iEpoch];
+    sEvent.times    = [sEvent.times, newTime'];
+    sEvent.channels = [sEvent.channels, {{}}];
+    sEvent.notes    = [sEvent.notes, {{}}];
     % Sort based on the beginning of each event
     [tmp__, indSort] = sortrows([sEvent.epochs; sEvent.times(1,:)]');
-    sEvent.times = sEvent.times(:,indSort);
-    sEvent.epochs = sEvent.epochs(indSort);
+    sEvent.times    = sEvent.times(:,indSort);
+    sEvent.epochs   = sEvent.epochs(indSort);
+    sEvent.channels = sEvent.channels(indSort);
+    sEvent.notes    = sEvent.notes(indSort);
     % Add event: reactTime (only if there are already reaction times)
     if ~isempty(sEvent.reactTimes)
         sEvent.reactTimes = [sEvent.reactTimes, 0];
         sEvent.reactTimes = sEvent.reactTimes(indSort);
-    end
-    % Channels and notes
-    if isfield(sEvent, 'channels') && (size(sEvent.channels, 2) == size(sEvent.times, 2))
-        sEvent.channels = [sEvent.channels, {{}}];
-        sEvent.channels = sEvent.channels(indSort);
-    end
-    if isfield(sEvent, 'notes') && (size(sEvent.notes, 2) == size(sEvent.times, 2))
-        sEvent.notes = [sEvent.notes, {{}}];
-        sEvent.notes = sEvent.notes(indSort);
     end
     
     % Update dataset
@@ -2204,17 +2178,12 @@ function EventOccurDel(iEvent, iOccursEpoch)
     end
     
     % Remove event occurrences
-    sEvent.times(:,iOccurs) = [];
-    sEvent.epochs(iOccurs)  = [];
+    sEvent.times(:,iOccurs)  = [];
+    sEvent.epochs(iOccurs)   = [];
+    sEvent.channels(iOccurs) = [];
+    sEvent.notes(iOccurs)    = [];
     if ~isempty(sEvent.reactTimes)
         sEvent.reactTimes(iOccurs) = [];
-    end
-    % Channels and notes
-    if isfield(sEvent, 'channels') && (size(sEvent.channels, 2) == size(sEvent.times, 2))
-        sEvent.channels(iOccurs) = [];
-    end
-    if isfield(sEvent, 'notes') && (size(sEvent.notes, 2) == size(sEvent.times, 2))
-        sEvent.notes(iOccurs) = [];
     end
     % Update dataset
     SetEvents(sEvent, iEvent);
@@ -2312,16 +2281,12 @@ function ExportSelectedEvents()
     % Export a few occurrences of a given event type
     if (length(iEvt) == 1) && ~isempty(iOcc)
         sFileTmp.events = sFileTmp.events(iEvt);
-        sFileTmp.events.times   = sFileTmp.events.times(:,iOcc);
-        sFileTmp.events.epochs  = sFileTmp.events.epochs(:,iOcc);
+        sFileTmp.events.times    = sFileTmp.events.times(:,iOcc);
+        sFileTmp.events.epochs   = sFileTmp.events.epochs(:,iOcc);
+        sFileTmp.events.channels = sFileTmp.events.channels(iOcc);
+        sFileTmp.events.notes    = sFileTmp.events.notes(iOcc);
         if ~isempty(sFileTmp.events.reactTimes)
             sFileTmp.events.reactTimes = sFileTmp.events.reactTimes(iOcc);
-        end
-        if isfield(sFileTmp.events, 'channels') && (size(sFileTmp.events.channels, 2) == size(sFileTmp.events.times, 2))
-            sFileTmp.events.channels = sFileTmp.events.channels(iOcc);
-        end
-        if isfield(sFileTmp.events, 'notes') && (size(sFileTmp.events.notes, 2) == size(sFileTmp.events.notes, 2))
-            sFileTmp.events.notes = sFileTmp.events.notes(iOcc);
         end
     else
         sFileTmp.events = sFileTmp.events(iEvt);
@@ -2813,16 +2778,12 @@ function events = ChangeTimeVector(events, OldFreq, NewTime) %#ok<DEFNU>
         end
         % Remove those outsiders
         if ~isempty(iOut)
-            events(iEvt).times(:,iOut) = [];
-            events(iEvt).epochs(iOut)  = [];
+            events(iEvt).times(:,iOut)  = [];
+            events(iEvt).epochs(iOut)   = [];
+            events(iEvt).channels(iOut) = [];
+            events(iEvt).notes(iOut)    = [];
             if ~isempty(events(iEvt).reactTimes)
                 events(iEvt).reactTimes(iOut) = [];
-            end
-            if isfield(events(iEvt), 'channels') && (size(events(iEvt).channels, 2) == size(events(iEvt).times, 2))
-                events(iEvt).channels(iOut) = [];
-            end
-            if isfield(events(iEvt), 'notes') && (size(events(iEvt).notes, 2) == size(events(iEvt).times, 2))
-                events(iEvt).notes(iOut) = [];
             end
         end
         % Ignore empty events
