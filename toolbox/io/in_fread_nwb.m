@@ -1,5 +1,5 @@
 function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isContinuous)
-% IN_FREAD_INTAN Read a block of recordings from nwb files
+% IN_FREAD_NWB Read a block of recordings from nwb files
 %
 % USAGE:  F = in_fread_nwb(sFile, SamplesBounds=[], iChannels=[])
 

@@ -389,6 +389,9 @@ if ~isempty(PntFile)
     hdr.starttime = sprintf('%02d:%02d:%02d', numDate(4), numDate(5), numDate(6));
     % Close file
     fclose(fid);
+else
+    hdr.startdate = [];
+    hdr.starttime = [];
 end
 
 

@@ -120,7 +120,7 @@ sFile.condition = [];
 sFile.epochs = repmat(db_template('epoch'), 1, nEpochs);
 for i = 1:nEpochs
     % 1 timestamp = 1 millisecond
-    sFile.epochs(i).times   = round((double(hdr.Headers(i).starttime) ./ 1000 .* sfreq)) + [0, double(hdr.Headers(i).duration)-1] ./ sfreq;
+    sFile.epochs(i).times   = round((double(hdr.Headers(i).starttime) + [0, double(hdr.Headers(i).duration)-1]) ./ 1000 .* sfreq)  ./ sfreq;
     sFile.epochs(i).label   = sprintf('Trial #%d', i);
     sFile.epochs(i).nAvg    = 1;
     sFile.epochs(i).select  = 1;
@@ -128,7 +128,7 @@ for i = 1:nEpochs
 end
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = sfreq;
-sFile.prop.times   = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
+sFile.prop.times   = [min([sFile.epochs.times]), max([sFile.epochs.times])];
 sFile.prop.nAvg    = 1;
 % No info about bad channels
 sFile.channelflag = ones(nChannels, 1);
