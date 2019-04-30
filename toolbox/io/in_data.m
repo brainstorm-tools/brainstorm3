@@ -426,10 +426,12 @@ if isRaw
             end
             % Add new event category in the output file
             iEvtData = length(DataMat.Events) + 1;
-            DataMat.Events(iEvtData).label   = sFile.events(iEvt).label;
-            DataMat.Events(iEvtData).color   = sFile.events(iEvt).color;
-            DataMat.Events(iEvtData).times   = newEvtTimes;
-            DataMat.Events(iEvtData).epochs  = sFile.events(iEvt).epochs(iOccur);
+            DataMat.Events(iEvtData).label    = sFile.events(iEvt).label;
+            DataMat.Events(iEvtData).color    = sFile.events(iEvt).color;
+            DataMat.Events(iEvtData).times    = newEvtTimes;
+            DataMat.Events(iEvtData).epochs   = sFile.events(iEvt).epochs(iOccur);
+            DataMat.Events(iEvtData).channels = sFile.events(iEvt).channels(iOccur);
+            DataMat.Events(iEvtData).notes    = sFile.events(iEvt).notes(iOccur);
             if ~isempty(sFile.events(iEvt).reactTimes)
                 DataMat.Events(iEvtData).reactTimes = sFile.events(iEvt).reactTimes(iOccur);
             end
