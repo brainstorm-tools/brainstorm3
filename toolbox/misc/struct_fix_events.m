@@ -24,10 +24,10 @@ function sEvents = struct_fix_events(sEvents)
 isWarning = 1;
 
 % Compare with template structure
-sTemplate = repmat(db_template('event'), 1, length(sEvents));
+sTemplate = db_template('event');
 % If empty, return the template
 if isempty(sEvents)
-    sEvents = sTemplate;
+    sEvents = repmat(sTemplate, 1, 0);
     return;
 end
 % If the list of fields is different: fix the structure

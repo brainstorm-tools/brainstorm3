@@ -21,7 +21,7 @@ function varargout = process_evt_remove_simult( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2019
 
 eval(macro_method);
 end
@@ -103,7 +103,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             continue;
         end
         % Call the detection function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, evtA, evtB, dt, isDelete, sFile.prop.sfreq);
+        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, evtA, evtB, dt, isDelete);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change

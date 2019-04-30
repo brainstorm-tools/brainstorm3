@@ -21,7 +21,7 @@ function varargout = process_evt_groupname( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2015
+% Authors: Francois Tadel, 2013-2019
 
 eval(macro_method);
 end
@@ -149,7 +149,7 @@ end
 
 
 %% ===== GROUP EVENTS =====
-function [eventsNew, isModified] = Compute(sInput, events, combineCell, dt, isDelete, sfreq)
+function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDelete, sfreq)
     % No modification
     isModified = 0;
     eventsNew = events;

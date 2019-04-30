@@ -170,6 +170,7 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, ...
         end
         return;
     end
+    fileSamplesIn = round(sFileIn.prop.times .* sFileIn.prop.sfreq);
     
     % Read block (no need to read bad blocks if we skip them).
     sInput.A = in_fread(sFileIn, ChannelMat, 1, SamplesBounds);
