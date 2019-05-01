@@ -1174,7 +1174,7 @@ switch contextName
         
         
 %% ==== CHANNEL FILE FOR STUDY ====
-    % Usage: [ChannelFile] = bst_get('ChannelFileForStudy', StudyFile/DataFile)
+    % Usage: [ChannelFile, sStudy, iStudy] = bst_get('ChannelFileForStudy', StudyFile/DataFile)
     case 'ChannelFileForStudy'
         % Parse inputs
         if (nargin == 2)
@@ -1191,6 +1191,8 @@ switch contextName
         sChannel = bst_get('ChannelForStudy', iStudy);
         if ~isempty(sChannel)
             argout1 = sChannel.FileName;
+            argout2 = sStudy;
+            argout3 = iStudy;
         else
             argout1 = [];
         end
