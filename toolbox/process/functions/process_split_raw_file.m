@@ -88,12 +88,12 @@ function sOutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Reconstruct removed field "samples" (this event structure should not be added again to the sFile structure)
     sEvent.samples = round(sEvent.times .* sFile.prop.sfreq);
     % Make sure required samples are within range
-    if any(or(sEvent.times(:) < sFileIn.prop.times(1), sEvent.times(:) > sFileIn.prop.times(2)))
+    fileSamplesIn = round(sFileIn.prop.times .* sFileIn.prop.sfreq);
+    if any(or(sEvent.samples(:) < fileSamplesIn(1), sEvent.samples(:) > fileSamplesIn(2)))
         bst_report('Error', sProcess, sInput, ['Event time(s) are not all within the range of the input file: ' ...
-            '[' num2str(sFileIn.prop.times(1)+1) 's - ' num2str(sFileIn.prop.times(2)+1) 's].']);
+            '[' num2str(sFileIn.prop.times(1)) 's - ' num2str(sFileIn.prop.times(2)) 's].']);
         return;
     end
-    fileSamplesIn = round(sFileIn.prop.times .* sFileIn.prop.sfreq);
     [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(sEvent, ...
         fileSamplesIn, sFileIn.prop.times, keepBadSegments);
     % SampleTargets are "file/event samples", often starting at 0, not 1.
@@ -212,14 +212,15 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, ...
         sOutMat = sMat;
         sOutMat.Time = sFileTemplate.prop.times;
         sOutMat.F = sFileOut;
+        fileSamplesOut = round(sOutMat.F.prop.times .* sOutMat.F.prop.sfreq);
         % Remove events out of bounds
         for iEvent = 1:length(sOutMat.F.events)
             if isempty(sOutMat.F.events(iEvent).times)
                 continue
             end
             % Compare with samples to avoid precision errors on times.
-            iKeepEvents = find(and(sOutMat.F.events(iEvent).times(1,:) >= sOutMat.F.prop.times(1), ...
-                sOutMat.F.events(iEvent).times(end,:) <= sOutMat.F.prop.times(2)));
+            iKeepEvents = find(and(round(sOutMat.F.events(iEvent).times(1,:) * sOutMat.F.prop.sfreq) >= fileSamplesOut(1), ...
+                round(sOutMat.F.events(iEvent).times(end,:) * sOutMat.F.prop.sfreq) <= fileSamplesOut(2)));
             sOutMat.F.events(iEvent).epochs = sOutMat.F.events(iEvent).epochs(iKeepEvents);
             sOutMat.F.events(iEvent).times = sOutMat.F.events(iEvent).times(:,iKeepEvents);
             if ~isempty(sOutMat.F.events(iEvent).reactTimes)
@@ -249,7 +250,7 @@ end
 function [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(...
     sEvent, InputSamples, InputTimes, keepBadSegments, badSegmentPrefix)
   % The samples returned by this function are "file/event samples", based
-  % on sFileIn.prop.samples.  E.g. most times the first sample is 0, not 1.
+  % on sFileIn.prop.times.  E.g. most times the first sample is 0, not 1.
     if nargin < 5 || isempty(badSegmentPrefix)
         badSegmentPrefix = 'bad';
     end
