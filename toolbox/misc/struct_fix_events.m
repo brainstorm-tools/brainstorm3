@@ -1,4 +1,4 @@
-function sEvents = struct_fix_events(sEvents)
+function [sEvents, isModified] = struct_fix_events(sEvents)
 % STRUCT_FIX_EVENTS: Fix events structures with latest prototype
 
 % @=============================================================================
@@ -21,7 +21,7 @@ function sEvents = struct_fix_events(sEvents)
 %
 % Authors: Francois Tadel, 2019
 
-isWarning = 1;
+isModified = 0;
 
 % Compare with template structure
 sTemplate = db_template('event');
@@ -39,7 +39,7 @@ if ~isequal(fieldnames(sTemplate), fieldnames(sEvents))
         disp('BST> Warning: Reordering fields in events structure...');
     end
     sEvents = struct_fix(sTemplate, sEvents);
-    isWarning = 0;
+    isModified = 1;
 end
 % Fix the dimensions of all the fields
 for iEvt = 1:length(sEvents)
@@ -47,15 +47,19 @@ for iEvt = 1:length(sEvents)
     if ~isempty(sEvents(iEvt).reactTimes) && (length(sEvents(iEvt).reactTimes) ~= nOcc)
         sEvents(iEvt).reactTimes = [];
     end
-    if (length(sEvents(iEvt).channels) ~= nOcc)
+    if (length(sEvents(iEvt).channels) ~= nOcc) || ((nOcc >= 1) && ~iscell(sEvents(iEvt).channels))
         sEvents(iEvt).channels = cell(1, nOcc);
-        if isWarning
-            disp('BST> Fixed events structure: Wrong number of elements in field "channels".');
-            isWarning = 0;
+        if ~isModified
+            disp('BST> Fixed events structure: Wrong number or type of elements in field "channels".');
+            isModified = 1;
         end
     end
-    if (length(sEvents(iEvt).notes) ~= nOcc)
+    if (length(sEvents(iEvt).notes) ~= nOcc) || ((nOcc >= 1) && ~iscell(sEvents(iEvt).notes))
         sEvents(iEvt).notes = cell(1, nOcc);
+        if ~isModified
+            disp('BST> Fixed events structure: Wrong number or type of elements in field "notes".');
+            isModified = 1;
+        end
     end
 end
 

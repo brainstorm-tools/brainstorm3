@@ -139,13 +139,22 @@ end
 % ===== FIX EVENTS STRUCTURES =====
 % Imported file
 if isfield(DataMat, 'Events') && ~isempty(DataMat.Events)
-    DataMat.Events = struct_fix_events(DataMat.Events);
+    [DataMat.Events, isModified] = struct_fix_events(DataMat.Events);
+    % Update file if it was modified
+    if isModified
+        UpdateMat.Events = DataMat.Events;
+        bst_save(DataFileFull, UpdateMat, 'v6', 1);
+    end
 end
 % Link to raw file
 if isfield(DataMat, 'F') && ~isempty(DataMat.F) && isstruct(DataMat.F) && isfield(DataMat.F, 'events') && ~isempty(DataMat.F.events)
-    DataMat.F.events = struct_fix_events(DataMat.F.events);
+    [DataMat.F.events, isModified] = struct_fix_events(DataMat.F.events);
+    % Update file if it was modified
+    if isModified
+        UpdateMat.F = DataMat.F;
+        bst_save(DataFileFull, UpdateMat, 'v6', 1);
+    end
 end
-
 
 
 
