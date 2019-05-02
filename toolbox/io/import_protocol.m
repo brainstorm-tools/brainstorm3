@@ -76,7 +76,6 @@ end
 % Progress bar
 bst_progress('start', 'Load protocol', 'Unzipping file...');
 % Create output folder
-
 if ~mkdir(tmpProtocolDir)
     bst_error(['Could not create folder: ' tmpProtocolDir], 'Load protocol', 0);
     return
