@@ -56,12 +56,16 @@ while any(strcmpi({GlobalData.DataBase.ProtocolInfo.Comment}, ProtocolName))
 end
 % Build protocol folder
 ProtocolDir = bst_fullfile(BrainstormDbDir, ProtocolName);
+% Build temp protocol folder
+tmpProtocolDir = bst_fullfile(tmpDir,ProtocolName);
+
 % Check if folder already exist
 if file_exist(ProtocolDir)
     bst_error(sprintf(['Folder ''%s'' already exists in database.' 10 ...
                        'Please rename the zip file before importing it.'], ProtocolDir), 'Load protocol', 0);     
     return;
 end
+
 % Build tmp protocol folder
 tmpProtocolDir = bst_fullfile(BrainstormDbDir,[tmpPrefix ProtocolName]);
 if file_exist(tmpProtocolDir) 
@@ -72,6 +76,7 @@ end
 % Progress bar
 bst_progress('start', 'Load protocol', 'Unzipping file...');
 % Create output folder
+
 if ~mkdir(tmpProtocolDir)
     bst_error(['Could not create folder: ' tmpProtocolDir], 'Load protocol', 0);
     return
@@ -90,7 +95,9 @@ if ~movefile(tmpProtocolDir,ProtocolDir,'f')
   return
 end
 
+
 %% ===== DETECT FOLDERS =====
+bst_progress('text', 'Parsing protocol info...');
 % Detect anatomy and datasets folders
 subjectFile = file_find(ProtocolDir, 'brainstormsubject*.mat', 3);
 studyFile   = file_find(ProtocolDir, 'brainstormstudy*.mat',   4);
