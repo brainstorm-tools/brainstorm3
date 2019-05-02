@@ -238,7 +238,7 @@ if are_there_spikes
 
                     events(last_event_index).color      = rand(1,3);
                     events(last_event_index).epochs     = ones(1,length(SpikesOfThatNeuronOnChannel_Indices));
-                    events(last_event_index).times      = round(events(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).ts(SpikesOfThatNeuronOnChannel_Indices)' .* general_sampling_rate) ./ general_sampling_rate;
+                    events(last_event_index).times      = round(events(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).ts(SpikesOfThatNeuronOnChannel_Indices)' .* general_sampling_rate)) ./ general_sampling_rate;
                     events(last_event_index).reactTimes = [];
                     events(last_event_index).select     = 1;
                     events(last_event_index).channels   = cell(1, size(events(last_event_index).times, 2));
