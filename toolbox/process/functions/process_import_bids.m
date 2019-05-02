@@ -72,6 +72,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.groupsessions.Comment = 'Import multiple anat sessions to the same subject';
     sProcess.options.groupsessions.Type    = 'checkbox';
     sProcess.options.groupsessions.Value   = 1;
+    % Compute BEM surfaces
+    sProcess.options.bem.Comment = 'Generate BEM skull surfaces (recommended for ECoG)';
+    sProcess.options.bem.Type    = 'checkbox';
+    sProcess.options.bem.Value   = 1;
     % Register anatomy
     sProcess.options.anatregister.Comment = {'SPM12', 'No', 'Coregister anatomical volumes:'; ...
                                              'spm12', 'no', ''};
@@ -103,14 +107,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid number of vertices.');
         return;
     end
-    % Channels align
-    OPTIONS.ChannelAlign = 2 * double(sProcess.options.channelalign.Value);
-    % Subject selection
+    % Other options
+    OPTIONS.ChannelAlign     = 2 * double(sProcess.options.channelalign.Value);
     OPTIONS.SelectedSubjects = strtrim(str_split(sProcess.options.selectsubj.Value, ','));
-    % Group sessions
-    OPTIONS.isGroupSessions = sProcess.options.groupsessions.Value;
-    % Register anatomical volumes
-    OPTIONS.RegisterMethod = sProcess.options.anatregister.Value;
+    OPTIONS.isGroupSessions  = sProcess.options.groupsessions.Value;
+    OPTIONS.isGenerateBem    = sProcess.options.bem.Value;
+    OPTIONS.RegisterMethod   = sProcess.options.anatregister.Value;
     
     % === IMPORT DATASET ===
     % Import dataset
@@ -147,6 +149,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         'ChannelAlign',     0, ...
         'SelectedSubjects', [], ...
         'isGroupSessions',  1, ...
+        'isGenerateBem',    1, ...
         'RegisterMethod',   'spm12');
     OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 
@@ -394,7 +397,10 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             % Import first MRI
             BstMriFile = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractiveAnat, 0);
             if isempty(BstMriFile)
-                errorMsg = ['Could not load MRI file: ' SubjectMriFiles{iSubj}];
+                if ~isempty(errorMsg)
+                    errorMsg = [errorMsg, 10];
+                end
+                errorMsg = [errorMsg, 'Could not load MRI file: ', SubjectMriFiles{iSubj}];
             % Compute additional files
             else
                 % If there was no segmentation imported before: normalize and create head surface
@@ -435,6 +441,21 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         end
                     end
                 end
+            end
+        end
+        % Compute BEM skull surfaces
+        if ~isSkipAnat && OPTIONS.isGenerateBem
+            sFiles = bst_process('CallProcess', 'process_generate_bem', [], [], ...
+                'subjectname', SubjectName{iSubj}, ...
+                'nscalp',      1922, ...
+                'nouter',      1922, ...
+                'ninner',      1922, ...
+                'thickness',   4);
+            if isempty(sFiles)
+                if ~isempty(errorMsg)
+                    errorMsg = [errorMsg, 10];
+                end
+                errorMsg = [errorMsg, 'Could not generate BEM surfaces for subject: ', SubjectName{iSubj}];
             end
         end
         % Error handling
@@ -617,7 +638,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         % For all the loaded files
                         for iRaw = 1:length(newFiles)
                             % Get channel file
-                            ChannelFile = bst_get('ChannelFileForStudy', newFiles{iRaw});
+                            [ChannelFile, sStudy, iStudy] = bst_get('ChannelFileForStudy', newFiles{iRaw});
                             % Load channel file
                             ChannelMat = in_bst_channel(ChannelFile);
                             % Get current list of good/bad channels
@@ -653,7 +674,11 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                             end
                             % Save channel file modifications
                             if isModifiedChan
+                                % Update channel file
                                 bst_save(file_fullpath(ChannelFile), ChannelMat, 'v7');
+                                % Update database
+                                [sStudy.Channel.Modalities, sStudy.Channel.DisplayableSensorTypes] = channel_get_modalities(ChannelMat.Channel);
+                                bst_set('Study', iStudy, sStudy);
                             end
                             % Save data file modifications
                             if isModifiedData
