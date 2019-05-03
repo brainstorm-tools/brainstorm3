@@ -66,7 +66,7 @@ F = zeros(nChannels, nSamples);
 % Get the Intracranial signals
 iEEG = 0;
 for iChannel = 1:nChannels
-    if strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'EEG') 
+    if strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'EEG') || strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'SEEG')
         iEEG = iEEG + 1;
         
         if ~isempty(sFile.header.RawKey)
