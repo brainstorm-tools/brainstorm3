@@ -1,5 +1,18 @@
 function db_update(LatestDbVersion, sProtocol)
-% DB_UPDATESTRUCTURE: Updates any existing Brainstorm database to the current database structure.
+% DB_UPDATE: Updates any existing Brainstorm database to the current database structure.
+% 
+% USAGE:  db_update(LatestDbVersion);              % Updates all the protocols of the database loaded in GlobalData
+%         db_update(LatestDbVersion, sProtocol);   % Updates a specific protocol
+% 
+% INPUT:
+%     - LatestDbVersion : The latest version number of the database structure
+%     - sProtocol : Protocol structure, with the following fields (some fields are ignored, depending on the action)
+%          |- Comment  : Name of the protocol
+%          |- SUBJECTS : Directory that contains the anatomies of the subjects (MRI + surfaces)
+%          |- STUDIES  : Directory that contains the functional data (recordings, sensors, sources...)
+%          |- iStudy   : Ignored
+%          |- UseDefaultAnat    : Ignored
+%          |- UseDefaultChannel : Ignored
 % 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -19,7 +32,7 @@ function db_update(LatestDbVersion, sProtocol)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2013
+% Authors: Francois Tadel, 2009-2013; Martin Cousineau, 2019
 
 global GlobalData;
 
@@ -57,11 +70,10 @@ elseif CurrentDbVersion > LatestDbVersion
     errMsg = 'You are trying to load a protocol that was created with a newer version of Brainstorm.';
     [res, isCancel] = java_dialog('question', [errMsg 10 'Would you like to update Brainstorm now to continue?'], 'Update database');
     if ~isCancel && strcmpi(res, 'yes')
-        %bst_update();
-        disp('TODO: update');
+        bst_update();
         return;
     else
-        error(errMsg);
+        error([errMsg 10 'Please update Brainstorm to continue.']);
     end
 end
 
@@ -304,7 +316,7 @@ if (CurrentDbVersion < 3.6) && ~isempty(ProtocolsListStudies) && ~isfield(Protoc
     bst_set('ProcessOptions', []);
 end
 
-%% ===== UPDATE XX-May-2019 =====
+%% ===== UPDATE 03-May-2019 =====
 % Modification: add fibers objects
 if (CurrentDbVersion < 4.1)
     disp('BST> Database update: Adding support for diffusion fibers...');
