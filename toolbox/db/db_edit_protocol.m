@@ -118,6 +118,11 @@ if strcmpi(action, 'edit') || strcmpi(action, 'create')
     sProtocolsListInfo(iProtocol).UseDefaultChannel = sProtocol.UseDefaultChannel;
 end
 
+%% ===== UPDATE EXISTING PROTOCOL DATABASE =====
+if strcmpi(action, 'load')
+    db_update(GlobalData.DataBase.DbVersion, sProtocol);
+end
+
 %% ===== NEW PROTOCOL =====
 if strcmpi(action, 'load') || strcmpi(action, 'create')
     % Register protocol in ProtocolsListSubjects and ProtocolsListStudies
