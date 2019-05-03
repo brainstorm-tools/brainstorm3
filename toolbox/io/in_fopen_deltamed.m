@@ -47,6 +47,8 @@ while 1
     if isempty(newLine) || ismember(newLine(1), {';', char(10), char(13)})
         continue;
     end
+    % Remove double-quotes
+    newLine(newLine == '"') = [];
     % Read block names
     if (newLine(1) == '[')
         curBlock = newLine;

@@ -94,13 +94,23 @@ end
 % Special case for supported acquisition systems: Save temporary files
 % using single precision instead of double to save disk space
 ImportOptions = db_template('ImportOptions');
-ImportOptions.UseSsp = 0;
 if ismember(sFile.format, {'EEG-BLACKROCK', 'EEG-INTAN', 'EEG-PLEXON'})
     precision = 'single';
 else
     precision = 'double';
 end
 ImportOptions.Precision = precision;
+
+% Check if a projector has been computed and ask if the selected components
+% should be removed
+if ~isempty(ChannelMat.Projector)
+    isOk = java_dialog('confirm', ...
+        ['(ICA/PCA) Artifact components have been computed for removal.' 10 10 ...
+             'Remove the selected components?'], 'Artifact Removal');
+    if isOk
+        ImportOptions.UseSsp = 1;
+    end
+end 
 
 % Read data in segments
 for iSegment = 1:num_segments

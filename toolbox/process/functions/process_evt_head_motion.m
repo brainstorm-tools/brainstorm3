@@ -29,16 +29,17 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description of the process
-    sProcess.Comment     = 'Detect head motion events (CTF)';
+    sProcess.Comment     = 'Detect head motion (CTF)';
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion#Mark_head_motion_events';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
-    sProcess.Index       = 70;
+    sProcess.Index       = 48;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % Definition of the options
     sProcess.options.warning.Comment = 'Only for CTF MEG recordings with HLC channels recorded.<BR><BR>';
     sProcess.options.warning.Type    = 'label';
@@ -316,7 +317,9 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
     nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
     
     iHLU = find(strcmp({ChannelMat.Channel.Type}, 'HLU'));
+    [Unused, iSortHlu] = sort({ChannelMat.Channel(iHLU).Name});
     iFitErr = find(strcmp({ChannelMat.Channel.Type}, 'FitErr'));
+    [Unused, iSortFitErr] = sort({ChannelMat.Channel(iFitErr).Name});
     nChannels = numel(iHLU);
     if nChannels < 9
         bst_report('Error', 'process_evt_head_motion', sInput, ...
@@ -393,6 +396,9 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
         %   nSxnT = floor(nSamples/HeadSamplePeriod) * nEpochs;
     end
     
+    % In case channels were renamed to fix swapped coils.
+    Locations = Locations(iSortHlu, :, :);
+    
     % Also load head coil fitting errors if needed.
     if nargout > 2
         nFitChan = nChannels/3;
@@ -421,6 +427,9 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
             % Convert to continuous.
             FitErrors = reshape(FitErrors, nFitChan, []);
         end
+        
+        % In case channels were renamed to fix swapped coils.
+        FitErrors = FitErrors(iSortFitErr, :, :);
     end % if do FitError
 end
 

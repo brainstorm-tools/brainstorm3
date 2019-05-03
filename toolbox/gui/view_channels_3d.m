@@ -19,7 +19,7 @@ function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2018
+% Authors: Francois Tadel, 2010-2019
 
 global GlobalData;
 % Parse inputs
@@ -135,7 +135,7 @@ if (length(FileNames) == 1)
     isMarkers = ~isShowCoils || isDetails;
     [hFig, iDS, iFig] = view_channels(FileNames{1}, Modality, isMarkers, isLabels, hFig, is3DElectrodes);
     % SEEG and ECOG: Open tab "iEEG"
-    if ismember(Modality, {'SEEG', 'ECOG'})
+    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
         gui_brainstorm('ShowToolTab', 'iEEG');
     end
 % Multiple: Markers only

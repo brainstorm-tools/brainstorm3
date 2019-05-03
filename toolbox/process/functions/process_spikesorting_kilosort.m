@@ -555,22 +555,53 @@ function downloadAndInstallKiloSort()
         mkdir(KiloSortTmpDir);
     end
     
+    
     % Download KiloSort
     url_KiloSort = 'https://github.com/cortex-lab/KiloSort/archive/master.zip';
     KiloSortZipFile = bst_fullfile(KiloSortTmpDir, 'kilosort.zip');
     if exist(KiloSortZipFile, 'file') ~= 2
         errMsg = gui_brainstorm('DownloadFile', url_KiloSort, KiloSortZipFile, 'KiloSort download');
-        if ~isempty(errMsg)
+        
+        % Check if the download was succesful and try again if it wasn't
+        time_before_entering = clock;
+        updated_time = clock;
+        time_out = 60;% timeout within 60 seconds of trying to download the file
+
+        % Keep trying to download until a timeout is reached
+        while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+            % Try to download until the timeout is reached
+            pause(0.1);
+            errMsg = gui_brainstorm('DownloadFile', url_KiloSort, KiloSortZipFile, 'KiloSort download');
+            updated_time = clock;
+        end
+        % If the timeout is reached and there is still an error, abort
+        if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
             error(['Impossible to download KiloSort.' 10 errMsg]);
         end
     end
+    
+    
     % Download KiloSortWrapper (For conversion to Neurosuite - Klusters)
     url_KiloSort_wrapper = 'https://github.com/brendonw1/KilosortWrapper/archive/master.zip';
     KiloSortWrapperZipFile = bst_fullfile(KiloSortTmpDir, 'kilosort_wrapper.zip');
     if exist(KiloSortWrapperZipFile, 'file') ~= 2
-        errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSort download');
-        if ~isempty(errMsg)
-            error(['Impossible to download KiloSort Wrapper.' 10 errMsg]);
+        errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSortWrapper download');
+        
+        % Check if the download was succesful and try again if it wasn't
+        time_before_entering = clock;
+        updated_time = clock;
+        time_out = 60;% timeout within 60 seconds of trying to download the file
+        
+        % Keep trying to download until a timeout is reached
+        while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+            % Try to download until the timeout is reached
+            pause(0.1);
+            errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSortWrapper download');
+            updated_time = clock;
+        end
+        % If the timeout is reached and there is still an error, abort
+        if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
+            error(['Impossible to download KiloSortWrapper.' 10 errMsg]);
         end
     end
     
@@ -579,17 +610,46 @@ function downloadAndInstallKiloSort()
     PhyZipFile = bst_fullfile(KiloSortTmpDir, 'phy.zip');
     if exist(PhyZipFile, 'file') ~= 2
         errMsg = gui_brainstorm('DownloadFile', url_Phy, PhyZipFile, 'Phy download');
-        if ~isempty(errMsg)
+        
+        % Check if the download was succesful and try again if it wasn't
+        time_before_entering = clock;
+        updated_time = clock;
+        time_out = 60;% timeout within 60 seconds of trying to download the file
+        
+        % Keep trying to download until a timeout is reached
+        while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+            % Try to download until the timeout is reached
+            pause(0.1);
+            errMsg = gui_brainstorm('DownloadFile', url_Phy, PhyZipFile, 'Phy download');
+            updated_time = clock;
+        end
+        % If the timeout is reached and there is still an error, abort
+        if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
             error(['Impossible to download Phy.' 10 errMsg]);
         end
     end
+    
     % Download npy-matlab
     url_npy = 'https://github.com/kwikteam/npy-matlab/archive/master.zip';
     npyZipFile = bst_fullfile(KiloSortTmpDir, 'npy.zip');
     if exist(npyZipFile, 'file') ~= 2
         errMsg = gui_brainstorm('DownloadFile', url_npy, npyZipFile, 'npy-matlab download');
-        if ~isempty(errMsg)
-            error(['Impossible to download npy-Matlab.' 10 errMsg]);
+        
+        % Check if the download was succesful and try again if it wasn't
+        time_before_entering = clock;
+        updated_time = clock;
+        time_out = 60;% timeout within 60 seconds of trying to download the file
+        
+        % Keep trying to download until a timeout is reached
+        while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+            % Try to download until the timeout is reached
+            pause(0.1);
+            errMsg = gui_brainstorm('DownloadFile', url_npy, npyZipFile, 'npy-matlab download');
+            updated_time = clock;
+        end
+        % If the timeout is reached and there is still an error, abort
+        if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
+            error(['Impossible to download npy-matlab.' 10 errMsg]);
         end
     end
     

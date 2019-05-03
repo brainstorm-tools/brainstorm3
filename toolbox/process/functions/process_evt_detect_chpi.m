@@ -33,7 +33,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 47;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle#Spectral_evaluation';
-    sProcess.isSeparator = 1;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};

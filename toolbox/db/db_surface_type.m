@@ -45,6 +45,8 @@ switch targetType
         targetTag = 'tess_outerskull';
     case 'InnerSkull'
         targetTag = 'tess_innerskull';
+    case 'Fibers'
+        targetTag = 'tess_fibers';
     case 'Other'
         targetTag = 'tess';
 end

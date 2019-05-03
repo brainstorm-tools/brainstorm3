@@ -1790,6 +1790,8 @@ function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
     end
     % Set EEG flag
     SetFigureStatus(hFig, [], [], [], 1, 1);
+    % Update figure name
+    bst_figures('UpdateFigureName', hFig);
 end
 
 
@@ -1819,7 +1821,7 @@ function PlotSensors3D(iDS, iFig, Channel, ChanLoc)
     % === DEPTH ELECTRODES ===
     % Create objects geometry
     sElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
-    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes);
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes, 1);
     % Plot depth electrodes
     for iElec = 1:length(ElectrodeDepth)
         % Get coordinates
@@ -2799,6 +2801,8 @@ function SetElectrodePosition(hFig, ChannelName, scsXYZ)
     GlobalData.DataSet(iDS).Channel(iChannels(iChan)).Loc = scsXYZ(:);
     % Plot electrodes again
     Handles = PlotElectrodes(iDS, iFig, Handles);
+    % Save modified handles
+    bst_figures('SetFigureHandles', hFig, Handles);
     % Update display
     UpdateVisibleLandmarks(sMri, Handles);
     UpdateVisibleSensors3D(hFig);

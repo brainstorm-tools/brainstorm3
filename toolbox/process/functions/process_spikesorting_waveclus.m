@@ -28,7 +28,7 @@ function varargout = process_spikesorting_waveclus( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018-2019; Martin Cousineau, 2018
 
 eval(macro_method);
 end
@@ -280,13 +280,22 @@ function downloadAndInstallWaveClus()
     % Download file
     zipFile = bst_fullfile(waveclusTmpDir, 'waveclus.zip');
     errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'WaveClus download');
-    if ~isempty(errMsg)
-        % Try twice before giving up
+    
+    % Check if the download was succesful and try again if it wasn't
+    time_before_entering = clock;
+    updated_time = clock;
+    time_out = 60;% timeout within 60 seconds of trying to download the file
+    
+    % Keep trying to download until a timeout is reached
+    while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+        % Try to download until the timeout is reached
         pause(0.1);
         errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'WaveClus download');
-        if ~isempty(errMsg)
-            error(['Impossible to download WaveClus.' 10 errMsg]);
-        end
+        updated_time = clock;
+    end
+    % If the timeout is reached and there is still an error, abort
+    if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
+        error(['Impossible to download WaveClus.' 10 errMsg]);
     end
     % Unzip file
     bst_progress('start', 'WaveClus', 'Installing WaveClus...');

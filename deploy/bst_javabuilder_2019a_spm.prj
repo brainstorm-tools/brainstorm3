@@ -1,0 +1,140 @@
+<deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
+  <configuration file="C:\Work\Dev\brainstorm3\deploy\bst_javabuilder_2019a.prj" location="C:\Work\Dev\brainstorm3\deploy" name="bst_javabuilder_2019a" target="target.ezdeploy.library" target-name="Library Compiler">
+    <param.appname>bst_javabuilder_2019a</param.appname>
+    <param.icon>C:\Work\Dev\brainstorm3_deploy\R2019a\resources\icon.ico</param.icon>
+    <param.icons>
+      <file>C:\Work\Dev\brainstorm3_deploy\R2019a\resources\icon_48.png</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\R2019a\resources\icon_32.png</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\R2019a\resources\icon_24.png</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\R2019a\resources\icon_16.png</file>
+    </param.icons>
+    <param.version>1.0</param.version>
+    <param.authnamewatermark>François Tadel</param.authnamewatermark>
+    <param.email>francois.tadel@mcgill.ca</param.email>
+    <param.company>McGill-USC</param.company>
+    <param.summary />
+    <param.description />
+    <param.screenshot>C:\Work\Dev\brainstorm3\doc\logo_splash.gif</param.screenshot>
+    <param.guid />
+    <param.installpath.string>\bst_javabuilder_2019a\</param.installpath.string>
+    <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
+    <param.logo />
+    <param.install.notes />
+    <param.target.install.notes />
+    <param.intermediate>C:\Work\Dev\brainstorm3_deploy\R2019a\bst_javabuilder\for_testing</param.intermediate>
+    <param.files.only>C:\Work\Dev\brainstorm3_deploy\R2019a\bst_javabuilder\for_redistribution_files_only</param.files.only>
+    <param.output>C:\Work\Dev\brainstorm3_deploy\R2019a\bst_javabuilder\for_redistribution</param.output>
+    <param.logdir>C:\Work\Dev\brainstorm3_deploy\R2019a\bst_javabuilder\logs</param.logdir>
+    <param.enable.clean.build>false</param.enable.clean.build>
+    <param.user.defined.mcr.options />
+    <param.target.type>subtarget.java.package</param.target.type>
+    <param.support.packages />
+    <param.namespace />
+    <param.classorg />
+    <param.web.mcr>false</param.web.mcr>
+    <param.package.mcr>false</param.package.mcr>
+    <param.no.mcr>false</param.no.mcr>
+    <param.web.mcr.name>MyAppInstaller_web</param.web.mcr.name>
+    <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
+    <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
+    <param.windows.command.prompt>true</param.windows.command.prompt>
+    <param.create.log>false</param.create.log>
+    <param.log.file />
+    <param.user.only.registration>false</param.user.only.registration>
+    <param.assembly.type>false</param.assembly.type>
+    <param.encryption.key.file />
+    <param.net.enable.remoting>false</param.net.enable.remoting>
+    <param.net.tsa.enable>false</param.net.tsa.enable>
+    <param.net.tsa.assembly />
+    <param.net.tsa.interface />
+    <param.net.tsa.namespace />
+    <param.net.tsa.superclass>Run</param.net.tsa.superclass>
+    <param.net.tsa.metadata />
+    <param.net.tsa.metadata.assembly>C:\Work\Dev\brainstorm3\deploy</param.net.tsa.metadata.assembly>
+    <param.net.saved.interface />
+    <param.cpp.api>option.cpp.all</param.cpp.api>
+    <unset>
+      <param.version />
+      <param.summary />
+      <param.description />
+      <param.guid />
+      <param.installpath.combo />
+      <param.logo />
+      <param.install.notes />
+      <param.target.install.notes />
+      <param.enable.clean.build />
+      <param.user.defined.mcr.options />
+      <param.support.packages />
+      <param.namespace />
+      <param.classorg />
+      <param.web.mcr />
+      <param.package.mcr />
+      <param.no.mcr />
+      <param.web.mcr.name />
+      <param.package.mcr.name />
+      <param.no.mcr.name />
+      <param.windows.command.prompt />
+      <param.create.log />
+      <param.log.file />
+      <param.user.only.registration />
+      <param.assembly.type />
+      <param.encryption.key.file />
+      <param.net.enable.remoting />
+      <param.net.tsa.enable />
+      <param.net.tsa.assembly />
+      <param.net.tsa.interface />
+      <param.net.tsa.namespace />
+      <param.net.tsa.superclass />
+      <param.net.tsa.metadata />
+      <param.net.tsa.metadata.assembly />
+      <param.net.saved.interface />
+      <param.cpp.api />
+    </unset>
+    <fileset.exports>
+      <file>C:\Work\Dev\brainstorm3\brainstorm.m</file>
+    </fileset.exports>
+    <fileset.classes>
+      <entity.package name="">
+        <entity.class name="Run">
+          <file>C:\Work\Dev\brainstorm3\brainstorm.m</file>
+        </entity.class>
+      </entity.package>
+    </fileset.classes>
+    <fileset.resources>
+      <file>C:\Work\Dev\brainstorm3\defaults</file>
+      <file>C:\Work\Dev\brainstorm3\doc</file>
+      <file>C:\Work\Dev\brainstorm3\external</file>
+      <file>C:\Work\Dev\brainstorm3\java</file>
+      <file>C:\Work\Dev\brainstorm3\toolbox</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\R2019a\sigproc</file>
+	  <file>C:\Work\Dev\brainstorm3_deploy\spmtrip</file>
+    </fileset.resources>
+    <fileset.depfun />
+    <fileset.package />
+    <fileset.examples />
+    <fileset.documentation />
+    <build-deliverables>
+      <file location="C:\Work\Dev\brainstorm3_deploy\R2019a\bst_javabuilder\for_testing" name="bst_javabuilder_2019a.jar" optional="false">C:\Work\Dev\brainstorm3_deploy\R2019a\bst_javabuilder\for_testing\bst_javabuilder_2019a.jar</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>C:\Program Files\MATLAB\R2019a</root>
+      <toolboxes />
+    </matlab>
+    <platform>
+      <unix>false</unix>
+      <mac>false</mac>
+      <windows>true</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>10.0</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>win64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>
