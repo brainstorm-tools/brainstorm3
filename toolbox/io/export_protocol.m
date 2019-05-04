@@ -82,10 +82,10 @@ cd(bst_fileparts(ProtocolInfo.SUBJECTS, 1));
 if isempty(iSubject)
     % Add the entire subject folder
     ListZip = {anatFolder};
-    % List files in studies: add all but the protocol.mat file
+    % List files in studies: add all files
     allFiles = dir(ProtocolInfo.STUDIES);
     for i = 1:length(allFiles)
-        if ((allFiles(i).name(1) ~= '.') && ~strcmpi(allFiles(i).name, 'protocol.mat'))
+        if (allFiles(i).name(1) ~= '.')
             ListZip{end+1} = bst_fullfile(dataFolder, allFiles(i).name);
         end
     end
