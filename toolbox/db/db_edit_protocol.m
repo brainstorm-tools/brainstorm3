@@ -36,7 +36,7 @@ function iProtocol = db_edit_protocol(action, sProtocol, iProtocol)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2013; Martin Cousineau, 2019
 
 
 %% ===== PARSE INPUTS =====

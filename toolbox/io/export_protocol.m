@@ -24,7 +24,9 @@ function export_protocol(iProtocol, iSubject, OutputFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2019
+
+global GlobalData;
 
 %% ===== PARSE INPUTS =====
 if (nargin < 3)
@@ -93,15 +95,36 @@ else
     % Get default study for this subject
     sSubject = bst_get('Subject', iSubject, 1);
     sStudy   = bst_get('AnalysisIntraStudy', iSubject);
+    % Create a temporary protocol.mat for future database update information
+    ProtocolMat = struct();
+    ProtocolMat.ProtocolInfo      = GlobalData.DataBase.ProtocolInfo(iProtocol);
+    ProtocolMat.ProtocolSubjects  = GlobalData.DataBase.ProtocolSubjects(iProtocol);
+    ProtocolMat.ProtocolStudies   = GlobalData.DataBase.ProtocolStudies(iProtocol);
+    ProtocolMat.DbVersion         = GlobalData.DataBase.DbVersion;
+    ProtocolMat.LastAccessDate    = datestr(now);
+    ProtocolMat.LastAccessUserDir = bst_get('UserDir');
+    % Remove useless fields
+    ProtocolMat.ProtocolInfo = rmfield(ProtocolMat.ProtocolInfo, 'STUDIES');
+    ProtocolMat.ProtocolInfo = rmfield(ProtocolMat.ProtocolInfo, 'SUBJECTS');
+    ProtocolMat.ProtocolSubjects.Subject = ProtocolMat.ProtocolSubjects.Subject(iSubject);
+    [sStudies, iStudies] = bst_get('StudyWithSubject', ProtocolMat.ProtocolSubjects.Subject.FileName);
+    ProtocolMat.ProtocolStudies.Study = ProtocolMat.ProtocolStudies.Study(iStudies);
+    ProtocolFile = bst_fullfile(dataFolder, 'protocol.mat');
+    bst_save(ProtocolFile, ProtocolMat, 'v7');
     % List all files that might be useful for this subject
     ListZip = {bst_fullfile(anatFolder, bst_fileparts(sSubject.FileName)), ...
                bst_fullfile(anatFolder, bst_get('DirDefaultSubject')), ...
                bst_fullfile(dataFolder, bst_fileparts(bst_fileparts(sStudy.FileName))), ...
                bst_fullfile(dataFolder, bst_get('DirDefaultStudy')), ...
-               bst_fullfile(dataFolder, bst_get('DirAnalysisInter'))};
+               bst_fullfile(dataFolder, bst_get('DirAnalysisInter')), ...
+               ProtocolFile};
 end
 % Zip
 zip(OutputFile, ListZip);
+% Remove temporary protocol file
+if ~isempty(iSubject)
+    file_delete(ProtocolFile, 1);
+end
 % Restore initial folder
 cd(prevFolder);
 % Error message

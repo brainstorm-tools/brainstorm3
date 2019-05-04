@@ -1,8 +1,9 @@
-function db_update(LatestDbVersion, sProtocol)
+function db_update(LatestDbVersion, sProtocol, saveMetadata)
 % DB_UPDATE: Updates any existing Brainstorm database to the current database structure.
 % 
 % USAGE:  db_update(LatestDbVersion);              % Updates all the protocols of the database loaded in GlobalData
-%         db_update(LatestDbVersion, sProtocol);   % Updates a specific protocol
+%         db_update(LatestDbVersion, iProtocols);  % Updates specific protocols
+%         db_update(LatestDbVersion, sProtocol);   % Updates a new protocol
 % 
 % INPUT:
 %     - LatestDbVersion : The latest version number of the database structure
@@ -13,6 +14,7 @@ function db_update(LatestDbVersion, sProtocol)
 %          |- iStudy   : Ignored
 %          |- UseDefaultAnat    : Ignored
 %          |- UseDefaultChannel : Ignored
+%     - saveMetadata : Whether to save the modifications of the protocol metadata (default: yes)
 % 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -38,11 +40,21 @@ global GlobalData;
 
 %% Parse inputs
 if nargin < 2 || isempty(sProtocol)
+    iProtocols = 1:length(GlobalData.DataBase.ProtocolInfo);
+    sProtocol = [];
+elseif isnumeric(sProtocol)
+    iProtocols = sProtocol;
+    sProtocol = [];
+end
+if nargin < 3 || isempty(saveMetadata)
+    saveMetadata = 1;
+end
+if isempty(sProtocol)
     % We are updating the GlobalData database
     isGlobal = 1;
-    ProtocolsListInfos    = GlobalData.DataBase.ProtocolInfo;
-    ProtocolsListStudies  = GlobalData.DataBase.ProtocolStudies;
-    ProtocolsListSubjects = GlobalData.DataBase.ProtocolSubjects;
+    ProtocolsListInfos    = GlobalData.DataBase.ProtocolInfo(iProtocols);
+    ProtocolsListStudies  = GlobalData.DataBase.ProtocolStudies(iProtocols);
+    ProtocolsListSubjects = GlobalData.DataBase.ProtocolSubjects(iProtocols);
     CurrentDbVersion      = GlobalData.DataBase.DbVersion;
 else
     % We are updating a specific protocol
@@ -346,18 +358,20 @@ end
 
 %% ===== JUST BEFORE RETURNING TO STARTUP FUNCTION =====
 % Save the new database version
-if isGlobal
-    GlobalData.DataBase.ProtocolInfo     = ProtocolsListInfos;
-    GlobalData.DataBase.ProtocolSubjects = ProtocolsListSubjects;
-    GlobalData.DataBase.ProtocolStudies  = ProtocolsListStudies;
-    GlobalData.DataBase.DbVersion        = LatestDbVersion;
-    db_save();
-else
-    ProtocolMat.ProtocolInfo     = ProtocolsListInfos;
-    ProtocolMat.ProtocolSubjects = ProtocolsListSubjects;
-    ProtocolMat.ProtocolStudies  = ProtocolsListStudies;
-    ProtocolMat.DbVersion        = LatestDbVersion;
-    bst_save(ProtocolFile, ProtocolMat, 'v7');
+if saveMetadata
+    if isGlobal
+        GlobalData.DataBase.ProtocolInfo(iProtocols)     = ProtocolsListInfos;
+        GlobalData.DataBase.ProtocolSubjects(iProtocols) = ProtocolsListSubjects;
+        GlobalData.DataBase.ProtocolStudies(iProtocols)  = ProtocolsListStudies;
+        GlobalData.DataBase.DbVersion        = LatestDbVersion;
+        db_save();
+    else
+        ProtocolMat.ProtocolInfo     = ProtocolsListInfos;
+        ProtocolMat.ProtocolSubjects = ProtocolsListSubjects;
+        ProtocolMat.ProtocolStudies  = ProtocolsListStudies;
+        ProtocolMat.DbVersion        = LatestDbVersion;
+        bst_save(ProtocolFile, ProtocolMat, 'v7');
+    end
 end
 
 %% ===================================================================================================
@@ -431,19 +445,23 @@ end
 
     %% ===== SAVE CHANGES TO DATABASE =====
     function SaveProtocolStudies()
-        if isGlobal
-            GlobalData.DataBase.ProtocolStudies = ProtocolsListStudies;
-        else
-            ProtocolMat.ProtocolStudies = ProtocolsListStudies;
-            bst_save(ProtocolFile, ProtocolMat, 'v7');
+        if saveMetadata
+            if isGlobal
+                GlobalData.DataBase.ProtocolStudies(iProtocols) = ProtocolsListStudies;
+            else
+                ProtocolMat.ProtocolStudies = ProtocolsListStudies;
+                bst_save(ProtocolFile, ProtocolMat, 'v7');
+            end
         end
     end
     function SaveProtocolSubjects()
-        if isGlobal
-            GlobalData.DataBase.ProtocolSubjects = ProtocolsListSubjects;
-        else
-            ProtocolMat.ProtocolSubjects = ProtocolsListSubjects;
-            bst_save(ProtocolFile, ProtocolMat, 'v7');
+        if saveMetadata
+            if isGlobal
+                GlobalData.DataBase.ProtocolSubjects(iProtocols) = ProtocolsListSubjects;
+            else
+                ProtocolMat.ProtocolSubjects = ProtocolsListSubjects;
+                bst_save(ProtocolFile, ProtocolMat, 'v7');
+            end
         end
     end
     
