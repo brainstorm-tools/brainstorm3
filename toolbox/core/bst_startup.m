@@ -84,24 +84,19 @@ end
 try
     % Get doc folder
     docDir = bst_get('BrainstormDocDir');
-    % Read "version.txt"
+    % Open "version.txt"
     fid = fopen(bst_fullfile(docDir, 'version.txt'), 'rt');
-    Name = fgetl(fid); % the name line
-    STR2 = fgetl(fid); % the second line with version, release and date
-    % Format should be "Version 2.0 (R14) 27-June-2005" in that order.
-    %  We will read last three items as Version, Release, and Date
-    fclose(fid);
+    % Get program name
+    Name = fgetl(fid);
     Name = Name(3:end); %trim the comment
-    STR2 = fliplr(STR2); % easier handling if read backwards
-    [Date,STR2] = strtok(STR2);
-    [Release,STR2] = strtok(STR2);
-    Version = strtok(STR2);
-    % reverse them to original
-    Version = fliplr(Version);
-    Release = fliplr(Release);
-    Date = fliplr(Date); 
-    Date = strrep(Date, '(', '');
-    Date = strrep(Date, ')', '');
+    % Get version and date
+    strVer = fgetl(fid);
+    cellVer = textscan(strVer(3:end), 'v. %s %s');
+    Version = cellVer{1}{1};
+    Release = cellVer{1}{1}(3:end);
+    Date = cellVer{2}{1}(2:end-1);
+    % Close file
+    fclose(fid);
 catch
     Name = 'Brainstorm';
     Version = '?';
