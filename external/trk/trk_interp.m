@@ -42,7 +42,7 @@ function [tracks_interp,trk_mean_length] = trk_interp(tracks,nPoints_new,spacing
 % Subfunctions: none
 % MAT-files required: none
 %
-% See also: TRK_READ, SPLINE, PARFOR
+% See also: TRK_READ, SPLINE
 
 % Author: John Colby (johncolby@ucla.edu)
 % UCLA Developmental Cognitive Neuroimaging Group (Sowell Lab)
@@ -58,7 +58,7 @@ pp = repmat({[]},1,length(tracks));
 
 % Interpolate streamlines so that each has the same number of vertices, spread
 % evenly along its length (i.e. vertex spacing will vary between streamlines)
-parfor iTrk=1:length(tracks)
+for iTrk=1:length(tracks)
     tracks_tmp = tracks(iTrk);
     
     % Martin: bugfix for single point fibers
@@ -102,7 +102,7 @@ if ~isempty(spacing)
     % spacing for all streamlines. This means that the longer streamlines will now
     % have more vertices.
     tracks_interp = repmat(struct('nPoints', 0, 'matrix', [], 'tiePoint', 0), 1, length(tracks));
-    parfor iTrk=1:length(tracks)
+    for iTrk=1:length(tracks)
         tracks_interp(iTrk).matrix  = ppval(pp{iTrk}, 0:spacing:lengths(iTrk))';
         tracks_interp(iTrk).nPoints = size(tracks_interp(iTrk).matrix, 1);
         
@@ -130,7 +130,7 @@ if ~isempty(nPoints_new) && ~isempty(tie_at_center)
     
     tracks_interp_tmp = zeros(nPoints_new_odd, 3, length(tracks));
     
-    parfor iTrk=1:length(tracks)
+    for iTrk=1:length(tracks)
         dists = sqrt(sum(bsxfun(@minus, tracks_interp(:,:,iTrk), middle).^2,2));
         [tmp, ind] = min(dists);
         
