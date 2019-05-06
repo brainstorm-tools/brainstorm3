@@ -76,7 +76,7 @@ switch lower(nodeType)
         
         
 %% ===== SURFACES (Comment) =====
-    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'other'}
+    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'other', 'fibers'}
         iSubject = iItem;
         iSurface = iSubItem;
         sSubject = bst_get('Subject', iSubject);
@@ -86,7 +86,7 @@ switch lower(nodeType)
         end
         if isempty(newComment), return, end
         % Update File, Node display and Database
-        if file_update(bst_fullfile(ProtocolInfo.SUBJECTS, fileName), 'Field', 'Comment', newComment);
+        if file_update(bst_fullfile(ProtocolInfo.SUBJECTS, fileName), 'Field', 'Comment', newComment)
             bstNode.setComment(newComment);
             % Update comment
             sSubject.Surface(iSurface).Comment = newComment;
