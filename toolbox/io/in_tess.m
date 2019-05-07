@@ -83,6 +83,8 @@ elseif strcmpi(FileFormat, 'ALL')
             FileFormat = 'TRI';
         case '.mat'
             FileFormat = 'BST';
+        case '.nwb'
+            FileFormat = 'NWB';
         case {'.pial', '.white', '.inflated', '.nofix', '.orig', '.smoothwm', '.sphere', '.reg', '.surf'}
             FileFormat = 'FS';
     end
@@ -194,6 +196,9 @@ switch (FileFormat)
             end
         end
         isConvertScs = 0;
+        
+    case 'NWB'
+        TessMat = in_tess_nwb(TessFile);
 end
 % If an error occurred: return
 if isempty(TessMat)

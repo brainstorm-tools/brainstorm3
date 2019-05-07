@@ -84,24 +84,19 @@ end
 try
     % Get doc folder
     docDir = bst_get('BrainstormDocDir');
-    % Read "version.txt"
+    % Open "version.txt"
     fid = fopen(bst_fullfile(docDir, 'version.txt'), 'rt');
-    Name = fgetl(fid); % the name line
-    STR2 = fgetl(fid); % the second line with version, release and date
-    % Format should be "Version 2.0 (R14) 27-June-2005" in that order.
-    %  We will read last three items as Version, Release, and Date
-    fclose(fid);
+    % Get program name
+    Name = fgetl(fid);
     Name = Name(3:end); %trim the comment
-    STR2 = fliplr(STR2); % easier handling if read backwards
-    [Date,STR2] = strtok(STR2);
-    [Release,STR2] = strtok(STR2);
-    Version = strtok(STR2);
-    % reverse them to original
-    Version = fliplr(Version);
-    Release = fliplr(Release);
-    Date = fliplr(Date); 
-    Date = strrep(Date, '(', '');
-    Date = strrep(Date, ')', '');
+    % Get version and date
+    strVer = fgetl(fid);
+    cellVer = textscan(strVer(3:end), 'v. %s %s');
+    Version = cellVer{1}{1};
+    Release = cellVer{1}{1}(3:end);
+    Date = cellVer{2}{1}(2:end-1);
+    % Close file
+    fclose(fid);
 catch
     Name = 'Brainstorm';
     Version = '?';
@@ -175,7 +170,7 @@ disp('BST> Loading configuration file...');
 % Get user database file : brainstorm.mat
 dbFile = bst_get('BrainstormDbFile');
 % Current DB version
-CurrentDbVersion = 4;
+CurrentDbVersion = 5;
 % Get default colormaps list
 sDefColormaps = bst_colormaps('Initialize');
 isDbLoaded = 0;
@@ -253,8 +248,7 @@ if ~isempty(bstOptions)
         GlobalData.Preferences.NodelistOptions.String = '';
     end
     % Check database structure for updates
-    % => Disabled because the database structure was not modified since 2013
-    % db_update(CurrentDbVersion);
+    db_update(CurrentDbVersion);
 else
     % Database version is not defined, so it up-to-date
     GlobalData.DataBase.DbVersion = CurrentDbVersion;
@@ -264,7 +258,7 @@ if isempty(GlobalData.Colormaps)
     GlobalData.Colormaps = sDefColormaps;
 end
 % Check that default montages are loaded
-if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)', 'Scalp current density', 'Head distance'}, {GlobalData.ChannelMontages.Montages.Name}))
+if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'}, {GlobalData.ChannelMontages.Montages.Name}))
     disp('BST> Loading default montages...');
     % Load default selections
     panel_montage('LoadDefaultMontages');

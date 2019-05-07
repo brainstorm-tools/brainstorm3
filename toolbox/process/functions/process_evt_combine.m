@@ -224,18 +224,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                     % Add simple events
                     if ~strcmpi(evtNewRespName, 'extend')
-                        sFile.events(iEvtNewStim).times   = [sFile.events(iEvtNewStim).times,   sFile.events(iEvtStim).times(iNewStim)];
-                        sFile.events(iEvtNewStim).samples = [sFile.events(iEvtNewStim).samples, sFile.events(iEvtStim).samples(iNewStim)];
-                        sFile.events(iEvtNewStim).epochs  = [sFile.events(iEvtNewStim).epochs,  sFile.events(iEvtStim).epochs(iNewStim)];
+                        sFile.events(iEvtNewStim).times    = [sFile.events(iEvtNewStim).times,   sFile.events(iEvtStim).times(iNewStim)];
+                        sFile.events(iEvtNewStim).epochs   = [sFile.events(iEvtNewStim).epochs,  sFile.events(iEvtStim).epochs(iNewStim)];
+                        sFile.events(iEvtNewStim).channels = [sFile.events(iEvtNewStim).channels,sFile.events(iEvtStim).channels(iNewStim)];
+                        sFile.events(iEvtNewStim).notes    = [sFile.events(iEvtNewStim).notes,   sFile.events(iEvtStim).notes(iNewStim)];
                         % Sort
                         [sFile.events(iEvtNewStim).times, indSort] = unique(sFile.events(iEvtNewStim).times);
-                        sFile.events(iEvtNewStim).samples = sFile.events(iEvtNewStim).samples(indSort);
-                        sFile.events(iEvtNewStim).epochs  = sFile.events(iEvtNewStim).epochs(indSort);
+                        sFile.events(iEvtNewStim).epochs   = sFile.events(iEvtNewStim).epochs(indSort);
+                        sFile.events(iEvtNewStim).channels = sFile.events(iEvtNewStim).channels(indSort);
+                        sFile.events(iEvtNewStim).notes    = sFile.events(iEvtNewStim).notes(indSort);
                     % Add extended events
                     else
-                        sFile.events(iEvtNewStim).times   = [sFile.events(iEvtNewStim).times,   [sFile.events(iEvtStim).times(iNewStim); sFile.events(iEvtResp).times(iNewResp)]];
-                        sFile.events(iEvtNewStim).samples = [sFile.events(iEvtNewStim).samples, [sFile.events(iEvtStim).samples(iNewStim); sFile.events(iEvtResp).samples(iNewResp)]];
-                        sFile.events(iEvtNewStim).epochs  = [sFile.events(iEvtNewStim).epochs,  sFile.events(iEvtStim).epochs(iNewStim)];
+                        sFile.events(iEvtNewStim).times    = [sFile.events(iEvtNewStim).times,   [sFile.events(iEvtStim).times(iNewStim); sFile.events(iEvtResp).times(iNewResp)]];
+                        sFile.events(iEvtNewStim).epochs   = [sFile.events(iEvtNewStim).epochs,  sFile.events(iEvtStim).epochs(iNewStim)];
+                        sFile.events(iEvtNewStim).channels = [sFile.events(iEvtNewStim).channels,sFile.events(iEvtStim).channels(iNewStim)];
+                        sFile.events(iEvtNewStim).notes    = [sFile.events(iEvtNewStim).notes,   sFile.events(iEvtStim).notes(iNewStim)];
                     end
                 end
                 
@@ -254,13 +257,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         sFile.events(iEvtNewResp) = sEvent;
                     end
                     % Add occurrences
-                    sFile.events(iEvtNewResp).times   = [sFile.events(iEvtNewResp).times,   sFile.events(iEvtResp).times(iNewResp)];
-                    sFile.events(iEvtNewResp).samples = [sFile.events(iEvtNewResp).samples, sFile.events(iEvtResp).samples(iNewResp)];
-                    sFile.events(iEvtNewResp).epochs  = [sFile.events(iEvtNewResp).epochs,  sFile.events(iEvtResp).epochs(iNewResp)];
+                    sFile.events(iEvtNewResp).times    = [sFile.events(iEvtNewResp).times,    sFile.events(iEvtResp).times(iNewResp)];
+                    sFile.events(iEvtNewResp).epochs   = [sFile.events(iEvtNewResp).epochs,   sFile.events(iEvtResp).epochs(iNewResp)];
+                    sFile.events(iEvtNewResp).channels = [sFile.events(iEvtNewResp).channels, sFile.events(iEvtResp).channels(iNewResp)];
+                    sFile.events(iEvtNewResp).notes    = [sFile.events(iEvtNewResp).notes,    sFile.events(iEvtResp).notes(iNewResp)];
                     % Sort
                     [sFile.events(iEvtNewResp).times, indSort] = unique(sFile.events(iEvtNewResp).times);
-                    sFile.events(iEvtNewResp).samples = sFile.events(iEvtNewResp).samples(indSort);
-                    sFile.events(iEvtNewResp).epochs  = sFile.events(iEvtNewResp).epochs(indSort);
+                    sFile.events(iEvtNewResp).epochs   = sFile.events(iEvtNewResp).epochs(indSort);
+                    sFile.events(iEvtNewResp).channels = sFile.events(iEvtNewResp).channels(indSort);
+                    sFile.events(iEvtNewResp).notes    = sFile.events(iEvtNewResp).notes(indSort);
                 end
             end
         end

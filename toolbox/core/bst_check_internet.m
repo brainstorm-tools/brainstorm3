@@ -19,7 +19,7 @@ function [isOk, onlineRel] = bst_check_internet()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2019
 
 % Initialize returned values
 isOk = 0;
@@ -41,6 +41,9 @@ if (length(str) < 20)
 end
 % Find release date in text file
 iParent = strfind(str, '(');
+if (length(iParent) ~= 1)
+    return;
+end
 dateStr = str(iParent - 7:iParent - 2);
 % Interpetation of date string
 onlineRel.year  = str2num(dateStr(1:2));

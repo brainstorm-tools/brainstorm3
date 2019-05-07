@@ -54,12 +54,13 @@ if ~isempty(header.events)
             allSamples = allSamples - (iEpochs-1) .* sFile.header.acq.frame_length;
         end
         % Add event structure
-        events(iEvt).label   = uniqueNames{i};
-        events(iEvt).epochs  = iEpochs;
-        events(iEvt).samples = allSamples;
-        events(iEvt).times   = allSamples ./ sFile.prop.sfreq;
-        events(iEvt).reactTimes  = [];
-        events(iEvt).select      = 1;
+        events(iEvt).label      = uniqueNames{i};
+        events(iEvt).epochs     = iEpochs;
+        events(iEvt).times      = allSamples ./ sFile.prop.sfreq;
+        events(iEvt).reactTimes = [];
+        events(iEvt).select     = 1;
+        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
     end
 end
 % Bookmarks
@@ -73,12 +74,13 @@ if ~isempty(header.bookmark)
         % Find all the occurrences of event #iEvt
         iMrk = find(strcmpi({header.bookmark.label}, uniqueNames{i}));
         % Add event structure
-        events(iEvt).label   = uniqueNames{i};
-        events(iEvt).epochs  = ones(1, length(iMrk));
-        events(iEvt).samples = header.bookmark(iMrk).sample_no;
-        events(iEvt).times   = events(i).samples ./ sFile.prop.sfreq;
-        events(iEvt).reactTimes  = [];
-        events(iEvt).select      = 1;
+        events(iEvt).label      = uniqueNames{i};
+        events(iEvt).epochs     = ones(1, length(iMrk));
+        events(iEvt).times      = header.bookmark(iMrk).sample_no ./ sFile.prop.sfreq;
+        events(iEvt).reactTimes = [];
+        events(iEvt).select     = 1;
+        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
     end
 end
 

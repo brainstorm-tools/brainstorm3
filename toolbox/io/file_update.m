@@ -43,7 +43,7 @@ switch (action)
         % Remove all the markers from the filename
         markersList = {'brainstormsubject', 'subjectimage', 'tess', 'cortex', 'brain', 'scalp', ...
                        'head', 'skull', 'outerskull', 'innerskull', 'vertconn', 'brainstormstudy', ...
-                       'channel', 'data', 'headmodel', 'res4', 'results', 'ctf'};
+                       'channel', 'data', 'headmodel', 'res4', 'results', 'ctf', 'fibers'};
         for i=1:length(markersList)
             % Remove tags inside the filename
             fileBase = strrep(fileBase, ['_' markersList{i}], '');

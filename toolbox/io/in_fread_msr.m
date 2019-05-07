@@ -24,12 +24,12 @@ function F = in_fread_msr(sFile, sfid, SamplesBounds)
 % Authors: Francois Tadel, 2017
 % Parse inputs
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % FORMAT: linear matrix [nChannels x nTime]
 nChannels = sFile.header.numchannels;
-nTime     = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
+nTime     = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq) + 1;
 bytesize  = 4;
 % Get start position
 offsetTime  = SamplesBounds(1) * nChannels * bytesize;

@@ -15,6 +15,9 @@ function varargout = figure_3d( varargin )
 %                 figure_3d('UpdateSurfaceColor',    hFig, iTess)
 %                 figure_3d('ViewSensors',           hFig, isMarkers, isLabels, isMesh=1, Modality=[])
 %                 figure_3d('ViewAxis',              hFig, isVisible)
+%                 figure_3d('PlotFibers',            hFig, FibPoints, Colors)
+%                 figure_3d('ColorFibers',           fibLines, Color)
+%                 figure_3d('SelectFiberScouts',     hFigConn, iScouts, Color, ColorOnly)
 %     [hFig,hs] = figure_3d('PlotSurface',           hFig, faces, verts, cdata, dataCMap, transparency)
 
 % @=============================================================================
@@ -35,7 +38,7 @@ function varargout = figure_3d( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2019; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -2275,6 +2278,87 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
     end
 end
 
+%% ===== PLOT FIBERS =====
+function varargout = PlotFibers(hFig, FibPoints, Colors)
+    dims = size(Colors);
+    if length(dims) < 3
+        Colors = permute(repmat(Colors, 1, 1, size(FibPoints, 2)), [1,3,2]);
+    end
+
+    % Set figure as current
+    set(0, 'CurrentFigure', hFig);
+    
+    % If we are displaying too many fibers, warn user...
+    numMaxFibers = 5000;
+    numFibers = size(FibPoints,1);
+    if numFibers > numMaxFibers
+        questionOptions = {'Display a subset for now', 'Display all anyway'};
+        [res, isCancel] = java_dialog('question', ...
+            ['You are trying to display ', num2str(numFibers), ...
+            ' fibers. Displaying this' 10 'amount of fibers at the same time ', ...
+            'can be challenging for the' 10 'average computer. We recommend ', ...
+            'you downsample them first.'], 'Display fibers', [], questionOptions);
+        if isCancel || strcmp(res, questionOptions{1})
+            iFibers = sort(randsample(numFibers, numMaxFibers));
+        else
+            iFibers = 1:numFibers;
+        end
+    else
+        iFibers = 1:numFibers;
+    end
+    
+    numFibers = length(iFibers);
+    
+    % Plot fibers
+    for iFib = 1:numFibers
+        lines(iFib) = surface([FibPoints(iFibers(iFib),:,1); FibPoints(iFibers(iFib),:,1)], ...
+            [FibPoints(iFibers(iFib),:,2); FibPoints(iFibers(iFib),:,2)], ...
+            [FibPoints(iFibers(iFib),:,3); FibPoints(iFibers(iFib),:,3)], ...
+            [Colors(iFibers(iFib),:,1:3); Colors(iFibers(iFib),:,1:3)], ...
+            'FaceColor','none',...
+            'EdgeColor','flat');
+    end
+    if numFibers == 0
+        lines = [];
+    end
+    
+    % Set output variables
+    if nargout > 0
+        varargout{1} = hFig;
+        varargout{2} = lines;
+    end
+end
+
+function lines = ColorFibers(lines, Color)
+    if isempty(Color) || isempty(lines)
+        return;
+    end
+    
+    bst_progress('start', 'Fiber viewer', 'Coloring fibers...');
+    
+    dims = size(Color);
+    nFibers = length(lines);
+    
+    % Create a full Color matrix if required
+    if length(dims) < 3
+        nPoints = size(lines(1).XData, 2);
+        if dims(1) == 1
+            % One color value for all fibers and points
+            Color = permute(repmat(Color, nFibers, 1, nPoints), [1,3,2]);
+        else
+            % One color value per fiber
+            Color = permute(repmat(Color, 1, 1, nPoints), [1,3,2]);
+        end
+    end
+    
+    % Set color
+    for iFib = 1:length(lines)
+        lines(iFib).CData = [Color(iFib,:,:); Color(iFib,:,:)];
+    end
+    
+    drawnow;
+    bst_progress('stop');
+end
 
 %% ===== PLOT SQUARE/CUT =====
 % USAGE:  PlotSquareCut(hFig, TessInfo, dim, pos)
@@ -2398,6 +2482,11 @@ function UpdateSurfaceColor(hFig, iTess)
     if strcmpi(TessInfo(iTess).Name, 'Anatomy')
         % Update display
         UpdateMriDisplay(hFig, [], TessInfo, iTess);
+        
+    % === FIBERS ===
+    elseif strcmpi(TessInfo(iTess).Name, 'Fibers')
+        % Set line color
+        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, TessInfo(iTess).AnatomyColor(1,1:3));
         
     % === SURFACE ===
     else
@@ -2585,6 +2674,8 @@ end
 %% ===== PLOT 3D ELECTRODES =====
 function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, TopoType) %#ok<DEFNU>
     global GlobalData;
+    % Initialize returned variable
+    hElectrodeGrid = [];
     % Get current electrodes positions
     if (nargin < 4) || isempty(TopoType)
         TopoType = '3DElectrodes';
@@ -2607,17 +2698,24 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
     delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
     % Get electrodes definitions
     sElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
-    iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
-    iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
-    % Remove all SEEG if no SEEG channels are available (same for ECOG)
-    if ~isempty(iSeeg) && ~any(strcmpi({Channel.Type}, 'SEEG'))
-        sElectrodes(iSeeg) = [];
+    % Get SEEG and ECOG devices
+    iSeeg = [];
+    iEcog = [];
+    if ~isempty(sElectrodes)
+        iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
+        iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
+        % Remove all SEEG if no SEEG channels are available (same for ECOG)
+        if ~isempty(iSeeg) && ~any(strcmpi({Channel.Type}, 'SEEG'))
+            sElectrodes(iSeeg) = [];
+        end
+        if ~isempty(iEcog) && ~any(strcmpi({Channel.Type}, 'ECOG') | strcmpi({Channel.Type}, 'ECOG-mid'))
+            sElectrodes(iEcog) = [];
+        end
+        if ~isempty(sElectrodes)
+            iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
+            iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
+        end
     end
-    if ~isempty(iEcog) && ~any(strcmpi({Channel.Type}, 'ECOG') | strcmpi({Channel.Type}, 'ECOG-mid'))
-        sElectrodes(iEcog) = [];
-    end
-    iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
-    iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
     
     
     % === 2D ELECTRODES ===
@@ -2627,49 +2725,62 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
         maxContactNumberSeeg = max([sElectrodes(iSeeg).ContactNumber]);
         maxLengthSeeg = max([sElectrodes(iSeeg).ElecLength]);
         % Extract ECOG global properties
-        maxContactsEcog = max(cellfun(@(c)c(1), {sElectrodes.ContactNumber}));
-        nRows = 0;
+        maxContactsEcog = max(cellfun(@(c)c(1), {sElectrodes(iEcog).ContactNumber}));
+        X = 0;
         % Display electrodes in successive rows
         for iElec = length(sElectrodes):-1:1
             % Define default electrode properties just for display
             switch (sElectrodes(iElec).Type)
                 case 'SEEG'
+                    if isempty(sElectrodes(iElec).ElecLength)
+                        sElectrodes(iElec).ElecLength = 0.070;
+                    end
+                    if isempty(maxLengthSeeg)
+                        maxLengthSeeg = sElectrodes(iElec).ElecLength;
+                    end
                     if isempty(sElectrodes(iElec).ContactSpacing) || (sElectrodes(iElec).ContactSpacing == 0) || (sElectrodes(iElec).ContactSpacing * sElectrodes(iElec).ContactNumber > sElectrodes(iElec).ElecLength)
                         sElectrodes(iElec).ContactSpacing = sElectrodes(iElec).ElecLength / maxContactNumberSeeg;
                     end
-                    X = 2 * nRows * sElectrodes(iElec).ContactLength * [1 1] + 0.0001;
+                    if isempty(sElectrodes(iElec).ElecDiameter)
+                        sElectrodes(iElec).ElecDiameter = 0.0008;
+                    end
+                    X = X + 6 * sElectrodes(iElec).ElecDiameter + 0.0001;
                     Y = [maxLengthSeeg - sElectrodes(iElec).ElecLength, maxLengthSeeg];
-                    sElectrodes(iElec).Loc = [X; Y; 0, 0];
-                    nRows = nRows + 1;
+                    sElectrodes(iElec).Loc = [X, X; Y; 0, 0];
                 case {'ECOG', 'ECOG-mid'}
                     % Force to be ECOG-mid to prevent any projection on the cortex
                     maxDiameterEcog = 0.004;
-                    sElectrodes(iElec).Type = 'ECOG-mid';
+                    sElectrodes(iElec).Type = 'ECOG';
                     sElectrodes(iElec).ElecDiameter = 0.004;
                     sElectrodes(iElec).ContactDiameter = maxDiameterEcog;
                     % ECOG strip
                     if (length(sElectrodes(iElec).ContactNumber) == 1)
-                        X = 1.5 * nRows * maxDiameterEcog * [1 1] + 0.0001;
-                        Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber + 1];
-                        sElectrodes(iElec).Loc = [X; Y; 0, 0];
-                        nRows = nRows + 1;
+                        X = X + 1.5 * maxDiameterEcog + 0.0001;
+                        Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber(1) + 1];
+                        sElectrodes(iElec).Loc = [X, X; Y; 0, 0];
                     % ECOG grid
                     else
                         nRowsElec = sElectrodes(iElec).ContactNumber(2);
-                        X = 1.5 * maxDiameterEcog * (nRows + [0, nRowsElec - 1]);
-                        Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber + 1];
-                        sElectrodes(iElec).Loc = [X(2), X(2), X(1), X(1); Y(1), Y(2), Y(2), Y(1); 0, 0, 0, 0];
-                        nRows = nRows + nRowsElec;
+                        Xgrid = X + 1.5 * maxDiameterEcog * [1, nRowsElec];
+                        X = X + 1.5 * maxDiameterEcog * nRowsElec;
+                        Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber(1) + 1];
+                        sElectrodes(iElec).Loc = [Xgrid(2), Xgrid(2), Xgrid(1), Xgrid(1); Y(1), Y(2), Y(2), Y(1); 0, 0, 0, 0];
                     end
             end
         end
         % Set corresponding contact positions
-        Channel = panel_ieeg('AlignContacts', iDS, iFig, 'default', sElectrodes, Channel);
+        Channel = panel_ieeg('AlignContacts', iDS, iFig, 'default', sElectrodes, Channel, 0, 0);
+        if isempty(Channel)
+            return;
+        end
         ChanLoc = [Channel.Loc]';
+        isProjectEcog = 0;
+    else
+        isProjectEcog = 1;
     end
     
     % Create objects geometry
-    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes);
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes, isProjectEcog);
     % Plot depth electrodes
     for iElec = 1:length(ElectrodeDepth)
         if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Topography')
@@ -2685,13 +2796,21 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
             'Parent',    hAxes, ...
             ElectrodeDepth(iElec).Options{:});
     end
-    % 2DElectrodes: Add ECOG labels
-    if strcmpi(TopoType, '2DElectrodes') && ~isempty(iEcog) && isempty(ElectrodeLabel)
+    % 2DElectrodes: Add ECOG labels (or recompute them)
+    if strcmpi(TopoType, '2DElectrodes') && ~isempty(iEcog)
         for i = 1:length(iEcog)
-            ElectrodeLabel(i).Loc   = sElectrodes(iEcog(i)).Loc(:,1) + [0; 2*sElectrodes(iEcog(i)).ContactDiameter; 0];
-            ElectrodeLabel(i).Name  = sElectrodes(iEcog(i)).Name;
-            ElectrodeLabel(i).Color = sElectrodes(iEcog(i)).Color;
-            ElectrodeLabel(i).Options = {...
+            % Find existing label
+            if ~isempty(ElectrodeLabel)
+                iLabel = find(strcmpi({ElectrodeLabel.Name}, sElectrodes(iEcog(i)).Name));
+            end
+            % Otherwise add new label
+            if isempty(iLabel)
+                iLabel = length(ElectrodeLabel) + 1;
+            end
+            ElectrodeLabel(iLabel).Loc   = sElectrodes(iEcog(i)).Loc(:,1) + [0; 2*sElectrodes(iEcog(i)).ContactDiameter; 0];
+            ElectrodeLabel(iLabel).Name  = sElectrodes(iEcog(i)).Name;
+            ElectrodeLabel(iLabel).Color = sElectrodes(iEcog(i)).Color;
+            ElectrodeLabel(iLabel).Options = {...
                 'FontUnits',   'points', ...
                 'Tag',         'ElectrodeLabel', ...
                 'Interpreter', 'none', ...
@@ -3007,8 +3126,20 @@ function UpdateSurfaceAlpha(hFig, iTess)
     Surface = TessInfo(iTess);
        
     % Ignore empty surfaces and MRI slices
-    if strcmpi(Surface.Name, 'Anatomy') || isempty(Surface.hPatch) || ~ishandle(Surface.hPatch)
+    if strcmpi(Surface.Name, 'Anatomy') || isempty(Surface.hPatch) || all(~ishandle(Surface.hPatch))
         return 
+    end
+    % Fibers
+    if strcmpi(Surface.Name, 'Fibers')
+        lineAlpha = 1 - Surface.SurfAlpha;
+        lineWidth = 0.5 + 2.5 * Surface.SurfSmoothValue;
+        for iFib = 1:length(Surface.hPatch)
+            % Transparency
+            Surface.hPatch(iFib).EdgeAlpha = lineAlpha;
+            % Smoothing
+            Surface.hPatch(iFib).LineWidth = lineWidth;
+        end
+        return;
     end
     % Apply current smoothing
     SmoothSurface(hFig, iTess, Surface.SurfSmoothValue);
@@ -3277,7 +3408,7 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
     end
     Figure = GlobalData.DataSet(iDS).Figure(iFig);
     PlotHandles = Figure.Handles;
-    isTopography = strcmpi(Figure.Id.Type, 'Topography') && ~ismember(Figure.Id.SubType, {'3DElectrodes', '3DOptodes', '2DElectrodes'});
+    isTopography = strcmpi(Figure.Id.Type, 'Topography') && ~ismember(Figure.Id.SubType, {'3DElectrodes', '3DOptodes'});
     is2D = 0;
     
     % ===== MARKERS LOCATIONS =====
@@ -3378,9 +3509,18 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
             else
                 displayNames = sensorNames;
             end
+            % Add a small offset to the marker location to display the label
+            if strcmpi(Figure.Id.Type, 'Topography') && strcmpi(Figure.Id.SubType, '2DElectrodes')
+                X = markersLocs(:,1) + 0.0025;
+                Y = markersLocs(:,2);
+                Z = markersLocs(:,3) + 0.010;
+            else
+                X = 1.05*markersLocs(:,1);
+                Y = 1.05*markersLocs(:,2);
+                Z = 1.03*markersLocs(:,3);
+            end
             % Plot the sensors
-            PlotHandles.hSensorLabels = text(...
-                1.05*markersLocs(:,1), 1.05*markersLocs(:,2), 1.03*markersLocs(:,3), ...
+            PlotHandles.hSensorLabels = text(X, Y, Z, ...
                 displayNames, ...
                 'Parent',              hAxes, ...
                 'HorizontalAlignment', 'center', ...
@@ -4248,5 +4388,63 @@ function JumpMaximum(hFig)
     UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
 end
 
+%% ===== SELECT FIBER SCOUTS =====
+function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
+    global GlobalData;
+    % Parse arguments
+    if nargin < 4
+        ColorOnly = 0;
+    end
+    %% Get fibers information
+    hFigFib = bst_figures('GetFigureHandleField', hFigConn, 'hFigFib');
+    % If the fiber figure is closed, propagate to connectivity figure
+    if ~ishandle(hFigFib)
+        setappdata(hFigConn, 'plotFibers', 0);
+        return;
+    end
+    TfInfo = getappdata(hFigConn, 'Timefreq');
+    TessInfo = getappdata(hFigFib, 'Surface');
+    iTess = find(ismember({TessInfo.Name}, 'Fibers'));
+    [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
+    
+    
+    %% If fibers not yet assigned to atlas, do so now
+    if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
+        ScoutNames     = bst_figures('GetFigureHandleField', hFigConn, 'RowNames');
+        ScoutCentroids = bst_figures('GetFigureHandleField', hFigConn, 'RowLocs');
+        FibMat = fibers_helper('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
+        % Save in memory to avoid recomputing
+        GlobalData.Fibers(iFib) = FibMat;
+    end
+    
+    bst_progress('start', 'Fibers Connectivity', 'Selecting appropriate fibers...');
+    
+    % Get scout assignment
+    iFile = find(ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile}));
+    assign = FibMat.Scouts(iFile).Assignment;
+    
+    %% Find pair of scouts in list fiber assignments
+    % Reshape iScouts to use bsxfun
+    iScoutsBsx = reshape(iScouts', [1 size(iScouts')]);
+    % Get the matches for the pairs and for the flipped pairs
+    indices =  all(bsxfun(@eq, assign, iScoutsBsx), 2) | all( bsxfun(@eq, assign, flip(iScoutsBsx,2)), 2);
+    % Find the indices of the rows with a match
+    iFibers = find(any(indices,3));
+    [iFoundFibers,iFoundScouts] = find(indices(iFibers,:,:));
+    [tmp, iFoundFibers] = sort(iFoundFibers);
+    iFoundScouts = iFoundScouts(iFoundFibers);
+    
+    %% Plot selected fibers
+    if ~ColorOnly
+        % Remove old fibers
+        delete(TessInfo(iTess).hPatch);
+        % Plot fibers
+        [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:), Color(iFoundScouts,:));
+    else
+        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
+    end
 
-
+    % Update figure's surfaces list and current surface pointer
+    setappdata(hFigFib, 'Surface',  TessInfo);
+    bst_progress('stop');
+end

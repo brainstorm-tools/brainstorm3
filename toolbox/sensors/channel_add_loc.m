@@ -39,7 +39,7 @@ if ~isempty(LocChannelFile)
     if ischar(LocChannelFile)
         LocChannelMat = in_bst_channel(LocChannelFile);
         % Check if the input file is a template
-        defaultsDir = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'eeg');
+        defaultsDir = bst_fullfile(bst_get('BrainstormDefaultsDir'), 'eeg');
         isTemplate = ~isempty(strfind(LocChannelFile, defaultsDir));
     else
         LocChannelMat = LocChannelFile;

@@ -42,7 +42,6 @@ sFile.comment = fBase;
 % Time and samples indices
 sFile.prop.times   = linspace(hdr.data.xmin, hdr.data.xmax, hdr.data.pnts + 1);
 sFile.prop.times   = [sFile.prop.times(1), sFile.prop.times(end-1)];
-sFile.prop.samples = round(sFile.prop.times .* sFile.prop.sfreq);
 sFile.prop.nAvg = 1;
 % Get bad channels
 sFile.channelflag = ones(length(hdr.electloc),1);
@@ -53,7 +52,6 @@ sFile.channelflag([hdr.electloc.bad] == 1) = -1;
 % Build epochs structure
 for i = 1:length(hdr.epochs)
     sFile.epochs(i).label   = hdr.epochs(i).comment;
-    sFile.epochs(i).samples = sFile.prop.samples;
     sFile.epochs(i).times   = sFile.prop.times;
     sFile.epochs(i).nAvg    = 1;
     sFile.epochs(i).select  = 1;

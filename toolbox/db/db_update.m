@@ -1,5 +1,20 @@
-function db_update(CurrentDbVersion)
-% DB_UPDATESTRUCTURE: Updates any existing Brainstorm database to the current database structure.
+function db_update(LatestDbVersion, sProtocol, saveMetadata)
+% DB_UPDATE: Updates any existing Brainstorm database to the current database structure.
+% 
+% USAGE:  db_update(LatestDbVersion);              % Updates all the protocols of the database loaded in GlobalData
+%         db_update(LatestDbVersion, iProtocols);  % Updates specific protocols
+%         db_update(LatestDbVersion, sProtocol);   % Updates a new protocol
+% 
+% INPUT:
+%     - LatestDbVersion : The latest version number of the database structure
+%     - sProtocol : Protocol structure, with the following fields (some fields are ignored, depending on the action)
+%          |- Comment  : Name of the protocol
+%          |- SUBJECTS : Directory that contains the anatomies of the subjects (MRI + surfaces)
+%          |- STUDIES  : Directory that contains the functional data (recordings, sensors, sources...)
+%          |- iStudy   : Ignored
+%          |- UseDefaultAnat    : Ignored
+%          |- UseDefaultChannel : Ignored
+%     - saveMetadata : Whether to save the modifications of the protocol metadata (default: yes)
 % 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -19,12 +34,61 @@ function db_update(CurrentDbVersion)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2013
+% Authors: Francois Tadel, 2009-2013; Martin Cousineau, 2019
 
 global GlobalData;
-% Get list of protocols
-ProtocolsListStudies = GlobalData.DataBase.ProtocolStudies;
-ProtocolsListSubjects = GlobalData.DataBase.ProtocolSubjects;
+
+%% Parse inputs
+if nargin < 2 || isempty(sProtocol)
+    iProtocols = 1:length(GlobalData.DataBase.ProtocolInfo);
+    sProtocol = [];
+elseif isnumeric(sProtocol)
+    iProtocols = sProtocol;
+    sProtocol = [];
+end
+if nargin < 3 || isempty(saveMetadata)
+    saveMetadata = 1;
+end
+if isempty(sProtocol)
+    % We are updating the GlobalData database
+    isGlobal = 1;
+    ProtocolsListInfos    = GlobalData.DataBase.ProtocolInfo(iProtocols);
+    ProtocolsListStudies  = GlobalData.DataBase.ProtocolStudies(iProtocols);
+    ProtocolsListSubjects = GlobalData.DataBase.ProtocolSubjects(iProtocols);
+    CurrentDbVersion      = GlobalData.DataBase.DbVersion;
+else
+    % We are updating a specific protocol
+    isGlobal = 0;
+    [ProtocolMat, ProtocolFile] = GetProtocolMat(sProtocol);
+    if isempty(ProtocolMat)
+        % If not enough information to update protocol, return
+        return;
+    end
+    ProtocolsListInfos    = sProtocol;
+    ProtocolsListStudies  = ProtocolMat.ProtocolStudies;
+    ProtocolsListSubjects = ProtocolMat.ProtocolSubjects;
+    CurrentDbVersion      = ProtocolMat.DbVersion;
+end
+
+%% Check whether the update is necessary
+if abs(CurrentDbVersion - LatestDbVersion) < 1e-8
+    % Already up to date, return
+    return;
+elseif CurrentDbVersion > LatestDbVersion
+    % The database is more up to date than the software, prompt for BST update
+    if isGlobal
+        bst_splash('hide');
+    end
+    errMsg = 'You are trying to load a protocol that was created with a newer version of Brainstorm.';
+    [res, isCancel] = java_dialog('question', [errMsg 10 'Would you like to update Brainstorm now to continue?'], 'Update database');
+    if ~isCancel && strcmpi(res, 'yes')
+        bst_update();
+        return;
+    else
+        error([errMsg 10 'Please update Brainstorm to continue.']);
+    end
+end
+
 isFirstWarning = 1;
 
 %% ===== UPDATE 31-Jul-2009 =====
@@ -141,7 +205,7 @@ end
 
 %% ===== UPDATE 14-Jul-2010 =====
 % Modification: Remove the "linkresults" files, now links are represented by filenames of the type "link|resultsfile.mat|datafile.mat"
-if (GlobalData.DataBase.DbVersion < 3)
+if (CurrentDbVersion < 3)
     % Hide splash screen
     bst_splash('hide');
     % A full reload of the database is necessary to update all the links
@@ -153,7 +217,7 @@ if (GlobalData.DataBase.DbVersion < 3)
     % Reload database
     db_reload_database();
     % Get again the list of protocols for successive updates
-    ProtocolsListStudies = GlobalData.DataBase.ProtocolStudies;
+    SaveProtocolStudies();
 end
 
 %% ===== UPDATE 07-October-2010 =====
@@ -170,18 +234,18 @@ end
 
 %% ===== UPDATE 03-March-2011 =====
 % Modification: Setting the subject file of "inter-subject" data to the default anatomy
-if (GlobalData.DataBase.DbVersion < 3.2)
+if (CurrentDbVersion < 3.2)
     disp('BST> Database update: Setting the inter-subject nodes anatomy to the default anatomy.');
     % Set it protocol by protocol (if not set)
     for i = 1:length(ProtocolsListStudies)
         defSubjFile = bst_fullfile(bst_get('DirDefaultSubject'), 'brainstormsubject.mat');
-        defSubjFileFull = bst_fullfile(GlobalData.DataBase.ProtocolInfo(i).SUBJECTS, defSubjFile);
+        defSubjFileFull = bst_fullfile(ProtocolsListInfos(i).SUBJECTS, defSubjFile);
         if ~isempty(ProtocolsListStudies(i).AnalysisStudy) && isempty(ProtocolsListStudies(i).AnalysisStudy.BrainStormSubject) && file_exist(defSubjFileFull)
             ProtocolsListStudies(i).AnalysisStudy.BrainStormSubject = file_win2unix(defSubjFile);
         end
     end
     % Save database
-    GlobalData.DataBase.ProtocolStudies = ProtocolsListStudies;
+    SaveProtocolStudies();
 end
 
 %% ===== UPDATE 15-March-2011 =====
@@ -199,12 +263,10 @@ function sStudy = UpdateFifTimeRef(sStudy)
                     disp('UPDATE> Updating file...');
                     addSamples = double(DataMat.F.header.raw.first_samp);
                     addTime    = addSamples / DataMat.F.prop.sfreq;
-                    DataMat.Time           = DataMat.Time + addTime;
-                    DataMat.F.prop.times   = DataMat.F.prop.times + addTime;
-                    DataMat.F.prop.samples = DataMat.F.prop.samples + addSamples;
+                    DataMat.Time         = DataMat.Time + addTime;
+                    DataMat.F.prop.times = DataMat.F.prop.times + addTime;
                     for iEvt = 1:length(DataMat.F.events)
-                        DataMat.F.events(iEvt).samples = DataMat.F.events(iEvt).samples + addSamples;
-                        DataMat.F.events(iEvt).times   = DataMat.F.events(iEvt).times + addTime;
+                        DataMat.F.events(iEvt).times = DataMat.F.events(iEvt).times + addTime;
                     end
                     % Save file back
                     bst_save(DataFile, DataMat, 'v6');
@@ -215,7 +277,7 @@ function sStudy = UpdateFifTimeRef(sStudy)
         end
     end
 end
-if (GlobalData.DataBase.DbVersion < 3.3)
+if (CurrentDbVersion < 3.3)
     disp('BST> Database update: Changing the time reference in RAW FIF files from relative to absolute (the first sample is no longer t=0).');
     ApplyToDatabase(@UpdateFifTimeRef);
     disp('BST> Database update: Done.');
@@ -223,7 +285,7 @@ end
 
 %% ===== UPDATE 07-Dec-2011 =====
 % Modification: Subject name is now defined based on the folder name (previously: "Name" folder)
-if (GlobalData.DataBase.DbVersion < 3.4)
+if (CurrentDbVersion < 3.4)
     disp('BST> Database update: Forcing the subjects names to match the folder name.');
     % Update protocol by protocol
     for i = 1:length(ProtocolsListSubjects)
@@ -234,12 +296,12 @@ if (GlobalData.DataBase.DbVersion < 3.4)
         end
     end
     % Save database
-    GlobalData.DataBase.ProtocolSubjects = ProtocolsListSubjects;
+    SaveProtocolSubjects();
 end
 
 %% ===== UPDATE 31-Jan-2013 =====
 % Modified lots of things in the pipeline editor: resetting the options
-if (GlobalData.DataBase.DbVersion < 3.51)
+if (CurrentDbVersion < 3.51)
     disp('BST> Software update: Resetting the process options...');
     % Reset all the saved options
     bst_set('ProcessOptions', []);
@@ -256,7 +318,7 @@ function sStudy = AddIntraElectrodes(sStudy)
     end
 end
 % Modification: Add 'SEEGMethod' and 'ECOGMethod' to the Headmodel structure
-if (GlobalData.DataBase.DbVersion < 3.6) && ~isempty(ProtocolsListStudies) && ~isfield(ProtocolsListStudies(1).AnalysisStudy.HeadModel, 'ECOGMethod')
+if (CurrentDbVersion < 3.6) && ~isempty(ProtocolsListStudies) && ~isfield(ProtocolsListStudies(1).AnalysisStudy.HeadModel, 'ECOGMethod')
     disp('BST> Database structure: Adding intra-cranial electrodes definition...');
     ApplyToDatabase(@AddIntraElectrodes);
     disp('BST> Database structure: Done.');
@@ -264,15 +326,51 @@ if (GlobalData.DataBase.DbVersion < 3.6) && ~isempty(ProtocolsListStudies) && ~i
     bst_set('ProcessOptions', []);
 end
 
+%% ===== UPDATE 07-May-2019 =====
+% Modification: add fibers objects
+if (CurrentDbVersion < 5)
+    disp('BST> Database update: Adding support for diffusion fibers...');
+    for iProt = 1:length(ProtocolsListSubjects)
+        subjFields = fieldnames(ProtocolsListSubjects(iProt));
+        for iField = 1:length(subjFields)
+            subjField = subjFields{iField};
+            nSubjects = length(ProtocolsListSubjects(iProt).(subjField));
+            sSubjects = repmat(db_template('subject'), nSubjects);
+            for iSubj = 1:nSubjects
+                % Add iFibers to subject
+                sSubjects(iSubj) = struct_copy_fields(db_template('subject'), ProtocolsListSubjects(iProt).(subjField)(iSubj));
+                % Add Fibers to subjectmat
+                SubjectFile = bst_fullfile(ProtocolsListInfos(iProt).SUBJECTS, sSubjects(iSubj).FileName);
+                if file_exist(SubjectFile)
+                    SubjectMat = load(SubjectFile);
+                    SubjectMat = struct_copy_fields(db_template('subjectmat'), SubjectMat);
+                    bst_save(SubjectFile, SubjectMat, 'v7');
+                end
+            end
+            ProtocolsListSubjects(iProt).(subjField) = sSubjects;
+        end
+    end
+    disp('BST> Database update: Done.');
+end
+
 
 %% ===== JUST BEFORE RETURNING TO STARTUP FUNCTION =====
 % Save the new database version
-isSave = (GlobalData.DataBase.DbVersion ~= CurrentDbVersion);
-GlobalData.DataBase.DbVersion = CurrentDbVersion;
-if isSave
-    db_save();
+if saveMetadata
+    if isGlobal
+        GlobalData.DataBase.ProtocolInfo(iProtocols)     = ProtocolsListInfos;
+        GlobalData.DataBase.ProtocolSubjects(iProtocols) = ProtocolsListSubjects;
+        GlobalData.DataBase.ProtocolStudies(iProtocols)  = ProtocolsListStudies;
+        GlobalData.DataBase.DbVersion        = LatestDbVersion;
+        db_save();
+    else
+        ProtocolMat.ProtocolInfo     = ProtocolsListInfos;
+        ProtocolMat.ProtocolSubjects = ProtocolsListSubjects;
+        ProtocolMat.ProtocolStudies  = ProtocolsListStudies;
+        ProtocolMat.DbVersion        = LatestDbVersion;
+        bst_save(ProtocolFile, ProtocolMat, 'v7');
+    end
 end
-
 
 %% ===================================================================================================
 %  ===== HELPER FUNCTIONS ============================================================================
@@ -339,12 +437,48 @@ end
             end
         end
         % Save database
-        GlobalData.DataBase.ProtocolStudies = ProtocolsListStudies;
+        SaveProtocolStudies();
         bst_progress('stop');
     end
+
+    %% ===== SAVE CHANGES TO DATABASE =====
+    function SaveProtocolStudies()
+        if saveMetadata
+            if isGlobal
+                GlobalData.DataBase.ProtocolStudies(iProtocols) = ProtocolsListStudies;
+            else
+                ProtocolMat.ProtocolStudies = ProtocolsListStudies;
+                bst_save(ProtocolFile, ProtocolMat, 'v7');
+            end
+        end
+    end
+    function SaveProtocolSubjects()
+        if saveMetadata
+            if isGlobal
+                GlobalData.DataBase.ProtocolSubjects(iProtocols) = ProtocolsListSubjects;
+            else
+                ProtocolMat.ProtocolSubjects = ProtocolsListSubjects;
+                bst_save(ProtocolFile, ProtocolMat, 'v7');
+            end
+        end
+    end
+    
 end
 
-
+function [ProtocolMat, ProtocolFile] = GetProtocolMat(sProtocol)
+    ProtocolMat  = [];
+    ProtocolFile = [];
+    
+    if isstruct(sProtocol) && isfield(sProtocol, 'STUDIES') && ~isempty(sProtocol.STUDIES)
+        ProtocolFile = bst_fullfile(sProtocol.STUDIES, 'protocol.mat');
+        if file_exist(ProtocolFile)
+            ProtMat = load(ProtocolFile);
+            if isfield(ProtMat, 'DbVersion')
+                ProtocolMat = ProtMat;
+            end
+        end
+    end
+end
 
 
 

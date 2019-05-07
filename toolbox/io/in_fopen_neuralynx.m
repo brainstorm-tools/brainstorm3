@@ -142,8 +142,7 @@ sFile.header    = hdr;
 sFile.comment   = Comment;
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = hdr.SamplingFrequency;
-sFile.prop.samples = [0, hdr.NumSamples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, hdr.NumSamples - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.NumChannels, 1);
@@ -186,19 +185,17 @@ if ~isempty(EventFile)
         events = repmat(db_template('event'), 1, length(uniqueType));
         % Format list
         for iEvt = 1:length(uniqueType)
-            % Ask for a label
+            % Find list of occurences of this event
+            iOcc = ((allTypes == uniqueType(iEvt)) & (allSamples >= 0));
+            % Fill events structure
             events(iEvt).label      = uniqueString{iEvt};
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            % Find list of occurences of this event
-            iOcc = ((allTypes == uniqueType(iEvt)) & (allSamples >= 0));
-            % Set time
-            events(iEvt).samples = allSamples(iOcc);
-            % Convert to time
-            events(iEvt).times = events(iEvt).samples ./ sFile.prop.sfreq;
-            % Epoch: set as 1 for all the occurrences
-            events(iEvt).epochs = ones(1, length(events(iEvt).samples));
+            events(iEvt).times      = allSamples(iOcc) ./ sFile.prop.sfreq;
+            events(iEvt).epochs     = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
+            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
         end
         % Import this list
         sFile = import_events(sFile, [], events);

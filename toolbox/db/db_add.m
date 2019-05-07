@@ -174,7 +174,7 @@ if isAnatomy
     switch (fileType)
         case 'subjectimage'
             % Nothing to do: file is replaced anyway
-        case {'tess', 'cortex', 'scalp', 'outerskull', 'innerskull'}
+        case {'tess', 'cortex', 'scalp', 'outerskull', 'innerskull', 'fibers'}
             sMat.Comment = file_unique(sMat.Comment, {sSubject.Surface.Comment});
     end
 else

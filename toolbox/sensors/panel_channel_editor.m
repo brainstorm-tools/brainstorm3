@@ -488,6 +488,26 @@ function SaveChannelFile()
     if ~isempty(iDel)
         ChannelMat.Channel(iDel) = [];
     end
+    % Check that the type of iEEG channels matches the type of IntraElectrodes
+    if ~isempty(ChannelMat.IntraElectrodes)
+        for iElec = 1:length(ChannelMat.IntraElectrodes)
+            % Get channels associated to this electrode
+            iChan = find(strcmpi({ChannelMat.Channel.Group}, ChannelMat.IntraElectrodes(iElec).Name));
+            if isempty(iChan)
+                continue;
+            end
+            % Check if the type of the electrode is not assigned correctly
+            if strcmpi(ChannelMat.IntraElectrodes(iElec).Type, 'SEEG') && ~any(strcmpi({ChannelMat.Channel(iChan).Type}, 'SEEG')) && any(strcmpi({ChannelMat.Channel(iChan).Type}, 'ECOG'))
+                ChannelMat.IntraElectrodes(iElec) = struct_copy_fields(ChannelMat.IntraElectrodes(iElec), bst_get('ElectrodeConfig', 'ECOG'), 1);
+                ChannelMat.IntraElectrodes(iElec).Type = 'ECOG-mid';
+                disp(['BST> Changed the type of electrode "' ChannelMat.IntraElectrodes(iElec).Name '"  to "' ChannelMat.IntraElectrodes(iElec).Type '"']);
+            elseif ismember(ChannelMat.IntraElectrodes(iElec).Type, {'ECOG','ECOG+SEEG'}) && ~any(strcmpi({ChannelMat.Channel(iChan).Type}, 'ECOG')) && any(strcmpi({ChannelMat.Channel(iChan).Type}, 'SEEG'))
+                ChannelMat.IntraElectrodes(iElec) = struct_copy_fields(ChannelMat.IntraElectrodes(iElec), bst_get('ElectrodeConfig', 'SEEG'), 1);
+                ChannelMat.IntraElectrodes(iElec).Type = 'SEEG';
+                disp(['BST> Changed the type of electrode "' ChannelMat.IntraElectrodes(iElec).Name '"  to "' ChannelMat.IntraElectrodes(iElec).Type '"']);
+            end
+        end
+    end
     % Add number of channels to the comment
     ChannelMat.Comment = str_remove_parenth(ChannelMat.Comment, '(');
     ChannelMat.Comment = [ChannelMat.Comment, sprintf(' (%d)', length(ChannelMat.Channel))];

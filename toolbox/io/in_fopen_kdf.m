@@ -213,10 +213,9 @@ sFile.header     = hdr;
 % Comment: short filename
 [tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.sfreq;
-sFile.prop.samples = [0, hdr.nsamples * hdr.nrec - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.sfreq;
+sFile.prop.times = [0, hdr.nsamples * hdr.nrec - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nsignal,1);
 % Acquisition date

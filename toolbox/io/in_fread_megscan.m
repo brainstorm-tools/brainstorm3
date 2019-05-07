@@ -25,7 +25,7 @@ function F = in_fread_megscan(sFile, SamplesBounds)
 
 % Check inputs
 if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % % Read data

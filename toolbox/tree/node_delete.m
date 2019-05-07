@@ -158,7 +158,7 @@ switch (lower(nodeType{1}))
 
 
 %% ===== SURFACES =====
-    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'other'}
+    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'other'}
         bst_progress('start', 'Delete nodes', 'Deleting surfaces...');
         % Full file names
         FullFilesList = cellfun(@(f)bst_fullfile(ProtocolInfo.SUBJECTS,f), FileName', 'UniformOutput',0);

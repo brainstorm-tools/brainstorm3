@@ -114,16 +114,14 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         return;
     end
     % Snap time offset to the closest sample
-    OffsetSample = round(OffsetTime * sFreq);
-    if (OffsetSample == 0)
+    if (OffsetTime == 0)
         bst_report('Error', sProcess, sInput, 'The selected time offset must be longer than one time sample.');
         return;
     end
     
     % ===== PROCESS EVENTS =====
     for i = 1:length(iEvtList)
-        sEvents(iEvtList(i)).samples = sEvents(iEvtList(i)).samples + OffsetSample;
-        sEvents(iEvtList(i)).times   = sEvents(iEvtList(i)).times + OffsetSample / sFreq;
+        sEvents(iEvtList(i)).times = round((sEvents(iEvtList(i)).times + OffsetTime) .* sFreq) ./ sFreq;
     end
         
     % ===== SAVE RESULT =====

@@ -12,6 +12,8 @@ function [ varargout ] = bst_memory( varargin )
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          iSubject, SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          MriFile,  SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          SurfaceFile)
+%         [sFib,iFib] = bst_memory('LoadFiber',            FibFile)
+%         [sFib,iFib] = bst_memory('LoadFiber',            iSubject)
 %
 %          DataValues = bst_memory('GetRecordingsValues',  iDS, iChannel, iTime)
 %       ResultsValues = bst_memory('GetResultsValues',     iDS, iRes, iVertices, TimeValues)
@@ -65,7 +67,7 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -141,6 +143,69 @@ function [sMri, iMri] = GetMri(MriFile) %#ok<DEFNU>
         sMri = GlobalData.Mri(iMri);
     else
         sMri = [];
+    end
+end
+
+
+%% ===== LOAD FIBERS =====
+% USAGE:  [sFib,iFib] = bst_memory('LoadFiber', FibFile)
+%         [sFib,iFib] = bst_memory('LoadFiber', iSubject)
+function [sFib,iFib] = LoadFibers(FibFile)
+    global GlobalData;
+    % ===== PARSE INPUTS =====
+    % If argument is a subject indice
+    if isnumeric(FibFile)
+        % Get subject
+        iSubject = FibFile;
+        sSubject = bst_get('Subject', iSubject);
+        % If subject does not have fibers
+        if isempty(sSubject.Surface) || isempty(sSubject.iFibers)
+            error('No fiber available for subject "%s".', sSubject.Name);
+        end
+        % Get fibers file
+        FibFile = sSubject.Surface(sSubject.iFibers).FileName;
+    else
+        [sSubject, iSubject, iSurfDb] = bst_get('SurfaceFile', FibFile);
+    end
+
+    % ===== CHECK IF LOADED =====
+    % Check if surface is already loaded
+    iFib = find(file_compare({GlobalData.Fibers.FileName}, FibFile));
+    % If fiber is not loaded yet: load it
+    if isempty(iFib)
+        % Unload the unused Anatomies (surfaces + MRIs)
+        UnloadAll('KeepSurface');
+        % Create default structure
+        sFib = db_template('LoadedFibers');
+        % Load fibers matrix
+        FibMat = in_fibers(FibFile);
+        % Build fibers structure
+        for field = fieldnames(sFib)'
+            if isfield(FibMat, field{1})
+                sFib.(field{1}) = FibMat.(field{1});
+            end
+        end
+        % Set filename
+        sFib.FileName = file_win2unix(FibFile);
+        iFib = length(GlobalData.Fibers) + 1;
+        % Save fibers in memory
+        GlobalData.Fibers(iFib) = sFib;
+    % Else: Return the existing instance
+    else
+        sFib = GlobalData.Fibers(iFib);
+    end
+end
+
+
+%% ===== GET FIBERS =====
+function [sFib, iFib] = GetFibers(FibFile) %#ok<DEFNU>
+    global GlobalData;
+    % Check if surface is already loaded
+    iFib = find(file_compare({GlobalData.Fibers.FileName}, FibFile));
+    if ~isempty(iFib)
+        sFib = GlobalData.Fibers(iFib);
+    else
+        sFib = [];
     end
 end
 
@@ -523,13 +588,8 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             sFile = MeasuresMat.sFile;
         end
         % Rebuild Time vector
-        if ~isempty(sFile.epochs)
-            NumberOfSamples = sFile.epochs(1).samples(2) - sFile.epochs(1).samples(1) + 1;
-            Time = linspace(sFile.epochs(1).times(1), sFile.epochs(1).times(2), NumberOfSamples);
-        else
-            NumberOfSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
-            Time = linspace(sFile.prop.times(1), sFile.prop.times(2), NumberOfSamples);
-        end
+        Time = panel_time('GetRawTimeVector', sFile);
+        
         % Check if file exists
         isRetry = 1;
         while isRetry
@@ -582,7 +642,6 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
         sFile.filename     = DataFile;
         sFile.prop.times   = Time([1 end]);
         sFile.prop.sfreq   = 1 ./ (Time(2) - Time(1));
-        sFile.prop.samples = round(sFile.prop.times * sFile.prop.sfreq);
     end
     Measures.DataType     = DataType;
     Measures.ChannelFlag  = MeasuresMat.ChannelFlag;
@@ -2891,6 +2950,10 @@ function isCancel = UnloadAll(varargin)
     % Forced unload MRI
     if isForced && ~KeepMri
         GlobalData.Mri = repmat(db_template('LoadedMri'), 0);
+    end
+    % Forced unload Fibers
+    if isForced
+        GlobalData.Fibers = repmat(db_template('LoadedFibers'), 0);
     end
     % Forced unload surfaces
     if isForced && ~KeepSurface

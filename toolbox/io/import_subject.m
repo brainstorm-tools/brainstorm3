@@ -21,7 +21,9 @@ function import_subject(ZipFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015; Martin Cousineau, 2019
+
+global GlobalData
 
 %% ===== PARSE INPUTS =====
 if (nargin < 1)
@@ -157,6 +159,26 @@ end
 if ~isempty(errMsg)
     bst_error(errMsg, 'Import subjects', 0);
 end
+
+%% ===== UPDATE SUBJECT DATABASE =====
+protocolFile = bst_fullfile(ProtocolDir, 'data', 'protocol.mat');
+CurrentDbVersion = [];
+if file_exist(protocolFile)
+    ProtocolMat = load(protocolFile);
+    if isfield(ProtocolMat, 'DbVersion') && ~isempty(ProtocolMat.DbVersion)
+        CurrentDbVersion = ProtocolMat.DbVersion;
+    end
+end
+if isempty(CurrentDbVersion)
+    % No protocol file in extracted subject, meaning this was before
+    % db_update 2019, so assume it is the previous major database version
+    CurrentDbVersion = 4.0;
+end
+LatestDbVersion = GlobalData.DataBase.DbVersion;
+GlobalData.DataBase.DbVersion = CurrentDbVersion;
+db_update(LatestDbVersion, iProtocol, 0);
+GlobalData.DataBase.DbVersion = LatestDbVersion;
+
 % Delete temporary folder
 file_delete(ProtocolDir, 1, 3);
 % Close progress bar

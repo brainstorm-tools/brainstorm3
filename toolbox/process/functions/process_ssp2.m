@@ -355,7 +355,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 return;
             end
             % Extended / simple event
-            isExtended = (size(events(iEvt).samples, 1) == 2);
+            isExtended = (size(events(iEvt).times, 1) == 2);
             % Simple events: get the samples to read around each event
             if ~isExtended
                 evtSmpRange = round(evtTimeWindow .* sFile.prop.sfreq);
@@ -387,10 +387,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 bst_progress('set', progressPos + round(iOcc / nOcc * 50));
                 % Simple event: read a time window around the marker
                 if ~isExtended
-                    SamplesBounds = events(iEvt).samples(1,iOcc) + evtSmpRange;
+                    SamplesBounds = round(events(iEvt).times(1,iOcc) .* sFile.prop.sfreq) + evtSmpRange;
                 % Extended event: read the full event
                 else
-                    SamplesBounds = events(iEvt).samples(:,iOcc)' + evtSmpRange;
+                    SamplesBounds = round(events(iEvt).times(:,iOcc)' .* sFile.prop.sfreq) + evtSmpRange;
                 end
                 % Check that this epoch is within the segment of file to consider
                 TimeBounds = SamplesBounds ./ sFile.prop.sfreq;
@@ -402,7 +402,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                     nInfoBad = nInfoBad + 1;
                     continue;
                 % Check if this this segment is  outside of the file bounds
-                elseif (SamplesBounds(1) < sFile.prop.samples(1)) || (SamplesBounds(2) > sFile.prop.samples(2)) 
+                elseif (TimeBounds(1) < sFile.prop.times(1)) || (TimeBounds(2) > sFile.prop.times(2)) 
                     bst_report('Info', sProcess, sInputsA(iFile), sprintf('Event %s #%d is too close to the beginning or end of the file: ignored...', evtName, iOcc));
                     continue;
                 end

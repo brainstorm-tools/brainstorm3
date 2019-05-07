@@ -329,8 +329,9 @@ function all = get_LFPs(trial, nChannels, sProcess, time_segmentAroundSpikes, sa
 
         % Check that the entire segment around the spikes [-150,150]ms
         % is inside the trial segment and keep only those events
-        events_within_segment = trial.Events(spikeEvents(iNeuron)).samples(trial.Events(spikeEvents(iNeuron)).times > trial.Time(1)   + abs(sProcess.options.timewindow.Value{1}(1)) & ...
-                                                                           trial.Events(spikeEvents(iNeuron)).times < trial.Time(end) - abs(sProcess.options.timewindow.Value{1}(2)));
+        iSel = trial.Events(spikeEvents(iNeuron)).times > trial.Time(1)   + abs(sProcess.options.timewindow.Value{1}(1)) & ...
+               trial.Events(spikeEvents(iNeuron)).times < trial.Time(end) - abs(sProcess.options.timewindow.Value{1}(2));
+        events_within_segment = round(trial.Events(spikeEvents(iNeuron)).times(iSel) .* sampling_rate);
 
         %% Create a matrix that holds all the segments around the spike
         % of that neuron, for all electrodes.

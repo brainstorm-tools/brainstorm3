@@ -46,6 +46,7 @@ switch (fExt)
         out_projector_fif(OutputFile, ChannelNames, Projectors);
     case '.mat'
         NewMat.Projector = Projectors;
+        NewMat.RowNames = ChannelNames;
         bst_save(OutputFile, NewMat, 'v7');
     otherwise
         error(['Unknown file extension "' fExt '"']);

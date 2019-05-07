@@ -34,7 +34,7 @@ function varargout = figure_timeseries( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2019; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -1174,51 +1174,39 @@ function ResizeCallback(hFig, ev)
     end
     
     % ===== REPOSITION SCALE CONTROLS =====
-    hButtonGainMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainMinus');
-    hButtonGainPlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainPlus');
-    hButtonAutoScale = findobj(hFig, '-depth', 1, 'Tag', 'ButtonAutoScale');
-    hButtonSetScaleY = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleY');
-    hButtonFlipY     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonFlipY');
-    hButtonZoomTimePlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus');
     hButtonZoomTimeMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus');
-    hButtonSetScaleLog   = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
-    hButtonShowGrids     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonShowGrids');
-    hButtonZoomUp        = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomUp');
-    hButtonZoomPlus      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomPlus');
-    hButtonZoomMinus     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomMinus');
+    hButtonZoomTimePlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus');
+    hButtonGainMinus     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainMinus');
+    hButtonGainPlus      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainPlus');
+    hButtonAutoScale     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonAutoScale');
+    hButtonMenu          = findobj(hFig, '-depth', 1, 'Tag', 'ButtonMenu');
     hButtonZoomDown      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomDown');
-    
-    % Update gain buttons
+    hButtonZoomMinus     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomMinus');
+    hButtonZoomPlus      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomPlus');
+    hButtonZoomUp        = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomUp');
+    % Update positions
     butSize = 22;
     if ~isempty(hButtonZoomTimePlus)
-        set(hButtonZoomTimePlus,   'Position', [figPos(3) - 65, 3, butSize, butSize]);
-        set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 40, 3, butSize, butSize]);
+        set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 3*butSize, 3, butSize, butSize]);
+        set(hButtonZoomTimePlus,   'Position', [figPos(3) - 2*butSize, 3, butSize, butSize]);
     end
     if ~isempty(hButtonGainMinus)
-        set(hButtonGainMinus, 'Position', [figPos(3)-butSize-1, 45, butSize, butSize]);
-        set(hButtonGainPlus,  'Position', [figPos(3)-butSize-1, 67, butSize, butSize]);
-    end
-    if ~isempty(hButtonShowGrids)
-        set(hButtonShowGrids,  'Position', [figPos(3)-butSize-1, 116, butSize, butSize]);
+        set(hButtonGainMinus, 'Position', [figPos(3)-butSize-1, 2*butSize, butSize, butSize]);
+        set(hButtonGainPlus,  'Position', [figPos(3)-butSize-1, 3*butSize, butSize, butSize]);
     end
     if ~isempty(hButtonAutoScale)
-        set(hButtonAutoScale, 'Position', [figPos(3)-butSize-1, 138, butSize, butSize]);
+        set(hButtonAutoScale, 'Position', [figPos(3)-butSize-1, 5*butSize, butSize, butSize]);
     end
-    if ~isempty(hButtonSetScaleLog)
-        set(hButtonSetScaleLog,  'Position', [figPos(3)-butSize-1, 138, butSize, butSize]);
-    end
-    if ~isempty(hButtonSetScaleY)
-        set(hButtonSetScaleY, 'Position', [figPos(3)-butSize-1, 162, butSize, butSize]);
-    end
-    if ~isempty(hButtonFlipY)
-        set(hButtonFlipY,  'Position', [figPos(3)-butSize-1, 184, butSize, butSize]);
+    if ~isempty(hButtonMenu)
+        set(hButtonMenu, 'Position', [figPos(3)-butSize-1, 6*butSize, butSize, butSize]);
     end
     if ~isempty(hButtonZoomUp)
-        set(hButtonZoomUp,    'Position', [figPos(3)-butSize-1, 299, butSize, butSize]);
-        set(hButtonZoomPlus,  'Position', [figPos(3)-butSize-1, 277, butSize, butSize]);
-        set(hButtonZoomMinus, 'Position', [figPos(3)-butSize-1, 255, butSize, butSize]);
-        set(hButtonZoomDown,  'Position', [figPos(3)-butSize-1, 233, butSize, butSize]);
+        set(hButtonZoomDown,  'Position', [figPos(3)-butSize-1, 8*butSize, butSize, butSize]);
+        set(hButtonZoomPlus,  'Position', [figPos(3)-butSize-1, 9*butSize, butSize, butSize]);
+        set(hButtonZoomMinus, 'Position', [figPos(3)-butSize-1, 10*butSize, butSize, butSize]);
+        set(hButtonZoomUp,    'Position', [figPos(3)-butSize-1, 11*butSize, butSize, butSize]);
     end
+    
     % ===== REPOSITION SCALE BAR =====
     hColumnScale = findobj(hFig, '-depth', 1, 'Tag', 'AxesColumnScale');
     if ~isempty(hColumnScale)
@@ -1256,6 +1244,9 @@ function FigureKeyPressedCallback(hFig, ev)
                 && (all(ismember(iSelectedRows, GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels)) || isequal(TsInfo.MontageName, 'Bad channels'))
             isMenuSelectedChannels = 1;
         end
+    else
+        SelectedRows = [];
+        iSelectedRows = [];
     end
     % Check if it is a full data file or not
     isFullDataFile = ~isempty(Modality) && (Modality(1) ~= '$') && ~ismember(Modality, {'results', 'timefreq', 'stat', 'none'});
@@ -1286,14 +1277,9 @@ function FigureKeyPressedCallback(hFig, ev)
                 bst_figures('NavigatorKeyPress', hFig, keyEvent);
             end
         % === DATA FILES ===
-        % CTRL+E : Add/delete event (raw viewer only)
-        case 'e'
-            if ~isempty(GlobalData.DataSet(iDS).Measures.sFile) % && isFullDataFile 
-                panel_record('ToggleEvent');
-            end
-        % CTRL+B : Accept/reject trial or time segment
+        % B : Accept/reject trial or time segment
         case 'b'
-            if isControl && isFullDataFile
+            if isFullDataFile
                 switch lower(GlobalData.DataSet(iDS).Measures.DataType)
                     case 'recordings'
                         % Get data file
@@ -1315,6 +1301,25 @@ function FigureKeyPressedCallback(hFig, ev)
                 isDocked = strcmpi(get(hFig, 'WindowStyle'), 'docked');
                 bst_figures('DockFigure', hFig, ~isDocked);
             end
+        % E/CTRL+E : Add/delete event
+        case 'e'
+            if ~isempty(GlobalData.DataSet(iDS).Measures.sFile) % && isFullDataFile
+                if isControl && ~isempty(SelectedRows)
+                    panel_record('ToggleEvent', [], SelectedRows);
+                else
+                    panel_record('ToggleEvent');
+                end
+            end
+        % CTRL+F : Open as figure
+        case 'f'
+            if isControl
+                out_figure_image(hFig, 'Figure');
+            end
+        % CTRL+G : Default topography (no interpolation)
+        case 'g'           
+            if isControl && isFullDataFile
+                bst_figures('ViewTopography', hFig, 0);
+            end
         % CTRL+I : Save as image
         case 'i'
             if isControl
@@ -1324,11 +1329,6 @@ function FigureKeyPressedCallback(hFig, ev)
         case 'j'
             if isControl
                 out_figure_image(hFig, 'Viewer');
-            end
-        % CTRL+F : Open as figure
-        case 'f'
-            if isControl
-                out_figure_image(hFig, 'Figure');
             end
         % CTRL+O : Set resolution
         case 'o'
@@ -1344,11 +1344,6 @@ function FigureKeyPressedCallback(hFig, ev)
         case 't'        
             if isControl && isFullDataFile
                 bst_figures('ViewTopography', hFig, 1);
-            end
-        % CTRL+G : Default topography (no interpolation)
-        case 'g'           
-            if isControl && isFullDataFile
-                bst_figures('ViewTopography', hFig, 0);
             end
         % CTRL+V : Set video time
         case 'v'           
@@ -1438,7 +1433,11 @@ function FigureKeyPressedCallback(hFig, ev)
                             iShortcut = find(strcmpi(RawViewerOptions.Shortcuts(:,1), keyEvent.Character));
                             % If shortcut was found: call the corresponding function
                             if ~isempty(iShortcut) && ~isempty(RawViewerOptions.Shortcuts{iShortcut,2})
-                                panel_record('ToggleEvent', RawViewerOptions.Shortcuts{iShortcut,2});
+                                if isControl && ~isempty(SelectedRows)
+                                    panel_record('ToggleEvent', RawViewerOptions.Shortcuts{iShortcut,2}, SelectedRows);
+                                else
+                                    panel_record('ToggleEvent', RawViewerOptions.Shortcuts{iShortcut,2});
+                                end
                             end
                         end
                 end
@@ -1862,6 +1861,10 @@ function ToggleProperty(hAxes, propName)
         case 'ShowYGrid'
             set(hAxes, 'YGrid',      propVal);
             set(hAxes, 'YMinorGrid', propVal);
+        case 'ShowZeroLines'
+            bst_figures('ReloadFigures', get(hAxes, 'Parent'), 0);
+        case 'FlipYAxis'
+            bst_figures('ReloadFigures', get(hAxes, 'Parent'), 0);
         otherwise
             error('Invalid property name.');
     end
@@ -1922,6 +1925,8 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
         [sStudy, iStudy, iData] = bst_get('AnyFile', DataFile);
     end
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+    % Get selected channels
+    [SelectedRows, iSelectedRows] = GetFigSelectedRows(hFig, {GlobalData.DataSet(iDS).Channel.Name});
     
     % ===== TITLE =====
     % Create popup menu
@@ -2003,14 +2008,19 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
     % ==== EVENTS ====
     % If an event structure is defined
     if ~isempty(GlobalData.DataSet(iDS).Measures.sFile)
-        % Add / delete event
+        % Add / delete event (global)
         jItem = gui_component('MenuItem', jPopup, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)panel_record('ToggleEvent'));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, 0));
+        % Add / delete channel event
+        if ~isempty(SelectedRows)
+            jItem = gui_component('MenuItem', jPopup, [], 'Add / delete channel event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)panel_record('ToggleEvent', [], SelectedRows));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
+        end
         % Only for RAW files
         if isRaw
             % Reject time segment
             jItem = gui_component('MenuItem', jPopup, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)panel_record('RejectTimeSegment'));
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_MASK));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
             jPopup.addSeparator();
             % Previous / next event
             jItem = gui_component('MenuItem', jPopup, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)panel_record('JumpToEvent', 'leftarrow'));
@@ -2055,7 +2065,6 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
 
         % Create figures menu
         jMenuSelected = gui_component('Menu', jPopup, [], 'Channels', IconLoader.ICON_CHANNEL);
-        [SelectedRows, iSelectedRows] = GetFigSelectedRows(hFig, {GlobalData.DataSet(iDS).Channel.Name});
         % Excludes figures without selection and display-only figures (modality name starts with '$')
         if ~isempty(iSelectedRows) && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality) ...
                                    && (GlobalData.DataSet(iDS).Figure(iFig).Id.Modality(1) ~= '$')
@@ -2178,32 +2187,13 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
         % === EXPORT TO PLOTLY ===
         gui_component('MenuItem', jMenuSave, [], 'Export to Plotly', IconLoader.ICON_PLOTLY, [], @(h,ev)bst_call(@out_figure_plotly, hFig));
         
+    % ==== MENU: DISPLAY CONFIG =====
+    jMenuConfig = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_PROPERTIES);
+    DisplayConfigMenu(hFig, jMenuConfig);
+        
     % ==== MENU: FIGURE ====    
     jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
         % === FIGURE CONFIG ===
-        % Set fixed resolution
-        if strcmpi(FigId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
-        end
-        % Normalize amplitudes
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Uniform figure scales', IconLoader.ICON_TS_SYNCRO, [], @(h,ev)panel_record('UniformTimeSeries_Callback',h,ev));
-        jItem.setSelected(bst_get('UniformizeTimeSeriesScales'));
-        % Normalize amplitudes
-        if strcmpi(FigId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Normalize signals', [], [], @(h,ev)SetNormalizeAmp(iDS, iFig, ~TsInfo.NormalizeAmp));
-            jItem.setSelected(TsInfo.NormalizeAmp);
-        end
-        % Legend
-        jMenuFigure.addSeparator();
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend));
-        jItem.setSelected(TsInfo.ShowLegend);
-        % XGrid
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleProperty(hAxes, 'ShowXGrid'));
-        jItem.setSelected(TsInfo.ShowXGrid);
-        % YGrid
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowYGrid'));
-        jItem.setSelected(TsInfo.ShowYGrid);
         % Change background color
         jMenuFigure.addSeparator();
         gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
@@ -2419,7 +2409,8 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
             hAxes(iAxes) = PlotHandles(iAxes).hAxes;
         else
             % Create axes object
-            hAxes(iAxes) = subplot('Position', [10*iAxes, 10, 10 10]);
+            %hAxes(iAxes) = subplot('Position', [10*iAxes, 10, 10 10]);
+            hAxes(iAxes) = axes;
             set(hAxes(iAxes), ...
                 'Units',      'pixels', ...
                 'UserData',   iAxes, ...
@@ -3198,29 +3189,31 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
     set(PlotHandles.hLines(~isNullLines), 'Visible', 'on');
     
     % ===== PLOT ZERO-LINES =====
-    % Lines coordinates
-    Xzeros = repmat([TimeVector(1), TimeVector(end)], [nLines, 1]);
-    Yzeros = [PlotHandles.ChannelOffsets, PlotHandles.ChannelOffsets];
-    Zzeros = repmat(.5 * [1 1], [nLines, 1]);
-    % Update lines
-    if isFastUpdate && (length(PlotHandles.hLinesZeroY) == nLines) && all(ishandle(PlotHandles.hLinesZeroY))
-        for iLine = 1:length(PlotHandles.hLinesZeroY)
-            set(PlotHandles.hLinesZeroY(iLine), ...
-                'XData', Xzeros(iLine,:), ...
-                'YData', Yzeros(iLine,:), ...
-                'ZData', Zzeros(iLine,:));
+    if TsInfo.ShowZeroLines
+        % Lines coordinates
+        Xzeros = repmat([TimeVector(1), TimeVector(end)], [nLines, 1]);
+        Yzeros = [PlotHandles.ChannelOffsets, PlotHandles.ChannelOffsets];
+        Zzeros = repmat(.5 * [1 1], [nLines, 1]);
+        % Update lines
+        if isFastUpdate && (length(PlotHandles.hLinesZeroY) == nLines) && all(ishandle(PlotHandles.hLinesZeroY))
+            for iLine = 1:length(PlotHandles.hLinesZeroY)
+                set(PlotHandles.hLinesZeroY(iLine), ...
+                    'XData', Xzeros(iLine,:), ...
+                    'YData', Yzeros(iLine,:), ...
+                    'ZData', Zzeros(iLine,:));
+            end
+        else
+            % Delete existing zero-line (left from a previous 'Butterfly' display)
+            if ~isempty(PlotHandles.hLinesZeroY) && all(ishandle(PlotHandles.hLinesZeroY))
+                delete(PlotHandles.hLinesZeroY);
+                PlotHandles.hLinesZeroY = [];
+            end
+            % Create new line
+            PlotHandles.hLinesZeroY = line(...
+                Xzeros', Yzeros', Zzeros', ...
+                'Color',  .9*[1 1 1], ...
+                'Parent', hAxes);
         end
-    else
-        % Delete existing zero-line (left from a previous 'Butterfly' display)
-        if ~isempty(PlotHandles.hLinesZeroY) && all(ishandle(PlotHandles.hLinesZeroY))
-            delete(PlotHandles.hLinesZeroY);
-            PlotHandles.hLinesZeroY = [];
-        end
-        % Create new line
-        PlotHandles.hLinesZeroY = line(...
-            Xzeros', Yzeros', Zzeros', ...
-            'Color',  .9*[1 1 1], ...
-            'Parent', hAxes);
     end
     
     % ===== CHANNELS LABELS ======
@@ -3404,21 +3397,17 @@ function CreateScaleButtons(iDS, iFig)
     jFontDefault = bst_get('Font');
     jFont = java.awt.Font(jFontDefault.getFamily(), java.awt.Font.PLAIN, 11);
     % Create scale buttons
-    jButton = javaArray('java.awt.Component', 13);
-    jButton(1) = javax.swing.JButton('^');
-    jButton(2) = javax.swing.JButton('v');
-    jButton(3) = javax.swing.JButton('...');
-    jButton(4) = javax.swing.JToggleButton('AS');
-    jButton(5) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_FLIPY);
-    jButton(6) = javax.swing.JButton('<');
-    jButton(7) = javax.swing.JButton('>');
-    jButton(8) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_LOG);
-    jButton(9) = gui_component('ToolbarToggle', [], [], [], IconLoader.ICON_MATRIX);
-    jButton(10) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_UP);
-    jButton(11) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_PLUS);
-    jButton(12) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_MINUS);
-    jButton(13) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_DOWN);
-    
+    jButton = javaArray('java.awt.Component', 10);
+    jButton(1) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_LEFT);   % javax.swing.JButton('<');
+    jButton(2) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_RIGHT);  % javax.swing.JButton('>');
+    jButton(3) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_MINUS);   % javax.swing.JButton('v');
+    jButton(4) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_PLUS);     % javax.swing.JButton('^');
+    jButton(5) = javax.swing.JToggleButton('AS');
+    jButton(6) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_DROP_MENU_LEFT);
+    jButton(7) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_UP);
+    jButton(8) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_PLUS);
+    jButton(9) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_MINUS);
+    jButton(10) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_DOWN);
     % Configure buttons
     for i = 1:length(jButton)
         jButton(i).setBackground(java.awt.Color(bgColor(1), bgColor(2), bgColor(3)));
@@ -3438,77 +3427,49 @@ function CreateScaleButtons(iDS, iFig)
     [j8, h8] = javacomponent(jButton(8), [0, 0, .01, .01], hFig);
     [j9, h9] = javacomponent(jButton(9), [0, 0, .01, .01], hFig);
     [j10, h10] = javacomponent(jButton(10), [0, 0, .01, .01], hFig);
-    [j11, h11] = javacomponent(jButton(11), [0, 0, .01, .01], hFig);
-    [j12, h12] = javacomponent(jButton(12), [0, 0, .01, .01], hFig);
-    [j13, h13] = javacomponent(jButton(13), [0, 0, .01, .01], hFig);
     
     % Configure Gain buttons
-    set(h1,  'Tag', 'ButtonGainPlus',  'Units', 'pixels');
-    set(h2,  'Tag', 'ButtonGainMinus', 'Units', 'pixels');
-    set(h3,  'Tag', 'ButtonSetScaleY', 'Units', 'pixels');
-    set(h4,  'Tag', 'ButtonAutoScale', 'Units', 'pixels');
-    set(h5,  'Tag', 'ButtonFlipY',     'Units', 'pixels');
-    set(h6,  'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
-    set(h7,  'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
-    set(h8,  'Tag', 'ButtonSetScaleLog',   'Units', 'pixels');
-    set(h9,  'Tag', 'ButtonShowGrids',     'Units', 'pixels');
-    set(h10, 'Tag', 'ButtonZoomUp',        'Units', 'pixels');
-    set(h11, 'Tag', 'ButtonZoomPlus',      'Units', 'pixels');
-    set(h12, 'Tag', 'ButtonZoomMinus',     'Units', 'pixels');
-    set(h13, 'Tag', 'ButtonZoomDown',      'Units', 'pixels');
-    j1.setToolTipText('<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B></TD></TR></TABLE>');
-    j2.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B></TD></TR></TABLE>');
-    j3.setToolTipText('Set scale manually');
-    j4.setToolTipText('Auto-scale amplitude when changing page');
-    j5.setToolTipText('<HTML><B>Flips the Y axis when displaying the recordings</B>:<BR><BR>Negative values are displayed oriented towards the top of the figures.');
-    j6.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
-    j7.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
-    j8.setToolTipText('Set X scale to log scale');
-    j9.setToolTipText('Show grids');
-    j10.setToolTipText('<HTML><TABLE><TR><TD>Scroll up</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse up]<BR> &nbsp; [Middle click + Mouse up]</B></TD></TR></TABLE>');
-    j11.setToolTipText('<HTML><TABLE><TR><TD>Vertical zoom in</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>');
-    j12.setToolTipText('<HTML><TABLE><TR><TD>Vertical zoom out</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>');
-    j13.setToolTipText('<HTML><TABLE><TR><TD>Scroll down</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B></TD></TR></TABLE>');
-    java_setcb(j1, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1));
-    java_setcb(j2, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, .9091));
-    java_setcb(j3, 'ActionPerformedCallback', @(h,ev)SetScaleY(iDS, iFig));
-    java_setcb(j4, 'ActionPerformedCallback', @(h,ev)AutoScale_Callback(ev.getSource(), hFig));
-    java_setcb(j5, 'ActionPerformedCallback', @(h,ev)FlipY_Callback(ev.getSource(), hFig));
-    java_setcb(j6, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', .9091));
-    java_setcb(j7, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', 1.1));
-    java_setcb(j8, 'ActionPerformedCallback', @(h,ev)ToggleLogLinearScale(ev.getSource(), hFig));
-    java_setcb(j9, 'ActionPerformedCallback', @(h,ev)ShowGrids(ev.getSource(), hFig));
-    java_setcb(j10, 'ActionPerformedCallback', @(h,ev)FigurePan(hFig, [0, -.9]));
-    java_setcb(j11, 'ActionPerformedCallback', @(h,ev)FigureZoom(hFig, 'vertical', 1.3, 0));
-    java_setcb(j12, 'ActionPerformedCallback', @(h,ev)FigureZoom(hFig, 'vertical', .7692, 0));
-    java_setcb(j13, 'ActionPerformedCallback', @(h,ev)FigurePan(hFig, [0, .9]));
-    % Up button
-    j1.setMargin(java.awt.Insets(3,0,0,0));
-    j1.setFont(bst_get('Font', 12));    
+    set(h1,  'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
+    set(h2,  'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
+    set(h3,  'Tag', 'ButtonGainMinus', 'Units', 'pixels');
+    set(h4,  'Tag', 'ButtonGainPlus',  'Units', 'pixels');
+    set(h5,  'Tag', 'ButtonAutoScale', 'Units', 'pixels');
+    set(h6,  'Tag', 'ButtonMenu', 'Units', 'pixels');
+    set(h7, 'Tag', 'ButtonZoomUp',        'Units', 'pixels');
+    set(h8, 'Tag', 'ButtonZoomPlus',      'Units', 'pixels');
+    set(h9, 'Tag', 'ButtonZoomMinus',     'Units', 'pixels');
+    set(h10, 'Tag', 'ButtonZoomDown',      'Units', 'pixels');
+    j1.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
+    j2.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
+    j3.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B></TD></TR></TABLE>');
+    j4.setToolTipText('<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B></TD></TR></TABLE>');
+    j5.setToolTipText('Auto-scale amplitude when changing page');
+    j6.setToolTipText('Display configuration');
+    j7.setToolTipText('<HTML><TABLE><TR><TD>Scroll up</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse up]<BR> &nbsp; [Middle click + Mouse up]</B></TD></TR></TABLE>');
+    j8.setToolTipText('<HTML><TABLE><TR><TD>Vertical zoom in</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>');
+    j9.setToolTipText('<HTML><TABLE><TR><TD>Vertical zoom out</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>');
+    j10.setToolTipText('<HTML><TABLE><TR><TD>Scroll down</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B></TD></TR></TABLE>');
+    java_setcb(j1, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', .9091));
+    java_setcb(j2, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', 1.1));
+    java_setcb(j3, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, .9091));
+    java_setcb(j4, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1));
+    java_setcb(j5, 'ActionPerformedCallback', @(h,ev)SetAutoScale(hFig, ev.getSource().isSelected()));
+    java_setcb(j6, 'ActionPerformedCallback', @(h,ev)DisplayConfigMenu(hFig, j6));
+    java_setcb(j7, 'ActionPerformedCallback', @(h,ev)FigurePan(hFig, [0, -.9]));
+    java_setcb(j8, 'ActionPerformedCallback', @(h,ev)FigureZoom(hFig, 'vertical', 1.3, 0));
+    java_setcb(j9, 'ActionPerformedCallback', @(h,ev)FigureZoom(hFig, 'vertical', .7692, 0));
+    java_setcb(j10, 'ActionPerformedCallback', @(h,ev)FigurePan(hFig, [0, .9]));
     % Select buttons
-    j4.setSelected(TsInfo.AutoScaleY);
-    j5.setSelected(TsInfo.FlipYAxis);
-    j8.setSelected(strcmp(TsInfo.XScale, 'log'));
-    j9.setSelected(TsInfo.ShowXGrid || TsInfo.ShowYGrid);
-    % Add associated button to container when needed
-    set(h8, 'UserData', j8);
-    set(h9, 'UserData', j9);
+    j5.setSelected(TsInfo.AutoScaleY);
     % Visible / not visible
     if isRaw
-        set([h6 h7], 'Visible', 'off');
+        set([h1 h2], 'Visible', 'off');
     end
-    % if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries') || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
     if isempty(TsInfo) || isempty(TsInfo.FileName) || ~ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
-        set([h4 h5], 'Visible', 'off');
+        set(h5, 'Visible', 'off');
     end
     if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'column') || ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries')
-        set([h10 h11 h12 h13], 'Visible', 'off');
-    end
-    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries') || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
-        set(h3, 'Visible', 'off');
-    end
-    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
-        set(h8, 'Visible', 'off');
+        set([h7 h8 h9 h10], 'Visible', 'off');
     end
 end
 
@@ -3531,13 +3492,7 @@ function SetScaleY(iDS, iFig, newScale)
     % Check the auto-scale property
     if TsInfo.AutoScaleY && strcmpi(TsInfo.DisplayMode, 'butterfly')
         % Disable the auto-scale button
-        hButton = findobj(hFig, 'Tag', 'ButtonAutoScale');
-        if ~isempty(hButton)
-            jButton = get(hButton, 'JavaPeer');
-            jButton.setSelected(0);
-            % Run the update callback 
-            AutoScale_Callback(jButton, hFig);
-        end
+        SetAutoScale(hFig, 0);
     end
     % Get maximum
     bst_progress('start', 'Display mode', 'Getting maximum value...');
@@ -3614,84 +3569,14 @@ function SetScaleY(iDS, iFig, newScale)
     bst_progress('stop');
 end
 
-%% ===== FLIP Y AXIS =====
-function FlipY_Callback(jButton, hFig)
-    % Save preference
-    isSel = jButton.isSelected();
-    bst_set('FlipYAxis', isSel);
-    % Display progress bar
-    bst_progress('start', 'Display mode', 'Updating figures...');
-    % Update figure structure
-    TsInfo = getappdata(hFig, 'TsInfo');
-    TsInfo.FlipYAxis = isSel;
-    setappdata(hFig, 'TsInfo', TsInfo);
-    % Re-plot figure
-    bst_figures('ReloadFigures', hFig);
-    % Hide progress bar
-    bst_progress('stop');
-end
 
-%% ===== AUTO-SCALE TIME SERIES =====
-function AutoScale_Callback(jButton, hFig)
-    % Save preference
-    isSel = jButton.isSelected();
-    bst_set('AutoScaleY', isSel);
-    bst_set('FixedScaleY', []);
-    % Display progress bar
-    bst_progress('start', 'Display mode', 'Updating figures...');
-    % Update figure structure
+%% ===== SET X-SCALE =====
+function SetScaleX(hFig, newMode)
     TsInfo = getappdata(hFig, 'TsInfo');
-    TsInfo.AutoScaleY = isSel;
-    setappdata(hFig, 'TsInfo', TsInfo);
-    % Re-plot figure
-    bst_figures('ReloadFigures', hFig);
-    % Hide progress bar
-    bst_progress('stop');
-end
-
-%% ===== TOGGLE BETWEEN LOG/LINEAR SCALE =====
-function ToggleLogLinearScale(jButton, hFig)
-    isSel = jButton.isSelected();
-    if isSel
-        scale = 'log';
-    else
-        scale = 'linear';
-    end
-    
-    % Update figure structure
-    TsInfo = getappdata(hFig, 'TsInfo');
-    TsInfo.XScale = scale;
+    TsInfo.XScale = newMode;
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
-    set(hAxes, 'XScale', scale);
+    set(hAxes, 'XScale', newMode);
     setappdata(hFig, 'TsInfo', TsInfo);
-end
-
-
-%% ===== SHOW X AND Y GRIDS =====
-function ShowGrids(jButton, hFig)
-    isSel = jButton.isSelected();
-    if isSel
-        toggle = 'on';
-    else
-        toggle = 'off';
-    end
-    % Update figure information
-    TsInfo = getappdata(hFig, 'TsInfo');
-    TsInfo.ShowXGrid = isSel;
-    TsInfo.ShowYGrid = isSel;
-    setappdata(hFig, 'TsInfo', TsInfo);
-    % Update the axes properties
-    hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
-    set(hAxes, 'XGrid', toggle);
-    set(hAxes, 'XMinorGrid', toggle);
-    % Only add YGrid for butterfly view.
-    if (~isSel || ~strcmpi(TsInfo.DisplayMode, 'column'))
-        set(hAxes, 'YGrid', toggle);
-        set(hAxes, 'YMinorGrid', toggle);
-    end
-    % Save in user preferences
-    bst_set('ShowXGrid', isSel);
-    bst_set('ShowYGrid', isSel);
 end
 
 
@@ -4308,6 +4193,212 @@ function SwitchMatrixFile(hFig, keyEvent)
 end
 
 
+%% ===== DISPLAY CONFIG MENU =====
+% USAGE:  DisplayConfigMenu(hFig, jButton)  % Creates menu and show it next to a JButton
+%         DisplayConfigMenu(hFig, jMenu)    % Creates menu and include in a parent JMenu
+function DisplayConfigMenu(hFig, jParent)
+    import org.brainstorm.icon.*;
+    import java.awt.*;
+    import javax.swing.*;
+    import java.awt.event.KeyEvent;
+    global GlobalData;
+    % Find figure
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    if isempty(iDS)
+        return;
+    end
+    % Get all other figures
+    hFigAll = bst_figures('GetAllFigures');
+    % Get figure config
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
+    TsInfo = getappdata(hFig, 'TsInfo');
+    FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
+    isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+    isSource = ismember(FigureId.Modality, {'results', 'timefreq', 'stat', 'none'});
+    
+    % Create popup
+    if isa(jParent, 'javax.swing.JMenu')
+        jPopup = jParent;
+        isPopup = 0;
+    else
+        jPopup = java_create('javax.swing.JPopupMenu');
+        isPopup = 1;
+    end
+    
+    % === DISPLAY MODE ===
+    jMenu = gui_component('Menu', jPopup, [], 'Display mode', IconLoader.ICON_TS_DISPLAY_MODE);
+        jModeButterfly = gui_component('RadioMenuItem', jMenu, [], 'Butterfly', [], [], @(h,ev)SetDisplayMode(hFig, 'butterfly'));
+        jModeColumn = gui_component('RadioMenuItem', jMenu, [], 'Column', [], [], @(h,ev)SetDisplayMode(hFig, 'column'));
+        jButtonGroup = ButtonGroup();
+        jButtonGroup.add(jModeButterfly);
+        jButtonGroup.add(jModeColumn);
+        switch (TsInfo.DisplayMode)
+            case 'butterfly',   jModeButterfly.setSelected(1);
+            case 'column',      jModeColumn.setSelected(1);
+        end
 
+    % === X-AXIS ===
+    if isRaw || strcmpi(FigureId.Type, 'Spectrum')
+        % Menu name
+        if strcmpi(FigureId.Type, 'Spectrum')
+            strX = 'Frequency';
+        else
+            strX = 'Time';
+        end
+        jMenu = gui_component('Menu', jPopup, [], strX, IconLoader.ICON_X);
+        % Axis resolution
+        if strcmpi(FigureId.Type, 'DataTimeSeries')
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+        end
+        % Log scale
+        if strcmpi(FigureId.Type, 'Spectrum')
+            switch (TsInfo.XScale)
+                case 'log'
+                    newMode = 'linear';
+                    isSel = 1;
+                case 'linear'
+                    newMode = 'log';
+                    isSel = 0;
+            end
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleX(hFig, newMode));
+            jItem.setSelected(isSel);
+        end
+    end
+    
+    % === Y: AMPLITUDE ===
+    jMenu = gui_component('Menu', jPopup, [], 'Amplitude', IconLoader.ICON_Y);
+        % Auto-scale amplitude
+        if ~isempty(TsInfo) && ~isempty(TsInfo.FileName) && ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
+            jAutoScale = gui_component('CheckboxMenuItem', jMenu, [], 'Auto-scale amplitude', [], [], @(h,ev)SetAutoScale(hFig, ev.getSource().isSelected()));
+            jAutoScale.setSelected(TsInfo.AutoScaleY);
+        end
+        % Set scale
+        if strcmpi(FigureId.Type, 'DataTimeSeries')
+            % Flip Y axis
+            jFlipY = gui_component('CheckboxMenuItem', jMenu, [], 'Flip Y axis', [], [], @(h,ev)ToggleProperty(hAxes, 'FlipYAxis'));  % IconLoader.ICON_FLIPY
+            jFlipY.setSelected(TsInfo.FlipYAxis);
+            % Separator
+            jMenu.addSeparator();
+            % Set amplitude scale
+            if strcmpi(FigureId.Type, 'DataTimeSeries') && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
+                gui_component('MenuItem', jMenu, [], 'Set amplitude scale...',  IconLoader.ICON_FIND_MAX, [], @(h,ev)SetScaleY(iDS, iFig));
+            end
+            % Set fixed resolution
+            if isRaw
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+            end
+        end
+        % Uniform figure scales
+        if ~isRaw && (length(hFigAll) > 1)
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Uniform figure scales', [], [], @(h,ev)panel_record('UniformTimeSeries_Callback',h,ev));
+            jItem.setSelected(bst_get('UniformizeTimeSeriesScales'));
+        end
+        % Standardize data
+        if strcmpi(FigureId.Type, 'DataTimeSeries')
+            jMenu.addSeparator();
+            % Remove DC offset
+            if isRaw
+                RawViewerOptions = bst_get('RawViewerOptions');
+                switch RawViewerOptions.RemoveBaseline
+                    case 'all',  isRemove = 1;
+                    case 'no',   isRemove = 0;
+                end
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Remove DC offset', [], [], @(h,ev)panel_record('SetRawViewerOptions', 'RemoveBaseline', ~isRemove));
+                jItem.setSelected(isRemove);
+            end
+            % Normalize amplitudes
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Normalize signals', [], [], @(h,ev)SetNormalizeAmp(iDS, iFig, ~TsInfo.NormalizeAmp));
+            jItem.setSelected(TsInfo.NormalizeAmp);
+        end
+        
+    % === LINES ===
+    jMenu = gui_component('Menu', jPopup, [], 'Lines', IconLoader.ICON_MATRIX);
+        % XGrid
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleProperty(hAxes, 'ShowXGrid'));
+        jItem.setSelected(TsInfo.ShowXGrid);
+        % YGrid
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowYGrid'));
+        jItem.setSelected(TsInfo.ShowYGrid);
+        % Zero lines
+        if strcmpi(TsInfo.DisplayMode, 'column')
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show zero lines', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowZeroLines'));
+            jItem.setSelected(TsInfo.ShowZeroLines);
+        end
+        
+    % === EXTRA ===
+    jMenu = gui_component('Menu', jPopup, [], 'Extra', IconLoader.ICON_PLOTEDIT);
+        % Legend
+        if strcmpi(FigureId.Type, 'DataTimeSeries')
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend));
+            jItem.setSelected(TsInfo.ShowLegend);
+            jMenu.addSeparator();
+        end
+        % Change background color
+        gui_component('MenuItem', jMenu, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
+        jMenu.addSeparator();
+        % Show Matlab controls
+        isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
+        jItem.setSelected(isMatlabCtrl);
+        % Show plot edit toolbar
+        isPlotEditToolbar = getappdata(hFig, 'isPlotEditToolbar');
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig));
+        jItem.setSelected(isPlotEditToolbar);
+        
+    % === MONTAGE ===
+    if isPopup && strcmpi(FigureId.Type, 'DataTimeSeries') && ~isSource && ~isempty(FigureId.Modality) && (FigureId.Modality(1) ~= '$') && (isempty(TsInfo) || isempty(TsInfo.RowNames))
+        jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE);
+        panel_montage('CreateFigurePopupMenu', jMenuMontage, hFig);
+    end
+    
+    % Show popup
+    if isPopup
+        gui_brainstorm('ShowPopup', jPopup, jParent);
+        jPopup.show(jParent, -jPopup.getWidth(), 0);
+    end
+end
+
+
+%% ===== SET AUTO SCALE =====
+function SetAutoScale(hFig, isAutoScale)
+    % Update status of figure button 
+    hButtonAutoScale = findobj(hFig, 'Tag', 'ButtonAutoScale');
+    if ~isempty(hButtonAutoScale)
+        jButton = get(hButtonAutoScale, 'JavaPeer');
+        jButton.setSelected(isAutoScale);
+    end
+    % Save preference
+    bst_set('AutoScaleY', isAutoScale);
+    bst_set('FixedScaleY', []);
+    % Display progress bar
+    bst_progress('start', 'Display mode', 'Updating figures...');
+    % Update figure structure
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.AutoScaleY = isAutoScale;
+    setappdata(hFig, 'TsInfo', TsInfo);
+    % Re-plot figure
+    bst_figures('ReloadFigures', hFig);
+    % Hide progress bar
+    bst_progress('stop');
+end
+
+
+%% ===== SET DISPLAY MODE =====
+function SetDisplayMode(hFig, newMode)
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'Record'); 
+    if isempty(ctrl)
+        return;
+    end
+    % Select button accordingly
+    switch (newMode)
+        case 'butterfly',   ctrl.jButtonDispMode.setSelected(0);
+        case 'column',      ctrl.jButtonDispMode.setSelected(1);
+    end
+    % Update figure
+    panel_record('SetDisplayMode', hFig, newMode);
+end
 
 
