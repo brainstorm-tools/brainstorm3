@@ -1,3 +1,5 @@
+May 2019
+- IO: Support for NWB ECOG (recordings + surfaces)
 ---------------------------------------------------------------
 April 2019
 - GUI: New color picker to replace Matlab's buggy uisetcolor
