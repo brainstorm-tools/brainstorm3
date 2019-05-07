@@ -2054,9 +2054,13 @@ end
 
 
 %% ===== EVENT OCCUR: ADD =====
-function EventOccurAdd(iEvent)
+% USAGE:  EventOccurAdd(iEvent=[selected], channelNames=[])
+function EventOccurAdd(iEvent, channelNames)
     global GlobalData;
     % Parse inputs
+    if (nargin < 2) || isempty(channelNames) || ~iscell(channelNames)
+        channelNames = [];
+    end
     if (nargin < 1) || isempty(iEvent)
         % Get selected events
         iEvent = GetSelectedEvents();
@@ -2119,7 +2123,7 @@ function EventOccurAdd(iEvent)
     % Add event: time
     sEvent.epochs   = [sEvent.epochs, iEpoch];
     sEvent.times    = [sEvent.times, newTime'];
-    sEvent.channels = [sEvent.channels, {{}}];
+    sEvent.channels = [sEvent.channels, {channelNames(:)'}];
     sEvent.notes    = [sEvent.notes, {[]}];
     % Sort based on the beginning of each event
     [tmp__, indSort] = sortrows([sEvent.epochs; sEvent.times(1,:)]');
@@ -2205,9 +2209,13 @@ end
 
 
 %% ===== TOGGLE EVENT AT CURRENT TIME =====
-% USAGE:  ToggleEvent(eventName)
+% USAGE:  ToggleEvent(eventName=[ask], channelNames=[])
 %         ToggleEvent()
-function ToggleEvent(eventName)
+function ToggleEvent(eventName, channelNames)
+    % Parse inputs
+    if (nargin < 2) || isempty(channelNames)
+        channelNames = [];
+    end
     % Get event at current time
     [iEvent, iOccur] = GetCurrentEvent();
     % Set current event if specified
@@ -2229,7 +2237,7 @@ function ToggleEvent(eventName)
         EventOccurDel(iEvent, iOccur);
     % Else: add an event
     else
-        EventOccurAdd(iEvent);
+        EventOccurAdd(iEvent, channelNames);
     end
 end
 
