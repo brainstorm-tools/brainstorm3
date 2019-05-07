@@ -151,8 +151,9 @@ LinkFile = file_fullpath(sFilesKojak(1).FileName);
 LinkMat = load(LinkFile, 'F');
 if ~isempty(LinkMat.F.events) && ~isempty(LinkMat.F.events(1).times)
     LinkMat.F.events(1).times(1)   = [];
-    LinkMat.F.events(1).samples(1) = [];
     LinkMat.F.events(1).epochs(1)  = [];
+    LinkMat.F.events(1).channels(1)= [];
+    LinkMat.F.events(1).notes(1)   = [];
 end
 bst_save(LinkFile, LinkMat, 'v6', 1);
 

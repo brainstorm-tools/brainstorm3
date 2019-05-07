@@ -96,10 +96,9 @@ sFile.byteorder  = 'l';
 
 % Properties of the recordings
 % Round to microsec to avoid floating imprecision
-sFile.prop.sfreq   = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
-sFile.prop.samples = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq);
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
+sFile.prop.times = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NIRS-BRS channels';

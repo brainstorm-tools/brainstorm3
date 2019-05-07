@@ -59,9 +59,11 @@ for iEvt = 1:length(uniqueEvt)
     if all(~cellfun(@isempty, durations)) && all(~cellfun(@(c)isequal(c,0), durations))
         events(iEvt).times(2,:) = events(iEvt).times + [durations{:}];
     end
-    events(iEvt).samples    = round(events(iEvt).times .* sFile.prop.sfreq);
+    events(iEvt).times      = round(events(iEvt).times .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
 

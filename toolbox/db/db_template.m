@@ -439,16 +439,18 @@ switch lower(structureName)
             'label',      '', ...
             'color',      [], ...
             'epochs',     [], ...      % [list of epochs indices]
-            'samples',    [], ...      % [list of time indices]
             'times',      [], ...      % [list of time values]
             'reactTimes', [], ...      % [list of reaction times, when applicable]
-            'select',     1);
+            'select',     1, ...
+            'channels',   [], ...
+            'notes',      []);
+        template.channels = {};
+        template.notes = {};
         
     % ==== EPOCH ====
     case 'epoch'
         template = struct(...
                 'label',   '', ...        
-                'samples', [], ...        % [iStart, iStop]
                 'times',   [], ...        % [tStart, tStop]
                 'nAvg',    1, ...         % Number of epochs averaged to produce this block
                 'select',  1, ...
@@ -466,7 +468,6 @@ switch lower(structureName)
             'byteorder',  '', ...  % ieee-le, ieee-be...
             'prop', struct(...            % Properties of the recordings
                 'times',        [], ...   % [tStart, tStop]
-                'samples',      [], ...   % [iStart, iStop]
                 'sfreq',        0, ...    % Sampling frequency
                 'nAvg',         1, ...    % Number of trials used to create this file 
                 'currCtfComp',  [], ...   % {0,1,3} Current CTF compensation order already applied to the recordings

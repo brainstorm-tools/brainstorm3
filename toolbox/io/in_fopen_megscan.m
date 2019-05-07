@@ -162,16 +162,14 @@ sFile.device = model;
 sFile.byteorder = 'b';
 sFile.header = hdr;
 % Properties of the recordings
-sFile.prop.samples = [0, hdr.nTime-1] - hdr.pretrigger;
-sFile.prop.sfreq   = double(hdr.samplingfrequency);
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
-sFile.channelflag  = ones(hdr.numberchannels,1); % GOOD=1; BAD=-1;
+sFile.prop.sfreq  = double(hdr.samplingfrequency);
+sFile.prop.times  = ([0, hdr.nTime-1] - hdr.pretrigger) ./ sFile.prop.sfreq;
+sFile.prop.nAvg   = 1;
+sFile.channelflag = ones(hdr.numberchannels,1); % GOOD=1; BAD=-1;
 % Epochs, if any
 if (hdr.nEpochs > 1)
     for i = 1:hdr.nEpochs
         sFile.epochs(i).label   = sprintf('Trial #%d', i);
-        sFile.epochs(i).samples = sFile.prop.samples;
         sFile.epochs(i).times   = sFile.prop.times;
         sFile.epochs(i).nAvg    = 1;
         sFile.epochs(i).select  = 1;
@@ -186,16 +184,18 @@ for iEvt = 1:length(hdr.markername)
     iOcc = find(hdr.marker(:,3) == iEvt);
     % Create event structure
     sFile.events(iEvt).label   = hdr.markername{iEvt};
-    sFile.events(iEvt).samples = hdr.marker(iOcc,1)';
+    samples = hdr.marker(iOcc,1)';
     sFile.events(iEvt).epochs  = hdr.marker(iOcc,2)';
     if ~isempty(sFile.epochs)
-        for i = 1:length(sFile.events(iEvt).samples)
+        for i = 1:length(samples)
             iEpoch =  sFile.events(iEvt).epochs(i);
-            sFile.events(iEvt).samples(i) = sFile.events(iEvt).samples(i) + sFile.epochs(iEpoch).samples(1) - 1;
+            samples(i) = samples(i) + round(sFile.epochs(iEpoch).times(1) * sFile.prop.sfreq) - 1;
         end
     end
-    sFile.events(iEvt).times   = sFile.events(iEvt).samples ./ sFile.prop.sfreq;
-    sFile.events(iEvt).select  = 1;
+    sFile.events(iEvt).times    = samples ./ sFile.prop.sfreq;
+    sFile.events(iEvt).select   = 1;
+    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
 end
 
 %% ===== CHANNELS STRUCTURE =====

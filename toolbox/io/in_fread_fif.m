@@ -38,7 +38,7 @@ if ~isfield(sFile.header, 'raw') || isempty(sFile.header.raw)
     end
     % Specific time selection
     if ~isempty(SamplesBounds)
-        iTime = SamplesBounds - double(sFile.epochs(iEpoch).samples(1)) + 1;
+        iTime = SamplesBounds - round(sFile.epochs(iEpoch).times(1) .* sFile.prop.sfreq) + 1;
         F = F(:, iTime(1):iTime(2));
         TimeVector = TimeVector(iTime(1):iTime(2));
     end

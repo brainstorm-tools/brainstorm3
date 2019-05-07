@@ -1,5 +1,5 @@
 function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isContinuous)
-% IN_FREAD_INTAN Read a block of recordings from nwb files
+% IN_FREAD_NWB Read a block of recordings from nwb files
 %
 % USAGE:  F = in_fread_nwb(sFile, SamplesBounds=[], iChannels=[])
 
@@ -36,7 +36,7 @@ nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead 
 
 %% Assign the bounds based on the trials or the continuous selection
 if isempty(SamplesBounds) && isContinuous
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
     timeBounds    = SamplesBounds./sFile.prop.sfreq;
 elseif (~isempty(SamplesBounds) && isContinuous) || (~isempty(SamplesBounds) && ~isContinuous)
     timeBounds    = SamplesBounds./sFile.prop.sfreq;

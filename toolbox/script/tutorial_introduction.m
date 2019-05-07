@@ -354,8 +354,9 @@ bst_process('CallProcess', 'process_evt_rename', sFilesRun2, [], ...
 sMatRun2 = in_bst_data(sFilesRun2{1}, 'F');
 iEvtSaccade = find(strcmpi({sMatRun2.F.events.label}, 'saccade'));
 sMatRun2.F.events(iEvtSaccade).times   = [30, 81.5, 104, 142.5, 167, 187.5, 246.5, 319;  31, 83, 105, 144, 168, 188.5, 248, 320];
-sMatRun2.F.events(iEvtSaccade).samples = [18000, 48900, 62400, 85500, 100200, 112500, 147900, 191400;  18600, 49800, 63000, 86400, 100800, 113100, 148800, 192000];
 sMatRun2.F.events(iEvtSaccade).epochs  = ones(1, size(sMatRun2.F.events(iEvtSaccade).times, 2));
+sMatRun2.F.events(iEvtSaccade).channels = cell(1, size(sMatRun2.F.events(iEvtSaccade).times, 2));
+sMatRun2.F.events(iEvtSaccade).notes    = cell(1, size(sMatRun2.F.events(iEvtSaccade).times, 2));
 bst_save(file_fullpath(sFilesRun2{1}), sMatRun2, 'v6', 1);
 
 % Process: SSP: saccade  (Run02 only)

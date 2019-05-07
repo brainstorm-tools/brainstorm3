@@ -21,7 +21,7 @@ function varargout = process_evt_groupname( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2015
+% Authors: Francois Tadel, 2013-2019
 
 eval(macro_method);
 end
@@ -128,7 +128,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Convert the distance in time to distance in samples
         ds = round(dt .* sFile.prop.sfreq);
         % Call the grouping function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, combineCell, ds, isDelete);
+        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, combineCell, ds, isDelete, sFile.prop.sfreq);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
@@ -149,7 +149,7 @@ end
 
 
 %% ===== GROUP EVENTS =====
-function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDelete)
+function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDelete, sfreq)
     % No modification
     isModified = 0;
     eventsNew = events;
@@ -175,7 +175,7 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
             end
             % Add to the list of all the processes
             iEvtList(end+1) = iEvt;
-            AllEvt = [AllEvt, [events(iEvt).samples; repmat(iEvt, size(events(iEvt).samples))]];
+            AllEvt = [AllEvt, [round(events(iEvt).times .* sfreq); repmat(iEvt, size(events(iEvt).times))]];
         end
         % Skip combination if one of the events is not found or not a simple event
         if (length(iEvtList) ~= length(combineCell{iComb,2}))
@@ -202,10 +202,11 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
             % Replace the time of the last events with the time of the first event
             if ~isempty(iBefore)
                 for iEvt = 1:length(iAfter)
-                    iOccBefore = find(events(AllEvt(2,iBefore(iEvt))).samples == AllEvt(1,iBefore(iEvt)));
-                    iOccAfter  = find(events(AllEvt(2,iAfter(iEvt))).samples  == AllEvt(1,iAfter(iEvt)));
-                    events(AllEvt(2,iAfter(iEvt))).samples(iOccAfter) = events(AllEvt(2,iBefore(iEvt))).samples(iOccBefore);
-                    events(AllEvt(2,iAfter(iEvt))).times(iOccAfter)   = events(AllEvt(2,iBefore(iEvt))).times(iOccBefore);
+                    smpBefore = round(events(AllEvt(2,iBefore(iEvt))).times .* sfreq);
+                    smpAfter = round(events(AllEvt(2,iAfter(iEvt))).times .* sfreq);
+                    iOccBefore = find(smpBefore == AllEvt(1,iBefore(iEvt)));
+                    iOccAfter  = find(smpAfter == AllEvt(1,iAfter(iEvt)));
+                    events(AllEvt(2,iAfter(iEvt))).times(iOccAfter) = events(AllEvt(2,iBefore(iEvt))).times(iOccBefore);
                 end
                 AllEvt(1,iAfter) = AllEvt(1,iBefore);
             end
@@ -223,12 +224,13 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
             % Remove occurrence from each event type (and build new event name)
             for i = 1:length(iEvts)
                 % Find the occurrence indice
-                iOcc = find(events(iEvts(i)).samples == uniqueSamples(iSmp));
+                iOcc = find(round(events(iEvts(i)).times .* sfreq) == uniqueSamples(iSmp));
                 % Get the values 
                 if (i == 1)
-                    newTime   = events(iEvts(i)).times(iOcc);
-                    newSample = events(iEvts(i)).samples(iOcc);
-                    newEpoch  = events(iEvts(i)).epochs(iOcc);
+                    newTime     = events(iEvts(i)).times(iOcc);
+                    newEpoch    = events(iEvts(i)).epochs(iOcc);
+                    newChannels = events(iEvts(i)).channels(iOcc);
+                    newNotes    = events(iEvts(i)).notes(iOcc);
                 end
                 % Remove this occurrence
                 if isDelete
@@ -256,13 +258,15 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
                 eventsNew(iNewEvt) = sEvent;
             end
             % Add occurrences
-            eventsNew(iNewEvt).times   = [eventsNew(iNewEvt).times,   newTime];
-            eventsNew(iNewEvt).samples = [eventsNew(iNewEvt).samples, newSample];
-            eventsNew(iNewEvt).epochs  = [eventsNew(iNewEvt).epochs,  newEpoch];
+            eventsNew(iNewEvt).times    = [eventsNew(iNewEvt).times,    newTime];
+            eventsNew(iNewEvt).epochs   = [eventsNew(iNewEvt).epochs,   newEpoch];
+            eventsNew(iNewEvt).channels = [eventsNew(iNewEvt).channels, newChannels];
+            eventsNew(iNewEvt).notes    = [eventsNew(iNewEvt).notes,    newNotes];            
             % Sort
             [eventsNew(iNewEvt).times, indSort] = unique(eventsNew(iNewEvt).times);
-            eventsNew(iNewEvt).samples = eventsNew(iNewEvt).samples(indSort);
-            eventsNew(iNewEvt).epochs  = eventsNew(iNewEvt).epochs(indSort);
+            eventsNew(iNewEvt).epochs   = eventsNew(iNewEvt).epochs(indSort);
+            eventsNew(iNewEvt).channels = eventsNew(iNewEvt).channels(indSort);
+            eventsNew(iNewEvt).notes    = eventsNew(iNewEvt).notes(indSort);
             isModified = 1;
         end
     end
@@ -272,9 +276,10 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
         for i = 1:length(uniqueEvt)
             iEvt = uniqueEvt(i);
             iOcc = removeEvt(removeEvt(:,1)==iEvt,2)';
-            eventsNew(iEvt).times(iOcc)   = [];
-            eventsNew(iEvt).samples(iOcc) = [];
-            eventsNew(iEvt).epochs(iOcc)  = [];
+            eventsNew(iEvt).times(iOcc)    = [];
+            eventsNew(iEvt).epochs(iOcc)   = [];
+            eventsNew(iEvt).channels(iOcc) = [];
+            eventsNew(iEvt).notes(iOcc)    = [];
         end
         % Remove empty categories
         iEmptyEvt = find(cellfun(@isempty, {eventsNew.times}));

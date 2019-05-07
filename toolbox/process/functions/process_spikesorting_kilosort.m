@@ -507,10 +507,11 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
         end
         events(index).color       = rand(1,3);
         events(index).epochs      = ones(1,length(spikeTimes(selectedSpikes)));
-        events(index).samples     = spikeTimes(selectedSpikes)'; % The timestamps are in SAMPLES
-        events(index).times       = events(index).samples./sFile.prop.sfreq;
+        events(index).times       = spikeTimes(selectedSpikes)' ./ sFile.prop.sfreq; % The timestamps are in SAMPLES
         events(index).reactTimes  = [];
         events(index).select      = 1;
+        events(index).channels    = cell(1, size(events(index).times, 2));
+        events(index).notes       = cell(1, size(events(index).times, 2));
     end
     
     % Add existing non-spike events for backup
@@ -749,11 +750,12 @@ function events = LoadKlustersEvents(SpikeSortedMat, iMontage)
             events(index).label       = [spikesPrefix ' ' ChannelsInMontage(iElectrode).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
         end
         events(index).color       = rand(1,3);
-        events(index).samples     = fet(selectedSpikes,end)'; % The timestamps are in SAMPLES
-        events(index).times       = events(index).samples./sFile.prop.sfreq;
-        events(index).epochs      = ones(1,length(events(index).samples));
+        events(index).times       = fet(selectedSpikes,end)' ./ sFile.prop.sfreq;  % The timestamps are in SAMPLES
+        events(index).epochs      = ones(1,length(events(index).times));
         events(index).reactTimes  = [];
         events(index).select      = 1;
+        events(index).channels    = cell(1, size(events(index).times, 2));
+        events(index).notes       = cell(1, size(events(index).times, 2));
     end
 end
 

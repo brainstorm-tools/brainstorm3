@@ -588,13 +588,8 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             sFile = MeasuresMat.sFile;
         end
         % Rebuild Time vector
-        if ~isempty(sFile.epochs)
-            NumberOfSamples = sFile.epochs(1).samples(2) - sFile.epochs(1).samples(1) + 1;
-            Time = linspace(sFile.epochs(1).times(1), sFile.epochs(1).times(2), NumberOfSamples);
-        else
-            NumberOfSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
-            Time = linspace(sFile.prop.times(1), sFile.prop.times(2), NumberOfSamples);
-        end
+        Time = panel_time('GetRawTimeVector', sFile);
+        
         % Check if file exists
         isRetry = 1;
         while isRetry
@@ -647,7 +642,6 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
         sFile.filename     = DataFile;
         sFile.prop.times   = Time([1 end]);
         sFile.prop.sfreq   = 1 ./ (Time(2) - Time(1));
-        sFile.prop.samples = round(sFile.prop.times * sFile.prop.sfreq);
     end
     Measures.DataType     = DataType;
     Measures.ChannelFlag  = MeasuresMat.ChannelFlag;

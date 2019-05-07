@@ -278,10 +278,11 @@ function sFile = CreateEvents(sFile, EvtName, Events)
         sFile.events(iEvt).label = EvtName;
         sFile.events(iEvt).color = panel_record('GetNewEventColor', iEvt, sFile.events);
     end
-    sFile.events(iEvt).times   = Events;
-    sFile.events(iEvt).samples = round(sFile.events(iEvt).times .* sFile.prop.sfreq);
-    sFile.events(iEvt).epochs  = ones(1, size(sFile.events(iEvt).times,2));
+    sFile.events(iEvt).times      = Events;
+    sFile.events(iEvt).epochs     = ones(1, size(sFile.events(iEvt).times,2));
     sFile.events(iEvt).reactTimes = [];
+    sFile.events(iEvt).channels   = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).notes      = cell(1, size(sFile.events(iEvt).times, 2));
 end
 
 
@@ -309,7 +310,7 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
         nEpochs = 1;
     end
     if nargin < 2 || isempty(SamplesBounds)
-        SamplesBounds = sFile.prop.samples; % This is single epoch samples if epoched.
+        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq); % This is single epoch samples if epoched.
     end
     
     ChannelMat = in_bst_channel(sInput.ChannelFile);

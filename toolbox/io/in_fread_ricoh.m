@@ -32,13 +32,13 @@ if (nargin < 4) || isempty(iChannels)
     iChannels = [];
 end
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 if (nargin < 2) || isempty(iEpoch)
     iEpoch = 1;
 end
 % Sample bounds: convert from relative values (map with time) to absolute number
-SamplesBounds = SamplesBounds - sFile.prop.samples(1);
+SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq);
 
 % Switch depending on the file type
 switch (sFile.header.acq.acq_type)

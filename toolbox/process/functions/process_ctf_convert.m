@@ -149,7 +149,7 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
         % Process each epoch
         for i = 1:length(sFile.epochs)
             % Rebuild absolute sample indices for this file
-            nSamples = sFile.epochs(i).samples(2) - sFile.epochs(i).samples(1) + 1;
+            nSamples = round((sFile.epochs(i).times(2) - sFile.epochs(i).times(1)) .* sFile.prop.sfreq) + 1;
             if (i == 1)
                 epochSmp = [0, nSamples-1];
             else
@@ -162,39 +162,41 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
         % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Update events
         for iEvt = 1:length(sFile.events)
+            evtSamples = round(sFile.events(iEvt).times .* sFile.prop.sfreq);
             % Detect events that appear a the last sample of a trial and at the first one of the next one (only for simple events)
             if (size(sFile.events(iEvt).times,1) == 1)
                 % Get the length of the epoch in samples for each event occurrence
-                smpEpoch = [sFile.epochs(sFile.events(iEvt).epochs).samples];
+                smpEpoch = round([sFile.epochs(sFile.events(iEvt).epochs).times] .* sFile.prop.sfreq);
                 % Detect if the occurrence is at the first sample or in the last 5 samples
-                isLast  = (smpEpoch(2:2:end) - sFile.events(iEvt).samples < 5);
-                isFirst = (sFile.events(iEvt).samples - smpEpoch(1:2:end) == 0);
+                isLast  = (smpEpoch(2:2:end) - evtSamples < 5);
+                isFirst = (evtSamples - smpEpoch(1:2:end) == 0);
                 % Detect the markers that are doubled: last sample of epoch #i and first of epoch #i+1 
                 iDouble = find(isFirst(2:end) & isLast(1:end-1)) + 1;
             else
                 iDouble = [];
             end
             % Process each occurrence of each independent separately
-            for iOcc = 1:size(sFile.events(iEvt).samples,2)
+            for iOcc = 1:size(sFile.events(iEvt).times,2)
                 % Identify the epoch in which this event is occurring
                 iEpoch = sFile.events(iEvt).epochs(iOcc);
-                adjustSmp = epochSmp(iEpoch,1) - sFile.epochs(iEpoch).samples(1);
+                adjustSmp = epochSmp(iEpoch,1) - round(sFile.epochs(iEpoch).times(1) .* sFile.prop.sfreq);
                 % Re-refence this event occurrence starting from the beginning of the continuous file (sample 0)
-                sFile.events(iEvt).samples(:,iOcc) = sFile.events(iEvt).samples(:,iOcc) + adjustSmp;
+                evtSamples(:,iOcc) = evtSamples(:,iOcc) + adjustSmp;
             end
             % Update times and epoch indice
-            sFile.events(iEvt).times  = sFile.events(iEvt).samples ./ sFile.prop.sfreq;
+            sFile.events(iEvt).times  = evtSamples ./ sFile.prop.sfreq;
             sFile.events(iEvt).epochs = ones(size(sFile.events(iEvt).epochs));
             % Remove those doubled markers (remove the first sample of epoch #i+1)
             if ~isempty(iDouble)
                 % Get the times to remove
                 tRemoved = sFile.events(iEvt).times(1,iDouble);
                 % Remove the events occurrences
-                sFile.events(iEvt).times(:,iDouble)   = [];
-                sFile.events(iEvt).samples(:,iDouble) = [];
-                sFile.events(iEvt).epochs(:,iDouble)  = [];
+                sFile.events(iEvt).times(:,iDouble)  = [];
+                sFile.events(iEvt).epochs(:,iDouble) = [];
+                sFile.events(iEvt).channels(iDouble) = [];
+                sFile.events(iEvt).notes(iDouble)    = [];
                 if ~isempty(sFile.events(iEvt).reactTimes)
-                    sFile.events(iEvt).reactTimes(:,iDouble) = [];
+                    sFile.events(iEvt).reactTimes(iDouble) = [];
                 end
                 % Display message
                 Messages = [Messages, 10, 'Removed ' num2str(length(iDouble)) ' x "' sFile.events(iEvt).label, '": ', sprintf('%1.3fs ', tRemoved)];
@@ -204,12 +206,9 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
         if ~isempty(Messages)
             Messages = ['Errors detected in the events of the .ds file (duplicate markers): ' Messages];
         end
-        
         % Remove epochs 
         sFile.epochs = [];
-        % Update the other fields
-        sFile.prop.samples = [epochSmp(1,1), epochSmp(end,2)];
-        sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+        sFile.prop.times = [epochSmp(1,1), epochSmp(end,2)] ./ sFile.prop.sfreq;
         sFile.format = 'CTF-CONTINUOUS';
 
     % ===== CONVERT => EPOCHED =====
@@ -227,9 +226,8 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
         % Loop on each epoch
         for iEpoch = 1:nEpochs
             % Create new epoch
-            sFile.epochs(iEpoch).label   = sprintf('Epoch #%d', iEpoch);
-            sFile.epochs(iEpoch).samples = epochSmp;
-            sFile.epochs(iEpoch).times   = sFile.epochs(iEpoch).samples ./ sFile.prop.sfreq;
+            sFile.epochs(iEpoch).label = sprintf('Epoch #%d', iEpoch);
+            sFile.epochs(iEpoch).times = epochSmp ./ sFile.prop.sfreq;
             % Rebuild initial position of the epoch in the continuous file
             epochCont = [0, nSamples-1] + (iEpoch - 1) * nSamples;
             % Update events
@@ -237,30 +235,29 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
                 % Ignore empty events
                 if ~isempty(sFile.events(iEvt).times)
                     % Find occurrences that are included in this epoch
-                    evtSmp = sFile.events(iEvt).samples;
+                    evtSmp = round(sFile.events(iEvt).times .* sFile.prop.sfreq);
                     iOcc = find((evtSmp(1,:) >= epochCont(1)) & (evtSmp(1,:) <= epochCont(2)));
                     % Update times and epoch indice
                     if ~isempty(iOcc)
                         % Recompute sample indices
-                        sFile.events(iEvt).samples(:,iOcc) = evtSmp(:,iOcc) - epochCont(1) + epochSmp(1);
+                        evtSmp(:,iOcc) = evtSmp(:,iOcc) - epochCont(1) + epochSmp(1);
                         sFile.events(iEvt).epochs(iOcc)    = repmat(iEpoch, [1, length(iOcc)]);
                         % In case of extended events: end of the event has to be at max the last sample of the epoch
                         if (size(evtSmp,1) == 2)
-                            iOutside = find(sFile.events(iEvt).samples(2,iOcc) > epochSmp(2));
+                            iOutside = find(evtSmp(2,iOcc) > epochSmp(2));
                             if ~isempty(iOutside)
                                 Messages = [Messages 'Some extended events had to be cropped to fit a single epoch.' 10];
-                                sFile.events(iEvt).samples(2,iOcc(iOutside)) = epochSmp(2);
+                                evtSmp(2,iOcc(iOutside)) = epochSmp(2);
                             end
                         end
                         % Convert samples indices in times
-                        sFile.events(iEvt).times(:,iOcc) = sFile.events(iEvt).samples(:,iOcc) ./ sFile.prop.sfreq;
+                        sFile.events(iEvt).times(:,iOcc) = evtSmp(:,iOcc) ./ sFile.prop.sfreq;
                     end
                 end
             end
         end
         % Update the other fields
-        sFile.prop.samples = [epochSmp(1), epochSmp(2)];
-        sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+        sFile.prop.times   = [epochSmp(1), epochSmp(2)] ./ sFile.prop.sfreq;
         sFile.format = 'CTF';
     end
 end

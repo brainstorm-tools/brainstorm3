@@ -325,10 +325,9 @@ sFile.header = hdr;
 % Comment: short filename
 [tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.fFrequency;
-sFile.prop.samples = round(hdr.fOffsetUsec .* 1e-6 * hdr.fFrequency + [0, hdr.nSamples - 1]);
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.fFrequency;
+sFile.prop.times = round(hdr.fOffsetUsec .* 1e-6 * hdr.fFrequency + [0, hdr.nSamples - 1]) ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nChannels,1);
 % Acquisition date
@@ -339,7 +338,6 @@ sFile.acq_date = [];
 if (hdr.nTrials >= 2)
     for iEpoch = 1:length(hdr.nTrials)
         sFile.epochs(iEpoch).label   = sprintf('Epoch #%d', iEpoch);
-        sFile.epochs(iEpoch).samples = sFile.prop.samples;
         sFile.epochs(iEpoch).times   = sFile.prop.times;
         sFile.epochs(iEpoch).nAvg    = 1;
         sFile.epochs(iEpoch).select  = 1;
@@ -401,11 +399,12 @@ if ~isempty(hdr.events)
             smp = evtList(3:4,iOcc);
         end
         % Set event
-        sFile.events(iEvt).label   = num2str(uniqueEvt(iEvt));
-        sFile.events(iEvt).samples = smp;
-        sFile.events(iEvt).times   = smp ./ sFile.prop.sfreq;
-        sFile.events(iEvt).epochs  = 1 + 0*smp(1,:);
-        sFile.events(iEvt).select  = 1;
+        sFile.events(iEvt).label    = num2str(uniqueEvt(iEvt));
+        sFile.events(iEvt).times    = smp ./ sFile.prop.sfreq;
+        sFile.events(iEvt).epochs   = 1 + 0*smp(1,:);
+        sFile.events(iEvt).select   = 1;
+        sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+        sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
     end
     
     % Handle Epoched Datasets

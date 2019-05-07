@@ -396,8 +396,7 @@ sFile.byteorder    = byteorder;
 sFile.filename     = DataFile;
 sFile.format       = 'EEG-MICROMED';
 sFile.prop.sfreq   = double(hdr.sampling_freq);
-sFile.prop.samples = [0, hdr.num_samples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, hdr.num_samples - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 sFile.channelflag  = ones(hdr.num_channels,1);
 sFile.device       = 'Micromed';
@@ -468,11 +467,12 @@ for iEvt = 1:length(uniqueEvt)
     % Get all the occurrences
     iOcc = find(strcmpi(allEvt, uniqueEvt{iEvt}));
     % Create event structure
-    sFile.events(iEvt).label   = uniqueEvt{iEvt};
-    sFile.events(iEvt).samples = sort(allSmp(iOcc)) - 1;   % Samples are 1-based in the file, I guess?
-    sFile.events(iEvt).times   = sFile.events(iEvt).samples ./ sFile.prop.sfreq;
-    sFile.events(iEvt).epochs  = ones(size(sFile.events(iEvt).samples));
-    sFile.events(iEvt).select  = 1;
+    sFile.events(iEvt).label    = uniqueEvt{iEvt};
+    sFile.events(iEvt).times    = (sort(allSmp(iOcc)) - 1) ./ sFile.prop.sfreq; % Samples are 1-based in the file, I guess?
+    sFile.events(iEvt).epochs   = ones(size(sFile.events(iEvt).times));
+    sFile.events(iEvt).select   = 1;
+    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
 end
 
 

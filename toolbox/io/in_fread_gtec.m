@@ -27,7 +27,7 @@ function F = in_fread_gtec(sFile, iEpoch, SamplesBounds)
 if (nargin < 3) || isempty(SamplesBounds)
     SamplesBounds = [];
 else
-    iTime = (SamplesBounds(1):SamplesBounds(2)) - sFile.prop.samples(1) + 1;
+    iTime = (SamplesBounds(1):SamplesBounds(2)) - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
 end
 if (nargin < 2) || isempty(iEpoch)
     iEpoch = 1;

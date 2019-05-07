@@ -82,12 +82,13 @@ for i = 1:nMarkers
     % If at least one marker occurrence exists
     if ~isempty(trial_time)
         iEvt = length(events) + 1;
-        events(iEvt).label = marker_names{i};
-        events(iEvt).epochs  = trial_time(:,1)' + 1;
-        events(iEvt).times   = trial_time(:,2)';
-        events(iEvt).samples = round(events(iEvt).times .* sFile.prop.sfreq);
-        events(iEvt).reactTimes  = [];
-        events(iEvt).select      = 1;
+        events(iEvt).label      = marker_names{i};
+        events(iEvt).epochs     = trial_time(:,1)' + 1;
+        events(iEvt).times      = trial_time(:,2)';
+        events(iEvt).reactTimes = [];
+        events(iEvt).select     = 1;
+        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
         % Color
         if (length(marker_colors{i}) == 13) && (marker_colors{i}(1) == '#')
             events(iEvt).color = [hex2dec(marker_colors{i}(2:5)), hex2dec(marker_colors{i}(6:9)), hex2dec(marker_colors{i}(10:13))] ./ (256 * 256 - 1);
@@ -103,9 +104,9 @@ if (length(sFile.epochs) > 1)
             continue;
         end
         % Get the length of the epoch in samples for each event occurrence
-        smpEpoch = reshape([sFile.epochs(events(iEvt).epochs).samples], 2, []);
+        timeEpoch = reshape([sFile.epochs(events(iEvt).epochs).times], 2, []);
         % Detect if the occurrence is at the first sample of the epoch
-        isFirst = (events(iEvt).samples - smpEpoch(1,:) == 0);
+        isFirst = (events(iEvt).times - timeEpoch(1,:) == 0);
         % Detect if event is also present in the previous epoch
         isPrev = ismember(max((events(iEvt).epochs - 1), 1), events(iEvt).epochs);
         isPrev(1) = 0;
@@ -117,11 +118,12 @@ if (length(sFile.epochs) > 1)
             tRemoved = [events(iEvt).epochs(1,iDouble); events(iEvt).times(1,iDouble)];
             % Remove the events occurrences
             events(iEvt).times(:,iDouble)   = [];
-            events(iEvt).samples(:,iDouble) = [];
             events(iEvt).epochs(:,iDouble)  = [];
             if ~isempty(events(iEvt).reactTimes)
-                events(iEvt).reactTimes(:,iDouble) = [];
+                events(iEvt).reactTimes(iDouble) = [];
             end
+            events(iEvt).channels(iDouble) = [];
+            events(iEvt).notes(iDouble) = [];
             % Display message
             disp(['CTF> Removed ' num2str(length(iDouble)) ' x "' events(iEvt).label, '": ', sprintf('%d(%1.3fs) ', tRemoved)]);
         end

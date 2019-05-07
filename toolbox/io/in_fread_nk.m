@@ -33,9 +33,9 @@ if (nargin < 5) || isempty(ChannelsRange)
 end
 if (nargin < 4) || isempty(SamplesBounds)
     if isempty(sFile.epochs)
-        SamplesBounds = sFile.prop.samples;
+        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
     else
-        SamplesBounds = sFile.epochs(iEpoch).samples;
+        SamplesBounds = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
     end
 end
 if (nargin < 3) || isempty(iEpoch)

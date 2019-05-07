@@ -177,7 +177,6 @@ function [sFile, Messages, recType] = Compute(sFile, recType, ChannelMat)
         % Assign events to the appropriate epochs
         events = in_events_nwb(sFile, nwb2, nEpochs, ChannelMat);
         sFile.events = events;
-
     end
 end
 

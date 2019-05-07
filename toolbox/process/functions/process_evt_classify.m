@@ -101,9 +101,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     end
     sEvent = sFile.events(iEvt);
     % For extended events: use the middle of the event
-    sEvent.samples = round(mean(sEvent.samples, 1));
+    evtSamples = round(mean(sEvent.times .* sFile.prop.sfreq, 1));
     % Initialize concatenated data matrix
-    nOcc = size(sEvent.samples, 2);
+    nOcc = size(evtSamples, 2);
     F = zeros(length(iChannels), nOcc);
     % If number of dimensions is larger that number of samples: fix and issue warning
     if (nOcc < ndims)
@@ -121,7 +121,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     ImportOptions.RemoveBaseline  = 'no';
     % Read data for each event
     for iOcc = 1:nOcc
-        F(:,iOcc) = in_fread(sFile, ChannelMat, sEvent.epochs(iOcc), [sEvent.samples(iOcc), sEvent.samples(iOcc)], iChannels, ImportOptions);
+        F(:,iOcc) = in_fread(sFile, ChannelMat, sEvent.epochs(iOcc), [evtSamples(iOcc), evtSamples(iOcc)], iChannels, ImportOptions);
     end
     % Remove average value for each sensor
     F = bst_bsxfun(@minus, F, mean(F,2));
@@ -150,11 +150,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % Create new event category
         iNew = length(newEvents) + 1;
         newEvents(iNew) = sEvent;
-        newEvents(iNew).label   = sprintf('%s %02d', sEvent.label, iNew);
-        newEvents(iNew).epochs  = sEvent.epochs(iOcc);
-        newEvents(iNew).times   = sEvent.times(:,iOcc);
-        newEvents(iNew).samples = sEvent.samples(:,iOcc);
-        newEvents(iNew).color   = [];
+        newEvents(iNew).label    = sprintf('%s %02d', sEvent.label, iNew);
+        newEvents(iNew).epochs   = sEvent.epochs(iOcc);
+        newEvents(iNew).times    = sEvent.times(:,iOcc);
+        newEvents(iNew).color    = [];
+        newEvents(iNew).channels = cell(1, size(newEvents(iNew).times, 2));
+        newEvents(iNew).notes    = cell(1, size(newEvents(iNew).times, 2));
     end
     
     % ===== SAVE MODIFICATIONS =====

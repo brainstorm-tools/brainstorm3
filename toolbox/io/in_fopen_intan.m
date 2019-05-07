@@ -151,10 +151,9 @@ sFile.header    = hdr;
 sFile.comment   = Comment;
 sFile.condition = folderName;
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.SamplingFrequency;
-sFile.prop.samples = [0, hdr.NumSamples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.SamplingFrequency;
+sFile.prop.times = [0, hdr.NumSamples - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.ChannelCount, 1);
 
@@ -227,13 +226,10 @@ if areThereEvents
             events(iEvt).color      = rand(1,3);
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            
-            % Set time
-            events(iEvt).samples = event_samples(event_labels == event_labels_unique(iEvt))';
-            % Convert to time
-            events(iEvt).times = events(iEvt).samples ./ sFile.prop.sfreq;
-            % Epoch: set as 1 for all the occurrences
-            events(iEvt).epochs = ones(1, length(events(iEvt).samples));
+            events(iEvt).times      = event_samples(event_labels == event_labels_unique(iEvt))' ./ sFile.prop.sfreq;
+            events(iEvt).epochs     = ones(1, length(events(iEvt).times));    % Epoch: set as 1 for all the occurrences
+            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
         end
         % Import this list
         sFile = import_events(sFile, [], events);
