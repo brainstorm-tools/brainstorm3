@@ -103,6 +103,10 @@ switch lower(compType)
         jComp = java_create('javax.swing.JTextField');
         jComp.setPreferredSize(java_scaled('dimension', 54, 20));
         callbackName = 'KeyTypedCallback';
+    case 'password'
+        jComp = java_create('javax.swing.JPasswordField');
+        jComp.setPreferredSize(java_scaled('dimension', 54, 20));
+        callbackName = 'KeyTypedCallback';
     case 'spinner'
         jComp = java_create('javax.swing.JSpinner');
         jComp.setPreferredSize(java_scaled('dimension', 57, 20));
