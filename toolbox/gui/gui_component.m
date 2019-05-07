@@ -243,4 +243,3 @@ if ~isempty(jParent)
         jParent.add(jCompAdd, constrain);
     end
 end
-

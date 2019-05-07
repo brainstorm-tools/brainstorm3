@@ -2582,7 +2582,33 @@ switch contextName
                 argout1 = distribTpm;
             end
         end
+    case 'UrlAdr'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences,'UrlAdr')&& ~isempty(GlobalData.Preferences.UrlAdr)
+            argout1=GlobalData.Preferences.UrlAdr;
+        else
+            argout1=[];
+        end
         
+    case 'DeviceId'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences,'DeviceId')&& ~isempty(GlobalData.Preferences.DeviceId)
+            argout1=GlobalData.Preferences.DeviceId;
+        else
+            argout1=[];
+        end
+        
+    case 'SessionId'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences,'SessionId')&& ~isempty(GlobalData.Preferences.SessionId)
+            argout1=GlobalData.Preferences.SessionId;
+        else
+            argout1=[];
+        end
+    
+    case 'Email'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences,'Email')&& ~isempty(GlobalData.Preferences.Email)
+            argout1=GlobalData.Preferences.Email;
+        else
+            argout1=[];
+        end
     case 'ElectrodeConfig'
         % Get modality
         Modality = varargin{2};

@@ -137,8 +137,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jButtonRegister.setFocusable(0); 
         else
             email=bst_get('Email');
-            labellogin="Logged in as " + string(email);
-            gui_component('Label', jPanelShare, 'br',labellogin , [], [], []);        
+            jLabelLogin=gui_component('Label', jPanelShare, 'br', 'Logged in as. ', [], [], []);
+            
             jButtonLogin = gui_component('Button', jPanelShare, 'br', 'Groups', [], [], @ButtonGroups_Callback);
             jButtonRegister = gui_component('Button', jPanelShare, [], 'Logout', [], [], @Logout_Callback);
             jButtonLogin.setMargin(Insets(2,2,2,2));
@@ -167,20 +167,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             gui_component('Button', jPanelReset, [], 'Reset', [], [], @ButtonReset_Callback);
         jPanelRight.add('br hfill', jPanelReset);
     end
-    
-    % ===== RIGHT: REMOTE DATABASE =====
-    jPanelReset = gui_river([5 5], [0 15 15 15], 'Remote Database');
-        isLoggedIn = 1;
-        if isLoggedIn
-            gui_component('Label',  jPanelReset, [], 'Logged in as martin.cousineau @ bic.mni.mcgill.ca', [], [], []);
-            gui_component('Button', jPanelReset, 'br', 'Groups', [], [], @ButtonGroups_Callback);
-            gui_component('Button', jPanelReset, [], 'Logout', [], [], @ButtonLogout_Callback);
-        else
-            gui_component('Label',  jPanelReset, [], 'Not connected to a remote database.', [], [], []);
-            gui_component('Button', jPanelReset, [], 'Login', [], [], @ButtonLogin_Callback);
-            gui_component('Button', jPanelReset, [], 'Register', [], [], @ButtonRegister_Callback);
-        end
-    jPanelRight.add('br hfill', jPanelReset);
     
     % ===== BOTTOM =====
     jPanelBottom = gui_river();
@@ -514,8 +500,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 %% ===== Sharing logout =====
     function Logout_Callback(varargin)
         bst_set('SessionId',[]);
-        bst_set('Email',[]);
-        bst_set('DeviceId',[]);
         gui_hide(panelName);
     end
 % %% ===== UPDATE PROCESS OPTIONS =====
@@ -687,28 +671,6 @@ function ButtonReset_Callback(varargin)
     brainstorm reset;
     brainstorm;
 end
-
-%% ===== BUTTON: LOGIN =====
-function ButtonLogin_Callback(varargin)
-    gui_show(panel_db_login('CreatePanel', 'login'), 'JavaWindow', 'Login', [], 1, 1);
-end
-
-%% ===== BUTTON: REGISTER =====
-function ButtonRegister_Callback(varargin)
-    gui_show(panel_db_login('CreatePanel', 'register'), 'JavaWindow', 'Register', [], 1, 1);
-end
-
-%% ===== BUTTON: GROUPS =====
-function ButtonGroups_Callback(varargin)
-    gui_show(panel_edit_groups('CreatePanel'), 'JavaWindow', 'Group Memberships', [], 1, 1);
-end
-
-%% ===== BUTTON: LOGOUT =====
-function ButtonLogout_Callback(varargin)
-    disp('TODO: Logout');
-end
-
-
 
 
 

@@ -43,7 +43,9 @@ switch (action)
         disp('TODO: Load remote protocol');
         return;
         iProtocol = nbProtocols + 1;
+
         panelTitle = 'Load remote protocol';
+
     case 'edit'
         if (nargin < 2)
             error('Usage:  [iProtocol] = gui_edit_protocol(''edit'', iProtocol)');

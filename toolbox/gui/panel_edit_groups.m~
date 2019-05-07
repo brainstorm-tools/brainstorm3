@@ -32,27 +32,26 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     import java.awt.*;
     import javax.swing.*;
     import org.brainstorm.list.*;
-    
     global GlobalData;
     % Constants
     panelName = 'EditGroups';
-    
+
     % Create main main panel
     jPanelNew = gui_river([0 0], [0 0 0 0], 'Groups');
-    
+
     % Create Group
     jPanelCreate = gui_river([5 0], [0 2 0 2]);
     gui_component('Text',  jPanelCreate, 'br hfill', '', [], [], []);
     gui_component('Button', jPanelCreate, [], 'Create Group', [], [], @ButtonCreateGroup_Callback);
     jPanelNew.add('br hfill', jPanelCreate);
-    
+
     % Main panel
     jPanelMain = gui_river([5 0], [0 2 0 2]);
     jPanelNew.add('br hfill', jPanelMain);
-    
+
     % Font size for the lists
     fontSize = round(10 * bst_get('InterfaceScaling') / 100);
-    
+
     % List of groups
     jListGroups = JList();
     jListGroups.setCellRenderer(BstStringListRenderer(fontSize));
@@ -195,19 +194,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 
     %% ===== LOAD GROUPS =====
     function groups = LoadGroups()
-
-
-        import matlab.net.*;
-        import matlab.net.http.*;
-        
         disp('TODO: Load groups');
         url=bst_get('UrlAdr');
         url=string(url)+"/protocol";
         uri=URI(url);
-        data=webread(uri);
-        disp(string(data));
-        
-
+        data=webread(ur);
         groups = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
     end
     %% ===== LOAD MEMBERS =====
@@ -238,5 +229,4 @@ function member = ExtractMemberName(member)
         member = member(1:iPermission(end)-1);
     end
 end
-
 
