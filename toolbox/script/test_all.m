@@ -150,9 +150,10 @@ sSimData = bst_process('CallProcess', 'process_simulate_recordings', sSimScout, 
 DataMat.Events = db_template('event');
 DataMat.Events.label   = 'sin+';
 DataMat.Events.color   = [0 1 0];
-DataMat.Events.samples = round((.5:1:nfiles) * sfreq);
-DataMat.Events.times   = DataMat.Events.samples ./ sfreq;
-DataMat.Events.epochs  = ones(size(DataMat.Events.samples));
+DataMat.Events.times   = round((.5:1:nfiles) * sfreq) ./ sfreq;
+DataMat.Events.epochs  = ones(size(DataMat.Events.times));
+DataMat.Events.channels = cell(1, size(DataMat.Events.times, 2));
+DataMat.Events.notes    = cell(1, size(DataMat.Events.times, 2));
 bst_save(file_fullpath(sSimData.FileName), DataMat, 'v6', 1);
 % Save as an EGI raw file
 RawFile = bst_fullfile(test_dir, 'run01.raw');

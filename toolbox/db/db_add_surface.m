@@ -40,6 +40,7 @@ if (nargin < 4)
         case 'scalp',       SurfaceType = 'Scalp';
         case 'outerskull',  SurfaceType = 'OuterSkull';
         case 'innerskull',  SurfaceType = 'InnerSkull';  
+        case 'fibers',      SurfaceType = 'Fibers';
         otherwise,          SurfaceType = 'Other';  
     end
 end

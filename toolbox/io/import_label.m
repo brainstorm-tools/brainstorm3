@@ -157,7 +157,11 @@ for iFile = 1:length(LabelFiles)
                 case {'lh.myaparc_250', 'rh.myaparc_250'}
                     sAtlas.Name = 'Lausanne-S250';
                 otherwise
-                    sAtlas.Name = fBase;
+                    if (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
+                        sAtlas.Name = fBase(4:end);
+                    else
+                        sAtlas.Name = fBase;
+                    end
             end
         end
     % Existing atlas structure

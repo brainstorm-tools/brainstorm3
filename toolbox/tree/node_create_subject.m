@@ -68,7 +68,7 @@ else
     % Sort surfaces by category
     SortedSurfaces = db_surface_sort(sSubject.Surface);
     iSorted = [SortedSurfaces.IndexScalp, SortedSurfaces.IndexOuterSkull, SortedSurfaces.IndexInnerSkull, ...
-               SortedSurfaces.IndexCortex, SortedSurfaces.IndexOther];
+               SortedSurfaces.IndexCortex, SortedSurfaces.IndexOther, SortedSurfaces.IndexFibers];
     % Process all the surfaces
     for i = 1:length(iSorted)
         iSurface = iSorted(i);

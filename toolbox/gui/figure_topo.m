@@ -22,7 +22,7 @@ function varargout = figure_topo( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 
 eval(macro_method);
 end
@@ -847,9 +847,13 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     % ===== CREATE SURFACE =====
     LabelRows = {};
     LabelRowsRef = [];
+    plotSize = [];
     % SEEG/ECOG: DO no use real positions
     if ismember(Channel(1).Type, {'SEEG','ECOG'}) && ~isempty(GlobalData.DataSet(iDS).IntraElectrodes)
         [X, Y, LabelRows, LabelRowsRef] = GetSeeg2DPositions(Channel, GlobalData.DataSet(iDS).IntraElectrodes);
+        maxX = max(abs(X));
+        maxY = max(abs(Y));
+        plotSize = [0.8/maxX, 0.8/maxY];
     % 2D Projection
     elseif all(Vertices(:,3) < 0.0001)
         X = Vertices(:,1);
@@ -859,16 +863,17 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         [X,Y] = bst_project_2d(Vertices(:,1), Vertices(:,2), Vertices(:,3), '2dlayout');
     end
     % Zoom factor: size of each signal depends on the number of signals
-    
-    if strcmpi(Channel(selChan(1)).Type, 'NIRS')
-        nPlots = length(selChan) ./ length(unique({Channel(selChan).Group}));
-    else
-        nPlots = length(selChan);
-    end
-    if (nPlots < 60)
-        plotSize = [0.05, 0.044] .* sqrt(120 ./ nPlots);
-    else
-        plotSize = [0.05, 0.05];
+    if isempty(plotSize)
+        if strcmpi(Channel(selChan(1)).Type, 'NIRS')
+            nPlots = length(selChan) ./ length(unique({Channel(selChan).Group}));
+        else
+            nPlots = length(selChan);
+        end
+        if (nPlots < 60)
+            plotSize = [0.05, 0.044] .* sqrt(120 ./ nPlots);
+        else
+            plotSize = [0.05, 0.05];
+        end
     end
     % Normalize positions between 0 and 1
     X = (X - min(X)) ./ (max(X) - min(X)) .* (1-plotSize(1))   + plotSize(1) ./ 2;

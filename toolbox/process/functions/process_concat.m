@@ -111,7 +111,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             for iInput = 1:numel(sInputs)
                 % Load the next file
                 DataMat = in_bst_data(sInputs(iInput).FileName, {'F'});
-                nSamplesTotal = nSamplesTotal + DataMat.F.prop.samples(2) - DataMat.F.prop.samples(1) + 1;
+                dataSamples = round(DataMat.F.prop.times .* DataMat.F.prop.sfreq);
+                nSamplesTotal = nSamplesTotal + dataSamples(2) - dataSamples(1) + 1;
                 % Only accept continuous files
                 if ~isempty(DataMat.F.epochs) && (numel(DataMat.F.epochs) > 1)
                     if strcmpi(DataMat.F.format, 'CTF')
@@ -136,7 +137,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             
             % Create the empty binary file.
-            NewMat.F.prop.samples = NewMat.F.prop.samples(1) + [1, nSamplesTotal] - 1;
             sfreq = NewMat.F.prop.sfreq;
             NewMat.F.prop.times =  NewMat.F.prop.times(1) + ([1, nSamplesTotal] - 1) ./ sfreq;
             NewChannelMat = in_bst_channel(sInputs(1).ChannelFile);
@@ -151,6 +151,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             
             % Set the final time vector
             NewMat.Time = NewMat.F.prop.times;
+            newSamples = round(NewMat.F.prop.times .* NewMat.F.prop.sfreq);
 
             % Set history field
             NewMat = bst_history('add', NewMat, 'concat', 'Contatenate time from files:');
@@ -168,15 +169,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Load the next file
                 DataMat = in_bst_data(sInputs(iInput).FileName, fields{:});
                 ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
+                dataSamples = round(DataMat.F.prop.times .* DataMat.F.prop.sfreq);
                 
-                if iInput > 1
+                if (iInput > 1)
                     % Concatenate the events.
                     if ~isempty(DataMat.F.events)
                         % Convert the events timing
                         for iEvt = 1:numel(DataMat.F.events)
-                            DataMat.F.events(iEvt).times   = DataMat.F.events(iEvt).times - ...
-                                DataMat.Time(1) + NewMat.Time(1) + nSamplesTotal ./ sfreq;
-                            DataMat.F.events(iEvt).samples = round(DataMat.F.events(iEvt).times .* sfreq);
+                            DataMat.F.events(iEvt).times   = DataMat.F.events(iEvt).times - DataMat.Time(1) + NewMat.Time(1) + nSamplesTotal ./ sfreq;
+                            DataMat.F.events(iEvt).times   = round(DataMat.F.events(iEvt).times .* sfreq) ./ sfreq;
                         end
                         % Add the events to the new file
                         if isempty(NewMat.F.events)
@@ -207,16 +208,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 nBlockCol = ceil(nCol / BlockSizeCol);
                 for iBlockCol = 1:nBlockCol
                     % Indices of columns to process
-                    SamplesBounds = DataMat.F.prop.samples(1) - 1 + ...
-                        [(iBlockCol-1) * BlockSizeCol + 1, min(iBlockCol * BlockSizeCol, nCol)];
+                    SamplesBounds = dataSamples(1) - 1 + [(iBlockCol-1) * BlockSizeCol + 1, min(iBlockCol * BlockSizeCol, nCol)];
                     % Read block.
                     A = in_fread(DataMat.F, ChannelMat, 1, SamplesBounds);
                     % Write block.
                     NewMat.F = out_fwrite(NewMat.F, NewChannelMat, 1, ...
-                        SamplesBounds - DataMat.F.prop.samples(1) + NewMat.F.prop.samples(1) + nSamplesTotal, [], A);
+                        SamplesBounds - dataSamples(1) + newSamples(1) + nSamplesTotal, [], A);
                     bst_progress('inc', 1);
                 end
-                nSamplesTotal = nSamplesTotal + DataMat.F.prop.samples(2) - DataMat.F.prop.samples(1) + 1;
+                nSamplesTotal = nSamplesTotal + dataSamples(2) - dataSamples(1) + 1;
             end
 
             % If no default channel file: create new channel file
@@ -249,8 +249,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Convert the events timing (the first file is already correct because it's the reference)
                     if (iInput >= 2)
                         for iEvt = 1:length(DataMat.Events)
-                            DataMat.Events(iEvt).times   = DataMat.Events(iEvt).times - DataMat.Time(1) + NewMat.Time(1) + size(NewMat.F,2) ./ sfreq;
-                            DataMat.Events(iEvt).samples = round(DataMat.Events(iEvt).times .* sfreq);
+                            DataMat.Events(iEvt).times = DataMat.Events(iEvt).times - DataMat.Time(1) + NewMat.Time(1) + size(NewMat.F,2) ./ sfreq;
                         end
                     end
                     % Add the events to the new file
@@ -302,8 +301,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Convert the events timing (the first file is already correct because it's the reference)
                     if (iInput >= 2)
                         for iEvt = 1:length(MatrixMat.Events)
-                            MatrixMat.Events(iEvt).times   = MatrixMat.Events(iEvt).times - MatrixMat.Time(1) + NewMat.Time(1) + size(NewMat.Value,2) ./ sfreq;
-                            MatrixMat.Events(iEvt).samples = round(MatrixMat.Events(iEvt).times .* sfreq);
+                            MatrixMat.Events(iEvt).times = MatrixMat.Events(iEvt).times - MatrixMat.Time(1) + NewMat.Time(1) + size(NewMat.Value,2) ./ sfreq;
                         end
                     end
                     % Add the events to the new file

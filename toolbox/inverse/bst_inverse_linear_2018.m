@@ -163,7 +163,7 @@ if (nargin == 0)
     return
 end
 
-fprintf('\nBST_INVERSE (2016) > Modified Feb 2018\n\n');
+fprintf('\nBST_INVERSE (2018) > Modified Feb 2018\n\n');
 
 % How many head models have been passed, if greater than 1, then we are
 % doing a "DBA" or "Deep Brain Analysis"
@@ -827,21 +827,25 @@ fprintf('BST_INVERSE > Assumed SNR is %.1f (%.1f dB)\n',SNR,10*log10(SNR));
 switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
     case 'minnorm'
         
-        % We set a single lambda to achieve desired source variance. In min
-        % norm, all dipoles have the same lambda. We already added an
-        % optional amplifier weighting into the covariance prior above.
-        
-        % So the data covariance model in the MNE is now
-        % Cd = Lambda * L * L' + I
-        % = Lambda *UL * SL * UL' + I = UL * (LAMBDA*SL + I) * UL'
-        % so invert Cd and use for kernel
-        % xhat = Lambda * L' * inv(Cd)
-        % we reapply all of the covariances to put data back in original
-        % space in the last step.
-        
-        % as distinct from GLS, all dipoles have a common data covariance,
-        % but each has a unique noise covariance.
-        
+      % We set a single lambda to achieve desired source variance. In min
+      % norm, all dipoles have the same lambda. We already added an
+      % optional amplifier weighting into the covariance prior above.
+
+      % So the data covariance model in the MNE is now
+      % Cd = Lambda * L * L' + I
+      % = Lambda *UL * SL * UL' + I = UL * (LAMBDA*SL + I) * UL'
+      % so invert Cd and use for kernel
+      % xhat = Lambda * L' * inv(Cd)
+      % we reapply all of the covariances to put data back in original
+      % space in the last step.
+
+      % as distinct from GLS, all dipoles have a common data covariance,
+      % but each has a unique noise covariance.
+
+      % ==== April 2019 ==== Comment by JCM & JGP
+      % Next line's 'Kernel' is equal to T of eq.(11) in (PM, 2002).
+      % Reference: (PM, 2002) - Standardized low resolution brain electromagnetic
+      %             tomography (sLORETA): technical details, Pasqual-Marqui, 2002.
         Kernel = Lambda * L' * (UL * diag(1./(Lambda * SL2 + 1)) * UL');
 
         switch OPTIONS.InverseMeasure % {'amplitude',  'dspm2018', 'sloreta'}
@@ -923,17 +927,28 @@ switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
                     Ndx = StartNdx:EndNdx;
                     
                     if (NumDipoleComponents(kk) == 1)
+                        % 'sloretadiag' is the 'Resolution Kernel' for the
+                        % scalar case of eq.(17) of the sLORETA paper (PM, 2002)
                         sloretadiag = sqrt(sum(Kernel(Ndx,:) .* L(:,Ndx)', 2));
-                        Kernel = bst_bsxfun(@rdivide, Kernel(Ndx,:), sloretadiag);
+                      
+                        % This results in the modified pseudo-statistic of
+                        % eq.(25) of (PM, 2002).
+                        Kernel(Ndx,:) = bst_bsxfun(@rdivide, Kernel(Ndx,:), sloretadiag);
                     elseif (NumDipoleComponents(kk)==3 || NumDipoleComponents(kk)==2)
                         for spoint = StartNdx:NumDipoleComponents(kk):EndNdx
+                            % For each dipole location 'R' is the matrix
+                            % resolution kernel, following eq.(17) in (PM, 2002).
                             R = Kernel(spoint:spoint+NumDipoleComponents(kk)-1,:) * L(:,spoint:spoint+NumDipoleComponents(kk)-1);
                             % SIR = sqrtm(pinv(R)); % Aug 2016 can lead to errors if
                             % singular Use this more explicit form instead
                             [Ur,Sr,Vr] = svd(R); Sr = diag(Sr);
                             RNK = sum(Sr > (length(Sr) * eps(single(Sr(1))))); % single precision Rank
+                            % SIR is the square root matrix operator of 
+                            % eq.(25) in (PM, 2002).
                             SIR = Vr(:,1:RNK) * diag(1./sqrt(Sr(1:RNK))) * Ur(:,1:RNK)'; % square root of inverse
                             
+                            % Kernel is the matrix modified
+                            % pseudo-statistic of eq.(25) in (PM,2002).
                             Kernel(spoint:spoint+NumDipoleComponents(kk)-1,:) = SIR * Kernel(spoint:spoint+NumDipoleComponents(kk)-1,:);
                         end
                     end
@@ -941,7 +956,8 @@ switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
                     StartNdx = EndNdx; % next loop
 
                 end
-                
+                %We here add the overall whitener so Kernel can be applied
+                %to RAW data.
                 Kernel = Kernel * iW_noise; % overall whitener
                 
             otherwise

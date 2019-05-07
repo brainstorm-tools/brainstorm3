@@ -44,7 +44,7 @@ isAnatomy = 0;
 tmpFile = [];
 % Add protocol path
 switch lower(FileType)
-    case {'brainstormsubject', 'subject', 'subjectimage', 'anatomy', 'scalp', 'outerskull', 'innerskull', 'cortex', 'other', 'tess'}
+    case {'brainstormsubject', 'subject', 'subjectimage', 'anatomy', 'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'other', 'tess'}
         if ~file_exist(FileName)
             tmpFile = bst_fullfile(ProtocolInfo.SUBJECTS, FileName);
         end

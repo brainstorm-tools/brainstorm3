@@ -32,7 +32,7 @@ if (nargin < 2) || isempty(iEpoch)
     iEpoch = 1;
 end
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.epochs(iEpoch).samples;
+    SamplesBounds = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
 end
 if (nargin < 4) || isempty(iChannels)
     iChannels = 1:length(sFile.header.chnames);

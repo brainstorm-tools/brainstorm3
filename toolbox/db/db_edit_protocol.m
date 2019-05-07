@@ -36,7 +36,7 @@ function iProtocol = db_edit_protocol(action, sProtocol, iProtocol)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2013; Martin Cousineau, 2019
 
 
 %% ===== PARSE INPUTS =====
@@ -116,6 +116,11 @@ if strcmpi(action, 'edit') || strcmpi(action, 'create')
     sProtocolsListInfo(iProtocol).UseDefaultAnat = sProtocol.UseDefaultAnat;
     % Channel/Headmodel class (defaults or individual)
     sProtocolsListInfo(iProtocol).UseDefaultChannel = sProtocol.UseDefaultChannel;
+end
+
+%% ===== UPDATE EXISTING PROTOCOL DATABASE =====
+if strcmpi(action, 'load')
+    db_update(GlobalData.DataBase.DbVersion, sProtocol);
 end
 
 %% ===== NEW PROTOCOL =====

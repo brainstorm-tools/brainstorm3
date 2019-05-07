@@ -30,7 +30,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Consider as SEEG/ECOG';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = {'Import', 'Import recordings'};
+    sProcess.SubGroup    = {'Import', 'Channel file'};
     sProcess.Index       = 34;
     sProcess.Description = '';
     % Definition of the input accepted by this process
@@ -38,6 +38,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % === Channel type
     sProcess.options.newtype.Comment = {'SEEG', 'ECOG', 'Sensor type: ';
                                         'SEEG', 'ECOG', ''};

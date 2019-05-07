@@ -4,6 +4,7 @@ function varargout = panel_time(varargin)
 % USAGE:  bstPanel = panel_time('CreatePanel')
 %                    panel_time('UpdatePanel')
 %         timeUnit = panel_time('GetTimeUnit')
+%       TimeVector = panel_time('GetRawTimeVector', sFile)
 %                    panel_time('SetCurrentTime',  value)
 %                    panel_time('TimeKeyCallback', keyEvent);
 
@@ -496,12 +497,11 @@ end
 function TimeVector = GetRawTimeVector(sFile) %#ok<DEFNU>
     % Rebuild time vector
     if ~isempty(sFile.epochs)
-        NumberOfSamples = sFile.epochs(1).samples(2) - sFile.epochs(1).samples(1) + 1;
-        TimeVector = linspace(sFile.epochs(1).times(1), sFile.epochs(1).times(2), NumberOfSamples);
+        Samples = round([sFile.epochs(1).times(1), sFile.epochs(1).times(2)] .* sFile.prop.sfreq);
     else
-        NumberOfSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
-        TimeVector = linspace(sFile.prop.times(1), sFile.prop.times(2), NumberOfSamples);
+        Samples = round([sFile.prop.times(1), sFile.prop.times(2)] .* sFile.prop.sfreq);
     end
+    TimeVector = (Samples(1):Samples(2)) ./ sFile.prop.sfreq;
 end
 
 

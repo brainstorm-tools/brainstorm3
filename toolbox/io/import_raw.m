@@ -338,9 +338,9 @@ if isSSP
     strWarning = ['The files you imported include SSP/ICA projectors.' 10 10 ...
                   'Review them before processing the files:' 10 ...
                   'tab Record > menu Artifacts > Select active projectors.'];
-    % Non-iteractive: Display message in command window
+    % Non-interactive: Display message in command window
     if ~ImportOptions.DisplayMessages 
-        disp(['BST> ' strrep(strWarning, 10, [10, 'BST> '])]);
+        disp(['BST> ' strrep(strWarning, char(10), [10, 'BST> '])]);
     % Interactive, one file: Open the SSP selection window
     elseif (length(OutputFiles) == 1)
         java_dialog('msgbox', strWarning);

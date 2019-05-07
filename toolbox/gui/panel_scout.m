@@ -897,8 +897,8 @@ function CurrentFigureChanged_Callback(oldFig, hFig)
     if file_compare(GlobalData.CurrentScoutsSurface, SurfaceFile)
         return;
     end
-    % If surface file is an MRI
-    if ~isempty(iTess) && strcmpi(TessInfo(iTess).Name, 'Anatomy')
+    % If surface file is an MRI or fibers
+    if ~isempty(iTess) && ismember(lower(TessInfo(iTess).Name), {'anatomy', 'fibers'})
         % By default: no attached surface
         SurfaceFile = [];
         % If there are some data associated with this file: get the associated scouts
@@ -3546,7 +3546,8 @@ function EditScoutsColor(newColor)
     % If color is not specified in argument : ask it to user
     if (nargin < 1)
         % Use previous scout color
-        newColor = uisetcolor(sSelScouts(1).Color, 'Select scout color');
+        % newColor = uisetcolor(sSelScouts(1).Color, 'Select scout color');
+        newColor = java_dialog('color');
         % If no color was selected: exit
         if (length(newColor) ~= 3) || all(sSelScouts(1).Color(:) == newColor(:))
             return

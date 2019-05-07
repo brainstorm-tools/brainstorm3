@@ -695,7 +695,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                 if isReadAll
                     sInput.A = FullFileMat(iRow, iCol);
                 else
-                    SamplesBounds = sFileIn.prop.samples(1) + iCol([1,end]) - 1;
+                    SamplesBounds = round(sFileIn.prop.times(1) .* sFileIn.prop.sfreq) + iCol([1,end]) - 1;
                     sInput.A = in_fread(sFileIn, ChannelMat, iEpoch, SamplesBounds, iRow, ImportOptions);
                 end
                 sInput.Std = [];
@@ -800,7 +800,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                         % Update file properties
                         sFileTemplate.prop.sfreq   = 1 / (sInput.TimeVector(2) - sInput.TimeVector(1));
                         sFileTemplate.prop.times   = [OutTime(1), OutTime(end)];
-                        sFileTemplate.prop.samples = round(sFileTemplate.prop.times .* sFileTemplate.prop.sfreq);
                         % Update events
                         sFileTemplate.events = panel_record('ChangeTimeVector', sFileTemplate.events, OldFreq, sInput.TimeVector);
                     end
@@ -864,7 +863,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     end
                 else
                     % Indices to write
-                    SamplesBounds = sFileOut.prop.samples(1) + iOutTime([1,end]) - 1;
+                    SamplesBounds = round(sFileOut.prop.times(1) .* sFileOut.prop.sfreq) + iOutTime([1,end]) - 1;
                     % Write block
                     sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iRow, sInput.A);
                 end

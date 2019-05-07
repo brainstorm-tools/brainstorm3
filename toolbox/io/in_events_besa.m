@@ -41,8 +41,7 @@ mrkFile = textscan(fid, '%d %d %d %s', 'Delimiter', '\t');
 fclose(fid);
 % File interpretation
 evtTimes = double(mrkFile{1}') * 1e-6;
-evtSamples = round(evtTimes .* sFile.prop.sfreq);
-evtTimes = evtSamples ./ sFile.prop.sfreq;
+evtTimes = round(evtTimes .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
 labels = mrkFile{3};
 
 % List of events
@@ -54,12 +53,13 @@ for iEvt = 1:length(uniqueEvt)
     % Find all the occurrences of event #iEvt
     iMrk = find(labels == uniqueEvt(iEvt));
     % Add event structure
-    events(iEvt).label   = num2str(uniqueEvt(iEvt));
-    events(iEvt).epochs  = ones(1, length(iMrk));
-    events(iEvt).samples = evtSamples(iMrk);
-    events(iEvt).times   = evtTimes(iMrk);
-    events(iEvt).reactTimes  = [];
-    events(iEvt).select      = 1;
+    events(iEvt).label      = num2str(uniqueEvt(iEvt));
+    events(iEvt).epochs     = ones(1, length(iMrk));
+    events(iEvt).times      = evtTimes(iMrk);
+    events(iEvt).reactTimes = [];
+    events(iEvt).select     = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
 

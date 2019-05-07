@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="3576533590" file="C:\Work\Dev\brainstorm3\deploy\bst_javabuilder_2015b.prj" location="C:\Work\Dev\brainstorm3\deploy" name="bst_javabuilder_2015b" target="target.ezdeploy.library" target-name="Library Compiler">
+  <configuration build-checksum="1616864212" file="C:\Work\Dev\brainstorm3\deploy\bst_javabuilder_2015b.prj" location="C:\Work\Dev\brainstorm3\deploy" name="bst_javabuilder_2015b" target="target.ezdeploy.library" target-name="Library Compiler">
     <param.appname>bst_javabuilder_2015b</param.appname>
     <param.icon />
     <param.icons />

@@ -43,9 +43,8 @@ sFile.header     = hdr;
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
 % Time and samples indices
-sFile.prop.samples = [0, hdr.sample_count - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.times = [0, hdr.sample_count - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % Get bad channels
 sFile.channelflag = ones(hdr.channel_count, 1);
 
@@ -60,18 +59,17 @@ if isfield(hdr, 'triggers') && ~isempty(hdr.triggers)
     events = repmat(db_template('event'), 1, length(uniqueEvt));
     % Format list
     for iEvt = 1:length(uniqueEvt)
-        % Ask for a label
-        events(iEvt).label      = uniqueEvt{iEvt};
-        events(iEvt).color      = [];
-        events(iEvt).reactTimes = [];
-        events(iEvt).select     = 1;
         % Find list of occurences of this event
         iOcc = find(strcmpi(allNames, uniqueEvt{iEvt}));
-        % Get time and samples
-        events(iEvt).samples = round([hdr.triggers(iOcc).seconds_in_file] .* sFile.prop.sfreq);
-        events(iEvt).times   = events(iEvt).samples ./ sFile.prop.sfreq;
-        % Epoch: set as 1 for all the occurrences
-        events(iEvt).epochs = ones(1, length(events(iEvt).samples));
+        % Fill event structures
+        events(iEvt).label      = uniqueEvt{iEvt};
+        events(iEvt).color      = [];
+        events(iEvt).times      = round([hdr.triggers(iOcc).seconds_in_file] .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+        events(iEvt).epochs     = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
+        events(iEvt).reactTimes = [];
+        events(iEvt).select     = 1;
+        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
     end
     % Import this list
     sFile = import_events(sFile, [], events);

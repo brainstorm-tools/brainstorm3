@@ -25,7 +25,7 @@ function F = in_fread_neuroscope(sFile, sfid, SamplesBounds)
 % Authors: Francois Tadel, 2014
 
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % Read data block

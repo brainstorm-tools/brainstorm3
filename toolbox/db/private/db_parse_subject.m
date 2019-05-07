@@ -159,7 +159,7 @@ for iFile = 1:length(dirFiles)
                 if ~isempty(tempAnatomy)
                     sSubject(1).Anatomy(end+1) = tempAnatomy;
                 end
-            case {'scalp', 'cortex', 'innerskull', 'outerskull', 'tess'}
+            case {'scalp', 'cortex', 'innerskull', 'outerskull', 'fibers', 'tess'}
                 tempSurface = io_getSurfaceInfo(filenameRelative);
                 if ~isempty(tempSurface)
                     switch(fileType)
@@ -167,6 +167,7 @@ for iFile = 1:length(dirFiles)
                         case 'cortex',      tempSurface.SurfaceType = 'Cortex';
                         case 'innerskull',  tempSurface.SurfaceType = 'InnerSkull';
                         case 'outerskull',  tempSurface.SurfaceType = 'OuterSkull';
+                        case 'fibers',      tempSurface.SurfaceType = 'Fibers';
                         case 'tess',        tempSurface.SurfaceType = 'Other';
                     end
                     sSubject(1).Surface(end+1) = tempSurface;
@@ -211,7 +212,7 @@ if ~isempty(subjMat)
     % Sort surfaces by categories
     subjectSurfaces = db_surface_sort(sSubject(1).Surface);
     % Select one surface in each category
-    for surfaceCatergory = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull'}
+    for surfaceCatergory = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers'}
         % By default : use the last surface in list
         if ~isempty(subjectSurfaces.(surfaceCatergory{1}))
             sSubject(1).(['i' (surfaceCatergory{1})]) = subjectSurfaces.(['Index' surfaceCatergory{1}])(end);

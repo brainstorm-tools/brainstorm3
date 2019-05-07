@@ -169,6 +169,11 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
         if ~isProcess && isempty(nSamplesData)
             jRadioMethodBf.setEnabled(0);
         end
+        % Disable Dipoles/Beamformer if mixed head models
+        if ~isProcess && strcmpi(HeadModelType, 'mixed')
+            jRadioMethodBf.setEnabled(0);
+            jRadioMethodDip.setEnabled(0);
+        end
     c.gridy = 1;
     jPanelLeft.add(jPanelMethod, c);
     

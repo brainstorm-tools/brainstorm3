@@ -54,7 +54,8 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2019
+%          Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -263,7 +264,7 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
         if ~isempty(iChanZero)
             % Display warning
             delNames = {GlobalData.DataSet(iDS).Channel(selChan(iChanZero)).Name};
-            disp(['BST> Warning: The position of the following sensors is not set: ' sprintf('%s ', delNames{:})]);
+            disp(['BST> Warning: The positions of the following sensors are not set: ' sprintf('%s ', delNames{:})]);
             % Remove them from the list
             selChan(iChanZero) = [];
         end
@@ -749,6 +750,31 @@ function [Handles,iFig,iDS] = SetFigureHandles(hFig, Handles) %#ok<DEFNU>
     end
     % Return handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = Handles;
+end
+
+%% ===== GET SPECIFIC FIELD OF FIGURE HANDLE =====
+function Value = GetFigureHandleField(hFig, Field) %#ok<DEFNU>
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = GetFigure(hFig);
+    % Return value if figure and field exists
+    if ~isempty(iDS) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, Field)
+        Value = GlobalData.DataSet(iDS).Figure(iFig).Handles.(Field);
+    else
+        Value = [];
+    end
+end
+
+%% ===== SET SPECIFIC FIELD OF FIGURE HANDLE =====
+function SetFigureHandleField(hFig, Field, Value) %#ok<DEFNU>
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = GetFigure(hFig);
+    if isempty(iDS)
+        error('Figure is not registered in Brainstorm');
+    end
+    % Set field
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.(Field) = Value;
 end
 
 
@@ -1483,7 +1509,7 @@ function ViewTopography(hFig, UseSmoothing)
             % Get displayable sensor types
             [AllMod, DispMod, DefaultMod] = bst_get('ChannelModalities', DataFile);
             % If current modality is not MEG or EEG, cannot display topography: get default modality
-            if ~ismember(FigMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','SEEG','NIRS'}) && ~isempty(DataFile)
+            if ~ismember(FigMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','SEEG','NIRS','ECOG+SEEG'}) && ~isempty(DataFile)
                 Modalities = {DefaultMod};
             % If displaying Stat on Neuromag recordings: Display all sensors separately
             elseif ismember(FigMod, {'MEG','MEG GRAD'}) && all(ismember({'MEG MAG','MEG GRAD'}, AllMod)) && ~isempty(DataFile) && (strcmpi(file_gettype(DataFile), 'pdata') || ~ismember(RecType, {'recordings','raw'}))
@@ -1524,13 +1550,15 @@ function ViewTopography(hFig, UseSmoothing)
     % Call view data function
     if ~isempty(DataFile) && ~isempty(Modalities)
         for i = 1:length(Modalities)
-            if ismember(Modalities{i}, {'ECOG', 'SEEG'})
+            if ismember(Modalities{i}, {'ECOG', 'SEEG', 'ECOG+SEEG'})
                 % 3D figure: plot topography in the same figure
                 if isequal(FigureType, '3DViz')
                     view_topography(DataFile, Modalities{i}, '3DElectrodes', [], [], hFig);
                 % Other types of figures: Create new figure
-                else
+                elseif ~isempty(DispMod) && ismember(Modalities{i}, DispMod)
                     view_topography(DataFile, Modalities{i}, '3DElectrodes');
+                else
+                    view_topography(DataFile, Modalities{i}, '2DElectrodes');
                 end
             elseif isequal(Modalities{i}, 'NIRS')
                 % Get montage used in figure
@@ -1996,7 +2024,8 @@ end
 function SetBackgroundColor(hFig, newColor) %#ok<*DEFNU>
     % Use previous scout color
     if (nargin < 2) || isempty(newColor)
-        newColor = uisetcolor([0 0 0], 'Select scout color');
+        % newColor = uisetcolor([0 0 0], 'Select scout color');
+        newColor = java_dialog('color');
     end
     % If no color was selected: exit
     if (length(newColor) ~= 3)

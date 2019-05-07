@@ -62,6 +62,7 @@ function bst_set( varargin )
 %    - bst_set('FixedScaleY',           Modality,  Value)
 %    - bst_set('ShowXGrid',             isShowXGrid)
 %    - bst_set('ShowYGrid',             isShowYGrid)
+%    - bst_set('ShowZeroLines',         isShowZeroLines)
 %    - bst_set('Resolution',            [resX,resY])
 %    - bst_set('UseSigProcToolbox',     UseSigProcToolbox)
 %    - bst_set('RawViewerOptions',      RawViewerOptions)
@@ -245,7 +246,7 @@ switch contextName
         end
         GlobalData.Preferences.(contextName).(Modality) = ElectrodeConf;
         
-    case {'UniformizeTimeSeriesScales', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', ...
+    case {'UniformizeTimeSeriesScales', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', ...
           'GraphicsSmoothing', 'DownsampleTimeSeries', 'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
           'BFSProperties', 'ImportDataOptions', 'ImportEegRawOptions', 'RawViewerOptions', 'MontageOptions', 'TopoLayoutOptions', ...
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...

@@ -34,7 +34,7 @@ function [hFig, iDS, iFig] = view_timeseries(DataFile, Modality, RowNames, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2019
 
 %% ===== INITIALIZATION =====
 global GlobalData;
@@ -46,13 +46,16 @@ elseif ischar(RowNames)
 end
 if (nargin < 2) || isempty(Modality)
     % Get default modality
-    [tmp,DispMod,Modality] = bst_get('ChannelModalities', DataFile);
+    [AllMod,DispMod,Modality] = bst_get('ChannelModalities', DataFile);
     % Replace SEEG and ECOG with SEEG+ECOG
     if ~isempty(DispMod) && all(ismember({'SEEG','ECOG'}, DispMod))
         DispMod = cat(2, {'ECOG+SEEG'}, setdiff(DispMod, {'SEEG','ECOG'}));
         if ismember(Modality, {'SEEG','ECOG'})
             Modality = 'ECOG+SEEG';
         end
+    elseif ismember(Modality, {'SEEG','ECOG'}) && all(ismember({'SEEG','ECOG'}, AllMod))
+        Modality = 'ECOG+SEEG';
+        DispMod = union(DispMod, {'ECOG+SEEG','SEEG','ECOG'});
     end
 else
     DispMod = [];
@@ -93,13 +96,17 @@ end
 % Check that the selected modality can be displayed, if not select another one
 if ~isempty(DispMod)
     % List of expected modalities, in order of preference
-    AllMod = {'MEG', 'MEG MAG', 'MEG GRAD', 'EEG', 'ECOG', 'SEEG'};
+    AllMod = {'MEG', 'MEG MAG', 'MEG GRAD', 'EEG', 'ECOG', 'SEEG', 'ECOG+SEEG'};
     % Get the list of good modalities 
     GoodMod = unique({GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Measures.ChannelFlag == 1).Type});
     GoodMod = intersect(GoodMod, DispMod);
     % Add MEG for Elekta systems
     if any(ismember({'MEG MAG', 'MEG GRAD'}, GoodMod))
         GoodMod{end+1} = 'MEG';
+    end
+    % Add combined ECOG+SEEG
+    if all(ismember({'ECOG', 'SEEG'}, GoodMod))
+        GoodMod{end+1} = 'ECOG+SEEG';
     end
     % Get the preferred modalities
     iMod = find(ismember(AllMod, GoodMod));

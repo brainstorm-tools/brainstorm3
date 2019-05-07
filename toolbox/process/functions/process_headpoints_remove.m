@@ -29,14 +29,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Remove head points';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 26;
+    sProcess.SubGroup    = {'Import', 'Channel file'};
+    sProcess.Index       = 63;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ChannelFile#Automatic_registration';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % Title
     sProcess.options.title.Comment = ['Remove the head points below a certain Z-thresold.<BR>' ... 
                                       ' - <B>Z=0</B> : Nasion, left ear, right ear<BR> - <B>Z>0</B> : Towards the top of the head<BR> - <B>Z&lt;0</B> : Towards the neck.<BR><BR>'];

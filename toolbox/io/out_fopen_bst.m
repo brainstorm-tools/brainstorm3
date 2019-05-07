@@ -19,7 +19,7 @@ function sFileOut = out_fopen_bst(OutputFile, sFileIn, ChannelMat, EpochSize)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2017; Martin Cousineau, 2018
+% Authors: Francois Tadel, 2014-2019; Martin Cousineau, 2018
 
 % Get file comment
 [fPath, fBase, fExt] = bst_fileparts(OutputFile);
@@ -36,8 +36,8 @@ sFileOut.header.device    = sFileOut.device;
 sFileOut.header.sfreq     = sFileOut.prop.sfreq;
 sFileOut.header.starttime = sFileOut.prop.times(1);
 sFileOut.header.navg      = sFileOut.prop.nAvg;
-sFileOut.header.version   = 50;
-sFileOut.header.nsamples  = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
+sFileOut.header.version   = 51;   % April 2019
+sFileOut.header.nsamples  = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) .* sFileOut.prop.sfreq) + 1;
 sFileOut.header.epochsize = EpochSize;
 sFileOut.header.nchannels = length(ChannelMat.Channel);
 % Force the destination compensation level
@@ -144,16 +144,38 @@ end
 
 % ===== EVENTS =====
 fwrite(fid, length(sFileOut.events), 'uint32');                              % UINT32(1)  : Number of event categories
-for i = 1:length(sFileOut.events)
-    isExtended = (size(sFileOut.events(i).times,1) == 2);
-    labelLength = length(sFileOut.events(i).label);
+for iEvt = 1:length(sFileOut.events)
+    isExtended = (size(sFileOut.events(iEvt).times,1) == 2);
+    evtLabel = sFileOut.events(iEvt).label;
+    labelLength = length(evtLabel);
+    nOcc = size(sFileOut.events(iEvt).times,2);
     fwrite(fid, labelLength, 'uint8');                                       % UINT8(1)   : Length of event name (1 to 255)
-    fwrite(fid, str_zeros(sFileOut.events(i).label, labelLength), 'char');   % CHAR(20)   : Event name
-    fwrite(fid, sFileOut.events(i).color, 'float32');                        % FLOAT32(3) : Event color
+    fwrite(fid, str_zeros(evtLabel, labelLength), 'char');                   % CHAR(??)   : Event name
+    fwrite(fid, sFileOut.events(iEvt).color, 'float32');                     % FLOAT32(3) : Event color
     fwrite(fid, isExtended, 'int8');                                         % INT8(1)    : Event type (0=regular, 1=extended)
-    fwrite(fid, size(sFileOut.events(i).times,2), 'uint32');                 % UINT32(1)  : Number of occurrences
-    if ~isempty(sFileOut.events(i).times)
-        fwrite(fid, sFileOut.events(i).times, 'float32');                   % FLOAT32(2*N) : Time in seconds
+    fwrite(fid, nOcc, 'uint32');                                             % UINT32(1)  : Number of occurrences
+    % If there are event occurrences
+    if ~isempty(sFileOut.events(iEvt).times)
+        % Write latencies
+        fwrite(fid, sFileOut.events(iEvt).times, 'float32');                 % FLOAT32(2*N) : Time in seconds
+        % Write list of channels associated to each event
+        for iOcc = 1:nOcc
+            nChannels = length(sFileOut.events(iEvt).channels{iOcc});
+            fwrite(fid, nChannels, 'uint16');                                % UINT16(1) : Number of channels associated to this event
+            for iChan = 1:nChannels
+                chLabel = sFileOut.events(iEvt).channels{iOcc}{iChan};
+                labelLength = length(chLabel);
+                fwrite(fid, labelLength, 'uint8');                           % UINT8(1) : Length of channel name (1 to 255)
+                fwrite(fid, str_zeros(chLabel, labelLength), 'char');        % CHAR(??) : Channel name
+            end
+        end
+        % Read list of notes associated to each event
+        for iOcc = 1:nOcc
+            noteLabel = sFileOut.events(iEvt).notes{iOcc};
+            labelLength = length(noteLabel);
+            fwrite(fid, labelLength, 'uint16');                              % UINT16(1) : Length of note text
+            fwrite(fid, str_zeros(noteLabel, labelLength), 'char');          % CHAR(??) : Note text
+        end
     end
 end
 

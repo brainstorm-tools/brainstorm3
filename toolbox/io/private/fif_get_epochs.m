@@ -39,7 +39,6 @@ nbSets = length(sets);
 if (nbSets > 0)
     % Initialize structure
     epochs = struct('label',   '', ...
-                    'samples', [], ...
                     'times',   [], ...
                     'nAvg',    1);
     iTotal = 1;
@@ -109,14 +108,12 @@ if (nbSets > 0)
                     epochs(iTotal).label = epochComment;
                 end
                 % Samples (start, stop)
-                epochs(iTotal).samples = epochSamples;
                 epochs(iTotal).times   = epochTimes;
                 % Total indice of epoch/aspect
                 iTotal = iTotal + 1;
             end
         % No aspects defined
         else
-            epochs(iTotal).samples = epochSamples;
             epochs(iTotal).times = epochTimes;
             epochs(iTotal).label = epochComment;
             iTotal = iTotal + 1;

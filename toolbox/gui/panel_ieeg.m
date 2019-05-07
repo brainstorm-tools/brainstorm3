@@ -329,8 +329,8 @@ function UpdatePanel()
             ctrl.jRadioDispSphere.setSelected(1);
         end
     end
-    % Disable options panel until an electrode is selected
-    gui_enable(ctrl.jPanelElecOptions, 0);
+%     % Disable options panel until an electrode is selected
+%     gui_enable(ctrl.jPanelElecOptions, 0);
     % Update JList
     UpdateElecList();
 end
@@ -346,6 +346,15 @@ function UpdateElecList()
     if isempty(ctrl)
         return;
     end
+    % Remove temporarily the list callback
+    callbackBak = java_getcb(ctrl.jListElec, 'ValueChangedCallback');
+    java_setcb(ctrl.jListElec, 'ValueChangedCallback', []);
+    % Get selected electrodes
+    iSelElec = ctrl.jListElec.getSelectedIndex() + 1;
+    SelName = char(ctrl.jListElec.getSelectedValue());
+    if (iSelElec == 0) || (iSelElec > length(sElectrodes)) || ~strcmpi(sElectrodes(iSelElec).Name, SelName)
+        SelName = [];
+    end
     % Create a new empty list
     listModel = java_create('javax.swing.DefaultListModel');
     % Get font with which the list is rendered
@@ -354,6 +363,7 @@ function UpdateElecList()
     tk = java.awt.Toolkit.getDefaultToolkit();
     % Add an item in list for each electrode
     Wmax = 0;
+    iSelElecNew = [];
     for i = 1:length(sElectrodes)
         % itemType  = num2str(sElectrodes(i).ContactNumber);
         itemType  = '';
@@ -370,11 +380,24 @@ function UpdateElecList()
         if (W > Wmax)
             Wmax = W;
         end
+        % Check if selected
+        if ~isempty(SelName) && strcmpi(sElectrodes(i).Name, SelName)
+            iSelElecNew = i;
+        end
     end
     % Update list model
     ctrl.jListElec.setModel(listModel);
     % Update cell rederer based on longest channel name
     ctrl.jListElec.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer', 'II', fontSize, Wmax + 28));
+    % Select previously selected electrodes
+    if ~isempty(iSelElecNew)
+        ctrl.jListElec.setSelectedIndex(iSelElecNew - 1);
+    end
+    % Update electrode properties
+    UpdateElecProperties(0);
+    % Restore callback
+    drawnow;
+    java_setcb(ctrl.jListElec, 'ValueChangedCallback', callbackBak);
 end
 
 
@@ -795,7 +818,8 @@ function EditElectrodeColor(newColor)
     % If color is not specified in argument : ask it to user
     if (nargin < 1)
         % Use previous electrode color
-        newColor = uisetcolor(sSelElec(1).Color, 'Select electrode color');
+        % newColor = uisetcolor(sSelElec(1).Color, 'Select electrode color');
+        newColor = java_dialog('color');
         % If no color was selected: exit
         if (length(newColor) ~= 3) || all(sSelElec(1).Color == newColor)
             return
@@ -818,13 +842,14 @@ end
 
 %% ===== VALIDATE OPTIONS =====
 function ValidateOptions(optName, jControl)
+    global GlobalData;
     % Get figure controls
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl) || isempty(ctrl.jListElec)
         return
     end
     % Get all electrodes
-    sElectrodes = GetElectrodes();
+    [sElectrodes, iDSall, iFigall] = GetElectrodes();
     if isempty(sElectrodes)
         return
     end
@@ -835,13 +860,15 @@ function ValidateOptions(optName, jControl)
     end
     sSelElec = sElectrodes(iSelElec);
     isModified = 0;
+    isChannelModified = 0;
     % Get new value
     if strcmpi(optName, 'Type')
         val = char(jControl.getText());
+        
     elseif strcmpi(optName, 'ContactNumber')
         val = round(str2num(jControl.getText()));
         % SEEG electrode can have only one dimension, others two dimensions max
-        if (length(val) >= 2) && strcmpi(sElectrodes.Type, 'SEEG')
+        if (length(val) >= 2) && strcmpi(sElectrodes(iSelElec).Type, 'SEEG')
             val = val(1);
             jControl.setText(sprintf('%d', val));
         elseif (length(val) >= 3)
@@ -856,10 +883,30 @@ function ValidateOptions(optName, jControl)
         return;
     end
     % Update field for all the selected electrodes
-    for i = 1:length(sSelElec)
-        if ~isequal(sSelElec(i).(optName), val)
-            sSelElec(i).(optName) = val;
+    for iElec = 1:length(sSelElec)
+        if ~isequal(sSelElec(iElec).(optName), val)
+            % Update electrode definition
+            sSelElec(iElec).(optName) = val;
             isModified = 1;
+            % If changing electrode type: update all channel types
+            if strcmpi(optName, 'Type')
+                % Loop on datasets
+                for iDS = unique(iDSall)
+                    % Get contacts for this electrode
+                    iChan = find(strcmpi({GlobalData.DataSet(iDS).Channel.Group}, sSelElec(iElec).Name));
+                    if isempty(iChan)
+                        continue;
+                    end
+                    % Update the channels types
+                    switch (val)
+                        case 'SEEG'
+                            [GlobalData.DataSet(iDS).Channel(iChan).Type] = deal('SEEG');
+                        case {'ECOG', 'ECOG-mid'}
+                            [GlobalData.DataSet(iDS).Channel(iChan).Type] = deal('ECOG');
+                    end
+                end
+                isChannelModified = 1;
+            end
         end
     end
     % Save electrodes
@@ -869,8 +916,16 @@ function ValidateOptions(optName, jControl)
         if ismember(optName, {'Type', 'ContactNumber'})
             UpdateElecProperties(1);
         end
+        % Mark channel file as modified (only the first one)
+        if isChannelModified
+            GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
+        end
         % Update figures
         UpdateFigures();
+        % Update figure modalities
+        for i = 1:length(iDSall)
+            UpdateFigureModality(iDSall(i), iFigall(i));
+        end
     end
 end
     
@@ -1010,7 +1065,14 @@ function AddElectrode()
     % Create new electrode structure
     sElect = db_template('intraelectrode');
     sElect.Name = newLabel;
-    sElect.Type = Modality;
+    switch (Modality)
+        case 'SEEG'
+            sElect.Type = 'SEEG';
+        case 'ECOG'
+            sElect.Type = 'ECOG';
+        otherwise
+            sElect.Type = 'SEEG';
+    end
     % Default model: model of the first electrode, or first model in the list
     if ~isempty(sAllElec)
         sModel = sAllElec(end);
@@ -1094,6 +1156,13 @@ function RemoveElectrode()
                     if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'LocEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG,1))
                         GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG(iHandles,:) = [];
                     end
+                    % Delete all previously created objects
+                    hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+                    delete(findobj(hFig, 'Tag', 'ElectrodeGrid'));
+                    delete(findobj(hFig, 'Tag', 'ElectrodeSelect'));
+                    delete(findobj(hFig, 'Tag', 'ElectrodeDepth'));
+                    delete(findobj(hFig, 'Tag', 'ElectrodeWire'));
+                    delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
                     % Update list of displayed channels
                     iSelChan = setdiff(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
                     remChan = {GlobalData.DataSet(iDS).Channel(setdiff(1:length(GlobalData.DataSet(iDS).Channel), iChan)).Name};
@@ -1101,6 +1170,8 @@ function RemoveElectrode()
                     [tmp, I, J] = intersect(remChan, selChan);
                     GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = I(:)';
                 end
+                % Update figure modality
+                UpdateFigureModality(iDS, iFig);
                 % Remove channels
                 GlobalData.DataSet(iDS).Channel(iChan) = [];
             end
@@ -1374,6 +1445,45 @@ function RemoveElectrodeModel()
 end
 
 
+%% ===== UPDATE FIGURE TYPE =====
+function UpdateFigureModality(iDS, iFig)
+    global GlobalData;
+    % Update figure modalities and title
+    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'MriViewer', '3DViz', 'Topography'})
+        Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+        % Get channel types in the figure
+        SelChan = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+        if ~isempty(SelChan)
+            AllTypes = unique({GlobalData.DataSet(iDS).Channel(SelChan).Type});
+        % If there are not channels (yet), check if there are intracranial electrodes that can define the type
+        elseif ~isempty(GlobalData.DataSet(iDS).IntraElectrodes)
+            AllTypes = unique({GlobalData.DataSet(iDS).IntraElectrodes.Type});
+            if ismember('ECOG-mid', AllTypes)
+                AllTypes = union(setdiff(AllTypes, 'ECOG-mid'), {'ECOG'});
+            end
+        else
+            AllTypes = [];
+        end
+        % If there are possible type condidates
+        if ~isempty(AllTypes)
+            % If the modality was modified
+            if all(ismember({'ECOG','SEEG'}, AllTypes)) && (strcmpi(Modality, 'ECOG') || strcmpi(Modality, 'SEEG'))
+                Modality = 'ECOG+SEEG';
+            elseif ~ismember('ECOG', AllTypes) && ismember('SEEG', AllTypes) && ismember(Modality, {'ECOG+SEEG','ECOG'})
+                Modality = 'SEEG';
+            elseif ~ismember('SEEG', AllTypes) && ismember('ECOG', AllTypes) && ismember(Modality, {'ECOG+SEEG','SEEG'})
+                Modality = 'ECOG';
+            end
+            % Update figure
+            if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, Modality)
+                GlobalData.DataSet(iDS).Figure(iFig).Id.Modality = Modality;
+                bst_figures('UpdateFigureName', GlobalData.DataSet(iDS).Figure(iFig).hFigure);
+            end
+        end
+    end
+end
+
+
 %% ===== UPDATE FIGURES =====
 function UpdateFigures(hFigTarget)
     global GlobalData;
@@ -1407,14 +1517,14 @@ function UpdateFigures(hFigTarget)
                 bst_figures('ReloadFigures', hFig, 0);
             case '3DViz'
                 hElectrodeObjects = [findobj(hFig, 'Tag', 'ElectrodeGrid'); findobj(hFig, 'Tag', 'ElectrodeDepth'); findobj(hFig, 'Tag', 'ElectrodeWire')];
-                if ~isempty(hElectrodeObjects) || ismember(Modality, {'ECOG','SEEG'})
+                if ~isempty(hElectrodeObjects) || ismember(Modality, {'ECOG','SEEG','ECOG+SEEG'})
                     % figure_3d('PlotSensors3D', iDS, iFig);
                     isLabels = isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hSensorLabels') && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSensorLabels);
                     view_channels(GlobalData.DataSet(iDS).ChannelFile, Modality, 1, isLabels, hFig, 1);
                 end
             case 'MriViewer'
                 hElectrodeObjects = [findobj(hFig, 'Tag', 'ElectrodeGrid'); findobj(hFig, 'Tag', 'ElectrodeDepth'); findobj(hFig, 'Tag', 'ElectrodeWire')];
-                if ~isempty(hElectrodeObjects) || ismember(Modality, {'ECOG','SEEG'})
+                if ~isempty(hElectrodeObjects) || ismember(Modality, {'ECOG','SEEG','ECOG+SEEG'})
                     figure_mri('PlotSensors3D', iDS, iFig);
                     GlobalData.DataSet(iDS).Figure(iFig).Handles = figure_mri('PlotElectrodes', iDS, iFig, GlobalData.DataSet(iDS).Figure(iFig).Handles, 1);
                     figure_mri('UpdateVisibleSensors3D', hFig);
@@ -1569,7 +1679,7 @@ end
 %  =================================================================================
 
 %% ===== CREATE 3D ELECTRODE GEOMETRY =====
-function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = CreateGeometry3DElectrode(iDS, iFig, Channel, ChanLoc, sElectrodes) %#ok<DEFNU>
+function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = CreateGeometry3DElectrode(iDS, iFig, Channel, ChanLoc, sElectrodes, isProjectEcog) %#ok<DEFNU>
     global GlobalData;
     % Initialize returned values
     ElectrodeDepth = [];
@@ -1609,7 +1719,11 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
     end
     % Compute contact normals: ECOG and EEG
     if isSurface && (ismember(Modality, {'ECOG','EEG'}) || (~isempty(sElectrodes) && any(strcmpi({sElectrodes.Type}, 'ECOG'))))
-        ChanNormal = GetChannelNormal(sSubject, ChanLoc, Modality, 0);
+        if isProjectEcog
+            ChanNormal = GetChannelNormal(sSubject, ChanLoc, Modality, 0);
+        else
+            ChanNormal = repmat([0 0 1], size(ChanLoc,1), 1); 
+        end
     else
         ChanNormal = [];
     end
@@ -1743,7 +1857,8 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
                     % Contact size and orientation
                     ctSize   = [sElec.ContactDiameter ./ 2, sElec.ContactDiameter ./ 2, sElec.ContactLength];
                     ctOrient = ChanNormal(iElecChan,:);
-                    ctColor  = [.9,.9,0];
+                    %ctColor  = [.9,.9,0]; YELLOW
+                    ctColor  = sElec.Color;
                     % Create contacts geometry
                     [ctVertex, ctFaces] = Plot3DContacts(ecogVertex, ecogFaces, ctSize, ChanLoc(iElecChan,:), ctOrient);
                 end
@@ -1814,7 +1929,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
             tmpVertex = ecogVertex;
             tmpFaces  = ecogFaces;
         % ECOG/EEG: Sphere (if normals are not available)
-        elseif ~isempty(ChanNormal)
+        else
             ctSize    = [1 1 1] .* ElectrodeConfig.ContactDiameter ./ 2;
             tmpVertex = sphereVertex;
             tmpFaces  = sphereFaces;
@@ -1825,7 +1940,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
         % Create contacts geometry
         [ctVertex, ctFaces] = Plot3DContacts(tmpVertex, tmpFaces, ctSize, ChanLoc(iChanOther,:), ctOrient);
         % Display properties
-        ctColor   = [.9,.9,0];
+        ctColor   = [.9,.9,0];  % YELLOW
         elecAlpha = 1;
         % Add to global patch
         offsetVert  = size(Vertex,1);
@@ -1837,19 +1952,21 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
         UserData    = [UserData;    reshape(repmat(iChanOther, size(ctVertex,1)./length(iChanOther), 1), [], 1)];
     end
     % Create patch
-    ElectrodeGrid.Faces               = Faces;
-    ElectrodeGrid.Vertices            = Vertex;
-    ElectrodeGrid.FaceVertexCData     = VertexRGB;
-    ElectrodeGrid.FaceVertexAlphaData = VertexAlpha;
-    ElectrodeGrid.Options = {...
-        'EdgeColor',        'none', ...
-        'BackfaceLighting', 'unlit', ...
-        'AmbientStrength',  0.5, ...
-        'DiffuseStrength',  0.6, ...
-        'SpecularStrength', 0, ...
-        'FaceLighting',     FaceLighting, ...
-        'Tag',              'ElectrodeGrid', ...
-        'UserData',         UserData};
+    if ~isempty(Vertex)
+        ElectrodeGrid.Faces               = Faces;
+        ElectrodeGrid.Vertices            = Vertex;
+        ElectrodeGrid.FaceVertexCData     = VertexRGB;
+        ElectrodeGrid.FaceVertexAlphaData = VertexAlpha;
+        ElectrodeGrid.Options = {...
+            'EdgeColor',        'none', ...
+            'BackfaceLighting', 'unlit', ...
+            'AmbientStrength',  0.5, ...
+            'DiffuseStrength',  0.6, ...
+            'SpecularStrength', 0, ...
+            'FaceLighting',     FaceLighting, ...
+            'Tag',              'ElectrodeGrid', ...
+            'UserData',         UserData};
+    end
 end
 
 %% ===== PLOT 3D CONTACTS =====
@@ -1989,8 +2106,15 @@ end
 
 
 %% ===== ALIGN CONTACTS =====
-function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
+function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog)
     global GlobalData;
+    % Default values
+    if (nargin < 7) || isempty(isProjectEcog)
+        isProjectEcog = 1;
+    end
+    if (nargin < 6) || isempty(isUpdate)
+        isUpdate = 1;
+    end
     % If using electrodes in input
     if (nargin >= 5) && ~isempty(sElectrodes) && ~isempty(Channels)
         isImplantation = 0;
@@ -2000,6 +2124,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
         sElectrodes = GetSelectedElectrodes();
         if isempty(sElectrodes)
             java_dialog('warning', 'No electrode selected.', 'Align contacts');
+            Channels = [];
             return
         end
         % Check if this is an new implantation folder
@@ -2096,11 +2221,11 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
             % Compute contacts positions
             w1 = sElectrodes(iElec).ContactNumber-1:-1:0;
             w2 = 0:sElectrodes(iElec).ContactNumber-1;
-            NewLoc = ((sElectrodes(iElec).Loc(:,1) * w1 + sElectrodes(iElec).Loc(:,2) * w2) ./ (w1 + w2))';
+            NewLoc = bst_bsxfun(@rdivide, sElectrodes(iElec).Loc(:,1) * w1 + sElectrodes(iElec).Loc(:,2) * w2, w1 + w2)';
 
             % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
             % ECOG only (no ECOG-mid)
-            if strcmpi(sElectrodes(iElec).Type, 'ECOG')
+            if strcmpi(sElectrodes(iElec).Type, 'ECOG') && isProjectEcog
                 % Project all points on the surface
                 [ProjOrient, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG', 1);
                 % Do not go further if it's impossible to project the electrodes on a surface
@@ -2115,7 +2240,11 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
                     % Compute the distance to the surface we want for each contact
                     dChanTarget = ((w1*d1 + w2*d2) ./ (w1 + w2))';
                     % Project the channels in the direction of the cortex, so that they are at the expected distance
-                    NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                    % Normalization with bsxfun, equivalent to: NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                    proj = ProjLoc - NewLoc;
+                    proj = bst_bsxfun(@rdivide, proj, dChan);
+                    proj = bst_bsxfun(@times, proj, dChan - dChanTarget);
+                    NewLoc = NewLoc + proj;
                 end
             end
             % Get the list of channels in the channel file
@@ -2185,7 +2314,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
 
             % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
             % ECOG only (no ECOG-mid)
-            if strcmpi(sElectrodes(iElec).Type, 'ECOG')
+            if strcmpi(sElectrodes(iElec).Type, 'ECOG') && isProjectEcog
                 % Project all points on the surface
                 [ProjOrient, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG', 1);
                 % Do not go further if it's impossible to project the electrodes on a surface
@@ -2202,7 +2331,11 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
                     % Compute the distance to the surface we want for each contact
                     dChanTarget = (wp*dp + wt*dt + ws*ds + wq*dq) ./ (wp + wt + ws + wq);
                     % Project the channels in the direction of the cortex, so that they are at the expected distance
-                    NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                    % Normalization with bsxfun, equivalent to: NewLoc = NewLoc + (ProjLoc - NewLoc) ./ dChan .* (dChan - dChanTarget);
+                    proj = ProjLoc - NewLoc;
+                    proj = bst_bsxfun(@rdivide, proj, dChan);
+                    proj = bst_bsxfun(@times, proj, dChan - dChanTarget);
+                    NewLoc = NewLoc + proj;
                 end
             end
             
@@ -2233,12 +2366,12 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
 %             disp('Warning: No inner skull surface available for this subject, cannot project the contacts on the skull.');
 %         end
         % Mark channel file as modified
-        if isUpdateDS
+        if isUpdate && isUpdateDS
             GlobalData.DataSet(iDS(1)).isChannelModified = 1;
         end
     end
     % If loaded datasets should be updated
-    if isUpdateDS
+    if isUpdate && isUpdateDS
         % Update electrode position
         for i = 1:length(iDS)
             GlobalData.DataSet(iDS(i)).Channel = Channels;
@@ -2269,7 +2402,7 @@ function ProjectContacts(iDS, iFig, SurfaceType)
     if strcmpi(SurfaceType, 'innerskull') && (isempty(sSubject.iInnerSkull) || (sSubject.iInnerSkull > length(sSubject.Surface)))
         bst_error('No inner skull surface available for this subject.', 'Project contacts', 0);
     elseif ismember(SurfaceType, {'cortex','cortexhull','cortexmask'}) && (isempty(sSubject.iCortex) || (sSubject.iCortex > length(sSubject.Surface)))
-        bst_error('No inner cortex available for this subject.', 'Project contacts', 0);
+        bst_error('No cortex available for this subject.', 'Project contacts', 0);
     end
     % Process all the electrodes
     for iElec = 1:length(sSelElec)
@@ -2378,6 +2511,10 @@ function SetElectrodeLoc(iLoc, jButton)
         else
             % Update display
             UpdateFigures();
+        end
+        % Update figure modalities
+        for i = 1:length(iDS)
+            UpdateFigureModality(iDS(i), iFig(i));
         end
     end
 end

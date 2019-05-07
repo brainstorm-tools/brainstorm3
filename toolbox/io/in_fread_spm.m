@@ -33,11 +33,11 @@ if (nargin < 3) || isempty(iChannels)
     iChannels = 1:sFile.header.nChannels;
 end
 if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % Convert samples to indices in the file
-SamplesBounds = SamplesBounds - sFile.prop.samples(1);
+SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq);
 iTimes = (SamplesBounds(1):SamplesBounds(2)) + 1;
 
 % Fix file link

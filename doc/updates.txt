@@ -1,3 +1,16 @@
+May 2019
+- IO: Support for NWB ECOG (recordings + surfaces)
+---------------------------------------------------------------
+April 2019
+- GUI: New color picker to replace Matlab's buggy uisetcolor
+- GUI: New bipolar and avg ref montages for ECOG+SEEG
+- GUI: New default colormaps: Viridis, Magma, Dory, Royal Gramma, Mandrill
+- GUI: New EEG montage: Scalp Current Density (L->R)
+- Anatomy: Support for new fibers objects
+- Connectivity: View of functionnal connectivity along anatomical fibers
+- Doc: ECOG tutorial
+- API: Removed the field "samples" from events and sFile structures (use "times" instead)
+- API: Added fields "channels" and "notes" to events structures
 ---------------------------------------------------------------
 March 2019
 - Anatomy: Deface MRI with FreeSurfer or SPM
@@ -7,6 +20,7 @@ March 2019
 - GUI: SEEG 2DElectrode topography (and 2DLayout without 3D positions)
 - GUI: EEG Scalp Current Density (SCD) as a default montage
 - Distrib: Updating Brainstorm now downloads only the scripts (skips the compiled version)
+- Distrib: Compiled 2019a
 ---------------------------------------------------------------
 February 2019
 - Process: Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)

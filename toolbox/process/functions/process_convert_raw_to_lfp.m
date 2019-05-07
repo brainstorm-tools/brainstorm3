@@ -188,10 +188,9 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         cleanChannelNames = str_remove_spec_chars({ChannelMat.Channel.Name});
 
         %% Update fields before initializing the header on the binary file
-        sFileTemplate.prop.samples = floor(sFileTemplate.prop.times * NewFreq);  % Check if FLOOR IS NEEDED HERE
         sFileTemplate.prop.sfreq = NewFreq;
         sFileTemplate.header.sfreq = NewFreq;
-        sFileTemplate.header.nsamples = diff(sFileTemplate.prop.samples)+1;
+        sFileTemplate.header.nsamples = round((sFileTemplate.prop.times(2) - sFileTemplate.prop.times(1)) .* NewFreq) + 1;
 
         % Update file
         sFileTemplate.CommentTag     = sprintf('resample(%dHz)', round(NewFreq));
@@ -199,7 +198,7 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         sFileTemplate.despikeLFP     = sProcess.options.despikeLFP.Value;
 
         % Convert events to new sampling rate
-        newTimeVector = linspace(sFileTemplate.prop.times(1),sFileTemplate.prop.times(2),sFileTemplate.prop.samples(2)+1);
+        newTimeVector = panel_time('GetRawTimeVector', sFileTemplate);
         sFileTemplate.events = panel_record('ChangeTimeVector', sFileTemplate.events, Fs, newTimeVector);
 
         %% Create an empty Brainstorm-binary file and assign the correct samples-times
@@ -321,7 +320,7 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     % If there are no neurons picked up from that electrode, continue
     % Apply despiking around the spiking times
     if ~isempty(iEventforElectrode) % If there are spikes on that electrode
-        spkSamples = [sFile.events(iEventforElectrode).samples]; % All spikes, from all neurons on that electrode
+        spkSamples = ([sFile.events(iEventforElectrode).times] .* sFile.prop.sfreq); % All spikes, from all neurons on that electrode
         
         % We'd like to assume that a spike lasts
         % from-10 samples to +19 samples (3 ms) for 10000 Hz sampling rate compared to its peak

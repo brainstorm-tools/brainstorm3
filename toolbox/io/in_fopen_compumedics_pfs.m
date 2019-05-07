@@ -212,10 +212,9 @@ sFile.header    = hdr;
 sFile.comment   = [Comment timeComment];
 sFile.condition = Comment;
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = sfreq;
-sFile.prop.samples = [0, double(hdr.rda.segment(1).num_samples) - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = sfreq;
+sFile.prop.times = [0, double(hdr.rda.segment(1).num_samples) - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nchannels, 1);
 % Acquisition date
@@ -286,24 +285,25 @@ if ~isempty(EventFile)
         events = repmat(db_template('event'), 1, length(uniqueType));
         % Format list
         for iEvt = 1:length(uniqueType)
-            % Ask for a label
+            % Find list of occurences of this event
+            iOcc = find((allTypes == uniqueType(iEvt)) & (allStart > 0));
+            % Fill events structure
             events(iEvt).label      = num2str(uniqueType(iEvt));
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            % Find list of occurences of this event
-            iOcc = find((allTypes == uniqueType(iEvt)) & (allStart > 0));
             % If there are non-negative durations: create extended events
             if any(allDurations(iOcc) ~= 0)
                 evtDurations = max(allDurations(iOcc), 1);
-                events(iEvt).samples = [allStart(iOcc); allStart(iOcc) + evtDurations];
+                samples = [allStart(iOcc); allStart(iOcc) + evtDurations];
             else
-                events(iEvt).samples = allStart(iOcc);
+                samples = allStart(iOcc);
             end
             % Convert to time
-            events(iEvt).times = events(iEvt).samples ./ sFile.prop.sfreq;
-            % Epoch: set as 1 for all the occurrences
-            events(iEvt).epochs = ones(1, length(events(iEvt).samples));
+            events(iEvt).times    = samples ./ sFile.prop.sfreq;
+            events(iEvt).epochs   = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
+            events(iEvt).channels = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).notes    = cell(1, size(events(iEvt).times, 2));
         end
         % Import this list
         sFile = import_events(sFile, [], events);
