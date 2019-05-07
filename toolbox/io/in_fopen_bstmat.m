@@ -53,7 +53,6 @@ sFile.device   = 'Brainstorm';
 sFile.comment  = DataMat(1).Comment;
 sFile.prop.times   = [DataMat(1).Time(1), DataMat(1).Time(end)];
 sFile.prop.sfreq   = 1 ./ (DataMat(1).Time(2) - DataMat(1).Time(1));
-sFile.prop.samples = round(sFile.prop.times .* sFile.prop.sfreq);
 sFile.prop.currCtfComp = 3;
 sFile.prop.destCtfComp = 3;
 if isfield(DataMat(1), 'Events') && ~isempty(DataMat(1).Events)

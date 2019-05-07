@@ -195,7 +195,8 @@ switch (sFile.format)
         F = in_fread_bst(sFile, sfid, SamplesBounds, ChannelRange);
     case 'BST-DATA'
         if ~isempty(SamplesBounds)
-            iTimes = (SamplesBounds(1):SamplesBounds(2)) - sFile.prop.samples(1) + 1;
+            fileSamples = round(sFile.prop.times * sFile.prop.sfreq);
+            iTimes = (SamplesBounds(1):SamplesBounds(2)) - fileSamples(1) + 1;
         else
             iTimes = 1:size(sFile.header.F,2);
         end
@@ -241,9 +242,11 @@ if isempty(TimeVector)
     if ~isempty(SamplesBounds)
         TimeVector = (SamplesBounds(1) : SamplesBounds(2)) ./ sFile.prop.sfreq;
     elseif ~isempty(iEpoch) && ~isempty(ImportOptions) && strcmpi(ImportOptions.ImportMode, 'Epoch') && ~isempty(sFile.epochs)
-        TimeVector = (sFile.epochs(iEpoch).samples(1) : sFile.epochs(iEpoch).samples(2)) / sFile.prop.sfreq;
+        epochSamples = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
+        TimeVector = (epochSamples(1) : epochSamples(2)) / sFile.prop.sfreq;
     else
-        TimeVector = (sFile.prop.samples(1) : sFile.prop.samples(2)) / sFile.prop.sfreq;
+        fileSamples = round(sFile.prop.times * sFile.prop.sfreq);
+        TimeVector = (fileSamples(1) : fileSamples(2)) / sFile.prop.sfreq;
     end
 end
 % If epoching the recordings (ie. reading by events): Use imported time window

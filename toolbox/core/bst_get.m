@@ -172,6 +172,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('AutoScaleY')                 : {0,1} - If 1, the axis limits are updated when the figure is updated
 %    - bst_get('ShowXGrid')                  : {0,1} - If 1, show the XGrid in the time series figures
 %    - bst_get('ShowYGrid')                  : {0,1} - If 1, show the YGrid in the time series figures
+%    - bst_get('ShowZeroLines')              : {0,1} - If 1, show the Y=0 lines in the columns view
 %    - bst_get('Resolution')                 : [resX,resY] fixed resolutions for X and Y axes
 %    - bst_get('FixedScaleY', Modality)      : Struct with the scales to impose on the recordings for the selected modality
 %    - bst_get('UseSigProcToolbox')       : Use Matlab's Signal Processing Toolbox when available
@@ -1174,7 +1175,7 @@ switch contextName
         
         
 %% ==== CHANNEL FILE FOR STUDY ====
-    % Usage: [ChannelFile] = bst_get('ChannelFileForStudy', StudyFile/DataFile)
+    % Usage: [ChannelFile, sStudy, iStudy] = bst_get('ChannelFileForStudy', StudyFile/DataFile)
     case 'ChannelFileForStudy'
         % Parse inputs
         if (nargin == 2)
@@ -1191,6 +1192,8 @@ switch contextName
         sChannel = bst_get('ChannelForStudy', iStudy);
         if ~isempty(sChannel)
             argout1 = sChannel.FileName;
+            argout2 = sStudy;
+            argout3 = iStudy;
         else
             argout1 = [];
         end
@@ -2427,6 +2430,13 @@ switch contextName
             argout1 = 0;
         end
         
+    case 'ShowZeroLines'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ShowZeroLines')
+            argout1 = GlobalData.Preferences.ShowZeroLines;
+        else
+            argout1 = 1;
+        end
+        
     case 'Resolution'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'Resolution')
             argout1 = GlobalData.Preferences.Resolution;
@@ -3140,6 +3150,7 @@ switch contextName
                     {'.tri'},   'TRI (*.tri)',             'TRI'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume mask or atlas (subject space)', 'MRI-MASK'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz'},                  'Volume mask or atlas (MNI space)',     'MRI-MASK-MNI'; ...
+                    {'.nwbaux'},   'Neurodata Without Borders (*.nwbaux)', 'NWB'; ...
                     {'*'},      'All surface files (*.*)', 'ALL'; ...
                    };
                

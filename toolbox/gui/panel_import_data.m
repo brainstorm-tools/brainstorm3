@@ -53,7 +53,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
     isEvents = ~isempty(sFile.events);
     isEpochs = ~isempty(sFile.epochs) && (length(sFile.epochs) > 1);
     % Get number of time samples
-    nSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
+    nSamples = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq) + 1;
     % Propose to split the file the number of samples is big enough
     isSplitPanel = ~isEpochs && (nSamples > 100);
     % If several panels on both sides (time and pre-processing): Display in separate panels
@@ -706,14 +706,14 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             return
         end
         % Get the current bounds (in samples)
-        selSamples = round(SelTimeBounds * sFile.prop.sfreq); % + double(sFile.prop.samples(1));
+        selSamples = round(SelTimeBounds * sFile.prop.sfreq);
         % Create a new events list
         listModel = java_create('javax.swing.DefaultListModel');
         nbEvents = length(sFile.events);
         isExtended = false(1,nbEvents);
         for i = 1:nbEvents
             % Extended/simple event
-            isExtended(i) = (size(sFile.events(i).samples, 1) == 2);
+            isExtended(i) = (size(sFile.events(i).times, 1) == 2);
             % If selection by epoch
             if isEpochs
                 % Get selected epochs
@@ -727,7 +727,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             % Else: selection by time windows
             else
                 % Get all the occurrences of this event
-                iSamples = sFile.events(i).samples;
+                iSamples = round(sFile.events(i).times .* sFile.prop.sfreq);
                 % Keep only the occurrences within the time bounds
                 if isempty(iSamples)
                     iSelSmp = [];
@@ -1002,7 +1002,7 @@ function [iSelEvt, isExtended, iOccur] = GetSelectedEvents()
     iOccur     = {};
     for iObj = 1:length(selObj)
         iSelEvt(iObj)    = str2num(selObj(iObj).getType());
-        isExtended(iObj) = (size(ctrl.sFile.events(iSelEvt(iObj)).samples, 1) == 2);
+        isExtended(iObj) = (size(ctrl.sFile.events(iSelEvt(iObj)).times, 1) == 2);
         iOccur{iObj}     = selObj(iObj).getUserData()';
     end
 end
@@ -1065,9 +1065,10 @@ function s = GetPanelContents() %#ok<DEFNU>
         s.events = ctrl.sFile.events(iSelEvents);
         % Keep only the occurrences selected by the user
         for iEvent = 1:length(s.events)
-            s.events(iEvent).epochs  = s.events(iEvent).epochs(iSelSmp{iEvent});
-            s.events(iEvent).samples = s.events(iEvent).samples(:, iSelSmp{iEvent});
-            s.events(iEvent).times   = s.events(iEvent).times(:, iSelSmp{iEvent});
+            s.events(iEvent).epochs   = s.events(iEvent).epochs(iSelSmp{iEvent});
+            s.events(iEvent).times    = s.events(iEvent).times(:, iSelSmp{iEvent});
+            s.events(iEvent).channels = s.events(iEvent).channels(iSelSmp{iEvent});
+            s.events(iEvent).notes    = s.events(iEvent).notes(iSelSmp{iEvent});
         end
         % Import mode
         s.ImportMode = 'Event';

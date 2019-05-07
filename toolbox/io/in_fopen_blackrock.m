@@ -69,8 +69,7 @@ sFile.header    = hdr;
 sFile.comment   = [fBase, fExt];
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = hdr.SamplingFreq;
-sFile.prop.samples = [0, hdr.DataPoints - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, hdr.DataPoints - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.ChannelCount, 1);
@@ -117,9 +116,10 @@ if ~isempty(NevFile)
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            events(iEvt).samples    = round((double(nev.Data.Spikes.TimeStamp(iOcc)) - 1) * tFactor);
-            events(iEvt).times      = events(iEvt).samples ./ sFile.prop.sfreq;
+            events(iEvt).times      = round((double(nev.Data.Spikes.TimeStamp(iOcc)) - 1) * tFactor) ./ sFile.prop.sfreq;
             events(iEvt).epochs     = ones(1, length(iOcc));
+            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
         end
     end
     
@@ -136,9 +136,10 @@ if ~isempty(NevFile)
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            events(iEvt).samples    = round((double(nev.Data.SerialDigitalIO.TimeStamp(iOcc)) - 1) * tFactor);
-            events(iEvt).times      = events(iEvt).samples ./ sFile.prop.sfreq;
+            events(iEvt).times      = round((double(nev.Data.SerialDigitalIO.TimeStamp(iOcc)) - 1) * tFactor) ./ sFile.prop.sfreq;
             events(iEvt).epochs     = ones(1, length(iOcc));
+            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
         end
     end
     
@@ -154,9 +155,10 @@ if ~isempty(NevFile)
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            events(iEvt).samples    = round((double(nev.Data.Comments.TimeStamp(iOcc)) - 1) * tFactor);
-            events(iEvt).times      = events(iEvt).samples ./ sFile.prop.sfreq;
+            events(iEvt).times      = round((double(nev.Data.Comments.TimeStamp(iOcc)) - 1) * tFactor) ./ sFile.prop.sfreq;
             events(iEvt).epochs     = ones(1, length(iOcc));
+            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
         end
     end
     
@@ -172,9 +174,10 @@ if ~isempty(NevFile)
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            events(iEvt).samples    = round((double(nev.Data.PatientTrigger.TimeStamp(iOcc)) - 1) * tFactor);
-            events(iEvt).times      = events(iEvt).samples ./ sFile.prop.sfreq;
+            events(iEvt).times      = round((double(nev.Data.PatientTrigger.TimeStamp(iOcc)) - 1) * tFactor) ./ sFile.prop.sfreq;
             events(iEvt).epochs     = ones(1, length(iOcc));
+            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
         end
     end
 

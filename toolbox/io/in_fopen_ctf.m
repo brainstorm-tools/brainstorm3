@@ -80,8 +80,7 @@ sFile.byteorder  = 's';
 sFile.header     = header;
 % Time and samples indices
 sFile.prop.sfreq   = double(header.gSetUp.sample_rate);
-sFile.prop.samples = ([0, header.gSetUp.no_samples - 1] - header.gSetUp.preTrigPts);
-sFile.prop.times   = sFile.prop.samples ./ header.gSetUp.sample_rate;
+sFile.prop.times   = ([0, header.gSetUp.no_samples - 1] - header.gSetUp.preTrigPts) ./ header.gSetUp.sample_rate;
 % Acquisition date
 sFile.acq_date = str_date(header.res4.data_date);
 
@@ -101,7 +100,6 @@ if (nEpochs > 1)
         else
             sFile.epochs(i).label = sprintf('Trial (#%d)', i);
         end
-        sFile.epochs(i).samples = sFile.prop.samples;
         sFile.epochs(i).times   = sFile.prop.times;
         sFile.epochs(i).nAvg    = nAvg;
         sFile.epochs(i).select  = 1;
@@ -241,45 +239,6 @@ if (length(sFile.epochs) > 1) && ~isempty(strfind(ds_directory, '_AUX'))
         % Send to the current report
         bst_report('Warning', 'process_import_data_raw', [], Messages);
     end
-        
-%     % If there are events defined in the MarkerFile of the AUX file: fix them 
-%     % => CTF bug for AUX files: triggers are generated when the Stim channel is high at the beginning of a "trial"
-%     if ~isempty(sFile.events)
-%         strMsg = '';
-%         % Build list of sample indices where the DS trials start
-%         trialStarts = sFile.prop.samples(1) + (0:sFile.header.gSetUp.no_trials-1) * sFile.header.gSetUp.no_samples;
-%         % Loop on the MarkerFile events
-%         for iEvt = 1:length(sFile.events)
-%             % Skip if no event
-%             if isempty(sFile.events(iEvt).samples)
-%                 continue;
-%             end
-%             % Find events that match the beginning of a trial
-%             iRemove = find(ismember(sFile.events(iEvt).samples(1,:), trialStarts));
-%             % If found: delete them
-%             if ~isempty(iRemove)
-%                 % Get the times to remove
-%                 tRemove = sFile.events(iEvt).times(1,iRemove);
-%                 % Remove the events occurrences
-%                 sFile.events(iEvt).times(:,iRemove)   = [];
-%                 sFile.events(iEvt).samples(:,iRemove) = [];
-%                 sFile.events(iEvt).epochs(:,iRemove)  = [];
-%                 if ~isempty(sFile.events(iEvt).reactTimes)
-%                     sFile.events(iEvt).reactTimes(:,iRemove) = [];
-%                 end
-%                 % Display message
-%                 strMsg = [strMsg, 10, 'Removed ' num2str(length(iRemove)) ' x "' sFile.events(iEvt).label, '": ', sprintf('%1.3f ', tRemove)];
-%             end
-%         end
-%         % Display message
-%         if ~isempty(strMsg)
-%             strMsg = ['Errors detected in the events of the AUX file (markers at the beginning of a trial): ' strMsg];
-%             % Display on console
-%             disp([10, 'CTF> ', strrep(strMsg, char(10), [10 'CTF> ']), 10]);
-%             % Send to the current report
-%             bst_report('Warning', 'process_import_data_raw', [], strMsg);
-%         end
-%     end
 end
 
      

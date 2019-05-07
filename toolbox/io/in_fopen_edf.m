@@ -335,10 +335,9 @@ if ~isempty(iChanWrongRate)
 end
 
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.signal(iChanFreqRef).sfreq;
-sFile.prop.samples = [0, hdr.signal(iChanFreqRef).nsamples * hdr.nrec - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.signal(iChanFreqRef).sfreq;
+sFile.prop.times = [0, hdr.signal(iChanFreqRef).nsamples * hdr.nrec - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 
 
 
@@ -456,11 +455,12 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                     t = t(1,:);
                 end
                 % Set event
-                sFile.events(iEvt).label   = strtrim(uniqueEvt{iEvt});
-                sFile.events(iEvt).times   = t;
-                sFile.events(iEvt).samples = round(t .* sFile.prop.sfreq);
-                sFile.events(iEvt).epochs  = 1 + 0*t(1,:);
-                sFile.events(iEvt).select  = 1;
+                sFile.events(iEvt).label    = strtrim(uniqueEvt{iEvt});
+                sFile.events(iEvt).times    = round(t .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+                sFile.events(iEvt).epochs   = 1 + 0*t(1,:);
+                sFile.events(iEvt).select   = 1;
+                sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+                sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
             end
         end
         

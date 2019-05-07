@@ -160,7 +160,7 @@ switch FileFormat
         if (length(sFile.events) > 1)
             error('Cannot export more than one event at a time with this format.');
         end
-        eve = sFile.events.samples;
+        eve = round(sFile.events.times * sFile.prop.sfreq);
         strEve = sprintf(['%d' 10], round(eve));
         % Save file
         fid = fopen(OutputFile, 'w');

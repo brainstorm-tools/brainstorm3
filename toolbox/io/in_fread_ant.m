@@ -25,7 +25,7 @@ function F = in_fread_ant(sFile, SamplesBounds)
 
 % Use the full file if samples not specified
 if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 % Check start and stop samples
 if (SamplesBounds(1) < 0) || (SamplesBounds(1) > SamplesBounds(2)) || (SamplesBounds(2) >= sFile.header.nsample)

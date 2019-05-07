@@ -23,7 +23,7 @@ function out_fwrite_brainamp(sFile, sfid, SamplesBounds, F)
 
 % Parse inputs
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % Apply gains, if available

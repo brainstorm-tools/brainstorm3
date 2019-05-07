@@ -153,8 +153,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         for iEvent = 1:length(trial.Events)
             [tmp, bin_it_belongs_to] = histc(trial.Events(iEvent).times, bins);
-            convertedEvents(iEvent).samples = bin_it_belongs_to;
-            
+
             bin_it_belongs_to(bin_it_belongs_to==0) = 1;
             convertedEvents(iEvent).times   = bins(bin_it_belongs_to);
             

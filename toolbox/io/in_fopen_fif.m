@@ -143,9 +143,8 @@ elseif (nEpochs == 0)
     % Read RAW file information
     raw = fif_setup_raw(sFile, fid, 1);
     % Fill sFile structure   
-    sFile.prop.samples = double([raw.first_samp, raw.last_samp]);
-    sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-    sFile.header.raw   = raw;
+    sFile.prop.times = double([raw.first_samp, raw.last_samp]) ./ sFile.prop.sfreq;
+    sFile.header.raw = raw;
     % Read events information
     if iscell(ImportOptions.EventsMode) || ~strcmpi(ImportOptions.EventsMode, 'ignore')
         sFile.events = fif_read_events(sFile, ChannelMat, ImportOptions);
@@ -161,7 +160,6 @@ else
     % Build epochs structure
     for i = 1:length(epochs)
         sFile.epochs(i).label   = epochs(i).label;
-        sFile.epochs(i).samples = epochs(i).samples;
         sFile.epochs(i).times   = epochs(i).times;
         sFile.epochs(i).nAvg    = epochs(i).nAvg;
         sFile.epochs(i).select  = isempty(strfind(epochs(i).label, 'std err'));
@@ -169,7 +167,6 @@ else
         sFile.epochs(i).channelflag = [];
     end
     % Extract global min/max for time and samples indices
-    sFile.prop.samples = [min([sFile.epochs.samples]), max([sFile.epochs.samples])];
     sFile.prop.times   = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
 end
 

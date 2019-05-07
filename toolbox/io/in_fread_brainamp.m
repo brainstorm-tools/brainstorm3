@@ -25,7 +25,7 @@ function F = in_fread_brainamp(sFile, sfid, SamplesBounds)
 
 % Parse inputs
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % BINARY and MULTIPLEXED files
@@ -70,7 +70,7 @@ elseif (strcmpi(sFile.header.DataFormat, 'ASCII') && strcmpi(sFile.header.DataOr
     % Close file
     fclose(fid);
     % Select only the requested time points
-    iTime = (SamplesBounds(1):SamplesBounds(2)) - sFile.prop.samples(1) + 1;
+    iTime = (SamplesBounds(1):SamplesBounds(2)) - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
     F = F(:,iTime);
 end
 

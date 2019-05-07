@@ -66,7 +66,7 @@ header.SamplingInterval = 1e6 ./ sFileOut.prop.sfreq;
 header.BinaryFormat     = 'IEEE_FLOAT_32';
 header.bytesize         = 4;
 header.byteformat       = 'float32';
-header.nsamples         = sFileOut.prop.samples(2) - sFileOut.prop.samples(1) + 1;
+header.nsamples         = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) .* sFileOut.prop.sfreq) + 1;
 sFileOut.header = header;
 
 % ===== WRITE VHDR =====

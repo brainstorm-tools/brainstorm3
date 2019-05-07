@@ -25,7 +25,7 @@ function F = in_fread_cnt(sFile, sfid, SamplesBounds)
 
 % Check start and stop samples
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 elseif (SamplesBounds(1) < 0) || (SamplesBounds(1) > SamplesBounds(2)) || (SamplesBounds(2) > sFile.header.data.numsamples)
     error('Invalid samples range.');
 end

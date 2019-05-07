@@ -1,3 +1,5 @@
+May 2019
+- IO: Support for NWB ECOG (recordings + surfaces)
 ---------------------------------------------------------------
 April 2019
 - GUI: New color picker to replace Matlab's buggy uisetcolor
@@ -7,6 +9,8 @@ April 2019
 - Anatomy: Support for new fibers objects
 - Connectivity: View of functionnal connectivity along anatomical fibers
 - Doc: ECOG tutorial
+- API: Removed the field "samples" from events and sFile structures (use "times" instead)
+- API: Added fields "channels" and "notes" to events structures
 ---------------------------------------------------------------
 March 2019
 - Anatomy: Deface MRI with FreeSurfer or SPM

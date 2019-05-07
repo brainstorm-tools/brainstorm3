@@ -256,7 +256,7 @@ if isRawIn && isRawOut
     % Get default epoch size
     EpochSize = bst_process('GetDefaultEpochSize', sFileOut);
     % Process by sample blocks
-    nSamples = sFileOut.prop.samples(2) - sFileOut.prop.samples(1) + 1;
+    nSamples = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) * sFileOut.prop.sfreq) + 1;
     nBlocks = ceil(nSamples / EpochSize);
     % Show progress bar
     if ~isProgress
@@ -265,7 +265,7 @@ if isRawIn && isRawOut
     % Copy files by block
     for iBlock = 1:nBlocks
         % Get sample indices
-        SamplesBounds = sFileOut.prop.samples(1) + [(iBlock-1) * EpochSize, min(iBlock*EpochSize-1, nSamples-1)];
+        SamplesBounds = sFileOut.prop.times(1) * sFileOut.prop.sfreq + [(iBlock-1) * EpochSize, min(iBlock*EpochSize-1, nSamples-1)];
         % Read from input file
         F = in_fread(sFileIn, ChannelMatIn, 1, SamplesBounds, iChannelsIn, ImportOptions);
         % Save to output file
