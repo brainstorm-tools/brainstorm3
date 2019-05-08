@@ -2230,6 +2230,176 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
 end
 
 
+
+%% ===== DISPLAY CONFIG MENU =====
+% USAGE:  DisplayConfigMenu(hFig, jButton)  % Creates menu and show it next to a JButton
+%         DisplayConfigMenu(hFig, jMenu)    % Creates menu and include in a parent JMenu
+function DisplayConfigMenu(hFig, jParent)
+    import org.brainstorm.icon.*;
+    import java.awt.*;
+    import javax.swing.*;
+    import java.awt.event.KeyEvent;
+    global GlobalData;
+    % Find figure
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    if isempty(iDS)
+        return;
+    end
+    % Get all other figures
+    hFigAll = bst_figures('GetAllFigures');
+    % Get figure config
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
+    TsInfo = getappdata(hFig, 'TsInfo');
+    FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
+    isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+    isSource = ismember(FigureId.Modality, {'results', 'timefreq', 'stat', 'none'});
+    
+    % Create popup
+    if isa(jParent, 'javax.swing.JMenu')
+        jPopup = jParent;
+        isPopup = 0;
+    else
+        jPopup = java_create('javax.swing.JPopupMenu');
+        isPopup = 1;
+    end
+    
+    % === DISPLAY MODE ===
+    jMenu = gui_component('Menu', jPopup, [], 'Display mode', IconLoader.ICON_TS_DISPLAY_MODE);
+        jModeButterfly = gui_component('RadioMenuItem', jMenu, [], 'Butterfly', [], [], @(h,ev)SetDisplayMode(hFig, 'butterfly'));
+        jModeColumn = gui_component('RadioMenuItem', jMenu, [], 'Column', [], [], @(h,ev)SetDisplayMode(hFig, 'column'));
+        jButtonGroup = ButtonGroup();
+        jButtonGroup.add(jModeButterfly);
+        jButtonGroup.add(jModeColumn);
+        switch (TsInfo.DisplayMode)
+            case 'butterfly',   jModeButterfly.setSelected(1);
+            case 'column',      jModeColumn.setSelected(1);
+        end
+
+    % === X-AXIS ===
+    if isRaw || strcmpi(FigureId.Type, 'Spectrum')
+        % Menu name
+        if strcmpi(FigureId.Type, 'Spectrum')
+            strX = 'Frequency';
+        else
+            strX = 'Time';
+        end
+        jMenu = gui_component('Menu', jPopup, [], strX, IconLoader.ICON_X);
+        % Axis resolution
+        if strcmpi(FigureId.Type, 'DataTimeSeries')
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+        end
+        % Log scale
+        if strcmpi(FigureId.Type, 'Spectrum')
+            switch (TsInfo.XScale)
+                case 'log'
+                    newMode = 'linear';
+                    isSel = 1;
+                case 'linear'
+                    newMode = 'log';
+                    isSel = 0;
+            end
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleX(hFig, newMode));
+            jItem.setSelected(isSel);
+        end
+    end
+    
+    % === Y: AMPLITUDE ===
+    jMenu = gui_component('Menu', jPopup, [], 'Amplitude', IconLoader.ICON_Y);
+        % Auto-scale amplitude
+        if ~isempty(TsInfo) && ~isempty(TsInfo.FileName) && ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
+            jAutoScale = gui_component('CheckboxMenuItem', jMenu, [], 'Auto-scale amplitude', [], [], @(h,ev)SetAutoScale(hFig, ev.getSource().isSelected()));
+            jAutoScale.setSelected(TsInfo.AutoScaleY);
+        end
+        % Set scale
+        if strcmpi(FigureId.Type, 'DataTimeSeries')
+            % Flip Y axis
+            jFlipY = gui_component('CheckboxMenuItem', jMenu, [], 'Flip Y axis', [], [], @(h,ev)ToggleProperty(hAxes, 'FlipYAxis'));  % IconLoader.ICON_FLIPY
+            jFlipY.setSelected(TsInfo.FlipYAxis);
+            % Separator
+            jMenu.addSeparator();
+            % Set amplitude scale
+            if strcmpi(FigureId.Type, 'DataTimeSeries') && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
+                gui_component('MenuItem', jMenu, [], 'Set amplitude scale...',  IconLoader.ICON_FIND_MAX, [], @(h,ev)SetScaleY(iDS, iFig));
+            end
+            % Set fixed resolution
+            if isRaw
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+            end
+        end
+        % Uniform figure scales
+        if ~isRaw && (length(hFigAll) > 1)
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Uniform figure scales', [], [], @(h,ev)panel_record('UniformTimeSeries_Callback',h,ev));
+            jItem.setSelected(bst_get('UniformizeTimeSeriesScales'));
+        end
+        % Standardize data
+        if strcmpi(FigureId.Type, 'DataTimeSeries')
+            jMenu.addSeparator();
+            % Remove DC offset
+            if isRaw
+                RawViewerOptions = bst_get('RawViewerOptions');
+                switch RawViewerOptions.RemoveBaseline
+                    case 'all',  isRemove = 1;
+                    case 'no',   isRemove = 0;
+                end
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Remove DC offset', [], [], @(h,ev)panel_record('SetRawViewerOptions', 'RemoveBaseline', ~isRemove));
+                jItem.setSelected(isRemove);
+            end
+            % Normalize amplitudes
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Normalize signals', [], [], @(h,ev)SetNormalizeAmp(iDS, iFig, ~TsInfo.NormalizeAmp));
+            jItem.setSelected(TsInfo.NormalizeAmp);
+        end
+        
+    % === LINES ===
+    jMenu = gui_component('Menu', jPopup, [], 'Lines', IconLoader.ICON_MATRIX);
+        % XGrid
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleProperty(hAxes, 'ShowXGrid'));
+        jItem.setSelected(TsInfo.ShowXGrid);
+        % YGrid
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowYGrid'));
+        jItem.setSelected(TsInfo.ShowYGrid);
+        % Zero lines
+        if strcmpi(TsInfo.DisplayMode, 'column')
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show zero lines', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowZeroLines'));
+            jItem.setSelected(TsInfo.ShowZeroLines);
+        end
+        
+    % === EXTRA ===
+    jMenu = gui_component('Menu', jPopup, [], 'Extra', IconLoader.ICON_PLOTEDIT);
+        % Legend
+        if strcmpi(FigureId.Type, 'DataTimeSeries')
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend));
+            jItem.setSelected(TsInfo.ShowLegend);
+            jMenu.addSeparator();
+        end
+        % Change background color
+        gui_component('MenuItem', jMenu, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
+        jMenu.addSeparator();
+        % Show Matlab controls
+        isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
+        jItem.setSelected(isMatlabCtrl);
+        % Show plot edit toolbar
+        isPlotEditToolbar = getappdata(hFig, 'isPlotEditToolbar');
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig));
+        jItem.setSelected(isPlotEditToolbar);
+        
+    % === MONTAGE ===
+    if isPopup && strcmpi(FigureId.Type, 'DataTimeSeries') && ~isSource && ~isempty(FigureId.Modality) && (FigureId.Modality(1) ~= '$') && (isempty(TsInfo) || isempty(TsInfo.RowNames))
+        jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE);
+        panel_montage('CreateFigurePopupMenu', jMenuMontage, hFig);
+    end
+    
+    % Show popup
+    if isPopup
+        gui_brainstorm('ShowPopup', jPopup, jParent);
+        jPopup.show(jParent, -jPopup.getWidth(), 0);
+    end
+end
+
+
+
 %% ===========================================================================
 %  ===== PLOT FUNCTIONS ======================================================
 %  ===========================================================================
@@ -3403,7 +3573,7 @@ function CreateScaleButtons(iDS, iFig)
     jButton(3) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_MINUS);   % javax.swing.JButton('v');
     jButton(4) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_PLUS);     % javax.swing.JButton('^');
     jButton(5) = javax.swing.JToggleButton('AS');
-    jButton(6) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_DROP_MENU_LEFT);
+    jButton(6) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_MENU_LEFT_TS);
     jButton(7) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_UP);
     jButton(8) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_PLUS);
     jButton(9) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_MINUS);
@@ -3714,6 +3884,48 @@ function SetResolution(iDS, iFig, newResX, newResY)
         bst_set('Resolution', Resolution);
     end
 end
+
+
+%% ===== SET AUTO SCALE =====
+function SetAutoScale(hFig, isAutoScale)
+    % Update status of figure button 
+    hButtonAutoScale = findobj(hFig, 'Tag', 'ButtonAutoScale');
+    if ~isempty(hButtonAutoScale)
+        jButton = get(hButtonAutoScale, 'JavaPeer');
+        jButton.setSelected(isAutoScale);
+    end
+    % Save preference
+    bst_set('AutoScaleY', isAutoScale);
+    bst_set('FixedScaleY', []);
+    % Display progress bar
+    bst_progress('start', 'Display mode', 'Updating figures...');
+    % Update figure structure
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.AutoScaleY = isAutoScale;
+    setappdata(hFig, 'TsInfo', TsInfo);
+    % Re-plot figure
+    bst_figures('ReloadFigures', hFig);
+    % Hide progress bar
+    bst_progress('stop');
+end
+
+
+%% ===== SET DISPLAY MODE =====
+function SetDisplayMode(hFig, newMode)
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'Record'); 
+    if isempty(ctrl)
+        return;
+    end
+    % Select button accordingly
+    switch (newMode)
+        case 'butterfly',   ctrl.jButtonDispMode.setSelected(0);
+        case 'column',      ctrl.jButtonDispMode.setSelected(1);
+    end
+    % Update figure
+    panel_record('SetDisplayMode', hFig, newMode);
+end
+
 
 %% ===== COPY DISPLAY OPTIONS =====
 function CopyDisplayOptions(hFig, isMontage, isOptions)
@@ -4192,213 +4404,5 @@ function SwitchMatrixFile(hFig, keyEvent)
     panel_protocols('SelectNode', [], TsInfo.FileName);
 end
 
-
-%% ===== DISPLAY CONFIG MENU =====
-% USAGE:  DisplayConfigMenu(hFig, jButton)  % Creates menu and show it next to a JButton
-%         DisplayConfigMenu(hFig, jMenu)    % Creates menu and include in a parent JMenu
-function DisplayConfigMenu(hFig, jParent)
-    import org.brainstorm.icon.*;
-    import java.awt.*;
-    import javax.swing.*;
-    import java.awt.event.KeyEvent;
-    global GlobalData;
-    % Find figure
-    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
-    if isempty(iDS)
-        return;
-    end
-    % Get all other figures
-    hFigAll = bst_figures('GetAllFigures');
-    % Get figure config
-    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
-    TsInfo = getappdata(hFig, 'TsInfo');
-    FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
-    isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
-    isSource = ismember(FigureId.Modality, {'results', 'timefreq', 'stat', 'none'});
-    
-    % Create popup
-    if isa(jParent, 'javax.swing.JMenu')
-        jPopup = jParent;
-        isPopup = 0;
-    else
-        jPopup = java_create('javax.swing.JPopupMenu');
-        isPopup = 1;
-    end
-    
-    % === DISPLAY MODE ===
-    jMenu = gui_component('Menu', jPopup, [], 'Display mode', IconLoader.ICON_TS_DISPLAY_MODE);
-        jModeButterfly = gui_component('RadioMenuItem', jMenu, [], 'Butterfly', [], [], @(h,ev)SetDisplayMode(hFig, 'butterfly'));
-        jModeColumn = gui_component('RadioMenuItem', jMenu, [], 'Column', [], [], @(h,ev)SetDisplayMode(hFig, 'column'));
-        jButtonGroup = ButtonGroup();
-        jButtonGroup.add(jModeButterfly);
-        jButtonGroup.add(jModeColumn);
-        switch (TsInfo.DisplayMode)
-            case 'butterfly',   jModeButterfly.setSelected(1);
-            case 'column',      jModeColumn.setSelected(1);
-        end
-
-    % === X-AXIS ===
-    if isRaw || strcmpi(FigureId.Type, 'Spectrum')
-        % Menu name
-        if strcmpi(FigureId.Type, 'Spectrum')
-            strX = 'Frequency';
-        else
-            strX = 'Time';
-        end
-        jMenu = gui_component('Menu', jPopup, [], strX, IconLoader.ICON_X);
-        % Axis resolution
-        if strcmpi(FigureId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
-        end
-        % Log scale
-        if strcmpi(FigureId.Type, 'Spectrum')
-            switch (TsInfo.XScale)
-                case 'log'
-                    newMode = 'linear';
-                    isSel = 1;
-                case 'linear'
-                    newMode = 'log';
-                    isSel = 0;
-            end
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleX(hFig, newMode));
-            jItem.setSelected(isSel);
-        end
-    end
-    
-    % === Y: AMPLITUDE ===
-    jMenu = gui_component('Menu', jPopup, [], 'Amplitude', IconLoader.ICON_Y);
-        % Auto-scale amplitude
-        if ~isempty(TsInfo) && ~isempty(TsInfo.FileName) && ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
-            jAutoScale = gui_component('CheckboxMenuItem', jMenu, [], 'Auto-scale amplitude', [], [], @(h,ev)SetAutoScale(hFig, ev.getSource().isSelected()));
-            jAutoScale.setSelected(TsInfo.AutoScaleY);
-        end
-        % Set scale
-        if strcmpi(FigureId.Type, 'DataTimeSeries')
-            % Flip Y axis
-            jFlipY = gui_component('CheckboxMenuItem', jMenu, [], 'Flip Y axis', [], [], @(h,ev)ToggleProperty(hAxes, 'FlipYAxis'));  % IconLoader.ICON_FLIPY
-            jFlipY.setSelected(TsInfo.FlipYAxis);
-            % Separator
-            jMenu.addSeparator();
-            % Set amplitude scale
-            if strcmpi(FigureId.Type, 'DataTimeSeries') && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
-                gui_component('MenuItem', jMenu, [], 'Set amplitude scale...',  IconLoader.ICON_FIND_MAX, [], @(h,ev)SetScaleY(iDS, iFig));
-            end
-            % Set fixed resolution
-            if isRaw
-                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
-            end
-        end
-        % Uniform figure scales
-        if ~isRaw && (length(hFigAll) > 1)
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Uniform figure scales', [], [], @(h,ev)panel_record('UniformTimeSeries_Callback',h,ev));
-            jItem.setSelected(bst_get('UniformizeTimeSeriesScales'));
-        end
-        % Standardize data
-        if strcmpi(FigureId.Type, 'DataTimeSeries')
-            jMenu.addSeparator();
-            % Remove DC offset
-            if isRaw
-                RawViewerOptions = bst_get('RawViewerOptions');
-                switch RawViewerOptions.RemoveBaseline
-                    case 'all',  isRemove = 1;
-                    case 'no',   isRemove = 0;
-                end
-                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Remove DC offset', [], [], @(h,ev)panel_record('SetRawViewerOptions', 'RemoveBaseline', ~isRemove));
-                jItem.setSelected(isRemove);
-            end
-            % Normalize amplitudes
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Normalize signals', [], [], @(h,ev)SetNormalizeAmp(iDS, iFig, ~TsInfo.NormalizeAmp));
-            jItem.setSelected(TsInfo.NormalizeAmp);
-        end
-        
-    % === LINES ===
-    jMenu = gui_component('Menu', jPopup, [], 'Lines', IconLoader.ICON_MATRIX);
-        % XGrid
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleProperty(hAxes, 'ShowXGrid'));
-        jItem.setSelected(TsInfo.ShowXGrid);
-        % YGrid
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowYGrid'));
-        jItem.setSelected(TsInfo.ShowYGrid);
-        % Zero lines
-        if strcmpi(TsInfo.DisplayMode, 'column')
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show zero lines', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowZeroLines'));
-            jItem.setSelected(TsInfo.ShowZeroLines);
-        end
-        
-    % === EXTRA ===
-    jMenu = gui_component('Menu', jPopup, [], 'Extra', IconLoader.ICON_PLOTEDIT);
-        % Legend
-        if strcmpi(FigureId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend));
-            jItem.setSelected(TsInfo.ShowLegend);
-            jMenu.addSeparator();
-        end
-        % Change background color
-        gui_component('MenuItem', jMenu, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
-        jMenu.addSeparator();
-        % Show Matlab controls
-        isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
-        jItem.setSelected(isMatlabCtrl);
-        % Show plot edit toolbar
-        isPlotEditToolbar = getappdata(hFig, 'isPlotEditToolbar');
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig));
-        jItem.setSelected(isPlotEditToolbar);
-        
-    % === MONTAGE ===
-    if isPopup && strcmpi(FigureId.Type, 'DataTimeSeries') && ~isSource && ~isempty(FigureId.Modality) && (FigureId.Modality(1) ~= '$') && (isempty(TsInfo) || isempty(TsInfo.RowNames))
-        jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE);
-        panel_montage('CreateFigurePopupMenu', jMenuMontage, hFig);
-    end
-    
-    % Show popup
-    if isPopup
-        gui_brainstorm('ShowPopup', jPopup, jParent);
-        jPopup.show(jParent, -jPopup.getWidth(), 0);
-    end
-end
-
-
-%% ===== SET AUTO SCALE =====
-function SetAutoScale(hFig, isAutoScale)
-    % Update status of figure button 
-    hButtonAutoScale = findobj(hFig, 'Tag', 'ButtonAutoScale');
-    if ~isempty(hButtonAutoScale)
-        jButton = get(hButtonAutoScale, 'JavaPeer');
-        jButton.setSelected(isAutoScale);
-    end
-    % Save preference
-    bst_set('AutoScaleY', isAutoScale);
-    bst_set('FixedScaleY', []);
-    % Display progress bar
-    bst_progress('start', 'Display mode', 'Updating figures...');
-    % Update figure structure
-    TsInfo = getappdata(hFig, 'TsInfo');
-    TsInfo.AutoScaleY = isAutoScale;
-    setappdata(hFig, 'TsInfo', TsInfo);
-    % Re-plot figure
-    bst_figures('ReloadFigures', hFig);
-    % Hide progress bar
-    bst_progress('stop');
-end
-
-
-%% ===== SET DISPLAY MODE =====
-function SetDisplayMode(hFig, newMode)
-    % Get panel controls
-    ctrl = bst_get('PanelControls', 'Record'); 
-    if isempty(ctrl)
-        return;
-    end
-    % Select button accordingly
-    switch (newMode)
-        case 'butterfly',   ctrl.jButtonDispMode.setSelected(0);
-        case 'column',      ctrl.jButtonDispMode.setSelected(1);
-    end
-    % Update figure
-    panel_record('SetDisplayMode', hFig, newMode);
-end
 
 
