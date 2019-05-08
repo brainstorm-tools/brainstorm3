@@ -812,7 +812,7 @@ end
 function CheckHeadMovement()
 
     BlockTimeLength = RTConfig.BlockSamples/RTConfig.SampRate;
-    if mod(count, fix(10/BlockTimeLength))==0       % check movement every 10 seconds
+    if mod(count_var, fix(10/BlockTimeLength))==0       % check movement every 10 seconds
 %         % Delay Estimation
 %         hdr = buffer('get_hdr', [], RTConfig.FThost, RTConfig.FTport);
 %         delayOfProc = (hdr.nsamples - RTConfig.prevSample)/RTConfig.SampRate;
@@ -833,7 +833,7 @@ function CheckHeadMovement()
                 if button(1) == 'Y'
                     %                 disp(['Subject moves her/his head (more than ',num2str(EstImgKerThr),'cm)'])
                     disp('Realtime Processing stopped because of movement')
-                    count = 0;
+                    count_var = 0;
                     % Send a pulse to LPT2 as stim --> Stop data recording
                     if SendTriggers
                         io64(ioObj,LPT2,StopTrig);
