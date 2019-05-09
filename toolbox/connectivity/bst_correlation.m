@@ -132,8 +132,8 @@ if isempty(Y) % autocovariance so only have to do half the work
         if cfg.nTrials > 1
             % The trials are stacked across horizontally. So, to get timepoints delay+1, ..., N for each trial, we use bst_trial_idx
             % In addition, we only want to use timepoints with no NaNs. So, we remove all trial-specific indices that have NaNs.
-            xDelay = X(:, bst_trial_idx(1:(end-delay), nTimes, cfg.nTrials));
-            yDelay = X(:, bst_trial_idx((delay+1):end, nTimes, cfg.nTrials));
+            xDelay = X(:, bst_trial_idx(1:(nTimes-delay), nTimes, cfg.nTrials));
+            yDelay = X(:, bst_trial_idx((delay+1):nTimes, nTimes, cfg.nTrials));
         else
             % There is only 1 trial, so we just remove timepoints with no NaNs. For many calls, the function overhead is steep without this specific T = 1 case.
             xDelay = X(:, 1:(end-delay));
@@ -162,7 +162,7 @@ else % covariance between X and Y requires two data changes for each delay
             % The trials are stacked across horizontally. So, to get timepoints delay+1, ..., N for each trial, we use bst_trial_idx
             % In addition, we only want to use timepoints with no NaNs. So, we remove all trial-specific indices that have NaNs.
             xDelay = X(:, bst_trial_idx((delay+1):nTimes, nTimes, cfg.nTrials));
-            yDelay = Y(:, bst_trial_idx(1:(end-delay), nTimes, cfg.nTrials));
+            yDelay = Y(:, bst_trial_idx(1:(nTimes-delay), nTimes, cfg.nTrials));
         else
             % There is only 1 trial, so we just remove timepoints with no NaNs. For many calls, the function overhead is steep without this specific T = 1 case.
             xDelay = X(:, (delay+1):nTimes);
@@ -188,8 +188,8 @@ else % covariance between X and Y requires two data changes for each delay
         if cfg.nTrials > 1
             % The trials are stacked across horizontally. So, to get timepoints delay+1, ..., N for each trial, we use bst_trial_idx
             % In addition, we only want to use timepoints with no NaNs. So, we remove all trial-specific indices that have NaNs.
-            xDelay = X(:, bst_trial_idx(1:(end-delay), nTimes, cfg.nTrials));
-            yDelay = Y(:, bst_trial_idx((delay+1):end, nTimes, cfg.nTrials));
+            xDelay = X(:, bst_trial_idx(1:(nTimes-delay), nTimes, cfg.nTrials));
+            yDelay = Y(:, bst_trial_idx((delay+1):nTimes, nTimes, cfg.nTrials));
         else
             % There is only 1 trial, so we just remove timepoints with no NaNs. For many calls, the function overhead is steep without this specific T = 1 case.
             xDelay = X(:, 1:(end-delay));
