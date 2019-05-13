@@ -37,7 +37,7 @@ if (nargin < 3) || isempty(iChannels)
     iChannels = 1:sFile.header.ChannelCount;
 end
 if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 %% The readPLXFileC needs to export data from time sample 1, not 0.

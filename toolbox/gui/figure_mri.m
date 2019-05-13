@@ -572,7 +572,7 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                 case 'downarrow'
                     MouseWheel_Callback(hFig, [], [], -1);
                 % === DATABASE NAVIGATOR ===
-                case {'f1', 'f2', 'f3', 'f4'}
+                case {'f1', 'f2', 'f3', 'f4', 'f6'}
                     bst_figures('NavigatorKeyPress', hFig, keyEvent);
                 % CTRL+D : Dock figure
                 case 'd'

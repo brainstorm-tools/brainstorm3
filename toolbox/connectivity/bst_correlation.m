@@ -1,4 +1,4 @@
-function [connectivity, pValues, delays] = bst_correlation_sergul(X, Y, inputs)
+function [connectivity, pValues, delays] = bst_correlation(X, Y, cfg)
 % BST_CORRELATION   Calculate the covariance OR correlation between two multivariate signals, assuming any drift has been removed.
 %
 % Inputs:
@@ -7,7 +7,7 @@ function [connectivity, pValues, delays] = bst_correlation_sergul(X, Y, inputs)
 %   Y                 - Second set of signals, one signal per row
 %                       [Y: B x N matrix]
 %                       (default: Y = X)
-%   inputs            - Struct of parameters:
+%   cfg             - Struct of parameters:
 %   |-normalize       - If true, output correlation
 %   |                   If false (default), output covariance
 %   |                   [F: boolean]
@@ -41,12 +41,12 @@ function [connectivity, pValues, delays] = bst_correlation_sergul(X, Y, inputs)
 %
 % Call:
 %   connectivity = bst_correlation(X, Y); % default
-%   connectivity = bst_correlation(X, Y, inputs); % customized
+%   connectivity = bst_correlation(X, Y, cfg); % customized
 % Parameter examples:
-%   inputs.normalize      = false; % Covariance instead of correlation
-%   inputs.maxDelay       = 30; % Get covariances for lags -30, -29, ..., -29, 30
-%   inputs.nDelay         = 30; % Get covariances for lags -30, -27, ..., -27, 30
-%   inputs.flagStatistics = 0; % Use t-statistic because it better models the Monte Carlo distribution of correlation.
+%   cfg.normalize      = false; % Covariance instead of correlation
+%   cfg.maxDelay       = 30; % Get covariances for lags -30, -29, ..., -29, 30
+%   cfg.nDelay         = 30; % Get covariances for lags -30, -27, ..., -27, 30
+%   cfg.flagStatistics = 0; % Use t-statistic because it better models the Monte Carlo distribution of correlation.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -71,30 +71,34 @@ function [connectivity, pValues, delays] = bst_correlation_sergul(X, Y, inputs)
 
 %% Setup
 
+if ~exist('cfg','var')
+  cfg=[];
+end
+
 % Number of timepoints
 nTimes = size(X,2);
 
 % Default: 1 trial
-if ~isfield(inputs, 'nTrials')
-    inputs.nTrials = 1;
+if ~isfield(cfg, 'nTrials')
+    cfg.nTrials = 1;
 end
 
 % Default: no delayed cross-correlation
-if ~isfield(inputs, 'maxDelay')
-    inputs.maxDelay = 0;
+if ~isfield(cfg, 'maxDelay')
+    cfg.maxDelay = 0;
 end
 
 % Default: capture every desired delay
-if ~isfield(inputs, 'nDelay')
-    inputs.nDelay = 1;
+if ~isfield(cfg, 'nDelay')
+    cfg.nDelay = 1;
 end
 
-if ~isfield(inputs, 'flagStatistic')
-    inputs.flagStatistic = 0;
+if ~isfield(cfg, 'flagStatistic')
+    cfg.flagStatistic = 0;
 end
 
 %% Correlation or covariance?
-if isfield(inputs, 'normalize') && inputs.normalize
+if isfield(cfg, 'normalize') && cfg.normalize
     X = bst_bsxfun(@minus, X, mean(X, 2)); % Zero mean
     stdX = sqrt(sum(X.*conj(X), 2) / (nTimes - 1));
     X = bst_bsxfun(@rdivide, X(stdX > 0, :), stdX(stdX > 0)); % Unit standard deviation
@@ -105,13 +109,13 @@ if isfield(inputs, 'normalize') && inputs.normalize
         Y = bst_bsxfun(@rdivide, Y(stdY > 0, :), stdY(stdY > 0)); % Same for the other side unless it is X (to reduce computation time)
     end
 else
-    inputs.normalize = false;
+    cfg.normalize = false;
 end
 
 %% Connectivity measure
 
-nSteps = floor(inputs.maxDelay/inputs.nDelay);
-delays = (-nSteps:nSteps)*inputs.nDelay;
+nSteps = floor(cfg.maxDelay/cfg.nDelay);
+delays = (-nSteps:nSteps)*cfg.nDelay;
 
 if isempty(Y) % autocovariance so only have to do half the work
     
@@ -125,11 +129,11 @@ if isempty(Y) % autocovariance so only have to do half the work
         
         % == Delay > 0: E{X[n] X^H[n+k]} ==
         delay = delays(nSteps+1 + idxStep);
-        if inputs.nTrials > 1
+        if cfg.nTrials > 1
             % The trials are stacked across horizontally. So, to get timepoints delay+1, ..., N for each trial, we use bst_trial_idx
             % In addition, we only want to use timepoints with no NaNs. So, we remove all trial-specific indices that have NaNs.
-            xDelay = X(:, bst_trial_idx(1:(end-delay), nTimes, inputs.nTrials));
-            yDelay = X(:, bst_trial_idx((delay+1):end, nTimes, inputs.nTrials));
+            xDelay = X(:, bst_trial_idx(1:(nTimes-delay), nTimes, cfg.nTrials));
+            yDelay = X(:, bst_trial_idx((delay+1):nTimes, nTimes, cfg.nTrials));
         else
             % There is only 1 trial, so we just remove timepoints with no NaNs. For many calls, the function overhead is steep without this specific T = 1 case.
             xDelay = X(:, 1:(end-delay));
@@ -154,11 +158,11 @@ else % covariance between X and Y requires two data changes for each delay
         
         % == Delay < 0: E{X[n] Y[n+(-k)]^H} = E{X[n+k] Y^H[n]} ==
         delay = -delays(idxStep);
-        if inputs.nTrials > 1
+        if cfg.nTrials > 1
             % The trials are stacked across horizontally. So, to get timepoints delay+1, ..., N for each trial, we use bst_trial_idx
             % In addition, we only want to use timepoints with no NaNs. So, we remove all trial-specific indices that have NaNs.
-            xDelay = X(:, bst_trial_idx((delay+1):nTimes, nTimes, inputs.nTrials));
-            yDelay = Y(:, bst_trial_idx(1:(end-delay), nTimes, inputs.nTrials));
+            xDelay = X(:, bst_trial_idx((delay+1):nTimes, nTimes, cfg.nTrials));
+            yDelay = Y(:, bst_trial_idx(1:(nTimes-delay), nTimes, cfg.nTrials));
         else
             % There is only 1 trial, so we just remove timepoints with no NaNs. For many calls, the function overhead is steep without this specific T = 1 case.
             xDelay = X(:, (delay+1):nTimes);
@@ -181,11 +185,11 @@ else % covariance between X and Y requires two data changes for each delay
         
         % == Delay > 0: E{X[n] Y^H[n+k]} ==
         delay = delays(nSteps+1 + idxStep);
-        if inputs.nTrials > 1
+        if cfg.nTrials > 1
             % The trials are stacked across horizontally. So, to get timepoints delay+1, ..., N for each trial, we use bst_trial_idx
             % In addition, we only want to use timepoints with no NaNs. So, we remove all trial-specific indices that have NaNs.
-            xDelay = X(:, bst_trial_idx(1:(end-delay), nTimes, inputs.nTrials));
-            yDelay = Y(:, bst_trial_idx((delay+1):end, nTimes, inputs.nTrials));
+            xDelay = X(:, bst_trial_idx(1:(nTimes-delay), nTimes, cfg.nTrials));
+            yDelay = Y(:, bst_trial_idx((delay+1):nTimes, nTimes, cfg.nTrials));
         else
             % There is only 1 trial, so we just remove timepoints with no NaNs. For many calls, the function overhead is steep without this specific T = 1 case.
             xDelay = X(:, 1:(end-delay));
@@ -211,12 +215,12 @@ end
 
 %% Statistics
 pValues = zeros(size(connectivity));
-if inputs.normalize && inputs.flagStatistics % If true, use Fisher's Z transform and Gaussian with zero mean, variance N-3
+if cfg.normalize && cfg.flagStatistics % If true, use Fisher's Z transform and Gaussian with zero mean, variance N-3
     pValues(abs(connectivity) < 1-eps) = 1 - 1/2 * erfc( -1 * ...
         (1/2 * log((1 + abs(connectivity(abs(connectivity) < 1-eps))) ./ (1 - abs(connectivity(abs(connectivity) < 1-eps))))) ... % test statistic
         * sqrt(nTimes - 3) ... % standard deviation
         / sqrt(2));
-elseif inputs.normalize % If false, use t-test and standard Gaussian
+elseif cfg.normalize % If false, use t-test and standard Gaussian
     pValues(abs(connectivity) < 1-eps) = 1 - 1/2 * erfc( -1 * ...
         (abs(connectivity(abs(connectivity) < 1-eps)) ./ sqrt(1 - abs(connectivity(abs(connectivity) < 1-eps)).^2) * sqrt(nTimes - 2)) ... % test statistic
         / sqrt(2)); % the stdev is 1 so no need to add it

@@ -989,7 +989,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 case {'uparrow', 'downarrow'}
                     panel_freq('FreqKeyCallback', keyEvent);
                 % === DATABASE NAVIGATOR ===
-                case {'f1', 'f2', 'f3', 'f4'}
+                case {'f1', 'f2', 'f3', 'f4', 'f6'}
                     if ~isAlignFig 
                         if isRaw
                             panel_time('TimeKeyCallback', keyEvent);

@@ -169,7 +169,6 @@ elseif LFPDataPresent
 end
 
 
-
 %% Check for epochs/trials
 [sFile, nEpochs] = in_trials_nwb(sFile, nwb2);
 
@@ -250,8 +249,7 @@ sFile.filename     = DataFile;
 sFile.device       = 'NWB'; %nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
 sFile.header.nwb   = nwb2;
 sFile.comment      = nwb2.identifier;
-sFile.prop.samples = [0, nSamples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag  = ones(nChannels + nAdditionalChannels, 1);

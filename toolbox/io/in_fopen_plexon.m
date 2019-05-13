@@ -136,10 +136,9 @@ sFile.device    = 'Plexon';
 sFile.header    = hdr;
 sFile.comment   = Comment;
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.SamplingFrequency;
-sFile.prop.samples = [0, hdr.NumSamples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.SamplingFrequency;
+sFile.prop.times = [0, hdr.NumSamples - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.ChannelCount, 1);
 
@@ -205,11 +204,11 @@ if isfield(newHeader, 'EventChannels')
                     events(iNotEmptyEvents).label      = newHeader.EventChannels(iEvt).Name;
                     events(iNotEmptyEvents).color      = rand(1,3);
                     events(iNotEmptyEvents).epochs     = ones(1, length(samples));
-                    events(iNotEmptyEvents).samples    = samples;
                     events(iNotEmptyEvents).times      = samples / channel_Fs;
                     events(iNotEmptyEvents).reactTimes = [];
                     events(iNotEmptyEvents).select     = 1;
-
+                    events(iNotEmptyEvents).channels   = cell(1, size(events(iNotEmptyEvents).times, 2));
+                    events(iNotEmptyEvents).notes      = cell(1, size(events(iNotEmptyEvents).times, 2));
                 else
                     for iStrobed = uniqueStrobed'
                         iNotEmptyEvents = iNotEmptyEvents + 1;
@@ -217,11 +216,11 @@ if isfield(newHeader, 'EventChannels')
                         events(iNotEmptyEvents).label      = [newHeader.EventChannels(iEvt).Name ' ' num2str(iStrobed)];
                         events(iNotEmptyEvents).color      = rand(1,3);
                         events(iNotEmptyEvents).epochs     = ones(1, length(samples));
-                        events(iNotEmptyEvents).samples    = samples;
                         events(iNotEmptyEvents).times      = samples / channel_Fs;
                         events(iNotEmptyEvents).reactTimes = [];
                         events(iNotEmptyEvents).select     = 1;
-
+                        events(iNotEmptyEvents).channels   = cell(1, size(events(iNotEmptyEvents).times, 2));
+                        events(iNotEmptyEvents).notes      = cell(1, size(events(iNotEmptyEvents).times, 2));
                     end
                 end
 
@@ -251,10 +250,11 @@ if isfield(newHeader, 'EventChannels')
                 events(iEnteredEvent).label      = newHeader.EventChannels(iEvent).Name;
                 events(iEnteredEvent).color      = rand(1,3);
                 events(iEnteredEvent).epochs     = ones(1,length(times));
-                events(iEnteredEvent).samples    = round(times * newHeader.AnalogChannels{1}.SamplesPerSecond);    % I USE THE SAMPLING RATE OF THE ANALOG CHANNEL HERE. PROBABLY CORRECT
                 events(iEnteredEvent).times      = times;
                 events(iEnteredEvent).reactTimes = [];
                 events(iEnteredEvent).select     = 1;
+                events(iEnteredEvent).channels   = cell(1, size(events(iEnteredEvent).times, 2));
+                events(iEnteredEvent).notes      = cell(1, size(events(iEnteredEvent).times, 2));
             end
         end
     end
@@ -300,10 +300,11 @@ if isfield(newHeader, 'SpikeChannels')
                     events(iEnteredEvent).label      = [spike_event_prefix ' ' hdr.chan_headers(iEvt).Name event_label_postfix]; % THE SPIKECHANNELS LABEL IS DIFFERENT THAN THE CHANNEL NAME - CHECK THAT!
                     events(iEnteredEvent).color      = rand(1,3);
                     events(iEnteredEvent).epochs     = ones(1, length(samples));
-                    events(iEnteredEvent).samples    = samples;
                     events(iEnteredEvent).times      = samples / channel_Fs;
                     events(iEnteredEvent).reactTimes = [];
                     events(iEnteredEvent).select     = 1;
+                    events(iEnteredEvent).channels   = cell(1, size(events(iEnteredEvent).times, 2));
+                    events(iEnteredEvent).notes      = cell(1, size(events(iEnteredEvent).times, 2));
                     iEnteredEvent = iEnteredEvent + 1;
                 end
             end
@@ -339,10 +340,11 @@ if isfield(newHeader, 'SpikeChannels')
                 events(iEnteredEvent).label      = [spike_event_prefix ' ' newHeader.AnalogChannels{iSpikesChannel}.Name event_label_postfix];
                 events(iEnteredEvent).color      = rand(1,3);
                 events(iEnteredEvent).epochs     = ones(1,length(times));
-                events(iEnteredEvent).samples    = round(times * sFile.prop.sfreq);
                 events(iEnteredEvent).times      = times;
                 events(iEnteredEvent).reactTimes = [];
                 events(iEnteredEvent).select     = 1;
+                events(iEnteredEvent).channels   = cell(1, size(events(iEnteredEvent).times, 2));
+                events(iEnteredEvent).notes      = cell(1, size(events(iEnteredEvent).times, 2));
                 iEnteredEvent = iEnteredEvent + 1;
             end
         end

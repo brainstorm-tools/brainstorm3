@@ -212,28 +212,28 @@ if isRaw
             isExtended = false;
             % For each event
             for iEvent = 1:length(ImportOptions.events)
-                nbOccur = size(ImportOptions.events(iEvent).samples, 2);
+                nbOccur = size(ImportOptions.events(iEvent).times, 2);
                 % Detect event type: simple or extended
-                isExtended = (size(ImportOptions.events(iEvent).samples, 1) == 2);
+                isExtended = (size(ImportOptions.events(iEvent).times, 1) == 2);
                 % For each occurrence of this event
                 for iOccur = 1:nbOccur
                     % Samples range to read
                     if isExtended
-                        samplesBounds = [0, diff(ImportOptions.events(iEvent).samples(:,iOccur))];
+                        samplesBounds = [0, diff(round(ImportOptions.events(iEvent).times(:,iOccur) * sFile.prop.sfreq))];
                     else
                         samplesBounds = round(ImportOptions.EventsTimeRange * sFile.prop.sfreq);
                     end
                     % Get epoch indices
-                    samplesEpoch = round(double(ImportOptions.events(iEvent).samples(1,iOccur)) + samplesBounds);
-                    if (samplesEpoch(1) < sFile.prop.samples(1))
+                    samplesEpoch = round(round(ImportOptions.events(iEvent).times(1,iOccur) * sFile.prop.sfreq) + samplesBounds);
+                    if (samplesEpoch(1) < round(sFile.prop.times(1) * sFile.prop.sfreq))
                         % If required time before event is not accessible: 
-                        TimeOffset = (sFile.prop.samples(1) - samplesEpoch(1)) / sFile.prop.sfreq;
-                        samplesEpoch(1) = sFile.prop.samples(1);
+                        TimeOffset = (round(sFile.prop.times(1) * sFile.prop.sfreq) - samplesEpoch(1)) / sFile.prop.sfreq;
+                        samplesEpoch(1) = round(sFile.prop.times(1) * sFile.prop.sfreq);
                     else
                         TimeOffset = 0;
                     end
                     % Make sure all indices are valids
-                    samplesEpoch = bst_saturate(samplesEpoch, sFile.prop.samples);
+                    samplesEpoch = bst_saturate(samplesEpoch, round(sFile.prop.times * sFile.prop.sfreq));
                     % Import structure
                     BlocksToRead(end+1).iEpoch   = ImportOptions.events(iEvent).epochs(iOccur);
                     BlocksToRead(end).iTimes     = samplesEpoch;
@@ -373,7 +373,7 @@ if isRaw
         NewFreq = 1 ./ (TimeVector(2) - TimeVector(1));
         % Loop on all the events types
         for iEvt = 1:length(sFile.events)
-            evtSamples  = round(sFile.events(iEvt).samples);
+            evtSamples  = round(sFile.events(iEvt).times * sFile.prop.sfreq);
             readSamples = BlocksToRead(iFile).iTimes;
             % If there are no occurrences, or if it the event of interest: skip to next event type
             if isempty(evtSamples) || (strcmpi(ImportOptions.ImportMode, 'event') && any(strcmpi({ImportOptions.events.label}, sFile.events(iEvt).label)))
@@ -382,9 +382,9 @@ if isRaw
             % Set the number of read samples for epochs
             if isempty(readSamples) && strcmpi(ImportOptions.ImportMode, 'epoch')
                 if isempty(sFile.epochs)
-                    readSamples = sFile.prop.samples;
+                    readSamples = round(sFile.prop.times * sFile.prop.sfreq);
                 else
-                    readSamples = sFile.epochs(BlocksToRead(iFile).iEpoch).samples;
+                    readSamples = round(sFile.epochs(BlocksToRead(iFile).iEpoch).times * sFile.prop.sfreq);
                 end
             end
             % Apply resampling factor if necessary
@@ -406,7 +406,7 @@ if isRaw
                 end
                 % Calculate the sample indices of the events in the new file
                 iTimeEvt = bst_saturate(evtSamples(:,iOccur) - readSamples(1) + 1, [1, length(TimeVector)]);
-                newEvtSamples = round(TimeVector(iTimeEvt) .* NewFreq);
+                newEvtTimes = round(TimeVector(iTimeEvt) .* NewFreq) ./ NewFreq;
                     
             % Extended events: Get all the events that are not either completely before or after the time window
             else
@@ -421,16 +421,17 @@ if isRaw
                 % Calculate the sample indices of the events in the new file
                 iTimeEvt1 = bst_saturate(evtSamples(1,iOccur) - readSamples(1) + 1, [1, length(TimeVector)]);
                 iTimeEvt2 = bst_saturate(evtSamples(2,iOccur) - readSamples(1) + 1, [1, length(TimeVector)]);
-                newEvtSamples = [round(TimeVector(iTimeEvt1) .* NewFreq); ...
-                                 round(TimeVector(iTimeEvt2) .* NewFreq)];
+                newEvtTimes = [round(TimeVector(iTimeEvt1) .* NewFreq); ...
+                               round(TimeVector(iTimeEvt2) .* NewFreq)] ./ NewFreq;
             end
             % Add new event category in the output file
             iEvtData = length(DataMat.Events) + 1;
-            DataMat.Events(iEvtData).label   = sFile.events(iEvt).label;
-            DataMat.Events(iEvtData).color   = sFile.events(iEvt).color;
-            DataMat.Events(iEvtData).samples = newEvtSamples;
-            DataMat.Events(iEvtData).times   = newEvtSamples ./ NewFreq;
-            DataMat.Events(iEvtData).epochs  = sFile.events(iEvt).epochs(iOccur);
+            DataMat.Events(iEvtData).label    = sFile.events(iEvt).label;
+            DataMat.Events(iEvtData).color    = sFile.events(iEvt).color;
+            DataMat.Events(iEvtData).times    = newEvtTimes;
+            DataMat.Events(iEvtData).epochs   = sFile.events(iEvt).epochs(iOccur);
+            DataMat.Events(iEvtData).channels = sFile.events(iEvt).channels(iOccur);
+            DataMat.Events(iEvtData).notes    = sFile.events(iEvt).notes(iOccur);
             if ~isempty(sFile.events(iEvt).reactTimes)
                 DataMat.Events(iEvtData).reactTimes = sFile.events(iEvt).reactTimes(iOccur);
             end

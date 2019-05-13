@@ -28,7 +28,7 @@ if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, sFile.header.NbOfChannels];
 end
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % ===== COMPUTE OFFSETS =====

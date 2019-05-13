@@ -80,7 +80,7 @@ sFile = DataMat.F;
 sr = sFile.prop.sfreq;
 samples = [0,0];
 max_samples = ram / 8 / numChannels;
-total_samples = sFile.prop.samples(2);
+total_samples = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq); % (Blackrock/Ripple complained). Removed +1
 num_segments = ceil(total_samples / max_samples);
 num_samples_per_segment = ceil(total_samples / num_segments);
 bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, (parallel == 0) * num_segments * numChannels);

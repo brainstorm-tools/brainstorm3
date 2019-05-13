@@ -1,3 +1,11 @@
+May 2019
+- IO: Support for NWB ECOG (recordings + surfaces)
+- Database: Improved database updates between versions
+- Database: Add new type of object "fibers"
+- IO: Improved support for discontinuous EDF files (EDF+D)
+- GUI: Time series viewer: New menu to group all the display options
+- GUI: Events: New options for displaying event markers
+- GUI: New keyboard shortcuts for recordings viewer (F6, Shift+F6, Ctrl+L, Ctrl+H)
 ---------------------------------------------------------------
 April 2019
 - GUI: New color picker to replace Matlab's buggy uisetcolor
@@ -7,6 +15,8 @@ April 2019
 - Anatomy: Support for new fibers objects
 - Connectivity: View of functionnal connectivity along anatomical fibers
 - Doc: ECOG tutorial
+- API: Removed the field "samples" from events and sFile structures (use "times" instead)
+- API: Added fields "channels" and "notes" to events structures
 ---------------------------------------------------------------
 March 2019
 - Anatomy: Deface MRI with FreeSurfer or SPM

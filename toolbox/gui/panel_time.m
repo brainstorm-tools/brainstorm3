@@ -4,6 +4,7 @@ function varargout = panel_time(varargin)
 % USAGE:  bstPanel = panel_time('CreatePanel')
 %                    panel_time('UpdatePanel')
 %         timeUnit = panel_time('GetTimeUnit')
+%       TimeVector = panel_time('GetRawTimeVector', sFile)
 %                    panel_time('SetCurrentTime',  value)
 %                    panel_time('TimeKeyCallback', keyEvent);
 
@@ -80,15 +81,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jButtonTime(4).setToolTipText('<HTML><TABLE><TR><TD>Next sample</TD></TR><TR><TD>Related shortcuts: <BR><B> - [ARROW RIGHT]<BR> - [ARROW UP]</B></TD></TR></TABLE>');
     % Different shortcuts for MacOS
     if strncmp(computer,'MAC',3)
-        jButtonTime(1).setToolTipText('<HTML><TABLE><TR><TD>Previous epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR> - <B>[SHIFT+Fn+F4]</B> : Half page</TD></TR></TABLE>');
+        jButtonTime(1).setToolTipText('<HTML><TABLE><TR><TD>Previous epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+Fn+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [SHIFT+Fn+F4]</B> : Half page<BR><B> - [SHIFT+Fn+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE DOWN]</B>: -10 pages</TD></TR></TABLE>');
         jButtonTime(2).setToolTipText('<HTML><TABLE><TR><TD>Previous sample (x10)</TD></TR><TR><TD>Shortcut: <B>[Fn+ARROW DOWN]</B></TD></TR></TABLE>');
         jButtonTime(5).setToolTipText('<HTML><TABLE><TR><TD>Next sample (x10)</TD></TR><TR><TD>Shortcut: <B>[Fn+ARROW UP]]</B></TD></TR></TABLE>');
-        jButtonTime(6).setToolTipText('<HTML><TABLE><TR><TD>Next epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR> - <B>[Fn+F4]</B> : Half page</TD></TR></TABLE>');
+        jButtonTime(6).setToolTipText('<HTML><TABLE><TR><TD>Next epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [Fn+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [Fn+F4]</B> : Half page<BR><B> - [Fn+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE UP]</B>: +10 pages</TD></TR></TABLE>');
     else
-        jButtonTime(1).setToolTipText('<HTML><TABLE><TR><TD>Previous epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Faster data scrolling:<BR> - <B>[CTRL+PAGE DOWN]</B></TD></TR>  <TR><TD>Slower data scrolling:<BR> - <B>[SHIFT+F4]</B> : Half page</TD></TR></TABLE>');
+        jButtonTime(1).setToolTipText('<HTML><TABLE><TR><TD>Previous epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [SHIFT+F4]</B> : Half page<BR><B> - [SHIFT+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE DOWN]</B>: -10 pages</TD></TR></TABLE>');
         jButtonTime(2).setToolTipText('<HTML><TABLE><TR><TD>Previous sample (x10)</TD></TR><TR><TD>Shortcut: <B>[PAGE DOWN]</B></TD></TR></TABLE>');
         jButtonTime(5).setToolTipText('<HTML><TABLE><TR><TD>Next sample (x10)</TD></TR><TR><TD>Shortcut: <B>[PAGE UP]</B></TD></TR></TABLE>');
-        jButtonTime(6).setToolTipText('<HTML><TABLE><TR><TD>Next epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [F3]</B></TD></TR> <TR><TD>Faster data scrolling:<BR> - <B>[CTRL+PAGE UP]</B></TD></TR> <TR><TD>Slower data scrolling:<BR> - <B>[F4]</B> : Half page</TD></TR></TABLE>');
+        jButtonTime(6).setToolTipText('<HTML><TABLE><TR><TD>Next epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [F4]</B> : Half page<BR><B> - [F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE UP]</B>: +10 pages</TD></TR></TABLE>');
     end
     jTextCurrent.setToolTipText('<HTML>Current time <B>[editable]</B>');
     
@@ -353,6 +354,12 @@ function TimeKeyCallback(ev)
                 else
                     keyEvent.Key = 'halfpage+';
                 end
+            elseif strcmpi(keyEvent.Key, 'f6')
+                if isShift
+                    keyEvent.Key = 'nooverlap-';
+                else
+                    keyEvent.Key = 'nooverlap+';
+                end
             end
         end
         % EPOCH: NEXT+2, NEXT+3
@@ -368,7 +375,7 @@ function TimeKeyCallback(ev)
         % RAW: NEXT+2, NEXT+3, PREV-2, PREV-3
         elseif isRaw && ((isShift && ismember(keyEvent.Key, {'uparrow','downarrow','pageup','pagedown'})) || ...
                          (isControl && ismember(keyEvent.Key, {'rightarrow','leftarrow','pageup','pagedown'})) || ...
-                          ismember(keyEvent.Key, {'epoch+','epoch++','epoch-','epoch--','halfpage+','halfpage-'}))
+                          ismember(keyEvent.Key, {'epoch+','epoch++','epoch-','epoch--','halfpage+','halfpage-','nooverlap+','nooverlap-'}))
             panel_record('RawKeyCallback', keyEvent);
         % RAW+Shift: move to the next/previous event
         elseif ismember('shift', keyEvent.Modifier) && ismember(keyEvent.Key, {'rightarrow','leftarrow','pageup','pagedown'})
@@ -384,8 +391,8 @@ function TimeKeyCallback(ev)
                 case {'rightarrow', 'uparrow'},   SetCurrentTime(CurrentTime + SamplingRate);     
                 case 'pageup',                    SetCurrentTime(CurrentTime + 10 * SamplingRate);
                 case 'pagedown',                  SetCurrentTime(CurrentTime - 10 * SamplingRate);
-                case {'epoch+', 'epoch++', 'halfpage+'},  bst_navigator('DbNavigation', 'NextData');
-                case {'epoch-', 'epoch--', 'halfpage-'},  bst_navigator('DbNavigation', 'PreviousData');
+                case {'epoch+', 'epoch++', 'halfpage+', 'nooverlap+'},  bst_navigator('DbNavigation', 'NextData');
+                case {'epoch-', 'epoch--', 'halfpage-', 'nooverlap-'},  bst_navigator('DbNavigation', 'PreviousData');
                 case 'home',                      SetCurrentTime(GlobalData.UserTimeWindow.Time(1));
                 case 'end',                       SetCurrentTime(GlobalData.UserTimeWindow.Time(2));
             end
@@ -496,12 +503,11 @@ end
 function TimeVector = GetRawTimeVector(sFile) %#ok<DEFNU>
     % Rebuild time vector
     if ~isempty(sFile.epochs)
-        NumberOfSamples = sFile.epochs(1).samples(2) - sFile.epochs(1).samples(1) + 1;
-        TimeVector = linspace(sFile.epochs(1).times(1), sFile.epochs(1).times(2), NumberOfSamples);
+        Samples = round([sFile.epochs(1).times(1), sFile.epochs(1).times(2)] .* sFile.prop.sfreq);
     else
-        NumberOfSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
-        TimeVector = linspace(sFile.prop.times(1), sFile.prop.times(2), NumberOfSamples);
+        Samples = round([sFile.prop.times(1), sFile.prop.times(2)] .* sFile.prop.sfreq);
     end
+    TimeVector = (Samples(1):Samples(2)) ./ sFile.prop.sfreq;
 end
 
 

@@ -172,6 +172,8 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('AutoScaleY')                 : {0,1} - If 1, the axis limits are updated when the figure is updated
 %    - bst_get('ShowXGrid')                  : {0,1} - If 1, show the XGrid in the time series figures
 %    - bst_get('ShowYGrid')                  : {0,1} - If 1, show the YGrid in the time series figures
+%    - bst_get('ShowZeroLines')              : {0,1} - If 1, show the Y=0 lines in the columns view
+%    - bst_get('ShowEventsMode')             : {'dot','line','none'}
 %    - bst_get('Resolution')                 : [resX,resY] fixed resolutions for X and Y axes
 %    - bst_get('FixedScaleY', Modality)      : Struct with the scales to impose on the recordings for the selected modality
 %    - bst_get('UseSigProcToolbox')       : Use Matlab's Signal Processing Toolbox when available
@@ -2429,6 +2431,13 @@ switch contextName
             argout1 = 0;
         end
         
+    case 'ShowZeroLines'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ShowZeroLines')
+            argout1 = GlobalData.Preferences.ShowZeroLines;
+        else
+            argout1 = 1;
+        end
+        
     case 'Resolution'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'Resolution')
             argout1 = GlobalData.Preferences.Resolution;
@@ -2443,6 +2452,13 @@ switch contextName
             argout1 = [];
         end
         
+    case 'ShowEventsMode'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ShowEventsMode')
+            argout1 = GlobalData.Preferences.ShowEventsMode;
+        else
+            argout1 = 'dot';
+        end
+
     case 'AutoUpdates'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'AutoUpdates')
             argout1 = GlobalData.Preferences.AutoUpdates;

@@ -21,7 +21,7 @@ function F = in_fread_bst(sFile, sfid, SamplesBounds, ChannelsRange)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2019
 
 
 %% ===== PARSE INPUTS =====
@@ -33,9 +33,9 @@ else
     ChannelsRange = double(ChannelsRange);
 end
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
-SamplesBounds = SamplesBounds - sFile.prop.samples(1);
+SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq);
 iTimes = SamplesBounds(1):SamplesBounds(2);
 % Number of channels to read
 nReadChan = ChannelsRange(2) - ChannelsRange(1) + 1;

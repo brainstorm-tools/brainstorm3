@@ -90,7 +90,7 @@ function FibMat = AssignToScouts(FibMat, ConnectFile, ScoutCentroids)
     
     bst_progress('start', 'Fibers Connectivity', 'Assigning fibers to scouts of atlas...');
     
-    parfor iPt = 1:numPoints
+    for iPt = 1:numPoints
         for iPos = 1:2
             % Compute Euclidean distances:
             distances = sqrt(sum(bst_bsxfun(@minus, squeeze(endPoints(iPt, iPos, :))', ScoutCentroids).^2, 2));

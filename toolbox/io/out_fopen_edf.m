@@ -32,8 +32,9 @@ if (length(sFileIn.epochs) > 1)
     error('Cannot export epoched files to continuous EDF files.');
 end
 % Is the input file a native EDF file
+fileSamples = round(sFileIn.prop.times .* sFileIn.prop.sfreq);
 isRawEdf = strcmpi(sFileIn.format, 'EEG-EDF') && ~isempty(sFileIn.header) && isfield(sFileIn.header, 'patient_id') && isfield(sFileIn.header, 'signal');
-nSamples = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
+nSamples = fileSamples(2) - fileSamples(1) + 1;
 % Modify input headers (EDF export reuses the input header info directly)
 if isRawEdf && ~isempty(iChannels)
     sFileIn.header.nsignal = length(iChannels);
@@ -53,7 +54,7 @@ if ~isRawEdf
     for iBlock = 1:nBlocks
         bst_progress('text', sprintf('Finding maximum values [%d%%]', round(iBlock/nBlocks*100)));
         % Get sample indices for a block of 1s
-        SamplesBounds = [(iBlock - 1) * BlockSize + sFileIn.prop.samples(1), min(sFileIn.prop.samples(2), sFileIn.prop.samples(1) + iBlock * BlockSize)];
+        SamplesBounds = [(iBlock - 1) * BlockSize + fileSamples(1), min(fileSamples(2), fileSamples(1) + iBlock * BlockSize)];
         % Read the block from the file
         Fblock = in_fread(sFileIn, ChannelMat, 1, SamplesBounds);
         % Keep only the files to be saved in the output file
@@ -128,20 +129,16 @@ header.nrec = ceil(header.nrec / header.reclen);
     maxAnnotLength     = 0;
     
     for iEvt = 1:numel(sFileIn.events)
-        event       = sFileIn.events(iEvt);
-        hasDuration = numel(event.epochs) ~= numel(event.times);
+        event = sFileIn.events(iEvt);
+        % EDF file start at 0s: removed the start file time
+        event.times = event.times - sFileIn.prop.times(1);
         
-        for iEpc = 1:numel(event.epochs)
-            if hasDuration
-                startTime = event.times(2 * iEpc - 1);
-            else
-                startTime = event.times(iEpc);
-            end
-            
+        for iEpc = 1:length(event.epochs)
+            startTime = event.times(1,iEpc);
             annot = sprintf('+%f', startTime);
             
-            if hasDuration
-                duration = event.times(2 * iEpc) - startTime;
+            if (size(event.times,1) == 2)
+                duration = event.times(2,iEpc) - startTime;
                 annot    = [annot, sprintf('%c%f', char(21), duration)];
             end
             

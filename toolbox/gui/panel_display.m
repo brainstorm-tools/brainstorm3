@@ -733,6 +733,21 @@ function SetDisplayOptions(sOptions)
 end
 
 
+%% ===== SET DISPLAY FUNCTION =====
+function SetDisplayFunction(newFunc) %#ok<DEFNU>
+    % Set option 
+    sOptions = GetDisplayOptions();
+    sOptions.Function = newFunc;
+    SetDisplayOptions(sOptions);
+    % Update panel
+    hFig = GetPanelFigure();
+    if isempty(hFig)
+        return
+    end
+    UpdatePanel(hFig);
+end
+
+
 %% ===== SET SMOOTH DISPLAY =====
 function SetSmoothDisplay(HighResolution, hFigs) %#ok<DEFNU>
     % Get figures

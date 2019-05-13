@@ -28,7 +28,8 @@ function F = in_fread_4d(sFile, sfid, iEpoch, SamplesBounds, iChannels)
 % Based on code from FieldTrip toolbox (Robert Oostenveld)
 
 %% ===== PARSE INPUTS =====
-nTimes    = double(sFile.prop.samples(2) - sFile.prop.samples(1) + 1);
+fileSamples = round(sFile.prop.times .* sFile.prop.sfreq);
+nTimes = fileSamples(2) - fileSamples(1) + 1;
 nChannels = length(sFile.header.channel_data);
 if (nargin < 5) || isempty(iChannels)
     iChannels = 1:nChannels;
@@ -36,7 +37,7 @@ end
 if (nargin < 4) || isempty(SamplesBounds)
     iTimes = 1:nTimes;
 else
-    SamplesBounds = double(SamplesBounds - sFile.prop.samples(1) + 1);
+    SamplesBounds = double(SamplesBounds - fileSamples(1) + 1);
     iTimes = SamplesBounds(1):SamplesBounds(2);
 end
 if (nargin < 3) || isempty(iEpoch)

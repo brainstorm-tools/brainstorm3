@@ -153,10 +153,10 @@ else
         end
         % Get total number of samples
         if ~isempty(sFile.epochs)
-            samples = double(sFile.epochs(iEpoch).samples);
+            samples = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
             nAvg = double(sFile.epochs(iEpoch).nAvg);
         else
-            samples = double(sFile.prop.samples);
+            samples = round(sFile.prop.times .* sFile.prop.sfreq);
             nAvg = 1;
         end
         totalSmpLength = double(samples(2) - samples(1)) + 1;

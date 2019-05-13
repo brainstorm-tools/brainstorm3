@@ -165,11 +165,12 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
                  sInput.TimeVector(1) + FiltSpec.transient, sInput.TimeVector(end)];
         % Create a new event type
         sInput.Events = db_template('event');
-        sInput.Events.label   = 'transient_bandpass';
-        sInput.Events.color   = [.8 0 0];
-        sInput.Events.epochs  = [1 1];
-        sInput.Events.samples = round(trans .* sfreq);
-        sInput.Events.times   = sInput.Events.samples ./ sfreq;
+        sInput.Events.label    = 'transient_bandpass';
+        sInput.Events.color    = [.8 0 0];
+        sInput.Events.epochs   = [1 1];
+        sInput.Events.times    = round(trans .* sfreq) ./ sfreq;
+        sInput.Events.channels = cell(1, size(sInput.Events.times, 2));
+        sInput.Events.notes    = cell(1, size(sInput.Events.times, 2));
     end
     
     % File comment

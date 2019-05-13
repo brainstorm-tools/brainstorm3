@@ -195,6 +195,8 @@ if isNewFig
     TsInfo.Resolution    = [0 0];
     TsInfo.ShowXGrid     = bst_get('ShowXGrid');
     TsInfo.ShowYGrid     = bst_get('ShowYGrid');
+    TsInfo.ShowZeroLines = bst_get('ShowZeroLines');
+    TsInfo.ShowEventsMode = bst_get('ShowEventsMode');
     % Hide events only for multiple RAW figures
     allId = [GlobalData.DataSet(iDS).Figure(1:iFig-1).Id];
     TsInfo.ShowEvents = ~isRaw || ((iFig == 1) || ~any(strcmpi({allId.Type}, 'DataTimeSeries')));

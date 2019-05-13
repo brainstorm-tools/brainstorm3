@@ -28,28 +28,25 @@ if events_exist
     events = repmat(db_template('event'), 1, length(all_event_keys));
 
     for iEvent = 1:length(all_event_keys)
-        events(iEvent).label   = all_event_keys{iEvent};
-        events(iEvent).color   = rand(1,3);
-        events(iEvent).times   = nwb2.stimulus_presentation.get(all_event_keys{iEvent}).timestamps.load';
-        events(iEvent).samples = round(events(iEvent).times * sFile.prop.sfreq);
-        
-        
+        events(iEvent).label    = all_event_keys{iEvent};
+        events(iEvent).color    = rand(1,3);
+        events(iEvent).times    = nwb2.stimulus_presentation.get(all_event_keys{iEvent}).timestamps.load';     
+        events(iEvent).channels = cell(1, size(events(iEvent).times, 2));
+        events(iEvent).notes    = cell(1, size(events(iEvent).times, 2));
         % Check on which epoch each event belongs to
         if nEpochs > 1
             % Initialize to first epoch - if some events are not within the
             % epoch bounds, they will stay assigned to the first epoch
-            events(iEvent).epochs  = ones(1, length(events(iEvent).samples));
+            events(iEvent).epochs  = ones(1, length(events(iEvent).times));
             
-            
-            % CHECK IF THE INITIALIZATION AS 0 AFFECTS THE CONTINUOUS
-            % SIGNALS
+            % CHECK IF THE INITIALIZATION AS 0 AFFECTS THE CONTINUOUS SIGNALS
             
             for iEpoch = 1:nEpochs
                 eventsInThisEpoch = find((events(iEvent).times >= sFile.epochs(iEpoch).times(1)) & (events(iEvent).times < sFile.epochs(iEpoch).times(2)));
                 events(iEvent).epochs(eventsInThisEpoch) = iEpoch;
             end
         else
-            events(iEvent).epochs  = ones(1, length(events(iEvent).samples));
+            events(iEvent).epochs  = ones(1, length(events(iEvent).times));
         end
     end 
 end
@@ -98,24 +95,24 @@ if SpikesExist
         
         events_spikes(iNeuron).color      = rand(1,3);
         events_spikes(iNeuron).epochs     = ones(1,length(times));
-        events_spikes(iNeuron).samples    = times * sFile.prop.sfreq;
         events_spikes(iNeuron).times      = times;
         events_spikes(iNeuron).reactTimes = [];
         events_spikes(iNeuron).select     = 1;
-        
+        events_spikes(iNeuron).channels   = cell(1, size(events_spikes(iNeuron).times, 2));
+        events_spikes(iNeuron).notes      = cell(1, size(events_spikes(iNeuron).times, 2));
         
         % Check on which epoch each event belongs to
         if nEpochs > 1
             % Initialize to first epoch - if some events are not within the
             % epoch bounds, they will stay assigned to the first epoch
-            events_spikes(iNeuron).epochs  = ones(1, length(events_spikes(iNeuron).samples));
+            events_spikes(iNeuron).epochs  = ones(1, length(events_spikes(iNeuron).times));
             
             for iEpoch = 1:nEpochs
                 eventsInThisEpoch = find(events_spikes(iNeuron).times >= sFile.epochs(iEpoch).times(1) & events_spikes(iNeuron).times < sFile.epochs(iEpoch).times(2));
                 events_spikes(iNeuron).epochs(eventsInThisEpoch) = iEpoch;
             end
         else
-            events_spikes(iNeuron).epochs  = ones(1, length(events_spikes(iNeuron).samples));
+            events_spikes(iNeuron).epochs  = ones(1, length(events_spikes(iNeuron).times));
         end
         
         

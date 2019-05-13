@@ -77,12 +77,12 @@ uniqueLabel = unique(evtMat(:,3));
 % Convert to a structure matrix
 for iEvt = 1:length(uniqueLabel)
     iOcc = find(evtMat(:,3) == uniqueLabel(iEvt));
-    events(iEvt).label       = num2str(uniqueLabel(iEvt));
-    events(iEvt).epochs      = ones(1,length(iOcc));
-    % events(iEvt).samples     = [evtMat(iOcc,1)'; evtMat(iOcc,6)'];
-    events(iEvt).samples     = evtMat(iOcc,5)';
-    events(iEvt).times       = events(iEvt).samples ./ sFile.prop.sfreq;
-    events(iEvt).reactTimes  = [];
-    events(iEvt).select      = 1;
+    events(iEvt).label      = num2str(uniqueLabel(iEvt));
+    events(iEvt).epochs     = ones(1,length(iOcc));
+    events(iEvt).times      = evtMat(iOcc,5)' ./ sFile.prop.sfreq;
+    events(iEvt).reactTimes = [];
+    events(iEvt).select     = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 

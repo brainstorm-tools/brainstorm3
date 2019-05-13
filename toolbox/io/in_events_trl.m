@@ -51,27 +51,8 @@ else
     evtNames = readData{4};
 end
 
-
-
-% ===== TIME OFFSET =====
-% % Check for offset (typical of FIF files)
-% isAddOffset = 0;
-% if (sFile.prop.times(1) > 0)
-%     res = java_dialog('question', ['The raw data file starts at ' num2str(sFile.prop.times(1)) ' sec.' 10 10 ...
-%                                   'Is this offset already added to these events?' 10 10],...
-%                                   'Import events', [], {'Yes', 'Add Offset','Cancel'},'Yes');
-%     if isempty(res) || strcmpi(res, 'Cancel')
-%         bst_progress('stop');
-%         return;
-%     elseif strcmpi(res, 'Add Offset')
-%         isAddOffset = 1;
-%     end
-% end
-% % Add a column for time
-% if isAddOffset
-%     evtSamples = evtSamples + sFile.prop.samples(1);
-% end
-TrlMat(:,[1 2]) = TrlMat(:,[1 2]) + sFile.prop.samples(1);
+% Time offset
+TrlMat(:,[1 2]) = TrlMat(:,[1 2]) + round(sFile.prop.times(1) * sFile.prop.sfreq);
 
 
 % ===== CONVERT TO BRAINSTORM STRUCTURE =====
@@ -85,21 +66,23 @@ for iEvt = 1:length(uniqueEvt)
     iTrl = find(strcmpi(uniqueEvt{iEvt}, evtNames));
     % Add event at the trigger
     events(iEvt).label      = uniqueEvt{iEvt};
-    events(iEvt).samples    = TrlMat(iTrl,1)' - TrlMat(iTrl,3)';
-    events(iEvt).times      = events(iEvt).samples ./ sFile.prop.sfreq;
-    events(iEvt).epochs     = ones(1,size(events(iEvt).samples,2));
+    events(iEvt).times      = (TrlMat(iTrl,1)' - TrlMat(iTrl,3)') ./ sFile.prop.sfreq;
+    events(iEvt).epochs     = ones(1,size(events(iEvt).times,2));
     events(iEvt).color      = [];
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
     % Create extended event to represent the full trial
     iEvtFull = iEvt + length(uniqueEvt);
     events(iEvtFull).label      = [uniqueEvt{iEvt}, '_trial'];
-    events(iEvtFull).samples    = TrlMat(iTrl,[1,2])';
-    events(iEvtFull).times      = events(iEvtFull).samples ./ sFile.prop.sfreq;
-    events(iEvtFull).epochs     = ones(1,size(events(iEvt).samples,2));
+    events(iEvtFull).times      = TrlMat(iTrl,[1,2])' ./ sFile.prop.sfreq;
+    events(iEvtFull).epochs     = ones(1,size(events(iEvt).times,2));
     events(iEvtFull).color      = [];
     events(iEvtFull).reactTimes = [];
     events(iEvtFull).select     = 1;
+    events(iEvtFull).channels   = cell(1, size(events(iEvtFull).times, 2));
+    events(iEvtFull).notes      = cell(1, size(events(iEvtFull).times, 2));
 end
 
 

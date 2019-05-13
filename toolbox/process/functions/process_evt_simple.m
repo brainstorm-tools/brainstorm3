@@ -100,9 +100,9 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         iEvt = find(strcmpi(EvtNames{i}, {sEvents.label}));
         if isempty(iEvt)
             bst_report('Warning', sProcess, sInput, 'This file does not contain any event.');
-        elseif isempty(sEvents(iEvt).samples)
+        elseif isempty(sEvents(iEvt).times)
             bst_report('Warning', sProcess, sInput, ['Event category "' sEvents(iEvt).label '" is empty.']);
-        elseif (size(sEvents(iEvt).samples,1) == 1)
+        elseif (size(sEvents(iEvt).times,1) == 1)
             bst_report('Warning', sProcess, sInput, ['Event category "' sEvents(iEvt).label '" already contains simple events.']);
         else
             iEvtList(end+1) = iEvt;            
@@ -118,13 +118,13 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     for i = 1:length(iEvtList)
         switch Method
             case 'start'
-                sEvents(iEvtList(i)).samples = sEvents(iEvtList(i)).samples(1,:);
+                sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).times(1,:);
             case 'middle'
-                sEvents(iEvtList(i)).samples = round(mean(sEvents(iEvtList(i)).samples,1));
+                sEvents(iEvtList(i)).times = round(mean(sEvents(iEvtList(i)).times,1));
             case 'end'
-                sEvents(iEvtList(i)).samples = sEvents(iEvtList(i)).samples(2,:);
+                sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).times(2,:);
         end
-        sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).samples / sFreq;
+        sEvents(iEvtList(i)).times = round(sEvents(iEvtList(i)).times .* sFreq) / sFreq;
     end
         
     % ===== SAVE RESULT =====
