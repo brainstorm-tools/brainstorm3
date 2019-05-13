@@ -2211,6 +2211,7 @@ switch (lower(action))
                 if isstudy
                     gui_component('MenuItem', jMenuFile, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)db_add(iStudy));
                     gui_component('MenuItem', jMenuFile, [], 'Import source maps', IconLoader.ICON_RESULTS, [], @(h,ev)import_sources(iStudy));
+                    gui_component('MenuItem', jMenuFile, [], 'Import timefreq from FieldTrip', IconLoader.ICON_RESULTS, [], @(h,ev)import_timefreq_ft(iStudy));
                     gui_component('MenuItem', jMenuFile, [], 'Import data matrix', IconLoader.ICON_MATRIX, [], @(h,ev)import_matrix(iStudy));
                 elseif issubject
                     gui_component('MenuItem', jMenuFile, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)db_add(iSubject));
