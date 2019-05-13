@@ -1919,8 +1919,8 @@ function SetProperty(hFig, propName, propVal)
             set(hAxes, 'XMinorGrid', propGraph);
         case 'ShowYGrid'
             hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
-            set(hAxes, 'YGrid',      propVal);
-            set(hAxes, 'YMinorGrid', propVal);
+            set(hAxes, 'YGrid',      propGraph);
+            set(hAxes, 'YMinorGrid', propGraph);
         case {'ShowZeroLines', 'FlipYAxis', 'ShowEventsMode'}
             bst_figures('ReloadFigures', hFig, 0);
         otherwise
@@ -2315,13 +2315,13 @@ function DisplayConfigMenu(hFig, jParent)
     if isempty(iDS)
         return;
     end
-    % Get all other figures
-    hFigAll = bst_figures('GetAllFigures');
     % Get figure config
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
     isSource = ismember(FigureId.Modality, {'results', 'timefreq', 'stat', 'none'});
+    % Get all other figures
+    hFigAll = bst_figures('GetFiguresByType', FigureId.Type);
     
     % Create popup
     if isa(jParent, 'javax.swing.JMenu')
@@ -2419,6 +2419,22 @@ function DisplayConfigMenu(hFig, jParent)
             jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Normalize signals', [], [], @(h,ev)SetNormalizeAmp(iDS, iFig, ~TsInfo.NormalizeAmp));
             jItem.setSelected(TsInfo.NormalizeAmp);
         end
+        % Spectrum: power/magnitude/log
+        if strcmpi(FigureId.Type, 'Spectrum')
+            sOptions = panel_display('GetDisplayOptions');
+            jScalePow = gui_component('RadioMenuItem', jMenu, [], 'Power', [], [], @(h,ev)panel_display('SetDisplayFunction', 'power'));
+            jScaleMag = gui_component('RadioMenuItem', jMenu, [], 'Magnitude', [], [], @(h,ev)panel_display('SetDisplayFunction', 'magnitude'));
+            jScaleLog = gui_component('RadioMenuItem', jMenu, [], 'Log(power)', [], [], @(h,ev)panel_display('SetDisplayFunction', 'log'));
+            jButtonGroup = ButtonGroup();
+            jButtonGroup.add(jScalePow);
+            jButtonGroup.add(jScaleMag);
+            jButtonGroup.add(jScaleLog);
+            switch (sOptions.Function)
+                case 'power',      jScalePow.setSelected(1);
+                case 'magnitude',  jScaleMag.setSelected(1);
+                case 'log',        jScaleLog.setSelected(1);
+            end
+        end
         
     % === LINES ===
     jMenu = gui_component('Menu', jPopup, [], 'Lines', IconLoader.ICON_MATRIX);
@@ -2437,7 +2453,7 @@ function DisplayConfigMenu(hFig, jParent)
         end
         
     % === EVENTS ===
-    if strcmpi(FigureId.Type, 'DataTimeSeries')
+    if ~strcmpi(FigureId.Type, 'Spectrum')
         jMenu = gui_component('Menu', jPopup, [], 'Events', IconLoader.ICON_EVT_TYPE);
         % Events display mode
         jModeDot = gui_component('RadioMenuItem', jMenu, [], 'Dots', [], [], @(h,ev)SetProperty(hFig, 'ShowEventsMode', 'dot'));
@@ -2460,18 +2476,18 @@ function DisplayConfigMenu(hFig, jParent)
     % === EXTRA ===
     jMenu = gui_component('Menu', jPopup, [], 'Extra', IconLoader.ICON_PLOTEDIT);
         % Legend
-        if strcmpi(FigureId.Type, 'DataTimeSeries')
+        if ~strcmpi(FigureId.Type, 'Spectrum')
             jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend));
             jItem.setSelected(TsInfo.ShowLegend);
         end
         % GFP
-        if strcmpi(TsInfo.DisplayMode, 'butterfly')
+        if strcmpi(TsInfo.DisplayMode, 'butterfly') && strcmpi(FigureId.Type, 'DataTimeSeries')
             DisplayGFP = bst_get('DisplayGFP');
             jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show GFP', [], [], @(h,ev)SetDisplayGFP(hFig, ~DisplayGFP));
             jItem.setSelected(DisplayGFP);
         end
         % Separator
-        if strcmpi(FigureId.Type, 'DataTimeSeries') || strcmpi(TsInfo.DisplayMode, 'butterfly')
+        if ~strcmpi(FigureId.Type, 'Spectrum') && (strcmpi(FigureId.Type, 'DataTimeSeries') || strcmpi(TsInfo.DisplayMode, 'butterfly'))
             jMenu.addSeparator();
         end
         % Change background color
