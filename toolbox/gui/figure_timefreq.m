@@ -649,7 +649,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 panel_display('SetSelectedRowName', hFig, keyEvent.Key);
             end
         % === DATABASE NAVIGATOR ===
-        case {'f1', 'f2', 'f3', 'f4'}
+        case {'f1', 'f2', 'f3', 'f4', 'f6'}
             bst_figures('NavigatorKeyPress', hFig, keyEvent)
         % === DATA FILES : OTHER VIEWS ===
         % CTRL+D : Dock figure

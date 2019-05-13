@@ -183,6 +183,8 @@ TsInfo.NormalizeAmp  = 0;
 TsInfo.Resolution    = [0 0];
 TsInfo.ShowXGrid     = bst_get('ShowXGrid');
 TsInfo.ShowYGrid     = bst_get('ShowYGrid');
+TsInfo.ShowZeroLines = bst_get('ShowZeroLines');
+TsInfo.ShowEventsMode = bst_get('ShowEventsMode');
 if ~isNewFig
     oldTsInfo = getappdata(hFig, 'TsInfo');
     TsInfo.DisplayMode   = oldTsInfo.DisplayMode;

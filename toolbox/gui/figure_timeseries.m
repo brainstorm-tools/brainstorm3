@@ -363,7 +363,21 @@ function FigureMouseDownCallback(hFig, ev)
         hObj = get(hObj, 'Parent');
     end
     noMoveAction = [];
-    
+    % If simple click in a continuous event marker, the user could be trying to do a double click on it
+    % But after this click, the cursor will be under the mouse, making it impossible to click the event
+    % => Keep track of this object
+    if strcmp(MouseStatus, 'normal') && ismember(objTag, {'EventPatches', 'EventPatchesChannel'})
+        setappdata(hFig, 'clickPrevObj', objTag);
+    else
+        if strcmpi(MouseStatus, 'open') && ~isempty(getappdata(hFig, 'clickPrevObj'))
+            panel_record('EventEditNotes');
+            setappdata(hFig, 'clickPrevObj', []);
+            return;
+        else
+            setappdata(hFig, 'clickPrevObj', []);
+        end
+    end
+
     % Switch between available graphic objects
     switch (objTag)
         case {'DataTimeSeries', 'ResultsTimeSeries'}
@@ -411,7 +425,7 @@ function FigureMouseDownCallback(hFig, ev)
                 end
             end
             return
-        case {'EventDots', 'EventLabels'}
+        case {'EventDots', 'EventDotsExt', 'EventLabels', 'EventNotes', 'EventLines', 'EventPatches', 'EventDotsExtChannel', 'EventDotsChannel', 'EventLinesChannel', 'EventPatchesChannel'}
             % Force updating the figure selection before the mouse release, because if no the events are not the ones we need
             bst_figures('SetCurrentFigure', hFig, '2D');
             % Get events
@@ -432,9 +446,22 @@ function FigureMouseDownCallback(hFig, ev)
             end
             % Select event in panel "Raw"
             panel_record('SetSelectedEvent', iEvt, iOccur);
-            % Move to this specific time
-            panel_record('JumpToEvent', iEvt, iOccur);
-            return
+            % Move to this specific time (only for simple events)
+            if strcmpi(MouseStatus, 'open')
+                panel_record('EventEditNotes');
+                return;
+            elseif ~ismember(objTag, {'EventPatches', 'EventPatchesChannel', 'EventDotsExt', 'EventDotsExtChannel'})
+                panel_record('JumpToEvent', iEvt, iOccur);
+                % If right-click, keep going to display popup
+                if ~strcmp(MouseStatus, 'alt')
+                    return;
+                end
+            else
+                % Let the time be changed by the clicking (or force it when right-click)
+                if strcmp(MouseStatus, 'alt')
+                    MoveTimeToMouse(hFig, hAxes);
+                end
+            end
         otherwise
             % Any other object: consider as a click on the main axes
     end
@@ -452,10 +479,11 @@ function FigureMouseDownCallback(hFig, ev)
             % Initialize time selection
             if ~isStatic
                 X = GetMouseTime(hFig, hAxes);
-                setappdata(hFig, 'GraphSelection', [X, Inf]);
+                GraphSelection = [X, Inf];
             else
-                setappdata(hFig, 'GraphSelection', []);
+                GraphSelection = [];
             end
+            SetTimeSelectionLinked(hFig, GraphSelection);
             % set(hFig, 'Pointer', 'ibeam');
         % CTRL+Mouse, or Mouse right
         case 'alt'
@@ -563,6 +591,7 @@ end
 %% ===== FIGURE MOUSE UP =====        
 function FigureMouseUpCallback(hFig, event)
     % Get mouse state
+    clickAction = getappdata(hFig, 'clickAction');
     hasMoved    = getappdata(hFig, 'hasMoved');
     MouseStatus = get(hFig, 'SelectionType');
     MovingTimeBar = getappdata(hFig, 'MovingTimeBar');
@@ -587,23 +616,15 @@ function FigureMouseUpCallback(hFig, event)
         noMoveAction();
     % If mouse has not moved: popup or time change
     elseif ~hasMoved && ~isempty(MouseStatus)
-        % Get new time
-        X = GetMouseTime(hFig, hAxes);
         % Change time
         switch (MouseStatus)
             % LEFT CLICK  /  SHIFT+Mouse
             case {'normal', 'extend'}
-                % Move time cursor to new time
-                hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
-                set(hCursor, 'XData', [X,X]);
-                drawnow;
-                % Update the current time in the whole application      
-                panel_time('SetCurrentTime', X);
-                % Remove previous time selection patch
-                SetTimeSelectionLinked(hFig, []);
+                MoveTimeToMouse(hFig, hAxes);
             % CTRL+Mouse, or Mouse right
             case 'alt'
-                DisplayFigurePopup(hFig, [], X);            
+                X = GetMouseTime(hFig, hAxes);
+                DisplayFigurePopup(hFig, [], X);
         end
     % If time bar was moved: update time
     elseif hasMoved && ~isequal(MovingTimeBar, 0)
@@ -616,6 +637,16 @@ function FigureMouseUpCallback(hFig, event)
             case {'start', 'stop'}
                 panel_record('SetStartTime', xBar(1), [], 0);
                 panel_record('SetTimeLength', xBar(2)-xBar(1), 1);
+        end
+    % If amplitude scaling was changed
+    elseif hasMoved && strcmpi(clickAction, 'gzoom')
+        hEventObj = [...
+            findobj(hAxes, '-depth', 1, 'Tag', 'EventDotsChannel'); ...
+            findobj(hAxes, '-depth', 1, 'Tag', 'EventDotsExtChannel'); ...
+            findobj(hAxes, '-depth', 1, 'Tag', 'EventLinesChannel'); ...
+            findobj(hAxes, '-depth', 1, 'Tag', 'EventPatchesChannel')];
+        if ~isempty(hEventObj)
+            bst_figures('ReloadFigures', hFig);
         end
     % If time selection was defined: check if its length is non-zero
     elseif hasMoved
@@ -667,6 +698,22 @@ function SetTimeSelectionLinked(hFig, GraphSelection)
         DrawTimeSelection(hAllFigs(i));
     end
 end
+
+
+%% ===== MOVE TIME TO WHERE THE MOUSE IS =====
+function MoveTimeToMouse(hFig, hAxes)
+    % Get new time
+    X = GetMouseTime(hFig, hAxes);
+    % Move time cursor to new time
+    hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
+    set(hCursor, 'XData', [X,X]);
+    drawnow;
+    % Update the current time in the whole application      
+    panel_time('SetCurrentTime', X);
+    % Remove previous time selection patch
+    SetTimeSelectionLinked(hFig, []);
+end
+
 
 %% ===== SET TIME SELECTION: MANUAL INPUT =====
 % Define manually the time selection for a given TimeSeries figure
@@ -1268,7 +1315,7 @@ function FigureKeyPressedCallback(hFig, ev)
             panel_time('TimeKeyCallback', keyEvent);
             
         % === DATABASE NAVIGATOR ===
-        case {'f1', 'f2', 'f3', 'f4'}
+        case {'f1', 'f2', 'f3', 'f4', 'f6'}
             if isRaw
                 panel_time('TimeKeyCallback', keyEvent);
             elseif isequal(keyEvent.Key, 'f3') && ~isempty(TsInfo) && ~isempty(TsInfo.FileName) && strcmpi(file_gettype(TsInfo.FileName), 'matrix')
@@ -1320,6 +1367,9 @@ function FigureKeyPressedCallback(hFig, ev)
             if isControl && isFullDataFile
                 bst_figures('ViewTopography', hFig, 0);
             end
+        % H : Hide selected event
+        case 'h'
+            panel_record('EventTypeToggleVisible');
         % CTRL+I : Save as image
         case 'i'
             if isControl
@@ -1329,6 +1379,16 @@ function FigureKeyPressedCallback(hFig, ev)
         case 'j'
             if isControl
                 out_figure_image(hFig, 'Viewer');
+            end
+        % CTRL+L : Change display of events
+        case 'l'
+            if isControl
+                switch (TsInfo.ShowEventsMode)
+                    case 'dot',   newMode = 'line';
+                    case 'line',  newMode = 'none';
+                    case 'none',  newMode = 'dot';
+                end
+                SetProperty(hFig, 'ShowEventsMode', newMode);
             end
         % CTRL+O : Set resolution
         case 'o'
@@ -1411,10 +1471,22 @@ function FigureKeyPressedCallback(hFig, ev)
             if isfield(keyEvent, 'Character') && ~isempty(keyEvent.Character)
                 switch (keyEvent.Character)
                     % PLUS/MINUS: GAIN CONTROL
-                    case '+'
-                        UpdateTimeSeriesFactor(hFig, 1.1);
-                    case '-'
-                        UpdateTimeSeriesFactor(hFig, .9091);
+                    case {'+', '-'}
+                        if strcmp(keyEvent.Character, '+')
+                            zoomFactor = 1.1;
+                        else
+                            zoomFactor = .9091;
+                        end
+                        % Update factor
+                        UpdateTimeSeriesFactor(hFig, zoomFactor);
+                        % Update channels events
+                        hEventObj = [...
+                            findobj(hAxes, '-depth', 1, 'Tag', 'EventDotsChannel'); ...
+                            findobj(hAxes, '-depth', 1, 'Tag', 'EventLinesChannel'); ...
+                            findobj(hAxes, '-depth', 1, 'Tag', 'EventPatchesChannel')];
+                        if ~isempty(hEventObj)
+                            bst_figures('ReloadFigures', hFig, 0);
+                        end
                     % COPY VIEW OPTIONS
                     case '='
                         if isFullDataFile
@@ -1480,14 +1552,6 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
     for iAxes = 1:length(Handles)
         % Column plot: update the gain of the lines plotted
         if isColumn
-            % Get events dots
-            hEventDotsChannel = findobj(Handles(iAxes).hAxes, '-depth', 1, 'Tag', 'EventDotsChannel');
-            if ~isempty(hEventDotsChannel)
-                iLineDots = get(hEventDotsChannel, 'UserData');
-                if iscell(iLineDots)
-                    iLineDots = [iLineDots{:}];
-                end
-            end
             % Update figure lines
             for iLine = 1:length(Handles(iAxes).hLines)
                 % Skip the channels that are not visible
@@ -1508,18 +1572,6 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
                     YData = (YData - Handles(iAxes).ChannelOffsets(iLine)) * changeFactor + Handles(iAxes).ChannelOffsets(iLine);
                     % Update value
                     set(Handles(iAxes).hLinePatches(iLine), 'YData', YData);
-                end
-                % Update event dots for this line
-                if ~isempty(hEventDotsChannel)
-                    iDot = find(iLineDots == iLine);
-                    if ~isempty(iLine)
-                        % Get values
-                        YData = get(hEventDotsChannel(iDot), 'YData');
-                        % Re-center them on zero, and change the factor
-                        YData = (YData - Handles(iAxes).ChannelOffsets(iLine)) * changeFactor + Handles(iAxes).ChannelOffsets(iLine);
-                        % Update value
-                        set(hEventDotsChannel(iDot), 'YData', YData);
-                    end
                 end
             end
             % Update factor value
@@ -1620,7 +1672,7 @@ function LineClickedCallback(hLine, ev)
     if isRightClick
         % Display popup menu (with the channel name as a title)
         setappdata(hFig, 'clickSource', hAxes);
-        DisplayFigurePopup(hFig, ChannelLabel);   
+        DisplayFigurePopup(hFig, ChannelLabel, [], {ChannelName});   
         setappdata(hFig, 'clickSource', []);
     % Left click: Select/unselect line
     else
@@ -1838,40 +1890,46 @@ function DisplayDataSelectedChannels(iDS, SelectedRows, Modality)
     view_timeseries(DataFile, Modality, SelectedRows);
 end
 
-%% ===== TOGGLE PROPERTY =====
-function ToggleProperty(hAxes, propName)
+%% ===== SET PROPERTY =====
+% USAGE:  SetProperty(hFig, propName)            % Toggle 0/1 property
+%         SetProperty(hFig, propName, propVal)   % Set property value
+function SetProperty(hFig, propName, propVal)
     % Get TsInfo description
-    hFig = get(hAxes, 'Parent');
     TsInfo = getappdata(hFig, 'TsInfo');
-    % Toggle
-    TsInfo.(propName) = ~TsInfo.(propName);
+    % Toggle existing value
+    if (nargin < 3)
+        TsInfo.(propName) = ~TsInfo.(propName);
+    % Set value
+    else
+        TsInfo.(propName) = propVal;
+    end
     % Update TsInfo 
     setappdata(hFig, 'TsInfo', TsInfo);
-    
-    % Get correspondance for graphic property
-    switch TsInfo.(propName)
-        case 1,  propVal = 'on';
-        case 0,  propVal = 'off';
+    % Correspondance for graphic property
+    if isequal(TsInfo.(propName), 0)
+        propGraph = 'off';
+    else
+        propGraph = 'on';
     end
     % Update figure
     switch propName
         case 'ShowXGrid'
-            set(hAxes, 'XGrid',      propVal);
-            set(hAxes, 'XMinorGrid', propVal);
+            hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
+            set(hAxes, 'XGrid',      propGraph);
+            set(hAxes, 'XMinorGrid', propGraph);
         case 'ShowYGrid'
+            hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
             set(hAxes, 'YGrid',      propVal);
             set(hAxes, 'YMinorGrid', propVal);
-        case 'ShowZeroLines'
-            bst_figures('ReloadFigures', get(hAxes, 'Parent'), 0);
-        case 'FlipYAxis'
-            bst_figures('ReloadFigures', get(hAxes, 'Parent'), 0);
+        case {'ShowZeroLines', 'FlipYAxis', 'ShowEventsMode'}
+            bst_figures('ReloadFigures', hFig, 0);
         otherwise
             error('Invalid property name.');
     end
-    
     % Save in user preferences
     bst_set(propName, TsInfo.(propName));
 end
+
 
 %% ===== HIDE/SHOW LEGENDS =====
 function SetShowLegend(iDS, iFig, ShowLegend)
@@ -1895,7 +1953,7 @@ end
 
 
 %% ===== POPUP MENU =====
-function DisplayFigurePopup(hFig, menuTitle, curTime)
+function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
     import java.awt.event.KeyEvent;
     import javax.swing.KeyStroke;
     import org.brainstorm.icon.*;
@@ -1903,12 +1961,15 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
     if isempty(GlobalData) || isempty(GlobalData.DataSet)
         return;
     end
-    % If menuTitle not specified
-    if (nargin < 2)
-        menuTitle = '';
+    % Parse inputs
+    if (nargin < 4)
+        selChan = [];
     end
     if (nargin < 3)
         curTime = [];
+    end
+    if (nargin < 2)
+        menuTitle = '';
     end
     % Get figure description
     [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
@@ -1927,6 +1988,8 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
     % Get selected channels
     [SelectedRows, iSelectedRows] = GetFigSelectedRows(hFig, {GlobalData.DataSet(iDS).Channel.Name});
+    % Get selected events
+    [iEvent, iOccur] = panel_record('GetSelectedEvents');
     
     % ===== TITLE =====
     % Create popup menu
@@ -2015,6 +2078,13 @@ function DisplayFigurePopup(hFig, menuTitle, curTime)
         if ~isempty(SelectedRows)
             jItem = gui_component('MenuItem', jPopup, [], 'Add / delete channel event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)panel_record('ToggleEvent', [], SelectedRows));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
+        elseif ~isempty(selChan)
+            jItem = gui_component('MenuItem', jPopup, [], 'Add / delete channel event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)panel_record('ToggleEvent', [], selChan));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
+        end
+        % Edit event notes
+        if ~isempty(iOccur)
+            jItem = gui_component('MenuItem', jPopup, [], 'Edit notes    (double-click)', IconLoader.ICON_EDIT, [], @(h,ev)panel_record('EventEditNotes'));
         end
         % Only for RAW files
         if isRaw
@@ -2248,7 +2318,6 @@ function DisplayConfigMenu(hFig, jParent)
     % Get all other figures
     hFigAll = bst_figures('GetAllFigures');
     % Get figure config
-    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
@@ -2286,7 +2355,7 @@ function DisplayConfigMenu(hFig, jParent)
         jMenu = gui_component('Menu', jPopup, [], strX, IconLoader.ICON_X);
         % Axis resolution
         if strcmpi(FigureId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
         end
         % Log scale
@@ -2314,7 +2383,7 @@ function DisplayConfigMenu(hFig, jParent)
         % Set scale
         if strcmpi(FigureId.Type, 'DataTimeSeries')
             % Flip Y axis
-            jFlipY = gui_component('CheckboxMenuItem', jMenu, [], 'Flip Y axis', [], [], @(h,ev)ToggleProperty(hAxes, 'FlipYAxis'));  % IconLoader.ICON_FLIPY
+            jFlipY = gui_component('CheckboxMenuItem', jMenu, [], 'Flip Y axis', [], [], @(h,ev)SetProperty(hFig, 'FlipYAxis'));  % IconLoader.ICON_FLIPY
             jFlipY.setSelected(TsInfo.FlipYAxis);
             % Separator
             jMenu.addSeparator();
@@ -2324,7 +2393,7 @@ function DisplayConfigMenu(hFig, jParent)
             end
             % Set fixed resolution
             if isRaw
-                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
             end
         end
@@ -2354,23 +2423,55 @@ function DisplayConfigMenu(hFig, jParent)
     % === LINES ===
     jMenu = gui_component('Menu', jPopup, [], 'Lines', IconLoader.ICON_MATRIX);
         % XGrid
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)ToggleProperty(hAxes, 'ShowXGrid'));
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show XGrid', IconLoader.ICON_GRID_X, [], @(h,ev)SetProperty(hFig, 'ShowXGrid'));
         jItem.setSelected(TsInfo.ShowXGrid);
         % YGrid
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowYGrid'));
-        jItem.setSelected(TsInfo.ShowYGrid);
+        if strcmpi(TsInfo.DisplayMode, 'butterfly')
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show YGrid', IconLoader.ICON_GRID_Y, [], @(h,ev)SetProperty(hFig, 'ShowYGrid'));
+            jItem.setSelected(TsInfo.ShowYGrid);
+        end
         % Zero lines
         if strcmpi(TsInfo.DisplayMode, 'column')
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show zero lines', IconLoader.ICON_GRID_Y, [], @(h,ev)ToggleProperty(hAxes, 'ShowZeroLines'));
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show zero lines', IconLoader.ICON_GRID_Y, [], @(h,ev)SetProperty(hFig, 'ShowZeroLines'));
             jItem.setSelected(TsInfo.ShowZeroLines);
         end
         
+    % === EVENTS ===
+    if strcmpi(FigureId.Type, 'DataTimeSeries')
+        jMenu = gui_component('Menu', jPopup, [], 'Events', IconLoader.ICON_EVT_TYPE);
+        % Events display mode
+        jModeDot = gui_component('RadioMenuItem', jMenu, [], 'Dots', [], [], @(h,ev)SetProperty(hFig, 'ShowEventsMode', 'dot'));
+        jModeLine = gui_component('RadioMenuItem', jMenu, [], 'Lines', [], [], @(h,ev)SetProperty(hFig, 'ShowEventsMode', 'line'));
+        jModeNone = gui_component('RadioMenuItem', jMenu, [], 'None', [], [], @(h,ev)SetProperty(hFig, 'ShowEventsMode', 'none'));
+        jButtonGroup = ButtonGroup();
+        jButtonGroup.add(jModeDot);
+        jButtonGroup.add(jModeLine);
+        jButtonGroup.add(jModeNone);
+        jModeDot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_MASK)); 
+        jModeLine.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_MASK)); 
+        jModeNone.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_MASK)); 
+        switch (TsInfo.ShowEventsMode)
+            case 'dot',    jModeDot.setSelected(1);
+            case 'line',   jModeLine.setSelected(1);
+            case 'none',   jModeNone.setSelected(1);
+        end
+    end
+    
     % === EXTRA ===
     jMenu = gui_component('Menu', jPopup, [], 'Extra', IconLoader.ICON_PLOTEDIT);
         % Legend
         if strcmpi(FigureId.Type, 'DataTimeSeries')
             jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show legend', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLegend(iDS, iFig, ~TsInfo.ShowLegend));
             jItem.setSelected(TsInfo.ShowLegend);
+        end
+        % GFP
+        if strcmpi(TsInfo.DisplayMode, 'butterfly')
+            DisplayGFP = bst_get('DisplayGFP');
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show GFP', [], [], @(h,ev)SetDisplayGFP(hFig, ~DisplayGFP));
+            jItem.setSelected(DisplayGFP);
+        end
+        % Separator
+        if strcmpi(FigureId.Type, 'DataTimeSeries') || strcmpi(TsInfo.DisplayMode, 'butterfly')
             jMenu.addSeparator();
         end
         % Change background color
@@ -3764,6 +3865,16 @@ function SetNormalizeAmp(iDS, iFig, NormalizeAmp)
     PlotFigure(iDS, iFig);
 end
 
+
+%% ===== SET NORMALIZE AMPLITUDE =====
+function SetDisplayGFP(hFig, DisplayGFP)
+    % Update value
+    bst_set('DisplayGFP', DisplayGFP);
+    % Re-plot figure
+    bst_figures('ReloadFigures', hFig, 0);
+end
+
+
 %% ===== SET FIXED RESOLUTION =====
 function SetResolution(iDS, iFig, newResX, newResY)
     global GlobalData;
@@ -4032,9 +4143,9 @@ function PlotRawTimeBar(iDS, iFig)
                 j2.setToolTipText('<HTML><TABLE><TR><TD>Previous page</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [SHIFT+Fn+F4]</B> : Half page</TD></TR></TABLE>');
                 j3.setToolTipText('<HTML><TABLE><TR><TD>Previous page</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [SHIFT+Fn+F4]</B> : Half page</TD></TR></TABLE>');
             else
-                j1.setToolTipText('<HTML><TABLE><TR><TD>Next page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [F3]</B></TD></TR> <TR><TD>Faster data scrolling:<BR><B> - [CTRL+PAGE UP]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [F4]</B> : Half page</TD></TR></TABLE>');
-                j2.setToolTipText('<HTML><TABLE><TR><TD>Previous page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Faster data scrolling:<BR><B> - [CTRL+PAGE DOWN]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [SHIFT+F4] : Half page</B></TD></TR></TABLE>');
-                j3.setToolTipText('<HTML><TABLE><TR><TD>Previous page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Faster data scrolling:<BR><B> - [CTRL+PAGE DOWN]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [SHIFT+F4] : Half page</B></TD></TR></TABLE>'); 
+                j1.setToolTipText('<HTML><TABLE><TR><TD>Next page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [F4]</B> : Half page<BR><B> - [F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE UP]</B>: +10 pages</TD></TR></TABLE>');
+                j2.setToolTipText('<HTML><TABLE><TR><TD>Previous page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [SHIFT+F4]</B> : Half page<BR><B> - [SHIFT+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE DOWN]</B>: -10 pages</TD></TR></TABLE>');
+                j3.setToolTipText('<HTML><TABLE><TR><TD>Previous page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [SHIFT+F4]</B> : Half page<BR><B> - [SHIFT+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE DOWN]</B>: -10 pages</TD></TR></TABLE>'); 
             end
             % Callbacks
             % If full epoch is shown, and there are epochs => Next epoch
@@ -4132,6 +4243,10 @@ function PlotEventsDots_TimeBar(hFig)
     events = panel_record('GetEvents');
     % Loop on all the events types
     for iEvt = 1:length(events)
+        % If event is hidden
+        if isequal(events(iEvt).select, 0)
+            continue;
+        end
         % No occurrences: nothing to draw
         nOccur = size(events(iEvt).times, 2);
         if (nOccur == 0)
@@ -4145,18 +4260,31 @@ function PlotEventsDots_TimeBar(hFig)
         else
             color = [0 1 0];
         end
-        % Time bar: Plot all occurrences in the same line object 
-        hEvtTime = line(mean(events(iEvt).times, 1), ...  % X
-                        .1 + .9*(iEvt-1)/length(events) * ones(1,nOccur), ... % Y
-                         1 * ones(1,nOccur), ... % Z
-                        'LineStyle',       'none', ...
-                        'MarkerFaceColor', color, ...
-                        'MarkerEdgeColor', color, ...
-                        'MarkerSize',      6, ...
-                        'Marker',          '.', ...
-                        'Tag',             'EventDots', ...
-                        'UserData',        iEvt, ...
-                        'Parent',          hRawTimeBar);
+        % Each event corresponds to one "line" of dots in the bar
+        XData = events(iEvt).times;
+        YData = repmat(.1 + .9*(iEvt-1)/length(events) * ones(1,nOccur), size(events(iEvt).times, 1), 1);
+        ZData = 1 * ones(size(XData));
+        % Simple events
+        if (size(events(iEvt).times, 1) == 1)
+            LineStyle = 'none';
+            Marker = '.';
+        % Extended events
+        elseif (size(events(iEvt).times, 1) == 2)
+            LineStyle = '-';
+            Marker = 'none';
+        end
+        % Time bar: Plot all occurrences in the same line object
+        hEvtTime = line(XData, YData, ZData, ...
+            'LineStyle',       LineStyle, ...
+            'LineWidth',       1.5, ...
+            'Color',           color, ...
+            'MarkerFaceColor', color, ...
+            'MarkerEdgeColor', color, ...
+            'MarkerSize',      6, ...
+            'Marker',          Marker, ...
+            'Tag',             'EventLine', ...
+            'UserData',        iEvt, ...
+            'Parent',          hRawTimeBar);
     end
 end
 
@@ -4175,10 +4303,20 @@ function PlotEventsDots_EventsBar(hFig)
     
     % Get time series axes
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
-    % Get previous channel markers
-    hEventDotsChannel = findobj(hAxes, '-depth', 1, 'Tag', 'EventDotsChannel');
-    if ~isempty(hEventDotsChannel)
-        delete(hEventDotsChannel);
+    YLim = get(hAxes, 'YLim');
+    % Get previous event markers
+    hEventObj = [findobj(hAxes, '-depth', 1, 'Tag', 'EventDots'); ...
+                 findobj(hAxes, '-depth', 1, 'Tag', 'EventDotsExt'); ...
+                 findobj(hAxes, '-depth', 1, 'Tag', 'EventLines'); ...
+                 findobj(hAxes, '-depth', 1, 'Tag', 'EventPatches');
+                 findobj(hAxes, '-depth', 1, 'Tag', 'EventDotsChannel'); ...
+                 findobj(hAxes, '-depth', 1, 'Tag', 'EventDotsExtChannel'); ...
+                 findobj(hAxes, '-depth', 1, 'Tag', 'EventLinesChannel'); ...
+                 findobj(hAxes, '-depth', 1, 'Tag', 'EventPatchesChannel'); ...
+                 findobj(hAxes, '-depth', 1, 'Tag', 'EventLabels'); ...
+                 findobj(hAxes, '-depth', 1, 'Tag', 'EventNotes')];
+    if ~isempty(hEventObj)
+        delete(hEventObj);
     end
     % Get figure handles
     [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
@@ -4195,6 +4333,10 @@ function PlotEventsDots_EventsBar(hFig)
     events = panel_record('GetEventsInTimeWindow', hFig);
     % Loop on all the events types
     for iEvt = 1:length(events)
+        % If event is hidden
+        if isequal(events(iEvt).select, 0)
+            continue;
+        end
         % Get event color
         if panel_record('IsEventBad', events(iEvt).label)
             color = [1 0 0];
@@ -4205,83 +4347,275 @@ function PlotEventsDots_EventsBar(hFig)
         end
         % Event bar: Plot same line object
         nOccur = size(events(iEvt).times, 2);
-        % Simple events
-        if (size(events(iEvt).times, 1) == 1)
-            hEvtBar = line(events(iEvt).times, ...  % X
-                           .2 * ones(1,nOccur), ... % Y
-                            1 * ones(1,nOccur), ... % Z
-                           'LineStyle',       'none', ...
-                           'MarkerFaceColor', color, ...
-                           'MarkerEdgeColor', color .* .6, ...
-                           'MarkerSize',      6, ...
-                           'Marker',          'o', ...
-                           'Tag',             'EventDots', ...
-                           'UserData',        iEvt, ...
-                           'Parent',          hEventsBar);
-        % Exented events
-        else
-            hEvtBar = line(events(iEvt).times, ...  % X
-                           .2 * ones(size(events(iEvt).times)), ... % Y
-                            1 * ones(size(events(iEvt).times)), ... % Z
-                           'Color',           color, ...
-                           'MarkerFaceColor', color, ...
-                           'MarkerEdgeColor', color .* .6, ...
-                           'MarkerSize',      6, ...
-                           'Marker',          'o', ...
-                           'Tag',             'EventDots', ...
-                           'UserData',        iEvt, ...
-                           'Parent',          hEventsBar);
+        if (nOccur == 0)
+            continue;
         end
-        % Event bar: Plot event labels
-        if (length(events(iEvt).times) < 30)
-            hEvtLabel = text(mean(events(iEvt).times,1), ...  % X
-                             .3 * ones(1,nOccur), ... % Y
-                             events(iEvt).label, ...
-                             'Color',               color, ...
-                             'FontSize',            bst_get('FigFont'), ...
-                             'FontUnits',           'points', ...
-                             'VerticalAlignment',   'bottom', ...
-                             'HorizontalAlignment', 'center', ...
-                             'Interpreter',         'none', ...
-                             'Tag',                 'EventLabels', ...
-                             'UserData',            iEvt, ...
-                             'Parent',              hEventsBar);
-        end
-
-        % Plot marker on top of signal lines (only for simple events)
-        if (size(events(iEvt).times, 1) == 1)
-            % Look for event name in the labels of the data lines
-            iLine = find(strcmpi(events(iEvt).label, Handles.LinesLabels));
-            % If not found and there is a montage, try to look in the montage display names
-            if isempty(iLine) && ~isempty(sMontage)
-                iChan = find(strcmpi(events(iEvt).label, sMontage.ChanNames));
-                if ~isempty(iChan)
-                    iDispName = find(sMontage.Matrix(:,iChan));
-                    if ~isempty(iDispName)
-                        iLine = find(strcmpi(sMontage.DispNames{iDispName(1)}, Handles.LinesLabels));
+        % Simple/Extended events
+        isExtended = (size(events(iEvt).times, 1) == 2);
+            
+        % === CHANNEL ATTRIBUTION ===
+        iLines = cell(1,nOccur);
+        % No individual channel events in butterfly mode
+        if strcmpi(TsInfo.DisplayMode, 'butterfly')
+            % Nothing to do
+        % Use channels field
+        elseif ~isempty(events(iEvt).channels) && any(~cellfun(@isempty, events(iEvt).channels))
+            % Process each event occurrence individually
+            for iOcc = 1:nOccur
+                iLines{iOcc} = [];
+                for i = 1:length(events(iEvt).channels{iOcc})
+                    chName = events(iEvt).channels{iOcc}{i};
+                    % Look for channel name in the labels of the data lines
+                    iChanLine = find(strcmpi(chName, Handles.LinesLabels));
+                    iLines{iOcc} = [iLines{iOcc}, iChanLine];
+                    % If not found and there is a montage, try to look in the montage display names
+                    if isempty(iChanLine) && ~isempty(sMontage)
+                        iChan = find(strcmpi(chName, sMontage.ChanNames));
+                        if ~isempty(iChan)
+                            iDispName = find(sMontage.Matrix(:,iChan));
+                            for iDisp = 1:length(iDispName)
+                                iLines{iOcc} = [iLines{iOcc}, find(strcmpi(sMontage.DispNames{iDispName(iDisp)}, Handles.LinesLabels))];
+                            end
+                        end
                     end
                 end
             end
-            % If a line is found: plot a dot on it
-            if ~isempty(iLine)
+        % Try to match events and channels by name
+        else
+            % Look for event name in the labels of the data lines
+            iLineChName = find(strcmpi(events(iEvt).label, Handles.LinesLabels));
+            % If not found and there is a montage, try to look in the montage display names
+            if isempty(iLineChName) && ~isempty(sMontage)
+                iChan = find(strcmpi(events(iEvt).label, sMontage.ChanNames));
+                if ~isempty(iChan)
+                    iDispName = find(sMontage.Matrix(:,iChan));
+                    for iDisp = 1:length(iDispName)
+                        iLineChName = [iLineChName, find(strcmpi(sMontage.DispNames{iDispName(iDisp)}, Handles.LinesLabels))];
+                    end
+                end
+            end
+            % Use the same line selection for all the occurrences
+            if ~isempty(iLineChName)
+                iLines = repmat({iLineChName}, 1, nOccur);
+            end
+        end
+        iOccChannels = find(~cellfun(@isempty, iLines));
+        iOccGlobal = find(cellfun(@isempty, iLines));
+               
+        % === CHANNEL EVENTS ===
+        % Where to display the notes and events labels by default
+        Ytext = .2 * ones(nOccur, 1);
+        Ynotes = zeros(nOccur, 1);
+        YnotesAlign = repmat({'Bottom'}, nOccur, 1);
+        % Plot as many markers as needed
+        for iOcc = iOccChannels
+            for i = 1:length(iLines{iOcc})
                 % Get line positions
-                XData = get(Handles.hLines(iLine(1)), 'XData');
-                YData = get(Handles.hLines(iLine(1)), 'YData');
-                % Get the closest Y coordinates at the time of the event
-                iTime = bst_closest(events(iEvt).times, XData);
-                % Plot markers on top of the lines
-                hEvtChan = line(...
-                    events(iEvt).times, ...  % X
-                    YData(iTime), ..., ...   % Y
-                    4 * ones(1,nOccur), ...  % Z=4
-                    'LineStyle',       'none', ...
-                    'MarkerFaceColor', color, ...
-                    'MarkerEdgeColor', color .* .8, ...
-                    'MarkerSize',      5, ...
-                    'Marker',          'o', ...
-                    'Tag',             'EventDotsChannel', ...
-                    'UserData',        iLine(1), ...
-                    'Parent',          hAxes);
+                XData = get(Handles.hLines(iLines{iOcc}(i)), 'XData');
+                YData = get(Handles.hLines(iLines{iOcc}(i)), 'YData');
+                % Get the closest time samples
+                iTime = bst_closest(events(iEvt).times(:,iOcc)', XData);
+                XData = XData(iTime(1):iTime(end));
+                YData = YData(iTime(1):iTime(end));
+                % Define a segment of Y values that contains all the signals
+                YChan = [min(YData), max(YData)];
+                if ~isExtended
+                    YChan = YChan + 0.4 ./ (length(Handles.LinesLabels) + 1) .* [-1, 1];
+                else
+                    YChan = YChan + (YChan(2) - YChan(1)) .* 0.05 .* [-1, 1];
+                end
+                Ynotes(iOcc) = max(Ynotes(iOcc), YChan(2));
+
+                % === CHANNEL: DOTS ===
+                if strcmpi(TsInfo.ShowEventsMode, 'dot')
+                    ZData = 2;
+                    % Simple events
+                    if ~isExtended
+                        % Plot markers on top of the lines
+                        hEvtChan = line(...
+                            XData, ...         % X
+                            YData, ...         % Y
+                            ZData, ...         % Z
+                            'LineStyle',       'none', ...
+                            'MarkerFaceColor', color, ...
+                            'MarkerEdgeColor', color .* .8, ...
+                            'MarkerSize',      5, ...
+                            'Marker',          'o', ...
+                            'Tag',             'EventDotsChannel', ...
+                            'UserData',        iEvt, ...
+                            'Parent',          hAxes);
+
+                    % Exented events
+                    else
+                        hEvtChan = line(...
+                            [XData(1); XData(end)], ...      % X
+                            YChan(2) .* ones(2,1), ...        % Y
+                            ZData .* ones(2,1), ...            % Z
+                            'Color',           color, ...
+                            'MarkerFaceColor', color, ...
+                            'MarkerEdgeColor', color .* .8, ...
+                            'MarkerSize',      5, ...
+                            'Marker',          'o', ...
+                            'Tag',             'EventDotsExtChannel', ...
+                            'UserData',        iEvt, ...
+                            'Parent',          hAxes);
+                    end
+                % === CHANNEL: VERTICAL LINES ===
+                elseif strcmpi(TsInfo.ShowEventsMode, 'line')
+                    % Simple events
+                    if ~isExtended
+                        ZData = 2;
+                        hEvtChan = line(...
+                            [XData; XData], ...     % X
+                            YChan', ...              % Y
+                            ZData .* ones(2,1), ... % Z
+                            'LineStyle',  '-', ...
+                            'LineWidth',  1, ...
+                            'Color',      color, ...
+                            'Marker',     'none', ...
+                            'Tag',        'EventLinesChannel', ...
+                            'UserData',   iEvt, ...
+                            'Parent',     hAxes);
+                    % Exented events
+                    else
+                        ZData = 0.005;
+                        patchColor = min(color + .4, 1);
+                        hEvtChan = patch(...
+                            'XData',      [XData(1); XData(end); XData(end); XData(1)], ...
+                            'YData',      [YChan(1); YChan(1); YChan(2); YChan(2)], ...
+                            'ZData',      ZData * ones(4, 1), ...
+                            'LineWidth',  0.5, ...
+                            'FaceColor',  patchColor, ...
+                            'FaceAlpha',  1, ...
+                            'EdgeColor',  color, ...
+                            'EdgeAlpha',  1, ...
+                            'Tag',       'EventPatchesChannel', ...
+                            'UserData',   iEvt, ...
+                            'Parent',     hAxes);
+                    end
+                end
+            end
+        end
+
+        % === GLOBAL EVENTS ===
+        if ~isempty(iOccGlobal)
+            nGlobal = length(iOccGlobal);
+            Ynotes(iOccGlobal) = YLim(2);
+            YnotesAlign(iOccGlobal) = repmat({'Top'}, nGlobal, 1);
+            
+            % === GLOBAL: DOTS ===
+            if strcmpi(TsInfo.ShowEventsMode, 'dot')
+                Ytext(iOccGlobal) = .35;
+                % Simple events
+                if ~isExtended
+                    hEvtBar = line(...
+                        events(iEvt).times(1,iOccGlobal), ... % X
+                        .2 * ones(1,nGlobal), ...             % Y
+                        1 * ones(1,nGlobal), ...              % Z
+                        'LineStyle',       'none', ...
+                        'MarkerFaceColor', color, ...
+                        'MarkerEdgeColor', color .* .6, ...
+                        'MarkerSize',      6, ...
+                        'Marker',          'o', ...
+                        'Tag',             'EventDots', ...
+                        'UserData',        iEvt, ...
+                        'Parent',          hEventsBar);
+                % Exented events
+                else
+                    hEvtBar = line(...
+                        events(iEvt).times(:,iOccGlobal), ... % X
+                        .2 * ones(2,nGlobal), ...             % Y
+                        1 * ones(2,nGlobal), ...              % Z
+                        'Color',           color, ...
+                        'MarkerFaceColor', color, ...
+                        'MarkerEdgeColor', color .* .6, ...
+                        'MarkerSize',      6, ...
+                        'Marker',          'o', ...
+                        'Tag',             'EventDotsExt', ...
+                        'UserData',        iEvt, ...
+                        'Parent',          hEventsBar);
+                end
+            % === GLOBAL: VERTICAL LINES ===
+            elseif strcmpi(TsInfo.ShowEventsMode, 'line')
+                % Y values: long bar that spans much more than the current view
+                YData = 100*(YLim(2) - YLim(1)) .* [-1, 1] + YLim; 
+                Ytext(iOccGlobal) = .2;
+                % Simple events
+                if ~isExtended
+                    ZData = 2;
+                    hEvtBar = line(...
+                        repmat(events(iEvt).times(1,iOccGlobal), 2, 1), ...  % X
+                        repmat(YData', 1, nGlobal), ...                      % Y
+                        ZData * ones(2, nGlobal), ...                        % Z
+                        'LineStyle',  '-', ...
+                        'LineWidth',  0.5, ...
+                        'Color',      color, ...
+                        'Marker',     'none', ...
+                        'Tag',        'EventLines', ...
+                        'UserData',   iEvt, ...
+                        'Parent',     hAxes);
+                % Exented events
+                else
+                    ZData = 0.005;
+                    patchColor = min(color + .4, 1);
+                    hEvtBar = patch(...
+                        'XData',      [events(iEvt).times(1,iOccGlobal); events(iEvt).times(2,iOccGlobal); events(iEvt).times(2,iOccGlobal); events(iEvt).times(1,iOccGlobal)], ...
+                        'YData',      repmat([YData(1); YData(1); YData(2); YData(2)], 1, nGlobal), ...
+                        'ZData',      ZData * ones(4, nGlobal), ...
+                        'LineWidth',  0.5, ...
+                        'FaceColor',  patchColor, ...
+                        'FaceAlpha',  1, ...
+                        'EdgeColor',  color, ...
+                        'EdgeAlpha',  1, ...
+                        'Tag',       'EventPatches', ...
+                        'UserData',   iEvt, ...
+                        'Parent',     hAxes);
+                end
+            else
+                Ytext = [];
+            end
+        end
+        
+        % === EVENT LABEL ===
+        if (length(events(iEvt).times) < 30) && ~isempty(Ytext) && ~strcmpi(TsInfo.ShowEventsMode, 'none')
+            hEvtLabel = text(...
+                mean(events(iEvt).times,1), ...  % X
+                Ytext, ...                       % Y
+                events(iEvt).label, ...
+                'Color',               color, ...
+                'FontSize',            bst_get('FigFont'), ...
+                'FontUnits',           'points', ...
+                'VerticalAlignment',   'bottom', ...
+                'HorizontalAlignment', 'center', ...
+                'Interpreter',         'none', ...
+                'Tag',                 'EventLabels', ...
+                'UserData',            iEvt, ...
+                'Parent',              hEventsBar);
+        end
+        
+        % === EVENT NOTES ===
+        if ~strcmpi(TsInfo.ShowEventsMode, 'none')
+            for iOcc = 1:nOccur
+                % No notes attached to this event, skip
+                if isempty(events(iEvt).notes{iOcc})
+                    continue;
+                end
+                % Plot text
+                ZData = 2.5;
+                hEvtNotes = text(...
+                    mean(events(iEvt).times(:,iOcc),1), ...  % X
+                    Ynotes(iOcc), ...                        % Y
+                    ZData, ...                               % Z
+                    events(iEvt).notes{iOcc}, ...
+                    'Color',               color, ...
+                    'FontSize',            bst_get('FigFont'), ...
+                    'FontUnits',           'points', ...
+                    'VerticalAlignment',   YnotesAlign{iOcc}, ...
+                    'HorizontalAlignment', 'center', ...
+                    'Interpreter',         'none', ...
+                    'Tag',                 'EventNotes', ...
+                    'UserData',            iEvt, ...
+                    'Parent',              hAxes);
             end
         end
     end

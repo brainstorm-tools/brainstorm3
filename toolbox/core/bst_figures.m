@@ -1772,16 +1772,30 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                             view_clusters(DataFiles, iClusters, Figure.hFigure);
                         end
                     else
+                        % Get original XLim/YLim
+                        if (length(Figure.Handles.hAxes) == 1) && ishandle(Figure.Handles.hAxes)
+                            XLimOrig = get(Figure.Handles.hAxes, 'XLim');
+                        end
                         TsInfo = getappdata(Figure.hFigure, 'TsInfo');
+                        % Reset amplitudes
                         if TsInfo.AutoScaleY
                             GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax = [];
                         end
                         GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor = [];
+                        % Update figure
                         isOk = figure_timeseries('PlotFigure', iDS, iFig, [], [], isFastUpdate);
                         % The figure could not be refreshed: close it
                         if ~isOk
                             close(Figure.hFigure);
                             continue;
+                        end
+                        % Restore XLim/YLim
+                        if ~isempty(XLimOrig) && (length(Figure.Handles.hAxes) == 1) && ishandle(Figure.Handles.hAxes)
+                            XLimNew = get(Figure.Handles.hAxes, 'XLim');
+                            YLimNew = get(Figure.Handles.hAxes, 'YLim');
+                            if ~isequal(XLimNew, XLimOrig) && (XLimOrig(1) >= XLimNew(1)) && (XLimOrig(2) <= XLimNew(2))
+                                set(Figure.Handles.hAxes, 'XLim', XLimOrig);
+                            end
                         end
                     end
                     UpdateFigureName(Figure.hFigure);

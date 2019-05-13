@@ -150,6 +150,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Delete group', IconLoader.ICON_EVT_TYPE_DEL, [], @(h,ev)bst_call(@EventTypeDel));
         gui_component('MenuItem', jMenu, [], 'Rename group', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EventTypeRename));
         gui_component('MenuItem', jMenu, [], 'Set color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EventTypeSetColor));
+        jItem = gui_component('MenuItem', jMenu, [], 'Show/hide group', IconLoader.ICON_DISPLAY, [], @(h,ev)bst_call(@EventTypeToggleVisible));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
         gui_component('MenuItem', jMenu, [], 'Mark group as bad', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@EventTypeSetBad));
         jMenu.addSeparator();
         jMenuSort = gui_component('Menu', jMenu, [], 'Sort groups', IconLoader.ICON_EVT_TYPE, [], []);
@@ -169,9 +171,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Edit keyboard shortcuts', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)gui_show('panel_raw_shortcuts', 'JavaWindow', 'Event keyboard shortcuts', [], 1, 0, 0));
         jMenu.addSeparator();
         jItem = gui_component('MenuItem', jMenu, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)bst_call(@ToggleEvent));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, 0));
+        jItem = gui_component('MenuItem', jMenu, [], '<HTML>Edit notes&nbsp;&nbsp;&nbsp;<FONT color="#A0A0A"><I>Double-click</I></FONT>', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EventEditNotes));
         jItem = gui_component('MenuItem', jMenu, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@RejectTimeSegment));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_MASK));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
         jMenu.addSeparator();
         jItem = gui_component('MenuItem', jMenu, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)bst_call(@JumpToEvent, 'leftarrow'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, KeyEvent.SHIFT_MASK));
@@ -320,6 +323,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         switch (ev.getKeyCode())
             case {ev.VK_DELETE, ev.VK_BACK_SPACE}
                 EventTypeDel();
+%             case ev.VK_H
+%                 EventTypeToggleVisible();
             case {ev.VK_LEFT, ev.VK_PAGE_DOWN}
                 JumpToEvent('leftarrow');
             case {ev.VK_RIGHT, ev.VK_PAGE_UP}
@@ -357,8 +362,13 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     %% ===== LIST OCCUR: CLICK CALLBACK =====
     function ListOccur_ClickCallback(h, ev)
         if ev.getSource().isEnabled()
-            % Jump to the selected event
-            JumpToEvent();
+            % Double-click: edit notes
+            if (ev.getClickCount() == 2)
+                EventEditNotes();
+            % Single clikc: Jump to the selected event
+            else
+                JumpToEvent();
+            end
         end
     end
 end
@@ -381,8 +391,6 @@ function TSDisplayMode_Callback(hObject, ev)
     if isempty(hFig)
         return;
     end
-    % Keep default mode for future use
-    bst_set('TSDisplayMode', newMode);
     % Set display mode
     SetDisplayMode(hFig, newMode);
 end
@@ -398,6 +406,8 @@ function SetDisplayMode(hFig, newMode)
     setappdata(hFig, 'TsInfo', TsInfo);
     % Re-plot figure
     bst_figures('ReloadFigures', hFig, 0);
+    % Keep default mode for future use
+    bst_set('TSDisplayMode', newMode);
     % Hide progress bar
     bst_progress('stop');
 end
@@ -488,8 +498,10 @@ function RawKeyCallback(keyEvent) %#ok<DEFNU>
             case {'rightarrow', 'uparrow',   'epoch+'},  iStartNew = iStart + round(.9 .* smpLength);     
             case {'pageup',     'epoch++'}, iStartNew = iStart + 10 * smpLength;
             case {'pagedown',   'epoch--'}, iStartNew = iStart - 10 * smpLength;
-            case 'halfpage-',  iStartNew = iStart - round(.5 .* smpLength);
-            case 'halfpage+',  iStartNew = iStart + round(.5 .* smpLength);
+            case 'halfpage-',   iStartNew = iStart - round(.5 .* smpLength);
+            case 'halfpage+',   iStartNew = iStart + round(.5 .* smpLength);
+            case 'nooverlap-',  iStartNew = iStart - smpLength;
+            case 'nooverlap+',  iStartNew = iStart + smpLength;
         end
         iEpoch = GlobalData.FullTimeWindow.CurrentEpoch;
         iStartNew = bst_saturate(iStartNew, [1, length(GlobalData.FullTimeWindow.Epochs(iEpoch).Time)]);
@@ -1173,7 +1185,7 @@ end
 
 
 %% ===== GET TIME SELECTION =====
-function TimeSel = GetTimeSelection()
+function [TimeSel, hFig] = GetTimeSelection()
     TimeSel = [];
     % Get raw time series figure
     [hFig,iFig,iDS] = bst_figures('GetCurrentFigure', '2D');
@@ -1206,7 +1218,10 @@ function UpdateEventsList()
     listModel = javax.swing.DefaultListModel();
     for iEvent = 1:length(events)
         newItem = BstListItem('','',sprintf(' %s  (x%d)', events(iEvent).label, size(events(iEvent).times, 2)));
-        if IsEventBad(events(iEvent).label)
+        if isequal(events(iEvent).select, 0)
+            newItem.setName(['(' char(newItem.getName())]);
+            newItem.setColor(java.awt.Color(0.7,0.7,0.7));
+        elseif IsEventBad(events(iEvent).label)
             newItem.setColor(java.awt.Color(1,0,0));
         elseif isfield(events(iEvent), 'color') && ~isempty(events(iEvent).color)
             newItem.setColor(java.awt.Color(events(iEvent).color(1), events(iEvent).color(2), events(iEvent).color(3)));
@@ -1247,11 +1262,16 @@ function UpdateEventsOccur()
     for i = 1:size(evtTimes,2)
         % Simple events
         if (size(evtTimes, 1) == 1)
-            listModel.addElement(sprintf(' %1.3f', evtTimes(i)));
+            strOcc = sprintf(' %1.3f', evtTimes(i));
         % Extended events
         else
-            listModel.addElement(sprintf(' %1.3f-%1.3f', evtTimes(1,i), evtTimes(2,i)));
+            strOcc = sprintf(' %1.3f-%1.3f', evtTimes(1,i), evtTimes(2,i));
         end
+        % Add list of channels
+        if (i <= length(event.channels)) && ~isempty(event.channels{i})
+            strOcc = [strOcc, '  ' sprintf(' %s', event.channels{i}{:})];
+        end
+        listModel.addElement(strOcc);
     end
     % Set this list
     ctrl.jListEvtOccur.setModel(listModel);
@@ -1750,11 +1770,11 @@ function EventTypeRename()
     end
     % Ask new label to the user
     newLabel = java_dialog('input', 'Enter new label:', 'Rename event', [], sEvent.label);
-    if isempty(newLabel)
+    if isempty(newLabel) || isequal(newLabel, sEvent.label)
         return
     end
-    % Check if event label already exists
-    if ~isempty(GetEvents(newLabel))
+    % Check if event label already exists (allow changing case)
+    if ~isempty(GetEvents(newLabel)) && ~strcmpi(newLabel, sEvent.label)
         bst_error('This event label already exists.', 'Create event', 0);
         return
     end
@@ -1793,6 +1813,36 @@ function EventTypeSetColor()
     UpdateEventsList();
     % Update figures
     %ReplotFigures();
+    ReplotEvents();
+end
+
+
+%% ===== EVENT TYPE: TOGGLE VISIBLE =====
+function EventTypeToggleVisible()
+    % Get selected events
+    iSelEvents = GetSelectedEvents();
+    if isempty(iSelEvents)
+        return;
+    end
+    % Loop on selected events
+    for i = 1:length(iSelEvents)
+        iEvent = iSelEvents(i);
+        % Get event (ignore current epoch)
+        sEvent = GetEvents(iEvent, 1);
+        % Toogle selected
+        if isempty(sEvent.select)
+            sEvent.select = 0;
+        else
+            sEvent.select = ~sEvent.select;
+        end
+        % Update dataset
+        SetEvents(sEvent, iEvent);
+    end
+    % Update events list
+    UpdateEventsList();
+    % Select again events in list
+    SetSelectedEvent(iSelEvents);
+    % Update figures
     ReplotEvents();
 end
 
@@ -2080,7 +2130,14 @@ function EventOccurAdd(iEvent, channelNames)
         iEpoch = 1;
     end
     % Get time selection
-    TimeSel = GetTimeSelection();
+    [TimeSel, hFig] = GetTimeSelection();
+    % Get selected montage
+    TsInfo = getappdata(hFig, 'TsInfo');
+    if ~isempty(TsInfo.MontageName)
+        sMontage = panel_montage('GetMontage', TsInfo.MontageName, hFig);
+    else
+        sMontage = [];
+    end
     
     % Detect if it is a simple or extended event
     if ~isempty(sEvent.times)
@@ -2118,6 +2175,32 @@ function EventOccurAdd(iEvent, channelNames)
             bst_error('Event is already marked.', 'Add event', 0);
             return
         end
+        % Reset time selection when plotting with lines/patches
+        if strcmpi(TsInfo.ShowEventsMode, 'line')
+            figure_timeseries('SetTimeSelectionLinked', hFig, []);
+        end
+    end
+    
+
+    % Channel names in the case of referencing montages
+    if ~isempty(sMontage)
+        chanMontage = {};
+        for i = 1:length(channelNames)
+            % If the channel is found in the channel file, add as is
+            if any(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, channelNames{i}))
+                chanMontage = [chanMontage, channelNames(i)];
+            % Else: Look for channel name in the labels of the montage
+            else
+                iDispName = find(strcmpi(sMontage.DispNames, channelNames{i}));
+                if ~isempty(iDispName)
+                    iChan = find(sMontage.Matrix(iDispName,:));
+                    chanMontage = [chanMontage, sMontage.ChanNames(iChan)];
+                else
+                    chanMontage = [chanMontage, channelNames{i}];
+                end
+            end
+        end
+        channelNames = unique(chanMontage);
     end
     
     % Add event: time
@@ -2198,6 +2281,42 @@ function EventOccurDel(iEvent, iOccursEpoch)
     SetSelectedEvent(iEvent);
     % Update figures
     %ReplotFigures();
+    ReplotEvents();
+end
+
+
+%% ===== EVENT OCCUR: EDIT NOTES =====
+function EventEditNotes()
+    % Get selected events
+    [iEvent, iOccur] = GetSelectedEvents();
+    if (length(iEvent) ~= 1) || isempty(iOccur)
+        return;
+    end
+    % Get event (ignore current epoch)
+    sEvent = GetEvents(iEvent, 1);
+    % Format event name
+    if (size(sEvent.times, 1) == 1)
+        strOcc = sprintf('"%s" (%1.3fs)', sEvent.label, sEvent.times(iOccur));
+    else
+        strOcc = sprintf('"%s" (%1.3f-%1.3fs)', sEvent.label, sEvent.times(1,iOccur), sEvent.times(2,iOccur));
+    end
+    % Ask new label to user
+    if ~isempty(sEvent.notes{iOccur})
+        prevNote = sEvent.notes{iOccur};
+    else
+        prevNote = '';
+    end
+    [newNote, isCancel] = java_dialog('input', ['Edit event ' strOcc ':'], 'Edit event notes', [], prevNote);
+    % If cancelled, or not not changed
+    if isCancel || isequal(prevNote, newNote)
+        return
+    end
+    newNote = strtrim(newNote);
+    % Update label
+    sEvent.notes{iOccur} = newNote;
+    % Update dataset
+    SetEvents(sEvent, iEvent);
+    % Update figures;
     ReplotEvents();
 end
 
