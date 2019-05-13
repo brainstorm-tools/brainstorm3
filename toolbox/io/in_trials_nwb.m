@@ -9,8 +9,22 @@ if isempty(nwb2.intervals_trials)
     
 else
     % Get trials
-    all_conditions   = nwb2.intervals_trials.vectordata.get('condition').data;
-    uniqueConditions = unique(nwb2.intervals_trials.vectordata.get('condition').data);
+    
+    % Check if "condition" field exists
+    condition_field_exists = ismember(keys(nwb2.intervals_trials.vectordata),'condition');
+    if isempty(condition_field_exists) % This return 1x0 empty if no keys is present
+        condition_field_exists = false;
+    end
+    
+    if condition_field_exists
+    
+        all_conditions   = nwb2.intervals_trials.vectordata.get('condition').data;
+        uniqueConditions = unique(nwb2.intervals_trials.vectordata.get('condition').data);
+    else
+        all_conditions = repmat({'Trial'},length(nwb2.intervals_trials.start_time.data.load),1);
+        uniqueConditions = {'Trial'};
+    end
+        
     timeBoundsTrials = double([nwb2.intervals_trials.start_time.data.load nwb2.intervals_trials.stop_time.data.load]);
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

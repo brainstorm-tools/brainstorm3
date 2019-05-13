@@ -52,7 +52,7 @@ try
     all_raw_keys = keys(nwb2.acquisition);
 
     for iKey = 1:length(all_raw_keys)
-        if ismember(all_raw_keys{iKey}, {'ECoG','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
+        if ismember(all_raw_keys{iKey}, {'ECoG','raw','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
             iRawDataKey = iKey;
             RawDataPresent = 1;
             break
