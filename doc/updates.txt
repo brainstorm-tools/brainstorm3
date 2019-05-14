@@ -4,8 +4,9 @@ May 2019
 - Database: Add new type of object "fibers"
 - IO: Improved support for discontinuous EDF files (EDF+D)
 - GUI: Time series viewer: New menu to group all the display options
-- GUI: Events: New options for displaying event markers
+- GUI: Events: New options for displaying event markers (lines, dots, hide)
 - GUI: New keyboard shortcuts for recordings viewer (F6, Shift+F6, Ctrl+L, Ctrl+H)
+- GUI: New options for custom events shortcuts (full page, extended events) 
 ---------------------------------------------------------------
 April 2019
 - GUI: New color picker to replace Matlab's buggy uisetcolor

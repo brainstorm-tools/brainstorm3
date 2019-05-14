@@ -168,7 +168,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Group by time', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_grouptime'));
         gui_component('MenuItem', jMenu, [], 'Add time offset', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)CallProcessOnRaw('process_evt_timeoffset'));
         jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Edit keyboard shortcuts', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)gui_show('panel_raw_shortcuts', 'JavaWindow', 'Event keyboard shortcuts', [], 1, 0, 0));
+        gui_component('MenuItem', jMenu, [], 'Edit keyboard shortcuts', IconLoader.ICON_KEYBOARD, [], @(h,ev)gui_show('panel_raw_shortcuts', 'JavaWindow', 'Event keyboard shortcuts', [], 1, 0, 0));
         jMenu.addSeparator();
         jItem = gui_component('MenuItem', jMenu, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)bst_call(@ToggleEvent));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, 0));

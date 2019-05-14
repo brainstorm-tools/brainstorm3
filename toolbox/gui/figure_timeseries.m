@@ -1505,10 +1505,39 @@ function FigureKeyPressedCallback(hFig, ev)
                             iShortcut = find(strcmpi(RawViewerOptions.Shortcuts(:,1), keyEvent.Character));
                             % If shortcut was found: call the corresponding function
                             if ~isempty(iShortcut) && ~isempty(RawViewerOptions.Shortcuts{iShortcut,2})
+                                % Set selected time for extended events
+                                switch (RawViewerOptions.Shortcuts{iShortcut,3})
+                                    case 'simple'
+                                        selTime = [];
+                                    case 'page'
+                                        selTime = GlobalData.UserTimeWindow.Time;
+                                    case 'extended'
+                                        % If there is already a time window selected: keep it
+                                        GraphSelection = getappdata(hFig, 'GraphSelection');
+                                        if ~isempty(GraphSelection) && ~isinf(GraphSelection(2))
+                                            selTime = [];
+                                        % Otherwise, select a time window around the time cursor
+                                        else
+                                            selTime = GlobalData.UserTimeWindow.CurrentTime + RawViewerOptions.Shortcuts{iShortcut,4};
+                                        end
+                                end
+                                if ~isempty(selTime)
+                                    SetTimeSelectionLinked(hFig, selTime);
+                                end
+                                % Toggle event
                                 if isControl && ~isempty(SelectedRows)
                                     panel_record('ToggleEvent', RawViewerOptions.Shortcuts{iShortcut,2}, SelectedRows);
                                 else
                                     panel_record('ToggleEvent', RawViewerOptions.Shortcuts{iShortcut,2});
+                                end
+                                % Reset time selection
+                                if ~isempty(selTime)
+                                    SetTimeSelectionLinked(hFig, []);
+                                end
+                                % For full page marking: move to next page automatically
+                                if isRaw && strcmpi(RawViewerOptions.Shortcuts{iShortcut,3}, 'page')
+                                    keyEvent.Key = 'nooverlap+';
+                                    panel_record('RawKeyCallback', keyEvent);
                                 end
                             end
                         end
