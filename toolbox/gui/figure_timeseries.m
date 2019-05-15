@@ -4664,8 +4664,6 @@ function PlotEventsDots_EventsBar(hFig)
             end
         end
     end
-    % Copy the XLim from the main axes
-    set(hEventsBar, 'XLim', get(hAxes, 'XLim'));
 end
 
 
