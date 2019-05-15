@@ -425,7 +425,7 @@ function FigureMouseDownCallback(hFig, ev)
                 end
             end
             return
-        case {'EventDots', 'EventDotsExt', 'EventLabels', 'EventNotes', 'EventLines', 'EventPatches', 'EventDotsExtChannel', 'EventDotsChannel', 'EventLinesChannel', 'EventPatchesChannel'}
+        case {'EventBarDots', 'EventDots', 'EventDotsExt', 'EventLabels', 'EventNotes', 'EventLines', 'EventPatches', 'EventDotsExtChannel', 'EventDotsChannel', 'EventLinesChannel', 'EventPatchesChannel'}
             % Force updating the figure selection before the mouse release, because if no the events are not the ones we need
             bst_figures('SetCurrentFigure', hFig, '2D');
             % Get events
@@ -2294,7 +2294,6 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
     jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
         % === FIGURE CONFIG ===
         % Change background color
-        jMenuFigure.addSeparator();
         gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
         
         % === MATLAB CONTROLS ===
@@ -2426,9 +2425,9 @@ function DisplayConfigMenu(hFig, jParent)
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
             end
         end
-        % Uniform figure scales
+        % Uniform amplitude scales
         if ~isRaw && (length(hFigAll) > 1)
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Uniform figure scales', [], [], @(h,ev)panel_record('UniformTimeSeries_Callback',h,ev));
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Uniform amplitude scales', [], [], @(h,ev)panel_record('UniformTimeSeries_Callback',h,ev));
             jItem.setSelected(bst_get('UniformizeTimeSeriesScales'));
         end
         % Standardize data
@@ -4327,7 +4326,7 @@ function PlotEventsDots_TimeBar(hFig)
             'MarkerEdgeColor', color, ...
             'MarkerSize',      6, ...
             'Marker',          Marker, ...
-            'Tag',             'EventLine', ...
+            'Tag',             'EventBarDots', ...
             'UserData',        iEvt, ...
             'Parent',          hRawTimeBar);
     end
