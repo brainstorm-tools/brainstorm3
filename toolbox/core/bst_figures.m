@@ -1795,6 +1795,11 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                             YLimNew = get(Figure.Handles.hAxes, 'YLim');
                             if ~isequal(XLimNew, XLimOrig) && (XLimOrig(1) >= XLimNew(1)) && (XLimOrig(2) <= XLimNew(2))
                                 set(Figure.Handles.hAxes, 'XLim', XLimOrig);
+                                % Copy the XLim from the main axes to the events bar
+                                hEventsBar = findobj(Figure.hFigure, '-depth', 1, 'Tag', 'AxesEventsBar');
+                                if ~isempty(hEventsBar)
+                                    set(hEventsBar, 'XLim', get(Figure.Handles.hAxes, 'XLim'));
+                                end
                             end
                         end
                     end

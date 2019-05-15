@@ -1482,10 +1482,11 @@ function FigureKeyPressedCallback(hFig, ev)
                         % Update channels events
                         hEventObj = [...
                             findobj(hAxes, '-depth', 1, 'Tag', 'EventDotsChannel'); ...
+                            findobj(hAxes, '-depth', 1, 'Tag', 'EventDotsExtChannel'); ...
                             findobj(hAxes, '-depth', 1, 'Tag', 'EventLinesChannel'); ...
                             findobj(hAxes, '-depth', 1, 'Tag', 'EventPatchesChannel')];
                         if ~isempty(hEventObj)
-                            bst_figures('ReloadFigures', hFig, 0);
+                            bst_figures('ReloadFigures', hFig);
                         end
                     % COPY VIEW OPTIONS
                     case '='
@@ -4663,6 +4664,8 @@ function PlotEventsDots_EventsBar(hFig)
             end
         end
     end
+    % Copy the XLim from the main axes
+    set(hEventsBar, 'XLim', get(hAxes, 'XLim'));
 end
 
 
