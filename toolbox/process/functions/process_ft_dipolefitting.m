@@ -7,9 +7,9 @@ function varargout = process_ft_dipolefitting( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,7 +36,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 350;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/DipoleFitting';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/DipoleFitting';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'dipoles'};
@@ -170,6 +170,10 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     HeadModelMat = in_bst_headmodel(sHeadModel.FileName);
     % Convert head model
     ftHeadmodel = out_fieldtrip_headmodel(HeadModelMat, ChannelMat, iChannels);
+    if strcmpi(ftHeadmodel.type, 'openmeeg')
+        bst_report('Error', sProcess, sInput, 'OpenMEEG headmodel not supported for dipole fitting: Compute another head model first.');
+        return;
+    end
     % Convert data file
     ftData = out_fieldtrip_data(DataMat, ChannelMat, iChannels, 1);
     % Generate rough grid for first estimation

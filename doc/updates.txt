@@ -1,6 +1,134 @@
+May 2019
+- IO: Support for NWB ECOG (recordings + surfaces)
+- Database: Improved database updates between versions
+- Database: Add new type of object "fibers"
+- IO: Improved support for discontinuous EDF files (EDF+D)
+- GUI: Time series viewer: New menu to group all the display options
+- GUI: Events: New options for displaying event markers (lines, dots, hide)
+- GUI: New keyboard shortcuts for recordings viewer (F6, Shift+F6, Ctrl+L, Ctrl+H)
+- GUI: New options for custom events shortcuts (full page, extended events) 
+---------------------------------------------------------------
+April 2019
+- GUI: New color picker to replace Matlab's buggy uisetcolor
+- GUI: New bipolar and avg ref montages for ECOG+SEEG
+- GUI: New default colormaps: Viridis, Magma, Dory, Royal Gramma, Mandrill
+- GUI: New EEG montage: Scalp Current Density (L->R)
+- Anatomy: Support for new fibers objects
+- Connectivity: View of functionnal connectivity along anatomical fibers
+- Doc: ECOG tutorial
+- API: Removed the field "samples" from events and sFile structures (use "times" instead)
+- API: Added fields "channels" and "notes" to events structures
+---------------------------------------------------------------
+March 2019
+- Anatomy: Deface MRI with FreeSurfer or SPM
+- Anatomy: World coordinates made available in MRI viewer
+- IO: Support for synchronized EEG-video (link raw and import epochs)
+- GUI: Review of synchronized EEG-video with VLC ActiveX plugin
+- GUI: SEEG 2DElectrode topography (and 2DLayout without 3D positions)
+- GUI: EEG Scalp Current Density (SCD) as a default montage
+- Distrib: Updating Brainstorm now downloads only the scripts (skips the compiled version)
+- Distrib: Compiled 2019a
+---------------------------------------------------------------
+February 2019
+- Process: Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)
+- New process2: "Standardize > Interpolate time" (+ new option 'nearest' in process_stdtime.m)
+- IO: Added support for York Instruments MEGSCAN recordings (.hdf5)
+- IO: Added support for Tucker Davis Technologies (.tdt)
+- Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
+- Distrib: Compiled Brainstorm now includes all SPM and FieldTrip dependencies
+- Distrib: Compiled 2018a and 2018b versions
+---------------------------------------------------------------
+January 2019
+- IO: BIDS export process supports EEG-BIDS
+- IO: Plexon 2 (.pl2) files can now be read if Plexon SDK installed
+- IO: Export EEG/SEEG electrode positions in MNI or world coordinates
+- Anatomy: Handle better world coordinates (cs_convert, import/export of channel files)
+- Stat: Colormaps adapted to t-value threshold
+- GUI: Added colormap ovun (now default for stat2 files)
+- GUI: Reorganization of the management of multiple screens for Matlab>2015b
+---------------------------------------------------------------
+December 2018
+- IO: BIDS import: Support for EEG and iEEG
+- IO: Export EEG to BrainVision BrainAmp format (.eeg) for iEEG-BIDS
+- Bug fix: Fixed coil orientations when reading CTF .ds folders including a .pos file (MNI only)
+  https://neuroimage.usc.edu/brainstorm/Tutorials/CtfCoilOrientBugFix
+---------------------------------------------------------------
+November 2018
+- New electrophysiology toolbox
+- GUI: 2DLayout: Added new controls, new time window management
+- GUI: 2DLayout: Overlay of multiple conditions
+- GUI: 2DLayout: Overlay of NIRS wavelengths and oxy/deoxy
+---------------------------------------------------------------
+October 2018
+- IO: BIDS export process
+---------------------------------------------------------------
+September 2018
+- IO: Support for EGI-Philips MFF recordings
+- Process: Uniform epoch time: Added option "overwrite" and support for source links
+---------------------------------------------------------------
+August 2018
+- Bug fix: All the issues related with OpenMEEG 2.4 should be fixed now
+- Distrib: Improved download speed
+- Sources: Updated OpenMEEG to 2.4.1 (bug fixes)
+- GUI: Added NIRS colormap type
+- Anatomy: Added labels for FreeSurfer volume atlases: aparc+aseg, aparc.a2009s, aparc.DKTatlas
+---------------------------------------------------------------
+July 2018
+- Inverse 2018: Major modification: dSPM values are no longer scaled by number of trials
+  | https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation#Averaging_normalized_values
+- Inverse: Enforce bst_inverse_linear_2018 as the default option
+- Stat: Added "Minimum duration" threshold in the stat tab
+- GUI: Headless support, for running scripts on computation clusters and distant servers
+- GUI: New montage "Average reference (L -> R)" for 10-20 EEG caps
+- GUI: New menu "Set acquisition date" (for automatic matching with empty-room recordings)
+- Anatomy: BrainSuite: Added subcortical structures
+- Inverse: Switched to OpenMEEG 2.4
+---------------------------------------------------------------
+June 2018
+- Distrib: New electrophysiology toolbox
+- GUI: Custom montage shortcuts
+- GUI: New cluster functions: Mean+Std, Mean+StdErr
+- IO: Updated BIDS import function to follow the most recent changes in the specs
+- Doc: Updated tutorial resting/omega to match the v2 of the BIDS dataset on OpenNeuro
+---------------------------------------------------------------
+May 2018
+- IO: Added support for g.tec HDF5 files
+- Web: Switch to https
+- Process: Updated runica.m function with current EEGLAB version
+---------------------------------------------------------------
+April 2018
+- Bug fix: Reading EEGLAB epoched .set files: Latency of additional events was incorrect
+- IO: Import montage: Added CSV file format
+- Process: ICA: Added option "Sort components based on correlation with" 
+- Process: ICA: Changed reconstruction method: (Winv_good * W_good) => (eye() - Winv_bad * W_bad)
+- IO: Added support for Curry 6-7-8 EEG recordings
+- IO: Added support for Muse .csv
+---------------------------------------------------------------
+March 2018
+- Bug fix: "Filter" processes were replacing the actual data with the "Std" field
+- Bug fix: Exporting vox2ras transformation to .nii when volume was not initially .nii
+- Bug fix: Correct registration of additional .nii files full FreeSurfer anatomy folders
+- GUI: Add numbers to the comments of new files that already exist
+- GUI: Updated tools for ECOG (new display options, many bug fixes)
+- GUI: Allow simultaneous display of SEEG and ECOG
+- GUI: SEEG/ECOG local average reference made available for all the groups of contacts
+- GUI: New option to add the "ASEG" atlas easily to any figure
+- GUI: Added legends to connectivity matrices displayed as images
+- Process: Re-reference EEG: New option "local average", and use of the list of bad channels
+- GUI: 2DLayout made available for SEEG/ECOG
+- Distrib: Switch to Matlab 2018a
+---------------------------------------------------------------
+February 2018
+- GUI: New options "Upsample image" to smooth MRI display in 3D figures
+- Anatomy: Use the vox2ras matrix from the FreeSurfer .mgz MRI files
+- Inverse: Added 2018 version of linear inverse models, made the default (old processes stay available)
 ---------------------------------------------------------------
 January 2018
 - IO: Support for new RICOH MEG file format
+- IO: Improved BIDS importer (read acquisition dates from _scans.tsv files)
+- IO: Read acquisition dates from continuous files and save them in study field DateOfStudy
+- Process: Noise covariance: Match automatically noise covariance with subjects by acquisition date
+- Process: Average: Added option "median"
 ---------------------------------------------------------------
 December 2017
 - IO: Improved EEGLAB reader: Keep events in epochs, allow epochs with multiple event occurrences
@@ -1699,7 +1827,7 @@ September-2008
 - Bug fix: Navigator for kernel results
 - Bug fix: position of popup menus for visualization figures
 - Bug fix: target surface for scouts 3D edition
-- Bug fix: characters 'ç' and 'µ'
+- Bug fix: characters 'Ã§' and 'Âµ'
 - Bug fix: mouse sensibility for alignment of surfaces, channels and sphere
 - Bug fix: selection of time interval
 - MEG: Import of Neuromag/FIF files at Neurospin
@@ -1718,7 +1846,7 @@ August-2008
 - Display of the results (sources) in the MRI
 - New colormaps for anatomy and stats
 - Display of scouts in MRI (MRI Viewer and 3D)
-- Tests of VideoIO  to make movies under linux : échec
+- Tests of VideoIO  to make movies under linux : Ã©chec
 - Updated shepards.m to ignore the vertices that are too far away from the sources
 - Updated default anatomies and EEG nets
 - Contrast/Brightness control over predefined colormaps

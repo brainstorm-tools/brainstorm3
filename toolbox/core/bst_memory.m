@@ -12,6 +12,8 @@ function [ varargout ] = bst_memory( varargin )
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          iSubject, SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          MriFile,  SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          SurfaceFile)
+%         [sFib,iFib] = bst_memory('LoadFiber',            FibFile)
+%         [sFib,iFib] = bst_memory('LoadFiber',            iSubject)
 %
 %          DataValues = bst_memory('GetRecordingsValues',  iDS, iChannel, iTime)
 %       ResultsValues = bst_memory('GetResultsValues',     iDS, iRes, iVertices, TimeValues)
@@ -49,9 +51,9 @@ function [ varargout ] = bst_memory( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -65,7 +67,7 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -141,6 +143,69 @@ function [sMri, iMri] = GetMri(MriFile) %#ok<DEFNU>
         sMri = GlobalData.Mri(iMri);
     else
         sMri = [];
+    end
+end
+
+
+%% ===== LOAD FIBERS =====
+% USAGE:  [sFib,iFib] = bst_memory('LoadFiber', FibFile)
+%         [sFib,iFib] = bst_memory('LoadFiber', iSubject)
+function [sFib,iFib] = LoadFibers(FibFile)
+    global GlobalData;
+    % ===== PARSE INPUTS =====
+    % If argument is a subject indice
+    if isnumeric(FibFile)
+        % Get subject
+        iSubject = FibFile;
+        sSubject = bst_get('Subject', iSubject);
+        % If subject does not have fibers
+        if isempty(sSubject.Surface) || isempty(sSubject.iFibers)
+            error('No fiber available for subject "%s".', sSubject.Name);
+        end
+        % Get fibers file
+        FibFile = sSubject.Surface(sSubject.iFibers).FileName;
+    else
+        [sSubject, iSubject, iSurfDb] = bst_get('SurfaceFile', FibFile);
+    end
+
+    % ===== CHECK IF LOADED =====
+    % Check if surface is already loaded
+    iFib = find(file_compare({GlobalData.Fibers.FileName}, FibFile));
+    % If fiber is not loaded yet: load it
+    if isempty(iFib)
+        % Unload the unused Anatomies (surfaces + MRIs)
+        UnloadAll('KeepSurface');
+        % Create default structure
+        sFib = db_template('LoadedFibers');
+        % Load fibers matrix
+        FibMat = in_fibers(FibFile);
+        % Build fibers structure
+        for field = fieldnames(sFib)'
+            if isfield(FibMat, field{1})
+                sFib.(field{1}) = FibMat.(field{1});
+            end
+        end
+        % Set filename
+        sFib.FileName = file_win2unix(FibFile);
+        iFib = length(GlobalData.Fibers) + 1;
+        % Save fibers in memory
+        GlobalData.Fibers(iFib) = sFib;
+    % Else: Return the existing instance
+    else
+        sFib = GlobalData.Fibers(iFib);
+    end
+end
+
+
+%% ===== GET FIBERS =====
+function [sFib, iFib] = GetFibers(FibFile) %#ok<DEFNU>
+    global GlobalData;
+    % Check if surface is already loaded
+    iFib = find(file_compare({GlobalData.Fibers.FileName}, FibFile));
+    if ~isempty(iFib)
+        sFib = GlobalData.Fibers(iFib);
+    else
+        sFib = [];
     end
 end
 
@@ -367,8 +432,15 @@ end
 
 
 %% ===== GET SURFACE ENVELOPE =====
-function [sEnvelope, sSurf] = GetSurfaceEnvelope(SurfaceFile, nVertices)
+function [sEnvelope, sSurf] = GetSurfaceEnvelope(SurfaceFile, nVertices, isRemesh, dilateMask)
     global GlobalData;
+    % Parse inputs
+    if (nargin < 4) || isempty(dilateMask)
+        dilateMask = 1;
+    end
+    if (nargin < 3) || isempty(isRemesh)
+        isRemesh = 1;
+    end
     % Load surface
     [sSurf, iSurf] = LoadSurface(SurfaceFile);
     % Get an existing mrimask
@@ -378,7 +450,7 @@ function [sEnvelope, sSurf] = GetSurfaceEnvelope(SurfaceFile, nVertices)
     % MRI mask do not exist yet
     else
         % Compute mrimask
-        sEnvelope = tess_envelope(SurfaceFile, 'mask_cortex', nVertices);
+        sEnvelope = tess_envelope(SurfaceFile, 'mask_cortex', nVertices, [], [], isRemesh, dilateMask);
         % Add it to loaded structure
         GlobalData.Surface(iSurf).envelope.(fieldName) = sEnvelope;
     end
@@ -412,6 +484,19 @@ function LoadChannelFile(iDS, ChannelFile)
     global GlobalData;
     % If a channel file is defined
     if ~isempty(ChannelFile)
+        % Check if this channel file is already loaded and modified in another DataSet
+        iDSother = setdiff(1:length(GlobalData.DataSet), iDS);
+        if ~isempty(iDSother) && any([GlobalData.DataSet(iDSother).isChannelModified])
+            % Ask user
+            isSave = java_dialog('confirm', ...
+                ['This channel file is being edited in another window.' 10 ...
+                 'Save the modifications so the new figure can show updated positions?'], 'Save modifications');
+            % Force saving of the modifications
+            if isSave
+                bst_memory('SaveChannelFile', iDSother(1));
+            end
+        end
+
         % Load channel
         ChannelMat = in_bst_channel(ChannelFile);
         % Check coherence between Channel and Measures.F dimensions
@@ -433,7 +518,7 @@ function LoadChannelFile(iDS, ChannelFile)
         % If there are some ECOG/SEEG channels: Create new temporary montages automatically
         if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
             SubjectName = bst_fileparts(GlobalData.DataSet(iDS).SubjectFile);
-            panel_montage('AddAutoMontagesEeg', SubjectName, ChannelMat);
+            panel_montage('AddAutoMontagesSeeg', SubjectName, ChannelMat);
         end
         % If there are some NIRS channels: Create new temporary montages automatically
         if ismember('NIRS', {ChannelMat.Channel.Type})
@@ -503,13 +588,8 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             sFile = MeasuresMat.sFile;
         end
         % Rebuild Time vector
-        if ~isempty(sFile.epochs)
-            NumberOfSamples = sFile.epochs(1).samples(2) - sFile.epochs(1).samples(1) + 1;
-            Time = linspace(sFile.epochs(1).times(1), sFile.epochs(1).times(2), NumberOfSamples);
-        else
-            NumberOfSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
-            Time = linspace(sFile.prop.times(1), sFile.prop.times(2), NumberOfSamples);
-        end
+        Time = panel_time('GetRawTimeVector', sFile);
+        
         % Check if file exists
         isRetry = 1;
         while isRetry
@@ -562,7 +642,6 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
         sFile.filename     = DataFile;
         sFile.prop.times   = Time([1 end]);
         sFile.prop.sfreq   = 1 ./ (Time(2) - Time(1));
-        sFile.prop.samples = round(sFile.prop.times * sFile.prop.sfreq);
     end
     Measures.DataType     = DataType;
     Measures.ChannelFlag  = MeasuresMat.ChannelFlag;
@@ -706,7 +785,7 @@ function LoadRecordingsMatrix(iDS)
     % Load F Matrix
     if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
         % Load stat file
-        StatMat = in_bst_data(DataFile, 'pmap', 'tmap', 'df', 'SPM', 'ChannelFlag', 'Correction', 'StatClusters');
+        StatMat = in_bst_data(DataFile, 'pmap', 'tmap', 'df', 'SPM', 'ChannelFlag', 'Correction', 'StatClusters', 'Time');
         % Get only relevant sensors as multiple tests
         iChannels = good_channel(GlobalData.DataSet(iDS).Channel, StatMat.ChannelFlag, {'MEG', 'EEG', 'SEEG', 'ECOG', 'NIRS'});
         if isfield(StatMat, 'pmap') && ~isempty(StatMat.pmap)
@@ -720,8 +799,14 @@ function LoadRecordingsMatrix(iDS)
         end
         % Initialize matrix
         GlobalData.DataSet(iDS).Measures.F = zeros(length(GlobalData.DataSet(iDS).Measures.ChannelFlag), GlobalData.DataSet(iDS).Measures.NumberOfSamples);
-        % Apply threshold
-        GlobalData.DataSet(iDS).Measures.F(iChannels,:,:) = process_extract_pthresh('Compute', StatMat);
+        % Apply threshold, and duplicate time if there is only one time point
+        [threshMap, tThreshUnder, tThreshOver] = process_extract_pthresh('Compute', StatMat);
+        if ( size(threshMap,2) == 1) && (GlobalData.DataSet(iDS).Measures.NumberOfSamples == 2)
+            threshMap = cat(2, threshMap, threshMap);
+        end
+        GlobalData.DataSet(iDS).Measures.F(iChannels,:,:) = threshMap;
+        GlobalData.DataSet(iDS).Measures.StatThreshUnder = tThreshUnder;
+        GlobalData.DataSet(iDS).Measures.StatThreshOver = tThreshOver;
         % Copy stat clusters
         GlobalData.DataSet(iDS).Measures.StatClusters = StatMat.StatClusters;
         GlobalData.DataSet(iDS).Measures.StatClusters.Correction = StatMat.Correction;
@@ -827,7 +912,7 @@ function F = FilterLoadedData(F, sfreq)
         end
         % Filter data
         isRelax = 1;
-        [F, FiltSpec, Messages] = process_bandpass('Compute', F, sfreq, HighPass, LowPass, 'bst-hfilter', isMirror, isRelax);
+        [F, FiltSpec, Messages] = process_bandpass('Compute', F, sfreq, HighPass, LowPass, 'bst-hfilter-2019', isMirror, isRelax);
         if ~isempty(Messages)
             disp(['Warning: ' Messages]);
         end
@@ -1131,7 +1216,7 @@ function LoadResultsMatrix(iDS, iResult)
     else
         % Load stat matrix
         StatFile = GlobalData.DataSet(iDS).Results(iResult).FileName;
-        FileMat = in_bst_results(StatFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'nComponents', 'GridLoc', 'GridOrient', 'GridAtlas', 'Correction', 'StatClusters');
+        FileMat = in_bst_results(StatFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'nComponents', 'GridLoc', 'GridOrient', 'GridAtlas', 'Correction', 'StatClusters', 'Time');
         % For stat with more than one components: take the maximum t-value
         if (FileMat.nComponents ~= 1)
             % Extract one value at each grid point
@@ -1147,7 +1232,10 @@ function LoadResultsMatrix(iDS, iResult)
             disp('BST> This file is based on an unconstrained source model. Using the lowest p-value at each point.');
         end
         % Store results in GlobalData
-        GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp  = process_extract_pthresh('Compute', FileMat);
+        [thresholdedStatMap, tThreshUnder, tThreshOver] = process_extract_pthresh('Compute', FileMat);
+        GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp  = thresholdedStatMap;
+        GlobalData.DataSet(iDS).Results(iResult).StatThreshUnder = tThreshUnder;
+        GlobalData.DataSet(iDS).Results(iResult).StatThreshOver = tThreshOver;        
         GlobalData.DataSet(iDS).Results(iResult).ImagingKernel = [];
         % Copy stat clusters
         GlobalData.DataSet(iDS).Results(iResult).StatClusters = FileMat.StatClusters;
@@ -1421,7 +1509,7 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         % Load stat matrix
         TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TF', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'Correction', 'StatClusters');
         % Report thresholded maps
-        TimefreqMat.TF = process_extract_pthresh('Compute', TimefreqMat);
+        [TimefreqMat.TF, tThreshUnder, tThreshOver] = process_extract_pthresh('Compute', TimefreqMat);
         % Open the "Stat" tab
         gui_brainstorm('ShowToolTab', 'Stat');
     end
@@ -1508,21 +1596,29 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         % Fake results file
         ParentFile = strrep(TimefreqFile, '.mat', '$.mat');
         TimefreqMat.DataFile = ParentFile;
+        % Check if this fake file is already created
+        if ~isempty(GlobalData.DataSet(iDS).Results)
+            iResults = find(file_compare({GlobalData.DataSet(iDS).Results.FileName}, ParentFile) & (cellfun(@length, {GlobalData.DataSet(iDS).Results.GridLoc}) == length(TimefreqMat.GridLoc)));
+        else
+            iResults = [];
+        end
         % Create new fake structure
-        iResults = length(GlobalData.DataSet(iDS).Results) + 1;
-        GlobalData.DataSet(iDS).Results(iResults) = db_template('LoadedResults');
-        GlobalData.DataSet(iDS).Results(iResults).FileName        = ParentFile;
-        GlobalData.DataSet(iDS).Results(iResults).DataType        = 'results';
-        GlobalData.DataSet(iDS).Results(iResults).Comment         = [TimefreqMat.Comment '$'];
-        GlobalData.DataSet(iDS).Results(iResults).Time            = [TimefreqMat.Time(1), TimefreqMat.Time(end)];
-        GlobalData.DataSet(iDS).Results(iResults).SamplingRate    = (TimefreqMat.Time(2) - TimefreqMat.Time(1));
-        GlobalData.DataSet(iDS).Results(iResults).NumberOfSamples = length(TimefreqMat.Time);
-        GlobalData.DataSet(iDS).Results(iResults).HeadModelType   = 'volume';
-        GlobalData.DataSet(iDS).Results(iResults).HeadModelFile   = TimefreqMat.HeadModelFile;
-        GlobalData.DataSet(iDS).Results(iResults).SurfaceFile     = TimefreqMat.SurfaceFile;
-        GlobalData.DataSet(iDS).Results(iResults).GridLoc         = TimefreqMat.GridLoc;
-        GlobalData.DataSet(iDS).Results(iResults).GridAtlas       = TimefreqMat.GridAtlas;
-        GlobalData.DataSet(iDS).Results(iResults).nComponents     = 3;
+        if isempty(iResults)
+            iResults = length(GlobalData.DataSet(iDS).Results) + 1;
+            GlobalData.DataSet(iDS).Results(iResults) = db_template('LoadedResults');
+            GlobalData.DataSet(iDS).Results(iResults).FileName        = ParentFile;
+            GlobalData.DataSet(iDS).Results(iResults).DataType        = 'results';
+            GlobalData.DataSet(iDS).Results(iResults).Comment         = [TimefreqMat.Comment '$'];
+            GlobalData.DataSet(iDS).Results(iResults).Time            = [TimefreqMat.Time(1), TimefreqMat.Time(end)];
+            GlobalData.DataSet(iDS).Results(iResults).SamplingRate    = (TimefreqMat.Time(2) - TimefreqMat.Time(1));
+            GlobalData.DataSet(iDS).Results(iResults).NumberOfSamples = length(TimefreqMat.Time);
+            GlobalData.DataSet(iDS).Results(iResults).HeadModelType   = 'volume';
+            GlobalData.DataSet(iDS).Results(iResults).HeadModelFile   = TimefreqMat.HeadModelFile;
+            GlobalData.DataSet(iDS).Results(iResults).SurfaceFile     = TimefreqMat.SurfaceFile;
+            GlobalData.DataSet(iDS).Results(iResults).GridLoc         = TimefreqMat.GridLoc;
+            GlobalData.DataSet(iDS).Results(iResults).GridAtlas       = TimefreqMat.GridAtlas;
+            GlobalData.DataSet(iDS).Results(iResults).nComponents     = 3;
+        end
     end
     
     % ===== CREATE NEW TIMEFREQ ENTRY =====
@@ -1596,8 +1692,17 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
             GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality = Modality{1};
             % If the good/bad channels for the dataset are not defined yet
             if isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
-                % Set all the channels as good by default
-                GlobalData.DataSet(iDS).Measures.ChannelFlag = ones(length(GlobalData.DataSet(iDS).Channel), 1);
+                % PSD: Remove bad channels defined in parent data file
+                if strcmpi(Timefreq.Method, 'psd') && ~isempty(Timefreq.DataFile) && strcmpi(file_gettype(Timefreq.DataFile), 'data')
+                    ParentMat = in_bst_data(Timefreq.DataFile, 'ChannelFlag');
+                    if ~isempty(ParentMat) && ~isempty(ParentMat.ChannelFlag)
+                        GlobalData.DataSet(iDS).Measures.ChannelFlag = ParentMat.ChannelFlag;
+                    end
+                end
+                % Otherwise: Set all the channels as good by default
+                if isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
+                    GlobalData.DataSet(iDS).Measures.ChannelFlag = ones(length(GlobalData.DataSet(iDS).Channel), 1);
+                end
                 % Set all the channel in the file as good, and the other channels from the same modality as bad
                 iChanMod = good_channel(GlobalData.DataSet(iDS).Channel, [], Modality{1});
                 iBadChan = setdiff(iChanMod, iChannels);
@@ -2672,7 +2777,14 @@ function isOk = CheckTimeWindows()
     GlobalData.UserTimeWindow.NumberOfSamples = round((GlobalData.UserTimeWindow.Time(2)-GlobalData.UserTimeWindow.Time(1)) / GlobalData.UserTimeWindow.SamplingRate) + 1;
     % Try to reuse the same current time
     if isempty(GlobalData.UserTimeWindow.CurrentTime)
-        GlobalData.UserTimeWindow.CurrentTime = GlobalData.UserTimeWindow.Time(1);
+        % Set time at t=0s if there is a baseline
+        if (GlobalData.UserTimeWindow.Time(1) < 0) && (GlobalData.UserTimeWindow.Time(2) > 0)
+            % Find the closest time sample to zero
+            GlobalData.UserTimeWindow.CurrentTime = GlobalData.UserTimeWindow.Time(1) - round(GlobalData.UserTimeWindow.Time(1) ./ GlobalData.UserTimeWindow.SamplingRate) .* GlobalData.UserTimeWindow.SamplingRate;
+        % Otherwise use the first time point available
+        else
+            GlobalData.UserTimeWindow.CurrentTime = GlobalData.UserTimeWindow.Time(1);
+        end
     end
     panel_time('SetCurrentTime', GlobalData.UserTimeWindow.CurrentTime);
 
@@ -2839,6 +2951,10 @@ function isCancel = UnloadAll(varargin)
     if isForced && ~KeepMri
         GlobalData.Mri = repmat(db_template('LoadedMri'), 0);
     end
+    % Forced unload Fibers
+    if isForced
+        GlobalData.Fibers = repmat(db_template('LoadedFibers'), 0);
+    end
     % Forced unload surfaces
     if isForced && ~KeepSurface
         unloadedSurfaces = {GlobalData.Surface.FileName};
@@ -2936,6 +3052,8 @@ function isCancel = UnloadAll(varargin)
         if ~isempty(hFigHist)
             delete(hFigHist);
         end
+        % Close spike sorting figure
+        process_spikesorting_supervised('CloseFigure');
         % Restore default window manager
         if ~ismember(bst_get('Layout', 'WindowManager'), {'TileWindows', 'WeightWindows', 'FullArea', 'FullScreen', 'None'})
             bst_set('Layout', 'WindowManager', 'TileWindows');
@@ -2954,6 +3072,7 @@ function isCancel = UnloadAll(varargin)
         gui_hide('Display');
         gui_hide('Stat');
         gui_hide('iEEG');
+        gui_hide('Spikes');
     end
     if isNewProgress
         bst_progress('stop');

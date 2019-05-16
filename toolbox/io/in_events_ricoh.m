@@ -9,9 +9,9 @@ function events = in_events_ricoh(sFile, EventFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -27,10 +27,9 @@ function events = in_events_ricoh(sFile, EventFile)
 %
 % Authors: Francois Tadel, 2018
 
-
-% Read file info using Yokogawa functions
-header.events   = getRHdrEvent(EventFile);     % Get information about trigger events.
-% header.bookmark = getRkgwHdrBookmark(EventFile);  % Get information about bookmark.
+% Read file info using Ricoh functions
+header.events     = getRHdrEvent(EventFile);       % Get information about trigger events.
+header.annotation = getRHdrAnnotation(EventFile);  % Get information about annotations.
 
 % Initialize returned structure
 events = repmat(db_template('event'), 0);
@@ -54,33 +53,57 @@ if ~isempty(header.events)
             allSamples = allSamples - (iEpochs-1) .* sFile.header.acq.frame_length;
         end
         % Add event structure
-        events(iEvt).label   = uniqueNames{i};
-        events(iEvt).epochs  = iEpochs;
-        events(iEvt).samples = allSamples;
-        events(iEvt).times   = allSamples ./ sFile.prop.sfreq;
-        events(iEvt).reactTimes  = [];
-        events(iEvt).select      = 1;
+        events(iEvt).label      = uniqueNames{i};
+        events(iEvt).epochs     = iEpochs;
+        events(iEvt).times      = allSamples ./ sFile.prop.sfreq;
+        events(iEvt).reactTimes = [];
+        events(iEvt).select     = 1;
+        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
     end
 end
-% % Bookmarks
-% if ~isempty(header.bookmark)
-%     % All all the events types
-%     uniqueNames = unique({header.bookmark.label});
-%     % Create events structures: one per category of event
-%     for i = 1:length(uniqueNames)
-%         % Add a new event category
-%         iEvt = length(events) + 1;
-%         % Find all the occurrences of event #iEvt
-%         iMrk = find(strcmpi({header.bookmark.label}, uniqueNames{i}));
-%         % Add event structure
-%         events(iEvt).label   = uniqueNames{i};
-%         events(iEvt).epochs  = ones(1, length(iMrk));
-%         events(iEvt).samples = header.bookmark(iMrk).sample_no;
-%         events(iEvt).times   = events(i).samples ./ sFile.prop.sfreq;
-%         events(iEvt).reactTimes  = [];
-%         events(iEvt).select      = 1;
-%     end
-% end
+% Annotations
+if ~isempty(header.annotation)
+    % Get annotation label
+    annotLabel = cell(1,length(header.annotation));
+    for i = 1:length(header.annotation)
+        if ~isempty(strtrim(header.annotation(i).comment))
+            annotLabel{i} = strtrim(header.annotation(i).comment);
+            annotLabel{i}(annotLabel{i} == 0) = [];
+        elseif ~isempty(header.annotation(i).label) && isnumeric(header.annotation(i).label)
+            annotLabel{i} = ['annot_', num2str(header.annotation(i).label)];
+        else
+            annotLabel{i} = 'Unknown';
+        end
+    end
+        
+    % All all the events types
+    uniqueNames = unique(annotLabel);
+    % Create events structures: one per category of event
+    for i = 1:length(uniqueNames)
+        % Add a new event category
+        iEvt = length(events) + 1;
+        % Find all the occurrences of event #iEvt
+        iMrk = find(strcmpi(annotLabel, uniqueNames{i}));
+        % Get all samples
+        allSamples = [header.annotation(iMrk).sample_no];
+        % Get the epoch numbers (only ones for continuous and averaged files)
+        if (sFile.header.acq.acq_type == 1) || (sFile.header.acq.acq_type == 2) 
+            iEpochs = ones(1, length(iMrk));
+        else
+            iEpochs = floor(allSamples / sFile.header.acq.frame_length) + 1;
+            allSamples = allSamples - (iEpochs-1) .* sFile.header.acq.frame_length;
+        end
+        % Add event structure
+        events(iEvt).label      = uniqueNames{i};
+        events(iEvt).epochs     = iEpochs;
+        events(iEvt).times      = allSamples ./ sFile.prop.sfreq;
+        events(iEvt).reactTimes = [];
+        events(iEvt).select     = 1;
+        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+    end
+end
 
 
 

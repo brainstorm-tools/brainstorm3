@@ -5,9 +5,9 @@ function nScoutProj = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -61,6 +61,17 @@ for iAtlas = 1:length(sAtlas)
         vMap(sScout.Vertices) = 1;
         % Project to destination surface
         vMapProj = full(Wmat * vMap);
+        
+%         % If the number of vertices does not decrease: force the selection of the closest vertex to each input vertex
+%         if (ratio > 0.9)
+%             for iVert = 1:length(sScout.Vertices)
+%                 % Get the closest projected vertex for iVert
+%                 [tmp, iVertClosest] = max(Wmat(:, sScout.Vertices(iVert)));
+%                 % Force the selection by setting the interpolated value higher than 1
+%                 vMapProj(iVertClosest) = 2;
+%             end
+%         end
+        
         % Consider the projected vertex maps as a probability of being part of the projected scout
         % Sort the projected values and keep the highest ones, up to desired number of vertices
         iVertPossible = find(vMapProj > 0);
@@ -68,6 +79,7 @@ for iAtlas = 1:length(sAtlas)
         % Keep the highest values
         nVertices = round(ratio * length(sScout.Vertices));
         iVertices = iVertPossible(I(1:min(nVertices,length(I))));
+        
         % Nothing found...
         if isempty(iVertices)
             continue;

@@ -3,9 +3,9 @@ function isOk = bst_spm_init(isInteractive, SpmFunction)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,11 +21,10 @@ function isOk = bst_spm_init(isInteractive, SpmFunction)
 %
 % Authors: Francois Tadel, 2017
 
-% Deployed: does not work
+% Deployed: Code already included in the compiled version
 if exist('isdeployed', 'builtin') && isdeployed
-    error(['SPM functions cannot be called from the compiled version of Brainstorm.' 10 ...
-           'We would need to compile Brainstorm and SPM together. Doable but complicated.' 10 ...
-           'Please post a message on the forum if you are interested in contributing.']);
+    isOk = 1;
+    return;
 end
 % Default behavior
 if (nargin < 1) || isempty(isInteractive)
@@ -55,7 +54,7 @@ if ~exist('spm.m', 'file')
     elseif isInteractive
         % Warning message
         if ~java_dialog('confirm', [...
-            'This process require the SPM toolbox to be installed on your computer.', 10, ...
+            'This process requires the SPM toolbox to be installed on your computer.', 10, ...
             'Download the toolbox at: http://www.fil.ion.ucl.ac.uk/spm/software/download' 10 10 ...
             'Is SPM already installed on your computer?'])
             bst_error('SPM was not set up properly.', 'SPM setup', 0);
@@ -65,7 +64,7 @@ if ~exist('spm.m', 'file')
         isStop = 0;
         while ~isStop
             % Open 'Select directory' dialog
-            SpmDir = uigetdir(SpmDir, 'Select SPM directory');
+            SpmDir = bst_uigetdir(SpmDir, 'Select SPM directory');
             % Exit if not set
             if isempty(SpmDir) || ~ischar(SpmDir)
                 SpmDir = [];
@@ -92,6 +91,10 @@ if ~exist('spm.m', 'file')
         error(['Please download SPM: http://www.fil.ion.ucl.ac.uk/spm/software/download' 10 ...
                'Then add the installation path in Brainstorm (File > Edit preferences).']);
     end
+% If spm.m is available but SpmDir is not defined: set it automatically
+elseif isempty(SpmDir) || ~file_exist(SpmDir)
+    SpmDir = bst_fileparts(which('spm'));
+    bst_set('SpmDir', SpmDir);
 end
 isOk = 1;
 
@@ -100,6 +103,10 @@ if ~isempty(SpmFunction) && ~exist(SpmFunction, 'file')
     switch (SpmFunction)
         case 'ft_read_headshape'
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'fileio'));
+            addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'utilities'));
+        case 'ft_specest_mtmconvol'
+            addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'specest'));
+            addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'preproc'));
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'utilities'));
     end
 end

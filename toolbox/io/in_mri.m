@@ -29,9 +29,9 @@ function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -116,7 +116,11 @@ switch (FileFormat)
             [MRI, vox2ras] = in_mri_nii(MriFile, 0, 1); % Function automatically detects right byte order
         end
     case 'MGH'
-        MRI = in_mri_mgh(MriFile);
+        if isInteractive
+            [MRI, vox2ras] = in_mri_mgh(MriFile, [], []);
+        else
+            [MRI, vox2ras] = in_mri_mgh(MriFile, 1, 0);
+        end
     case 'KIT'
         error('Not supported yet');
     case 'Neuromag'
@@ -133,10 +137,19 @@ switch (FileFormat)
     otherwise
         error(['Unknown format: ' FileFormat]);
 end
-
 % If nothing was loaded
 if isempty(MRI)
     return
+end
+
+% If a transformation was defined
+if ~isempty(vox2ras)
+    % Prepare the history of transformations
+    if ~isfield(MRI, 'InitTransf') || isempty(MRI.InitTransf)
+        MRI.InitTransf = cell(0,2);
+    end
+    % Save this transformation in the MRI
+    MRI.InitTransf(end+1,[1 2]) = {'vox2ras', vox2ras};
 end
 
 

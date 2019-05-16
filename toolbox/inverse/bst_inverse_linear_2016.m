@@ -111,9 +111,9 @@ function [Results, OPTIONS] = bst_inverse_linear_2016(HeadModel,OPTIONS)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -163,7 +163,7 @@ numL = size(HeadModel,2);
 if numL > 1,
     error('BST_INVERSE > Mosher does not understand why we are passing multiple headmodels')
     % This is for supporting mixed head models:
-    % http://neuroimage.usc.edu/brainstorm/News#Mixed_head_models
+    % https://neuroimage.usc.edu/brainstorm/News#Mixed_head_models
     % @JCM: You need to add this support back in your function (see bst_wmne.m for an example).
 end
 

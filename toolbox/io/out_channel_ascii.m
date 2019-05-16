@@ -1,7 +1,7 @@
-function out_channel_ascii( BstFile, OutputFile, Format, isEEG, isHeadshape, isHeader, Factor)
+function out_channel_ascii( BstFile, OutputFile, Format, isEEG, isHeadshape, isHeader, Factor, Transf)
 % OUT_CHANNEL_CARTOOL: Exports a Brainstorm channel file in an ascii file.
 %
-% USAGE:  out_channel_ascii( BstFile, OutputFile, Format={X,Y,Z}, isEEG=1, isHeadshape=1, isHeader=0, Factor=1);
+% USAGE:  out_channel_ascii( BstFile, OutputFile, Format={X,Y,Z}, isEEG=1, isHeadshape=1, isHeader=0, Factor=1, Transf=[]);
 %
 % INPUT: 
 %     - BstFile    : full path to Brainstorm file to export
@@ -15,12 +15,13 @@ function out_channel_ascii( BstFile, OutputFile, Format, isEEG, isHeadshape, isH
 %     - isHeadshape : Writes the coordinates of the headshape points
 %     - isHeader    : Writes header (number of EEG points)
 %     - Factor      : Factor to convert the positions values in meters.
+%     - Transf      : 4x4 transformation matrix to apply to the 3D positions before saving
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -53,6 +54,9 @@ end
 if (nargin < 7) || isempty(Factor)
     Factor = .01;
 end
+if (nargin < 8) || isempty(Transf)
+    Transf = [];
+end
 
 % Load brainstorm channel file
 BstMat = in_bst_channel(BstFile);
@@ -61,16 +65,25 @@ Loc    = zeros(3,0);
 Label  = {};
 if isEEG && isfield(BstMat, 'Channel') && ~isempty(BstMat.Channel)
     for i = 1:length(BstMat.Channel)
-        if ~isempty(BstMat.Channel(i).Loc) && ~all(BstMat.Channel(i).Loc == 0)
-            Loc(:,end+1) = BstMat.Channel(i).Loc(:,1) ./ Factor;
+        if ~isempty(BstMat.Channel(i).Loc) && ~all(BstMat.Channel(i).Loc(:) == 0)
+            Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
             Label{end+1} = strrep(BstMat.Channel(i).Name, ' ', '_');
         end
     end
 end
 if isHeadshape && isfield(BstMat, 'HeadPoints') && ~isempty(BstMat.HeadPoints) && ~isempty(BstMat.HeadPoints.Loc)
-    Loc   = [Loc, BstMat.HeadPoints.Loc ./ Factor];
+    Loc   = [Loc, BstMat.HeadPoints.Loc];
     Label = cat(2, Label, BstMat.HeadPoints.Label);
 end
+
+% Apply transformation
+if ~isempty(Transf)
+    R = Transf(1:3,1:3);
+    T = Transf(1:3,4);
+    Loc = R * Loc + T * ones(1, size(Loc,2));
+end
+% Apply factor
+Loc = Loc ./ Factor;
 
 % Open output file
 fid = fopen(OutputFile, 'w');
@@ -102,7 +115,7 @@ for i = 1:nLoc
         fwrite(fid, str);
         % Add separator (space)
         if (iF ~= length(Format))
-            fwrite(fid, ' ');
+            fwrite(fid, sprintf('\t'));
         % Terminate line
         else
             fwrite(fid, 10);

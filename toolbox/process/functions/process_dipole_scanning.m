@@ -3,9 +3,9 @@ function varargout = process_dipole_scanning( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -32,7 +32,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 327;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TutDipScan';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutDipScan';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'results'};
     sProcess.OutputTypes = {'dipoles'};
@@ -97,6 +97,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         DataMatP.Time = sResultP.Time;
         DataMatP.F = [];
         DataMatP.Comment = sResultP.Comment;
+        DataMatP.nAvg = sResultP.nAvg;
     else
         DataMatP = in_bst_data(sResultP.DataFile);
     end
@@ -115,7 +116,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % But we need to calculate the possible Factor here for any other
     % manipulation of the data, as needed below.
     Factor = sqrt(DataMatP.nAvg / sResultP.nAvg); % is unity if both equal.
-    if Factor ~= 1,
+    if Factor ~= 1
         fprintf('BST Dipole Scanning> Need additional factor of %.2f (sqrt of %.1f) to account for average.\n',Factor, Factor^2);
     end
     

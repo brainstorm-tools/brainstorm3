@@ -5,12 +5,13 @@ function varargout = panel_record(varargin)
 %                       panel_record('UpdatePanel')
 %                       panel_record('CurrentFigureChanged_Callback')
 %                       panel_record('CopyRawToDatabase', DataFiles)
+%                       panel_record('SetAcquisitionDate', DataFile, strDate)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -24,7 +25,7 @@ function varargout = panel_record(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2019
 
 eval(macro_method);
 end
@@ -149,6 +150,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Delete group', IconLoader.ICON_EVT_TYPE_DEL, [], @(h,ev)bst_call(@EventTypeDel));
         gui_component('MenuItem', jMenu, [], 'Rename group', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EventTypeRename));
         gui_component('MenuItem', jMenu, [], 'Set color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EventTypeSetColor));
+        jItem = gui_component('MenuItem', jMenu, [], 'Show/hide group', IconLoader.ICON_DISPLAY, [], @(h,ev)bst_call(@EventTypeToggleVisible));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
         gui_component('MenuItem', jMenu, [], 'Mark group as bad', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@EventTypeSetBad));
         jMenu.addSeparator();
         jMenuSort = gui_component('Menu', jMenu, [], 'Sort groups', IconLoader.ICON_EVT_TYPE, [], []);
@@ -165,12 +168,13 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Group by time', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_grouptime'));
         gui_component('MenuItem', jMenu, [], 'Add time offset', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)CallProcessOnRaw('process_evt_timeoffset'));
         jMenu.addSeparator();
-        gui_component('MenuItem', jMenu, [], 'Edit keyboard shortcuts', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)gui_show('panel_raw_shortcuts', 'JavaWindow', 'Event keyboard shortcuts', [], 1, 0, 0));
+        gui_component('MenuItem', jMenu, [], 'Edit keyboard shortcuts', IconLoader.ICON_KEYBOARD, [], @(h,ev)gui_show('panel_raw_shortcuts', 'JavaWindow', 'Event keyboard shortcuts', [], 1, 0, 0));
         jMenu.addSeparator();
         jItem = gui_component('MenuItem', jMenu, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)bst_call(@ToggleEvent));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, 0));
+        jItem = gui_component('MenuItem', jMenu, [], '<HTML>Edit notes&nbsp;&nbsp;&nbsp;<FONT color="#A0A0A"><I>Double-click</I></FONT>', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EventEditNotes));
         jItem = gui_component('MenuItem', jMenu, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@RejectTimeSegment));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_MASK));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
         jMenu.addSeparator();
         jItem = gui_component('MenuItem', jMenu, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)bst_call(@JumpToEvent, 'leftarrow'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, KeyEvent.SHIFT_MASK));
@@ -319,6 +323,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         switch (ev.getKeyCode())
             case {ev.VK_DELETE, ev.VK_BACK_SPACE}
                 EventTypeDel();
+%             case ev.VK_H
+%                 EventTypeToggleVisible();
             case {ev.VK_LEFT, ev.VK_PAGE_DOWN}
                 JumpToEvent('leftarrow');
             case {ev.VK_RIGHT, ev.VK_PAGE_UP}
@@ -356,8 +362,13 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     %% ===== LIST OCCUR: CLICK CALLBACK =====
     function ListOccur_ClickCallback(h, ev)
         if ev.getSource().isEnabled()
-            % Jump to the selected event
-            JumpToEvent();
+            % Double-click: edit notes
+            if (ev.getClickCount() == 2)
+                EventEditNotes();
+            % Single clikc: Jump to the selected event
+            else
+                JumpToEvent();
+            end
         end
     end
 end
@@ -380,8 +391,6 @@ function TSDisplayMode_Callback(hObject, ev)
     if isempty(hFig)
         return;
     end
-    % Keep default mode for future use
-    bst_set('TSDisplayMode', newMode);
     % Set display mode
     SetDisplayMode(hFig, newMode);
 end
@@ -397,6 +406,8 @@ function SetDisplayMode(hFig, newMode)
     setappdata(hFig, 'TsInfo', TsInfo);
     % Re-plot figure
     bst_figures('ReloadFigures', hFig, 0);
+    % Keep default mode for future use
+    bst_set('TSDisplayMode', newMode);
     % Hide progress bar
     bst_progress('stop');
 end
@@ -487,8 +498,10 @@ function RawKeyCallback(keyEvent) %#ok<DEFNU>
             case {'rightarrow', 'uparrow',   'epoch+'},  iStartNew = iStart + round(.9 .* smpLength);     
             case {'pageup',     'epoch++'}, iStartNew = iStart + 10 * smpLength;
             case {'pagedown',   'epoch--'}, iStartNew = iStart - 10 * smpLength;
-            case 'halfpage-',  iStartNew = iStart - round(.5 .* smpLength);
-            case 'halfpage+',  iStartNew = iStart + round(.5 .* smpLength);
+            case 'halfpage-',   iStartNew = iStart - round(.5 .* smpLength);
+            case 'halfpage+',   iStartNew = iStart + round(.5 .* smpLength);
+            case 'nooverlap-',  iStartNew = iStart - smpLength;
+            case 'nooverlap+',  iStartNew = iStart + smpLength;
         end
         iEpoch = GlobalData.FullTimeWindow.CurrentEpoch;
         iStartNew = bst_saturate(iStartNew, [1, length(GlobalData.FullTimeWindow.Epochs(iEpoch).Time)]);
@@ -682,23 +695,33 @@ function UpdateDisplayOptions(hFig)
             DispName = 'All';
         % Average reference
         elseif strcmpi(TsInfo.MontageName, 'Average reference')
-%             % Get montage
-%             [sTmp, iTmp, isLocal] = panel_montage('GetMontageAvgRef', hFig, [], 1);
-%             % Change the title depending on the type of average reference
-%             if isLocal
-%                 DispName = '<HTML><B>Local</B> Avg Ref';
-%             else
-%                 DispName = 'Avg Ref';
-%             end
-            % Always global average reference
             DispName = 'Avg Ref';
-        % Temporary montages:  Remove the [tmp] tag or display
-        elseif ~isempty(strfind(TsInfo.MontageName, '[tmp]'))
-            DispName = ['<HTML><I>' strrep(TsInfo.MontageName, '[tmp]', '') '</I>'];
-        % Regular montage
+        elseif strcmpi(TsInfo.MontageName, 'Average reference (L -> R)')
+            DispName = 'Avg Ref LR';
+        % Scalp current density
+        elseif strcmpi(TsInfo.MontageName, 'Scalp current density')
+            DispName = 'SCD';
+        elseif strcmpi(TsInfo.MontageName, 'Scalp current density (L -> R)')
+            DispName = 'SCD LR';
+        % Head distance
+        elseif strcmpi(TsInfo.MontageName, 'Head distance')
+            DispName = 'Head';
+        % Regular montages
         else
             DispName = TsInfo.MontageName;
+            % Local average ref: simplify name
+            DispName = strrep(DispName, '(local average ref)', '(local avg)');
+            % Remove subject name
+            iColon = strfind(DispName, ': ');
+            if ~isempty(iColon) && (iColon + 2 < length(DispName))
+                DispName = DispName(iColon(1)+2:end);
+            end
+            % Temporary montages:  Remove the [tmp] tag or display
+            if ~isempty(strfind(TsInfo.MontageName, '[tmp]'))
+                DispName = ['<HTML><I>' strrep(DispName, '[tmp]', '') '</I>'];
+            end
         end
+        % Set label of the drop-down menu
         ctrl.jMenuMontage.setText(DispName);
     end
     % Update display mode
@@ -789,19 +812,17 @@ function InitializePanel() %#ok<DEFNU>
             if ~isempty(sFile.epochs)
                 for iEpoch = 1:length(sFile.epochs)
                     % Compute full time vector
-                    NumberOfSamples = sFile.epochs(iEpoch).samples(2) - sFile.epochs(iEpoch).samples(1) + 1;
-                    FullTime = linspace(sFile.epochs(iEpoch).times(1), sFile.epochs(iEpoch).times(2), NumberOfSamples);
+                    Samples = round([sFile.epochs(iEpoch).times(1), sFile.epochs(iEpoch).times(2)] .* sFile.prop.sfreq);
                     % Save this values
-                    GlobalData.FullTimeWindow.Epochs(iEpoch).Time            = FullTime;
-                    GlobalData.FullTimeWindow.Epochs(iEpoch).NumberOfSamples = NumberOfSamples;
+                    GlobalData.FullTimeWindow.Epochs(iEpoch).Time            = (Samples(1):Samples(2)) ./ sFile.prop.sfreq;
+                    GlobalData.FullTimeWindow.Epochs(iEpoch).NumberOfSamples = Samples(2) - Samples(1) + 1;
                 end
             else
                 % Compute full time vector
-                NumberOfSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
-                FullTime = linspace(sFile.prop.times(1), sFile.prop.times(2), NumberOfSamples);
+                Samples = round([sFile.prop.times(1), sFile.prop.times(2)] .* sFile.prop.sfreq);
                 % Save this values
-                GlobalData.FullTimeWindow.Epochs(1).Time            = FullTime;
-                GlobalData.FullTimeWindow.Epochs(1).NumberOfSamples = NumberOfSamples;
+                GlobalData.FullTimeWindow.Epochs(1).Time            = (Samples(1):Samples(2)) ./ sFile.prop.sfreq;
+                GlobalData.FullTimeWindow.Epochs(1).NumberOfSamples = Samples(2) - Samples(1) + 1;
             end
             break;
         end
@@ -925,7 +946,7 @@ function UpdatePanel(hFig)
         ctrl.jButtonCtf.setVisible(0);
     end
     % Check if data is EEG
-    isEeg = ~isempty(iFig) && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'EEG','SEEG','ECOG'});
+    isEeg = ~isempty(iFig) && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'});
     % Show/Hide the entire "Display" menu
     ctrl.jButtonBaseline.setVisible(isRaw);
     % Enable/disable Artifacts menus
@@ -1164,7 +1185,7 @@ end
 
 
 %% ===== GET TIME SELECTION =====
-function TimeSel = GetTimeSelection()
+function [TimeSel, hFig] = GetTimeSelection()
     TimeSel = [];
     % Get raw time series figure
     [hFig,iFig,iDS] = bst_figures('GetCurrentFigure', '2D');
@@ -1197,7 +1218,10 @@ function UpdateEventsList()
     listModel = javax.swing.DefaultListModel();
     for iEvent = 1:length(events)
         newItem = BstListItem('','',sprintf(' %s  (x%d)', events(iEvent).label, size(events(iEvent).times, 2)));
-        if IsEventBad(events(iEvent).label)
+        if isequal(events(iEvent).select, 0)
+            newItem.setName(['(' char(newItem.getName())]);
+            newItem.setColor(java.awt.Color(0.7,0.7,0.7));
+        elseif IsEventBad(events(iEvent).label)
             newItem.setColor(java.awt.Color(1,0,0));
         elseif isfield(events(iEvent), 'color') && ~isempty(events(iEvent).color)
             newItem.setColor(java.awt.Color(events(iEvent).color(1), events(iEvent).color(2), events(iEvent).color(3)));
@@ -1238,11 +1262,16 @@ function UpdateEventsOccur()
     for i = 1:size(evtTimes,2)
         % Simple events
         if (size(evtTimes, 1) == 1)
-            listModel.addElement(sprintf(' %1.3f', evtTimes(i)));
+            strOcc = sprintf(' %1.3f', evtTimes(i));
         % Extended events
         else
-            listModel.addElement(sprintf(' %1.3f-%1.3f', evtTimes(1,i), evtTimes(2,i)));
+            strOcc = sprintf(' %1.3f-%1.3f', evtTimes(1,i), evtTimes(2,i));
         end
+        % Add list of channels
+        if (i <= length(event.channels)) && ~isempty(event.channels{i})
+            strOcc = [strOcc, '  ' sprintf(' %s', event.channels{i}{:})];
+        end
+        listModel.addElement(strOcc);
     end
     % Set this list
     ctrl.jListEvtOccur.setModel(listModel);
@@ -1423,9 +1452,10 @@ function events = GetEventsInTimeWindow(hFig) %#ok<DEFNU>
             iOccur = find((eTime(2,:) > Time(1)) & (eTime(1,:) < Time(2)));
         end
         % Else keep only the occurrences in time window
-        events(iEvt).times      = events(iEvt).times(:,iOccur);
-        events(iEvt).samples    = events(iEvt).samples(:,iOccur);
-        events(iEvt).epochs     = events(iEvt).epochs(iOccur);
+        events(iEvt).times    = events(iEvt).times(:,iOccur);
+        events(iEvt).epochs   = events(iEvt).epochs(iOccur);
+        events(iEvt).channels = events(iEvt).channels(iOccur);
+        events(iEvt).notes    = events(iEvt).notes(iOccur);
         if ~isempty(events(iEvt).reactTimes)
             events(iEvt).reactTimes = events(iEvt).reactTimes(iOccur);
         end
@@ -1545,9 +1575,10 @@ function [events, iEvent] = GetEvents(target, isIgnoreEpoch, hFig)
     if isRaw && ~isIgnoreEpoch && isfield(GlobalData.DataSet(iDS).Measures.sFile, 'epochs') && (length(GlobalData.DataSet(iDS).Measures.sFile.epochs) > 1)
         for i = 1:length(events)
             iOkEpochs = (events(i).epochs == GlobalData.FullTimeWindow.CurrentEpoch);
-            events(i).times      = events(i).times(:,iOkEpochs);
-            events(i).samples    = events(i).samples(:,iOkEpochs);
-            events(i).epochs     = events(i).epochs(iOkEpochs);
+            events(i).times    = events(i).times(:,iOkEpochs);
+            events(i).epochs   = events(i).epochs(iOkEpochs);
+            events(i).channels = events(i).channels(iOkEpochs);
+            events(i).notes    = events(i).notes(iOkEpochs);
             if ~isempty(events(i).reactTimes)
                 events(i).reactTimes = events(i).reactTimes(iOkEpochs);
             end
@@ -1739,11 +1770,11 @@ function EventTypeRename()
     end
     % Ask new label to the user
     newLabel = java_dialog('input', 'Enter new label:', 'Rename event', [], sEvent.label);
-    if isempty(newLabel)
+    if isempty(newLabel) || isequal(newLabel, sEvent.label)
         return
     end
-    % Check if event label already exists
-    if ~isempty(GetEvents(newLabel))
+    % Check if event label already exists (allow changing case)
+    if ~isempty(GetEvents(newLabel)) && ~strcmpi(newLabel, sEvent.label)
         bst_error('This event label already exists.', 'Create event', 0);
         return
     end
@@ -1768,7 +1799,8 @@ function EventTypeSetColor()
     % Get event (ignore current epoch)
     sEvent = GetEvents(iEvent, 1);
     % Ask new color to the user
-    newColor = uisetcolor(sEvent.color, 'Select event color');
+    % newColor = uisetcolor(sEvent.color, 'Select event color');
+    newColor = java_dialog('color');
     % If no color was selected: exit
     if (length(newColor) ~= 3) || all(sEvent.color == newColor)
         return
@@ -1781,6 +1813,36 @@ function EventTypeSetColor()
     UpdateEventsList();
     % Update figures
     %ReplotFigures();
+    ReplotEvents();
+end
+
+
+%% ===== EVENT TYPE: TOGGLE VISIBLE =====
+function EventTypeToggleVisible()
+    % Get selected events
+    iSelEvents = GetSelectedEvents();
+    if isempty(iSelEvents)
+        return;
+    end
+    % Loop on selected events
+    for i = 1:length(iSelEvents)
+        iEvent = iSelEvents(i);
+        % Get event (ignore current epoch)
+        sEvent = GetEvents(iEvent, 1);
+        % Toogle selected
+        if isempty(sEvent.select)
+            sEvent.select = 0;
+        else
+            sEvent.select = ~sEvent.select;
+        end
+        % Update dataset
+        SetEvents(sEvent, iEvent);
+    end
+    % Update events list
+    UpdateEventsList();
+    % Select again events in list
+    SetSelectedEvent(iSelEvents);
+    % Update figures
     ReplotEvents();
 end
 
@@ -1850,21 +1912,23 @@ function EventTypesMerge()
     
     % Inialize new event group
     newEvent = events(iEvents(1));
-    newEvent.label      = newLabel;
-    newEvent.times      = [events(iEvents).times];
-    newEvent.samples    = [events(iEvents).samples];
-    newEvent.epochs     = [events(iEvents).epochs];
-    % Reaction time: only if all the events have reaction time set
+    newEvent.label    = newLabel;
+    newEvent.times    = [events(iEvents).times];
+    newEvent.epochs   = [events(iEvents).epochs];
+    newEvent.channels = [events(iEvents).channels];
+    newEvent.notes    = [events(iEvents).notes];
+    % Reaction time, notes, channels: only if all the events have them
     if all(~cellfun(@isempty, {events(iEvents).reactTimes}))
         newEvent.reactTimes = [events(iEvents).reactTimes];
     else
         newEvent.reactTimes = [];
     end
     % Sort by samples indices, and remove redundant values
-    [tmp__, iSort] = unique(newEvent.samples(1,:));
-    newEvent.samples = newEvent.samples(:,iSort);
-    newEvent.times   = newEvent.times(:,iSort);
-    newEvent.epochs  = newEvent.epochs(iSort);
+    [tmp__, iSort] = unique(bst_round(newEvent.times(1,:), 9));
+    newEvent.times    = newEvent.times(:,iSort);
+    newEvent.epochs   = newEvent.epochs(iSort);
+    newEvent.channels = newEvent.channels(iSort);
+    newEvent.notes    = newEvent.notes(iSort);
     if ~isempty(newEvent.reactTimes)
         newEvent.reactTimes = newEvent.reactTimes(iSort);
     end
@@ -1943,13 +2007,10 @@ function EventConvertToSimple()
         switch (res)
             case 'Start'
                 sEvents(i).times = sEvents(i).times(1,:);
-                sEvents(i).samples = sEvents(i).samples(1,:);
             case 'Middle'
                 sEvents(i).times = mean(sEvents(i).times, 1);
-                sEvents(i).samples = mean(sEvents(i).samples, 1);
             case 'End'
                 sEvents(i).times = sEvents(i).times(2,:);
-                sEvents(i).samples = sEvents(i).samples(2,:);
         end
         % Update event
         SetEvents(sEvents(i), iEvents(i));
@@ -1991,14 +2052,13 @@ function EventConvertToExtended()
     sfreq = 1 / GlobalData.DataSet(iDS).Measures.SamplingRate;
     % Get time window in seconds
     evtWindow = [-abs(str2num(res{1})), str2num(res{2})] ./ 1000;
-    % Convert to samples
-    evtWindow = round(evtWindow * sfreq);
+    % Align to samples
+    evtWindow = round(evtWindow .* sfreq) ./ sfreq;
     
     % Apply modificiation to each event type
     for i = 1:length(sEvents)
-        sEvents(i).samples = max(0, [sEvents(i).samples(1,:) + evtWindow(1); ...
-                                     sEvents(i).samples(1,:) + evtWindow(2)]);
-        sEvents(i).times   = sEvents(i).samples ./ sfreq;
+        sEvents(i).times = [max(GlobalData.DataSet(iDS).Measures.Time(1), sEvents(i).times(1,:) + evtWindow(1)); ...
+                            min(GlobalData.DataSet(iDS).Measures.Time(2), sEvents(i).times(1,:) + evtWindow(2))];
         % Update event
         SetEvents(sEvents(i), iEvents(i));
     end
@@ -2023,15 +2083,15 @@ function EventTypesSort(SortMode)
         case 'name'
             [tmp,iOrder] = sort({events.label});
         case 'time'
-            firstSample = zeros(1,length(events));
+            firstTime = zeros(1,length(events));
             for iEvt = 1:length(events)
-                if isempty(events(iEvt).samples)
-                    firstSample(iEvt) = Inf;
+                if isempty(events(iEvt).times)
+                    firstTime(iEvt) = Inf;
                 else
-                    firstSample(iEvt) = events(iEvt).samples(1);
+                    firstTime(iEvt) = events(iEvt).times(1);
                 end
             end
-            [tmp,iOrder] = sort(firstSample);
+            [tmp,iOrder] = sort(firstTime);
     end
     % Apply sorting 
     events = events(iOrder);
@@ -2044,9 +2104,13 @@ end
 
 
 %% ===== EVENT OCCUR: ADD =====
-function EventOccurAdd(iEvent)
+% USAGE:  EventOccurAdd(iEvent=[selected], channelNames=[])
+function EventOccurAdd(iEvent, channelNames)
     global GlobalData;
     % Parse inputs
+    if (nargin < 2) || isempty(channelNames) || ~iscell(channelNames)
+        channelNames = [];
+    end
     if (nargin < 1) || isempty(iEvent)
         % Get selected events
         iEvent = GetSelectedEvents();
@@ -2066,7 +2130,14 @@ function EventOccurAdd(iEvent)
         iEpoch = 1;
     end
     % Get time selection
-    TimeSel = GetTimeSelection();
+    [TimeSel, hFig] = GetTimeSelection();
+    % Get selected montage
+    TsInfo = getappdata(hFig, 'TsInfo');
+    if ~isempty(TsInfo.MontageName)
+        sMontage = panel_montage('GetMontage', TsInfo.MontageName, hFig);
+    else
+        sMontage = [];
+    end
     
     % Detect if it is a simple or extended event
     if ~isempty(sEvent.times)
@@ -2099,24 +2170,52 @@ function EventOccurAdd(iEvent)
         % Check there is not already an event at this time
         newTime = TimeSel;
         isEpochOk = (sEvent.epochs == iEpoch);
-        if ~isempty(sEvent.samples) && (any((sEvent.times(1,:) <= newTime(1)) & (sEvent.times(2,:) >= newTime(2)) & isEpochOk) || ...
-                                        any((sEvent.times(1,:) >= newTime(1)) & (sEvent.times(2,:) <= newTime(2)) & isEpochOk))
+        if ~isempty(sEvent.times) && (any((sEvent.times(1,:) <= newTime(1)) & (sEvent.times(2,:) >= newTime(2)) & isEpochOk) || ...
+                                      any((sEvent.times(1,:) >= newTime(1)) & (sEvent.times(2,:) <= newTime(2)) & isEpochOk))
             bst_error('Event is already marked.', 'Add event', 0);
             return
         end
+        % Reset time selection when plotting with lines/patches
+        if strcmpi(TsInfo.ShowEventsMode, 'line')
+            figure_timeseries('SetTimeSelectionLinked', hFig, []);
+        end
+    end
+    
+
+    % Channel names in the case of referencing montages
+    if ~isempty(sMontage)
+        chanMontage = {};
+        for i = 1:length(channelNames)
+            % If the channel is found in the channel file, add as is
+            if any(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, channelNames{i}))
+                chanMontage = [chanMontage, channelNames(i)];
+            % Else: Look for channel name in the labels of the montage
+            else
+                iDispName = find(strcmpi(sMontage.DispNames, channelNames{i}));
+                if ~isempty(iDispName)
+                    iChan = find(sMontage.Matrix(iDispName,:));
+                    chanMontage = [chanMontage, sMontage.ChanNames(iChan)];
+                else
+                    chanMontage = [chanMontage, channelNames{i}];
+                end
+            end
+        end
+        channelNames = unique(chanMontage);
     end
     
     % Add event: time
-    sEvent.epochs = [sEvent.epochs, iEpoch];
-    sEvent.times  = [sEvent.times, newTime'];
+    sEvent.epochs   = [sEvent.epochs, iEpoch];
+    sEvent.times    = [sEvent.times, newTime'];
+    sEvent.channels = [sEvent.channels, {channelNames(:)'}];
+    sEvent.notes    = [sEvent.notes, {[]}];
     % Sort based on the beginning of each event
     [tmp__, indSort] = sortrows([sEvent.epochs; sEvent.times(1,:)]');
-    sEvent.times = sEvent.times(:,indSort);
-    sEvent.epochs = sEvent.epochs(indSort);
-    % Convert times to samples
-    sEvent.samples = round(sEvent.times ./ GlobalData.DataSet(iDS).Measures.SamplingRate);
+    sEvent.times    = sEvent.times(:,indSort);
+    sEvent.epochs   = sEvent.epochs(indSort);
+    sEvent.channels = sEvent.channels(indSort);
+    sEvent.notes    = sEvent.notes(indSort);
     % Add event: reactTime (only if there are already reaction times)
-    if (length(sEvent.epochs) == 1) && ~isempty(sEvent.reactTimes)
+    if ~isempty(sEvent.reactTimes)
         sEvent.reactTimes = [sEvent.reactTimes, 0];
         sEvent.reactTimes = sEvent.reactTimes(indSort);
     end
@@ -2166,9 +2265,10 @@ function EventOccurDel(iEvent, iOccursEpoch)
     end
     
     % Remove event occurrences
-    sEvent.times(:,iOccurs)    = [];
-    sEvent.samples(:,iOccurs)    = [];
-    sEvent.epochs(iOccurs)     = [];
+    sEvent.times(:,iOccurs)  = [];
+    sEvent.epochs(iOccurs)   = [];
+    sEvent.channels(iOccurs) = [];
+    sEvent.notes(iOccurs)    = [];
     if ~isempty(sEvent.reactTimes)
         sEvent.reactTimes(iOccurs) = [];
     end
@@ -2185,6 +2285,42 @@ function EventOccurDel(iEvent, iOccursEpoch)
 end
 
 
+%% ===== EVENT OCCUR: EDIT NOTES =====
+function EventEditNotes()
+    % Get selected events
+    [iEvent, iOccur] = GetSelectedEvents();
+    if (length(iEvent) ~= 1) || isempty(iOccur)
+        return;
+    end
+    % Get event (ignore current epoch)
+    sEvent = GetEvents(iEvent, 1);
+    % Format event name
+    if (size(sEvent.times, 1) == 1)
+        strOcc = sprintf('"%s" (%1.3fs)', sEvent.label, sEvent.times(iOccur));
+    else
+        strOcc = sprintf('"%s" (%1.3f-%1.3fs)', sEvent.label, sEvent.times(1,iOccur), sEvent.times(2,iOccur));
+    end
+    % Ask new label to user
+    if ~isempty(sEvent.notes{iOccur})
+        prevNote = sEvent.notes{iOccur};
+    else
+        prevNote = '';
+    end
+    [newNote, isCancel] = java_dialog('input', ['Edit event ' strOcc ':'], 'Edit event notes', [], prevNote);
+    % If cancelled, or not not changed
+    if isCancel || isequal(prevNote, newNote)
+        return
+    end
+    newNote = strtrim(newNote);
+    % Update label
+    sEvent.notes{iOccur} = newNote;
+    % Update dataset
+    SetEvents(sEvent, iEvent);
+    % Update figures;
+    ReplotEvents();
+end
+
+
 %% ===== REJECT TIME SEGMENT =====
 function RejectTimeSegment()
     ToggleEvent('BAD');
@@ -2192,9 +2328,13 @@ end
 
 
 %% ===== TOGGLE EVENT AT CURRENT TIME =====
-% USAGE:  ToggleEvent(eventName)
+% USAGE:  ToggleEvent(eventName=[ask], channelNames=[])
 %         ToggleEvent()
-function ToggleEvent(eventName)
+function ToggleEvent(eventName, channelNames)
+    % Parse inputs
+    if (nargin < 2) || isempty(channelNames)
+        channelNames = [];
+    end
     % Get event at current time
     [iEvent, iOccur] = GetCurrentEvent();
     % Set current event if specified
@@ -2216,7 +2356,7 @@ function ToggleEvent(eventName)
         EventOccurDel(iEvent, iOccur);
     % Else: add an event
     else
-        EventOccurAdd(iEvent);
+        EventOccurAdd(iEvent, channelNames);
     end
 end
 
@@ -2268,11 +2408,12 @@ function ExportSelectedEvents()
     % Export a few occurrences of a given event type
     if (length(iEvt) == 1) && ~isempty(iOcc)
         sFileTmp.events = sFileTmp.events(iEvt);
-        sFileTmp.events.samples = sFileTmp.events.samples(:,iOcc);
-        sFileTmp.events.times   = sFileTmp.events.times(:,iOcc);
-        sFileTmp.events.epochs  = sFileTmp.events.epochs(:,iOcc);
+        sFileTmp.events.times    = sFileTmp.events.times(:,iOcc);
+        sFileTmp.events.epochs   = sFileTmp.events.epochs(:,iOcc);
+        sFileTmp.events.channels = sFileTmp.events.channels(iOcc);
+        sFileTmp.events.notes    = sFileTmp.events.notes(iOcc);
         if ~isempty(sFileTmp.events.reactTimes)
-            sFileTmp.events.reactTimes = sFileTmp.events.reactTimes(:,iOcc);
+            sFileTmp.events.reactTimes = sFileTmp.events.reactTimes(iOcc);
         end
     else
         sFileTmp.events = sFileTmp.events(iEvt);
@@ -2377,18 +2518,18 @@ function [badSeg, badEpochs, badTimes] = GetBadSegments(sFile) %#ok<DEFNU>
     % Loop on all events
     for iEvt = 1:length(events)
         % Consider only the non-empty events that have the "bad" string in them
-        if IsEventBad(events(iEvt).label) && ~isempty(events(iEvt).samples)
+        if IsEventBad(events(iEvt).label) && ~isempty(events(iEvt).times)
             % If extended event
-            if (size(events(iEvt).samples,1) == 2)
-                badSeg = [badSeg, events(iEvt).samples];
+            if (size(events(iEvt).times,1) == 2)
+                badTimes = [badTimes, events(iEvt).times];
             % Else: single event
             else
-                badSeg = [badSeg, repmat(events(iEvt).samples, 2, 1)];
+                badTimes = [badTimes, repmat(events(iEvt).times, 2, 1)];
             end
             badEpochs = [badEpochs, events(iEvt).epochs];
         end
     end
-    badTimes = badSeg ./ sFile.prop.sfreq;
+    badSeg = round(badTimes .* sFile.prop.sfreq);
 end
 
 
@@ -2651,14 +2792,14 @@ function CopyRawToDatabase(DataFiles) %#ok<DEFNU>
         MaxSize = ProcessOptions.MaxBlockSize;
         % Split in time blocks
         nChannels = length(ChannelMat.Channel);
-        nTime     = sFileOut.prop.samples(2) - sFileOut.prop.samples(1) + 1;
+        nTime     = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) .* sFileOut.prop.sfreq) + 1;
         BlockSize = max(floor(MaxSize / nChannels), 1);
         nBlocks   = ceil(nTime / BlockSize);
         % Loop on blocks
         for iBlock = 1:nBlocks
             bst_progress('set', 100*(iFile-1) + round(100*iBlock/nBlocks));
             % Indices of columns to process
-            SamplesBounds = sFileIn.prop.samples(1) + [(iBlock-1)*BlockSize, min(iBlock * BlockSize - 1, nTime - 1)];
+            SamplesBounds = round(sFileIn.prop.times(1) * sFileOut.prop.sfreq) + [(iBlock-1)*BlockSize, min(iBlock * BlockSize - 1, nTime - 1)];
             % Read one channel
             F = in_fread(sFileIn, ChannelMat, iEpoch, SamplesBounds, [], ImportOptions);
             % Write block
@@ -2681,6 +2822,72 @@ function CopyRawToDatabase(DataFiles) %#ok<DEFNU>
 end
 
 
+%% ===== SET ACQUISITION DATE =====
+function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
+    % Parse inputs
+    if (nargin < 2) || isempty(newDate)
+        newDate = [];
+    end
+    % Get data info
+    sStudy = bst_get('Study', iStudy);
+    if isempty(sStudy)
+        return;
+    end
+    % Parse existing string
+    oldDate = [1900, 1, 1];
+    if ~isempty(sStudy.DateOfStudy)
+        try
+            oldDate = datevec(sStudy.DateOfStudy);
+        catch
+        end
+    end
+    % If new date is not given in argument: ask user
+    if isempty(newDate)
+        % Ask for new date
+        res = java_dialog('input', {'Day:', 'Month:', 'Year:'}, 'Set date', [], {num2str(oldDate(3)), num2str(oldDate(2)), num2str(oldDate(1))});
+        if isempty(res) || (length(res) < 3)
+            return;
+        end
+        vecDate = [str2num(res{1}), str2num(res{2}), str2num(res{3})];
+        if (length(vecDate) < 3) || (vecDate(1) <= 0) || (vecDate(1) >= 31) || (vecDate(2) <= 0) || (vecDate(2) >= 12) || (vecDate(3) < 1700)
+            bst_error('Invalid date.', 'Set date', 0);
+            return;
+        end
+        % Get a new date string
+        newDate = datestr(datenum(vecDate(3), vecDate(2), vecDate(1)));
+    else
+        % Fix data format
+        newDate = str_date(newDate);
+        if isempty(newDate)
+            error('Invalid date format. Input must be ''DD-MMM-YYYY''.');
+        end
+    end
+    % If the date didn't change: exit
+    if strcmpi(newDate, sStudy.DateOfStudy)
+        return;
+    end
+    % Save acquisition data in study file
+    StudyFile = file_fullpath(sStudy.FileName);
+    StudyMat = load(StudyFile);
+    StudyMat.DateOfStudy = newDate;
+    bst_save(StudyFile, StudyMat, 'v7');
+    % Update database representation
+    sStudy.DateOfStudy = newDate;
+    bst_set('Study', iStudy, sStudy);
+    % Update raw links if applicable
+    if ~isempty(strfind(sStudy.FileName, '@raw')) && ~isempty(sStudy.Data) && strcmpi(sStudy.Data(1).DataType, 'raw')
+        % Read link
+        DataMat = in_bst_data(sStudy.Data(1).FileName, 'F');
+        DataMat.F.acq_date = newDate;
+        % Save modified link
+        bst_save(file_fullpath(sStudy.Data(1).FileName), DataMat, 'v6', 1);
+    end
+    % Refresh tree
+    panel_protocols('UpdateTree');
+    panel_protocols('SelectNode', [], sStudy.FileName);
+end
+
+
 %% ===== CHANGE TIME VECTOR =====
 function events = ChangeTimeVector(events, OldFreq, NewTime) %#ok<DEFNU>
     % Get new sampling frequency
@@ -2698,11 +2905,12 @@ function events = ChangeTimeVector(events, OldFreq, NewTime) %#ok<DEFNU>
         end
         % Remove those outsiders
         if ~isempty(iOut)
-            events(iEvt).times(:,iOut)   = [];
-            events(iEvt).samples(:,iOut) = [];
-            events(iEvt).epochs(iOut)    = [];
+            events(iEvt).times(:,iOut)  = [];
+            events(iEvt).epochs(iOut)   = [];
+            events(iEvt).channels(iOut) = [];
+            events(iEvt).notes(iOut)    = [];
             if ~isempty(events(iEvt).reactTimes)
-                events(iEvt).reactTimes(iOut)= [];
+                events(iEvt).reactTimes(iOut) = [];
             end
         end
         % Ignore empty events
@@ -2712,8 +2920,7 @@ function events = ChangeTimeVector(events, OldFreq, NewTime) %#ok<DEFNU>
         end
         % If the frequency was changed: update the events times
         if (abs(OldFreq - NewFreq) > 0.05)
-            events(iEvt).samples = round(events(iEvt).samples / OldFreq * NewFreq);
-            events(iEvt).times   = events(iEvt).samples / NewFreq;
+            events(iEvt).times = round(events(iEvt).times * NewFreq) / NewFreq;
         end
     end
     % Delete empty events
@@ -2779,4 +2986,7 @@ function JumpToVideoTime(hFig, oldVideoTime, newVideoTime)
     % Close progress bar
     bst_progress('stop');
 end
+
+
+
 

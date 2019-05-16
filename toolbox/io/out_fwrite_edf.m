@@ -3,9 +3,9 @@ function out_fwrite_edf(sFile, sfid, SamplesBounds, ChannelsRange, F)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -20,6 +20,7 @@ function out_fwrite_edf(sFile, sfid, SamplesBounds, ChannelsRange, F)
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2017
+%          Francois Tadel, 2019
 
 % ===== PARSE INPUTS =====
 [nSignals, nSamples] = size(F);
@@ -35,9 +36,9 @@ fseek(sfid, 0, 'eof');
 % Get the gains of the channels for all the non-Annotation channels
 iChanGain = setdiff(1:length(sFile.header.signal), sFile.header.annotchan);
 % Apply channel gains before converting to integer
-unit_gain = 1e6;
-chgain = unit_gain ./ ([sFile.header.signal(iChanGain).physical_max] - [sFile.header.signal(iChanGain).physical_min]) .* ...
-                      ([sFile.header.signal(iChanGain).digital_max]  - [sFile.header.signal(iChanGain).digital_min]);
+chgain = [sFile.header.signal(iChanGain).unit_gain] ./ ...
+            ([sFile.header.signal(iChanGain).physical_max] - [sFile.header.signal(iChanGain).physical_min]) .* ...
+            ([sFile.header.signal(iChanGain).digital_max]  - [sFile.header.signal(iChanGain).digital_min]);
 F = bst_bsxfun(@times, F, chgain');
 
 % Convert to 2-byte integer in 2's complement
@@ -49,7 +50,7 @@ F(negF) = bitcmp(abs(F(negF))) + 1;
 if sFile.header.annotchan >= 0
     annotations    = 1;
     nAnnots        = numel(sFile.header.annotations);
-    nSamplesReal   = sFile.prop.samples(2) - sFile.prop.samples(1);
+    nSamplesReal   = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq);
     nSamplesAnnots = sFile.header.signal(sFile.header.annotchan).nsamples;
     annotThreshold = floor((1:nAnnots) / nAnnots * nSamplesReal);
     annotBounds    = [0, 0];
@@ -98,7 +99,7 @@ for iRec = 1:nRecords
 
     % Write data
     for iSig = ChannelsRange(1):ChannelsRange(2)
-        ncount = ncount + fwrite(sfid, F(iSig, bounds(1):bounds(2)), 'int16');
+        ncount = ncount + fwrite(sfid, F(iSig, floor(bounds(1)):floor(bounds(2))), 'int16');
         
         % Fill rest of the record with 0s if required
         if writeZeros

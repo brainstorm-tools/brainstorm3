@@ -590,13 +590,19 @@ function WriteTvalues(RecFile, TvalueFile, OutputFile, OutputType, giiCortex, Sa
     catch
         PosElec = Dsensors.pnt';
     end
+    BadChannels = badchannels(D);
     % Average the T values in a neighborhood of 10 mm around each contact (SizeHorizon when creating images)
     EIGamma = zeros(size(PosElec,2),1);
     for i1 = 1:size(PosElec,2)
-        dist = (P(:,1)-PosElec(1,i1)).^2+(P(:,2)-PosElec(2,i1)).^2+(P(:,3)-PosElec(3,i1)).^2;
-        tmp1 = Tvalues((dist < 100) & (Tvalues(:) ~= 0));
-        if ~isempty(tmp1)
-            EIGamma(i1) = mean(tmp1);
+        % Bad channels: force the value to be NaN
+        if ~isempty(BadChannels) && ismember(i1, BadChannels)
+            EIGamma(i1) = NaN;
+        else
+            dist = (P(:,1)-PosElec(1,i1)).^2+(P(:,2)-PosElec(2,i1)).^2+(P(:,3)-PosElec(3,i1)).^2;
+            tmp1 = Tvalues((dist < 100) & (Tvalues(:) ~= 0));
+            if ~isempty(tmp1)
+                EIGamma(i1) = mean(tmp1);
+            end
         end
     end
     % Save T values as a .mat/.dat file

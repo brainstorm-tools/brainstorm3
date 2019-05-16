@@ -34,9 +34,9 @@ function [OutputFiles, Messages, isError] = bst_timefreq(Data, OPTIONS)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -536,7 +536,7 @@ for iData = 1:length(Data)
                 % Band-pass filter in one frequency band
                 isMirror = 0;
                 isRelax = 0;
-                Fband = process_bandpass('Compute', F, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter', isMirror, isRelax);
+                Fband = process_bandpass('Compute', F, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', isMirror, isRelax);
                 % Fband = process_bandpass('Compute', F, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
                 % Apply Hilbert transform
                 if UseSigProcToolbox
@@ -864,9 +864,9 @@ function [F, TimeVector, BadSegments] = ReadRawRecordings(sFile, TimeVector, Cha
     ImportOptions.DisplayMessages = 0;
     % Get samples to read
     if ~isempty(OPTIONS.TimeWindow)
-        SamplesBounds = sFile.prop.samples(1) + bst_closest(OPTIONS.TimeWindow, TimeVector) - 1;
+        SamplesBounds = round(sFile.prop.times(1) .* sFile.prop.sfreq) + bst_closest(OPTIONS.TimeWindow, TimeVector) - 1;
     else
-        SamplesBounds = sFile.prop.samples;
+        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
     end
     % Read data
     [F, TimeVector] = in_fread(sFile, ChannelMat, 1, SamplesBounds, [], ImportOptions);

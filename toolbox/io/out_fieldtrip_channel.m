@@ -6,9 +6,9 @@ function [elec, grad] = out_fieldtrip_channel(ChannelFile, isIncludeRef)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function [elec, grad] = out_fieldtrip_channel(ChannelFile, isIncludeRef)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2019
 
 
 % ===== PARSE INPUT =====
@@ -73,7 +73,11 @@ if ~isempty(iEeg)
     % Electrode position
     elec.chanpos = zeros(length(iEeg),3);
     for i = 1:length(iEeg)
-        elec.chanpos(i,:) = ChannelMat.Channel(iEeg(i)).Loc(:,1);
+        if all(size(ChannelMat.Channel(iEeg(i)).Loc) >= [3,1])
+            elec.chanpos(i,:) = ChannelMat.Channel(iEeg(i)).Loc(:,1);
+        else
+            elec.chanpos(i,:) = [0;0;0];
+        end
     end
     elec.elecpos = elec.chanpos;
     % Default montage

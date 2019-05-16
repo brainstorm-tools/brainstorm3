@@ -21,9 +21,9 @@ function [OutputFile, ChannelMat, ChannelReplace, ChannelAlign, Modality] = db_s
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -91,9 +91,12 @@ if ~isempty(sStudy.Channel)
     % Replace only with user confirmation
     elseif (ChannelReplace == 1)
         % Ask user confirmation
-        res = java_dialog('confirm', ['Warning: a channel file is already defined for this study,' 10 ...
-                               '"' sStudy.Channel.FileName '".' 10 10 ...
-                               'Delete previous channel file ?' 10], 'Replace channel file');
+        res = java_dialog('confirm', [...
+            '<HTML><B>Warning</B>: a channel file is already defined for this study.<BR>' ...
+            'If you delete it, you might not be able to read your recordings anymore.<BR><BR>' ...
+            '<FONT color="#D00000">If you are trying to <B>add 3D positions</B> to an existing dataset, answer NO,<BR>' ...
+            'then right-click on the channel file > <B><U>Add EEG positions</U></B>.</FONT><BR><BR>' ...
+            'Delete existing channel file ?'], 'Replace channel file');
         % If user did not accept : return
         if ~res
             OutputFile = [];

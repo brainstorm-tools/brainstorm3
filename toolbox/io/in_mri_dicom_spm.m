@@ -13,9 +13,9 @@ function NiiFiles = in_mri_dicom_spm(DicomFiles, OutputFolder, isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -47,6 +47,7 @@ isProgress = bst_progress('isVisible');
 bst_progress('start', 'DICOM converter (SPM)', 'Loading DICOM headers...', 0, length(DicomFiles));
 
 % Read SPM DICOM dictionnary
+disp(['Openin: ' fullfile(spm('Dir'),'spm_dicom_dict.txt')])
 dictFile = fullfile(fileparts(which('spm_dicom_convert')), 'spm_dicom_dict.txt');
 dict = spm_dicom_text_to_dict(dictFile);
 
@@ -90,7 +91,7 @@ if (length(NiiFiles) > 1) && isInteractive
         strFiles{i} = [strId ' | ' strDate ' | ' strProtocol ' | ' num2str(fInfo.bytes/1024/1024,'%1.1f') 'Mb'];
         % Rename file to Date-Protocol.nii
         newFile = file_unique(fullfile(fPath, [strDate, '_', strProtocol, '.nii']));
-        movefile(NiiFiles{i}, newFile);
+        file_move(NiiFiles{i}, newFile);
         NiiFiles{i} = newFile;
     end
     % Ask user which volumes to import

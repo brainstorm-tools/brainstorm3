@@ -3,9 +3,9 @@ function [sFile, ChannelMat] = in_fopen_nicolet(DataFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function [sFile, ChannelMat] = in_fopen_nicolet(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2018
 
 
 %% ===== READ HEADER =====
@@ -62,31 +62,36 @@ sFile.header       = hdr;
 % Comment: short filename
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
+% Acquisition date
+try
+    sFile.acq_date = datestr(datenum(hdr.obj.segments.startDate), 'dd-mmm-yyyy');
+catch
+    sFile.acq_date = '01-Jan-2000';
+end
 
 % Multiple segments
 if (hdr.nSegments > 1)
     for i = 1:hdr.nSegments
         sFile.epochs(i).label   = sprintf('Segment #%d', i);
-        sFile.epochs(i).samples = [0, sfreq * hdr.obj.segments(i).duration - 1];
-        sFile.epochs(i).times   = sFile.epochs(i).samples ./ sfreq;
+        sFile.epochs(i).times   = [0, sfreq * hdr.obj.segments(i).duration - 1] ./ sfreq;
         sFile.epochs(i).nAvg    = 1;
         sFile.epochs(i).select  = 1;
         sFile.epochs(i).bad         = 0;
         sFile.epochs(i).channelflag = [];
     end
 end
-sFile.prop.samples = [0, sfreq * max([hdr.obj.segments.duration]) - 1];
-sFile.prop.times   = sFile.prop.samples ./ sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.times = [0, sfreq * max([hdr.obj.segments.duration]) - 1] ./ sfreq;
+sFile.prop.nAvg  = 1;
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
+ChannelMat = db_template('channelmat');
 ChannelMat.Comment = [sFile.device ' channels'];
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.numchan]);
 % For each channel
-for i = hdr.selchan
-    ChannelMat.Channel(i).Type    = 'EEG';
-    ChannelMat.Channel(i).Name    = strrep(str_clean(hdr.obj.segments(1).chName{hdr.selchan(i)}), ' ', '');
+for i = 1:length(hdr.selchan)
+    ChannelMat.Channel(i).Type = 'EEG';
+    ChannelMat.Channel(i).Name = strrep(str_clean(hdr.obj.segments(1).chName{hdr.selchan(i)}), ' ', '');
     ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-Ref', '');
     ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-ref', '');
     ChannelMat.Channel(i).Name = strrep(ChannelMat.Channel(i).Name, '-REF', '');
@@ -121,7 +126,6 @@ for iEvt = 1:length(uniqueEvt)
     % Create event structure
     sFile.events(iEvt).label   = uniqueEvt{iEvt};
     sFile.events(iEvt).times   = [];
-    sFile.events(iEvt).samples = [];
     sFile.events(iEvt).epochs  = [];
     sFile.events(iEvt).select  = 1;
     % Get all the occurrences
@@ -143,9 +147,11 @@ for iEvt = 1:length(uniqueEvt)
         allTime = sort(([hdr.obj.eventMarkers(iOcc(iEvtEpoch)).dateOLE] - hdr.obj.segments(iEpoch).dateOLE) * 3600 * 24 + [hdr.obj.eventMarkers(iOcc(iEvtEpoch)).dateFraction]);
         % Add to all the events
         sFile.events(iEvt).times   = [sFile.events(iEvt).times,   allTime];
-        sFile.events(iEvt).samples = [sFile.events(iEvt).samples, allTime .* sFile.prop.sfreq];
         sFile.events(iEvt).epochs  = [sFile.events(iEvt).epochs,  iEpoch * ones(size(allTime))];
     end
+    % Add channels and notes fields
+    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
 end
 
 

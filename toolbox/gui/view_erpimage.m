@@ -16,9 +16,9 @@ function [hFig, iDS, iFig] = view_erpimage( DataFiles, DisplayMode, Modality, hF
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -63,7 +63,7 @@ isNewFig = isempty(hFig) || isequal(hFig, 'NewFigure');
 % ===== LOAD DATA =====
 switch (FileType)
     % ===== RECORDINGS =====
-    case 'data'
+    case {'data','pdata'}
         % Load data file
         iDS = bst_memory('LoadDataFile', DataFiles{1});
         if isempty(iDS)
@@ -122,7 +122,7 @@ switch (FileType)
         % Apply to the data
         if ~isempty(TsInfo.MontageName) && ~isempty(sMontage)
             % Get channel indices in the figure montage
-            if isequal(sMontage.Name, 'Average reference') || strcmpi(sMontage.Type, 'selection')
+            if ~isempty(strfind(sMontage.Name, 'Average reference')) || ~isempty(strfind(sMontage.Name, 'Scalp current density')) || strcmpi(sMontage.Type, 'selection')
                 [iChanSel, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, RowNames);
             else
                 [iChanSel, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, RowNames, ChannelFlag);
@@ -132,7 +132,7 @@ switch (FileType)
             % Some channels are selected in this montage
             if ~isempty(iMatrixDisp)
                 % Get display names for the input channels
-                F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * F(iChanSel,:);
+                F = panel_montage('ApplyMontage', sMontage, F(iChanSel,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
                 % Replace row names
                 RowNames = sMontage.DispNames(iMatrixDisp);
                 % Save channel selections for next files
@@ -224,7 +224,7 @@ switch lower(DisplayMode)
             end
             % Apply montage to the data
             if ~isempty(TsInfo.MontageName) && ~isempty(sMontage)
-                F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * F;
+                F = panel_montage('ApplyMontage', sMontage, F, GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
             end
             % Copy recordings
             ERP(i,1,:,:) = F';

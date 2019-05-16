@@ -5,9 +5,9 @@ function varargout = panel_process2(varargin)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -64,9 +64,13 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
     % Get files
     sFilesA = panel_nodelist('GetFiles', nodelistNameA);
     sFilesB = panel_nodelist('GetFiles', nodelistNameB);
-    if isempty(sFilesA) || isempty(sFilesB)
-        return
+    if isempty(sFilesA)
+        sFilesA = db_template('importfile'); 
     end
+    if isempty(sFilesB)
+        sFilesB = db_template('importfile');
+    end
+    
     % Warning for read-only
     if bst_get('ReadOnly')
         java_dialog('warning', ['The protocol is opened in read-only mode.' 10 ...

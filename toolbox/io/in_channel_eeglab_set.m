@@ -14,9 +14,9 @@ function ChannelMat = in_channel_eeglab_set(ChannelFile, isFixUnits)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -63,12 +63,18 @@ if isfield(SetFileMat.EEG, 'chanlocs') && ~isempty(SetFileMat.EEG.chanlocs) && i
     % Copy channel data
     for iChan = 1:nbChannels
         % Electrode type and name
-        ChannelMat.Channel(iChan).Type = 'EEG';
+        if isfield(SetFileMat.EEG.chanlocs(iChan), 'type') && ~isempty(SetFileMat.EEG.chanlocs(iChan).type) && ischar(SetFileMat.EEG.chanlocs(iChan).type) && ismember(SetFileMat.EEG.chanlocs(iChan).type(1), 'abcdefghijklmnopqrstuvwyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+            ChannelMat.Channel(iChan).Type = upper(SetFileMat.EEG.chanlocs(iChan).type);
+        else
+            ChannelMat.Channel(iChan).Type = 'EEG';
+        end
         ChannelMat.Channel(iChan).Name = SetFileMat.EEG.chanlocs(iChan).labels;
         % Electrode location
         if isempty(SetFileMat.EEG.chanlocs(iChan).X) || isempty(SetFileMat.EEG.chanlocs(iChan).Y) || isempty(SetFileMat.EEG.chanlocs(iChan).Z)
             ChannelMat.Channel(iChan).Loc = [];
-            ChannelMat.Channel(iChan).Type = 'Misc';
+            if strcmpi(ChannelMat.Channel(iChan).Type, 'EEG')
+                ChannelMat.Channel(iChan).Type = 'Misc';
+            end
         elseif ~isNormalizedCs
             ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X; ...
                                              SetFileMat.EEG.chanlocs(iChan).Y; ...

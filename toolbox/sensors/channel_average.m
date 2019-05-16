@@ -8,9 +8,9 @@ function [MeanChannelMat, Message] = channel_average(ChannelMats)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -24,7 +24,7 @@ function [MeanChannelMat, Message] = channel_average(ChannelMats)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012
+% Authors: Francois Tadel, 2012-2018
 
 Message = [];
 
@@ -92,7 +92,7 @@ for iChan = 1:length(MeanChannelMat.Channel)
 end
 
 % CTF/4D files: Restore the full list of integration points
-if any(strcmpi(DeviceName, {'CTF', '4D'}))
+if any(strcmpi(DeviceName, {'CTF', '4D', 'KRISS'}))
     MeanChannelMat.Channel(iChanInteg) = ctf_add_coil_defs(MeanChannelMat.Channel(iChanInteg), DeviceName);
 end
 

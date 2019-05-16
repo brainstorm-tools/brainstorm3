@@ -6,9 +6,9 @@ function varargout = process_ft_volumesegment( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'FieldTrip: ft_volumesegment';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import anatomy';
+    sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 11;
     sProcess.Description = 'http://www.fieldtriptoolbox.org/faq/how_is_the_segmentation_defined';
     % Definition of the input accepted by this process
@@ -41,7 +41,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'import', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Option: Subject name
     sProcess.options.subjectname.Comment    = 'Subject name:';
     sProcess.options.subjectname.Type       = 'subjectname';
@@ -89,6 +88,10 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = [];
+    % Not supported in compiled version
+    if exist('isdeployed', 'builtin') && isdeployed
+        error('Not supported in compiled version yet. Post a message on the forum if you need this feature.');
+    end
     % Initialize fieldtrip
     bst_ft_init();
 

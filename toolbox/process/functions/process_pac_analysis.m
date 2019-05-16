@@ -3,9 +3,9 @@ function varargout = process_pac_analysis( varargin )
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,6 +22,8 @@ function varargout = process_pac_analysis( varargin )
 % Authors: Soheila Samiee, 2014-2017
 %   - 2.0: SS. Aug. 2017 
 %                - Imported in public brainstorm rep
+%   - 2.1: SS. Jul. 2018
+%                - Bug fix in average over sources (mean)
 %
 eval(macro_method);
 end
@@ -30,7 +32,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Basic Analysis of tPAC maps ';
+    sProcess.Comment     = 'Basic Analysis of tPAC maps';
     sProcess.FileTag     = '';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Frequency','Time-resolved Phase-Amplitude Coupling'};
@@ -50,6 +52,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'Mean (Over time)'};
     sProcess.options.analyze_type.Type    = 'radio';
     sProcess.options.analyze_type.Value   = 1;
+    
+        % === Using phase
+    sProcess.options.usePhase.Comment = 'Use phase in averaging (mean)';
+    sProcess.options.usePhase.Type    = 'checkbox';
+    sProcess.options.usePhase.Value   = 0;
+
 end
 
 %% ===== FORMAT COMMENT =====
@@ -64,7 +72,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     isMedian = 0;
     isZscore = 0;
     isTimeMean = 0;
-    
+
+    usePhase = sProcess.options.usePhase.Value;
+
     % Get options
     if sProcess.options.analyze_type.Value ==1
         isMean  = 1;
@@ -90,20 +100,38 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     
     % Apply the appropriate function
     tpac_avg = tpacMat.sPAC.DynamicPAC;    
+    if usePhase
+        tpac_avg_phase = tpacMat.sPAC.DynamicPhase; 
+    end
+    
     if isZscore
         iBaseline = find(tpacMat.Time<0);
         if isempty(iBaseline)
             iBaseline = 1:length(tpacMat.Time);
         end
         tpac_avg = process_zscore('Compute', tpac_avg, iBaseline);
+        
     elseif isMean
-        tpac_avg = mean(tpac_avg,1);
+        if usePhase
+            tmp = mean(tpac_avg.*exp(1i*tpac_avg_phase),1);
+            tpac_avg = abs(tmp);
+            tpac_avg_phase = angle(tmp);
+        else
+            tpac_avg = mean(tpac_avg,1);
+        end
+        
         if length(sInput)>1
             N = length(sInput);
             for iFile = 2:N
                 TimefreqMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
-                TimefreqMat2.sPAC.DynamicPAC = mean(TimefreqMat2.sPAC.DynamicPAC,1);
-                TimefreqMat2.TF = mean(TimefreqMat2.sPAC.DynamicPAC,1);
+                if usePhase
+                    tmp = mean(TimefreqMat2.sPAC.DynamicPAC.*exp(1i*TimefreqMat2.sPAC.DynamicPhase),1);
+                    TimefreqMat2.sPAC.DynamicPAC  = abs(tmp);
+                    TimefreqMat2.sPAC.DynamicPhase  = angle(tmp);
+                else
+                    TimefreqMat2.sPAC.DynamicPAC = mean(TimefreqMat2.sPAC.DynamicPAC,1);                
+                end
+                TimefreqMat2.TF = TimefreqMat2.sPAC.DynamicPAC;
                 %Saving the files
                 TimefreqMat2.Comment = [TimefreqMat2.Comment, ' ', tag];
                 % Output filename: add file tag
@@ -141,29 +169,63 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         end
         
     elseif isTimeMean
-        tpac_avg = repmat(mean(tpac_avg,2),[1,size(tpac_avg,2),1]);
-        [PACmax,tmp] = max(abs(tpac_avg),[],1);
-        tpacMat.TF = squeeze(PACmax)';
-    end    
-    tpacMat.sPAC.DynamicPAC = tpac_avg;
-    tpacMat.TF = tpac_avg;        
+        if length(sInput)==1
+            tpac_avg = repmat(mean(tpac_avg,2),[1,size(tpac_avg,2),1]);
+            [PACmax,tmp] = max(abs(tpac_avg),[],1);
+            tpacMat.TF = squeeze(PACmax)';        
+        elseif length(sInput)>1
+            N = length(sInput);
+            for iFile = 2:N
+                tPACMat2 = in_bst_timefreq(sInput(iFile).FileName, 0);
+%                 TimefreqMat2.sPAC.DynamicPAC = median(TimefreqMat2.sPAC.DynamicPAC,1);
+%                 TimefreqMat2.TF = median(TimefreqMat2.sPAC.DynamicPAC,1);                
+                tpac_avg = repmat(mean(tPACMat2.sPAC.DynamicPAC,2),[1,size(tPACMat2.sPAC.DynamicPAC,2),1]);
+                [PACmax,tmp] = max(abs(tpac_avg),[],1);
+                tPACMat2.TF = tpac_avg;%squeeze(PACmax)';
+                tPACMat2.sPAC.DynamicPAC = tpac_avg;
+                
+                
+                %Saving the files
+                tPACMat2.Comment = [tPACMat2.Comment, ' ', tag];
+                % Output filename: add file tag
+                FileTag = strtrim(strrep(tag, '|', ''));
+                pathName = file_fullpath(sInput(iFile).FileName);
+                OutputFile{1} = strrep(pathName, '.mat', ['_' FileTag '.mat']);
+                OutputFile{1} = file_unique(OutputFile{1});
+                % Save file
+                bst_save(OutputFile{1}, tPACMat2, 'v6');
+                % Add file to database structure
+                db_add_data(sInput(iFile).iStudy, OutputFile{1}, tPACMat2);
+            end
+        end            
+        tpacMat.sPAC.DynamicPAC = tpac_avg;
+        tpacMat.TF = tpac_avg;
+        if usePhase
+            tpacMat.sPAC.DynamicPhase = tpac_avg_phase;
+        end
+    end
     
+    tpacMat.TF = tpac_avg;
+    tpacMat.sPAC.DynamicPAC = tpac_avg;
+    if usePhase
+        tpacMat.sPAC.DynamicPhase = tpac_avg_phase;
+    end
+
     % === SAVING THE DATA IN BRAINSTORM ===
     % Getting the study
-    [sOutputStudy, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInput);       
+    [sOutputStudy, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInput(1));
     % Comment
     tpacMat.Comment = [tpacMat.Comment, ' ', tag];
     % Output filename: add file tag
     FileTag = strtrim(strrep(tag, '|', ''));
-%     pathName = file_fullpath(sOutputStudy.FileName); 
-    FileTag = [FileTag,'_timefreq_dpac_fullmaps']; 
+    pathName = file_fullpath(sInput(1).FileName); 
     % Preparing the output file
-    OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sOutputStudy.FileName), FileTag); 
-    OutputFiles{1} = file_unique(OutputFiles{1});     
+    OutputFile{1} = strrep(pathName, '.mat', ['_' FileTag '.mat']);
+    OutputFile{1} = file_unique(OutputFile{1});
     % Save on disk
-    bst_save(OutputFiles{1}, tpacMat, 'v6');
+    bst_save(OutputFile{1}, tpacMat, 'v6');
     % Register in database
-    db_add_data(iOutputStudy, OutputFiles{1}, tpacMat);
+    db_add_data(iOutputStudy, OutputFile{1}, tpacMat);
 end
 
 

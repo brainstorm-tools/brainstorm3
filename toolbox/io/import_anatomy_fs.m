@@ -1,7 +1,7 @@
-function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps)
+function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps, isAseg)
 % IMPORT_ANATOMY_FS: Import a full FreeSurfer folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0)
+% USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isAseg=1)
 %
 % INPUT:
 %    - iSubject     : Indice of the subject where to import the MRI
@@ -12,14 +12,15 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 %    - sFid         : Structure with the fiducials coordinates
 %    - isExtraMaps  : If 1, create an extra folder "FreeSurfer" to save some of the
 %                     FreeSurfer cortical maps (thickness, ...)
+%    - isAseg       : If 1, imports the aseg atlas as a set of surfaces
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,10 +34,14 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2018
 
 %% ===== PARSE INPUTS =====
-% Extrac cortical maps
+% Import ASEG atlas
+if (nargin < 7) || isempty(isAseg)
+    isAseg = 1;
+end
+% Extract cortical maps
 if (nargin < 6) || isempty(isExtraMaps)
     isExtraMaps = 0;
 end
@@ -136,9 +141,11 @@ end
 % Find volume segmentation
 AsegFile = file_find(FsDir, 'aseg.mgz', 2);
 % Find labels
-AnnotLhFiles = {file_find(FsDir, 'lh.pRF.annot', 2), file_find(FsDir, 'lh.aparc.a2009s.annot', 2), file_find(FsDir, 'lh.aparc.annot', 2), file_find(FsDir, 'lh.aparc.DKTatlas40.annot', 2), file_find(FsDir, 'lh.BA.annot', 2), file_find(FsDir, 'lh.BA.thresh.annot', 2), file_find(FsDir, 'lh.BA_exvivo.annot', 2), file_find(FsDir, 'lh.BA_exvivo.thresh.annot', 2), ...
+AnnotLhFiles = {file_find(FsDir, 'lh.pRF.annot', 2), file_find(FsDir, 'lh.aparc.a2009s.annot', 2), file_find(FsDir, 'lh.aparc.annot', 2), file_find(FsDir, 'lh.aparc.DKTatlas40.annot', 2), file_find(FsDir, 'lh.aparc.DKTatlas.annot', 2), file_find(FsDir, 'lh.BA.annot', 2), file_find(FsDir, 'lh.BA.thresh.annot', 2), file_find(FsDir, 'lh.BA_exvivo.annot', 2), file_find(FsDir, 'lh.BA_exvivo.thresh.annot', 2), ...
+                file_find(FsDir, 'lh.myaparc_36.annot', 2), file_find(FsDir, 'lh.myaparc_60.annot', 2), file_find(FsDir, 'lh.myaparc_125.annot', 2), file_find(FsDir, 'lh.myaparc_250.annot', 2), ...
                 file_find(FsDir, 'lh.PALS_B12_Brodmann.annot', 2), file_find(FsDir, 'lh.PALS_B12_Lobes.annot', 2), file_find(FsDir, 'lh.PALS_B12_OrbitoFrontal.annot', 2), file_find(FsDir, 'lh.PALS_B12_Visuotopic.annot', 2), file_find(FsDir, 'lh.Yeo2011_7Networks_N1000.annot', 2), file_find(FsDir, 'lh.Yeo2011_17Networks_N1000.annot', 2)};
-AnnotRhFiles = {file_find(FsDir, 'rh.pRF.annot', 2), file_find(FsDir, 'rh.aparc.a2009s.annot', 2), file_find(FsDir, 'rh.aparc.annot', 2), file_find(FsDir, 'rh.aparc.DKTatlas40.annot', 2), file_find(FsDir, 'rh.BA.annot', 2), file_find(FsDir, 'rh.BA.thresh.annot', 2), file_find(FsDir, 'rh.BA_exvivo.annot', 2), file_find(FsDir, 'rh.BA_exvivo.thresh.annot', 2), ...
+AnnotRhFiles = {file_find(FsDir, 'rh.pRF.annot', 2), file_find(FsDir, 'rh.aparc.a2009s.annot', 2), file_find(FsDir, 'rh.aparc.annot', 2), file_find(FsDir, 'rh.aparc.DKTatlas40.annot', 2), file_find(FsDir, 'rh.aparc.DKTatlas.annot', 2), file_find(FsDir, 'rh.BA.annot', 2), file_find(FsDir, 'rh.BA.thresh.annot', 2), file_find(FsDir, 'rh.BA_exvivo.annot', 2), file_find(FsDir, 'rh.BA_exvivo.thresh.annot', 2), ...
+                file_find(FsDir, 'rh.myaparc_36.annot', 2), file_find(FsDir, 'rh.myaparc_60.annot', 2), file_find(FsDir, 'rh.myaparc_125.annot', 2), file_find(FsDir, 'rh.myaparc_250.annot', 2), ...
                 file_find(FsDir, 'rh.PALS_B12_Brodmann.annot', 2), file_find(FsDir, 'rh.PALS_B12_Lobes.annot', 2), file_find(FsDir, 'rh.PALS_B12_OrbitoFrontal.annot', 2), file_find(FsDir, 'rh.PALS_B12_Visuotopic.annot', 2), file_find(FsDir, 'rh.Yeo2011_7Networks_N1000.annot', 2), file_find(FsDir, 'rh.Yeo2011_17Networks_N1000.annot', 2)};
 AnnotLhFiles(cellfun(@isempty, AnnotLhFiles)) = [];
 AnnotRhFiles(cellfun(@isempty, AnnotRhFiles)) = [];
@@ -219,6 +226,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
+        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -249,7 +257,9 @@ else
     % jHelp.close();
 end
 % Load SCS and NCS field to make sure that all the points were defined
+warning('off','MATLAB:load:variableNotFound');
 sMri = load(BstMriFile, 'SCS', 'NCS');
+warning('on','MATLAB:load:variableNotFound');
 if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import FreeSurfer folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive
@@ -396,12 +406,12 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile)
     % Rename high-res file
     oldCortexHiFile = file_fullpath(CortexHiFile);
     CortexHiFile    = bst_fullfile(bst_fileparts(oldCortexHiFile), 'tess_cortex_pial_high.mat');
-    movefile(oldCortexHiFile, CortexHiFile);
+    file_move(oldCortexHiFile, CortexHiFile);
     CortexHiFile = file_short(CortexHiFile);
     % Rename high-res file
     oldCortexLowFile = file_fullpath(CortexLowFile);
     CortexLowFile    = bst_fullfile(bst_fileparts(oldCortexLowFile), 'tess_cortex_pial_low.mat');
-    movefile(oldCortexLowFile, CortexLowFile);
+    file_move(oldCortexLowFile, CortexLowFile);
     CortexHiFile = file_short(CortexHiFile);
 else
     CortexHiFile = [];
@@ -417,11 +427,11 @@ if ~isempty(TessLwFile) && ~isempty(TessRwFile)
     % Rename high-res file
     oldWhiteHiFile = file_fullpath(WhiteHiFile);
     WhiteHiFile    = bst_fullfile(bst_fileparts(oldWhiteHiFile), 'tess_cortex_white_high.mat');
-    movefile(oldWhiteHiFile, WhiteHiFile);
+    file_move(oldWhiteHiFile, WhiteHiFile);
     % Rename high-res file
     oldWhiteLowFile = file_fullpath(WhiteLowFile);
     WhiteLowFile    = bst_fullfile(bst_fileparts(oldWhiteLowFile), 'tess_cortex_white_low.mat');
-    movefile(oldWhiteLowFile, WhiteLowFile);
+    file_move(oldWhiteLowFile, WhiteLowFile);
 end
 % Merge hemispheres: mid-surface
 if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
@@ -433,11 +443,11 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isem
     % Rename high-res file
     oldMidHiFile = file_fullpath(MidHiFile);
     MidHiFile    = bst_fullfile(bst_fileparts(oldMidHiFile), 'tess_cortex_mid_high.mat');
-    movefile(oldMidHiFile, MidHiFile);
+    file_move(oldMidHiFile, MidHiFile);
     % Rename high-res file
     oldMidLowFile = file_fullpath(MidLowFile);
     MidLowFile    = bst_fullfile(bst_fileparts(oldMidLowFile), 'tess_cortex_mid_low.mat');
-    movefile(oldMidLowFile, MidLowFile);
+    file_move(oldMidLowFile, MidLowFile);
 %     % Use by default instead of the cortex surface
 %     CortexHiFile  = MidHiFile;
 %     CortexLowFile = MidLowFile;
@@ -456,22 +466,29 @@ end
 HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 
 %% ===== LOAD ASEG.MGZ =====
-if ~isempty(AsegFile)
+if isAseg && ~isempty(AsegFile)
     % Import atlas
     [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
     % Extract cerebellum only
-    BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum L', 'Cerebellum R'}, 'aseg | cerebellum');
-    % Downsample cerebllum
-    [BstCerebLowFile, iCerLow, xCerLow] = tess_downsize(BstCerebFile, 2000, 'reducepatch');
-    % Merge with low-resolution pial
-    BstMixedLowFile = tess_concatenate({CortexLowFile, BstCerebLowFile}, sprintf('cortex_cereb_%dV', length(xLhLow) + length(xRhLow) + length(xCerLow)), 'Cortex');
-    % Rename mixed file
-    oldBstMixedLowFile = file_fullpath(BstMixedLowFile);
-    BstMixedLowFile    = bst_fullfile(bst_fileparts(oldBstMixedLowFile), 'tess_cortex_pialcereb_low.mat');
-    movefile(oldBstMixedLowFile, BstMixedLowFile);
-    % Delete intermediate files
-    file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
-    db_reload_subjects(iSubject);
+    try
+        BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum L', 'Cerebellum R'}, 'aseg | cerebellum');
+    catch
+        BstCerebFile = [];
+    end
+    % If the cerebellum surface can be reconstructed
+    if ~isempty(BstCerebFile)
+        % Downsample cerebllum
+        [BstCerebLowFile, iCerLow, xCerLow] = tess_downsize(BstCerebFile, 2000, 'reducepatch');
+        % Merge with low-resolution pial
+        BstMixedLowFile = tess_concatenate({CortexLowFile, BstCerebLowFile}, sprintf('cortex_cereb_%dV', length(xLhLow) + length(xRhLow) + length(xCerLow)), 'Cortex');
+        % Rename mixed file
+        oldBstMixedLowFile = file_fullpath(BstMixedLowFile);
+        BstMixedLowFile    = bst_fullfile(bst_fileparts(oldBstMixedLowFile), 'tess_cortex_pialcereb_low.mat');
+        file_move(oldBstMixedLowFile, BstMixedLowFile);
+        % Delete intermediate files
+        file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
+        db_reload_subjects(iSubject);
+    end
 else
     BstAsegFile = [];
 end

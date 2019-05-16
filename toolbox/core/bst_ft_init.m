@@ -3,9 +3,9 @@ function isOk = bst_ft_init(isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,13 +19,12 @@ function isOk = bst_ft_init(isInteractive)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2017
+% Authors: Francois Tadel, 2015-2019
 
-% Deployed: does not work
+% Deployed: Code already included in the compiled version
 if exist('isdeployed', 'builtin') && isdeployed
-    error(['FieldTrip functions cannot be called from the compiled version of Brainstorm.' 10 ...
-           'We would need to compile Brainstorm and FieldTrip together. Doable but complicated.' 10 ...
-           'Please post a message on the forum if you are interested in contributing.']);
+    isOk = 1;
+    return;
 end
 % Default behavior
 if (nargin < 1) || isempty(isInteractive)
@@ -48,7 +47,7 @@ if ~exist('ft_defaults', 'file')
     elseif isInteractive
         % Warning message
         if ~java_dialog('confirm', [...
-            'This process require the FieldTrip toolbox to be installed on your computer.', 10, ...
+            'This process requires the FieldTrip toolbox to be installed on your computer.', 10, ...
             'Download the toolbox at: http://www.fieldtriptoolbox.org/download' 10 10 ...
             'Is FieldTrip already installed on your computer?'])
             bst_error('FieldTrip was not set up properly.', 'FieldTrip setup', 0);
@@ -58,7 +57,7 @@ if ~exist('ft_defaults', 'file')
         isStop = 0;
         while ~isStop
             % Open 'Select directory' dialog
-            FieldTripDir = uigetdir(FieldTripDir, 'Select FieldTrip directory');
+            FieldTripDir = bst_uigetdir(FieldTripDir, 'Select FieldTrip directory');
             % Exit if not set
             if isempty(FieldTripDir) || ~ischar(FieldTripDir)
                 FieldTripDir = [];
@@ -99,6 +98,6 @@ addpath(fullfile(FieldTripDir, 'specest'));
 addpath(fullfile(FieldTripDir, 'preproc'));
 addpath(fullfile(FieldTripDir, 'forward'));
 addpath(fullfile(FieldTripDir, 'src'));
-
+addpath(fullfile(FieldTripDir, 'utilities'));
 
     

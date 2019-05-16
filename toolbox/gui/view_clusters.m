@@ -8,9 +8,9 @@ function view_clusters(DataFiles, iClusters, hFig)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -89,6 +89,7 @@ if (length(DataFiles) == 1)
 end
 % Initialize data to display
 clustersActivity = cell(length(DataFiles), length(iClusters));
+clustersStd      = cell(length(DataFiles), length(iClusters));
 clustersLabels   = cell(length(DataFiles), length(iClusters));
 axesLabels       = cell(length(DataFiles), length(iClusters));
 % Process each Data file
@@ -146,7 +147,17 @@ for iFile = 1:length(DataFiles)
         else
             ClusterFunction = 'stat';
         end
+        separator = strfind(ClusterFunction, '+');
+        if ~isempty(separator)
+            StdFunction     = ClusterFunction(separator+1:end);
+            ClusterFunction = ClusterFunction(1:separator-1);
+        else
+            StdFunction = [];
+        end
         clustersActivity{iFile,k} = bst_scout_value(DataToPlot, ClusterFunction);
+        if ~isempty(StdFunction)
+            clustersStd{iFile, k} = bst_scout_value(DataToPlot, StdFunction);
+        end
 
         % === AXES LABELS ===
         % Format: SubjectName/Cond1/.../CondN/(DataComment)/(ClusterName)
@@ -187,6 +198,7 @@ if ((max(nbTimes) > 2) && any(nbTimes == 2))
     iCellToExtend = find(nbTimes == 2);
     for i = 1:length(iCellToExtend)
         clustersActivity{iCellToExtend(i)} = repmat(clustersActivity{iCellToExtend(i)}(:,1), [1,max(nbTimes)]);
+        clustersStd{iCellToExtend(i)} = repmat(clustersStd{iCellToExtend(i)}(:,1), [1,max(nbTimes)]);
     end
 end
 
@@ -200,6 +212,7 @@ if (~ClustersOptions.overlayClusters && ~ClustersOptions.overlayConditions)
     % One graph for each line => Ngraph, Nclusters*Ncond
     % Clusters activity = cell-array {1, Ngraph} of doubles [1,Nt]
     clustersActivity = clustersActivity(:)';
+    clustersStd = clustersStd(:)';
     % Axes labels (subj/cond) = cell-array of strings {1, Ngraph}
     axesLabels = axesLabels(:)';
     % Clusters labels = cell-array of strings {1, Ngraph}
@@ -213,6 +226,7 @@ elseif (ClustersOptions.overlayClusters && ClustersOptions.overlayConditions)
     nbTraces = numel(clustersActivity);
     % Clusters activity = double [Nlines, Nt] 
     clustersActivity = cat(1, clustersActivity{:});
+    clustersStd = cat(1, clustersStd{:});
     % Clusters labels = cell-array {Nlines}
     % => "clusterName @ subject/condition"
     for iTrace = 1:nbTraces
@@ -235,8 +249,10 @@ elseif ClustersOptions.overlayClusters
     % Clusters activity = cell-array {1, Ncond} of doubles [Nclusters, Nt]
     for i = 1:size(clustersActivity,1)
         clustersActivityTmp(i) = {cat(1, clustersActivity{i,:})};
+        clustersStdTmp(i) = {cat(1, clustersStd{i,:})};
     end
     clustersActivity = clustersActivityTmp;
+    clustersStd = clustersStdTmp;
     % Axes labels (subj/cond) = cell-array of strings {1, Ncond} 
     axesLabels   = axesLabels(:,1)';
     % Clusters labels = cell-array of strings {Ncluster, Ncond} 
@@ -249,8 +265,10 @@ elseif ClustersOptions.overlayConditions
     % Clusters activity = cell-array {1, Ncluster} of doubles [Ncond, Nt]
     for j = 1:size(clustersActivity,2)
         clustersActivityTmp(j) = {cat(1, clustersActivity{:,j})};
+        clustersStdTmp(j) = {cat(1, clustersStd{:,j})};
     end
     clustersActivity = clustersActivityTmp;
+    clustersStd = clustersStdTmp;
     % Axes labels (cluster names @ common_subject/cond part) = cell-array of strings {1, Ncluster} 
     tmpAxesLabels = axesLabels;
     axesLabels = clustersLabels(1,:);
@@ -265,7 +283,7 @@ end
  
 %% ===== CALL DISPLAY FUNCTION ====
 % Plot time series
-hFig = view_timeseries_matrix(DataFiles{1}, clustersActivity, [], ['$' Modality], axesLabels, clustersLabels, clustersColors, hFig);
+hFig = view_timeseries_matrix(DataFiles{1}, clustersActivity, [], ['$' Modality], axesLabels, clustersLabels, clustersColors, hFig, clustersStd);
 % Store results files in figure appdata
 setappdata(hFig, 'DataFiles', DataFiles);
 setappdata(hFig, 'iClusters', iClusters);

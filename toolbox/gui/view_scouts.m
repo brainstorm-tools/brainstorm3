@@ -7,9 +7,9 @@ function hFig = view_scouts(ResultsFiles, ScoutsArg, hFig)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -241,6 +241,10 @@ for iResFile = 1:length(ResultsFiles)
         else
             % SORT and select unique vertices
             iVertices = sort(unique(sScouts(k).Vertices));
+        end
+        % Fix errors in color definition
+        if isequal(size(sScouts(k).Color), [3,1])
+            sScouts(k).Color = sScouts(k).Color';
         end
         % Get data (over current time window)
         if ~isTimefreq

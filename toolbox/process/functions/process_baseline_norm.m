@@ -16,9 +16,9 @@ function varargout = process_baseline_norm( varargin )
                         
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -46,7 +46,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Standardize';
     sProcess.Index       = 415;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation#Z-score';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation#Z-score';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix'};
     sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix'};
@@ -224,8 +224,8 @@ function sInputB = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     end
     % Add comment tag
     sInputB.CommentTag = OPTIONS.Method;
-    % Do not keep the Std field in the output
-    if isfield(sInputB, 'Std') && ~isempty(sInputB.Std)
+    % Do not keep the Std field in the output except for simple Baseline substraction
+    if isfield(sInputB, 'Std') && ~isempty(sInputB.Std) && ~strcmpi(OPTIONS.Method, 'bl')
         sInputB.Std = [];
     end
 end

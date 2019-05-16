@@ -5,9 +5,9 @@ function jFrame = gui_edit_channel( ChannelFile )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function jFrame = gui_edit_channel( ChannelFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 global GlobalData;
 
@@ -42,6 +42,9 @@ if isempty(bstPanel)
 end
 % Show panel in a Java window
 bstContainer = gui_show(bstPanel, 'JavaWindow', ['Channel editor: ' ChannelFile], [], 0, 0, 1);
+if isempty(bstContainer)
+    return;
+end
 
 % Get current layout
 [jBstArea, FigArea, nScreens, jFigArea, jInsets] = gui_layout('GetScreenBrainstormAreas');

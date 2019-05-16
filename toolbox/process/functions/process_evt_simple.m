@@ -5,9 +5,9 @@ function varargout = process_evt_simple( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function varargout = process_evt_simple( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
 
 eval(macro_method);
 end
@@ -34,13 +34,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 63;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#Other_menus';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#Other_menus';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Event name
     sProcess.options.eventname.Comment = 'Event names: ';
     sProcess.options.eventname.Type    = 'text';
@@ -65,7 +64,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     
     % ===== GET OPTIONS =====
     % Time offset
-    switch (sProcess.options.method.Value);
+    switch (sProcess.options.method.Value)
         case 1,  Method = 'start';
         case 2,  Method = 'middle';
         case 3,  Method = 'end';
@@ -101,9 +100,9 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         iEvt = find(strcmpi(EvtNames{i}, {sEvents.label}));
         if isempty(iEvt)
             bst_report('Warning', sProcess, sInput, 'This file does not contain any event.');
-        elseif isempty(sEvents(iEvt).samples)
+        elseif isempty(sEvents(iEvt).times)
             bst_report('Warning', sProcess, sInput, ['Event category "' sEvents(iEvt).label '" is empty.']);
-        elseif (size(sEvents(iEvt).samples,1) == 1)
+        elseif (size(sEvents(iEvt).times,1) == 1)
             bst_report('Warning', sProcess, sInput, ['Event category "' sEvents(iEvt).label '" already contains simple events.']);
         else
             iEvtList(end+1) = iEvt;            
@@ -119,13 +118,13 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     for i = 1:length(iEvtList)
         switch Method
             case 'start'
-                sEvents(iEvtList(i)).samples = sEvents(iEvtList(i)).samples(1,:);
+                sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).times(1,:);
             case 'middle'
-                sEvents(iEvtList(i)).samples = round(mean(sEvents(iEvtList(i)).samples,1));
+                sEvents(iEvtList(i)).times = round(mean(sEvents(iEvtList(i)).times,1));
             case 'end'
-                sEvents(iEvtList(i)).samples = sEvents(iEvtList(i)).samples(2,:);
+                sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).times(2,:);
         end
-        sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).samples / sFreq;
+        sEvents(iEvtList(i)).times = round(sEvents(iEvtList(i)).times .* sFreq) / sFreq;
     end
         
     % ===== SAVE RESULT =====

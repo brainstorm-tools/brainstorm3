@@ -101,6 +101,8 @@ FIFF.FIFFB_DACQ_PARS          = 117;
 FIFF.FIFFB_REF                = 118;
 FIFF.FIFFB_SMSH_RAW_DATA      = 119;
 FIFF.FIFFB_SMSH_ASPECT        = 120;
+FIFF.FIFFB_HPI_SUBSYSTEM      = 121;
+
 FIFF.FIFFB_PROJ               = 313;
 FIFF.FIFFB_PROJ_ITEM          = 314;
 FIFF.FIFFB_MRI                = 200;
@@ -144,6 +146,17 @@ FIFF.FIFF_COORD_TRANS = 222;
 FIFF.FIFF_HIGHPASS    = 223;
 FIFF.FIFF_NAME        = 233;
 FIFF.FIFF_DESCRIPTION = FIFF.FIFF_COMMENT;
+%
+% HPI result
+%
+FIFF.FIFF_HPI_COIL_MOMENTS       = 240;
+FIFF.FIFF_HPI_FIT_GOODNESS       = 241;
+FIFF.FIFF_HPI_FIT_ACCEPT         = 242;
+FIFF.FIFF_HPI_FIT_GOOD_LIMIT     = 243;
+FIFF.FIFF_HPI_FIT_DIST_LIMIT     = 244;
+FIFF.FIFF_HPI_COIL_NO            = 245;
+FIFF.FIFF_HPI_COILS_USED         = 246;
+FIFF.FIFF_HPI_DIGITIZATION_ORDER = 247;
 %
 % Pointers
 %
@@ -191,14 +204,15 @@ FIFF.FIFFV_COORD_IMAGING_DEVICE = 9;
 %
 % Needed for raw and evoked-response data
 %
-FIFF.FIFF_FIRST_SAMPLE   = 208;
-FIFF.FIFF_LAST_SAMPLE    = 209;
-FIFF.FIFF_ASPECT_KIND    = 210;
-FIFF.FIFF_DATA_BUFFER    = 300;          % Buffer containing measurement data
-FIFF.FIFF_DATA_SKIP      = 301;          % Data skip in buffers
-FIFF.FIFF_EPOCH          = 302;          % Buffer containing one epoch and channel
-FIFF.FIFF_DATA_SKIP_SAMP = 303;          % Data skip in samples
-
+FIFF.FIFF_FIRST_SAMPLE       = 208;
+FIFF.FIFF_LAST_SAMPLE        = 209;
+FIFF.FIFF_ASPECT_KIND        = 210;
+FIFF.FIFF_DATA_BUFFER        = 300;      % Buffer containing measurement data
+FIFF.FIFF_DATA_SKIP          = 301;      % Data skip in buffers
+FIFF.FIFF_EPOCH              = 302;      % Buffer containing one epoch and channel
+FIFF.FIFF_DATA_SKIP_SAMP     = 303;      % Data skip in samples
+FIFF.FIFF_MNE_BASELINE_MIN   = 304;      % Time of baseline beginning
+FIFF.FIFF_MNE_BASELINE_MAX   = 305;      % Time of baseline end
 %
 % Different aspects of data
 %
@@ -282,6 +296,10 @@ FIFF.FIFFB_MNE_MORPH_MAP          = 362;
 %
 FIFF.FIFFB_MNE_CTF_COMP           = 370;
 FIFF.FIFFB_MNE_CTF_COMP_DATA      = 371;
+FIFF.FIFFB_MNE_DERIVATIONS        = 372
+
+FIFF.FIFFB_MNE_EPOCHS             = 373;
+FIFF.FIFFB_MNE_ICA                = 374;
 %
 % Fiff tags associated with MNE computations (3500...)
 %
@@ -380,6 +398,21 @@ FIFF.FIFF_MNE_MORPH_MAP_TO           = 3572;     % Which subject is this map to
 FIFF.FIFF_MNE_CTF_COMP_KIND         = 3580;     % What kind of compensation
 FIFF.FIFF_MNE_CTF_COMP_DATA         = 3581;     % The compensation data itself
 FIFF.FIFF_MNE_CTF_COMP_CALIBRATED   = 3582;     % Are the coefficients calibrated?
+
+
+%
+% 3700... Real-Time Communication
+%
+FIFF.FIFF_MNE_RT_COMMAND            = 3700;    	% Fiff Real-Time Command
+FIFF.FIFF_MNE_RT_CLIENT_ID          = 3701;     % Fiff Real-Time mne_rt_server client id
+
+
+%
+% 3710... Real-Time Blocks
+%
+FIFF.FIFFB_MNE_RT_MEAS_INFO         = 3710;     % Fiff Real-Time Measurement Info
+
+
 %
 % Fiff values associated with MNE computations
 %
@@ -534,6 +567,18 @@ FIFF.FIFF_UNITM_N    = -9;
 FIFF.FIFF_UNITM_P    = -12;
 FIFF.FIFF_UNITM_F    = -15;
 FIFF.FIFF_UNITM_A    = -18;
+
+%
+% MNE epochs bookkeeping
+%
+FIFF.FIFFB_MNE_EPOCHS_SELECTION    = 3800;  % the epochs selection
+FIFF.FIFFB_MNE_EPOCHS_DROP_LOG     = 3801;  % the drop log
+
+%
+% Project info
+%
+FIFF.FIFF_PROJ_ID   = 500;
+FIFF.FIFF_PROJ_NAME = 501;
 
 return
 

@@ -6,9 +6,9 @@ function varargout = process_ft_mtmconvol( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_ft_mtmconvol( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2019
 
 eval(macro_method);
 end
@@ -92,13 +92,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mt_timestep.Type    = 'value';
     sProcess.options.mt_timestep.Value   = {0.1, 'ms', []};
     % === CORRESPONDANCE WITH FIELDTRIP
-    sProcess.options.mt_timestep.Comment = ['<HTML><BR><FONT color="#808080">' ...
+    sProcess.options.mt_label.Comment = ['<HTML><BR><FONT color="#808080">' ...
         'Correspondance with FieldTrip inputs:<BR>' ...
         ' - timeoi = tw(1)+tr/2 : time_step : tw(2)-tr/2-1/sfreq<BR>' ...
         '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tr=time_resolution, tw=time_window<BR>' ...
         ' - tapsmofrq = frequencies / modulation_factor<BR>' ...
         ' - timwin = repmat(time_resolution, 1, length(frequencies))</FONT>'];
-    sProcess.options.mt_timestep.Type    = 'label';
+    sProcess.options.mt_label.Type    = 'label';
     
     % === MEASURE
     sProcess.options.measure.Comment = {'Power', 'Magnitude', 'Measure: '; ...
@@ -122,9 +122,25 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+    OutputFiles = {};
     % Initialize fieldtrip
     if ~exist('ft_specest_mtmconvol', 'file')
         bst_ft_init();
+    end
+    % If nanmean is not available: add path fieldtrip/external/stat
+    if ~exist('nanmean', 'file')
+        ftDir = bst_fileparts(bst_fileparts(which('ft_specest_mtmconvol')));
+        addpath(bst_fullfile(ftDir, 'external', 'stats'));
+    end
+    % Check for Signal Processing Toolbox when using DPSS
+    if iscell(sProcess.options.mt_taper.Value)
+        mt_taper = sProcess.options.mt_taper.Value{1};
+    else
+        mt_taper = sProcess.options.mt_taper.Value;
+    end
+    if strcmpi(mt_taper, 'dpss') && ~exist('dpss', 'file')
+        bst_report('Error', sProcess, [], 'The option "dpss" requires the Signal Processing Toolbox.');
+        return;
     end
     % Call TIME-FREQ process
     OutputFiles = process_timefreq('Run', sProcess, sInputs);

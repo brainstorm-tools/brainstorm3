@@ -10,9 +10,9 @@ function node_create_subject(nodeSubject, sSubject, iSubject)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -68,7 +68,7 @@ else
     % Sort surfaces by category
     SortedSurfaces = db_surface_sort(sSubject.Surface);
     iSorted = [SortedSurfaces.IndexScalp, SortedSurfaces.IndexOuterSkull, SortedSurfaces.IndexInnerSkull, ...
-               SortedSurfaces.IndexCortex, SortedSurfaces.IndexOther];
+               SortedSurfaces.IndexCortex, SortedSurfaces.IndexOther, SortedSurfaces.IndexFibers];
     % Process all the surfaces
     for i = 1:length(iSorted)
         iSurface = iSorted(i);

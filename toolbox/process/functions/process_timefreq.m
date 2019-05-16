@@ -7,9 +7,9 @@ function varargout = process_timefreq( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,7 +36,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Frequency';
     sProcess.Index       = 505;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TimeFrequency#Morlet_wavelets';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TimeFrequency#Morlet_wavelets';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'matrix'};
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
@@ -320,7 +320,7 @@ function TFmask = GetEdgeEffectMask(Time, Freqs, tfOptions) %#ok<DEFNU>
             TFmask = zeros(size(Freqs,1), length(t));
             for i = 1:size(Freqs,1)
                 % Compute the filter specifications
-                [tmp, FiltSpec] = process_bandpass('Compute', [], sfreq, FreqBands(i,1), FreqBands(i,2), 'bst-hfilter');
+                [tmp, FiltSpec] = process_bandpass('Compute', [], sfreq, FreqBands(i,1), FreqBands(i,2), 'bst-hfilter-2019');
                 % Only the values outside of the transients are valid
                 TFmask(i,(t - t(1) > FiltSpec.transient) & (t(end) - t > FiltSpec.transient)) = 1;
             end

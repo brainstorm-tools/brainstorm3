@@ -3,9 +3,9 @@ function out_figure_plotly(hFig)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -171,7 +171,7 @@ function downloadAndInstallPlotly()
     zipFile = bst_fullfile(plotlyTmpDir, 'plotly.zip');
     errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Plotly download');
     if ~isempty(errMsg)
-        error(['Impossible to download Plotly:' errMsg]);
+        error(['Impossible to download Plotly: ' errMsg]);
     end
     % Unzip file
     bst_progress('start', 'Plotly', 'Installing Plotly...');
@@ -181,7 +181,7 @@ function downloadAndInstallPlotly()
     idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
     newPlotlyDir = bst_fullfile(plotlyTmpDir, diropen(idir).name, 'plotly');
     % Move plotly directory to proper location
-    movefile(newPlotlyDir, plotlyDir);
+    file_move(newPlotlyDir, plotlyDir);
     % Delete unnecessary files
     file_delete(plotlyTmpDir, 1, 3);
     % Add Plotly to Matlab path

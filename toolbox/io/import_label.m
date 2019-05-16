@@ -6,9 +6,9 @@ function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtla
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -122,8 +122,6 @@ for iFile = 1:length(LabelFiles)
         else
             % FreeSurfer Atlas names
             switch (fBase)
-                case {'lh.pRF', 'rh.pRF'}
-                    sAtlas.Name = 'Retinotopy';
                 case {'lh.aparc.a2009s', 'rh.aparc.a2009s'}
                     sAtlas.Name = 'Destrieux';
                 case {'lh.aparc', 'rh.aparc'}
@@ -134,6 +132,8 @@ for iFile = 1:length(LabelFiles)
                     sAtlas.Name = 'Brodmann-thresh';
                 case {'lh.aparc.DKTatlas40', 'rh.aparc.DKTatlas40'}
                     sAtlas.Name = 'Mindboggle';
+                case {'lh.aparc.DKTatlas', 'rh.aparc.DKTatlas'}
+                    sAtlas.Name = 'Mindboggle6';
                 case {'lh.PALS_B12_Brodmann', 'rh.PALS_B12_Brodmann'}
                     sAtlas.Name = 'PALS-B12 Brodmann';
                 case {'lh.PALS_B12_Lobes', 'rh.PALS_B12_Lobes'}
@@ -146,8 +146,22 @@ for iFile = 1:length(LabelFiles)
                     sAtlas.Name = 'Yeo 7 Networks';
                 case {'lh.Yeo2011_17Networks_N1000', 'rh.Yeo2011_17Networks_N1000'}
                     sAtlas.Name = 'Yeo 17 Networks';
+                case {'lh.pRF', 'rh.pRF'}
+                    sAtlas.Name = 'Retinotopy';
+                case {'lh.myaparc_36', 'rh.myaparc_36'}
+                    sAtlas.Name = 'Lausanne-S33';
+                case {'lh.myaparc_60', 'rh.myaparc_60'}
+                    sAtlas.Name = 'Lausanne-S60';
+                case {'lh.myaparc_125', 'rh.myaparc_125'}
+                    sAtlas.Name = 'Lausanne-S125';
+                case {'lh.myaparc_250', 'rh.myaparc_250'}
+                    sAtlas.Name = 'Lausanne-S250';
                 otherwise
-                    sAtlas.Name = fBase;
+                    if (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
+                        sAtlas.Name = fBase(4:end);
+                    else
+                        sAtlas.Name = fBase;
+                    end
             end
         end
     % Existing atlas structure
@@ -302,11 +316,11 @@ for iFile = 1:length(LabelFiles)
             bst_progress('text', 'Reading atlas...');
             % If the file that is loaded has to be interpreted in MNI space
             isMni = strcmpi(FileFormat, 'MRI-MASK-MNI');
-            % Read MRI volume
+            % Read MRI volume  (do not normalize values when reading an atlas)
             if isMni
-                sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI');
+                sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI', [], 0);
             else
-                sMriMask = in_mri(LabelFiles{iFile}, 'ALL');
+                sMriMask = in_mri(LabelFiles{iFile}, 'ALL', [], 0);
             end
             if isempty(sMriMask)
                 return;
@@ -342,6 +356,10 @@ for iFile = 1:length(LabelFiles)
             if isMni
                 % The original volume is in subject space and and the atlas volume is in MNI space
                 vertMni = cs_convert(sMriSubj, 'scs', 'mni', Vertices);
+                if isempty(vertMni)
+                    Messages = [Messages, 'Error: Compute the MNI transformation first.'];
+                    return
+                end
                 vertMri = round(cs_convert(sMriMask, 'mni', 'voxel', vertMni));
             else
                 % Check the compatibility of MRI sizes
@@ -408,8 +426,19 @@ for iFile = 1:length(LabelFiles)
                     % Find left and right areas
                     iL = find(Pmni(:,1) < 0);
                     iR = find(Pmni(:,1) >= 0);
+                    % If there is about the same number of points in the two sides: consider it's a bilateral region
+                    if isempty(iL) || isempty(iR)
+                        isSplit = 0;
+                    elseif (length(iL) / length(iR) < 1.6) && (length(iL) / length(iR) > 0.4)
+                        isSplit = 1;
+                    % If the name starts with "S_", "G_" or "N_", it's also a bilateral region
+                    elseif (length(sAtlas.Scouts(iScout).Label) >= 3) && ismember(sAtlas.Scouts(iScout).Label(1:2), {'S_', 'G_', 'N_'})
+                        isSplit = 1;
+                    else
+                        isSplit = 0;
+                    end
                     % If this is a bilateral region: split in two
-                    if ~isempty(iL) && ~isempty(iR) && (length(iL) / length(iR) < 1.6) && (length(iL) / length(iR) > 0.4)
+                    if isSplit
                         % Duplicate scout
                         sAtlas.Scouts(iScout+1) = sAtlas.Scouts(iScout);
                         % Left scout
@@ -500,6 +529,8 @@ for iFile = 1:length(LabelFiles)
                 entry = labelMap.get(num2str(id));
                 labelInfo.Name = entry(1);
                 labelInfo.Color = entry(2);
+                % Transpose color vector
+                labelInfo.Color = labelInfo.Color(:)';
                 % Skip the "background" scout
                 if strcmpi(labelInfo.Name, 'background')
                     continue;

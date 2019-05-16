@@ -38,9 +38,9 @@ function varargout = bst_figures( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -54,7 +54,8 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2019
+%          Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -253,7 +254,8 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
                            GlobalData.DataSet(iDS).Measures.ChannelFlag, ...
                            Modality);
     % If opening EEG/SEEG/ECOG topography or 3D view: exclude (0,0,0) points
-    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(Modality, {'EEG','SEEG','ECOG'})
+    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(Modality, {'EEG','SEEG','ECOG'}) ...
+        && ~(ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, {'2DLayout', '2DElectrodes'}) && ismember(Modality, {'SEEG','ECOG'}))
         % Get the locations for all the channels
         chanLoc = {GlobalData.DataSet(iDS).Channel(selChan).Loc};
         % Detect the channels without location or at (0,0,0)
@@ -262,7 +264,7 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
         if ~isempty(iChanZero)
             % Display warning
             delNames = {GlobalData.DataSet(iDS).Channel(selChan(iChanZero)).Name};
-            disp(['BST> Warning: The position of the following sensors is not set: ' sprintf('%s ', delNames{:})]);
+            disp(['BST> Warning: The positions of the following sensors are not set: ' sprintf('%s ', delNames{:})]);
             % Remove them from the list
             selChan(iChanZero) = [];
         end
@@ -403,8 +405,12 @@ function UpdateFigureName(hFig)
             TsInfo = getappdata(hFig, 'TsInfo');
             if isempty(TsInfo) || isempty(TsInfo.MontageName) || ~isempty(TsInfo.RowNames)
                 strMontage = 'All';
-            elseif strcmpi(TsInfo.MontageName, 'Average reference') || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
+            elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                 strMontage = 'AvgRef';
+            elseif ~isempty(strfind(TsInfo.MontageName, 'Scalp current density'))
+                strMontage = 'SCD';
+            elseif strcmpi(TsInfo.MontageName, 'Head distance')
+                strMontage = 'Head';
             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
                 strMontage = 'Bad';
             elseif strcmpi(TsInfo.MontageName, 'ICA components[tmp]')
@@ -471,8 +477,12 @@ function UpdateFigureName(hFig)
                             TsInfo = getappdata(hFig, 'TsInfo');
                             if isempty(TsInfo) || isempty(TsInfo.MontageName) || ~isempty(TsInfo.RowNames)
                                 strMontage = 'All';
-                            elseif strcmpi(TsInfo.MontageName, 'Average reference') || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
+                            elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                                 strMontage = 'AvgRef';
+                            elseif ~isempty(strfind(TsInfo.MontageName, 'Scalp current density'))
+                                strMontage = 'SCD';
+                            elseif strcmpi(TsInfo.MontageName, 'Head distance')
+                                strMontage = 'Head';
                             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
                                 strMontage = 'Bad';
                             else
@@ -740,6 +750,31 @@ function [Handles,iFig,iDS] = SetFigureHandles(hFig, Handles) %#ok<DEFNU>
     end
     % Return handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = Handles;
+end
+
+%% ===== GET SPECIFIC FIELD OF FIGURE HANDLE =====
+function Value = GetFigureHandleField(hFig, Field) %#ok<DEFNU>
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = GetFigure(hFig);
+    % Return value if figure and field exists
+    if ~isempty(iDS) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, Field)
+        Value = GlobalData.DataSet(iDS).Figure(iFig).Handles.(Field);
+    else
+        Value = [];
+    end
+end
+
+%% ===== SET SPECIFIC FIELD OF FIGURE HANDLE =====
+function SetFigureHandleField(hFig, Field, Value) %#ok<DEFNU>
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = GetFigure(hFig);
+    if isempty(iDS)
+        error('Figure is not registered in Brainstorm');
+    end
+    % Set field
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.(Field) = Value;
 end
 
 
@@ -1470,17 +1505,19 @@ function ViewTopography(hFig, UseSmoothing)
             % Get all the figure information 
             DataFile = getappdata(hFig, 'DataFile');
             FigMod = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+            RecType = GlobalData.DataSet(iDS).Measures.DataType;
             % Get displayable sensor types
             [AllMod, DispMod, DefaultMod] = bst_get('ChannelModalities', DataFile);
             % If current modality is not MEG or EEG, cannot display topography: get default modality
-            if ~ismember(FigMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','SEEG','NIRS'}) && ~isempty(DataFile)
+            if ~ismember(FigMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','SEEG','NIRS','ECOG+SEEG'}) && ~isempty(DataFile)
                 Modalities = {DefaultMod};
             % If displaying Stat on Neuromag recordings: Display all sensors separately
-            elseif ismember(FigMod, {'MEG','MEG GRAD'}) && all(ismember({'MEG MAG','MEG GRAD'}, AllMod)) && ~isempty(DataFile) && strcmpi(file_gettype(DataFile), 'pdata')
+            elseif ismember(FigMod, {'MEG','MEG GRAD'}) && all(ismember({'MEG MAG','MEG GRAD'}, AllMod)) && ~isempty(DataFile) && (strcmpi(file_gettype(DataFile), 'pdata') || ~ismember(RecType, {'recordings','raw'}))
                 Modalities = {'MEG MAG', 'MEG GRAD2', 'MEG GRAD3'};
             else
                 Modalities = {FigMod};
-            end
+            end           
+                
         case {'Timefreq', 'Spectrum', 'Pac'}
             % Get time freq information
             TfInfo = getappdata(hFig, 'Timefreq');
@@ -1506,19 +1543,22 @@ function ViewTopography(hFig, UseSmoothing)
                     error(['This files contains information about cortical sources or regions of interest.' 10 ...
                            'Cannot display it as a sensor topography.']);
             end
+            RecType = '';
         case 'Connect'
             warning('todo');
     end
     % Call view data function
     if ~isempty(DataFile) && ~isempty(Modalities)
         for i = 1:length(Modalities)
-            if ismember(Modalities{i}, {'ECOG', 'SEEG'})
+            if ismember(Modalities{i}, {'ECOG', 'SEEG', 'ECOG+SEEG'})
                 % 3D figure: plot topography in the same figure
                 if isequal(FigureType, '3DViz')
                     view_topography(DataFile, Modalities{i}, '3DElectrodes', [], [], hFig);
                 % Other types of figures: Create new figure
-                else
+                elseif ~isempty(DispMod) && ismember(Modalities{i}, DispMod)
                     view_topography(DataFile, Modalities{i}, '3DElectrodes');
+                else
+                    view_topography(DataFile, Modalities{i}, '2DElectrodes');
                 end
             elseif isequal(Modalities{i}, 'NIRS')
                 % Get montage used in figure
@@ -1530,6 +1570,9 @@ function ViewTopography(hFig, UseSmoothing)
                 % Open topography figure
                 view_topography(DataFile, Modalities{i}, '3DOptodes');
             else
+                if ~ismember(RecType, {'recordings','raw'}) || strcmpi(file_gettype(DataFile), 'pdata')
+                    UseSmoothing = 0;
+                end
                 view_topography(DataFile, Modalities{i}, '2DSensorCap', [], UseSmoothing);
             end
         end
@@ -1729,16 +1772,35 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                             view_clusters(DataFiles, iClusters, Figure.hFigure);
                         end
                     else
+                        % Get original XLim/YLim
+                        if (length(Figure.Handles.hAxes) == 1) && ishandle(Figure.Handles.hAxes)
+                            XLimOrig = get(Figure.Handles.hAxes, 'XLim');
+                        end
                         TsInfo = getappdata(Figure.hFigure, 'TsInfo');
+                        % Reset amplitudes
                         if TsInfo.AutoScaleY
                             GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax = [];
                         end
                         GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor = [];
+                        % Update figure
                         isOk = figure_timeseries('PlotFigure', iDS, iFig, [], [], isFastUpdate);
                         % The figure could not be refreshed: close it
                         if ~isOk
                             close(Figure.hFigure);
                             continue;
+                        end
+                        % Restore XLim/YLim
+                        if ~isempty(XLimOrig) && (length(Figure.Handles.hAxes) == 1) && ishandle(Figure.Handles.hAxes)
+                            XLimNew = get(Figure.Handles.hAxes, 'XLim');
+                            YLimNew = get(Figure.Handles.hAxes, 'YLim');
+                            if ~isequal(XLimNew, XLimOrig) && (XLimOrig(1) >= XLimNew(1)) && (XLimOrig(2) <= XLimNew(2))
+                                set(Figure.Handles.hAxes, 'XLim', XLimOrig);
+                                % Copy the XLim from the main axes to the events bar
+                                hEventsBar = findobj(Figure.hFigure, '-depth', 1, 'Tag', 'AxesEventsBar');
+                                if ~isempty(hEventsBar)
+                                    set(hEventsBar, 'XLim', get(Figure.Handles.hAxes, 'XLim'));
+                                end
+                            end
                         end
                     end
                     UpdateFigureName(Figure.hFigure);
@@ -1869,20 +1931,27 @@ end
 %  ===== MOUSE SELECTION ===================================================================
 %  =========================================================================================
 % ===== TOGGLE SELECTED ROW =====
-function ToggleSelectedRow(RowName)
+function ToggleSelectedRow(RowNames)
     global GlobalData;
     % Convert to cell
-    if ~iscell(RowName)
-        RowName = {RowName};
+    if ~iscell(RowNames)
+        RowNames = {RowNames};
     end
     % Remove spaces in channel names
-    RowName = cellfun(@(c)strrep(c,' ',''), RowName, 'UniformOutput', 0);
+    RowNames = cellfun(@(c)strrep(c,' ',''), RowNames, 'UniformOutput', 0);
+    % Expand bipolar montages
+    for i = 1:length(RowNames)
+        bipNames = str_split(RowNames{i}, '-');
+        if (length(bipNames) == 2)
+            RowNames = cat(2, RowNames, bipNames);
+        end
+    end
     % If row name is already in list: remove it
-    if ismember(RowName, GlobalData.DataViewer.SelectedRows)
-        SetSelectedRows(setdiff(GlobalData.DataViewer.SelectedRows, RowName));
+    if ismember(RowNames, GlobalData.DataViewer.SelectedRows)
+        SetSelectedRows(setdiff(GlobalData.DataViewer.SelectedRows, RowNames));
     % Else: add it
     else
-        SetSelectedRows(union(GlobalData.DataViewer.SelectedRows, RowName));
+        SetSelectedRows(union(GlobalData.DataViewer.SelectedRows, RowNames));
     end
 end
 
@@ -1974,7 +2043,8 @@ end
 function SetBackgroundColor(hFig, newColor) %#ok<*DEFNU>
     % Use previous scout color
     if (nargin < 2) || isempty(newColor)
-        newColor = uisetcolor([0 0 0], 'Select scout color');
+        % newColor = uisetcolor([0 0 0], 'Select scout color');
+        newColor = java_dialog('color');
     end
     % If no color was selected: exit
     if (length(newColor) ~= 3)

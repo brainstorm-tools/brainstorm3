@@ -5,9 +5,9 @@ function [sFile, ChannelMat] = in_fopen_brainamp(DataFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -110,7 +110,7 @@ while 1
                 hdr.chgain(iChan) = chFactor * chUnit;
                 
             elseif strcmpi(curBlock, 'Coordinates')
-                tmpLoc = str2num(argLine{2}); 
+                tmpLoc = str2num(argLine{2});
                 % Spherical (R,TH,PHI)
                 if (length(tmpLoc) == 3) && (tmpLoc(1) == 1)
                     % Convert Spherical(degrees) => Spherical(radians) => Cartesian
@@ -160,13 +160,13 @@ if (strcmpi(hdr.DataFormat, 'BINARY') && strcmpi(hdr.DataOrientation, 'MULTIPLEX
     dirInfo = dir(DataFile);
     % Get number of samples
     switch lower(hdr.BinaryFormat)
-        case 'int_16';
+        case 'int_16'
             hdr.bytesize   = 2;
             hdr.byteformat = 'int16';
-        case 'int_32';
+        case 'int_32'
             hdr.bytesize   = 4;
             hdr.byteformat = 'int32';
-        case 'ieee_float_32';
+        case 'ieee_float_32'
             hdr.bytesize   = 4;
             hdr.byteformat = 'float32';
     end
@@ -193,8 +193,7 @@ sFile.header     = hdr;
 [tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = 1e6 ./ hdr.SamplingInterval;
-sFile.prop.samples = [0, hdr.nsamples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, hdr.nsamples - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.NumberOfChannels, 1);
@@ -211,7 +210,7 @@ for i = 1:hdr.NumberOfChannels
     else
         ChannelMat.Channel(i).Name = sprintf('E%d', i);
     end
-    if ~isempty(hdr.chloc)
+    if ~isempty(hdr.chloc) && (i <= size(hdr.chloc,1))
         ChannelMat.Channel(i).Loc = hdr.chloc(i,:)';
     else
         ChannelMat.Channel(i).Loc = [0; 0; 0];

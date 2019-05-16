@@ -19,13 +19,13 @@ function varargout = panel_protocols(varargin)
 %                    panel_protocols('SelectSubject',       SubjectName) % Select and expand subject node
 %                    panel_protocols('MarkUniqueNode',      bstNode)
 %      OutputFiles = panel_protocols('TreeHeadModel',       bstNode)
-%      OutputFiles = panel_protocols('TreeInverse',         bstNodes, is2014)
+%      OutputFiles = panel_protocols('TreeInverse',         bstNodes, Version)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -191,8 +191,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 if ismember(char(targetNodes(1).getType()), {'subjectdb', 'studydbsubj', 'studydbcond'})
                     % Cancel action
                 else
-                    % Replace the "Link to raw file" nodes with their parent
-                    if strcmpi(char(targetNodes(1).getType()), 'rawdata') && strcmpi(char(targetNodes(1).getParent().getType()), 'rawcondition')
+                    % Replace the "Link to raw file" nodes with their
+                    % parent, except for spike-sorted raw files
+                    if strcmpi(char(targetNodes(1).getType()), 'rawdata') ...
+                            && strcmpi(char(targetNodes(1).getParent().getType()), 'rawcondition') ...
+                            && isempty(strfind(targetNodes(1).getFileName(), '_0ephys'))
                         for iNode = 1:length(targetNodes)
                             targetNodes(iNode) = targetNodes(iNode).getParent();
                         end
@@ -1183,7 +1186,7 @@ end
 
 
 %% ===== NODE: INVERSE MODEL =====
-function OutputFiles = TreeInverse(bstNodes, is2014) %#ok<DEFNU>
+function OutputFiles = TreeInverse(bstNodes, Version) %#ok<DEFNU>
     OutputFiles = {};
     % Get node type
     nodeType = lower(char(bstNodes(1).getType()));
@@ -1212,10 +1215,13 @@ function OutputFiles = TreeInverse(bstNodes, is2014) %#ok<DEFNU>
         end
     end
     % Call inverse function
-    if is2014
-        [OutputFiles, errMessage] = process_inverse_2016('Compute', iStudies, iDatas);
-    else
-        [OutputFiles, errMessage] = process_inverse('Compute', iStudies, iDatas);
+    switch Version
+        case '2009'
+            [OutputFiles, errMessage] = process_inverse('Compute', iStudies, iDatas);
+        case '2016'
+            [OutputFiles, errMessage] = process_inverse_2016('Compute', iStudies, iDatas);
+        case '2018'
+            [OutputFiles, errMessage] = process_inverse_2018('Compute', iStudies, iDatas);
     end
     % Error
     if isempty(OutputFiles) && ~isempty(errMessage)

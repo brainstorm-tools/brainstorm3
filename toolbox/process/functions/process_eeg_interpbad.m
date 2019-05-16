@@ -4,9 +4,9 @@ function varargout = process_eeg_interpbad( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -119,6 +119,8 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     if (length(iFix) ~= length(iBad))
         iNotFix = setdiff(iBad, iFix);
         bst_report('Warning', sProcess, sInput, ['The following channels could not be interpolated from any good neighbor: ' sprintf('%s ', ChannelMat.Channel(iNotFix).Name)]);
+    else
+        iNotFix = [];
     end
     % If none of the bad channels can be interpolated
     if isempty(iFix)
@@ -127,8 +129,8 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % List the channels used for each bad channel
     if (sInput.iBlockCol == 1)
         strInfo = '';
-        for i = 1:length(iBad)
-            strInfo = [strInfo 'Neighbors for "', ChannelMat.Channel(iBad(i)).Name, '": ', sprintf('%s ', ChannelMat.Channel(dist(iBad(i),:) > 0).Name), 10];
+        for i = 1:length(iFix)
+            strInfo = [strInfo 'Neighbors for "', ChannelMat.Channel(iFix(i)).Name, '": ', sprintf('%s ', ChannelMat.Channel(dist(iFix(i),:) > 0).Name), 10];
         end
         bst_report('Info', sProcess, sInput, strInfo(1:end-1));
     end
@@ -137,15 +139,18 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Create the weighting matrix (values decrease at a 1/dist rate)
     W = zeros(nChan);
     W(dist~=0) = 1 ./ dist(dist~=0);
-    W(iBad,:) = bst_bsxfun(@rdivide, W(iBad,:), sum(W(iBad,:),2));
-    % Add a diagonal so it doesn't change the good values
+    W(iFix,:) = bst_bsxfun(@rdivide, W(iFix,:), sum(W(iFix,:),2));
+    % Add a diagonal so it doesn't change the good or unchanged values
     W(iGood,iGood) = eye(length(iGood));
+    if ~isempty(iNotFix)
+        W(iNotFix,iNotFix) = eye(length(iNotFix));
+    end
     % Apply weights to recordings
     sInput.A = W(iChannels,iChannels) * sInput.A;
     
     % ===== RETURN MODIFICATIONS =====
     % Set the corrected channels as good
-    sInput.ChannelFlag(iFix,:) = 1;
+    sInput.ChannelFlag(iFix) = 1;
     % Add history comment
     sInput.HistoryComment = ['Replaced bad channels with neighbors interpolations (' num2str(MaxDist*100) 'cm): ' sprintf('%s ', ChannelMat.Channel(iFix).Name)];
 end

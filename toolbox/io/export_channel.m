@@ -10,9 +10,9 @@ function export_channel( BstChannelFile, OutputChannelFile )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,7 +26,7 @@ function export_channel( BstChannelFile, OutputChannelFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2012
+% Authors: Francois Tadel, 2008-2019
 
 % ===== PASRSE INPUTS =====
 if (nargin < 1) || isempty(BstChannelFile)
@@ -82,6 +82,49 @@ if isempty(OutputChannelFile)
 end
 
 
+% ===== TRANSFORMATIONS =====
+isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG'});
+isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS'});
+% Get patient MRI (if needed)
+if isMniTransf || isWorldTransf
+    % Get channel file
+    sStudy = bst_get('ChannelFile', BstChannelFile);
+    % Get subject
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    % Get the subject's MRI
+    if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
+        error('You need the subject anatomy in order to export the sensor positions to MNI or world coordinates.');
+    end
+    % Load the MRI
+    MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
+    sMri = load(MriFile, 'SCS', 'NCS', 'InitTransf', 'Voxsize');
+end
+% MNI transformation
+if isMniTransf
+    % Check that the transformation is available
+    if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R)
+        error(['The SCS and MNI transformations must be defined for this subject' 10 'in order to load sensor positions in MNI coordinates.']);
+    end
+    % Compute the transformation SCS => MNI
+    Transf = cs_convert(sMri, 'scs', 'mni');
+    
+    RTscs2mri = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
+    RTmri2mni = [sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1];
+    Transf = RTmri2mni * RTscs2mri;
+% World transformation (vox2ras/nii)
+elseif isWorldTransf
+    % Check that the transformation is available
+    if ~isfield(sMri, 'InitTransf') || isempty(sMri.InitTransf) || ~ismember('vox2ras', sMri.InitTransf(:,1))
+        error(['The world/vox2ras transformations must be defined for this subject' 10 'in order to export sensor positions in world coordinates.']);
+    end
+    % Compute the transformation SCS => WORLD
+    Transf = cs_convert(sMri, 'scs', 'world');
+    
+else
+    Transf = [];
+end
+
+
 % ===== SAVE CHANNEL FILE =====
 [OutputPath, OutputBase, OutputExt] = bst_fileparts(OutputChannelFile);
 % Show progress bar
@@ -98,11 +141,11 @@ switch FileFormat
     case 'POLHEMUS-HS'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'name','X','Y','Z'}, 0, 1, 1, .01);
     case 'ASCII_XYZ-HS'
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z'}, 0, 1, 0, .01);
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z'}, 0, 1, 0, .001, Transf);
     case 'ASCII_NXYZ-HS'
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 0, 1, 0, .01);
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 0, 1, 0, .001, Transf);
     case 'ASCII_XYZN-HS'
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 0, 1, 0, .01);
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 0, 1, 0, .001, Transf);
         
     % === EEG ONLY ===
     case 'CARTOOL-XYZ'
@@ -117,12 +160,12 @@ switch FileFormat
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'indice','-Y','X','Z','name'}, 1, 0, 0, .01);
     case 'EGI'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'name','-Y','X','Z'}, 1, 0, 0, .01);
-    case 'ASCII_XYZ-EEG'
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z'}, 1, 0, 0, .01);
-    case 'ASCII_NXYZ-EEG'
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 1, 0, 0, .01);
-    case 'ASCII_XYZN-EEG'
-        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 1, 0, 0, .01);
+    case {'ASCII_XYZ-EEG', 'ASCII_XYZ_MNI-EEG', 'ASCII_XYZ_WORLD-EEG'}
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z'}, 1, 0, 0, .001, Transf);
+    case {'ASCII_NXYZ-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_NXYZ_WORLD-EEG'}
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 1, 0, 0, .001, Transf);
+    case {'ASCII_XYZN-EEG', 'ASCII_XYZN_MNI-EEG', 'ASCII_XYZN_WORLD-EEG'}
+        out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 1, 0, 0, .001, Transf);
     
     % === NIRS ===
     case 'BRAINSIGHT-TXT'

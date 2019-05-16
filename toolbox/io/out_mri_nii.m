@@ -17,9 +17,9 @@ function [fid, nifti] = out_mri_nii( sMri, OutputFile, typeMatlab, Nt )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -109,7 +109,23 @@ hdr.glmax  = MaxVal;
 % Use existing matrices (from the header)
 if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'}))
     nifti = sMri.Header.nifti;
-    
+% Use transformation matrices from other formats than .nii
+elseif isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && any(ismember(sMri.InitTransf(:,1), 'vox2ras'))
+    iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
+    Transf = sMri.InitTransf{iTransf(1),2};
+    % sform matrix
+    nifti.sform_code = 2;
+    nifti.srow_x     = Transf(1,:);
+    nifti.srow_y     = Transf(2,:);
+    nifti.srow_z     = Transf(3,:);
+    % qform matrix
+    nifti.qform_code = 0;
+    nifti.quatern_b  = 0;
+    nifti.quatern_c  = 0;
+    nifti.quatern_d  = 0;
+    nifti.qoffset_x  = 0;
+    nifti.qoffset_y  = 0;
+    nifti.qoffset_z  = 0;
 % Otherwise: Try to define from existing information in the database
 else
     % Default origin of the volume: AC, if not middle of the volume

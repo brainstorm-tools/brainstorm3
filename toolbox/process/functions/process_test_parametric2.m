@@ -6,9 +6,9 @@ function varargout = process_test_parametric2( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_test_parametric2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Dimitrios Pantazis, 2008-2016
+% Authors: Francois Tadel, Dimitrios Pantazis, 2008-2019
 
 eval(macro_method);
 end
@@ -35,7 +35,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Stat2';
     sProcess.SubGroup    = 'Test';
     sProcess.Index       = 101;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Statistics';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Statistics';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',  'results',  'timefreq',  'matrix'};
     sProcess.OutputTypes = {'pdata', 'presults', 'ptimefreq', 'pmatrix'};
@@ -590,6 +590,11 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
                     % Compute t-test
                     tmap = mean_diff ./ std_diff .* sqrt(nA);
                     df = nA - 1;
+                    % Test if the statistics make sense
+                    if all(tmap(:) == 0)
+                        bst_report('Error', sProcess, [], 'The T-statistics is zero for all the tests.');
+                        return;
+                    end
                     % Calculate p-values from t-values
                     pmap = ComputePvalues(tmap, df, 't', OPTIONS.TestTail);
                     % Units: t
@@ -791,7 +796,7 @@ function p = ComputePvalues(t, df, TestDistrib, TestTail)
     end
     % Default: F-distribution
     if (nargin < 3) || isempty(TestDistrib)
-        TestDistrib = 'two';
+        TestDistrib = 'f';
     end
     % Nothing to test
     if strcmpi(TestTail, 'no')

@@ -12,9 +12,9 @@ function varargout = gui_brainstorm( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function varargout = gui_brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2019
 
 eval(macro_method);
 end
@@ -44,6 +44,18 @@ function GUI = CreateWindow() %#ok<DEFNU>
     import javax.swing.UIManager;
     global GlobalData;
     
+    % ===== NO GUI =====
+    % In headless mode: do not create any Java object
+    if (GlobalData.Program.GuiLevel == -1)
+        GUI.mainWindow.jBstFrame = [];
+        GUI.mainWindow.jComboBoxProtocols = [];
+        GUI.mainWindow.jComboBoxProtocols = [];
+        GUI.panelContainers = [];
+        GUI.panels = [];
+        GUI.nodelists = [];
+        return;
+    end
+    
     % ===== CREATE GLOBAL MUTEX =====
     % Clone control
     if isequal(GlobalData.Program.CloneLock, 1)
@@ -56,10 +68,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
     end
     % In order to catch when Matlab is closed with Brainstorm still running
     bst_mutex('create', 'Brainstorm');
-    if (GlobalData.Program.GuiLevel >= 0)
-        bst_mutex('setReleaseCallback', 'Brainstorm', @closeWindow_Callback);
-    end
-
+    bst_mutex('setReleaseCallback', 'Brainstorm', @closeWindow_Callback);
+    
     % ===== CREATE JFRAME =====
     % Get interface scaling
     InterfaceScaling = bst_get('InterfaceScaling') / 100;
@@ -68,10 +78,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
     % Set window icon
     jBstFrame.setIconImage(IconLoader.ICON_APP.getImage());
     % Set closing callback
-    if (GlobalData.Program.GuiLevel >= 0)
-        jBstFrame.setDefaultCloseOperation(jBstFrame.DO_NOTHING_ON_CLOSE);
-        java_setcb(jBstFrame, 'WindowClosingCallback', @closeWindow_Callback);
-    end
+    jBstFrame.setDefaultCloseOperation(jBstFrame.DO_NOTHING_ON_CLOSE);
+    java_setcb(jBstFrame, 'WindowClosingCallback', @closeWindow_Callback);
+
     % Get main frame panel
     jFramePanel = jBstFrame.getContentPane();
     % Constants
@@ -102,7 +111,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
             gui_component('MenuItem', jSubMenu, [], 'Load from zip file', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@import_protocol), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Import subject from zip', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@import_subject), fontSize);
             jSubMenu.addSeparator();
-            gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@process_import_bids, 'ImportBidsDataset'), fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'), fontSize);
             jSubMenu.addSeparator();
             gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[], fontSize);
@@ -126,10 +135,13 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % === SET PREFERENCES ===
         gui_component('MenuItem', jMenuFile, [], 'Edit preferences', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@gui_show, 'panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0), fontSize);
         jMenuFile.addSeparator();
-        % === DIGITIZE ===
+        % === EXECUTE SCRIPTS IN COMPILED VERSION ===
         if exist('isdeployed', 'builtin') && isdeployed
             gui_component('MenuItem', jMenuFile, [], 'Command window', IconLoader.ICON_TERMINAL, [], @(h,ev)gui_show('panel_command', 'JavaWindow', 'MATLAB command window', [], 0, 1, 0), fontSize);
+            gui_component('MenuItem', jMenuFile, [], 'Execute script', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@panel_command, 'ExecuteScript'), fontSize);
+            jMenuFile.addSeparator();
         end
+        % === DIGITIZE ===  
         gui_component('MenuItem', jMenuFile, [], 'Digitize', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@panel_digitize, 'Start'), fontSize);
         gui_component('MenuItem', jMenuFile, [], 'Batch MRI fiducials', IconLoader.ICON_LOBE, [], @(h,ev)bst_call(@bst_batch_fiducials), fontSize);
         jMenuFile.addSeparator();
@@ -157,7 +169,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
                 gui_component('MenuItem', jMenuOpenmeeg, [], 'Download Visual C++', [], [], @(h,ev)web('http://www.microsoft.com/en-us/download/details.aspx?id=14632', '-browser'), fontSize);
             end
             jMenuOpenmeeg.addSeparator();
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
+            gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
         end
         
     % ==== Menu HELP ====
@@ -165,8 +177,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % BUG REPORTS
         % gui_component('MenuItem', jMenuSupport, [], 'Bug reporting...', [], [], @(h,ev)gui_show('panel_bug', 'JavaWindow', 'Bug reporting', [], 1, 0), []);
         % WEBSITE
-        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm website', IconLoader.ICON_EXPLORER, [], @(h,ev)web('http://neuroimage.usc.edu/brainstorm/', '-browser'), fontSize);
-        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm forum', IconLoader.ICON_EXPLORER, [], @(h,ev)web('http://neuroimage.usc.edu/forums/', '-browser'), fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm website', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/', '-browser'), fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'Brainstorm forum', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/forums/', '-browser'), fontSize);
         jMenuSupport.addSeparator();
         % USAGE STATS
         gui_component('MenuItem', jMenuSupport, [], 'Usage statistics', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_userstat, fontSize);
@@ -174,8 +186,11 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % LICENSE
         gui_component('MenuItem', jMenuSupport, [], 'License',       IconLoader.ICON_EDIT, [], @(h,ev)bst_license(), fontSize);
         % RELEASE NOTES
-        updatesfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'updates.txt');
+        updatesfile = bst_fullfile(bst_get('BrainstormDocDir'), 'updates.txt');
         gui_component('MenuItem', jMenuSupport, [], 'Release notes', IconLoader.ICON_EDIT, [], @(h,ev)view_text(updatesfile, 'Release notes', 1), fontSize);
+        jMenuSupport.addSeparator();
+        % Prepare workshop
+        gui_component('MenuItem', jMenuSupport, [], 'Workshop preparation', IconLoader.ICON_SCREEN1, [], @(h,ev)brainstorm('workshop'), fontSize);
         jMenuSupport.addSeparator();
         % Guidelines
         jMenuGuidelines = gui_component('Menu', jMenuSupport, [], 'Guidelines', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
@@ -264,7 +279,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     % Selection toolbar
     jToolbarA = gui_component('Toolbar', jPanelProcess);
     jToolbarA.setOrientation(javax.swing.JToolBar.VERTICAL);
-        TB_SIZE = Dimension(28*InterfaceScaling, 28*InterfaceScaling);
+        TB_SIZE = Dimension(28*InterfaceScaling, 26*InterfaceScaling);
         jButtonGroupType = java_create('javax.swing.ButtonGroup');
         % Buttons
         jButtonRecordingsA = gui_component('toolbartoggle', jToolbarA, [], '', {IconLoader.ICON_DATA_LIST,     TB_SIZE, jButtonGroupType}, 'Process recordings',  @(h,ev)bst_call(@ProcessDataType_Callback, 'data', 'A', ev));
@@ -275,6 +290,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jToolbarA.addSeparator();
         % Button "RUN"
         gui_component('toolbarbutton', jToolbarA, [], '', {IconLoader.ICON_RUN, TB_SIZE}, 'Start', @(h,ev)bst_call(@ProcessRun_Callback));
+        jToolbarA.addSeparator();
+        jButtonReload = gui_component('toolbarbutton', jToolbarA, [], '', {IconLoader.ICON_RELOAD, TB_SIZE}, 'Reload last pipeline', @(h,ev)bst_call(@bst_report, 'Recall', 'current'));
     jPanelProcess.add(jToolbarA, java.awt.BorderLayout.WEST);
        
     % Toolbar B
@@ -383,7 +400,10 @@ function GUI = CreateWindow() %#ok<DEFNU>
     % If main window is visible
     if (GlobalData.Program.GuiLevel >= 1)
         % Detect on which screen was Brainstorm window at the previous session
-        if (length(ScreenDef) > 1) && (sLayout.MainWindowPos(1) >= ScreenDef(2).javaPos.getX())
+        tol = 30;
+        if (length(ScreenDef) > 1) && sLayout.DoubleScreen && ...
+           (sLayout.MainWindowPos(1) >= ScreenDef(2).javaPos.getX() - tol) && (sLayout.MainWindowPos(1) <= ScreenDef(2).javaPos.getX() + ScreenDef(2).javaPos.getWidth() + tol) && ...
+           (sLayout.MainWindowPos(2) >= ScreenDef(2).javaPos.getY() - tol) && (sLayout.MainWindowPos(2) <= ScreenDef(2).javaPos.getY() + ScreenDef(2).javaPos.getHeight() + tol)
             javaMax = ScreenDef(2).javaPos;
         else
             javaMax = ScreenDef(1).javaPos;
@@ -393,14 +413,14 @@ function GUI = CreateWindow() %#ok<DEFNU>
                   javaMax.getY(), ...
                   380 * InterfaceScaling, ...
                   700 * InterfaceScaling];
-        maxPos = [javaMax.getWidth()  + javaMax.getX() - minPos(3), ...
-                  javaMax.getHeight() - javaMax.getY() - minPos(4), ...
+        maxPos = [javaMax.getX() + javaMax.getWidth() - minPos(3), ...
+                  javaMax.getY() + javaMax.getHeight() - minPos(4), ...
                   javaMax.getWidth() * .6, ...
-                  javaMax.getHeight() - javaMax.getY() + 10];
+                  javaMax.getHeight()];
         defPos = [minPos(1), ...
                   minPos(2), ...
                   450 * InterfaceScaling, ...
-                  max(maxPos(4) * .9, minPos(4))];
+                  maxPos(4) * .9];
         % Check values of previous session
         if all(sLayout.MainWindowPos >= minPos) && all(sLayout.MainWindowPos <= maxPos)
             defPos = sLayout.MainWindowPos;
@@ -450,6 +470,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
              'jButtonSourcesB',         jButtonSourcesB, ...
              'jButtonTimefreqB',        jButtonTimefreqB, ...
              'jButtonMatrixB',          jButtonMatrixB, ...
+             'jButtonReload',           jButtonReload, ...
              'jTextFilter',             jTextFilter),... 
          'panelContainers', [...
                struct('name', 'explorer', ...
@@ -479,7 +500,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
                              jBstFrame.getWidth(), ...
                              jBstFrame.getHeight()];
             % Update the Layout structure in Matlab preferences
-            bst_set('Layout', 'MainWindowPos', MainWindowPos);
+            % bst_set('Layout', 'MainWindowPos', MainWindowPos);
+            GlobalData.Preferences.Layout.MainWindowPos = MainWindowPos;
         end
         % Try to exit via bst_exit function
         if (~bst_exit())
@@ -622,7 +644,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Create popup
         jPopupTab = java_create('javax.swing.JPopupMenu');
         % List possible tabs
-        panelList = {'Record', 'Filter', 'Surface', 'Scout', 'Cluster', 'Coordinates', 'Dipinfo', 'iEEG', 'Command'};
+        panelList = {'Record', 'Filter', 'Surface', 'Scout', 'Cluster', 'Coordinates', 'Dipinfo', 'iEEG', 'Command', 'Spikes'};
         panelRemove = {};
         % List missing tabs
         for iPanel = 1:length(GlobalData.Program.GUI.panels)
@@ -841,7 +863,7 @@ function UpdateProtocolsList()
     end
     % Set current protocol
     iProtocol = GlobalData.DataBase.iProtocol;
-    if ~isempty(iProtocol) && (iProtocol > 0) && (iProtocol < length(GlobalData.DataBase.ProtocolInfo))
+    if ~isempty(iProtocol) && isnumeric(iProtocol) && (iProtocol > 0) && (iProtocol < length(GlobalData.DataBase.ProtocolInfo))
         iSel = find(indProtocols == iProtocol);
         ctrl.jComboBoxProtocols.setSelectedIndex(iSel-1);
     end
@@ -884,7 +906,7 @@ function SetCurrentProtocol(iProtocol)
     if ~isempty(jComboBoxProtocols)
         % Look for the indice of the protocol in the combo box
         iItem = [];
-        if (iProtocol ~= 0)
+        if isnumeric(iProtocol) && (iProtocol ~= 0)
             for i = 1:jComboBoxProtocols.getItemCount()
                 iItemProt = jComboBoxProtocols.getItemAt(i-1).getUserData();
                 if ~isempty(iItemProt) && (iItemProt == iProtocol)
@@ -1075,6 +1097,9 @@ function SetSelectedTab(tabTitle, isAutoSelect, containerName)
     end
     % Get Tools panel container
     jTabpaneTools = bst_get('PanelContainer', containerName);
+    if isempty(jTabpaneTools)
+        return;
+    end
     % Check if the requirements are met to allow auto-select
     if isAutoSelect
         % If there are more than one figure: do not allow
@@ -1100,6 +1125,9 @@ end
 function SetToolTabColor(tabTitle, color) %#ok<DEFNU>
     % Get Tools panel container
     jTabpaneTools = bst_get('PanelContainer', 'Tools');
+    if isempty(jTabpaneTools)
+        return;
+    end
     % Look for panel in Tools tabbed panel
     for i = 0:jTabpaneTools.getTabCount()-1
         if strcmpi(char(jTabpaneTools.getTitleAt(i)), tabTitle)
@@ -1111,10 +1139,16 @@ end
 
 %% ===== SHOW TOOL TAB =====
 function ShowToolTab(tabTitle)
+    % Headless mode: return
+    if (bst_get('GuiLevel') == -1)
+        return;
+    end
     % Specific case: Frequency
     if strcmpi(tabTitle, 'FreqPanel')
         jPanelFreq = bst_get('PanelContainer', 'freq');
-        jPanelFreq.setVisible(1);
+        if ~isempty(jPanelFreq)
+            jPanelFreq.setVisible(1);
+        end
         return;
     end
     % Get function
@@ -1264,7 +1298,7 @@ function BrainstormDbDir = SetDatabaseFolder(varargin) %#ok<DEFNU>
     isStop = 0;
     while ~isStop
         % Open 'Select directory' dialog
-        BrainstormDbDir = uigetdir(BrainstormDbDir, ['Please select Brainstorm database directory.' 10 10 'This is where all the new protocols will be created.']);
+        BrainstormDbDir = bst_uigetdir(BrainstormDbDir, ['Please select Brainstorm database directory.' 10 10 'This is where all the new protocols will be created.']);
         % Exit if not set
         if isempty(BrainstormDbDir) || ~ischar(BrainstormDbDir)
             BrainstormDbDir = [];
@@ -1305,7 +1339,7 @@ function ChangeDatabaseFolder()
             GlobalData.DataBase.isProtocolLoaded    = [];
             GlobalData.DataBase.isProtocolModified  = [];
             % Select current protocol in combo list
-            gui_brainstorm('SetCurrentProtocol', 0);
+            SetCurrentProtocol(0);
             % Update interface
             UpdateProtocolsList();
             panel_protocols('UpdateTree');
@@ -1416,35 +1450,45 @@ end
 
 %% ===== DOWNLOAD FILE =====
 function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
-    % Parse inputs 
+    errMsg = [];
+    % Parse inputs
     if (nargin < 3) || isempty(wndTitle)
         wndTitle = 'Download file';
     end
-    errMsg = [];
-    % Get system proxy definition, if available
-    if exist('com.mathworks.mlwidgets.html.HTMLPrefs', 'class') && exist('com.mathworks.webproxy.WebproxyFactory', 'class') && ismethod('com.mathworks.webproxy.WebproxyFactory', 'findProxyForURL')
-        com.mathworks.mlwidgets.html.HTMLPrefs.setProxySettings;
-        proxy = com.mathworks.webproxy.WebproxyFactory.findProxyForURL(java.net.URL(srcUrl));
+    % Headless mode: use Matlab base functions
+    if (bst_get('GuiLevel') == -1)
+        % Matlab >= 2014b: websave
+        if (bst_get('MatlabVersion') >= 804)
+            websave(destFile, srcUrl);
+        else
+            urlwrite(srcUrl, destFile);
+        end
     else
-        proxy = [];
-    end
-    % Start the download
-    downloadManager = java_create('org.brainstorm.file.BstDownload', 'Ljava.lang.String;Ljava.lang.String;Ljava.lang.String;)', srcUrl, destFile, wndTitle);
-    if ~isempty(proxy)
-        downloadManager.download(proxy);
-    else
-        downloadManager.download();
-    end
-    % Wait for the termination of the thread
-    while (downloadManager.getResult() == -1)
-        pause(0.2);
-    end
-    % If file was not downloaded correctly
-    if (downloadManager.getResult() ~= 1)
-        errMsg = char(downloadManager.getMessage());
-        % Delete partially downloaded file
-        if file_exist(destFile)
-            file_delete(destFile, 1);
+        % Get system proxy definition, if available
+        if exist('com.mathworks.mlwidgets.html.HTMLPrefs', 'class') && exist('com.mathworks.webproxy.WebproxyFactory', 'class') && ismethod('com.mathworks.webproxy.WebproxyFactory', 'findProxyForURL')
+            com.mathworks.mlwidgets.html.HTMLPrefs.setProxySettings;
+            proxy = com.mathworks.webproxy.WebproxyFactory.findProxyForURL(java.net.URL(srcUrl));
+        else
+            proxy = [];
+        end
+        % Start the download
+        downloadManager = java_create('org.brainstorm.file.BstDownload', 'Ljava.lang.String;Ljava.lang.String;Ljava.lang.String;)', srcUrl, destFile, wndTitle);
+        if ~isempty(proxy)
+            downloadManager.download(proxy);
+        else
+            downloadManager.download();
+        end
+        % Wait for the termination of the thread
+        while (downloadManager.getResult() == -1)
+            pause(0.2);
+        end
+        % If file was not downloaded correctly
+        if (downloadManager.getResult() ~= 1)
+            errMsg = char(downloadManager.getMessage());
+            % Delete partially downloaded file
+            if file_exist(destFile)
+                file_delete(destFile, 1);
+            end
         end
     end
 end
@@ -1484,7 +1528,7 @@ end
 % %% ===== TEST CONNECTION =====
 % function TestConnection()
 %     % Test address
-%     srcUrl  = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015';
+%     srcUrl  = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015';
 %     % Get URL
 %     handler = sun.net.www.protocol.http.Handler;
 %     jUrl = java.net.URL([],srcUrl,handler);

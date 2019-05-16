@@ -1,9 +1,9 @@
 function tutorial_visual_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir)
-% TUTORIAL_VISUAL_COPY: Copy the subject averages for the Brainstorm/SPM group tutorial into a new protocol.
+% TUTORIAL_VISUAL_COPY: Copy the subject averages for the Brainstorm/SPM group tutorial into a new protocol (BIDS VERSION)
 %
 % ONLINE TUTORIALS: 
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
 %    - ProtocolNameSingle : Name of the protocol created with all the data imported (TutorialVisual)
@@ -12,9 +12,9 @@ function tutorial_visual_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function tutorial_visual_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, Elizabeth Bock, 2016-2017
+% Author: Francois Tadel, Elizabeth Bock, 2016-2018
 
 % ===== CHECK PROTOCOLS =====
 % Start brainstorm without the GUI
@@ -82,17 +82,17 @@ for iSubj = 1:16
     % Copy anatomy files
     mkdir(AnatDest);
     disp(['Copying: ' AnatSrc ' to ' AnatDest '...']);
-    copyfile(bst_fullfile(AnatSrc, '*.mat'), AnatDest);
+    file_copy(bst_fullfile(AnatSrc, '*.mat'), AnatDest);
     % Copy analysis folders
     mkdir(bst_fullfile(DataDest, '@default_study'));
     mkdir(bst_fullfile(DataDest, '@intra'));
     disp(['Copying: ' DataSrc ' to ' DataDest '...']);
-    copyfile(bst_fullfile(DataSrc, '@default_study', '*.mat'), bst_fullfile(DataDest, '@default_study'));
-    copyfile(bst_fullfile(DataSrc, '@intra', '*.mat'), bst_fullfile(DataDest, '@intra'));
+    file_copy(bst_fullfile(DataSrc, '@default_study', '*.mat'), bst_fullfile(DataDest, '@default_study'));
+    file_copy(bst_fullfile(DataSrc, '@intra', '*.mat'), bst_fullfile(DataDest, '@intra'));
     % Loop on runs
     for iRun = 1:6
         % Run folders
-        RunName = sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-tsss_meg_notch', iSubj, iRun);
+        RunName = sprintf('sub-%02d_ses-meg_task-facerecognition_run-%02d_proc-sss_meg_notch', iSubj, iRun);
         RunSrc  = bst_fullfile(DataSrc,  RunName);
         RunDest = bst_fullfile(DataDest, RunName);
         % If run folder doesn't exist: skip
@@ -103,20 +103,20 @@ for iSubj = 1:16
         % Copy files
         mkdir(RunDest);
         disp(['Copying: ' RunSrc ' to ' RunDest '...']);
-        copyfile(bst_fullfile(RunSrc, 'brainstormstudy.mat'), RunDest);
-        copyfile(bst_fullfile(RunSrc, 'channel_*.mat'), RunDest);
-        copyfile(bst_fullfile(RunSrc, '*_average_*.mat'), RunDest);
+        file_copy(bst_fullfile(RunSrc, 'brainstormstudy.mat'), RunDest);
+        file_copy(bst_fullfile(RunSrc, 'channel_*.mat'), RunDest);
+        file_copy(bst_fullfile(RunSrc, '*_average_*.mat'), RunDest);
         if ~isempty(dir(bst_fullfile(RunSrc, 'headmodel_*.mat')))
-            copyfile(bst_fullfile(RunSrc, 'headmodel_*.mat'), RunDest);
+            file_copy(bst_fullfile(RunSrc, 'headmodel_*.mat'), RunDest);
         end
         if ~isempty(dir(bst_fullfile(RunSrc, 'noisecov_full.mat')))
-            copyfile(bst_fullfile(RunSrc, 'noisecov_full.mat'), RunDest);
+            file_copy(bst_fullfile(RunSrc, 'noisecov_full.mat'), RunDest);
         end
         if ~isempty(dir(bst_fullfile(RunSrc, 'results_*.mat')))
-            copyfile(bst_fullfile(RunSrc, 'results_*.mat'), RunDest);
+            file_copy(bst_fullfile(RunSrc, 'results_*.mat'), RunDest);
         end
         if ~isempty(dir(bst_fullfile(RunSrc, 'timefreq_*.mat')))
-            copyfile(bst_fullfile(RunSrc, 'timefreq_*.mat'), RunDest);
+            file_copy(bst_fullfile(RunSrc, 'timefreq_*.mat'), RunDest);
         end
     end
 end

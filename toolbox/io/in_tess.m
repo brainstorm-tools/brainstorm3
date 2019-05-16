@@ -17,9 +17,9 @@ function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -83,6 +83,8 @@ elseif strcmpi(FileFormat, 'ALL')
             FileFormat = 'TRI';
         case '.mat'
             FileFormat = 'BST';
+        case '.nwb'
+            FileFormat = 'NWB';
         case {'.pial', '.white', '.inflated', '.nofix', '.orig', '.smoothwm', '.sphere', '.reg', '.surf'}
             FileFormat = 'FS';
     end
@@ -194,6 +196,9 @@ switch (FileFormat)
             end
         end
         isConvertScs = 0;
+        
+    case 'NWB'
+        TessMat = in_tess_nwb(TessFile);
 end
 % If an error occurred: return
 if isempty(TessMat)

@@ -15,9 +15,9 @@ function varargout = bst_process( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,7 @@ function varargout = bst_process( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2010-2018; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -567,16 +567,18 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         % Get new condition name
         newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInput.SubjectName, newCondition));
         % Output file name derives from the condition name
-        [tmp, rawBaseOut] = bst_fileparts(newStudyPath);
-        rawBaseOut = strrep(rawBaseOut, '@raw', '');
+        [tmp, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
+        rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
         % Full output filename
         RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
         RawFileFormat = 'BST-BIN';
+        % Get input study (to copy the creation date)
+        sInputStudy = bst_get('AnyFile', sInput.FileName);
 
         % Get new condition name
         [tmp, ConditionName] = bst_fileparts(newStudyPath, 1);
         % Create output condition
-        iOutputStudy = db_add_condition(sInput.SubjectName, ConditionName);
+        iOutputStudy = db_add_condition(sInput.SubjectName, ConditionName, [], sInputStudy.DateOfStudy);
         if isempty(iOutputStudy)
             bst_report('Error', sProcess, sInput, ['Output folder could not be created:' 10 newPath]);
             return;
@@ -616,6 +618,12 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     OutputTFmask = [];
     % Get maximum size of a data block
     MaxSize = ProcessOptions.MaxBlockSize;
+    if isfield(ProcessOptions, 'LastMaxBlockSize') && MaxSize ~= ProcessOptions.LastMaxBlockSize
+        bst_report('Warning', sProcess, sInput, ['The memory block size was modified since the last process.' 10 ...
+            'If you encounter issues, be sure to revert it to its previous value in the Brainstorm preferences.']);
+        ProcessOptions.LastMaxBlockSize = MaxSize;
+        bst_set('ProcessOptions', ProcessOptions);
+    end
     % Split the block size in rows and columns
     if (nRow * nCol > MaxSize) && ~isempty(sProcess.processDim)
         % Split max block by row blocks
@@ -687,7 +695,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                 if isReadAll
                     sInput.A = FullFileMat(iRow, iCol);
                 else
-                    SamplesBounds = sFileIn.prop.samples(1) + iCol([1,end]) - 1;
+                    SamplesBounds = round(sFileIn.prop.times(1) .* sFileIn.prop.sfreq) + iCol([1,end]) - 1;
                     sInput.A = in_fread(sFileIn, ChannelMat, iEpoch, SamplesBounds, iRow, ImportOptions);
                 end
                 sInput.Std = [];
@@ -747,7 +755,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     % Standard error
                     if ~isempty(sInput.Std)
                         tmp2(iRowProcess,:,:) = sInput.Std;
-                        sInput.A = tmp2;
+                        sInput.Std = tmp2;
                     end
                 end
             end
@@ -792,7 +800,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                         % Update file properties
                         sFileTemplate.prop.sfreq   = 1 / (sInput.TimeVector(2) - sInput.TimeVector(1));
                         sFileTemplate.prop.times   = [OutTime(1), OutTime(end)];
-                        sFileTemplate.prop.samples = round(sFileTemplate.prop.times .* sFileTemplate.prop.sfreq);
                         % Update events
                         sFileTemplate.events = panel_record('ChangeTimeVector', sFileTemplate.events, OldFreq, sInput.TimeVector);
                     end
@@ -856,7 +863,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     end
                 else
                     % Indices to write
-                    SamplesBounds = sFileOut.prop.samples(1) + iOutTime([1,end]) - 1;
+                    SamplesBounds = round(sFileOut.prop.times(1) .* sFileOut.prop.sfreq) + iOutTime([1,end]) - 1;
                     % Write block
                     sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iRow, sInput.A);
                 end
@@ -937,6 +944,9 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     % ChannelFlag 
      if isfield(sInput, 'ChannelFlag') && ~isempty(sInput.ChannelFlag)
         sMat.ChannelFlag = sInput.ChannelFlag;
+        if isRaw
+            sMat.F.channelflag = sInput.ChannelFlag;
+        end
     end
     % New events created in the process
     if isfield(sInput, 'Events') && ~isempty(sInput.Events) && ismember(sInput.FileType, {'data', 'raw', 'matrix'})
@@ -1166,10 +1176,10 @@ end
 
 %% ===== PROCESS: STAT =====
 function OutputFiles = ProcessStat(sProcess, sInputA, sInputB)
-    % Check inputs
-    if ~isempty(strfind(GetFileTag(sInputA(1).FileName), 'connect'))
-        bst_report('Warning', sProcess, sInputA, 'Statistical tests on connectivity results are not supported yet.');
-    end
+%     % Check inputs
+%     if ~isempty(strfind(GetFileTag(sInputA(1).FileName), 'connect'))
+%         bst_report('Warning', sProcess, sInputA, 'Statistical tests on connectivity results are not supported yet.');
+%     end
     
     % ===== GET OUTPUT STUDY =====
     % Display progress bar
@@ -2069,7 +2079,7 @@ end
 %         OutputFiles = bst_process('CallProcess', ProcessName, sInputs,   sInputs2,   OPTIONS)
 %         OutputFiles = bst_process('CallProcess', ProcessName, FileNames, FileNames2, OPTIONS)
 %         [OutputFiles, OutputFiles2] = bst_process('CallProcess', ...)
-function [OutputFiles, OutputFiles2] = CallProcess(sProcess, sInputs, sInputs2, varargin)
+function [OutputFiles, OutputFiles2, sInputs, sInputs2] = CallProcess(sProcess, sInputs, sInputs2, varargin)
     % Check if Brainstorm is running
     if ~isappdata(0, 'BrainstormRunning')
         error('Please start Brainstorm before calling bst_process().');
@@ -2194,7 +2204,7 @@ function [sFileOut, errMsg] = CreateRawOut(sFileIn, RawFileOut, ImportOptions, i
             % Define output filename
             sFileOut.filename = RawFileOut;
             % Copy in file to out file
-            res = copyfile(sFileIn.filename, sFileOut.filename, 'f');
+            res = file_copy(sFileIn.filename, sFileOut.filename);
             if ~res
                 error(['Could not create output file: ' sFileOut.filename]);
             end
@@ -2274,7 +2284,7 @@ function [sFileOut, errMsg] = CreateRawOut(sFileIn, RawFileOut, ImportOptions, i
                 end
                 % Copy file, replacing the name of the DS
                 if ~isempty(destfile)
-                    res = copyfile(bst_fullfile(pathIn, dirDs(iFile).name), destfile, 'f');
+                    res = file_copy(bst_fullfile(pathIn, dirDs(iFile).name), destfile);
                     if ~res
                         errMsg = ['Could not create output file: ' destfile];
                         sFileOut = [];

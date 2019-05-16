@@ -17,9 +17,9 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -241,6 +241,11 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             else
                 % Just copy the fiducials from the reference MRI
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'vox2ras', isReslice);
+                % Transform error in warning
+                if ~isempty(errMsg) && ~isempty(sMri) && isSameSize && ~isReslice
+                    disp(['BST> Warning: ' errMsg]);
+                    errMsg = [];
+                end
             end
             % Copy the old SCS and NCS fields to the new file (only if registered)
             if isSameSize || isReslice

@@ -1,4 +1,4 @@
-function Fs = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction, isSignFlip)
+function Fs = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction, isSignFlip, scoutName)
 % BST_SCOUT_VALUE: Combine Ns time series using the given function. Used to get scouts/clusters values.
 %
 % USAGE:  Fs = bst_scout_value(F, ScoutFunction, Orient=[], nComponents=1, XyzFunction='none', isSignFlip=0)
@@ -12,12 +12,13 @@ function Fs = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction
 %                        If 0, the number varies, the properties of each region are defined in input GridAtlas
 %     - XyzFunction    : String, function used to group the the 2 or 3 components per vertex: return only one value per vertex {'norm', 'pca', 'none'}
 %     - isSignFlip     : In the case of signed minimum norm values, this will flip the signs of sources with opposite orientations
+%     - scoutName      : Name of the scout or cluster you're extracting
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,6 +35,9 @@ function Fs = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction
 % Authors: Sylvain Baillet, Francois Tadel, John Mosher, 2010-2016
 
 % ===== PARSE INPUTS =====
+if (nargin < 7) || isempty(scoutName)
+    scoutName = [];
+end
 if (nargin < 6) || isempty(isSignFlip)
     isSignFlip = 0;
 end
@@ -106,6 +110,7 @@ switch (nComponents)
 end
 nRow  = size(F,1);
 nTime = size(F,2);
+explained = 0;
 
 
 %% ===== COMBINE ALL VERTICES =====
@@ -162,7 +167,7 @@ switch (lower(ScoutFunction))
         % Signal decomposition
         Fs = zeros(1, nTime, nComponents);
         for i = 1:nComponents
-            Fs(1,:,i) = PcaFirstMode(F(:,:,i));
+            [Fs(1,:,i), explained] = PcaFirstMode(F(:,:,i));
         end
         
     % FAST PCA : Display first mode of PCA of time series within each scout region
@@ -185,7 +190,7 @@ switch (lower(ScoutFunction))
         % Signal decomposition
         Fs = zeros(1, nTime, nComponents);
         for i = 1:nComponents
-            Fs(1,:,i) = PcaFirstMode(F(:,:,i));
+            [Fs(1,:,i), explained] = PcaFirstMode(F(:,:,i));
         end
         
     % STAT : Average values as if they were statistical results => ignore all the zero-values
@@ -218,7 +223,7 @@ if (nComponents > 1) && (size(Fs,3) > 1)
             Fs = zeros(size(Fs,1), size(Fs,2));
             % For each vertex: Signal decomposition
             for i = 1:size(Fs,1)
-                Fs(i,:) = PcaFirstMode(squeeze(F(i,:,:))');
+                [Fs(i,:), explained] = PcaFirstMode(squeeze(F(i,:,:))');
             end
             
         % Compute the norm across the directions
@@ -246,16 +251,27 @@ if (nComponents > 1) && (size(Fs,3) > 1)
         error(['Unknown scout function: ' ScoutFunction]);
     end
 end
+
+%% Display percentage of signal explained by 1st component of PCA
+if explained
+    msg = ['BST> First component explains ' num2str(explained * 100) '% of the signal'];
+    if scoutName
+        msg = [msg ' of cluster ' scoutName];
+    end
+    disp([msg '.']);
+end
 end
 
 
 %% ===== PCA: FIRT MODE =====
-function F = PcaFirstMode(F)
+function [F, explained] = PcaFirstMode(F)
     % Remove average over time for each row
     Fmean = mean(F,2);
     F = bst_bsxfun(@minus, F, Fmean);
     % Signal decomposition
-    [U,S,V] = svds(F, 1, 'L');  
+    [U,S,V] = svd(F, 'econ');
+    S = diag(S);
+    explained = S(1) / sum(S);
     %Find where the first component projects the most over original dimensions
     [tmp__, nmax] = max(abs(U(:,1))); 
     % What's the sign of absolute max amplitude along this dimension?
@@ -265,7 +281,7 @@ function F = PcaFirstMode(F)
     [Vmaxx, i_Vmaxx] = max(abs(V(:,1)));
     sign_Vmaxx = sign(V(i_Vmaxx,1));
     % Reconcile signs
-    F = sign_Vmaxx * sign_omaxx * S * V(:,1)';
+    F = sign_Vmaxx * sign_omaxx * S(1) * V(:,1)';
     F = F + Fmean(nmax);
 end
 

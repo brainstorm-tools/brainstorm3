@@ -1,17 +1,18 @@
-function tutorial_epilepsy(tutorial_dir)
+function tutorial_epilepsy(tutorial_dir, reports_dir)
 % TUTORIAL_EPILEPSY: Script that reproduces the results of the online tutorial "EEG/Epilepsy".
 %
 % CORRESPONDING ONLINE TUTORIALS:
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy
 %
 % INPUTS: 
-%     tutorial_dir: Directory where the sample_epilepsy.zip file has been unzipped
+%    - tutorial_dir: Directory where the sample_epilepsy.zip file has been unzipped
+%    - reports_dir  : Directory where to save the execution report (instead of displaying it)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,10 +26,14 @@ function tutorial_epilepsy(tutorial_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2014-2016
+% Author: Francois Tadel, 2014-2018
 
 
 % ===== FILES TO IMPORT =====
+% Output folder for reports
+if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
+    reports_dir = [];
+end
 % You have to specify the folder in which the tutorial dataset is unzipped
 if (nargin == 0) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
     error('The first argument must be the full path to the tutorial dataset folder.');
@@ -83,7 +88,9 @@ sFilesRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
 % Process: Add EEG positions
 bst_process('CallProcess', 'process_channel_addloc', sFilesRaw, [], ...
     'channelfile', {ElcFile, 'XENSOR'}, ...
-    'usedefault',  1);
+    'usedefault',  1, ...
+    'fixunits',    1, ...
+    'vox2ras',     0);
 % Process: Refine registration
 bst_process('CallProcess', 'process_headpoints_refine', sFilesRaw, []);
 % Process: Project electrodes on scalp
@@ -249,8 +256,8 @@ bst_process('CallProcess', 'process_noisecov', sFilesRaw, [], ...
     'copysubj',       0, ...
     'replacefile',    1);  % Replace
 
-% Process: Compute sources [2016]
-sAvgSrc = bst_process('CallProcess', 'process_inverse_2016', sFilesAvg, [], ...
+% Process: Compute sources [2018]
+sAvgSrc = bst_process('CallProcess', 'process_inverse_2018', sFilesAvg, [], ...
     'output',  1, ...  % Kernel only: shared
     'inverse', struct(...
          'Comment',        'sLORETA: EEG', ...
@@ -291,8 +298,8 @@ bst_process('CallProcess', 'process_headmodel', sFilesAvg, [], ...
          'FileName',      []), ...
     'eeg',         2);     % 3-shell sphere
 
-% Process: Compute sources [2016]
-sAvgSrcVol = bst_process('CallProcess', 'process_inverse_2016', sFilesAvg, [], ...
+% Process: Compute sources [2018]
+sAvgSrcVol = bst_process('CallProcess', 'process_inverse_2018', sFilesAvg, [], ...
     'output',  1, ...  % Kernel only: shared
     'inverse', struct(...
          'Comment',        'Dipoles: EEG', ...
@@ -414,8 +421,13 @@ bst_process('CallProcess', 'process_snapshot', sAvgTfNorm, [], ...
     'rowname', 'FC1');
 
 
-
 % Save and display report
 ReportFile = bst_report('Save', []);
-bst_report('Open', ReportFile);
+if ~isempty(reports_dir) && ~isempty(ReportFile)
+    bst_report('Export', ReportFile, reports_dir);
+else
+    bst_report('Open', ReportFile);
+end
+
+disp([10 'BST> tutorial_epilepsy: Done.' 10]);
 

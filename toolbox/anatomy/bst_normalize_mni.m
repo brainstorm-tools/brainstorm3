@@ -4,12 +4,13 @@ function [sMri, errMsg] = bst_normalize_mni(MriFile)
 % 
 % USAGE:  [sMri, errMsg] = bst_normalize_mni(MriFile)
 %         [sMri, errMsg] = bst_normalize_mni(sMri)
+%                          bst_normalize_mni('install')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,25 +24,36 @@ function [sMri, errMsg] = bst_normalize_mni(MriFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2016
+% Authors: Francois Tadel, 2015-2019
 
 %% ===== PARSE INPUTS =====
 % Inializations
 global GlobalData;
 errMsg = [];
-% Usage: bst_normalize_mni(sMri)
-if ~ischar(MriFile)
-    sMri = MriFile;
-    MriFile = [];
-% Usage: bst_normalize_mni(MriFile)
-else
+% Usage: bst_normalize_mni('install')
+if isequal(MriFile, 'install')
+    isInstall = 1;
     sMri = [];
+else
+    isInstall = 0;
+    % Usage: bst_normalize_mni(sMri)
+    if ~ischar(MriFile)
+        sMri = MriFile;
+        MriFile = [];
+    % Usage: bst_normalize_mni(MriFile)
+    else
+        sMri = [];
+    end
 end
-    
 
 %% ===== GET SPM TEMPLATE =====
+% Open progress bar
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'Normalize anatomy', 'Initialization...');
+end
 % Get template file
-tpmFile = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
+tpmFile = bst_get('SpmTpmAtlas');
 % If it does not exist: download
 if ~file_exist(tpmFile)
     % Create folder
@@ -49,7 +61,7 @@ if ~file_exist(tpmFile)
         mkdir(bst_fileparts(tpmFile));
     end
     % URL to download
-    tmpUrl = 'http://neuroimage.usc.edu/bst/getupdate.php?t=SPM_TPM';
+    tmpUrl = 'https://neuroimage.usc.edu/bst/getupdate.php?t=SPM_TPM';
     % Path to downloaded file
     tpmZip = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'SPM_TPM');
     % Download file
@@ -60,7 +72,7 @@ if ~file_exist(tpmFile)
         return;
     end
     % Progress bar
-    bst_progress('start', 'Import template', 'Unzipping file...');
+    bst_progress('text', 'Importing SPM template...');
     % URL: Download zip file
     try
         unzip(tpmZip, bst_fileparts(tpmZip));
@@ -68,18 +80,24 @@ if ~file_exist(tpmFile)
         errMsg = ['Could not unzip anatomy template: ' 10 10 lasterr];
         disp(['BST> Error: ' errMsg]);
         file_delete(tpmZip, 1);
-        bst_progress('stop');
+        if ~isProgress
+            bst_progress('stop');
+        end
         return;
     end
     % Delete zip file
     file_delete(tpmZip, 1);
+end
+% If only installing: exit
+if isInstall
+    return;
 end
 
 
 %% ===== LOAD ANATOMY =====
 if isempty(sMri)
     % Progress bar
-    bst_progress('start', 'Normalize anatomy', 'Loading input MRI...');
+    bst_progress('text', 'Loading input MRI...');
     % Check if it is loaded in memory
     [sMri, iLoadedMri] = bst_memory('GetMri', MriFile);
     % If not: load it from the file
@@ -90,7 +108,7 @@ else
     iLoadedMri = [];
 end
 % Progress bar
-bst_progress('start', 'Normalize anatomy', 'Resampling MRI...');
+bst_progress('text', 'Resampling MRI...');
 % Resample volume if needed
 if any(abs(sMri.Voxsize - [1 1 1]) > 0.001)
     [sMriRes, Tres] = mri_resample(sMri, [256 256 256], [1 1 1]);
@@ -117,7 +135,7 @@ end
 
 
 %% ===== SAVE RESULTS =====
-bst_progress('start', 'Normalize anatomy', 'Saving results...');
+bst_progress('text', 'Saving normalization...');
 % Save results into the MRI structure
 sMri.NCS.R = Tmni(1:3,1:3);
 sMri.NCS.T = Tmni(1:3,4);
@@ -147,8 +165,9 @@ if ~isempty(iLoadedMri)
     GlobalData.Mri(iLoadedMri).SCS.Origin = sMri.SCS.Origin;
 end
 % Close progress bar
-bst_progress('stop');
-
+if ~isProgress
+    bst_progress('stop');
+end
 
 end    
 

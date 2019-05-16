@@ -23,9 +23,9 @@ function [Gain, errMsg] = bst_openmeeg_bin(OPTIONS)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -125,7 +125,7 @@ if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) ||
         origTgzFile = tgzFile;
         [fPath, fName, fExt] = bst_fileparts(origTgzFile);
         tgzFile = bst_fullfile(OpenmeegDir, [fName, fExt]);
-        copyfile(origTgzFile, tgzFile);
+        file_copy(origTgzFile, tgzFile);
     end
     % Display again progress bar
     bst_progress('start', 'OpenMEEG', 'Installing OpenMEEG...');
@@ -142,10 +142,10 @@ if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) ||
     idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
     unzipDir = bst_fullfile(OpenmeegDir, diropen(idir).name);
     % Move all files to OpenmeegDir
-    movefile(bst_fullfile(unzipDir, 'bin', '*'), OpenmeegDir);
-    movefile(bst_fullfile(unzipDir, 'lib', '*'), OpenmeegDir);
+    file_move(bst_fullfile(unzipDir, 'bin', '*'), OpenmeegDir);
+    file_move(bst_fullfile(unzipDir, 'lib', '*'), OpenmeegDir);
     try
-        movefile(bst_fullfile(unzipDir, 'doc', '*'), OpenmeegDir);
+        file_move(bst_fullfile(unzipDir, 'doc', '*'), OpenmeegDir);
     catch
     end
     % Delete files

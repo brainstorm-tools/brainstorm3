@@ -27,9 +27,9 @@ function varargout = figure_mri(varargin)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -44,7 +44,7 @@ function varargout = figure_mri(varargin)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, 2004
-%          Francois Tadel, 2008-2017
+%          Francois Tadel, 2008-2019
 
 eval(macro_method);
 end
@@ -124,7 +124,6 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
         'BusyAction',    'cancel', ...
         'Interruptible', 'off');
     % Configure axes
-    %axis([Handles.axs, Handles.axa, Handles.axc], 'image', 'off');
     axis([Handles.axs, Handles.axa, Handles.axc], 'off');
 
     % ===== SLIDERS =====
@@ -288,7 +287,8 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.weightx = 0.1;
     c.gridx = 1;  c.gridy = 1;  Handles.jTitleMRI      = gui_component('label', Handles.jPanelCoordinates, c, 'MRI:');
     c.gridx = 1;  c.gridy = 2;  Handles.jTitleSCS      = gui_component('label', Handles.jPanelCoordinates, c, 'SCS:');
-    c.gridx = 1;  c.gridy = 3;  Handles.jTitleMNI      = gui_component('label', Handles.jPanelCoordinates, c, 'MNI:');
+    c.gridx = 1;  c.gridy = 3;  Handles.jTitleWRL      = gui_component('label', Handles.jPanelCoordinates, c, 'World:');
+    c.gridx = 1;  c.gridy = 4;  Handles.jTitleMNI      = gui_component('label', Handles.jPanelCoordinates, c, 'MNI:');
     c.weightx = 0.2;
     c.gridx = 2;  c.gridy = 1;  Handles.jTextCoordMriX = gui_component('label', Handles.jPanelCoordinates, c, '...');
     c.gridx = 3;  c.gridy = 1;  Handles.jTextCoordMriY = gui_component('label', Handles.jPanelCoordinates, c, '...');
@@ -296,10 +296,13 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.gridx = 2;  c.gridy = 2;  Handles.jTextCoordScsX = gui_component('label', Handles.jPanelCoordinates, c, '...');
     c.gridx = 3;  c.gridy = 2;  Handles.jTextCoordScsY = gui_component('label', Handles.jPanelCoordinates, c, '...');
     c.gridx = 4;  c.gridy = 2;  Handles.jTextCoordScsZ = gui_component('label', Handles.jPanelCoordinates, c, '...');
-    c.gridx = 2;  c.gridy = 3;  Handles.jTextCoordMniX = gui_component('label', Handles.jPanelCoordinates, c, '...');
-    c.gridx = 3;  c.gridy = 3;  Handles.jTextCoordMniY = gui_component('label', Handles.jPanelCoordinates, c, '...');
-    c.gridx = 4;  c.gridy = 3;  Handles.jTextCoordMniZ = gui_component('label', Handles.jPanelCoordinates, c, '...');
-    c.gridx = 2;  c.gridy = 3;  c.gridwidth = 3;  
+    c.gridx = 2;  c.gridy = 3;  Handles.jTextCoordWrlX = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 3;  c.gridy = 3;  Handles.jTextCoordWrlY = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 4;  c.gridy = 3;  Handles.jTextCoordWrlZ = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 2;  c.gridy = 4;  Handles.jTextCoordMniX = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 3;  c.gridy = 4;  Handles.jTextCoordMniY = gui_component('label', Handles.jPanelCoordinates, c, '...');
+    c.gridx = 4;  c.gridy = 4;  Handles.jTextCoordMniZ = gui_component('label', Handles.jPanelCoordinates, c, '...');    
+    c.gridx = 2;  c.gridy = 4;  c.gridwidth = 3;  
     Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#505050"><U>Click here to compute MNI transformation</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig));
     
     % ===== VALIDATION BAR =====
@@ -322,8 +325,9 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     jLabels = [Handles.jLabelTitleS, Handles.jLabelTitleA, Handles.jLabelTitleC, Handles.jLabelValue, Handles.jTitleNAS, Handles.jTitleLPA, Handles.jTitleRPA, ...
                Handles.jTitleAC, Handles.jTitlePC, Handles.jTitleIH, Handles.jCheckViewCrosshair, ...
                Handles.jCheckViewSliders, Handles.jCheckMipAnatomy, Handles.jCheckMipFunctional, Handles.jRadioNeurological, Handles.jRadioRadiological, ...
-               Handles.jTitleMRI, Handles.jTitleSCS, Handles.jTitleMNI, Handles.jTextCoordMriX, Handles.jTextCoordMriY, Handles.jTextCoordMriZ, ...
-               Handles.jTextCoordScsX, Handles.jTextCoordScsY, Handles.jTextCoordScsZ, Handles.jTextCoordMniX, Handles.jTextCoordMniY, Handles.jTextCoordMniZ];
+               Handles.jTitleMRI, Handles.jTitleSCS, Handles.jTitleMNI, Handles.jTitleWRL, Handles.jTextCoordMriX, Handles.jTextCoordMriY, Handles.jTextCoordMriZ, ...
+               Handles.jTextCoordScsX, Handles.jTextCoordScsY, Handles.jTextCoordScsZ, Handles.jTextCoordMniX, Handles.jTextCoordMniY, Handles.jTextCoordMniZ, ...
+               Handles.jTextCoordWrlX, Handles.jTextCoordWrlY, Handles.jTextCoordWrlZ];
     for i = 1:length(jLabels)
         jLabels(i).setFont(bst_get('Font', 11));
         jLabels(i).setForeground(Color(.9,.9,.9));
@@ -332,13 +336,13 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     Handles.jLabelValue.setForeground(Color(.4,.4,.4));
     % Set text alignment to right
     jLabels = [Handles.jTitleNAS, Handles.jTitleLPA, Handles.jTitleRPA, Handles.jTitleAC, Handles.jTitlePC, Handles.jTitleIH, ...
-               Handles.jTitleMRI, Handles.jTitleSCS, Handles.jTitleMNI];
+               Handles.jTitleMRI, Handles.jTitleSCS, Handles.jTitleMNI, Handles.jTitleWRL];
     for i = 1:length(jLabels)
         jLabels(i).setHorizontalAlignment(JTextField.RIGHT);
     end
     % Set text alignment to center
-    jLabels = [Handles.jTextCoordMriX, Handles.jTextCoordMriY, Handles.jTextCoordMriZ, ...
-               Handles.jTextCoordScsX, Handles.jTextCoordScsY, Handles.jTextCoordScsZ, Handles.jTextCoordMniX, Handles.jTextCoordMniY, Handles.jTextCoordMniZ];
+    jLabels = [Handles.jTextCoordMriX, Handles.jTextCoordMriY, Handles.jTextCoordMriZ, Handles.jTextCoordScsX, Handles.jTextCoordScsY, Handles.jTextCoordScsZ, ...
+               Handles.jTextCoordMniX, Handles.jTextCoordMniY, Handles.jTextCoordMniZ, Handles.jTextCoordWrlX, Handles.jTextCoordWrlY, Handles.jTextCoordWrlZ];
     for i = 1:length(jLabels)
         jLabels(i).setHorizontalAlignment(JTextField.CENTER);
     end
@@ -568,7 +572,7 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                 case 'downarrow'
                     MouseWheel_Callback(hFig, [], [], -1);
                 % === DATABASE NAVIGATOR ===
-                case {'f1', 'f2', 'f3', 'f4'}
+                case {'f1', 'f2', 'f3', 'f4', 'f6'}
                     bst_figures('NavigatorKeyPress', hFig, keyEvent);
                 % CTRL+D : Dock figure
                 case 'd'
@@ -786,7 +790,7 @@ end
 %% ===== BUTTON SET COORDINATES =====
 function ButtonSetCoordinates_Callback(hFig)
     % Get coordinates from the user
-    res = java_dialog('input', {'<HTML>Enter the [x,y,z] coordinates in only one <BR>of the coordinate systems below.<BR><BR>MRI coordinates (millimeters):', 'SCS coordinates (millimeters)', 'MNI coordinates (millimeters)'}, 'Set coordinates', [], {'', '', ''});
+    res = java_dialog('input', {'<HTML>Enter the [x,y,z] coordinates in only one of<BR>the coordinate systems below (millimeters).<BR><BR>MRI coordinates:', 'SCS coordinates:', 'World coordinates:', 'MNI coordinates:'}, 'Set coordinates', [], {'', '', '', ''});
     % If user cancelled: return
     if isempty(res) || (length(res) < 3)
         return
@@ -794,18 +798,19 @@ function ButtonSetCoordinates_Callback(hFig)
     % Get new values
     MRI = str2num(res{1}) / 1000;
     SCS = str2num(res{2}) / 1000;
-    MNI = str2num(res{3}) / 1000;
-    
+    World = str2num(res{3}) / 1000;
+    MNI = str2num(res{4}) / 1000;
+
     % Get Mri and figure Handles
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
-    % MRI coordinates
+    % Convert coordinates
     if (length(MRI) == 3)
         % Keep MRI values unchanged
-    % SCS coordinates
     elseif (length(SCS) == 3)
         MRI = cs_convert(sMri, 'scs', 'mri', SCS);
-    % MNI coordinates
+    elseif (length(World) == 3)
+        MRI = cs_convert(sMri, 'world', 'mri', World);
     elseif (length(MNI) == 3)
         MRI = cs_convert(sMri, 'mni', 'mri', MNI);
     else
@@ -898,7 +903,11 @@ function DisplayFigurePopup(hFig)
     jPopup.addSeparator();
     % Set fiducials
     if Handles.isEditFiducials
-        gui_component('MenuItem', jPopup, [], 'Edit fiducial positions', IconLoader.ICON_EDIT, [], @(h,ev)EditFiducials(hFig));
+        jMenuEdit = gui_component('Menu', jPopup, [], 'Edit fiducial positions', IconLoader.ICON_EDIT, [], []);
+            gui_component('MenuItem', jMenuEdit, [], 'MRI coordinates', IconLoader.ICON_EDIT, [], @(h,ev)EditFiducials(hFig, 'mri'));
+            gui_component('MenuItem', jMenuEdit, [], 'SCS coordinates', IconLoader.ICON_EDIT, [], @(h,ev)EditFiducials(hFig, 'scs'));
+            gui_component('MenuItem', jMenuEdit, [], 'World coordinates', IconLoader.ICON_EDIT, [], @(h,ev)EditFiducials(hFig, 'world'));
+            gui_component('MenuItem', jMenuEdit, [], 'MNI coordinates', IconLoader.ICON_EDIT, [], @(h,ev)EditFiducials(hFig, 'mni'));
         gui_component('MenuItem', jPopup, [], 'Save fiducial file', IconLoader.ICON_EDIT, [], @(h,ev)SaveFiducialsFile(hFig));
         jPopup.addSeparator();
     end
@@ -1303,6 +1312,7 @@ function UpdateCoordinates(sMri, Handles)
     mriXYZ = cs_convert(sMri, 'voxel', 'mri', voxXYZ);
     scsXYZ = cs_convert(sMri, 'voxel', 'scs', voxXYZ);
     mniXYZ = cs_convert(sMri, 'voxel', 'mni', voxXYZ);
+    wrlXYZ = cs_convert(sMri, 'voxel', 'world', voxXYZ);
     % Update title of images
     Handles.jLabelTitleS.setText(sprintf('<HTML>&nbsp;&nbsp;&nbsp;<B>Sagittal</B>:&nbsp;&nbsp;&nbsp;x=%d', voxXYZ(1)));
     Handles.jLabelTitleA.setText(sprintf('<HTML>&nbsp;&nbsp;&nbsp;<B>Axial</B>:&nbsp;&nbsp;&nbsp;z=%d', voxXYZ(3)));
@@ -1330,6 +1340,12 @@ function UpdateCoordinates(sMri, Handles)
         Handles.jTextCoordScsX.setText(sprintf('x: %3.1f', scsXYZ(1) * 1000));
         Handles.jTextCoordScsY.setText(sprintf('y: %3.1f', scsXYZ(2) * 1000));
         Handles.jTextCoordScsZ.setText(sprintf('z: %3.1f', scsXYZ(3) * 1000));
+    end
+    % === RAS (millimeters) ===
+    if ~isempty(wrlXYZ)
+        Handles.jTextCoordWrlX.setText(sprintf('x: %3.1f', wrlXYZ(1) * 1000));
+        Handles.jTextCoordWrlY.setText(sprintf('y: %3.1f', wrlXYZ(2) * 1000));
+        Handles.jTextCoordWrlZ.setText(sprintf('z: %3.1f', wrlXYZ(3) * 1000));
     end
     % === MNI coordinates system ===
     if ~isempty(mniXYZ)
@@ -1372,6 +1388,7 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
     % Double-click: Reset view
     if strcmpi(get(hFig, 'SelectionType'), 'open')
         ButtonZoom_Callback(hFig, 'reset');
+        setappdata(hFig, 'clickAction', []);
         return;
     end
     % Check if MouseUp was executed before MouseDown
@@ -1390,6 +1407,10 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
             clickAction = 'MovePoint';
             clickSource = hObj;
         end
+    % Click on the colorbar (this should also be set in bst_colormaps>ColorbarButtonDown_Callback)
+    elseif ~isempty(hObj) && ismember(get(hObj, 'Tag'), {'ColorbarSurf', 'Colorbar'})
+        clickAction = 'colorbar';
+        clickSource = [];
     end
     % Otherwise: no particular object was clicked
     if isempty(clickAction)
@@ -1494,7 +1515,7 @@ function MouseButtonUp_Callback(hFig, varargin)
     if ~isempty(clickAction)
         if ~hasMoved
             switch (clickAction)
-                case 'RightClick'
+                case {'RightClick', 'popup'}
                     DisplayFigurePopup(hFig);
                 case 'MovePoint'
                     % Point was not moved: Move crosshair according to mouse position
@@ -1753,8 +1774,12 @@ function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
     end
     % Load channel file in the dataset
     bst_memory('LoadChannelFile', iDS, ChannelFile);
-    % Load the channel file
-    iChannels = channel_find(GlobalData.DataSet(iDS).Channel, Modality);
+    % If iEEG channels: load both SEEG and ECOG
+    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
+        iChannels = channel_find(GlobalData.DataSet(iDS).Channel, 'SEEG, ECOG');
+    else
+        iChannels = channel_find(GlobalData.DataSet(iDS).Channel, Modality);
+    end
     % Set the list of selected sensors
     GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = iChannels;
     GlobalData.DataSet(iDS).Figure(iFig).Id.Modality      = Modality;
@@ -1765,6 +1790,8 @@ function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
     end
     % Set EEG flag
     SetFigureStatus(hFig, [], [], [], 1, 1);
+    % Update figure name
+    bst_figures('UpdateFigureName', hFig);
 end
 
 
@@ -1793,7 +1820,8 @@ function PlotSensors3D(iDS, iFig, Channel, ChanLoc)
     
     % === DEPTH ELECTRODES ===
     % Create objects geometry
-    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc);
+    sElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes, 1);
     % Plot depth electrodes
     for iElec = 1:length(ElectrodeDepth)
         % Get coordinates
@@ -1926,7 +1954,7 @@ function Handles = PlotElectrodes(iDS, iFig, Handles, isReset)
     % Define display names for the channels
     if ~isempty(Channels)
         % if ismember(upper(Channels(selChan(1)).Type), {'SEEG', 'ECOG'})
-        if strcmpi(upper(Channels(selChan(1)).Type), 'SEEG')
+        if strcmpi(upper(Channels(1).Type), 'SEEG')
             [iGroupEeg, GroupNames, sensorNames] = panel_montage('GetEegGroups', Channels, [], 1);
         else
             sensorNames = {Channels.Name}';
@@ -1935,7 +1963,7 @@ function Handles = PlotElectrodes(iDS, iFig, Handles, isReset)
     % Loop on all the channels to create the graphic objects
     for i = 1:length(Channels)
         % Display electrode position
-        if ~isempty(Channels(i).Loc)
+        if ~isempty(Channels(i).Loc) && ~isequal(Channels(i).Loc, [0;0;0])
             Handles.LocEEG(i,:) = cs_convert(sMri, 'scs', 'mri', Channels(i).Loc(:,1)')' .* 1000;
         else
             Handles.LocEEG(i,:) = [-500; -500; -500];
@@ -2562,7 +2590,7 @@ end
 
 
 %% ===== EDIT FIDUCIALS =====
-function EditFiducials(hFig)
+function EditFiducials(hFig, cs)
     global GlobalData;
     % Get MRI
     [sMri,TessInfo,iTess,iMri] = panel_surface('GetSurfaceMri', hFig);
@@ -2586,39 +2614,50 @@ function EditFiducials(hFig)
         NCS = sMri.NCS;
     end
     strMsg = '';
+    % Format default coordinates
+    fidNames = {'NAS','LPA','RPA','AC','PC','IH'};
+    res = cell(1,6);
+    for i = 1:length(fidNames)
+        if (i <= 3)
+            fidPos = SCS.(fidNames{i}) ./ 1000;
+        else
+            fidPos = NCS.(fidNames{i}) ./ 1000;
+        end
+        res{i} = num2str(cs_convert(sMri, 'mri', cs, fidPos) .* 1000);
+    end
     % Edit all the positions at once
     res = java_dialog('input', {...
-        '<HTML>MRI coordinates [x,y,z], in millimeters:<BR><BR>Nasion (NAS):', ...
+        ['<HTML>' upper(cs) ' coordinates [x,y,z], in millimeters:<BR><BR>Nasion (NAS):'], ...
         'Left (LPA):', 'Right (RPA):', ...
         'Anterior commissure (AC):', 'Posterior commissure (PC):', 'Inter-hemispheric (IH):'}, ...
         'Edit fiducials', [], ...
-        {num2str(SCS.NAS), num2str(SCS.LPA), num2str(SCS.RPA), ...
-         num2str(NCS.AC),  num2str(NCS.PC),  num2str(NCS.IH)});
+        res);
     % User cancelled
     if isempty(res) || ~iscell(res) || (length(res) ~= 6)
         return;
     end
-    % Save new values: SCS
-    fidNames = {'NAS','LPA','RPA'};
-    for i = 1:length(fidNames)
-        if ~isempty(res{i})
-            fidPos = str2num(res{i});
-            if (length(fidPos) == 3)
-                SCS.(fidNames{i}) = fidPos;
-            else
-                strMsg = [strMsg, 'Invalid coordinates: ' fidNames{i} 10];
-            end
+    % Convert coordinates
+    for i = 1:length(res)
+        % Convert to (x,y,z) values
+        res{i} = str2num(res{i});
+        % If coordinates not correctly formed: skipped
+        if (length(res{i}) ~= 3)
+            res{i} = [];
+            strMsg = [strMsg, 'Invalid coordinates: ' fidNames{i} 10];
+            continue;
+        end
+        % Convert from input coordinate system (scs, mni, world) to mri
+        if ~strcmpi(cs, 'mri')
+            res{i} = cs_convert(sMri, cs, 'mri', res{i} ./ 1000) .* 1000;
         end
     end
-    % Save new values: NCS
-    fidNames = {'AC','PC','IH'};
+    % Save new values: SCS and NCS
     for i = 1:length(fidNames)
-        if ~isempty(res{3+i})
-            fidPos = str2num(res{3+i});
-            if (length(fidPos) == 3)
-                NCS.(fidNames{i}) = fidPos;
+        if ~isempty(res{i})
+            if (i <= 3)
+                SCS.(fidNames{i}) = res{i};
             else
-                strMsg = [strMsg, 'Invalid coordinates: ' fidNames{i} 10];
+                NCS.(fidNames{i}) = res{i};
             end
         end
     end
@@ -2762,6 +2801,8 @@ function SetElectrodePosition(hFig, ChannelName, scsXYZ)
     GlobalData.DataSet(iDS).Channel(iChannels(iChan)).Loc = scsXYZ(:);
     % Plot electrodes again
     Handles = PlotElectrodes(iDS, iFig, Handles);
+    % Save modified handles
+    bst_figures('SetFigureHandles', hFig, Handles);
     % Update display
     UpdateVisibleLandmarks(sMri, Handles);
     UpdateVisibleSensors3D(hFig);
@@ -2878,13 +2919,14 @@ function Add3DView(hFig)
     sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
     % Get figure modality
     Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+    selChan  = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
     % Open a 3D figure
     if ~isempty(Modality) && strcmpi(Modality, 'ECOG')
         % SEEG or nothing: Display cortex, scalp or MRI
         if ~isempty(sSubject.iCortex)
-            hFid3d = view_surface(sSubject.Surface(sSubject.iCortex).FileName);
+            hFid3d = view_surface(sSubject.Surface(sSubject.iCortex).FileName, [], [], iDS);
         elseif ~isempty(sSubject.iScalp)
-            hFid3d = view_surface(sSubject.Surface(sSubject.iScalp).FileName);
+            hFid3d = view_surface(sSubject.Surface(sSubject.iScalp).FileName, [], [], iDS);
         else
             hFid3d = view_mri_3d(MriFile, [], [], iDS);
         end
@@ -2894,7 +2936,7 @@ function Add3DView(hFig)
     end
     % Add 3D contacts
     if ~isempty(GlobalData.DataSet(iDS).ChannelFile) && ~isempty(Modality)
-        view_channels(GlobalData.DataSet(iDS).ChannelFile, Modality, 1, 0, hFid3d, 1);
+        view_channels(GlobalData.DataSet(iDS).ChannelFile, Modality, 1, 0, hFid3d, 1, selChan);
     end
 end
 

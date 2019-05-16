@@ -1,20 +1,25 @@
-function MRI = in_mri_mgh(MriFile)
+function [sMri, vox2ras] = in_mri_mgh(MriFile, isApplyBst, isApplyVox2ras)
 % IN_MRI_MGH: Read a structural MGH MRI (or gzipped MGZ).
 %
-% USAGE:  MRI = in_mri_mgh(MriFile);
+% USAGE:  [sMri, vox2ras] = in_mri_mgh(MriFile, isApplyBst=[ask], isApplyVox2ras=[ask]);
 %
 % INPUT:
-%     - MriFile : full path to a MRI file, WITH EXTENSION
+%    - MriFile    : full path to a MRI file, WITH EXTENSION
+%    - isApplyBst : If 1, apply best orientation found to match Brainstorm convention
+%                   considering that the volume is aligned as the standard T1.mgz in the 
+%                   FreeSurfer output folder.
+%    - isApplyVox2ras : Apply additional transformation to the volume
 % OUTPUT:
-%     - MRI : Standard brainstorm structure for MRI volumes
+%    - sMri    : Standard brainstorm structure for MRI volumes
+%    - vox2ras : [4x4] transformation matrix: voxels to RAS coordinates
 %
 % FORMAT: https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/MghFormat
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,15 +33,16 @@ function MRI = in_mri_mgh(MriFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2018
 
+% Parse inputs
+if (nargin < 3) || isempty(isApplyVox2ras)
+    isApplyVox2ras = [];
+end
+if (nargin < 2) || isempty(isApplyBst)
+    isApplyBst = [];
+end
 
-%% ===== INITIALIZATION =====   
-% Output variable
-MRI = struct('Cube',    [], ...
-             'Voxsize', [1 1 1], ...
-             'Comment', 'MRI', ...
-             'Header',  []);
 
 %% ===== UNZIP FILE =====
 [MRIpath, MRIbase, MRIext] = bst_fileparts(MriFile);
@@ -76,11 +82,19 @@ unused_space_size = 256 - 2 ;
 hdr.ras_good_flag = fread(fid, 1, 'short') ;
 
 if (hdr.ras_good_flag)
-    MRI.Voxsize = fread(fid, 3, 'float32')' ;
+    Voxsize = fread(fid, 3, 'float32')' ;
     hdr.Mdc     = fread(fid, 9, 'float32') ;
     hdr.Mdc     = reshape(hdr.Mdc,[3 3]);
     hdr.Pxyz_c  = fread(fid, 3, 'float32') ;
     unused_space_size = unused_space_size - (3*4 + 4*3*4) ; % space for ras transform
+    % Assemble vox2ras matrix
+    D = diag(Voxsize);
+    Pcrs_c = [hdr.ndim1/2, hdr.ndim2/2, hdr.ndim3/2]'; % Should this be kept?
+    Pxyz_0 = hdr.Pxyz_c - hdr.Mdc * D * Pcrs_c;
+    vox2ras = [hdr.Mdc * D, Pxyz_0;  ...
+	           0 0 0 1];
+else
+    vox2ras = [];
 end
 
 % Position at the end of the header
@@ -97,12 +111,10 @@ switch hdr.type
     case 4,  precision = 'short';
 end
 % Read volume
-MRI.Cube = fread(fid, nv, precision);
+Cube = fread(fid, nv, precision);
 % Check whole volume was read
-if(numel(MRI.Cube) ~= nv)
-    bst_error('Unrecognized data format.', 'Import MGH MRI', 0);
-    MRI = [];
-    return;
+if(numel(Cube) ~= nv)
+    error('Unrecognized data format.');
 end
 % Load MR params
 if(~feof(fid))
@@ -114,33 +126,56 @@ end
 % Close file
 fclose(fid) ;
 
-
-%% ===== RETURN DATA =====
 % Prepare volume
-MRI.Cube = reshape(MRI.Cube, [hdr.ndim1 hdr.ndim2 hdr.ndim3 hdr.nframes]);
+Cube = reshape(Cube, [hdr.ndim1 hdr.ndim2 hdr.ndim3 hdr.nframes]);
 % Keep only first time frame
 if (hdr.nframes > 1)
-    MRI.Cube = MRI.Cube(:,:,:,1);
+    Cube = Cube(:,:,:,1);
 end
 
-% Transform volume to get something similar to CTF orientation
 
-% Permute MRI dimensions
-MRI.Cube = permute(MRI.Cube, [2 3 1]);
-% Update voxel size
-MRI.Voxsize = MRI.Voxsize([2 3 1]);
+%% ===== TRANSFORM TO BRAINSTORM COORDINATES =====
+% Ask user
+if isempty(isApplyBst)
+    isApplyBst = java_dialog('confirm', ['Apply the standard transformation FreeSurfer=>Brainstorm?' 10 10 ...
+                                         'Answer "yes" if importing transformed volumes such as T1.mgz in the' 10 ...
+                                         'FreeSurfer output folder, or other volumes in the same folder.' 10 10],  'MRI orientation');
+end
 
-% Rotation / Axis Y
-MRI.Cube = permute(MRI.Cube, [3 2 1]);
-MRI.Cube = bst_flip(MRI.Cube, 3);
-% Update voxel size
-MRI.Voxsize = MRI.Voxsize([3 2 1]);
+% Apply transformation
+if isApplyBst
+    % Permute MRI dimensions
+    Cube = permute(Cube, [2 3 1]);
+    Voxsize = Voxsize([2 3 1]);
+    % Rotation / Axis Y
+    Cube = permute(Cube, [3 2 1]);
+    Cube = bst_flip(Cube, 3);
+    Voxsize = Voxsize([3 2 1]);
+    % Flip / X
+    Cube = bst_flip(Cube, 1);
 
-% Flip / X
-MRI.Cube = bst_flip(MRI.Cube, 1);
+    % Report these changes to the vox2ras matrix
+    if ~isempty(vox2ras)
+        TransBst = [-1,  0,  0,  size(Cube,1)-1;
+                     0,  0, -1,  size(Cube,2)-1;
+                     0,  1,  0   0;
+                     0,  0,  0   1];
+        vox2ras = vox2ras * TransBst;
+    end
+    isApplyVox2ras = 0;
+end
 
-MRI.Header = hdr;
+% ===== CREATE BRAINSTORM STRUCTURE =====
+sMri = struct('Cube',   Cube, ...
+             'Voxsize', Voxsize, ...
+             'Comment', 'MRI', ...
+             'Header',  hdr);
 
+% ===== VOLUME ORIENTATION =====
+% Apply orientation to the volume
+if ~isempty(vox2ras) && ~isequal(isApplyVox2ras, 0)
+    [vox2ras, sMri] = cs_nii2bst(sMri, vox2ras, isApplyVox2ras);
+end
 
 
 

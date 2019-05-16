@@ -3,9 +3,9 @@ function varargout = process_import_data_event( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -30,9 +30,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Import MEG/EEG: Events';
     sProcess.Category    = 'File';
-    sProcess.SubGroup    = 'Import recordings';
+    sProcess.SubGroup    = {'Import', 'Import recordings'};
     sProcess.Index       = 22;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Epoching';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Epoching';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import', 'raw',  'data'};
     sProcess.OutputTypes = {'data',   'data', 'data'};
@@ -296,9 +296,10 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 continue;
             end
             % Get the selected occurrences
-            newEvt.epochs  = newEvt.epochs(iOcc);
-            newEvt.samples = newEvt.samples(:, iOcc);
-            newEvt.times   = newEvt.times(:, iOcc);
+            newEvt.times    = newEvt.times(:, iOcc);
+            newEvt.epochs   = newEvt.epochs(iOcc);
+            newEvt.channels = newEvt.channels(iOcc);
+            newEvt.notes    = newEvt.notes(iOcc);
             % Add to the list of events to import
             events(end+1) = newEvt;
         end

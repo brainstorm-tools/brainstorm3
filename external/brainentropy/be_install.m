@@ -8,8 +8,8 @@ BEstDir = bst_fullfile( bst_get('BrainstormUserDir'), 'brainentropy' );
 BEstBST = bst_fullfile( bst_get('BrainstormHomeDir'), 'external', 'brainentropy' ); 
 % Set file url - temporary
 url     = 'http://www.bic.mni.mcgill.ca/uploads/ResearchLabsMFIL/brainentropy.tar.gz';
-url     = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst?action=AttachFile&do=get&target=brainentropy.tar.gz';
-urlV    = 'http://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst?action=AttachFile&do=get&target=VERSION.txt';
+url     = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst?action=AttachFile&do=get&target=brainentropy.tar.gz';
+urlV    = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst?action=AttachFile&do=get&target=VERSION.txt';
 
 try
     addpath( genpath(BEstDir) );
@@ -118,7 +118,7 @@ if ~isdir(BEstDir) || isempty(ls(BEstDir)) || FORCE
     file_delete(tgzFile, 1);  
     
     % Move process to appropriate location
-    copyfile( fullfile(BEstDir, 'processes', '*'), fullfile( strrep(BEstDir, 'brainentropy', 'process') ) );
+    file_copy( fullfile(BEstDir, 'processes', '*'), fullfile( strrep(BEstDir, 'brainentropy', 'process') ) );
         
     % Make sure version is updated in the package 
     % Download file
@@ -126,7 +126,7 @@ if ~isdir(BEstDir) || isempty(ls(BEstDir)) || FORCE
     file_delete(verFile, 1);
     warnMsg         =   gui_brainstorm('DownloadFile', urlV, verFile, 'Brainentropy update');
     newVer          =   textread( verFile, '%s', 'delimiter', '\n', 'whitespace', '' );
-    movefile( verFile, fullfile(BEstDir, 'best','VERSION.txt') )
+    file_move( verFile, fullfile(BEstDir, 'best','VERSION.txt') )
     
     % Set ouput arguments
     try

@@ -6,9 +6,9 @@ function varargout = process_ica( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,8 @@ function varargout = process_ica( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
+%          Peter Donhauser, 2017
 
 eval(macro_method);
 end
@@ -35,7 +36,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Artifacts';
     sProcess.Index       = 113;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/ICA';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ICA';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
     sProcess.OutputTypes = {'raw'};
@@ -71,6 +72,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'EEG';
+    % Select components
+    sProcess.options.icasort.Comment = 'Sort components based on correlation with (empty=none):';
+    sProcess.options.icasort.Type    = 'text';
+    sProcess.options.icasort.Value   = 'EOG, ECG';    
     % Use existing SSPs
     sProcess.options.usessp.Comment = 'Compute using existing SSP/ICA projectors';
     sProcess.options.usessp.Type    = 'checkbox';

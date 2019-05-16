@@ -51,9 +51,9 @@ function [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile)
 %       
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -70,6 +70,14 @@ function [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile)
 % Authors: Thomas Vincent (2015-2017), Alexis Machado (2012)
 
 nirs = load(DataFile, '-mat');
+
+if ~isfield(nirs, 'ml')
+    if isfield(nirs.SD, 'MeasList')
+        nirs.ml = nirs.SD.MeasList;
+    else
+        bst_error('Cannot read .nirs file: missing measurement list field');
+    end
+end
 
 nb_channels = size(nirs.d,2);
 nb_det = size(nirs.SD.DetPos, 1);
@@ -88,10 +96,9 @@ sFile.byteorder  = 'l';
 
 % Properties of the recordings
 % Round to microsec to avoid floating imprecision
-sFile.prop.sfreq   = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
-sFile.prop.samples = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq);
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
+sFile.prop.times = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NIRS-BRS channels';
@@ -170,8 +177,13 @@ if iscell(nirs.SD.Lambda) % Hb measures
     measure_type = 'Hb';
     ChannelMat.Nirs.Hb = nirs.SD.Lambda;
 else
+    
     measure_type = 'WL';
-    ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda;
+    if( size(nirs.SD.Lambda,1) > 1) % Wavelengths have to be stored as a line vector
+        ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda';
+    else
+        ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda;
+    end
 end
 
 %% Channel information
@@ -201,6 +213,18 @@ for iChan = 1:nb_channels
     Channel(iChan).Weight  = 1;
     Channel(iChan).Comment = [];
     Channel(iChan).Group = measure_tag;
+end
+
+% Check uniqueness
+chan_names = {Channel.Name};
+[~, i_unique] = unique(chan_names);
+duplicates = chan_names;
+duplicates(i_unique) = [];
+duplicates(strcmp(duplicates, '')) = []; %remove unrecognized channels
+i_duplicates = ismember(chan_names, unique(duplicates));
+if ~isempty(duplicates)
+    msg = sprintf('Non-unique channels: "%s".', strjoin(sort(chan_names(i_duplicates)), ', '));
+    throw(MException('NIRSTORM:NonUniqueChannels', msg));
 end
 
 % AUX signals

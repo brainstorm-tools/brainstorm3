@@ -28,9 +28,9 @@ function [a, el] = test_bandpass(a_init, sfreq, HighPass, LowPass)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -68,7 +68,7 @@ else
     Time = (1:size(a_init,2)) / sfreq;
 end
 % List of available methods
-list_methods = {'bst-hfilter', 'bst-fft', 'bst-fft-fir', 'bst-filtfilt-fir', 'bst-filtfilt-iir', 'bst-sos'};
+list_methods = {'bst-hfilter-2019', 'bst-hfilter-2016', 'bst-fft', 'bst-fft-fir', 'bst-filtfilt-fir', 'bst-filtfilt-iir', 'bst-sos'};
 % Intialize arrays
 a  = cell(1,length(list_methods));
 el = a;

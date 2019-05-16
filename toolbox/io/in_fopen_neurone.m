@@ -5,9 +5,9 @@ function [sFile, ChannelMat] = in_fopen_neurone(PhaseDir)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_neurone(PhaseDir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
 
 %% ===== GET FILES =====
 % Get folders
@@ -119,13 +119,16 @@ sFile.header     = hdr;
 sFile.comment    = [SessionName, '-', PhaseName];
 sFile.condition  = [SessionName, '-', PhaseName];
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.sfreq;
-sFile.prop.samples = [0, hdr.nSamples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.sfreq;
+sFile.prop.times = [0, hdr.nSamples - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nChannels, 1);
-
+% Acquisition date
+try
+    sFile.acq_date = str_date(hdr.Session.DataSetSession.TableSession.StartDateTime.text(1:10));
+catch
+end
 
 %% ===== EVENT MARKERS =====
 if ~isempty(EventsFile)
@@ -184,18 +187,17 @@ if ~isempty(EventsFile)
     events = repmat(db_template('event'), 1, length(uniqueEvt));
     % Format list
     for iEvt = 1:length(uniqueEvt)
-        % Ask for a label
+        % Find list of occurences of this event
+        iOcc = find(strcmpi(allLabels, uniqueEvt{iEvt}));
+        % Fill events structure
         events(iEvt).label      = uniqueEvt{iEvt};
         events(iEvt).color      = [];
         events(iEvt).reactTimes = [];
         events(iEvt).select     = 1;
-        % Find list of occurences of this event
-        iOcc = find(strcmpi(allLabels, uniqueEvt{iEvt}));
-        % Get time and samples
-        events(iEvt).samples = [ev(iOcc).StartSampleIndex];
-        events(iEvt).times   = events(iEvt).samples ./ sFile.prop.sfreq;
-        % Epoch: set as 1 for all the occurrences
-        events(iEvt).epochs = ones(1, length(events(iEvt).samples));
+        events(iEvt).times      = [ev(iOcc).StartSampleIndex] ./ sFile.prop.sfreq;
+        events(iEvt).epochs     = ones(1, length(events(iEvt).times));   % Epoch: set as 1 for all the occurrences
+        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
     end
     % Import this list
     sFile = import_events(sFile, [], events);

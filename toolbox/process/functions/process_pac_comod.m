@@ -3,9 +3,9 @@ function varargout = process_pac_comod( varargin )
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,6 +34,7 @@ function varargout = process_pac_comod( varargin )
 % v 2.2:   SS, tPAC, Aug 2017
 % v 3.0:   SS, Check for file format before using it for fp estimation, Sep
 %          2017
+% v 3.3    SS, Bug fix: check time window length (line 332)
 
 eval(macro_method);
 end
@@ -97,6 +98,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     window_length = sProcess.options.windowChunck.Value{1};
     output_type = sProcess.options.output_type.Value;
     inputTime = t{1};
+    
     doInterpolation = sProcess.options.doInterp.Value; 
     if anal_type == 1
         cat_dim = 1;
@@ -110,6 +112,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
 
     % Load TF file
     tPACMat = in_bst_timefreq(sInput(1).FileName, 0);
+    if isempty(inputTime)
+        inputTime =  tPACMat.Time([1,end]);
+    end
     % Error
     if isempty(tPACMat)
         bst_report('Error', 'process_pac_comod', sInput, Messages);
@@ -124,6 +129,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         if length(sInput)>1
             
             for iFile=1:length(sInput)
+                
                 % check the file format
                 indices = [];
                 tPACMat = in_bst_timefreq(sInput(iFile).FileName, 0);
@@ -134,6 +140,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                     indices = [indices,k];
                 end
                 
+                if isempty(inputTime)
+                    inputTime =  tPACMat.Time([1,end]);
+                end
                 if ~isempty(indices) % ignore file because it is a processed tpac map (e.g. comod or fp_map)
                     Message = ['File#',num2str(iFile),' is ignored becauase it is not a raw tPAC file'];
                     bst_report('Warning', 'process_pac_comod', sInput, Message); 
@@ -178,6 +187,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                         end
                     end
                 end
+                
             end
             tPACMat.nAvg = length(sInput);
             tPACMat.sPAC.DynamicNesting = Nesting;
@@ -191,7 +201,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
 
 
         % == EXTRACTING COMODULOGRAM ==
-        tPACMat = Compute(tPACMat, t, window_length, anal_type, doInterpolation);
+        tPACMat = Compute(tPACMat, inputTime, window_length, anal_type, doInterpolation);
 
         % === PLAYING THE RESULTS ===
         if tPACMat.time_resolved_comod
@@ -211,7 +221,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         if isequal(inputTime, tPACMat.Time)
             tPACMat.Comment = [tPACMat.Comment, ' | ',tag];
         else
-            tPACMat.Comment = [tPACMat.Comment, ' | ',tag,' | t=[', num2str(inputTime(1)), ',',  num2str(inputTime(2)),']'];
+            tPACMat.Comment = [tPACMat.Comment, ' | ',tag,' | t=(', num2str(inputTime(1)), ',',  num2str(inputTime(2)),')'];
         end
 
         % Output filename: add file tag
@@ -252,7 +262,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             else
             
                 % == EXTRACTING COMODULOGRAM ==
-                tPACMat = Compute(tPACMat, t, window_length, anal_type, doInterpolation);
+                tPACMat = Compute(tPACMat, inputTime, window_length, anal_type, doInterpolation);
                 
                 % === PLAYING THE RESULTS ===
                 if tPACMat.time_resolved_comod
@@ -266,11 +276,11 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 
                 % === SAVING THE DATA IN BRAINSTORM ===
                 % Comment
-                inputTime = t{1};
+%                 inputTime = t{1};
                 if isequal(inputTime,tPACMat.Time)
                     tPACMat.Comment = [tPACMat.Comment, ' | ',tag];
                 else
-                    tPACMat.Comment = [tPACMat.Comment, ' | ',tag,' | t=[', num2str(inputTime(1)), ',',  num2str(inputTime(2)),']'];
+                    tPACMat.Comment = [tPACMat.Comment, ' | ',tag,' | t=(', num2str(inputTime(1)), ',',  num2str(inputTime(2)),')'];
                 end
                 tPACMat.FunctionVersion = sProcess.Comment;
                 
@@ -292,7 +302,7 @@ end
 
 
 % == EXTRACTING COMODULOGRAM ==
-function tPACMatOutput = Compute(tPACMat, t, window_length, anal_type, doInterpolation)
+function tPACMatOutput = Compute(tPACMat, inputTime, window_length, anal_type, doInterpolation)
 
     extract_phasePAC = 0;
     P = 98;         % percentile factor
@@ -324,12 +334,11 @@ function tPACMatOutput = Compute(tPACMat, t, window_length, anal_type, doInterpo
 
     
     nA = length(highFreq); 
-    inputTime = t{1};
+%     inputTime = t{1};
     timeRange = bst_closest(inputTime, tPACMat.Time);
     if length(timeRange)==1
        timeRange = [timeRange, timeRange]; 
-    end
-    if tPACMat.Time(timeRange(2)) > inputTime(2)
+    elseif tPACMat.Time(timeRange(2)) > inputTime(2)
         timeRange(2) = timeRange(2)-1;
     end
     
@@ -385,16 +394,16 @@ function tPACMatOutput = Compute(tPACMat, t, window_length, anal_type, doInterpo
 
     % Former algorithm    
     fPcenters = freqCent;%(h>median(h(h>0))/4);
-        
-    % Adding first and last point to the range
-    fPcenters = [(tPACMat.Options.BandNesting(1)+fPcenters(1))/2, fPcenters, (tPACMat.Options.BandNesting(end)+fPcenters(end))/2];%making similar range for all cases
-    
-        % Setting the maximum resolution
-    if length(fPcenters)>OutputmaxRes
+            
+    % Setting the maximum resolution
+    if length(fPcenters)>(OutputmaxRes-2)
         fPcenters =  fPcenters(1:fix(length(fPcenters)/OutputmaxRes):end);   % downsampling for the map
     end 
     fPcenters = unique(fPcenters);        
-    
+
+    % Adding first and last point to the range
+    fPcenters = [(tPACMat.Options.BandNesting(1)+fPcenters(1))/2, fPcenters, (tPACMat.Options.BandNesting(end)+fPcenters(end))/2];%making similar range for all cases
+
     fP = [tPACMat.Options.BandNesting(1), ...
         (fPcenters(1:end-1) + fPcenters(2:end))/2, ...
         tPACMat.Options.BandNesting(2)];

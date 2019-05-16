@@ -3,9 +3,9 @@ function isOk = bst_compile_mex(fcn_name, isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -57,7 +57,7 @@ if ~file_exist(mexFile) && ~file_exist(mexFileUser)
         % Copy file to user's mex directory 
         userMexDir = bst_get('UserMexDir');
         % Copy current C-file and m-file to this directory
-        copyfile(cFile, userMexDir);
+        file_copy(cFile, userMexDir);
         % Move to this user's mex directory
         cd(userMexDir);
         mexFile = strrep(mexFile, fileparts(mexFile), userMexDir);

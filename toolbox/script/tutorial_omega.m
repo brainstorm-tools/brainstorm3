@@ -1,17 +1,17 @@
-function tutorial_omega(tutorial_dir)
+function tutorial_omega(BidsDir)
 % TUTORIAL_OMEGA: Script that reproduces the results of the online tutorial "Resting state and OMEGA database".
 %
 % CORRESPONDING ONLINE TUTORIALS:
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/RestingOmega
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/RestingOmega
 %
 % INPUTS: 
-%     tutorial_dir: Directory where the sample_omega.zip file has been unzipped
+%     tutorial_dir: Directory where the OMEGA_RestingState_sample.tar file has been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,19 +25,13 @@ function tutorial_omega(tutorial_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2016
+% Author: Francois Tadel, 2016-2018
 
 
 %% ===== FILES TO IMPORT =====
 % You have to specify the folder in which the tutorial dataset is unzipped
-if (nargin == 0) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
+if (nargin == 0) || isempty(BidsDir) || ~file_exist(BidsDir)
     error('The first argument must be the full path to the tutorial dataset folder.');
-end
-% Build the path of the files to import
-BidsDir = fullfile(tutorial_dir, 'sample_omega');
-% Check if the folder contains the required files
-if ~file_exist(BidsDir)
-    error(['The folder ' tutorial_dir ' does not contain the folder from the file sample_omega.zip.']);
 end
 
 
@@ -61,7 +55,14 @@ bst_report('Start');
 sFilesRaw = bst_process('CallProcess', 'process_import_bids', [], [], ...
     'bidsdir',      {BidsDir, 'BIDS'}, ...
     'nvertices',    15000, ...
-    'channelalign', 1);
+    'channelalign', 0);
+
+% Process: Remove head points
+sFilesRaw = bst_process('CallProcess', 'process_headpoints_remove', sFilesRaw, [], ...
+    'zlimit', 0);
+
+% Process: Refine registration
+sFilesRaw = bst_process('CallProcess', 'process_headpoints_refine', sFilesRaw, []);
 
 % Process: Convert to continuous (CTF): Continuous
 sFilesRaw = bst_process('CallProcess', 'process_ctf_convert', sFilesRaw, [], ...
@@ -176,7 +177,8 @@ bst_process('CallProcess', 'process_noisecov', sFilesNoise, [], ...
     'dcoffset',       1, ...  % Block by block, to avoid effects of slow shifts in data
     'identity',       0, ...
     'copycond',       1, ...
-    'copysubj',       0, ...
+    'copysubj',       1, ...
+    'copymatch',      1, ...
     'replacefile',    1);  % Replace
 
 % Process: Compute head model
@@ -184,13 +186,13 @@ bst_process('CallProcess', 'process_headmodel', sFilesRest, [], ...
     'sourcespace', 1, ...  % Cortex surface
     'meg',         3);     % Overlapping spheres
 
-% Process: Compute sources [2016]
-sSrcRest = bst_process('CallProcess', 'process_inverse_2016', sFilesRest, [], ...
+% Process: Compute sources [2018]
+sSrcRest = bst_process('CallProcess', 'process_inverse_2018', sFilesRest, [], ...
     'output',  2, ...  % Kernel only: one per file
     'inverse', struct(...
          'Comment',        'dSPM: MEG', ...
          'InverseMethod',  'minnorm', ...
-         'InverseMeasure', 'dspm', ...
+         'InverseMeasure', 'dspm2018', ...
          'SourceOrient',   {{'fixed'}}, ...
          'Loose',          0.2, ...
          'UseDepth',       1, ...

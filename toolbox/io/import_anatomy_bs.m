@@ -1,4 +1,4 @@
-function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive, sFid)
+function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive, sFid, isExtraMaps, isAseg)
 % IMPORT_ANATOMY_BS: Import a full BrainSuite folder as the subject's anatomy.
 %
 % USAGE:  errorMsg = import_anatomy_bs(iSubject, BsDir=[], nVertices=15000)
@@ -15,9 +15,9 @@ function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive,
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,10 +31,19 @@ function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author   : Francois Tadel, 2012-2015
+% Author   : Francois Tadel, 2012-2018
 % Modified : Andrew Krause, 2013
 
 %% ===== PARSE INPUTS =====
+% Import ASEG atlas
+if (nargin < 7) || isempty(isAseg)
+    isAseg = 1;
+end
+% Extract cortical maps
+if (nargin < 6) || isempty(isExtraMaps)
+    isExtraMaps = 0;
+end
+
 % Fiducials
 if (nargin < 5) || isempty(sFid)
     sFid = [];
@@ -124,6 +133,10 @@ MriFile = [MriFile{find(~cellfun(@isempty, MriFile))}];
 if isempty(MriFile)
     errorMsg = [errorMsg 'MRI file was not found: ' FilePrefix '.*' 10];
 end
+
+% Volume segmentation file
+AsegFile = file_find(BsDir, [FilePrefix '.svreg.label.nii.gz']);
+
 % Find surfaces
 HeadFile        = file_find(BsDir, [FilePrefix '.scalp.dfs']);
 InnerSkullFile  = file_find(BsDir, [FilePrefix '.inner_skull.dfs']);
@@ -220,6 +233,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
+        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -289,7 +303,7 @@ if ~isempty(TessLhFile)
     end    
     % Downsample
     bst_progress('start', 'Import BrainSuite folder', 'Downsampling: left pial...');
-    [BstTessLhLowFile, iLhLow] = tess_downsize(BstTessLhFile, nVertHemi, 'reducepatch');
+    [BstTessLhLowFile, iLhLow, xLhLow] = tess_downsize(BstTessLhFile, nVertHemi, 'reducepatch');
 end
 % Right pial
 if ~isempty(TessRhFile)
@@ -310,7 +324,7 @@ if ~isempty(TessRhFile)
     end
     % Downsample
     bst_progress('start', 'Import BrainSuite folder', 'Downsampling: right pial...');
-    [BstTessRhLowFile, iRhLow] = tess_downsize(BstTessRhFile, nVertHemi, 'reducepatch');
+    [BstTessRhLowFile, iRhLow, xRhLow] = tess_downsize(BstTessRhFile, nVertHemi, 'reducepatch');
 end
 % Left white matter
 if ~isempty(TessLwFile)
@@ -452,6 +466,36 @@ if ~isempty(rmFiles)
     % Refresh tree
     panel_protocols('UpdateNode', 'Subject', iSubject);
     panel_protocols('SelectNode', [], 'subject', iSubject, -1 );
+end
+
+%% ===== LOAD svreg.label.nii.gz file =====
+
+if isAseg && ~isempty(AsegFile)
+    % Import atlas
+    OffsetMri=[];
+    [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
+    % Extract cerebellum only
+    try
+        BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum'}, 'svreg | cerebellum');
+    catch
+        BstCerebFile = [];
+    end
+    % If the cerebellum surface can be reconstructed
+    if ~isempty(BstCerebFile)
+        % Downsample cerebllum
+        [BstCerebLowFile, iCerLow, xCerLow] = tess_downsize(BstCerebFile, 2000, 'reducepatch');
+        % Merge with low-resolution pial
+        BstMixedLowFile = tess_concatenate({CortexLowFile, BstCerebLowFile}, sprintf('cortex_cereb_%dV', length(xLhLow) + length(xRhLow) + length(xCerLow)), 'Cortex');
+        % Rename mixed file
+        oldBstMixedLowFile = file_fullpath(BstMixedLowFile);
+        BstMixedLowFile    = bst_fullfile(bst_fileparts(oldBstMixedLowFile), 'tess_cortex_pialcereb_low.mat');
+        file_move(oldBstMixedLowFile, BstMixedLowFile);
+        % Delete intermediate files
+        file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
+        db_reload_subjects(iSubject);
+    end
+else
+    BstAsegFile = [];
 end
 
 

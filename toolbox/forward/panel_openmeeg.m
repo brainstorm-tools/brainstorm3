@@ -7,9 +7,9 @@ function varargout = panel_openmeeg(varargin)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -85,7 +85,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jPanelNew.add('br hfill', jPanelLayers);
 
     % ===== OPENMEEG OPTIONS ======
-    isSeeg = strcmpi(OPTIONS.SEEGMethod, 'openmeeg') && ~isempty(OPTIONS.iSeeg);
+    isSeeg = isfield(OPTIONS, 'SEEGMethod') && strcmpi(OPTIONS.SEEGMethod, 'openmeeg') && ~isempty(OPTIONS.iSeeg);
     jPanelOpenmeeg = gui_river([3,3], [3,15,10,10], 'OpenMEEG options');
         % Adjoint
         jCheckAdjoint = gui_component('checkbox', jPanelOpenmeeg, [], '<HTML>Use adjoint formulation  <FONT COLOR="#808080"><I>(less memory, longer)</I></FONT>', [], [], @UpdatePanel, []);

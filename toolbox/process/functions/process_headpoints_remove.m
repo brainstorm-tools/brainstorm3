@@ -2,9 +2,9 @@ function varargout = process_headpoints_remove( varargin )
 % PROCESS_HEADPOINTS_REMOVE: Remove head points from the channel file below a certain level.
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -18,7 +18,7 @@ function varargout = process_headpoints_remove( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2018
 
 eval(macro_method);
 end
@@ -29,14 +29,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Remove head points';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Import anatomy';
-    sProcess.Index       = 26;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/ChannelFile#Automatic_registration';
+    sProcess.SubGroup    = {'Import', 'Channel file'};
+    sProcess.Index       = 63;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ChannelFile#Automatic_registration';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % Title
     sProcess.options.title.Comment = ['Remove the head points below a certain Z-thresold.<BR>' ... 
                                       ' - <B>Z=0</B> : Nasion, left ear, right ear<BR> - <B>Z>0</B> : Towards the top of the head<BR> - <B>Z&lt;0</B> : Towards the neck.<BR><BR>'];
@@ -94,15 +95,17 @@ function strMsg = RemoveHeadpoints(ChannelFile, zLimit)
         ChannelMat.HeadPoints = [];
         iDelete = 1:nPoints;
     else
+        % Get EXTRA points
+        iExtra = find(strcmpi(ChannelMat.HeadPoints.Type, 'EXTRA'));
         % Find the points below the z-threshold
-        iDelete = find(ChannelMat.HeadPoints.Loc(3,:) <= zLimit);
+        iDelete = find(ChannelMat.HeadPoints.Loc(3,iExtra) <= zLimit);
         % Remove the points
         if (length(iDelete) == nPoints)
             ChannelMat.HeadPoints = [];
         elseif ~isempty(iDelete)
-            ChannelMat.HeadPoints.Loc(:,iDelete) = [];
-            ChannelMat.HeadPoints.Label(iDelete) = [];
-            ChannelMat.HeadPoints.Type(iDelete)  = [];
+            ChannelMat.HeadPoints.Loc(:,iExtra(iDelete)) = [];
+            ChannelMat.HeadPoints.Label(iExtra(iDelete)) = [];
+            ChannelMat.HeadPoints.Type(iExtra(iDelete))  = [];
         end
     end
     % Message: head points removed

@@ -20,9 +20,9 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,7 +36,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2017
+% Authors: Francois Tadel, 2016-2018
 
 % ===== LOAD INPUTS =====
 % Initialize returned variables
@@ -234,21 +234,16 @@ if isUpdateScs || isUpdateNcs
             errMsg = 'No vox2ras transformation available for the reference volume.';
         % If SCS coordinates are defined
         elseif isfield(sMriRef, 'SCS') && all(isfield(sMriRef.SCS, {'NAS','LPA','RPA','T','R'})) && ~isempty(sMriRef.SCS.NAS) && ~isempty(sMriRef.SCS.LPA) && ~isempty(sMriRef.SCS.RPA) && ~isempty(sMriRef.SCS.R) && ~isempty(sMriRef.SCS.T)
-            % Get transformations
-            iTransfReg = find(strcmpi(sMriReg.InitTransf(:,1), 'vox2ras'));
-            iTransfRef = find(strcmpi(sMriRef.InitTransf(:,1), 'vox2ras'));
-            TransfReg = sMriReg.InitTransf{iTransfReg(1),2};
-            TransfRef = sMriRef.InitTransf{iTransfRef(1),2};
-            % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-            TransfReg = TransfReg * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-            TransfRef = TransfRef * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-            % 1st operation: Convert from MRI(mm) to voxels
-            TransfReg = TransfReg * diag(1 ./ [sMriReg.Voxsize, 1]);
-            TransfRef = TransfRef * diag(1 ./ [sMriRef.Voxsize, 1]);
+            % Get transformation MRI=>WORLD
+            TransfReg = cs_convert(sMriReg, 'mri', 'world');
+            TransfRef = cs_convert(sMriRef, 'mri', 'world');
+            % Convert to millimeters (to match the fiducials storage)
+            TransfReg(1:3,4) = TransfReg(1:3,4) .* 1000;
+            TransfRef(1:3,4) = TransfRef(1:3,4) .* 1000;
         end
     end
     % Transform the reference SCS coordinates if possible
-    if isfield(sMriRef, 'SCS') && all(isfield(sMriRef.SCS, {'NAS','LPA','RPA','T','R'})) && ~isempty(sMriRef.SCS.NAS) && ~isempty(sMriRef.SCS.LPA) && ~isempty(sMriRef.SCS.RPA) && ~isempty(sMriRef.SCS.R) && ~isempty(sMriRef.SCS.T)
+    if isUpdateScs && ~isempty(TransfReg) && ~isempty(TransfRef) && isfield(sMriRef, 'SCS') && all(isfield(sMriRef.SCS, {'NAS','LPA','RPA','T','R'})) && ~isempty(sMriRef.SCS.NAS) && ~isempty(sMriRef.SCS.LPA) && ~isempty(sMriRef.SCS.RPA) && ~isempty(sMriRef.SCS.R) && ~isempty(sMriRef.SCS.T)
         % Apply transformation: reference MRI => SPM RAS/world => registered MRI
         Transf = inv(TransfReg) * (TransfRef);
         % Update SCS fiducials
@@ -262,7 +257,7 @@ if isUpdateScs || isUpdateNcs
         sMriReg.SCS.T = Tscs(1:3,4);
     end
     % Transform the reference SCS coordinates if possible
-    if isfield(sMriRef, 'NCS') && all(isfield(sMriRef.NCS, {'AC','PC','IH','T','R'})) && ~isempty(sMriRef.NCS.AC) && ~isempty(sMriRef.NCS.PC) && ~isempty(sMriRef.NCS.IH) && ~isempty(sMriRef.NCS.R) && ~isempty(sMriRef.NCS.T)
+    if isUpdateNcs && ~isempty(TransfReg) && ~isempty(TransfRef) && isfield(sMriRef, 'NCS') && all(isfield(sMriRef.NCS, {'AC','PC','IH','T','R'})) && ~isempty(sMriRef.NCS.AC) && ~isempty(sMriRef.NCS.PC) && ~isempty(sMriRef.NCS.IH) && ~isempty(sMriRef.NCS.R) && ~isempty(sMriRef.NCS.T)
         % Apply transformation: reference MRI => SPM RAS/world => registered MRI
         Transf = inv(TransfReg) * (TransfRef);
         % Update SCS fiducials

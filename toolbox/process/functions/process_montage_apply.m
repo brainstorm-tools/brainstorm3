@@ -5,9 +5,9 @@ function varargout = process_montage_apply( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Standardize';
     sProcess.Index       = 307;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/MontageEditor';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MontageEditor';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'data'};
@@ -89,7 +89,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Update automatic montages
         panel_montage('UnloadAutoMontages');
         if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
-            panel_montage('AddAutoMontagesEeg', sSubject.Name, ChannelMat);
+            panel_montage('AddAutoMontagesSeeg', sSubject.Name, ChannelMat);
         end
         if ismember('NIRS', {ChannelMat.Channel.Type})
             panel_montage('AddAutoMontagesNirs', ChannelMat);
@@ -115,10 +115,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Load input file 
             DataMat = in_bst_data(sInputs(iInput).FileName);
             % Build average reference
-            if (strcmpi(sMontage.Name, 'Average reference'))
-                sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel, DataMat.ChannelFlag, 0);
+            if ~isempty(strfind(sMontage.Name, 'Average reference'))
+                sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 0);
             elseif ~isempty(strfind(sMontage.Name, '(local average ref)'))
-                sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel, DataMat.ChannelFlag, 1);
+                sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 1);
+            elseif ~isempty(strfind(sMontage.Name, 'Scalp current density'))
+                sMontage = panel_montage('GetMontageScd', sMontage, ChannelMat.Channel, DataMat.ChannelFlag);
+            elseif strcmpi(sMontage.Name, 'Head distance')
+                sMontage = panel_montage('GetMontageHeadDistance', sMontage, ChannelMat.Channel, DataMat.ChannelFlag);
             end
             % Get channels indices for the montage
             [iChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, {ChannelMat.Channel.Name});
@@ -133,13 +137,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             % Apply montage
             if isCreateChan
-                DataMat.F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
+                DataMat.F = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
                 % Compute channel flag
                 ChannelFlag = ones(size(DataMat.F,1),1);
-                isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * double(DataMat.ChannelFlag(iChannels) == -1) > 0);
+                isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(DataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
                 ChannelFlag(isChanBad) = -1;
             else
-                DataMat.F(iChannels,:) = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
+                DataMat.F(iChannels,:) = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
                 ChannelFlag = DataMat.ChannelFlag;
             end
 

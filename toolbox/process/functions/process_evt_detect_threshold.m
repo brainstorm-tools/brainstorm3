@@ -7,9 +7,9 @@ function varargout = process_evt_detect_threshold( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,7 +36,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 45;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle?highlight=%28Detect+events+above+threshold%29#Artifact_correction_with_SSP';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle?highlight=%28Detect+events+above+threshold%29#Artifact_correction_with_SSP';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};
@@ -138,6 +138,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         TimeWindow = [];
     end
     
+    % Option structure for function in_fread()
+    ImportOptions = db_template('ImportOptions');
+    ImportOptions.ImportMode      = 'Time';
+    ImportOptions.UseCtfComp      = 1;
+    ImportOptions.UseSsp          = 1;
+    ImportOptions.EventsMode      = 'ignore';
+    ImportOptions.DisplayMessages = 0;
+    ImportOptions.RemoveBaseline  = 'no';
+    
     % Get current progressbar position
     progressPos = bst_progress('get');
     nEvents = 0;
@@ -189,11 +198,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % Read channel to process
         if ~isempty(TimeWindow)
-            SamplesBounds = sFile.prop.samples(1) + bst_closest(TimeWindow, DataMat.Time) - 1;
+            SamplesBounds = round(sFile.prop.times(1) .* sFile.prop.sfreq) + bst_closest(TimeWindow, DataMat.Time) - 1;
         else
             SamplesBounds = [];
         end
-        [F, TimeVector] = in_fread(sFile, ChannelMat, 1, SamplesBounds, iChannels);
+        [F, TimeVector] = in_fread(sFile, ChannelMat, 1, SamplesBounds, iChannels, ImportOptions);
         % Apply weights if reading multiple channels
         if (length(iChannels) > 1)
             F = iChanWeights * F;
@@ -231,7 +240,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if ~isempty(iEvt)
                 sEvent = sFile.events(iEvt);
                 sEvent.epochs  = [];
-                sEvent.samples = [];
                 sEvent.times   = [];
                 sEvent.reactTimes = [];
             % Else: create new event
@@ -244,9 +252,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sEvent.color = panel_record('GetNewEventColor', iEvt, sFile.events);
             end
             % Times, samples, epochs
-            sEvent.times   = detectedEvt{i};
-            sEvent.samples = round(sEvent.times .* sFile.prop.sfreq);
-            sEvent.epochs  = ones(1, size(sEvent.times,2));
+            sEvent.times    = detectedEvt{i};
+            sEvent.epochs   = ones(1, size(sEvent.times,2));
+            sEvent.channels = cell(1, size(sEvent.times, 2));
+            sEvent.notes    = cell(1, size(sEvent.times, 2));
             % Add to events structure
             sFile.events(iEvt) = sEvent;
             nEvents = nEvents + 1;
@@ -305,7 +314,7 @@ function evt = Compute(F, TimeVector, OPTIONS)
     %% ===== DETECT EVENTS ABOVE THRESHOLD =====
      % Filter recordings
     if ~isempty(OPTIONS.bandpass)
-        F = process_bandpass('Compute', F, sFreq, OPTIONS.bandpass(1), OPTIONS.bandpass(2), 'bst-fft-fir', 1);
+        F = process_bandpass('Compute', F, sFreq, OPTIONS.bandpass(1), OPTIONS.bandpass(2), 'bst-hfilter-2019', 1);
     end
     
     % Remove DC offset with detrending

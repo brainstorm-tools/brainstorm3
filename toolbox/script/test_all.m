@@ -1,9 +1,9 @@
 function test_all(test_dir)
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -43,7 +43,12 @@ mkdir(BrainstormDbDir);
 bst_startup(BrainstormHomeDir, 0, BrainstormDbDir);
 
 % Initialize random generator
-rng('default');
+if exist('rng', 'file')
+    rng('default');
+else
+    sRnd = RandStream.getDefaultStream;
+    sRnd.reset();
+end
 
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
 ProtocolName = 'ProtocolTest';
@@ -107,7 +112,6 @@ bst_report('Snapshot', hFigSurf, [], 'view_surface');
 bst_report('Snapshot', hFigMriSurf, [], 'view_mri + surface');
 close([hFigSurf hFigMriSurf]);
 
-
 %% ===== DATA SIMULATION =====
 % Process: Simulate generic signals
 nfiles = 10;
@@ -146,9 +150,10 @@ sSimData = bst_process('CallProcess', 'process_simulate_recordings', sSimScout, 
 DataMat.Events = db_template('event');
 DataMat.Events.label   = 'sin+';
 DataMat.Events.color   = [0 1 0];
-DataMat.Events.samples = round((.5:1:nfiles) * sfreq);
-DataMat.Events.times   = DataMat.Events.samples ./ sfreq;
-DataMat.Events.epochs  = ones(size(DataMat.Events.samples));
+DataMat.Events.times   = round((.5:1:nfiles) * sfreq) ./ sfreq;
+DataMat.Events.epochs  = ones(size(DataMat.Events.times));
+DataMat.Events.channels = cell(1, size(DataMat.Events.times, 2));
+DataMat.Events.notes    = cell(1, size(DataMat.Events.times, 2));
 bst_save(file_fullpath(sSimData.FileName), DataMat, 'v6', 1);
 % Save as an EGI raw file
 RawFile = bst_fullfile(test_dir, 'run01.raw');
@@ -343,8 +348,8 @@ bst_process('CallProcess', 'process_noisecov', sFilesAvg, [], ...
     'sensortypes',    'EEG', ...
     'target',         1, ...  % Noise covariance
     'identity',       1);     % Identity matrix
-% Process: Compute sources [2016]
-sAvgSrc = bst_process('CallProcess', 'process_inverse_2016', sFilesAvg, [], ...
+% Process: Compute sources [2018]
+sAvgSrc = bst_process('CallProcess', 'process_inverse_2018', sFilesAvg, [], ...
     'output',  1, ...  % Kernel only: shared
     'inverse', struct(...
          'Comment',        'sLORETA: EEG', ...
@@ -403,8 +408,8 @@ bst_process('CallProcess', 'process_headmodel', sFilesAvg, [], ...
          'Resolution',    0.005, ...
          'FileName',      []), ...
     'eeg',         2);     % 3-shell sphere
-% Process: Compute sources [2016]
-sAvgSrcVol = bst_process('CallProcess', 'process_inverse_2016', sFilesAvg, [], ...
+% Process: Compute sources [2018]
+sAvgSrcVol = bst_process('CallProcess', 'process_inverse_2018', sFilesAvg, [], ...
     'output',  1, ...  % Kernel only: shared
     'inverse', struct(...
          'Comment',        'Dipoles: EEG', ...

@@ -10,9 +10,9 @@ function db_set_template( iSubject, sTemplate, isInteractive )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -137,7 +137,7 @@ for i = 1:length(dirFiles)
         bst_save(targetSubjFile, targetSubjMat, 'v7');
     % Else: plain copy of the file
     else
-        copyfile(bst_fullfile(templateDir, dirFiles(i).name), targetDir);
+        file_copy(bst_fullfile(templateDir, dirFiles(i).name), targetDir);
     end
 end
 

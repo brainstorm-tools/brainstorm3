@@ -7,9 +7,9 @@ function OutputFile = db_add(iTarget, InputFile, isReload)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -174,7 +174,7 @@ if isAnatomy
     switch (fileType)
         case 'subjectimage'
             % Nothing to do: file is replaced anyway
-        case {'tess', 'cortex', 'scalp', 'outerskull', 'innerskull'}
+        case {'tess', 'cortex', 'scalp', 'outerskull', 'innerskull', 'fibers'}
             sMat.Comment = file_unique(sMat.Comment, {sSubject.Surface.Comment});
     end
 else

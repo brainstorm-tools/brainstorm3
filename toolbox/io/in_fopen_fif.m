@@ -10,9 +10,9 @@ function [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,7 +26,7 @@ function [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2014
+% Authors: Francois Tadel, 2009-2018
 
 %% ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(ImportOptions)
@@ -125,6 +125,9 @@ end
 sFile.device      = Device;
 sFile.channelflag = ChannelFlag;
 sFile.byteorder = 'b';
+% Acquisition date (saved in POSIX format in FIF file)
+sFile.acq_date = str_date(info.meas_date(1), 'posix');
+
 
 %% ===== READ DATA DESCRIPTION =====
 % Get number of epochs
@@ -140,9 +143,8 @@ elseif (nEpochs == 0)
     % Read RAW file information
     raw = fif_setup_raw(sFile, fid, 1);
     % Fill sFile structure   
-    sFile.prop.samples = double([raw.first_samp, raw.last_samp]);
-    sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-    sFile.header.raw   = raw;
+    sFile.prop.times = double([raw.first_samp, raw.last_samp]) ./ sFile.prop.sfreq;
+    sFile.header.raw = raw;
     % Read events information
     if iscell(ImportOptions.EventsMode) || ~strcmpi(ImportOptions.EventsMode, 'ignore')
         sFile.events = fif_read_events(sFile, ChannelMat, ImportOptions);
@@ -158,7 +160,6 @@ else
     % Build epochs structure
     for i = 1:length(epochs)
         sFile.epochs(i).label   = epochs(i).label;
-        sFile.epochs(i).samples = epochs(i).samples;
         sFile.epochs(i).times   = epochs(i).times;
         sFile.epochs(i).nAvg    = epochs(i).nAvg;
         sFile.epochs(i).select  = isempty(strfind(epochs(i).label, 'std err'));
@@ -166,7 +167,6 @@ else
         sFile.epochs(i).channelflag = [];
     end
     % Extract global min/max for time and samples indices
-    sFile.prop.samples = [min([sFile.epochs.samples]), max([sFile.epochs.samples])];
     sFile.prop.times   = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
 end
 

@@ -9,9 +9,9 @@ function isUpdated = bst_update(AskConfirm)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,8 +25,10 @@ function isUpdated = bst_update(AskConfirm)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2013
+% Authors: Francois Tadel, 2009-2019
 
+% Java imports
+import org.brainstorm.icon.*;
 % Parse inputs
 if (nargin == 0) || isempty(AskConfirm)
     AskConfirm = 0;
@@ -44,16 +46,23 @@ end
 
 % === DOWNLOAD NEW VERSION ===
 % Get update zip file
-urlUpdate  = 'http://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09';
+urlUpdate  = 'https://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09&nobin=1';
 installDir = fileparts(fileparts(fileparts(fileparts(mfilename('fullpath')))));
 zipFile    = fullfile(installDir, 'brainstorm_update.zip');
 
 % Check permissions
 if ~file_attrib(installDir, 'w') || ~file_attrib(fullfile(installDir, 'brainstorm3'), 'w')
-    disp('BST> Update: Brainstorm folder is read-only...');
+    strMsg = 'Error: Installation folder is read-only...';
+    if ispc
+        strMsg = [strMsg 10 10 ...
+                  'On some Windows 7 or 8 computers, the user folders Documents and Downloads' 10 ...
+                  'and the system folder C:\Programs\ are seen as read-only by Matlab.' 10 ...
+                  'Try with admin privileges (right-click on Matlab > Run as Administrator)' 10 ...
+                  'and if you still cannot update, move the brainstorm3 folder somewhere else.'];
+    end
+    disp(['BST> ' strrep(strMsg, char(10), [char(10) 'BST> '])]);
     if AskConfirm
-        java_dialog('msgbox', ['Installation folder is read-only.' 10 10 ...
-                               'Software was not updated.' 10 10], 'Update');
+        java_dialog('msgbox', [strMsg 10 10], 'Update');
     end
     return
 end
@@ -95,7 +104,7 @@ jDialog.pack();
 jDialog.setLocationRelativeTo([]);
 jDialog.setVisible(1);
 jDialog.getContentPane().repaint();
-jDialog.setIconImage(org.brainstorm.icon.IconLoader.ICON_APP.getImage());
+jDialog.setIconImage(IconLoader.ICON_APP.getImage());
 disp('BST> Update: Removing previous installation...');
 
 % Go to zip folder (to make sure we are not in a folder we are deleting)

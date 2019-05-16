@@ -5,9 +5,9 @@ function varargout = process_evt_detect_badsegment( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 46;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/BadSegments#Automatic_detection';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/BadSegments#Automatic_detection';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};
@@ -92,7 +92,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Time window to process
     RefTimeWindow = 1; %seconds
    
-    % Option structure for function LoadInputFile()
+    % Option structure for function in_fread()
     ImportOptions = db_template('ImportOptions');
     ImportOptions.ImportMode = 'Time';
     ImportOptions.RemoveBaseline = 'no';
@@ -116,6 +116,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Get sampling frequency
         sfreq = sFile.prop.sfreq;
+        fileSamples = round(sFile.prop.times .* sFile.prop.sfreq);
         % Select the time samples
         if isempty(TimeWindow)
             TimeSamples = round([DataMat.Time(1), DataMat.Time(end)]*sfreq);
@@ -181,7 +182,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             % Filter file
             % Fbp = process_bandpass('Compute', Fraw, sfreq, FiltSpec);
-            Fbp = process_bandpass('Compute', Fraw, sfreq, lowCut, highCut, 'bst-fft-fir', 1);
+            Fbp = process_bandpass('Compute', Fraw, sfreq, lowCut, highCut, 'bst-hfilter-2019', 1);
             if isempty(Fbp)
                 return;
             end
@@ -202,9 +203,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Get list of bad segments in file
                 badSeg = panel_record('GetBadSegments', sFile);
                 % Adjust with beginning of file
-                badSeg = badSeg - sFile.prop.samples(1) + 1;
+                badSeg = badSeg - fileSamples(1) + 1;
                 % Create file mask
-                Fmask = false(1, sFile.prop.samples(2) - sFile.prop.samples(1) + 1);
+                Fmask = false(1, fileSamples(2) - fileSamples(1) + 1);
                 if ~isempty(badSeg) 
                     % Loop on each segment: mark as bad
                     for iSeg = 1:size(badSeg, 2)
@@ -229,7 +230,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % get next data window
                 SamplesBounds = [winSt(ii), winSt(ii)+winSamps-1];
                 % Check for bad segments
-                iSamplesMask = SamplesBounds - sFile.prop.samples(1) + 1;
+                iSamplesMask = SamplesBounds - fileSamples(1) + 1;
                 if (sum(Fmask(iSamplesMask(1):iSamplesMask(2))) > 0)
                     continue;
                 end
@@ -241,7 +242,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 % Apply filtering if requested, otherwise remove the DC
                 %F = process_bandpass('Compute', F, sfreq, FiltSpec);
-                F = process_bandpass('Compute', F, sfreq, lowCut, highCut, 'bst-fft-fir', 1);
+                F = process_bandpass('Compute', F, sfreq, lowCut, highCut, 'bst-hfilter-2019', 1);
                 if isempty(F)
                     return;
                 end
@@ -310,7 +311,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if ~isempty(iEvt)
                     sEvent = sFile.events(iEvt);
                     sEvent.epochs  = [];
-                    sEvent.samples = [];
                     sEvent.times   = [];
                     sEvent.reactTimes = [];
                 % Else: create new event
@@ -325,9 +325,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     sEvent.color = ColorTable(iColor,:);
                 end
                 % Times, samples, epochs
-                sEvent.samples = detectedEvt{i} + TimeSamples(1) - sFile.prop.samples(1);
-                sEvent.times   = sEvent.samples ./ sfreq;
-                sEvent.epochs  = ones(1, size(sEvent.times,2));
+                sEvent.times    = (detectedEvt{i} + TimeSamples(1)) ./ sfreq - sFile.prop.times(1);
+                sEvent.epochs   = ones(1, size(sEvent.times,2));
+                sEvent.channels = cell(1, size(sEvent.times, 2));
+                sEvent.notes    = cell(1, size(sEvent.times, 2));
                 % Add to events structure
                 sFile.events(iEvt) = sEvent;
                 nEvents = nEvents + 1;

@@ -4,9 +4,9 @@ function varargout = panel_options(varargin)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -20,7 +20,7 @@ function varargout = panel_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2018
 
 eval(macro_method);
 end
@@ -34,6 +34,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     global GlobalData;
     % Constants
     panelName = 'Preferences';
+    isCompiled = exist('isdeployed', 'builtin') && isdeployed;
     
     % Create main main panel
     jPanelNew = gui_river();
@@ -53,6 +54,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckGfp        = gui_component('CheckBox', jPanelSystem, 'br', 'Display GFP over time series', [], [], []);
         jCheckForceComp  = gui_component('CheckBox', jPanelSystem, 'br', 'Force mat-files compression (slower)', [], [], []);
         jCheckIgnoreMem  = gui_component('CheckBox', jPanelSystem, 'br', 'Ignore memory warnings', [], [], []);
+        if ~ispc
+            jCheckSystemCopy  = gui_component('CheckBox', jPanelSystem, 'br', 'Use system calls to copy/move files', [], [], []);
+        else
+            jCheckSystemCopy = [];
+        end
     jPanelLeft.add('hfill', jPanelSystem);
     % ===== LEFT: OPEN GL =====
     jPanelOpengl = gui_river([5 2], [0 15 8 15], 'OpenGL rendering');
@@ -100,23 +106,34 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jButtonTempDir = gui_component('Button', jPanelImport, [], '...', [], [], @TempDirectory_Callback);
         jButtonTempDir.setMargin(Insets(2,2,2,2));
         jButtonTempDir.setFocusable(0);
-        % FieldTrip folder
-        gui_component('Label', jPanelImport, 'br', 'FieldTrip toolbox: ', [], [], []);
-        jTextFtDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
-        jButtonFtDir = gui_component('Button', jPanelImport, [], '...', [], [], @FtDirectory_Callback);
-        jButtonFtDir.setMargin(Insets(2,2,2,2));
-        jButtonFtDir.setFocusable(0);
-        % SPM folder
-        gui_component('Label', jPanelImport, 'br', 'SPM toolbox: ', [], [], []);
-        jTextSpmDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
-        jButtonSpmDir = gui_component('Button', jPanelImport, [], '...', [], [], @SpmDirectory_Callback);
-        jButtonSpmDir.setMargin(Insets(2,2,2,2));
-        jButtonSpmDir.setFocusable(0);
+        % External toolboxes (only in non-compiled mode)
+        if ~isCompiled
+            % FieldTrip folder
+            gui_component('Label', jPanelImport, 'br', 'FieldTrip toolbox: ', [], [], []);
+            jTextFtDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
+            jButtonFtDir = gui_component('Button', jPanelImport, [], '...', [], [], @FtDirectory_Callback);
+            jButtonFtDir.setMargin(Insets(2,2,2,2));
+            jButtonFtDir.setFocusable(0);
+            % SPM folder
+            gui_component('Label', jPanelImport, 'br', 'SPM toolbox: ', [], [], []);
+            jTextSpmDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
+            jButtonSpmDir = gui_component('Button', jPanelImport, [], '...', [], [], @SpmDirectory_Callback);
+            jButtonSpmDir.setMargin(Insets(2,2,2,2));
+            jButtonSpmDir.setFocusable(0);
+        else
+            jTextFtDir = [];
+            jTextSpmDir = [];
+        end
     jPanelRight.add('br hfill', jPanelImport);
     
     % ===== RIGHT: SIGNAL PROCESSING =====
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
         jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', []);
+        jBlockSizeLabel = gui_component('Label',  jPanelProc, 'br', 'Memory block size in Mb (default: 100Mb): ', [], [], []);
+        blockSizeTooltip = '<HTML>Maximum size of data blocks to be read in memory, in megabytes.<BR>Ensure this does not exceed the available RAM in your computer.';
+        jBlockSize = gui_component('Text',  jPanelProc, [], '', [], [], []);
+        jBlockSizeLabel.setToolTipText(blockSizeTooltip);
+        jBlockSize.setToolTipText(blockSizeTooltip);
         % jCheckOrigFolder = gui_component('CheckBox', jPanelProc, 'br', 'Store continuous files in original folder', [], '<HTML>If selected, the continuous files processed with the Process1 tab are stored in the same folder as the input raw files. <BR>Else, they are stored directly in the Brainstorm database.', @UpdateProcessOptions_Callback);
         % jCheckOrigFormat = gui_component('CheckBox', jPanelProc, 'br', 'Save continuous files in original format',  [], '<HTML>If selected, the continuous files processed with the Process1 tab are saved in the same data format as the input raw files.<BR>Else, they are saved in the Brainstorm binary format.<BR>This option is available only for FIF and CTF files.', []);
     jPanelRight.add('br hfill', jPanelProc);
@@ -170,7 +187,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries') > 0);
         jCheckIgnoreMem.setSelected(bst_get('IgnoreMemoryWarnings'));
         if ~isempty(jCheckSmooth)
-            jCheckSmooth.setSelected(bst_get('GraphicsSmoothing'));
+            jCheckSmooth.setSelected(bst_get('GraphicsSmoothing') > 0);
+        end
+        if ~isempty(jCheckSystemCopy)
+            jCheckSystemCopy.setSelected(bst_get('SystemCopy'));
         end
         switch bst_get('DisableOpenGL')
             case 0
@@ -196,12 +216,18 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end    
         % Directory
         jTextTempDir.setText(bst_get('BrainstormTmpDir'));
-        jTextFtDir.setText(bst_get('FieldTripDir'));
-        jTextSpmDir.setText(bst_get('SpmDir'));
+        if ~isempty(jTextFtDir)
+            jTextFtDir.setText(bst_get('FieldTripDir'));
+        end
+        if ~isempty(jTextSpmDir)
+            jTextSpmDir.setText(bst_get('SpmDir'));
+        end
         % Use signal processing toolbox
         isToolboxInstalled = (exist('fir2', 'file') > 0);
         jCheckUseSigProc.setEnabled(isToolboxInstalled);
         jCheckUseSigProc.setSelected(bst_get('UseSigProcToolbox'));
+        processOptions = bst_get('ProcessOptions');
+        jBlockSize.setText(num2str(processOptions.MaxBlockSize * 8 / 1024 / 1024));
     end
 
 
@@ -217,6 +243,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             bst_set('DownsampleTimeSeries', 5);
         else
             bst_set('DownsampleTimeSeries', 0);
+        end
+        if ~isempty(jCheckSystemCopy)
+            bst_set('SystemCopy', jCheckSystemCopy.isSelected());
         end
         if ~isempty(jCheckSmooth)
             % Update value
@@ -271,43 +300,75 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         oldTmpDir = bst_get('BrainstormTmpDir');
         newTmpDir = char(jTextTempDir.getText());
         if ~file_compare(oldTmpDir, newTmpDir)
-            % If temp directory changed: create directory if it doesn't exist
-            if file_exist(newTmpDir) || mkdir(newTmpDir)
-                bst_set('BrainstormTmpDir', newTmpDir);
+            % Make sure it is different from and does not contain the database directory
+            changeDir = 1;
+            dbDir = bst_get('BrainstormDbDir');
+            if file_compare(newTmpDir, dbDir)
+                java_dialog('warning', 'Your temporary and database directories must be different.');
+                changeDir = 0;
             else
-                java_dialog('warning', 'Could not create temporary directory.');
+                parentDir = fileparts(dbDir);
+                lastParent = [];
+                while ~isempty(parentDir) && ~strcmp(lastParent, parentDir)
+                    if file_compare(newTmpDir, parentDir)
+                        java_dialog('warning', 'Your temporary directory cannot contain your database directory.');
+                        changeDir = 0;
+                        break;
+                    end
+                    lastParent = parentDir;
+                    parentDir = fileparts(parentDir);
+                end
+            end
+            if changeDir
+                % If temp directory changed: create directory if it doesn't exist
+                if file_exist(newTmpDir) || mkdir(newTmpDir)
+                    bst_set('BrainstormTmpDir', newTmpDir);
+                else
+                    java_dialog('warning', 'Could not create temporary directory.');
+                end
             end
         end
         % FieldTrip directory
-        oldFtDir = bst_get('FieldTripDir');
-        newFtDir = char(jTextFtDir.getText());
-        if ~file_compare(oldFtDir, newFtDir)
-            % Folder doesn't exist
-            if ~isempty(newFtDir) && ~file_exist(newFtDir)
-                java_dialog('warning', 'Selected FieldTrip folder doesn''t exist. Ignoring...');
-            elseif ~isempty(newFtDir) && ~file_exist(bst_fullfile(newFtDir, 'ft_defaults.m'))
-                java_dialog('warning', 'Selected folder does not contain a valid FieldTrip install. Ignoring...');
-            else
-                bst_set('FieldTripDir', newFtDir);
+        if ~isempty(jTextFtDir)
+            oldFtDir = bst_get('FieldTripDir');
+            newFtDir = char(jTextFtDir.getText());
+            if ~file_compare(oldFtDir, newFtDir)
+                % Folder doesn't exist
+                if ~isempty(newFtDir) && ~file_exist(newFtDir)
+                    java_dialog('warning', 'Selected FieldTrip folder doesn''t exist. Ignoring...');
+                elseif ~isempty(newFtDir) && ~file_exist(bst_fullfile(newFtDir, 'ft_defaults.m'))
+                    java_dialog('warning', 'Selected folder does not contain a valid FieldTrip install. Ignoring...');
+                else
+                    bst_set('FieldTripDir', newFtDir);
+                end
             end
         end
         % SPM directory
-        oldSpmDir = bst_get('SpmDir');
-        newSpmDir = char(jTextSpmDir.getText());
-        if ~file_compare(oldSpmDir, newSpmDir)
-            % Folder doesn't exist
-            if ~isempty(newSpmDir) && ~file_exist(newSpmDir)
-                java_dialog('warning', 'Selected SPM folder doesn''t exist. Ignoring...');
-            elseif ~isempty(newSpmDir) && ~file_exist(bst_fullfile(newSpmDir, 'spm.m'))
-                java_dialog('warning', 'Selected folder does not contain a valid SPM install. Ignoring...');
-            else
-                bst_set('SpmDir', newSpmDir);
+        if ~isempty(jTextSpmDir)
+            oldSpmDir = bst_get('SpmDir');
+            newSpmDir = char(jTextSpmDir.getText());
+            if ~file_compare(oldSpmDir, newSpmDir)
+                % Folder doesn't exist
+                if ~isempty(newSpmDir) && ~file_exist(newSpmDir)
+                    java_dialog('warning', 'Selected SPM folder doesn''t exist. Ignoring...');
+                elseif ~isempty(newSpmDir) && ~file_exist(bst_fullfile(newSpmDir, 'spm.m'))
+                    java_dialog('warning', 'Selected folder does not contain a valid SPM install. Ignoring...');
+                else
+                    bst_set('SpmDir', newSpmDir);
+                end
             end
         end
         
         % ===== PROCESSING OPTIONS =====
         % Use signal processing toolbox
         bst_set('UseSigProcToolbox', jCheckUseSigProc.isSelected());
+        % Memory block size (Valid values: between 1MB and 1TB)
+        blockSize = str2num(jBlockSize.getText());
+        if ~isempty(blockSize) && blockSize >= 1 && blockSize <= 1e6
+            processOptions = bst_get('ProcessOptions');
+            processOptions.MaxBlockSize = blockSize * 1024 * 1024 / 8; % Mb to bytes
+            bst_set('ProcessOptions', processOptions);
+        end
         
         bst_progress('stop');
         

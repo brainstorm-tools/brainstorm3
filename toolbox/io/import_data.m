@@ -1,8 +1,8 @@
-function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions)
+function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy)
 % IMPORT_DATA: Imports a list of datafiles in a Study of Brainstorm database
 % 
-% USAGE:  NewFiles = import_data(DataFiles, [],         FileFormat, iStudyInit, iSubjectInit, ImportOptions)
-%         NewFiles = import_data(sFile,     ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions)
+% USAGE:  NewFiles = import_data(DataFiles, [],         FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy=[])
+%         NewFiles = import_data(sFile,     ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy=[])
 %
 % INPUT:
 %    - DataFiles     : Cell array of full filenames of the data files to import (requires FileFormat to be set)
@@ -10,7 +10,7 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 %    - sFile         : Structure representing a RAW file already open in Brainstorm
 %    - ChannelMat    : Channel file structure (only when passing a sFile structure)
 %    - FileFormat    : String that represent the file format of the files to import
-%                      Possible values: {FIF, EEG-EGI-RAW, EEG-EEGLAB, EEG-CARTOOL, EEG-ERPCENTER, EEG-BRAINAMP, EEG_DELTAMED, EEG-NEUROSCOPE,
+%                      Possible values: {FIF, EEG-EGI-RAW, EEG-EEGLAB, EEG-CARTOOL, EEG-ERPCENTER, EEG-BRAINAMP, EEG_DELTAMED, EEG-NEUROSCOPE, EEG-BRAINAMP,
 %                                        EEG-NEUROSCAN-CNT, EEG-NEUROSCAN-AVG, EEG-NEUROSCAN-DAT, EEG-NEUROSCAN-EEG, EEG-MAT, EEG-ASCII, EEG-EDF}
 %                      Must be specified if and only if DataFiles is defined.
 %    - iStudyInit    : Indice of the study where to import the files
@@ -19,15 +19,16 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 %                      Must be specified if iStudyInit is not defined.
 %                      In this case, default study is created for the target subject.
 %    - ImportOptions : Structure that describes how to import the recordings.
+%     - DateOfStudy  : String 'dd-MMM-yyyy', force Study entries created in the database to use this acquisition date
 %
 % NOTE : Some data filenames can be interpreted as subjects/conditions/run :
 %    - cell<i>_<conditionName>_obs<j>.erp     : subject #j, condition #i, conditionName
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -41,12 +42,15 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 
 %% ===== PARSE INPUTS =====
 % Default values for all parameters
-if (nargin < 6)
+if (nargin < 7) || isempty(DateOfStudy)
+    DateOfStudy = [];
+end
+if (nargin < 6) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
 end
 if (nargin < 5) || isempty(iSubjectInit)
@@ -173,6 +177,14 @@ for iFile = 1:length(DataFiles)
         % Importing data from a RAW file already in the DB: the re-alignment is already done
         ImportOptions.ChannelReplace = 0;
         ImportOptions.ChannelAlign = 0;
+        % Creation date: use input value, or try to get it from the sFile structure
+        if ~isempty(DateOfStudy)
+            studyDate = DateOfStudy;
+        elseif isfield(sFile, 'acq_date') && ~isempty(sFile.acq_date)
+            studyDate = sFile.acq_date;
+        else
+            studyDate = [];
+        end
     else
         % If importing files in an existing folder: adapt to the existing channel file
         if ~isempty(iStudyInit) && ~isnan(iStudyInit) && (iStudyInit > 0)
@@ -185,7 +197,11 @@ for iFile = 1:length(DataFiles)
         else
             ChannelMatInit = [];
         end
-        [ImportedDataMat, ChannelMat, nChannels, nTime, ImportOptions] = in_data(DataFile, ChannelMatInit, FileFormat, ImportOptions, nbCall);
+        [ImportedDataMat, ChannelMat, nChannels, nTime, ImportOptions, studyDate] = in_data(DataFile, ChannelMatInit, FileFormat, ImportOptions, nbCall);
+        % Creation date: use input value
+        if ~isempty(DateOfStudy)
+            studyDate = DateOfStudy;
+        end
     end
     if isempty(ImportedDataMat)
         break;
@@ -244,7 +260,7 @@ for iFile = 1:length(DataFiles)
             [sStudies, iStudies] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, Condition));
             % If does not exist yet: Create the default study
             if isempty(iStudies)
-                iStudies = db_add_condition(sSubject.Name, Condition);
+                iStudies = db_add_condition(sSubject.Name, Condition, [], studyDate);
                 if isempty(iStudies)
                     error('Default study could not be created : "%s".', Condition);
                 end
@@ -323,7 +339,7 @@ for iFile = 1:length(DataFiles)
             [sNewStudy, iNewStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubjectRaw.Name, ConditionName));
             % If study does not exist : create it
             if isempty(iNewStudy)
-                iNewStudy = db_add_condition(sSubjectRaw.Name, ConditionName, 0);
+                iNewStudy = db_add_condition(sSubjectRaw.Name, ConditionName, 0, studyDate);
                 if isempty(iNewStudy)
                     warning(['Cannot create condition : "' bst_fullfile(sSubjectRaw.Name, ConditionName) '"']);
                     continue;
@@ -368,7 +384,7 @@ for iFile = 1:length(DataFiles)
         end
         % If data file is not in study subdirectory : need to move it
         if ~file_compare(importedPath, bst_fileparts(finalImportedFile))
-            movefile(ImportedDataMat(iImported).FileName, finalImportedFile, 'f');
+            file_move(ImportedDataMat(iImported).FileName, finalImportedFile);
             ImportedDataMat(iImported).FileName = file_short(finalImportedFile);
         end
     

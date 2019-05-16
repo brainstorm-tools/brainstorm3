@@ -3,9 +3,9 @@ function [sFile, ChannelMat] = in_fopen_smr(DataFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -79,8 +79,7 @@ sFile.byteorder    = byteorder;
 sFile.filename     = DataFile;
 sFile.format       = 'EEG-SMR';
 sFile.prop.sfreq   = sfreq;
-sFile.prop.samples = [0, sum(hdr.chaninfo(chMax).blocks(5,:)) - 2];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, sum(hdr.chaninfo(chMax).blocks(5,:)) - 2] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 sFile.channelflag  = ones(hdr.num_channels,1);
 sFile.device       = 'CED Spike2';
@@ -91,6 +90,7 @@ sFile.comment = fBase;
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
+ChannelMat = db_template('channelmat');
 ChannelMat.Comment = [sFile.device ' channels'];
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.num_channels]);
 % For each channel
@@ -115,12 +115,12 @@ for iEvt = 1:length(iMarkerChan)
             timeEvt = d.timings(:)';
     end
     % Create event structure
-    sFile.events(iEvt).label   = header.title;
-    sFile.events(iEvt).times   = double(timeEvt);
-    sFile.events(iEvt).samples = round(timeEvt .* sFile.prop.sfreq);
-    sFile.events(iEvt).times   = sFile.events(iEvt).samples ./ sFile.prop.sfreq;
-    sFile.events(iEvt).epochs  = ones(size(sFile.events(iEvt).samples));
-    sFile.events(iEvt).select  = 1;
+    sFile.events(iEvt).label    = header.title;
+    sFile.events(iEvt).times    = round(double(timeEvt).* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+    sFile.events(iEvt).epochs   = ones(size(sFile.events(iEvt).times));
+    sFile.events(iEvt).select   = 1;
+    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
 end
 
 % Close file

@@ -6,9 +6,9 @@ function nProtocols = db_import(BrainstormDbDir)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +34,7 @@ if (nargin < 1) || isempty(BrainstormDbDir)
         defDir = bst_get('UserDir');
     end
     % Open 'Select directory' dialog
-    BrainstormDbDir = uigetdir(defDir, 'Please select database directory.');
+    BrainstormDbDir = bst_uigetdir(defDir, 'Please select database directory.');
     if isempty(BrainstormDbDir) || ~ischar(BrainstormDbDir)
         return
     end

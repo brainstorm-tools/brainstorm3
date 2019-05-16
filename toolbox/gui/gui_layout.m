@@ -12,9 +12,9 @@ function varargout = gui_layout(varargin)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function varargout = gui_layout(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2019
 
 eval(macro_method);
 end
@@ -36,6 +36,10 @@ end
 
 %% ===== UPDATE LAYOUT =====
 function Update() %#ok<DEFNU>
+    % Cancel call in headless mode
+    if (bst_get('GuiLevel') == -1)
+        return;
+    end
     % Call the appropriate function
     switch bst_get('Layout', 'WindowManager')
         case 'WeightWindows'
@@ -155,6 +159,14 @@ end
 %% ===== GET CLIENT SCREEN SIZE =====
 % Process information from GetMaximumWindow
 function ScreenDef = GetScreenClientArea()
+    % If running in headless mode, return a fake configuration
+    if (bst_get('GuiLevel') == -1)
+        ScreenDef.screenInsets = java.awt.Insets(0,0,0,0);
+        ScreenDef.javaPos      = java.awt.Rectangle(1,1,1024,768);
+        ScreenDef.matlabPos    = [0 0 1024 768];
+        ScreenDef.zoomFactor   = 1;
+        return;
+    end
     % Get Java GraphicsEnvironment
     ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment();
     tk = java.awt.Toolkit.getDefaultToolkit();
@@ -162,6 +174,7 @@ function ScreenDef = GetScreenClientArea()
     jScreens = ge.getScreenDevices();
     % Matlab monitor positions
     MonitorPositions = get(0, 'MonitorPositions');
+    isOldPositions = (bst_get('MatlabVersion') < 804);
     % Find default screen
     % iDefaultScreen = ge.getDefaultScreenDevice().getScreen() + 1;   %%% CRASHES ON JAVA 7/Matlab2013 ON MACOSX
     jDefScreen = ge.getDefaultScreenDevice();
@@ -200,9 +213,25 @@ function ScreenDef = GetScreenClientArea()
                   jBounds.getHeight() - jInsets.top - jInsets.bottom];
         % Convert to a Java rectangle
         ScreenDef(i).javaPos = java.awt.Rectangle(MaxWin(1), MaxWin(2), MaxWin(3), MaxWin(4));
-        % Adjust position of secondary monitors based on the size of the first one
-        if (i > 1) && (i <= size(MonitorPositions,1)) && (MonitorPositions(i,4) ~= MonitorPositions(1,4))
-            MaxWin(2) = MaxWin(2) - MaxWin(4) + MonitorPositions(1,4);
+        % For Matlab < 2014b:  Adjust position of secondary monitors based on the size of the first one
+        if isOldPositions
+            % Secondary screens
+            if (i > 1) && (i <= size(MonitorPositions,1))
+                isVertical = (MonitorPositions(i,1) == MonitorPositions(1,1));
+                % Vertical extension
+                if isVertical && (MonitorPositions(i,2) ~= MonitorPositions(1,2))
+                    MaxWin(1) = MaxWin(1) - MaxWin(3) + MonitorPositions(1,3);
+                % Horizontal extension
+                elseif (MonitorPositions(i,4) ~= MonitorPositions(1,4))
+                    MaxWin(2) = MaxWin(2) - MaxWin(4) + MonitorPositions(1,4);
+                end
+            end
+        % Newer Matlab: Rely on MonitorPositions directly
+        else
+            MaxWin = [MonitorPositions(i,1) + jInsets.left, ...
+                      MonitorPositions(i,2) + jInsets.bottom, ...
+                      MonitorPositions(i,3) - jInsets.left - jInsets.right, ...
+                      MonitorPositions(i,4) - jInsets.top - jInsets.bottom];
         end
         
         % === SCALING ===
@@ -212,14 +241,20 @@ function ScreenDef = GetScreenClientArea()
             if (i == 1) || (i > size(MonitorPositions,1))
                 matlabScreenSize = MonitorPositions(1,3) - MonitorPositions(1,1) + 1;
             else
-                matlabScreenSize = MonitorPositions(i,3) - (MonitorPositions(i,1) - MonitorPositions(i-1,3)) + 1;
+                % For Matlab < 2014b:
+                if isOldPositions
+                    matlabScreenSize = MonitorPositions(i,3) - (MonitorPositions(i,1) - MonitorPositions(i-1,3)) + 1;
+                % Newer Matlab
+                else
+                    matlabScreenSize = MonitorPositions(i,3);
+                end
             end
             ZoomFactor = double(javaScreenSize) ./ double(matlabScreenSize);
             ZoomFactor = round(ZoomFactor * 100) / 100;
-            % For Matlab R2015b and above: the screen size not in scaled coordinates, need to fix this
-            if (ZoomFactor >= 1.05) && (bst_get('MatlabVersion') >= 806) 
-                MaxWin = floor(MaxWin ./ ZoomFactor);
-            end
+%             % For Matlab R2015b and above: the screen size not in scaled coordinates, need to fix this
+%             if (ZoomFactor >= 1.05) && (bst_get('MatlabVersion') >= 806) 
+%                 MaxWin = floor(MaxWin ./ ZoomFactor);
+%             end
         catch
             ZoomFactor = 1;
         end
@@ -258,7 +293,16 @@ function [jBstArea, FigArea, nbScreens, jFigArea, jInsets] = GetScreenBrainstorm
         jInsets    = ScreenDef.screenInsets;
         ZoomFactor = ScreenDef.zoomFactor;
         % Check that Brainstorm window is completely inside the client area
-        jBstWindow.setBounds(jBstWindow.getBounds.intersection(javaArea));
+        fixedBounds = jBstWindow.getBounds.intersection(javaArea);
+        % If the window is outside of the principal screen: reset its default positions
+        if ((fixedBounds.getWidth() < 200) || (fixedBounds.getHeight() < 300))
+            fixedBounds.setRect(...
+                javaArea.getX(), ...
+                javaArea.getY(), ...
+                round(450 * bst_get('InterfaceScaling') / 100), ...
+                javaArea.getHeight() .* .9);
+        end
+        jBstWindow.setBounds(fixedBounds);
         % Compute distance from main BST window to borders
         distanceToLeft  = jBstWindow.getBounds.getX() - javaArea.getX();
         distanceToRight = javaArea.getWidth() ...
@@ -308,7 +352,9 @@ function [jBstArea, FigArea, nbScreens, jFigArea, jInsets] = GetScreenBrainstorm
     % ===== TWO SCREENS (OR MORE) =====
     elseif (nbScreens >= 2)
         % If Brainstorm window is on screen 2
-        if (jBstWindow.getBounds.getX() >= ScreenDef(2).javaPos.getX()) && (jBstWindow.getBounds.getX() <= ScreenDef(2).javaPos.getX() + ScreenDef(2).javaPos.getWidth())
+        tol = 30;
+        if (jBstWindow.getBounds.getX() >= ScreenDef(2).javaPos.getX() - tol) && (jBstWindow.getBounds.getX() <= ScreenDef(2).javaPos.getX() + ScreenDef(2).javaPos.getWidth() + tol) && ...
+           (jBstWindow.getBounds.getY() >= ScreenDef(2).javaPos.getY() - tol) && (jBstWindow.getBounds.getY() <= ScreenDef(2).javaPos.getY() + ScreenDef(2).javaPos.getHeight() + tol)
             jBstArea = ScreenDef(2).javaPos;
             FigArea  = ScreenDef(1).matlabPos;
             jFigArea = ScreenDef(1).javaPos;
@@ -618,7 +664,7 @@ end
 
 %% ===== POSITION FIGURES =====
 function PositionFigure(hFigure, figArea, decorationSize)
-    drawnow
+    drawnow;
     if ~ishandle(hFigure)
         return
     end
@@ -998,8 +1044,13 @@ function UpdateMaxBstSize() %#ok<DEFNU>
     % Max size for Brainstorm window
     if ~isempty(jBstFrame) && ~isempty(ScreenDef)
         % Detect on which screen was Brainstorm window at the previous session
-        if (length(ScreenDef) > 1) && (sLayout.MainWindowPos(1) >= ScreenDef(2).javaPos.getX())
+        tol = 30;
+        % If Brainstorm window is on screen 2
+        if (length(ScreenDef) > 1) && ...
+           (sLayout.MainWindowPos(1) >= ScreenDef(2).javaPos.getX() - tol) && (sLayout.MainWindowPos(1) <= ScreenDef(2).javaPos.getX() + ScreenDef(2).javaPos.getWidth() + tol) && ...
+           (sLayout.MainWindowPos(2) >= ScreenDef(2).javaPos.getY() - tol) && (sLayout.MainWindowPos(2) <= ScreenDef(2).javaPos.getY() + ScreenDef(2).javaPos.getHeight() + tol)
             javaMax = ScreenDef(2).javaPos;
+        % If Brainstorm window is on screen 1
         else
             javaMax = ScreenDef(1).javaPos;
         end
@@ -1014,3 +1065,6 @@ function UpdateMaxBstSize() %#ok<DEFNU>
         end
     end
 end
+
+
+

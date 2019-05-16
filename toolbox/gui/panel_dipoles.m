@@ -8,9 +8,9 @@ function varargout = panel_dipoles(varargin)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -388,7 +388,7 @@ function DipolesInfo = GetDipolesForFigure(hFig)
     DipolesInfo.Dipole = [];
     DipolesInfo.Subset = [];
     DipolesInfo.PreferredTimes = [];
-    DipolesInfo.DisplayColorType = [];
+    DipolesInfo.DisplayColorType = 'time';
     DipolesInfo.DisplayAllTime = 0;
     DipolesInfo.DisplayMaxGoodness = 0;
     DipolesInfo.DisplaySelTimes = 0;

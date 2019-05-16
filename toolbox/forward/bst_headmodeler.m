@@ -51,9 +51,9 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -178,9 +178,20 @@ if isempty(OPTIONS.EEGMethod) && isempty(OPTIONS.MEGMethod) && isempty(OPTIONS.E
     OPTIONS = [];
     return;
 end
-% Only CTF ref matters: Ignore MAGNES references
+% IGNORE 4D REFERENCES (MAGNES SENSORS): Only CTF ref matters
 if ~isempty(iRef) && ~isempty(strfind(lower(OPTIONS.Channel(iRef(1)).Comment), 'magnes'))
     iRef = [];
+	% Display warning
+    disp([10 '******************************************************************************************' 10 ...
+          '******************************************************************************************' 10 ...
+          '*** WARNING: 4D reference sensors are not taken into account in the forward model.     ***' 10 ...
+          '***    Due to a bug in the 4D calibration software, the position of the reference      ***' 10 ...
+          '***    are commonly wrong, we cannot compute an accurate forward model for them.       ***' 10 ...
+          '***    To bypass this limitation and apply the coefficient matrix (MegRefCoef) to the  ***' 10 ... 
+          '***    forward model, you can comment out the line "iRef = [];", next to this warning  ***' 10 ...
+          '***    in file bst_heamodeler (lines 182-198).                                         ***' 10 ...
+          '******************************************************************************************' 10 ...
+          '******************************************************************************************' 10]);
 end
 % Get number of coils for each sensor
 nCoilsPerSensor = cellfun(@(c)size(c,2), {OPTIONS.Channel.Loc});

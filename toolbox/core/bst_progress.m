@@ -23,9 +23,9 @@ function pBar = bst_progress(varargin)
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -77,7 +77,7 @@ if ~bst_get('isGUI')
     return;
 end
 % Get progress bar
-if ~isempty(GlobalData) && ~isempty(GlobalData.Program)
+if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Program, 'ProgressBar') && ~isempty(GlobalData.Program.ProgressBar)
     pBar = GlobalData.Program.ProgressBar;
 else
     pBar = [];
@@ -317,7 +317,7 @@ switch (lower(commandName))
         % Get image path
         imagefile = varargin{2};
         if ~file_exist(imagefile)
-            imagefile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', imagefile);
+            imagefile = bst_fullfile(bst_get('BrainstormDocDir'), imagefile);
         end
         if ~file_exist(imagefile)
             warning(['Image not found: ' imagefile]);

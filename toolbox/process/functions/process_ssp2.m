@@ -8,9 +8,9 @@ function varargout = process_ssp2( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -24,7 +24,7 @@ function varargout = process_ssp2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Elizabeth Bock, 2011-2016
+% Authors: Francois Tadel, Elizabeth Bock, 2011-2018
 
 eval(macro_method);
 end
@@ -37,7 +37,7 @@ function sProcess = GetDescription()
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Artifacts';
     sProcess.Index       = 302;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsSsp?highlight=%28Process2%29#Troubleshooting';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsSsp?highlight=%28Process2%29#Troubleshooting';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'raw'};
@@ -208,6 +208,12 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     else
         nIcaComp = 0;
     end
+    % Find components correlated to reference signals
+    if isfield(sProcess.options, 'icasort')
+        icaSort = sProcess.options.icasort.Value;
+    else
+        icaSort = [];
+    end    
     % Ignore bad segments
     if panel_record('IsEventBad', evtName)
         % If the event name contains the tag "bad", we need to include the bad segments
@@ -253,15 +259,26 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     sfreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
     % Design band-pass filter
     if ~isempty(BandPass) && ~all(BandPass == 0)
+        % If we need to resample the recordings
+        if (resample > 0)
+            filterFreq = resample;
+        % Use the original sampling frequency
+        else
+            filterFreq = sfreq;
+        end
+        % Design the filter
         isMirror = 0;
-        [tmp, FiltSpec] = process_bandpass('Compute', [], sfreq, BandPass(1), BandPass(2), 'bst-hfilter', isMirror);
-        nTransient = round(FiltSpec.transient * sfreq);
+        [tmp, FiltSpec] = process_bandpass('Compute', [], filterFreq, BandPass(1), BandPass(2), 'bst-hfilter-2019', isMirror);
+        % Estimate transient period (before and after resampling)
+        nTransientLoad    = round(FiltSpec.transient * sfreq);
+        nTransientDiscard = round(FiltSpec.transient * filterFreq);
         % Show warning when computing epoched files
         if ~isRawA
             bst_report('Warning', sProcess, sInputsA, sprintf('Removing %1.3fs at the beginning and the end of each input for filtering.', FiltSpec.transient));
         end
     else
-        nTransient = [];
+        nTransientLoad    = [];
+        nTransientDiscard = [];
     end
 
     % ===== READ ARTIFACTS (FILES A) =====
@@ -270,6 +287,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     progressPos = bst_progress('get');
     % Initialize concatenated data matrix
     F = {};
+    Fref = {}; % for holding reference signals (EOG, ECG)
     iBad = [];
     iTimeZero = [];
     nSamples = 0;
@@ -305,6 +323,14 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                     ['Mixing different channel types to compute the projector: ' [allTypes{:}], '.' 10 ...
                      'You should compute projectors separately for each sensor type.']);
             end
+            if ~isempty(icaSort)
+                iRef = channel_find(ChannelMat.Channel, icaSort);
+                if isempty(iRef)
+                    bst_report('Error', sProcess, sInputsA(iFile), sprintf('Channels %s not found.', icaSort));
+                end
+                iSensors = iChannels;
+                iChannels = [iSensors iRef];
+            end
         end
 
         % ===== GET DATA =====
@@ -329,7 +355,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 return;
             end
             % Extended / simple event
-            isExtended = (size(events(iEvt).samples, 1) == 2);
+            isExtended = (size(events(iEvt).times, 1) == 2);
             % Simple events: get the samples to read around each event
             if ~isExtended
                 evtSmpRange = round(evtTimeWindow .* sFile.prop.sfreq);
@@ -342,8 +368,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 evtSmpRange = [0 0];
             end
             % Add transients for bandpass
-            if ~isempty(nTransient)
-                evtSmpRange = evtSmpRange + [-1 1] .* nTransient;
+            if ~isempty(nTransientLoad)
+                evtSmpRange = evtSmpRange + [-1 1] .* nTransientLoad;
             end
             % Reading options
             % NOTE: FORCE READING CLEAN DATA (Baseline correction + CTF compensators + Previous SSP)
@@ -361,10 +387,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 bst_progress('set', progressPos + round(iOcc / nOcc * 50));
                 % Simple event: read a time window around the marker
                 if ~isExtended
-                    SamplesBounds = events(iEvt).samples(1,iOcc) + evtSmpRange;
+                    SamplesBounds = round(events(iEvt).times(1,iOcc) .* sFile.prop.sfreq) + evtSmpRange;
                 % Extended event: read the full event
                 else
-                    SamplesBounds = events(iEvt).samples(:,iOcc)' + evtSmpRange;
+                    SamplesBounds = round(events(iEvt).times(:,iOcc)' .* sFile.prop.sfreq) + evtSmpRange;
                 end
                 % Check that this epoch is within the segment of file to consider
                 TimeBounds = SamplesBounds ./ sFile.prop.sfreq;
@@ -376,7 +402,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                     nInfoBad = nInfoBad + 1;
                     continue;
                 % Check if this this segment is  outside of the file bounds
-                elseif (SamplesBounds(1) < sFile.prop.samples(1)) || (SamplesBounds(2) > sFile.prop.samples(2)) 
+                elseif (TimeBounds(1) < sFile.prop.times(1)) || (TimeBounds(2) > sFile.prop.times(2)) 
                     bst_report('Info', sProcess, sInputsA(iFile), sprintf('Event %s #%d is too close to the beginning or end of the file: ignored...', evtName, iOcc));
                     continue;
                 end
@@ -417,8 +443,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             LoadOptions.RemoveBaseline = 'all';
             LoadOptions.UseSsp         = UseSsp;
             % Add transients for bandpass filter
-            if ~isempty(nTransient) && ~isempty(TimeWindow)
-                rawTime = TimeWindow + [-1 1] .* (nTransient / sfreq_file);
+            if ~isempty(nTransientLoad) && ~isempty(TimeWindow)
+                rawTime = TimeWindow + [-1 1] .* (nTransientLoad / sfreq_file);
             else
                 rawTime = TimeWindow;
             end
@@ -525,16 +551,25 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         end
         % Filter recordings: Remove transients
         if ~isempty(BandPass) && ~all(BandPass == 0)
-            F{iBlock} = F{iBlock}(:, (nTransient+1):(end-nTransient));
+            F{iBlock} = F{iBlock}(:, (nTransientDiscard+1):(end-nTransientDiscard));
         end
         % Keep only the needed channels
-        F{iBlock} = F{iBlock}(iChannels,:);
+        if ~isempty(icaSort)
+            Fref{iBlock} = F{iBlock}(iRef,:);
+            F{iBlock} = F{iBlock}(iSensors,:);
+        else
+            F{iBlock} = F{iBlock}(iChannels,:);
+        end
     end
     % Comment
     nSamplesFinal = sum(cellfun(@(c)size(c,2), F));
     strOptions = [strOptions, 'Nsamples=' num2str(nSamplesFinal) ' from ' num2str(length(F)) ' blocks'];
     % Concatenate all the loaded data
     F = [F{:}];
+    if ~isempty(icaSort)
+        Fref = [Fref{:}];
+        iChannels = iSensors;
+    end    
     % Error if nothing was loaded
     if isempty(F)
         bst_report('Error', sProcess, sInputsA, 'No data could be read from the input files.');
@@ -724,6 +759,14 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             bst_report('Error', sProcess, sInputsA, ['Invalid method: "' Method '".']);
             return;
     end
+    
+    if ~isempty(icaSort)
+        y = W * F;
+        C = bst_corrn(Fref, y);
+        [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
+        proj.Components = proj.Components(:,iSort);
+    end
+    
     % Modality used in the end
     AllMod = unique({ChannelMat.Channel(iChannels).Type});
     strMod = '';
@@ -776,9 +819,9 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         ChannelFlag = ones(size(Favg,1), 1);
         ChannelFlag(iBad) = -1;
         % Remove transients
-        if ~isempty(nTransient)
-            Favg = Favg(:, (nTransient+1):(end-nTransient));
-            TimeVector = TimeVector((nTransient+1):(end-nTransient));
+        if ~isempty(nTransientDiscard)
+            Favg = Favg(:, (nTransientDiscard+1):(end-nTransientDiscard));
+            TimeVector = TimeVector((nTransientDiscard+1):(end-nTransientDiscard));
         end
         
         % === BEFORE ===
@@ -969,13 +1012,13 @@ function Projector = BuildProjector(ListProj, ProjStatus) %#ok<*DEFNU>
             % Get selected channels (find the non-zero channels)
             iChan = find(any(ListProj(i).Components ~= 0, 2));
             % Get selected components
-            iComp = find(ListProj(i).CompMask == 0);
+            iComp = find(ListProj(i).CompMask == 1);
             % Initialize projector
             P = eye(size(ListProj(i).Components,1));
             % Compute projector
             W = ListProj(i).Components(iChan,:)';
             Winv = pinv(W);
-            P(iChan,iChan) = Winv(:,iComp) * W(iComp,:);
+            P(iChan,iChan) = eye(size(W,2)) - Winv(:,iComp) * W(iComp,:);
             % Check if there are any complex values in the projector
             if any(~isreal(P))
                 warning('WARNING: ICA components contain complex values. Something went wrong in their computation.');

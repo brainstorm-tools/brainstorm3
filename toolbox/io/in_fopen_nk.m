@@ -5,9 +5,9 @@ function [sFile, ChannelMat] = in_fopen_nk(DataFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_nk(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2018
 %          Inspired from NK2EDF, Teunis van Beelen, 2007-2017
 %          and from the BIOSIG-toolbox http://biosig.sf.net/
 
@@ -389,6 +389,9 @@ if ~isempty(PntFile)
     hdr.starttime = sprintf('%02d:%02d:%02d', numDate(4), numDate(5), numDate(6));
     % Close file
     fclose(fid);
+else
+    hdr.startdate = [];
+    hdr.starttime = [];
 end
 
 
@@ -418,8 +421,7 @@ for i = 1:nEpochs
         % Compute from the 
         hdr.ctl(1).data(i).num_samples = floor((end_address - hdr.ctl(1).data(i).rec_address) / hdr.num_channels / 2);  % /2 because we are counting int16 values
     end
-    sFile.epochs(i).samples = [0, hdr.ctl(1).data(i).num_samples - 1];
-    sFile.epochs(i).times   = sFile.epochs(i).samples ./ hdr.sample_rate;
+    sFile.epochs(i).times   = [0, hdr.ctl(1).data(i).num_samples - 1] ./ hdr.sample_rate;
     sFile.epochs(i).label   = sprintf('Block #%d', i);
     sFile.epochs(i).nAvg    = 1;
     sFile.epochs(i).select  = 1;
@@ -429,14 +431,15 @@ for i = 1:nEpochs
 end
 cumTime = [0, cumsum(epochLength(1:end-1))];
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.sample_rate;
-sFile.prop.samples = [min([sFile.epochs.samples]), max([sFile.epochs.samples])];
-sFile.prop.times   = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.sample_rate;
+sFile.prop.times = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.num_channels,1);
 % Save full header in the file link
 sFile.header = hdr;
+% Acquisition date
+sFile.acq_date = str_date(hdr.startdate);
 
 
 %% ===== EVENTS =====
@@ -468,7 +471,8 @@ if ~isempty(hdr.logs)
         sFile.events(iEvt).label   = str_clean(uniqueEvt{iEvt});
         sFile.events(iEvt).select  = 1;
         sFile.events(iEvt).times   = t;
-        sFile.events(iEvt).samples = round(t .* sFile.prop.sfreq);
+        sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+        sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
     end
 end
 
@@ -513,7 +517,7 @@ function s = str_clean(s)
         s(iNull:end) = [];
     end
     % Remove weird characters
-    s(~ismember(s, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-.()[]/\_@ ')) = [];
+    s(~ismember(s, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-,:;.*+=?!<>''"`&%$()[]{}/\_@ ·¡‡¿‚¬‰ƒ„√Â≈Ê∆Á«È…Ë»Í ÎÀÌÕÏÃÓŒÔœÒ—Û”Ú“Ù‘ˆ÷ı’¯ÿúåﬂ˙⁄˘Ÿ˚€¸‹')) = [];
     % Remove useless spaces
     s = strtrim(s);
 end

@@ -17,7 +17,8 @@ function [hCuts, OutputOptions] = mri_draw_cuts(hFig, OPTIONS)
 %     - OverlayColormap  : Colormap to use to display the overlayed data
 %     - OverlayBounds    : [minValue, maxValue]: amplitude of the OverlayColormap
 %     - isMipAnatomy     : 1=compute maximum intensity projection in the MRI volume
-%     - isMipAnatomy     : 1=compute maximum intensity projection in the OVerlay volume
+%     - isMipFunctional  : 1=compute maximum intensity projection in the OVerlay volume
+%     - UpsampleImage    : 0=disabled, >0=upsample factor
 %
 % OUTPUT:
 %     - hCuts         : [3x1 double] Graphic handles to the images that were created
@@ -27,9 +28,9 @@ function [hCuts, OutputOptions] = mri_draw_cuts(hFig, OPTIONS)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -43,7 +44,7 @@ function [hCuts, OutputOptions] = mri_draw_cuts(hFig, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2006-2014
+% Authors: Francois Tadel, 2006-2018
 
 
 %% ===== INITIALIZATION =====
@@ -166,7 +167,7 @@ for iCoord = 1:3
     % Display function depends on figure type
     switch (FigureId.Type)
         case {'3DViz', 'Topography'}
-            hCut = PlotSlice3DViz(hTarget, cmapSlice, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.sMri, AlphaMap);
+            hCut = PlotSlice3DViz(hTarget, cmapSlice, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.sMri, AlphaMap, OPTIONS.UpsampleImage);
         case 'MriViewer'
             hCut = PlotSliceMriViewer(hTarget(iCoord), cmapSlice);
     end
@@ -199,7 +200,7 @@ function cmapA = ApplyColormap( A, CMap, intensityBounds, isIndexed )
         intensityBounds = [min(A(:)), max(A(:))];
     end
     % If slice is empty : return
-    if (intensityBounds(1)==intensityBounds(2)) || (intensityBounds(2) == 0)
+    if (intensityBounds(1)==intensityBounds(2))   % || (intensityBounds(2) == 0)
         cmapA = repmat(A, [1 1 3]);
         return
     end
@@ -226,7 +227,7 @@ function cmapA = ApplyColormap( A, CMap, intensityBounds, isIndexed )
 end
 
 %% ===== PLOT SLICES IN 3D ======
-function hCut = PlotSlice3DViz(hAxes, cmapSlice, sliceLocation, dimension, sMri, AlphaMap)
+function hCut = PlotSlice3DViz(hAxes, cmapSlice, sliceLocation, dimension, sMri, AlphaMap, UpsampleImage)
     % Get locations of the slice
     nbPts = 50;
     baseVect = linspace(0,1,nbPts);
@@ -256,15 +257,28 @@ function hCut = PlotSlice3DViz(hAxes, cmapSlice, sliceLocation, dimension, sMri,
         hCut = [];
         return;
     end
+    % Get coordinates of the points
+    x = reshape(scsXYZ(:,1), nbPts, nbPts);
+    y = reshape(scsXYZ(:,2), nbPts, nbPts);
+    z = reshape(scsXYZ(:,3), nbPts, nbPts);
 
+    % === SMOOTH IMAGE ===
+    if (UpsampleImage > 0)
+        x = imresize(x, UpsampleImage);
+        y = imresize(y, UpsampleImage);
+        z = imresize(z, UpsampleImage);
+        cmapSlice = imresize(cmapSlice, UpsampleImage);
+        AlphaMap = imresize(AlphaMap, UpsampleImage);
+    end
+    
     % === PLOT SURFACE ===
     tag = sprintf('MriCut%d', dimension);
     % Delete previous cut
     delete(findobj(hAxes, '-depth', 1, 'Tag', tag));
     % Plot new surface  
-    hCut = surface('XData',     reshape(scsXYZ(:,1),nbPts,nbPts), ...
-                   'YData',     reshape(scsXYZ(:,2),nbPts,nbPts), ...
-                   'ZData',     reshape(scsXYZ(:,3),nbPts,nbPts), ...
+    hCut = surface('XData',     x, ...
+                   'YData',     y, ...
+                   'ZData',     z, ...
                    'CData',     cmapSlice, ...
                    'FaceColor',        'texturemap', ...
                    'FaceAlpha',        'texturemap', ...

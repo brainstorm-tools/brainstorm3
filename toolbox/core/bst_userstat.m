@@ -3,9 +3,9 @@ function bst_userstat(isSave)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function bst_userstat(isSave)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2017
+% Authors: Francois Tadel, 2012-2019
 
 % Parse inputs
 if (nargin < 1) || isempty(isSave)
@@ -45,7 +45,7 @@ end
 
 % ===== NUMBER OF USERS =====
 % Read list of users
-str = url_read_fcn('http://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
+str = url_read_fcn('https://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
 % Extract values
 dates = textscan(str, '%d %d');
 dates = double([dates{1}, dates{2}]);
@@ -62,7 +62,7 @@ hFig(end+1) = fig_report(year, nUsersTotal, 0, ...
        
 % ===== LOG ANALYSIS =====
 % Read list of users
-str = url_read_fcn('http://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
+str = url_read_fcn('https://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
 % Extract values
 c = textscan(str, '%d %d %s');
 dates = double([c{1}, c{2}]);
@@ -73,14 +73,14 @@ iUpdate = find(strcmpi(action, 'Auto-update') | strcmpi(action, 'Login') | strcm
 [nUpdate,xUpdate] = hist(dates(iUpdate), length(unique(dates(iUpdate))));
 % Look for all dates in the current year (exclude current month)
 cur = clock;
-iAvg = find((xUpdate >= 2017) & (xUpdate < (2017 + (cur(2)-2)./12)));
-% % Remove invalid data
-% nUpdate(nUpdate < 100) = interp1(xUpdate(nUpdate >= 100), nUpdate(nUpdate >= 100), xUpdate(nUpdate < 100), 'spline', 'extrap');
+iAvg = find((xUpdate >= 2018) & (xUpdate < 2019));
+% Remove invalid data
+nUpdate(nUpdate < 100) = interp1(xUpdate(nUpdate >= 100), nUpdate(nUpdate >= 100), xUpdate(nUpdate < 100), 'pchip');
 
 % Plot number of downloads
 [hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
            [2005, max(xUpdate(1:end-1))], [], ...
-           sprintf('Downloads per month: Avg(2017)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
+           sprintf('Downloads per month: Avg(2018)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
            [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'download.png'));
        
 % % Create histograms
@@ -95,7 +95,7 @@ iAvg = find((xUpdate >= 2017) & (xUpdate < (2017 + (cur(2)-2)./12)));
 
 % ===== NUMBER OF FORUM POSTS =====
 % Read list of users
-str = url_read_fcn('http://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
+str = url_read_fcn('https://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
 % Extract values
 dates = textscan(str, '%d %d');
 dates = double([dates{1}, dates{2}]);
@@ -103,16 +103,16 @@ dates = dates(:,1) + (dates(:,2)-1)./12;
 % Create histogram
 [nPosts,year] = hist(dates, length(unique(dates)));
 % Plot figure
-hFig(end+1) = fig_report(year, nPosts, 0, ...
-           [2005, max(year)], [0 ceil(max(nPosts)/100)*100], ...
+hFig(end+1) = fig_report(year(1:end-1), nPosts(1:end-1), 0, ...
+           [2005, max(year)], [0 ceil(max(nPosts(1:end-1))/100)*100], ...
            sprintf('Posts on the forum: %d', length(dates)), [], 'Forum posts per month', ...
            [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'posts.png'));
 
 % ===== PUBLICATIONS =====
 % Hard coded list of publications
-year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017]; 
-nPubli = [   2    2    1    1    3    5    5   11   10   18   19   33   38   54   78   93  131  210];
-nPubliCurYear = 0;
+year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018]; 
+nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  132  214  226];
+nPubliCurYear = 84;
 % Plot figure
 hFig(end+1) = fig_report(year, nPubli, 1, ...
            [2000 max(year)], [], ...
@@ -219,6 +219,9 @@ function [hFig, hAxes] = fig_report(x, y, isMarkers, XLim, YLim, wTitle, xLabel,
     % Get YTicks
     YTick = get(hAxes, 'YTick');
     YTick = setdiff(YTick, 0);
+    if (bst_get('MatlabVersion') > 900)
+        hAxes.YAxis.Exponent = 0;
+    end
     % Plot horizontal grid
     for i = 1:length(YTick)
         line([XLim(1) XLim(end)], [YTick(i) YTick(i)], [.5 .5], ...

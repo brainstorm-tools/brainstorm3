@@ -3,9 +3,9 @@ function varargout = process_decoding_crossval( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Decoding';
     sProcess.Index       = 701;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Decoding';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Decoding';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'matrix'};
@@ -159,7 +159,7 @@ end
 %% ===== LOADING DATA =====
 % INPUTS:
 %    - conditionA/B : sInputsA, sInputsB (the function forces equal number of trials in each group)
-%    - SensorTypes  : List of channel types or names separated with comas
+%    - SensorTypes  : List of channel types or names separated with commas
 %    - LowPass      : Low pass frequency for data filtering
 % Authors: Dimitrios Pantazis, Seyed-Mahdi Khaligh-Razavi
 function [trial,Time] = load_trials_bs(sInputsA, sInputsB, LowPass, SensorTypes)

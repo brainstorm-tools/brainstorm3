@@ -20,9 +20,9 @@ function [hFig, iDS, iFig] = view_spectrum(TimefreqFile, DisplayMode, RowName, i
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -99,7 +99,7 @@ setappdata(hFig, 'StudyFile',    GlobalData.DataSet(iDS).StudyFile);
 setappdata(hFig, 'SubjectFile',  GlobalData.DataSet(iDS).SubjectFile);
 % Static dataset
 setappdata(hFig, 'isStatic', (GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples <= 2));
-isStaticFreq = (size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF,3) <= 1);
+isStaticFreq = ~strcmpi(DisplayMode, 'Spectrum') && (size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF,3) <= 1);
 setappdata(hFig, 'isStaticFreq', isStaticFreq);
 % Get figure data
 TfInfo = getappdata(hFig, 'Timefreq');
@@ -149,6 +149,8 @@ else
 end
 TsInfo.ShowXGrid = bst_get('ShowXGrid');
 TsInfo.ShowYGrid = bst_get('ShowYGrid');
+TsInfo.ShowZeroLines = bst_get('ShowZeroLines');
+TsInfo.ShowEventsMode = bst_get('ShowEventsMode');
 setappdata(hFig, 'TsInfo', TsInfo);
 
 % Display options panel

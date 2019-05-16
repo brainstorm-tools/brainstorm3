@@ -5,9 +5,9 @@ function varargout = process_extract_scout( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Extract';
     sProcess.Index       = 352;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Scouts';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Scouts';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'results', 'timefreq'};
     sProcess.OutputTypes = {'matrix',  'matrix'};
@@ -624,7 +624,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 nFreq = size(sourceValues,3);
                 for iFreq = 1:nFreq
                     % Apply scout function
-                    tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout);
+                    tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
                     scoutValues = cat(1, scoutValues, tmpScout);
                     if ~isempty(sourceStd)
                         tmpScoutStd = bst_scout_value(sourceStd(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);

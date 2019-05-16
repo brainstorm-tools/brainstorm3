@@ -1,7 +1,7 @@
-function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isLabels, hFig, is3DElectrodes)
+function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isLabels, hFig, is3DElectrodes, selChannels)
 % VIEW_CHANNELS: Display a channel file in all the associated 3DViz figure.
 %
-% USAGE: view_channels(ChannelFile, Modality, isMarker=1, isLabels=1, hFig=[], is3DElectrodes=0)
+% USAGE: view_channels(ChannelFile, Modality, isMarker=1, isLabels=1, hFig=[], is3DElectrodes=0, selChannels=[])
 %        view_channels(ChannelFile, Modality)
 % OUTPUT: 
 %     - hFig : Matlab handle to the 3DViz figure that was created or updated
@@ -10,9 +10,9 @@ function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isL
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,10 +26,13 @@ function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isL
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 
 global GlobalData;
 % Parse inputs
+if (nargin < 7) || isempty(selChannels)
+    selChannels = [];
+end
 if (nargin < 6) || isempty(is3DElectrodes)
     is3DElectrodes = 0;
 end
@@ -110,7 +113,23 @@ else
 end
 
 % ===== LOAD CHANNEL FILE IF NOT DONE =====
-if isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel)
+% Also check if we are processing the same channel file, which can be
+% different when doing real-time head position alignment (2 helmets from
+% different datasets in the same figure).
+if isempty(GlobalData.DataSet(iDS).ChannelFile) || ~strcmpi(GlobalData.DataSet(iDS).ChannelFile, ChannelFile) || ...
+   (~GlobalData.DataSet(iDS).isChannelModified && isempty(GlobalData.DataSet(iDS).Channel))
+    % Check if this channel file is already loaded and modified in another DataSet
+    iDSother = setdiff(1:length(GlobalData.DataSet), iDS);
+    if ~isempty(iDSother) && any([GlobalData.DataSet(iDSother).isChannelModified])
+        % Ask user
+        isSave = java_dialog('confirm', ...
+            ['This channel file is being edited in another window.' 10 ...
+             'Save the modifications so the new figure can show updated positions?'], 'Save modifications');
+        % Force saving of the modifications
+        if isSave
+            bst_memory('SaveChannelFile', iDSother(1));
+        end
+    end
     % Load channel file
     ChannelMat = in_bst_channel(ChannelFile);
     % Copy information in memory
@@ -145,6 +164,10 @@ if isempty(hFig)
     setappdata(hFig, 'SubjectFile',  SubjectFile);
 else
     isNewFig = 0;
+    % Get existing list of selected channels
+    if ~isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels)
+        selChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+    end
 end
 % Make sure that the Modality is saved
 GlobalData.DataSet(iDS).Figure(iFig).Id.Modality = Modality;
@@ -155,18 +178,21 @@ setappdata(hFig, 'AllChannelsDisplayed', 1);
 % ===== DISPLAY SENSORS =====
 % Update figure selection
 bst_figures('SetCurrentFigure', hFig, '3D');
-% Get selected channels
-SelectedChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], Modality);
-% Remove the channels with empty positions
-iNoLoc = find(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel.Loc}));
-if ~isempty(iNoLoc)
-    SelectedChannels = setdiff(SelectedChannels, iNoLoc);
-end
-if isempty(SelectedChannels)
-    error('None of the channels have positions defined.');
+% Get default selected channels for this modality
+if isempty(selChannels)
+    % Get selected channels
+    selChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], Modality);
+    % Remove the channels with empty positions
+    iNoLoc = find(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel.Loc}));
+    if ~isempty(iNoLoc)
+        selChannels = setdiff(selChannels, iNoLoc);
+    end
+    if isempty(selChannels) && ~isempty(iNoLoc)
+        error('None of the channels have positions defined.');
+    end
 end
 % Set figure selected sensors
-GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = SelectedChannels;
+GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = selChannels;
 % Display sensors
 if is3DElectrodes
     figure_3d('PlotSensors3D', iDS, iFig);

@@ -3,9 +3,9 @@ function varargout = process_stdtime( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_stdtime( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2017
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -40,16 +40,21 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 2;
     sProcess.isSeparator = 1;
     % Help
-    sProcess.options.help.Comment = ['Apply the time vector of the first file to all the other files.<BR>' ...
+    sProcess.options.help.Comment = ['Apply the time vector of the <B>first file</B> to all the <B>other files</B>.<BR><BR>' ...
                                      'If the number of samples is the same, it simply replaces the Time field.<BR>' ...
                                      'If the number of samples is different, it reinterpolates the values with<BR>' ...
-                                     'Matlab function interp1. <B>Always overwrites the input files</B>.'];
+                                     'Matlab function interp1.'];
     sProcess.options.help.Type    = 'label';
     % === Interpolation method
     sProcess.options.method.Comment = 'Interpolation method: ';
     sProcess.options.method.Type    = 'combobox_label';
-    sProcess.options.method.Value   = {'spline', {'linear', 'spline', 'pchip', 'v5cubic', 'makima'; ...
-                                                  'linear', 'spline', 'pchip', 'v5cubic', 'makima'}};
+    sProcess.options.method.Value   = {'spline', {'nearest', 'linear', 'spline', 'pchip', 'v5cubic', 'makima'; ...
+                                                  'nearest', 'linear', 'spline', 'pchip', 'v5cubic', 'makima'}};
+    % === OVERWRITE
+    sProcess.options.overwrite.Comment = 'Overwrite input files';
+    sProcess.options.overwrite.Type    = 'checkbox';
+    sProcess.options.overwrite.Value   = 0;
+    sProcess.options.overwrite.Group   = 'output';
 end
 
 
@@ -70,8 +75,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         Method = 'spline';
     end
+    if isfield(sProcess.options, 'overwrite') && isfield(sProcess.options.overwrite, 'Value') && ~isempty(sProcess.options.overwrite.Value)
+        isOverwrite = sProcess.options.overwrite.Value;
+    else
+        isOverwrite = 1;
+    end
     % Process files one by one
     for iFile = 1:length(sInputs)
+        % Get input study
+        sStudy = bst_get('Study', sInputs(iFile).iStudy);
+        % Links cannot be overwritten
+        isLink = strcmpi(sInputs(iFile).FileType, 'results') && sStudy.Result(sInputs(iFile).iItem).isLink;
+        if (iFile >= 2) && isLink && isOverwrite
+            bst_report('Error', sProcess, sInputs(iFile), 'Result links cannot be overwritten. Disable the option "overwrite".');
+            return;
+        end
         % Load file
         [sMatrix, matName] = in_bst(sInputs(iFile).FileName);
         % Check if there is a non-empty time vector
@@ -98,9 +116,36 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             % Update time vector
             sMatrix.Time = Time;
-            % Update file
-            bst_save(file_fullpath(sInputs(iFile).FileName), sMatrix, 'v6');
-            OutputFiles{end+1} = sInputs(iFile).FileName;
+            % Disconnect from parent file because time is not compatible anymore
+            if isfield(sMatrix, 'DataFile') && ~isempty(sMatrix.DataFile)
+                sMatrix.DataFile = [];
+            end
+            % Overwrite the input file
+            if isOverwrite
+                bst_save(file_fullpath(sInputs(iFile).FileName), sMatrix, 'v6');
+                OutputFiles{end+1} = sInputs(iFile).FileName;
+            % Save new file
+            else
+                % If results link
+                if isLink
+                    [OutputFile, DataFile] = file_resolve_link(sInputs(iFile).FileName);
+                    OutputFile = strrep(OutputFile, '_KERNEL_', '_');
+                    % Get data file comment and add to output file comment
+                    DataMat = in_bst_data(DataFile, 'Comment');
+                    sMatrix.Comment = [DataMat.Comment, ' | ', sMatrix.Comment];
+                % Regular files
+                else
+                    OutputFile = file_fullpath(sInputs(iFile).FileName);
+                    sMatrix.Comment = [sMatrix.Comment, ' | stdtime'];
+                end
+                % Save file: add file tag
+                OutputFile = file_unique(strrep(OutputFile, '.mat', '_stdtime.mat'));
+                bst_save(OutputFile, sMatrix, 'v6');
+                % Add file to database structure
+                db_add_data(sInputs(iFile).iStudy, OutputFile, sMatrix);
+                % Add to list of returned files
+                OutputFiles{end+1} = OutputFile;
+            end
         end
     end
 end

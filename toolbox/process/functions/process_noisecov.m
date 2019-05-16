@@ -3,9 +3,9 @@ function varargout = process_noisecov( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_noisecov( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2018
 
 eval(macro_method);
 end
@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 321;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/NoiseCovariance';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/NoiseCovariance';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};
@@ -79,6 +79,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.copysubj.Type    = 'checkbox';
     sProcess.options.copysubj.Value   = 0;
     sProcess.options.copysubj.Group   = 'Output';
+    % Option: Match noise and subject recordings by acquisition data
+    sProcess.options.copymatch.Comment = 'Match noise and subject recordings by acquisition date';
+    sProcess.options.copymatch.Type    = 'checkbox';
+    sProcess.options.copymatch.Value   = 0;
+    sProcess.options.copymatch.Group   = 'Output';
     % Option: Replace file
     sProcess.options.replacefile.Comment = {'Replace', 'Merge', 'Keep', 'If file already exists: '};
     sProcess.options.replacefile.Type    = 'radio_line';
@@ -99,15 +104,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % If the inputs are multiple RAW files: compute one noise covariance for each one
     if (length(sInputs) > 1) && strcmpi(sInputs(1).FileType, 'raw')
         for i = 1:length(sInputs)
-            OutputFiles = [OutputFiles{:}, RunFile(sProcess, sInputs(i))];
+            OutputFiles = [OutputFiles{:}, RunFile(sProcess, sInputs(i), sInputs(setdiff(1:length(sInputs), i)))];
         end
     else
-        OutputFiles = RunFile(sProcess, sInputs);
+        OutputFiles = RunFile(sProcess, sInputs, []);
     end
 end
 
 %% ===== RUN: ONE OUTPUT FILE =====
-function OutputFiles = RunFile(sProcess, sInputs)
+function OutputFiles = RunFile(sProcess, sInputs, sInputsOther)
     OutputFiles = {};
     
     % ===== GET OPTIONS =====
@@ -141,8 +146,9 @@ function OutputFiles = RunFile(sProcess, sInputs)
         isIdentity = 0;
     end
     % Copy to other studies
-    isCopyCond = sProcess.options.copycond.Value;
-    isCopySubj = sProcess.options.copysubj.Value;
+    isCopyCond  = sProcess.options.copycond.Value;
+    isCopySubj  = sProcess.options.copysubj.Value;
+    isCopyMatch = sProcess.options.copymatch.Value;
     % Replace file?
     if isfield(sProcess.options, 'replacefile') && isfield(sProcess.options.replacefile, 'Value') && ~isempty(sProcess.options.replacefile.Value)
         switch (sProcess.options.replacefile.Value)
@@ -206,6 +212,53 @@ function OutputFiles = RunFile(sProcess, sInputs)
         iCopyStudies = 1:length(ProtocolStudies.Study);
     end
     iCopyStudies = unique(iCopyStudies);
+    % Remove input file
+    if ~isempty(iCopyStudies)
+        iCopyStudies = setdiff(iCopyStudies, [sInputs.iStudy]);
+    end
+    % Remove other input raw files, if any
+    if ~isempty(iCopyStudies) && ~isempty(sInputsOther)
+        iCopyStudies = setdiff(iCopyStudies, [sInputsOther.iStudy]);
+    end
+    
+    % ===== MATCH NOISE AND SUBJECT FOLDERS BY DATE =====
+    % Use the field DateOfStudy to copy only the noise covariance file closest in time in each subject folder
+    if isCopyMatch && ~isempty(iCopyStudies) && ~isempty(sInputsOther)
+        % Get the dates of all the inputs
+        inputDate = GetStudyDate(sInputs(1).iStudy);
+        for i = 1:length(sInputsOther)
+            otherDates{i} = GetStudyDate(sInputsOther(i).iStudy);
+        end
+        % Loop through the folders to copy, remove the ones that have a closer noise file in the input list
+        iSelect = [];
+        for i = 1:length(iCopyStudies)
+            % Skip folders that don't have any recordings in them
+            if isempty(ProtocolStudies.Study(iCopyStudies(i)).Data)
+                continue;
+            end
+            % Get acquisition date for current input file
+            copyDate = GetStudyDate(iCopyStudies(i));
+            % Skip if there are empty study dates
+            if isempty(copyDate) || isempty(inputDate) || any(cellfun(@isempty, otherDates))
+                bst_report('Warning', 'process_noiecov', sInputs, 'Date of study missing in at least one folder... Cannot match by dates.');
+                continue;
+            end
+            % Keep the list only if it the closest to the current input file
+            if all(abs(inputDate - copyDate) < abs([otherDates{:}] - copyDate))
+                iSelect(end+1) = i;
+            end
+        end
+        % Keep only the selected studies
+        iCopyStudies = iCopyStudies(iSelect);
+        % Report as a warning the matching
+        if ~isempty(iCopyStudies)
+            strMsg = ['Noise covariance from "' bst_fileparts(sInputs(1).FileName) '" copied to:'];
+            for i = 1:length(iCopyStudies)
+                strMsg = [strMsg, 10, ' - ' bst_fileparts(ProtocolStudies.Study(iCopyStudies(i)).FileName)];
+            end
+            bst_report('Warning', 'process_noiecov', sInputs, strMsg);
+        end
+    end
     
     % ===== COPY TO OTHER STUDIES =====
     if ~isempty(iCopyStudies)
@@ -223,4 +276,16 @@ function OutputFiles = RunFile(sProcess, sInputs)
 end
 
 
+
+%% ===== GET STUDY DATE =====
+function studyDate = GetStudyDate(iStudy)
+    % Get the study definition
+    sStudy = bst_get('Study', iStudy);
+    % Get its acquisition date
+    if ~isempty(sStudy.DateOfStudy)
+        studyDate = datenum(sStudy.DateOfStudy);
+    else
+        studyDate = [];
+    end
+end
 

@@ -3,9 +3,9 @@ function [Wmat, sSrcSubj, sDestSubj, srcSurfMat, destSurfMat, isStopWarped] = te
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -162,28 +162,39 @@ end
 if isfield(srcSurfMat, 'Reg')  && isfield(srcSurfMat.Reg, 'Sphere')  && isfield(srcSurfMat.Reg.Sphere, 'Vertices')  && ~isempty(srcSurfMat.Reg.Sphere.Vertices) && ...
    isfield(destSurfMat, 'Reg') && isfield(destSurfMat.Reg, 'Sphere') && isfield(destSurfMat.Reg.Sphere, 'Vertices') && ~isempty(destSurfMat.Reg.Sphere.Vertices) && ...
    (length(srcSurfMat.Reg.Sphere.Vertices) == nCortexSrc) && (length(destSurfMat.Reg.Sphere.Vertices) == nCortexDest)
-    % Source surface: Get the vertices of the left/right spheres
-    if (iVertLsrc(1) < iVertRsrc(1))
-        vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices(1:length(iVertLsrc), :);
-        vertSphRsrc = srcSurfMat.Reg.Sphere.Vertices(length(iVertLsrc)+1:end, :);
+    % Basic version: doesn't work because the the Reg.Sphere contains only the vertices of the cortex hemispheres, not all the surface, therefore the indices do not match
+    % But rehabilitated in Sept 2018 to handle some old databases from 2015, where the order of the vertices is not preserved in the downsampling
+    % Old surfaces can be identified with Cortex scouts with vertex indices that are not sorted
+    if (length(destSurfMat.Atlas(iStructDest).Scouts) == 2) && ((~isequal(1:length(iVertLsrc), iVertLsrc) && ~isequal(1:length(iVertRsrc), iVertRsrc)) || (~isequal(1:length(iVertLdest), iVertLdest) && ~isequal(1:length(iVertRdest), iVertRdest)))
+        % This old version of the code works only if there are only the two hemispheres in the cortex surface
+        if (length(srcSurfMat.Reg.Sphere.Vertices) == length(srcSurfMat.Vertices)) && (length(destSurfMat.Reg.Sphere.Vertices) == length(destSurfMat.Vertices))
+            vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices(iVertLsrc, :);
+            vertSphRsrc = srcSurfMat.Reg.Sphere.Vertices(iVertRsrc, :);
+            vertSphLdest = destSurfMat.Reg.Sphere.Vertices(iVertLdest, :);
+            vertSphRdest = destSurfMat.Reg.Sphere.Vertices(iVertRdest, :);
+            warning('Using an old database with outdated structures: Consider updating the anatomical templates and downsampling the surfaces again.');
+        else
+            error('Database error: The surface you use for the interpolation must be downsampled again.');
+        end
+    % Correct code for new databases
     else
-        vertSphRsrc = srcSurfMat.Reg.Sphere.Vertices(1:length(iVertRsrc), :);
-        vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices(length(iVertRsrc)+1:end, :);
+        % Source surface: Get the vertices of the left/right spheres
+        if (iVertLsrc(1) < iVertRsrc(1))
+            vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices(1:length(iVertLsrc), :);
+            vertSphRsrc = srcSurfMat.Reg.Sphere.Vertices(length(iVertLsrc)+1:end, :);
+        else
+            vertSphRsrc = srcSurfMat.Reg.Sphere.Vertices(1:length(iVertRsrc), :);
+            vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices(length(iVertRsrc)+1:end, :);
+        end
+        % Destination surface: Get the vertices of the left/right spheres
+        if (iVertLdest(1) < iVertRdest(1))
+            vertSphLdest = destSurfMat.Reg.Sphere.Vertices(1:length(iVertLdest), :);
+            vertSphRdest = destSurfMat.Reg.Sphere.Vertices(length(iVertLdest)+1:end, :);
+        else
+            vertSphRdest = destSurfMat.Reg.Sphere.Vertices(1:length(iVertRdest), :);
+            vertSphLdest = destSurfMat.Reg.Sphere.Vertices(length(iVertRdest)+1:end, :);
+        end
     end
-    % Destination surface: Get the vertices of the left/right spheres
-    if (iVertLdest(1) < iVertRdest(1))
-        vertSphLdest = destSurfMat.Reg.Sphere.Vertices(1:length(iVertLdest), :);
-        vertSphRdest = destSurfMat.Reg.Sphere.Vertices(length(iVertLdest)+1:end, :);
-    else
-        vertSphRdest = destSurfMat.Reg.Sphere.Vertices(1:length(iVertRdest), :);
-        vertSphLdest = destSurfMat.Reg.Sphere.Vertices(length(iVertRdest)+1:end, :);
-    end
-    % Basic version: doesn't work because the the Reg.Sphere contains only the vertices of the cortex hemispheres, 
-    % not all the surface, therefore the indices do not match
-%     vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices(iVertLsrc, :);
-%     vertSphRsrc = srcSurfMat.Reg.Sphere.Vertices(iVertRsrc, :);
-%     vertSphLdest = destSurfMat.Reg.Sphere.Vertices(iVertLdest, :);
-%     vertSphRdest = destSurfMat.Reg.Sphere.Vertices(iVertRdest, :);
     isFreeSurfer = 1;
 else
     isFreeSurfer = 0;
@@ -239,7 +250,7 @@ if ~isBrainSuite && ~isFreeSurfer
                   'for the MRI segmentation, because they generate registered atlases' 10 ...
                   'we can use in Brainstorm for the the inter-subject co-registration.' 10 10 ...
                   'More information on the Brainstorm website: ' 10 ...
-                  'http://neuroimage.usc.edu/brainstorm/Tutorials/CoregisterSubjects' 10];
+                  'https://neuroimage.usc.edu/brainstorm/Tutorials/CoregisterSubjects' 10];
     if isInteractive
         % Close all figures
         bst_memory('UnloadAll', 'Forced');

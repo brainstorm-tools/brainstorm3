@@ -6,6 +6,7 @@ function [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply)
 % INPUT: 
 %    - MriFile     : name of file to open, WITH EXTENSION
 %    - isReadMulti : If 1, allow reading multiple volumes from the same file
+%    - isApply     : If 1, apply best orientation found to match Brainstorm convention
 %
 % OUTPUT:
 %    - sMri    : Brainstorm MRI structure
@@ -18,9 +19,9 @@ function [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +35,7 @@ function [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2012
+% Authors: Francois Tadel, 2008-2017
 
 sMri = [];
 vox2ras = [];

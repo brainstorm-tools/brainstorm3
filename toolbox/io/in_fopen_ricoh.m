@@ -9,9 +9,9 @@ function [sFile, ChannelMat, errMsg] = in_fopen_ricoh(RawFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -29,15 +29,15 @@ function [sFile, ChannelMat, errMsg] = in_fopen_ricoh(RawFile)
 
 
 %% ===== READ HEADER =====
-header.system   = getRHdrSystem(RawFile);    % Get information about the MEG system.
-header.sensors  = getRHdrChannel(RawFile);   % Get information about the data channels.
-header.acq      = getRHdrAcqCond(RawFile);   % Get information about data acquisition condition.
-header.events   = getYkgwHdrEvent(RawFile);     % Get information about trigger events.
-% header.bookmark = getYkgwHdrBookmark(RawFile);  % Get information about bookmark.
-header.coreg    = getRHdrCoregist(RawFile);  % Get information about coregistration.
-header.digitize = getRHdrDigitize(RawFile);  % Get information about digitization.
-header.subject  = getRHdrSubject(RawFile);   % Get information about subject.
-%header.sources  = getRHdrSource(RawFile);   % Get information analyzed sources.
+header.system     = getRHdrSystem(RawFile);    % Get information about the MEG system.
+header.sensors    = getRHdrChannel(RawFile);   % Get information about the data channels.
+header.acq        = getRHdrAcqCond(RawFile);   % Get information about data acquisition condition.
+header.events     = getRHdrEvent(RawFile);     % Get information about trigger events.
+header.annotation = getRHdrAnnotation(RawFile);  % Get information about bookmark.
+header.coreg      = getRHdrCoregist(RawFile);  % Get information about coregistration.
+header.digitize   = getRHdrDigitize(RawFile);  % Get information about digitization.
+header.subject    = getRHdrSubject(RawFile);   % Get information about subject.
+%header.sources   = getRHdrSource(RawFile);   % Get information analyzed sources.
 errMsg = [];
 
     
@@ -390,6 +390,9 @@ if isfield(ChannelMat, 'SCS') && ~isempty(ChannelMat.SCS) && ~isempty(ChannelMat
     ChannelMat.SCS.T      = transfSCS.T;
     ChannelMat.SCS.Origin = transfSCS.Origin;
     % Convert the fiducials positions
+    %   NOTE: The division/multiplication by 1000 is to compensate the T/1000 applied in the cs_convert().
+    %         This hack was added becaue cs_convert() is intended to work on sMri structures, 
+    %         in which NAS/LPA/RPA/T fields are in millimeters, while in ChannelMat they are in meters.
     ChannelMat.SCS.NAS = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.NAS ./ 1000) .* 1000;
     ChannelMat.SCS.LPA = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.LPA ./ 1000) .* 1000;
     ChannelMat.SCS.RPA = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.RPA ./ 1000) .* 1000;
@@ -436,27 +439,23 @@ sFile.prop.sfreq = double(header.acq.sample_rate);
 % Switch depending on the file type
 switch (header.acq.acq_type)
     case 1   % AcqTypeContinuousRaw
-        sFile.prop.samples = [0, header.acq.sample_count - 1];
-        sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-        sFile.prop.nAvg    = 1;
+        sFile.prop.times = [0, header.acq.sample_count - 1] ./ sFile.prop.sfreq;
+        sFile.prop.nAvg  = 1;
         
     case 2   % AcqTypeEvokedAve
-        sFile.prop.samples = ([0, header.acq.frame_length - 1] - header.acq.pretrigger_length);
-        sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-        sFile.prop.nAvg    = header.acq.average_count;
+        sFile.prop.times = ([0, header.acq.frame_length - 1] - header.acq.pretrigger_length) ./ sFile.prop.sfreq;
+        sFile.prop.nAvg  = header.acq.average_count;
         % TODO: Use "multi_trigger" field
         
     case 3   % AcqTypeEvokedRaw
-        sFile.prop.samples = ([0, header.acq.frame_length - 1] - header.acq.pretrigger_length);
-        sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-        sFile.prop.nAvg    = 1;
+        sFile.prop.times = ([0, header.acq.frame_length - 1] - header.acq.pretrigger_length) ./ sFile.prop.sfreq;
+        sFile.prop.nAvg  = 1;
         % Get number of epochs
         nEpochs = header.acq.average_count;
         if (nEpochs > 1)
             % Build epochs structure
             for i = 1:nEpochs
                 sFile.epochs(i).label = sprintf('Trial (#%d)', i);
-                sFile.epochs(i).samples     = sFile.prop.samples;
                 sFile.epochs(i).times       = sFile.prop.times;
                 sFile.epochs(i).nAvg        = 1;
                 sFile.epochs(i).select      = 1;

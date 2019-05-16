@@ -5,9 +5,9 @@ function varargout = process_pac_ir_dynamic( varargin )
  
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -74,6 +74,11 @@ function varargout = process_pac_ir_dynamic( varargin )
 %                - a bug related to pac estimation for single time-window
 %                is fixed!
 %
+%   - 2.5: SS. Aug. 2018: Bug fix
+%                - Adding TimeInit for files with "all recording" option
+%                checked
+%                - Fixing the iPhase estimation in compute function 
+
 eval(macro_method);
 end
 
@@ -435,11 +440,17 @@ function OutputFiles = Run(sProcess, sInputsA) %#ok<DEFNU>
                 sPAC.DynamicNesting = zeros(nSignals, nTime, length(sPACblock.HighFreqs), 1);
                 sPAC.DynamicPhase = zeros(nSignals, nTime, length(sPACblock.HighFreqs), 1);                
                 sPAC.HighFreqs = sPACblock.HighFreqs;
+
+                if ~isempty(OPTIONS.TimeWindow)
+                    TimeInit = OPTIONS.TimeWindow(1);
+                else
+                    TimeInit = 0;
+                end
                 
                 if PACoptions.margin_included
-                    meanInputTime  = PACoptions.margin+OPTIONS.TimeWindow(1)+(sPACblock.TimeOut(end)+OPTIONS.WinLen*(1-PACoptions.overlap))/2; 
+                    meanInputTime  = PACoptions.margin+TimeInit+(sPACblock.TimeOut(end)+OPTIONS.WinLen*(1-PACoptions.overlap))/2; 
                 else
-                    meanInputTime  = OPTIONS.TimeWindow(1)+(sPACblock.TimeOut(end)+OPTIONS.WinLen*(1-PACoptions.overlap))/2;
+                    meanInputTime  = TimeInit+(sPACblock.TimeOut(end)+OPTIONS.WinLen*(1-PACoptions.overlap))/2;
                 end
                 meanOutputTime = (sPACblock.TimeOut(1)+sPACblock.TimeOut(end))/2;
                 sPAC.TimeOut   = sPACblock.TimeOut + (meanInputTime - meanOutputTime);
@@ -647,7 +658,6 @@ function sPAC = Compute(XinputA, XinputP, sRate, faBand, fpBand, winLen, Options
 %    - XinputA:       [nChannels,nTime] signal to process (signal for amplitude)
 %    - XinputP:       [nChannels,nTime] signal to process (signal for phase) 
 %    *  In local coupling estimation XinputA = XinputP
-%
 %    - sRate:         Sampling frequency (Hz)
 %    - faBand:        Nested Band: Minimum and maximum frequency for extraction of frequency for amplitude
 %    - fpBand:        Nesting Band: Minimum and maximum frequency for extraction of frequency for phase (Hz)
@@ -660,12 +670,15 @@ function sPAC = Compute(XinputA, XinputP, sRate, faBand, fpBand, winLen, Options
 %    - ValPAC:         [nChannels, nTimeOut] Maximum PAC strength in each  time point
 %    - NestedFreq:     [nChannels, nTimeOut] Fnested corresponding to maximum synchronization index in each time point
 %    - NestingFreq:    [nChannels, nTimeOut] Fnesting corresponding to maximum synchronization index in each time point
-%    - phasePAC:       [nChannels, nTimeOut] Phase corresponding to maximum synchronization index in each time point
-%    - DynamicNesting: [nNestedCenters,nTimeOut,nChannels] Estimated nesting frequency for all times, channels and nested intervals
+%    - phasePAC:       [nChannels, nTimeOut] Phase corresponding to maximum
+%                      synchronization index in each time point (rad)
+%    - DynamicNesting: [nNestedCenters,nTimeOut,nChannels] Estimated nesting frequency (fP) for all times, channels and nested intervals
 %    - DynamicPAC:     [nNestedCenters,nTimeOut,nChannels] full array of PAC
+%    - DynamicPhase:   [nNestedCenters,nTimeOut,nChannels] Preferred phase
+%                      of coupling for all times, channels and nested intervals (rad)
 %
 % DESCRIPTION:
-%   Estimation of Phase Amplitude Coupling (PAC) with tPAC method.
+%   Estimation of inter-regional Phase Amplitude Coupling (PAC) with tPAC method.
 %
 % Author:  Soheila Samiee, 2013-2017
 %
@@ -779,7 +792,7 @@ for ifreq=1:nFa
     bandNested = [nestedCenters(ifreq)-Fstep(ifreq),nestedCenters(ifreq)+Fstep(ifreq+1)];
     
     % Filtering in fA band
-    Xnested = bst_bandpass_hfilter(XinputA, sRate,bandNested(1), bandNested(2), isMirror, isRelax, fArolloff);    % Filtering
+    Xnested = bst_bandpass_hfilter(XinputA, sRate,bandNested(1), bandNested(2), isMirror, isRelax, [], fArolloff);    % Filtering
     Xnested = Xnested(:,nMargin-nHilMar+1:end-nMargin+nHilMar);               % Removing part of the margin
     
     % Hilbert transform
@@ -873,11 +886,11 @@ for ifreq=1:nFa
         
         % Filtering in nesting band
         if length(unique(bandNesting(:,1)))==1 && length(unique(bandNesting(:,2)))==1
-            Xnesting = bst_bandpass_hfilter(XP, sRate,bandNesting(1,1), bandNesting(1,2), isMirror, isRelax, fProlloff);    % Filtering
+            Xnesting = bst_bandpass_hfilter(XP, sRate,bandNesting(1,1), bandNesting(1,2), isMirror, isRelax, [], fProlloff);    % Filtering
         else
             Xnesting = zeros(size(XP));
             for i=1:length(isources)
-                Xnesting(i,:) = bst_bandpass_hfilter(XP(i,:), sRate, bandNesting(i,1), bandNesting(i,2),isMirror, isRelax, fProlloff);    % Filtering
+                Xnesting(i,:) = bst_bandpass_hfilter(XP(i,:), sRate, bandNesting(i,1), bandNesting(i,2),isMirror, isRelax, [], fProlloff);    % Filtering
             end
         end        
         Xnesting = Xnesting(:,nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin        
@@ -888,9 +901,12 @@ for ifreq=1:nFa
         nestingPh = nestingPh(:,nHilMar:fix(winLen*sRate)+nHilMar-1);              % Removing the margin
                 
         for ii=1:length(isources)
-            iphase = find(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))==-2 | ...
-                     sign(nestingPh(ii,2:end)-nestingPh(ii,1))==0 | ...
-                    -(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))-1).*diff(nestingPh(ii,:)-nestingPh(ii,1)) >6 )-1;
+            iphase = find(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))==2 | ...
+                     sign(nestingPh(ii,2:end)-nestingPh(ii,1))==0)-1;
+
+%             iphase = find(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))==-2 | ...
+%                      sign(nestingPh(ii,2:end)-nestingPh(ii,1))==0 | ...
+%                     -(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))-1).*diff(nestingPh(ii,:)-nestingPh(ii,1)) >6 )-1;
             if isempty(iphase)
                 iphase = length(nestingPh(ii,:));
             end
@@ -914,7 +930,7 @@ Sind     = repmat((1:nSources)', 1, nTime);           % Source indices
 Tind     = repmat(1:nTime, nSources, 1);              % Time indices
 linInd   = sub2ind(size(PAC),maxInd(:),Tind(:),Sind(:));
 Fnesting = reshape(nestingFreq(linInd),nTime,nSources)';
-Phase    = reshape(angle(PAC(linInd)),nTime,nSources)'/pi*180;
+Phase    = reshape(angle(PAC(linInd)),nTime,nSources)';
 PACmax   = reshape(abs(PAC(linInd)),nTime,nSources)';
 
 

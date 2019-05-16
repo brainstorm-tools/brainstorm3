@@ -2,16 +2,16 @@ function tutorial_phantom_ctf(tutorial_dir)
 % TUTORIAL_PHANTOM_CTF: Script that runs the tests for the CTF current phantom.
 %
 % CORRESPONDING ONLINE TUTORIAL:
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/PhantomCtf
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/PhantomCtf
 %
 % INPUTS: 
 %     tutorial_dir: Directory where the sample_phantom.zip file has been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -209,8 +209,8 @@ InverseOptions = struct(...
     'SnrFixed',       3, ...
     'ComputeKernel',  1, ...
     'DataTypes',      {{'MEG'}});
-% Process: Compute sources [2016]
-sAvgSrcAll = bst_process('CallProcess', 'process_inverse_2016', sAvgAll, [], ...
+% Process: Compute sources [2018]
+sAvgSrcAll = bst_process('CallProcess', 'process_inverse_2018', sAvgAll, [], ...
     'output',  2, ...  % Kernel only: one per file
     'inverse', InverseOptions);
 % Process: Snapshot: Sources (one time)
@@ -273,9 +273,9 @@ bst_process('CallProcess', 'process_headmodel', sAvgAll, [], ...
     'sourcespace', 2, ...  % MRI volume
     'volumegrid',  VolumeGrid, ...
     'meg',         3);  % Overlapping spheres
-% Process: Compute sources [2016]
+% Process: Compute sources [2018]
 InverseOptions.Comment = 'Dipoles: Overlapping spheres';
-sSrcOs = bst_process('CallProcess', 'process_inverse_2016', sAvgAll, [], ...
+sSrcOs = bst_process('CallProcess', 'process_inverse_2018', sAvgAll, [], ...
     'output',  2, ...  % Kernel only: one per file
     'inverse', InverseOptions);
 % Process: Snapshot: Sources (one time)
@@ -340,9 +340,9 @@ bst_process('CallProcess', 'process_headmodel', sAvgAll, [], ...
     'sourcespace', 2, ...  % MRI volume
     'volumegrid',  VolumeGrid, ...
     'meg',         4);  % OpenMEEG BEM
-% Process: Compute sources [2016]
+% Process: Compute sources [2018]
 InverseOptions.Comment = 'Dipoles: OpenMEEG BEM';
-sSrcBem = bst_process('CallProcess', 'process_inverse_2016', sAvgAll, [], ...
+sSrcBem = bst_process('CallProcess', 'process_inverse_2018', sAvgAll, [], ...
     'output',  2, ...  % Kernel only: one per file
     'inverse', InverseOptions);
 % Process: Snapshot: Sources (one time)

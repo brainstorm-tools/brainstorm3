@@ -3,9 +3,9 @@ function varargout = scenario_epilepto( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -97,7 +97,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     ctrl.jRadioSurf2 = gui_component('radio', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">8196V</FONT>', jButtonGroupSurf);
     ctrl.jRadioSurf3 = gui_component('radio', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">20484V</FONT>', jButtonGroupSurf);
     ctrl.jRadioSurf4 = gui_component('radio', ctrl.jPanels(i), '', '<HTML><FONT color="#a0a0a0">7861V+hip+amyg</FONT>', jButtonGroupSurf);
-    ctrl.jRadioSurf4.setSelected(1);
+    ctrl.jRadioSurf3.setSelected(1);
     % Event names
     gui_component('label', ctrl.jPanels(i), 'br', '<HTML><FONT color="#a0a0a0">Onset event name: </FONT>');
     ctrl.jTextEvtOnset = gui_component('text', ctrl.jPanels(i), '', 'Onset');
@@ -177,7 +177,7 @@ function ctrl = CreatePanels() %#ok<DEFNU>
     gui_component('Label', ctrl.jPanels(i), '', 'Taper: ');
     ctrl.jComboTaper = gui_component('combobox', ctrl.jPanels(i), '', [], {{'Hanning','DPSS'}});
     % Frequencies
-    gui_component('label', ctrl.jPanels(i), 'br', 'Frequencies (start:stop:end): ');
+    gui_component('label', ctrl.jPanels(i), 'br', 'Frequencies (start:step:stop): ');
     ctrl.jTextFreq = gui_component('texttime', ctrl.jPanels(i), '', '10:3:220');
     % Callbacks
     ctrl.fcnValidate{i} = @(c)ValidateTimefreq();
@@ -388,9 +388,9 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
             file_delete(DbMriFilePost, 1);
             sSubject.Anatomy(2) = [];
             % Rename imported volumes
-            movefile(file_fullpath(DbMriFilePre), MriPre);
-            movefile(file_fullpath(DbMriFilePostReg), MriPostOrig);
-            movefile(file_fullpath(DbMriFilePostReslice), MriPostReslice);
+            file_move(file_fullpath(DbMriFilePre), MriPre);
+            file_move(file_fullpath(DbMriFilePostReg), MriPostOrig);
+            file_move(file_fullpath(DbMriFilePostReslice), MriPostReslice);
             sSubject.Anatomy(1).FileName = file_short(MriPre);
             sSubject.Anatomy(2).FileName = file_short(MriPostOrig);
             sSubject.Anatomy(3).FileName = file_short(MriPostReslice);
@@ -836,7 +836,6 @@ function RawContinuousEvt(OutputFiles)
             events(iEvtNew) = events(iEvtStart(i));
             events(iEvtNew).label   = newLabel;
             events(iEvtNew).times   = [events(iEvtStart(i)).times;   events(iEvtStop).times];
-            events(iEvtNew).samples = [events(iEvtStart(i)).samples; events(iEvtStop).samples];
             % Save modifications
             iEvtDel = [iEvtDel, iEvtStart(i), iEvtStop];
         end
@@ -1101,9 +1100,10 @@ function RawInputEvents()
             sFile.events(iEvtOnset).reactTimes = [];
             sFile.events(iEvtOnset).select     = 1;
         end
-        sFile.events(iEvtOnset).samples = round(newOnset * sFile.prop.sfreq);
-        sFile.events(iEvtOnset).times   = sFile.events(iEvtOnset).samples ./ sFile.prop.sfreq;
-        sFile.events(iEvtOnset).epochs  = ones(1, size(sFile.events(iEvtOnset).samples, 2));
+        sFile.events(iEvtOnset).times    = round(newOnset * sFile.prop.sfreq) ./ sFile.prop.sfreq;
+        sFile.events(iEvtOnset).epochs   = ones(1, size(sFile.events(iEvtOnset).times, 2));
+        sFile.events(iEvtOnset).channels = {{}};
+        sFile.events(iEvtOnset).notes    = {''};
     end
     % Add Baseline event
     if (length(newBaseline) == 2)
@@ -1114,9 +1114,10 @@ function RawInputEvents()
             sFile.events(iEvtBaseline).reactTimes = [];
             sFile.events(iEvtBaseline).select     = 1;
         end
-        sFile.events(iEvtBaseline).samples = round(newBaseline * sFile.prop.sfreq);
-        sFile.events(iEvtBaseline).times   = sFile.events(iEvtBaseline).samples ./ sFile.prop.sfreq;
-        sFile.events(iEvtBaseline).epochs  = ones(1, size(sFile.events(iEvtBaseline).samples, 2));
+        sFile.events(iEvtBaseline).times   = round(newBaseline * sFile.prop.sfreq) ./ sFile.prop.sfreq;
+        sFile.events(iEvtBaseline).epochs  = ones(1, size(sFile.events(iEvtBaseline).times, 2));
+        sFile.events(iEvtBaseline).channels = {{}};
+        sFile.events(iEvtBaseline).notes    = {''};
     end
     % Save modification
     LinkMat.F = sFile;
@@ -1319,7 +1320,7 @@ function [isValidated, errMsg] = ValidateEpoch()
             if (length(iDataBaseline) == size(GlobalData.Guidelines.Baselines{iFile},2))
                 GlobalData.Guidelines.BaselineFiles{iFile} = {sStudyImport(1).Data(iDataBaseline).FileName};
             % Import baselines
-            else
+            elseif isempty(iDataBaseline)
                 sFilesBaselines = bst_process('CallProcess', 'process_import_data_event', sFile, [], ...
                     'subjectname', sFile.SubjectName, ...
                     'eventname',   GlobalData.Guidelines.strBaseline, ...
@@ -1327,6 +1328,10 @@ function [isValidated, errMsg] = ValidateEpoch()
                     'createcond',  0, ...
                     'ignoreshort', 0, ...
                     'usessp',      1);
+            % Error in list of input files
+            else
+                errMsg = ['The number of ' GlobalData.Guidelines.strBaseline ' events does not match the number of' 10 'imported baseline files in folder "' bst_fileparts(sStudyImport(1).FileName) '".' 10 10 'Reset this processing step before continuing.'];
+                return;
             end
         end
         
@@ -1337,7 +1342,7 @@ function [isValidated, errMsg] = ValidateEpoch()
             if (length(iDataOnset) == size(GlobalData.Guidelines.Onsets{iFile},2))
                 GlobalData.Guidelines.OnsetFiles{iFile} = {sStudyImport(1).Data(iDataOnset).FileName};
             % Import onsets
-            else
+            elseif isempty(iDataOnset)
                 sFilesOnsets = bst_process('CallProcess', 'process_import_data_event', sFile, [], ...
                     'subjectname', sFile.SubjectName, ...
                     'eventname',   GlobalData.Guidelines.strOnset, ...
@@ -1346,6 +1351,10 @@ function [isValidated, errMsg] = ValidateEpoch()
                     'createcond',  0, ...
                     'ignoreshort', 0, ...
                     'usessp',      1);
+            % Error in list of input files
+            else
+                errMsg = ['The number of ' GlobalData.Guidelines.strOnset ' events does not match the number of' 10 'imported onset files in folder "' bst_fileparts(sStudyImport(1).FileName) '".' 10 10 'Reset this processing step before continuing.'];
+                return;
             end
         end
         
@@ -1458,6 +1467,8 @@ end
 function [isValidated, errMsg] = ValidateTimefreq()
     global GlobalData;
     ctrl = GlobalData.Guidelines.ctrl;
+    % Add missing paths
+    bst_spm_init(1, 'ft_specest_mtmconvol');
     % Initialize returned variables
     isValidated = 0;
     errMsg = '';
@@ -1471,11 +1482,27 @@ function [isValidated, errMsg] = ValidateTimefreq()
     end
     % Get the list of all input files
     OnsetFiles = cat(2, GlobalData.Guidelines.OnsetFiles{:});
+    BaselineFiles = cat(2, GlobalData.Guidelines.BaselineFiles{:});
+    % Number of baselines/onsets is not the same
+    for i = 1:length(GlobalData.Guidelines.OnsetFiles)
+        nBaselines = length(cat(2,GlobalData.Guidelines.BaselineFiles{i}));
+        nOnsets    = length(cat(2,GlobalData.Guidelines.OnsetFiles{i}));
+        if (nBaselines ~= nOnsets)
+            [tmp,strFolder] = bst_fileparts(bst_fileparts(GlobalData.Guidelines.OnsetFiles{i}{1}));
+            errMsg = ['Folder "' strFolder '" contains:' 10 ...
+                      num2str(nBaselines) ' baseline(s) and ' num2str(nOnsets) ' seizure(s).' 10 10 ...
+                      'To specify one baseline for each seizure, proceed manually as indicated' 10 ...
+                      'in the online tutorial "SEEG epileptogenicity maps":' 10 ...
+                      'https://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity'];
+            return;
+        end
+    end
+    % Check if all the files are in the same folder
     allFolders = cellfun(@bst_fileparts, OnsetFiles, 'UniformOutput', 0);
     isOneFolder = all(strcmpi(allFolders(2:end), allFolders{1}));
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
-    bst_report('Start', cat(2,GlobalData.Guidelines.OnsetFiles{:}));
+    bst_report('Start', OnsetFiles);
     
     % Get the averages
     iFileAvg = [];
@@ -1509,7 +1536,7 @@ function [isValidated, errMsg] = ValidateTimefreq()
     % If files do not exist yet: compute them
     else
         % Process: FieldTrip: ft_mtmconvol (Multitaper)
-        sFilesTf = bst_process('CallProcess', 'process_ft_mtmconvol', cat(2,GlobalData.Guidelines.OnsetFiles{:}), [], ...
+        sFilesTf = bst_process('CallProcess', 'process_ft_mtmconvol', OnsetFiles, [], ...
             'timewindow',     [-10, 10], ...
             'sensortypes',    'SEEG', ...
             'mt_taper',       Taper, ... 
@@ -1519,27 +1546,47 @@ function [isValidated, errMsg] = ValidateTimefreq()
             'mt_timestep',    0.1, ...
             'measure',        'magnitude', ...  % Magnitude
             'avgoutput',      0);
-        % Process: Z-score transformation: [Start, -1s]
-        sFilesTf = bst_process('CallProcess', 'process_baseline_norm', sFilesTf, [], ...
-            'baseline',  [-Inf, -1], ...
-            'method',    'zscore', ...  % Z-score transformation:    x_std = (x - &mu;) / &sigma;
-            'overwrite', 1);
+        % Process: FieldTrip: ft_mtmconvol (Multitaper)
+        sFilesTfBaseline = bst_process('CallProcess', 'process_ft_mtmconvol', BaselineFiles, [], ...
+            'timewindow',     [-10, 10], ...
+            'sensortypes',    'SEEG', ...
+            'mt_taper',       Taper, ... 
+            'mt_frequencies', strFreq, ...
+            'mt_freqmod',     10, ...
+            'mt_timeres',     1, ...
+            'mt_timestep',    0.1, ...
+            'measure',        'magnitude', ...  % Magnitude
+            'avgoutput',      0);
+        if isempty(sFilesTf) || isempty(sFilesTfBaseline)
+            bst_report('Open', 'current');
+            errMsg = 'Could not run FieldTrip multitaper.';
+            return;
+        end
+        % Process: Z-score transformation: [All file]
+        for i = 1:length(sFilesTf)
+            sFilesTfNorm(i) = bst_process('CallProcess', 'process_baseline_norm2', sFilesTfBaseline(i), sFilesTf(i), ...
+                'baseline', [], ...
+                'method',   'zscore');  % Z-score transformation:    x_std = (x - &mu;) / &sigma;
+        end
         % Process: Average: Everything
-        if (length(sFilesTf) > 1)
-            sFilesTfAvg = bst_process('CallProcess', 'process_average', sFilesTf, [], ...
+        if (length(sFilesTfNorm) > 1)
+            sFilesTfAvg = bst_process('CallProcess', 'process_average', sFilesTfNorm, [], ...
                 'avgtype',   1, ...  % Everything
                 'avg_func',  1, ...  % Arithmetic average:  mean(x)
                 'weighted',  0, ...
                 'matchrows', 1, ...
                 'iszerobad', 1);
         else
-            sFilesTfAvg = sFilesTf;
+            sFilesTfAvg = sFilesTfNorm;
         end
         % Process: Average: All signals
         sFilesTfAvgChan = bst_process('CallProcess', 'process_average_rows', sFilesTfAvg, [], ...
             'avgtype',   1, ...  % Average all the signals together
             'avgfunc',   1, ...  % Arithmetic average: mean(x)
             'overwrite', 0);
+        % Process: Delete selected files
+        sFilesTf = bst_process('CallProcess', 'process_delete', [sFilesTf, sFilesTfBaseline], [], ...
+            'target', 1);  % Delete selected files
         % Return files
         TimefreqFileAvg     = sFilesTfAvg.FileName;
         TimefreqFileAvgChan = sFilesTfAvgChan.FileName;
@@ -1790,6 +1837,8 @@ function UpdateEpileptogenicity()
     listModel = javax.swing.DefaultListModel();
     % All files selected by default
     GlobalData.Guidelines.ctrl.isFileSelected = ones(1, length(cat(2, GlobalData.Guidelines.OnsetFiles{:})));
+    % Prepare tooltip string
+    strTooltip = '<HTML><PRE>';
     % Get list of file names
     for iRaw = 1:length(GlobalData.Guidelines.OnsetFiles)
         % Skip if nothing is imported
@@ -1803,15 +1852,31 @@ function UpdateEpileptogenicity()
         % Only one file
         if (length(GlobalData.Guidelines.OnsetFiles{iRaw}) == 1)
             listModel.addElement(org.brainstorm.list.BstListItem('', '', strFolder, int32(1)));
+            % Create tooltip
+            strTooltip = [strTooltip, '<B>' strFolder '</B>:<BR> - Onset: &nbsp;&nbsp;&nbsp;' GlobalData.Guidelines.OnsetFiles{iRaw}{1} '<BR>'];
+            if (length(GlobalData.Guidelines.BaselineFiles{iRaw}) >= 1)
+                strTooltip = [strTooltip, ' - Baseline: ' GlobalData.Guidelines.BaselineFiles{iRaw}{1} '<BR>'];
+            else
+                strTooltip = [strTooltip, ' - <B>ERROR: Missing baseline file']; 
+            end
         else
             for iFile = 1:length(GlobalData.Guidelines.OnsetFiles{iRaw})
-                listModel.addElement(org.brainstorm.list.BstListItem('', '', sprintf('%s #%d', strFolder, iFile), int32(1)));
+                strDispFolder = sprintf('%s #%d', strFolder, iFile);
+                listModel.addElement(org.brainstorm.list.BstListItem('', '', strDispFolder, int32(1)));
+                % Create tooltip
+                strTooltip = [strTooltip, '<B>' strDispFolder '</B>:<BR> - Onset: &nbsp;&nbsp;&nbsp;' GlobalData.Guidelines.OnsetFiles{iRaw}{iFile} '<BR>'];
+                if (length(GlobalData.Guidelines.BaselineFiles{iRaw}) >= iFile)
+                    strTooltip = [strTooltip, ' - Baseline: ' GlobalData.Guidelines.BaselineFiles{iRaw}{iFile} '<BR>'];
+                else
+                    strTooltip = [strTooltip, ' - <B>ERROR: Missing baseline file']; 
+                end
             end
         end
     end
     % Update JList
     GlobalData.Guidelines.ctrl.jListFiles.setModel(listModel);
     GlobalData.Guidelines.ctrl.jListFiles.repaint();
+    GlobalData.Guidelines.ctrl.jListFiles.setToolTipText(strTooltip);
 end
 
 

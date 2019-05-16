@@ -6,9 +6,9 @@ function [sStudy, iItem] = db_add_data(iStudy, FileName, FileMat, iItem)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function [sStudy, iItem] = db_add_data(iStudy, FileName, FileMat, iItem)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 % 
-% Authors:  Francois Tadel, 2010
+% Authors:  Francois Tadel, 2010-2018
 
 % Parse inputs
 if (nargin < 4)
@@ -48,6 +48,15 @@ switch (fileType)
         % Add it to study
         if isempty(iItem)
             iItem = length(sStudy.Stat) + 1;
+            % Make file comment unique
+            if ~isempty(sStudy.Stat)
+                Comment = file_unique(sNew.Comment, {sStudy.Stat.Comment});
+                % Modify input file
+                if ~isequal(Comment, sNew.Comment)
+                    save(file_fullpath(FileName), 'Comment', '-append');
+                    sNew.Comment = Comment;
+                end
+            end
         else
             deletedFile{end+1} = sStudy.Stat(iItem).FileName;
         end
@@ -62,6 +71,20 @@ switch (fileType)
         % Add it to study
         if isempty(iItem)
             iItem = length(sStudy.Timefreq) + 1;
+            % Make file comment unique
+            if ~isempty(sStudy.Timefreq)
+                % Get the time-frequency files that have reference file
+                iSameParent = find(cellfun(@(c)isequal(c, sNew.DataFile), {sStudy.Timefreq.DataFile}));
+                % If there are files with the same parent: make it unique within this group
+                if ~isempty(iSameParent)
+                    Comment = file_unique(sNew.Comment, {sStudy.Timefreq(iSameParent).Comment});
+                    % Modify input file
+                    if ~isequal(Comment, sNew.Comment)
+                        save(file_fullpath(FileName), 'Comment', '-append');
+                        sNew.Comment = Comment;
+                    end
+                end
+            end
         else
             deletedFile{end+1} = sStudy.Timefreq(iItem).FileName;
         end
@@ -82,15 +105,17 @@ switch (fileType)
         % Add it to study
         if isempty(iItem)
             iItem = length(sStudy.Data) + 1;
-        else
-            deletedFile{end+1} = sStudy.Data(iItem).FileName;
-            % Raw files: delete associated .bin file
-            if strcmpi(sStudy.Data(iItem).DataType, 'raw')
-                BinFile = strrep(sStudy.Data(iItem).FileName, '.mat', '.bin');
-                if file_exist(bst_fullfile(ProtocolInfo.STUDIES, BinFile))
-                    deletedFile{end+1} = BinFile;
+            % Make file comment unique
+            if ~isempty(sStudy.Data)
+                Comment = file_unique(sNew.Comment, {sStudy.Data.Comment});
+                % Modify input file
+                if ~isequal(Comment, sNew.Comment)
+                    save(file_fullpath(FileName), 'Comment', '-append');
+                    sNew.Comment = Comment;
                 end
             end
+        else
+            deletedFile{end+1} = sStudy.Data(iItem).FileName;
         end
         sStudy.Data(iItem) = sNew;
     case {'results','link'}
@@ -108,6 +133,20 @@ switch (fileType)
         % Add it to study
         if isempty(iItem)
             iItem = length(sStudy.Result) + 1;
+            % Make file comment unique
+            if ~isempty(sStudy.Result)
+                % Get the time-frequency files that have reference file
+                iSameParent = find(cellfun(@(c)isequal(c, sNew.DataFile), {sStudy.Result.DataFile}));
+                % If there are files with the same parent: make it unique within this group
+                if ~isempty(iSameParent)
+                    Comment = file_unique(sNew.Comment, {sStudy.Result(iSameParent).Comment});
+                    % Modify input file
+                    if ~isequal(Comment, sNew.Comment)
+                        save(file_fullpath(FileName), 'Comment', '-append');
+                        sNew.Comment = Comment;
+                    end
+                end
+            end
         else
             deletedFile{end+1} = sStudy.Result(iItem).FileName;
         end
@@ -120,6 +159,15 @@ switch (fileType)
         % Add it to study
         if isempty(iItem)
             iItem = length(sStudy.Matrix) + 1;
+            % Make file comment unique
+            if ~isempty(sStudy.Matrix)
+                Comment = file_unique(sNew.Comment, {sStudy.Matrix.Comment});
+                % Modify input file
+                if ~isequal(Comment, sNew.Comment)
+                    save(file_fullpath(FileName), 'Comment', '-append');
+                    sNew.Comment = Comment;
+                end
+            end
         else
             deletedFile{end+1} = sStudy.Matrix(iItem).FileName;
         end

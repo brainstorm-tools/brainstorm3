@@ -1,13 +1,13 @@
 function [DataMat, ChannelMat] = in_data_erplab(DataFile)
 % IN_DATA_ERPLAB: Imports an ERPLab file.
 %
-% USAGE: DataMat = in_data_erplab(DataFile);
+% USAGE: [DataMat, ChannelMat] = in_data_erplab(DataFile);
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.

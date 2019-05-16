@@ -10,9 +10,9 @@ function tree_set_channelflag(bstNodes, action, strChan)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -103,7 +103,7 @@ if (nargin < 3)
         case 'addbad'
             % Setting channels to bad: ask which channels
             strChan = java_dialog('input', ['Enter the channel names or indices to mark as BAD in the selected files,' 10, ...
-                                            'separated by comas (example: "MLT41, MRP44" or "12,23"):' 10 10], 'Set bad channels');
+                                            'separated by commas (example: "MLT41, MRP44" or "12,23"):' 10 10], 'Set bad channels');
             % User canceled
             if isempty(strChan)
                 return
@@ -111,7 +111,7 @@ if (nargin < 3)
         case 'clearbad'
             % Setting channels to bad: ask which channels
             strChan = java_dialog('input', ['Enter the channel names or indices to mark as GOOD in the selected files,' 10, ...
-                                            'separated by comas (example: "MLT41, MRP44" or "12,23"):' 10 10], 'Set good channels');
+                                            'separated by commas (example: "MLT41, MRP44" or "12,23"):' 10 10], 'Set good channels');
             % User canceled
             if isempty(strChan)
                 return

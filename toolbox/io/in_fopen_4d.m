@@ -11,9 +11,9 @@ function [sFile, ChannelMat] = in_fopen_4d(DataFile, ImportOptions)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -63,10 +63,10 @@ else
 end
 % Add the file name if there are multiple in the same category
 baseName = [fBase, fExt];
-dirOthers = dir(bst_fullfile(dir4d, [baseName(1:2) '*']));
-if (length(dirOthers) > 1)
+% dirOthers = dir(bst_fullfile(dir4d, [baseName(1:2) '*']));
+% if (length(dirOthers) > 1)
     Condition = [Condition, '_', file_standardize(baseName)];
-end
+% end
 
 %% ===== READ HEADERS =====
 % Read config file
@@ -95,10 +95,8 @@ sFile.header     = header;
 nSamplesPre = double(round(header.header_data.FirstLatency * header.header_data.SampleFrequency));
 nSamples    = double(header.epoch_data(1).pts_in_epoch);
 sFile.prop.sfreq   = header.header_data.SampleFrequency;
-sFile.prop.samples = double([-nSamplesPre, nSamples - nSamplesPre - 1]);
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = double([-nSamplesPre, nSamples - nSamplesPre - 1]) ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = header.header_data.TotalEpochs;
-
 
 %% ===== CHANNELS =====
 % Initialize channels structure
@@ -257,7 +255,7 @@ if ~isempty(iCompBlock)
           '*** WARNING: The support for the 4D MEG system might be incomplete. Pending issues:    ***' 10 ...
           '***  - The orientation of the reference gradiometers is not clearly understood         ***' 10 ...
           '***  - The accurate sensor modeling from the file coil_def.dat is not used             ***' 10 ...
-          '***  - The position of the references looks wrong in the Marseille MEG files           ***' 10 ...
+          '***  - The references positions are commonly wrong because bugs in the 4D calibration  ***' 10 ...
           '***  - The noise compensation is considered to be already applied on the recordings    ***' 10 ...
           '***  => Most of these issues may impact the quality of the source reconstruction       ***' 10 ...
           '***  => Please contact us on the forum if you would like to help us debug these issues ***' 10 ...
@@ -336,7 +334,6 @@ if (nEpochs > 1)
     % Build epochs structure
     for i = 1:nEpochs
         sFile.epochs(i).label = sprintf('Epoch (#%d)', i);
-        sFile.epochs(i).samples = sFile.prop.samples;
         sFile.epochs(i).times   = sFile.prop.times;
         sFile.epochs(i).nAvg    = 1;
         sFile.epochs(i).select  = 1;
@@ -402,13 +399,19 @@ if isfield(header, 'process') && isfield(header.process, 'type')
                         iEvent = length(sFile.events) + 1;
                         sFile.events(iEvent) = db_template('event');
                     end
-                    sFile.events(iEvent).label      = evtLabel;
+                    sFile.events(iEvent).label = evtLabel;
                 end
                 % Add occurrence of this event
-                iOcc = length(sFile.events(iEvent).samples) + 1;
-                sFile.events(iEvent).epochs(iOcc)  = 1;
-                sFile.events(iEvent).times(iOcc)   = evtTime;
-                sFile.events(iEvent).samples(iOcc) = round(evtTime .* sFile.prop.sfreq);
+                iOcc = length(sFile.events(iEvent).times) + 1;
+                sFile.events(iEvent).epochs(iOcc)   = 1;
+                sFile.events(iEvent).times(iOcc)    = round(evtTime .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+                if (iOcc == 1)
+                    sFile.events(iEvent).channels = {{}};
+                    sFile.events(iEvent).notes    = {[]};
+                else
+                    sFile.events(iEvent).channels{iOcc} = {};
+                    sFile.events(iEvent).notes{iOcc}    = [];
+                end
             end
         end
     end

@@ -37,6 +37,7 @@ function bst_set( varargin )
 %    - bst_set('GraphicsSmoothing',     isGraphicsSmoothing)
 %    - bst_set('ForceMatCompression',   isForceCompression)
 %    - bst_set('IgnoreMemoryWarnings',  isIgnoreMemoryWarnings)
+%    - bst_set('SystemCopy',            isSystemCopy)
 %    - bst_set('DisableOpenGL',         isDisableOpenGL)
 %    - bst_set('InterfaceScaling',      InterfaceScaling)
 %    - bst_set('TSDisplayMode',         TSDisplayMode)    : {'butterfly','column'}
@@ -61,6 +62,8 @@ function bst_set( varargin )
 %    - bst_set('FixedScaleY',           Modality,  Value)
 %    - bst_set('ShowXGrid',             isShowXGrid)
 %    - bst_set('ShowYGrid',             isShowYGrid)
+%    - bst_set('ShowZeroLines',         isShowZeroLines)
+%    - bst_set('ShowEventsMode',        ShowEventsMode)
 %    - bst_set('Resolution',            [resX,resY])
 %    - bst_set('UseSigProcToolbox',     UseSigProcToolbox)
 %    - bst_set('RawViewerOptions',      RawViewerOptions)
@@ -74,14 +77,16 @@ function bst_set( varargin )
 %    - bst_set('ReadOnly',              ReadOnly)
 %    - bst_set('LastPsdDisplayFunction', LastPsdDisplayFunction)
 %    - bst_set('PlotlyCredentials',     Username, ApiKey, Domain)
+%    - bst_set('KlustersExecutable',    ExecutablePath)
+%    - bst_set('ExportBidsOptions'),    ExportBidsOptions)
 %
 % SEE ALSO bst_get
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -125,7 +130,11 @@ switch contextName
 
 %% ==== PROTOCOL ====
     case 'iProtocol'
-        GlobalData.DataBase.iProtocol = contextValue;
+        if isnumeric(contextValue)
+            GlobalData.DataBase.iProtocol = contextValue;
+        else
+            error('iProtocol should be a number.');
+        end
     case {'ProtocolSubjects', 'ProtocolStudies'}
         for structField = fieldnames(contextValue)'
             GlobalData.DataBase.(contextName)(GlobalData.DataBase.iProtocol).(structField{1}) = contextValue.(structField{1});
@@ -238,13 +247,13 @@ switch contextName
         end
         GlobalData.Preferences.(contextName).(Modality) = ElectrodeConf;
         
-    case {'UniformizeTimeSeriesScales', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', ...
+    case {'UniformizeTimeSeriesScales', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'ShowEventsMode', 'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', ...
           'GraphicsSmoothing', 'DownsampleTimeSeries', 'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
-          'BFSProperties', 'ImportDataOptions', 'ImportEegRawOptions', 'RawViewerOptions', 'TopoLayoutOptions', ...
+          'BFSProperties', 'ImportDataOptions', 'ImportEegRawOptions', 'RawViewerOptions', 'MontageOptions', 'TopoLayoutOptions', ...
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
-          'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', ...
+          'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction'}
+          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
         GlobalData.Preferences.(contextName) = contextValue;
 
     case 'ReadOnly'

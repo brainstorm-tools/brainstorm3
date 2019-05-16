@@ -14,9 +14,9 @@ function bstDefaultNode = node_create_db_studies( nodeRoot, expandOrder )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -247,7 +247,20 @@ for i = 1:length(ProtocolStudies.Study)
                             else
                                 nodeType = 'condition';
                             end
-                            nodeCondition = BstNode(nodeType, nodeDisplayName, pathCondition, iSubject, 0);
+                            % Get acquisition or creation date
+                            intDate = 0;
+                            if ~isempty(sStudy.DateOfStudy)
+                                try
+                                    c = datevec(sStudy.DateOfStudy);
+                                    intDate = max(c(1)-1800,0)*13*32 + c(2)*32 + c(3);
+                                    if (intDate < 13*32)
+                                        intDate = 0;
+                                    end
+                                catch
+                                end
+                            end
+                            % Create node
+                            nodeCondition = BstNode(nodeType, nodeDisplayName, pathCondition, iSubject, 0, intDate);
                         end
                         % If Condition node was create
                         if ~isempty(nodeCondition)

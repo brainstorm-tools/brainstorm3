@@ -5,9 +5,9 @@ function varargout = figure_spectrum( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -30,8 +30,9 @@ end
 %% ===== CREATE FIGURE =====
 function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     import org.brainstorm.icon.*;
+    MatlabVersion = bst_get('MatlabVersion');
     % Get renderer name
-    if (bst_get('MatlabVersion') <= 803)   % zbuffer was removed in Matlab 2014b
+    if (MatlabVersion <= 803)   % zbuffer was removed in Matlab 2014b
         rendererName = 'zbuffer';
     elseif (bst_get('DisableOpenGL') == 1)
         rendererName = 'painters';
@@ -60,7 +61,11 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     if isprop(hFig, 'WindowScrollWheelFcn')
         set(hFig, 'WindowScrollWheelFcn',  @FigureMouseWheelCallback);
     end
-
+    % Disable automatic legends (after 2017a)
+    if (MatlabVersion >= 902) 
+        set(hFig, 'defaultLegendAutoUpdate', 'off');
+    end
+    
     % Prepare figure appdata
     setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'hasMoved', 0);
@@ -601,6 +606,19 @@ function FigureKeyPressedCallback(hFig, ev)
         % RETURN: VIEW SELECTED CHANNELS
         case 'return'
             DisplaySelectedRows(hFig);
+        % DELETE: SET CHANNELS AS BAD
+        case {'delete', 'backspace'}
+            % Get figure description
+            [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+            % Get selected rows
+            SelChan = figure_timeseries('GetFigSelectedRows', hFig);
+            % Only for PSD attached directly to a data file
+            if ~isempty(SelChan) && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
+                    (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(SelChan)) && ...
+                    ~isempty(strfind(TfFile, '_psd')) && ...
+                    strcmpi(file_gettype(GlobalData.DataSet(iDS).DataFile), 'data')
+                AddParentBadChannels(hFig, SelChan);
+            end
         % ESCAPE: CLEAR SELECTION
         case 'escape'
             bst_figures('SetSelectedRows', []);
@@ -624,6 +642,31 @@ function FigureKeyPressedCallback(hFig, ev)
     end
 end
 
+
+%% ===== ADD BAD CHANNELS =====
+function AddParentBadChannels(hFig, BadChan)
+    global GlobalData;
+    % Get figure description
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    if isempty(hFig)
+        return;
+    end
+    % Get indices in the channel file
+    iBad = [];
+    for i = 1:length(BadChan)
+        iBad = [iBad, find(strcmpi(BadChan{i}, {GlobalData.DataSet(iDS).Channel.Name}))];
+    end
+    % Get selected rows
+    if ~isempty(iBad) && strcmpi(file_gettype(GlobalData.DataSet(iDS).DataFile), 'data') && ~isempty(GlobalData.DataSet(iDS).DataFile)
+        % Add new bad channels
+        newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
+        newChannelFlag(iBad) = -1;
+        % Update channel flag
+        panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
+        % Reset selection
+        bst_figures('SetSelectedRows', []);
+    end
+end
 
 %% ===== GET DEFAULT FACTOR =====
 function defaultFactor = GetDefaultFactor(Modality)
@@ -813,14 +856,28 @@ function DisplayFigurePopup(hFig, menuTitle)
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_MASK));
         end
         % === View TOPOGRAPHY ===
-        jItem = gui_component('MenuItem', jPopup, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, TfFile, [], '2DSensorCap', [], 0));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
-        jPopup.addSeparator();
+        if ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'MEG MAG','MEG GRAD','MEG','EEG'})
+            jItem = gui_component('MenuItem', jPopup, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, TfFile, [], '2DSensorCap', [], 0));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
+            jPopup.addSeparator();
+        end
     end
 
     % === VIEW SELECTED ===
     jItem = gui_component('MenuItem', jPopup, [], 'View selected', IconLoader.ICON_SPECTRUM, [], @(h,ev)DisplaySelectedRows(hFig));
     jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)); % ENTER  
+    % === SET SELECTED AS BAD CHANNELS ===
+    % Get selected rows
+    SelChan = figure_timeseries('GetFigSelectedRows', hFig);
+    % Only for PSD attached directly to a data file
+    if ~isempty(SelChan) && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
+            (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(SelChan)) && ...
+            ~isempty(strfind(TfFile, '_psd')) && ...
+            strcmpi(file_gettype(GlobalData.DataSet(iDS).DataFile), 'data')
+        jItem = gui_component('MenuItem', jPopup, [], 'Mark selected as bad', IconLoader.ICON_BAD, [], @(h,ev)AddParentBadChannels(hFig, SelChan));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_DELETE), 0)); % DEL
+    end
+
     % === RESET SELECTION ===
     jItem = gui_component('MenuItem', jPopup, [], 'Reset selection', IconLoader.ICON_SURFACE, [], @(h,ev)bst_figures('SetSelectedRows',[]));
     jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0)); % ESCAPE
@@ -1013,9 +1070,19 @@ function UpdateFigurePlot(hFig, isForced)
         otherwise
             error('Invalid display mode');
     end
+    % Case of one frequency point for spectrum: replicate frequency
+    if isSpectrum && (size(TF,3) == 1)
+        TF = cat(3,TF,TF);
+        replicateFreq = 1;
+    else
+        replicateFreq = 0;
+    end
     % Bands (time/freq), or linear axes
     if iscell(X)
         Xbands = process_tf_bands('GetBounds', X);
+        if replicateFreq
+            Xbands(:, end) = Xbands(:, end) + 0.1;
+        end
         if (size(Xbands,1) == 1)
             X    = Xbands;
             XLim = Xbands;
@@ -1024,15 +1091,14 @@ function UpdateFigurePlot(hFig, isForced)
             XLim = [min(Xbands(:)), max(Xbands(:))];
         end
     else
+        if replicateFreq
+            X = [X, X + 0.1];
+        end
         XLim = [X(1), X(end)];
     end
     if (length(XLim) ~= 2) || any(isnan(XLim)) || (XLim(2) <= XLim(1))
         disp('BST> Error: No data to display...');
         XLim = [0 1];
-    end
-    % Case of one frequency point for spectrum: replicate frequency
-    if isSpectrum && (size(TF,3) == 1)
-        TF = cat(3,TF,TF);
     end
     % Auto-detect if legend should be displayed
     if isempty(TsInfo.ShowLegend)
@@ -1411,22 +1477,24 @@ function [hCursor,hTextCursor] = PlotCursor(hFig, hAxes)
     
     % ===== VERTICAL LINE =====
     hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
-    if isempty(hCursor)
-        % EraseMode: Only for Matlab <= 2014a
-        if (bst_get('MatlabVersion') <= 803)
-            optErase = {'EraseMode', 'xor'};   % INCOMPATIBLE WITH OPENGL RENDERER (BUG), REMOVED IN MATLAB 2014b
+    if ~isempty(curX)
+        if isempty(hCursor)
+            % EraseMode: Only for Matlab <= 2014a
+            if (bst_get('MatlabVersion') <= 803)
+                optErase = {'EraseMode', 'xor'};   % INCOMPATIBLE WITH OPENGL RENDERER (BUG), REMOVED IN MATLAB 2014b
+            else
+                optErase = {};
+            end
+            % Create line
+            hCursor = line([curX curX], YLim, [ZData ZData], ...
+                               'LineWidth', 1, ...  
+                               optErase{:}, ...
+                               'Color',     'r', ...
+                               'Tag',       'Cursor', ...
+                               'Parent',    hAxes);
         else
-            optErase = {};
+            set(hCursor, 'XData', [curX curX], 'YData', YLim, 'ZData', [ZData ZData]);
         end
-        % Create line
-        hCursor = line([curX curX], YLim, [ZData ZData], ...
-                           'LineWidth', 1, ...  
-                           optErase{:}, ...
-                           'Color',     'r', ...
-                           'Tag',       'Cursor', ...
-                           'Parent',    hAxes);
-    else
-        set(hCursor, 'XData', [curX curX], 'YData', YLim, 'ZData', [ZData ZData]);
     end
     % Get background color
     bgcolor = get(hFig, 'Color');

@@ -14,9 +14,9 @@ function db_rename_condition( oldPath, newPath, isMove, isUpdateStudyPath )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -89,7 +89,7 @@ end
 %% ===== RENAME FOLDER =====
 % Move the folder
 if isMove
-    isOk = movefile(bst_fullfile(ProtocolInfo.STUDIES, oldPath), bst_fullfile(ProtocolInfo.STUDIES, newPath), 'f');
+    isOk = file_move(bst_fullfile(ProtocolInfo.STUDIES, oldPath), bst_fullfile(ProtocolInfo.STUDIES, newPath));
     if ~isOk
         bst_error(['Error: Could not rename "' oldPath '" to "' newPath '".'], 'Rename', 0);
         return;
@@ -263,9 +263,10 @@ function [s, isModified] = replaceStruct(s, field, oldPath, newPath)
             % Get file path
             [fPath,fBase,fExt] = bst_fileparts(splitLink{i});
             % Replace "oldPath" with "newPath"
-            fPath = strrep(file_win2unix(fPath), file_win2unix(oldPath), file_win2unix(newPath));
+            if ~isempty(strfind(file_win2unix(fPath), file_win2unix(oldPath)))
+                fPath = strrep(file_win2unix(fPath), file_win2unix(oldPath), file_win2unix(newPath));
             % If the subject was renamed: change the subject directly (in the case of link files to @default_study)
-            if ~strcmpi(oldSubj, newSubj)
+            elseif ~strcmpi(oldSubj, newSubj)
                 fPath = strrep(file_win2unix(fPath), [file_win2unix(oldSubj) '/'], [file_win2unix(newSubj) '/']);
             end
             % Update file path
@@ -278,9 +279,10 @@ function [s, isModified] = replaceStruct(s, field, oldPath, newPath)
         % Get file path
         [fPath,fBase,fExt] = bst_fileparts(s.(field));
         % Replace "oldPath" with "newPath"
-        fPath = strrep(file_win2unix(fPath), file_win2unix(oldPath), file_win2unix(newPath));
+        if ~isempty(strfind(file_win2unix(fPath), file_win2unix(oldPath)))
+            fPath = strrep(file_win2unix(fPath), file_win2unix(oldPath), file_win2unix(newPath));
         % If the subject was renamed: change the subject directly (in the case of link files to @default_study)
-        if ~strcmpi(oldSubj, newSubj)
+        elseif ~strcmpi(oldSubj, newSubj)
             fPath = strrep([file_win2unix(fPath) '/'], [file_win2unix(oldSubj) '/'], [file_win2unix(newSubj) '/']);
             fPath = fPath(1:end-1);
         end

@@ -3,9 +3,9 @@ function node_delete(bstNodes, isUserConfirm)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -158,7 +158,7 @@ switch (lower(nodeType{1}))
 
 
 %% ===== SURFACES =====
-    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'other'}
+    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'other'}
         bst_progress('start', 'Delete nodes', 'Deleting surfaces...');
         % Full file names
         FullFilesList = cellfun(@(f)bst_fullfile(ProtocolInfo.SUBJECTS,f), FileName', 'UniformOutput',0);
@@ -311,6 +311,7 @@ switch (lower(nodeType{1}))
         sStudies_dipoles  = bst_get('Study', iStudies_dipoles);
         % Build full files list 
         FullFilesList = {};
+        isRecursive = 0;
         for i = 1:length(iStudies_data)
             DataFile = bst_fullfile(ProtocolInfo.STUDIES, sStudies_data(i).Data(iDatas(i)).FileName);
             FullFilesList{end+1} = DataFile;
@@ -320,6 +321,12 @@ switch (lower(nodeType{1}))
                 BinFile = strrep(BinFile, 'data_0raw_', '');
                 if file_exist(BinFile)
                     FullFilesList{end+1} = BinFile;
+                end
+                % Spike sorting files: delete spikes folder
+                if ~isempty(strfind(DataFile, 'data_0ephys_'))
+                    DataMat = load(DataFile, 'Parent');
+                    FullFilesList{end+1} = DataMat.Parent;
+                    isRecursive = 1;
                 end
             end
         end
@@ -336,7 +343,7 @@ switch (lower(nodeType{1}))
         end
 
         % === DELETE FILES ===
-        if (file_delete(FullFilesList, ~isUserConfirm) == 1)
+        if (file_delete(FullFilesList, ~isUserConfirm, isRecursive) == 1)
             % Get unique list of studies
             uniqueStudies = unique([iStudies_data, iStudies_results]);
             for i = 1:length(uniqueStudies)

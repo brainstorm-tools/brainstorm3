@@ -7,9 +7,9 @@ function [iChannels, Comment] = channel_find(Channel, target)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,7 +23,7 @@ function [iChannels, Comment] = channel_find(Channel, target)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2011
+% Authors: Francois Tadel, 2010-2018
 
 % Select all the channels
 if (nargin < 2) || isempty(target)
@@ -33,7 +33,7 @@ if (nargin < 2) || isempty(target)
 end
 if ~iscell(target)
     if any(target == ',') || any(target == ';')
-        % Split string based on the comas
+        % Split string based on the commas
         target = strtrim(str_split(target, ',;'));
     else
         target = {strtrim(target)};
@@ -45,9 +45,12 @@ Comment   = [];
 % Get all the channel types
 allTypes = upper(unique({Channel.Type}));
 allNames = {Channel.Name};
-% Add extra types based on the ones
+% Add extra types based on the ones existing
 if any(ismember(allTypes, {'MEG MAG','MEG GRAD'}))
     allTypes = union(allTypes, {'MEG', 'MEG GRAD2', 'MEG GRAD3'});
+end
+if any(ismember(allTypes, {'SEEG','ECOG'}))
+    allTypes = union(allTypes, {'ECOG+SEEG'});
 end
 % Process all the targets
 for i = 1:length(target)

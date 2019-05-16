@@ -5,9 +5,9 @@ function ChannelMat = channel_detect_type( ChannelMat, isAlign, isRemoveFid )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -133,10 +133,12 @@ for i = 1:length(iCheck)
         iDelChan = [iDelChan, iChan];
     end
     % Count channels with and without locations
-    if isempty(ChannelMat.Channel(iChan).Loc) || isequal(ChannelMat.Channel(iChan).Loc, [0;0;0])
-        iEegNoLoc(end+1) = iChan;
-    else
-        iEegLoc(end+1) = iChan;
+    if ismember(ChannelMat.Channel(iChan).Type, {'EEG','SEEG','ECOG'})
+        if isempty(ChannelMat.Channel(iChan).Loc) || isequal(ChannelMat.Channel(iChan).Loc, [0;0;0])
+            iEegNoLoc(end+1) = iChan;
+        else
+            iEegLoc(end+1) = iChan;
+        end
     end
 end
 
@@ -152,9 +154,9 @@ end
 if isRemoveFid
     ChannelMat.Channel(iDelChan) = [];
 end
-% If there are less than a certain number of "EEG" channels, let's consider it's not EEG
+% If there are less than a certain number of "EEG" channels, but with other displayable modalities let's consider it's not EEG
 iEEG = channel_find(ChannelMat.Channel, 'EEG');
-if (length(iEEG) < 5)
+if (length(iEEG) < 5) && ~isempty(channel_find(ChannelMat.Channel, 'MEG,SEEG,ECOG'))
     [ChannelMat.Channel(iEEG).Type] = deal('Misc');
 end
 
@@ -188,6 +190,9 @@ if isAlign && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(Chann
     ChannelMat.SCS.T      = transfSCS.T;
     ChannelMat.SCS.Origin = transfSCS.Origin;
     % Convert the fiducials positions
+    %   NOTE: The division/multiplication by 1000 is to compensate the T/1000 applied in the cs_convert().
+    %         This hack was added becaue cs_convert() is intended to work on sMri structures, 
+    %         in which NAS/LPA/RPA/T fields are in millimeters, while in ChannelMat they are in meters.
     ChannelMat.SCS.NAS = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.NAS ./ 1000) .* 1000;
     ChannelMat.SCS.LPA = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.LPA ./ 1000) .* 1000;
     ChannelMat.SCS.RPA = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.RPA ./ 1000) .* 1000;
@@ -198,7 +203,7 @@ if isAlign && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(Chann
             ChannelMat.Channel(i).Loc = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.Channel(i).Loc' ./ 1000)' .* 1000;
         end
         if ~isempty(ChannelMat.Channel(i).Orient)
-            ChannelMat.Channel(i).Orient = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.Channel(i).Orient' ./ 1000)' .* 1000;
+            ChannelMat.Channel(i).Orient = ChannelMat.SCS.R * ChannelMat.Channel(i).Orient;
         end
     end
     % Process the head points    % ADDED 27-May-2013

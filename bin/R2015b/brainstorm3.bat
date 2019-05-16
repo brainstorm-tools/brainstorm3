@@ -90,6 +90,8 @@
 @ECHO.
 @ECHO Please wait...
 @ECHO.
-@%JAVA_EXE% -jar brainstorm3.jar
+@ECHO (if it takes more than a few minutes, try pressing ENTER)
+@ECHO.
+@%JAVA_EXE% -jar brainstorm3.jar %*
 
 :END

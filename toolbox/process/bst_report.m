@@ -37,9 +37,9 @@ function varargout = bst_report( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -605,6 +605,11 @@ end
 %         jReport = bst_report('Open')
 function jReport = Open(ReportFile, isFullReport)
     global GlobalData;
+    % Headless mode: Cancel call
+    jReport = [];
+    if (GlobalData.Program.GuiLevel == -1)
+        return;
+    end
     % Default: view the file anyway
     if (nargin < 2) || isempty(isFullReport)
         isFullReport = 1;

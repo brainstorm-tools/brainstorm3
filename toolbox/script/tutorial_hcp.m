@@ -2,16 +2,16 @@ function tutorial_hcp(tutorial_dir)
 % TUTORIAL_HCP: Script that reproduces the results of the online tutorial "Human Connectome Project: Resting-state MEG".
 %
 % CORRESPONDING ONLINE TUTORIALS:
-%     http://neuroimage.usc.edu/brainstorm/Tutorials/HCP-MEG
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/HCP-MEG
 %
 % INPUTS: 
 %     tutorial_dir: Directory where the HCP files have been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -184,13 +184,13 @@ bst_process('CallProcess', 'process_headmodel', sFilesRest, [], ...
     'sourcespace', 1, ...  % Cortex surface
     'meg',         3);     % Overlapping spheres
 
-% Process: Compute sources [2016]
-sSrcRest = bst_process('CallProcess', 'process_inverse_2016', sFilesRest, [], ...
+% Process: Compute sources [2018]
+sSrcRest = bst_process('CallProcess', 'process_inverse_2018', sFilesRest, [], ...
     'output',  2, ...  % Kernel only: one per file
     'inverse', struct(...
          'Comment',        'dSPM: MEG', ...
          'InverseMethod',  'minnorm', ...
-         'InverseMeasure', 'dspm', ...
+         'InverseMeasure', 'dspm2018', ...
          'SourceOrient',   {{'fixed'}}, ...
          'Loose',          0.2, ...
          'UseDepth',       1, ...

@@ -18,9 +18,9 @@ function [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iC
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +34,7 @@ function [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iC
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2015
+% Authors: Francois Tadel, 2009-2019
 
 %% ===== PARSE INPUTS =====
 if (nargin < 6)
@@ -45,7 +45,7 @@ if (nargin < 5)
 end
 TimeVector = [];
 % Read channel ranges for faster access
-isChanRange = ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS', 'KDF', 'EEG-EDF', 'EEG-BDF', 'BST-BIN', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-MICROMED', 'EEG-NEURONE', 'EEG-NK'});
+isChanRange = ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS', 'KDF', 'EEG-EDF', 'EEG-BDF', 'BST-BIN', 'EEG-CURRY', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-MICROMED', 'EEG-NEURONE', 'EEG-NK'});
 if isChanRange
     if isempty(iChannels)
         ChannelRange = [];
@@ -62,13 +62,20 @@ end
 
 %% ===== OPEN FILE =====
 % Open file (for some formats, it is open in the low-level function)
-if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS'}) 
+if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF'}) 
     sfid = [];
 else
     sfid = fopen(sFile.filename, 'r', sFile.byteorder);
 %     if (sfid == -1)
 %         error(['The following file has been removed or is used by another program:' 10 sFile.filename]);
 %     end
+end
+
+% Check whether optional field precision is available
+if ~isempty(ImportOptions) && isfield(ImportOptions, 'Precision')
+    precision = ImportOptions.Precision;
+else
+    precision = [];
 end
 
 %% ===== READ RECORDINGS BLOCK =====
@@ -88,6 +95,11 @@ switch (sFile.format)
         F = in_fread_kdf(sFile, sfid, SamplesBounds, ChannelRange);
     case 'ITAB'
         F = in_fread_itab(sFile, sfid, SamplesBounds, iChannels);
+    case 'MEGSCAN-HDF5'
+        F = in_fread_megscan(sFile, SamplesBounds);
+        if ~isempty(iChannels)
+            F = F(iChannels,:);
+        end
     case 'EEG-ANT-CNT'
         F = in_fread_ant(sFile, SamplesBounds);
         if ~isempty(iChannels)
@@ -99,12 +111,14 @@ switch (sFile.format)
             F = F(iChannels,:);
         end
     case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
-        F = in_fread_blackrock(sFile, SamplesBounds, iChannels);
+        F = in_fread_blackrock(sFile, SamplesBounds, iChannels, precision);
     case 'EEG-BRAINAMP'
         F = in_fread_brainamp(sFile, sfid, SamplesBounds);
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
+    case 'EEG-CURRY'
+        F = in_fread_curry(sFile, sfid, iEpoch, SamplesBounds, ChannelRange);
     case 'EEG-DELTAMED'
         F = in_fread_deltamed(sFile, sfid, SamplesBounds, ChannelRange);
     case 'EEG-COMPUMEDICS-PFS'
@@ -128,6 +142,11 @@ switch (sFile.format)
         end
     case 'EEG-MANSCAN'
         F = in_fread_manscan(sFile, sfid, iEpoch, SamplesBounds);
+        if ~isempty(iChannels)
+            F = F(iChannels,:);
+        end
+    case 'EEG-EGI-MFF'
+        F = in_fread_mff(sFile, iEpoch, SamplesBounds);
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
@@ -176,7 +195,8 @@ switch (sFile.format)
         F = in_fread_bst(sFile, sfid, SamplesBounds, ChannelRange);
     case 'BST-DATA'
         if ~isempty(SamplesBounds)
-            iTimes = (SamplesBounds(1):SamplesBounds(2)) - sFile.prop.samples(1) + 1;
+            fileSamples = round(sFile.prop.times * sFile.prop.sfreq);
+            iTimes = (SamplesBounds(1):SamplesBounds(2)) - fileSamples(1) + 1;
         else
             iTimes = 1:size(sFile.header.F,2);
         end
@@ -184,12 +204,26 @@ switch (sFile.format)
             iChannels = 1:size(sFile.header.F,1);
         end
         F = sFile.header.F(iChannels, iTimes);
+    case 'EEG-INTAN'
+        F = in_fread_intan(sFile, SamplesBounds, iChannels, precision);
+    case 'EEG-PLEXON'
+        F = in_fread_plexon(sFile, SamplesBounds, iChannels, precision);
+    case 'EEG-TDT'
+        F = in_fread_tdt(sFile, SamplesBounds, iChannels);
+    case {'NWB', 'NWB-CONTINUOUS'}
+        isContinuous = strcmpi(sFile.format, 'NWB-CONTINUOUS');
+        F = in_fread_nwb(sFile, iEpoch, SamplesBounds, iChannels, isContinuous);
+        
     otherwise
         error('Cannot read data from this file');
 end
 
 % Force the recordings to be in double precision
-F = double(F);
+if ~isempty(precision) && strcmp(precision, 'single')
+    F = single(F);
+else
+    F = double(F);
+end
 % Remove channels that were not supposed to be read
 if isChanRange && ~isempty(iChanRemove)
     F(iChanRemove,:) = [];
@@ -208,9 +242,11 @@ if isempty(TimeVector)
     if ~isempty(SamplesBounds)
         TimeVector = (SamplesBounds(1) : SamplesBounds(2)) ./ sFile.prop.sfreq;
     elseif ~isempty(iEpoch) && ~isempty(ImportOptions) && strcmpi(ImportOptions.ImportMode, 'Epoch') && ~isempty(sFile.epochs)
-        TimeVector = (sFile.epochs(iEpoch).samples(1) : sFile.epochs(iEpoch).samples(2)) / sFile.prop.sfreq;
+        epochSamples = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
+        TimeVector = (epochSamples(1) : epochSamples(2)) / sFile.prop.sfreq;
     else
-        TimeVector = (sFile.prop.samples(1) : sFile.prop.samples(2)) / sFile.prop.sfreq;
+        fileSamples = round(sFile.prop.times * sFile.prop.sfreq);
+        TimeVector = (fileSamples(1) : fileSamples(2)) / sFile.prop.sfreq;
     end
 end
 % If epoching the recordings (ie. reading by events): Use imported time window
@@ -249,7 +285,14 @@ if ~isempty(ImportOptions) && ImportOptions.UseSsp && ~strcmpi(sFile.format, 'BS
         end
         % Apply projector
         if ~isempty(iChannels)
-            F = Projector(iChannels, iChannels) * F;
+            % If there are projectors involved and only subselection of channels: 
+            % We must have all data needed to apply the projector, otherwise it doesn't make sense
+            missingChannels = setdiff(find(any(Projector(iChannels,:), 1)), iChannels);
+            if ~isempty(missingChannels)
+                bst_report('Warning', 'process_import_data_raw', [], ['Missing channels in order to apply existing SSP/ICA projectors. To read the corrected values for channel "' ChannelMat.Channel(iChannels(1)).Name '", first apply the existing projectors with the process Artifacts > Apply SSP and CTF compensation']); 
+            else
+                F = Projector(iChannels, iChannels) * F;
+            end
         else
             F = Projector * F;
         end

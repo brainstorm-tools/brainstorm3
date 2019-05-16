@@ -1,9 +1,9 @@
 function tutorial_visual_group(ProtocolName, reports_dir)
-% TUTORIAL_VISUAL_GROUP: Runs the Brainstorm/SPM group analysis pipeline (group analysis).
+% TUTORIAL_VISUAL_GROUP: Runs the Brainstorm/SPM group analysis pipeline (group analysis, BIDS VERSION)
 %
 % ONLINE TUTORIALS: 
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
 %    - ProtocolName : Name of the protocol in which the recordings for the 19 subjects have been imported (TutorialVisual or TutorialGroup)
@@ -12,9 +12,9 @@ function tutorial_visual_group(ProtocolName, reports_dir)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function tutorial_visual_group(ProtocolName, reports_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, Elizabeth Bock, 2016-2017
+% Author: Francois Tadel, Elizabeth Bock, 2016-2018
 
 % ===== CHECK PROTOCOL =====
 % Start Brainstorm without the GUI
@@ -51,12 +51,12 @@ end
 if (iProtocol ~= bst_get('iProtocol'))
     gui_brainstorm('SetCurrentProtocol', iProtocol);
 end
-% Process: Select results files in: sub-01/sub-01_ses-meg_task-facerecognition_run-01_proc-tsss_meg_notch
+% Process: Select results files in: sub-01/sub-01_ses-meg_task-facerecognition_run-01_proc-sss_meg_notch
 sFiles = bst_process('CallProcess', 'process_select_files_results', [], [], ...
     'subjectname', 'sub-01', ...
-    'condition',   'sub-01_ses-meg_task-facerecognition_run-01_proc-tsss_meg_notch');
+    'condition',   'sub-01_ses-meg_task-facerecognition_run-01_proc-sss_meg_notch');
 if isempty(sFiles)
-    error(['No source files available in folder: sub-01/sub-01_ses-meg_task-facerecognition_run-01_proc-tsss_meg_notch.' 10 ...
+    error(['No source files available in folder: sub-01/sub-01_ses-meg_task-facerecognition_run-01_proc-sss_meg_notch.' 10 ...
            'You should run tutorial_visual_single first, or download the ' 10 ...
            'protocol TutorialGroup.zip from the Brainstorm website.']);
 end

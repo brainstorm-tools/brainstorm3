@@ -5,9 +5,9 @@ function sFile = in_fopen_eeg(DataFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -42,7 +42,6 @@ sFile.comment = fBase;
 % Time and samples indices
 sFile.prop.times   = linspace(hdr.data.xmin, hdr.data.xmax, hdr.data.pnts + 1);
 sFile.prop.times   = [sFile.prop.times(1), sFile.prop.times(end-1)];
-sFile.prop.samples = round(sFile.prop.times .* sFile.prop.sfreq);
 sFile.prop.nAvg = 1;
 % Get bad channels
 sFile.channelflag = ones(length(hdr.electloc),1);
@@ -53,7 +52,6 @@ sFile.channelflag([hdr.electloc.bad] == 1) = -1;
 % Build epochs structure
 for i = 1:length(hdr.epochs)
     sFile.epochs(i).label   = hdr.epochs(i).comment;
-    sFile.epochs(i).samples = sFile.prop.samples;
     sFile.epochs(i).times   = sFile.prop.times;
     sFile.epochs(i).nAvg    = 1;
     sFile.epochs(i).select  = 1;

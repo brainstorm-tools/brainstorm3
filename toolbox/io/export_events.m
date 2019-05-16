@@ -12,9 +12,9 @@ function export_events(sFile, ChannelMat, OutputFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -76,6 +76,8 @@ if isempty(OutputFile)
     switch (DefaultFormats.EventsOut)
         case 'BST'
             OutputFile = bst_fullfile(fPath, ['events_' fBase '.mat']);
+        case 'BRAINAMP'
+            OutputFile = bst_fullfile(fPath, [fBase, '.vmrk']);
         case 'CTF'
             OutputFile = bst_fullfile(fPath, 'MarkerFile-bst.mrk');
         case 'FIF'
@@ -96,6 +98,7 @@ if isempty(OutputFile)
         OutputFile, ...          % Default filename
         'single', 'files', ...   % Selection mode
         {{'_events'},       'Brainstorm (events*.mat)',     'BST'; ...
+         {'.vmrk'},         'BrainVision BrainAmp (*.vmrk)', 'BRAINAMP'; ...
          {'.mrk'},          'CTF MarkerFile (*.mrk)',       'CTF'; ...
          {'.eve','.fif'},   'Elekta-Neuromag/MNE (*.eve)',  'FIF'; ...
          {'.txt'},          'Array of times (*.txt)',       'ARRAY-TIMES'; ... 
@@ -115,6 +118,7 @@ else
     [fPath, fBase, fExt] = bst_fileparts(OutputFile);
     switch(fExt)
         case '.mat',   FileFormat = 'BST';
+        case '.vmrk',  FileFormat = 'BRAINAMP';
         case '.mrk',   FileFormat = 'CTF';
         case '.eve',   FileFormat = 'FIF';
         case '.txt',   FileFormat = 'ARRAY-TIMES';
@@ -131,6 +135,8 @@ switch FileFormat
     case 'BST'
         s.events = sFile.events;
         bst_save(OutputFile, s, 'v7');
+    case 'BRAINAMP'
+        out_events_brainamp(sFile, OutputFile);
     case 'CTF'
         out_events_ctf(sFile, OutputFile);
     case 'FIF'
@@ -154,7 +160,7 @@ switch FileFormat
         if (length(sFile.events) > 1)
             error('Cannot export more than one event at a time with this format.');
         end
-        eve = sFile.events.samples;
+        eve = round(sFile.events.times * sFile.prop.sfreq);
         strEve = sprintf(['%d' 10], round(eve));
         % Save file
         fid = fopen(OutputFile, 'w');

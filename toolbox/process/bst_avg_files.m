@@ -7,7 +7,7 @@ function [Stat, Messages, iOutFiles, AllEvents] = bst_avg_files(FilesListA, File
 % INPUT:
 %    - FilesListA  : Cell array of full paths to files (or loaded structures) from set A
 %    - FilesListB  : Cell array of full paths to files (or loaded structures) from set B (if defined, computes the difference A-B)
-%    - Function    : {'mean', 'rms', 'abs', 'norm', 'meandiffnorm', 'normdiff', 'normdiffnorm'}
+%    - Function    : {'mean', 'rms', 'abs', 'norm', 'meandiffnorm', 'normdiff', 'normdiffnorm', 'median'}
 %    - isVariance  : If 1, return the variance together with the mean
 %    - isWeighted  : If 1, compute an average weighted with the nAvg fiels found in the input files
 %    - isMatchRows : If 1, match signals between files using their names
@@ -44,9 +44,9 @@ function [Stat, Messages, iOutFiles, AllEvents] = bst_avg_files(FilesListA, File
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -60,7 +60,7 @@ function [Stat, Messages, iOutFiles, AllEvents] = bst_avg_files(FilesListA, File
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2019
 
 
 %% ===== PARSE INPUTS =====
@@ -321,7 +321,7 @@ for iFile = 1:nFiles
         end
         % Substract two files: A - B (absolute values or relative)
         switch (Function)
-            case {'mean', 'meandiffnorm'}
+            case {'mean', 'meandiffnorm', 'median'}
                 matValues = matValues - double(sMat2.(matName));
             case 'rms'
                 matValues = matValues.^2 - double(sMat2.(matName)).^2;
@@ -351,7 +351,7 @@ for iFile = 1:nFiles
     % Else: Apply absolute values if necessary
     else
         switch (Function)
-            case 'mean',         % Nothing to do
+            case 'mean'          % Nothing to do
             case 'rms',          matValues = matValues .^ 2;
             case {'abs','norm'}, matValues = abs(matValues);
         end
@@ -388,7 +388,7 @@ for iFile = 1:nFiles
     % All other files
     else
         % If current matrix has not the same size than the others
-        if ~isequal(size(MeanValues), size(matValues))
+        if ~isequal([size(MeanValues,1),size(MeanValues,2),size(MeanValues,3)], [size(matValues,1),size(matValues,2),size(matValues,3)])
             Messages = [Messages, sprintf('Error: File #%d contains a data matrix that has a different size:\n', iFile)];
             if ischar(FilesListA{iFile})
                 Messages = [Messages, FilesListA{iFile}, 10];
@@ -445,20 +445,26 @@ for iFile = 1:nFiles
     end
     % Count good channels
     nGoodSamples(iGoodRows) = nGoodSamples(iGoodRows) + nAvg;
-        
-    % === ADD NEW VALUES ===
+    % Add file to the list of files used in the average
     iOutFiles(end+1) = iFile;
-    % Q = matValues - MeanValues
-    matValues(iGoodRows,:) = matValues(iGoodRows,:) - MeanValues(iGoodRows,:);
-    % R = Q * nAvg / nGoodSamples
-    R = bst_bsxfun(@rdivide, matValues(iGoodRows,:) .* nAvg, nGoodSamples(iGoodRows));
-    if isVariance
-        % VarValues = VarValues + nGoodSamples_old * Q * R
-        matValues(iGoodRows,:) = matValues(iGoodRows,:) .* R;
-        VarValues(iGoodRows,:) = VarValues(iGoodRows,:) + bst_bsxfun(@times, matValues(iGoodRows,:), nGoodSamples_old(iGoodRows));
+    
+    % === ADD NEW VALUES ===
+    % Median
+    if strcmpi(Function, 'median')
+        MeanValues(:,:,:,length(iOutFiles)) = matValues;
+    % Mean/Variance
+    else
+        % Q = matValues - MeanValues
+        matValues(iGoodRows,:) = matValues(iGoodRows,:) - MeanValues(iGoodRows,:);
+        % R = Q * nAvg / nGoodSamples
+        R = bst_bsxfun(@rdivide, matValues(iGoodRows,:) .* nAvg, nGoodSamples(iGoodRows));
+        if isVariance
+            % VarValues = VarValues + nGoodSamples_old * Q * R
+            matValues(iGoodRows,:) = matValues(iGoodRows,:) .* R;
+            VarValues(iGoodRows,:) = VarValues(iGoodRows,:) + bst_bsxfun(@times, matValues(iGoodRows,:), nGoodSamples_old(iGoodRows));
+        end
+        MeanValues(iGoodRows,:) = MeanValues(iGoodRows,:) + R;
     end
-    MeanValues(iGoodRows,:) = MeanValues(iGoodRows,:) + R;
-
     % === ADD EVENTS ===
     if ~isempty(Events)
         sFile = import_events(sFile, [], Events);
@@ -475,7 +481,7 @@ else
     MeanBadChannels = [];
 end
 % Output bad channels
-if strcmpi(matName, 'F')
+if strcmpi(matName, 'F') || (strcmpi(matName, 'Value') && isstruct(FilesListA{iFile}) && isfield(FilesListA{iFile}, 'ChannelFlag') && ~isempty(FilesListA{iFile}.ChannelFlag))
     OutChannelFlag  = ones(NbChannels, 1);
     OutChannelFlag(MeanBadChannels) = -1;
 else
@@ -483,8 +489,11 @@ else
 end
 
 % === FINALIZE COMPUTATION ===
+% Median
+if strcmpi(Function, 'median')
+    MeanValues = median(MeanValues, 4);
 % RMS
-if strcmpi(Function, 'rms')
+elseif strcmpi(Function, 'rms')
     MeanValues = sqrt(MeanValues);
 end
 % Variance

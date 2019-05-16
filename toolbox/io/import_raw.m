@@ -1,10 +1,7 @@
-function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
+function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions, DateOfStudy)
 % IMPORT_RAW: Create a link to a raw file in the Brainstorm database.
 %
-% USAGE:  OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
-%         OutputFiles = import_raw(RawFiles, FileFormat, iSubject)
-%         OutputFiles = import_raw(RawFiles, FileFormat)
-%         OutputFiles = import_raw()
+% USAGE:  OutputFiles = import_raw(RawFiles=[ask], FileFormat=[ask], iSubject=[], ImportOptions=[], DateOfStudy=[])
 %
 % INPUTS:
 %     - RawFiles      : Full path to the file to import in database
@@ -12,12 +9,13 @@ function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
 %     - iSubject      : Subject indice in which to import the raw file
 %     - ImportOptions : Structure that describes how to import the recordings
 %       => Fields used: ChannelAlign, ChannelReplace, DisplayMessages, EventsMode, EventsTrackMode
+%     - DateOfStudy   : String 'dd-MMM-yyyy', force Study entries created in the database to use this acquisition date
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,9 +29,12 @@ function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 % 
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2019
 
 %% ===== PARSE INPUT =====
+if (nargin < 5) || isempty(DateOfStudy)
+    DateOfStudy = [];
+end
 if (nargin < 4) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
 end
@@ -138,7 +139,7 @@ for iFile = 1:length(RawFiles)
 
     % ===== OUTPUT STUDY =====
     % Get short filename
-    [tmp, fBase] = bst_fileparts(RawFiles{iFile});
+    [fPath, fBase] = bst_fileparts(RawFiles{iFile});
     % Remove "data_" tag when importing Brainstorm files as raw continuous files
     if strcmpi(FileFormat, 'BST-DATA') && (length(fBase) > 5) && strcmp(fBase(1:5), 'data_')
         fBase = fBase(6:end);
@@ -199,8 +200,16 @@ for iFile = 1:length(RawFiles)
             end
         end
     end
+    % Creation date: use input value, or try to get it from the sFile structure
+    if ~isempty(DateOfStudy)
+        studyDate = DateOfStudy;
+    elseif isfield(sFile, 'acq_date') && ~isempty(sFile.acq_date)
+        studyDate = sFile.acq_date;
+    else
+        studyDate = [];
+    end
     % Create output condition
-    iOutputStudy = db_add_condition(sSubject.Name, ConditionName);
+    iOutputStudy = db_add_condition(sSubject.Name, ConditionName, [], studyDate);
     if isempty(iOutputStudy)
         error('Folder could not be created : "%s/%s".', bst_fileparts(sSubject.FileName), ConditionName);
     end
@@ -304,6 +313,16 @@ for iFile = 1:length(RawFiles)
     % Refresh both data node and channel node
     iUpdateStudies = unique([iOutputStudy, iChannelStudy]);
     panel_protocols('UpdateNode', 'Study', iUpdateStudies);
+    
+    % ===== ADD SYNCHRONIZED VIDEOS =====
+    % Look for video files with the same name, add them to the raw folder if found
+    for fExt = {'.avi','.AVI','.mpg','.MPG','.mpeg','.MPEG','.mp4','.MP4','.mp2','.MP2','.mkv','.MKV','.wmv','.WMV','.divx','.DIVX','.mov','.MOV'}
+        VideoFile = bst_fullfile(fPath, [fBase, fExt{1}]);
+        if file_exist(VideoFile)
+            import_video(iOutputStudy, VideoFile);
+            break;
+        end
+    end
 end
 
 % If something was imported
@@ -319,9 +338,9 @@ if isSSP
     strWarning = ['The files you imported include SSP/ICA projectors.' 10 10 ...
                   'Review them before processing the files:' 10 ...
                   'tab Record > menu Artifacts > Select active projectors.'];
-    % Non-iteractive: Display message in command window
+    % Non-interactive: Display message in command window
     if ~ImportOptions.DisplayMessages 
-        disp(['BST> ' strrep(strWarning, 10, [10, 'BST> '])]);
+        disp(['BST> ' strrep(strWarning, char(10), [10, 'BST> '])]);
     % Interactive, one file: Open the SSP selection window
     elseif (length(OutputFiles) == 1)
         java_dialog('msgbox', strWarning);

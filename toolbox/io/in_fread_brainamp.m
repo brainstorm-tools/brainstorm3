@@ -5,9 +5,9 @@ function F = in_fread_brainamp(sFile, sfid, SamplesBounds)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function F = in_fread_brainamp(sFile, sfid, SamplesBounds)
 
 % Parse inputs
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % BINARY and MULTIPLEXED files
@@ -53,7 +53,7 @@ elseif (strcmpi(sFile.header.DataFormat, 'ASCII') && strcmpi(sFile.header.DataOr
         % Reached the end of the file: exit the loop
         if feof(fid)
             break; 
-        end;
+        end
         % Read one line
         strChan = strtrim(fgetl(fid));
         if isempty(strChan)
@@ -70,7 +70,7 @@ elseif (strcmpi(sFile.header.DataFormat, 'ASCII') && strcmpi(sFile.header.DataOr
     % Close file
     fclose(fid);
     % Select only the requested time points
-    iTime = (SamplesBounds(1):SamplesBounds(2)) - sFile.prop.samples(1) + 1;
+    iTime = (SamplesBounds(1):SamplesBounds(2)) - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
     F = F(:,iTime);
 end
 

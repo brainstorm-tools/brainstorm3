@@ -5,9 +5,9 @@ function [sFile, ChannelMat] = in_fopen_manscan(DataFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_manscan(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2018
         
 
 %% ===== READ HEADER =====
@@ -43,7 +43,7 @@ while(1)
     % Reached the end of the file: exit the loop
     if feof(fid)
         break; 
-    end;
+    end
     % Read one line
     buf = fgetl(fid);
     if isempty(buf)
@@ -144,21 +144,23 @@ sFile.prop.sfreq = 256;
 sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(length(hdr.epoch(iEpoch).ChannelOrder), 1);
-
+% Acquisition date
+try
+    sFile.acq_date = str_date(hdr.epoch.ExperimentTime, 'mm/dd/yy');
+catch
+end
 
 %% ===== EPOCHS =====
 if (length(hdr.epoch) <= 1)
-    sFile.prop.samples = [0, hdr.epoch(1).Sweeps-1];
-    sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+    sFile.prop.times   = [0, hdr.epoch(1).Sweeps-1] ./ sFile.prop.sfreq;
 else
     % Build epochs structure
     for iEpoch = 1:length(hdr.epoch)
         sFile.epochs(iEpoch).label   = sprintf('Epoch #%02d', iEpoch);
-        sFile.epochs(iEpoch).samples = [0, hdr.epoch(iEpoch).Sweeps-1];
-        sFile.epochs(iEpoch).times   = sFile.epochs(iEpoch).samples ./ sFile.prop.sfreq;
+        sFile.epochs(iEpoch).times   = [0, hdr.epoch(iEpoch).Sweeps-1] ./ sFile.prop.sfreq;
         sFile.epochs(iEpoch).nAvg    = 1;
         sFile.epochs(iEpoch).select  = 1;
-        sFile.epochs(iEpoch).bad         = 0;
+        sFile.epochs(iEpoch).bad     = 0;
         sFile.epochs(iEpoch).channelflag = [];
         
         % Check if all the epochs have the same channel list
@@ -167,13 +169,13 @@ else
         end
     end
     % Extract global min/max for time and samples indices
-    sFile.prop.samples = [min([sFile.epochs.samples]), max([sFile.epochs.samples])];
     sFile.prop.times   = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
 end
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
 nChannels = length(hdr.epoch(1).ChannelOrder);
+ChannelMat = db_template('channelmat');
 ChannelMat.Comment = [sFile.device ' channels'];
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
 hdr.Gains = [];
@@ -226,11 +228,12 @@ if ~isempty(hdr.Events)
             sample = [sample; sample + duration];
         end
         % Create event structure
-        sFile.events(iEvt).label   = uniqueEvt{iEvt};
-        sFile.events(iEvt).samples = sample;
-        sFile.events(iEvt).times   = sample ./ sFile.prop.sfreq;
-        sFile.events(iEvt).epochs  = [hdr.Events(iOcc).iEpoch];
-        sFile.events(iEvt).select  = 1;
+        sFile.events(iEvt).label    = uniqueEvt{iEvt};
+        sFile.events(iEvt).times    = sample ./ sFile.prop.sfreq;
+        sFile.events(iEvt).epochs   = [hdr.Events(iOcc).iEpoch];
+        sFile.events(iEvt).select   = 1;
+        sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+        sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
     end
 end
 % Save file header

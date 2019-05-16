@@ -3,9 +3,9 @@ function varargout = process_inverse( varargin )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -29,11 +29,11 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     % ===== PROCESS =====
     % Description the process
-    sProcess.Comment     = 'Compute sources';
+    sProcess.Comment     = 'Compute sources [2009]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 325;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'results', 'results'};
@@ -619,7 +619,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         % Apply average reference: separately SEEG, ECOG, EEG
         if any(ismember(unique({ChannelMat.Channel.Type}), {'EEG','ECOG','SEEG'}))
             % Create average reference montage
-            sMontage = panel_montage('GetMontageAvgRef', ChannelMat.Channel(GoodChannel), ChannelFlag(GoodChannel), 0);
+            sMontage = panel_montage('GetMontageAvgRef', [], ChannelMat.Channel(GoodChannel), ChannelFlag(GoodChannel), 0);
             HeadModel.Gain = sMontage.Matrix * HeadModel.Gain;
             % Apply average reference operator on both sides of the noise covariance matrix
             NoiseCov(GoodChannel, GoodChannel) = sMontage.Matrix * NoiseCov(GoodChannel, GoodChannel) * sMontage.Matrix';

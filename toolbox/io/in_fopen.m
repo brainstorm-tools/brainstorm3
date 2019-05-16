@@ -17,9 +17,9 @@ function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, I
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,7 +33,7 @@ function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, I
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2019
 
 if (nargin < 3) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
@@ -78,6 +78,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_kdf(DataFile);
     case 'ITAB'
         [sFile, ChannelMat] = in_fopen_itab(DataFile);
+    case 'MEGSCAN-HDF5'
+        [sFile, ChannelMat] = in_fopen_megscan(DataFile);
     case 'EEG-ANT-CNT'
         [sFile, ChannelMat] = in_fopen_ant(DataFile);
     case 'EEG-ANT-MSR'
@@ -90,6 +92,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_deltamed(DataFile);
     case 'EEG-COMPUMEDICS-PFS'
         [sFile, ChannelMat] = in_fopen_compumedics_pfs(DataFile);
+    case 'EEG-CURRY'
+        [sFile, ChannelMat] = in_fopen_curry(DataFile);
     case {'EEG-EDF', 'EEG-BDF'}
         [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions);
     case 'EEG-EEGLAB'
@@ -100,6 +104,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_gtec(DataFile);
     case 'EEG-MANSCAN'
         [sFile, ChannelMat] = in_fopen_manscan(DataFile);
+    case 'EEG-EGI-MFF'
+        [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions);
     case 'EEG-MICROMED'
         [sFile, ChannelMat] = in_fopen_micromed(DataFile);
     case 'EEG-NEURONE'
@@ -128,6 +134,15 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_bst(DataFile);
     case 'SPM-DAT'
         [sFile, ChannelMat] = in_fopen_spm(DataFile);
+    case 'EEG-INTAN'
+        [sFile, ChannelMat] = in_fopen_intan(DataFile);
+    case 'EEG-PLEXON'
+        [sFile, ChannelMat] = in_fopen_plexon(DataFile);
+    case 'EEG-TDT'
+        [sFile, ChannelMat] = in_fopen_tdt(DataFile);
+    case {'NWB', 'NWB-CONTINUOUS'}
+        [sFile, ChannelMat] = in_fopen_nwb(DataFile);
+        
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);
@@ -144,6 +159,8 @@ switch (FileFormat)
         DataMat = in_data_erpcenter(DataFile);
     case 'EEG-ERPLAB'
         [DataMat, ChannelMat] = in_data_erplab(DataFile);
+    case 'EEG-MUSE-CSV'
+        [DataMat, ChannelMat] = in_data_muse_csv(DataFile);
     case 'EEG-MAT'
         DataMat = in_data_mat(DataFile);
     case 'EEG-NEUROSCAN-DAT'
@@ -158,7 +175,6 @@ end
 if isempty(sFile) && ~isempty(DataMat)
     sFile = in_fopen_bstmat(DataMat);
 end
-
 % File could not be opened
 if isempty(sFile) && ischar(DataFile)
     error(['Cannot open data file: ', 10, DataFile]);
@@ -166,6 +182,9 @@ end
 
 % ===== EVENTS =====
 if isfield(sFile, 'events') && ~isempty(sFile.events)
+    % Fix structure
+    sFile.events = struct_fix_events(sFile.events);
+    
     % === SORT BY NAME ===
     % Remove the common components
     [tmp__, evtLabels] = str_common_path({sFile.events.label});
@@ -190,6 +209,16 @@ if isfield(sFile, 'events') && ~isempty(sFile.events)
         end
     end
 end
+
+% Fix output datamat structure if necessary
+if (nargout >= 4) && ~isempty(DataMat) && isfield(DataMat(1), 'Events')
+    for i = 1:length(DataMat)
+        if ~isempty(DataMat(i).Events)
+            DataMat.Events = struct_fix_events(DataMat.Events);
+        end
+    end
+end
+
 
 
 

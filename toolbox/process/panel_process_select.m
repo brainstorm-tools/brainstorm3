@@ -9,9 +9,9 @@ function varargout = panel_process_select(varargin)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -478,6 +478,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Get existing menu
                     if isfield(hashGroups, hashKey)
                         jParent = hashGroups.(hashKey);
+                        jParentTop = [];
                     % Menu not created yet: create it
                     else
                         % Menu+submenu
@@ -488,7 +489,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             else
                                 jParentTop = gui_component('Menu', jPopup, [], sProcesses(iProc).SubGroup{1}, [], []);
                                 jParentTop.setMargin(Insets(5,0,4,0));
-                                jParentTop.setForeground(Color(.6,.6,.6));
+%                                 jParentTop.setForeground(Color(.6,.6,.6));
+                                jParentTop.setForeground(Color(0,0,0));
                                 hashGroups.(hashParent) = jParentTop;
                             end
                             menuName = sProcesses(iProc).SubGroup{2};
@@ -512,6 +514,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jItem.setForeground(Color(.6,.6,.6));
                 else
                     jParent.setForeground(Color(0,0,0));
+%                     % And two levels up if process with subcategories
+%                     if iscell(sProcesses(iProc).SubGroup) && (length(sProcesses(iProc).SubGroup) >= 2) && ~isempty(jParentTop)
+%                         jParentTop.setForeground(Color(0,0,0));
+%                     end
                 end
                 % Add separator?
                 if sProcesses(iProc).isSeparator
@@ -741,6 +747,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     %% ===== PANEL: UPDATE PROCESS OPTIONS =====
     function UpdateProcessOptions()
         import java.awt.Dimension;
+        import javax.swing.BoxLayout;
         % Starting the update
         isUpdatingPipeline = 1;
         % Font size for the options
@@ -786,6 +793,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
         % Set list tooltip
         jListProcess.setToolTipText(pathProcess);
+        % Initialize classes to be toggled off
+        ClassesToToggleOff = {};
         
         % === PROTOCOL OPTIONS ===
         for iOpt = 1:length(optNames)
@@ -802,6 +811,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             end
             % Enclose option line in a River panel
             jPanelOpt = gui_river([2,2], [2,4,2,4]);
+            % Add class name to panel
+            if isfield(option, 'Class')
+                jPanelOpt.setName(option.Class);
+            end
             % Define to which panel it should be added
             if isfield(option, 'Group') && strcmpi(option.Group, 'input')
                 jPanelInput.add(jPanelOpt);
@@ -912,6 +925,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             SetOptionValue(iProcess, optNames{iOpt}, []);
                             continue;
                         end
+                        % If there is only one frequency: duplicate it
+                        if (length(FreqList) == 1)
+                            FreqList = [FreqList, FreqList];
+                        end
                     else
                         FreqList = [];
                     end
@@ -985,7 +1002,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
 
                 case 'checkbox'
                     jCheck = gui_component('checkbox', jPanelOpt, [], ['<HTML>', option.Comment], [], [], @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, double(ev.getSource().isSelected())));
-                    jCheck.setSelected(logical(option.Value));
+                    isSelected = logical(option.Value);
+                    jCheck.setSelected(isSelected);
+                    % If class controller not selected, toggle off class
+                    if ~isSelected && isfield(option, 'Controller') && ~isempty(option.Controller)
+                        ClassesToToggleOff{end + 1} = option.Controller;
+                    end
                 case 'radio'
                     jButtonGroup = javax.swing.ButtonGroup();
                     constr = [];
@@ -1085,7 +1107,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Update automatic montages
                     panel_montage('UnloadAutoMontages');
                     if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
-                        panel_montage('AddAutoMontagesEeg', sFiles(1).SubjectName, ChannelMat);
+                        panel_montage('AddAutoMontagesSeeg', sFiles(1).SubjectName, ChannelMat);
                     end
                     if ismember('NIRS', {ChannelMat.Channel.Type})
                         panel_montage('AddAutoMontagesNirs', ChannelMat);
@@ -1340,8 +1362,115 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jsep.setOpaque(1);
                     jsep.setPreferredSize(java_scaled('dimension', 1,1));
                     gui_component('label', jPanelOpt, 'br', ' ');
+                
+                case 'event_ordered'
+                    if isfield(option, 'Spikes')
+                        spikesOption = option.Spikes;
+                    else
+                        spikesOption = [];
+                    end
+                    
+                    optionPanel = gui_component('Panel');
+                    optionPanel.setLayout(BoxLayout(optionPanel, BoxLayout.Y_AXIS));
+                    gui_component('label', optionPanel, [], ['<html><b><u>', option.Comment, '</u></b>&nbsp;&nbsp;&nbsp;']);
+                    
+                    subPanel = gui_component('Panel');
+                    subPanel.setLayout(BoxLayout(subPanel, BoxLayout.Y_AXIS));
+                    
+                    %Get event list
+                    eventList = gui_component('Panel');
+                    eventList.setLayout(BoxLayout(eventList, BoxLayout.X_AXIS));
+                    events = GetEventList(spikesOption);
+                    
+                    %%%%
+                    % Create a list of the existing clusters/scouts
+                    %%%%
+                    listModel = javax.swing.DefaultListModel();
+                    for iEvent = 1:length(events)
+                        listModel.addElement(events{iEvent});
+                    end
+
+                    % Create list
+                    jList = javax.swing.JList();
+                    jList.setModel(listModel);
+                    jList.setVisibleRowCount(-1);
+                    
+                    % Create scroll panel
+                    jScroll = javax.swing.JScrollPane(jList);
+                    jScroll.setPreferredSize(java_scaled('dimension', 150,100));
+                    eventList.add('br', jScroll);
+                    
+                    %%%
+                    % Create a list of the selected clusters/scouts
+                    %%%
+                    selectedListModel = javax.swing.DefaultListModel();
+
+                    % Create list
+                    jSelectedList = javax.swing.JList();
+                    jSelectedList.setModel(selectedListModel);
+                    jSelectedList.setVisibleRowCount(-1);
+                    
+                    % Create scroll panel
+                    jSelectedScroll = javax.swing.JScrollPane(jSelectedList);
+                    jSelectedScroll.setPreferredSize(java_scaled('dimension', 150,100));
+                    eventList.add('br', jSelectedScroll);
+
+                    
+                    %% Buttons
+                    eventButtons = gui_river([1,2]);
+                    eventButtons.setLayout(BoxLayout(eventButtons, BoxLayout.X_AXIS));
+                    gui_component('button', eventButtons, [], '<', [],[], @(h,ev)RemoveEvent_Callback(iProcess, optNames{iOpt}, jSelectedList, jList));
+                    gui_component('button', eventButtons, [], '>', [],[], @(h,ev)AddEvent_Callback(iProcess, optNames{iOpt}, jSelectedList, jList));
+                    
+                    subPanel.add(eventButtons);
+                    subPanel.add(eventList);
+                    optionPanel.add(subPanel);
+                    jPanelOpt.add(optionPanel);
+                    
+                case 'event'
+                    if isfield(option, 'Spikes')
+                        spikesOption = option.Spikes;
+                    else
+                        spikesOption = [];
+                    end
+                    
+                    optionPanel = gui_component('Panel');
+                    optionPanel.setLayout(BoxLayout(optionPanel, BoxLayout.Y_AXIS));
+                    label = gui_component('label', optionPanel, [], ['<html><b><u>', option.Comment, '</u></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;']);
+                    label.setHorizontalAlignment(javax.swing.JLabel.CENTER); % Sorry for the hack above. Wasn't being centered otherwise. Strangely, it works for any string length.
+                    
+                    %Get event list
+                    eventList = gui_component('Panel');
+                    eventList.setLayout(BoxLayout(eventList, BoxLayout.Y_AXIS));
+                    events = GetEventList(spikesOption);
+
+                    %%%%
+                    % Create a list of the existing clusters/scouts
+                    %%%%
+                    listModel = javax.swing.DefaultListModel();
+                    for iEvent = 1:length(events)
+                        listModel.addElement(events{iEvent});
+                    end
+
+                    % Create list
+                    jList = javax.swing.JList();
+                    jList.setLayoutOrientation(jList.VERTICAL_WRAP);
+                    jList.setModel(listModel);
+                    jList.setVisibleRowCount(-1);
+                    java_setcb(jList, 'ValueChangedCallback', @(h,ev)EventSelection_Callback(iProcess, optNames{iOpt}, jList));
+                    
+                    % Create scroll panel
+                    jScroll = javax.swing.JScrollPane(jList);
+                    jScroll.setPreferredSize(java_scaled('dimension', 301,80));
+                    eventList.add('br', jScroll);
+                    optionPanel.add(eventList);
+                    jPanelOpt.add(optionPanel);
             end
             jPanelOpt.setPreferredSize(prefPanelSize);
+        end
+        % Toggle off classes
+        for iClass = 1:length(ClassesToToggleOff)
+            ToggleClass(ClassesToToggleOff{iClass}, 0);
         end
         % If there are no components in the options panel: display "no options"
         isEmptyOptions = (jPanelOptions.getComponentCount() == 0);
@@ -1368,6 +1497,71 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
         % Stopping the update
         isUpdatingPipeline = 0;
+    end
+
+    %% ===== OPTIONS: ADD EVENT CALLBACK =====
+    function AddEvent_Callback(iProcess, optName, jSelectedList, jOtherList)
+        selectedListModel = jSelectedList.getModel();
+        otherListModel = jOtherList.getModel();
+        iSels = jOtherList.getSelectedIndices();
+        elems = {};
+        
+        % Get selected elements
+        for iSel = 1:length(iSels)
+            elems{end + 1} = otherListModel.getElementAt(iSels(iSel));
+        end
+        
+        % Move from other to selected list
+        for iElem = 1:length(elems)
+            selectedListModel.addElement(elems{iElem});
+            otherListModel.removeElement(elems{iElem});
+        end
+        
+        % Update saved selected list
+        elems = {};
+        for iElem = 1:selectedListModel.getSize()
+            elems{end + 1} = selectedListModel.elementAt(iElem - 1);
+        end
+        SetOptionValue(iProcess, optName, elems);
+    end
+
+    %% ===== OPTIONS: REMOVE EVENT CALLBACK =====
+    function RemoveEvent_Callback(iProcess, optName, jSelectedList, jOtherList)
+        selectedListModel = jSelectedList.getModel();
+        otherListModel = jOtherList.getModel();
+        iSels = jSelectedList.getSelectedIndices();
+        elems = {};
+        
+        % Get selected elements
+        for iSel = 1:length(iSels)
+            elems{end + 1} = selectedListModel.getElementAt(iSels(iSel));
+        end
+        
+        % Move from other to selected list
+        for iElem = 1:length(elems)
+            otherListModel.addElement(elems{iElem});
+            selectedListModel.removeElement(elems{iElem});
+        end
+        
+        % Update saved selected list
+        elems = {};
+        for iElem = 1:selectedListModel.getSize()
+            elems{end + 1} = selectedListModel.elementAt(iElem - 1);
+        end
+        SetOptionValue(iProcess, optName, elems);
+    end
+
+    %% ===== OPTIONS: SELECT EVENT CALLBACK =====
+    function EventSelection_Callback(iProcess, optName, jList)
+        listModel = jList.getModel();
+        iSels = jList.getSelectedIndices();
+        elems = {};
+        
+        % Update saved selected list
+        for iSel = 1:length(iSels)
+            elems{end + 1} = listModel.elementAt(iSels(iSel));
+        end
+        SetOptionValue(iProcess, optName, elems);
     end
 
     %% ===== OPTIONS: FREQ BANDS CALLBACK =====
@@ -1839,6 +2033,33 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     end
 
 
+    %% ===== OPTIONS: GET EVENT LIST =====
+    function EventList = GetEventList(varargin)
+        excludeSpikes = 0;
+        onlySpikes = 0;
+        if nargin > 0
+            if strcmpi(varargin{1}, 'only')
+                onlySpikes = 1;
+            elseif strcmpi(varargin{1}, 'exclude')
+                excludeSpikes = 1;
+            end
+        end
+        
+        DataMat = in_bst_data(sFiles(1).FileName, 'F');
+        DataEvents = DataMat.F.events;
+        EventList = {};
+        
+        for iEvent = 1:length(DataEvents)
+            label = DataEvents(iEvent).label;
+            isSpikeEvent = process_spikesorting_supervised('IsSpikeEvent', label);
+            
+            if (excludeSpikes && ~isSpikeEvent) || (onlySpikes && isSpikeEvent)
+                EventList{end + 1} = label;
+            end
+        end
+    end
+
+
     %% ===== OPTIONS: SET OPTION VALUE =====
     function SetOptionValue(iProcess, optName, value)
         % Check for weird effects of events processed in the wrong order
@@ -1860,6 +2081,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             ProcessOptions.SavedParam.(field) = value;
             % Save processing options
             bst_set('ProcessOptions', ProcessOptions);
+        end
+        % If a class controller, toggle class
+        if strcmp(optType, 'checkbox') && isfield(GlobalData.Processes.Current(iProcess).options.(optName), 'Controller')
+            ToggleClass(GlobalData.Processes.Current(iProcess).options.(optName).Controller, value);
         end
     end
 
@@ -2136,10 +2361,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         % Time-freq: If the additional options are not defined, get them
                         elseif isfield(opt, 'Type') && strcmpi(opt.Type, 'editpref') && isempty(opt.Value)
                             switch (procFunc)
-                                case 'process_timefreq',   optValue = bst_get('TimefreqOptions_morlet');
-                                case 'process_hilbert',    optValue = bst_get('TimefreqOptions_hilbert');
-                                case 'process_psd',        optValue = bst_get('TimefreqOptions_psd');
-                                case 'process_headmodel',  optValue = bst_get('GridOptions_headmodel');
+                                case 'process_timefreq',    optValue = bst_get('TimefreqOptions_morlet');
+                                case 'process_hilbert',     optValue = bst_get('TimefreqOptions_hilbert');
+                                case 'process_psd',         optValue = bst_get('TimefreqOptions_psd');
+                                case 'process_headmodel',   optValue = bst_get('GridOptions_headmodel');
+                                case 'process_export_bids', optValue = bst_get('ExportBidsOptions');
                             end
                         else
                             optValue = opt.Value;
@@ -2253,6 +2479,17 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         GlobalData.Processes.Current = [];
         % Update pipeline
         UpdatePipeline();
+    end
+
+    %% ===== TOGGLE CLASS PANELS =====
+    function ToggleClass(className, enable)
+        options = jPanelOptions.getComponents();
+        for iOption = 1:length(options)
+            optName = options(iOption).getName();
+            if ~isempty(optName) && strcmpi(optName, className)
+                ToggleJPanel(options(iOption), enable);
+            end
+        end
     end
 end
 
@@ -2693,13 +2930,7 @@ function TimeVector = LoadRawTime(RawFile, FileFormat)
         return;
     end
     % Update time vector
-    if ~isempty(sFile.epochs)
-        NumberOfSamples = sFile.epochs(1).samples(2) - sFile.epochs(1).samples(1) + 1;
-        TimeVector = linspace(sFile.epochs(1).times(1), sFile.epochs(1).times(2), NumberOfSamples);
-    else
-        NumberOfSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
-        TimeVector = linspace(sFile.prop.times(1), sFile.prop.times(2), NumberOfSamples);
-    end
+    TimeVector = panel_time('GetRawTimeVector', sFile);
 end
     
 
@@ -2823,4 +3054,15 @@ function str = WriteFileNames(FileNames, VarName, isDefault)
     end
 end
 
-
+%% ===== RECURSIVELY TOGGLE A JPANEL =====
+function ToggleJPanel(panel, enable)
+    panel.setEnabled(enable);
+    try
+        components = panel.getComponents();
+    catch
+        components = [];
+    end
+    for iComp = 1:length(components)
+        ToggleJPanel(components(iComp), enable);
+    end
+end

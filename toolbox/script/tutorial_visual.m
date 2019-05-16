@@ -1,19 +1,19 @@
-function tutorial_visual(tutorial_dir, reports_dir)
-% TUTORIAL_VISUAL_COPY: Runs the Brainstorm/SPM group analysis pipeline (BIDS version).
+function tutorial_visual(bids_dir, reports_dir)
+% TUTORIAL_VISUAL: Runs the Brainstorm/SPM group analysis pipeline (BIDS version).
 %
 % ONLINE TUTORIALS: 
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
-%    - http://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
+%    - https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup
 %
 % INPUTS:
-%    - tutorial_dir : Directory containing the folder ds000117_R1.0.0  (https://openfmri.org/dataset/ds000117/, version 1.0.0)
-%    - reports_dir  : If defined, exports all the reports as HTML to this folder
+%    - bids_dir    : Path to folder ds000117  (https://openneuro.org/datasets/ds000117)
+%    - reports_dir : If defined, exports all the reports as HTML to this folder
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -27,14 +27,14 @@ function tutorial_visual(tutorial_dir, reports_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, Elizabeth Bock, 2017
+% Author: Francois Tadel, Elizabeth Bock, 2017-2018
 
 % Output folder for reports
 if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
     reports_dir = [];
 end
 % You have to specify the folder in which the tutorial dataset is unzipped
-if (nargin < 1) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
+if (nargin < 1) || isempty(bids_dir) || ~file_exist(bids_dir)
     error('The first argument must be the full path to the tutorial folder.');
 end
 
@@ -54,8 +54,11 @@ bst_set('ShowXGrid', 0);
 bst_set('ShowYGrid', 0);
 bst_set('DisplayGFP', 1);
 
+% Protocol names
+ProtocolNameSingle = 'TutorialVisual';
+ProtocolNameGroup  = 'TutorialGroup';
 % Part 1: Single subject analysis
-tutorial_visual_single(tutorial_dir, reports_dir);
+tutorial_visual_single(bids_dir, reports_dir);
 % Part 2: Copy to a new protocol for the group analysis
 tutorial_visual_copy(ProtocolNameSingle, ProtocolNameGroup, reports_dir);
 % Part 3: Group analysis

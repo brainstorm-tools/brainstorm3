@@ -5,9 +5,9 @@ function [sFile, ChannelMat] = in_fopen_kdf(DataFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_kdf(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2018
         
 
 %% ===== READ OTHER FILES =====
@@ -213,12 +213,13 @@ sFile.header     = hdr;
 % Comment: short filename
 [tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.sfreq;
-sFile.prop.samples = [0, hdr.nsamples * hdr.nrec - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.sfreq;
+sFile.prop.times = [0, hdr.nsamples * hdr.nrec - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nsignal,1);
+% Acquisition date
+sFile.acq_date = str_date(hdr.startdate);
 
 
 %% ===== READ DIGITIZER FILE =====

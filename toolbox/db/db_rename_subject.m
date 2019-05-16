@@ -6,9 +6,9 @@ function db_rename_subject( oldName, newName, isRefresh )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -64,7 +64,7 @@ if isdir(bst_fullfile(ProtocolInfo.STUDIES, newName))
 end
 
 %% ===== MOVE ANATOMY FOLDER =====
-isOk = movefile(bst_fullfile(ProtocolInfo.SUBJECTS, oldName), bst_fullfile(ProtocolInfo.SUBJECTS, newName), 'f');
+isOk = file_move(bst_fullfile(ProtocolInfo.SUBJECTS, oldName), bst_fullfile(ProtocolInfo.SUBJECTS, newName));
 if ~isOk
     bst_error(['Could not rename anat/"' oldName '" to anat/"' newName '".'], 'Rename', 0);
     return;
@@ -86,7 +86,7 @@ for iDir = 1:length(listDir)
 end
 
 %% ===== MOVE DATA FOLDER =====
-isOk = movefile(bst_fullfile(ProtocolInfo.STUDIES, oldName), bst_fullfile(ProtocolInfo.STUDIES, newName), 'f');
+isOk = file_move(bst_fullfile(ProtocolInfo.STUDIES, oldName), bst_fullfile(ProtocolInfo.STUDIES, newName));
 if ~isOk
     bst_error(['Error: Could not rename data/"' oldName '" to data/"' newName '".'], 'Rename', 0);
     return;

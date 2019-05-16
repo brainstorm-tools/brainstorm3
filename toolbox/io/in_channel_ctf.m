@@ -5,9 +5,9 @@ function [ChannelMat, header] = in_channel_ctf( ds_directory )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,25 +21,11 @@ function [ChannelMat, header] = in_channel_ctf( ds_directory )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009
+% Authors: Francois Tadel, 2009; Martin Cousineau, 2018
 
-% Initialize returned structure
-ChannelMat = db_template('channelmat');
-ChannelMat.Comment = 'CTF channels';
-                
-% Make sure to get the directory (and not the .meg4 or .res4 file)
-if ~isdir(ds_directory)
-    ds_directory = bst_fileparts(ds_directory);
-end
-[DataSetName, meg4_files, res4_file] = ctf_get_files(ds_directory);
-
-% Load Res4 mat
-[header, ChannelMat] = ctf_read_res4( res4_file );
-
-                
-                
-                
-
+% Load channels and header using in_fopen_ctf()
+[sFile, ChannelMat] = in_fopen_ctf(ds_directory);
+header = sFile.header;
 
 
 
