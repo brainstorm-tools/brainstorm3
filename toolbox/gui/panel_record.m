@@ -1133,7 +1133,7 @@ function ReloadRecordings(isForced)
     % Reload recordings matrix from raw file
     bst_memory('LoadRecordingsMatrix', iDS);
     % Replot all figures
-    bst_figures('ReloadFigures');
+    bst_figures('ReloadFigures', [], 1, 1);
     % Flushes the display updates
     drawnow;
     % Close progress bar
