@@ -1714,11 +1714,15 @@ end
 %         ReloadFigures(hFigs)       : Reload a specific list of figures
 %         ReloadFigures()            : Reload all the figures
 %         ReloadFigures(..., isFastUpdate=1):  If 0, clear all the figures and plot them completely
-function ReloadFigures(FigureTypes, isFastUpdate)
+%         ReloadFigures(..., isResetAxes=0):   If 1, reset axes zoom configuration
+function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
     global GlobalData;
     % By default: fast update
     if (nargin < 2) || isempty(isFastUpdate)
         isFastUpdate = 1;
+    end
+    if (nargin < 3) || isempty(isResetAxes)
+        isResetAxes = 0;
     end
     % If figure type not sepcified
     isStatOnly = 0;
@@ -1790,7 +1794,7 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                             continue;
                         end
                         % Restore XLim/YLim
-                        if ~isempty(XLimOrig) && (length(Figure.Handles.hAxes) == 1) && ishandle(Figure.Handles.hAxes)
+                        if ~isResetAxes && ~isempty(XLimOrig) && (length(Figure.Handles.hAxes) == 1) && ishandle(Figure.Handles.hAxes)
                             XLimNew = get(Figure.Handles.hAxes, 'XLim');
                             YLimNew = get(Figure.Handles.hAxes, 'YLim');
                             if ~isequal(XLimNew, XLimOrig) && (XLimOrig(1) >= XLimNew(1)) && (XLimOrig(2) <= XLimNew(2))
