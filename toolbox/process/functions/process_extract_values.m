@@ -531,6 +531,11 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
                 bst_report('Error', sProcess, sInputs(iInput), 'Cannot select rows for connectivity [NxN] results.');
                 return;
             end
+            % Cannot select signals in sources results
+            if ~isempty(Description) && isnumeric(Description)
+                bst_report('Error', sProcess, sInputs(iInput), 'Cannot select rows in source maps.');
+                return;
+            end
             % Try to find row names in the file
             SelRowNames = strtrim(str_split(OPTIONS.Rows, ',;'));
             iRows = find(ismember(Description, SelRowNames));
