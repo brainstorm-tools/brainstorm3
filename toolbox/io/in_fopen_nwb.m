@@ -26,6 +26,10 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 
 
 %% ===== INSTALL NWB LIBRARY =====
+% Not available in the compiled version
+if (exist('isdeployed', 'builtin') && isdeployed)
+    error('Reading NWB files is not available in the compiled version of Brainstorm.');
+end
 % Check if the NWB builder has already been downloaded
 NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
 % Install toolbox

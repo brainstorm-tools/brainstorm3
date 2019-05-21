@@ -21,9 +21,13 @@ function [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions, channelsOnl
 %
 % Authors: Martin Cousineau, Francois Tadel, 2018-2019
 
-if bst_get('MatlabVersion') < 803
+if (bst_get('MatlabVersion') < 803)
     error('Importing MFF files requires at least Matlab 2014a.');
 end
+if (exist('isdeployed', 'builtin') && isdeployed)
+    error('Importing MFF files is not supported yet with the compiled version of Brainstorm.');
+end
+
 
 %% ===== PARSE INPUTS =====
 if strcmp(DataFile, 'downloadAndInstallMffLibrary')

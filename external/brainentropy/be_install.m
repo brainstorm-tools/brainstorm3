@@ -2,6 +2,10 @@ function [errMsg, warnMsg, version, last_update]   =   be_install( varargin )
 
 
 %% ===== DOWNLOAD SETTINGS =====
+% Not available in the compiled version
+if (exist('isdeployed', 'builtin') && isdeployed)
+    error('This function is not available in the compiled version of Brainstorm.');
+end
 % Get openmeeg folder
 errMsg  = '';
 BEstDir = bst_fullfile( bst_get('BrainstormUserDir'), 'brainentropy' );
