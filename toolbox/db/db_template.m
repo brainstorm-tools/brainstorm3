@@ -439,7 +439,7 @@ switch lower(structureName)
     case 'event'
         % See: https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#On_the_hard_drive
         template = struct(...
-            'label',      '', ...      % str, label of the event group.
+            'label',      '', ...      % str, label of the event group. Should not be empty.
             'color',      [], ...      % array of double (R,G,B): color triplet, size: (1, 3). Values btwn 0 and 1. Cannot be empty.
             'epochs',     [], ...      % array of int (epochs indices), size: (1, nb of event items). Cannot be empty.
             'times',      [], ...      % array of double (time values), size: (1 or 2, nb of event items). Cannot be empty.
