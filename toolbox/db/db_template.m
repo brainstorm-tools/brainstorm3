@@ -437,17 +437,18 @@ switch lower(structureName)
         
     % ==== EVENT ====
     case 'event'
+        % See: https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#On_the_hard_drive
         template = struct(...
-            'label',      '', ...
-            'color',      [], ...
-            'epochs',     [], ...      % [list of epochs indices]
-            'times',      [], ...      % [list of time values]
-            'reactTimes', [], ...      % [list of reaction times, when applicable]
-            'select',     1, ...
-            'channels',   [], ...
-            'notes',      []);
-        template.channels = {};
-        template.notes = {};
+            'label',      '', ...      % str, label of the event group. Should not be empty.
+            'color',      [], ...      % array of double (R,G,B): color triplet, size: (1, 3). Values btwn 0 and 1. Cannot be empty.
+            'epochs',     [], ...      % array of int (epochs indices), size: (1, nb of event items). Cannot be empty.
+            'times',      [], ...      % array of double (time values), size: (1 or 2, nb of event items). Cannot be empty.
+            'reactTimes', [], ...      % array of double (reaction times), size: (1, nb of event items). Can be empty.
+            'select',     1, ...       % int: display flag (0 or 1).
+            'channels',   [], ...      % see below
+            'notes',      []);         % see below
+        template.channels = {};        % cell array of cell arrays of str, size: (1, nb of event items:(1, nb of associated channels)). Cannot be empty.
+        template.notes = {};           % cell array of str, size: (1, nb of event items). Cannot be empty.
         
     % ==== EPOCH ====
     case 'epoch'
