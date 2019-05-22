@@ -541,11 +541,11 @@ function UpdateElecProperties(isUpdateModelList)
     end
     % Update panel
     gui_validate_text(ctrl.jTextNcontacts,     [], [], {1,1024,1}, 'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
-    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,10}, 'optional', 1, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
-    gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,10},  'optional', 1, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
-    gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,10},  'optional', 1, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
-    gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,10},  'optional', 1, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
-    gui_validate_text(ctrl.jTextElecLength,    [], [], {0,200,10}, 'optional', 1, valElecLength,    @(h,ev)ValidateOptions('ElecLength', ctrl.jTextElecLength));
+    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,100}, 'optional', 2, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
+    gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,100},  'optional', 2, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
+    gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,100},  'optional', 2, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
+    gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,100},  'optional', 2, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
+    gui_validate_text(ctrl.jTextElecLength,    [], [], {0,200,100}, 'optional', 2, valElecLength,    @(h,ev)ValidateOptions('ElecLength', ctrl.jTextElecLength));
     % Update button list
     if (length(sSelElec) == 1)
         colorOn  = java.awt.Color(0, 0.8, 0);
@@ -1627,9 +1627,10 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             ElecLoc = [ChannelMat.Channel(iMod(iGroupChan)).Loc]';
             % Get distance between available contacts (in number of contacts)
             nDist = diff(AllInd(iGroupChan));
-            % Detect average spacing between contacts
+            % Detect average spacing between contacts (round at 1 decimal)
             newElec.ContactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
-
+            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 1);
+            
             % Center of the electrodes
             M = mean(ElecLoc);
             % Get the principal orientation between all the vertices
