@@ -326,16 +326,16 @@ if (CurrentDbVersion < 3.6) && ~isempty(ProtocolsListStudies) && ~isfield(Protoc
     bst_set('ProcessOptions', []);
 end
 
-%% ===== UPDATE 07-May-2019 =====
+%% ===== UPDATE 07-May-2019 AND 22-May-2019 =====
 % Modification: add fibers objects
-if (CurrentDbVersion < 5)
+if (CurrentDbVersion < 5.01)
     disp('BST> Database update: Adding support for diffusion fibers...');
     for iProt = 1:length(ProtocolsListSubjects)
         subjFields = fieldnames(ProtocolsListSubjects(iProt));
         for iField = 1:length(subjFields)
             subjField = subjFields{iField};
             nSubjects = length(ProtocolsListSubjects(iProt).(subjField));
-            sSubjects = repmat(db_template('subject'), nSubjects);
+            sSubjects = repmat(db_template('subject'), 1, nSubjects);
             for iSubj = 1:nSubjects
                 % Add iFibers to subject
                 sSubjects(iSubj) = struct_copy_fields(db_template('subject'), ProtocolsListSubjects(iProt).(subjField)(iSubj));
