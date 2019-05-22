@@ -1505,6 +1505,7 @@ function FigureKeyPressedCallback(hFig, ev)
                             % If the key that was pressed is in the shortcuts list
                             iShortcut = find(strcmpi(RawViewerOptions.Shortcuts(:,1), keyEvent.Character));
                             % If shortcut was found: call the corresponding function
+                            isFullPage = 0;
                             if ~isempty(iShortcut) && ~isempty(RawViewerOptions.Shortcuts{iShortcut,2})
                                 % Set selected time for extended events
                                 switch (RawViewerOptions.Shortcuts{iShortcut,3})
@@ -1512,6 +1513,7 @@ function FigureKeyPressedCallback(hFig, ev)
                                         selTime = [];
                                     case 'page'
                                         selTime = GlobalData.UserTimeWindow.Time;
+                                        isFullPage = 1;
                                     case 'extended'
                                         % If there is already a time window selected: keep it
                                         GraphSelection = getappdata(hFig, 'GraphSelection');
@@ -1527,18 +1529,38 @@ function FigureKeyPressedCallback(hFig, ev)
                                 end
                                 % Toggle event
                                 if isControl && ~isempty(SelectedRows)
-                                    panel_record('ToggleEvent', RawViewerOptions.Shortcuts{iShortcut,2}, SelectedRows);
+                                    panel_record('ToggleEvent', RawViewerOptions.Shortcuts{iShortcut,2}, SelectedRows, isFullPage);
                                 else
-                                    panel_record('ToggleEvent', RawViewerOptions.Shortcuts{iShortcut,2});
+                                    panel_record('ToggleEvent', RawViewerOptions.Shortcuts{iShortcut,2}, [], isFullPage);
                                 end
                                 % Reset time selection
                                 if ~isempty(selTime)
                                     SetTimeSelectionLinked(hFig, []);
                                 end
-                                % For full page marking: move to next page automatically
+                                % For full page marking: move to the next non-marked page automatically
                                 if isRaw && strcmpi(RawViewerOptions.Shortcuts{iShortcut,3}, 'page')
-                                    keyEvent.Key = 'nooverlap+';
-                                    panel_record('RawKeyCallback', keyEvent);
+                                    % Get all the shortcuts of the type "page"
+                                    pageEventNames = RawViewerOptions.Shortcuts(strcmpi(RawViewerOptions.Shortcuts(:,3), 'page'), 2);
+                                    pageEnd = GlobalData.UserTimeWindow.Time(end);
+                                    iLastEvent = [];
+                                    iLastOccur = [];
+                                    % Look for last page event marked (after the current one)
+                                    for i = 1:length(pageEventNames)
+                                        [sEvent, iEvent] = panel_record('GetEvents', pageEventNames{i});
+                                        if ~isempty(sEvent) && ~isempty(sEvent.times) && (pageEnd < sEvent.times(2,end))
+                                            pageEnd = sEvent.times(2,end);
+                                            iLastEvent = iEvent;
+                                            iLastOccur = size(sEvent.times, 2);
+                                        end
+                                    end
+                                    % If nothing marked further and not at the end of the file: jump to next page
+                                    if isempty(iLastEvent) || (pageEnd + diff(GlobalData.UserTimeWindow.Time) >= GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time(end))
+                                        keyEvent.Key = 'nooverlap+';
+                                        panel_record('RawKeyCallback', keyEvent);
+                                    % Otherwise, jump back to the last marked page
+                                    else
+                                        panel_record('JumpToEvent', iLastEvent, iLastOccur);
+                                    end
                                 end
                             end
                         end
