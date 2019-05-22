@@ -2626,7 +2626,7 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
     if ~isempty(iChannels)
         F = panel_montage('ApplyMontage', sMontage, Fall(iChannels,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
         if ~isempty(StdAll)
-            Std = panel_montage('ApplyMontage', sMontage, StdAll(iChannels,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
+            Std = panel_montage('ApplyMontage', sMontage, StdAll(iChannels,:,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
         end
         % Modify channel names
         TsInfo.LinesLabels = sMontage.DispNames(iMatrixDisp)';
@@ -2635,7 +2635,7 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
         % Keep only the selected sensors
         F = Fall(selChan,:);
         if ~isempty(StdAll)
-            Std = StdAll(selChan,:);
+            Std = StdAll(selChan,:,:);
         end
         % Lines names=channel names
         TsInfo.LinesLabels = ChanNames(selChan)';
@@ -2773,8 +2773,14 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         else
             PlotHandles(iAxes).DataMinMax = [min(F{iAxes}(:)), max(F{iAxes}(:))];
             % With Std
-            if ~isempty(Std) && ~isempty(Std{iAxes}) && isequal(size(F{iAxes}), size(Std{iAxes}))
-                Faxes = [F{iAxes} + Std{iAxes}, F{iAxes} - Std{iAxes}];
+            FExtraDim = [size(F{iAxes}), 2];
+            if ~isempty(Std) && ~isempty(Std{iAxes}) && (isequal(size(F{iAxes}), size(Std{iAxes})) || isequal(size(Std{iAxes}), FExtraDim))
+                % Check whether Std is an interval or a single value centered on the data
+                if ndims(Std{iAxes}) > ndims(F{iAxes})
+                    Faxes = [Std{iAxes}(:,:,2), Std{iAxes}(:,:,1)];
+                else
+                    Faxes = [F{iAxes} + Std{iAxes}, F{iAxes} - Std{iAxes}];
+                end
                 tmpMinMax = [min(Faxes(:)), max(Faxes(:))];
                 % Make sure that we are not going below zero just because of the Std
                 if (PlotHandles(iAxes).DataMinMax(1) > 0) && (tmpMinMax(1) < 0)
@@ -3106,7 +3112,7 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
         TimeVector = TimeVector(1:PlotHandles.DownsampleFactor:end);
         F = F(:,1:PlotHandles.DownsampleFactor:end);
         if ~isempty(Std)
-            Std = Std(:,1:PlotHandles.DownsampleFactor:end);
+            Std = Std(:,1:PlotHandles.DownsampleFactor:end,:);
         end
     end
 
@@ -3293,8 +3299,11 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
         PlotHandles.ChannelOffsets = zeros(size(F,1), 1);
         
         % ===== STD HALO =====
+        FExtraDim = [size(F), 2];
         % Plot Std as a transparent halo
-        if ~isempty(Std) && isequal(size(F), size(Std))
+        if ~isempty(Std) && (isequal(size(F), size(Std)) || isequal(size(Std), FExtraDim))
+            % Check whether Std is an interval or a single value centered on the data
+            stdIsInterval = ndims(Std) > ndims(F);
             % Get the colors of all the lines
             C = get(PlotHandles.hLines, 'Color');
             if ~iscell(C)
@@ -3303,15 +3312,25 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
             % If all the colors are the same: plot only one big halo around the data
             if (length(C) > 5) || (length(C) > 1) && all(cellfun(@(c)isequal(C{1},c), C))
                 % Upper and lower lines
-                Lhi  = max(F + Std, [], 1) .* fFactor;
-                Llow = min(F - Std, [], 1) .* fFactor;
+                if stdIsInterval
+                    Lhi  = max(Std(:,:,2), [], 1) .* fFactor;
+                    Llow = min(Std(:,:,1), [], 1) .* fFactor;
+                else
+                    Lhi  = max(F + Std, [], 1) .* fFactor;
+                    Llow = min(F - Std, [], 1) .* fFactor;
+                end
                 PlotHandles.hLinePatches = PlotHaloPatch(hAxes, TimeVector, Lhi, Llow, ZData - 0.001, C{1});
             else
                 % Plot separately each patch
                 for i = 1:size(Std,1)
                     % Upper and lower lines
-                    Lhi  = (F(i,:) + Std(i,:)) .* fFactor;
-                    Llow = (F(i,:) - Std(i,:)) .* fFactor;
+                    if stdIsInterval
+                        Lhi  = Std(i,:,2) .* fFactor;
+                        Llow = Std(i,:,1) .* fFactor;
+                    else
+                        Lhi  = (F(i,:) + Std(i,:)) .* fFactor;
+                        Llow = (F(i,:) - Std(i,:)) .* fFactor;
+                    end
                     % Plot patch
                     PlotHandles.hLinePatches(i) = PlotHaloPatch(hAxes, TimeVector, Lhi, Llow, ZData - i*0.001, C{i});
                 end
@@ -3504,6 +3523,12 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
         % ===== STD HALO =====
         % Plot Std as a transparent halo
         if ~isempty(Std) && (length(PlotHandles.hLines) < 50)
+            % Check whether Std is an interval or a single value centered on the data
+            stdIsInterval = ndims(Std) > ndims(F);
+            if stdIsInterval
+                % Add offset to each channel
+                Std = bst_bsxfun(@plus, Std, PlotHandles.ChannelOffsets);
+            end
             % Get the colors of all the lines
             C = get(PlotHandles.hLines, 'Color');
             if ~iscell(C)
@@ -3512,8 +3537,13 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
             % Plot separately each patch
             for i = 1:size(Std,1)
                 % Upper and lower lines
-                Lhi  = (F(i,:) + Std(i,:));
-                Llow = (F(i,:) - Std(i,:));
+                if stdIsInterval
+                    Lhi  = Std(i,:,2);
+                    Llow = Std(i,:,1);
+                else
+                    Lhi  = (F(i,:) + Std(i,:));
+                    Llow = (F(i,:) - Std(i,:));
+                end
                 % Plot patch
                 PlotHandles.hLinePatches(i) = PlotHaloPatch(hAxes, TimeVector, Lhi, Llow, ZData - i*0.001, C{i});
             end

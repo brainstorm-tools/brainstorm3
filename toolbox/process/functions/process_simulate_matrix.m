@@ -62,7 +62,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.matlab.Comment = ['<BR>Input variables:<BR>' ...
                                        '&nbsp;&nbsp;&nbsp;&nbsp; <B>t</B> : time vector in seconds [1 x Ntime]<BR>' ...
                                        'Output variables:<BR>' ...
-                                       '&nbsp;&nbsp;&nbsp;&nbsp; <B>Data</B> : simulated signals [Nsignals x Ntime]<BR>'];
+                                       '&nbsp;&nbsp;&nbsp;&nbsp; <B>Data</B> : simulated signals [Nsignals x Ntime]<BR>' ...
+                                       '&nbsp;&nbsp;&nbsp;&nbsp; <B>Std</B>  : standard deviation or error [Nsignals x Ntime]<BR>'];
     sProcess.options.matlab.Type    = 'textarea';
     sProcess.options.matlab.Value   = ['Data(1,:) = sin(2*pi*t);' 10 ...
                                        'Data(2,:) = cos(pi*t) + 1;'];
@@ -95,6 +96,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Set input variable for the script
     t = (0:nsamples-1) ./ srate;
     Data = [];
+    Std  = [];
     % Evaluate Matlab code
     try
         eval(sProcess.options.matlab.Value);
@@ -116,6 +118,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Create empty matrix file structure
     FileMat = db_template('matrixmat');
     FileMat.Value       = Data;
+    FileMat.Std         = Std;
     FileMat.Time        = t;
     FileMat.Comment     = sprintf('Simulated signals (%dx%d)', size(Data,1), nsamples);
     FileMat.Description = cell(size(Data,1),1);

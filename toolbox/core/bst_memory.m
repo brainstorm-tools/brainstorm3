@@ -1942,7 +1942,7 @@ function [DataValues, Std] = GetRecordingsValues(iDS, iChannel, iTime, isGradMag
         DataType = GlobalData.DataSet(iDS).Measures.DataType;
         % Get standard deviation
         if ~isempty(GlobalData.DataSet(iDS).Measures.Std)
-            Std = GlobalData.DataSet(iDS).Measures.Std(iChannel, iTime);
+            Std = GlobalData.DataSet(iDS).Measures.Std(iChannel, iTime, :);
         else
             Std = [];
         end
@@ -1954,7 +1954,9 @@ function [DataValues, Std] = GetRecordingsValues(iDS, iChannel, iTime, isGradMag
             DataValues = bst_scale_gradmag( DataValues, GlobalData.DataSet(iDS).Channel(iChannel));
             % Normalize standard deviation too
             if ~isempty(Std)
-                Std = bst_scale_gradmag(Std, GlobalData.DataSet(iDS).Channel(iChannel));
+                for i = 1:size(Std, 3)
+                    Std(:,:,i) = bst_scale_gradmag(Std(:,:,i), GlobalData.DataSet(iDS).Channel(iChannel));
+                end
             end
         end
     else
