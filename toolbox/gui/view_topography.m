@@ -238,7 +238,7 @@ switch(fileType)
         UseSmoothing = 0;
         UseMontage = 0;
     otherwise
-        error(['This files contains information about cortical sources or regions of interest.' 10 ...
+        error(['This file contains information about cortical sources or regions of interest.' 10 ...
                'Cannot display it as a sensor topography.']);
 end
 if isempty(iDS)
