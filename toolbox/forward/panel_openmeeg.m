@@ -179,7 +179,16 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
 
         % === COUNT MEMORY NEEDED ===
-        P = length(OPTIONS.GridLoc);
+        switch OPTIONS.HeadModelType
+            case 'volume'
+                P = length(OPTIONS.GridLoc);
+            case 'surface'
+                sTess = in_tess_bst(OPTIONS.CortexFile);
+                P = size(sTess.Vertices, 1);
+            case 'mixed'
+                sTess = in_tess_bst(OPTIONS.CortexFile);
+                P = length(OPTIONS.GridLoc) + size(sTess.Vertices, 1);
+        end
         estRam = 0;
         estHd = 0;
         % Number of dipoles * orientations
