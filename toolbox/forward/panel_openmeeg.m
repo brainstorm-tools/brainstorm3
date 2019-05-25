@@ -23,7 +23,7 @@ function varargout = panel_openmeeg(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2017
+% Authors: Francois Tadel, 2011-2019
 
 eval(macro_method);
 end
