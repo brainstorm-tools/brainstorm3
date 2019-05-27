@@ -2208,9 +2208,13 @@ switch contextName
 %             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016';
 %             sTemplates(end).Name = 'ICBM152_2016';
 %         end
-        if ~ismember(lower({sTemplates.Name}), 'icbm152_2016c')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016c';
-            sTemplates(end).Name = 'ICBM152_2016c';
+%         if ~ismember(lower({sTemplates.Name}), 'icbm152_2016c')
+%             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016c';
+%             sTemplates(end).Name = 'ICBM152_2016c';
+%         end
+        if ~ismember(lower({sTemplates.Name}), 'icbm152_2019')
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
+            sTemplates(end).Name = 'ICBM152_2019';
         end
         if ~ismember(lower({sTemplates.Name}), 'icbm152_brainsuite_2016')
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
