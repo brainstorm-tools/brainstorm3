@@ -53,11 +53,20 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === number of permutations
     sProcess.options.num_permutations.Comment = 'Number of permutations: ';
     sProcess.options.num_permutations.Type    = 'value';
-    sProcess.options.num_permutations.Value   = {10,'',0};
+    sProcess.options.num_permutations.Value   = {50,'',0};
     % === trial bin size for sub-averaging
     sProcess.options.kfold.Comment = 'Number of folds: ';
     sProcess.options.kfold.Type    = 'value';
     sProcess.options.kfold.Value   = {5,'',0};
+    % === decoding method
+    sProcess.options.method.Comment = {'Pairwise', 'Temporal generalization', 'Multiclass', 'Decoding method:'};
+    sProcess.options.method.Type    = 'radio_line';
+    sProcess.options.method.Value   = 1;
+    % === decoding model
+    sProcess.options.model.Comment = 'Decoding model: ';
+    sProcess.options.model.Type    = 'text';
+    sProcess.options.model.Value   = 'svm';
+    sProcess.options.model.Hidden  = 1;
 end
 
 
@@ -97,33 +106,70 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     SensorTypes     = sProcess.options.sensortypes.Value;
     LowPass         = sProcess.options.lowpass.Value{1};
     numPermutations = sProcess.options.num_permutations.Value{1};
-    kFold           = sProcess.options.kfold.Value{1};
+    model           = sProcess.options.model.Value;
+    methods         = {'pairwise', 'temporalgen', 'multiclass'};
+    method          = methods{sProcess.options.method.Value};
     
-    % Summarize trials and conditions to process
+    % Create signal pairs
     allConditions = {sInputs.Condition};
     [uniqueConditions, tmp, conditionMapping] = unique(allConditions);
     numConditions = length(uniqueConditions);
+    if strcmpi(method, 'pairwise')
+        methodName = 'Pairwise';
+        Description = cell(numConditions * (numConditions - 1) / 2, 1);
+        iDesc = 1;
+        for iCond1 = 1:numConditions
+            for iCond2 = iCond1+1:numConditions
+                Description{iDesc} = [uniqueConditions{iCond2} ' vs ' uniqueConditions{iCond1}];
+                iDesc = iDesc + 1;
+            end
+        end
+    elseif strcmpi(method, 'temporalgen')
+        methodName = 'Temporal generalization';
+        Description = 'Average accuracy';
+    else
+        bst_report('Error', sProcess, [], ['Decoding using the ' method ' method is not yet supported.']);
+        return;
+    end
+    
+    % Summarize trials and conditions to process
     fprintf('BST> Found %d different conditions across %d trials:%c', numConditions, length(sInputs), char(10));
     for iCondition = 1:numConditions
         numOccurences = sum(conditionMapping == iCondition);
         fprintf(' %d. Condition "%s" with %d associated trials%c', iCondition, uniqueConditions{iCondition}, numOccurences, char(10));
     end
 
-    % ============
     % Load trials
     [trial,Time] = load_trials_bs(sInputs, LowPass, SensorTypes);
     % Run SVM decoding
-    bst_progress('start', 'Decoding', 'Training SVM model...');
-    d = sll_decodesvm(trial, allConditions, 'numpermutation', numPermutations, 'verbose', 2, 'kfold', kFold);
-
+    if strcmpi(model, 'maxcorr')
+        % Run max-correlation decoding
+        modelName = 'max-correlation';
+        bst_progress('start', 'Decoding', 'Decoding with max-correlation model...');
+        d = sll_decodemaxcorr(trial, allConditions, 'method', method, 'numpermutation', numPermutations, 'verbose', 1);
+    else
+        % Default: basic SVM model
+        modelName = 'SVM';
+        kFold = sProcess.options.kfold.Value{1};
+        bst_progress('start', 'Decoding', 'Decoding with SVM model...');
+        d = sll_decodesvm(trial, allConditions, 'method', method, 'numpermutation', numPermutations, 'verbose', 2, 'kfold', kFold);
+    end
+    
+    % Extract output in appropriate way for chosen method
+    if strcmpi(method, 'temporalgen')
+        Value = mean(d.d,3);
+    else
+        Value = d.d';
+    end
+    
     % ===== CREATE OUTPUT FILE =====
     % Create file structure
     FileMat = db_template('matrixmat');
-    FileMat.Comment     = sprintf('Pairwise SVM on %d classes', numConditions);
-    FileMat.Value       = mean(d.d, 2)';
-    FileMat.Std         = std(d.d, 0, 2)';
-    FileMat.Description = {'Accuracy'};  % Document the rows and/or the columns of the field "Value"
+    FileMat.Comment     = sprintf('%s %s on %d classes', methodName, modelName, numConditions);
+    FileMat.Value       = Value;
+    FileMat.Description = Description;
     FileMat.Time        = Time;
+    FileMat.CondLabels  = uniqueConditions;
 
     % ===== OUTPUT CONDITION =====
     % Default condition name
@@ -139,7 +185,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
     % ===== SAVE FILE =====
     % Output filename
-    OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), 'matrix_decoding_svm_pairwise');
+    OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), ['matrix_decoding_' model '_' method]);
     % Save file
     bst_save(OutputFiles{1}, FileMat, 'v6');
     % Register in database

@@ -438,7 +438,12 @@ switch (lower(action))
 
             % ===== MATRIX =====
             case {'matrix', 'pmatrix'}
-                view_matrix( filenameRelative, 'TimeSeries' );
+                if ~isempty(strfind(filenameRelative, '_temporalgen'))
+                    % Decoding with temporal generalization should be opened as images
+                    view_matrix( filenameRelative, 'Image');
+                else
+                    view_matrix( filenameRelative, 'TimeSeries');
+                end
                 
             % ===== IMAGE =====
             case 'image'

@@ -53,7 +53,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === number of permutations
     sProcess.options.num_permutations.Comment = 'Number of permutations: ';
     sProcess.options.num_permutations.Type    = 'value';
-    sProcess.options.num_permutations.Value   = {10,'',0};
+    sProcess.options.num_permutations.Value   = {50,'',0};
+    % === decoding method
+    sProcess.options.method.Comment = {'Pairwise', 'Temporal generalization', 'Multiclass', 'Decoding method:'};
+    sProcess.options.method.Type    = 'radio_line';
+    sProcess.options.method.Value   = 1;
+    % === decoding model
+    sProcess.options.model.Comment = 'Decoding model: ';
+    sProcess.options.model.Type    = 'text';
+    sProcess.options.model.Value   = 'maxcorr';
+    sProcess.options.model.Hidden  = 1;
 end
 
 
@@ -65,78 +74,7 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
-    % Initialize returned variables
-    OutputFiles = {};
-
-    % Not available in the compiled version
-    if exist('isdeployed', 'builtin') && isdeployed
-        bst_report('Error', sProcess, sInputs, 'This function is not available in the compiled version of Brainstorm.');
-    end
-    % Check the number of files in input
-    if length(sInputs) < 2
-        bst_report('Error', sProcess, sInputs, 'Not enough files in input.');
-        return;
-    end
-    % Check for the Signal Processing toolbox
-    if ~bst_get('UseSigProcToolbox')
-        bst_report('Error', sProcess, [], 'This process requires the Signal Processing Toolbox.');
-        return;
-    end
-    % Check for the LibSVM toolbox
-    if ~exist('svmpredict')
-        bst_report('Error', sProcess, [], ['This process requires the LibSVM Toolbox:' 10 'http://www.csie.ntu.edu.tw/~cjlin/libsvm/#download']);
-        return;
-    end
-    
-    % Get options
-    SensorTypes     = sProcess.options.sensortypes.Value;
-    LowPass         = sProcess.options.lowpass.Value{1};
-    numPermutations = sProcess.options.num_permutations.Value{1};
-    
-    % Summarize trials and conditions to process
-    allConditions = {sInputs.Condition};
-    [uniqueConditions, tmp, conditionMapping] = unique(allConditions);
-    numConditions = length(uniqueConditions);
-    fprintf('BST> Found %d different conditions across %d trials:%c', numConditions, length(sInputs), char(10));
-    for iCondition = 1:numConditions
-        numOccurences = sum(conditionMapping == iCondition);
-        fprintf(' %d. Condition "%s" with %d associated trials%c', iCondition, uniqueConditions{iCondition}, numOccurences, char(10));
-    end
-
-    % ============
-    % Load trials
-    [trial,Time] = process_decoding_svm('load_trials_bs', sInputs, LowPass, SensorTypes);
-    % Run max-correlation decoding
-    bst_progress('start', 'Decoding', 'Training max-correlation model...');
-    d = sll_decodemaxcorr(trial, allConditions, 'numpermutation', numPermutations, 'verbose', 1);
-
-    % ===== CREATE OUTPUT FILE =====
-    % Create file structure
-    FileMat = db_template('matrixmat');
-    FileMat.Comment     = sprintf('Max-correlation decoding on %d classes', numConditions);
-    FileMat.Value       = mean(d.d, 2)';
-    FileMat.Std         = std(d.d, 0, 2)';
-    FileMat.Description = {'Accuracy'};  % Document the rows and/or the columns of the field "Value"
-    FileMat.Time        = Time;
-
-    % ===== OUTPUT CONDITION =====
-    % Default condition name
-    SubjectName = sInputs(1).SubjectName;
-    Condition = 'decoding';
-    % Get condition asked by user
-    [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(SubjectName, Condition));
-    % Condition does not exist: create it
-    if isempty(sStudy)
-        iStudy = db_add_condition(SubjectName, Condition, 1);
-        sStudy = bst_get('Study', iStudy);
-    end
-
-    % ===== SAVE FILE =====
-    % Output filename
-    OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), 'matrix_decoding_max_correlation');
-    % Save file
-    bst_save(OutputFiles{1}, FileMat, 'v6');
-    % Register in database
-    db_add_data(iStudy, OutputFiles{1}, FileMat);
+    % Call mother process with actual implementation
+    OutputFiles = process_decoding_svm('Run', sProcess, sInputs);
 end
 
