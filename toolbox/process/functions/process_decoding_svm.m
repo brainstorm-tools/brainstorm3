@@ -93,13 +93,26 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Check for the Signal Processing toolbox
     if ~bst_get('UseSigProcToolbox')
-        bst_report('Error', sProcess, [], 'This process requires the Signal Processing Toolbox.');
+        bst_report('Error', sProcess, sInputs, 'This process requires the Signal Processing Toolbox.');
         return;
     end
-    % Check for the LibSVM toolbox
-    if ~exist('svmpredict')
-        bst_report('Error', sProcess, [], ['This process requires the LibSVM Toolbox:' 10 'http://www.csie.ntu.edu.tw/~cjlin/libsvm/#download']);
-        return;
+    
+    % Ensure we are including the LibSVM folder in the Matlab path
+    libsvmDir = bst_fullfile(bst_get('BrainstormUserDir'), 'libsvm');
+    if exist(libsvmDir, 'dir')
+        addpath(genpath(libsvmDir));
+    end
+    % Install LibSVM if missing
+    if ~exist('svmpredict', 'file')
+        rmpath(genpath(libsvmDir));
+        isOk = java_dialog('confirm', ...
+            ['This process requires the LibSVM toolbox.' 10 10 ...
+                 'Download and install it now?'], 'WaveClus');
+        if ~isOk
+            bst_report('Error', sProcess, sInputs, ['This process requires the LibSVM Toolbox:' 10 'http://www.csie.ntu.edu.tw/~cjlin/libsvm/#download']);
+            return;
+        end
+        downloadAndInstallLibsvm();
     end
 
     % Get options
@@ -409,3 +422,55 @@ function h_filter = filter_design(filter_type,param,order,Fs,show_plot)
         ylabel(['Sinusoid at ' num2str(fcutoff*110/100) ' Hz' ]);
     end
 end
+
+%% ===== DOWNLOAD AND INSTALL LIBSVM =====
+function downloadAndInstallLibsvm()
+    userDir = bst_get('BrainstormUserDir');
+    libsvmDir = bst_fullfile(userDir, 'libsvm');
+    url = 'https://github.com/cjlin1/libsvm/archive/master.zip';
+    % If folders exists: delete
+    if isdir(libsvmDir)
+        file_delete(libsvmDir, 1, 3);
+        rmdir(libsvmDir);
+    end
+    % Download file
+    zipFile = bst_fullfile(userDir, 'libsvm.zip');
+    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'LibSVM download');
+    
+    % Check if the download was succesful and try again if it wasn't
+    time_before_entering = clock;
+    updated_time = clock;
+    time_out = 60;% timeout within 60 seconds of trying to download the file
+    
+    % Keep trying to download until a timeout is reached
+    while etime(updated_time, time_before_entering) < time_out && ~isempty(errMsg)
+        pause(0.5);
+        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'LibSVM download');
+        updated_time = clock;
+    end
+    % If the timeout is reached and there is still an error, abort
+    if ~isempty(errMsg)
+        error(['Impossible to download LibSVM, please try installing it manually.' 10 errMsg]);
+    end
+    % Unzip file
+    bst_progress('start', 'LibSVM', 'Installing LibSVM...');
+    unzip(zipFile, userDir);
+    % Get parent folder of the unzipped file
+    libsvmGitDir = bst_fullfile(userDir, 'libsvm-master');
+    % Move LibSVM directory to proper location
+    file_move(libsvmGitDir, libsvmDir);
+    % Add LibSVM to Matlab path
+    addpath(genpath(libsvmDir));
+    % Compile library
+    currentFolder = pwd;
+    makeDir = bst_fullfile(libsvmDir, 'matlab');
+    cd(makeDir);
+    try
+        make;
+    catch
+        cd(currentFolder);
+        error('Impossible to compile LibSVM, please try installing it manually.');
+    end
+    cd(currentFolder);
+end
+
