@@ -19,7 +19,7 @@ function varargout = process_wdiff_ab( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2015
+% Authors: Francois Tadel, 2011-2019
 
 eval(macro_method);
 end
@@ -71,6 +71,11 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     if ~strcmpi(sInputsA(1).FileType, 'data')
         sOutput.ColormapType = 'stat2';
     end
+    sOutput.nAvg = sInputsA.nAvg + sInputsB.nAvg;
+    % Effective number of averages
+    % Leff = 1 / sum_i(w_i^2 / Leff_i),  with w1=1 and w2=-sqrt(Leff_A)/sqrt(Leff_B)
+    %      = 1 / (1/Leff_A + Leff_B/Leff_A/Leff_B)) = 2*LeffA
+    sOutput.Leff = 2 * sInputsA.Leff;
 end
 
 

@@ -577,9 +577,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             newMat = db_template('matrixmat');
             newMat.Value       = [];
             newMat.ChannelFlag = ones(size(sMat.ChannelFlag));
+            newMat.Time = sMat.Time;
+            newMat.nAvg = sMat.nAvg;
+            newMat.Leff = sMat.Leff;
         end
-        newMat.Time = sMat.Time;
-        newMat.nAvg = 1;
         % Concatenate new values to existing ones
         if isConcatenate
             newMat.Value       = cat(1, newMat.Value,       scoutValues);

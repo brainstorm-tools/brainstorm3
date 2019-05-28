@@ -834,6 +834,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         sOutput.DataType    = 'recordings';
         sOutput.Device      = 'ArtifactERP';
         sOutput.nAvg        = nAvg;
+        sOutput.Leff        = nAvg;
         % Get output study
         [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputsB);
         sOutputStudy = bst_get('Study', iOutputStudy);
@@ -871,6 +872,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             sOutput.Time        = TimeVector;
             sOutput.ChannelFlag = [];
             sOutput.nAvg        = nAvg;
+            sOutput.Leff        = nAvg;
             % Description of the signals: IC*
             sOutput.Description = cell(size(proj.Components,1),1);
             for i = 1:size(proj.Components,1)

@@ -9,7 +9,7 @@ function [Stat, Messages, iOutFiles, AllEvents] = bst_avg_files(FilesListA, File
 %    - FilesListB  : Cell array of full paths to files (or loaded structures) from set B (if defined, computes the difference A-B)
 %    - Function    : {'mean', 'rms', 'abs', 'norm', 'meandiffnorm', 'normdiff', 'normdiffnorm', 'median'}
 %    - isVariance  : If 1, return the variance together with the mean
-%    - isWeighted  : If 1, compute an average weighted with the nAvg fiels found in the input files
+%    - isWeighted  : If 1, compute an average weighted with the nAvg fields found in the input files
 %    - isMatchRows : If 1, match signals between files using their names
 %    - isZeroBad   : If 1, the flat signals (values all equal to zero) are considered as bad and ignored from the average
 %    - isPercent   : If 1, use current progress bar, and progression from 0 to 100 ("inc" only)
@@ -141,6 +141,7 @@ TFmask       = [];
 isData       = 0;
 nFiles       = length(FilesListA);
 nAvgTotal    = 0;
+LeffTotal    = 0;
 sFile.events = repmat(db_template('event'), 0);
 RefRowNames  = [];
 
@@ -203,7 +204,9 @@ for iFile = 1:nFiles
         nAvg = 1;
     end
     nAvgTotal = nAvgTotal + nAvg;
-    
+    % Effective number of averages
+    Leff = sMat.Leff;
+        
     % Apply default measure to TF values
     if strcmpi(matName, 'TF') && ~isreal(matValues)
         % Get default function
@@ -346,6 +349,10 @@ for iFile = 1:nFiles
                 matValues = abs(matValues);
             end
         end
+        % Effective number of averages
+        % Leff = 1 / sum_i(w_i^2 / Leff_i),  with w1=1 and w2=-1
+        %      = 1 / (1/Leff_A + 1/Leff_B))
+        Leff = 1 / (1/Leff + 1/sMat2.Leff);
         % Clear the loaded file
         clear sMat2;
     % Else: Apply absolute values if necessary
@@ -355,6 +362,19 @@ for iFile = 1:nFiles
             case 'rms',          matValues = matValues .^ 2;
             case {'abs','norm'}, matValues = abs(matValues);
         end
+    end
+    
+    % === EFFECTIVE NUMBER OF AVERAGES ===
+    % LeffTotal = 1 / sum_i(w_i^2 / Leff_i)
+    if isWeighted
+        % w_i = Leff_i / sum_i(Leff_i)
+        % => LeffTotal = sum(Leff_i)
+        LeffTotal = LeffTotal + Leff;
+    else
+        % w_i = 1 / nFiles
+        % => LeffTotal = nFiles^2 / sum(1/Leff_i)
+        % Computing here only the sum, and will compute the final value at the end
+        LeffTotal = LeffTotal + 1 ./ Leff;
     end
     
     % === CHECK DIMENSIONS ===
@@ -506,11 +526,16 @@ if isVariance
     VarValues(iOther, :) = 0;
     Stat.var = VarValues;
 end
+% Effective number of averages (for regular non-weigthed average)
+if ~isWeighted
+    LeffTotal = nFiles^2 / LeffTotal;
+end
 % Time vector
 Stat.MatName      = MeanMatName;
 Stat.mean         = MeanValues;
 Stat.Time         = initTimeVector;
 Stat.nAvg         = nAvgTotal;
+Stat.Leff         = LeffTotal;
 Stat.Measure      = initMeasure;
 Stat.ChannelFlag  = OutChannelFlag;
 Stat.RowNames     = RowNames;

@@ -439,6 +439,12 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     else
         sInput.nAvg = 1;
     end
+    % Copy Leff (effective number of averages)
+    if isfield(sMat, 'Leff') && ~isempty(sMat.Leff)
+        sInput.Leff = sMat.Leff;
+    else
+        sInput.Leff = 1;
+    end
     % Raw files
     isReadAll = isRaw && isfield(sProcess.options, 'read_all') && isfield(sProcess.options.read_all, 'Value') && isequal(sProcess.options.read_all.Value, 1);
     if isRaw
@@ -1070,6 +1076,17 @@ function OutputFile = ProcessFilter2(sProcess, sInputA, sInputB)
     else
         sInputB.nAvg = 1;
     end
+    % Copy Leff (effective number of averages)
+    if isfield(sMatA, 'Leff') && ~isempty(sMatA.Leff)
+        sInputA.Leff = sMatA.Leff;
+    else
+        sInputA.Leff = 1;
+    end
+    if isfield(sMatB, 'Leff') && ~isempty(sMatB.Leff)
+        sInputB.Leff = sMatB.Leff;
+    else
+        sInputB.Leff = 1;
+    end
     % Copy time information
     sInputA.TimeVector = sMatA.Time;
     sInputB.TimeVector = sMatB.Time;
@@ -1144,6 +1161,9 @@ function OutputFile = ProcessFilter2(sProcess, sInputA, sInputB)
     end
     if isfield(sOutput, 'nAvg') && ~isempty(sOutput.nAvg)
         sMatOut.nAvg = sOutput.nAvg;
+    end
+    if isfield(sOutput, 'Leff') && ~isempty(sOutput.Leff)
+        sMatOut.Leff = sOutput.Leff;
     end
     % Copy time vector
     sMatOut.Time = sOutput.TimeVector;
@@ -1355,6 +1375,7 @@ function OutputFiles = ProcessStat(sProcess, sInputA, sInputB)
         sOutput.DisplayUnits = sStat.DisplayUnits;
         sOutput.ColormapType = sStat.ColormapType;
         sOutput.nAvg         = 1;
+        sOutput.Leff         = 1;
         % Output filetype
         if strcmpi(sInputA(1).FileType, sStat.Type)
             fileTag = bst_process('GetFileTag', sInputA(1).FileName);
@@ -1741,7 +1762,7 @@ end
 %% ===== LOAD INPUT FILE =====
 % USAGE:  [sInput, nSignals, iRows] = bst_process('LoadInputFile', FileName, Target=[], TimeWindow=[], OPTIONS=[])
 %                           OPTIONS = bst_process('LoadInputFile');
-function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow, OPTIONS) %#ok<DEFNU>
+function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow, OPTIONS)
     % Default options
     defOPTIONS = struct(...
         'LoadFull',       1, ...
@@ -1786,6 +1807,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         'GridAtlas',     [], ...
         'nComponents',   [], ...
         'nAvg',          1, ...
+        'Leff',          1, ...
         'Freqs',         []);
     % Find file in database
     [sStudy, sInput.iStudy, iFile, sInput.DataType] = bst_get('AnyFile', FileName);
@@ -1820,6 +1842,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         sInput.Atlas       = sMat.Atlas;
         sInput.nComponents = sMat.nComponents;
         sInput.nAvg        = sMat.nAvg;
+        sInput.Leff        = sMat.Leff;
         % If only non-All scouts: use just the scouts labels, if not use the full description string
         sScouts = sMat.Atlas.Scouts;
         if ~isequal(lower(OPTIONS.TargetFunc), 'all') && ~isempty(sScouts) && all(~strcmpi({sScouts.Function}, 'All'))
@@ -2038,6 +2061,11 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         sInput.nAvg = sMat.nAvg;
     else
         sInput.nAvg = 1;
+    end
+    if isfield(sMat, 'Leff') && ~isempty(sMat.Leff)
+        sInput.Leff = sMat.Leff;
+    else
+        sInput.Leff = 1;
     end
     % Count output signals
     if ~isempty(sInput.ImagingKernel) 

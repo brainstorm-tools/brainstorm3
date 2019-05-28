@@ -253,10 +253,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.ParentFiles = {sInputs.FileName};
 
         % Prepare output file structure
+        FileMat = db_template('datamat');
         FileMat.F = STA_single_neuron';
         FileMat.Time = time_segmentAroundSpikes; 
-
-        FileMat.Std = [];
         FileMat.Comment = ['Spike Triggered Average: ' ...
                            str_remove_parenth(ALL_TRIALS_files(1).trial.Comment) ...
                            ' (' better_label ')'];
@@ -265,17 +264,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         temp = in_bst(sInputs(1).FileName, 'ChannelFlag');
         FileMat.ChannelFlag = temp.ChannelFlag;
         FileMat.Device      = ALL_TRIALS_files(1).trial.Device;
-        FileMat.Events      = [];
-        
         FileMat.nAvg = 1;
-        FileMat.ColormapType = [];
-        FileMat.DisplayUnits = [];
         FileMat.History = ALL_TRIALS_files(1).trial.History;
         
         % Add history field
         FileMat = bst_history('add', FileMat, 'compute', ...
             ['Spike Triggered Average: [' num2str(tfOPTIONS.TimeWindow(1)) ', ' num2str(tfOPTIONS.TimeWindow(2)) '] ms']);
-        
 
         % Get output study
         sTargetStudy = bst_get('Study', iStudy);

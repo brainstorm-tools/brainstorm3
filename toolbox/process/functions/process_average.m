@@ -409,6 +409,7 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
     sMat.ChannelFlag = Stat.ChannelFlag;
     sMat.Time        = Stat.Time;
     sMat.nAvg        = Stat.nAvg;
+    sMat.Leff        = Stat.Leff;
     sMat.Comment     = Comment;
     
     % History: Average

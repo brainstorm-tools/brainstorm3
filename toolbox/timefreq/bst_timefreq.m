@@ -770,6 +770,7 @@ end
         FileMat.Measure   = OPTIONS.Measure;
         FileMat.Method    = OPTIONS.Method;
         FileMat.nAvg      = nAvgFile;
+        FileMat.Leff      = nAvgFile;
         FileMat.SurfaceFile   = SurfaceFile;
         FileMat.GridLoc       = GridLoc;
         FileMat.GridAtlas     = GridAtlas;

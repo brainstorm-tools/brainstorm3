@@ -116,6 +116,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     sDataOut.Time         = sDataIn.Time;
     sDataOut.DataType     = 'recordings'; 
     sDataOut.nAvg         = 1;
+    sDataOut.Leff         = 1;
     sDataOut.Events       = events;
     sDataOut.Device       = sDataIn.Device;
     sDataOut.History      = sDataIn.History;

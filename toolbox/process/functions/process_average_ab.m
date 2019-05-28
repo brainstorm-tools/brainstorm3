@@ -94,10 +94,15 @@ function sOutput = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     if isWeighted
         sOutput.A = (sInputA.nAvg .* sInputA.A + sInputB.nAvg .* sInputB.A) ./ (sInputA.nAvg + sInputB.nAvg);
         sOutput.nAvg = sInputA.nAvg + sInputB.nAvg;
+        sOutput.Leff = sInputA.Leff + sInputB.Leff;
     % Regular average
     else
         sOutput.A = (sInputA.A + sInputB.A) ./ 2;
         sOutput.nAvg = 2;
+        % Effective number of averages
+        % Leff = 1 / sum_i(w_i^2 / Leff_i),    with N=2, w1=1/N, w2=1/N
+        %      = N^2 / (1/Leff_A + 1/Leff_B))
+        sOutput.Leff = 2^2 ./ (1./sInputA.Leff + 1./sInputB.Leff);
     end
     
     % === SCALE dSPM VALUES (DEPRECATED AFTER INVERSE 2018) ===

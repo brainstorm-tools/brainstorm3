@@ -167,10 +167,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.ParentFiles = {sInputs.FileName};
 
         % Prepare output file structure
+        FileMat = db_template('datamat');
         FileMat.F = single_file_binning;
         FileMat.Time = diff(bins(1:2))/2+bins(1:end-1);
-
-        FileMat.Std = [];
         FileMat.Comment = ['Raster Plot: ' trial.Comment];
         FileMat.DataType = 'recordings';
         

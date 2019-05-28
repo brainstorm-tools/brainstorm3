@@ -232,10 +232,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     end
     % Copy fields from StatA structure
     sMat.(matName)   = StatA.mean;
+    sMat.Comment     = Comment;
     sMat.ChannelFlag = StatA.ChannelFlag;
     sMat.Time        = StatA.Time;
-    sMat.nAvg        = 1;   % What value to put here??
-    sMat.Comment     = Comment;
+    sMat.nAvg        = StatA.nAvg + StatB.nAvg;
+    % Effective number of averages
+    % Leff = 1 / sum_i(w_i^2 / Leff_i),  with w1=1 and w2=-1
+    %      = 1 / (1/Leff_A + 1/Leff_B))
+    sMat.Leff = 1 / (1/StatA.Leff + 1/StatB.Leff);
+    
     % Colormap for recordings: keep the original
     % Colormap for sources, timefreq... : difference (stat2)
     if ~strcmpi(sInputsA(1).FileType, 'data')

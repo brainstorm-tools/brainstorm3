@@ -224,6 +224,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     DataMat.DataType    = 'recordings';
     DataMat.Device      = 'simulation';
     DataMat.nAvg        = 1;
+    DataMat.Leff        = 1;
     DataMat.Events      = [];
     % Add history entry
     DataMat = bst_history('add', DataMat, 'simulate', ['Simulated from file: ' sInput.FileName]);

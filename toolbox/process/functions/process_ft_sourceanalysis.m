@@ -231,6 +231,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             ResultsMat.GoodChannel   = iChannelsData;
             ResultsMat.SurfaceFile   = HeadModelMat.SurfaceFile;
             ResultsMat.nAvg          = DataMat.nAvg;
+            ResultsMat.Leff          = DataMat.Leff;
             ResultsMat.cfg           = ftSource.cfg;
             switch lower(ResultsMat.HeadModelType)
                 case 'volume'

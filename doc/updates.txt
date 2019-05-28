@@ -1,4 +1,7 @@
 May 2019
+- API: Added effective number of averages (field "Leff") for correct dSPM scaling
+- Bug fix: ICBM152 cortex had one vertex outside of the inner skull 
+- Anatomy: Add menu "Force inside skull" to fix cortex surfaces for OpenMEEG
 - IO: Support for NWB ECOG (recordings + surfaces)
 - Database: Improved database updates between versions
 - Database: Add new type of object "fibers"

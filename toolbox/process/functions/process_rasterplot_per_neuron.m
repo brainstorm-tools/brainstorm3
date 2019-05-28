@@ -182,30 +182,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.ParentFiles = {sCurrentInputs.FileName};
 
         % Prepare output file structure
+        FileMat = db_template('timefreqmat');
         FileMat.TF = raster;
         FileMat.Time = diff(bins(1:2))/2+bins(1:end-1);
         FileMat.TFmask = true(size(raster, 2), size(raster, 3));
         FileMat.Freqs = 1:size(FileMat.TF, 3);
-        FileMat.Std = [];
         FileMat.Comment = ['Raster Plot: ' uniqueComments{iList}];
         FileMat.DataType = 'data';
-        FileMat.TimeBands = [];
-        FileMat.RefRowNames = [];
         FileMat.RowNames = labelsForDropDownMenu;
         FileMat.Measure = 'power';
         FileMat.Method = 'morlet';
         FileMat.DataFile = []; % Leave blank because multiple parents
-        FileMat.SurfaceFile = [];
-        FileMat.GridLoc = [];
-        FileMat.GridAtlas = [];
-        FileMat.Atlas = [];
-        FileMat.HeadModelFile = [];
-        FileMat.HeadModelType = [];
-        FileMat.nAvg = [];
-        FileMat.ColormapType = [];
-        FileMat.DisplayUnits = [];
         FileMat.Options = tfOPTIONS;
-        FileMat.History = [];
 
         % Add history field
         FileMat = bst_history('add', FileMat, 'compute', ...

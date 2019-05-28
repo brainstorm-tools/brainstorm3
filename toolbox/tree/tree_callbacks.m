@@ -3149,6 +3149,7 @@ function SetNavgData(filenameFull)
         bst_error('Invalid value', 'Set number of trials', 0);
         return;
     end
+    DataMat.Leff = DataMat.nAvg;
     % History: Set number of trials
     DataMat = bst_history('add', DataMat, 'set_trials', ['Set number of trials: ' res]);
     % Save file

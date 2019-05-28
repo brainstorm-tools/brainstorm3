@@ -185,30 +185,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     tfOPTIONS.ParentFiles = {sInputs.FileName};
 
     % Prepare output file structure
-    FileMat = struct();
+    FileMat = db_template('timefreqmat');
     FileMat.TF     = noise_correlation;
     FileMat.Time   = 1:length(uniqueNeurons);
     FileMat.TFmask = true(size(noise_correlation, 2), size(noise_correlation, 3));
     FileMat.Freqs  = 1:size(FileMat.TF, 3);
-    FileMat.Std = [];
     FileMat.Comment = ['Noise Correlation: ' condition];
     FileMat.DataType = 'data';
-    FileMat.TimeBands = [];
-    FileMat.RefRowNames = [];
     FileMat.RowNames = {'nxn Noise Correlation'};
     FileMat.NeuronNames = uniqueNeurons;
     FileMat.Measure = 'power';
     FileMat.Method = 'morlet';
     FileMat.DataFile = []; % Leave blank because multiple parents
-    FileMat.SurfaceFile = [];
-    FileMat.GridLoc = [];
-    FileMat.GridAtlas = [];
-    FileMat.Atlas = [];
-    FileMat.HeadModelFile = [];
-    FileMat.HeadModelType = [];
-    FileMat.nAvg = [];
-    FileMat.ColormapType = [];
-    FileMat.DisplayUnits = [];
     FileMat.Options = tfOPTIONS;
     
     % Add history field
@@ -223,9 +211,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Save output file and add to database
     bst_save(FileName, FileMat, 'v6');
     db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
-    
-
-    
     
     % Display report to user
     bst_report('Info', sProcess, sInputs, 'Success');

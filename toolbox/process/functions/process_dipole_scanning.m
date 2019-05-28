@@ -98,6 +98,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         DataMatP.F = [];
         DataMatP.Comment = sResultP.Comment;
         DataMatP.nAvg = sResultP.nAvg;
+        DataMatP.Leff = sResultP.Leff;
     else
         DataMatP = in_bst_data(sResultP.DataFile);
     end
