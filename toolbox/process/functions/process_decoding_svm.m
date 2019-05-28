@@ -91,11 +91,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputs, 'Not enough files in input.');
         return;
     end
-    % Check for the Signal Processing toolbox
-    if ~bst_get('UseSigProcToolbox')
-        bst_report('Error', sProcess, sInputs, 'This process requires the Signal Processing Toolbox.');
-        return;
-    end
     
     % Ensure we are including the LibSVM folder in the Matlab path
     libsvmDir = bst_fullfile(bst_get('BrainstormUserDir'), 'libsvm');
@@ -122,6 +117,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     model           = sProcess.options.model.Value;
     methods         = {'pairwise', 'temporalgen', 'multiclass'};
     method          = methods{sProcess.options.method.Value};
+    
+    % Check for the Signal Processing toolbox
+    if LowPass > 0 && ~bst_get('UseSigProcToolbox')
+        bst_report('Error', sProcess, sInputs, 'The Signal Processing Toolbox is required to apply a filter.');
+        return;
+    end
     
     % Create signal pairs
     allConditions = {sInputs.Condition};
