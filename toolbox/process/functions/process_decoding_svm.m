@@ -462,16 +462,18 @@ function downloadAndInstallLibsvm()
     file_move(libsvmGitDir, libsvmDir);
     % Add LibSVM to Matlab path
     addpath(genpath(libsvmDir));
-    % Compile library
-    currentFolder = pwd;
-    makeDir = bst_fullfile(libsvmDir, 'matlab');
-    cd(makeDir);
-    try
-        make;
-    catch
+    % For non-Windows, compile the binaries
+    if isempty(strfind(bst_get('OsType'), 'win'))
+        currentFolder = pwd;
+        makeDir = bst_fullfile(libsvmDir, 'matlab');
+        cd(makeDir);
+        try
+            make;
+        catch
+            cd(currentFolder);
+            error('Impossible to compile LibSVM, please try installing it manually.');
+        end
         cd(currentFolder);
-        error('Impossible to compile LibSVM, please try installing it manually.');
     end
-    cd(currentFolder);
 end
 
