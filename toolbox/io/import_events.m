@@ -100,6 +100,8 @@ if isempty(newEvents)
             newEvents = in_events_brainamp(sFile, EventFile);
         case 'BST'
             FileMat = load(EventFile);
+            % Add missing fields if required
+            FileMat.events = struct_fix_events(FileMat.events);
             % Convert structure to local structure
             newEvents = repmat(db_template('event'), 1, length(FileMat.events));
             for iEvt = 1:length(FileMat.events)
