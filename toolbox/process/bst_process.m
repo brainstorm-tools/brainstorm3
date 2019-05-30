@@ -926,13 +926,15 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     % Comment: forced in the options
     if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
         sMat.Comment = sProcess.options.Comment.Value;
-    else
-        % Add file tag
-        if isfield(sInput, 'CommentTag') && ~isempty(sInput.CommentTag)
-            sMat.Comment = [sMat.Comment, ' | ', sInput.CommentTag];
-        elseif ~isempty(processTag)
-            sMat.Comment = [sMat.Comment, ' | ', processTag];
-        end
+    % Modify comment based on modifications in function Run
+    elseif isfield(sInput, 'Comment') && ~isempty(sInput.Comment) && ~isequal(sMat.Comment, sInput.Comment)
+        sMat.Comment = sInput.Comment;
+    % Add file tag (defined in process Run function)
+    elseif isfield(sInput, 'CommentTag') && ~isempty(sInput.CommentTag)
+        sMat.Comment = [sMat.Comment, ' | ', sInput.CommentTag];
+    % Add file tag (defined in process definition GetDescription)
+    elseif ~isempty(processTag)
+        sMat.Comment = [sMat.Comment, ' | ', processTag];
     end
     % If data + changed data type
     if isfield(sInput, 'DataType') && ~isempty(sInput.DataType) && isfield(sMat, 'DataType')

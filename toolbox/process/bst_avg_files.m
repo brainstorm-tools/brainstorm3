@@ -140,6 +140,7 @@ Freqs        = [];
 TFmask       = [];
 isData       = 0;
 nFiles       = length(FilesListA);
+nFilesValid  = 0;
 nAvgTotal    = 0;
 LeffTotal    = 0;
 sFile.events = repmat(db_template('event'), 0);
@@ -197,6 +198,8 @@ for iFile = 1:nFiles
     % Get values to process
     matValues = double(sMat.(matName));
     TimeVector = sMat.Time;
+    % Effective number of averages (now replaces poorly tracked nAvg)
+    Leff = sMat.Leff;
     % Count number of previous averages for weighted average
     if isWeighted
         nAvg = sMat.nAvg;
@@ -204,8 +207,6 @@ for iFile = 1:nFiles
         nAvg = 1;
     end
     nAvgTotal = nAvgTotal + nAvg;
-    % Effective number of averages
-    Leff = sMat.Leff;
         
     % Apply default measure to TF values
     if strcmpi(matName, 'TF') && ~isreal(matValues)
@@ -368,11 +369,15 @@ for iFile = 1:nFiles
     % LeffTotal = 1 / sum_i(w_i^2 / Leff_i)
     if isWeighted
         % w_i = Leff_i / sum_i(Leff_i)
+        % Will need to divide final averaged values by sum_i(Leff_i)=sum_i(wi) after the computation
+        w = Leff;
         % => LeffTotal = sum(Leff_i)
         LeffTotal = LeffTotal + Leff;
     else
-        % w_i = 1 / nFiles
-        % => LeffTotal = nFiles^2 / sum(1/Leff_i)
+        % w_i = 1 / nFiles(valid)
+        % Will need to divide final averaged values by nFiles(Valid)=sum_i(wi) after the computation
+        w = 1;
+        % LeffTotal = nFiles^2 / sum(1/Leff_i)
         % Computing here only the sum, and will compute the final value at the end
         LeffTotal = LeffTotal + 1 ./ Leff;
     end
@@ -463,8 +468,9 @@ for iFile = 1:nFiles
             iGoodRows = true(size(matValues,1), 1);
         end
     end
-    % Count good channels
-    nGoodSamples(iGoodRows) = nGoodSamples(iGoodRows) + nAvg;
+    % Count good channels (not necessarily an integer anymore: Leff can be any scalar)
+    % nGoodSamples(iGoodRows) = nGoodSamples(iGoodRows) + nAvg;
+    nGoodSamples(iGoodRows) = nGoodSamples(iGoodRows) + w;
     % Add file to the list of files used in the average
     iOutFiles(end+1) = iFile;
     
@@ -477,7 +483,8 @@ for iFile = 1:nFiles
         % Q = matValues - MeanValues
         matValues(iGoodRows,:) = matValues(iGoodRows,:) - MeanValues(iGoodRows,:);
         % R = Q * nAvg / nGoodSamples
-        R = bst_bsxfun(@rdivide, matValues(iGoodRows,:) .* nAvg, nGoodSamples(iGoodRows));
+        % R = bst_bsxfun(@rdivide, matValues(iGoodRows,:) .* nAvg, nGoodSamples(iGoodRows));
+        R = bst_bsxfun(@rdivide, matValues(iGoodRows,:) .* w, nGoodSamples(iGoodRows));
         if isVariance
             % VarValues = VarValues + nGoodSamples_old * Q * R
             matValues(iGoodRows,:) = matValues(iGoodRows,:) .* R;
@@ -485,6 +492,8 @@ for iFile = 1:nFiles
         end
         MeanValues(iGoodRows,:) = MeanValues(iGoodRows,:) + R;
     end
+    nFilesValid = nFilesValid + 1;
+    
     % === ADD EVENTS ===
     if ~isempty(Events)
         sFile = import_events(sFile, [], Events);
@@ -528,7 +537,7 @@ if isVariance
 end
 % Effective number of averages (for regular non-weigthed average)
 if ~isWeighted
-    LeffTotal = nFiles^2 / LeffTotal;
+    LeffTotal = nFilesValid^2 / LeffTotal;
 end
 % Time vector
 Stat.MatName      = MeanMatName;

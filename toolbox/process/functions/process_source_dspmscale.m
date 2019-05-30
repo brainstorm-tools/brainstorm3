@@ -74,7 +74,11 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         return;
     end
     % If trying to process something that is not a dspm2018 file: warning
-    if ~strcmpi(ResultsMat.Function, 'dspm2018')
+    if strcmpi(ResultsMat.Function, 'dspm2018sc')
+        bst_report('Error', sProcess, sInput, 'The input file has already been scaled with this process.');
+        sInput = [];
+        return;
+    elseif ~strcmpi(ResultsMat.Function, 'dspm2018')
         bst_report('Warning', sProcess, sInput, ['The input file is not a dSPM file estimated with "Compute sources [2018].' 10 'Applying the process on this file may not make sense...']);
     end
     % Considering that the file is necessarily starting as if (Leff = 1)
@@ -90,6 +94,9 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         disp(['dSPM> ' msg]);
         % Apply on full source matrix
         sInput.A = Factor * sInput.A;
+        % Change file tag so we don't allow rescaling
+        sInput.Function = 'dspm2018sc';
+        sInput.Comment = strrep(sInput.Comment, '-unscaled', '');
     end
 end
 

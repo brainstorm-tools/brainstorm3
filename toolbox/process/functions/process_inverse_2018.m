@@ -368,9 +368,8 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             for i = 1:length(iRelatedStudies)
                 % Get data file
                 sStudyRel = bst_get('Study', iRelatedStudies(i));
-                DataFull = file_fullpath(sStudyRel.Data(iRelatedData(i)).FileName);
                 % Read bad channels and nAvg
-                DataMat = load(DataFull, 'ChannelFlag', 'nAvg', 'Leff');
+                DataMat = in_bst_data(sStudyRel.Data(iRelatedData(i)).FileName, 'ChannelFlag', 'nAvg', 'Leff');
                 if isfield(DataMat, 'nAvg') && ~isempty(DataMat.nAvg)
                     nAvgAll(i) = DataMat.nAvg;
                 else
@@ -419,8 +418,8 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             %     end
             %     isFirstWarnAvg = 0;
             % end
-            nAvg = min([nAvgAll 1]);
-            Leff = min([Leff 1]);
+            nAvg = min([nAvgAll, 1]);
+            Leff = min([LeffAll, 1]);
             
             % === BAD CHANNELS ===
             if any(BadChannels)

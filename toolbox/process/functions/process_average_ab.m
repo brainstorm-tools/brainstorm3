@@ -21,7 +21,7 @@ function varargout = process_average_ab( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2019
 
 eval(macro_method);
 end
@@ -92,7 +92,8 @@ function sOutput = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     % === COMPUTE THE AVERAGES ===
     % Weighted average
     if isWeighted
-        sOutput.A = (sInputA.nAvg .* sInputA.A + sInputB.nAvg .* sInputB.A) ./ (sInputA.nAvg + sInputB.nAvg);
+        % sOutput.A = (sInputA.nAvg .* sInputA.A + sInputB.nAvg .* sInputB.A) ./ (sInputA.nAvg + sInputB.nAvg);
+        sOutput.A = (sInputA.Leff .* sInputA.A + sInputB.Leff .* sInputB.A) ./ (sInputA.Leff + sInputB.Leff);
         sOutput.nAvg = sInputA.nAvg + sInputB.nAvg;
         sOutput.Leff = sInputA.Leff + sInputB.Leff;
     % Regular average
