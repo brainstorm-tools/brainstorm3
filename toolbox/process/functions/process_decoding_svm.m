@@ -426,6 +426,7 @@ end
 
 %% ===== DOWNLOAD AND INSTALL LIBSVM =====
 function downloadAndInstallLibsvm()
+    isProgress = bst_progress('isvisible');
     userDir = bst_get('BrainstormUserDir');
     libsvmDir = bst_fullfile(userDir, 'libsvm');
     url = 'https://github.com/cjlin1/libsvm/archive/master.zip';
@@ -474,6 +475,13 @@ function downloadAndInstallLibsvm()
             error('Impossible to compile LibSVM, please try installing it manually.');
         end
         cd(currentFolder);
+    end
+    % Test installation
+    if exist('svmpredict', 'file')
+        disp('Successfully installed LibSVM.');
+    end
+    if ~isProgress
+        bst_progress('stop');
     end
 end
 
