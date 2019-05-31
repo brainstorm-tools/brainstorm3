@@ -2721,11 +2721,11 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
     % Display defaults
     UseSmoothing = 0;
     % Remove "MEG" from the list if there is either "MEG MAG" or "MEG GRAD" also
-    if all(ismember({'MEG GRAD', 'MEG'}, AllMod)) || all(ismember({'MEG MAG', 'MEG'}, AllMod))
+    if ~isempty(AllMod) && (all(ismember({'MEG GRAD', 'MEG'}, AllMod)) || all(ismember({'MEG MAG', 'MEG'}, AllMod)))
         AllMod = setdiff(AllMod, 'MEG'); 
     end
     % Replace "MEG GRAD" with independant sensor types (MEG GRAD2, MEG GRAD3, GRADNORM)
-    if (ismember('MEG GRAD', AllMod))
+    if ~isempty(AllMod) && ismember('MEG GRAD', AllMod)
         AllMod = setdiff(AllMod, 'MEG GRAD'); 
         if isGradNorm
             AllMod{end+1} = 'MEG GRADNORM';
