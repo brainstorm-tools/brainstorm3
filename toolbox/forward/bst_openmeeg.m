@@ -108,7 +108,8 @@ if strcmpi(osType, 'mac64') && ~isdir(bst_fullfile(OpenmeegDir, 'lib'))
 end
 
 % If binary file doesnt exist: download
-if ~isdir(OpenmeegDir) || (~strcmpi(osType, 'mac64') && isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*')))) || ~strcmpi(prevUrl, url) || isUpdate
+if (bst_get('AutoUpdates') || isempty(prevUrl)) && ...
+   (~isdir(OpenmeegDir) || (~strcmpi(osType, 'mac64') && isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*')))) || ~strcmpi(prevUrl, url) || isUpdate)
     % If folder exists: delete
     if isdir(OpenmeegDir)
         file_delete(OpenmeegDir, 1, 3);
