@@ -118,7 +118,7 @@ switch lower(DisplayMode)
         end
         Labels{4} = [];
         % Create the dimension labels
-        [tmp, MatFileName] = bst_fileparts(MatFile)
+        [tmp, MatFileName] = bst_fileparts(MatFile);
         if ~isempty(strfind(MatFileName, '_temporalgen'))
             % For temporal generalization decoding, matrix is a Time x Time
             DimLabels = {'Time (s)', 'Time (s)'};
