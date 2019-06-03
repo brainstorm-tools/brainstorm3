@@ -180,7 +180,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Create file structure
     FileMat = db_template('matrixmat');
     FileMat.Comment     = sprintf('%s %s on %d classes', methodName, modelName, numConditions);
-    FileMat.Value       = Value;
+    FileMat.Value       = double(Value);
     FileMat.Description = Description;
     FileMat.Time        = Time;
     FileMat.CondLabels  = uniqueConditions;
