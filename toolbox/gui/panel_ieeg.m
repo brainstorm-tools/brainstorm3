@@ -2471,8 +2471,8 @@ function SetElectrodeLoc(iLoc, jButton)
     end
     % Make sure the points of the electrode are more than 1cm apart
     iOther = setdiff(1:size(sSelElec.Loc,2), iLoc);
-    if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.01))
-        bst_error('The two points you selected are less than 1cm away.', 'Set electrode position', 0);
+    if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.002))
+        bst_error('The two points you selected are less than 2mm away.', 'Set electrode position', 0);
         return;
     end
     % Set electrode position
