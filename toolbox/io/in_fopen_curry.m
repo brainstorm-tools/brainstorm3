@@ -63,29 +63,29 @@ if (fid == -1)
    error(['Unable to open file: ' HdrFile']);
 end
 try
-    cell = textscan(fid,'%s','whitespace','','endofline','§');
+    Cell = textscan(fid,'%s','whitespace','','endofline','§');
 catch
     % In case of earlier versions of Matlab or Older Computers
     fclose(fid); 
     fid = fopen(HdrFile,'rt');
     f = dir(HdrFile);
     try
-        cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
+        Cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
     catch
         fclose(fid);
         fid = fopen(HdrFile,'rt');
-        cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
+        Cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
     end
 end
 fclose(fid);            
-cont = cell2mat(cell{1});
+cont = cell2mat(Cell{1});
 
 % read parameters from file
 % tokens (second line is for Curry 6 notation)
 tok = { 'NumSamples'; 'NumChannels'; 'NumTrials'; 'SampleFreqHz';  'TriggerOffsetUsec';  'DataFormat'; 'DataSampOrder';   'SampleTimeUsec'; 
         'NUM_SAMPLES';'NUM_CHANNELS';'NUM_TRIALS';'SAMPLE_FREQ_HZ';'TRIGGER_OFFSET_USEC';'DATA_FORMAT';'DATA_SAMP_ORDER'; 'SAMPLE_TIME_USEC' };
 
-% scan in cell 1 for keywords - all keywords must exist!
+% scan in Cell 1 for keywords - all keywords must exist!
 nt = size(tok,1);
 a = zeros(nt,1);
 for i = 1:nt
@@ -151,21 +151,21 @@ if (fid == -1)
    error(['Unable to open file: ' ChanFile]);
 end
 try
-    cell = textscan(fid,'%s','whitespace','','endofline','§');
+    Cell = textscan(fid,'%s','whitespace','','endofline','§');
 catch
     fclose(fid);
     fid = fopen(ChanFile,'rt');
     f = dir(ChanFile);
     try
-        cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
+        Cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
     catch
         fclose(fid);
         fid = fopen(ChanFile,'rt');
-        cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
+        Cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
     end
 end
 fclose(fid);
-cont = cell2mat(cell{1});
+cont = cell2mat(Cell{1});
 
 % read labels from rs3 file
 % initialize labels
@@ -175,7 +175,7 @@ for i = 1:hdr.nChannels
     hdr.labels(i) = cellstr(text);
 end
 
-% scan in cell 1 for LABELS (occurs four times per channel group)
+% scan in Cell 1 for LABELS (occurs four times per channel group)
 ix = strfind(cont,[char(10),'LABELS']);
 nt = size(ix,2);
 nc = 0;
@@ -195,7 +195,7 @@ end
 
 % Read sensor locations from rs3 file
 hdr.sensorpos = zeros(3,0);
-% Scan in cell 1 for SENSORS (occurs four times per channel group)
+% Scan in Cell 1 for SENSORS (occurs four times per channel group)
 ix = strfind(cont,[char(10),'SENSORS']);
 nt = size(ix,2);
 nc = 0;
@@ -233,7 +233,7 @@ end
 
 if (fid >= 0)              
     try
-        cell = textscan(fid,'%s','whitespace','','endofline','§');
+        Cell = textscan(fid,'%s','whitespace','','endofline','§');
     catch
         fclose(fid);
         fid = fopen(EvtFile,'rt');
@@ -244,7 +244,7 @@ if (fid >= 0)
             f = dir(EvtFile);
         end
         try
-            cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
+            Cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
         catch
             fclose(fid);
             fid = fopen(EvtFile,'rt');
@@ -254,13 +254,13 @@ if (fid >= 0)
             else
                 f = dir(EvtFile);
             end
-            cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
+            Cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
         end
     end
     fclose(fid);
-    cont = cell2mat(cell{1});
+    cont = cell2mat(Cell{1});
 
-    % scan in cell 1 for NUMBER_LIST (occurs five times)
+    % scan in Cell 1 for NUMBER_LIST (occurs five times)
     ix = strfind(cont,'NUMBER_LIST');
 
     newlines = ix(4) - 1 + strfind(cont(ix(4):ix(5)),char(10));     % newline
@@ -276,7 +276,7 @@ if (fid >= 0)
         hdr.events = cat ( 2, hdr.events, [ sample; type; startsample; endsample ] );
     end
 
-    % scan in cell 1 for REMARK_LIST (occurs five times)
+    % scan in Cell 1 for REMARK_LIST (occurs five times)
     ix = strfind(cont,'REMARK_LIST');
     na = 0;
 
@@ -300,14 +300,14 @@ if (hdr.nASCII == 1)
     try
         fclose(fid);
         fid = fopen(DataFile,'rt');
-        cell = textscan(fid,'%f',hdr.nChannels*hdr.nSamples*hdr.nTrials);
+        Cell = textscan(fid,'%f',hdr.nChannels*hdr.nSamples*hdr.nTrials);
     catch
         fclose(fid);
         fid = fopen(DataFile,'rt');
-        cell = textscan(fid,'%f',hdr.nChannels*hdr.nSamples*hdr.nTrials, 'BufSize',round(f.bytes+(f.bytes*0.2)));
+        Cell = textscan(fid,'%f',hdr.nChannels*hdr.nSamples*hdr.nTrials, 'BufSize',round(f.bytes+(f.bytes*0.2)));
     end
     fclose(fid);
-    hdr.data = reshape([cell{1}],hdr.nChannels,hdr.nSamples*hdr.nTrials);
+    hdr.data = reshape([Cell{1}],hdr.nChannels,hdr.nSamples*hdr.nTrials);
 else
     hdr.data = [];
 end
