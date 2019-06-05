@@ -92,24 +92,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return;
     end
     
-    % Ensure we are including the LibSVM folder in the Matlab path
-    libsvmDir = bst_fullfile(bst_get('BrainstormUserDir'), 'libsvm');
-    if exist(libsvmDir, 'dir')
-        addpath(genpath(libsvmDir));
-    end
-    % Install LibSVM if missing
-    if ~exist('svmpredict', 'file')
-        rmpath(genpath(libsvmDir));
-        isOk = java_dialog('confirm', ...
-            ['This process requires the LibSVM toolbox.' 10 10 ...
-                 'Download and install it now?'], 'WaveClus');
-        if ~isOk
-            bst_report('Error', sProcess, sInputs, ['This process requires the LibSVM Toolbox:' 10 'http://www.csie.ntu.edu.tw/~cjlin/libsvm/#download']);
-            return;
-        end
-        downloadAndInstallLibsvm();
-    end
-
     % Get options
     SensorTypes     = sProcess.options.sensortypes.Value;
     LowPass         = sProcess.options.lowpass.Value{1};
@@ -117,6 +99,26 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     model           = sProcess.options.model.Value;
     methods         = {'pairwise', 'temporalgen', 'multiclass'};
     method          = methods{sProcess.options.method.Value};
+    
+    % Ensure we are including the LibSVM folder in the Matlab path
+    if strcmpi(model, 'svm')
+        libsvmDir = bst_fullfile(bst_get('BrainstormUserDir'), 'libsvm');
+        if exist(libsvmDir, 'dir')
+            addpath(genpath(libsvmDir));
+        end
+        % Install LibSVM if missing
+        if ~exist('svmpredict', 'file')
+            rmpath(genpath(libsvmDir));
+            isOk = java_dialog('confirm', ...
+                ['This process requires the LibSVM toolbox.' 10 10 ...
+                     'Download and install it now?'], 'WaveClus');
+            if ~isOk
+                bst_report('Error', sProcess, sInputs, ['This process requires the LibSVM Toolbox:' 10 'http://www.csie.ntu.edu.tw/~cjlin/libsvm/#download']);
+                return;
+            end
+            downloadAndInstallLibsvm();
+        end
+    end
     
     % Check for the Signal Processing toolbox
     if LowPass > 0 && ~bst_get('UseSigProcToolbox')
