@@ -27,7 +27,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Pairwise SVM decoding';
+    sProcess.Comment     = 'SVM decoding';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Decoding';
     sProcess.Index       = 702;

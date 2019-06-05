@@ -27,7 +27,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Pairwise max-correlation decoding';
+    sProcess.Comment     = 'Max-correlation decoding';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Decoding';
     sProcess.Index       = 702;
