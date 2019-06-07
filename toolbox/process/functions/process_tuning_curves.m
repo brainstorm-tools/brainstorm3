@@ -146,12 +146,23 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             %%%%%%%%%%%%%%%%%% 1. meanData (that will be the center vector)
             %%%%%%%%%%%%%%%%%% 2. CI(1,:) (Bottom confidence interval)
             %%%%%%%%%%%%%%%%%% 3. CI(2,:) (Top confidence interval)
-            plot_ci(x,[meanData; CI(1,:); CI(2,:)], 'PatchColor', 'r', 'PatchAlpha', 0.2, ...
-                      'MainLineWidth', 2, 'MainLineStyle', '-', 'MainLineColor', 'y', ...
-                      'LineWidth', 1.5, 'LineStyle','--', 'LineColor', 'k');
+%             plot_ci(x,[meanData; CI(1,:); CI(2,:)], 'PatchColor', 'r', 'PatchAlpha', 0.2, ...
+%                       'MainLineWidth', 2, 'MainLineStyle', '-', 'MainLineColor', 'y', ...
+%                       'LineWidth', 1.5, 'LineStyle','--', 'LineColor', 'k');
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                  
-                  
+        
+            
+            % Create the plot with the confidence intervals
+            plot(x, CI(1,:), 'k--', 'LineWidth', 1.5);
+            hold on;
+            plot(x, CI(2,:), 'k--', 'LineWidth', 1.5);
+            
+            x2 = [x, fliplr(x)];
+            inBetween = [CI(1,:), fliplr(CI(2,:))];
+            fill(x2, inBetween, 'g','FaceAlpha',.4);
+            plot(x, meanData,'LineWidth', 2)
+
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                   
             set(gca, 'Xtick', 1:length(sProcess.options.eventsel.Value), 'Xticklabel', sProcess.options.eventsel.Value);
             xlabel('Condition');
