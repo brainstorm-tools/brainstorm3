@@ -248,7 +248,7 @@ function [coords] = load_brainsight_coords(coords_file)
     ic = 1; % counter of entries
     while(~feof(fid))
        line = textscan(fid, '%s', 1, 'delimiter', '\n');
-       if ~strcmp(line{1}{1}(1), '#') % ignore comments
+       if ~isempty(line{1}{1}) && ~strcmp(line{1}{1}(1), '#') % ignore empty lines and comments
            toks = textscan(line{1}{1}, '%s\t%s\t%d\t%f\t%f\t%f%f', ...
                            'WhiteSpace', '\b\t');
            coords(ic).name = toks{1}{1};
