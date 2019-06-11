@@ -34,7 +34,7 @@ function varargout = process_spike_triggered_average( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018
+% Authors: Konstantinos Nasiotis, 2018-2019
 
 eval(macro_method);
 end
@@ -229,6 +229,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         STA_single_neuron = zeros(length(ChannelMat.Channel), length(time_segmentAroundSpikes)); 
+        std_single_neuron = zeros(length(ChannelMat.Channel), length(time_segmentAroundSpikes)); 
 
         %% Take the Averages of the appropriate indices
         divideBy = 0;
@@ -236,10 +237,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if iEvents(iTrial)~=0
                 STA_single_neuron = STA_single_neuron + everything(iTrial).LFPs_single_trial(iEvents(iTrial)).nSpikes * everything(iTrial).LFPs_single_trial(iEvents(iTrial)).avgLFP; % The avgLFP are sum actually. 
                 divideBy = divideBy + everything(iTrial).LFPs_single_trial(iEvents(iTrial)).nSpikes;
+                
+                % Here I have the assumption that the LFPs on all trials
+                % have homogeneity in their variance (Cohen, 1988, p.67): 
+                % http://www.utstat.toronto.edu/~brunner/oldclass/378f16/readings/CohenPower.pdf
+                % https://www.statisticshowto.datasciencecentral.com/pooled-standard-deviation/
+                std_single_neuron = std_single_neuron + (everything(iTrial).LFPs_single_trial(iEvents(iTrial)).nSpikes-1) * everything(iTrial).LFPs_single_trial(iEvents(iTrial)).stdLFP.^2;
             end 
         end
         
         STA_single_neuron = (STA_single_neuron./divideBy)';
+        std_single_neuron = sqrt(std_single_neuron./(divideBy - size(all_labels,2)));
     
 
         %% Get meaningful label from neuron name
@@ -256,7 +264,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.F = STA_single_neuron';
         FileMat.Time = time_segmentAroundSpikes; 
 
-        FileMat.Std = [];
+        FileMat.Std = 2 .* std_single_neuron; % MULTIPLY BY 2 TO GET 95% CONFIDENCE (ASSUMING NORMAL DISTRIBUTION)
+        
         FileMat.Comment = ['Spike Triggered Average: ' ...
                            str_remove_parenth(ALL_TRIALS_files(1).trial.Comment) ...
                            ' (' better_label ')'];
@@ -346,6 +355,7 @@ function all = get_LFPs(trial, nChannels, sProcess, time_segmentAroundSpikes, sa
         all(iNeuron).label   = trial.Events(spikeEvents(iNeuron)).label;
         all(iNeuron).nSpikes = length(events_within_segment);
         all(iNeuron).avgLFP  = squeeze(sum(allSpikeSegments_singleNeuron_singleTrial,1));
+        all(iNeuron).stdLFP  = squeeze(std(allSpikeSegments_singleNeuron_singleTrial,[],1));
         all(iNeuron).Used    = 0; % This indicates if this entry has already been used for computing the SFC (some spikes might not appear on every trial imported, so a new Neuron should be identified on a later trial).
 
 
