@@ -300,7 +300,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % Display report to user
     bst_report('Info', sProcess, sInputs, 'Success');
-    disp('BST> process_spike_field_coherence: Success');
+    disp('BST> process_spike_triggered_average: Success');
     
     
     % Close parallel pool
