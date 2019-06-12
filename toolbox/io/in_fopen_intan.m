@@ -77,7 +77,7 @@ end
 newHeader.AcqType = AcqType; % This will be used later in in_fread_intan.m
 
 % Check for the magic Number
-if newHeader.magic_number ~= hex2dec('d69127ac')
+if newHeader.magic_number ~= hex2dec('d69127ac') && newHeader.magic_number ~= hex2dec('c6912702')
     error('Magic Number Incorrect. The Intan header was not loaded properly');
 end
 
@@ -230,12 +230,6 @@ end
 function de = bst_bi2de(bi, flg)
     if nargin < 2 || isempty(flg)
         flg = 'right-msb';
-    end
-
-    % Call toolbox function if available
-    if exist('bi2de', 'file') == 2
-        de = bi2de(bi, flg);
-        return;
     end
 
     % Initialize array of powers of two
