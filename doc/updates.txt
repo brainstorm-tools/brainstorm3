@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 June 2019
+- Anatomy: Added support for MarsAtlas parcellation in BrainVISA
 - IO: Support for Intan RHS+RHD files
 ---------------------------------------------------------------
 May 2019
