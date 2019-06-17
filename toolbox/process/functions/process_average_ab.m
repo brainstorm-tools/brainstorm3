@@ -46,9 +46,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.isSourceAbsolute = -1;
     
     % === WEIGHTED AVERAGE
-    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(nAvg(i) * x(i)) / sum(nAvg(i))</FONT>';
+    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(Leff_i * x(i)) / sum(Leff_i)</FONT>';
     sProcess.options.weighted.Type       = 'checkbox';
     sProcess.options.weighted.Value      = 0;
+    sProcess.options.weightedlabel.Comment    = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#777777">Leff_i = Effective number of averages for file #i</FONT>';
+    sProcess.options.weightedlabel.Type       = 'label';
     % === SCALE NORMALIZE SOURCE MAPS (DEPRECATED AFTER INVERSE 2018) 
     sProcess.options.scalenormalized.Comment    = 'Adjust normalized source maps for SNR increase.<BR><FONT color="#777777"><I>Example: dSPM(Average) = sqrt(Navg) * Average(dSPM)</I></FONT>';
     sProcess.options.scalenormalized.Type       = 'checkbox';

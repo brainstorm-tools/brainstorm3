@@ -53,9 +53,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.avg_func.Value   = 2;
     sProcess.options.avg_func.InputTypes = {'data', 'results', 'matrix'};
     % === WEIGHTED AVERAGE
-    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(nAvg(i) * x(i)) / sum(nAvg(i))</FONT>';
+    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(Leff_i * x(i)) / sum(Leff_i)</FONT>';
     sProcess.options.weighted.Type       = 'checkbox';
     sProcess.options.weighted.Value      = 0;
+    sProcess.options.weightedlabel.Comment    = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#777777">Leff_i = Effective number of averages for file #i</FONT>';
+    sProcess.options.weightedlabel.Type       = 'label';
     % === MATCH ROWS WITH NAMES
     sProcess.options.matchrows.Comment    = 'Match signals between files using their names';
     sProcess.options.matchrows.Type       = 'checkbox';

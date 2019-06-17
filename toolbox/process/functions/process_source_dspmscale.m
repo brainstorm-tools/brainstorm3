@@ -92,11 +92,13 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         msg = sprintf('Scaling the values by %1.2f to match the number of trials averaged (%d => %d)', Factor, LeffOrig, ResultsMat.Leff);
         bst_report('Info', sProcess, sInput, msg);
         disp(['dSPM> ' msg]);
+        sInput.HistoryComment = msg;
         % Apply on full source matrix
         sInput.A = Factor * sInput.A;
         % Change file tag so we don't allow rescaling
         sInput.Function = 'dspm2018sc';
         sInput.Comment = strrep(sInput.Comment, '-unscaled', '');
+        sInput.Leff = 0;
     end
 end
 

@@ -200,6 +200,10 @@ for iFile = 1:nFiles
     TimeVector = sMat.Time;
     % Effective number of averages (now replaces poorly tracked nAvg)
     Leff = sMat.Leff;
+    if (Leff == 0)
+        Messages = [Messages, 'Error: Field Leff=0, you are trying to average scaled dSPM.'];
+        return;
+    end
     % Count number of previous averages for weighted average
     if isWeighted
         nAvg = sMat.nAvg;

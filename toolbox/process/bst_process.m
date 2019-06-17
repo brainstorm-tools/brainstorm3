@@ -31,7 +31,7 @@ function varargout = bst_process( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2018; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2010-2019; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -619,6 +619,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     
     % ===== SPLIT IN BLOCKS =====
     OutMeasure = [];
+    OutLeff = [];
     OutputMat = [];
     OutputStd = [];
     OutputTFmask = [];
@@ -820,6 +821,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                 if isfield(sInput, 'Measure')
                     OutMeasure = sInput.Measure;                   
                 end
+                % Output Leff
+                if isfield(sInput, 'Leff')
+                    OutLeff = sInput.Leff;                   
+                end
                 % RAW: Create a new raw file to store the results
                 if isRaw
                     % Create an empty Brainstorm-binary file
@@ -908,6 +913,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     % Output measure
     if ~isempty(OutMeasure)
         sMat.Measure = OutMeasure;
+    end
+    % Output Leff
+    if ~isempty(OutLeff)
+        sMat.Leff = OutLeff;
     end
     % Set data fields
     if isRaw

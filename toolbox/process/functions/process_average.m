@@ -65,9 +65,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.avg_func.Type    = 'radio';
     sProcess.options.avg_func.Value   = 1;
     % === WEIGHTED AVERAGE
-    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(nAvg(i) * x(i)) / sum(nAvg(i))</FONT>';
+    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(Leff_i * x(i)) / sum(Leff_i)</FONT>';
     sProcess.options.weighted.Type       = 'checkbox';
     sProcess.options.weighted.Value      = 0;
+    sProcess.options.weightedlabel.Comment    = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#777777">Leff_i = Effective number of averages for file #i</FONT>';
+    sProcess.options.weightedlabel.Type       = 'label';
     % === KEEP EVENTS
     sProcess.options.keepevents.Comment    = 'Keep all the event markers from the individual epochs';
     sProcess.options.keepevents.Type       = 'checkbox';
@@ -306,6 +308,7 @@ end
 
 %% ===== AVERAGE FILES =====
 function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, isWeighted, isMatchRows, isZeroBad)
+    OutputFile = [];
     % Parse inputs
     if (nargin < 7) || isempty(isZeroBad)
         isZeroBad = 1;
@@ -352,7 +355,12 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
     end
     % Add messages to report
     if ~isempty(Messages)
-        bst_report('Warning', sProcess, sInputs, Messages);
+        if isempty(Stat)
+            bst_report('Error', sProcess, sInputs, Messages);
+            return;
+        else
+            bst_report('Warning', sProcess, sInputs, Messages);
+        end
     end
     
     % Load first file of the list

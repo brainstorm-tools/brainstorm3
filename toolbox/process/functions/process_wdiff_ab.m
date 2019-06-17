@@ -43,7 +43,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
      % Definition of the options
     sProcess.options.ttest_label.Comment    = ['Corrects the difference of signal amplitude between two averages<BR>' ...
                                                'that were computed with different numbers of trials:<BR><BR>' ...
-                                               '<B>A – sqrt(nAvg_B) / sqrt(nAvg_A) * B</B><BR><BR>'];
+                                               '<B>A – sqrt(Leff_B) / sqrt(Leff_A) * B</B><BR><BR>'...
+                                               'Leff = Effective number of averages<BR><BR>'];
     sProcess.options.ttest_label.Type       = 'label';
 end
 
@@ -62,7 +63,7 @@ end
 function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % Difference
     sOutput = sInputsA;
-    sOutput.A = sInputsA.A - sqrt(sInputsB.nAvg) ./ sqrt(sInputsA.nAvg) .* sInputsB.A;
+    sOutput.A = sInputsA.A - sqrt(sInputsB.Leff) ./ sqrt(sInputsA.Leff) .* sInputsB.A;
     % Output condition name
     sOutput.Condition = [sInputsA.Condition, '-', sInputsB.Condition];
     sOutput.Comment   = [sInputsA.Comment ' - ' sInputsB.Comment];
