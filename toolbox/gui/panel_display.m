@@ -142,6 +142,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jPanelFiber.add('', jToggleAllConns);
         jPanelFiber.add('br', jToggleAnatConsistConns);
         jPanelFiber.add('br', jToggleAnatInconsistConns);
+    jPanelFiber.setVisible(0);
     jPanelNew.add(jPanelFiber);
     
     % Set max panel sizes
