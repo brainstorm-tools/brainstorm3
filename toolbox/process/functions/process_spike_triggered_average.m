@@ -344,11 +344,11 @@ function all = get_LFPs(trial, nChannels, sProcess, time_segmentAroundSpikes, sa
 
         %% Create a matrix that holds all the segments around the spike
         % of that neuron, for all electrodes.
-        allSpikeSegments_singleNeuron_singleTrial = zeros(length(events_within_segment),length(ChannelMat.Channel),abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);
+        allSpikeSegments_singleNeuron_singleTrial = zeros(length(events_within_segment),length(ChannelMat.Channel),length(time_segmentAroundSpikes));
 
         for ispike = 1:length(events_within_segment)
-            allSpikeSegments_singleNeuron_singleTrial(ispike,:,:) = trial.F(:, round(abs(trial.Time(1))*sampling_rate) + events_within_segment(ispike) - abs(sProcess.options.timewindow.Value{1}(1)) * sampling_rate + 1: ...
-                                                                               round(abs(trial.Time(1))*sampling_rate) + events_within_segment(ispike) + abs(sProcess.options.timewindow.Value{1}(2)) * sampling_rate + 1 ...
+            allSpikeSegments_singleNeuron_singleTrial(ispike,:,:) = trial.F(:, round(abs(trial.Time(1))*sampling_rate) + events_within_segment(ispike) - round(abs(sProcess.options.timewindow.Value{1}(1)) * sampling_rate) + 1: ...
+                                                                               round(abs(trial.Time(1))*sampling_rate) + events_within_segment(ispike) + round(abs(sProcess.options.timewindow.Value{1}(2)) * sampling_rate) + 1 ...
                                                                            );
         end
 
