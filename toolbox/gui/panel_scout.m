@@ -478,6 +478,7 @@ function UpdateMenus(sAtlas)
     if ~isempty(jMenuProject) && strcmpi(sSurf.Name, 'Cortex')
         % Get subjectlist
         nSubjects = bst_get('SubjectCount');
+        nMenus = 0;
         % Process all the subjects
         for iSubject = 0:nSubjects
             % Get subject 
@@ -498,6 +499,7 @@ function UpdateMenus(sAtlas)
             else
                 jMenuSubj = gui_component('Menu', jMenuProject, [], sSubject.Name, IconLoader.ICON_SUBJECT, [], []);
             end
+            nMenus = nMenus + 1;
             % Loop on all the surfaces
             for iSurf = 1:length(sAllCortex)
                 % Skip the source surface
@@ -507,6 +509,9 @@ function UpdateMenus(sAtlas)
                 % Project to this cortex surface
                 gui_component('MenuItem', jMenuSubj, [], sAllCortex(iSurf).Comment, IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScouts, sSurf.FileName, sAllCortex(iSurf).FileName));
             end
+        end
+        if (nMenus > 20)
+            darrylbu.util.MenuScroller.setScrollerFor(jMenuProject, 20);
         end
     end
     

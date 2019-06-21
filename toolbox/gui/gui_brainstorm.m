@@ -1307,6 +1307,14 @@ function BrainstormDbDir = SetDatabaseFolder(varargin) %#ok<DEFNU>
             bst_error(['The folder you selected is probably a protocol folder:' 10 BrainstormDbDir 10 10 ...
                 'The database folder is designed to contain multiple protocol folders.' 10 ...
                 'Please select a valid database folder.'], 'Database folder', 0);
+        elseif file_compare(bst_get('BrainstormTmpDir'), BrainstormDbDir)
+            bst_error('Your temporary and database directories must be different.', 'Database folder', 0);
+        elseif dir_contains(bst_get('BrainstormTmpDir'), BrainstormDbDir)
+            bst_error('Your temporary directory cannot contain your database directory.', 'Database folder', 0);
+        elseif file_compare(bst_get('BrainstormHomeDir'), BrainstormDbDir)
+            bst_error('Your application and database directories must be different.', 'Database folder', 0);
+        elseif dir_contains(bst_get('BrainstormHomeDir'), BrainstormDbDir)
+            bst_error('Your application directory cannot contain your database directory.', 'Database folder', 0);
         else
             isStop = 1;
         end

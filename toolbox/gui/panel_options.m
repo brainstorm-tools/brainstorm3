@@ -305,21 +305,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             dbDir = bst_get('BrainstormDbDir');
             if file_compare(newTmpDir, dbDir)
                 java_dialog('warning', 'Your temporary and database directories must be different.');
-                changeDir = 0;
+            elseif dir_contains(newTmpDir, dbDir)
+                java_dialog('warning', 'Your temporary directory cannot contain your database directory.');
             else
-                parentDir = fileparts(dbDir);
-                lastParent = [];
-                while ~isempty(parentDir) && ~strcmp(lastParent, parentDir)
-                    if file_compare(newTmpDir, parentDir)
-                        java_dialog('warning', 'Your temporary directory cannot contain your database directory.');
-                        changeDir = 0;
-                        break;
-                    end
-                    lastParent = parentDir;
-                    parentDir = fileparts(parentDir);
-                end
-            end
-            if changeDir
                 % If temp directory changed: create directory if it doesn't exist
                 if file_exist(newTmpDir) || mkdir(newTmpDir)
                     bst_set('BrainstormTmpDir', newTmpDir);
