@@ -1,4 +1,4 @@
-function varargout = process_PSTH_per_electrode( varargin )
+function varargout = process_psth_per_electrode( varargin )
 % PROCESS_PSTH_PER_ELECTRODE: Computes the PSTH per electrode.
 
 % It displays the binned firing rate on each electrode (of only the first 
@@ -198,6 +198,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     end
 
+    
     
     
     % Display report to user

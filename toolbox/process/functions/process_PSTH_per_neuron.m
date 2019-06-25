@@ -1,4 +1,4 @@
-function varargout = process_PSTH_per_neuron( varargin )
+function varargout = process_psth_per_neuron( varargin )
 % PROCESS_RASTERPLOT_PER_NEURON: Computes a rasterplot per electrode.
 % 
 % USAGE:    sProcess = process_rasterplot_per_neuron('GetDescription')
@@ -238,6 +238,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_save(FileName, FileMat, 'v6');
         db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
     end
+    
         
     % Display report to user
     bst_report('Info', sProcess, sInputs, 'Success');
