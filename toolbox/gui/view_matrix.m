@@ -31,7 +31,9 @@ function [hFig, iDS, iFig] = view_matrix( MatFile, DisplayMode, hFig )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2015
+% Authors: Francois Tadel, 2010-2019
+
+global GlobalData;
 
 % ===== READ INPUTS =====
 % Read matrix file
@@ -70,7 +72,7 @@ else
     Value = sMat.Value;
     Std   = sMat.Std;
     % Apply online filters
-    if (size(Value,2) > 50)
+    if (size(Value,2) > 50) && GlobalData.VisualizationFilters.FullSourcesEnabled
         sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
         Value = bst_memory('FilterLoadedData', Value, sfreq);
     end
