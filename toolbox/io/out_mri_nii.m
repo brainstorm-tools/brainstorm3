@@ -100,7 +100,7 @@ end
 volDim = size(sMri.Cube);
 pixDim = sMri.Voxsize;
 % Set up other field values
-hdr.dim    = [4 volDim Nt 0 0 0];
+hdr.dim    = [3 + (Nt > 1), volDim, Nt, 0, 0, 0];
 hdr.pixdim = [1 pixDim 1  0 0 0];
 hdr.glmax  = MaxVal;
 
