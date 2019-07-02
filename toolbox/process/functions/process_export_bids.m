@@ -713,7 +713,7 @@ end
 
 function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq, AllChannelNames, AllEventNames)
     % Skip if it exists and we're not overwriting
-    txtFile = bst_fullfile(parentFolder, 'README.txt');
+    txtFile = bst_fullfile(parentFolder, 'README');
     if exist(txtFile, 'file') == 2 && ~overwrite
         return;
     end
@@ -780,12 +780,6 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
     fprintf(fid, [channels 10]);
     fprintf(fid, ['Events:' 10]);
     fprintf(fid, events);
-    fclose(fid);
-    
-    % Create .bidsignore file to pass validation
-    bidsIgnoreFile = bst_fullfile(parentFolder, '.bidsignore');
-    fid = fopen(bidsIgnoreFile, 'wt');
-    fprintf(fid, 'README.txt');
     fclose(fid);
 end
 
