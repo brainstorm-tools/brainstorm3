@@ -89,7 +89,7 @@ function str = stringify(val, addDelimiter)
     elseif isnumeric(val)
         n = length(val);
         if n == 0
-            str = 'null';
+            str = '[]';
         elseif n == 1
             str = num2str(val);
         else

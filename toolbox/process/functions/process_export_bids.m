@@ -704,6 +704,7 @@ function CreateDatasetDescription(parentFolder, overwrite, description)
     ProtocolInfo = bst_get('ProtocolInfo');
     description = addField(description, 'Name', ProtocolInfo.Comment);
     description = addField(description, 'BIDSVersion', '1.1.1');
+    description = addField(description, 'Authors', []);
     
     fid = fopen(jsonFile, 'wt');
     jsonText = bst_jsonencode(description);
