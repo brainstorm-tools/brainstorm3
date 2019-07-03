@@ -146,9 +146,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             %%%%%%%%%%%%%%%%%% 1. meanData (that will be the center vector)
             %%%%%%%%%%%%%%%%%% 2. CI(1,:) (Bottom confidence interval)
             %%%%%%%%%%%%%%%%%% 3. CI(2,:) (Top confidence interval)
-%             plot_ci(x,[meanData; CI(1,:); CI(2,:)], 'PatchColor', 'r', 'PatchAlpha', 0.2, ...
-%                       'MainLineWidth', 2, 'MainLineStyle', '-', 'MainLineColor', 'y', ...
-%                       'LineWidth', 1.5, 'LineStyle','--', 'LineColor', 'k');
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
             
