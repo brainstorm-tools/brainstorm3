@@ -417,9 +417,14 @@ function UpdatePanel(hFig)
             isEnabledEdge = 0;
         end
         ctrl.jCheckHideEdge.setEnabled(isEnabledEdge);
-        % Resolution
-        ctrl.jCheckHighRes.setEnabled(strcmpi(FigureId.Type, 'Timefreq') || strcmpi(FigureId.Type, 'Pac'));
-        ctrl.jCheckHighRes.setSelected(TfInfo.HighResolution);
+        % Resolution (Smooth Display)
+        if (strcmpi(FigureId.Type, 'Pac') || strcmpi(FigureId.Type, 'Timefreq')) && (~isfield(TfInfo, 'DisableSmoothDisplay') || TfInfo.DisableSmoothDisplay == 0)
+            isEnabledHighRes = 1;
+            ctrl.jCheckHideEdge.setSelected(TfInfo.HighResolution);
+        else
+            isEnabledHighRes = 0;
+        end
+        ctrl.jCheckHighRes.setEnabled(isEnabledHighRes);
         % Get all row names available
         AllRows = figure_timefreq('GetRowNames', GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames);
         % Update row list

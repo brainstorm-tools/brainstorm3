@@ -1044,6 +1044,10 @@ function UpdateFigurePlot(hFig, isForced)
             % Plot time-frequency map
             if (TfInfo.HighResolution)
                 PlotTimefreqSurfHigh(hAxes, Time, Freqs, TF, TFmask);
+            elseif isfield(TfInfo, 'DisplayAsDots') && TfInfo.DisplayAsDots
+                PlotTimefreqAsDots(hAxes, Time, TF);
+                % Do not display colorbar for single color dots
+                sColormap.DisplayColorbar = 0;
             else
                 PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask);
             end
@@ -1119,7 +1123,7 @@ function hSurf = PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask
     else
         Y = 1:size(Freqs,1)+1;
     end
-    
+
     % Grid values
     [XData,YData] = meshgrid(X,Y);
     % Plot new surface  
@@ -1153,6 +1157,26 @@ function hSurf = PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask
              end
          end
      end
+end
+
+%% ===== PLOT TIME-FREQ AS DOTS =====
+function hSurf = PlotTimefreqAsDots(hAxes, Time, TF)
+    % Delete previous objects
+    surfTag = 'TimefreqSurf';
+    hOld = findobj(hAxes, '-depth', 1, 'tag', surfTag);
+    delete(hOld);
+    % Extract coordinates
+    [X,Y,Z] = find(squeeze(TF));
+    % Convert X coordinates from samples to time
+    X = X / size(TF,2) * (Time(end) - Time(1)) + Time(1);
+    % Plot as dots
+    hSurf = line(X, Y, Z, ...
+       'Color', 'black', ...
+       'LineStyle', 'none', ...
+       'Marker', '.', ...
+       'MarkerSize', 3, ...
+       'Tag', surfTag, ...
+       'Parent', hAxes);
 end
 
 
