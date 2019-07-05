@@ -131,7 +131,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         nElectrodes = size(temp.ChannelFlag,1);
         nBins = length(tfOPTIONS.TimeVector);
         raster = zeros(length(labelsForDropDownMenu), nBins, nTrials);
-        bins = linspace(temp.Time(1), temp.Time(end), nBins+1);
+        bins = linspace(temp.Time(1), temp.Time(end), nBins);
 
         bst_progress('start', 'Raster Plot per Neuron', 'Binning Spikes...', 0, length(sCurrentInputs));
 
@@ -168,7 +168,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         % Prepare output file structure
         FileMat.TF = raster;
-        FileMat.Time = diff(bins(1:2))/2+bins(1:end-1);
+        FileMat.Time = tfOPTIONS.TimeVector;
         FileMat.TFmask = true(size(raster, 2), size(raster, 3));
         FileMat.Freqs = 1:size(FileMat.TF, 3);
         FileMat.Std = [];
@@ -188,7 +188,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.HeadModelType = [];
         FileMat.nAvg = [];
         FileMat.ColormapType = [];
-        FileMat.DisplayUnits = Spikes;
+        FileMat.DisplayUnits = 'Spikes';
         FileMat.Options = tfOPTIONS;
         FileMat.History = [];
 
