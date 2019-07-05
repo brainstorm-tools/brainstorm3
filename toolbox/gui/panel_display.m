@@ -418,7 +418,7 @@ function UpdatePanel(hFig)
         end
         ctrl.jCheckHideEdge.setEnabled(isEnabledEdge);
         % Resolution (Smooth Display)
-        if (strcmpi(FigureId.Type, 'Pac') || strcmpi(FigureId.Type, 'Timefreq')) && (~isfield(TfInfo, 'DisableSmoothDisplay') || TfInfo.DisableSmoothDisplay == 0)
+        if (strcmpi(FigureId.Type, 'Pac') || strcmpi(FigureId.Type, 'Timefreq')) && ~TfInfo.DisplayAsDots
             isEnabledHighRes = 1;
             ctrl.jCheckHideEdge.setSelected(TfInfo.HighResolution);
         else
