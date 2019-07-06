@@ -33,7 +33,7 @@ function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2019
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
@@ -138,6 +138,20 @@ switch (FileFormat)
             % Convert from MNI to MRI coordinates
             if ~isempty(sMri)
                 TessMat(iTess).Vertices = cs_convert(sMri, 'mni', 'mri', TessMat(iTess).Vertices);
+                if isempty(TessMat(iTess).Vertices)
+                    error('You must compute the MNI transformation for the MRI first.');
+                end
+            end
+            % Swap faces
+            TessMat(iTess).Faces = TessMat(iTess).Faces(:,[2 1 3]);
+        end
+    case 'GII-WORLD'
+        TessMat = in_tess_gii(TessFile);
+        % Process all the surfaces
+        for iTess = 1:length(TessMat)
+            % Convert from MNI to MRI coordinates
+            if ~isempty(sMri)
+                TessMat(iTess).Vertices = cs_convert(sMri, 'world', 'mri', TessMat(iTess).Vertices);
                 if isempty(TessMat(iTess).Vertices)
                     error('You must compute the MNI transformation for the MRI first.');
                 end

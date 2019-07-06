@@ -308,7 +308,7 @@ if ~isempty(TessLhFile)
     % Load sphere
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
-        [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile);
+        [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
@@ -329,7 +329,7 @@ if ~isempty(TessRhFile)
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
-        [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile);
+        [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
@@ -349,7 +349,7 @@ if ~isempty(TessLwFile)
     end
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
-        [TessMat, err] = tess_addsphere(BstTessLwFile, TessLsphFile);
+        [TessMat, err] = tess_addsphere(BstTessLwFile, TessLsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
@@ -370,7 +370,7 @@ if ~isempty(TessRwFile)
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
-        [TessMat, err] = tess_addsphere(BstTessRwFile, TessRsphFile);
+        [TessMat, err] = tess_addsphere(BstTessRwFile, TessRsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
