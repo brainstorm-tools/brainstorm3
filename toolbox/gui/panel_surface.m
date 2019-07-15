@@ -1140,6 +1140,8 @@ function iTess = AddSurface(hFig, surfaceFile)
         FibMat = bst_memory('LoadFibers', surfaceFile);
         
         TessInfo(iTess).Name = 'Fibers';
+        % Special color of 0 for colormap following fiber curvature
+        TessInfo(iTess).AnatomyColor(:) = 0;
         % Update figure's surfaces list and current surface pointer
         setappdata(hFig, 'Surface',  TessInfo);
         

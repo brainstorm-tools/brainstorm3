@@ -2485,8 +2485,10 @@ function UpdateSurfaceColor(hFig, iTess)
         
     % === FIBERS ===
     elseif strcmpi(TessInfo(iTess).Name, 'Fibers')
-        % Set line color
-        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, TessInfo(iTess).AnatomyColor(1,1:3));
+        % Set line color if applicable
+        if any(TessInfo(iTess).AnatomyColor(:) ~= 0)
+            TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, TessInfo(iTess).AnatomyColor(1,1:3));
+        end
         
     % === SURFACE ===
     else
