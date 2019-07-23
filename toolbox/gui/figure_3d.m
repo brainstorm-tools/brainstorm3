@@ -2607,7 +2607,7 @@ function hGrid = PlotGrid(hFig, GridLoc, GridValues, GridInd, DataAlpha, DataLim
         % Get color values
         if ~isempty(GridValues) && (length(DataLimit) == 2) && (DataLimit(2) ~= DataLimit(1)) && ~any(isnan(DataLimit)) && ~any(isinf(DataLimit))
             iDataCmap = round( ((size(sColormap.CMap,1)-1)/(DataLimit(2)-DataLimit(1))) * (GridValues - DataLimit(1))) + 1;
-            iDataCmap(iDataCmap <= 0) = 1;
+            iDataCmap((iDataCmap <= 0) | isnan(iDataCmap)) = 1;
             iDataCmap(iDataCmap > size(sColormap.CMap,1)) = size(sColormap.CMap,1);
             dataRGB = sColormap.CMap(iDataCmap, :);
         else
