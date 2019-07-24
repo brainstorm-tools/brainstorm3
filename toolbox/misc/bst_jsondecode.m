@@ -1,4 +1,4 @@
-function outStruct = bst_jsondecode(inString)
+function outStruct = bst_jsondecode(inString, forceBstVersion)
 % BST_JSONDECODE: Decodes a JSON string as a Matlab structure
 %
 % USAGE: outStruct = bst_jsondecode(inString)
@@ -24,6 +24,10 @@ function outStruct = bst_jsondecode(inString)
 %
 % Authors: Martin Cousineau, 2018-2019; Francois Tadel, 2018
 
+if nargin < 2 || isempty(forceBstVersion)
+    forceBstVersion = 0;
+end
+
 % If the input is an existing filename: read it
 if exist(inString, 'file')
     jsonFile = inString;
@@ -45,7 +49,7 @@ else
 end
 
 % If possible, call built-in function
-if exist('jsondecode', 'builtin') == 5
+if ~forceBstVersion && exist('jsondecode', 'builtin') == 5
     outStruct = jsondecode(inString);
     return;
 end
@@ -77,9 +81,12 @@ value = [];
 path  = {};
 valType = [];
 escape = 0;
+lineNum  = 1;
+lineChar = 0;
 
 for iChar = 1:length(inString)
     c = inString(iChar);
+    lineChar = lineChar + 1;
     err = 0;
     
     % Go through state machine depending on character
@@ -161,7 +168,7 @@ for iChar = 1:length(inString)
             else
                 err = 1;
             end
-        elseif state == STATE.END_VALUE
+        elseif state == STATE.READ_VALUE || state == STATE.END_VALUE
             % Save if not done already
             if ~isempty(field)
                 outStruct = saveField(outStruct, path, field, value, valType);
@@ -226,13 +233,18 @@ for iChar = 1:length(inString)
     elseif isspace(c) && ~isempty(valType) && valType == VAL.CHAR && (state == STATE.READ_NEXT_VALUE || state == STATE.READ_VALUE)
         % Only read spaces for character values
         value = [value c];
+    elseif c == char(10)
+        % Increment line number if we have a line break
+        lineNum = lineNum + 1;
+        lineChar = 0;
     end
     
     % Error management
     if err
-        errorMsg = ['JSON syntax error. ' ...
-            'Unexpected character ' c ' ' ...
-            'at position ' num2str(iChar)];
+        errorMsg = sprintf(...
+            ['JSON syntax error. Unexpected character ''%c'' ' ...
+            'at line %d, column %d (character %d)'], ...
+            c, lineNum, lineChar, iChar);
         if ~isempty(jsonFile)
             errorMsg = [errorMsg ' of file ' jsonFile];
         end
