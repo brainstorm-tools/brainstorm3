@@ -3259,7 +3259,7 @@ function SaveWhitenedData(ResultsFile)
     % Loading sources and data
     bst_progress('start', 'Model evaluation', 'Loading sources...');
     % Load source file
-    ResultsMat = in_bst_results(ResultsFile, 0,  'DataFile', 'Whitener', 'nAvg', 'GoodChannel');
+    ResultsMat = in_bst_results(ResultsFile, 0,  'DataFile', 'Whitener', 'Leff', 'GoodChannel');
     % Check the type of results file
     if isempty(ResultsMat) || isempty(ResultsMat.DataFile) || isempty(ResultsMat.Whitener) || isempty(ResultsMat.nAvg) || isempty(ResultsMat.GoodChannel)
         bst_error('The following fields must be available in the file: DataFile, Whitener, nAvg, Goodchannel.', 'Save whitened data', 0);
@@ -3272,7 +3272,7 @@ function SaveWhitenedData(ResultsFile)
     % Update progress bar
     bst_progress('start', 'Model evaluation', 'Saving whitened recordings...');
     % Factor to balance for averaged files 
-    Factor = sqrt(DataMat.nAvg / ResultsMat.nAvg); % is unity if both equal.
+    Factor = sqrt(DataMat.Leff / ResultsMat.Leff); % is unity if both equal.
     % Compute whitened recordings 
     F = DataMat.F * 0;
     F(ResultsMat.GoodChannel,:) = Factor * ResultsMat.Whitener * DataMat.F(ResultsMat.GoodChannel,:); % whitened data to be displayed, z-units
