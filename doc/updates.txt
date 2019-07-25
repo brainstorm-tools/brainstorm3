@@ -1,7 +1,15 @@
+---------------------------------------------------------------
+July 2019
+- IO: Added support for MNE-FIF epoched files
+- IO: Added support for ANT EEProbe .avr files
+---------------------------------------------------------------
+June 2019
+- Anatomy: Import MRI segmentation output from SPM12/CAT12
+- Anatomy: Run MRI segmentation output with SPM12/CAT12
+- Anatomy: Added support for MarsAtlas parcellation in BrainVISA
+- IO: Support for Intan RHS+RHD files
+---------------------------------------------------------------
 May 2019
-- API: Added effective number of averages (field "Leff") for correct dSPM scaling
-- Bug fix: ICBM152 cortex had one vertex outside of the inner skull 
-- Anatomy: Add menu "Force inside skull" to fix cortex surfaces for OpenMEEG
 - IO: Support for NWB ECOG (recordings + surfaces)
 - Database: Improved database updates between versions
 - Database: Add new type of object "fibers"
