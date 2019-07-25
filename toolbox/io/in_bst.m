@@ -112,6 +112,7 @@ switch(fileType)
                 DataMat = in_bst(sMatrix.DataFile, TimeBounds, 1, isIgnoreBad, RemoveBaseline);
             end
             sMatrix.nAvg = DataMat.nAvg;
+            sMatrix.Leff = DataMat.Leff;
             % Rebuild full results
             if isLoadFull
                 sMatrix.ImageGridAmp = sMatrix.ImagingKernel * DataMat.F(iGoodChannels, :);

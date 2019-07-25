@@ -34,7 +34,7 @@ function NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Opti
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2016
+% Authors: Francois Tadel, 2009-2019
 
 %% ===== RETURN DEFAULT OPTIONS =====
 % Options structure
@@ -135,7 +135,7 @@ else
     [badSeg, badEpochs] = panel_record('GetBadSegments', sFile);
     
     % Initialize DataMats structure
-    DataMats = repmat(struct('Time', [], 'nAvg', [], 'iEpoch', [], 'iBadTime', []), 0);
+    DataMats = repmat(struct('Time', [], 'nAvg', [], 'Leff', [], 'iEpoch', [], 'iBadTime', []), 0);
     % Define size of blocks to read
     MAX_BLOCK_SIZE = 10000;
     % Loop on epochs
@@ -172,6 +172,7 @@ else
             DataMats(iNew).iEpoch = iEpoch;
             DataMats(iNew).Time   = smpList ./ sFile.prop.sfreq;
             DataMats(iNew).nAvg   = nAvg;
+            DataMats(iNew).Leff   = nAvg;
             % Remove the portions that have bad segments in them
             iBadTime = [];
             for ix = 1:size(badSegEpoc, 2)
@@ -247,8 +248,10 @@ if strcmpi(Options.RemoveDcOffset, 'all')
         iGoodChan = intersect(find(DataMat.ChannelFlag == 1), iChan);
         
         % === Compute average ===
-        Favg(iGoodChan)   = Favg(iGoodChan)   + double(DataMat.nAvg) .* sum(DataMat.F(iGoodChan,iTimeBaseline),2);
-        Ntotal(iGoodChan) = Ntotal(iGoodChan) + double(DataMat.nAvg) .* length(iTimeBaseline);
+        % Favg(iGoodChan)   = Favg(iGoodChan)   + double(DataMat.nAvg) .* sum(DataMat.F(iGoodChan,iTimeBaseline),2);
+        % Ntotal(iGoodChan) = Ntotal(iGoodChan) + double(DataMat.nAvg) .* length(iTimeBaseline);
+        Favg(iGoodChan)   = Favg(iGoodChan)   + double(DataMat.Leff) .* sum(DataMat.F(iGoodChan,iTimeBaseline),2);
+        Ntotal(iGoodChan) = Ntotal(iGoodChan) + double(DataMat.Leff) .* length(iTimeBaseline);
     end
     % Remove zero-values in Ntotal
     Ntotal(Ntotal == 0) = 1;
@@ -286,8 +289,10 @@ for iFile = 1:nBlocks
     % Remove average
     DataMat.F(iGoodChan,iTimeBaseline) = bst_bsxfun(@minus, DataMat.F(iGoodChan,iTimeBaseline), Favg(iGoodChan,1));
     % Compute covariance for this file
-    fileCov  = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
-    fileCov2 = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
+    % fileCov  = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
+    % fileCov2 = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
+    fileCov  = DataMat.Leff .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
+    fileCov2 = DataMat.Leff .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
     % Add file covariance to accumulator
     NoiseCov(iGoodChan,iGoodChan)     = NoiseCov(iGoodChan,iGoodChan)     + fileCov;
     FourthMoment(iGoodChan,iGoodChan) = FourthMoment(iGoodChan,iGoodChan) + fileCov2;
@@ -351,7 +356,7 @@ bst_progress('stop');
         iTimeCov = [];
         if ~isRaw
             bst_progress('text', ['File: ' DataFiles{iFile}]);
-            DataMat = in_bst_data(DataFiles{iFile}, 'F', 'ChannelFlag', 'Time', 'nAvg');
+            DataMat = in_bst_data(DataFiles{iFile}, 'F', 'ChannelFlag', 'Time', 'nAvg', 'Leff');
         else
             DataMat = DataMats(iFile);
             % If file is block does not contain any baseline segment: skip it

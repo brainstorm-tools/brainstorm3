@@ -72,6 +72,10 @@ else
         FieldsToRead{end + 1} = 'ZScore';
         isAddZScore = 1;
     end
+    % When reading Leff, make sure nAvg is read as well
+    if ~isRaw && ismember('Leff', FieldsToRead) && ~ismember('nAvg', FieldsToRead)
+        FieldsToRead{end + 1} = 'nAvg';
+    end
 end
 
 % ===== LOAD FILE =====
@@ -91,11 +95,17 @@ end
 % ===== MISSING FIELDS =====
 for i = 1:length(FieldsToRead)
     if ~isfield(DataMat, FieldsToRead{i})
-        switch(FieldsToRead{i}) 
-            case 'nAvg'
-                DataMat.nAvg = 1;
+        switch(FieldsToRead{i})
             case 'DataType'
                 DataMat.DataType = 'recordings';
+            case 'nAvg'
+                DataMat.nAvg = 1;
+            case 'Leff'
+                if isfield(DataMat, 'nAvg') && ~isempty(DataMat.nAvg)
+                    DataMat.Leff = DataMat.nAvg;
+                else
+                    DataMat.Leff = 1;
+                end
             otherwise
                 DataMat.(FieldsToRead{i}) = [];
         end
@@ -108,6 +118,7 @@ if isAddF
 end
 
 % ===== APPLY Z-SCORE =====
+% DEPRECATED
 if ismember('ZScore', FieldsToRead) && ~isempty(DataMat.ZScore)
     DataMat.F = process_zscore_dynamic('Compute', DataMat.F, DataMat.ZScore);
     DataMat = rmfield(DataMat, 'ZScore');

@@ -1193,6 +1193,10 @@ function Recall(target)
     if (sProcesses(1).nInputs == 1)
         % Get current files list
         sCurFiles = panel_nodelist('GetFiles', 'Process1');
+        if isequal(sCurFiles, -1)
+            bst_progress('stop');
+            return;
+        end
         % Update files list if modified
         if (isempty(sCurFiles) && ~isempty(FileNames)) || (~isempty(sCurFiles) && isstruct(sCurFiles) && ~isequal({sCurFiles.FileName}, FileNames))
             % Reset files lists
@@ -1235,6 +1239,10 @@ function Recall(target)
         % Get current files list
         sCurFilesA = panel_nodelist('GetFiles', 'Process2A');
         sCurFilesB = panel_nodelist('GetFiles', 'Process2B');
+        if isequal(sCurFilesA, -1) || isequal(sCurFilesB, -1)
+            bst_progress('stop');
+            return;
+        end
         
         % Update files list if modified
         if (isempty(sCurFilesA) && ~isempty(FileNamesA)) || (~isempty(sCurFilesA) && isstruct(sCurFilesA) && ~isequal({sCurFilesA.FileName}, FileNamesA)) || ...
