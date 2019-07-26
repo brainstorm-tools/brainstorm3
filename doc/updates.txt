@@ -1,13 +1,15 @@
 ---------------------------------------------------------------
 July 2019
+- Anatomy: Import MRI segmentation output from SPM12/CAT12
+- Anatomy: Run MRI segmentation output with SPM12/CAT12
+- Anatomy: Improved algorithm for projecting multiple scouts across surfaces
 - API: Major modification in averaging: Using Leff instead of nAvg
 - Inverse: Major modification in dSPM computation: Now saving unscaled values
 - IO: Added support for MNE-FIF epoched files
 - IO: Added support for ANT EEProbe .avr files
+- IO: Neuroscan AVG: Added support for channel names and locations
 ---------------------------------------------------------------
 June 2019
-- Anatomy: Import MRI segmentation output from SPM12/CAT12
-- Anatomy: Run MRI segmentation output with SPM12/CAT12
 - Anatomy: Added support for MarsAtlas parcellation in BrainVISA
 - IO: Support for Intan RHS+RHD files
 ---------------------------------------------------------------

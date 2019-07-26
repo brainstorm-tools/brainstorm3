@@ -579,10 +579,12 @@ switch (lower(action))
                         jItem.setEnabled(0);
                     end
                     % === GENERATE SPM CANONICAL ===
-                    jItem = gui_component('MenuItem', jPopup, [], 'SPM canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, []));
-                    if isempty(sSubject.Anatomy)
-                        jItem.setEnabled(0);
-                    end
+                     jItem1 = gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, []));
+                     jItem2 = gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_segment_cat12('ComputeInteractive', iSubject, []));
+                     if isempty(sSubject.Anatomy)
+                         jItem1.setEnabled(0);
+                         jItem2.setEnabled(0);
+                     end
                     % === DEFACE MRI ===
                     OPTIONS = struct('isDefaceHead', 1);
                     jItem = gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, OPTIONS));
@@ -998,7 +1000,8 @@ switch (lower(action))
                     end
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'SPM canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, iAnatomy));
+                     gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, iAnatomy));
+                     gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_segment_cat12('ComputeInteractive', iSubject, iAnatomy));
                     % SEEG/ECOG
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', filenameRelative));
@@ -3277,7 +3280,7 @@ function SaveWhitenedData(ResultsFile)
     % Update progress bar
     bst_progress('start', 'Model evaluation', 'Saving whitened recordings...');
     % Factor to balance for averaged files 
-    Factor = sqrt(DataMat.Leff / ResultsMat.Leff); % is unity if both equal.
+    Factor = sqrt(ResultsMat.Leff); % is unity if both equal.
     % Compute whitened recordings 
     F = DataMat.F * 0;
     F(ResultsMat.GoodChannel,:) = Factor * ResultsMat.Whitener * DataMat.F(ResultsMat.GoodChannel,:); % whitened data to be displayed, z-units

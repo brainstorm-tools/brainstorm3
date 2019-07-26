@@ -1,7 +1,7 @@
-function errorMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractive, sFid, isExtraMaps)
+function errorMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractive, sFid, isExtraMaps, isKeepMri)
 % IMPORT_ANATOMY_CAT: Import a full CAT12 folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_cat(iSubject, CatDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0)
+% USAGE:  errorMsg = import_anatomy_cat(iSubject, CatDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isKeepMri=0)
 %
 % INPUT:
 %    - iSubject     : Indice of the subject where to import the MRI
@@ -11,6 +11,7 @@ function errorMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractiv
 %    - isInteractive: If 0, no input or user interaction
 %    - sFid         : Structure with the fiducials coordinates
 %    - isExtraMaps  : If 1, create an extra folder "CAT12" to save the thickness maps
+%    - isKeepMri    : Keep existing MRI volumes (when running segmentation from Brainstorm)
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -35,6 +36,10 @@ function errorMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractiv
 % Authors: Francois Tadel, 2019
 
 %% ===== PARSE INPUTS =====
+% Keep MRI
+if (nargin < 7) || isempty(isKeepMri)
+    isKeepMri = 0;
+end
 % Extract cortical maps
 if (nargin < 6) || isempty(isExtraMaps)
     isExtraMaps = 0;
@@ -80,7 +85,7 @@ bst_memory('UnloadAll', 'Forced');
 % Get subject definition
 sSubject = bst_get('Subject', iSubject);
 % Check for existing anatomy
-if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
+if (~isKeepMri && ~isempty(sSubject.Anatomy)) || ~isempty(sSubject.Surface)
     % Ask user whether the previous anatomy should be removed
     if isInteractive
         isDel = java_dialog('confirm', ['Warning: There is already an anatomy defined for this subject.' 10 10 ...
@@ -94,7 +99,7 @@ if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
         return;
     end
     % Delete anatomy
-    sSubject = db_delete_anatomy(iSubject);
+    sSubject = db_delete_anatomy(iSubject, isKeepMri);
 end
 
 
@@ -130,17 +135,53 @@ end
 if isempty(TessRhFile)
     errorMsg = [errorMsg 'Surface file was not found: rh.central' 10];
 end
-% % Find labels
-% AnnotLhFiles = {file_find(CatDir, 'lh.pRF.annot', 2), file_find(CatDir, 'lh.aparc.a2009s.annot', 2), file_find(CatDir, 'lh.aparc.annot', 2), file_find(CatDir, 'lh.aparc.DKTatlas40.annot', 2), file_find(CatDir, 'lh.aparc.DKTatlas.annot', 2), file_find(CatDir, 'lh.BA.annot', 2), file_find(CatDir, 'lh.BA.thresh.annot', 2), file_find(CatDir, 'lh.BA_exvivo.annot', 2), file_find(CatDir, 'lh.BA_exvivo.thresh.annot', 2), ...
-%                 file_find(CatDir, 'lh.myaparc_36.annot', 2), file_find(CatDir, 'lh.myaparc_60.annot', 2), file_find(CatDir, 'lh.myaparc_125.annot', 2), file_find(CatDir, 'lh.myaparc_250.annot', 2), ...
-%                 file_find(CatDir, 'lh.PALS_B12_Brodmann.annot', 2), file_find(CatDir, 'lh.PALS_B12_Lobes.annot', 2), file_find(CatDir, 'lh.PALS_B12_OrbitoFrontal.annot', 2), file_find(CatDir, 'lh.PALS_B12_Visuotopic.annot', 2), file_find(CatDir, 'lh.Yeo2011_7Networks_N1000.annot', 2), file_find(CatDir, 'lh.Yeo2011_17Networks_N1000.annot', 2)};
-% AnnotRhFiles = {file_find(CatDir, 'rh.pRF.annot', 2), file_find(CatDir, 'rh.aparc.a2009s.annot', 2), file_find(CatDir, 'rh.aparc.annot', 2), file_find(CatDir, 'rh.aparc.DKTatlas40.annot', 2), file_find(CatDir, 'rh.aparc.DKTatlas.annot', 2), file_find(CatDir, 'rh.BA.annot', 2), file_find(CatDir, 'rh.BA.thresh.annot', 2), file_find(CatDir, 'rh.BA_exvivo.annot', 2), file_find(CatDir, 'rh.BA_exvivo.thresh.annot', 2), ...
-%                 file_find(CatDir, 'rh.myaparc_36.annot', 2), file_find(CatDir, 'rh.myaparc_60.annot', 2), file_find(CatDir, 'rh.myaparc_125.annot', 2), file_find(CatDir, 'rh.myaparc_250.annot', 2), ...
-%                 file_find(CatDir, 'rh.PALS_B12_Brodmann.annot', 2), file_find(CatDir, 'rh.PALS_B12_Lobes.annot', 2), file_find(CatDir, 'rh.PALS_B12_OrbitoFrontal.annot', 2), file_find(CatDir, 'rh.PALS_B12_Visuotopic.annot', 2), file_find(CatDir, 'rh.Yeo2011_7Networks_N1000.annot', 2), file_find(CatDir, 'rh.Yeo2011_17Networks_N1000.annot', 2)};
-% AnnotLhFiles(cellfun(@isempty, AnnotLhFiles)) = [];
-% AnnotRhFiles(cellfun(@isempty, AnnotRhFiles)) = [];
-AnnotLhFiles = [];
-AnnotRhFiles = [];
+
+% Find FSAverage surfaces in CAT12 program folder
+CatExeDir = bst_fullfile(bst_get('SpmDir'), 'toolbox', 'cat12');
+FsAvgLhFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'lh.central.freesurfer.gii');
+FsAvgRhFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'rh.central.freesurfer.gii');
+Fs32kLhFile = bst_fullfile(CatExeDir, 'templates_surfaces_32k', 'lh.central.freesurfer.gii');
+Fs32kRhFile = bst_fullfile(CatExeDir, 'templates_surfaces_32k', 'rh.central.freesurfer.gii');
+% Find FSAverage spheres in CAT12 program folder
+FsAvgLsphFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'lh.sphere.freesurfer.gii');
+FsAvgRsphFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'rh.sphere.freesurfer.gii');
+Fs32kLsphFile = bst_fullfile(CatExeDir, 'templates_surfaces_32k', 'lh.sphere.freesurfer.gii');
+Fs32kRsphFile = bst_fullfile(CatExeDir, 'templates_surfaces_32k', 'rh.sphere.freesurfer.gii');
+% Find FSAverage labels in CAT12 program folder
+AnnotAvgLhFiles = {file_find(bst_fullfile(CatExeDir, 'atlases_surfaces'), 'lh.aparc_a2009s.freesurfer.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces'), 'lh.aparc_DK40.freesurfer.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces'), 'lh.aparc_HCP_MMP1.freesurfer.annot', 2)};
+AnnotAvgRhFiles = {file_find(bst_fullfile(CatExeDir, 'atlases_surfaces'), 'rh.aparc_a2009s.freesurfer.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces'), 'rh.aparc_DK40.freesurfer.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces'), 'rh.aparc_HCP_MMP1.freesurfer.annot', 2)};
+Annot32kLhFiles = {file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_100Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_100Parcels_17Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_200Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_200Parcels_17Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_400Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_400Parcels_17Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_600Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_600Parcels_17Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_800Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_800Parcels_17Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_1000Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'lh.Schaefer2018_1000Parcels_17Networks_order.annot', 2)};
+Annot32kRhFiles = {file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_100Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_100Parcels_17Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_200Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_200Parcels_17Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_400Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_400Parcels_17Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_600Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_600Parcels_17Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_800Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_800Parcels_17Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_1000Parcels_7Networks_order.annot', 2), ...
+                   file_find(bst_fullfile(CatExeDir, 'atlases_surfaces_32k'), 'rh.Schaefer2018_1000Parcels_17Networks_order.annot', 2)};
+AnnotAvgLhFiles(cellfun(@isempty, AnnotAvgLhFiles)) = [];
+AnnotAvgRhFiles(cellfun(@isempty, AnnotAvgRhFiles)) = [];
+Annot32kLhFiles(cellfun(@isempty, Annot32kLhFiles)) = [];
+Annot32kRhFiles(cellfun(@isempty, Annot32kRhFiles)) = [];
 
 % Find thickness maps
 if isExtraMaps
@@ -159,15 +200,20 @@ end
 
 
 %% ===== IMPORT MRI =====
-% Read MRI
-[BstMriFile, sMri] = import_mri(iSubject, MriFile);
-if isempty(BstMriFile)
-    errorMsg = 'Could not import CAT12 folder: MRI was not imported properly';
-    if isInteractive
-        bst_error(errorMsg, 'Import CAT12 folder', 0);
+if isKeepMri && ~isempty(sSubject.Anatomy)
+    BstMriFile = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+else
+    % Read MRI
+    [BstMriFile, sMri] = import_mri(iSubject, MriFile);
+    if isempty(BstMriFile)
+        errorMsg = 'Could not import CAT12 folder: MRI was not imported properly';
+        if isInteractive
+            bst_error(errorMsg, 'Import CAT12 folder', 0);
+        end
+        return;
     end
-    return;
 end
+
 
 %% ===== DEFINE FIDUCIALS =====
 % If fiducials file exist: read it
@@ -227,7 +273,7 @@ if ~isInteractive || ~isempty(FidFile)
         figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
     end
 % Define with the MRI Viewer
-else
+elseif ~isKeepMri
     % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
     hFig = view_mri(BstMriFile, 'EditFiducials');
     drawnow;
@@ -261,43 +307,100 @@ if ~isempty(TessLhFile)
     % Import file
     [iLh, BstTessLhFile, nVertOrigL] = import_surfaces(iSubject, TessLhFile, 'GII-WORLD', 0);
     BstTessLhFile = BstTessLhFile{1};
-    % Load atlases
-    if ~isempty(AnnotLhFiles)
-        bst_progress('start', 'Import CAT12 folder', 'Loading atlases: left pial...');
-        [sAllAtlas, err] = import_label(BstTessLhFile, AnnotLhFiles, 1);
-        errorMsg = [errorMsg err];
-    end
     % Load sphere
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import CAT12 folder', 'Loading registered sphere: left pial...');
         [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile, 'GII-CAT');
         errorMsg = [errorMsg err];
     end
-    % Downsample
-    bst_progress('start', 'Import CAT12 folder', 'Downsampling: left pial...');
-    [BstTessLhLowFile, iLhLow, xLhLow] = tess_downsize(BstTessLhFile, nVertHemi, 'reducepatch');
 end
 % Right pial
 if ~isempty(TessRhFile)
     % Import file
     [iRh, BstTessRhFile, nVertOrigR] = import_surfaces(iSubject, TessRhFile, 'GII-WORLD', 0);
     BstTessRhFile = BstTessRhFile{1};
-    % Load atlases
-    if ~isempty(AnnotRhFiles)
-        bst_progress('start', 'Import CAT12 folder', 'Loading atlases: right pial...');
-        [sAllAtlas, err] = import_label(BstTessRhFile, AnnotRhFiles, 1);
-        errorMsg = [errorMsg err];
-    end
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import CAT12 folder', 'Loading registered sphere: right pial...');
         [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile, 'GII-CAT');
         errorMsg = [errorMsg err];
     end
-    % Downsample
-    bst_progress('start', 'Import CAT12 folder', 'Downsampling: right pial...');
-    [BstTessRhLowFile, iRhLow, xRhLow] = tess_downsize(BstTessRhFile, nVertHemi, 'reducepatch');
 end
+
+% Left FSAverage
+if ~isempty(FsAvgLhFile)
+    % Import file
+    [iAvgLh, BstFsAvgLhFile, nVertOrigAvgL] = import_surfaces(iSubject, FsAvgLhFile, 'GII-WORLD', 0);
+    BstFsAvgLhFile = BstFsAvgLhFile{1};
+    % Load atlases
+    if ~isempty(AnnotAvgLhFiles)
+        bst_progress('start', 'Import CAT12 folder', 'Loading atlases: left FSAverage...');
+        [sAllAtlas, err] = import_label(BstFsAvgLhFile, AnnotAvgLhFiles, 1);
+        errorMsg = [errorMsg err];
+    end
+    % Load sphere
+    if ~isempty(FsAvgLsphFile)
+        bst_progress('start', 'Import CAT12 folder', 'Loading registered sphere: left FSAverage...');
+        [TessMat, err] = tess_addsphere(BstFsAvgLhFile, FsAvgLsphFile, 'GII-CAT');
+        errorMsg = [errorMsg err];
+    end
+end
+% Right FSAverage
+if ~isempty(FsAvgRhFile)
+    % Import file
+    [iAvgRh, BstFsAvgRhFile, nVertOrigAvgR] = import_surfaces(iSubject, FsAvgRhFile, 'GII-WORLD', 0);
+    BstFsAvgRhFile = BstFsAvgRhFile{1};
+    % Load atlases
+    if ~isempty(AnnotAvgRhFiles)
+        bst_progress('start', 'Import CAT12 folder', 'Loading atlases: right FSAverage...');
+        [sAllAtlas, err] = import_label(BstFsAvgRhFile, AnnotAvgRhFiles, 1);
+        errorMsg = [errorMsg err];
+    end
+    % Load sphere
+    if ~isempty(FsAvgRsphFile)
+        bst_progress('start', 'Import CAT12 folder', 'Loading registered sphere: right FSAverage...');
+        [TessMat, err] = tess_addsphere(BstFsAvgRhFile, FsAvgRsphFile, 'GII-CAT');
+        errorMsg = [errorMsg err];
+    end
+end
+
+% Left FSAverage 32k
+if ~isempty(Fs32kLhFile)
+    % Import file
+    [i32kLh, BstFs32kLhFile, nVertOrig32kL] = import_surfaces(iSubject, Fs32kLhFile, 'GII-WORLD', 0);
+    BstFs32kLhFile = BstFs32kLhFile{1};
+    % Load atlases
+    if ~isempty(Annot32kLhFiles)
+        bst_progress('start', 'Import CAT12 folder', 'Loading atlases: left FSAverage 32k...');
+        [sAllAtlas, err] = import_label(BstFs32kLhFile, Annot32kLhFiles, 1);
+        errorMsg = [errorMsg err];
+    end
+    % Load sphere
+    if ~isempty(Fs32kLsphFile)
+        bst_progress('start', 'Import CAT12 folder', 'Loading registered sphere: left FSAverage 32k...');
+        [TessMat, err] = tess_addsphere(BstFs32kLhFile, Fs32kLsphFile, 'GII-CAT');
+        errorMsg = [errorMsg err];
+    end
+end
+% Right FSAverage 32k
+if ~isempty(Fs32kRhFile)
+    % Import file
+    [i32kRh, BstFs32kRhFile, nVertOrig32kR] = import_surfaces(iSubject, Fs32kRhFile, 'GII-WORLD', 0);
+    BstFs32kRhFile = BstFs32kRhFile{1};
+    % Load atlases
+    if ~isempty(Annot32kRhFiles)
+        bst_progress('start', 'Import CAT12 folder', 'Loading atlases: right FSAverage 32k...');
+        [sAllAtlas, err] = import_label(BstFs32kRhFile, Annot32kRhFiles, 1);
+        errorMsg = [errorMsg err];
+    end
+    % Load sphere
+    if ~isempty(Fs32kRsphFile)
+        bst_progress('start', 'Import CAT12 folder', 'Loading registered sphere: right FSAverage 32k...');
+        [TessMat, err] = tess_addsphere(BstFs32kRhFile, Fs32kRsphFile, 'GII-CAT');
+        errorMsg = [errorMsg err];
+    end
+end
+
 % Process error messages
 if ~isempty(errorMsg)
     if isInteractive
@@ -309,15 +412,55 @@ if ~isempty(errorMsg)
 end
 
 
-%% ===== MERGE SURFACES =====
+%% ===== PROJECT ATLASES =====
 rmFiles = {};
-% Merge hemispheres: pial
+% Project FSAverage atlases
+if ~isempty(FsAvgLhFile) && ~isempty(FsAvgRhFile)
+    bst_project_scouts(BstFsAvgLhFile, BstTessLhFile);
+    bst_project_scouts(BstFsAvgRhFile, BstTessRhFile);
+    rmFiles = cat(2, rmFiles, {BstFsAvgLhFile, BstFsAvgRhFile});
+end
+% Project FSAverage 32k atlases
+if ~isempty(Fs32kLhFile) && ~isempty(Fs32kRhFile)
+    bst_project_scouts(BstFs32kLhFile, BstTessLhFile);
+    bst_project_scouts(BstFs32kRhFile, BstTessRhFile);
+    rmFiles = cat(2, rmFiles, {BstFs32kLhFile, BstFs32kRhFile});
+end
+
+
+%% ===== DOWNSAMPLE =====
+% Downsample left and right hemispheres
+if ~isempty(TessRhFile)
+    bst_progress('start', 'Import CAT12 folder', 'Downsampling: right pial...');
+    [BstTessRhLowFile, iRhLow, xRhLow] = tess_downsize(BstTessRhFile, nVertHemi, 'reducepatch');
+end
+if ~isempty(TessLhFile)
+    bst_progress('start', 'Import CAT12 folder', 'Downsampling: left pial...');
+    [BstTessLhLowFile, iLhLow, xLhLow] = tess_downsize(BstTessLhFile, nVertHemi, 'reducepatch');
+end
+
+
+%% ===== MERGE SURFACES =====
+% Merge hemispheres
 if ~isempty(TessLhFile) && ~isempty(TessRhFile)
     % Hi-resolution surface
     CortexHiFile  = tess_concatenate({BstTessLhFile,    BstTessRhFile},    sprintf('cortex_%dV', nVertOrigL + nVertOrigR), 'Cortex');
     CortexLowFile = tess_concatenate({BstTessLhLowFile, BstTessRhLowFile}, sprintf('cortex_%dV', length(xLhLow) + length(xRhLow)), 'Cortex');
     % Delete separate hemispheres
     rmFiles = cat(2, rmFiles, {BstTessLhFile, BstTessRhFile, BstTessLhLowFile, BstTessRhLowFile});
+else
+    CortexHiFile = [];
+    CortexLowFile = [];
+end
+
+
+%% ===== RE-ORGANIZE FILES =====
+% Delete intermediate files
+if ~isempty(rmFiles)
+    file_delete(file_fullpath(rmFiles), 1);
+end
+% Rename final files
+if ~isempty(TessLhFile) && ~isempty(TessRhFile)
     % Rename high-res file
     oldCortexHiFile = file_fullpath(CortexHiFile);
     CortexHiFile    = bst_fullfile(bst_fileparts(oldCortexHiFile), 'tess_cortex_pial_high.mat');
@@ -328,19 +471,10 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile)
     CortexLowFile    = bst_fullfile(bst_fileparts(oldCortexLowFile), 'tess_cortex_pial_low.mat');
     file_move(oldCortexLowFile, CortexLowFile);
     CortexHiFile = file_short(CortexHiFile);
-else
-    CortexHiFile = [];
-    CortexLowFile = [];
 end
+% Reload subject
+db_reload_subjects(iSubject);
 
-
-%% ===== DELETE INTERMEDIATE FILES =====
-if ~isempty(rmFiles)
-    % Delete files
-    file_delete(file_fullpath(rmFiles), 1);
-    % Reload subject
-    db_reload_subjects(iSubject);
-end
 
 %% ===== GENERATE HEAD =====
 % Generate head surface

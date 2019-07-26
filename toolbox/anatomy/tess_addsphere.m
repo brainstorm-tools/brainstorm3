@@ -65,7 +65,6 @@ switch (FileFormat)
         
     case 'GII-CAT'
         SphereMat = in_tess_gii(SphereFile);
-        
         % Get the subject MRI
         [sSubject, iSubject] = bst_get('SurfaceFile', TessFile);
         if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
@@ -74,12 +73,14 @@ switch (FileFormat)
         end
         % Load subject MRI
         sMri = bst_memory('LoadMri', iSubject);
-        
+        % Scale to have the same range as in the Brainstorm templates
+        % => spm12/toolbox/cat12/template_surfaces/lh.sphere.freesurfer.gii => Radius = 0.1 (pas de changement)
+        % => cat12_output/surf/lh.sphere.reg.0001GRE_25112014.gii => Radius = 0.001 (multiplication par 100)
+        if (round(max(SphereMat.Vertices(:,1)) * 1000) < 10)
+            SphereMat.Vertices = SphereMat.Vertices .* 100;
+        end
         % Convert to the same space as the FreeSurfer spheres
-        SphereVertices = SphereMat.Vertices .* 100 ./ sMri.Voxsize;
-%         % Convert: FreeSurfer RAS coord => Voxel
-%         mriSize = size(sMri.Cube) / 2;
-%         SphereVertices = bst_bsxfun(@minus, SphereVertices, mriSize) ./ 1000;
+        SphereVertices = SphereMat.Vertices ./ sMri.Voxsize;
 end
 
 % Check that the number of vertices match
