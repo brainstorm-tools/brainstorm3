@@ -4437,7 +4437,8 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     iFoundScouts = iFoundScouts(iFoundFibers);
     
     %% Plot selected fibers
-    if ~ColorOnly
+    % If we have different scouts, force plotting all fibers again
+    if ~ColorOnly || length(TessInfo(iTess).hPatch) ~= length(iFoundScouts)
         % Remove old fibers
         delete(TessInfo(iTess).hPatch);
         % Plot fibers
