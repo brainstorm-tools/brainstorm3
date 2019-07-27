@@ -416,14 +416,14 @@ end
 rmFiles = {};
 % Project FSAverage atlases
 if ~isempty(FsAvgLhFile) && ~isempty(FsAvgRhFile)
-    bst_project_scouts(BstFsAvgLhFile, BstTessLhFile);
-    bst_project_scouts(BstFsAvgRhFile, BstTessRhFile);
+    bst_project_scouts(BstFsAvgLhFile, BstTessLhFile, [], 1);
+    bst_project_scouts(BstFsAvgRhFile, BstTessRhFile, [], 1);
     rmFiles = cat(2, rmFiles, {BstFsAvgLhFile, BstFsAvgRhFile});
 end
 % Project FSAverage 32k atlases
 if ~isempty(Fs32kLhFile) && ~isempty(Fs32kRhFile)
-    bst_project_scouts(BstFs32kLhFile, BstTessLhFile);
-    bst_project_scouts(BstFs32kRhFile, BstTessRhFile);
+    bst_project_scouts(BstFs32kLhFile, BstTessLhFile, [], 1);
+    bst_project_scouts(BstFs32kRhFile, BstTessRhFile, [], 1);
     rmFiles = cat(2, rmFiles, {BstFs32kLhFile, BstFs32kRhFile});
 end
 
