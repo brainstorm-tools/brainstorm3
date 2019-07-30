@@ -47,6 +47,7 @@ if ~file_exist(ResultsFile)
 end
 % Is it a kernel file
 isKernel = ~isempty(strfind(ResultsFile, '_KERNEL_'));
+DataMat = [];
 
 % Specific fields
 if (nargin < 3)
@@ -222,7 +223,7 @@ if isfield(Results, 'GridLoc') && ~isempty(Results.GridLoc)
         Results.GridLoc = Results.GridLoc';
     end
 end
-    
+
 %% ===== COMPUTE FULL RESULTS =====
 % If the results are already full results: ignore this section
 if isKernel
