@@ -24,7 +24,7 @@ function view_clusters(DataFiles, iClusters, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2014
+% Authors: Francois Tadel, 2009-2019
 
 global GlobalData;  
 
@@ -140,7 +140,7 @@ for iFile = 1:length(DataFiles)
         % Get time indices
         [TimeVector, iTime] = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
         % Get data (over current time window)
-        DataToPlot = bst_memory('GetRecordingsValues', iDS, iChannel, iTime);       
+        [DataToPlot, DataStd] = bst_memory('GetRecordingsValues', iDS, iChannel, iTime);       
         % Compute the cluster values
         if ~isStat
             ClusterFunction = sClusters(k).Function;
@@ -157,6 +157,8 @@ for iFile = 1:length(DataFiles)
         clustersActivity{iFile,k} = bst_scout_value(DataToPlot, ClusterFunction);
         if ~isempty(StdFunction)
             clustersStd{iFile, k} = bst_scout_value(DataToPlot, StdFunction);
+        elseif ~isempty(DataStd)
+            clustersStd{iFile, k} = DataStd;
         end
 
         % === AXES LABELS ===
