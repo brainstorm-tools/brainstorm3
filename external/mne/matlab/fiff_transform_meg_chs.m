@@ -71,9 +71,9 @@ for k = 1:length(res)
     end
 end
 
-% if count > 0
-%     fprintf(1,'\t%d MEG channel locations transformed\n',count);
-% end
+if count > 0
+    fprintf(1,'\t%d MEG channel locations transformed\n',count);
+end
 
 return;
 

@@ -889,7 +889,8 @@ function F = FilterLoadedData(F, sfreq)
     isLowPass     = GlobalData.VisualizationFilters.LowPassEnabled;
     isHighPass    = GlobalData.VisualizationFilters.HighPassEnabled;
     isSinRemoval  = GlobalData.VisualizationFilters.SinRemovalEnabled;
-    isMirror      = GlobalData.VisualizationFilters.MirrorEnabled;
+    % isMirror      = GlobalData.VisualizationFilters.MirrorEnabled;
+    isMirror = 0;
     % Get time vector
     nTime = size(F,2);
     % Band-pass filter is active: apply it (only if real recordings => ignore time averages)

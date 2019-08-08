@@ -149,6 +149,23 @@ AnnotRhFiles = {file_find(FsDir, 'rh.pRF.annot', 2), file_find(FsDir, 'rh.aparc.
                 file_find(FsDir, 'rh.PALS_B12_Brodmann.annot', 2), file_find(FsDir, 'rh.PALS_B12_Lobes.annot', 2), file_find(FsDir, 'rh.PALS_B12_OrbitoFrontal.annot', 2), file_find(FsDir, 'rh.PALS_B12_Visuotopic.annot', 2), file_find(FsDir, 'rh.Yeo2011_7Networks_N1000.annot', 2), file_find(FsDir, 'rh.Yeo2011_17Networks_N1000.annot', 2)};
 AnnotLhFiles(cellfun(@isempty, AnnotLhFiles)) = [];
 AnnotRhFiles(cellfun(@isempty, AnnotRhFiles)) = [];
+% Remove old labels
+if ~isempty(AnnotLhFiles) && ~isempty(AnnotRhFiles)
+    % Freesurfer 5.3 creates "BA.annot", Freesurfer 6 creates "BA_exvivo.annot" 
+	% If the two are available in the same folder, both versions were executed, and the old "BA.annot" is outdated but not replaced: ignore it
+    % Left
+    iBAold = find(~cellfun(@(c)isempty(strfind(c, 'BA.annot')), AnnotLhFiles));
+    iBAnew = find(~cellfun(@(c)isempty(strfind(c, 'BA_exvivo.annot')), AnnotLhFiles));
+    if ~isempty(iBAold) && ~isempty(iBAnew)
+        AnnotLhFiles(iBAold) = [];
+    end
+    % Right
+    iBAold = find(~cellfun(@(c)isempty(strfind(c, 'BA.annot')), AnnotRhFiles));
+    iBAnew = find(~cellfun(@(c)isempty(strfind(c, 'BA_exvivo.annot')), AnnotRhFiles));
+    if ~isempty(iBAold) && ~isempty(iBAnew)
+        AnnotRhFiles(iBAold) = [];
+    end
+end
 % Find thickness maps
 if isExtraMaps
     ThickLhFile = file_find(FsDir, 'lh.thickness', 2);
@@ -291,7 +308,7 @@ if ~isempty(TessLhFile)
     % Load sphere
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
-        [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile);
+        [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
@@ -312,7 +329,7 @@ if ~isempty(TessRhFile)
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
-        [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile);
+        [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
@@ -332,7 +349,7 @@ if ~isempty(TessLwFile)
     end
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
-        [TessMat, err] = tess_addsphere(BstTessLwFile, TessLsphFile);
+        [TessMat, err] = tess_addsphere(BstTessLwFile, TessLsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
@@ -353,7 +370,7 @@ if ~isempty(TessRwFile)
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
-        [TessMat, err] = tess_addsphere(BstTessRwFile, TessRsphFile);
+        [TessMat, err] = tess_addsphere(BstTessRwFile, TessRsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample

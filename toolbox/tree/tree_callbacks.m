@@ -438,7 +438,12 @@ switch (lower(action))
 
             % ===== MATRIX =====
             case {'matrix', 'pmatrix'}
-                view_matrix( filenameRelative, 'TimeSeries' );
+                if ~isempty(strfind(filenameRelative, '_temporalgen'))
+                    % Decoding with temporal generalization should be opened as images
+                    view_matrix( filenameRelative, 'Image');
+                else
+                    view_matrix( filenameRelative, 'TimeSeries');
+                end
                 
             % ===== IMAGE =====
             case 'image'
@@ -574,10 +579,12 @@ switch (lower(action))
                         jItem.setEnabled(0);
                     end
                     % === GENERATE SPM CANONICAL ===
-                    jItem = gui_component('MenuItem', jPopup, [], 'SPM canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, []));
-                    if isempty(sSubject.Anatomy)
-                        jItem.setEnabled(0);
-                    end
+                     jItem1 = gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, []));
+                     jItem2 = gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_segment_cat12('ComputeInteractive', iSubject, []));
+                     if isempty(sSubject.Anatomy)
+                         jItem1.setEnabled(0);
+                         jItem2.setEnabled(0);
+                     end
                     % === DEFACE MRI ===
                     OPTIONS = struct('isDefaceHead', 1);
                     jItem = gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, OPTIONS));
@@ -993,7 +1000,8 @@ switch (lower(action))
                     end
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'SPM canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, iAnatomy));
+                     gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, iAnatomy));
+                     gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_segment_cat12('ComputeInteractive', iSubject, iAnatomy));
                     % SEEG/ECOG
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', filenameRelative));
@@ -1103,6 +1111,9 @@ switch (lower(action))
                         end
                         if strcmpi(nodeType, 'cortex')
                             gui_component('MenuItem', jPopup, [], 'Extract envelope', IconLoader.ICON_SURFACE_INNERSKULL, [], @(h,ev)SurfaceEnvelope_Callback(filenameFull));
+                            if ~isempty(sSubject.iInnerSkull)
+                                gui_component('MenuItem', jPopup, [], 'Force inside skull', IconLoader.ICON_SURFACE_INNERSKULL, [], @(h,ev)tess_force_envelope(filenameFull, sSubject.Surface(sSubject.iInnerSkull).FileName));
+                            end
                         end
                         gui_component('MenuItem', jPopup, [], 'Remove interpolations', IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceClean_Callback(filenameFull, 0));
                         gui_component('MenuItem', jPopup, [], 'Clean surface',         IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceClean_Callback(filenameFull, 1));
@@ -2713,11 +2724,11 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
     % Display defaults
     UseSmoothing = 0;
     % Remove "MEG" from the list if there is either "MEG MAG" or "MEG GRAD" also
-    if all(ismember({'MEG GRAD', 'MEG'}, AllMod)) || all(ismember({'MEG MAG', 'MEG'}, AllMod))
+    if ~isempty(AllMod) && (all(ismember({'MEG GRAD', 'MEG'}, AllMod)) || all(ismember({'MEG MAG', 'MEG'}, AllMod)))
         AllMod = setdiff(AllMod, 'MEG'); 
     end
     % Replace "MEG GRAD" with independant sensor types (MEG GRAD2, MEG GRAD3, GRADNORM)
-    if (ismember('MEG GRAD', AllMod))
+    if ~isempty(AllMod) && ismember('MEG GRAD', AllMod)
         AllMod = setdiff(AllMod, 'MEG GRAD'); 
         if isGradNorm
             AllMod{end+1} = 'MEG GRADNORM';
@@ -3146,6 +3157,7 @@ function SetNavgData(filenameFull)
         bst_error('Invalid value', 'Set number of trials', 0);
         return;
     end
+    DataMat.Leff = DataMat.nAvg;
     % History: Set number of trials
     DataMat = bst_history('add', DataMat, 'set_trials', ['Set number of trials: ' res]);
     % Save file
@@ -3255,7 +3267,7 @@ function SaveWhitenedData(ResultsFile)
     % Loading sources and data
     bst_progress('start', 'Model evaluation', 'Loading sources...');
     % Load source file
-    ResultsMat = in_bst_results(ResultsFile, 0,  'DataFile', 'Whitener', 'nAvg', 'GoodChannel');
+    ResultsMat = in_bst_results(ResultsFile, 0,  'DataFile', 'Whitener', 'Leff', 'GoodChannel');
     % Check the type of results file
     if isempty(ResultsMat) || isempty(ResultsMat.DataFile) || isempty(ResultsMat.Whitener) || isempty(ResultsMat.nAvg) || isempty(ResultsMat.GoodChannel)
         bst_error('The following fields must be available in the file: DataFile, Whitener, nAvg, Goodchannel.', 'Save whitened data', 0);
@@ -3268,7 +3280,7 @@ function SaveWhitenedData(ResultsFile)
     % Update progress bar
     bst_progress('start', 'Model evaluation', 'Saving whitened recordings...');
     % Factor to balance for averaged files 
-    Factor = sqrt(DataMat.nAvg / ResultsMat.nAvg); % is unity if both equal.
+    Factor = sqrt(ResultsMat.Leff); % is unity if both equal.
     % Compute whitened recordings 
     F = DataMat.F * 0;
     F(ResultsMat.GoodChannel,:) = Factor * ResultsMat.Whitener * DataMat.F(ResultsMat.GoodChannel,:); % whitened data to be displayed, z-units

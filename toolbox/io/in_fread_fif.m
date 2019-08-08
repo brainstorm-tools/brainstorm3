@@ -22,7 +22,7 @@ function [F,TimeVector] = in_fread_fif(sFile, sfid, iEpoch, SamplesBounds, iChan
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2014
+% Authors: Francois Tadel, 2009-2019
 
 if (nargin < 5)
     iChannels = [];
@@ -31,7 +31,14 @@ end
 % Epoched data
 % if isempty(SamplesBounds) || ~isfield(sFile.header, 'raw') || isempty(sFile.header.raw)
 if ~isfield(sFile.header, 'raw') || isempty(sFile.header.raw)
-    [F, TimeVector] = fif_read_evoked(sFile, sfid, iEpoch);
+    % Use data already read
+    if isfield(sFile.header, 'epochData') && ~isempty(sFile.header.epochData)
+        F = permute(sFile.header.epochData(iEpoch,:,:), [2,3,1]);
+        TimeVector = linspace(sFile.epochs(iEpoch).times(1), sFile.epochs(iEpoch).times(2), size(F,2));
+    % Read data from file
+    else
+        [F, TimeVector] = fif_read_evoked(sFile, sfid, iEpoch);
+    end
     % Specific selection of channels
     if ~isempty(iChannels)
         F = F(iChannels, :);

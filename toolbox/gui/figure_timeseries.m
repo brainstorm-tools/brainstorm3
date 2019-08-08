@@ -1794,7 +1794,7 @@ function [ChannelName, ChannelLabel] = GetChannelName(iDS, iFig, iLine)
         end
     else
         if (iLine <= length(sFig.Handles(1).LinesLabels))
-            ChannelName = sFig.Handles(1).LinesLabels{iClickChan};
+            ChannelName = sFig.Handles(1).LinesLabels{iLine};
         else
             ChannelName = 'noname';
         end

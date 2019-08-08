@@ -142,6 +142,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jPanelFiber.add('', jToggleAllConns);
         jPanelFiber.add('br', jToggleAnatConsistConns);
         jPanelFiber.add('br', jToggleAnatInconsistConns);
+    jPanelFiber.setVisible(0);
     jPanelNew.add(jPanelFiber);
     
     % Set max panel sizes
@@ -416,9 +417,14 @@ function UpdatePanel(hFig)
             isEnabledEdge = 0;
         end
         ctrl.jCheckHideEdge.setEnabled(isEnabledEdge);
-        % Resolution
-        ctrl.jCheckHighRes.setEnabled(strcmpi(FigureId.Type, 'Timefreq') || strcmpi(FigureId.Type, 'Pac'));
-        ctrl.jCheckHighRes.setSelected(TfInfo.HighResolution);
+        % Resolution (Smooth Display)
+        if (strcmpi(FigureId.Type, 'Pac') || strcmpi(FigureId.Type, 'Timefreq')) && ~TfInfo.DisplayAsDots
+            isEnabledHighRes = 1;
+            ctrl.jCheckHideEdge.setSelected(TfInfo.HighResolution);
+        else
+            isEnabledHighRes = 0;
+        end
+        ctrl.jCheckHighRes.setEnabled(isEnabledHighRes);
         % Get all row names available
         AllRows = figure_timefreq('GetRowNames', GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames);
         % Update row list

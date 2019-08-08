@@ -22,7 +22,7 @@ function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtla
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2019
 
 import sun.misc.BASE64Decoder;
 
@@ -95,6 +95,7 @@ else
 end
 % Process one after the other
 for iFile = 1:length(LabelFiles)
+    LabelsTable = [];
     % Get updated atlases after the first iteration
     if (iFile > 1)
         sSurf = bst_memory('LoadSurface', file_short(SurfaceFile));
@@ -122,9 +123,9 @@ for iFile = 1:length(LabelFiles)
         else
             % FreeSurfer Atlas names
             switch (fBase)
-                case {'lh.aparc.a2009s', 'rh.aparc.a2009s'}
+                case {'lh.aparc.a2009s', 'rh.aparc.a2009s', 'lh.aparc_a2009s.freesurfer', 'rh.aparc_a2009s.freesurfer'}
                     sAtlas.Name = 'Destrieux';
-                case {'lh.aparc', 'rh.aparc'}
+                case {'lh.aparc', 'rh.aparc', 'lh.aparc_DK40.freesurfer', 'rh.aparc_DK40.freesurfer'}
                     sAtlas.Name = 'Desikan-Killiany';
                 case {'lh.BA', 'rh.BA', 'lh.BA_exvivo', 'rh.BA_exvivo'}
                     sAtlas.Name = 'Brodmann';
@@ -156,9 +157,24 @@ for iFile = 1:length(LabelFiles)
                     sAtlas.Name = 'Lausanne-S125';
                 case {'lh.myaparc_250', 'rh.myaparc_250'}
                     sAtlas.Name = 'Lausanne-S250';
+                case {'lh.aparc_HCP_MMP1.freesurfer', 'rh.aparc_HCP_MMP1.freesurfer'}
+                    sAtlas.Name = 'HCP_MMP1';
                 otherwise
+                    % FreeSurfer left/right
                     if (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
                         sAtlas.Name = fBase(4:end);
+                    % BrainVISA/MarsAtlas
+                    elseif (~isempty(strfind(fBase, '_Lwhite_parcels_marsAtlas')) || ~isempty(strfind(fBase, '_Rwhite_parcels_marsAtlas')))
+                        sAtlas.Name = 'MarsAtlas';
+                        LabelsTable = panel_scout('GetMarsAtlasLabels');
+                    elseif (~isempty(strfind(fBase, '_Lwhite_parcels_model')) || ~isempty(strfind(fBase, '_Rwhite_parcels_model')))
+                        sAtlas.Name = 'MarsAtlas model';
+                    elseif (~isempty(strfind(fBase, '_Lwhite_pole_cingular')) || ~isempty(strfind(fBase, '_Rwhite_pole_cingular')))
+                        sAtlas.Name = 'MarsAtlas pole cingular';
+                    elseif (~isempty(strfind(fBase, '_Lwhite_pole_insula')) || ~isempty(strfind(fBase, '_Rwhite_pole_insula')))
+                        sAtlas.Name = 'MarsAtlas pole insula';
+                    elseif (~isempty(strfind(fBase, '_Lwhite_sulcalines')) || ~isempty(strfind(fBase, '_Rwhite_sulcalines')))
+                        sAtlas.Name = 'MarsAtlas sulcal lines';
                     else
                         sAtlas.Name = fBase;
                     end
@@ -214,7 +230,11 @@ for iFile = 1:length(LabelFiles)
                 % New scout index
                 iScout = length(sAtlas.Scouts) + 1;
                 sAtlas.Scouts(iScout).Vertices = find(labels == lablist(i))';
-                sAtlas.Scouts(iScout).Label    = file_unique(colortable.struct_names{iTable}, {sAtlas.Scouts.Label});
+                if ~isempty(colortable.struct_names{iTable})
+                    sAtlas.Scouts(iScout).Label = file_unique(colortable.struct_names{iTable}, {sAtlas.Scouts.Label});
+                else
+                    sAtlas.Scouts(iScout).Label = file_unique('Unknown', {sAtlas.Scouts.Label});
+                end
                 sAtlas.Scouts(iScout).Color    = colortable.table(iTable,1:3) ./ 255;
                 sAtlas.Scouts(iScout).Function = 'Mean';
                 sAtlas.Scouts(iScout).Region   = 'UU';
@@ -292,13 +312,21 @@ for iFile = 1:length(LabelFiles)
                 lablist = unique(Values{ia});
                 % Loop on each label
                 for i = 1:length(lablist)
+                    % Scout label: atlas or simply value converted to strinf
+                    if ~isempty(LabelsTable) && ismember(lablist(i), [LabelsTable{:,1}])
+                        scoutLabel = LabelsTable{lablist(i) == [LabelsTable{:,1}], 2};
+                        scoutColor = LabelsTable{lablist(i) == [LabelsTable{:,1}], 3} ./ 255;
+                    else
+                        scoutLabel = num2str(lablist(i));
+                        scoutColor = [];
+                    end
                     % New scout index
                     iScout = length(sAtlas(ia).Scouts) + 1;
                     % Get the vertices for this annotation
                     sAtlas(ia).Scouts(iScout).Vertices = find(Values{ia} == lablist(i));
                     sAtlas(ia).Scouts(iScout).Seed     = [];
-                    sAtlas(ia).Scouts(iScout).Label    = file_unique(num2str(lablist(i)), {sAtlas(ia).Scouts.Label});
-                    sAtlas(ia).Scouts(iScout).Color    = [];
+                    sAtlas(ia).Scouts(iScout).Label    = file_unique(scoutLabel, {sAtlas(ia).Scouts.Label});
+                    sAtlas(ia).Scouts(iScout).Color    = scoutColor;
                     sAtlas(ia).Scouts(iScout).Function = 'Mean';
                     sAtlas(ia).Scouts(iScout).Region   = 'UU';
                 end
@@ -558,6 +586,9 @@ for iFile = 1:length(LabelFiles)
     ColorTable = panel_scout('GetScoutsColorTable');
     % Loop on all the loaded atlases
     for ia = 1:length(sAtlas)
+        if isempty(sAtlas(ia).Scouts)
+            continue;
+        end
         % Brodmann atlas: remove the "Unknown" scout
         iUnknown = find(strcmpi({sAtlas(ia).Scouts.Label}, 'unknown') | strcmpi({sAtlas(ia).Scouts.Label}, 'medial.wall') | strcmpi({sAtlas(ia).Scouts.Label}, 'freesurfer_defined_medial_wall'));
         if ~isempty(iUnknown)

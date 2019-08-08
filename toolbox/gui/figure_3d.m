@@ -2485,8 +2485,10 @@ function UpdateSurfaceColor(hFig, iTess)
         
     % === FIBERS ===
     elseif strcmpi(TessInfo(iTess).Name, 'Fibers')
-        % Set line color
-        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, TessInfo(iTess).AnatomyColor(1,1:3));
+        % Set line color if applicable
+        if any(TessInfo(iTess).AnatomyColor(:) ~= 0)
+            TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, TessInfo(iTess).AnatomyColor(1,1:3));
+        end
         
     % === SURFACE ===
     else
@@ -2605,7 +2607,7 @@ function hGrid = PlotGrid(hFig, GridLoc, GridValues, GridInd, DataAlpha, DataLim
         % Get color values
         if ~isempty(GridValues) && (length(DataLimit) == 2) && (DataLimit(2) ~= DataLimit(1)) && ~any(isnan(DataLimit)) && ~any(isinf(DataLimit))
             iDataCmap = round( ((size(sColormap.CMap,1)-1)/(DataLimit(2)-DataLimit(1))) * (GridValues - DataLimit(1))) + 1;
-            iDataCmap(iDataCmap <= 0) = 1;
+            iDataCmap((iDataCmap <= 0) | isnan(iDataCmap)) = 1;
             iDataCmap(iDataCmap > size(sColormap.CMap,1)) = size(sColormap.CMap,1);
             dataRGB = sColormap.CMap(iDataCmap, :);
         else
@@ -4435,7 +4437,8 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     iFoundScouts = iFoundScouts(iFoundFibers);
     
     %% Plot selected fibers
-    if ~ColorOnly
+    % If we have different scouts, force plotting all fibers again
+    if ~ColorOnly || length(TessInfo(iTess).hPatch) ~= length(iFoundScouts)
         % Remove old fibers
         delete(TessInfo(iTess).hPatch);
         % Plot fibers

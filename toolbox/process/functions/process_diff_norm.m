@@ -19,7 +19,7 @@ function varargout = process_diff_norm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2019
 
 eval(macro_method);
 end
@@ -71,6 +71,9 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     if strcmpi(sInputsA(1).FileType, 'timefreq')
         sOutput.Measure = 'other';
     end
+    % Can't keep track of number of averages
+    sOutput.nAvg = [];
+    sOutput.Leff = [];
 end
 
 

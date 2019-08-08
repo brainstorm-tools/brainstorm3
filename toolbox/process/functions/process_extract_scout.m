@@ -476,18 +476,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
                     return;
                 end
+                % Get scout function
+                if ~isempty(ScoutFunc)
+                    SelScoutFunc = ScoutFunc;
+                    sScout.Function = SelScoutFunc;
+                else
+                    SelScoutFunc = sScout.Function;
+                end
                 % Add to the list of selected scouts
                 if isempty(sScoutsFinal)
                     sScoutsFinal = sScout;
                 else
                     sScoutsFinal(end+1) = sScout;
                 end
-                % Get scout function
-                if ~isempty(ScoutFunc)
-                    SelScoutFunc = ScoutFunc;
-                else
-                    SelScoutFunc = sScout.Function;
-                end
+
 
                 % === GET ROWS INDICES ===
                 % Sort vertices indices
@@ -683,6 +685,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             newMat.nAvg = sMat.nAvg;
         else
             newMat.nAvg = 1;
+        end
+        if isfield(sMat, 'Leff') && ~isempty(sMat.Leff)
+            newMat.Leff = sMat.Leff;
+        else
+            newMat.Leff = 1;
         end
         % Concatenate new values to existing ones
         if isConcatenate

@@ -2266,23 +2266,23 @@ function [DataPair, DataMask] = GetPairs(hFig)
         
         DataMask = ones(size(DataPair,1),1);
         % Display specific filter
-        if ~isempty(MeasureDisplayMask)
+        if ~isempty(MeasureDisplayMask) && isequal(size(DataMask), size(MeasureDisplayMask))
             DataMask =  DataMask == 1 & MeasureDisplayMask == 1;
         end
         % Distance filter
-        if ~isempty(MeasureDistanceMask)
+        if ~isempty(MeasureDistanceMask) && isequal(size(DataMask), size(MeasureDistanceMask))
             DataMask =  DataMask == 1 & MeasureDistanceMask == 1;
         end
         % Anatomical filter
-        if ~isempty(MeasureAnatomicalMask)
+        if ~isempty(MeasureAnatomicalMask) && isequal(size(DataMask), size(MeasureAnatomicalMask))
             DataMask =  DataMask == 1 & MeasureAnatomicalMask == 1;
         end
         % Fiber filter
-        if ~isempty(MeasureFiberMask)
+        if ~isempty(MeasureFiberMask) && isequal(size(DataMask), size(MeasureFiberMask))
             DataMask = DataMask == 1 & MeasureFiberMask == 1;
         end
         % Intensity Threshold filter
-        if ~isempty(MeasureThresholdMask)
+        if ~isempty(MeasureThresholdMask) && isequal(size(DataMask), size(MeasureThresholdMask))
             DataMask =  DataMask == 1 & MeasureThresholdMask == 1;
         end
     end

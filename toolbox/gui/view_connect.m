@@ -196,10 +196,9 @@ if plotFibers
     end
     
     % Prepare fibers figure
-    iDSFib = bst_memory('GetDataSetSubject', sSubject.FileName, 1);
     FigureFibId = db_template('FigureId');
     FigureFibId.Type = '3DViz';
-    hFigFib = bst_figures('CreateFigure', iDSFib, FigureFibId);
+    hFigFib = bst_figures('CreateFigure', iDS, FigureFibId);
     setappdata(hFigFib, 'EmptyFigure', 1);
 
     % Display fibers

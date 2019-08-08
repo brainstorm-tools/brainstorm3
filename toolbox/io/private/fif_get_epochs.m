@@ -1,7 +1,7 @@
-function [epochs] = fif_get_epochs( sFile, fid )
-% FIF_GET_EPOCHS: Get the descriptions of all the epochs in an evoked .FIF file.
+function [epochs, epochData] = fif_get_epochs( sFile, fid )
+% FIF_GET_EPOCHS: Get the descriptions of all the epochs in an evoked/epoched .FIF file.
 %
-% USAGE:  epochs = fif_get_epochs( sFile, fid )
+% USAGE:  [epochs, epochData] = fif_get_epochs( sFile, fid )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,7 +21,7 @@ function [epochs] = fif_get_epochs( sFile, fid )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2011
+% Authors: Francois Tadel, 2008-2019
 %          Based on scripts from M.Hamalainen
 
 % FIFF Constants
@@ -31,19 +31,28 @@ if isempty(FIFF)
 end
 % Inialize returned variable
 epochs = [];
+epochData = [];
 
-% Get epochs list
+% ===== READ EVOKED =====
+% Get evoked files
 sets = fiff_dir_tree_find(sFile.header.tree, FIFF.FIFFB_EVOKED);
-nbSets = length(sets);
+% Otherwise: Get single epochs
+if isempty(sets)
+    sets = fiff_dir_tree_find(sFile.header.tree, FIFF.FIFFB_MNE_EPOCHS);
+    isEvoked = 0;
+else
+    isEvoked = 1;
+end
 % If at least one set avaialable => evoked FIF file
-if (nbSets > 0)
+if ~isempty(sets)
     % Initialize structure
     epochs = struct('label',   '', ...
                     'times',   [], ...
                     'nAvg',    1);
     iTotal = 1;
+    epochComment = 'Epoch';
     % Get comments for each epoch
-    for iSet = 1:nbSets
+    for iSet = 1:length(sets)
         % === GET EPOCH INFO ===
         % COMMENT
         iDir = find([sets(iSet).dir.kind] == FIFF.FIFF_COMMENT);
@@ -63,63 +72,78 @@ if (nbSets > 0)
             epochTimes   = double(epochSamples) ./ sFile.prop.sfreq;
         end
             
-        % === GET ASPECTS INFO ===
-        % Get the aspects (data, error, etc...)
-        aspects  = fiff_dir_tree_find(sets(iSet),FIFF.FIFFB_ASPECT);
-        nbAspects = length(aspects);
-        % If some aspects defined
-        if (nbAspects > 0)
-            % Loop on all the aspects
-            for iAspect = 1:nbAspects
-                % Find Aspect type
-                iAspectKind = find([aspects(iAspect).dir.kind] == FIFF.FIFF_ASPECT_KIND);
-                if ~isempty(iAspectKind)
-                    tag = fiff_read_tag(fid, aspects(iAspect).dir(iAspectKind).pos);
-                    % Switch between different aspect types
-                    switch(tag.data)
-                        case FIFF.FIFFV_ASPECT_AVERAGE
-                            aspectComment = [];
-                        case FIFF.FIFFV_ASPECT_STD_ERR
-                            aspectComment = 'std err';
-                        case FIFF.FIFFV_ASPECT_SINGLE
-                            aspectComment = 'single';
-                        case FIFF.FIFFV_ASPECT_SUBAVERAGE
-                            aspectComment = 'subavg';
-                        case FIFF.FIFFV_ASPECT_ALTAVERAGE
-                            aspectComment = 'altavg';
-                        case FIFF.FIFFV_ASPECT_SAMPLE
-                            aspectComment = 'sample';
-                        case FIFF.FIFFV_ASPECT_POWER_DENSITY
-                            aspectComment = 'pow dens';
-                        case FIFF.FIFFV_ASPECT_DIPOLE_WAVE
-                            aspectComment = 'wav';
+        % === EVOKED: GET ASPECTS INFO ===
+        if isEvoked
+            % Get the aspects (data, error, etc...)
+            aspects  = fiff_dir_tree_find(sets(iSet),FIFF.FIFFB_ASPECT);
+            nbAspects = length(aspects);
+            % If some aspects defined
+            if (nbAspects > 0)
+                % Loop on all the aspects
+                for iAspect = 1:nbAspects
+                    % Find Aspect type
+                    iAspectKind = find([aspects(iAspect).dir.kind] == FIFF.FIFF_ASPECT_KIND);
+                    if ~isempty(iAspectKind)
+                        tag = fiff_read_tag(fid, aspects(iAspect).dir(iAspectKind).pos);
+                        % Switch between different aspect types
+                        switch(tag.data)
+                            case FIFF.FIFFV_ASPECT_AVERAGE
+                                aspectComment = [];
+                            case FIFF.FIFFV_ASPECT_STD_ERR
+                                aspectComment = 'std err';
+                            case FIFF.FIFFV_ASPECT_SINGLE
+                                aspectComment = 'single';
+                            case FIFF.FIFFV_ASPECT_SUBAVERAGE
+                                aspectComment = 'subavg';
+                            case FIFF.FIFFV_ASPECT_ALTAVERAGE
+                                aspectComment = 'altavg';
+                            case FIFF.FIFFV_ASPECT_SAMPLE
+                                aspectComment = 'sample';
+                            case FIFF.FIFFV_ASPECT_POWER_DENSITY
+                                aspectComment = 'pow dens';
+                            case FIFF.FIFFV_ASPECT_DIPOLE_WAVE
+                                aspectComment = 'wav';
+                        end
                     end
+                    % Get number of average
+                    iNave = find([aspects(iAspect).dir.kind] == FIFF.FIFF_NAVE);
+                    if ~isempty(iNave)
+                        tag = fiff_read_tag(fid, aspects(iAspect).dir(iNave).pos);
+                        epochs(iTotal).nAvg = tag.data;
+                    end
+                    % Final comment
+                    if ~isempty(aspectComment)
+                        epochs(iTotal).label = [epochComment ' (' aspectComment ')'];
+                    else
+                        epochs(iTotal).label = epochComment;
+                    end
+                    % Samples (start, stop)
+                    epochs(iTotal).times   = epochTimes;
+                    % Total indice of epoch/aspect
+                    iTotal = iTotal + 1;
                 end
-                % Get number of average
-                iNave = find([aspects(iAspect).dir.kind] == FIFF.FIFF_NAVE);
-                if ~isempty(iNave)
-                    tag = fiff_read_tag(fid, aspects(iAspect).dir(iNave).pos);
-                    epochs(iTotal).nAvg = tag.data;
-                end
-                % Final comment
-                if ~isempty(aspectComment)
-                    epochs(iTotal).label = [epochComment ' (' aspectComment ')'];
-                else
-                    epochs(iTotal).label = epochComment;
-                end
-                % Samples (start, stop)
-                epochs(iTotal).times   = epochTimes;
-                % Total indice of epoch/aspect
+            % No aspects defined
+            else
+                epochs(iTotal).times = epochTimes;
+                epochs(iTotal).label = epochComment;
                 iTotal = iTotal + 1;
             end
-        % No aspects defined
+            
+        % ===== EPOCHED =====
         else
-            epochs(iTotal).times = epochTimes;
-            epochs(iTotal).label = epochComment;
-            iTotal = iTotal + 1;
+            iEpoch = find([sets(iSet).dir.kind] == FIFF.FIFF_EPOCH);
+            if ~isempty(iEpoch)
+                % Read all epochs
+                tag = fiff_read_tag(fid, sets(iSet).dir(iEpoch).pos);
+                epochData = tag.data;
+                % Create epochs structure
+                epochs(1).label = epochComment;
+                epochs(1).times = epochTimes;
+                epochs(1).nAvg  = 1;
+                epochs = repmat(epochs(1), size(epochData,1), 1);
+            end
         end
     end
 end
-
 
 
