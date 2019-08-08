@@ -366,7 +366,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if ~isempty(matValues)
                 matValues = matValues(:,iTime,:);
                 if ~isempty(stdValues)
-                    stdValues = stdValues(:,iTime,:);
+                    stdValues = stdValues(:,iTime,:,:);
                 end
             else
                 sMat.F = sMat.F(:,iTime);
@@ -385,7 +385,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if ~isempty(iFileScouts)
                 scoutValues = cat(1, scoutValues, matValues(iFileScouts(iClust),:,:));
                 if ~isempty(stdValues)
-                    scoutStds = cat(1, scoutStds, stdValues(iFileScouts(iClust),:,:));
+                    scoutStds = cat(1, scoutStds, stdValues(iFileScouts(iClust),:,:,:));
                 else
                     scoutStds = cat(1, scoutStds, zeros(size(matValues(iFileScouts(iClust),:,:))));
                 end
@@ -499,7 +499,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if ~isempty(matValues)
                 sourceValues = matValues(iRows,:,:);
                 if ~isempty(stdValues)
-                    sourceStd = stdValues(iRows,:,:);
+                    sourceStd = stdValues(iRows,:,:,:);
                 end
             else
                 sourceValues = sResults.ImagingKernel(iRows,:) * sMat.F(sResults.GoodChannel,:);
@@ -550,7 +550,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if ~isempty(StdFunction)
                     tmpStd = bst_scout_value(sourceValues(:,:,iFreq), StdFunction, ScoutOrient, nComponents, XyzFunction, isFlipSign);
                 elseif ~isempty(sourceStd) && (size(sourceValues,1) == 1)
-                    tmpStd = sourceStd(:,:,iFreq);
+                    tmpStd = sourceStd(:,:,iFreq,:);
                 else
                     tmpStd = zeros(size(tmpScout));
                 end

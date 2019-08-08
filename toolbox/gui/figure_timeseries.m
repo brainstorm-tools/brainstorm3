@@ -2626,7 +2626,7 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
     if ~isempty(iChannels)
         F = panel_montage('ApplyMontage', sMontage, Fall(iChannels,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
         if ~isempty(StdAll)
-            Std = panel_montage('ApplyMontage', sMontage, StdAll(iChannels,:,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
+            Std = panel_montage('ApplyMontage', sMontage, StdAll(iChannels,:,:,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
         end
         % Modify channel names
         TsInfo.LinesLabels = sMontage.DispNames(iMatrixDisp)';
@@ -2635,7 +2635,7 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
         % Keep only the selected sensors
         F = Fall(selChan,:);
         if ~isempty(StdAll)
-            Std = StdAll(selChan,:,:);
+            Std = StdAll(selChan,:,:,:);
         end
         % Lines names=channel names
         TsInfo.LinesLabels = ChanNames(selChan)';
@@ -2773,11 +2773,10 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         else
             PlotHandles(iAxes).DataMinMax = [min(F{iAxes}(:)), max(F{iAxes}(:))];
             % With Std
-            FExtraDim = [size(F{iAxes}), 2];
-            if ~isempty(Std) && ~isempty(Std{iAxes}) && (isequal(size(F{iAxes}), size(Std{iAxes})) || isequal(size(Std{iAxes}), FExtraDim))
+            if ~isempty(Std) && ~isempty(Std{iAxes}) && ContainsDims(F{iAxes}, Std{iAxes})
                 % Check whether Std is an interval or a single value centered on the data
-                if ndims(Std{iAxes}) > ndims(F{iAxes})
-                    Faxes = [Std{iAxes}(:,:,2), Std{iAxes}(:,:,1)];
+                if ndims(Std{iAxes}) >= 4
+                    Faxes = [Std{iAxes}(:,:,:,2), Std{iAxes}(:,:,:,1)];
                 else
                     Faxes = [F{iAxes} + Std{iAxes}, F{iAxes} - Std{iAxes}];
                 end
@@ -3112,7 +3111,7 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
         TimeVector = TimeVector(1:PlotHandles.DownsampleFactor:end);
         F = F(:,1:PlotHandles.DownsampleFactor:end);
         if ~isempty(Std)
-            Std = Std(:,1:PlotHandles.DownsampleFactor:end,:);
+            Std = Std(:,1:PlotHandles.DownsampleFactor:end,:,:);
         end
     end
 
@@ -3299,11 +3298,10 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
         PlotHandles.ChannelOffsets = zeros(size(F,1), 1);
         
         % ===== STD HALO =====
-        FExtraDim = [size(F), 2];
         % Plot Std as a transparent halo
-        if ~isempty(Std) && (isequal(size(F), size(Std)) || isequal(size(Std), FExtraDim))
+        if ~isempty(Std) && ContainsDims(F, Std)
             % Check whether Std is an interval or a single value centered on the data
-            stdIsInterval = ndims(Std) > ndims(F);
+            stdIsInterval = ndims(Std) >= 4;
             % Get the colors of all the lines
             C = get(PlotHandles.hLines, 'Color');
             if ~iscell(C)
@@ -3313,8 +3311,8 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
             if (length(C) > 5) || (length(C) > 1) && all(cellfun(@(c)isequal(C{1},c), C))
                 % Upper and lower lines
                 if stdIsInterval
-                    Lhi  = max(Std(:,:,2), [], 1) .* fFactor;
-                    Llow = min(Std(:,:,1), [], 1) .* fFactor;
+                    Lhi  = max(Std(:,:,:,2), [], 1) .* fFactor;
+                    Llow = min(Std(:,:,:,1), [], 1) .* fFactor;
                 else
                     Lhi  = max(F + Std, [], 1) .* fFactor;
                     Llow = min(F - Std, [], 1) .* fFactor;
@@ -3325,8 +3323,8 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
                 for i = 1:size(Std,1)
                     % Upper and lower lines
                     if stdIsInterval
-                        Lhi  = Std(i,:,2) .* fFactor;
-                        Llow = Std(i,:,1) .* fFactor;
+                        Lhi  = Std(i,:,:,2) .* fFactor;
+                        Llow = Std(i,:,:,1) .* fFactor;
                     else
                         Lhi  = (F(i,:) + Std(i,:)) .* fFactor;
                         Llow = (F(i,:) - Std(i,:)) .* fFactor;
@@ -3524,7 +3522,7 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
         % Plot Std as a transparent halo
         if ~isempty(Std) && (length(PlotHandles.hLines) < 50)
             % Check whether Std is an interval or a single value centered on the data
-            stdIsInterval = ndims(Std) > ndims(F);
+            stdIsInterval = ndims(Std) >= 4;
             if stdIsInterval
                 % Add offset to each channel
                 Std = bst_bsxfun(@plus, Std, PlotHandles.ChannelOffsets);
@@ -3538,8 +3536,8 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
             for i = 1:size(Std,1)
                 % Upper and lower lines
                 if stdIsInterval
-                    Lhi  = Std(i,:,2);
-                    Llow = Std(i,:,1);
+                    Lhi  = Std(i,:,:,2);
+                    Llow = Std(i,:,:,1);
                 else
                     Lhi  = (F(i,:) + Std(i,:));
                     Llow = (F(i,:) - Std(i,:));
@@ -4835,5 +4833,20 @@ function SwitchMatrixFile(hFig, keyEvent)
     panel_protocols('SelectNode', [], TsInfo.FileName);
 end
 
-
+% Returns whether matrix A dimensions are contained inside matrix B,
+% starting from the first dimension of B
+% I.e. A = 2 x 3 and B = 2 x 3 x 4; A is contained in B.
+%      A = 2 x 3 and B = 4 x 2 x 3; A is not contained in B
+function res = ContainsDims(MatA, MatB)
+    if isempty(MatB)
+        res = isempty(MatA);
+        return;
+    end
+    
+    sizeA  = size(MatA);
+    sizeB  = size(MatB);
+    nDimsA = length(sizeA);
+    nDimsB = length(sizeB);
+    res = nDimsB >= nDimsA && all(sizeB(1:nDimsA) == sizeA);
+end
 

@@ -382,7 +382,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if ~isempty(matValues)
                 matValues = matValues(:,iTime,:);
                 if ~isempty(matStd)
-                    matStd = matStd(:,iTime,:);
+                    matStd = matStd(:,iTime,:,:);
                 end
             else
                 sMat.F = sMat.F(:,iTime,:);
@@ -559,7 +559,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if ~isempty(matValues)
                     sourceValues = matValues(iRows,:,:);
                     if ~isempty(matStd)
-                        sourceStd = matStd(iRows,:,:);
+                        sourceStd = matStd(iRows,:,:,:);
                     else
                         sourceStd = [];
                     end
@@ -587,13 +587,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     if isempty(ZScoreScout.mean)
                         sourceValues = process_zscore_dynamic('Compute', sourceValues, ZScoreScout, sMat.Time, sResults.ImagingKernel(iRows,:), sMat.F(sResults.GoodChannel,:,:));
                         if ~isempty(sourceStd)
-                            sourceStd = process_zscore_dynamic('Compute', sourceStd, ZScoreScout, sMat.Time, sResults.ImagingKernel(iRows,:), sMat.F(sResults.GoodChannel,:,:));
+                            for iBound = 1:size(sourceStd,4)
+                                sourceStd(:,:,:,iBound) = process_zscore_dynamic('Compute', sourceStd(:,:,:,iBound), ZScoreScout, sMat.Time, sResults.ImagingKernel(iRows,:), sMat.F(sResults.GoodChannel,:,:));
+                            end
                         end
                     % Apply existing mean/std
                     else
                         sourceValues = process_zscore_dynamic('Compute', sourceValues, ZScoreScout);
                         if ~isempty(sourceStd)
-                            sourceStd = process_zscore_dynamic('Compute', sourceStd, ZScoreScout);
+                            for iBound = 1:size(sourceStd,4)
+                                sourceStd(:,:,:,iBound) = process_zscore_dynamic('Compute', sourceStd(:,:,:,iBound), ZScoreScout);
+                            end
                         end
                     end
                 end
@@ -629,7 +633,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
                     scoutValues = cat(1, scoutValues, tmpScout);
                     if ~isempty(sourceStd)
-                        tmpScoutStd = bst_scout_value(sourceStd(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);
+                        for iBound = 1:size(sourceStd,4)
+                            tmpScoutStd(:,:,:,iBound) = bst_scout_value(sourceStd(:,:,iFreq,iBound), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);
+                        end
                         scoutStd = cat(1, scoutStd, tmpScoutStd);
                     end
                     % Loop on the rows to comment them
@@ -697,7 +703,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             newMat.Description = cat(1, newMat.Description, Description);
             newMat.ChannelFlag(sMat.ChannelFlag == -1) = -1;
             if ~isempty(scoutStd)
-                newMat.Std = cat(1, newMat.Value, scoutStd);
+                newMat.Std = cat(1, newMat.Std, scoutStd);
             end
         else
             newMat.Value       = scoutValues;
