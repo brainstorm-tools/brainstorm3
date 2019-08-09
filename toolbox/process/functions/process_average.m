@@ -261,7 +261,7 @@ function [iGroups, GroupComments, GroupNames] = SortFiles(sInputs, avgtype)
                                 if ~isempty(sStudyAssoc2)
                                     trialComment{iInput} = sStudyAssoc2.Data(iFileAssoc2).Comment;
                                 else
-                                    bst_report('Warning', 'process_average', sInputs(iInput), ['File skipped, the parent node has been deleted:' 10 sStudyAssoc.Result(iFileAssoc).DataFiles]);
+                                    bst_report('Warning', 'process_average', sInputs(iInput), ['File skipped, the parent node has been deleted:' 10 sStudyAssoc.Result(iFileAssoc).DataFile]);
                                 end
                             else
                                 bst_report('Warning', 'process_average', sInputs(iInput), ['File skipped, the parent node has been deleted:' 10 sInputs(iInput).DataFile]);

@@ -3676,6 +3676,10 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
     sFoundStudy = [];
     iFoundStudy = [];
     iItem       = [];
+    % If no file provided, return
+    if isempty(fieldFile)
+        return;
+    end
     % Extract folder(s) of the file(s) we're looking for
     fieldParts = strfind(fieldFile, '|');
     if ~isempty(fieldParts)
