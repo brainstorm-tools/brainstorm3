@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 August 2019
 - GUI: Added support for clusters with STDs
+- IO: Import volume atlases as scouts without overlap between ROIs
 ---------------------------------------------------------------
 July 2019
 - Anatomy: Import MRI segmentation output from SPM12/CAT12

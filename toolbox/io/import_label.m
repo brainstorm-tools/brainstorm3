@@ -340,10 +340,11 @@ for iFile = 1:length(LabelFiles)
             iAtlas = 'Add';
             
         % ===== MRI VOLUMES =====
-        case {'MRI-MASK', 'MRI-MASK-MNI'}
+        case {'MRI-MASK', 'MRI-MASK-MNI', 'MRI-MASK-NOOVERLAP', 'MRI-MASK-NOOVERLAP-MNI'}
             bst_progress('text', 'Reading atlas...');
             % If the file that is loaded has to be interpreted in MNI space
-            isMni = strcmpi(FileFormat, 'MRI-MASK-MNI');
+            isMni = strcmpi(FileFormat, 'MRI-MASK-MNI') || strcmpi(FileFormat, 'MRI-MASK-NOOVERLAP-MNI');
+            isOverlap = strcmpi(FileFormat, 'MRI-MASK') || strcmpi(FileFormat, 'MRI-MASK-MNI');
             % Read MRI volume  (do not normalize values when reading an atlas)
             if isMni
                 sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI', [], 0);
@@ -413,8 +414,10 @@ for iFile = 1:length(LabelFiles)
                 % Get the binary mask of the current region
                 mask = (sMriMask.Cube == allValues(i));
                 % Dilate mask
-                mask = mri_dilate(mask);
-                mask = mri_dilate(mask);
+                if isOverlap
+                    mask = mri_dilate(mask);
+                    mask = mri_dilate(mask);
+                end
                 % Get the vertices in this mask
                 iScoutVert = find(mask(indMri));
                 if isempty(iScoutVert)
