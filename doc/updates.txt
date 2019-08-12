@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+August 2019
+- GUI: Added support for clusters with STDs
+---------------------------------------------------------------
 July 2019
 - Anatomy: Import MRI segmentation output from SPM12/CAT12
 - Anatomy: Run MRI segmentation output with SPM12/CAT12
