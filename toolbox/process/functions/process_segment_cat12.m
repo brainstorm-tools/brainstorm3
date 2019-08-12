@@ -234,6 +234,7 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     end
     % Open progress bar
     bst_progress('start', 'CAT12', 'CAT12 MRI segmentation...');
+    bst_progress('setimage', 'logo_splash_cat.gif');
     % Ask for number of vertices
     nVertices = java_dialog('input', 'Number of vertices on the cortex surface:', 'CAT12 segmentation', [], '15000');
     if isempty(nVertices)
