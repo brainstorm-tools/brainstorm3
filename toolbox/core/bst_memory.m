@@ -1789,11 +1789,14 @@ function R = GetConnectMatrixStd(Timefreq) %#ok<DEFNU>
     if (length(Timefreq.RowNames) == length(Timefreq.RefRowNames)) && (size(Timefreq.Std,1) < length(Timefreq.RowNames)^2)
         Timefreq.Std = process_compress_sym('Expand', Timefreq.Std, length(Timefreq.RowNames));
     end
-    % Reshape Std matrix: [Nrow x Ncol x Ntime x nFreq]
-    nTime = size(Timefreq.Std, 2);
-    nFreq = size(Timefreq.Std, 3);
-    R = reshape(Timefreq.Std, [length(Timefreq.RefRowNames), length(Timefreq.RowNames), nTime, nFreq]);
+    % Reshape Std matrix: [Nrow x Ncol x Ntime x nFreq x nBounds]
+    nTime   = size(Timefreq.Std, 2);
+    nFreq   = size(Timefreq.Std, 3);
+    nBounds = size(Timefreq.Std, 4);
+    R = reshape(Timefreq.Std, [length(Timefreq.RefRowNames), length(Timefreq.RowNames), nTime, nFreq, nBounds]);
 end
+
+
 
 
 %% ===== LOAD MATRIX FILE =====
@@ -1943,7 +1946,7 @@ function [DataValues, Std] = GetRecordingsValues(iDS, iChannel, iTime, isGradMag
         DataType = GlobalData.DataSet(iDS).Measures.DataType;
         % Get standard deviation
         if ~isempty(GlobalData.DataSet(iDS).Measures.Std)
-            Std = GlobalData.DataSet(iDS).Measures.Std(iChannel, iTime);
+            Std = GlobalData.DataSet(iDS).Measures.Std(iChannel, iTime, :, :);
         else
             Std = [];
         end
@@ -1955,7 +1958,9 @@ function [DataValues, Std] = GetRecordingsValues(iDS, iChannel, iTime, isGradMag
             DataValues = bst_scale_gradmag( DataValues, GlobalData.DataSet(iDS).Channel(iChannel));
             % Normalize standard deviation too
             if ~isempty(Std)
-                Std = bst_scale_gradmag(Std, GlobalData.DataSet(iDS).Channel(iChannel));
+                for iBound = 1:size(Std, 4)
+                    Std(:,:,:,iBound) = bst_scale_gradmag(Std(:,:,:,iBound), GlobalData.DataSet(iDS).Channel(iChannel));
+                end
             end
         end
     else
@@ -2012,12 +2017,12 @@ function [ResultsValues, nComponents, Std] = GetResultsValues(iDS, iResult, iVer
         if isempty(iRows)
             ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(:, iTime));
             if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
-                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(:, iTime));
+                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(:, iTime, :, :));
             end
         else
             ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(iRows, iTime));
             if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
-                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(iRows, iTime));
+                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(iRows, iTime, :, :));
             end
         end
     % === KERNEL ONLY ===

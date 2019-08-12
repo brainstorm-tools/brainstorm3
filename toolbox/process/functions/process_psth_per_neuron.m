@@ -182,7 +182,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         %% Compute the 95% confidence intervals
         % Initialize the 3 vectors that will be plotted (mean, and 95% confidence intervals)   
         meanData = zeros(length(labelsForDropDownMenu), nBins);    % nNeurons x nBins
-        CI       = zeros(length(labelsForDropDownMenu), nBins, 2); % nNeurons x nBins x 2 (upper-lower bound)
+        CI       = zeros(length(labelsForDropDownMenu), nBins, 1, 2); % nNeurons x nBins x 1 (unused STD dimension) x 2 (upper-lower bound)
 
         
         bst_progress('start', 'PSTH per Neuron', 'Performing permutation test for 95% confidence intervals...', 0, length(labelsForDropDownMenu));
@@ -197,7 +197,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
                 % Compute the 95% confidence intervals
                 RESAMPLING = 1000; % Number of permutations
-                CI(iNeuron,iBin,:) = bootci(RESAMPLING, {@mean, raster(iNeuron,iBin,:)}, 'type','cper','alpha',0.05);
+                CI(iNeuron,iBin,1,:) = bootci(RESAMPLING, {@mean, raster(iNeuron,iBin,:)}, 'type','cper','alpha',0.05);
             end
             bst_progress('inc', 1);
         end
@@ -209,13 +209,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         % Prepare output file structure
         FileMat.Value = meanData;
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%% MARTIN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % KEEP THE SECOND DIMENSION ONCE MARTIN FINALIZES THIS
-        FileMat.Std = squeeze(CI(:,:,2)) - meanData;
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        
+        FileMat.Std = CI;
         FileMat.Description  = labelsForDropDownMenu';
         FileMat.Time         = diff(bins(1:2))/2+bins(1:end-1);
         FileMat.ChannelFlag  = ones(length(labelsForDropDownMenu),1);
