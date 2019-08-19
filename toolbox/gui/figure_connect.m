@@ -471,18 +471,18 @@ function FigureMouseMoveCallback(hFig, ev)
             sColormap = bst_colormaps('ColormapChangeModifiers', ColormapInfo.Type, [motionFigure(1), motionFigure(2)] ./ 100, 0);
             set(hFig, 'Colormap', sColormap.CMap);
         case 'rotate'
-            % ENABLE THE CODE BELOW TO ENABLE THE ROTATION
-%             MouseMoveCamera = getappdata(hFig, 'MouseMoveCamera');
-%             if isempty(MouseMoveCamera)
-%                 MouseMoveCamera = 0;
-%             end
-%             if (MouseMoveCamera)
-%                 motion = -motionFigure * 0.1;
-%                 MoveCamera(hFig, [motion(1) -motion(2) 0]);
-%             else
-%                 motion = -motionFigure * 0.01;
-%                 RotateCameraAlongAxis(hFig, -motion(2), motion(1));
-%             end
+             MouseMoveCamera = getappdata(hFig, 'MouseMoveCamera');
+             if isempty(MouseMoveCamera)
+                 MouseMoveCamera = 0;
+             end
+             if (MouseMoveCamera)
+                 motion = -motionFigure * 0.05;
+                 MoveCamera(hFig, [motion(1) -motion(2) 0]);
+             else
+                 % ENABLE THE CODE BELOW TO ENABLE THE ROTATION
+                 %motion = -motionFigure * 0.01;
+                 %RotateCameraAlongAxis(hFig, -motion(2), motion(1));
+             end
     end
 end
 
@@ -566,9 +566,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             case 'rightarrow'
                 ToggleRegionSelection(hFig, -1);
             case 'uparrow'
-                ZoomCamera(hFig, -5);
+                ZoomCamera(hFig, -10);
             case 'downarrow'
-                ZoomCamera(hFig, 5);
+                ZoomCamera(hFig, 10);
             case 'escape'
                 SetExplorationLevelTo(hFig, 1);
             case 'shift'
