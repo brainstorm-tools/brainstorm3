@@ -641,9 +641,9 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         jItem.setSelected(isSelected);
     end
 
-    cmapList_rainbow = {'cmap_nih', 'jet', 'cmap_jetinv', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_atlas'};
+    cmapList_rainbow = {'cmap_nih', 'jet', 'cmap_jetinv', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_atlas', 'cmap_turbo'};
     iconList_rainbow = [IconLoader.ICON_COLORMAP_NIH, IconLoader.ICON_COLORMAP_JET, IconLoader.ICON_COLORMAP_JETINV, IconLoader.ICON_COLORMAP_HSV, ...
-                        IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_ATLAS];
+                        IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_ATLAS, IconLoader.ICON_COLORMAP_TURBO];
     for i = 1:length(cmapList_rainbow)
         % If the colormap #i is currently used for this surface : check the menu
         isSelected = strcmpi(cmapList_rainbow{i}, sColormap.Name);
