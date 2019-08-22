@@ -3174,10 +3174,13 @@ function CreateMenuExtraFiles(jMenu, DataFile)
     end
     % Load sFile structure
     DataMat = in_bst_data(DataFile, 'F');
-    % Get DS folder
+    % Get folder containing the raw file
     RawFolder = bst_fileparts(DataMat.F.filename);
-    nFiles = 0;
+    if ~isdir(RawFolder)
+        return;
+    end
     % Find session log file
+    nFiles = 0;
     listDir = dir(bst_fullfile(RawFolder, '*.txt'));
     for i = 1:length(listDir)
         SessionsFile = bst_fullfile(RawFolder, listDir(i).name);
@@ -3185,7 +3188,10 @@ function CreateMenuExtraFiles(jMenu, DataFile)
         nFiles = nFiles + 1;
     end
     % Find image files
-    listDir = [dir(bst_fullfile(RawFolder, '*.jpg')), dir(bst_fullfile(RawFolder, '*.gif')), dir(bst_fullfile(RawFolder, '*.JPG')), dir(bst_fullfile(RawFolder, '*.png')), dir(bst_fullfile(RawFolder, '*.tif'))];
+    listDir = [dir(bst_fullfile(RawFolder, '*.jpg')), dir(bst_fullfile(RawFolder, '*.gif')), dir(bst_fullfile(RawFolder, '*.png')), dir(bst_fullfile(RawFolder, '*.tif'))];
+    if ~ispc
+        listDir = [listDir, dir(bst_fullfile(RawFolder, '*.JPG')), dir(bst_fullfile(RawFolder, '*.GIF')), dir(bst_fullfile(RawFolder, '*.PNG')), dir(bst_fullfile(RawFolder, '*.TIF'))];
+    end
     for i = 1:length(listDir)
         ImageFile = bst_fullfile(RawFolder, listDir(i).name);
         gui_component('MenuItem', jMenu, [], listDir(i).name, IconLoader.ICON_IMAGE, [], @(h,ev)view_image(ImageFile));
