@@ -28,7 +28,7 @@ function events = in_events_bids(sFile, EventFile)
 % Authors: Francois Tadel, 2019
 
 % Read tsv file
-Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type'});
+Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel'}, 0);
 if isempty(Markers) || isempty(Markers{1,1}) || isempty(Markers{1,3})
     events = [];
     return;
@@ -44,12 +44,22 @@ for iEvt = 1:length(uniqueEvt)
     % Get event onsets and durations
     onsets = cellfun(@(c)sscanf(c,'%f',1), Markers(iMrk,1), 'UniformOutput', 0);
     durations = cellfun(@(c)sscanf(c,'%f',1), Markers(iMrk,2), 'UniformOutput', 0);
+    channels = Markers(iMrk,4)';
     % Find and reject events with no latency
     iEmpty = find(cellfun(@isempty, onsets));
     if ~isempty(iEmpty)
         iMrk(iEmpty) = [];
         onsets(iEmpty) = [];
         durations(iEmpty) = [];
+        channels(iEmpty) = [];
+    end
+    % Channel names
+    for iOcc = 1:length(channels)
+        if (isempty(channels{iOcc}) || strcmpi(channels{iOcc}, 'n/a'))
+            channels{iOcc} = [];
+        else
+            channels{iOcc} = {channels{iOcc}};
+        end
     end
     % Add event structure
     events(iEvt).label  = uniqueEvt{iEvt};
@@ -62,7 +72,7 @@ for iEvt = 1:length(uniqueEvt)
     events(iEvt).times      = round(events(iEvt).times .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
-    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).channels   = channels;
     events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
