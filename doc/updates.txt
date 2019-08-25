@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 August 2019
 - GUI: Added support for clusters with STDs
+- GUI: New colormap: Turbo, Google's JET alternative
 - IO: Import volume atlases as scouts without overlap between ROIs
 ---------------------------------------------------------------
 July 2019
