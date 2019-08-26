@@ -496,6 +496,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             
             % === GET SOURCES ===
             % Get all the sources values
+            sourceStd = [];
             if ~isempty(matValues)
                 sourceValues = matValues(iRows,:,:);
                 if ~isempty(stdValues)
