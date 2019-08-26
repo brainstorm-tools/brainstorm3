@@ -55,7 +55,7 @@ end
 % Get template file
 tpmFile = bst_get('SpmTpmAtlas');
 % If it does not exist: download
-if ~file_exist(tpmFile)
+if isempty(tpmFile) || ~file_exist(tpmFile)
     % Create folder
     if ~file_exist(bst_fileparts(tpmFile))
         mkdir(bst_fileparts(tpmFile));

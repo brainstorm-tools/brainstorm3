@@ -178,10 +178,15 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
     out_mri_nii(sMri, NiiFile);
 
     % ===== CALL CAT12 SEGMENTATION =====
+    % Get TPM.nii template
+    tpmFile = bst_get('SpmTpmAtlas');
+    if isempty(tpmFile) || ~file_exist(tpmFile)
+        error('Missing file TPM.nii');
+    end
     % Create SPM batch
     matlabbatch{1}.spm.tools.cat.estwrite.data = {[NiiFile ',1']};
     matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm = {bst_get('SpmTpmAtlas')};
+    matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm = {tpmFile};
     matlabbatch{1}.spm.tools.cat.estwrite.opts.affreg = 'mni';
     matlabbatch{1}.spm.tools.cat.estwrite.opts.biasstr = 0.5;
     matlabbatch{1}.spm.tools.cat.estwrite.opts.accstr = 0.5;

@@ -30,7 +30,7 @@ bst_progress('text', 'Loading tissue probability map...');
 
 % Get template file
 tpmFile = bst_get('SpmTpmAtlas');
-if ~file_exist(tpmFile)
+if isempty(tpmFile) || ~file_exist(tpmFile)
     error('Missing file TPM.nii');
 end
 % Loading the tissue probability map

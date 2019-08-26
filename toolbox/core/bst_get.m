@@ -2586,13 +2586,35 @@ switch contextName
         
     case 'SpmTpmAtlas'
         % Get template file
-        argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
+        tpmUser = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
+        if file_exist(tpmUser)
+            argout1 = tpmUser;
+            disp(['SPM12 template found: ' tpmUser]);
+            return;
+        end
         % If it does not exist: check in brainstorm3 folder
-        if ~file_exist(argout1)
-            distribTpm = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
-            if file_exist(distribTpm)
-                argout1 = distribTpm;
+        tpmDistrib = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
+        if file_exist(tpmDistrib)
+            argout1 = tpmDistrib;
+            disp(['SPM12 template found: ' tpmDistrib]);
+            return;
+        end
+        % If it does not exist: check in spm12 folder
+        spmDir = bst_get('SpmDir');
+        if ~isempty(spmDir)
+            tpmSpm = bst_fullfile(spmDir, 'tpm', 'TPM.nii');
+            if file_exist(tpmSpm)
+                argout1 = tpmSpm;
+                disp(['SPM12 template found: ' tpmSpm]);
+                return;
             end
+        end
+        % Not found...
+        disp('SPM12 template not found in any of the following folders:');
+        disp([' - ' tpmUser]);
+        disp([' - ' tpmDistrib]);
+        if ~isempty(spmDir)
+            disp([' - ' tpmSpm]);
         end
         
     case 'ElectrodeConfig'
