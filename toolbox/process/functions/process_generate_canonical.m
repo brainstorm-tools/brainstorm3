@@ -210,7 +210,7 @@ function ComputeInteractive(iSubject, iAnatomy, Resolution) %#ok<DEFNU>
     [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, 1);
     % Error handling
     if ~isOk
-        bst_error(errMsg, 'SPM canonincal surfaces', 0);
+        bst_error(errMsg, 'SPM canonical surfaces', 0);
     elseif ~isempty(errMsg)
         java_dialog('msgbox', ['Warning: ' errMsg]);
     end

@@ -255,15 +255,15 @@ switch (FileFormat)
         ChannelMat.Comment = 'Contacts';
         FileUnits = 'mm';
         [ChannelMat.Channel.Type] = deal('SEEG');
-    case {'ASCII_XYZ', 'ASCII_XYZ_MNI'}  % (*.*)
+    case {'ASCII_XYZ', 'ASCII_XYZ_MNI', 'ASCII_XYZ_WORLD'}  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z'}, 0, .01);
         ChannelMat.Comment = 'Channels';
         FileUnits = 'cm';
-    case {'ASCII_NXYZ', 'ASCII_NXYZ_MNI'}  % (*.*)
+    case {'ASCII_NXYZ', 'ASCII_NXYZ_MNI', 'ASCII_NXYZ_WORLD'}  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'Name','X','Y','Z'}, 0, .01);
         ChannelMat.Comment = 'Channels';
         FileUnits = 'cm';
-    case {'ASCII_XYZN', 'ASCII_XYZN_MNI'}  % (*.*)
+    case {'ASCII_XYZN', 'ASCII_XYZN_MNI', 'ASCII_XYZN_WORLD'}  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z','Name'}, 0, .01);
         ChannelMat.Comment = 'Channels';
         FileUnits = 'cm';
@@ -293,6 +293,10 @@ if isempty(ChannelMat) || ((~isfield(ChannelMat, 'Channel') || isempty(ChannelMa
 end
 % Are the SCS coordinates defined for this file?
 isScsDefined = isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3);
+if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD'})
+    isApplyVox2ras = 1;
+end
+
 
 
 %% ===== CHECK DISTANCE UNITS =====

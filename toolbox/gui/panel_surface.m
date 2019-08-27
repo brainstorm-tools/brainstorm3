@@ -1140,6 +1140,8 @@ function iTess = AddSurface(hFig, surfaceFile)
         FibMat = bst_memory('LoadFibers', surfaceFile);
         
         TessInfo(iTess).Name = 'Fibers';
+        % Special color of 0 for colormap following fiber curvature
+        TessInfo(iTess).AnatomyColor(:) = 0;
         % Update figure's surfaces list and current surface pointer
         setappdata(hFig, 'Surface',  TessInfo);
         
@@ -2248,6 +2250,28 @@ function SetSurfaceColor(hFig, iSurf, colorCortex, colorSulci)
     % Update color display on the surface
     figure_callback(hFig, 'UpdateSurfaceColor', hFig, iSurf);
 end
+
+
+%% ===== DISPLAY SURFACE EDGES =====
+function SetSurfaceEdges(hFig, iSurf, SurfShowEdges) %#ok<DEFNU>
+    % Get description of surfaces
+    TessInfo = getappdata(hFig, 'Surface');
+    % Update surface description (figure's appdata)
+    TessInfo(iSurf).SurfShowEdges = SurfShowEdges;
+    % Update Surface appdata structure
+    setappdata(hFig, 'Surface', TessInfo);
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'Surface');
+    % Change button color (if not in headless mode)
+    if (bst_get('GuiLevel') >= 0)
+        ctrl.jButtonSurfEdge.setSelected(SurfShowEdges)
+    end
+    % Update panel controls
+    UpdateSurfaceProperties();
+    % Update color display on the surface
+    figure_callback(hFig, 'UpdateSurfaceColor', hFig, iSurf);
+end
+
 
 %% ===== APPLY DEFAULT DISPLAY TO SURFACE =====
 function ApplyDefaultDisplay() %#ok<DEFNU>

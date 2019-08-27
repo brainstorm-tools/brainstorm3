@@ -170,7 +170,7 @@ disp('BST> Loading configuration file...');
 % Get user database file : brainstorm.mat
 dbFile = bst_get('BrainstormDbFile');
 % Current DB version
-CurrentDbVersion = 5;
+CurrentDbVersion = 5.01;
 % Get default colormaps list
 sDefColormaps = bst_colormaps('Initialize');
 isDbLoaded = 0;
@@ -249,7 +249,8 @@ if ~isempty(bstOptions)
     end
     % Check database structure for updates
     db_update(CurrentDbVersion);
-else
+end
+if GlobalData.DataBase.DbVersion == 0
     % Database version is not defined, so it up-to-date
     GlobalData.DataBase.DbVersion = CurrentDbVersion;
 end

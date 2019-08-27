@@ -91,6 +91,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     ProtocolInfo = bst_get('ProtocolInfo');
     
+    % Not available in the compiled version
+    if (exist('isdeployed', 'builtin') && isdeployed)
+        bst_report('Error', sProcess, sInputs, 'This function is not available in the compiled version of Brainstorm.');
+        return
+    end
     if sProcess.options.binsize.Value{1} <= 0
         bst_report('Error', sProcess, sInputs, 'Invalid maximum amount of RAM specified.');
         return

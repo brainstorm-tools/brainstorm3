@@ -132,12 +132,12 @@ function fullTF = Expand(TF, N, isConjugate)
     indAll1 = sub2ind([N,N], iA(:), iB(:));
     indAll2 = sub2ind([N,N], iB(:), iA(:));
     % Rebuild full matrix
-    fullTF = zeros(N*N, size(TF,2), size(TF,3));
-    fullTF(indAll1,:,:) = TF;
+    fullTF = zeros(N*N, size(TF,2), size(TF,3), size(TF,4));
+    fullTF(indAll1,:,:,:) = TF;
     if isConjugate
-        fullTF(indAll2,:,:) = conj(TF);
+        fullTF(indAll2,:,:,:) = conj(TF);
     else
-        fullTF(indAll2,:,:) = TF;
+        fullTF(indAll2,:,:,:) = TF;
     end
 end
 
@@ -155,7 +155,7 @@ function TF = Compress(TF)
     % Find the values below the diagonal
     indAll = find(iB <= iA);
     % Keep only those values
-    TF = TF(indAll,:,:);
+    TF = TF(indAll,:,:,:);
 end
 
 

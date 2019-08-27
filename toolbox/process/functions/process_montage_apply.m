@@ -21,7 +21,7 @@ function varargout = process_montage_apply( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2017
+% Authors: Francois Tadel, 2014-2019
 
 eval(macro_method);
 end
@@ -114,6 +114,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             iInput = iDataFile(ik);
             % Load input file 
             DataMat = in_bst_data(sInputs(iInput).FileName);
+            iStudyIn = sInputs(iInput).iStudy;
+            sStudyIn = bst_get('Study', iStudyIn);
             % Build average reference
             if ~isempty(strfind(sMontage.Name, 'Average reference'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 0);
@@ -244,10 +246,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             else
                 iStudyOut = sInputs(iInput).iStudy;
             end
+
             % Get output study
             sStudyOut = bst_get('Study', iStudyOut);
-            
-            % Edit data strcture
+            % Edit data structure
             DataMat.Comment     = [DataMat.Comment ' | ' strMontage];
             DataMat.ChannelFlag = ChannelFlag;
             DataMat = bst_history('add', DataMat, 'montage', ['Applied montage: ' sMontage.Name]);
@@ -261,6 +263,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             db_add_data(iStudyOut, NewDataFile, DataMat);
             % Add file to list of returned files
             OutputFiles{end+1} = NewDataFile;
+            
+            % Copy video links
+            if ~isequal(iStudyIn, iStudyOut) && ~isempty(sStudyIn.Image) && isempty(sStudyOut.Image)
+                sStudyOut = process_import_data_event('CopyVideoLinks', NewDataFile, sStudyIn);
+            end
         end
     end
 end

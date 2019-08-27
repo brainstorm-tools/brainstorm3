@@ -28,7 +28,7 @@ function Timefreq = in_bst_timefreq(TimefreqFile, LoadFull, varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2014
+% Authors: Francois Tadel, 2010-2019
 
 %% ===== PARSE INPUTS =====
 % Get protocol folders
@@ -63,6 +63,10 @@ else
             FieldsToRead{end+1} = 'DataFile';
         end   
     end
+    % When reading Leff, make sure nAvg is read as well
+    if ismember('Leff', FieldsToRead) && ~ismember('nAvg', FieldsToRead)
+        FieldsToRead{end+1} = 'nAvg';
+    end
     % Read each field only once
     FieldsToRead = unique(FieldsToRead);
     % Read specified files only
@@ -80,6 +84,12 @@ for i = 1:length(FieldsToRead)
                 Timefreq.(FieldsToRead{i}) = 'none';
             case 'nAvg'
                 Timefreq.(FieldsToRead{i}) = 1;
+            case 'Leff'
+                if isfield(Timefreq, 'nAvg') && ~isempty(Timefreq.nAvg)
+                    Timefreq.Leff = Timefreq.nAvg;
+                else
+                    Timefreq.Leff = 1;
+                end
             case 'Method'
                 if ~isempty(strfind(TimefreqFile, '_psd'))
                     Timefreq.(FieldsToRead{i}) = 'psd';
@@ -136,6 +146,7 @@ if ismember('TF', FieldsToRead) && LoadFull && isKernel && ismember(file_gettype
 end
 
 %% ===== APPLY DYNAMIC ZSCORE =====
+% DEPRECATED
 % Check for structure integrity
 if ismember('ZScore', FieldsToRead) && ~isempty(Timefreq.ZScore) && (~isfield(Timefreq.ZScore, 'mean') || ~isfield(Timefreq.ZScore, 'std') || ~isfield(Timefreq.ZScore, 'abs') || ~isfield(Timefreq.ZScore, 'baseline') || isempty(Timefreq.ZScore.abs))
     Timefreq.ZScore = [];

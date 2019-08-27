@@ -1,5 +1,5 @@
 function varargout = process_rasterplot_per_neuron( varargin )
-% PROCESS_RASTERPLOT_PER_NEURON: Computes a rasterplot per electrode.
+% PROCESS_RASTERPLOT_PER_NEURON: Computes a rasterplot per neuron.
 % 
 % USAGE:    sProcess = process_rasterplot_per_neuron('GetDescription')
 %        OutputFiles = process_rasterplot_per_neuron('Run', sProcess, sInput)
@@ -22,7 +22,7 @@ function varargout = process_rasterplot_per_neuron( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018-2019; Martin Cousineau, 2018
 
 eval(macro_method);
 end
@@ -46,10 +46,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'EEG';
-    % Options: Bin size
-    sProcess.options.binsize.Comment = 'Bin size: ';
-    sProcess.options.binsize.Type    = 'value';
-    sProcess.options.binsize.Value   = {0.05, 'ms', 1};
 end
 
 
@@ -72,14 +68,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.SensorTypes = sProcess.options.sensortypes.Value;
     else
         tfOPTIONS.SensorTypes = [];
-    end
-    
-    % Bin size
-    if isfield(sProcess.options, 'binsize') && ~isempty(sProcess.options.binsize) && ~isempty(sProcess.options.binsize.Value) && iscell(sProcess.options.binsize.Value) && sProcess.options.binsize.Value{1} > 0
-        bin_size = sProcess.options.binsize.Value{1};
-    else
-        bst_report('Error', sProcess, sInputs, 'Positive bin size required.');
-        return;
     end
     
     % If a time window was specified
@@ -105,12 +93,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         [tmp, iStudy] = bst_process('GetOutputStudy', sProcess, sCurrentInputs);
         tfOPTIONS.iTargetStudy = iStudy;
 
-
         % Get channel file
         sChannel = bst_get('ChannelForStudy', iStudy);
         % Load channel file
         ChannelMat = in_bst_channel(sChannel.FileName);
-
 
         %% Get only the unique neurons along all of the trials
         nTrials = length(sCurrentInputs);
@@ -137,18 +123,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         labelsForDropDownMenu = unique(labelsForDropDownMenu,'stable');
         labelsForDropDownMenu = sort_nat(labelsForDropDownMenu);
         
-        
+            
         %% === START COMPUTATION ===
         sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
 
         temp = in_bst(sCurrentInputs(1).FileName);
         nElectrodes = size(temp.ChannelFlag,1);
-        nBins = floor(length(tfOPTIONS.TimeVector) / (bin_size * sampling_rate));
+        nBins = length(tfOPTIONS.TimeVector);
         raster = zeros(length(labelsForDropDownMenu), nBins, nTrials);
-        bins = linspace(temp.Time(1), temp.Time(end), nBins+1);
+        bins = linspace(temp.Time(1), temp.Time(end), nBins);
 
         bst_progress('start', 'Raster Plot per Neuron', 'Binning Spikes...', 0, length(sCurrentInputs));
-
 
         for ifile = 1:length(sCurrentInputs)
             trial = in_bst(sCurrentInputs(ifile).FileName);
@@ -168,7 +153,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         unique_bin = unique(bin_it_belongs_to);
                         occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
 
-                        single_file_binning(iNeuron,occurences(1,:)) = occurences(2,:)/bin_size; % The division by the bin_size gives the Firing Rate 
+                        single_file_binning(iNeuron,occurences(1,:)) = occurences(2,:); 
                         break
                     end
                 end
@@ -183,7 +168,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         % Prepare output file structure
         FileMat.TF = raster;
-        FileMat.Time = diff(bins(1:2))/2+bins(1:end-1);
+        FileMat.Time = tfOPTIONS.TimeVector;
         FileMat.TFmask = true(size(raster, 2), size(raster, 3));
         FileMat.Freqs = 1:size(FileMat.TF, 3);
         FileMat.Std = [];
@@ -203,13 +188,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.HeadModelType = [];
         FileMat.nAvg = [];
         FileMat.ColormapType = [];
-        FileMat.DisplayUnits = [];
+        FileMat.DisplayUnits = 'Spikes';
         FileMat.Options = tfOPTIONS;
         FileMat.History = [];
 
         % Add history field
         FileMat = bst_history('add', FileMat, 'compute', ...
-            ['Raster Plot per neuron: ' num2str(bin_size) ' ms']);
+            ['Raster Plot per neuron']);
 
 
         % Get output study

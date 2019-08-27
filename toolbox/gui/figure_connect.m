@@ -471,18 +471,18 @@ function FigureMouseMoveCallback(hFig, ev)
             sColormap = bst_colormaps('ColormapChangeModifiers', ColormapInfo.Type, [motionFigure(1), motionFigure(2)] ./ 100, 0);
             set(hFig, 'Colormap', sColormap.CMap);
         case 'rotate'
-            % ENABLE THE CODE BELOW TO ENABLE THE ROTATION
-%             MouseMoveCamera = getappdata(hFig, 'MouseMoveCamera');
-%             if isempty(MouseMoveCamera)
-%                 MouseMoveCamera = 0;
-%             end
-%             if (MouseMoveCamera)
-%                 motion = -motionFigure * 0.1;
-%                 MoveCamera(hFig, [motion(1) -motion(2) 0]);
-%             else
-%                 motion = -motionFigure * 0.01;
-%                 RotateCameraAlongAxis(hFig, -motion(2), motion(1));
-%             end
+             MouseMoveCamera = getappdata(hFig, 'MouseMoveCamera');
+             if isempty(MouseMoveCamera)
+                 MouseMoveCamera = 0;
+             end
+             if (MouseMoveCamera)
+                 motion = -motionFigure * 0.05;
+                 MoveCamera(hFig, [motion(1) -motion(2) 0]);
+             else
+                 % ENABLE THE CODE BELOW TO ENABLE THE ROTATION
+                 %motion = -motionFigure * 0.01;
+                 %RotateCameraAlongAxis(hFig, -motion(2), motion(1));
+             end
     end
 end
 
@@ -566,9 +566,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             case 'rightarrow'
                 ToggleRegionSelection(hFig, -1);
             case 'uparrow'
-                ZoomCamera(hFig, -5);
+                ZoomCamera(hFig, -10);
             case 'downarrow'
-                ZoomCamera(hFig, 5);
+                ZoomCamera(hFig, 10);
             case 'escape'
                 SetExplorationLevelTo(hFig, 1);
             case 'shift'
@@ -2266,23 +2266,23 @@ function [DataPair, DataMask] = GetPairs(hFig)
         
         DataMask = ones(size(DataPair,1),1);
         % Display specific filter
-        if ~isempty(MeasureDisplayMask)
+        if ~isempty(MeasureDisplayMask) && isequal(size(DataMask), size(MeasureDisplayMask))
             DataMask =  DataMask == 1 & MeasureDisplayMask == 1;
         end
         % Distance filter
-        if ~isempty(MeasureDistanceMask)
+        if ~isempty(MeasureDistanceMask) && isequal(size(DataMask), size(MeasureDistanceMask))
             DataMask =  DataMask == 1 & MeasureDistanceMask == 1;
         end
         % Anatomical filter
-        if ~isempty(MeasureAnatomicalMask)
+        if ~isempty(MeasureAnatomicalMask) && isequal(size(DataMask), size(MeasureAnatomicalMask))
             DataMask =  DataMask == 1 & MeasureAnatomicalMask == 1;
         end
         % Fiber filter
-        if ~isempty(MeasureFiberMask)
+        if ~isempty(MeasureFiberMask) && isequal(size(DataMask), size(MeasureFiberMask))
             DataMask = DataMask == 1 & MeasureFiberMask == 1;
         end
         % Intensity Threshold filter
-        if ~isempty(MeasureThresholdMask)
+        if ~isempty(MeasureThresholdMask) && isequal(size(DataMask), size(MeasureThresholdMask))
             DataMask =  DataMask == 1 & MeasureThresholdMask == 1;
         end
     end

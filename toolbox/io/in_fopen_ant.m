@@ -1,5 +1,5 @@
 function [sFile, ChannelMat] = in_fopen_ant(DataFile)
-% IN_FOPEN_ANT: Open an ANT EEProbe .cnt file (continuous recordings).
+% IN_FOPEN_ANT: Open an ANT EEProbe .cnt/.avr file (continuous recordings).
 %
 % USAGE:  [sFile, ChannelMat] = in_fopen_ant(DataFile)
 
@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_ant(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2017
+% Authors: Francois Tadel, 2012-2019
         
 
 %% ===== READ HEADER =====

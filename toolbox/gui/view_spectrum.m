@@ -149,6 +149,8 @@ else
 end
 TsInfo.ShowXGrid = bst_get('ShowXGrid');
 TsInfo.ShowYGrid = bst_get('ShowYGrid');
+TsInfo.ShowZeroLines = bst_get('ShowZeroLines');
+TsInfo.ShowEventsMode = bst_get('ShowEventsMode');
 setappdata(hFig, 'TsInfo', TsInfo);
 
 % Display options panel

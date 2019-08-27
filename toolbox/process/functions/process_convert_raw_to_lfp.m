@@ -332,7 +332,9 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
             data_deligned_temp = [data_deligned;0];
             g = fitLFPpowerSpectrum(data_deligned_temp,filterBounds(1),filterBounds(2),sFile.prop.sfreq);
             S = zeros(length(data_deligned_temp),1);
-            S(spkSamples - round(nSegment/2)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike    
+            iSpk = spkSamples - round(nSegment/2);
+            iSpk = iSpk(iSpk > 0); % Only keep positive indices
+            S(iSpk) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
             data_derived = despikeLFP(data_deligned_temp,S,Bs,g,opts);
             data_derived = data_derived.z';
             data_derived = bst_bandpass_hfilter(data_derived, Fs, filterBounds(1), filterBounds(2), 0, 0);
@@ -341,7 +343,9 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
         else
             g = fitLFPpowerSpectrum(data_deligned,filterBounds(1),filterBounds(2),sFile.prop.sfreq);
             S = zeros(length(data_deligned),1);
-            S(spkSamples - round(nSegment/2)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
+            iSpk = spkSamples - round(nSegment/2);
+            iSpk = iSpk(iSpk > 0); % Only keep positive indices
+            S(iSpk) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
 
             data_derived = despikeLFP(data_deligned,S,Bs,g,opts);
             data_derived = data_derived.z';

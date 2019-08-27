@@ -66,7 +66,7 @@ SubjectName = 'Subject01';
 [sSubject, iSubject] = db_add_subject(SubjectName);
 % Set anatomy
 sTemplates = bst_get('AnatomyDefaults');
-iTemplate = find(strcmpi('ICBM152_2016c', {sTemplates.Name}));
+iTemplate = find(strcmpi('ICBM152_2019', {sTemplates.Name}));
 db_set_template(iSubject, sTemplates(iTemplate), 0);
 % Re-compute the MNI transformation
 bst_process('CallProcess', 'process_mni_affine', [], [], ...

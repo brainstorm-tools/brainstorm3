@@ -19,7 +19,7 @@ function varargout = process_detectbad( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2011
+% Authors: Francois Tadel, 2010-2019
 
 eval(macro_method);
 end
@@ -63,6 +63,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.eeg.Comment = str_pad('EEG:');
     sProcess.options.eeg.Type    = 'range';
     sProcess.options.eeg.Value   = {[0,0], '&mu;V', 2};   % Factor 6
+    % SEEG/ECOG
+    sProcess.options.ieeg.Comment = str_pad('SEEG/ECOG:');
+    sProcess.options.ieeg.Type    = 'range';
+    sProcess.options.ieeg.Value   = {[0,0], '&mu;V', 2};   % Factor 6
     % EOG
     sProcess.options.eog.Comment = str_pad('EOG:');
     sProcess.options.eog.Type    = 'range';
@@ -120,6 +124,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     isEmpty(end+1) = all(Criteria.megmag == 0);
     Criteria.eeg = sProcess.options.eeg.Value{1} .* 1e-6;
     isEmpty(end+1) = all(Criteria.eeg == 0);
+    Criteria.ieeg = sProcess.options.ieeg.Value{1} .* 1e-6;
+    isEmpty(end+1) = all(Criteria.ieeg == 0);
     Criteria.eog = sProcess.options.eog.Value{1} .* 1e-6;
     isEmpty(end+1) = all(Criteria.eog == 0);
     Criteria.ecg = sProcess.options.ecg.Value{1} .* 1e-6;
@@ -190,6 +196,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 Threshold = Criteria.megmag;
             elseif strcmpi(Modalities{iMod}, 'EEG')
                 Threshold = Criteria.eeg;
+            elseif ismember(Modalities{iMod}, {'SEEG', 'EOCG'})
+                Threshold = Criteria.ieeg;
             elseif ~isempty(strfind(lower(Modalities{iMod}), 'eog'))
                 Threshold = Criteria.eog;
             elseif ~isempty(strfind(lower(Modalities{iMod}), 'ecg')) || ~isempty(strfind(lower(Modalities{iMod}), 'ekg'))

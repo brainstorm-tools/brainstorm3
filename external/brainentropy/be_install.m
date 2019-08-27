@@ -2,14 +2,17 @@ function [errMsg, warnMsg, version, last_update]   =   be_install( varargin )
 
 
 %% ===== DOWNLOAD SETTINGS =====
+% Not available in the compiled version
+if (exist('isdeployed', 'builtin') && isdeployed)
+    error('This function is not available in the compiled version of Brainstorm.');
+end
 % Get openmeeg folder
 errMsg  = '';
 BEstDir = bst_fullfile( bst_get('BrainstormUserDir'), 'brainentropy' );
 BEstBST = bst_fullfile( bst_get('BrainstormHomeDir'), 'external', 'brainentropy' ); 
 % Set file url - temporary
-url     = 'http://www.bic.mni.mcgill.ca/uploads/ResearchLabsMFIL/brainentropy.tar.gz';
-url     = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst?action=AttachFile&do=get&target=brainentropy.tar.gz';
-urlV    = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst?action=AttachFile&do=get&target=VERSION.txt';
+url = 'https://github.com/multi-funkim/best-brainstorm/archive/2.7.1.tar.gz';
+urlV= 'https://raw.githubusercontent.com/multi-funkim/best-brainstorm/master/best/VERSION.txt';
 
 try
     addpath( genpath(BEstDir) );
@@ -116,6 +119,11 @@ if ~isdir(BEstDir) || isempty(ls(BEstDir)) || FORCE
     end
     % Delete files
     file_delete(tgzFile, 1);  
+    if file_exist(fullfile(BEstDir, 'pax_global_header'))
+        file_delete(fullfile(BEstDir, 'pax_global_header'), 1);
+    end
+    file_move(fullfile(BEstDir, 'best-brainstorm-2.7.1', '*'), fullfile(BEstDir));
+    file_delete(fullfile(BEstDir, 'best-brainstorm-2.7.1'), 1, 3);
     
     % Move process to appropriate location
     file_copy( fullfile(BEstDir, 'processes', '*'), fullfile( strrep(BEstDir, 'brainentropy', 'process') ) );
@@ -126,7 +134,7 @@ if ~isdir(BEstDir) || isempty(ls(BEstDir)) || FORCE
     file_delete(verFile, 1);
     warnMsg         =   gui_brainstorm('DownloadFile', urlV, verFile, 'Brainentropy update');
     newVer          =   textread( verFile, '%s', 'delimiter', '\n', 'whitespace', '' );
-    file_move( verFile, fullfile(BEstDir, 'best','VERSION.txt') )
+    file_move( verFile, fullfile(BEstDir, 'best','VERSION.txt') );
     
     % Set ouput arguments
     try

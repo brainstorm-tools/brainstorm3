@@ -115,7 +115,7 @@ switch (FileFormat)
     case 'EEG-NEUROSCAN-EEG'
         sFile = in_fopen_eeg(DataFile);
     case 'EEG-NEUROSCAN-AVG'
-        sFile = in_fopen_avg(DataFile);
+        [sFile, ChannelMat] = in_fopen_avg(DataFile);
     case 'EEG-NEUROSCOPE'
         [sFile, ChannelMat] = in_fopen_neuroscope(DataFile);
     case 'EEG-NEURALYNX'

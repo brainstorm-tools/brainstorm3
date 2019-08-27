@@ -37,6 +37,8 @@ AnatDir    = fullfile(tutorial_dir, 'sample_auditory', 'anatomy');
 Run1File   = fullfile(tutorial_dir, 'sample_auditory', 'data', 'S01_AEF_20131218_01.ds');
 Run2File   = fullfile(tutorial_dir, 'sample_auditory', 'data', 'S01_AEF_20131218_02.ds');
 NoiseFile  = fullfile(tutorial_dir, 'sample_auditory', 'data', 'S01_Noise_20131218_01.ds');
+Event1File = fullfile(Run1File, 'events_bad_01.mat');
+Event2File = fullfile(Run2File, 'events_bad_02.mat');
 % Check if the folder contains the required files
 if ~file_exist(Run1File)
     error(['The folder ' tutorial_dir ' does not contain the folder from the file sample_auditory.zip.']);

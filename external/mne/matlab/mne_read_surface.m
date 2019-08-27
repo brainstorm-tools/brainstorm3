@@ -54,9 +54,11 @@ if(magic == QUAD_FILE_MAGIC_NUMBER || magic == NEW_QUAD_FILE_MAGIC_NUMBER)
     nvert = mne_fread3(fid);
     nquad = mne_fread3(fid);
     if magic == QUAD_FILE_MAGIC_NUMBER
-        % fprintf(1,'\t%s is a quad file (nvert = %d nquad = %d)\n', fname,nvert,nquad);
+        fprintf(1,'\t%s is a quad file (nvert = %d nquad = %d)\n', ...
+            fname,nvert,nquad);
     else
-        % fprintf(1,'\t%s is a new quad file (nvert = %d nquad = %d)\n', fname,nvert,nquad);
+        fprintf(1,'\t%s is a new quad file (nvert = %d nquad = %d)\n', ...
+            fname,nvert,nquad);
     end
     if magic == QUAD_FILE_MAGIC_NUMBER
         verts = fread(fid, nvert*3, 'int16') ./ 100 ;
@@ -66,68 +68,61 @@ if(magic == QUAD_FILE_MAGIC_NUMBER || magic == NEW_QUAD_FILE_MAGIC_NUMBER)
     if (nargout > 1)
         quads = fread3_many(fid,nquad*4);
         quads = reshape(quads,4,nquad)';
-    end
-    %
-    %   Face splitting follows
-    %
-    faces = zeros(2*nquad,3);
-    nface = 0;
-    for k = 1:nquad
-        quad = quads(k,:);
-        if quad(1) % 2 == 0
-            nface = nface + 1;
-            faces(nface,1) = quad(1);
-            faces(nface,2) = quad(2);
-            faces(nface,3) = quad(4);
+        %
+        %   Face splitting follows
+        %
+        faces = zeros(2*nquad,3);
+        nface = 0;
+        for k = 1:nquad
+            quad = quads(k,:);
+            if mod(quad(1), 2) == 0
+                nface = nface + 1;
+                faces(nface,1) = quad(1);
+                faces(nface,2) = quad(2);
+                faces(nface,3) = quad(4);
 
-            nface = nface + 1;
-            faces(nface,1) = quad(3);
-            faces(nface,2) = quad(4);
-            faces(nface,3) = quad(2);
-        else
-            nface = nface + 1;
-            faces(nface,1) = quad(1);
-            faces(nface,2) = quad(2);
-            faces(nface,3) = quad(3);
+                nface = nface + 1;
+                faces(nface,1) = quad(3);
+                faces(nface,2) = quad(4);
+                faces(nface,3) = quad(2);
+            else
+                nface = nface + 1;
+                faces(nface,1) = quad(1);
+                faces(nface,2) = quad(2);
+                faces(nface,3) = quad(3);
 
-            nface = nface + 1;
-            faces(nface,1) = quad(1);
-            faces(nface,2) = quad(3);
-            faces(nface,3) = quad(4);
+                nface = nface + 1;
+                faces(nface,1) = quad(1);
+                faces(nface,2) = quad(3);
+                faces(nface,3) = quad(4);
+            end
         end
+        faces = faces + 1;                   % Our numbering starts from one
     end
 elseif (magic == TRIANGLE_FILE_MAGIC_NUMBER)
     s = fgets(fid);
     fgets(fid);
     nvert = fread(fid, 1, 'int32') ;
     nface = fread(fid, 1, 'int32') ;
-    % fprintf(1,'\t%s is a triangle file (nvert = %d ntri = %d)\n',fname,nvert,nface);
-    % fprintf(1,'\t%s',s);
+    fprintf(1,'\t%s is a triangle file (nvert = %d ntri = %d)\n',fname,nvert,nface);
+    fprintf(1,'\t%s',s);
     verts = fread(fid, nvert*3, 'float32') ;
     faces = fread(fid, nface*3, 'int32') ;
     faces = reshape(faces, 3, nface)';
+    faces = faces + 1;                   % Our numbering starts from one
 else
     fclose(fid);
     error(me,'Bad magic number (%d) in surface file %s',magic,fname);
 end
 verts = 0.001*reshape(verts, 3, nvert)';
-faces = faces + 1;                   % Our numbering starts from one
-fclose(fid) ;
-%fprintf(1,'\tRead a surface with %d vertices and %d triangles from %s\n',nvert,nface,fname);
+fclose(fid);
+fprintf(1,'\tRead a surface with %d vertices from %s\n',nvert,fname);
 
 return;
 
     function [res] = fread3_many(fid,count)
-
-        all = fread(fid,3*count,'uchar');
-
-        res = zeros(count,1);
-
-        p = 1;
-        for k = 1:count
-            res(k) = bitshift(all(p), 16) + bitshift(all(p+1),8) + all(p+2);
-            p = p + 3;
-        end
+        res = reshape(fread(fid, 3*count, 'uchar'), 3, []);
+        res = bitshift(res(1,:), 16) + bitshift(res(2,:), 8) + res(3,:);
     end
 
 end
