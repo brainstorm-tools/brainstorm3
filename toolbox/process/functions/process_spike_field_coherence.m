@@ -284,30 +284,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.ParentFiles = {sCurrentInputs.FileName};
 
         % Prepare output file structure
+        FileMat = db_template('timefreqmat');
         FileMat.TF = SFC;
         FileMat.Time = everything(1).Freqs; % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
         FileMat.TFmask = [];
         FileMat.Freqs = 1:nElectrodes;      % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
-        FileMat.Std = [];
         FileMat.Comment = ['Spike Field Coherence: ' uniqueComments{iList}];
         FileMat.DataType = 'data';
-        FileMat.TimeBands = [];
-        FileMat.RefRowNames = [];
         FileMat.RowNames = labelsForDropDownMenu;
         FileMat.Measure = 'power';
         FileMat.Method = 'morlet';
         FileMat.DataFile = []; % Leave blank because multiple parents
-        FileMat.SurfaceFile = [];
-        FileMat.GridLoc = [];
-        FileMat.GridAtlas = [];
-        FileMat.Atlas = [];
-        FileMat.HeadModelFile = [];
-        FileMat.HeadModelType = [];
-        FileMat.nAvg = [];
-        FileMat.ColormapType = [];
-        FileMat.DisplayUnits = [];
         FileMat.Options = tfOPTIONS;
-        FileMat.History = [];
 
         % Add history field
         FileMat = bst_history('add', FileMat, 'compute', ...

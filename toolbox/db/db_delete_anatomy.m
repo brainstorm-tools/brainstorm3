@@ -1,7 +1,7 @@
-function sSubject = db_delete_anatomy(iSubject)
+function sSubject = db_delete_anatomy(iSubject, isKeepMri)
 % DB_DELETE_ANATOMY: Remove all the MRI and surfaces from a subject.
 %
-% USAGE:  sSubject = db_delete_anatomy(iSubject)
+% USAGE:  sSubject = db_delete_anatomy(iSubject, isKeepMri=0)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,15 +21,21 @@ function sSubject = db_delete_anatomy(iSubject)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2019
+
+% Parse inputs
+if (nargin < 2) || isempty(isKeepMri)
+    isKeepMri = 0;
+end
 
 % Get subject
 sSubject = bst_get('Subject', iSubject);
 
 % Delete MRI
-if ~isempty(sSubject.Anatomy)
+if ~isKeepMri && ~isempty(sSubject.Anatomy)
     file_delete(file_fullpath({sSubject.Anatomy.FileName}), 1);
     sSubject.Anatomy(1:end) = [];
+    sSubject.iAnatomy = [];
 end
 
 % Delete surfaces
@@ -37,13 +43,12 @@ if ~isempty(sSubject.Surface)
     file_delete(file_fullpath({sSubject.Surface.FileName}), 1);
     sSubject.Surface(1:end) = [];
 end
-
 % Empty defaults lists
-sSubject.iAnatomy = [];
 sSubject.iCortex = [];
 sSubject.iScalp = [];
 sSubject.iInnerSkull = [];
 sSubject.iOuterSkull = [];
+sSubject.iFibers = [];
 
 % Update subject structure
 bst_set('Subject', iSubject, sSubject);

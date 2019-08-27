@@ -66,7 +66,6 @@ if nargin < 6 || isempty(precision)
     precision = 'double';
 end
 
-tic;
 % filename = [path,file];
 fid = fopen(filename, 'r');
 
@@ -389,7 +388,7 @@ if data_present && loadData
     
     iStartingBlock = floor(iSamplesStart/num_samples_per_data_block)+1;
 
-    selectedBlocks = iStartingBlock + [0:num_data_blocks];
+    selectedBlocks = iStartingBlock + (0:num_data_blocks);
     
     
     
@@ -467,7 +466,6 @@ if data_present && loadData
             aux_input_index = aux_input_index + (num_samples_per_data_block / 4);
             supply_voltage_index = supply_voltage_index + 1;
             board_adc_index = board_adc_index + num_samples_per_data_block;
-            
         end
         
         % The board dig in and out are for the events. I need them to be
@@ -711,15 +709,4 @@ end
 return
 
 
-function move_to_base_workspace(variable)
-
-% move_to_base_workspace(variable)
-%
-% Move variable from function workspace to base MATLAB workspace so
-% user will have access to it after the program ends.
-
-variable_name = inputname(1);
-assignin('base', variable_name, variable);
-
-return;
 

@@ -884,14 +884,27 @@ function UpdateFigurePlot(hFig, isResetMax)
                    'XTickLabel', []);
     end
     % Y Ticks
-    if ShowLabels && ~isempty(Labels)
-        % Remove all the common parts of the labels
-        tmpLabels = str_remove_common(Labels{1});
-        if ~isempty(tmpLabels)
-            Labels{1} = tmpLabels;
+    if ShowLabels && ~isempty(Labels) && ~isempty(strfind(DimLabels{1}, 'Time')) && isnumeric(Labels{1})
+        % Get limits (time values and axes limits)
+        TimeWindow = [Labels{1}(1), Labels{1}(end)];
+        YLim = get(hAxes, 'YLim');
+        % Get reasonable ticks spacing
+        [YTick, YTickLabel] = bst_colormaps('GetTicks', TimeWindow, YLim, 1);
+        % Set the axes ticks
+        set(hAxes, 'YTickMode',      'manual', ...
+                   'YTickLabelMode', 'manual', ...
+                   'YTick',          YTick, ...
+                   'YTickLabel',     cellstr(YTickLabel));
+    elseif ShowLabels && ~isempty(Labels)
+        if iscellstr(Labels{1})
+            % Remove all the common parts of the labels
+            tmpLabels = str_remove_common(Labels{1});
+            if ~isempty(tmpLabels)
+                Labels{1} = tmpLabels;
+            end
+            % Limit the size of the comments to 15 characters
+            Labels{1} = cellfun(@(c)c(max(1,length(c)-14):end), Labels{1}, 'UniformOutput', 0);
         end
-        % Limit the size of the comments to 15 characters
-        Labels{1} = cellfun(@(c)c(max(1,length(c)-14):end), Labels{1}, 'UniformOutput', 0);
         % Show the names of each row
         set(hAxes, 'YTickMode',      'manual', ...
                    'YTickLabelMode', 'manual', ...

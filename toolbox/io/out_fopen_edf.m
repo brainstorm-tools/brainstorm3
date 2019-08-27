@@ -191,7 +191,11 @@ for i = 1:header.nsignal
         % Convert chars (1-byte) to 2-byte integers, the size of a sample
         header.signal(i).nsamples = int64((header.signal(i).nsamples + 1) / 2);
     else
-        header.signal(i).label = [ChannelMat.Channel(i).Type, ' ', ChannelMat.Channel(i).Name];
+        if strcmpi(ChannelMat.Channel(i).Type, 'EEG_NO_LOC')
+            header.signal(i).label = ['EEG ', ChannelMat.Channel(i).Name];
+        else
+            header.signal(i).label = [ChannelMat.Channel(i).Type, ' ', ChannelMat.Channel(i).Name];
+        end
         header.signal(i).nsamples = header.reclen * sFileIn.prop.sfreq;
     end
 end

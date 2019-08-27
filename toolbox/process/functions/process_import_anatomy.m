@@ -185,6 +185,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             errorMsg = import_anatomy_bs(iSubject, AnatDir, nVertices, 0, sFid);
         case 'BrainVISA'
             errorMsg = import_anatomy_bv(iSubject, AnatDir, nVertices, 0, sFid);
+        case 'CAT12'
+            errorMsg = import_anatomy_cat(iSubject, AnatDir, nVertices, 0, sFid, 0);
+        case 'CAT12+Thick'
+            errorMsg = import_anatomy_cat(iSubject, AnatDir, nVertices, 0, sFid, 1);
         case 'CIVET'
             errorMsg = import_anatomy_civet(iSubject, AnatDir, nVertices, 0, sFid, 0);
         case 'CIVET+Thick'

@@ -1,4 +1,4 @@
-function cTsv = in_tsv(TsvFile, ColNames)
+function cTsv = in_tsv(TsvFile, ColNames, isWarning)
 % IN_TSV: Reads specific columns in a .tsv file
 
 % @=============================================================================
@@ -19,8 +19,12 @@ function cTsv = in_tsv(TsvFile, ColNames)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2018
+% Authors: Francois Tadel, 2018-2019
 
+% Parse inputs
+if (nargin < 3) || isempty(isWarning)
+    isWarning = 1;
+end
 % Intialize returned variable
 cTsv = {};
 % Open file
@@ -52,7 +56,7 @@ for i = 1:length(ColNames)
     iCol = find(strcmpi(tsvHeader, ColNames{i}));
     if ~isempty(iCol)
         cTsv(:,i) = tsvValues{iCol};
-    else
+    elseif isWarning
         disp(['Error: Column "' ColNames{i} '" not found in file: ' TsvFile]);
     end
 end

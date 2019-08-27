@@ -26,6 +26,10 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 
 
 %% ===== INSTALL NWB LIBRARY =====
+% Not available in the compiled version
+if (exist('isdeployed', 'builtin') && isdeployed)
+    error('Reading NWB files is not available in the compiled version of Brainstorm.');
+end
 % Check if the NWB builder has already been downloaded
 NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
 % Install toolbox
@@ -52,7 +56,7 @@ try
     all_raw_keys = keys(nwb2.acquisition);
 
     for iKey = 1:length(all_raw_keys)
-        if ismember(all_raw_keys{iKey}, {'ECoG','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
+        if ismember(all_raw_keys{iKey}, {'ECoG','raw','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
             iRawDataKey = iKey;
             RawDataPresent = 1;
             break

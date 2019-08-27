@@ -28,6 +28,10 @@ function [sFile, ChannelMat] = in_fopen_tdt(DataFile)
 % Author: Konstantinos Nasiotis 2019
 
 
+% Not available in the compiled version
+if (exist('isdeployed', 'builtin') && isdeployed)
+    error('Reading TDT files is not available in the compiled version of Brainstorm.');
+end
 
 
  %% ===== GET FILES =====

@@ -53,9 +53,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.avg_func.Value   = 2;
     sProcess.options.avg_func.InputTypes = {'data', 'results', 'matrix'};
     % === WEIGHTED AVERAGE
-    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(nAvg(i) * x(i)) / sum(nAvg(i))</FONT>';
+    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(Leff_i * x(i)) / sum(Leff_i)</FONT>';
     sProcess.options.weighted.Type       = 'checkbox';
     sProcess.options.weighted.Value      = 0;
+    sProcess.options.weightedlabel.Comment    = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#777777">Leff_i = Effective number of averages for file #i</FONT>';
+    sProcess.options.weightedlabel.Type       = 'label';
     % === MATCH ROWS WITH NAMES
     sProcess.options.matchrows.Comment    = 'Match signals between files using their names';
     sProcess.options.matchrows.Type       = 'checkbox';
@@ -232,10 +234,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     end
     % Copy fields from StatA structure
     sMat.(matName)   = StatA.mean;
+    sMat.Comment     = Comment;
     sMat.ChannelFlag = StatA.ChannelFlag;
     sMat.Time        = StatA.Time;
-    sMat.nAvg        = 1;   % What value to put here??
-    sMat.Comment     = Comment;
+    sMat.nAvg        = StatA.nAvg + StatB.nAvg;
+    % Effective number of averages
+    % Leff = 1 / sum_i(w_i^2 / Leff_i),  with w1=1 and w2=-1
+    %      = 1 / (1/Leff_A + 1/Leff_B))
+    sMat.Leff = 1 / (1/StatA.Leff + 1/StatB.Leff);
+    
     % Colormap for recordings: keep the original
     % Colormap for sources, timefreq... : difference (stat2)
     if ~strcmpi(sInputsA(1).FileType, 'data')

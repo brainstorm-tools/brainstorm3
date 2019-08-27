@@ -1,3 +1,4 @@
+
 function varargout = gui_brainstorm( varargin )
 % GUI_BRAINSTORM: Main Brainstorm window.
 %
@@ -109,18 +110,15 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Load protocol', IconLoader.ICON_FOLDER_OPEN,[],[], fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Load from folder',   IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@gui_edit_protocol, 'load'), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Load from zip file', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@import_protocol), fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Load from remote database', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@gui_edit_protocol, 'remote'), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Import subject from zip', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@import_subject), fontSize);
             jSubMenu.addSeparator();
             gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'), fontSize);
             jSubMenu.addSeparator();
             gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[], fontSize);
-
-            gui_component('MenuItem', jSubMenu, [], 'Upload protocol to remote database', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@gui_show, 'panel_share_protocol', 'JavaWindow', 'Share protocol', [], 1, 1, 0), fontSize);
-
             gui_component('MenuItem', jSubMenu, [], 'Copy raw files to database', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@MakeProtocolPortable), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Export as zip file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_protocol), fontSize);
+        gui_component('MenuItem', jMenuFile, [], 'Rename protocol', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@db_rename_protocol), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Delete protocol', IconLoader.ICON_DELETE, [],[], fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Remove all files', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 1), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Only detach from database', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 0), fontSize);
@@ -134,8 +132,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %         gui_component('MenuItem', jMenuFile, [], 'Set database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@SetDatabaseFolder), []);
 %         jMenuFile.addSeparator();
         % === PROCESSES ===
-        gui_component('MenuItem', jMenuFile, [], 'Report viewer',        IconLoader.ICON_EDIT,    [], @(h,ev)bst_call(@bst_report, 'Open', 'current'), fontSize);
-        gui_component('MenuItem', jMenuFile, [], 'Reload last pipeline', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@bst_report, 'Recall', 'current'), fontSize);
+        gui_component('MenuItem', jMenuFile, [], 'Report viewer',        IconLoader.ICON_PROCESS,    [], @(h,ev)bst_call(@bst_report, 'Open', 'current'), fontSize);
+        gui_component('MenuItem', jMenuFile, [], 'Reload last pipeline', IconLoader.ICON_RELOAD, [], @(h,ev)bst_call(@bst_report, 'Recall', 'current'), fontSize);
         % === SET PREFERENCES ===
         gui_component('MenuItem', jMenuFile, [], 'Edit preferences', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@gui_show, 'panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0), fontSize);
         jMenuFile.addSeparator();
@@ -1311,6 +1309,14 @@ function BrainstormDbDir = SetDatabaseFolder(varargin) %#ok<DEFNU>
             bst_error(['The folder you selected is probably a protocol folder:' 10 BrainstormDbDir 10 10 ...
                 'The database folder is designed to contain multiple protocol folders.' 10 ...
                 'Please select a valid database folder.'], 'Database folder', 0);
+        elseif file_compare(bst_get('BrainstormTmpDir'), BrainstormDbDir)
+            bst_error('Your temporary and database directories must be different.', 'Database folder', 0);
+        elseif dir_contains(bst_get('BrainstormTmpDir'), BrainstormDbDir)
+            bst_error('Your temporary directory cannot contain your database directory.', 'Database folder', 0);
+        elseif file_compare(bst_get('BrainstormHomeDir'), BrainstormDbDir)
+            bst_error('Your application and database directories must be different.', 'Database folder', 0);
+        elseif dir_contains(bst_get('BrainstormHomeDir'), BrainstormDbDir)
+            bst_error('Your application directory cannot contain your database directory.', 'Database folder', 0);
         else
             isStop = 1;
         end

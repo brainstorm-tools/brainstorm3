@@ -128,6 +128,11 @@ Histogram.smoothFncY = histoY;
 
 % Local minima calculation
 minIndex = find((histoY(2:N-1)<histoY(1:N-2)) & (histoY(2:N-1)<histoY(3:N))) + 1;
+% If there are too few: compute differently
+if (length(maxIndex) - length(minIndex) > 1)
+    minIndex = find((histoY(2:N-1)<=histoY(1:N-2)) & (histoY(2:N-1)<=histoY(3:N))) + 1;
+    minIndex(diff(minIndex) == 1) = [];
+end
     
 % Detect and deleting all "wrong" extrema (that are too close to each other)
 epsilon = max(histoX)*.02;

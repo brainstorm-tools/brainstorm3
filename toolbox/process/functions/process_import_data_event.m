@@ -19,7 +19,7 @@ function varargout = process_import_data_event( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -311,7 +311,19 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % Copy into events options
         ImportOptions.events = events;
         % Import file
-        OutputFiles = cat(2, OutputFiles, import_data(sFile, ChannelMat, FileFormat, iStudy, iSubject, ImportOptions));
+        NewFiles = import_data(sFile, ChannelMat, FileFormat, iStudy, iSubject, ImportOptions);
+        OutputFiles = cat(2, OutputFiles, NewFiles);
+        
+        % === COPY VIDEO LINK ===
+        % If only one file imported: Copy linked videos in destination folder
+        if ~isDirectImport && (length(NewFiles) == 1)
+            % Find file in database
+            sStudyIn = bst_get('DataFile', FileNames{iFile});
+            % If there are video links to copy, copy them
+            if ~isempty(sStudyIn) && ~isempty(sStudyIn.Image)
+                CopyVideoLinks(NewFiles{1}, sStudyIn);
+            end
+        end
     end
     % Report number of files generated
     if ~isempty(OutputFiles)
@@ -322,5 +334,58 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
 end
 
 
+%% ===== COPY VIDEO LINKS =====
+% Copy linked videos in destination folder
+function sStudyOut = CopyVideoLinks(NewDataFile, sStudyIn)
+    % No images, nothing to do
+    if isempty(sStudyIn.Image)
+        return;
+    end
+    % Get destination file info
+    [sStudyOut, iStudyOut, iData] = bst_get('DataFile', NewDataFile);
+    % Get new and old time start
+    NewMat = in_bst_data(NewDataFile, {'Time', 'History'});
+    oldStart = NewMat.Time(1);
+    offsetStart = 0;
+    iEntry = find(strcmpi(NewMat.History(:,2), 'import_time'), 1, 'last');
+    if ~isempty(iEntry)
+        newTime = str2num(NewMat.History{iEntry,3});
+        if ~isempty(newTime)
+            offsetStart = oldStart - newTime(1);
+        end
+    end
+    % Copy all the links
+    for iFile = 1:length(sStudyIn.Image)
+        if strcmpi(file_gettype(sStudyIn.Image(iFile).FileName), 'videolink')
+            % Read link
+            VideoLinkMat = load(file_fullpath(sStudyIn.Image(iFile).FileName));
+            % Modify comment
+            VideoLinkMat.Comment = [VideoLinkMat.Comment, ' | ', sStudyOut.Data(iData).Comment];
+            % Set start time
+            if ~isfield(VideoLinkMat, 'VideoStart') || isempty(VideoLinkMat.VideoStart)
+                VideoLinkMat.VideoStart = 0;
+            end
+            VideoLinkMat.VideoStart = VideoLinkMat.VideoStart + offsetStart;
+            % Create output filename
+            [fPath, fBase] = bst_fileparts(sStudyIn.Image(iFile).FileName);
+            OutputFile = bst_fullfile(bst_fileparts(file_fullpath(sStudyOut.FileName)), [file_standardize(fBase), '.mat']);
+            OutputFile = file_unique(OutputFile);
+            % Save new file in Brainstorm format
+            bst_save(OutputFile, VideoLinkMat, 'v7');
 
+            % === UPDATE DATABASE ===
+            % Create structure
+            sImage = db_template('image');
+            sImage.FileName = file_short(OutputFile);
+            sImage.Comment  = VideoLinkMat.Comment;
+            % Add to study
+            iImage = length(sStudyOut.Image) + 1;
+            sStudyOut.Image(iImage) = sImage;
+        end
+    end
+    % Save study
+    bst_set('Study', iStudyOut, sStudyOut);
+    % Update tree
+    panel_protocols('UpdateNode', 'Study', iStudyOut);
+end
 

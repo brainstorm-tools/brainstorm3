@@ -268,6 +268,11 @@ tic
             return;
         end
         
+        % Get time window of first file if none specified in parameters
+        if isempty(OPTIONS.TimeWindow)
+            OPTIONS.TimeWindow = sInput.Time([1, end]);
+        end
+        
         % Get sampling frequency
         sRate = 1 / (sInput.Time(2) - sInput.Time(1));
         % Check the nested frequencies

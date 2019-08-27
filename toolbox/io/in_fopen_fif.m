@@ -131,7 +131,7 @@ sFile.acq_date = str_date(info.meas_date(1), 'posix');
 
 %% ===== READ DATA DESCRIPTION =====
 % Get number of epochs
-epochs = fif_get_epochs(sFile, fid);
+[epochs, sFile.header.epochData] = fif_get_epochs(sFile, fid);
 nEpochs = length(epochs);
 
 % === CHANNELS ONLY ===
@@ -155,7 +155,7 @@ elseif (nEpochs == 0)
             return;
         end
     end
-% === EVOKED FILE ===
+% === EVOKED/EPOCHED FILE ===
 else
     % Build epochs structure
     for i = 1:length(epochs)
@@ -167,7 +167,44 @@ else
         sFile.epochs(i).channelflag = [];
     end
     % Extract global min/max for time and samples indices
-    sFile.prop.times   = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
+    sFile.prop.times = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
+%     % Read events
+%     [fifEvt, mappings] = fiff_read_events(fid,tree);
+%     if ~isempty(fifEvt) && ~isempty(mappings)
+%         % Initialize returned structure
+%         uniqueEvt = unique(fifEvt(:,3)');
+%         events = repmat(db_template('event'), [1, length(uniqueEvt)]);
+%         % Parse event names
+%         mappings = str_split(mappings, ';');
+%         mappings = cellfun(@(c)str_split(c,':'), mappings, 'UniformOutput', 0);
+%         if (length(mappings) >= 2)
+%             mappings = reshape([mappings{:}], 2, [])';
+%         else
+%             mappings = [];
+%         end
+%         % Create events list
+%         for iEvt = 1:length(uniqueEvt)
+%             % Find all the occurrences of event #iEvt
+%             iMrk = find(fifEvt(:,3) == uniqueEvt(iEvt));
+%             % Event label
+%             if ~isempty(mappings) && ismember(num2str(uniqueEvt(iEvt)), mappings(:,2))
+%                 iMap = find(strcmpi(mappings(:,2), num2str(uniqueEvt(iEvt))));
+%                 events(iEvt).label = mappings{iMap, 1};
+%             else
+%                 events(iEvt).label = num2str(uniqueEvt{iEvt});
+%             end
+%             % 
+%             epochSmp = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq);
+%             samples = double(fifEvt(iMrk,1))';
+%             events(iEvt).epochs     = floor(samples ./ epochSmp) + 1;
+%             events(iEvt).times      = mod(samples, epochSmp) ./ sFile.prop.sfreq + sFile.prop.times(1);
+%             events(iEvt).reactTimes = [];
+%             events(iEvt).select     = 1;
+%             events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+%             events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+%         end
+%         sFile.events = events;
+%     end
 end
 
 % Close file

@@ -28,7 +28,7 @@ function sMat = in_bst_matrix(MatFile, varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2014
+% Authors: Francois Tadel, 2010-2019
 
 %% ===== PARSE INPUTS =====
 % Get protocol folders
@@ -55,6 +55,10 @@ else
     if ismember('Value', FieldsToRead)
         FieldsToRead{end+1} = 'ZScore';
     end
+    % When reading Leff, make sure nAvg is read as well
+    if ismember('Leff', FieldsToRead) && ~ismember('nAvg', FieldsToRead)
+        FieldsToRead{end+1} = 'nAvg';
+    end
     % Read each field only once
     FieldsToRead = unique(FieldsToRead);
     % Read specified files only
@@ -70,6 +74,12 @@ for i = 1:length(FieldsToRead)
         switch(FieldsToRead{i}) 
             case 'nAvg'
                 sMat.(FieldsToRead{i}) = 1;
+            case 'Leff'
+                if isfield(sMat, 'nAvg') && ~isempty(sMat.nAvg)
+                    sMat.Leff = sMat.nAvg;
+                else
+                    sMat.Leff = 1;
+                end
             otherwise
                 sMat.(FieldsToRead{i}) = [];
         end
@@ -77,6 +87,7 @@ for i = 1:length(FieldsToRead)
 end
 
 %% ===== APPLY DYNAMIC ZSCORE =====
+% DEPRECATED
 % Check for structure integrity
 if ismember('ZScore', FieldsToRead) && ~isempty(sMat.ZScore) && (~isfield(sMat.ZScore, 'mean') || ~isfield(sMat.ZScore, 'std') || ~isfield(sMat.ZScore, 'abs') || ~isfield(sMat.ZScore, 'baseline') || isempty(sMat.ZScore.abs))
     sMat.ZScore = [];
