@@ -108,22 +108,22 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % === PROTOCOL ===
         gui_component('MenuItem', jMenuFile, [], 'New protocol', IconLoader.ICON_FOLDER_NEW, [], @(h,ev)bst_call(@gui_edit_protocol, 'create'), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Load protocol', IconLoader.ICON_FOLDER_OPEN,[],[], fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Load from folder',   IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@gui_edit_protocol, 'load'), fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Load from zip file', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@import_protocol), fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Load from remote database', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@gui_edit_protocol, 'remote'), fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Import subject from zip', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@import_subject), fontSize);
-            jSubMenu.addSeparator();
-            gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'), fontSize);
-            jSubMenu.addSeparator();
-            gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), fontSize);
-            jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[], fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Upload protocol to remote database', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@gui_show, 'panel_shareprotocol', 'JavaWindow', 'Share Protocol', [], 1, 0, 0), fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Copy raw files to database', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@MakeProtocolPortable), fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Export as zip file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_protocol), fontSize);
+        gui_component('MenuItem', jSubMenu, [], 'Load from folder',   IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@gui_edit_protocol, 'load'), fontSize);
+        gui_component('MenuItem', jSubMenu, [], 'Load from zip file', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@import_protocol), fontSize);
+        gui_component('MenuItem', jSubMenu, [], 'Load from remote database', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@gui_edit_protocol, 'remote'), fontSize);
+        gui_component('MenuItem', jSubMenu, [], 'Import subject from zip', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@import_subject), fontSize);
+        jSubMenu.addSeparator();
+        gui_component('MenuItem', jSubMenu, [], 'Import BIDS dataset', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)panel_process_select('ShowPanel', {}, 'process_import_bids'), fontSize);
+        jSubMenu.addSeparator();
+        gui_component('MenuItem', jSubMenu, [], 'Change database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@ChangeDatabaseFolder), fontSize);
+        jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[], fontSize);
+        gui_component('MenuItem', jSubMenu, [], 'Upload protocol to remote database', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@gui_show, 'panel_share_protocol', 'JavaWindow', 'Share Protocol', [], 1, 0, 0), fontSize);
+        gui_component('MenuItem', jSubMenu, [], 'Copy raw files to database', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@MakeProtocolPortable), fontSize);
+        gui_component('MenuItem', jSubMenu, [], 'Export as zip file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_protocol), fontSize);
         gui_component('MenuItem', jMenuFile, [], 'Rename protocol', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@db_rename_protocol), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Delete protocol', IconLoader.ICON_DELETE, [],[], fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Remove all files', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 1), fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Only detach from database', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 0), fontSize);
+        gui_component('MenuItem', jSubMenu, [], 'Remove all files', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 1), fontSize);
+        gui_component('MenuItem', jSubMenu, [], 'Only detach from database', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 0), fontSize);
         jMenuFile.addSeparator();
         % === NEW SUBJECT ===
         gui_component('MenuItem', jMenuFile, [], 'New subject', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@db_edit_subject), fontSize);
