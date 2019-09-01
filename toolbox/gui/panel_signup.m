@@ -133,6 +133,7 @@ function [bstPanelNew, panelName] = CreatePanel()
                 java_dialog('warning', 'Check your url!');              
             end
         end
+        gui_hide('Preferences');
     end
 
 end

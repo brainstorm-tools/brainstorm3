@@ -170,9 +170,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     
     % ===== RIGHT: REMOTE DATABASE =====
     jPanelReset = gui_river([5 5], [0 15 15 15], 'Remote Database');
-        isLoggedIn = 1;
-        if isLoggedIn
-            gui_component('Label',  jPanelReset, [], 'Logged in as martin.cousineau @ bic.mni.mcgill.ca', [], [], []);
+        if ~isempty(bst_get('SessionId'))
+            email=bst_get('Email');
+            labellogin="Logged in as " + string(email);
+            gui_component('Label',  jPanelReset, [], labellogin, [], [], []);
             gui_component('Button', jPanelReset, 'br', 'Groups', [], [], @ButtonGroups_Callback);
             gui_component('Button', jPanelReset, [], 'Logout', [], [], @ButtonLogout_Callback);
         else
@@ -693,7 +694,12 @@ end
 
 %% ===== BUTTON: LOGOUT =====
 function ButtonLogout_Callback(varargin)
-    disp('TODO: Logout');
+    bst_set('SessionId');
+    if isempty(bst_get('SessionId'))
+        disp('Log out successfully!');
+    end
+    gui_hide('Preferences');
+    java_dialog('msgbox', 'Log out successfully!');
 end
 
 
