@@ -37,7 +37,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % Constants
     panelName = 'EditGroups';
     
-    % Create main main panel
+    % Create main panel
     jPanelNew = gui_river([0 0], [0 0 0 0], 'Groups');
     
     % Create Group
@@ -196,7 +196,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     %% ===== LOAD GROUPS =====
     function groups = LoadGroups()
 
-
+%{
         import matlab.net.*;
         import matlab.net.http.*;
         
@@ -206,7 +206,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         uri=URI(url);
         data=webread(uri);
         disp(string(data));
-        
+  %}      
 
         groups = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
     end

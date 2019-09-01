@@ -42,7 +42,7 @@ else
     isRegister = 0;
 end
 
-% Create main main panel
+% Create main panel
 jPanelMain = java_create('javax.swing.JPanel');
 jPanelMain.setLayout(java_create('java.awt.GridBagLayout'));
 c = GridBagConstraints();
@@ -57,7 +57,8 @@ jPanelProj = gui_component('Panel');
 jPanelProj.setLayout(BoxLayout(jPanelProj, BoxLayout.Y_AXIS));
 jPanelOpt = gui_river([2,2], [2,4,2,4]);
 gui_component('Label', jPanelOpt, '', 'Server URL: ');
-jTextServerUrl = gui_component('text', jPanelOpt, 'hfill', '');
+server_url = bst_get('UrlAdr');
+jTextServerUrl = gui_component('text', jPanelOpt, 'hfill', server_url);
 jPanelProj.add(jPanelOpt);
 
 if isRegister
@@ -76,7 +77,11 @@ end
 
 jPanelOpt = gui_river([2,2], [2,4,2,4]);
 gui_component('Label', jPanelOpt, 'br', 'Email address: ');
-jTextEmail = gui_component('text', jPanelOpt, 'hfill', '');
+if ~isRegister
+    jTextEmail = gui_component('text', jPanelOpt, 'hfill', bst_get('Email'));
+else
+    jTextEmail = gui_component('text', jPanelOpt, 'hfill', '');
+end
 jPanelProj.add(jPanelOpt);
 jPanelOpt = gui_river([2,2], [2,4,2,4]);
 gui_component('label', jPanelOpt, 'br', 'Password: ');
