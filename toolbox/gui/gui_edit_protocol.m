@@ -41,6 +41,8 @@ switch (action)
         panelTitle = 'Load existing protocol';
     case 'remote'
         disp('TODO: Load remote protocol');
+        bst_set('ProtocolId','67f71a5a-703b-4c7b-ad0d-4cb179d36e9e');
+        java_dialog('msgbox', 'Load protocol successfully!');
         return;
         iProtocol = nbProtocols + 1;
         panelTitle = 'Load remote protocol';    

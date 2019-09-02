@@ -2643,6 +2643,13 @@ switch contextName
         else
             argout1=[];
         end
+        
+     case 'ProtocolId'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences,'ProtocolId')&& ~isempty(GlobalData.Preferences.ProtocolId)
+            argout1=GlobalData.Preferences.ProtocolId;
+        else
+            argout1=[];
+        end
     case 'ElectrodeConfig'
         % Get modality
         Modality = varargin{2};

@@ -192,9 +192,12 @@ UpdatePanel();
                         content=resp.Body;
                         show(content);
                         bst_set('Email',jTextEmail.getText());
+                        %{
                         session=strtok(string(content),',');
                         session=char(extractAfter(session,":"));
-                        bst_set('SessionId',session);
+                        %}
+                        session = jsondecode(content.Data);
+                        bst_set('SessionId',session.sessionid);
                         %UpdatePanel();
                         gui_hide(panelName);
                         gui_hide('Preferences');
@@ -257,9 +260,12 @@ UpdatePanel();
                         content=resp.Body;                      
                         show(content);
                         bst_set('Email',jTextEmail.getText());
+                        %{
                         session=strtok(string(content),',');
                         session=char(extractAfter(session,":"));
-                        bst_set('SessionId',session);
+                        %}
+                        session = jsondecode(content.Data);
+                        bst_set('SessionId',session.sessionid);
                         bst_set('UrlAdr',jTextServerUrl.getText());
                         gui_hide(panelName);
                         gui_hide('Preferences');
