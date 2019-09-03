@@ -22,7 +22,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017; Hossein Shahabi, 2019
 
 
 %% ===== DEFAULT OPTIONS =====
@@ -36,7 +36,7 @@ Def_OPTIONS.IgnoreBad     = 0;             % For recordings: Ignore bad channels
 Def_OPTIONS.ScoutFunc     = 'all';         % Scout function {mean, max, pca, std, all}
 Def_OPTIONS.ScoutTime     = 'before';      % When to apply scout function: {before, after}
 Def_OPTIONS.RemoveMean    = 1;             % Option for Correlation
-Def_OPTIONS.CohMeasure    = 'mscohere';    % {'mscohere'=Magnitude-square, 'icohere'=Imaginary}
+Def_OPTIONS.CohMeasure    = 'mscohere';    % {'mscohere'=Magnitude-square, 'icohere'=Imaginary, 'lcohere'=lagged}
 Def_OPTIONS.MaxFreqRes    = [];            % Option for spectral estimates (Coherence, spectral Granger)
 Def_OPTIONS.MaxFreq       = [];            % Option for spectral estimates (Coherence, spectral Granger)
 Def_OPTIONS.CohOverlap    = 0.50;          % Option for Coherence
@@ -333,6 +333,8 @@ for iFile = 1:length(FilesA)
             Comment = sprintf(['Coh(' precision 'Hz,%dwin): '], fStep, OPTIONS.Nwin);
             if strcmpi(OPTIONS.CohMeasure, 'icohere')
                 Comment = ['i', Comment];
+            elseif strcmpi(OPTIONS.CohMeasure, 'lcohere')
+                Comment = ['l', Comment];             
             end
 
         % ==== GRANGER ====
