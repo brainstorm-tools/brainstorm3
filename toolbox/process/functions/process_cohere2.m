@@ -21,7 +21,7 @@ function varargout = process_cohere2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2015; Hossein Shahabi, 2019. 
 
 eval(macro_method);
 end
@@ -52,13 +52,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
     sProcess.options.label2.Type    = 'label';
     % === COHERENCE METHOD
-    sProcess.options.cohmeasure.Comment = {'Magnitude-squared', 'Imaginary', 'Measure:'};
+    sProcess.options.cohmeasure.Comment = {'Magnitude-squared', 'Imaginary', 'Lagged', 'Measure:'};
     sProcess.options.cohmeasure.Type    = 'radio_line';
     sProcess.options.cohmeasure.Value   = 1;
-%     % === OVERLAP
-%     sProcess.options.overlap.Comment = {'0%', '25%', '50%', '75%', 'Overlap:'};
-%     sProcess.options.overlap.Type    = 'radio_line';
-%     sProcess.options.overlap.Value   = 3;
+    % === Overlap
+    sProcess.options.overlap.Comment = 'Sliding window overlap:';
+    sProcess.options.overlap.Type    = 'value';
+    sProcess.options.overlap.Value   = {50, '%', []};
     % === MAX FREQUENCY RESOLUTION
     sProcess.options.maxfreqres.Comment = 'Maximum frequency resolution:';
     sProcess.options.maxfreqres.Type    = 'value';
@@ -108,11 +108,12 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
     OPTIONS.MaxFreqRes    = sProcess.options.maxfreqres.Value{1};
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
-    OPTIONS.CohOverlap    = 0.50;
+    OPTIONS.CohOverlap    = sProcess.options.overlap.Value{1}/100;
     OPTIONS.pThresh       = 0.05;  % sProcess.options.pthresh.Value{1};
     switch (sProcess.options.cohmeasure.Value)
         case 1,  OPTIONS.CohMeasure = 'mscohere';
         case 2,  OPTIONS.CohMeasure = 'icohere';
+        case 3,  OPTIONS.CohMeasure = 'lcohere';
     end
 %     switch (sProcess.options.overlap.Value)
 %         case 1,  OPTIONS.CohOverlap = 0;
