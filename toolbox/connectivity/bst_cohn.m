@@ -9,7 +9,7 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 %    - Fs      : Sampling frequency of X and Y (in Hz)
 %    - nFFT    : Length of the window used to estimate the coherence (must be a power of 2 for the efficiency of the FFT)
 %    - Overlap       : [0-1], percentage of time overlap between two consecutive estimation windows
-%    - CohMeasure    : {'mscohere', 'icohere'}
+%    - CohMeasure    : {'mscohere', 'icohere', 'lcohere'}
 %    - isSymmetric   : If 1, use an optimized method for symmetrical matrices
 %    - ImagingKernel : If not empty, calculate the coherence at the source level
 %    - waitMax       : Increase of the progress bar during the execution of this function
@@ -20,7 +20,8 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 %     Gyy:  autospectral density of y
 %     Coherence function (C)            : Gxy/sqrt(Gxx*Gyy)
 %     Magnitude-squared Coherence (MSC) : |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
-%     Imaginary Coherence (IC)          : imag(C)^2 / (1-real(C)^2)
+%     Imaginary Coherence (IC)          : abs(imag(C))
+%     Lagged Coherence (IC)             : sqrt(imag(C)^2 / (1-real(C)^2))
 %
 % Parametric significance estimation:  
 %     When overlap=0%   [Syed Ashrafulla]
@@ -33,6 +34,7 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 %        While Matlab defines the coherence as the square of the cross sepctra divided by the product of the spectra, Bokil (2007)
 %        and Schelter (2006) work with the square root within the correction and significance determination
 %
+% Warning:: pValues might not be accurate for imaginary and lagged coherence
 % References:
 %   [1] Carter GC (1987), Coherence and time delay estimation
 %       Proc IEEE, 75(2):236-255, doi:10.1109/PROC.1987.13723
@@ -64,7 +66,8 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Sergul Aydore, Syed Ashrafulla, Francois Tadel, Guiomar Niso, 2013-2014
+% Authors: Sergul Aydore, Syed Ashrafulla, Francois Tadel, Guiomar Niso,
+% 2013-2014, Hossein Shahabi, 2019
 
 
 %% ===== INITIALIZATIONS =====
@@ -148,6 +151,7 @@ iWin = [iStart; iStop];
 % Number of samples that are taken into account in the windowing
 nSamples = iWin(end);
 % Frequency smoother (represented as time-domain multiplication)
+% smoother = bst_window('hamming', nFFT) ;
 smoother = bst_window('parzen', nFFT) .* bst_window('tukey', nFFT, 0.1);
 % smoother = bst_window('parzen', nFFT);
 smoother = smoother / sqrt(sum(smoother.^2));
@@ -240,8 +244,20 @@ if ~isSymmetric
             else
                 pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
             end
-            % Imaginary Coherence = imag(C)^2 / (1-real(C)^2)
-            Gxy = imag(Gxy).^2 ./ (1-real(Gxy).^2);
+            % Imaginary Coherence = abs(imag(C))  % Only consider the value
+            Gxy = abs(imag(Gxy));
+        case 'lcohere'
+            % Coherence function: C = Gxy/sqrt(Gxx*Gyy)
+            Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gxx));
+            Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gyy));
+            % Parametric estimation of the significance level
+            if (Overlap == 0.5)
+                pValues = max(0, 1 - abs(Gxy).^2) .^ ((dof-2)/2);  % Schelter 2006 and Bloomfield 1976
+            else
+                pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
+            end
+            % Lagged Coherence = sqrt(imag(C)^2 / (1-real(C)^2))
+            Gxy = sqrt(imag(Gxy).^2 ./ (1-real(Gxy).^2));   
     end
     % In the symmetric case
     if ~isCalcAuto
@@ -328,8 +344,19 @@ else
             else
                 pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
             end
-            % Imaginary Coherence = imag(C)^2 / (1-real(C)^2)
-            Gxy = imag(Gxy).^2 ./ (1-real(Gxy).^2);
+            % Imaginary Coherence = abs(imag(C))
+            Gxy = abs(imag(Gxy));     
+        case 'lcohere'
+            % Coherence function: C = Gxy/sqrt(Gxx*Gyy)
+            Gxy = Gxy ./ sqrt(Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
+            % Parametric estimation of the significance level
+            if (Overlap == 0.5)
+                pValues = max(0, 1 - abs(Gxy).^2) .^ ((dof-2)/2);  % Schelter 2006 and Bloomfield 1976
+            else
+                pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
+            end
+            % Lagged Coherence = sqrt(imag(C)^2 / (1-real(C)^2))
+            Gxy = sqrt(imag(Gxy).^2 ./ (1-real(Gxy).^2));
     end
     
 %     % Save the auto-Gxy as the diagonal
