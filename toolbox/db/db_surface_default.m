@@ -38,7 +38,11 @@ if (nargin < 3) || isempty(iSurface)
     % Try to find the default surface in the brainstormsubject.mat file
     subjMat = load(bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.FileName));
     % Default surface name
-    defSurfFile = subjMat.(SurfaceType);
+    if isfield(subjMat, SurfaceType)
+        defSurfFile = subjMat.(SurfaceType);
+    else
+        defSurfFile = [];
+    end
         
     % == ANATOMY ==
     if strcmpi(SurfaceType, 'Anatomy')

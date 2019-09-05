@@ -932,7 +932,7 @@ function destFile = PasteNode( targetNode )
         return
     end
     firstSrcType = lower(char(srcNodes(1).getType()));
-    isAnatomy = ismember(firstSrcType, {'anatomy','cortex','scalp','innerskull','outerskull','other'});
+    isAnatomy = ismember(firstSrcType, {'anatomy','cortex','scalp','innerskull','outerskull','fibers','fem','other'});
     % Get all target studies/subjects
     iTarget = [];
     for i = 1:length(targetNode)
@@ -1032,7 +1032,7 @@ function destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTarge
         sStudyTarget = bst_get('Study', iTarget);
         [sSubjectTargetRaw, iSubjectTargetRaw] = bst_get('Subject', sStudyTarget.BrainStormSubject, 1);
     end
-    isAnatomy = ismember(srcType, {'anatomy','cortex','scalp','innerskull','outerskull','other'});
+    isAnatomy = ismember(srcType, {'anatomy','cortex','scalp','innerskull','outerskull','fibers','fem','other'});
     % Get source subject
     if ~isAnatomy
         sStudySrc   = bst_get('Study', iSrcStudy);

@@ -23,7 +23,7 @@ function OutputFile = db_add(iTarget, InputFile, isReload)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2013
+% Authors: Francois Tadel, 2011-2019
 
 %% ===== GET INPUT FILE =====
 if (nargin < 3) || isempty(isReload)
@@ -90,6 +90,11 @@ if isstruct(InputFile)
     if ismember(fileType, {'brainstormsubject', 'brainstormstudy', 'unknown'})
         bst_error('This structure cannot be imported in the database.', 'Add file to database', 0);
         return;
+    end
+    % Surfaces subtypes
+    if ismember(fileType, {'fibers', 'fem'})
+        fileSubType = fileType;
+        fileType = 'tess';
     end
     isAnatomy = ismember(fileType, {'subjectimage', 'tess'});
     % Create a new output filename
@@ -174,7 +179,7 @@ if isAnatomy
     switch (fileType)
         case 'subjectimage'
             % Nothing to do: file is replaced anyway
-        case {'tess', 'cortex', 'scalp', 'outerskull', 'innerskull', 'fibers'}
+        case {'tess', 'cortex', 'scalp', 'outerskull', 'innerskull', 'fibers', 'fem'}
             sMat.Comment = file_unique(sMat.Comment, {sSubject.Surface.Comment});
     end
 else
@@ -200,6 +205,8 @@ else
                 if ~isempty(iRes)
                     sMat.Comment = file_unique(sMat.Comment, {sStudy.Result(iRes).Comment});
                 end
+            else
+                sMat.Comment = file_unique(sMat.Comment, {sStudy.Result.Comment});
             end
             matVer = 'v6';
         case 'stat'
@@ -238,6 +245,7 @@ if isReload
         db_reload_studies(iTarget);
     end
     panel_protocols('UpdateTree');
+    panel_protocols('SelectNode', [], OutputFileFull);
 end
 
 

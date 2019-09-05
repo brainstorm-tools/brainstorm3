@@ -158,7 +158,7 @@ switch (lower(nodeType{1}))
 
 
 %% ===== SURFACES =====
-    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'other'}
+    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'fem', 'other'}
         bst_progress('start', 'Delete nodes', 'Deleting surfaces...');
         % Full file names
         FullFilesList = cellfun(@(f)bst_fullfile(ProtocolInfo.SUBJECTS,f), FileName', 'UniformOutput',0);
@@ -193,7 +193,7 @@ switch (lower(nodeType{1}))
                 end
                 % Update default surfaces
                 bst_set('ProtocolSubjects', ProtocolSubjects);
-                for SurfType = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull'}
+                for SurfType = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'}
                     db_surface_default(iSubject, SurfType{1}, [], 0);
                 end
                 drawnow;
