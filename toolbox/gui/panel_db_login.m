@@ -134,7 +134,7 @@ UpdatePanel();
         if isRegister
             disp('Register');
             %java_dialog('msgbox', ['Your registration request was sent to the database administrator.' 10 'You will be notified by email once it is approved.'], 'Register');
-            java_dialog('msgbox', ['Verify your registration information and submit.'], 'Register');
+            %java_dialog('msgbox', ['Verify your registration information and submit.'], 'Register');
             import matlab.net.*;
             import matlab.net.http.*;
             
@@ -180,6 +180,8 @@ UpdatePanel();
                 url=string(jTextServerUrl.getText());
                 url=url+"/user/createuser";
                 uri= URI(url);
+                gui_hide('Preferences');
+                gui_hide('DbLoginRegister');
                 try
                     [resp,~,hist]=send(r,uri);
                     status = resp.StatusCode;
@@ -199,8 +201,6 @@ UpdatePanel();
                         session = jsondecode(content.Data);
                         bst_set('SessionId',session.sessionid);
                         %UpdatePanel();
-                        gui_hide(panelName);
-                        gui_hide('Preferences');
                         java_dialog('msgbox', 'Register successfully!');
                     else
                         java_dialog(txt);
@@ -252,6 +252,8 @@ UpdatePanel();
                 url=string(jTextServerUrl.getText());
                 url=url+"/user/login";
                 uri= URI(url);
+                gui_hide('Preferences');
+                gui_hide('DbLoginRegister');
                 try
                     [resp,~,hist]=send(r,uri);
                     status = resp.StatusCode;
@@ -267,12 +269,10 @@ UpdatePanel();
                         session = jsondecode(content.Data);
                         bst_set('SessionId',session.sessionid);
                         bst_set('UrlAdr',jTextServerUrl.getText());
-                        gui_hide(panelName);
-                        gui_hide('Preferences');
                         java_dialog('msgbox', 'Log in successfully!');
                         %UpdatePanel();
                     elseif strcmp(txt,'401')==1 || strcmp(txt,'Unauthorized')==1
-                        java_dialog('warning', 'Wrong password!');
+                        java_dialog('warning', 'Login failed. Your email or password is wrong!');
                     else
                         java_dialog('warning', txt);
                     end

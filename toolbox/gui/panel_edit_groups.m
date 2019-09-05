@@ -206,38 +206,40 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         data=webread(uri);
         disp(string(data));
         %}
+        groups = size(0);
 
-        type1 = matlab.net.http.MediaType('text/*');
-        type2 = matlab.net.http.MediaType('application/json','q','.5');
+        type1 = MediaType('text/*');
+        type2 = MediaType('application/json','q','.5');
         acceptField = matlab.net.http.field.AcceptField([type1 type2]);
-        h1 = matlab.net.http.HeaderField('Content-Type','application/json');
-        h2 = matlab.net.http.HeaderField('sessionid',bst_get('SessionId'));
-        h3 = matlab.net.http.HeaderField('deviceid',bst_get('DeviceId'));
+        h1 = HeaderField('Content-Type','application/json');
+        h2 = HeaderField('sessionid',bst_get('SessionId'));
+        h3 = HeaderField('deviceid',bst_get('DeviceId'));
         header = [acceptField,h1,h2,h3];
         method = RequestMethod.GET;
         request_message = RequestMessage(method,header,[]);
-        show(request_message);
+        %show(request_message);
         serveradr = bst_get('UrlAdr');
         protocol = convertCharsToStrings(bst_get('ProtocolId'));
         url=strcat(serveradr,"/protocol/detail/",protocol);
-        show(url);
+        disp(url);
+        gui_hide('Preferences');
         try
             [resp,~,hist]=send(request_message,URI(url));
             status = resp.StatusCode;
             txt=char(status);
-            if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
+            if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
                 content=resp.Body;
                 show(content);
                 %UpdatePanel();
-                gui_hide('Preferences');
                 java_dialog('msgbox', 'Load group successfully!');
+            elseif strcmp(status,'404')==1 || strcmp(txt,'NotFound')==1
+                java_dialog('error','Current protocol has not been uploaded!');
             else
-                java_dialog(txt);
+                java_dialog('error', txt);
             end
         catch
             java_dialog('warning', 'Load group failed!');
         end
-        
         groups = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
     end
     %% ===== LOAD MEMBERS =====

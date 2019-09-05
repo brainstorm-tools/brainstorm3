@@ -126,6 +126,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
     jPanelRight.add('br hfill', jPanelImport);
     % ===== RIGHT: SHARING =====
+    %{
     jPanelShare = gui_river([5 5], [0 15 15 15], 'Remote Database');
         if isempty(bst_get('SessionId'))
             gui_component('Label', jPanelShare, 'br', 'Not connected to a remote database. ', [], [], []);
@@ -148,6 +149,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
        
     jPanelRight.add('br hfill', jPanelShare);
+    %}
     % ===== RIGHT: SIGNAL PROCESSING =====
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
         jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', []);
@@ -170,7 +172,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     
     % ===== RIGHT: REMOTE DATABASE =====
     jPanelReset = gui_river([5 5], [0 15 15 15], 'Remote Database');
-        if ~isempty(bst_get('SessionId'))
+        session_status = CheckLogin();
+       
+        if ~isempty(bst_get('SessionId')) && session_status == 0
             email=bst_get('Email');
             labellogin="Logged in as " + string(email);
             gui_component('Label',  jPanelReset, [], labellogin, [], [], []);
@@ -215,6 +219,64 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 %% =================================================================================
 %  === CONTROLS CALLBACKS  =========================================================
 %  =================================================================================
+%% ===== LOGIN CHECK =====
+    function checkresult = CheckLogin()
+        disp('Check Login');
+        import matlab.net.*;
+        import matlab.net.http.*;
+        
+        checkresult = 2;
+        if(isempty(bst_get('DeviceId')))
+            % device = get(com.sun.security.auth.module.NTSystem,'DomainSID');
+            device = '';
+            ni = java.net.NetworkInterface.getNetworkInterfaces;
+            while ni.hasMoreElements
+                addr = ni.nextElement.getHardwareAddress;
+                if ~isempty(addr)
+                    addrStr = dec2hex(int16(addr)+128);
+                    device = [device, '.', reshape(addrStr,1,2*length(addr))];
+                end
+            end
+            bst_set('DeviceId',device);
+        else
+            device=bst_get('DeviceId');
+        end
+        
+        data=struct('sessionid',bst_get('SessionId'),'deviceid',char(device));
+        body=MessageBody(data);
+        contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
+        type1 = matlab.net.http.MediaType('text/*');
+        type2 = matlab.net.http.MediaType('application/json','q','.5');
+        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+        header = [acceptField contentTypeField];
+        method =RequestMethod.GET;
+        r=RequestMessage(method,header,body);
+        show(r);
+        url=bst_get('UrlAdr')+"/user/checksession";
+        uri= URI(url);
+        try
+            [resp,~,hist]=send(r,uri);
+            status = resp.StatusCode;
+            txt=char(status);
+            if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
+                content=resp.Body;
+                show(content);
+                if(strcmp(content,'true'))
+                    checkresult = 1;
+                else
+                    checkresult = 0;
+                end
+            else
+                java_dialog('warning', txt);
+            end
+        catch
+            java_dialog('warning', strcat('Cannot connect to server ',bst_get('UrlAdr')));
+        end
+    end
+
+
+
+
 %% ===== LOAD OPTIONS =====
     function LoadOptions()
         % GUI
@@ -701,6 +763,7 @@ function ButtonLogout_Callback(varargin)
     gui_hide('Preferences');
     java_dialog('msgbox', 'Log out successfully!');
 end
+
 
 
 
