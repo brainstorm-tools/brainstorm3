@@ -81,7 +81,7 @@ end
 bst_progress('start', 'Interpolate fibers', 'Loading file...');
 % Load file
 FibMat = in_fibers(FibFile);
-NewFibMat = db_template('fibers');
+NewFibMat = db_template('fibersmat');
 
 
 %% ===== INTERPOLATE =====

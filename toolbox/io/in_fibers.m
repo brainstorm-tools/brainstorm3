@@ -94,7 +94,7 @@ switch (FileFormat)
         % Convert to meters
         tracks = tracks / 1000;
         % Build Brainstorm structure
-        FibMat = db_template('fibers');
+        FibMat = db_template('fibersmat');
         FibMat.Points = permute(tracks, [3,1,2]);
         FibMat.Header = header;
         FibMat = fibers_helper('ComputeColor', FibMat);
