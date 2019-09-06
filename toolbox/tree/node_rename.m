@@ -76,7 +76,7 @@ switch lower(nodeType)
         
         
 %% ===== SURFACES (Comment) =====
-    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'other', 'fibers'}
+    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'other', 'fibers', 'fem'}
         iSubject = iItem;
         iSurface = iSubItem;
         sSubject = bst_get('Subject', iSubject);

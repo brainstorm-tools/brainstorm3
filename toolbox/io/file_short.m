@@ -46,7 +46,7 @@ FileType = file_gettype(FileName);
 isAnatomy = 0;
 % Add protocol path
 switch lower(FileType)
-    case {'brainstormsubject', 'subject', 'subjectimage', 'anatomy', 'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'other', 'tess'}
+    case {'brainstormsubject', 'subject', 'subjectimage', 'anatomy', 'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'fem', 'other', 'tess'}
         FileName = file_win2unix(strrep(FileName, ProtocolInfo.SUBJECTS, ''));
         isAnatomy = 1;
     case {'brainstormstudy', 'study', 'studysubject', 'condition', 'rawcondition', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'spectrum', 'ptimefreq', 'pspectrum', 'matrix', 'pmatrix', 'proj', 'image', 'video', 'videolink'}

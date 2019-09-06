@@ -67,7 +67,7 @@ nodeType = char(bstNodes(1).getType());
 filenameRelative = char(bstNodes(1).getFileName());
 % Build full filename (depends on the file type)
 switch lower(nodeType)
-    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'other', 'subject', 'studysubject', 'anatomy'}
+    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'fem', 'other', 'subject', 'studysubject', 'anatomy'}
         filenameFull = bst_fullfile(ProtocolInfo.SUBJECTS, filenameRelative);
     case {'study', 'condition', 'rawcondition', 'channel', 'headmodel', 'data','rawdata', 'datalist', 'results', 'kernel', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'image', 'video', 'videolink', 'noisecov', 'ndatacov', 'dipoles','timefreq', 'spectrum', 'matrix', 'matrixlist', 'pmatrix'}
         filenameFull = bst_fullfile(ProtocolInfo.STUDIES, filenameRelative);
@@ -167,7 +167,7 @@ switch (lower(action))
     
             % ===== SURFACE ===== 
             % Mark/unmark (items selected : 1/category)
-            case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers'}
+            case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'fem'}
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
                 iSurface = bstNodes(1).getItemIndex();
@@ -178,6 +178,7 @@ switch (lower(action))
                     case 'outerskull', SurfaceType = 'OuterSkull';
                     case 'cortex',     SurfaceType = 'Cortex';
                     case 'fibers',     SurfaceType = 'Fibers';
+                    case 'fem',        SurfaceType = 'FEM';
                     case 'other',      SurfaceType = 'Other';
                 end
                 if (~ismember(iSurface, sSubject.(['i' SurfaceType])) || ~bstNodes(1).isMarked())
@@ -1126,7 +1127,7 @@ switch (lower(action))
                 jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_surfaces(filenameFull));
              
 %% ===== POPUP: FIBERS =====
-            case {'fibers'}
+            case 'fibers'
                 % Get subject
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
@@ -1139,6 +1140,11 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Less fibers...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)fibers_downsample(filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Interpolate points...', IconLoader.ICON_FLIP, [], @(h,ev)fibers_interp(filenameFull));
                 end
+              
+%% ===== POPUP: FEM HEAD MODEL =====
+            case 'fem'
+                % ...
+                
                 
 %% ===== POPUP: NOISECOV =====
             case {'noisecov', 'ndatacov'}

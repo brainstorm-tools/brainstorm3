@@ -49,6 +49,7 @@ sSubject.iScalp = [];
 sSubject.iInnerSkull = [];
 sSubject.iOuterSkull = [];
 sSubject.iFibers = [];
+sSubject.iFEM = [];
 
 % Update subject structure
 bst_set('Subject', iSubject, sSubject);

@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+September 2019
+- Anatomy: Added storage for FEM head models
+---------------------------------------------------------------
 August 2019
 - GUI: Added support for clusters with STDs
 - GUI: New colormap: Turbo, Google's JET alternative

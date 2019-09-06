@@ -1098,7 +1098,7 @@ switch contextName
             fileTag = ['_' lower(SurfaceType)];
             iTargetList = find(cellfun(@(c)~isempty(strfind(c, fileTag)), {sSubject.Surface.FileName}));
             % Put the default cortex on top of the list
-            iDefaults = intersect([sSubject.iCortex, sSubject.iScalp, sSubject.iInnerSkull, sSubject.iOuterSkull], iTargetList);
+            iDefaults = intersect([sSubject.iCortex, sSubject.iScalp, sSubject.iInnerSkull, sSubject.iOuterSkull, sSubject.iFibers, sSubject.iFEM], iTargetList);
             if ~isempty(iDefaults)
                 iTargetList = [iDefaults, setdiff(iTargetList, iDefaults)];
             end
@@ -2051,7 +2051,7 @@ switch contextName
                     sItem = sStudy.Image(iItem);
                 end
             % ===== ANATOMY =====
-            case {'cortex','scalp','innerskull','outerskull','tess','fibers'}
+            case {'cortex','scalp','innerskull','outerskull','tess','fibers','fem'}
                 [sStudy, iStudy, iItem] = bst_get('SurfaceFile', FileName);
                 if (nargout >= 5) && ~isempty(sStudy)
                     sItem = sStudy.Surface(iItem);

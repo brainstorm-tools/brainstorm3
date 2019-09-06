@@ -326,10 +326,10 @@ if (CurrentDbVersion < 3.6) && ~isempty(ProtocolsListStudies) && ~isfield(Protoc
     bst_set('ProcessOptions', []);
 end
 
-%% ===== UPDATE 07-May-2019 AND 22-May-2019 =====
-% Modification: add fibers objects
-if (CurrentDbVersion < 5.01)
-    disp('BST> Database update: Adding support for diffusion fibers...');
+%% ===== UPDATES: 7-May-2019, 22-May-2019, 31-Aug-2019 =====
+% Modification: add fibers and FEM objects
+if (CurrentDbVersion < 5.02)
+    disp('BST> Database update: Adding support for fibers and FEM...');
     for iProt = 1:length(ProtocolsListSubjects)
         subjFields = fieldnames(ProtocolsListSubjects(iProt));
         for iField = 1:length(subjFields)

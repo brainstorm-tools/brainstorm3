@@ -648,6 +648,9 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(sSubject.iFibers)
             typesList{end+1} = 'Fibers';
         end
+        if ~isempty(sSubject.iFEM)
+            typesList{end+1} = 'FEM';
+        end
         
         % Get low resolution white surface
         iWhite = find(~cellfun(@(c)isempty(strfind(lower(c),'white')), {sSubject.Surface.Comment}));
@@ -702,6 +705,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(sSubject.iOuterSkull(1)).FileName;
         case 'Fibers'
             SurfaceFile = sSubject.Surface(sSubject.iFibers).FileName;
+        case 'FEM'
+            SurfaceFile = sSubject.Surface(sSubject.iFEM).FileName;
         case 'ASEG'
             SurfaceFile = sSubject.Surface(iAseg).FileName;
         case 'White'
@@ -884,6 +889,8 @@ function nbSurfaces = CreateSurfaceList(jToolbar, hFig)
                     iconButton = IconLoader.ICON_SURFACE_OUTERSKULL;
                 case 'fibers'
                     iconButton = IconLoader.ICON_FIBERS;
+                case 'fem'
+                    iconButton = IconLoader.ICON_FEM;
                 case 'other'
                     iconButton = IconLoader.ICON_SURFACE;
                 case 'anatomy'
