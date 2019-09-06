@@ -172,9 +172,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     
     % ===== RIGHT: REMOTE DATABASE =====
     jPanelReset = gui_river([5 5], [0 15 15 15], 'Remote Database');
-        session_status = CheckLogin();
-       
-        if ~isempty(bst_get('SessionId')) && session_status == 0
+        session_status = CheckLogin();       
+        if ~isempty(bst_get('SessionId')) && session_status == 1
             email=bst_get('Email');
             labellogin="Logged in as " + string(email);
             gui_component('Label',  jPanelReset, [], labellogin, [], [], []);
@@ -252,16 +251,17 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         method =RequestMethod.GET;
         r=RequestMessage(method,header,body);
         show(r);
-        url=bst_get('UrlAdr')+"/user/checksession";
+        url = string(bst_get('UrlAdr'));
+        url=strcat(url,"/user/checksession");
         uri= URI(url);
         try
             [resp,~,hist]=send(r,uri);
             status = resp.StatusCode;
             txt=char(status);
-            if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
+            if strcmp(status,'200')==1 || strcmp(txt,'OK')==1
                 content=resp.Body;
                 show(content);
-                if(strcmp(content,'true'))
+                if(strcmp(content.Data,'true')==1)
                     checkresult = 1;
                 else
                     checkresult = 0;
@@ -270,7 +270,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                 java_dialog('warning', txt);
             end
         catch
-            java_dialog('warning', strcat('Cannot connect to server ',bst_get('UrlAdr')));
+            java_dialog('warning', "Cannot connect to server" + " "+ bst_get('UrlAdr'));
         end
     end
 

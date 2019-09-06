@@ -131,6 +131,8 @@ UpdatePanel();
 %  =================================================================================
 %% ===== OK BUTTON =====
     function ButtonOk_Callback(varargin)
+        gui_hide('Preferences');
+        gui_hide('DbLoginRegister');
         if isRegister
             disp('Register');
             %java_dialog('msgbox', ['Your registration request was sent to the database administrator.' 10 'You will be notified by email once it is approved.'], 'Register');
@@ -179,9 +181,7 @@ UpdatePanel();
                 show(r);
                 url=string(jTextServerUrl.getText());
                 url=url+"/user/createuser";
-                uri= URI(url);
-                gui_hide('Preferences');
-                gui_hide('DbLoginRegister');
+                uri= URI(url);               
                 try
                     [resp,~,hist]=send(r,uri);
                     status = resp.StatusCode;
@@ -199,7 +199,7 @@ UpdatePanel();
                         session=char(extractAfter(session,":"));
                         %}
                         session = jsondecode(content.Data);
-                        bst_set('SessionId',session.sessionid);
+                        bst_set('SessionId',string(session.sessionid));
                         %UpdatePanel();
                         java_dialog('msgbox', 'Register successfully!');
                     else
@@ -252,8 +252,6 @@ UpdatePanel();
                 url=string(jTextServerUrl.getText());
                 url=url+"/user/login";
                 uri= URI(url);
-                gui_hide('Preferences');
-                gui_hide('DbLoginRegister');
                 try
                     [resp,~,hist]=send(r,uri);
                     status = resp.StatusCode;
@@ -267,7 +265,7 @@ UpdatePanel();
                         session=char(extractAfter(session,":"));
                         %}
                         session = jsondecode(content.Data);
-                        bst_set('SessionId',session.sessionid);
+                        bst_set('SessionId',string(session.sessionid));
                         bst_set('UrlAdr',jTextServerUrl.getText());
                         java_dialog('msgbox', 'Log in successfully!');
                         %UpdatePanel();
@@ -279,8 +277,10 @@ UpdatePanel();
                 catch
                     java_dialog('warning', 'Check your url!');
                 end
+               
             end
         end
+        %gui_show('Preferences');
     end
 
 end

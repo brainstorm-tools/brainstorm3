@@ -218,7 +218,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         method = RequestMethod.GET;
         request_message = RequestMessage(method,header,[]);
         %show(request_message);
-        serveradr = bst_get('UrlAdr');
+        serveradr = string(bst_get('UrlAdr'));
         protocol = convertCharsToStrings(bst_get('ProtocolId'));
         url=strcat(serveradr,"/protocol/detail/",protocol);
         disp(url);
