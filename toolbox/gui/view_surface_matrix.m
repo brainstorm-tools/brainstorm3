@@ -1,16 +1,17 @@
-function [hFig, iDS, iFig, hPatch, hLight] = view_surface_matrix(Vertices, Faces, SurfAlpha, SurfColor, hFig)
+function [hFig, iDS, iFig, hPatch, hLight] = view_surface_matrix(Vertices, Faces, SurfAlpha, SurfColor, hFig, isFem, SurfaceFile)
 % VIEW_SURFACE_MATRIX: Display a surface in a 3DViz figure.
 %
-% USAGE:  [hFig, iDS, iFig, hPatch, hLight] = view_surface_matrix(Vertices, Faces, SurfAlpha, SurfColor, hFig)
-%         [hFig, iDS, iFig, hPatch, hLight] = view_surface_matrix(Vertices, Faces)
+% USAGE:  [hFig, iDS, iFig, hPatch, hLight] = view_surface_matrix(Vertices, Faces, SurfAlpha=0, SurfColor=[], hFig=[], isFem=0, SurfaceFile=[])
 %         [hFig, iDS, iFig, hPatch, hLight] = view_surface_matrix(sSurf)
 %
 % INPUT:
-%     - Vertices  : [Nvx3] matrix with vertices
-%     - Faces     : [Nfx3] matrix with faces description
-%     - SurfAlpha : value that indicates surface transparency (optional)
-%     - SurfColor : Surface color [r,g,b] or FaceVertexCData matrix (optional)
-%     - hFig      : Specify the figure in which to display the surface (optional)
+%     - Vertices    : [Nvx3] matrix with vertices
+%     - Faces       : [Nfx3] matrix with faces description
+%     - SurfAlpha   : value that indicates surface transparency (optional)
+%     - SurfColor   : Surface color [r,g,b] or FaceVertexCData matrix (optional)
+%     - hFig        : Specify the figure in which to display the surface (optional)
+%     - isFem       : Set to 1 if displaying tetrahedral meshes
+%     - SurfaceFile : Filename of the surface
 %
 % OUTPUT: 
 %     - hFig   : Matlab handle to the 3DViz figure that was created or updated
@@ -38,7 +39,7 @@ function [hFig, iDS, iFig, hPatch, hLight] = view_surface_matrix(Vertices, Faces
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2019
 
 %% ===== PARSE INPUTS =====
 global GlobalData;
@@ -58,17 +59,21 @@ end
 if (size(Vertices, 2) ~= 3) || (size(Faces, 2) ~= 3)
     error('Faces and Vertices must have 3 columns (X,Y,Z).');
 end
-% Argument: SurfAlpha
+% Other arguments
 if (nargin < 3) || isempty(SurfAlpha)
     SurfAlpha = 0;
 end
-% Argument: SurfColor
 if (nargin < 4) || isempty(SurfColor)
     SurfColor = [];
 end
-% Argument: hFig
 if (nargin < 5)
     hFig = [];
+end
+if (nargin < 6) || isempty(isFem)
+    isFem = 0;
+end
+if (nargin < 7) || isempty(SurfaceFile)
+    SurfaceFile = [];
 end
 
 % ===== Create new 3DViz figure =====
@@ -92,10 +97,19 @@ else
 end
 
 % ===== Create a pseudo-surface =====
+% Surface type
+if isFem
+    SurfType = 'FEM';
+else
+    SurfType = 'Other';
+end
+% Surface file name
+if isempty(SurfaceFile)
+    SurfaceFile = sprintf('view_surface_matrix(%d,%d,%d)', size(Faces, 1), size(Vertices, 1), length(GlobalData.Surface)+1);
+end
 % Create a surface in GlobalData.Surface
 sLoadedSurf = db_template('LoadedSurface');
-sLoadedSurf.FileName    = sprintf('view_surface_matrix(%d,%d,%d)', size(Faces, 1), size(Vertices, 1), length(GlobalData.Surface)+1);
-sLoadedSurf.Name        = 'Other';
+sLoadedSurf.Name        = SurfType;
 sLoadedSurf.Comment     = 'User_surface';
 sLoadedSurf.Vertices    = Vertices;
 sLoadedSurf.Faces       = Faces;
@@ -104,10 +118,22 @@ if ~isempty(sSurf)
     sLoadedSurf.VertNormals = sSurf.VertNormals;
     sLoadedSurf.SulciMap    = sSurf.SulciMap;
 else
-    sLoadedSurf.VertConn    = tess_vertconn(Vertices, Faces);
-    sLoadedSurf.VertNormals = tess_normals(Vertices, Faces, sLoadedSurf.VertConn);
-    sLoadedSurf.SulciMap    = tess_sulcimap(sLoadedSurf);
+    sLoadedSurf.VertConn = tess_vertconn(Vertices, Faces);
+    % Do not compute normals or sulci map for FEM tetrahedral meshes
+    if isFem
+        sLoadedSurf.VertNormals = [];
+        sLoadedSurf.SulciMap    = [];
+    else
+        sLoadedSurf.VertNormals = tess_normals(Vertices, Faces, sLoadedSurf.VertConn);
+        sLoadedSurf.SulciMap    = tess_sulcimap(sLoadedSurf);
+    end
 end
+% Create unique filename for this new entry
+sLoadedSurf.FileName = ['#' SurfaceFile];
+if ~isempty(GlobalData.Surface)
+    sLoadedSurf.FileName = file_unique(sLoadedSurf.FileName, {GlobalData.Surface.FileName});
+end
+% Register in the GUI
 GlobalData.Surface(end + 1) = sLoadedSurf;
     
 % ===== Add target surface =====
@@ -117,7 +143,7 @@ TessInfo = getappdata(hFig, 'Surface');
 iSurface = length(TessInfo) + 1;
 TessInfo(iSurface) = db_template('TessInfo');
 % Set the surface name and properties
-TessInfo(iSurface).Name                = 'Other';
+TessInfo(iSurface).Name                = SurfType;
 TessInfo(iSurface).SurfaceFile         = sLoadedSurf.FileName;
 TessInfo(iSurface).DataSource.Type     = '';
 TessInfo(iSurface).DataSource.FileName = '';
@@ -126,6 +152,8 @@ TessInfo(iSurface).nVertices     = size(Vertices, 1);
 TessInfo(iSurface).SurfAlpha     = SurfAlpha;
 if isempty(SurfColor)
     SurfColor = TessInfo(iSurface).AnatomyColor(2,:);
+else
+    TessInfo(iSurface).AnatomyColor = [.75 .* SurfColor; SurfColor];
 end
 
 % ===== DISPLAY SURFACE PATCH ======

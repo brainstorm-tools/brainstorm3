@@ -1098,7 +1098,7 @@ function [sScouts, sSurf, iSurf] = GetScouts(SurfaceFile)
     % Get loaded surface
     [sSurf, iSurf] = bst_memory('LoadSurface', SurfaceFile);
     % Get the selected scouts
-    if ~isempty(sSurf) && ~isempty(sSurf.Atlas) && ~isempty(sSurf.iAtlas)
+    if (length(sSurf) == 1) && ~isempty(sSurf.Atlas) && ~isempty(sSurf.iAtlas)
         sScouts = sSurf.Atlas(sSurf.iAtlas).Scouts;
         % Select only the required scouts
         if (any(iScouts) > length(sScouts))
@@ -2641,6 +2641,10 @@ function SaveModifications()
     global GlobalData;
     % Loop on all the loaded surfaces
     for iSurf = 1:length(GlobalData.Surface)
+        % Skip surfaces generated on the fly (view_surface_matrix)
+        if ~isempty(GlobalData.Surface(iSurf).FileName) && (GlobalData.Surface(iSurf).FileName(1) == '#')
+            continue;
+        end
         % If the atlas was not modified: skip
         if ~GlobalData.Surface(iSurf).isAtlasModified
             continue;
@@ -2708,7 +2712,7 @@ function CreateScoutMouse(hFig) %#ok<DEFNU>
     % Get current surface
     TessInfo = getappdata(hFig, 'Surface');
     iTess    = getappdata(hFig, 'iSurface');
-    if isempty(iTess)
+    if isempty(iTess) || (~isempty(TessInfo(iTess).SurfaceFile) && (TessInfo(iTess).SurfaceFile(1) == '#'))
         return;
     end
     % Get current atlas
