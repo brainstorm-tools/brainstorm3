@@ -150,6 +150,8 @@ UpdatePanel();
                 java_dialog('warning', 'Password cannot be empty!');
             elseif strcmp(jTextPassword.getText(),jTextPassword2.getText())~=1
                 java_dialog('warning', 'Different password!');
+            elseif length(jTextPassword) < 8
+                java_dialog('warning', 'Password has to be longer than 8 Characters!');
             else
                 if(isempty(bst_get('DeviceId')))
                     % device = get(com.sun.security.auth.module.NTSystem,'DomainSID');

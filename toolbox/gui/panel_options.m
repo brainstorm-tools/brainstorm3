@@ -172,8 +172,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     
     % ===== RIGHT: REMOTE DATABASE =====
     jPanelReset = gui_river([5 5], [0 15 15 15], 'Remote Database');
-        session_status = CheckLogin();       
-        if ~isempty(bst_get('SessionId')) && session_status == 1
+        %session_status = CheckLogin();       
+        if ~isempty(bst_get('SessionId')) %&& session_status == 1
             email=bst_get('Email');
             labellogin="Logged in as " + string(email);
             gui_component('Label',  jPanelReset, [], labellogin, [], [], []);
