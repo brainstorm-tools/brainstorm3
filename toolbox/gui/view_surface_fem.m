@@ -134,6 +134,32 @@ Ntissue = max(FemMat.Tissue);
 if (size(SurfColor,2) ~= Ntissue)
     ColorOrder = panel_scout('GetScoutsColorTable');
     SurfColor = ColorOrder(1:Ntissue, :);
+    labels = lower(FemMat.TissueLabels);
+    % Default skin color
+    iSkin = find(ismember(labels, {'skin','scalp','head'}));
+    if ~isempty(iSkin)
+        SurfColor(iSkin,:) = [255 213 119]/255;
+    end
+    % Default bone color
+    iBone = find(ismember(labels, {'bone','skull','outer','outerskull'}));
+    if ~isempty(iBone)
+        SurfColor(iBone,:) = [140  85  85]/255;
+    end
+    % Default CSF color
+    iCSF = find(ismember(labels, 'csf'));
+    if ~isempty(iCSF)
+        SurfColor(iCSF,:) = [202 50 150]/255;
+    end
+    % Default grey matter color
+    iGrey = find(ismember(labels, {'gray','greymatter','gm','cortex','inner','innerskull'}));
+    if ~isempty(iGrey)
+        SurfColor(iGrey,:) = [150 150 150]/255;
+    end
+    % Default white matter color
+    iWhite = find(ismember(labels, {'gray','greymatter','gm','cortex'}));
+    if ~isempty(iWhite)
+        SurfColor(iWhite,:) = [250 250 250]/255;
+    end
 end
 if (size(SurfAlpha,2) ~= Ntissue)
     SurfAlpha = zeros(1,Ntissue);
