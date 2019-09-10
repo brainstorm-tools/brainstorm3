@@ -42,7 +42,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     
     % Create Group
     jPanelCreate = gui_river([5 0], [0 2 0 2]);
-    jTextGroup=gui_component('Text',  jPanelCreate, 'br hfill', '', [], [], []);
+    gui_component('Text',  jPanelCreate, 'br hfill', '', [], [], []);
     gui_component('Button', jPanelCreate, [], 'Create Group', [], [], @ButtonCreateGroup_Callback);
     jPanelNew.add('br hfill', jPanelCreate);
     
@@ -147,45 +147,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     %% ===== BUTTON: CREATE GROUP =====
     function ButtonCreateGroup_Callback(varargin)
         disp('TODO: Create Group');
-        groupname=jTextGroup.getText();
-        data=struct('name',char(jTextGroup.getText()));
-        body=MessageBody(data);
-        contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
-        type1 = matlab.net.http.MediaType('text/*');
-        type2 = matlab.net.http.MediaType('application/json','q','.5');
-        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
-        header = [acceptField contentTypeField];
-        method =RequestMethod.POST;
-        r=RequestMessage(method,header,body);
-        show(r);
+        url=bst_get('UrlAdr')+"group/create"
         
-        url=bst_get('UrlAdr')+"group/create";
-        uri= URI(url);
-        
-        try
-            [resp,~,hist]=send(r,uri);
-            status = resp.StatusCode;
-            txt=char(status);
-            if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
-                content=resp.Body;                      
-                show(content);
-                %{
-                session=strtok(string(content),',');
-                session=char(extractAfter(session,":"));
-                %}
-                session = jsondecode(content.Data);
-                bst_set('SessionId',string(session.sessionid));
-                bst_set('UrlAdr',jTextServerUrl.getText());
-                java_dialog('msgbox', 'Log in successfully!');
-                %UpdatePanel();
-            elseif strcmp(txt,'401')==1 || strcmp(txt,'Unauthorized')==1
-                java_dialog('warning', 'Login failed. Your email or password is wrong!');
-            else
-                java_dialog('warning', txt);
-            end
-        catch
-            java_dialog('warning', 'Check your url!');
-        end
         UpdateGroupsList();
     end
 

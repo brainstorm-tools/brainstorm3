@@ -55,7 +55,7 @@ c.insets = Insets(3,5,3,5);
 % ===== PANEL CONTENT =====
 jPanelProj = gui_component('Panel');
 jPanelProj.setLayout(BoxLayout(jPanelProj, BoxLayout.Y_AXIS));
-jPanelProj.setPreferredSize(java_scaled('dimension', 250, 150));
+jPanelProj.setPreferredSize(java_scaled('dimension', 300, 250));
 jPanelOpt = gui_river([2,2], [2,4,2,4]);
 gui_component('Label', jPanelOpt, '', 'Server URL: ');
 server_url = bst_get('UrlAdr');
@@ -151,7 +151,7 @@ UpdatePanel();
                 java_dialog('warning', 'Password cannot be empty!');
             elseif strcmp(jTextPassword.getText(),jTextPassword2.getText())~=1
                 java_dialog('warning', 'Different password!');
-            elseif length(jTextPassword) < 8
+            elseif length(jTextPassword.getText()) < 8  
                 java_dialog('warning', 'Password has to be longer than 8 Characters!');
             else
                 if(isempty(bst_get('DeviceId')))
