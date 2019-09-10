@@ -1010,7 +1010,7 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
     % Get variables list
     File_whos = whos('-file', ResultsFullFile);
     
-    % ===== Is Result file is already loaded ? ====
+    % ===== Is Result file is already loaded ? ====  
     % If Result file is dependent from a Data file
     if ~isempty(DataFile)
         % Load (or simply get) DataSet associated with DataFile
@@ -1042,11 +1042,18 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
     GlobalData.DataSet(iDS).StudyFile   = file_short(sStudy.FileName);
     
     % === NORMAL RESULTS FILE ===
+    NumberOfSamples = [];
+    SamplingRate = [];
     if any(strcmpi('ImageGridAmp', {File_whos.name}))
         % Load results .Mat
         ResultsMat = in_bst_results(ResultsFullFile, 0, 'Comment', 'Time', 'ChannelFlag', 'SurfaceFile', 'HeadModelType', 'ColormapType', 'DisplayUnits', 'GoodChannel', 'Atlas');
+        % Raw file: Use only the loaded time window
+        if ~isempty(DataFile) && strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw') && ~isempty(strfind(ResultsFullFile, '_KERNEL_'))
+            Time = GlobalData.DataSet(iDS).Measures.Time;
+            NumberOfSamples = GlobalData.DataSet(iDS).Measures.NumberOfSamples;
+            SamplingRate = GlobalData.DataSet(iDS).Measures.SamplingRate;
         % If Time does not exist, try to rebuild it
-        if isempty(ResultsMat.Time)
+        elseif isempty(ResultsMat.Time)
             % If DataSet.Measures is empty (if no data was loaded)
             if isempty(GlobalData.DataSet(iDS).Measures.Time)
                 % It is impossible to reconstruct the time vector => impossible to load ResultsFile
@@ -1080,6 +1087,13 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
     if (length(Time) == 1)
         Time = [0,0.001] + Time;
     end
+    % Sampling rate and number of samples
+    if isempty(NumberOfSamples)
+        NumberOfSamples = length(Time);
+    end
+    if isempty(SamplingRate)
+        SamplingRate = Time(2)-Time(1);
+    end
     
     % ===== LOAD CHANNEL FILE =====
     if ~isempty(ChannelFile)
@@ -1096,8 +1110,8 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
     Results.SurfaceFile     = ResultsMat.SurfaceFile;
     Results.Comment         = ResultsMat.Comment;
     Results.Time            = Time([1, end]);
-    Results.NumberOfSamples = length(Time);
-    Results.SamplingRate    = Time(2)-Time(1);
+    Results.NumberOfSamples = NumberOfSamples;
+    Results.SamplingRate    = SamplingRate;
     Results.ColormapType    = ResultsMat.ColormapType;
     Results.DisplayUnits    = ResultsMat.DisplayUnits;
     Results.Atlas           = ResultsMat.Atlas;
