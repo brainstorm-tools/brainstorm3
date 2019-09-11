@@ -274,3 +274,39 @@ function member = ExtractName(member)
 end
 
 
+function protocoldetail = CreateProtocol()
+import matlab.net.*;
+import matlab.net.http.*;
+type1 = MediaType('text/*');
+type2 = MediaType('application/json','q','.5');
+acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+h1 = HeaderField('Content-Type','application/json');
+h2 = HeaderField('sessionid',bst_get('SessionId'));
+h3 = HeaderField('deviceid',bst_get('DeviceId'));
+header = [acceptField,h1,h2,h3];
+method = RequestMethod.GET;
+request_message = RequestMessage(method,header,[]);
+%show(request_message);
+serveradr = string(bst_get('UrlAdr'));
+protocol = convertCharsToStrings(bst_get('ProtocolId'));
+url=strcat(serveradr,"/protocol/detail/",protocol);
+disp(url);
+try
+    [resp,~,hist]=send(request_message,URI(url));
+    status = resp.StatusCode;
+    txt=char(status);
+    if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+        content=resp.Body;
+        show(content);
+        java_dialog('msgbox', 'Load protocol successfully!');
+    elseif strcmp(status,'404')==1 || strcmp(txt,'NotFound')==1
+        java_dialog('error','Current protocol has not been uploaded!');
+    else
+        java_dialog('error', txt);
+    end
+catch
+    java_dialog('warning', 'Load group failed!');
+end
+protocoldetail = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
+end
+

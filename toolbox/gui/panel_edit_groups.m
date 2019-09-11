@@ -245,15 +245,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 
         import matlab.net.*;
         import matlab.net.http.*;
-        %{
-        disp('Loading groups');
-        url=bst_get('UrlAdr');
-        url=string(url)+"/protocol";
-        uri=URI(url);
-        data=webread(uri);
-        disp(string(data));
-        %}
-        groups = size(0);
+        groups = cell(0);
 
         type1 = MediaType('text/*');
         type2 = MediaType('application/json','q','.5');
@@ -262,12 +254,14 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         h2 = HeaderField('sessionid',bst_get('SessionId'));
         h3 = HeaderField('deviceid',bst_get('DeviceId'));
         header = [acceptField,h1,h2,h3];
-        method = RequestMethod.GET;
-        request_message = RequestMessage(method,header,[]);
-        %show(request_message);
+        method = RequestMethod.POST;
+        data = struct('start',0,'count',100, 'order', 0);
+        body=MessageBody(data);
+        show(body);
+        request_message = RequestMessage(method,header,body);
+        show(request_message);
         serveradr = string(bst_get('UrlAdr'));
-        protocol = convertCharsToStrings(bst_get('ProtocolId'));
-        url=strcat(serveradr,"/protocol/detail/",protocol);
+        url=strcat(serveradr,"/user/listgroups");
         disp(url);
         gui_hide('Preferences');
         try
@@ -275,19 +269,24 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             status = resp.StatusCode;
             txt=char(status);
             if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
-                content=resp.Body;
+                content = resp.Body;
                 show(content);
+                responseData = jsondecode(content.Data);
+                if(size(responseData) > 0)
+                    groups = cell(size(responseData));
+                    for i = 1 : size(responseData)
+                        groups{i} = responseData(i).name;
+                    end
+                end
                 %UpdatePanel();
-                java_dialog('msgbox', 'Load group successfully!');
-            elseif strcmp(status,'404')==1 || strcmp(txt,'NotFound')==1
-                java_dialog('error','Current protocol has not been uploaded!');
+                java_dialog('msgbox', 'Load user groups successfully!');
             else
                 java_dialog('error', txt);
             end
         catch
-            java_dialog('warning', 'Load group failed!');
+            java_dialog('warning', 'Load user groups failed! Check your url!');
         end
-        groups = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
+        %groups = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
     end
     %% ===== LOAD MEMBERS =====
     function [members, permissions] = LoadMembers(group)
