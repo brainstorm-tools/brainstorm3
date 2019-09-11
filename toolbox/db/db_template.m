@@ -126,7 +126,7 @@ switch lower(structureName)
         template = struct(...
             'Comment',         '', ...
             'Vertices',        [], ...   % [Nvert x 3] double: List of position of the nodes with their three cartesian coordinates
-            'Elements',        [], ...   % [Nnode x 4] integers for tetrahedral meshes; or [Nnode x 8] integers for hexahedral meshes (1-based indices in the Vertices matrix)
+            'Elements',        [], ...   % [Nelem x 4] integers for tetrahedral meshes; or [Nelem x 8] integers for hexahedral meshes (1-based indices in the Vertices matrix)
             'Tissue',          [], ...   % [1 x Nelem] integer: tissue classification for each node
             'TissueLabels',    [], ...   % [1 x Ntissue] cell array: label of the tissues in this head model
             'History',         []);

@@ -213,8 +213,12 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
     tmpn = (size(Num1,1)-1)*size(Num1,2)+1;
     FiltSpec.NumT  = ifft(prod(fft(Num1,tmpn),2),'symmetric');
     FiltSpec.DenT  = ifft(prod(fft(Den1,tmpn),2),'symmetric');
-    FiltSpec.order = length(FiltSpec.DenT)-1 ;
-    [h,t] = impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+    FiltSpec.order = length(FiltSpec.DenT)-1;
+    if bst_get('UseSigProcToolbox')
+        [h,t] = impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+    else
+        [h,t] = oc_impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+    end
     % Compute the cumulative energy of the impulse response
     E = h(1:end) .^ 2 ;
     E = cumsum(E) ;

@@ -1099,7 +1099,7 @@ function ReloadRecordings(isForced)
         GlobalData.DataSet(iDS).Measures.NumberOfSamples = smpLength;
         % Update linked result files
         for iRes = 1:length(GlobalData.DataSet(iDS).Results)
-            if strcmpi(file_gettype(GlobalData.DataSet(iDS).Results(iRes).FileName), 'link')
+            if strcmpi(file_gettype(GlobalData.DataSet(iDS).Results(iRes).FileName), 'link') || ~isempty(strfind(GlobalData.DataSet(iDS).Results(iRes).FileName, '_KERNEL_'))
                 GlobalData.DataSet(iDS).Results(iRes).Time = newTimeWindow;
                 GlobalData.DataSet(iDS).Results(iRes).NumberOfSamples = smpLength;
             end

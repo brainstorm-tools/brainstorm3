@@ -33,7 +33,7 @@ function varargout = panel_surface(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2019; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -523,10 +523,14 @@ end
 function SetShowSulci(hFig, iSurfaces, status)
     % Get surfaces list 
     TessInfo = getappdata(hFig, 'Surface');
+    % If FEM tetrahedral mesh: always skip this call
+    if any(strcmpi({TessInfo(iSurfaces).Name}, 'FEM'))
+        return;
+    end
     % Process all surfaces
     for i = 1:length(iSurfaces)
         iSurf = iSurfaces(i);
-        % Shet status : show/hide
+        % Set status : show/hide
         TessInfo(iSurf).SurfShowSulci = status;
     end
     % Update figure's AppData (surfaces configuration)
@@ -546,12 +550,22 @@ function ButtonShowEdgesCallback(varargin)
     % Get current surface (in the current figure)
     TessInfo = getappdata(hFig, 'Surface');
     iSurf    = getappdata(hFig, 'iSurface');
+    % If FEM tetrahedral mesh: link all the layers
+    if strcmpi(TessInfo(iSurf).Name, 'FEM')
+        iSurf = find(strcmpi({TessInfo.Name}, 'FEM'));
+    end
     % Set edges display on/off
-    TessInfo(iSurf).SurfShowEdges = ~TessInfo(iSurf).SurfShowEdges;
+    for i = 1:length(iSurf)
+        TessInfo(iSurf(i)).SurfShowEdges = ~TessInfo(iSurf(i)).SurfShowEdges;
+    end
     setappdata(hFig, 'Surface', TessInfo);
     % Update display
-    figure_callback(hFig, 'UpdateSurfaceColor', hFig, iSurf);
+    for i = 1:length(iSurf)
+        figure_callback(hFig, 'UpdateSurfaceColor', hFig, iSurf(i));
+    end
 end
+
+
 
 
 %% ===== HEMISPHERE SELECTION RADIO CALLBACKS =====
@@ -573,8 +587,14 @@ function SelectHemispheres(name)
     if strcmpi(TessInfo(iSurf).Name, 'Anatomy')
         return;
     end
+    % If updating FEM mesh, update all layers
+    if strcmpi(TessInfo(iSurf).Name, 'FEM')
+        iSurf = find(strcmpi({TessInfo.Name}, 'FEM'));
+    end
     % Update surface Resect field
-    TessInfo(iSurf).Resect = name;
+    for i = 1:length(iSurf)
+        TessInfo(iSurf(i)).Resect = name;
+    end
     setappdata(hFig, 'Surface', TessInfo);
     % Reset all the resect sliders
     ctrl.jSliderResectX.setValue(0);
@@ -583,7 +603,9 @@ function SelectHemispheres(name)
     % Display progress bar
     bst_progress('start', 'Select hemisphere', 'Selecting hemisphere...');
     % Update surface display
-    figure_callback(hFig, 'UpdateSurfaceAlpha', hFig, iSurf);
+    for i = 1:length(iSurf)
+        figure_callback(hFig, 'UpdateSurfaceAlpha', hFig, iSurf(i));
+    end
     % Redraw all the scouts
     panel_scout('ReloadScouts', hFig)
     % Display progress bar
@@ -595,17 +617,26 @@ end
 function ResectSurface(hFig, iSurf, resectDim, resectValue)
     % Get surfaces description
     TessInfo = getappdata(hFig, 'Surface');
-    % If previously using "Select hemispheres"
-    if ischar(TessInfo(iSurf).Resect)
-        % Reset "Resect" field
-        TessInfo(iSurf).Resect = [0 0 0];
+    % If updating FEM mesh, update all layers
+    if strcmpi(TessInfo(iSurf).Name, 'FEM')
+        iSurf = find(strcmpi({TessInfo.Name}, 'FEM'));
     end
-    % Update value in Surface array
-    TessInfo(iSurf).Resect(resectDim) = resectValue;
+    % Update all selected surfaces
+    for i = 1:length(iSurf)
+        % If previously using "Select hemispheres"
+        if ischar(TessInfo(iSurf(i)).Resect)
+            % Reset "Resect" field
+            TessInfo(iSurf(i)).Resect = [0 0 0];
+        end
+        % Update value in Surface array
+        TessInfo(iSurf(i)).Resect(resectDim) = resectValue;
+    end
     % Update surface
     setappdata(hFig, 'Surface', TessInfo);
     % Hide trimmed part of the surface
-    figure_callback(hFig, 'UpdateSurfaceAlpha', hFig, iSurf);
+    for i = 1:length(iSurf)
+        figure_callback(hFig, 'UpdateSurfaceAlpha', hFig, iSurf(i));
+    end
     % Deselect both Left and Right buttons
     ctrl = bst_get('PanelControls', 'Surface');
     ctrl.jToggleResectLeft.setSelected(0);
@@ -2192,8 +2223,13 @@ function SetSurfaceSmooth(hFig, iSurf, value, isSave)
     if (nargin < 4) || isempty(isSave)
         isSave = 1;
     end
-    % Update surface transparency
+    % Get surface description
     TessInfo = getappdata(hFig, 'Surface');
+    % If FEM tetrahedral mesh, ignore this call
+    if strcmpi(TessInfo(iSurf).Name, 'FEM')
+        return;
+    end
+    % Update surface transparency
     TessInfo(iSurf).SurfSmoothValue = value;
     setappdata(hFig, 'Surface', TessInfo);
     % Update panel controls
