@@ -197,19 +197,15 @@ UpdatePanel();
                         content=resp.Body;
                         show(content);
                         bst_set('Email',jTextEmail.getText());
-                        %{
-                        session=strtok(string(content),',');
-                        session=char(extractAfter(session,":"));
-                        %}
                         session = jsondecode(content.Data);
                         bst_set('SessionId',string(session.sessionid));
                         %UpdatePanel();
                         java_dialog('msgbox', 'Register successfully!');
                     else
-                        java_dialog(txt);
+                        java_dialog('warning',txt);
                     end
                 catch
-                    java_dialog('warning', 'Check your url!');
+                    java_dialog('warning', 'Check server url!');
                 end
             end
             
@@ -278,7 +274,7 @@ UpdatePanel();
                         java_dialog('warning', txt);
                     end
                 catch
-                    java_dialog('warning', 'Check your url!');
+                    java_dialog('warning', 'Check server url!');
                 end
                
             end

@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 September 2019
-- Anatomy: Added storage for FEM head models
+- Anatomy: Added storage and display for FEM meshes
+- Anatomy: Computation of FEM meshes with ROAST and iso2mesh
 ---------------------------------------------------------------
 August 2019
 - GUI: Added support for clusters with STDs

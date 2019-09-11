@@ -2261,6 +2261,7 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
         'FaceAlpha',        1 - transparency, ...
         'AlphaDataMapping', 'none', ...
         'EdgeColor',        EdgeColor, ...
+        'EdgeAlpha',        1, ...
         'BackfaceLighting', 'lit', ...
         'AmbientStrength',  0.5, ...
         'DiffuseStrength',  0.5, ...
@@ -2272,7 +2273,7 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
         'Tag',              'AnatSurface');
     
     % Set output variables
-    if(nargout>0),
+    if(nargout>0)
         varargout{1} = hFig;
         varargout{2} = hs;
     end
@@ -2653,6 +2654,7 @@ function hGrid = PlotGrid(hFig, GridLoc, GridValues, GridInd, DataAlpha, DataLim
             'FaceVertexAlphaData', FaceAlpha, ...
             'AlphaDataMapping',    'none', ...
             'EdgeColor',           'none', ...
+            'FaceAlpha',           1, ...
             'LineWidth',           1, ...
             'BackfaceLighting',    'unlit', ...
             'AmbientStrength',     1, ...
@@ -3209,46 +3211,62 @@ function UpdateSurfaceAlpha(hFig, iTess)
         facesStatus = sum(ShowVert(sSurf.Faces), 2);
         isFacesVisible = (facesStatus > 0);
 
+        % FEM tetrahedral meshes: Remove the entire tetrahedrons
+        if strcmpi(Surface.Name, 'FEM')
+            % Get hidden faces indices
+            nTetra = size(sSurf.Faces,1) ./ 4;
+            iTetraHidden = unique(mod(find(~isFacesVisible) - 1, nTetra) + 1);
+            % Hide all the 4 faces of each hidden tetrahedron
+            iFacesHidden = [iTetraHidden; iTetraHidden + nTetra; iTetraHidden + 2*nTetra; iTetraHidden + 3*nTetra];
+            isFacesVisible(iFacesHidden) = 0;
+        end
+        
         % Get the vertices of the faces that are partially visible
         iVerticesVisible = sSurf.Faces(isFacesVisible,:);
         iVerticesVisible = unique(iVerticesVisible(:))';
         % Hide some vertices
         FaceVertexAlphaData(~isFacesVisible) = 0;
         
-        % Get vertices to project
-        iVerticesToProject = [iVerticesVisible, tess_scout_swell(iVerticesVisible, VertConn)];
-        iVerticesToProject = setdiff(iVerticesToProject, iNoModif);
-        % If there are some vertices to project
-        if ~isempty(iVerticesToProject)
-            % === FIRST PROJECTION ===
-            % For the projected vertices: get the distance from each cut
-            distToCut = abs(Vertices(iVerticesToProject, :) - repmat(resectVal, [length(iVerticesToProject), 1]));
-            % Set the distance to the cuts that are not required to infinite
-            distToCut(:,(Surface.Resect == 0)) = Inf;
-            % Get the closest cut
-            [minDist, closestCut] = min(distToCut, [], 2);
+        % Project vertices for smooth cuts (only for triangles, not for tetrahedral meshes)
+        if ~strcmpi(Surface.Name, 'FEM')
+            % Get vertices to project
+            iVerticesToProject = [iVerticesVisible, tess_scout_swell(iVerticesVisible, VertConn)];
+            iVerticesToProject = setdiff(iVerticesToProject, iNoModif);
+            % If there are some vertices to project
+            if ~isempty(iVerticesToProject)
+                % === FIRST PROJECTION ===
+                % For the projected vertices: get the distance from each cut
+                distToCut = abs(Vertices(iVerticesToProject, :) - repmat(resectVal, [length(iVerticesToProject), 1]));
+                % Set the distance to the cuts that are not required to infinite
+                distToCut(:,(Surface.Resect == 0)) = Inf;
+                % Get the closest cut
+                [minDist, closestCut] = min(distToCut, [], 2);
 
-            % Project each vertex       
-            Vertices(sub2ind(size(Vertices), iVerticesToProject, closestCut')) = resectVal(closestCut);
+                % Project each vertex       
+                Vertices(sub2ind(size(Vertices), iVerticesToProject, closestCut')) = resectVal(closestCut);
 
-            % === SECOND PROJECTION ===            
-            % In the faces that have visible and invisible vertices: project the invisible vertices on the visible vertices
-            % Get the mixed faces (partially visible)
-            ShowVert = zeros(nbVertices,1);
-            ShowVert(iVerticesVisible) = 1;
-            facesStatus = sum(ShowVert(sSurf.Faces), 2);
-            iFacesMixed = find((facesStatus > 0) & (facesStatus < 3));
-            % Project vertices
-            projectList = logical(ShowVert(sSurf.Faces(iFacesMixed,:)));
-            for iFace = 1:length(iFacesMixed)
-                iVertVis = sSurf.Faces(iFacesMixed(iFace), projectList(iFace,:));
-                iVertHid = sSurf.Faces(iFacesMixed(iFace), ~projectList(iFace,:));
-                % Project hidden vertices on first visible vertex
-                Vertices(iVertHid, :) = repmat(Vertices(iVertVis(1), :), length(iVertHid), 1);
+                % === SECOND PROJECTION ===            
+                % In the faces that have visible and invisible vertices: project the invisible vertices on the visible vertices
+                % Get the mixed faces (partially visible)
+                ShowVert = zeros(nbVertices,1);
+                ShowVert(iVerticesVisible) = 1;
+                facesStatus = sum(ShowVert(sSurf.Faces), 2);
+                iFacesMixed = find((facesStatus > 0) & (facesStatus < 3));
+                % Project vertices
+                projectList = logical(ShowVert(sSurf.Faces(iFacesMixed,:)));
+                for iFace = 1:length(iFacesMixed)
+                    iVertVis = sSurf.Faces(iFacesMixed(iFace), projectList(iFace,:));
+                    iVertHid = sSurf.Faces(iFacesMixed(iFace), ~projectList(iFace,:));
+                    % Project hidden vertices on first visible vertex
+                    Vertices(iVertHid, :) = repmat(Vertices(iVertVis(1), :), length(iVertHid), 1);
+                end
+                % Update patch
+                set(Surface.hPatch, 'Vertices', Vertices);
             end
-            % Update patch
-            set(Surface.hPatch, 'Vertices', Vertices);
         end
+        
+        % Hide edges
+        
     end
     
     % ===== HIDE NON-SELECTED STRUCTURES =====
@@ -3274,10 +3292,12 @@ function UpdateSurfaceAlpha(hFig, iTess)
    
     % Update surface
     if all(FaceVertexAlphaData)
-        set(Surface.hPatch, 'FaceAlpha', 1-Surface.SurfAlpha);
+        set(Surface.hPatch, 'FaceAlpha', 1-Surface.SurfAlpha, ...
+                            'EdgeAlpha', 1);
     else
         set(Surface.hPatch, 'FaceVertexAlphaData', FaceVertexAlphaData, ...
-                            'FaceAlpha',           'flat');
+                            'FaceAlpha',           'flat', ...
+                            'EdgeAlpha',           'flat');
     end
 end
 
