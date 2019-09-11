@@ -31,7 +31,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Generate head surface';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 6;
+    sProcess.Index       = 20;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/LabelFreeSurfer#The_head_surface_looks_bad';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
