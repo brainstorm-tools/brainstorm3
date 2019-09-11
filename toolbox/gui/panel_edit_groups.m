@@ -58,6 +58,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % List of groups
     jListGroups = JList();
     jListGroups.setCellRenderer(BstStringListRenderer(fontSize));
+    jListGroups.setPreferredSize(java_scaled('dimension', 100, 250));
     java_setcb(jListGroups, 'ValueChangedCallback', @GroupListValueChanged_Callback);
     jPanelGroupsScrollList = JScrollPane();
     jPanelGroupsScrollList.getLayout.getViewport.setView(jListGroups);
@@ -127,7 +128,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         listModel = java_create('javax.swing.DefaultListModel');
         % Add an item in list for each group
         for i = 1:length(members)
-            listModel.addElement([members{i} ' [' permissions{i} ']']);
+            element=strcat(members{i},'  [')
+            element=strcat(element,permissions{i});
+            element=strcat(element, ']');
+            listModel.addElement(element);            
+%             listModel.addElement([string(members{i}) ' [' string(permissions{i}) ']']);
         end
         % Update list model
         jListMembers.setModel(listModel);
@@ -169,6 +174,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         
         url=string(bst_get('UrlAdr'))+"/group/create";
         disp([url]);
+        gui_hide('Preferences');
         uri= URI(url);
         
         try
@@ -290,15 +296,69 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     end
     %% ===== LOAD MEMBERS =====
     function [members, permissions] = LoadMembers(group)
+        import matlab.net.*;
+        import matlab.net.http.*;
         if isempty(group)
             members = [];
             permissions = [];
             return
         end
 
-        disp(['TODO: Load members of group "' group '"']);
-        members = {'Martin Cousineau', 'Sylvain Baillet', 'Marc Lalancette'};
-        permissions = {'admin', 'write', 'read'};
+        type1 = MediaType('text/*');
+        type2 = MediaType('application/json','q','.5');
+        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+        h1 = HeaderField('Content-Type','application/json');
+        h2 = HeaderField('sessionid',bst_get('SessionId'));
+        h3 = HeaderField('deviceid',bst_get('DeviceId'));
+        header = [acceptField,h1,h2,h3];
+        method = RequestMethod.POST;
+        data = struct('start',0,'count',100, 'order', 0);
+        body=MessageBody(data);
+        show(body);
+        request_message = RequestMessage(method,header,body);
+        show(request_message);
+        serveradr = string(bst_get('UrlAdr'));
+        url=strcat(serveradr,"/group/detail/");
+        url=strcat(url,"9a5753ec-4e8f-4576-b475-bd704255e11e");
+        disp(url);
+        gui_hide('Preferences');
+        try
+            [resp,~,hist]=send(request_message,URI(url));
+            status = resp.StatusCode;
+            txt=char(status);
+            if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+                content = resp.Body;
+                show(content);
+                responseData = jsondecode(content.Data);
+                if(size(responseData) > 0)
+                    members = cell(size(responseData(1).groupMembers));
+                    permissions = cell(size(responseData(1).groupMembers));
+                    for i = 1 : size(responseData(1).groupMembers)
+                        firstname = responseData(1).groupMembers(i).firstName;
+                        lastname = responseData(1).groupMembers(i).lastName;
+                        privilege = responseData(1).groupMembers(i).privilege;
+                        name=strcat(firstname," ");
+                        name=strcat(name,lastname);
+                        members{i} = string(name);
+                        if privilege==1
+                            permissions{i}='admin'
+                        elseif privilege==2
+                            permissions{i}='write'
+                        else
+                            permissions{i}='read'
+                        end
+                    end
+                end
+                %UpdatePanel();
+%                 java_dialog('msgbox', 'Load group member successfully!');
+            else
+                java_dialog('error', txt);
+            end
+        catch
+            java_dialog('warning', 'Load groups member failed! Check your url!');
+        end
+%         members = {'Martin Cousineau', 'Sylvain Baillet', 'Marc Lalancette'};
+%         permissions = {'admin', 'write', 'read'};
     end
     %% ===== ADD MEMBER TO GROUP =====
     function [res, error] = AddMember(group, member)        
