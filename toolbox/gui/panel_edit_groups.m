@@ -32,6 +32,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     import java.awt.*;
     import javax.swing.*;
     import org.brainstorm.list.*;
+    import matlab.net.*;
+    import matlab.net.http.*;
     
     global GlobalData;
     % Constants
@@ -146,9 +148,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 
     %% ===== BUTTON: CREATE GROUP =====
     function ButtonCreateGroup_Callback(varargin)
-        disp('TODO: Create Group');
+        import matlab.net.*;
+        import matlab.net.http.*;
+        
         groupname=jTextGroup.getText();
-        data=struct('name',char(jTextGroup.getText()));
+        data=struct('Name',char(groupname));
         body=MessageBody(data);
         contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
         type1 = matlab.net.http.MediaType('text/*');
@@ -159,7 +163,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         r=RequestMessage(method,header,body);
         show(r);
         
-        url=bst_get('UrlAdr')+"group/create";
+        url=bst_get('UrlAdr')+"/group/create";
+        disp([url]);
         uri= URI(url);
         
         try
@@ -175,17 +180,15 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                 %}
                 session = jsondecode(content.Data);
                 bst_set('SessionId',string(session.sessionid));
-                bst_set('UrlAdr',jTextServerUrl.getText());
-                java_dialog('msgbox', 'Log in successfully!');
+                java_dialog('msgbox', 'Create group successfully!');
                 %UpdatePanel();
-            elseif strcmp(txt,'401')==1 || strcmp(txt,'Unauthorized')==1
-                java_dialog('warning', 'Login failed. Your email or password is wrong!');
             else
                 java_dialog('warning', txt);
             end
         catch
             java_dialog('warning', 'Check your url!');
         end
+        
         UpdateGroupsList();
     end
 
