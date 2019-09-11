@@ -154,16 +154,20 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         groupname=jTextGroup.getText();
         data=struct('Name',char(groupname));
         body=MessageBody(data);
-        contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
-        type1 = matlab.net.http.MediaType('text/*');
-        type2 = matlab.net.http.MediaType('application/json','q','.5');
+        type1 = MediaType('text/*');
+        type2 = MediaType('application/json','q','.5');
         acceptField = matlab.net.http.field.AcceptField([type1 type2]);
-        header = [acceptField contentTypeField];
-        method =RequestMethod.POST;
-        r=RequestMessage(method,header,body);
+        h1 = HeaderField('Content-Type','application/json');
+        h2 = HeaderField('sessionid',bst_get('SessionId'));
+        h3 = HeaderField('deviceid',bst_get('DeviceId'));
+        header = [acceptField,h1,h2,h3];
+        method = RequestMethod.POST;
+        r = RequestMessage(method,header,body);
+%         contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
+
         show(r);
         
-        url=bst_get('UrlAdr')+"/group/create";
+        url=string(bst_get('UrlAdr'))+"/group/create";
         disp([url]);
         uri= URI(url);
         
@@ -181,6 +185,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                 session = jsondecode(content.Data);
                 bst_set('SessionId',string(session.sessionid));
                 java_dialog('msgbox', 'Create group successfully!');
+                
                 %UpdatePanel();
             else
                 java_dialog('warning', txt);
