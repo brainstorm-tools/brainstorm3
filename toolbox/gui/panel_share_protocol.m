@@ -220,10 +220,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     function [groups, permissions] = LoadGroups()
         sProtocol = bst_get('ProtocolInfo');
         if isempty(sProtocol)
-            return
+            java_dialog('warning', "No protocol currently!");
+            %return
         end
         
-        disp(['TODO: Load groups of protocol "' sProtocol.Comment '"']);
+        %disp(['TODO: Load groups of protocol "' sProtocol.Comment '"']);
         groups = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
         permissions = {'write', 'read', 'write'};
     end
@@ -231,10 +232,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     function [members, permissions] = LoadMembers()
         sProtocol = bst_get('ProtocolInfo');
         if isempty(sProtocol)
-            return
+            %return
         end
         
-        disp(['TODO: Load members of protocol "' sProtocol.Comment '"']);
+        %disp(['TODO: Load members of protocol "' sProtocol.Comment '"']);
         members = {'Martin Cousineau', 'Sylvain Baillet', 'Marc Lalancette'};
         permissions = {'admin', 'write', 'read'};
     end
