@@ -4495,7 +4495,7 @@ function PlotEventsDots_EventsBar(hFig)
             end
         end
         iOccChannels = find(~cellfun(@isempty, iLines));
-        iOccGlobal = find(cellfun(@isempty, iLines));
+        iOccGlobal = find(cellfun(@isempty, iLines) & cellfun(@isempty, events(iEvt).channels));
                
         % === CHANNEL EVENTS ===
         % Where to display the notes and events labels by default
