@@ -115,7 +115,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     %% ===== UPDATE MEMBERS LIST =====
     function UpdateMembersList()
         % Load members
+       
         group = jListGroups.getSelectedValue();
+        
+        
         [members, permissions] = LoadMembers(group);
         if isempty(group) || isempty(members)
             return
@@ -175,8 +178,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         url=string(bst_get('UrlAdr'))+"/group/create";
         disp([url]);
         gui_hide('Preferences');
-        uri= URI(url);
-        
+        uri= URI(url);       
         try
             [resp,~,hist]=send(r,uri);
             status = resp.StatusCode;
@@ -188,19 +190,22 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                 session=strtok(string(content),',');
                 session=char(extractAfter(session,":"));
                 %}
-                session = jsondecode(content.Data);
-                bst_set('SessionId',string(session.sessionid));
+%                 session = jsondecode(content.Data);
+%                 disp(session);
+%                 bst_set('SessionId',string(session(1).sessionid));
                 java_dialog('msgbox', 'Create group successfully!');
-                
                 %UpdatePanel();
+                UpdateGroupsList();
+                
+            elseif strcmp(txt,'500')==1 ||strcmp(txt,'InternalServerError')==1
+                java_dialog('warning', 'Group already exist, change another name!');
             else
                 java_dialog('warning', txt);
             end
         catch
-            java_dialog('warning', 'Check your url!');
+            java_dialog('warning', 'Create user groups failed! Check your url!');
         end
         
-        UpdateGroupsList();
     end
 
     %% ===== BUTTON: ADD MEMBER =====
@@ -212,11 +217,16 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 
         [res, isCancel] = java_dialog('input', 'What is the name or email of the person you would like to add?', 'Add member', jPanelNew);
         if ~isCancel && ~isempty(res)
-            [res, error] = AddMember(group, res);
-            if res
-                UpdateMembersList();
-            else
-                java_dialog('error', error, 'Add member');
+            [permission, isCancel2] = java_dialog('combo', 'What permissions would you like to give this member?', 'Edit permissions', [], {'Read-only','Read & write', 'Admin'});
+            respass={res,permission};
+            disp(respass);
+            if ~isCancel2
+                [res, error] = AddMember(group, respass);
+                if res
+                    UpdateMembersList();
+                else
+                    java_dialog('error', error, 'Add member');
+                end
             end
         end
     end
@@ -319,7 +329,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         show(request_message);
         serveradr = string(bst_get('UrlAdr'));
         url=strcat(serveradr,"/group/detail/");
-        url=strcat(url,"9a5753ec-4e8f-4576-b475-bd704255e11e");
+        url=strcat(url,string(group));
+        
         disp(url);
         gui_hide('Preferences');
         try
@@ -361,10 +372,51 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 %         permissions = {'admin', 'write', 'read'};
     end
     %% ===== ADD MEMBER TO GROUP =====
-    function [res, error] = AddMember(group, member)        
-        disp(['TODO: Create member "' member '" to group "' group '"']);
-        res = 1;
+    function [res, error] = AddMember(group, member)
+        import matlab.net.*;
+        import matlab.net.http.*;
         error = [];
+        res=1;
+        
+        type1 = MediaType('text/*');
+        type2 = MediaType('application/json','q','.5');
+        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+        h1 = HeaderField('Content-Type','application/json');
+        h2 = HeaderField('sessionid',bst_get('SessionId'));
+        h3 = HeaderField('deviceid',bst_get('DeviceId'));
+        header = [acceptField,h1,h2,h3];
+        method = RequestMethod.POST;
+        if strcmp(member(2),'admin')==1
+            permission=1
+        elseif strcmp(member(2),'Read-only')==1
+            disp('pass');
+            permission=3
+        else
+            permission=2
+        end
+        data = struct('GroupName',group,'UserEmail',member(1), 'Privilege', permission);
+        body=MessageBody(data);
+        show(body);
+        request_message = RequestMessage(method,header,body);
+        show(request_message);
+        serveradr = string(bst_get('UrlAdr'));
+        url=strcat(serveradr,"/group/adduser");
+        disp(url);
+        try
+            [resp,~,hist]=send(request_message,URI(url));
+            status = resp.StatusCode;
+            txt=char(status);
+            if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+                content = resp.Body;
+                show(content);
+                %UpdatePanel();
+                java_dialog('msgbox', 'Add group member successfully!');
+            else
+                java_dialog('error', txt);
+            end
+        catch
+            java_dialog('warning', 'Add group member failed! Check your url!');
+        end
         %error = 'Could not find member.';
     end
 end
