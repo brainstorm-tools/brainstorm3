@@ -160,51 +160,56 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         import matlab.net.http.*;
         
         groupname=jTextGroup.getText();
-        data=struct('Name',char(groupname));
-        body=MessageBody(data);
-        type1 = MediaType('text/*');
-        type2 = MediaType('application/json','q','.5');
-        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
-        h1 = HeaderField('Content-Type','application/json');
-        h2 = HeaderField('sessionid',bst_get('SessionId'));
-        h3 = HeaderField('deviceid',bst_get('DeviceId'));
-        header = [acceptField,h1,h2,h3];
-        method = RequestMethod.POST;
-        r = RequestMessage(method,header,body);
-%         contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
+        if strcmp(groupname,'')~=1
+            data=struct('Name',char(groupname));
+            body=MessageBody(data);
+            type1 = MediaType('text/*');
+            type2 = MediaType('application/json','q','.5');
+            acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+            h1 = HeaderField('Content-Type','application/json');
+            h2 = HeaderField('sessionid',bst_get('SessionId'));
+            h3 = HeaderField('deviceid',bst_get('DeviceId'));
+            header = [acceptField,h1,h2,h3];
+            method = RequestMethod.POST;
+            r = RequestMessage(method,header,body);
+    %         contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
 
-        show(r);
-        
-        url=string(bst_get('UrlAdr'))+"/group/create";
-        disp([url]);
-        gui_hide('Preferences');
-        uri= URI(url);       
-        try
-            [resp,~,hist]=send(r,uri);
-            status = resp.StatusCode;
-            txt=char(status);
-            if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
-                content=resp.Body;                      
-                show(content);
-                %{
-                session=strtok(string(content),',');
-                session=char(extractAfter(session,":"));
-                %}
-%                 session = jsondecode(content.Data);
-%                 disp(session);
-%                 bst_set('SessionId',string(session(1).sessionid));
-                java_dialog('msgbox', 'Create group successfully!');
-                %UpdatePanel();
-                UpdateGroupsList();
-                
-            elseif strcmp(txt,'500')==1 ||strcmp(txt,'InternalServerError')==1
-                java_dialog('warning', 'Group already exist, change another name!');
-            else
-                java_dialog('warning', txt);
+            show(r);
+
+            url=string(bst_get('UrlAdr'))+"/group/create";
+            disp([url]);
+            gui_hide('Preferences');
+            uri= URI(url);       
+            try
+                [resp,~,hist]=send(r,uri);
+                status = resp.StatusCode;
+                txt=char(status);
+                if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
+                    content=resp.Body;                      
+                    show(content);
+                    %{
+                    session=strtok(string(content),',');
+                    session=char(extractAfter(session,":"));
+                    %}
+    %                 session = jsondecode(content.Data);
+    %                 disp(session);
+    %                 bst_set('SessionId',string(session(1).sessionid));
+                    java_dialog('msgbox', 'Create group successfully!');
+                    %UpdatePanel();
+                    UpdateGroupsList();
+
+                elseif strcmp(txt,'500')==1 ||strcmp(txt,'InternalServerError')==1
+                    java_dialog('warning', 'Group already exist, change another name!');
+                else
+                    java_dialog('warning', txt);
+                end
+            catch
+                java_dialog('warning', 'Create user groups failed! Check your url!');
             end
-        catch
-            java_dialog('warning', 'Create user groups failed! Check your url!');
+        else
+            java_dialog('warning', 'Groupname cannot be empty!');
         end
+        
         
     end
 
@@ -283,6 +288,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                 show(content);
                 java_dialog('msgbox', 'Remove group member successfully!');
                 UpdateMembersList();
+            elseif strcmp(txt,'401')==1 || strcmp(txt,'Unauthorized')==1
+                java_dialog('warning', 'Sorry. Your do not have permission!');
             else
                 java_dialog('error', txt);
             end
