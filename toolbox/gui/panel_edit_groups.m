@@ -249,11 +249,46 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     %% ===== BUTTON: REMOVE MEMBER =====
     function ButtonRemoveMember_Callback(varargin)
         member = ExtractMemberName(jListMembers.getSelectedValue());
+        group=jListGroups.getSelectedValue();
         if isempty(member)
             return
         end
         disp(['TODO: Remove member "' member '"']);
-        UpdateMembersList();
+        import matlab.net.*;
+        import matlab.net.http.*;
+
+        type1 = MediaType('text/*');
+        type2 = MediaType('application/json','q','.5');
+        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+        h1 = HeaderField('Content-Type','application/json');
+        h2 = HeaderField('sessionid',bst_get('SessionId'));
+        h3 = HeaderField('deviceid',bst_get('DeviceId'));
+        header = [acceptField,h1,h2,h3];
+        method = RequestMethod.POST;
+
+        data = struct('GroupName',group,'UserEmail',member);
+        body=MessageBody(data);
+        show(body);
+        request_message = RequestMessage(method,header,body);
+        show(request_message);
+        serveradr = string(bst_get('UrlAdr'));
+        url=strcat(serveradr,"/group/removeuser");
+        disp(url);
+        try
+            [resp,~,hist]=send(request_message,URI(url));
+            status = resp.StatusCode;
+            txt=char(status);
+            if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+                content = resp.Body;
+                show(content);
+                java_dialog('msgbox', 'Remove group member successfully!');
+                UpdateMembersList();
+            else
+                java_dialog('error', txt);
+            end
+        catch
+            java_dialog('warning', 'Remove group member failed! Check your url!');
+        end
     end
 
     %% ===== LOAD GROUPS =====
