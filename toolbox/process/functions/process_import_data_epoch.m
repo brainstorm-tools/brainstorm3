@@ -125,6 +125,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileNames  = sProcess.options.datafile.Value{1};
         FileFormat = sProcess.options.datafile.Value{2};
     elseif ~isempty(sInputs)
+        % Error if nothing in input
+        if strcmpi(sInputs(1).FileType, 'import')
+            bst_report('Error', sProcess, sInputs, 'No file selected.');
+            return
+        end
+        % Get file names
         FileNames = {sInputs.FileName};
     else
         FileNames = {};

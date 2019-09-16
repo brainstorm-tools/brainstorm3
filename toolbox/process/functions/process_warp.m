@@ -31,14 +31,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Warp default anatomy';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 4;
+    sProcess.Index       = 11;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutWarping';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Option: Default channel files
     sProcess.options.usedefault.Comment = {'Scale', 'Warp'};
     sProcess.options.usedefault.Type    = 'radio';

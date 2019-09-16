@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'FieldTrip: ft_volumesegment';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 11;
+    sProcess.Index       = 31;
     sProcess.Description = 'http://www.fieldtriptoolbox.org/faq/how_is_the_segmentation_defined';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import', 'data'};
