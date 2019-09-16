@@ -75,6 +75,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelMembers.add('br hfill', jPanelMemberButtons);
 
     % ===== LOAD DATA =====
+    ShareProtocol();
     UpdateGroupsList();
     UpdateMembersList();
         
@@ -223,10 +224,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             java_dialog('warning', "No protocol currently!");
             %return
         end
-        
+       
+        [groups, permissions] = LoadProtocolGroups();
         %disp(['TODO: Load groups of protocol "' sProtocol.Comment '"']);
-        groups = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
-        permissions = {'write', 'read', 'write'};
+        %groups = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
+        %permissions = {'write', 'read', 'write'};
     end
     %% ===== LOAD MEMBERS =====
     function [members, permissions] = LoadMembers()
@@ -235,9 +237,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             %return
         end
         
+        [members,permissions] = LoadProtocolMembers();
         %disp(['TODO: Load members of protocol "' sProtocol.Comment '"']);
-        members = {'Martin Cousineau', 'Sylvain Baillet', 'Marc Lalancette'};
-        permissions = {'admin', 'write', 'read'};
+        %members = {'Martin Cousineau', 'Sylvain Baillet', 'Marc Lalancette'};
+        %permissions = {'admin', 'write', 'read'};
     end
     %% ===== ADD MEMBER =====
     function [res, error] = AddMember(member)
@@ -274,7 +277,57 @@ function member = ExtractName(member)
 end
 
 
-function protocoldetail = CreateProtocol()
+function ShareProtocol()
+import matlab.net.*;
+import matlab.net.http.*;
+type1 = MediaType('text/*');
+type2 = MediaType('application/json','q','.5');
+acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+h1 = HeaderField('Content-Type','application/json');
+h2 = HeaderField('sessionid',bst_get('SessionId'));
+h3 = HeaderField('deviceid',bst_get('DeviceId'));
+header = [acceptField,h1,h2,h3];
+method = RequestMethod.POST;
+sProtocol = bst_get('ProtocolInfo');
+test = bst_get('iProtocol'); 
+protocol = convertCharsToStrings(bst_get('ProtocolId'));
+if(sProtocol.UseDefaultChannel == 0) udc = false;
+else udc = true;
+end  
+data = struct('Id',protocol,'Name',sProtocol.Comment, 'Isprivate', false, ...
+        'Comment',sProtocol.Comment, 'Istudy', size(sProtocol.iStudy,1), ...
+        'Usedefaultanat',sProtocol.UseDefaultAnat, 'Usedefaultchannel',udc);
+body=MessageBody(data);
+request_message = RequestMessage(method,header,body);
+show(request_message);
+
+
+serveradr = string(bst_get('UrlAdr'));
+url=strcat(serveradr,"/protocol/share");
+disp(url);
+try
+    [resp,~,hist]=send(request_message,URI(url));
+    status = resp.StatusCode;
+    txt=char(status);
+    if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+        content=resp.Body;
+        show(content);
+        protocolid = jsondecode(content.Data);
+        bst_set('ProtocolId',string(protocolid.id));        
+        %java_dialog('msgbox', 'Protocol uploaded!');
+        disp('Protocol uploaded!');
+    elseif strcmp(status,'404')==1 || strcmp(txt,'NotFound')==1
+        java_dialog('error','Current protocol has not been uploaded!');
+    else
+        java_dialog('error', txt);
+    end
+catch
+    java_dialog('warning', 'Load protocol failed!');
+end
+end
+
+
+function [groups, permissions] = LoadProtocolGroups()
 import matlab.net.*;
 import matlab.net.http.*;
 type1 = MediaType('text/*');
@@ -289,7 +342,7 @@ request_message = RequestMessage(method,header,[]);
 %show(request_message);
 serveradr = string(bst_get('UrlAdr'));
 protocol = convertCharsToStrings(bst_get('ProtocolId'));
-url=strcat(serveradr,"/protocol/detail/",protocol);
+url=strcat(serveradr,"/protocol/groups/",protocol);
 disp(url);
 try
     [resp,~,hist]=send(request_message,URI(url));
@@ -297,8 +350,18 @@ try
     txt=char(status);
     if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
         content=resp.Body;
-        show(content);
-        java_dialog('msgbox', 'Load protocol successfully!');
+        show(content)
+        responseData = jsondecode(content.Data);
+        if(size(responseData) > 0)
+            groups = cell(size(responseData));
+            permissions = cell(size(responseData));
+            for i = 1 : size(responseData)
+                groups{i} = responseData(i).name;
+                permissions{i} = responseData(i).access;
+            end
+        end
+        %java_dialog('msgbox', 'Load protocol groups successfully!');
+        disp('Load protocol groups successfully!');
     elseif strcmp(status,'404')==1 || strcmp(txt,'NotFound')==1
         java_dialog('error','Current protocol has not been uploaded!');
     else
@@ -307,6 +370,53 @@ try
 catch
     java_dialog('warning', 'Load group failed!');
 end
-protocoldetail = {'NeuroSPEED', 'OMEGA', 'Ste-Justine Project'};
 end
+
+
+function [members, permissions] = LoadProtocolMembers()
+import matlab.net.*;
+import matlab.net.http.*;
+type1 = MediaType('text/*');
+type2 = MediaType('application/json','q','.5');
+acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+h1 = HeaderField('Content-Type','application/json');
+h2 = HeaderField('sessionid',bst_get('SessionId'));
+h3 = HeaderField('deviceid',bst_get('DeviceId'));
+header = [acceptField,h1,h2,h3];
+method = RequestMethod.GET;
+request_message = RequestMessage(method,header,[]);
+%show(request_message);
+serveradr = string(bst_get('UrlAdr'));
+protocol = convertCharsToStrings(bst_get('ProtocolId'));
+url=strcat(serveradr,"/protocol/members/",protocol);
+disp(url);
+try
+    [resp,~,hist]=send(request_message,URI(url));
+    status = resp.StatusCode;
+    txt=char(status);
+    if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+        content=resp.Body;
+        show(content)
+        responseData = jsondecode(content.Data);
+        if(size(responseData) > 0)
+            members = cell(size(responseData));
+            permissions = cell(size(responseData));
+            for i = 1 : size(responseData)
+                members{i} = responseData(i).email;
+                permissions{i} = responseData(i).access;
+            end
+        end
+        %java_dialog('msgbox', 'Load protocol groups successfully!');
+        disp('Load protocol groups successfully!');
+    elseif strcmp(status,'404')==1 || strcmp(txt,'NotFound')==1
+        java_dialog('error','Current protocol has not been uploaded!');
+    else
+        java_dialog('error', txt);
+    end
+catch
+    java_dialog('warning', 'Load group failed!');
+end
+
+end
+
 

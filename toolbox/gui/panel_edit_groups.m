@@ -337,7 +337,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                     end
                 end
                 %UpdatePanel();
-                java_dialog('msgbox', 'Load user groups successfully!');
+                disp('Load user groups successfully!');
+                %java_dialog('msgbox', 'Load user groups successfully!');
             else
                 java_dialog('error', txt);
             end
