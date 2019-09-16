@@ -172,8 +172,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     
     % ===== RIGHT: REMOTE DATABASE =====
     jPanelReset = gui_river([5 5], [0 15 15 15], 'Remote Database');
-        %session_status = CheckLogin();       
-        if ~isempty(bst_get('SessionId')) %&& session_status == 1
+        CheckLogin();       
+        if ~isempty(bst_get('SessionId')) 
             email=bst_get('Email');
             labellogin="Logged in as " + string(email);
             gui_component('Label',  jPanelReset, [], labellogin, [], [], []);
@@ -219,14 +219,15 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 %  === CONTROLS CALLBACKS  =========================================================
 %  =================================================================================
 %% ===== LOGIN CHECK =====
-    function checkresult = CheckLogin()
-        disp('Check Login');
+    function CheckLogin()
         import matlab.net.*;
         import matlab.net.http.*;
         
-        checkresult = 2;
+        if isempty(bst_get('SessionId'))
+            return;
+        end
+        
         if(isempty(bst_get('DeviceId')))
-            % device = get(com.sun.security.auth.module.NTSystem,'DomainSID');
             device = '';
             ni = java.net.NetworkInterface.getNetworkInterfaces;
             while ni.hasMoreElements
@@ -240,7 +241,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         else
             device=bst_get('DeviceId');
         end
-        
+
         data=struct('sessionid',bst_get('SessionId'),'deviceid',char(device));
         body=MessageBody(data);
         contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
@@ -248,7 +249,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         type2 = matlab.net.http.MediaType('application/json','q','.5');
         acceptField = matlab.net.http.field.AcceptField([type1 type2]);
         header = [acceptField contentTypeField];
-        method =RequestMethod.GET;
+        method =RequestMethod.POST;
         r=RequestMessage(method,header,body);
         show(r);
         url = string(bst_get('UrlAdr'));
@@ -267,10 +268,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                     checkresult = 0;
                 end
             else
-                java_dialog('warning', txt);
+                bst_set('SessionId');
+                disp('session expires');
             end
         catch
-            java_dialog('warning', "Cannot connect to server" + " "+ bst_get('UrlAdr'));
+            bst_set('SessionId');
+            disp('session expires');
         end
     end
 
