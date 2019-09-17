@@ -222,7 +222,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 
         [res, isCancel] = java_dialog('input', 'What is the name or email of the person you would like to add?', 'Add member', jPanelNew);
         if ~isCancel && ~isempty(res)
-            [permission, isCancel2] = java_dialog('combo', 'What permissions would you like to give this member?', 'Edit permissions', [], {'Read-only','Read & write', 'Admin'});
+            [permission, isCancel2] = java_dialog('combo', 'What permissions would you like to give this member?', 'Edit permissions', [], {'Member', 'Manager'});
             respass={res,permission};
             disp(respass);
             if ~isCancel2
@@ -244,7 +244,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             return
         end
 
-        [res, isCancel] = java_dialog('combo', 'What permissions would you like to give this member?', 'Edit permissions', [], {'Read-only','Read & write', 'Admin'});
+        [res, isCancel] = java_dialog('combo', 'What permissions would you like to give this member?', 'Edit permissions', [], {'Member', 'Manager'});
         if ~isCancel
             
             disp(['TODO: Edit permissions of member "' member '" of group "' group '" to "' res '"']);
@@ -260,14 +260,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             header = [acceptField,h1,h2,h3];
             method = RequestMethod.POST;
             
-            if strcmp(res,'admin')==1
+            if strcmp(res,'Manager')==1
                 permission=1
-            elseif strcmp(res,'Read-only')==1
-                permission=3
             else
                 permission=2
             end
-            data = struct('GroupName',group,'UserEmail',member,Role,permission);
+            data = struct('GroupName',group,'UserEmail',member,'Role',permission);
             body=MessageBody(data);
             show(body);
             request_message = RequestMessage(method,header,body);
@@ -302,7 +300,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         if isempty(member)
             return
         end
-        disp(['TODO: Remove member "' member '"']);
         import matlab.net.*;
         import matlab.net.http.*;
 
@@ -409,14 +406,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         h3 = HeaderField('deviceid',bst_get('DeviceId'));
         header = [acceptField,h1,h2,h3];
         method = RequestMethod.POST;
-        data = struct('start',0,'count',100, 'order', 0);
+        data = struct('name',group);
         body=MessageBody(data);
         show(body);
         request_message = RequestMessage(method,header,body);
         show(request_message);
         serveradr = string(bst_get('UrlAdr'));
-        url=strcat(serveradr,"/group/detail/");
-        url=strcat(url,string(group));
+        url=strcat(serveradr,"/group/detail");
         
         disp(url);
         gui_hide('Preferences');
@@ -434,16 +430,18 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                     for i = 1 : size(responseData(1).groupMembers)
                         firstname = responseData(1).groupMembers(i).firstName;
                         lastname = responseData(1).groupMembers(i).lastName;
+                        email=responseData(1).groupMembers(i).email;
                         privilege = responseData(1).groupMembers(i).privilege;
                         name=strcat(firstname," ");
                         name=strcat(name,lastname);
+                        name=strcat(name," (");
+                        name=strcat(name,email);
+                        name=strcat(name,")")
                         members{i} = string(name);
                         if privilege==1
-                            permissions{i}='admin'
-                        elseif privilege==2
-                            permissions{i}='write'
+                            permissions{i}='manager'
                         else
-                            permissions{i}='read'
+                            permissions{i}='member'
                         end
                     end
                 end
@@ -473,10 +471,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         h3 = HeaderField('deviceid',bst_get('DeviceId'));
         header = [acceptField,h1,h2,h3];
         method = RequestMethod.POST;
-        if strcmp(member(2),'admin')==1
+        if strcmp(member(2),'Manager')==1
             permission=1
-        elseif strcmp(member(2),'Read-only')==1
-            permission=3
         else
             permission=2
         end
@@ -509,9 +505,13 @@ end
 
 % Extract member name if permission present in brackets
 function member = ExtractMemberName(member)
-    iPermission = strfind(member, ' [');
-    if ~isempty(iPermission) && iPermission > 2
-        member = member(1:iPermission(end)-1);
+    iPermission = strfind(member, ')');
+    disp(iPermission);
+    iEmail=strfind(member, ' (');
+    disp(iEmail)
+    
+    if ~isempty(iEmail) && iPermission > 2 && ~isempty(iPermission)
+        member = member(iEmail(end)+2:iPermission(end)-1);
     end
 end
 
