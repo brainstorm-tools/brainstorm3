@@ -328,6 +328,8 @@ end
 
 
 function [groups, permissions] = LoadProtocolGroups()
+groups = cell(0);
+permissions = cell(0);
 import matlab.net.*;
 import matlab.net.http.*;
 type1 = MediaType('text/*');
