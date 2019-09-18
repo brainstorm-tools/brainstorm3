@@ -1,4 +1,4 @@
-function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreqRes, Overlap, CohMeasure, isSymmetric, ImagingKernel, waitMax)
+function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreqRes, Overlap, CohMeasure, isSymmetric, ImagingKernel, waitMax, Definition)
 % BST_COHN: Optimized version of bst_coherence function between signals X and Y
 %
 % USAGE:  [Gxy, freq, pValues, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreqRes=1, Overlap=0.5, CohMeasure='mscohere', isSymmetric=0, ImagingKernel=[], waitMax=100)
@@ -9,17 +9,29 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 %    - Fs      : Sampling frequency of X and Y (in Hz)
 %    - nFFT    : Length of the window used to estimate the coherence (must be a power of 2 for the efficiency of the FFT)
 %    - Overlap       : [0-1], percentage of time overlap between two consecutive estimation windows
-%    - CohMeasure    : {'mscohere', 'icohere'}
+%    - CohMeasure    : {'mscohere', 'icohere' , 'lcohere'}
 %    - isSymmetric   : If 1, use an optimized method for symmetrical matrices
 %    - ImagingKernel : If not empty, calculate the coherence at the source level
 %    - waitMax       : Increase of the progress bar during the execution of this function
+%    - Definition    : (2019/before 2019) as follows
 %
 % Definitions:
+%     In Late 2019, the fft-based coherence functions were updated. The
+%     lagged and Imaginary coherence have different definitions among two
+%     versions. The recent changes are set as default. Please consider this
+%     if you want to reproduce your former analyses. 
+%     
 %     Gxy:  cross-spectral density between x and y
 %     Gxx:  autospectral density of x
 %     Gyy:  autospectral density of y
 %     Coherence function (C)            : Gxy/sqrt(Gxx*Gyy)
 %     Magnitude-squared Coherence (MSC) : |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
+%   
+%     ============ 2019 (hcoh-fft-2019) =============
+%     Imaginary Coherence (IC)          : abs(imag(C))               
+%     Lagged Coherence (LC)             : abs(imag(C))/sqrt(1-real(C)^2)
+%
+%     ========= Before 2019 (coh-fft) =========
 %     Imaginary Coherence (IC)          : imag(C)^2 / (1-real(C)^2)
 %
 % Parametric significance estimation:  
@@ -64,11 +76,15 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Sergul Aydore, Syed Ashrafulla, Francois Tadel, Guiomar Niso, 2013-2014
+% Authors: Hossein Shahabi, 2019
+% Sergul Aydore, Syed Ashrafulla, Francois Tadel, Guiomar Niso, 2013-2014
 
 
 %% ===== INITIALIZATIONS =====
 % Default options
+if (nargin < 10) || isempty(Definition)
+    Definition = 'hcoh-fft-2019' ;
+end
 if (nargin < 9) || isempty(waitMax)
     waitMax = 100;
 end
@@ -217,31 +233,42 @@ if ~isSymmetric
     
     % Divide by the corresponding autospectra for each frequency
     % C = Gxy/sqrt(Gxx*Gxy)
-    switch (CohMeasure)
-        case 'mscohere'
-            % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
-            % Gxy = Gxy .* conj(Gxy);    % SLOWER
-            Gxy = abs(Gxy) .^ 2;
-            Gxy = bst_bsxfun(@rdivide, Gxy, Gxx);
-            Gxy = bst_bsxfun(@rdivide, Gxy, Gyy);
-            % Parametric estimation of the significance level
-            if (Overlap == 0.5)
-                pValues = max(0, 1 - Gxy) .^ ((dof-2)/2);    % Schelter 2006 and Bloomfield 1976
-            else
-                pValues = max(0, 1 - Gxy) .^ floor(nSamples / nFFT);    % Max makes sure numerical error is taken care of that may result in -e-15 errors
-            end
-        case 'icohere'
-            % Coherence function: C = Gxy/sqrt(Gxx*Gyy)
-            Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gxx));
-            Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gyy));
-            % Parametric estimation of the significance level
-            if (Overlap == 0.5)
-                pValues = max(0, 1 - abs(Gxy).^2) .^ ((dof-2)/2);  % Schelter 2006 and Bloomfield 1976
-            else
-                pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
-            end
-            % Imaginary Coherence = imag(C)^2 / (1-real(C)^2)
-            Gxy = imag(Gxy).^2 ./ (1-real(Gxy).^2);
+    if strcmpi(CohMeasure,'mscohere')
+        % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy)
+        % Gxy = Gxy .* conj(Gxy);    % SLOWER
+        Gxy = abs(Gxy) .^ 2;
+        Gxy = bst_bsxfun(@rdivide, Gxy, Gxx);
+        Gxy = bst_bsxfun(@rdivide, Gxy, Gyy);
+        % Parametric estimation of the significance level
+        if (Overlap == 0.5)
+            pValues = max(0, 1 - Gxy) .^ ((dof-2)/2);    % Schelter 2006 and Bloomfield 1976
+        else
+            pValues = max(0, 1 - Gxy) .^ floor(nSamples / nFFT);    % Max makes sure numerical error is taken care of that may result in -e-15 errors
+        end
+    else
+        switch (Definition)
+            case 'hcoh-fft-2019' % (No pValues for the new definition)
+                Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gxx));
+                Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gyy));
+                if strcmpi(CohMeasure,'icohere') % Imaginary Coherence
+                    Gxy = abs(imag(Gxy)) ;   
+                else % Lagged Coherence
+                    Gxy = abs(imag(Gxy))./sqrt(1-real(Gxy).^2) ;
+                end
+            
+            case 'coh-fft' % (We only have Imaginary coherence)
+                % Coherence function: C = Gxy/sqrt(Gxx*Gyy)
+                Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gxx));
+                Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gyy));
+                % Parametric estimation of the significance level
+                if (Overlap == 0.5)
+                    pValues = max(0, 1 - abs(Gxy).^2) .^ ((dof-2)/2);  % Schelter 2006 and Bloomfield 1976
+                else
+                    pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
+                end
+                % Imaginary Coherence = imag(C)^2 / (1-real(C)^2)
+                Gxy = imag(Gxy).^2 ./ (1-real(Gxy).^2);
+        end
     end
     % In the symmetric case
     if ~isCalcAuto
@@ -307,29 +334,39 @@ else
     Gxx = Gxy(indDiag,:);
     
     % Divide by the corresponding autospectra for each frequency
-    switch (CohMeasure)
-        case 'mscohere'
-            % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
-            % Gxy = Gxy .* conj(Gxy);   % SLOWER
-            Gxy = abs(Gxy) .^ 2;
-            Gxy = Gxy ./ (Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
-            % Parametric estimation of the significance level
-            if (Overlap == 0.5)
-                pValues = max(0, 1 - Gxy) .^ ((dof-2)/2);    % Schelter 2006 and Bloomfield 1976
-            else
-                pValues = max(0, 1 - Gxy) .^ floor(nSamples / nFFT);   % Max makes sure numerical error is taken care of that may result in -e-15 errors
-            end
-        case 'icohere'
-            % Coherence function: C = Gxy/sqrt(Gxx*Gyy)
-            Gxy = Gxy ./ sqrt(Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
-            % Parametric estimation of the significance level
-            if (Overlap == 0.5)
-                pValues = max(0, 1 - abs(Gxy).^2) .^ ((dof-2)/2);  % Schelter 2006 and Bloomfield 1976
-            else
-                pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
-            end
-            % Imaginary Coherence = imag(C)^2 / (1-real(C)^2)
-            Gxy = imag(Gxy).^2 ./ (1-real(Gxy).^2);
+    if strcmpi(CohMeasure,'mscohere')
+        % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy)
+        % Gxy = Gxy .* conj(Gxy);   % SLOWER
+        Gxy = abs(Gxy) .^ 2;
+        Gxy = Gxy ./ (Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
+        % Parametric estimation of the significance level
+        if (Overlap == 0.5)
+            pValues = max(0, 1 - Gxy) .^ ((dof-2)/2);    % Schelter 2006 and Bloomfield 1976
+        else
+            pValues = max(0, 1 - Gxy) .^ floor(nSamples / nFFT);   % Max makes sure numerical error is taken care of that may result in -e-15 errors
+        end
+    else
+        switch (Definition)
+            case 'hcoh-fft-2019' % (No pValues for the new definition)
+                Gxy = Gxy ./ sqrt(Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
+                if strcmpi(CohMeasure,'icohere') % Imaginary Coherence
+                    Gxy = abs(imag(Gxy)) ;
+                else % Lagged Coherence
+                    Gxy = abs(imag(Gxy))./sqrt(1-real(Gxy).^2) ;
+                end
+                
+            case 'coh-fft' % (We only have Imaginary coherence)
+                % Coherence function: C = Gxy/sqrt(Gxx*Gyy)
+                Gxy = Gxy ./ sqrt(Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
+                % Parametric estimation of the significance level
+                if (Overlap == 0.5)
+                    pValues = max(0, 1 - abs(Gxy).^2) .^ ((dof-2)/2);  % Schelter 2006 and Bloomfield 1976
+                else
+                    pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
+                end
+                % Imaginary Coherence = imag(C)^2 / (1-real(C)^2)
+                Gxy = imag(Gxy).^2 ./ (1-real(Gxy).^2);
+        end
     end
     
 %     % Save the auto-Gxy as the diagonal
