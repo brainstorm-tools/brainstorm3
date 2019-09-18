@@ -54,7 +54,7 @@ if ~isRawEdf
     for iBlock = 1:nBlocks
         bst_progress('text', sprintf('Finding maximum values [%d%%]', round(iBlock/nBlocks*100)));
         % Get sample indices for a block of 1s
-        SamplesBounds = [(iBlock - 1) * BlockSize + fileSamples(1), min(fileSamples(2), fileSamples(1) + iBlock * BlockSize)];
+        SamplesBounds = round([(iBlock - 1) * BlockSize + fileSamples(1), min(fileSamples(2), fileSamples(1) + iBlock * BlockSize)]);
         % Read the block from the file
         Fblock = in_fread(sFileIn, ChannelMat, 1, SamplesBounds);
         % Keep only the files to be saved in the output file
