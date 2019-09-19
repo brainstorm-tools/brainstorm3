@@ -989,7 +989,7 @@ function jFrame = HtmlViewer(strHtml, figTitle)
             gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_ARROW_RIGHT, 'Next report',     @(h,ev)Open('next'));
             jToolbar.addSeparator();
             gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_FOLDER_OPEN, 'Load report file',  @(h,ev)Open());
-            gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_SAVE, 'Export report to HTML',  @(h,ev)Export());
+            gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_SAVE, 'Export report',  @(h,ev)Export());
             jToolbar.addSeparator();
             gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_PROCESS, 'Reload pipeline', @(h,ev)Recall('loaded'));
             jToolbar.addSeparator();
