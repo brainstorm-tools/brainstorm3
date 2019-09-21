@@ -785,10 +785,6 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % Save the number of good samples used for both sets
     sOutput.Options.nGoodSamplesA = nA_full;
     sOutput.Options.nGoodSamplesB = nB_full;
-    % Save channel file if missing in new study
-    ChannelMat = in_bst_channel(sInputsA(1).ChannelFile);
-    [tmp, iChannelStudy] = bst_get('ChannelForStudy', sProcess.options.iOutputStudy);
-    db_set_channel(iChannelStudy, ChannelMat, 0, 0);  % Do not replace
 end
 
 

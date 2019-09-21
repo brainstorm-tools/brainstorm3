@@ -1207,42 +1207,15 @@ end
 
 %% ===== PROCESS: STAT =====
 function OutputFiles = ProcessStat(sProcess, sInputA, sInputB)
-%     % Check inputs
-%     if ~isempty(strfind(GetFileTag(sInputA(1).FileName), 'connect'))
-%         bst_report('Warning', sProcess, sInputA, 'Statistical tests on connectivity results are not supported yet.');
-%     end
-    
     % ===== GET OUTPUT STUDY =====
     % Display progress bar
     bst_progress('text', 'Saving results...');
     % Get number of subjects that are involved
     isStat1 = strcmpi(sProcess.Category, 'Stat1') || isempty(sInputB);
     if isStat1
-        uniqueSubjectName = unique({sInputA.SubjectFile});
-        uniqueStudy       = unique([sInputA.iStudy]);
+        [sStudy, iStudy] = GetOutputStudy(sProcess, sInputA);
     else
-        uniqueSubjectName = unique([{sInputA.SubjectFile}, {sInputB.SubjectFile}]);
-        uniqueStudy       = unique([sInputA.iStudy, sInputB.iStudy]);
-    end
-    % If all files share same study: save in it
-    if (length(uniqueStudy) == 1)
-        [sStudy, iStudy] = bst_get('Study', uniqueStudy);
-    % If all files share the same subject: save in intra-analysis
-    elseif (length(uniqueSubjectName) == 1)
-        % Get subject
-        [sSubject, iSubject] = bst_get('Subject', uniqueSubjectName{1});
-        % Get intra-subjet analysis study for this subject
-        [sStudy, iStudy] = bst_get('AnalysisIntraStudy', iSubject);
-    else
-        % Get group analysis subject
-        [sSubject, iSubject] = bst_get('NormalizedSubject');
-        % Get intra-subject study for the group subject
-        [sStudy, iStudy] = bst_get('AnalysisIntraStudy', iSubject);        
-        % Error
-        if isempty(sStudy)
-            error(['Could not find folder "Group_analysis/@intra". Delete and create the group analysis subject again.' 10 ...
-                   'If this error happens multiple times, please report it on the user forum.']);
-        end
+        [sStudy, iStudy] = GetOutputStudy(sProcess, [sInputA, sInputB]);
     end
     % Error
     if isempty(sStudy)
