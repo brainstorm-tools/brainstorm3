@@ -54,7 +54,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === Orientation 
     sProcess.options.orient.Comment = 'Orientation: ';
     sProcess.options.orient.Type    = 'combobox';
-    sProcess.options.orient.Value   = {1, {'left', 'right', 'top', 'bottom', 'front', 'back'}};
+    sProcess.options.orient.Value   = {1, {'left', 'right', 'top', 'bottom', 'front', 'back', 'left_intern', 'right_intern'}};
     % === TIME: Single view
     sProcess.options.time.Comment = 'Time (in seconds):';
     sProcess.options.time.Type    = 'value';
