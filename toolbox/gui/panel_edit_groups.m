@@ -425,19 +425,20 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                 show(content);
                 responseData = jsondecode(content.Data);
                 if(size(responseData) > 0)
-                    members = cell(size(responseData(1).groupMembers));
-                    permissions = cell(size(responseData(1).groupMembers));
-                    for i = 1 : size(responseData(1).groupMembers)
-                        firstname = responseData(1).groupMembers(i).firstName;
-                        lastname = responseData(1).groupMembers(i).lastName;
-                        email=responseData(1).groupMembers(i).email;
-                        privilege = responseData(1).groupMembers(i).privilege;
+                    members = cell(size(responseData(1).users));
+                    permissions = cell(size(responseData(1).users));
+                    for i = 1 : size(responseData(1).users)
+                        firstname = responseData(1).users(i).firstname;
+                        lastname = responseData(1).users(i).lastname;
+                        email=responseData(1).users(i).email;
+                        privilege = responseData(1).users(i).privilege;
                         name=strcat(firstname," ");
                         name=strcat(name,lastname);
                         name=strcat(name," (");
                         name=strcat(name,email);
                         name=strcat(name,")")
                         members{i} = string(name);
+                        disp(members{i});
                         if privilege==1
                             permissions{i}='manager'
                         else
