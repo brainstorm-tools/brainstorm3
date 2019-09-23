@@ -39,18 +39,37 @@ if (size(Vertices, 2) ~= 3) || (size(Faces, 2) ~= 3)
     error('Faces and Vertices must have 3 columns (X,Y,Z).');
 end
 
-% Compute vertices normals by creating a Matlab patch
-hFig = figure('Visible','off');
-hPatch = patch('Faces', Faces, 'Vertices', Vertices);
-% Matlab 2014b does not compute anymore the vertex normals without a light object
-if (bst_get('MatlabVersion') >= 804)
-    lighting gouraud;
-    light('Position',[1 0 0],'Style','infinite');
-    drawnow;
+% In server mode: do not try to create a figure, it might crash the OpenGL software driver...
+if (bst_get('GuiLevel') <= -1)
+    disp('BST> Warning: In server mode, it is not possible to use the patch() function to estimate the surface normals. Results are slightly different than in other graphical modes.');
+    % Face corners index
+    A = Faces(:,1);
+    B = Faces(:,2);
+    C = Faces(:,3);
+    % Face normals
+    n = cross(Vertices(A,:)-Vertices(B,:), Vertices(C,:)-Vertices(A,:)); %area weighted
+    % Vertice normals
+    VertNormals = zeros(size(Vertices)); % init vertix normals
+    for i = 1:size(Faces,1) % step through faces (a vertex can be reference any number of times)
+        VertNormals(A(i),:) = VertNormals(A(i),:) + n(i,:); % sum face normals
+        VertNormals(B(i),:) = VertNormals(B(i),:) + n(i,:);
+        VertNormals(C(i),:) = VertNormals(C(i),:) + n(i,:);
+    end
+% Else: use the patch function to compute the normals
+else
+    % Compute vertices normals by creating a Matlab patch
+    hFig = figure('Visible','off');
+    hPatch = patch('Faces', Faces, 'Vertices', Vertices);
+    % Matlab 2014b does not compute anymore the vertex normals without a light object
+    if (bst_get('MatlabVersion') >= 804)
+        lighting gouraud;
+        light('Position',[1 0 0],'Style','infinite');
+        drawnow;
+    end
+    % Get patch vertices
+    VertNormals = double(get(hPatch,'VertexNormals')); 
+    close(hFig);
 end
-% Get patch vertices
-VertNormals = double(get(hPatch,'VertexNormals')); 
-close(hFig);
 
 % Normalize normal vectors
 nrm = sqrt(sum(VertNormals.^2, 2));
