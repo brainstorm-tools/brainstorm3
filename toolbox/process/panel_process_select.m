@@ -25,7 +25,7 @@ function varargout = panel_process_select(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2019
 
 eval(macro_method);
 end
@@ -53,6 +53,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     else
         nInputsInit = 2;
         nFiles = [length(sFiles), length(sFiles2)];
+    end
+    % No inputs: skip
+    if isempty(sFiles)
+        return;
     end
     % Get initial type and subject
     InitialDataType = sFiles(1).FileType;
