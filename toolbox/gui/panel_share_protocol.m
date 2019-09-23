@@ -183,7 +183,51 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         
         [res, isCancel] = java_dialog('combo', 'What permissions would you like to give this group?', 'Edit permissions', [], {'Read-only','Read & write'});
         if ~isCancel
-            disp(['TODO: Edit permissions of group "' group '" of protocol "' sProtocol.Comment '" to "' res '"']);
+            disp(['Edit permissions of group "' group '" of protocol "' sProtocol.Comment '" to "' res '"']);
+            import matlab.net.*;
+            import matlab.net.http.*;
+            sProtocol = bst_get('ProtocolInfo');
+            if isempty(sProtocol)
+                return
+            end
+                        
+            type1 = MediaType('text/*');
+            type2 = MediaType('application/json','q','.5');
+            acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+            h1 = HeaderField('Content-Type','application/json');
+            h2 = HeaderField('sessionid',bst_get('SessionId'));
+            h3 = HeaderField('deviceid',bst_get('DeviceId'));
+            header = [acceptField,h1,h2,h3];
+            method = RequestMethod.POST;
+            protocolid = convertCharsToStrings(bst_get('ProtocolId'));
+            if(strcmp(res,'Read-only')==1)             
+                privilege = 2;
+            else (strcmp(res,'Read & write')==1)
+                privilege = 1;         
+            end
+
+            data = struct('protocolid',protocolid,'groupname',group, 'groupPrivilege', privilege);
+            body=MessageBody(data);
+            show(body);
+            request_message = RequestMessage(method,header,body);
+            show(request_message);
+            serveradr = string(bst_get('UrlAdr'));
+            url=strcat(serveradr,"/protocol/editgroup");
+            disp(url);
+            try
+                [resp,~,hist]=send(request_message,URI(url));
+                status = resp.StatusCode;
+                txt=char(status);
+                if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+                    content = resp.Body;
+                    show(content);
+                    java_dialog('msgbox', 'edit group permission successfully!');
+                else
+                    java_dialog('error', resp.Body.Data);
+                end
+            catch
+                java_dialog('warning', 'edit group failed! Check your url!');
+            end
             UpdateGroupsList();
         end
     end
@@ -198,7 +242,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         
         [res, isCancel] = java_dialog('combo', 'What permissions would you like to give this member?', 'Edit permissions', [], {'Admin','Read & write', 'Read only'});
         if ~isCancel
-            disp(['TODO: Edit permissions of member "' member '" of protocol "' sProtocol.Comment '" to "' res '"']);
+            disp(['Edit permissions of member "' member '" of protocol "' sProtocol.Comment '" to "' res '"']);
             import matlab.net.*;
             import matlab.net.http.*;
             sProtocol = bst_get('ProtocolInfo');
@@ -258,7 +302,41 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             return
         end
         
-        disp(['TODO: Remove group "' group '" from protocol "' sProtocol.Comment '"']);
+        disp(['Remove group "' group '" from protocol "' sProtocol.Comment '"']);
+        import matlab.net.*;
+        import matlab.net.http.*;
+                
+        type1 = MediaType('text/*');
+        type2 = MediaType('application/json','q','.5');
+        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+        h1 = HeaderField('Content-Type','application/json');
+        h2 = HeaderField('sessionid',bst_get('SessionId'));
+        h3 = HeaderField('deviceid',bst_get('DeviceId'));
+        header = [acceptField,h1,h2,h3];
+        method = RequestMethod.POST;
+        protocolid = convertCharsToStrings(bst_get('ProtocolId'));
+        data = struct('protocolid',protocolid,'groupname',group);
+        body=MessageBody(data);
+        show(body);
+        request_message = RequestMessage(method,header,body);
+        show(request_message);
+        serveradr = string(bst_get('UrlAdr'));
+        url=strcat(serveradr,"/protocol/removegroup");
+        disp(url);
+        try
+            [resp,~,hist]=send(request_message,URI(url));
+            status = resp.StatusCode;
+            txt=char(status);
+            if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+                content = resp.Body;
+                show(content);
+                java_dialog('msgbox', 'remove group successfully!');
+            else
+                java_dialog('error', resp.Body.Data);
+            end
+        catch
+            java_dialog('warning', 'Remove group failed! Check your url!');
+        end
         UpdateGroupsList();
     end
 
@@ -393,7 +471,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             return
         end
         
-        disp(['TODO: Share protocol "' sProtocol.Comment '" to group "' group '"']);
+        disp(['Share protocol "' sProtocol.Comment '" to group "' group '"']);
         res = 1;
         error = [];
         
@@ -411,7 +489,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             permission=1
         end
         protocol = convertCharsToStrings(bst_get('ProtocolId'));
-        data = struct('GroupName',group(2),'protocolid',protocol, 'Privilege', permission);
+        data = struct('GroupName',group(2),'protocolid',protocol, 'groupPrivilege', permission);
         body=MessageBody(data);
         show(body);
         request_message = RequestMessage(method,header,body);
