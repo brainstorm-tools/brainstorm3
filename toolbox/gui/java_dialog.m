@@ -305,8 +305,9 @@ switch(lower(msgType))
                 jCheck(i) = javax.swing.JCheckBox(buttonList{i});
                 % Box size
                 isLongText = (length(buttonList{i}) > 10);
+                disp(length(buttonList{i}));
                 if ~isLongText
-                    jCheck(i).setPreferredSize(java_scaled('dimension', 80, 20));
+                    jCheck(i).setPreferredSize(java_scaled('dimension', 160, 20));
                 end
                 % Default value
                 if ~isempty(defaultVal)

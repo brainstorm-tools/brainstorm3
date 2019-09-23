@@ -97,7 +97,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         listModel = java_create('javax.swing.DefaultListModel');
         % Add an item in list for each group
         for i = 1:length(groups)
-            listModel.addElement([groups{i} ' [' permissions{i} ']']);
+            if strcmp(permissions{i},'no access')~=1
+                listModel.addElement([groups{i} ' [' permissions{i} ']']);
+            end
         end
         % Update list model
         jListGroups.setModel(listModel);
@@ -122,7 +124,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         listModel = java_create('javax.swing.DefaultListModel');
         % Add an item in list for each group
         for i = 1:length(members)
-            listModel.addElement([members{i} ' [' permissions{i} ']']);
+           listModel.addElement([members{i} ' [' permissions{i} ']']);
         end
         % Update list model
         jListMembers.setModel(listModel);
@@ -139,13 +141,28 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 
     %% ===== BUTTON: ADD GROUP =====
     function ButtonAddGroup_Callback(varargin)
-        [group, isCancel] = java_dialog('input', 'What is the name of the group you would like to add?', 'Add group', jPanelNew);
+        [groups, permissions] = LoadGroups();
+        grouplist={};
+        % Add an item in list for each group
+        for i = 1:length(groups)
+            groupinfo=strcat(groups{i},' [');
+            groupinfo=strcat(groupinfo,permissions{i});
+            groupinfo=strcat(groupinfo,']');
+            grouplist{end+1}=groupinfo;
+        end
+        
+        [group, isCancel] = java_dialog('checkbox', 'What is the name of the group you would like to add?', 'Add groups', [], grouplist);
+        
         if ~isCancel && ~isempty(group)
-            [success, error] = AddGroup(group);
-            if success
-                UpdateGroupsList();
-            else
-                java_dialog('error', error, 'Add group');
+            [permission, isCancel2] = java_dialog('combo', 'What permissions would you like to give these groups?', 'Select permissions', [], {'read&write','read'});
+            if ~isCancel2 
+                respass={permission,group};
+                [success, error] = AddGroup(respass);
+                if success
+                    UpdateGroupsList();
+                else
+                    java_dialog('error', error, 'Add group');
+                end
             end
         end
     end
@@ -256,6 +273,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     end
     %% ===== ADD GROUP =====
     function [res, error] = AddGroup(group)
+        import matlab.net.*;
+        import matlab.net.http.*;
+        
         sProtocol = bst_get('ProtocolInfo');
         if isempty(sProtocol)
             return
@@ -264,6 +284,49 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         disp(['TODO: Share protocol "' sProtocol.Comment '" to group "' group '"']);
         res = 1;
         error = [];
+        
+        type1 = MediaType('text/*');
+        type2 = MediaType('application/json','q','.5');
+        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+        h1 = HeaderField('Content-Type','application/json');
+        h2 = HeaderField('sessionid',bst_get('SessionId'));
+        h3 = HeaderField('deviceid',bst_get('DeviceId'));
+        header = [acceptField,h1,h2,h3];
+        method = RequestMethod.POST;
+        if strcmp(group(1),'read')==1
+            permission=2
+        else
+            permission=1
+        end
+        
+        for i = 2:length(group)
+            data = struct('GroupName',group(i),'UserEmail',member(1), 'Privilege', permission);
+            body=MessageBody(data);
+            show(body);
+            request_message = RequestMessage(method,header,body);
+            show(request_message);
+            serveradr = string(bst_get('UrlAdr'));
+            url=strcat(serveradr,"/protocol/editgroup");
+            disp(url);
+            try
+                [resp,~,hist]=send(request_message,URI(url));
+                status = resp.StatusCode;
+                txt=char(status);
+                if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+                    content = resp.Body;
+                    show(content);
+                    %UpdatePanel();
+                    java_dialog('msgbox', 'Add group member successfully!');
+                else
+                    java_dialog('error', txt);
+                end
+            catch
+                java_dialog('warning', 'Add group member failed! Check your url!');
+            end
+        end
+        
+        
+        
         %error = 'Could not find group.';
     end
 end
@@ -289,14 +352,21 @@ h3 = HeaderField('deviceid',bst_get('DeviceId'));
 header = [acceptField,h1,h2,h3];
 method = RequestMethod.POST;
 sProtocol = bst_get('ProtocolInfo');
-test = bst_get('iProtocol'); 
-protocol = convertCharsToStrings(bst_get('ProtocolId'));
+if isempty(bst_get('ProtocolId'))
+    pid = " ";
+else 
+    pid = convertCharsToStrings(bst_get('ProtocolId'));
+end
+
+if(sProtocol.UseDefaultAnat == 0) uda = false;
+else uda = true;
+end
 if(sProtocol.UseDefaultChannel == 0) udc = false;
 else udc = true;
 end  
-data = struct('Id',protocol,'Name',sProtocol.Comment, 'Isprivate', false, ...
+data = struct('Id',pid,'Name',sProtocol.Comment, 'Isprivate', false, ...
         'Comment',sProtocol.Comment, 'Istudy', size(sProtocol.iStudy,1), ...
-        'Usedefaultanat',sProtocol.UseDefaultAnat, 'Usedefaultchannel',udc);
+        'Usedefaultanat',uda, 'Usedefaultchannel',udc);
 body=MessageBody(data);
 request_message = RequestMessage(method,header,body);
 show(request_message);
@@ -376,6 +446,8 @@ end
 
 
 function [members, permissions] = LoadProtocolMembers()
+members = cell(0);
+permissions = cell(0);
 import matlab.net.*;
 import matlab.net.http.*;
 type1 = MediaType('text/*');
