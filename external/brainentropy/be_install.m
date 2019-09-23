@@ -98,8 +98,9 @@ if ~isdir(BEstDir) || isempty(ls(BEstDir)) || FORCE
     end
     
     % Download file
+    nbAttempts = 3;
     tgzFile = bst_fullfile(BEstDir, 'brainentropy.tar.gz');
-    errMsg = gui_brainstorm('DownloadFile', url, tgzFile, 'Brainstorm update');
+    errMsg = DownloadFile(url, tgzFile, 'Brainstorm update', nbAttempts);
     % If file was not downloaded correctly
     if ~isempty(errMsg)
         errMsg = ['Impossible to download BEst: ' 10 errMsg];
@@ -132,7 +133,7 @@ if ~isdir(BEstDir) || isempty(ls(BEstDir)) || FORCE
     % Download file
     verFile         =   bst_fullfile(BEstDir, 'VERSION.txt');
     file_delete(verFile, 1);
-    warnMsg         =   gui_brainstorm('DownloadFile', urlV, verFile, 'Brainentropy update');
+    warnMsg = DownloadFile(urlV, verFile, 'Brainstorm update', nbAttempts);
     newVer          =   textread( verFile, '%s', 'delimiter', '\n', 'whitespace', '' );
     file_move( verFile, fullfile(BEstDir, 'best','VERSION.txt') );
     
@@ -157,3 +158,23 @@ addpath( genpath(BEstDir) );
 bst_progress('stop');
 
 return
+end
+
+
+%% ===== DOWNLOAD UTIL =====
+function errMsg = DownloadFile(url, filePath, winTitle, nbAttempts)
+k = 0;
+errMsg = '';
+while (k < nbAttempts)
+    errMsg = gui_brainstorm('DownloadFile', url, filePath, winTitle);
+    % If file was downloaded correctly
+    if isempty(errMsg)
+        return
+    else
+        k = k+1;
+    end
+end
+if (k == nbAttempts) % equivalent to: ~isempty(errMsg)
+    errMsg = ['(', int2str(nbAttempts), ' download attemps)\n', errMsg];
+end
+end
