@@ -141,13 +141,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 
     %% ===== BUTTON: ADD GROUP =====
     function ButtonAddGroup_Callback(varargin)
-        [groups, permissions] = LoadGroups();
-        grouplist={};
-        % Add an item in list for each group
-        for i = 1:length(groups)
-            grouplist={};
-            grouplist{end+1}=groups{i};
-        end
+        grouplist = LoadAvailableGroups();
+        
         disp(grouplist);
         [group, isCancel] = java_dialog('combo', 'What is the name of the group you would like to add?', 'Add groups', [], grouplist);
         
@@ -455,7 +450,7 @@ function member = ExtractName(member)
     end
 end
 
-
+%% ===== Update protocol on cloud =====
 function ShareProtocol()
 import matlab.net.*;
 import matlab.net.http.*;
@@ -512,7 +507,7 @@ catch
 end
 end
 
-
+%% ===== Load protocol groups =====
 function [groups, permissions] = LoadProtocolGroups()
 groups = cell(0);
 permissions = cell(0);
@@ -560,7 +555,7 @@ catch
 end
 end
 
-
+%% ===== Load protocol externel users =====
 function [members, permissions] = LoadProtocolMembers()
 members = cell(0);
 permissions = cell(0);
@@ -608,5 +603,48 @@ catch
 end
 
 end
+
+%% ===== Load groups that can be added to the protocol =====
+function available_groups = LoadAvailableGroups()
+available_groups = cell(0);
+import matlab.net.*;
+import matlab.net.http.*;
+type1 = MediaType('text/*');
+type2 = MediaType('application/json','q','.5');
+acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+h1 = HeaderField('Content-Type','application/json');
+h2 = HeaderField('sessionid',bst_get('SessionId'));
+h3 = HeaderField('deviceid',bst_get('DeviceId'));
+header = [acceptField,h1,h2,h3];
+method = RequestMethod.GET;
+request_message = RequestMessage(method,header,[]);
+serveradr = string(bst_get('UrlAdr'));
+protocol = convertCharsToStrings(bst_get('ProtocolId'));
+url=strcat(serveradr,"/protocol/availablegroups/",protocol);
+disp(url);
+try
+    [resp,~,hist]=send(request_message,URI(url));
+    status = resp.StatusCode;
+    txt=char(status);
+    if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+        content=resp.Body;
+        show(content)
+        responseData = jsondecode(content.Data);
+        if(size(responseData) > 0)
+            available_groups = cell(size(responseData));
+            for i = 1 : size(responseData)
+                available_groups{i} = responseData{i};
+            end
+        end
+        disp('Load available groups successfully!');
+    elseif strcmp(status,'404')==1 || strcmp(txt,'NotFound')==1
+        java_dialog('error','Current protocol has not been uploaded!');
+    else
+        java_dialog('error', txt);
+    end
+catch
+    java_dialog('warning', 'Load available groups failed!');
+end
+end 
 
 
