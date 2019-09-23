@@ -266,6 +266,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                     checkresult = 1;
                 else
                     checkresult = 0;
+                    bst_set('SessionId');
                 end
             else
                 bst_set('SessionId');
