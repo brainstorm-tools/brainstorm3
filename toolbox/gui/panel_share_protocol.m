@@ -145,13 +145,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         grouplist={};
         % Add an item in list for each group
         for i = 1:length(groups)
-            groupinfo=strcat(groups{i},' [');
-            groupinfo=strcat(groupinfo,permissions{i});
-            groupinfo=strcat(groupinfo,']');
-            grouplist{end+1}=groupinfo;
+            grouplist={};
+            grouplist{end+1}=groups{i};
         end
-        
-        [group, isCancel] = java_dialog('checkbox', 'What is the name of the group you would like to add?', 'Add groups', [], grouplist);
+        disp(grouplist);
+        [group, isCancel] = java_dialog('combo', 'What is the name of the group you would like to add?', 'Add groups', [], grouplist);
         
         if ~isCancel && ~isempty(group)
             [permission, isCancel2] = java_dialog('combo', 'What permissions would you like to give these groups?', 'Select permissions', [], {'read&write','read'});
@@ -298,32 +296,31 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         else
             permission=1
         end
-        
-        for i = 2:length(group)
-            data = struct('GroupName',group(i),'UserEmail',member(1), 'Privilege', permission);
-            body=MessageBody(data);
-            show(body);
-            request_message = RequestMessage(method,header,body);
-            show(request_message);
-            serveradr = string(bst_get('UrlAdr'));
-            url=strcat(serveradr,"/protocol/editgroup");
-            disp(url);
-            try
-                [resp,~,hist]=send(request_message,URI(url));
-                status = resp.StatusCode;
-                txt=char(status);
-                if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
-                    content = resp.Body;
-                    show(content);
-                    %UpdatePanel();
-                    java_dialog('msgbox', 'Add group member successfully!');
-                else
-                    java_dialog('error', txt);
-                end
-            catch
-                java_dialog('warning', 'Add group member failed! Check your url!');
+        protocol = convertCharsToStrings(bst_get('ProtocolId'));
+        data = struct('GroupName',group(2),'protocolid',protocol, 'Privilege', permission);
+        body=MessageBody(data);
+        show(body);
+        request_message = RequestMessage(method,header,body);
+        show(request_message);
+        serveradr = string(bst_get('UrlAdr'));
+        url=strcat(serveradr,"/protocol/editgroup");
+        disp(url);
+        try
+            [resp,~,hist]=send(request_message,URI(url));
+            status = resp.StatusCode;
+            txt=char(status);
+            if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+                content = resp.Body;
+                show(content);
+                %UpdatePanel();
+                java_dialog('msgbox', 'Add group successfully!');
+            else
+                java_dialog('error', txt);
             end
+        catch
+            java_dialog('warning', 'Add group member failed! Check your url!');
         end
+        
         
         
         
