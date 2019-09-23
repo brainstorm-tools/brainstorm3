@@ -201,9 +201,56 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             return
         end
         
-        [res, isCancel] = java_dialog('combo', 'What permissions would you like to give this member?', 'Edit permissions', [], {'Read-only','Read & write'});
+        [res, isCancel] = java_dialog('combo', 'What permissions would you like to give this member?', 'Edit permissions', [], {'Admin','Read & write', 'Read only'});
         if ~isCancel
             disp(['TODO: Edit permissions of member "' member '" of protocol "' sProtocol.Comment '" to "' res '"']);
+            import matlab.net.*;
+            import matlab.net.http.*;
+            sProtocol = bst_get('ProtocolInfo');
+            if isempty(sProtocol)
+                return
+            end
+                        
+            type1 = MediaType('text/*');
+            type2 = MediaType('application/json','q','.5');
+            acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+            h1 = HeaderField('Content-Type','application/json');
+            h2 = HeaderField('sessionid',bst_get('SessionId'));
+            h3 = HeaderField('deviceid',bst_get('DeviceId'));
+            header = [acceptField,h1,h2,h3];
+            method = RequestMethod.POST;
+            protocolid = convertCharsToStrings(bst_get('ProtocolId'));
+            if(strcmp(res,'Admin')==1)             
+                privilege = 1;
+            elseif(strcmp(res,'Read & write')==1)
+                privilege = 2;
+            else
+                privilege = 3;
+            end
+
+            data = struct('protocolid',protocolid,'useremail',member, 'privilege', privilege);
+            body=MessageBody(data);
+            show(body);
+            request_message = RequestMessage(method,header,body);
+            show(request_message);
+            serveradr = string(bst_get('UrlAdr'));
+            url=strcat(serveradr,"/protocol/edituser");
+            disp(url);
+            try
+                [resp,~,hist]=send(request_message,URI(url));
+                status = resp.StatusCode;
+                txt=char(status);
+                if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+                    content = resp.Body;
+                    show(content);
+                    java_dialog('msgbox', 'edit user permission successfully!');
+                else
+                    java_dialog('error', resp.Body.Data);
+                end
+            catch
+                java_dialog('warning', 'edit user failed! Check your url!');
+            end
+    
             UpdateMembersList();
         end
     end
@@ -229,6 +276,42 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
         
         disp(['TODO: Remove member "' member '" from protocol "' sProtocol.Comment '"']);
+        
+        import matlab.net.*;
+        import matlab.net.http.*;
+                
+        type1 = MediaType('text/*');
+        type2 = MediaType('application/json','q','.5');
+        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+        h1 = HeaderField('Content-Type','application/json');
+        h2 = HeaderField('sessionid',bst_get('SessionId'));
+        h3 = HeaderField('deviceid',bst_get('DeviceId'));
+        header = [acceptField,h1,h2,h3];
+        method = RequestMethod.POST;
+        protocolid = convertCharsToStrings(bst_get('ProtocolId'));
+        data = struct('protocolid',protocolid,'useremail',member);
+        body=MessageBody(data);
+        show(body);
+        request_message = RequestMessage(method,header,body);
+        show(request_message);
+        serveradr = string(bst_get('UrlAdr'));
+        url=strcat(serveradr,"/protocol/removeuser");
+        disp(url);
+        try
+            [resp,~,hist]=send(request_message,URI(url));
+            status = resp.StatusCode;
+            txt=char(status);
+            if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+                content = resp.Body;
+                show(content);
+                java_dialog('msgbox', 'remove user successfully!');
+            else
+                java_dialog('error', resp.Body.Data);
+            end
+        catch
+            java_dialog('warning', 'Remove user failed! Check your url!');
+        end
+    
         UpdateMembersList();
     end
 
@@ -259,12 +342,48 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     end
     %% ===== ADD MEMBER =====
     function [res, error] = AddMember(member)
+        import matlab.net.*;
+        import matlab.net.http.*;
         sProtocol = bst_get('ProtocolInfo');
         if isempty(sProtocol)
             return
         end
         
-        disp(['TODO: Share protocol "' sProtocol.Comment '" to member "' member '"']);
+        disp(['Share protocol "' sProtocol.Comment '" to member "' member '"']);
+        
+        type1 = MediaType('text/*');
+        type2 = MediaType('application/json','q','.5');
+        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+        h1 = HeaderField('Content-Type','application/json');
+        h2 = HeaderField('sessionid',bst_get('SessionId'));
+        h3 = HeaderField('deviceid',bst_get('DeviceId'));
+        header = [acceptField,h1,h2,h3];
+        method = RequestMethod.POST;
+        protocolid = convertCharsToStrings(bst_get('ProtocolId'));
+        data = struct('protocolid',protocolid,'useremail',member, 'privilege', 3);
+        body=MessageBody(data);
+        show(body);
+        request_message = RequestMessage(method,header,body);
+        show(request_message);
+        serveradr = string(bst_get('UrlAdr'));
+        url=strcat(serveradr,"/protocol/edituser");
+        disp(url);
+        try
+            [resp,~,hist]=send(request_message,URI(url));
+            status = resp.StatusCode;
+            txt=char(status);
+            if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+                content = resp.Body;
+                show(content);
+                java_dialog('msgbox', 'Add user successfully!');
+            else
+                java_dialog('error', resp.Body.Data);
+            end
+        catch
+            java_dialog('warning', 'Add user failed! Check your url!');
+        end
+    
+        
         res = 1;
         error = [];
         %error = 'Could not find member.';
