@@ -32,7 +32,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'EZ Fingerprint';
+    sProcess.Comment     = 'Epileptogenic Zone Fingerprint';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Epilepsy';
     sProcess.Index       = 720;
@@ -45,8 +45,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 0;
     
     % Definition of the options
-    %sProcess.options.desc.Type = 'label';
-    %sProcess.options.desc.Comment = ezf_getProcessDescription();
+    sProcess.options.desc.Type = 'label';
+    sProcess.options.desc.Comment = ezf_getProcessDescription();
 end
 
 
@@ -58,21 +58,5 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
-    
-    OutputFiles = {};
-    
-    f = ezf_checkMaltabVersion();
-    [isEZFInstalled, ezfAppInfo] = ezf_checkEZFInstallation();
-    
-    if isEZFInstalled
-        ezf = fullfile(ezfAppInfo.location, 'code', 'EZFingerprint.m');
-        run(ezf);
-    else
-        if f == -1
-            web('https://silencer1127.github.io/software/EZ_Fingerprint/ezf_install', '-browser');
-        else
-            web('https://silencer1127.github.io/software/EZ_Fingerprint/ezf_main', '-browser');
-        end
-    end
-    
+    OutputFiles = process_ez_fingerprint1('Run');    
 end
