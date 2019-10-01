@@ -203,7 +203,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     nInputs = length(sInputs);
     
     % Deface MRIs if requested
-    if defaceMri
+    if defaceMri && ~isempty(mrisToDeface)
         defaceResult = process_mri_deface('Compute', mrisToDeface, struct('isDefaceHead', 0));
         if isempty(defaceResult)
             defaceMri = 0;
