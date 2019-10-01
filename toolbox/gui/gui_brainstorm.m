@@ -550,7 +550,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
             % Update the Layout structure
             bst_set('Layout', 'ExplorationMode', ExplorationMode);
             % Update tree display
-            panel_protocols('UpdateTree');
+            panel_protocols('UpdateTree', 0);
         end
         % Empty clipboard
         bst_set('Clipboard', []);

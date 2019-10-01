@@ -300,13 +300,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== SELECT TAB =====
     function DatabaseTabChanged_Callback(varargin)
-        index = jTabpaneSearch.getSelectedIndex();
-        if index > 0
-            jTreeProtocols.filter(Search('get', index));
-        else
-            jTreeProtocols.filter([]);
-        end
-        ExpandSelectedNode();
+        UpdateTree(0);
     end
 end
 
@@ -365,7 +359,12 @@ end
 
 %% ===== TREE: UPDATE =====
 % USAGE: panel_protocols('UpdateTree')
-function UpdateTree()
+function UpdateTree(resetNodes)
+    % Parse inputs
+    if nargin < 1
+        resetNodes = 1;
+    end
+
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
@@ -373,35 +372,48 @@ function UpdateTree()
     end
     % Set tree as loading (remove all nodes and add a "Loading..." node)
     ctrl.jTreeProtocols.setLoading(1);
+    % Get selected search tab
+    iSearch = ctrl.jTabpaneSearch.getSelectedIndex();
     % Get root node
     nodeRoot = ctrl.jTreeProtocols.getModel.getRoot();
-    % If protocol is not empty : fill the tree
-    defNode = [];
-    % Switch according to the mode button that is checked
-    switch bst_get('Layout', 'ExplorationMode')
-        case 'Subjects',     defNode = node_create_db_subjects(nodeRoot);
-        case 'StudiesSubj',  defNode = node_create_db_studies(nodeRoot, 'subject');
-        case 'StudiesCond',  defNode = node_create_db_studies(nodeRoot, 'condition');
+    % Reset existing nodes if required
+    if resetNodes
+        ResetSearchNodes();
     end
+    % Switch according to the mode button that is checked
+    explorationMode = bst_get('Layout', 'ExplorationMode');
+    % Try to load the tree
+    [dbNode, selNode] = GetSearchNodes(iSearch, explorationMode);
+    % Fill the tree if empty
+    if isempty(dbNode)
+        switch explorationMode
+            case 'Subjects',     [selNode, dbNode] = node_create_db_subjects(nodeRoot, iSearch);
+            case 'StudiesSubj',  [selNode, dbNode] = node_create_db_studies(nodeRoot, 'subject', iSearch);
+            case 'StudiesCond',  [selNode, dbNode] = node_create_db_studies(nodeRoot, 'condition', iSearch);
+        end
+        % Save node for quick tab changes
+        SaveSearchNodes(iSearch, explorationMode, dbNode, selNode);
+    else
+        nodeRoot.add(dbNode);
+    end
+    
     % Remove "Loading..." node, validate changes and redraw tree
     ctrl.jTreeProtocols.setLoading(0);
     drawnow;
+    % Expand whole database if this is a search
+    if iSearch > 0
+        ExpandAll(1);
     % If a default node is defined : select and expand it
-    if ~isempty(defNode)
+    elseif ~isempty(selNode)
         % Expand default node
-        ExpandPath(defNode, 1);   
+        ExpandPath(selNode, 1);   
         % If default node is a study node
-        if ismember(char(defNode.getType()), {'study', 'studysubject', 'condition', 'rawcondition'})
+        if ismember(char(selNode.getType()), {'study', 'studysubject', 'condition', 'rawcondition'})
             % Select study node
-            SelectStudyNode(defNode);
+            SelectStudyNode(selNode);
         end
     end
-    % Apply filter if applicable
-    index = ctrl.jTabpaneSearch.getSelectedIndex();
-    if index > 0
-        ctrl.jTreeProtocols.filter(Search('get', index));
-        ExpandSelectedNode();
-    end
+    
 end
 
 
@@ -422,19 +434,21 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
     if isempty(sStudy)
         return;
     end
-    % Get subject
-    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-    % Create node sub-tree
-    UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
-    isExpandTrials = 1;
-    node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel);
-    % Mark as updated
-    nodeStudy.setUserObject([]);
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
         return;
     end
+    % Get subject
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    % Get selected search tab
+    iSearch = ctrl.jTabpaneSearch.getSelectedIndex();
+    % Create node sub-tree
+    UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
+    isExpandTrials = 1;
+    node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
+    % Mark as updated
+    nodeStudy.setUserObject([]);
     ctrl.jTreeProtocols.getModel.reload(nodeStudy);
 end
 
@@ -496,6 +510,8 @@ function UpdateNode(category, indices, isExpandTrials)
     if isempty(nodeRoot)
         return
     end
+    % Get selected search tab
+    iSearch = ctrl.jTabpaneSearch.getSelectedIndex();
     % Switch between nodes type to update
     switch lower(category)
         case 'subject'
@@ -574,7 +590,7 @@ function UpdateNode(category, indices, isExpandTrials)
                             sSubject = bst_get('Subject', sStudy.BrainStormSubject);
                             % Create new study node (default node / normal node)
                             UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
-                            node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel);
+                            node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
                             % Refresh node display
                             ctrl.jTreeProtocols.getModel.reload(nodeStudy);
                             drawnow
@@ -1438,40 +1454,37 @@ function Filter(tabName, filterContents)
     end
     
     % Make sure all nodes are loaded in database
-    CreateAllStudyNodes();
+    %TODO: Make it work without doing this (for functional view only)
+    %CreateAllStudyNodes();
     
     % Create filter object
-    nodeFilter = java_create('org.brainstorm.tree.BstNodeFilter');
+    searchParams = repmat(db_template('SearchParams'), 0);
     numFilters = size(filterContents, 1);
     
     for iFilter = 1:numFilters
-        % Convert strings to numbered values before passing filter info to
-        % Java. This avoids recompiling if we want to change labels of form
-        type = find(strcmp(filterContents{iFilter,1}, {'File name', 'File type'}));
-        if type == 2
+        % Save filter information as numbers rather than strings to
+        % increase efficiency as you could have 100,000s of comparisons
+        searchParams(iFilter).SearchType = find(strcmp(filterContents{iFilter,1}, {'Name', 'File path', 'File type'}));
+        if searchParams(iFilter).SearchType == 2
             % For file types, force equality
-            value = GetNodeTypes(filterContents{iFilter,3});
-            equality = 2;
-            caseSensitive = 0;
+            searchParams(iFilter).Value = GetNodeTypes(filterContents{iFilter,3});
+            searchParams(iFilter).EqualityType = 2;
+            searchParams(iFilter).CaseSensitive = 0;
         else
             iEquality = find(strcmp(filterContents{iFilter,2}, {'Contains', 'Contains (case)', 'Equals', 'Equals (case)'}));
             equalityCases = [0, 1, 0, 1];
             equalityValues = [1, 1, 2, 2];
-            caseSensitive = equalityCases(iEquality);
-            equality = equalityValues(iEquality);
-            value = filterContents{iFilter,3};
+            searchParams(iFilter).CaseSensitive = equalityCases(iEquality);
+            searchParams(iFilter).EqualityType = equalityValues(iEquality);
+            searchParams(iFilter).Value = filterContents{iFilter,3};
         end
-        boolOperation = find(strcmp(filterContents{iFilter,4}, {'And', 'Or'}));
-        nodeFilter.addFilter(value, type, equality, boolOperation, caseSensitive);
+        searchParams(iFilter).BooleanType = find(strcmp(filterContents{iFilter,4}, {'And', 'Or'}));
     end
     
-    % Apply filter
-    ctrl.jTreeProtocols.filter(nodeFilter);
-    % Expand database appropriately
-    ExpandSelectedNode();
-    
     % Save to list of active searches
-    Search('add', index, nodeFilter);
+    Search('add', tabName, searchParams);
+    % Update display
+    UpdateTree();
 end
 
 function nodeTypes = GetNodeTypes(typeName)
@@ -1516,38 +1529,110 @@ function nodeTypes = GetNodeTypes(typeName)
     end
 end
 
-function searchNode = Search(func, index, node)
+function searchParams = Search(func, indexOrName, params)
     global GlobalData
-    if ~isfield(GlobalData.DataBase, 'ActiveSearches')
-        GlobalData.DataBase.ActiveSearches = [];
-    end
-    numActiveSearches = length(GlobalData.DataBase.ActiveSearches);
+    
+    searchParams = [];
+    numSearches = length(GlobalData.DataBase.ActiveSearches);
     
     switch lower(func)
         case 'get'
-            if index > numActiveSearches
-                searchNode = [];
+            if isnumeric(indexOrName)
+                index = indexOrName + 1;
             else
-                searchNode = GlobalData.DataBase.ActiveSearches(index);
+                index = find(strcmp({GlobalData.DataBase.ActiveSearches.Name}, indexOrName));
+            end
+            if isempty(index) || index > numSearches
+                searchParams = [];
+            else
+                searchParams = GlobalData.DataBase.ActiveSearches(index).Params;
             end
         case 'add'
-            if numActiveSearches == 0
-                GlobalData.DataBase.ActiveSearches = node;
-            elseif numActiveSearches == 1
-                GlobalData.DataBase.ActiveSearches = [GlobalData.DataBase.ActiveSearches, node];
-            else
-                GlobalData.DataBase.ActiveSearches(index) = node;
-            end
-            searchNode = node;
+            activeSearch = db_template('ActiveSearch');
+            activeSearch.Name = indexOrName;
+            activeSearch.Params = params;
+            GlobalData.DataBase.ActiveSearches(end + 1) = activeSearch;
         case 'remove'
-            if numActiveSearches > 0
-                iKeepNodes = 1:length(GlobalData.DataBase.ActiveSearches);
+            if isnumeric(indexOrName)
+                index = indexOrName + 1;
+            else
+                index = find(strcmp({GlobalData.DataBase.ActiveSearches.Name}, indexOrName));
+            end
+            if ~isempty(index) && index > 1 && index <= numSearches
+                iKeepNodes = 1:numSearches;
                 iKeepNodes(index) = [];
+                ResetSearchNodes(index);
                 GlobalData.DataBase.ActiveSearches = GlobalData.DataBase.ActiveSearches(iKeepNodes);
             end
-            searchNode = [];
     end
 end
+
+function [rootNode, selNode] = GetSearchNodes(iSearch, explorationMode)
+    global GlobalData
+    
+    if iSearch + 1 > length(GlobalData.DataBase.ActiveSearches)
+        rootNode = [];
+        selNode  = [];
+        return;
+    end
+    
+    switch explorationMode
+        case 'Subjects'
+            % Anatomy view
+            rootNode = GlobalData.DataBase.ActiveSearches(iSearch+1).AnatRootNode;
+            selNode  = GlobalData.DataBase.ActiveSearches(iSearch+1).AnatSelNode;
+        case 'StudiesSubj'
+            % Functional view, grouped by subjects
+            rootNode = GlobalData.DataBase.ActiveSearches(iSearch+1).FuncSubjRootNode;
+            selNode  = GlobalData.DataBase.ActiveSearches(iSearch+1).FuncSubjSelNode;
+        case 'StudiesCond'
+            % Functional view, grouped by conditions
+            rootNode = GlobalData.DataBase.ActiveSearches(iSearch+1).FuncCondRootNode;
+            selNode  = GlobalData.DataBase.ActiveSearches(iSearch+1).FuncCondSelNode;
+        otherwise
+            error('Unsupported database view mode');
+    end
+end
+
+function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode)
+    global GlobalData
+    
+    switch explorationMode
+        case 'Subjects'
+            % Anatomy view
+            GlobalData.DataBase.ActiveSearches(iSearch+1).AnatRootNode = rootNode;
+            GlobalData.DataBase.ActiveSearches(iSearch+1).AnatSelNode  = selNode;
+        case 'StudiesSubj'
+            % Functional view, grouped by subjects
+            GlobalData.DataBase.ActiveSearches(iSearch+1).FuncSubjRootNode = rootNode;
+            GlobalData.DataBase.ActiveSearches(iSearch+1).FuncSubjSelNode  = selNode;
+        case 'StudiesCond'
+            % Functional view, grouped by conditions
+            GlobalData.DataBase.ActiveSearches(iSearch+1).FuncCondRootNode = rootNode;
+            GlobalData.DataBase.ActiveSearches(iSearch+1).FuncCondSelNode  = selNode;
+        otherwise
+            error('Unsupported database view mode');
+    end
+end
+
+function ResetSearchNodes(iSearches)
+    global GlobalData
+    
+    % If no parameter: reset everything
+    if nargin < 1 || isempty(iSearches)
+        iSearches = 1:length(GlobalData.DataBase.ActiveSearches);
+    end
+    
+    for iSearch = iSearches
+        GlobalData.DataBase.ActiveSearches(iSearch).AnatRootNode = [];
+        GlobalData.DataBase.ActiveSearches(iSearch).AnatRootNode = [];
+        GlobalData.DataBase.ActiveSearches(iSearch).FuncSubjRootNode = [];
+        GlobalData.DataBase.ActiveSearches(iSearch).FuncSubjSelNode  = [];
+        GlobalData.DataBase.ActiveSearches(iSearch).FuncCondRootNode = [];
+        GlobalData.DataBase.ActiveSearches(iSearch).FuncCondSelNode  = [];
+    end
+end
+        
 
 function foundNode = findNode(nodeRoot, findType, iStudy)
     if ismember(char(nodeRoot.getType()), findType) && nodeRoot.getStudyIndex() == iStudy

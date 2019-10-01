@@ -1,4 +1,4 @@
-function bstDefaultNode = node_create_db_subjects( nodeRoot )
+function [bstDefaultNode, nodeSubjectsDB] = node_create_db_subjects( nodeRoot , iSearchFilter )
 % NODE_CREATE_DB_SUBJECTS: Create a tree to represent the subjects registered in current protocol.
 % Populate a tree from its root node.
 %
@@ -30,11 +30,15 @@ function bstDefaultNode = node_create_db_subjects( nodeRoot )
 %
 % Authors: Francois Tadel, 2008-2010
 
+global GlobalData
 import org.brainstorm.tree.*;
 
 %% ===== PARSE INPUTS =====
-if (nargin ~= 1) || ~isa(nodeRoot, 'org.brainstorm.tree.BstNode')
+if (nargin < 1) || ~isa(nodeRoot, 'org.brainstorm.tree.BstNode')
     error('Usage : node_create_db_subjects(nodeRoot, ProtocolSubjects)');
+end
+if nargin < 2
+    iSearchFilter = [];
 end
 
 % Set default node
@@ -65,14 +69,17 @@ if ~isempty(ProtocolSubjects.DefaultSubject)
     % Create subject node
     nodeSubject = BstNode('subject', '');
     % Fill it with MRI and surfaces children nodes
-    node_create_subject( nodeSubject, ProtocolSubjects.DefaultSubject, 0);
-    % Add subject node to 'Subjects database' node
-    nodeSubjectsDB.add(nodeSubject);
-    
-    % If default subject is the subject associated with the default study
-    % Mark it as the default subject
-    if file_compare(selectedSubjectFileName, ProtocolSubjects.DefaultSubject.FileName)
-        bstDefaultNode = nodeSubject;
+    numElems = node_create_subject( nodeSubject, ProtocolSubjects.DefaultSubject, 0, iSearchFilter);
+    % Add new node if it has elements that passed the search filter
+    if numElems > 0
+        % Add subject node to 'Subjects database' node
+        nodeSubjectsDB.add(nodeSubject);
+
+        % If default subject is the subject associated with the default study
+        % Mark it as the default subject
+        if file_compare(selectedSubjectFileName, ProtocolSubjects.DefaultSubject.FileName)
+            bstDefaultNode = nodeSubject;
+        end
     end
 end
 
@@ -93,14 +100,16 @@ for i = 1:length(iSubjectsSorted)
     nodeSubject = BstNode('subject', '');
     % Fill it with MRI and surfaces children nodes
     try
-        node_create_subject( nodeSubject, ProtocolSubjects.Subject(iSubject), iSubject);
+        numElems = node_create_subject( nodeSubject, ProtocolSubjects.Subject(iSubject), iSubject, iSearchFilter);
         % Add subject node to 'Subjects database' node
-        nodeSubjectsDB.add(nodeSubject);
+        if numElems > 0
+            nodeSubjectsDB.add(nodeSubject);
 
-        % If current subject is the subject associated with the default study
-        % Mark it as the default subject
-        if file_compare(selectedSubjectFileName, ProtocolSubjects.Subject(iSubject).FileName)
-            bstDefaultNode = nodeSubject;
+            % If current subject is the subject associated with the default study
+            % Mark it as the default subject
+            if file_compare(selectedSubjectFileName, ProtocolSubjects.Subject(iSubject).FileName)
+                bstDefaultNode = nodeSubject;
+            end
         end
     catch
         % Could not create node

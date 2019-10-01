@@ -92,39 +92,6 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
 %% =================================================================================
 %  === INTERNAL CALLBACKS ==========================================================
 %  =================================================================================
-%% ===== OK BUTTON =====
-    function ButtonOk_Callback(varargin)
-        [optionFile, skipLines, skipValidate] = GetSpikeSorterOptionFile(spikeSorter);
-        textOptions = char(jTextOptions.getText());
-        
-        % Validate
-        if skipValidate || ValidateOptions(textOptions)
-            % Load header if applicable
-            if skipLines > 0
-                fid = fopen(optionFile,'rt');
-                idx = 1;
-                while ~feof(fid) && idx <= skipLines
-                    line = fgetl(fid);
-                    header{idx,1} = line;
-                    idx = idx + 1;
-                end
-                fclose(fid);
-                header = [char(join(header, newline)) newline];
-            else
-                header = '';
-            end
-            
-            % Write to file
-            fid = fopen(optionFile,'w');
-            fwrite(fid, header);
-            fwrite(fid, textOptions);
-            fclose(fid);
-        
-            % Release mutex and keep the panel opened
-            bst_mutex('release', panelName);
-        end
-    end
-
 %% ===== CANCEL BUTTON =====
     function ButtonCancel_Callback(varargin)
         gui_hide(panelName); % Close panel
@@ -134,6 +101,16 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
 %% ===== SEARCH BUTTON =====
     function ButtonSearch_Callback(varargin)
         bst_mutex('release', panelName); % Release the MUTEX
+    end
+
+
+%% ===== KEY TYPED =====
+    function PanelSearch_KeyTypedCallback(h, ev)
+        switch(uint8(ev.getKeyChar()))
+            case ev.VK_ENTER
+                % Enter Key = Pressing Search
+                ButtonSearch_Callback();
+        end
     end
 
 %% ===== ADD SEARCH ROW =====
@@ -148,21 +125,25 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         c = layout.getConstraints(lastComponent);
         c.gridy = c.gridy + 1;
         % Search by
-        jSearchBy = gui_component('ComboBox', [], [], [], {{'File name', 'File type'}}, [], @SearchByChanged_Callback);
+        jSearchBy = gui_component('ComboBox', [], [], [], {{'Name', 'File type', 'File path'}}, [], @SearchByChanged_Callback);
+        java_setcb(jSearchBy, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
         c.gridx = 0;
         jPanelSearch.add(jSearchBy, c);
         % Equality
         jEquality = gui_component('ComboBox', [], [], [], {{'Contains', 'Contains (case)', 'Equals', 'Equals (case)'}});
+        java_setcb(jEquality, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
         c.gridx = 1;
         jPanelSearch.add(jEquality, c);
         % Search keyword
         jSearchFor = gui_component('Text', [], 'hfill');
+        java_setcb(jSearchFor, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
         c.weightx = 1;
         c.gridx = 2;
         jPanelSearch.add(jSearchFor, c);
         c.weightx = 0;
         % Boolean
         jBoolean = gui_component('ComboBox', [], [], [], {{'And', 'Or'}}, [], @BooleanChanged_Callback);
+        java_setcb(jBoolean, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
         c.gridx = 3;
         jPanelSearch.add(jBoolean, c);
         % Remove button
