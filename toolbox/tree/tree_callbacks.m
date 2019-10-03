@@ -1258,10 +1258,10 @@ switch (lower(action))
                     AllMod(iEDF) = [];
                 end
                 % Add iEEG when SEEG+ECOG 
-                if all(ismember({'SEEG','ECOG'}, AllMod))
+                if ~isempty(AllMod) && all(ismember({'SEEG','ECOG'}, AllMod))
                     AllMod = cat(2, {'ECOG+SEEG'}, AllMod);
                 end
-                if all(ismember({'SEEG','ECOG'}, DisplayMod))
+                if ~isempty(AllMod) && all(ismember({'SEEG','ECOG'}, DisplayMod))
                     DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
                 end
                 % One data file selected only
