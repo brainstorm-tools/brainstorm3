@@ -1261,7 +1261,7 @@ switch (lower(action))
                 if ~isempty(AllMod) && all(ismember({'SEEG','ECOG'}, AllMod))
                     AllMod = cat(2, {'ECOG+SEEG'}, AllMod);
                 end
-                if ~isempty(AllMod) && all(ismember({'SEEG','ECOG'}, DisplayMod))
+                if ~isempty(DisplayMod) && all(ismember({'SEEG','ECOG'}, DisplayMod))
                     DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
                 end
                 % One data file selected only
