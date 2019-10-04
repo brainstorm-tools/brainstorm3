@@ -220,6 +220,11 @@ if isRaw
                     % Samples range to read
                     if isExtended
                         samplesBounds = [0, diff(round(ImportOptions.events(iEvent).times(:,iOccur) * sFile.prop.sfreq))];
+                        % Disable option "Ignore shorter epochs"
+                        if ImportOptions.IgnoreShortEpochs
+                            ImportOptions.IgnoreShortEpochs = 0;
+                            bst_report('Warning', 'process_import_data_event', [], 'Importing extended epochs: disabling option "Ignore shorter epochs".');
+                        end
                     else
                         samplesBounds = round(ImportOptions.EventsTimeRange * sFile.prop.sfreq);
                     end

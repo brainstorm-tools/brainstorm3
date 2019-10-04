@@ -222,6 +222,7 @@ for iFile = 1:length(DataFiles)
         % Remove epochs that are too short
         if (ImportOptions.IgnoreShortEpochs >= 1)
             ImportedDataMat(iTooShort) = [];
+            bst_report('Warning', 'process_import_data_event', DataFile, sprintf('%d epochs were ignored because they are shorter than the others.', length(iTooShort)));
         end
     end
 
