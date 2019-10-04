@@ -379,7 +379,7 @@ function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThres
             % Loop on files
             for iFile = 1:length(F)
                 % Matrix: must be a full transformation, same list of inputs and outputs
-                if strcmpi(sMontage.Type, 'matrix') && isequal(sMontage.DispNames, sMontage.ChanNames) && (length(iChannels) == size(F{iFile},1))
+                if strcmpi(sMontage.Type, 'matrix') && isequal(sMontage.DispNames, sMontage.ChanNames) % && (length(iChannels) == size(F{iFile},1))
                     F{iFile} = zeros(size(Fall{iFile}));
                     F{iFile}(iChannels,:) = sMontage.Matrix(iMatrixDisp,iMatrixChan) * Fall{iFile}(iChannels,:);
                     F{iFile} = F{iFile}(selChan,:);
