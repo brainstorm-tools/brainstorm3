@@ -3943,6 +3943,8 @@ function SetScaleX(hFig, newMode)
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
     set(hAxes, 'XScale', newMode);
     setappdata(hFig, 'TsInfo', TsInfo);
+    % Update value
+    bst_set('XScale', newMode);
 end
 
 
