@@ -2307,7 +2307,9 @@ function [sFileOut, errMsg] = CreateRawOut(sFileIn, RawFileOut, ImportOptions, i
                 end
             end
             % Delete epochs description
-            sFileOut.epochs = [];
+            if ~isempty(sFileOut) && isfield(sFileOut, 'epochs')
+                sFileOut.epochs = [];
+            end
             
         otherwise
             errMsg = 'Unsupported file format (only continuous FIF and CTF files can be processed).';
