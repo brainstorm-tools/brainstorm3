@@ -322,6 +322,11 @@ for iGroup = 1:nGroup
         else
             % Apply interpolation matrix
             ResultsMat.ImageGridAmp = muliplyInterp(Wmat, double(ResultsMat.ImageGridAmp), ResultsMat.nComponents);
+            
+            % Apply interpolation to standart deviation matrix
+            if isfield(ResultsMat, 'Std') && ~isempty(ResultsMat.Std)
+                ResultsMat.Std = muliplyInterp(Wmat, double(ResultsMat.Std), ResultsMat.nComponents);
+            end
             ResultsMat.ImagingKernel = [];
         end
         
