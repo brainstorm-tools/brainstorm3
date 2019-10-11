@@ -214,8 +214,9 @@ for iFile = 1:length(LabelFiles)
                 iScout = length(sAtlas.Scouts) + 1;
                 % Single ROI
                 if strcmpi(FileFormat, 'FS-LABEL-SINGLE')
-                    Color = [];
+                    ScoutVert = sort(double(LabelMat.vertices));
                     Label = GetAtlasName(fBase);
+                    Color = [];
                 % Probability map
                 else
                     % Calculate intensity [0,1]
@@ -224,11 +225,12 @@ for iFile = 1:length(LabelFiles)
                     else
                         c = (uniqueValues(i) - minmax(1)) ./ (minmax(2) - minmax(1));
                     end
+                    ScoutVert = sort(double(LabelMat.vertices(LabelMat.values == uniqueValues(i))));
                     Label = file_unique(num2str(uniqueValues(i)), {sAtlas.Scouts.Label});
                     Color = [1 c 0];
                 end
                 % Create structure
-                sAtlas.Scouts(iScout).Vertices = sort(double(LabelMat.vertices(LabelMat.values == uniqueValues(i))));
+                sAtlas.Scouts(iScout).Vertices = ScoutVert;
                 sAtlas.Scouts(iScout).Seed     = [];
                 sAtlas.Scouts(iScout).Label    = Label;
                 sAtlas.Scouts(iScout).Color    = Color;
