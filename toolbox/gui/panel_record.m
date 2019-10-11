@@ -1166,7 +1166,11 @@ end
 
 
 %% ===== READ RAW BLOCK =====
-function [F, TimeVector, smpBlock] = ReadRawBlock(sFile, ChannelMat, iEpoch, TimeRange, DisplayMessages, UseCtfComp, RemoveBaseline, UseSsp) %#ok<DEFNU>
+function [F, TimeVector, smpBlock] = ReadRawBlock(sFile, ChannelMat, iEpoch, TimeRange, DisplayMessages, UseCtfComp, RemoveBaseline, UseSsp, iChannels) %#ok<DEFNU>
+    % Optional inputs
+    if (nargin < 9) || isempty(iChannels)
+        iChannels = [];
+    end
     % Define reading options
     ImportOptions = db_template('ImportOptions');
     ImportOptions.ImportMode      = 'Time';
@@ -1180,7 +1184,7 @@ function [F, TimeVector, smpBlock] = ReadRawBlock(sFile, ChannelMat, iEpoch, Tim
     startSmp = round(TimeRange(1) * sFile.prop.sfreq);
     smpBlock = startSmp + [0, blockSmpLength - 1];
     % Read a block from the raw file
-    [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, smpBlock, [], ImportOptions);
+    [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, smpBlock, iChannels, ImportOptions);
 end
 
 
@@ -2805,7 +2809,7 @@ function CopyRawToDatabase(DataFiles) %#ok<DEFNU>
             error('This function can be called only on external raw files.');
         end
         % Convert to CTF-CONTINUOUS if necessary
-        if strcmpi(sFileIn.format, 'CTF')
+        if strcmpi(sFileIn.format, 'CTF') && (length(sFileIn.epochs) >= 2)
             sFileIn = process_ctf_convert('Compute', sFileIn, 'continuous');
         end
         % Prepare import options (do not apply any modifier)
