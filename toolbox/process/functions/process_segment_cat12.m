@@ -177,6 +177,20 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
     mkdir(catDir);
     NiiFile = bst_fullfile(catDir, 'spm_cat12.nii');
     out_mri_nii(sMri, NiiFile);
+    % If a "world transformation" was not available in the MRI in the database, it was set to a default when saving to .nii
+    % Let's reload this file to get the transformation matrix, it will be used when importing the results
+    if ~isfield(sMri, 'InitTransf') || isempty(sMri.InitTransf) || isempty(find(strcmpi(sMri.InitTransf(:,1), 'vox2ras')))
+        % Load again the file, with the default vox2ras transformation
+        [tmp, vox2ras] = in_mri_nii(NiiFile);
+        % Prepare the history of transformations
+        if ~isfield(sMri, 'InitTransf') || isempty(sMri.InitTransf)
+            sMri.InitTransf = cell(0,2);
+        end
+        % Add this transformation in the MRI
+        sMri.InitTransf(end+1,[1 2]) = {'vox2ras', vox2ras};
+        % Save modification on hard drive
+        bst_save(file_fullpath(MriFileBst), sMri, 'v7');
+    end
 
     % ===== CALL CAT12 SEGMENTATION =====
     % Get TPM.nii template
