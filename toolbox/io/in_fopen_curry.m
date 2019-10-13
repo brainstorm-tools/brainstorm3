@@ -118,7 +118,7 @@ if (hdr.fFrequency == 0 && hdr.fSampleTime ~= 0)
 end
 
 % Epoched files not supported yet
-if (hdr.nTrials > 1)
+if (hdr.nMultiplex ~= 0)
     error('Multiplexed data not supported yet: post a message on the Brainstorm user forum to request this feature.');
 end
 
@@ -137,12 +137,24 @@ if (~isempty(tixstar)) && (~isempty(tixstop))
            hdr.impedancelist(end+1) = tcell{tcC};
        end
     end
-
     % Curry records last 10 impedances
     hdr.impedancematrix = reshape(hdr.impedancelist,[(size(hdr.impedancelist,2)/10),10])';
     hdr.impedancematrix(hdr.impedancematrix == -1) = NaN; % screen for missing
 end
 
+% === READ EPOCH LABELS ===
+hdr.epochlabels = {};
+if (hdr.nTrials > 1)
+    epocstar = strfind(cont,'EPOCH_LABELS START_LIST');
+    epocstop = strfind(cont,'EPOCH_LABELS END_LIST');
+    if (~isempty(epocstar)) && (~isempty(epocstop))
+        text = strrep(cont(epocstar:epocstop-1), char(13), ''); 
+        tcell = str_split(text, char(10));
+        if (length(tcell) == hdr.nTrials + 1)
+            hdr.epochlabels = tcell(2:end);
+        end
+    end
+end
 
 
 %% ===== READ CHANNEL INFO =====            
@@ -336,8 +348,12 @@ sFile.acq_date = [];
 
 %% ===== EPOCHS =====
 if (hdr.nTrials >= 2)
-    for iEpoch = 1:length(hdr.nTrials)
-        sFile.epochs(iEpoch).label   = sprintf('Epoch #%d', iEpoch);
+    for iEpoch = 1:hdr.nTrials
+        if ~isempty(hdr.epochlabels)
+            sFile.epochs(iEpoch).label = hdr.epochlabels{iEpoch};
+        else
+            sFile.epochs(iEpoch).label = sprintf('Epoch #%d', iEpoch);
+        end
         sFile.epochs(iEpoch).times   = sFile.prop.times;
         sFile.epochs(iEpoch).nAvg    = 1;
         sFile.epochs(iEpoch).select  = 1;
