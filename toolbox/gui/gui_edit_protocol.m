@@ -41,8 +41,47 @@ switch (action)
         panelTitle = 'Load existing protocol';
     case 'remote'
         disp('TODO: Load remote protocol');
-        bst_set('ProtocolId','67f71a5a-703b-4c7b-ad0d-4cb179d36e9e');
-        java_dialog('msgbox', 'Load protocol successfully!');
+        import matlab.net.*;
+        import matlab.net.http.*;
+%         bst_set('ProtocolId','67f71a5a-703b-4c7b-ad0d-4cb179d36e9e');
+        sessionid=bst_get('SessionId');
+        deviceid=bst_get('DeviceId');
+        data = struct('deviceid',deviceid,'sessionid',sessionid);
+        body=MessageBody(data);
+        contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
+        type1 = matlab.net.http.MediaType('text/*');
+        type2 = matlab.net.http.MediaType('application/json','q','.5');
+        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+        header = [acceptField contentTypeField];
+        method =RequestMethod.POST;
+        r=RequestMessage(method,header,body);
+        fileID = fopen('/Users/billchen/Desktop/test.txt','r');
+        onebyte = fread(fileID,'uint8');
+        fclose(fileID);
+        disp(onebyte);
+        show(r);
+        url=string(bst_get('UrlAdr'));
+        if ~isempty(url)
+            url=strcat(url,"/user/checksession");
+            uri= URI(url);               
+            try
+                [resp,~,hist]=send(r,uri);
+                status = resp.StatusCode;
+                txt=char(status);
+                if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
+                    content=resp.Body;
+                    show(content);
+                    loading();
+                    java_dialog('msgbox', 'Load protocol successfully!');
+                else
+                    java_dialog('warning',txt);
+                end
+            catch
+                java_dialog('warning', 'Please log in first!');
+            end
+        else
+             java_dialog('warning', 'Please log in first!');
+        end
         return;
         iProtocol = nbProtocols + 1;
         panelTitle = 'Load remote protocol';    
@@ -62,6 +101,47 @@ end
 panelProtocolEditor = panel_protocol_editor('CreatePanel', action);
 % Get handles to panel objects
 ctrl = get(panelProtocolEditor, 'sControls');
+
+% === ACTION: REMOTE ===
+    function loading()
+        import matlab.net.*;
+        import matlab.net.http.*;
+        sessionid=bst_get('SessionId');
+        deviceid=bst_get('DeviceId');
+        data = struct('deviceid',deviceid,'sessionid',sessionid);
+        body=MessageBody(data);
+        contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
+        type1 = matlab.net.http.MediaType('text/*');
+        type2 = matlab.net.http.MediaType('application/json','q','.5');
+        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
+        header = [acceptField contentTypeField];
+        method =RequestMethod.POST;
+        r=RequestMessage(method,header,body);
+        show(r);
+        url=string(bst_get('UrlAdr'));
+        url=strcat(url,"/protocol/lock/");
+        strcat(url,string(bst_get('ProtocolId')));
+        uri= URI(url);               
+        try
+            [resp,~,hist]=send(r,uri);
+            status = resp.StatusCode;
+            txt=char(status);
+            if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
+                content=resp.Body;
+                show(content);               
+                java_dialog('msgbox', 'lock protocol successfully!');
+                fileID = fopen('test.txt','w');
+                fwrite(fileID,[1:9]);
+                fclose(fileID);
+            else
+                java_dialog('warning',txt);
+            end
+        catch
+            java_dialog('warning', 'Check your Url!');
+        end
+    end
+
+
 
 % === ACTION: EDIT ===
 if strcmpi(action, 'edit')
