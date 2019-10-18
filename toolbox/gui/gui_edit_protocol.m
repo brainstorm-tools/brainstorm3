@@ -100,40 +100,23 @@ ctrl = get(panelProtocolEditor, 'sControls');
 
 % === ACTION: REMOTE ===
     function loading()
-        import matlab.net.*;
-        import matlab.net.http.*;
         sessionid=bst_get('SessionId');
         deviceid=bst_get('DeviceId');
         data = struct('deviceid',deviceid,'sessionid',sessionid);
-        body=MessageBody(data);
-        contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
-        type1 = matlab.net.http.MediaType('text/*');
-        type2 = matlab.net.http.MediaType('application/json','q','.5');
-        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
-        h1 = HeaderField('Content-Type','application/json');
-        h2 = HeaderField('sessionid',bst_get('SessionId'));
-        h3 = HeaderField('deviceid',bst_get('DeviceId'));
-        header = [acceptField,h1,h2,h3];
-        method =RequestMethod.POST;
-        r=RequestMessage(method,header,body);
-        show(r);
         url=string(bst_get('UrlAdr'));
         url=strcat(url,"/protocol/lock/");
-        url=strcat(url,string(bst_get('ProtocolId')));
-        disp(url);
-        uri= URI(url);               
+        url=strcat(url,string(bst_get('ProtocolId')));             
         try
-            [resp,~,hist]=send(r,uri);
-            status = resp.StatusCode;
-            txt=char(status);
+            txt=bst_call(@HTTP_request,'POST','Default',data,url);
             if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
                 content=resp.Body;
                 show(content);               
                 java_dialog('msgbox', 'lock protocol successfully!');
-                fileID = fopen('/Users/billchen/Desktop/test.txt','r');
+                fileID = fopen('C:\Users\billc\Desktop\test.txt','r');
                 while ~feof(fileID)
                     onebyte = fread(fileID,'uint8');
                     disp(onebyte);
+                    upload(onebyte,last);
                 end
                 fclose(fileID);
             else
@@ -144,6 +127,22 @@ ctrl = get(panelProtocolEditor, 'sControls');
         end
     end
 
+    function upload(content,last) 
+        url=string(bst_get('UrlAdr'));
+        url=strcat(url,"/file/upload/");
+        unlock();
+    end
+
+
+    function unlock()
+        url=string(bst_get('UrlAdr'));
+        url=strcat(url,"/protocol/unlock/");
+        url=strcat(url,string(bst_get('ProtocolId')));
+        disp(url);
+        data = struct('deviceid',deviceid,'sessionid',sessionid);
+        txt=bst_call(@HTTP_request,'POST','None',data,url);
+        disp(txt);
+    end
 
 
 % === ACTION: EDIT ===
