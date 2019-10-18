@@ -55,10 +55,6 @@ switch (action)
         header = [acceptField contentTypeField];
         method =RequestMethod.POST;
         r=RequestMessage(method,header,body);
-        fileID = fopen('/Users/billchen/Desktop/test.txt','r');
-        onebyte = fread(fileID,'uint8');
-        fclose(fileID);
-        disp(onebyte);
         show(r);
         url=string(bst_get('UrlAdr'));
         if ~isempty(url)
@@ -114,13 +110,17 @@ ctrl = get(panelProtocolEditor, 'sControls');
         type1 = matlab.net.http.MediaType('text/*');
         type2 = matlab.net.http.MediaType('application/json','q','.5');
         acceptField = matlab.net.http.field.AcceptField([type1 type2]);
-        header = [acceptField contentTypeField];
+        h1 = HeaderField('Content-Type','application/json');
+        h2 = HeaderField('sessionid',bst_get('SessionId'));
+        h3 = HeaderField('deviceid',bst_get('DeviceId'));
+        header = [acceptField,h1,h2,h3];
         method =RequestMethod.POST;
         r=RequestMessage(method,header,body);
         show(r);
         url=string(bst_get('UrlAdr'));
         url=strcat(url,"/protocol/lock/");
-        strcat(url,string(bst_get('ProtocolId')));
+        url=strcat(url,string(bst_get('ProtocolId')));
+        disp(url);
         uri= URI(url);               
         try
             [resp,~,hist]=send(r,uri);
@@ -130,8 +130,11 @@ ctrl = get(panelProtocolEditor, 'sControls');
                 content=resp.Body;
                 show(content);               
                 java_dialog('msgbox', 'lock protocol successfully!');
-                fileID = fopen('test.txt','w');
-                fwrite(fileID,[1:9]);
+                fileID = fopen('/Users/billchen/Desktop/test.txt','r');
+                while ~feof(fileID)
+                    onebyte = fread(fileID,'uint8');
+                    disp(onebyte);
+                end
                 fclose(fileID);
             else
                 java_dialog('warning',txt);
