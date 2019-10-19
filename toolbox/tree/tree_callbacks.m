@@ -1258,10 +1258,10 @@ switch (lower(action))
                     AllMod(iEDF) = [];
                 end
                 % Add iEEG when SEEG+ECOG 
-                if all(ismember({'SEEG','ECOG'}, AllMod))
+                if ~isempty(AllMod) && all(ismember({'SEEG','ECOG'}, AllMod))
                     AllMod = cat(2, {'ECOG+SEEG'}, AllMod);
                 end
-                if all(ismember({'SEEG','ECOG'}, DisplayMod))
+                if ~isempty(DisplayMod) && all(ismember({'SEEG','ECOG'}, DisplayMod))
                     DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
                 end
                 % One data file selected only
@@ -1846,8 +1846,10 @@ switch (lower(action))
                             jPopup.add(jMenuConn1);
                         end
                         % Export to file
-                        jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_timefreq(filenameFull));
-
+                        if strcmpi(nodeType, 'timefreq')
+                            jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_timefreq(filenameFull));
+                        end
+                        
                     % ===== PAC: FULL MAPS =====
                     elseif ~isempty(strfind(filenameRelative, '_pac_fullmaps'))
                         gui_component('MenuItem', jPopup, [], 'DirectPAC maps', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative));
@@ -2013,7 +2015,9 @@ switch (lower(action))
                                 end
                         end
                         % Export to file
-                        jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_timefreq(filenameFull));
+                        if strcmpi(nodeType, 'timefreq')
+                            jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_timefreq(filenameFull));
+                        end
                     end
                 end
                 % === STAT CLUSTERS ===
@@ -2181,7 +2185,9 @@ switch (lower(action))
                     end
                 end
                 % Export to file
-                jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_matrix(filenameFull));
+                if strcmpi(nodeType, 'matrix')
+                    jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_matrix(filenameFull));
+                end
                 
 %% ===== POPUP: MATRIX LIST =====
             case 'matrixlist'

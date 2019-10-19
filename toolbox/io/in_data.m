@@ -82,7 +82,7 @@ DateOfStudy = [];
 tmpDir = bst_get('BrainstormTmpDir');
 [filePath, fileBase, fileExt] = bst_fileparts(DataFile);
 % Reading as raw continuous?
-isRaw = ismember(FileFormat, {'FIF', 'CTF', 'CTF-CONTINUOUS', '4D', 'KIT', 'RICOH', 'KDF', 'ITAB', 'MEGSCAN-HDF5', 'EEG-ANT-CNT', 'EEG-ANT-MSR', 'EEG-BRAINAMP', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-EGI-RAW', 'EEG-NEUROSCAN-CNT', 'EEG-NEUROSCAN-EEG', 'EEG-NEUROSCAN-AVG', 'EEG-EDF', 'EEG-BDF', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-MANSCAN', 'EEG-MICROMED', 'EEG-NEURALYNX', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EEG-NEURONE', 'EEG-NEUROSCOPE', 'EEG-NICOLET', 'EEG-NK', 'EEG-SMR', 'SPM-DAT', 'NIRS-BRS', 'BST-DATA', 'BST-BIN', 'EYELINK', 'EEG-EDF', 'EEG-EGI-MFF', 'EEG-INTAN', 'EEG-PLEXON', 'EEG-TDT', 'NWB', 'NWB-CONTINUOUS'});
+isRaw = ismember(FileFormat, {'FIF', 'CTF', 'CTF-CONTINUOUS', '4D', 'KIT', 'RICOH', 'KDF', 'ITAB', 'MEGSCAN-HDF5', 'EEG-ANT-CNT', 'EEG-ANT-MSR', 'EEG-BRAINAMP', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-EGI-RAW', 'EEG-NEUROSCAN-CNT', 'EEG-NEUROSCAN-EEG', 'EEG-NEUROSCAN-AVG', 'EEG-EDF', 'EEG-BDF', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-MANSCAN', 'EEG-MICROMED', 'EEG-NEURALYNX', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EEG-NEURONE', 'EEG-NEUROSCOPE', 'EEG-NICOLET', 'EEG-NK', 'EEG-SMR', 'SPM-DAT', 'NIRS-BRS', 'BST-DATA', 'BST-BIN', 'EYELINK', 'EEG-EDF', 'EEG-EGI-MFF', 'EEG-INTAN', 'EEG-PLEXON', 'EEG-TDT', 'NWB', 'NWB-CONTINUOUS', 'EEG-CURRY'});
 
 %% ===== READ RAW FILE =====
 if isRaw
@@ -220,6 +220,11 @@ if isRaw
                     % Samples range to read
                     if isExtended
                         samplesBounds = [0, diff(round(ImportOptions.events(iEvent).times(:,iOccur) * sFile.prop.sfreq))];
+                        % Disable option "Ignore shorter epochs"
+                        if ImportOptions.IgnoreShortEpochs
+                            ImportOptions.IgnoreShortEpochs = 0;
+                            bst_report('Warning', 'process_import_data_event', [], 'Importing extended epochs: disabling option "Ignore shorter epochs".');
+                        end
                     else
                         samplesBounds = round(ImportOptions.EventsTimeRange * sFile.prop.sfreq);
                     end

@@ -279,16 +279,34 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             bst_report('Error', sProcess, [], ['No events in file: ' 10 FileNames{iFile}]);
             continue;
         end
-        % Initialize events structure
-        events = repmat(sFile.events, 0);
+
         % Get selected events
+        iSelEvents = [];
         for iSelEvt = 1:length(EvtNames)
             % Find input event in file
             iEvt = find(strcmpi(EvtNames{iSelEvt}, {sFile.events.label}));
+            % If not found with exact names, try searching interpreting the * as wildcards
             if isempty(iEvt)
+                iEvt = find(~cellfun(@isempty, regexp({sFile.events.label}, regexptranslate('wildcard', EvtNames{iSelEvt}))));
+            end
+            % Event found / not found
+            if ~isempty(iEvt)
+                iSelEvents = [iSelEvents, iEvt];
+            else
                 bst_report('Warning', sProcess, [], ['Event "' EvtNames{iSelEvt} '" does not exist in file: ' 10 FileNames{iFile}]);
                 continue;
             end
+        end
+        if isempty(iSelEvents)
+            bst_report('Error', sProcess, [], ['No events with matching names found in file: ' 10 FileNames{iFile}]);
+            continue;
+        end
+        % Exclude duplicates
+        iSelEvents = unique(iSelEvents);
+        % Initialize events structure
+        events = repmat(sFile.events, 0);
+        % Select all the the occurrences of all the events in the selected time window
+        for iEvt = iSelEvents
             newEvt = sFile.events(iEvt);
             % Find events that are in time window
             if ~isempty(ImportOptions.TimeRange)

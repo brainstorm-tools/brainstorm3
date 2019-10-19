@@ -312,56 +312,59 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
    
     threshmap(pmask) = StatMat.tmap(pmask);
     
-    % Detect lower and higher t-value thresholds
-    allTval = threshmap(:);
-    if isempty(StatMat.df) || length(setdiff(unique(StatMat.df), 0)) > 1 % df is not constant -> no unique theoretical t_threshold
-        % Use lowest and highest non-zero t_values as thresholds
-        tThreshUnder = getMaxNonZeroNegative(allTval);
-        tThreshOver = getMinNonZeroPositive(allTval);
-    elseif isempty(tThreshUnder) && isempty(tThreshUnder) 
-        
-        df = max(StatMat.df(:));
-        [t_tmp, i_t_tmp] = getMinNonZeroPositive(abs(allTval)); %#ok<ASGLU>
-        t_tmp = allTval(i_t_tmp);
-        if ~isempty(t_tmp) % There is at least one non-zero t value
-            tol = 1e-10;
-            if pmap(i_t_tmp) < 1e-8
-                tol = eps;
-            end
-            if isempty(testSide)
-                if (abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, df, 't', 'two')) < tol)
-                    testSide = 'two';
-                elseif (t_tmp > 0) && (abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, df, 't', 'one+')) < tol)
-                    testSide = 'one+';
-                elseif abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, StatMat.df(i_t_tmp), 't', 'one-')) < tol
-                    testSide = 'one-';
-                else
-                    testSide = '';
+    % Only for t-test: get min and max threshold values for adjusting the colormapping
+    if isfield(StatMat, 'DisplayUnits') && ~isempty(StatMat.DisplayUnits) && strcmpi(StatMat.DisplayUnits, 't')
+        % Detect lower and higher t-value thresholds
+        allTval = threshmap(:);
+        if isempty(StatMat.df) || length(setdiff(unique(StatMat.df), 0)) > 1 % df is not constant -> no unique theoretical t_threshold
+            % Use lowest and highest non-zero t_values as thresholds
+            tThreshUnder = getMaxNonZeroNegative(allTval);
+            tThreshOver = getMinNonZeroPositive(allTval);
+        elseif isempty(tThreshUnder) && isempty(tThreshUnder) 
+
+            df = max(StatMat.df(:));
+            [t_tmp, i_t_tmp] = getMinNonZeroPositive(abs(allTval)); %#ok<ASGLU>
+            t_tmp = allTval(i_t_tmp);
+            if ~isempty(t_tmp) % There is at least one non-zero t value
+                tol = 1e-10;
+                if pmap(i_t_tmp) < 1e-8
+                    tol = eps;
+                end
+                if isempty(testSide)
+                    if (abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, df, 't', 'two')) < tol)
+                        testSide = 'two';
+                    elseif (t_tmp > 0) && (abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, df, 't', 'one+')) < tol)
+                        testSide = 'one+';
+                    elseif abs(pmap(i_t_tmp) - process_test_parametric2('ComputePvalues', t_tmp, StatMat.df(i_t_tmp), 't', 'one-')) < tol
+                        testSide = 'one-';
+                    else
+                        testSide = '';
+                    end
                 end
             end
+            meanPthresh = mean(pthresh(:));
+            switch(testSide)
+                case 'one-'
+                    tThreshUnder = fzero(@(t) 0.5 .* ( 1 + sign(t) .* betainc( t.^2 ./ (df + t.^2), 0.5, 0.5.*df ) ) - meanPthresh, 0);
+                    tThreshOver = [];
+                case 'two'
+                    t_thresh = fzero(@(t) betainc( df ./ (df + t .^ 2), df./2, 0.5) - meanPthresh, 0);
+                    if t_thresh < 0
+                        tThreshUnder = t_thresh;
+                        tThreshOver = -t_thresh;
+                    else
+                        tThreshUnder = -t_thresh;
+                        tThreshOver = t_thresh;
+                    end
+                case 'one+'
+                    tThreshOver = fzero(@(t) 0.5 .* ( 1 - sign(t) .* betainc( t.^2 ./ (df + t.^2), 0.5, 0.5.*df ) ) - meanPthresh, 0);
+                    tThreshUnder = [];
+                otherwise
+                    warning('Cannot determine t-test side');
+                    tThreshUnder = [];
+                    tThreshOver = [];                
+            end   
         end
-        meanPthresh = mean(pthresh(:));
-        switch(testSide)
-            case 'one-'
-                tThreshUnder = fzero(@(t) 0.5 .* ( 1 + sign(t) .* betainc( t.^2 ./ (df + t.^2), 0.5, 0.5.*df ) ) - meanPthresh, 0);
-                tThreshOver = [];
-            case 'two'
-                t_thresh = fzero(@(t) betainc( df ./ (df + t .^ 2), df./2, 0.5) - meanPthresh, 0);
-                if t_thresh < 0
-                    tThreshUnder = t_thresh;
-                    tThreshOver = -t_thresh;
-                else
-                    tThreshUnder = -t_thresh;
-                    tThreshOver = t_thresh;
-                end
-            case 'one+'
-                tThreshOver = fzero(@(t) 0.5 .* ( 1 - sign(t) .* betainc( t.^2 ./ (df + t.^2), 0.5, 0.5.*df ) ) - meanPthresh, 0);
-                tThreshUnder = [];
-            otherwise
-                warning('Cannot determine t-test side');
-                tThreshUnder = [];
-                tThreshOver = [];                
-        end   
     end
 end
 

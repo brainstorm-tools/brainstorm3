@@ -153,7 +153,7 @@ switch (FileFormat)
             if ~isempty(sMri)
                 TessMat(iTess).Vertices = cs_convert(sMri, 'world', 'mri', TessMat(iTess).Vertices);
                 if isempty(TessMat(iTess).Vertices)
-                    error('You must compute the MNI transformation for the MRI first.');
+                    error('There is no world transformation available for this MRI.');
                 end
             end
             % Swap faces

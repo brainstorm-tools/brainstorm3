@@ -53,7 +53,7 @@ if (nargin < 2) || isempty(Modality)
         if ismember(Modality, {'SEEG','ECOG'})
             Modality = 'ECOG+SEEG';
         end
-    elseif ismember(Modality, {'SEEG','ECOG'}) && all(ismember({'SEEG','ECOG'}, AllMod))
+    elseif ~isempty(AllMod) && ismember(Modality, {'SEEG','ECOG'}) && all(ismember({'SEEG','ECOG'}, AllMod))
         Modality = 'ECOG+SEEG';
         DispMod = union(DispMod, {'ECOG+SEEG','SEEG','ECOG'});
     end

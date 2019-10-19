@@ -413,7 +413,14 @@ function FigureMouseDownCallback(hFig, ev)
                 setappdata(hFig, 'MovingTimeBarAction', 'move');
             end
             setappdata(hFig, 'MovingTimeBar', hObj);
-        case {'TimeSelectionPatch', 'TimeZeroLine', 'Cursor', 'TextCursor', 'GFP', 'GFPTitle'}
+        case 'TimeSelectionPatch'
+            % Double-click: zoom into selection (otherwise, regular click)
+            if strcmpi(MouseStatus, 'extend')
+                ZoomSelection(hFig);
+            else
+                hAxes = get(hObj, 'Parent');
+            end
+        case {'TimeZeroLine', 'Cursor', 'TextCursor', 'GFP', 'GFPTitle'}
             hAxes = get(hObj, 'Parent');
         case 'legend'
             legendButtonDownFcn = get(hObj, 'ButtonDownFcn');
@@ -746,6 +753,7 @@ function SetTimeSelectionManual(hFig, newSelection)
     SetTimeSelectionLinked(hFig, newSelection);
 end
 
+
 %% ===== DRAW TIME SELECTION =====
 function DrawTimeSelection(hFig)
     global GlobalData;
@@ -875,6 +883,21 @@ function DrawTimeSelection(hFig)
             set(findobj(hFig, '-depth', 1, 'Tag', 'TextTimeSel'), 'Visible', 'off');
         end
     end
+end
+
+
+%% ===== ZOOM INTO SELECTION =====
+function ZoomSelection(hFig)
+    % Get time selection
+	GraphSelection = getappdata(hFig, 'GraphSelection');
+    if isempty(GraphSelection) || isinf(GraphSelection(2))
+        return;
+    end
+    % Set axes bounds to selection
+    hAxesList = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
+    set(hAxesList, 'XLim', [GraphSelection(1), GraphSelection(2)]);
+    % Delete selection
+    SetTimeSelectionLinked(hFig, []);
 end
 
 
@@ -2256,6 +2279,7 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
     GraphSelection = getappdata(hFig, 'GraphSelection');
     isTimeSelection = ~isempty(GraphSelection) && ~isinf(GraphSelection(2));
     if isTimeSelection
+        gui_component('MenuItem', jMenuSelection, [], 'Zoom into selection (Shift+click)', IconLoader.ICON_ZOOM_PLUS, [], @(h,ev)ZoomSelection(hFig));
         jMenuSelection.addSeparator();
         % ONLY FOR ORIGINAL DATA FILES
         if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && (FigId.Modality(1) ~= '$') && ~isempty(DataFile)
@@ -3943,6 +3967,8 @@ function SetScaleX(hFig, newMode)
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
     set(hAxes, 'XScale', newMode);
     setappdata(hFig, 'TsInfo', TsInfo);
+    % Update value
+    bst_set('XScale', newMode);
 end
 
 

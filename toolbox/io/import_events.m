@@ -137,6 +137,8 @@ if isempty(newEvents)
             newEvents = in_events_array(sFile, EventFile, 'times', EventName);
         case 'ARRAY-SAMPLES'
             newEvents = in_events_array(sFile, EventFile, 'samples', EventName);
+        case 'CSV-TIME'
+            newEvents = in_events_csv(sFile, EventFile);
         case 'CTFVIDEO'
             newEvents = in_events_video(sFile, ChannelMat, EventFile);
         otherwise

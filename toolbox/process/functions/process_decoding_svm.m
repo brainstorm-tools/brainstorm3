@@ -130,6 +130,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     allConditions = {sInputs.Condition};
     [uniqueConditions, tmp, conditionMapping] = unique(allConditions);
     numConditions = length(uniqueConditions);
+    % Try to find trial group instead
+    if numConditions == 1
+        allConditions = cellfun(@str_remove_parenth, {sInputs.Comment}, 'UniformOutput', 0);
+        [uniqueConditions, tmp, conditionMapping] = unique(allConditions);
+        numConditions = length(uniqueConditions);
+    end
+    if numConditions == 1
+        bst_report('Error', sProcess, [], 'Could not find more than one condition to decode.');
+        return;
+    end
     if strcmpi(method, 'pairwise')
         methodName = 'Pairwise';
         Description = cell(numConditions * (numConditions - 1) / 2, 1);

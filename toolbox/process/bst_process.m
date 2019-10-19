@@ -1562,6 +1562,8 @@ function [sStudy, iStudy, Comment, uniqueDataFile] = GetOutputStudy(sProcess, sI
     elseif (length(uniqueCond) == 1)
         % Get group analysis subject
         [sSubject, iSubject] = bst_get('NormalizedSubject');
+        % Remove the RAW tag if present
+        uniqueCond{1} = strrep(uniqueCond{1}, '@raw', '');
         % Try to get condition
         [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, uniqueCond{1}));
         % Condition does not exist: Create new condition
@@ -2305,7 +2307,9 @@ function [sFileOut, errMsg] = CreateRawOut(sFileIn, RawFileOut, ImportOptions, i
                 end
             end
             % Delete epochs description
-            sFileOut.epochs = [];
+            if ~isempty(sFileOut) && isfield(sFileOut, 'epochs')
+                sFileOut.epochs = [];
+            end
             
         otherwise
             errMsg = 'Unsupported file format (only continuous FIF and CTF files can be processed).';
