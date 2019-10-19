@@ -1,4 +1,4 @@
-function [outputArg1] = HTTP_request(method,header,data,url)
+function [response, status] = HTTP_request(method,header,data,url)
 % HTTP_REQUEST: POST,GET request to construct interaction between front end
 % and back end.
 
@@ -51,9 +51,15 @@ function [outputArg1] = HTTP_request(method,header,data,url)
     show(r);
     disp(url);
     uri= URI(url); 
-    [resp,~,hist]=send(r,uri);
-    status = resp.StatusCode;
-    outputArg1 = char(status);
+    try
+        [resp,~,hist]=send(r,uri);
+        response = resp; 
+        status = char(resp.StatusCode);
+    catch
+        response = {};
+        status = "Fail to connect to server.";
+    end
+    
 
 end
 

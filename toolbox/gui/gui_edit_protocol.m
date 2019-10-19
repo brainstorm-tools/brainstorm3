@@ -8,12 +8,12 @@ function [ iProtocol ] = gui_edit_protocol(action, iProtocol)
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
-% 
+%
 % Copyright (c)2000-2019 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
-% 
+%
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
 % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
 % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
@@ -28,7 +28,7 @@ function [ iProtocol ] = gui_edit_protocol(action, iProtocol)
 global GlobalData;
 
 %% ===== PARSE INPUTS =====
-% Get ProtocolsListInfo structure 
+% Get ProtocolsListInfo structure
 sProtocolsListInfo = GlobalData.DataBase.ProtocolInfo;
 nbProtocols = length(sProtocolsListInfo);
 % Switch between actions
@@ -40,47 +40,35 @@ switch (action)
         iProtocol = nbProtocols + 1;
         panelTitle = 'Load existing protocol';
     case 'remote'
-        disp('TODO: Load remote protocol');
-        import matlab.net.*;
-        import matlab.net.http.*;
-%         bst_set('ProtocolId','67f71a5a-703b-4c7b-ad0d-4cb179d36e9e');
+        disp('Loading remote protocol');
         sessionid=bst_get('SessionId');
         deviceid=bst_get('DeviceId');
-        data = struct('deviceid',deviceid,'sessionid',sessionid);
-        body=MessageBody(data);
-        contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
-        type1 = matlab.net.http.MediaType('text/*');
-        type2 = matlab.net.http.MediaType('application/json','q','.5');
-        acceptField = matlab.net.http.field.AcceptField([type1 type2]);
-        header = [acceptField contentTypeField];
-        method =RequestMethod.POST;
-        r=RequestMessage(method,header,body);
-        show(r);
-        url=string(bst_get('UrlAdr'));
-        if ~isempty(url)
-            url=strcat(url,"/user/checksession");
-            uri= URI(url);               
-            try
-                [resp,~,hist]=send(r,uri);
-                status = resp.StatusCode;
-                txt=char(status);
-                if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
-                    content=resp.Body;
-                    show(content);
-                    loading();
-                    java_dialog('msgbox', 'Load protocol successfully!');
-                else
-                    java_dialog('warning',txt);
-                end
-            catch
-                java_dialog('warning', 'Please log in first!');
-            end
-        else
-             java_dialog('warning', 'Please log in first!');
+        url= string(bst_get('UrlAdr'));
+        if isempty(sessionid) || isempty(deviceid) || isempty(url)
+            java_dialog('warning', 'You are not logged in.');
+            return;
         end
+        data = struct('deviceid',deviceid,'sessionid',sessionid);
+        url=strcat(url,"/user/checksession");
+        
+        [response,status] = bst_call(@HTTP_request,'POST','None',data,url);
+        if strcmp(status,'200')==1 ||strcmp(status,'OK')==1
+            content=response.Body;
+            if(strcmp(content.Data,'false')==1)
+                java_dialog('msgbox', 'Your session has expired! Please re-login.');
+                return;
+            end
+            disp("Your session is valid!");
+        else
+            java_dialog('warning',status);
+            return;
+        end
+        
+        loading();
+        
         return;
         iProtocol = nbProtocols + 1;
-        panelTitle = 'Load remote protocol';    
+        panelTitle = 'Load remote protocol';
     case 'edit'
         if (nargin < 2)
             error('Usage:  [iProtocol] = gui_edit_protocol(''edit'', iProtocol)');
@@ -100,48 +88,55 @@ ctrl = get(panelProtocolEditor, 'sControls');
 
 % === ACTION: REMOTE ===
     function loading()
-        sessionid=bst_get('SessionId');
-        deviceid=bst_get('DeviceId');
-        data = struct('deviceid',deviceid,'sessionid',sessionid);
-        url=string(bst_get('UrlAdr'));
-        url=strcat(url,"/protocol/lock/");
-        url=strcat(url,string(bst_get('ProtocolId')));             
-        try
-            txt=bst_call(@HTTP_request,'POST','Default',data,url);
-            if strcmp(txt,'200')==1 ||strcmp(txt,'OK')==1
-                content=resp.Body;
-                show(content);               
-                java_dialog('msgbox', 'lock protocol successfully!');
-                fileID = fopen('C:\Users\billc\Desktop\test.txt','r');
-                while ~feof(fileID)
-                    onebyte = fread(fileID,'uint8');
-                    disp(onebyte);
-                    upload(onebyte,last);
-                end
-                fclose(fileID);
-            else
-                java_dialog('warning',txt);
-            end
-        catch
-            java_dialog('warning', 'Check your Url!');
-        end
-    end
-
-    function upload(content,last) 
-        url=string(bst_get('UrlAdr'));
-        url=strcat(url,"/file/upload/");
+        %lock the protocol
+        lock();
+        
+        %TODO: download/update the protocol from server
+        
+        %try upload file
+        %fileID = fopen('C:\Users\billc\Desktop\test.txt','r');
+        fileID = fopen('/Users/chaoyiliu/Desktop/test.txt','r');
+%         while ~feof(fileID)
+%             onebyte = fread(fileID,'uint8');
+%             disp(onebyte);
+%             upload(onebyte,true);
+%         end
+        fclose(fileID);
+        
         unlock();
     end
 
+    function upload(content,last)
+        url=strcat(string(bst_get('UrlAdr')),"/file/upload/");
+    end
+
+    function lock()
+        disp("start to lock the protocol...");
+        url = strcat(string(bst_get('UrlAdr')),"/protocol/lock/",string(bst_get('ProtocolId')));       
+        [response,status] = bst_call(@HTTP_request,'POST','Default',struct(),url);
+        if strcmp(status,'200')==1 ||strcmp(status,'OK')==1
+            content=response.Body;
+            show(content);
+        else
+            java_dialog('warning',status);
+            return;
+        end       
+        disp('lock protocol successfully!');
+    end
 
     function unlock()
-        url=string(bst_get('UrlAdr'));
-        url=strcat(url,"/protocol/unlock/");
-        url=strcat(url,string(bst_get('ProtocolId')));
+        disp("start to unlock the protocol...");
+        url=strcat(string(bst_get('UrlAdr')),"/protocol/unlock/",string(bst_get('ProtocolId')));
         disp(url);
-        data = struct('deviceid',deviceid,'sessionid',sessionid);
-        txt=bst_call(@HTTP_request,'POST','None',data,url);
-        disp(txt);
+        [response,status]= bst_call(@HTTP_request,'POST','Default',struct(),url);
+        if strcmp(status,'200')==1 ||strcmp(status,'OK')==1
+            content=response.Body;
+            show(content);
+        else
+            java_dialog('warning',status);
+            return;
+        end       
+        disp("unlock protocol successfully!");
     end
 
 
@@ -205,15 +200,15 @@ InterfaceScaling = bst_get('InterfaceScaling');
 MAX_WIDTH = round(450 * InterfaceScaling / 100);
 if (panelContainer.handle{1}.getSize().getWidth() > MAX_WIDTH)
     newDim = java.awt.Dimension(MAX_WIDTH, panelContainer.handle{1}.getSize().getHeight());
-    panelContainer.handle{1}.setSize(newDim);   
+    panelContainer.handle{1}.setSize(newDim);
 end
 
 
 %% =================================================================================
 %  === CALLBACKS  ==================================================================
 %  =================================================================================
-    % SAVE button : Update protocol modifications
-    function updateProtocolModificiations(varargin)       
+% SAVE button : Update protocol modifications
+    function updateProtocolModificiations(varargin)
         % ===== INPUT VERIFICATIONS =====
         % Get default protocol structure
         sProtocol = db_template('ProtocolInfo');
@@ -264,13 +259,13 @@ end
         if ~strcmpi(action, 'load')
             gui_hide('panel_protocol_editor');
         end
-
+        
         % ===== SELECT NEW PROTOCOL =====
         gui_brainstorm('SetCurrentProtocol', iProtocol);
         
         % === BRAINSTORM TEMPLATE ===
         bst_progress('start', 'Creating new protocol', 'Copying default anatomy...');
-        % If a template is selected 
+        % If a template is selected
         isTemplate = strcmpi(action, 'create');
         if isTemplate
             % Copy ICBM152 anatomy to the default anatomy for this protocol
