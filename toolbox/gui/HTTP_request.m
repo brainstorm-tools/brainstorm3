@@ -20,7 +20,7 @@ function [response, status] = HTTP_request(method,header,data,url)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Zeyu Chen, 2019
+% Authors: Zeyu Chen, Chaoyi Liu 2019
     import matlab.net.*;
     import matlab.net.http.*;
     
@@ -32,11 +32,15 @@ function [response, status] = HTTP_request(method,header,data,url)
     h1 = HeaderField('Content-Type','application/json');
     h2 = HeaderField('sessionid',bst_get('SessionId'));
     h3 = HeaderField('deviceid',bst_get('DeviceId'));
+    h4 = HeaderField('Content-Type','application/octet-stream');
+    h5 = HeaderField('protocolid',bst_get('ProtocolId'));
     switch (header)
         case 'None'
             header = [acceptField,contentTypeField];
         case 'Default'
-            header = [acceptField,h1,h2,h3];
+            header = [acceptField,h1,h2,h3,h5];
+        case 'Stream'
+            header = [h2,h3,h4,h5];
     end
     disp(method);
     if strcmp(method,"POST")==1

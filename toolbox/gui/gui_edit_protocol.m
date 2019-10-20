@@ -89,28 +89,6 @@ ctrl = get(panelProtocolEditor, 'sControls');
 % === ACTION: REMOTE ===
     function loading()
         %lock the protocol
-        lock();
-        
-        %TODO: download/update the protocol from server
-        
-        %try upload file
-        %fileID = fopen('C:\Users\billc\Desktop\test.txt','r');
-        fileID = fopen('/Users/chaoyiliu/Desktop/test.txt','r');
-%         while ~feof(fileID)
-%             onebyte = fread(fileID,'uint8');
-%             disp(onebyte);
-%             upload(onebyte,true);
-%         end
-        fclose(fileID);
-        
-        unlock();
-    end
-
-    function upload(content,last)
-        url=strcat(string(bst_get('UrlAdr')),"/file/upload/");
-    end
-
-    function lock()
         disp("start to lock the protocol...");
         url = strcat(string(bst_get('UrlAdr')),"/protocol/lock/",string(bst_get('ProtocolId')));       
         [response,status] = bst_call(@HTTP_request,'POST','Default',struct(),url);
@@ -122,9 +100,9 @@ ctrl = get(panelProtocolEditor, 'sControls');
             return;
         end       
         disp('lock protocol successfully!');
-    end
-
-    function unlock()
+        
+        %TODO: load the protocol from server
+        
         disp("start to unlock the protocol...");
         url=strcat(string(bst_get('UrlAdr')),"/protocol/unlock/",string(bst_get('ProtocolId')));
         disp(url);
@@ -138,6 +116,7 @@ ctrl = get(panelProtocolEditor, 'sControls');
         end       
         disp("unlock protocol successfully!");
     end
+
 
 
 % === ACTION: EDIT ===

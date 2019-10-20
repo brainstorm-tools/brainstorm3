@@ -125,6 +125,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
         gui_component('MenuItem', jSubMenu, [], 'Remove all files', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 1), fontSize);
         gui_component('MenuItem', jSubMenu, [], 'Only detach from database', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 0), fontSize);
         jMenuFile.addSeparator();
+        gui_component('MenuItem', jMenuFile, [], 'Sync with cloud', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@panel_sync), fontSize);
+
         % === NEW SUBJECT ===
         gui_component('MenuItem', jMenuFile, [], 'New subject', IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)bst_call(@db_edit_subject), fontSize);
         jMenuFile.addSeparator();
