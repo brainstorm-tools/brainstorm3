@@ -24,25 +24,27 @@ function [response, status] = HTTP_request(method,header,data,url)
     import matlab.net.*;
     import matlab.net.http.*;
     
-    body=MessageBody(data);
+    
     contentTypeField = matlab.net.http.field.ContentTypeField('application/json');
     type1 = matlab.net.http.MediaType('text/*');
     type2 = matlab.net.http.MediaType('application/json','q','.5');
     acceptField = matlab.net.http.field.AcceptField([type1 type2]);
-    h1 = HeaderField('Content-Type','application/json');
-    h2 = HeaderField('sessionid',bst_get('SessionId'));
-    h3 = HeaderField('deviceid',bst_get('DeviceId'));
-    h4 = HeaderField('Content-Type','application/octet-stream');
-    h5 = HeaderField('protocolid',bst_get('ProtocolId'));
+    jsonheader = HeaderField('Content-Type','application/json');
+    sessionheader = HeaderField('sessionid',bst_get('SessionId'));
+    deviceheader = HeaderField('deviceid',bst_get('DeviceId'));
+    streamheader = HeaderField('Content-Type','application/octet-stream');
+    protocolheader = HeaderField('protocolid',bst_get('ProtocolId'));
     switch (header)
         case 'None'
             header = [acceptField,contentTypeField];
+            body=MessageBody(data);
         case 'Default'
-            header = [acceptField,h1,h2,h3,h5];
+            header = [acceptField,jsonheader,sessionheader,deviceheader,protocolheader];
+            body=MessageBody(data);
         case 'Stream'
-            header = [h2,h3,h4,h5];
+            header = [streamheader,sessionheader,deviceheader,protocolheader];
+            body=data;
     end
-    disp(method);
     if strcmp(method,"POST")==1
         method =RequestMethod.POST;    
     elseif  strcmp(method,"GET")==1
