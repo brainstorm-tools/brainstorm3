@@ -80,7 +80,7 @@ switch (FileFormat)
             SphereMat.Vertices = SphereMat.Vertices .* 100;
         end
         % Convert to the same space as the FreeSurfer spheres
-        SphereVertices = SphereMat.Vertices ./ sMri.Voxsize;
+        SphereVertices = bst_bsxfun(@rdivide, SphereMat.Vertices, sMri.Voxsize);
 end
 
 % Check that the number of vertices match
