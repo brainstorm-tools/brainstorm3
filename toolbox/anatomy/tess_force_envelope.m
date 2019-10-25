@@ -43,7 +43,7 @@ EnvMat = in_tess_bst(EnvFile);
 EnvMat.Faces    = double(EnvMat.Faces);
 EnvMat.Vertices = double(EnvMat.Vertices);
 % Compute best fitting sphere from envelope
-[bfs_center, bfs_radius] = bst_bfs(EnvMat.Vertices);
+bfs_center = bst_bfs(EnvMat.Vertices);
 
 
 % ===== DEFORM SURFACE TO FIT IN ENVELOPE =====

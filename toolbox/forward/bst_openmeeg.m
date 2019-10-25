@@ -275,8 +275,12 @@ for i = 1:length(OPTIONS.BemFiles)
     trifiles{i} = bst_fullfile(TmpDir, sprintf('openmeeg_%d.tri', i));
     % Write MESH in tmp folder
     [nVert(i), nFaces(i), TessMat] = out_tess_tri(OPTIONS.BemFiles{i}, trifiles{i}, 1);
+    % Center all the points on the center of the envelope
+    bfs_center = bst_bfs(TessMat.Vertices);
+    vDipoles = bst_bsxfun(@minus, OPTIONS.GridLoc, bfs_center(:)');
+    vInner = bst_bsxfun(@minus, TessMat.Vertices, bfs_center(:)');
     % Check if any dipole is outside of the innermost layer
-    iDipInside = find(~inpolyhd(OPTIONS.GridLoc, TessMat.Vertices, TessMat.Faces));
+    iDipInside = find(~inpolyhd(vDipoles, vInner, TessMat.Faces));
     if ~isempty(iDipInside)
         errMsg = sprintf(['Some dipoles are outside the BEM layers (%d dipoles).\n' ...
                           'The leadfield for these dipoles is probably incorrect.\n\n'], length(iDipInside));
