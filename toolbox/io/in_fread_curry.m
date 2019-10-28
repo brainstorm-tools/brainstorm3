@@ -22,7 +22,7 @@ function F = in_fread_curry(sFile, sfid, iEpoch, SamplesBounds, ChannelsRange)
 % =============================================================================@
 %
 % Authors: Initial code from EEGLAB plugin loadcurry 2.0: Matt Pontifex, pontifex@msu.edu
-%          Adaptation for Brainstorm 3: Francois Tadel, 2018
+%          Adaptation for Brainstorm 3: Francois Tadel, 2018-2019
 
 % Parse inputs
 if (nargin < 3)
@@ -38,6 +38,8 @@ end
 if (nargin < 5) || isempty(ChannelsRange)
     ChannelsRange = [1, sFile.header.nChannels];
 end
+% Get number of samples from the beginning of the file
+SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq);
 
 % Ascii files not supported
 if (sFile.header.nASCII == 1)

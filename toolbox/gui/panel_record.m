@@ -620,11 +620,9 @@ function ValidateTimeWindow(isProgress)
         ctrl.jTextStart.setText(sprintf('%1.4f', Time(iStart)));
     end
     % Save length in user preferences
-    if (smpLength <= length(Time))
-        RawViewerOptions = bst_get('RawViewerOptions');
-        RawViewerOptions.PageDuration = smpLength / sfreq;
-        bst_set('RawViewerOptions', RawViewerOptions);
-    end
+    RawViewerOptions = bst_get('RawViewerOptions');
+    RawViewerOptions.PageDuration = smpLength / sfreq;
+    bst_set('RawViewerOptions', RawViewerOptions);
     % Progress bar
     if isProgress
         bst_progress('start', 'Update display', 'Loading recordings...');
