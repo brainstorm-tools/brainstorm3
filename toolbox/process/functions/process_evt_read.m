@@ -19,7 +19,7 @@ function varargout = process_evt_read( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2013
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -128,7 +128,7 @@ end
 
 
 %% ===== COMPUTE =====
-function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero)
+function [events, EventsTrackMode] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero)
     % Parse inputs
     if (nargin < 5)
         isAcceptZero = 0;
@@ -188,17 +188,22 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
 
     % ===== ASK READ MODE =====
     if strcmpi(EventsTrackMode, 'ask')
-        res = java_dialog('question', ['Please select the interpretation mode at each time sample:' 10 10 ...
-                                       '- Value: detect the changes of value on the trigger channel' 10 ...
-                                       '- Bit: detect the changes for each bit of the channel independently' 10 ...
-                                       '- TTL: detect peaks of 5V/12V on an analog channel (baseline=0V)' 10 ...
-                                       '- RTTL: detect peaks of 0V on an analog channel (baseline!=0V)'], ...
-                                       'Type of events', [], {'Value','Bit','TTL','RTTL','Cancel'}, 'value');
+        res = java_dialog('question', ['<HTML>Please select the interpretation mode at each time sample: <BR><BR>' ...
+                                       '- <B>Value</B>: detect the changes of value on the trigger channel<BR>' ...
+                                       '- <B>Bit</B>: detect the changes for each bit of the channel independently<BR>' ...
+                                       '- <B>TTL</B>: detect peaks of 5V/12V on an analog channel (baseline=0V)<BR>' ...
+                                       '- <B>RTTL</B>: detect peaks of 0V on an analog channel (baseline!=0V)<BR>' ...
+                                       '- <B>Ignore</B>: do not read trigger channel<BR><BR>'], ...
+                                       'Type of events', [], {'Value','Bit','TTL','RTTL','Ignore','Cancel'}, 'value');
         if isempty(res) || strcmpi(res, 'Cancel')
             events = -1;
             return
         end
         EventsTrackMode = lower(res);
+    end
+    % Ignore trigger channel
+    if strcmpi(EventsTrackMode, 'ignore')
+        return;
     end
 
     % ===== READ STIM CHANNELS =====

@@ -123,7 +123,7 @@ for iFile = 1:length(RawFiles)
     % ===== OPENING FILE =====
     bst_progress('start', 'Open raw EEG/MEG recordings', 'Reading file header...');
     % Open file
-    [sFile, ChannelMat, errMsg, DataMat] = in_fopen(RawFiles{iFile}, FileFormat, ImportOptions);
+    [sFile, ChannelMat, errMsg, DataMat, ImportOptions] = in_fopen(RawFiles{iFile}, FileFormat, ImportOptions);
     if isempty(sFile)
         bst_progress('stop');
         return;

@@ -529,7 +529,7 @@ switch lower(structureName)
             'ChannelAlign',     1, ...        % If 1, prompts for automatic registration. If 2, perform it automatically. If 0, do not do it.
             'IgnoreShortEpochs',1, ...        % If 1, prompts for ignoring the epochs that are shorter that the others. If 2, ignore them automatically. If 0, do not do it.
             'EventsMode',       'ask', ...    % Where to get the events from: {'ask', 'ignore', Filename, ChannelName, ChannelNames}
-            'EventsTrackMode',  'ask', ...    % {'value','bit','ttl','rttl','ask'} 
+            'EventsTrackMode',  'ask', ...    % {'value','bit','ttl','rttl','ignore','ask'} 
             'EventsTypes',      '', ...       % String with a list of eventtypes to use to group the epochs (EEGLAB only)
             'DisplayMessages',  1, ...        % If 0, do not show any of the message boxes that the user would normally see
             'Precision',        []);          % Precision when reading the file {'double' (default), 'single'} (only for supported file formats)

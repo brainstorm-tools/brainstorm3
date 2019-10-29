@@ -1,4 +1,4 @@
-function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, ImportOptions)
+function [sFile, ChannelMat, errMsg, DataMat, ImportOptions] = in_fopen(DataFile, FileFormat, ImportOptions)
 % IN_FOPEN:  Open a file for reading in Brainstorm.
 %
 % USAGE:  [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, ImportOptions)
@@ -95,7 +95,7 @@ switch (FileFormat)
     case 'EEG-CURRY'
         [sFile, ChannelMat] = in_fopen_curry(DataFile);
     case {'EEG-EDF', 'EEG-BDF'}
-        [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions);
+        [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptions);
     case 'EEG-EEGLAB'
         [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions);
     case 'EEG-EGI-RAW'
@@ -146,6 +146,7 @@ switch (FileFormat)
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);
+        
     % ===== CONVERT TO CONTINUOUS =====
     case 'EEG-ASCII'
         [DataMat, ChannelMat] = in_data_ascii(DataFile);

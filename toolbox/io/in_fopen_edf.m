@@ -1,7 +1,7 @@
-function [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions)
+function [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptions)
 % IN_FOPEN_EDF: Open a BDF/EDF file (continuous recordings)
 %
-% USAGE:  [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions)
+% USAGE:  [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptions)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2019
         
 
 % Parse inputs
@@ -469,9 +469,9 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
         end
         
     % BDF Status line
-    elseif strcmpi(sFile.format, 'EEG-BDF')
+    elseif strcmpi(sFile.format, 'EEG-BDF') && ~strcmpi(ImportOptions.EventsTrackMode, 'ignore')
         % Ask how to read the events
-        events = process_evt_read('Compute', sFile, ChannelMat, ChannelMat.Channel(iEvtChans).Name, ImportOptions.EventsTrackMode);
+        [events, ImportOptions.EventsTrackMode] = process_evt_read('Compute', sFile, ChannelMat, ChannelMat.Channel(iEvtChans).Name, ImportOptions.EventsTrackMode);
         if isequal(events, -1)
             sFile = [];
             ChannelMat = [];
