@@ -44,7 +44,7 @@ function [sFile, ChannelMat] = in_fopen_neuralynx(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2019
 
 
 %% ===== GET FILES =====
@@ -95,7 +95,9 @@ for i = 1:length(ChanFiles)
     if isfield(newHeader, 'LastTimeStamp') && ~isempty(newHeader.LastTimeStamp)
         nRecordsTime = round(double(newHeader.LastTimeStamp - newHeader.FirstTimeStamp) / 1e6 * newHeader.SamplingFrequency / 512) + 1;
         if (nRecordsTime < nRecordsFile)
-            error(['There are some missing blocks of recordings in file: ' ChanFiles{i}]);
+            disp(['Neuralynx> Warning: The file is longer than expected: ' ChanFiles{i}]);
+            disp(sprintf('Neuralynx> Truncating file to %d records instead of %d...', nRecordsTime, nRecordsFile));
+            nRecordsFile = nRecordsTime;
         end
     end
     % Extract information needed for opening the file
