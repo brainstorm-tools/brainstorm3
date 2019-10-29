@@ -697,20 +697,28 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
     
     % ===== CHECK FOR OTHER RAW FILES =====
     if strcmpi(DataType, 'raw') && ~isempty(GlobalData.FullTimeWindow) && ~isempty(GlobalData.FullTimeWindow.CurrentEpoch) && ~isReloadForced
-        bst_error(['Cannot open two raw viewers at the same time.' 10 'Please close the other windows and retry.'], 'Load data file', 0);
-        iDS = [];
-        return
+        res = java_dialog('question', [...
+            'Cannot open two continuous viewers at the same time.' 10 ...
+            'Unload all the other files?' 10 10], 'Load recordings', [], {'Unload all', 'Cancel'});
+        % Cancel: Unload the new dataset
+        if isempty(res) || strcmpi(res, 'Cancel')
+            iDS = [];
+            return;
+        % Otherwise: unload all the other datasets
+        else
+            % Unload everything
+            UnloadAll('Forced');
+            % If not everything was unloaded correctly (eg. the user cancelled half way when asked to save the modifications)
+            if ~isempty(GlobalData.DataSet)
+                iDS = [];
+                return;
+            end
+            % New dataset = only dataset
+            iDS = 1;
+        end
     end
     
     % ===== STORE IN GLOBALDATA =====
-%     % Look for a DataSet that have been partly initialized for this study 
-%     % IE. StudyFile was defined but not DataFile (ie. a Channel or Result DataSet)
-%     if isempty(iDS) && ~isempty(sStudy.FileName) 
-%         iDS = GetDataSetStudyNoData(sStudy.FileName);
-%         if (length(iDS) > 1)
-%             iDS = iDS(1);
-%         end
-%     end
     % If no DataSet is available for this data file
     if isempty(iDS)
         % Create new dataset
@@ -732,14 +740,33 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
         isTimeCoherent = CheckTimeWindows();
         % If loaded data is not coherent with previous data
         if ~isTimeCoherent
-            bst_error(['Time definition for this file is not compatible with the other files' 10 ...
-                       'already loaded in Brainstorm.' 10 10 ...
-                       'Close existing windows before opening this file, or use the Navigator.'], 'Load recordings', 0);
-            % Remove it
-            UnloadDataSets(iDS);
-            %GlobalData.DataSet(iDS) = [];
-            iDS = [];
-            return;
+            res = java_dialog('question', [...
+                'The time definition is not compatible with previously loaded files.' 10 ...
+                'Unload all the other files?' 10 10], 'Load recordings', [], {'Unload all', 'Cancel'});
+            % Cancel: Unload the new dataset
+            if isempty(res) || strcmpi(res, 'Cancel')
+                UnloadDataSets(iDS);
+                iDS = [];
+                return;
+            % Otherwise: unload all the other datasets
+            elseif (length(GlobalData.DataSet) > 1)
+                % Save newly created dataset
+                bakDS = GlobalData.DataSet(iDS);
+                % Unload everything
+                UnloadAll('Forced');
+                % If not everything was unloaded correctly (eg. the user cancelled half way when asked to save the modifications)
+                if ~isempty(GlobalData.DataSet)
+                    % Unload the new dataset
+                    UnloadDataSets(iDS);
+                    iDS = [];
+                    return;
+                end
+                % Restore new dataset
+                GlobalData.DataSet = bakDS;
+                iDS = 1;
+                % Update time window
+                isTimeCoherent = CheckTimeWindows();
+            end
         end
     end
     
