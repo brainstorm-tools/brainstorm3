@@ -128,7 +128,7 @@ function [StatThreshOptions, strCorrect] = GetOptions(sProcess)
         end
     end
     % Final process string
-    strCorrect = ['p<' num2str(StatThreshOptions.pThreshold) strCorrect];
+    strCorrect = ['alpha=' num2str(StatThreshOptions.pThreshold) strCorrect];
 end
 
 
