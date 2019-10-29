@@ -2819,7 +2819,7 @@ function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad, isFullP
     for iNode = 1:length(bstNodes)
         switch char(bstNodes(iNode).getType())
             case 'datalist'
-                [iDepStudies, iDepItems] = tree_dependencies(bstNodes, targetType);
+                [iDepStudies, iDepItems] = tree_dependencies(bstNodes(iNode), targetType);
                 if isequal(iDepStudies, -10)
                     disp('BST> Error in tree_dependencies.');
                     continue;
@@ -2834,7 +2834,7 @@ function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad, isFullP
                     end
                 end
             case 'matrixlist'
-                [iDepStudies, iDepItems] = tree_dependencies(bstNodes, targetType);
+                [iDepStudies, iDepItems] = tree_dependencies(bstNodes(iNode), targetType);
                 if isequal(iDepStudies, -10)
                     disp('BST> Error in tree_dependencies.');
                     continue;
