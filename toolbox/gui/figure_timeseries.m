@@ -414,7 +414,7 @@ function FigureMouseDownCallback(hFig, ev)
             end
             setappdata(hFig, 'MovingTimeBar', hObj);
         case 'TimeSelectionPatch'
-            % Double-click: zoom into selection (otherwise, regular click)
+            % Shift+click: zoom into selection (otherwise, regular click)
             if strcmpi(MouseStatus, 'extend')
                 ZoomSelection(hFig);
             else
