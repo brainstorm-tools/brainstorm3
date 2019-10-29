@@ -1155,7 +1155,9 @@ function AddMontage()
             break;
         end
         spl = regexp(tline,'\s+','split');
-        newMontage.Labels{end+1} = spl{2};
+        if (length(spl) >= 2)
+            newMontage.Labels{end+1} = spl{2};
+        end
     end
     % Close file
     fclose(fid);
