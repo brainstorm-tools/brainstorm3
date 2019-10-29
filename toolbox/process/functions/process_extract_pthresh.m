@@ -50,7 +50,7 @@ end
 %% ===== DEFINE OPTIONS =====
 function sProcess = DefineOptions(sProcess)
     % === P-VALUE THRESHOLD
-    sProcess.options.pthresh.Comment = 'p-value threshold: ';
+    sProcess.options.pthresh.Comment = 'Significance level &alpha;: ';
     sProcess.options.pthresh.Type    = 'value';
     sProcess.options.pthresh.Value   = {0.05,'',4};
     % === DURATION THRESHOLD

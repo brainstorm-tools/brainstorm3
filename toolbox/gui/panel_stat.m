@@ -49,7 +49,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % ===== THRESHOLDING =====
     jPanelThresh = gui_river([4,1], [2,8,4,0], 'Thresholding');
         % Threshold p-value: Title
-        jLabelThresh = gui_component('Label', jPanelThresh, [], 'p-value threshold: ');
+        jLabelThresh = gui_component('Label', jPanelThresh, [], '<HTML>Significance level &alpha;: ');
         % Threshold p-value: Value
         jTextPThresh = gui_component('Text', jPanelThresh, 'tab', '');
         jTextPThresh.setHorizontalAlignment(JLabel.RIGHT);
@@ -272,13 +272,10 @@ function UpdatePanel(ctrl)
     switch (StatThreshOptions.Correction)
         case 'no'
             ctrl.jRadioCorrNo.setSelected(1);
-            ctrl.jLabelThresh.setText('p-value threshold: ');
         case 'bonferroni'
             ctrl.jRadioCorrBonf.setSelected(1);
-            ctrl.jLabelThresh.setText('p-value threshold: ');
         case 'fdr'
             ctrl.jRadioCorrFdr.setSelected(1);
-            ctrl.jLabelThresh.setText('q-value threshold: ');
     end
     % Control
     if ismember(1, StatThreshOptions.Control)
@@ -428,16 +425,11 @@ function SaveOptions()
     % Multiple comparisons
     if ctrl.jRadioCorrBonf.isSelected()
         StatThreshOptions.Correction = 'bonferroni';
-        labelThresh = 'p-value threshold: ';
     elseif ctrl.jRadioCorrFdr.isSelected()
         StatThreshOptions.Correction = 'fdr';
-        labelThresh = 'q-value threshold: ';
     else
         StatThreshOptions.Correction = 'no';
-        labelThresh = 'p-value threshold: ';
     end
-    % Update threshold label
-    ctrl.jLabelThresh.setText(labelThresh);
     % Control
     StatThreshOptions.Control = [];
     if ctrl.jRadioControlSpace.isSelected()
