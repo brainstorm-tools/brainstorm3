@@ -331,13 +331,21 @@ for i = 1:length(allTypes)
     end
 end
 % Add history entry
-if isDataCov,
-    NoiseCovMat = bst_history('add', NoiseCovMat, 'compute', sprintf('Computed based on %d files (%d samples): DataWindow [%1.2f, %1.2f]ms, %s', ...
-        nBlocks, nSamplesTotal, Options.DataTimeWindow * 1000, Options.RemoveDcOffset));
+if isDataCov
+    if (max(abs(Options.DataTimeWindow)) > 2)
+        strTime = sprintf('Data=[%1.3f, %1.3f]s, Baseline=[%1.3f, %1.3f]s', Options.DataTimeWindow, Options.Baseline);
+    else
+        strTime = sprintf('Data=[%d, %d]ms, Baseline=[%d, %d]ms', round(Options.DataTimeWindow * 1000), round(Options.Baseline * 1000));
+    end
 else
-    NoiseCovMat = bst_history('add', NoiseCovMat, 'compute', sprintf('Computed based on %d files (%d samples): Baseline [%1.2f, %1.2f]ms, %s', ...
-        nBlocks, nSamplesTotal, Options.Baseline * 1000, Options.RemoveDcOffset));
+    if (max(abs(Options.Baseline)) > 2)
+        strTime = sprintf('[%1.3f, %1.3f]s', Options.Baseline);
+    else
+        strTime = sprintf('[%d, %d]ms', round(Options.Baseline * 1000));
+    end
 end
+NoiseCovMat = bst_history('add', NoiseCovMat, 'compute', sprintf('Computed based on %d files (%d blocks, %d samples): %s, %s', ...
+    nFiles, nBlocks, nSamplesTotal, strTime, Options.RemoveDcOffset));
 % Save in database
 NoiseCovFiles = import_noisecov(iTargetStudies, NoiseCovMat, Options.ReplaceFile, isDataCov);
 % Close progress bar

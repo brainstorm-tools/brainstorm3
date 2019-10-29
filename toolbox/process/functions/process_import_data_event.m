@@ -64,6 +64,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sep2.Type    = 'separator';
     sProcess.options.sep2.Comment = ' ';
     % Event name
+    sProcess.options.labelevt.Comment = '<HTML><I><FONT color="#777777">To import multiple events: separate them with commas,<BR>or use regular expressions (eg. <B>evt.*</B> selects evt1, evtA, evtTest...) </FONT></I>';
+    sProcess.options.labelevt.Type    = 'label';
     sProcess.options.eventname.Comment = 'Event names: ';
     sProcess.options.eventname.Type    = 'text';
     sProcess.options.eventname.Value   = '';
@@ -285,9 +287,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         for iSelEvt = 1:length(EvtNames)
             % Find input event in file
             iEvt = find(strcmpi(EvtNames{iSelEvt}, {sFile.events.label}));
-            % If not found with exact names, try searching interpreting the * as wildcards
+            % If not found with exact names, try searching interpreting strings as regular expressions
             if isempty(iEvt)
-                iEvt = find(~cellfun(@isempty, regexp({sFile.events.label}, regexptranslate('wildcard', EvtNames{iSelEvt}))));
+                iEvt = find(~cellfun(@isempty, regexp({sFile.events.label}, EvtNames{iSelEvt})));
             end
             % Event found / not found
             if ~isempty(iEvt)
