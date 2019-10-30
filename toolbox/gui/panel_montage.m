@@ -149,6 +149,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelBottom = gui_component('Panel');
     jPanelBottomLeft = gui_river([10 0], [10 10 0 10]);
     jPanelBottomRight = gui_river([10 0], [10 10 0 10]);
+        gui_component('button', jPanelBottomLeft, [], 'Help', [], [],  @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/MontageEditor', '-browser'));
         jButtonValidate = gui_component('button', jPanelBottomLeft,  [], 'Validate');
         jButtonValidate.setVisible(0);
         gui_component('button', jPanelBottomRight, [], 'Cancel', [], [], @(h,ev)ButtonCancel_Callback());
