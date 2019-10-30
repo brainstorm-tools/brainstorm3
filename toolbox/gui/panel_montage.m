@@ -116,7 +116,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         strHelp = ['Examples:<BR>' ...
             '  Cz-C4 : Cz,-C4          % Difference Cz-C4<BR>' ...
             '  MC    : 0.5*M1, 0.5*M2  % Average of M1 and M2<BR>' ...
-            '  EOG|00FF00 : EOG        % Display EOG in green<BR>'];
+            '  EOG|00FF00 : EOG        % Show EOG in green (RGB hexa)<BR>' ...
+            '  Pz-alpha|8-12Hz : Pz    % Filter Pz signal at 8-12 Hz'];
         gui_component('label', jPanelText, BorderLayout.NORTH, ['<HTML><PRE>' strHelp '</PRE>']);
         % TEXT: Create text editor
         jTextMontage = JTextArea(6, 12);
@@ -2379,26 +2380,42 @@ end
 
 
 %% ===== PARSE LINE LABELS =====
-function [LinesLabels, LinesColor] = ParseMontageLabels(LinesLabels, DefaultColor)
+function [LinesLabels, LinesColor, LinesFilter] = ParseMontageLabels(LinesLabels, DefaultColor)
     % Number of lines
     nLines = length(LinesLabels);
-    % If some channels use the extended "NAME|COLOR"
-    if any(cellfun(@(c)any(c == '|'), LinesLabels)) % && ~any(cellfun(@(c)any(c == ' '), LinesLabels))
+    % If some channels use the extended "NAME|COLOR" or "NAME|FREQBAND"
+    if any(cellfun(@(c)any(c == '|'), LinesLabels))
         LinesColor = repmat(DefaultColor, nLines, 1);
-        for i = 1:length(LinesLabels)
-            splitLabel = str_split(LinesLabels{i}, '|');
+        LinesFilter = zeros(nLines, 2);
+        for iLine = 1:length(LinesLabels)
+            splitLabel = str_split(LinesLabels{iLine}, '|');
             % Channel name
-            LinesLabels{i} = splitLabel{1};
-            % Channel color
-            if (length(splitLabel) >= 2) && (length(splitLabel{2}) == 6)
-                color = [hex2dec(splitLabel{2}(1:2)), hex2dec(splitLabel{2}(3:4)), hex2dec(splitLabel{2}(5:6))];
-                if (length(color) == 3)
-                    LinesColor(i,:) = color ./ 255;
+            LinesLabels{iLine} = splitLabel{1};
+            % Other options
+            for iOpt = 2:length(splitLabel)
+                % Channel color
+                if (length(splitLabel{iOpt}) == 6) && all(ismember(splitLabel{iOpt}, '0123456789ABCDEF'))
+                    color = [hex2dec(splitLabel{iOpt}(1:2)), hex2dec(splitLabel{iOpt}(3:4)), hex2dec(splitLabel{iOpt}(5:6))];
+                    if (length(color) == 3)
+                        LinesColor(iLine,:) = color ./ 255;
+                    else
+                        disp(['BST> Montage: Invalid color string "' splitLabel{iOpt} '"']);
+                    end
+                elseif (length(splitLabel{iOpt}) > 5) && strcmpi(splitLabel{iOpt}(end-1:end), 'Hz')
+                    freqband = sscanf(lower(splitLabel{iOpt}), '%f-%fhz');
+                    if (length(freqband) == 2) && (freqband(1) < freqband(2)) && all(freqband >= 0)
+                        LinesFilter(iLine,:) = freqband(:)';
+                    else
+                        disp(['BST> Montage: Invalid frequency band "' splitLabel{iOpt} '"']);
+                    end
+                else
+                    disp(['BST> Montage: Invalid option "' splitLabel{iOpt} '"']);
                 end
             end
         end
     else
         LinesColor = [];
+        LinesFilter = [];
     end
 end
 

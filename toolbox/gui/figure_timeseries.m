@@ -3111,10 +3111,26 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     % Get colors from montage (not for scouts, only for recordings)
     if ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'timefreq') && (~isempty(TsInfo.Modality) && (TsInfo.Modality(1) ~= '$')) && ~isempty(LinesLabels)
         % Parse montage labels
-        [LinesLabels, MontageColors] = panel_montage('ParseMontageLabels', LinesLabels, DefaultColor);
+        [LinesLabels, MontageColors, LinesFilter] = panel_montage('ParseMontageLabels', LinesLabels, DefaultColor);
         % Replace plot colors if available
         if ~isempty(MontageColors) && isempty(LinesColor)
             LinesColor = MontageColors;
+        end
+    end
+    
+    % ===== MONTAGE FREQUENCY FILTERS =====
+    if ~isempty(LinesFilter) && (size(LinesFilter,1) == size(F,1)) && ~all(LinesFilter(:) == 0)
+        % Filter each signal independently
+        for iLine = 1:size(F,1)
+            if ~all(LinesFilter(iLine,:) == 0)
+                sfreq = 1./GlobalData.DataSet(iDS).Measures.SamplingRate;
+                isMirror = 0;
+                isRelax = 1;
+                [F(iLine,:), FiltSpec, Messages] = process_bandpass('Compute', F(iLine,:), sfreq, LinesFilter(iLine,1), LinesFilter(iLine,2), 'bst-hfilter-2019', isMirror, isRelax);
+                if ~isempty(Messages)
+                    disp(['BST> Montage warning for line "'  LinesLabels{iLine} '": ' Messages(1:end-1)]);
+                end
+            end
         end
     end
 
