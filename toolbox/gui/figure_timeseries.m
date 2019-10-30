@@ -3127,9 +3127,9 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
                 isMirror = 0;
                 isRelax = 1;
                 [F(iLine,:), FiltSpec, Messages] = process_bandpass('Compute', F(iLine,:), sfreq, LinesFilter(iLine,1), LinesFilter(iLine,2), 'bst-hfilter-2019', isMirror, isRelax);
-                if ~isempty(Messages)
-                    disp(['BST> Montage warning for line "'  LinesLabels{iLine} '": ' Messages(1:end-1)]);
-                end
+                % if ~isempty(Messages)
+                %     disp(['BST> Montage warning for line "'  LinesLabels{iLine} '": ' Messages(1:end-1)]);
+                % end
             end
         end
     end

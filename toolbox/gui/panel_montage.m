@@ -2402,9 +2402,9 @@ function [LinesLabels, LinesColor, LinesFilter] = ParseMontageLabels(LinesLabels
                     else
                         disp(['BST> Montage: Invalid color string "' splitLabel{iOpt} '"']);
                     end
-                elseif (length(splitLabel{iOpt}) > 5) && strcmpi(splitLabel{iOpt}(end-1:end), 'Hz')
+                elseif (length(splitLabel{iOpt}) >= 5) && strcmpi(splitLabel{iOpt}(end-1:end), 'Hz')
                     freqband = sscanf(lower(splitLabel{iOpt}), '%f-%fhz');
-                    if (length(freqband) == 2) && (freqband(1) < freqband(2)) && all(freqband >= 0)
+                    if (length(freqband) == 2) && ((freqband(1) < freqband(2)) || (freqband(2) == 0)) && all(freqband >= 0)
                         LinesFilter(iLine,:) = freqband(:)';
                     else
                         disp(['BST> Montage: Invalid frequency band "' splitLabel{iOpt} '"']);
