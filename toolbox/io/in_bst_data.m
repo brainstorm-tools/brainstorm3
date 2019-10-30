@@ -94,7 +94,7 @@ end
 
 % ===== MISSING FIELDS =====
 for i = 1:length(FieldsToRead)
-    if ~isfield(DataMat, FieldsToRead{i})
+    if ~isfield(DataMat, FieldsToRead{i}) || isempty(DataMat.(FieldsToRead{i}))
         switch(FieldsToRead{i})
             case 'DataType'
                 DataMat.DataType = 'recordings';

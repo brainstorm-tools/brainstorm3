@@ -70,7 +70,7 @@ end
 
 %% ===== FILL OTHER MISSING FIELDS =====
 for i = 1:length(FieldsToRead)
-    if ~isfield(sMat, FieldsToRead{i})
+    if ~isfield(sMat, FieldsToRead{i}) || isempty(sMat.(FieldsToRead{i}))
         switch(FieldsToRead{i}) 
             case 'nAvg'
                 sMat.(FieldsToRead{i}) = 1;

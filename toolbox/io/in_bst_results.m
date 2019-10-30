@@ -265,7 +265,7 @@ end
 
 %% ===== FILL OTHER MISSING FIELDS =====
 for i = 1:length(FieldsToRead)
-    if ~isfield(Results, FieldsToRead{i})
+    if ~isfield(Results, FieldsToRead{i}) || isempty(Results.(FieldsToRead{i}))
         switch(FieldsToRead{i}) 
             case 'Time'
                 Results.Time = [1 2];

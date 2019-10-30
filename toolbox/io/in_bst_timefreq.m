@@ -78,7 +78,7 @@ end
 
 %% ===== FILL OTHER MISSING FIELDS =====
 for i = 1:length(FieldsToRead)
-    if ~isfield(Timefreq, FieldsToRead{i})
+    if ~isfield(Timefreq, FieldsToRead{i}) || isempty(Timefreq.(FieldsToRead{i}))
         switch(FieldsToRead{i}) 
             case 'Measure'
                 Timefreq.(FieldsToRead{i}) = 'none';
