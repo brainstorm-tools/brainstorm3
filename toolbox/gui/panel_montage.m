@@ -1660,6 +1660,7 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
     end
     % MENUS: List of available montages
     subMenus = struct;
+    GroupNames = cellfun(@(c)strtrim(str_remove_parenth(strrep(c, '[tmp]', ''))), {sFigMontages.Name}, 'UniformOutput', 0);
     for i = 1:length(sFigMontages)
         % Is it the selected one
         if ~isempty(TsInfo.MontageName)
@@ -1676,13 +1677,15 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
             MontageName = strrep(sFigMontages(i).Name, '[tmp]', '');
             DisplayName = ['<HTML><I>' MontageName '</I>'];
             % Parse name for sub menus
-            GroupName = strtrim(str_remove_parenth(MontageName));
-            stdName = ['m', file_standardize(GroupName, 0, '_', 1)];
+            stdName = ['m', file_standardize(GroupNames{i}, 0, '_', 1)];
             stdName((stdName == '.') | (stdName == '-') | (stdName == '@')) = '_';
-            if isfield(subMenus, stdName)
+            if (nnz(strcmpi(GroupNames{i}, GroupNames)) == 1)
+                % Only element in its group
+                jSubMenu = jMenu;
+            elseif isfield(subMenus, stdName)
                 jSubMenu = subMenus.(stdName);
             else
-                jSubMenu = gui_component('Menu', jMenu, [], ['<HTML><I>' GroupName '</I>']);
+                jSubMenu = gui_component('Menu', jMenu, [], ['<HTML><I>' GroupNames{i} '</I>']);
                 subMenus.(stdName) = jSubMenu;
             end
         else
@@ -2330,6 +2333,68 @@ function AddAutoMontagesNirs(ChannelMat)
         sMontage.Matrix    = eye(length(iGroup));
         % Add montage
         SetMontage(sMontage.Name, sMontage);
+    end
+end
+
+
+%% ===== ADD AUTO MONTAGES: PROJECTORS =====
+% USAGE:  panel_montage('AddAutoMontagesProj', ChannelMat)
+%         panel_montage('AddAutoMontagesProj')              % Loads montage for currently selected file
+function AddAutoMontagesProj(ChannelMat)
+    global GlobalData;
+    % Get current channels
+    if (nargin < 1) || isempty(ChannelMat)
+        iDS = panel_record('GetCurrentDataset');
+        if isempty(iDS)
+            return;
+        end
+        ChannelMat = in_bst_channel(GlobalData.DataSet(iDS).ChannelFile);
+    end
+    % Loop on all the projectors available
+    for iProj = 1:length(ChannelMat.Projector)
+        % Get selected channels
+        sCat = ChannelMat.Projector(iProj);
+        iChannels = any(sCat.Components,2);
+        % Skip referencing montages
+        if (length(sCat.Comment) < 3) || strcmpi(sCat.Comment(1:3), 'EEG')
+            continue;
+        end
+        % ICA
+        if isequal(sCat.SingVal, 'ICA')
+            % Field Components stores the mixing matrix W
+            W = sCat.Components(iChannels, :)';
+            % Display name
+            strDisplay = 'IC';
+        % SSP
+        else
+            % Field Components stores the spatial components U
+            U = sCat.Components(iChannels, :);
+            % SSP/PCA results
+            if ~isempty(sCat.SingVal) 
+                Singular = sCat.SingVal ./ sum(sCat.SingVal);
+            % SSP/Mean results
+            else
+                Singular = eye(size(U,2));
+            end
+            % Rebuild mixing matrix
+            W = diag(sqrt(Singular)) * pinv(U);
+            % Display name
+            strDisplay = 'SSP';
+        end
+        % Create line labels
+        LinesLabels = cell(size(W,1), 1);
+        for iComp = 1:length(LinesLabels)
+            LinesLabels{iComp} = sprintf('%s%d', strDisplay, iComp);
+        end
+        % Create new montage on the fly
+        sMontage = db_template('Montage');
+        sMontage.Name      = [sCat.Comment, '[tmp]'];
+        sMontage.Type      = 'matrix';
+        sMontage.ChanNames = {ChannelMat.Channel(iChannels).Name};
+        sMontage.DispNames = LinesLabels;
+        sMontage.Matrix    = W;
+        % Add montage: orig
+        panel_montage('SetMontage', sMontage.Name, sMontage);
     end
 end
 

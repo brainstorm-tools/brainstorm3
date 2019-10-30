@@ -197,6 +197,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jItemIca     = gui_component('MenuItem', jMenu, [], 'ICA components',  IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ica'));
         jMenu.addSeparator();
         jItemSspSel  = gui_component('MenuItem', jMenu, [], 'Select active projectors', IconLoader.ICON_EMPTY, [], @(h,ev)panel_ssp_selection('OpenRaw'));
+        jItemSspMontage  = gui_component('MenuItem', jMenu, [], 'Load projectors as montages', IconLoader.ICON_EMPTY, [], @(h,ev)panel_montage('AddAutoMontagesProj'));
         
         % === EVENTS TYPES ===
         jListEvtType = JList();
@@ -245,6 +246,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jItemSsp',        jItemSsp, ...
                                   'jItemIca',        jItemIca, ...
                                   'jItemSspSel',     jItemSspSel, ...
+                                  'jItemSspMontage', jItemSspMontage, ...
                                   'jPanelTime',      jPanelTime, ...
                                   'jPanelEvent',     jPanelEvent, ...
                                   'jLabelEpoch',     jLabelEpoch, ...
@@ -966,6 +968,7 @@ function UpdatePanel(hFig)
     ctrl.jButtonBaseline.setVisible(isRaw);
     % Enable/disable Artifacts menus
     gui_enable([ctrl.jItemSspEog, ctrl.jItemSspEcg, ctrl.jItemSsp, ctrl.jItemIca, ctrl.jItemSspSel], isRaw);
+    gui_enable(ctrl.jItemSspMontage, ~isRaw);
     gui_enable(ctrl.jItemEegref, isRaw && isEeg);
     % Update display options
     UpdateDisplayOptions(hFig);

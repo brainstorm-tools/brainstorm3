@@ -94,6 +94,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if ismember('NIRS', {ChannelMat.Channel.Type})
             panel_montage('AddAutoMontagesNirs', ChannelMat);
         end
+        if ~isempty(ChannelMat.Projector)
+            panel_montage('AddAutoMontagesProj', ChannelMat);
+        end
         
         % Get montage
         sMontage = panel_montage('GetMontage', MontageName);
@@ -221,8 +224,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         end
                         % Channel still not found: set to defaults
                         if isempty(iInputChan)
-                            bst_report('Warning', sProcess, sInputs, ['Could not find a sensor definition for output channel #' num2str(iChanOut)]);
-                            ChannelMatOut.Channel(iChanOut).Name = sprintf('M%03d', iChanOut);
+                            %bst_report('Warning', sProcess, sInputs, ['Could not find a sensor definition for output channel #' num2str(iChanOut)]);
+                            %ChannelMatOut.Channel(iChanOut).Name = sprintf('M%03d', iChanOut);
+                            ChannelMatOut.Channel(iChanOut).Name = ChanNameOut;
                             ChannelMatOut.Channel(iChanOut).Type = 'Montage';
                         % Else: copy input channel info
                         else

@@ -1107,7 +1107,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     
                 case 'montage'
                     % Load channel file of first file in input
-                    ChannelMat = in_bst_channel(sFiles(1).ChannelFile, 'Channel');
+                    ChannelMat = in_bst_channel(sFiles(1).ChannelFile);
                     % Update automatic montages
                     panel_montage('UnloadAutoMontages');
                     if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
@@ -1115,6 +1115,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     end
                     if ismember('NIRS', {ChannelMat.Channel.Type})
                         panel_montage('AddAutoMontagesNirs', ChannelMat);
+                    end
+                    if ~isempty(ChannelMat.Projector)
+                        panel_montage('AddAutoMontagesProj', ChannelMat);
                     end
                     % Get all the montage names
                     AllMontages = panel_montage('GetMontage',[]);

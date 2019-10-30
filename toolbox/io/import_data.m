@@ -480,7 +480,9 @@ end
 if ~isempty(iAllStudies)
     iAllStudies = unique(iAllStudies);
     panel_protocols('UpdateNode', 'Study', iAllStudies);
-    if (length(iAllStudies) == 1)
+    if (length(NewFiles) == 1)
+        panel_protocols('SelectNode', [], NewFiles{1});
+    elseif (length(iAllStudies) == 1)
         panel_protocols('SelectStudyNode', iAllStudies(1));
     end
 end
