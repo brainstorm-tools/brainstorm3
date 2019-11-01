@@ -3109,6 +3109,7 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
 
     % ===== PARSE LINE LABELS =====
     % Get colors from montage (not for scouts, only for recordings)
+    LinesFilter = [];
     if ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'timefreq') && (~isempty(TsInfo.Modality) && (TsInfo.Modality(1) ~= '$')) && ~isempty(LinesLabels)
         % Parse montage labels
         [LinesLabels, MontageColors, LinesFilter] = panel_montage('ParseMontageLabels', LinesLabels, DefaultColor);
