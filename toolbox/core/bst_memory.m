@@ -699,7 +699,7 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
     if strcmpi(DataType, 'raw') && ~isempty(GlobalData.FullTimeWindow) && ~isempty(GlobalData.FullTimeWindow.CurrentEpoch) && ~isReloadForced
         res = java_dialog('question', [...
             'Cannot open two continuous viewers at the same time.' 10 ...
-            'Unload all the other files?' 10 10], 'Load recordings', [], {'Unload all', 'Cancel'});
+            'Unload all the other files first?' 10 10], 'Load recordings', [], {'Unload other files', 'Cancel'});
         % Cancel: Unload the new dataset
         if isempty(res) || strcmpi(res, 'Cancel')
             iDS = [];
@@ -742,14 +742,14 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
         if ~isTimeCoherent
             res = java_dialog('question', [...
                 'The time definition is not compatible with previously loaded files.' 10 ...
-                'Unload all the other files?' 10 10], 'Load recordings', [], {'Unload all', 'Cancel'});
+                'Unload all the other files first?' 10 10], 'Load recordings', [], {'Unload other files', 'Cancel'});
             % Cancel: Unload the new dataset
             if isempty(res) || strcmpi(res, 'Cancel')
                 UnloadDataSets(iDS);
                 iDS = [];
                 return;
             % Otherwise: unload all the other datasets
-            elseif (length(GlobalData.DataSet) > 1)
+            else
                 % Save newly created dataset
                 bakDS = GlobalData.DataSet(iDS);
                 % Unload everything
@@ -1602,13 +1602,37 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         end
         % Error message if it doesn't match
         if ~isFreqOk
-            bst_error(['Frequency definition for this file is not compatible with the other files' 10 ...
-                       'already loaded in Brainstorm.' 10 10 ...
-                       'Close existing windows before opening this file, or use the Navigator.'], 'Load time-frequency', 0);
-            iDS = [];
-            iTimefreq = [];
-            iResults = [];
-            return
+            res = java_dialog('question', [...
+                'The frequency definition is not compatible with previously loaded files.' 10 ...
+                'Unload all the other files first?' 10 10], 'Load time-frequency', [], {'Unload other files', 'Cancel'});
+            % Cancel: Unload the new dataset
+            if isempty(res) || strcmpi(res, 'Cancel')
+                iDS = [];
+                iTimefreq = [];
+                iResults = [];
+                return;
+            % Otherwise: unload all the other datasets
+            else
+                % Save newly created dataset
+                bakDS = GlobalData.DataSet(iDS);
+                % Unload everything
+                UnloadAll('Forced');
+                % If not everything was unloaded correctly (eg. the user cancelled half way when asked to save the modifications)
+                if ~isempty(GlobalData.DataSet)
+                    iTimefreq = [];
+                    iResults = [];
+                    iDS = [];
+                    return;
+                end
+                % Restore new dataset
+                GlobalData.DataSet = bakDS;
+                if ~isempty(iDS)
+                    iDS = 1;
+                end
+                % Update frequencies
+                GlobalData.UserFrequencies.Freqs = TimefreqMat.Freqs;
+                gui_brainstorm('ShowToolTab', 'FreqPanel');
+            end
         end
         % Current frequency
         if isempty(GlobalData.UserFrequencies.iCurrentFreq)

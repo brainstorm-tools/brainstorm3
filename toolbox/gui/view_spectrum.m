@@ -71,7 +71,7 @@ bst_progress('start', 'View time-frequency map', 'Loading data...');
 % Load file
 [iDS, iTimefreq] = bst_memory('LoadTimefreqFile', TimefreqFile);
 if isempty(iDS)
-    % error('Cannot load timefreq file.');
+    bst_progress('stop');
     hFig = [];
     iFig = [];
     return
