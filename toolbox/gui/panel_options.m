@@ -1,6 +1,9 @@
 function varargout = panel_options(varargin)
 % PANEL_OPTIONS:  Set general Brainstorm configuration.
+%
 % USAGE:  [bstPanelNew, panelName] = panel_options('CreatePanel')
+%                                    panel_options('SystemPathRemove', rmPath)          % Update system path
+%                             PATH = panel_options('SystemPathRemove', rmPath, PATH)    % Update user defined path (do not change system path)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -20,7 +23,7 @@ function varargout = panel_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2019
 
 eval(macro_method);
 end
@@ -95,10 +98,19 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jPanelScaling.add('hfill', jSliderScaling);
     jPanelLeft.add('br hfill', jPanelScaling);
     
+    % ===== LEFT: RESET =====
+    if (GlobalData.Program.GuiLevel == 1)
+        jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
+            gui_component('Label',  jPanelReset, [], 'Reset database and options to defaults: ', [], [], []);
+            gui_component('Button', jPanelReset, [], 'Reset', [], [], @ButtonReset_Callback);
+        jPanelLeft.add('br hfill', jPanelReset);
+    end
+    
+    
     % ===== RIGHT =====
     jPanelRight = gui_river();
     jPanelNew.add(jPanelRight);
-    % ===== RIGHT: DATA IMPORT =====
+    % ===== RIGHT: FOLDERS =====
     jPanelImport = gui_river([5 5], [0 15 15 15], 'Folders');
         % Temporary directory
         gui_component('Label', jPanelImport, '', 'Temporary directory: ', [], [], []);
@@ -126,6 +138,28 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
     jPanelRight.add('br hfill', jPanelImport);
     
+    % ===== RIGHT: MNE-PYTHON =====
+    jPanelMne = gui_river([5 5], [0 15 15 15], 'MNE-Python');
+        % Python executable
+        gui_component('Label', jPanelMne, '', 'Python executable: ', [], [], []);
+        jTextPythonExe   = gui_component('Text', jPanelMne, 'br hfill', '', [], [], []);
+        jButtonPythonExe = gui_component('Button', jPanelMne, [], '...', [], [], @PythonExe_Callback);
+        jButtonPythonExe.setMargin(Insets(2,2,2,2));
+        jButtonPythonExe.setFocusable(0);
+        % System path
+        gui_component('Label', jPanelMne, 'br', 'System PATH for Python (separated with semi-colon): ', [], [], []);
+        jTextPythonPath = gui_component('Text', jPanelMne, 'br hfill', '', [], [], []);
+        jButtonAddPath = gui_component('Button', jPanelMne, [], ' + ', [], [], @AddPath_Callback);
+        jButtonAddPath.setMargin(Insets(2,2,2,2));
+        jButtonAddPath.setFocusable(0);
+        % Qt path
+        gui_component('Label', jPanelMne, 'br', 'Qt platform plugin (QT_QPA_PLATFORM_PLUGIN_PATH): ', [], [], []);
+        jTextQtDir   = gui_component('Text', jPanelMne, 'br hfill', '', [], [], []);
+        jButtonQtDir = gui_component('Button', jPanelMne, [], '...', [], [], @QtDirectory_Callback);
+        jButtonQtDir.setMargin(Insets(2,2,2,2));
+        jButtonQtDir.setFocusable(0);
+    jPanelRight.add('br hfill', jPanelMne);
+    
     % ===== RIGHT: SIGNAL PROCESSING =====
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
         jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', []);
@@ -134,17 +168,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jBlockSize = gui_component('Text',  jPanelProc, [], '', [], [], []);
         jBlockSizeLabel.setToolTipText(blockSizeTooltip);
         jBlockSize.setToolTipText(blockSizeTooltip);
-        % jCheckOrigFolder = gui_component('CheckBox', jPanelProc, 'br', 'Store continuous files in original folder', [], '<HTML>If selected, the continuous files processed with the Process1 tab are stored in the same folder as the input raw files. <BR>Else, they are stored directly in the Brainstorm database.', @UpdateProcessOptions_Callback);
-        % jCheckOrigFormat = gui_component('CheckBox', jPanelProc, 'br', 'Save continuous files in original format',  [], '<HTML>If selected, the continuous files processed with the Process1 tab are saved in the same data format as the input raw files.<BR>Else, they are saved in the Brainstorm binary format.<BR>This option is available only for FIF and CTF files.', []);
     jPanelRight.add('br hfill', jPanelProc);
-    
-    % ===== RIGHT: RESET =====
-    if (GlobalData.Program.GuiLevel == 1)
-        jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
-            gui_component('Label',  jPanelReset, [], 'Reset database and options to defaults: ', [], [], []);
-            gui_component('Button', jPanelReset, [], 'Reset', [], [], @ButtonReset_Callback);
-        jPanelRight.add('br hfill', jPanelReset);
-    end
     
     % ===== BOTTOM =====
     jPanelBottom = gui_river();
@@ -222,6 +246,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         if ~isempty(jTextSpmDir)
             jTextSpmDir.setText(bst_get('SpmDir'));
         end
+        % MNE-Python config
+        PythonConfig = bst_get('PythonConfig');
+        jTextPythonExe.setText(PythonConfig.PythonExe);
+        jTextPythonPath.setText(PythonConfig.PythonPath);
+        jTextQtDir.setText(PythonConfig.QtDir);
         % Use signal processing toolbox
         isToolboxInstalled = (exist('fir2', 'file') > 0);
         jCheckUseSigProc.setEnabled(isToolboxInstalled);
@@ -301,7 +330,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         newTmpDir = char(jTextTempDir.getText());
         if ~file_compare(oldTmpDir, newTmpDir)
             % Make sure it is different from and does not contain the database directory
-            changeDir = 1;
             dbDir = bst_get('BrainstormDbDir');
             if file_compare(newTmpDir, dbDir)
                 java_dialog('warning', 'Your temporary and database directories must be different.');
@@ -347,6 +375,52 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             end
         end
         
+        % ===== MNE-PYTHON =====
+        % Get saved configuration
+        PythonConfig = bst_get('PythonConfig');
+        % Get new configuration
+        newPythonExe = char(jTextPythonExe.getText());
+        newPythonPath = char(jTextPythonPath.getText());
+        newQtDir = char(jTextQtDir.getText());
+        % If something changed
+        isPythonExeChanged = ~isequal(newPythonExe, PythonConfig.PythonExe);
+        isPythonPathChanged = ~isequal(newPythonPath, PythonConfig.PythonPath);
+        isQtDirChanged = ~isequal(newQtDir, PythonConfig.QtDir);
+        if isPythonExeChanged || isPythonPathChanged || isQtDirChanged
+            % If the path changed: remove the old path for system path
+            if isPythonPathChanged
+                if ~isempty(PythonConfig.PythonPath)
+                    SystemPathRemove(PythonConfig.PythonPath);
+                end
+                if ~isempty(newPythonPath)
+                    SystemPathAdd(newPythonPath);
+                end
+            end
+            % Save new values in user preferences
+            PythonConfig.PythonPath = newPythonPath;
+            PythonConfig.PythonExe = newPythonExe;
+            PythonConfig.QtDir = newQtDir;
+            bst_set('PythonConfig', PythonConfig);
+            % If the Qt dir changed: update environement variables
+            if isQtDirChanged
+                setenv('QT_PLUGIN_PATH', bst_fileparts(PythonConfig.QtDir));
+                disp(['MNE> Setting environment variable: QT_PLUGIN_PATH=' bst_fileparts(PythonConfig.QtDir)]);
+                setenv('QT_QPA_PLATFORM_PLUGIN_PATH', PythonConfig.QtDir);
+                disp(['MNE> Setting environment variable: QT_QPA_PLATFORM_PLUGIN_PATH=' PythonConfig.QtDir]);
+            end
+            % If something changed: try to load python
+            if isPythonExeChanged
+                % Is python already loaded?
+                [pyVer, pyExe, isLoaded] = pyversion();
+                % Initialized MNE-Python if possible
+                if ~isLoaded
+                    bst_mne_init('Initialize', 1);
+                else
+                    bst_error('You must close and restart Matlab for this change to take effect.', 'Python exectutable', 0);
+                end
+            end
+        end
+        
         % ===== PROCESSING OPTIONS =====
         % Use signal processing toolbox
         bst_set('UseSigProcToolbox', jCheckUseSigProc.isSelected());
@@ -357,7 +431,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             processOptions.MaxBlockSize = blockSize * 1024 * 1024 / 8; % Mb to bytes
             bst_set('ProcessOptions', processOptions);
         end
-        
         bst_progress('stop');
         
         % If the scaling was changed: Restart brainstorm
@@ -460,15 +533,90 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
     end
 
-% %% ===== UPDATE PROCESS OPTIONS =====
-%     function UpdateProcessOptions_Callback(varargin)
-%         if ~jCheckOrigFolder.isSelected()
-%             jCheckOrigFormat.setSelected(0);
-%             jCheckOrigFormat.setEnabled(0);
-%         else
-%             jCheckOrigFormat.setEnabled(1);
-%         end
-%     end
+
+%% ===== PYTHON EXECUTABLE =====
+    % Callback for '...' button
+    function PythonExe_Callback(varargin)
+        % Get the initial path
+        PythonConfig = bst_get('PythonConfig', 1);
+        initExe = PythonConfig.PythonExe;
+        % Ask for python path
+        exePath = java_getfile( 'open', ...
+            'Select Python executable', ...  % Window title
+            bst_fileparts(initExe), 'single', 'files', ...     % Default directory, Selection mode
+            {{'*'}, 'Python executable (version 3.5 or higher)', 'Python'}, 'Python');
+        if isempty(exePath) || isequal(initExe, exePath)
+            return;
+        end
+        % Else : update control text
+        jTextPythonExe.setText(exePath);
+        % Get additional folders to add to path
+        [PythonPath, QtDir] = bst_mne_init('GetPythonPath', exePath);
+        if ~isempty(PythonPath)
+            jTextPythonPath.setText(PythonPath);
+        end
+        if ~isempty(QtDir)
+            jTextQtDir.setText(QtDir);
+        end
+        % Focus main brainstorm figure
+        jBstFrame = bst_get('BstFrame');
+        jBstFrame.setVisible(1);
+    end
+
+
+%% ===== QT DIRECTORY SELECTION =====
+    % Callback for '...' button
+    function QtDirectory_Callback(varargin)
+        % Get the initial path
+        PythonConfig = bst_get('PythonConfig', 1);
+        initDir = PythonConfig.QtDir;
+        % Open 'Select directory' dialog
+        qtDir = uigetdir(initDir, 'Select Qt plugin directory.');
+        % If no directory was selected : return without doing anything
+        if (isempty(qtDir) || (qtDir(1) == 0) || (~isempty(initDir) && file_compare(initDir, qtDir)))
+            return;
+        % Directory is not avalid Qt folder (test on windows only)
+        elseif ispc && ~file_exist(bst_fullfile(qtDir, 'qwindows.dll'))
+            java_dialog('warning', 'Selected folder does not contain a valid Qt plugin install (qwindows.dll missing).');
+            return;
+        end
+        % Else : update control text
+        jTextQtDir.setText(qtDir);
+        % Focus main brainstorm figure
+        jBstFrame = bst_get('BstFrame');
+        jBstFrame.setVisible(1);
+    end
+
+%% ===== ADD PYTHON PATH =====
+    % Callback for '+' button
+    function AddPath_Callback(varargin)
+        % Get the initial path
+        PythonConfig = bst_get('PythonConfig', 1);
+        if ~isempty(PythonConfig.PythonPath)
+            initPath = str_split(PythonConfig.PythonPath);
+            initDir = initPath{1};
+        else
+            initPath = {};
+            initDir = [];
+        end
+        % Open 'Select directory' dialog
+        addDir = uigetdir(initDir, 'Add folder to system path');
+        % If no directory was selected : return without doing anything
+        if (isempty(addDir) || (addDir(1) == 0) || ismember(addDir, initPath))
+            return;
+        end
+        % New python path
+        if ~isempty(PythonConfig.PythonPath)
+            newPath = [PythonConfig.PythonPath ';' addDir];
+        else
+            newPath = addDir;
+        end
+        % Else : update control text
+        jTextPythonPath.setText(newPath);
+        % Focus main brainstorm figure
+        jBstFrame = bst_get('BstFrame');
+        jBstFrame.setVisible(1);
+    end
 end
 
 
@@ -630,5 +778,73 @@ function ButtonReset_Callback(varargin)
     brainstorm;
 end
 
+
+%% ===== SYSTEM PATH: REMOVE DIR =====
+% USAGE:         panel_options('SystemPathRemove', rmPath)          % Update system path
+%         PATH = panel_options('SystemPathRemove', rmPath, PATH)    % Update user defined path (do not change system path)
+function PATH = SystemPathRemove(rmPath, PATH)
+    % Parse inputs
+    if (nargin < 2)
+        PATH = getenv('PATH');
+        isSystemPath = 1;
+    else
+        isSystemPath = 0;
+    end
+    % Get system path
+    PATH = getenv('PATH');
+    PATH_split = str_split(PATH, ';');
+    % Find elements to remove
+    rm_split = str_split(rmPath, ';');
+    iRm = find(ismember(PATH_split, rm_split));
+    if isempty(iRm)
+        return;
+    end
+    % Display removed path
+    for i = 1:length(iRm)
+        disp(['BST> Removed from system path:  ' PATH_split{iRm(i)}]);
+    end
+    % Remove elements from path string
+    PATH_split(iRm) = [];
+    PATH = '';
+    for i = 1:length(PATH_split)
+        if (i == 1)
+            PATH = PATH_split{i};
+        else
+            PATH = [PATH, ';', PATH_split{i}];
+        end
+    end
+    % Update system path
+    if isSystemPath
+        setenv('PATH', PATH);
+    end
+end
+
+
+%% ===== SYSTEM PATH: ADD DIR =====
+% USAGE:         panel_options('SystemPathAdd', rmPath)          % Update system path
+%         PATH = panel_options('SystemPathAdd', rmPath, PATH)    % Update user defined path (do not change system path)
+function PATH = SystemPathAdd(addPath, PATH)
+    % Parse inputs
+    if (nargin < 2)
+        PATH = getenv('PATH');
+        isSystemPath = 1;
+    else
+        isSystemPath = 0;
+    end
+    % Get system path
+    PATH_split = str_split(PATH, ';');
+    % Check which folders are not yet in the system path
+    add_split = str_split(addPath, ';');
+    for iPath = 1:length(add_split)
+        if isdir(add_split{iPath}) && ~ismember(add_split{iPath}, PATH_split)
+            PATH = [PATH ';' add_split{iPath}];
+            disp(['BST> Added to system path: ' add_split{iPath}]);
+        end
+    end
+    % Update system path
+    if isSystemPath
+        setenv('PATH', PATH);
+    end
+end
 
 

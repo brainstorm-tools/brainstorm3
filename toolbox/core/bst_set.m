@@ -11,6 +11,7 @@ function bst_set( varargin )
 %    - bst_set('LastUsedDirs',      sDirectories)
 %    - bst_set('FieldTripDir',      FieldTripDir)
 %    - bst_set('SpmDir',            SpmDir)
+%    - bst_set('PythonConfig',      PythonConfig)
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_set('iProtocol',         iProtocol)
@@ -255,7 +256,7 @@ switch contextName
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', ...
+          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'PythonConfig', ...
           'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
         GlobalData.Preferences.(contextName) = contextValue;
 

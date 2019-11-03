@@ -147,6 +147,10 @@ switch (FileFormat)
     case 'BST-DATA'
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);
         
+    % ===== OBJECTS IN MEMORY =====
+    case 'MNE-PYTHON'
+        [sFile, ChannelMat] = in_fopen_mne(DataFile, ImportOptions);
+        
     % ===== CONVERT TO CONTINUOUS =====
     case 'EEG-ASCII'
         [DataMat, ChannelMat] = in_data_ascii(DataFile);

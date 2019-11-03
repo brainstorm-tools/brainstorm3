@@ -726,7 +726,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             try
                 procComment = sCurProcess.Function('FormatComment', sCurProcess);
             catch
-                procComment = ['Error: Function "' func2str(sCurProcess.Function) '" is not accessible'];
+                procComment = sCurProcess.Comment;
             end
             % Add "overwrite" option
             if isfield(sCurProcess.options, 'overwrite') && sCurProcess.options.overwrite.Value

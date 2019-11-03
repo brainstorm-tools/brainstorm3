@@ -1,8 +1,8 @@
-function [ChannelMat, Device] = in_channel_fif( sFile, ImportOptions )
-% IN_CHANNEL_FIF: Read a FIF file, and return a brainstorm Channel structure.
+function [ChannelMat, Device, currCtfComp] = in_channel_mne( pyObj, ImportOptions )
+% IN_CHANNEL_MNE: Create a Brainstorm channel structure from a MNE-Python object
 %
-% USAGE:  [ChannelMat, Device] = in_channel_fif( sFile, ImportOptions )
-%         [ChannelMat, Device] = in_channel_fif( sFile )
+% USAGE:  [ChannelMat, Device] = in_channel_mne( sFile, ImportOptions )
+%         [ChannelMat, Device] = in_channel_mne( sFile )
 % 
 % INPUT:
 %     - ImportOptions : Structure that describes how to import the recordings.
@@ -26,28 +26,31 @@ function [ChannelMat, Device] = in_channel_fif( sFile, ImportOptions )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
-%          (Based on scripts from M.Hamalainen)
+% Authors: Francois Tadel, 2019
+%          Transposition of in_channel_fif.m for MNE-Python objects
+
 
 %% ===== PARSE INPUTS =====
 % Check inputs
-if ~isstruct(sFile)
-    error('First argument must be a sFile structure, created with in_data_fopen() function.');
+if ~py.isinstance(pyObj, py.sys.modules{'mne.io'}.BaseRaw)
+    error(['Unsupported class: ' class(pyObj)]);
 end
 if (nargin < 2) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
 end
 
 % Get some fields in the sFile structure
-info = sFile.header.info;
+info = pyObj.info;
 % Initialize returned structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'FIF channels';
-% Get fiff constants
+% Get MNE-matlab FIFF constants
 global FIFF;
 if isempty(FIFF)
-    FIFF = fiff_define_constants();
+   FIFF = fiff_define_constants();
 end
+% Get py FIFF constants
+pyFIFF = py.mne.io.constants.FIFF;
 
 
                 
@@ -55,13 +58,20 @@ end
 % Only if measurments were read
 % disp([10 'Preprocessing...']);
 % If a "DEVICE => CTF" transformation is already defined in the file
-if isfield(info, 'dev_ctf_t') && ~isempty(info.dev_ctf_t)
-    meg_trans = info.dev_ctf_t;
+if ~isa(info{'dev_ctf_t'}, 'py.NoneType')
+    meg_trans = struct(...
+        'from',  bst_py2mat(info{'dev_ctf_t'}{'from'}), ...
+        'to',    bst_py2mat(info{'dev_ctf_t'}{'to'}), ...
+        'trans', bst_py2mat(info{'dev_ctf_t'}{'trans'}));
     meg_trans_label{1} = 'neuromag_device=>ctf_head';
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%% ????? WHICH TRANSFORM TO APPLY TO EEG ?????? %%%%%%%%%%%%%%%%%%%%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    eeg_trans = fiff_invert_transform(info.ctf_head_t);
+    ctf_head_t = struct(...
+        'from',  bst_py2mat(info{'ctf_head_t'}{'from'}), ...
+        'to',    bst_py2mat(info{'ctf_head_t'}{'to'}), ...
+        'trans', bst_py2mat(info{'ctf_head_t'}{'trans'}));
+    eeg_trans = fiff_invert_transform(ctf_head_t);
     eeg_trans_label{1} = 'inv(neuromag_device=>ctf_head)';
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     fprintf(1,'\tEmploying the CTF/4D head coordinate system\n');
@@ -70,7 +80,7 @@ if isfield(info, 'dev_ctf_t') && ~isempty(info.dev_ctf_t)
 else
     % ==== DEVICE => NEUROMAG ====
     % If "DEVICE => NEUROMAG" transformation is not defined (ABNORMAL CASE)
-    if ~isfield(info, 'dev_head_t') || isempty(info.dev_head_t)
+    if isa(info{'dev_head_t'}, 'py.NoneType')
         % Use neutral matrix and display warning
         tDevice2Neuromag = struct('from', FIFF.FIFFV_COORD_DEVICE, ...
                                   'to',   FIFF.FIFFV_COORD_HEAD, ...
@@ -87,20 +97,31 @@ else
         end
     else
         % Get transformation : "DEVICE => NEUROMAG"
-        tDevice2Neuromag = info.dev_head_t;
+        tDevice2Neuromag = struct(...
+            'from',  bst_py2mat(info{'dev_head_t'}{'from'}), ...
+            'to',    bst_py2mat(info{'dev_head_t'}{'to'}), ...
+            'trans', bst_py2mat(info{'dev_head_t'}{'trans'}));
     end
 
     % ==== NEUROMAG => CTF ====
-    % Get fiducials (NASION, LPA, RPA)
-    iNas = find(([info.dig.kind] == FIFF.FIFFV_POINT_CARDINAL) & ([info.dig.ident] == FIFF.FIFFV_POINT_NASION), 1);
-    iLpa = find(([info.dig.kind] == FIFF.FIFFV_POINT_CARDINAL) & ([info.dig.ident] == FIFF.FIFFV_POINT_LPA), 1);
-    iRpa = find(([info.dig.kind] == FIFF.FIFFV_POINT_CARDINAL) & ([info.dig.ident] == FIFF.FIFFV_POINT_RPA), 1);
+    if ~isa(info{'dig'}, 'py.NoneType')
+        kind = cellfun(@(c)bst_py2mat(c{'kind'}), cell(info{'dig'}));
+        ident = cellfun(@(c)bst_py2mat(c{'ident'}), cell(info{'dig'}));
+        % Get fiducials (NASION, LPA, RPA)
+        iNas = find((kind == bst_py2mat(pyFIFF.FIFFV_POINT_CARDINAL)) & (ident == bst_py2mat(pyFIFF.FIFFV_POINT_NASION)), 1);
+        iLpa = find((kind == bst_py2mat(pyFIFF.FIFFV_POINT_CARDINAL)) & (ident == bst_py2mat(pyFIFF.FIFFV_POINT_LPA)), 1);
+        iRpa = find((kind == bst_py2mat(pyFIFF.FIFFV_POINT_CARDINAL)) & (ident == bst_py2mat(pyFIFF.FIFFV_POINT_RPA)), 1);
+    else
+        iNas = [];
+        iLpa = [];
+        iRpa = [];
+    end
     % Compute rotation/translation to convert coordinates system : NEUROMAG => CTF
     if ~isempty(iNas) && ~isempty(iLpa) && ~isempty(iRpa)
         % Compute transformation
-        sMriTmp.SCS.NAS = double(info.dig(iNas).r);
-        sMriTmp.SCS.LPA = double(info.dig(iLpa).r);
-        sMriTmp.SCS.RPA = double(info.dig(iRpa).r);
+        sMriTmp.SCS.NAS = bst_py2mat(info{'dig'}{iNas}{'r'});
+        sMriTmp.SCS.LPA = bst_py2mat(info{'dig'}{iLpa}{'r'});
+        sMriTmp.SCS.RPA = bst_py2mat(info{'dig'}{iRpa}{'r'});
         transfTmp = cs_compute(sMriTmp, 'scs');
     % No fiducials are available : default transformation, rotation 90° / Z (ABNORMAL CASE)
     else
@@ -147,16 +168,45 @@ else
     end
 end
 
+% Convert channels to FIFF-style Matlab structure
+if ~isa(info{'chs'}, 'py.NoneType')
+    nChannels = length(info{'chs'});
+    for iChan = 1:nChannels
+        pyCh = info{'chs'}{iChan};
+        chs(iChan).kind        = bst_py2mat(pyCh{'kind'});
+        chs(iChan).coil_type   = bst_py2mat(pyCh{'coil_type'});
+        chs(iChan).loc         = bst_py2mat(pyCh{'loc'})';
+        chs(iChan).unit        = bst_py2mat(pyCh{'unit'});
+        chs(iChan).unit_mul    = bst_py2mat(pyCh{'unit_mul'});
+        chs(iChan).ch_name     = bst_py2mat(pyCh{'ch_name'});
+        chs(iChan).coord_frame = bst_py2mat(pyCh{'coord_frame'});
+        chs(iChan).cal         = bst_py2mat(pyCh{'cal'});
+        chs(iChan).eeg_loc     = [];
+        % Add extra fields
+        if (chs(iChan).kind == FIFF.FIFFV_MEG_CH) || (chs(iChan).kind == FIFF.FIFFV_REF_MEG_CH)
+            chs(iChan).coil_trans  = [ [ chs(iChan).loc(4:6), chs(iChan).loc(7:9), chs(iChan).loc(10:12), chs(iChan).loc(1:3) ] ; [ 0 0 0 1 ] ];
+        elseif (chs(iChan).kind == FIFF.FIFFV_EEG_CH)
+            if norm(chs(iChan).loc(4:6)) > 0
+                chs(iChan).eeg_loc = [chs(iChan).loc(1:3), chs(iChan).loc(4:6)];
+            else
+                chs(iChan).eeg_loc = chs(iChan).loc(1:3);
+            end
+        end
+    end
+else
+    chs = [];
+end
+    
 % Apply transformations
-if ~isempty(info.chs)
-    % Save initial EEG electrodes positions
-    oldEegLoc = {info.chs.eeg_loc};
+if ~isempty(chs)
+    % Save initial EEG electrodes positions          
+    oldEegLoc = {chs.eeg_loc};
     % Transform coil and electrode locations to the desired coordinate frame
     for i = 1:length(meg_trans)
-        info.chs = fiff_transform_meg_chs(info.chs, meg_trans(i));
+        chs = fiff_transform_meg_chs(chs, meg_trans(i));
     end
     for i = 1:length(eeg_trans)
-        info.chs = fiff_transform_eeg_chs(info.chs, eeg_trans(i));
+        chs = fiff_transform_eeg_chs(chs, eeg_trans(i));
     end
 end
 % Store the transformations in the output file
@@ -183,30 +233,29 @@ end
 % Load coils definition file
 templates = mne_load_coil_def(coil_def_file);
 Accuracy = 1;
-info.chs = mne_add_coil_defs(info.chs,Accuracy,templates);
+chs = mne_add_coil_defs(chs,Accuracy,templates);
 % fprintf(1,'\nReady.\n\n');
 
 
 %% ===== BUILD CHANNEL STRUCTURE =====
 Device = '';
-if isfield(info, 'chs') && ~isempty(info.chs)
-    nChannels = size(info.chs, 2);
+if ~isempty(chs)
     nRef = 0; %number of reference sensors
     nMEG = 0; %number of MEG channels
     for i = 1:nChannels  
-        ch_kind = info.chs(i).kind;
+        ch_kind = chs(i).kind;
         % === LOCATION / ORIENTATION ===
-        if (ch_kind == FIFF.FIFFV_EEG_CH) && ~isempty(info.chs(i).eeg_loc)
-            Channel(i).Loc = info.chs(i).eeg_loc(:,1);
+        if (ch_kind == FIFF.FIFFV_EEG_CH) && ~isempty(chs(i).eeg_loc)
+            Channel(i).Loc = chs(i).eeg_loc(:,1);
             Channel(i).Orient = [];
             Channel(i).Weight = 1;
-            Channel(i).Comment = info.chs(i).coil_def.description;
-        elseif ~isempty(info.chs(i).coil_def)
-            X = info.chs(i).coil_def.coildefs;
+            Channel(i).Comment = chs(i).coil_def.description;
+        elseif ~isempty(chs(i).coil_def)
+            X = chs(i).coil_def.coildefs;
             Channel(i).Loc = X(:,2:4)';
             Channel(i).Orient = X(:,5:7)';
             Channel(i).Weight = X(:,1)';
-            Channel(i).Comment = info.chs(i).coil_def.description;
+            Channel(i).Comment = chs(i).coil_def.description;
         else
             Channel(i).Loc = [];
             Channel(i).Orient = [];
@@ -268,7 +317,7 @@ if isfield(info, 'chs') && ~isempty(info.chs)
         end
         
         % === NAME ===
-        ch_name = info.chs(i).ch_name;
+        ch_name = chs(i).ch_name;
         % Remove everything that is after a '-'
         iTiret = strfind(ch_name, '-');
         if ~isempty(iTiret) && (iTiret ~= 1)
@@ -291,14 +340,13 @@ end
 
 %% ===== COMPENSATION MATRIX =====
 % Get CTF compensation
-isCtfComp = isfield(info, 'comps') && ~isempty(info.comps);
-if isCtfComp
+if (length(info{'comps'}) > 0)
     % Get indices of MEG and REF sensors
     iMeg = good_channel(ChannelMat.Channel, [], 'MEG');
     iRef = good_channel(ChannelMat.Channel, [], 'MEG REF');
     
     % Get the current CTF compensation order
-    currentComp = bitshift(double([info.chs(iMeg).coil_type]), -16);
+    currentComp = bitshift(double([chs(iMeg).coil_type]), -16);
     % If not all the same value: error
     if ~all(currentComp == currentComp(1))
         error('CTF compensation is not set equally on all MEG channels');
@@ -306,48 +354,76 @@ if isCtfComp
     % Current compensation order
     currCtfComp = currentComp(1);
     
-    % Get the corresponding coefficients for this order  
-    iCompValid = find([info.comps.kind] == currCtfComp);
+    % Get the corresponding coefficients for this order
+    iCompValid = [];
+    for iComp = 1:length(info{'comps'})
+        if (bst_py2mat(info{'comps'}{iComp}{'kind'}) == currCtfComp)
+            iCompValid = [iCompValid, iComp];
+        end
+    end
     % Initialize returned matrix
     MegRefCoef = zeros(length(iMeg), length(iRef));
     % Process all the valid compensations fiels
     for i = 1:length(iCompValid)
         iComp = iCompValid(i);
         % Find reference sensor indices
-        refNames = info.comps(iComp).data.col_names;
+        refNames = cellfun(@char, cell(info{'comps'}{iComp}{'data'}{'col_names'}.tolist()), 'UniformOutput', 0);
         iRefDest = [];
         iRefSrc  = [];
         for ich = 1:length(refNames)
-            iTmp = find(strcmpi({info.chs(iRef).ch_name}, refNames{ich}));
+            iTmp = find(strcmpi({chs(iRef).ch_name}, refNames{ich}));
             if ~isempty(iTmp)
                 iRefSrc = [iRefSrc, ich];
                 iRefDest = [iRefDest, iTmp];
             end
         end
         % Find data sensors indices
-        megNames = info.comps(iComp).data.row_names;
+        megNames = cellfun(@char, cell(info{'comps'}{iComp}{'data'}{'row_names'}), 'UniformOutput', 0);
         iMegDest = [];
         iMegSrc  = [];
         for ich = 1:length(megNames)
-            iTmp = find(strcmpi({info.chs(iMeg).ch_name}, megNames{ich}));
+            iTmp = find(strcmpi({chs(iMeg).ch_name}, megNames{ich}));
             if ~isempty(iTmp)
                 iMegSrc = [iMegSrc, ich];
                 iMegDest = [iMegDest, iTmp];
             end
         end
         % Brainstorm reference sensor index
-        MegRefCoef(iMegDest,iRefDest) = info.comps(iComp).data.data(iMegSrc,iRefSrc);
+        data = bst_py2mat(info{'comps'}{iComp}{'data'}{'data'});
+        MegRefCoef(iMegDest,iRefDest) = data(iMegSrc,iRefSrc);
     end
 else
     MegRefCoef = [];
+    currCtfComp = [];
 end
 ChannelMat.MegRefCoef = MegRefCoef;
 
 
 %% ===== SSP =====
 % Signal Space Projectors
-if isfield(info, 'projs') && ~isempty(info.projs)
-    ChannelMat.Projector = in_projector_fif(info.projs, {ChannelMat.Channel.Name});
+if (length(info{'projs'}) > 0)
+    % Convert to MNE-Matlab structure
+    projs = struct();
+    for iProj = 1:length(info{'projs'})
+        projs(iProj).kind   = bst_py2mat(info{'projs'}{iProj}{'kind'});
+        projs(iProj).active = bst_py2mat(info{'projs'}{iProj}{'active'});
+        projs(iProj).desc   = bst_py2mat(info{'projs'}{iProj}{'desc'});
+        projs(iProj).data.nrow = bst_py2mat(info{'projs'}{iProj}{'data'}{'nrow'});
+        projs(iProj).data.ncol = bst_py2mat(info{'projs'}{iProj}{'data'}{'ncol'});
+        projs(iProj).data.data = bst_py2mat(info{'projs'}{iProj}{'data'}{'data'});
+        if ~isa(info{'projs'}{iProj}{'data'}{'row_names'}, 'py.NoneType')
+            projs(iProj).data.row_names = cellfun(@char, cell(info{'projs'}{iProj}{'data'}{'row_names'}), 'UniformOutput', 0);
+        else
+            projs(iProj).data.row_names = {};
+        end
+        if ~isa(info{'projs'}{iProj}{'data'}{'col_names'}, 'py.NoneType')
+            projs(iProj).data.col_names = cellfun(@char, cell(info{'projs'}{iProj}{'data'}{'col_names'}), 'UniformOutput', 0);
+        else
+            projs(iProj).data.col_names = {};
+        end
+    end
+    % Import with function
+    ChannelMat.Projector = in_projector_fif(projs, {ChannelMat.Channel.Name});
     % Disable projectors by default
     if ~isempty(ChannelMat.Projector)
         iProjNotApplied = find([ChannelMat.Projector.Status] == 1);
@@ -359,15 +435,17 @@ end
 
 
 %% ===== OTHER DIGITALIZED POINTS =====
-if ~isempty(info.dig)
-    nbhs = length(info.dig);
+if (length(info{'dig'}) > 0)
+    nbhs = length(info{'dig'});
     dk = cell(1, nbhs);
     di = cell(1, nbhs);
+    r = zeros(3, nbhs);
     for i = 1:nbhs
-        switch(info.dig(i).kind)
+        dig = info{'dig'}{i};
+        switch double(dig{'kind'}.real)
             case FIFF.FIFFV_POINT_CARDINAL
                 dk{i} = 'CARDINAL';
-                switch (info.dig(i).ident)
+                switch bst_py2mat(dig{'ident'})
                     case FIFF.FIFFV_POINT_LPA
                         di{i} = 'LPA';
                     case FIFF.FIFFV_POINT_NASION
@@ -377,17 +455,18 @@ if ~isempty(info.dig)
                 end
             case FIFF.FIFFV_POINT_HPI
                 dk{i} = 'HPI';
-                di{i} = info.dig(i).ident;
+                di{i} = bst_py2mat(dig{'ident'});
             case FIFF.FIFFV_POINT_EEG
                 dk{i} = 'EEG';
-                di{i} = info.dig(i).ident;
+                di{i} = bst_py2mat(dig{'ident'});
             case FIFF.FIFFV_POINT_EXTRA
                 dk{i} = 'EXTRA';
-                di{i} = info.dig(i).ident;
+                di{i} = bst_py2mat(dig{'ident'});
         end
+        r(:,i) = bst_py2mat(dig{'r'})';
     end
     % Store them in the returned structure
-    ChannelMat.HeadPoints.Loc   = [info.dig.r];
+    ChannelMat.HeadPoints.Loc   = r;
     ChannelMat.HeadPoints.Type  = dk;
     ChannelMat.HeadPoints.Label = di;
     % Apply same coodinates transforms than for EEG channels
@@ -398,10 +477,6 @@ if ~isempty(info.dig)
         ChannelMat.HeadPoints.Loc = T * [ChannelMat.HeadPoints.Loc; ones(1,nbPoints)];
     end
 end
-
-
-
-
 
 
 

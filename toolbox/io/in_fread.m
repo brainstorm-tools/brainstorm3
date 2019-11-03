@@ -62,7 +62,7 @@ end
 
 %% ===== OPEN FILE =====
 % Open file (for some formats, it is open in the low-level function)
-if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF'}) 
+if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF', 'MNE-PYTHON'}) 
     sfid = [];
 else
     sfid = fopen(sFile.filename, 'r', sFile.byteorder);
@@ -213,7 +213,8 @@ switch (sFile.format)
     case {'NWB', 'NWB-CONTINUOUS'}
         isContinuous = strcmpi(sFile.format, 'NWB-CONTINUOUS');
         F = in_fread_nwb(sFile, iEpoch, SamplesBounds, iChannels, isContinuous);
-        
+    case 'MNE-PYTHON'
+        [F, TimeVector] = in_fread_mne(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels);
     otherwise
         error('Cannot read data from this file');
 end
@@ -259,7 +260,7 @@ end
 
 %% ===== GRADIENT CORRECTION =====
 % 3rd-order gradient correction
-if ~isempty(ImportOptions) && ImportOptions.UseCtfComp && ~strcmpi(sFile.format, 'BST-DATA') && ~isempty(ChannelMat) && ~isempty(ChannelMat.MegRefCoef) && (sFile.prop.currCtfComp ~= sFile.prop.destCtfComp)
+if ~isempty(ImportOptions) && ImportOptions.UseCtfComp && ~strcmpi(sFile.format, 'BST-DATA') && ~isempty(ChannelMat) && ~isempty(ChannelMat.MegRefCoef) && ~isempty(sFile.prop.currCtfComp) && ~isequal(sFile.prop.currCtfComp, sFile.prop.destCtfComp)
     iMeg = good_channel(ChannelMat.Channel,[],'MEG');
     iRef = good_channel(ChannelMat.Channel,[],'MEG REF');
     if ~isempty(iChannels) && (length(iChannels) ~= length(ChannelMat.Channel))

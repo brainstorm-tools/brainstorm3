@@ -29,6 +29,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('FieldTripDir')          : Full path to a local installation of FieldTrip
 %    - bst_get('SpmDir')                : Full path to a local installation of SPM
 %    - bst_get('SpmTpmAtlas')           : Full path to the SPM atlas TPM.nii
+%    - bst_get('PythonConfig')          : Configuration of the python environment from Matlab
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_get('iProtocol')             : Indice of current protocol 
@@ -2202,17 +2203,9 @@ switch contextName
         end
         % Get defaults from internet 
         if ~ismember(lower({sTemplates.Name}), 'icbm152')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016c';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
             sTemplates(end).Name = 'ICBM152';
         end
-%         if ~ismember(lower({sTemplates.Name}), 'icbm152_2016')
-%             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016';
-%             sTemplates(end).Name = 'ICBM152_2016';
-%         end
-%         if ~ismember(lower({sTemplates.Name}), 'icbm152_2016c')
-%             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016c';
-%             sTemplates(end).Name = 'ICBM152_2016c';
-%         end
         if ~ismember(lower({sTemplates.Name}), 'icbm152_2019')
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
             sTemplates(end).Name = 'ICBM152_2019';
@@ -2623,6 +2616,27 @@ switch contextName
         disp([' - ' tpmDistrib]);
         if ~isempty(spmDir)
             disp([' - ' tpmSpm]);
+        end
+        
+    case 'PythonConfig'
+        defPref = struct(...
+            'PythonExe',  '', ...
+            'PythonPath', 0, ...
+            'QtDir',      '');
+        argout1 = FillMissingFields(contextName, defPref);
+        % Check that the python executable is available
+        if ~isempty(argout1.PythonExe) && ~file_exist(argout1.PythonExe)
+            disp(['Error: Python executable not found: ' argout1.PythonExe]);
+            argout1.PythonExe = '';
+        elseif ~ischar(argout1.PythonExe)
+            argout1.PythonExe = '';
+        end
+        % Check the validity of the other values
+        if ~ischar(argout1.PythonPath)
+            argout1.PythonPath = '';
+        end
+        if ~ischar(argout1.QtDir)
+            argout1.QtDir = '';
         end
         
     case 'ElectrodeConfig'

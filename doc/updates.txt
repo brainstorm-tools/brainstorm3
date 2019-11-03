@@ -1,4 +1,14 @@
 ---------------------------------------------------------------
+October 2019
+- IO: Conversion functions from/to MNE-python objects (Raw, Epoched, Evoked)
+- IO: Added support for Curry epoched .dat files
+- Stat: Renamed "p-value threshold" in "significance level alpha"
+- GUI: Montage editor: New option to filter the signals in a frequency band
+- GUI: Automatically unload when loading new file with incompatible time
+- GUI: Zoom on selected windows with shift+click (time series and spectrum)
+- GUI: Display and apply SSP/ICA projectors as montages
+- Database: Support for regular expressions when importing events
+---------------------------------------------------------------
 September 2019
 - Anatomy: Added storage and display for FEM meshes
 - Anatomy: Computation of FEM meshes with ROAST and iso2mesh
