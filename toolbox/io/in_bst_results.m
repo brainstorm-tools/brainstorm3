@@ -268,7 +268,9 @@ for i = 1:length(FieldsToRead)
     if ~isfield(Results, FieldsToRead{i}) || isempty(Results.(FieldsToRead{i}))
         switch(FieldsToRead{i}) 
             case 'Time'
-                Results.Time = [1 2];
+                if ~isfield(Results, FieldsToRead{i})   % Only if time is not defined - we want to keep it empty for kernels
+                    Results.Time = [1 2];
+                end
             case 'nComponents'
                 if ~isempty(strfind(ResultsFile, '_unconstr'))
                     Results.nComponents = 3;
