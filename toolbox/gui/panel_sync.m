@@ -1,5 +1,23 @@
 function panel_sync()
 
+%download
+filename = "3g.zip";
+url=strcat(string(bst_get('UrlAdr')),"/file/download/test/",filename);
+
+[response,status] = bst_call(@HTTP_request,'GET','Default',struct(),url);
+if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
+    java_dialog('warning',status);
+    return;
+end
+filestream = response.Body.Data;
+fileID = fopen(strcat('/Users/chaoyiliu/Desktop/data/',filename),'w');
+fwrite(fileID,filestream,'uint8');
+fclose(fileID);
+
+
+
+%upload
+%{
 filename = '/Users/chaoyiliu/Desktop/L08-GPIO.pdf';
 blocksize = 1000000; % 1MB per request
 
@@ -33,5 +51,7 @@ if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
 end
 fclose(fileID);
 disp(counter);
+%}
+
 
 end
