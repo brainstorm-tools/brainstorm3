@@ -129,6 +129,8 @@ switch (panelName)
         bst_mutex('release', 'ProcessTwo');
     case 'Digitize'
         isAccepted = panel_digitize('PanelHidingCallback');
+    case 'LoadRemoteProtocol'
+        bst_mutex('release', 'LoadRemoteProtocol');
 end
 % If closing was not accepted
 if ~isAccepted

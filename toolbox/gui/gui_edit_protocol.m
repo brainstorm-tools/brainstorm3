@@ -64,6 +64,16 @@ switch (action)
             return;
         end
         
+        % Show dialog for user to choose remote protocol
+        [tmp, bstPanel] = gui_show(panel_load_remote_protocol('CreatePanel'), 'JavaWindow', 'Remote protocols', [], 1, 1);
+        bst_mutex('waitfor', 'LoadRemoteProtocol');
+        jListProtocols = get(bstPanel, 'jListProtocols');
+        selectedProtocol = jListProtocols.getSelectedValue();
+        if isempty(selectedProtocol)
+            return;
+        end
+        
+        disp(['TODO: Load protocol ' selectedProtocol]);
         loading();
         
         return;
