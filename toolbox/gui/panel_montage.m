@@ -1659,51 +1659,53 @@ function CreateFigurePopupMenu(jMenu, hFig) %#ok<DEFNU>
         jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A), KeyEvent.SHIFT_MASK));
     end
     % MENUS: List of available montages
-    subMenus = struct;
-    GroupNames = cellfun(@(c)strtrim(str_remove_parenth(strrep(c, '[tmp]', ''))), {sFigMontages.Name}, 'UniformOutput', 0);
-    for i = 1:length(sFigMontages)
-        % Is it the selected one
-        if ~isempty(TsInfo.MontageName)
-            isSelected = strcmpi(sFigMontages(i).Name, TsInfo.MontageName);
-        else
-            isSelected = 0;
-        end
-        % Special test for average reference
-        if ~isempty(strfind(sFigMontages(i).Name, 'Average reference'))
-            DisplayName = sFigMontages(i).Name;
-            jSubMenu = jMenu;
-        % Temporary montages:  Remove the [tmp] tag or display
-        elseif ~isempty(strfind(sFigMontages(i).Name, '[tmp]'))
-            MontageName = strrep(sFigMontages(i).Name, '[tmp]', '');
-            DisplayName = ['<HTML><I>' MontageName '</I>'];
-            % Parse name for sub menus
-            stdName = ['m', file_standardize(GroupNames{i}, 0, '_', 1)];
-            stdName((stdName == '.') | (stdName == '-') | (stdName == '@')) = '_';
-            if (nnz(strcmpi(GroupNames{i}, GroupNames)) == 1)
-                % Only element in its group
-                jSubMenu = jMenu;
-            elseif isfield(subMenus, stdName)
-                jSubMenu = subMenus.(stdName);
+    if ~isempty(sFigMontages)
+        subMenus = struct;
+        GroupNames = cellfun(@(c)strtrim(str_remove_parenth(strrep(c, '[tmp]', ''))), {sFigMontages.Name}, 'UniformOutput', 0);
+        for i = 1:length(sFigMontages)
+            % Is it the selected one
+            if ~isempty(TsInfo.MontageName)
+                isSelected = strcmpi(sFigMontages(i).Name, TsInfo.MontageName);
             else
-                jSubMenu = gui_component('Menu', jMenu, [], ['<HTML><I>' GroupNames{i} '</I>']);
-                subMenus.(stdName) = jSubMenu;
+                isSelected = 0;
             end
-        else
-            DisplayName = sFigMontages(i).Name;
-            jSubMenu = jMenu;
-        end
-        % Create menu
-        jItem = gui_component('CheckBoxMenuItem', jSubMenu, [], DisplayName, [], [], @(h,ev)SetCurrentMontage(hFig, sFigMontages(i).Name));
-        jItem.setSelected(isSelected);
-        shortcut = [];
-        for iShortcut = 1:25
-            if strcmpi(CleanMontageName(sFigMontages(i).Name), MontageOptions.Shortcuts{iShortcut,2})
-                shortcut = MontageOptions.Shortcuts{iShortcut,1};
-                break;
+            % Special test for average reference
+            if ~isempty(strfind(sFigMontages(i).Name, 'Average reference'))
+                DisplayName = sFigMontages(i).Name;
+                jSubMenu = jMenu;
+            % Temporary montages:  Remove the [tmp] tag or display
+            elseif ~isempty(strfind(sFigMontages(i).Name, '[tmp]'))
+                MontageName = strrep(sFigMontages(i).Name, '[tmp]', '');
+                DisplayName = ['<HTML><I>' MontageName '</I>'];
+                % Parse name for sub menus
+                stdName = ['m', file_standardize(GroupNames{i}, 0, '_', 1)];
+                stdName((stdName == '.') | (stdName == '-') | (stdName == '@')) = '_';
+                if (nnz(strcmpi(GroupNames{i}, GroupNames)) == 1)
+                    % Only element in its group
+                    jSubMenu = jMenu;
+                elseif isfield(subMenus, stdName)
+                    jSubMenu = subMenus.(stdName);
+                else
+                    jSubMenu = gui_component('Menu', jMenu, [], ['<HTML><I>' GroupNames{i} '</I>']);
+                    subMenus.(stdName) = jSubMenu;
+                end
+            else
+                DisplayName = sFigMontages(i).Name;
+                jSubMenu = jMenu;
             end
-        end
-        if ~isempty(shortcut)
-            jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A + shortcut - 'a'), KeyEvent.SHIFT_MASK));
+            % Create menu
+            jItem = gui_component('CheckBoxMenuItem', jSubMenu, [], DisplayName, [], [], @(h,ev)SetCurrentMontage(hFig, sFigMontages(i).Name));
+            jItem.setSelected(isSelected);
+            shortcut = [];
+            for iShortcut = 1:25
+                if strcmpi(CleanMontageName(sFigMontages(i).Name), MontageOptions.Shortcuts{iShortcut,2})
+                    shortcut = MontageOptions.Shortcuts{iShortcut,1};
+                    break;
+                end
+            end
+            if ~isempty(shortcut)
+                jItem.setAccelerator(KeyStroke.getKeyStroke(int32(KeyEvent.VK_A + shortcut - 'a'), KeyEvent.SHIFT_MASK));
+            end
         end
     end
     drawnow;
