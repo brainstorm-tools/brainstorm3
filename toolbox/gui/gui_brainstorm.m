@@ -565,14 +565,20 @@ function GUI = CreateWindow() %#ok<DEFNU>
         end
         
         % Prompt user for search
-        filterContents = gui_show_dialog('Search Database', @panel_search_database);
-        if isempty(filterContents)
+        filterRoot = gui_show_dialog('Search Database', @panel_search_database, 0);
+        if isempty(filterRoot)
             return;
         end
 
         % Extract short and unique tab name
-        name = filterContents{1,3};
-        shortName = name(1:min(length(name),10));
+        bst_progress('start', 'Database explorer', 'Applying search...');
+        node = panel_search_database('GetFirstValueNode', filterRoot);
+        if iscell(node.Value)
+            shortName = node.Value{1};
+        else
+            shortName = node.Value;
+        end
+        shortName = shortName(1:min(length(shortName),10));
         tabName = shortName;
         id = 1;
         while ctrl.jTabpaneSearch.indexOfTab(tabName) >= 0
@@ -584,7 +590,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
         panel_protocols('AddDatabaseTab', tabName);
         
         % Apply filter
-        panel_protocols('Filter', tabName, filterContents);
+        panel_protocols('Filter', tabName, filterRoot);
+        bst_progress('stop');
     end
 
 

@@ -26,28 +26,91 @@ function [res, filteredComment] = node_apply_search_filter(iSearchFilter, fileTy
 %
 % Authors: Martin Cousineau, 2019
 
+if contains(fileComment, 'MyTest')
+    %disp('hey');
+end
+
 filteredComment = fileComment;
 
 % If no filter applied, the file passes by default
 if iSearchFilter == 0
-    res = 1;
+    if iscell(fileName)
+        res = true(1, length(fileName));
+    else
+        res = 1;
+    end
     return;
 end
 
-searchParams = panel_protocols('Search', 'get', iSearchFilter);
-if isempty(searchParams)
+searchRoot = panel_protocols('Search', 'get', iSearchFilter);
+if isempty(searchRoot)
     error(sprintf('Could not find active search #%d', iSearchFilter));
 end
 
-for iParam = 1:length(searchParams)    
+[res, boldKeywords] = TestSearchTree(searchRoot, fileType, fileComment, fileName);
+
+% Bold contained keywords in node comment
+if ~isempty(boldKeywords)
+    for iKeyword = 1:length(boldKeywords)
+        filteredComment = strrep(filteredComment, boldKeywords{iKeyword}, ['<B>' boldKeywords{iKeyword} '</B>']);
+    end
+    filteredComment = ['<HTML>' filteredComment];
+end
+end
+
+function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileName)
+    if iscell(fileName)
+        res = true(1, length(fileName));
+    else
+        res = 1;
+    end
+    nextBool = 0;
+    nChildren = length(root.Children);
+    boldKeywords = {};
+    
+    for iChild = 1:nChildren
+        switch root.Children(iChild).Type
+            case 1 % Search param
+                param = root.Children(iChild).Value;
+                [curRes, boldKeyword] = TestParam(param, fileType, fileComment, fileName);
+                % Save comment 
+                if any(curRes) && ~isempty(boldKeyword)
+                    boldKeywords{end + 1} = boldKeyword;
+                end
+            case 2 % Boolean
+                nextBool = root.Children(iChild).Value;
+                curRes = [];
+            case 3 % Nested block, apply test recursively
+                [curRes, boldKeywords2] = TestSearchTree(root.Children(iChild), fileType, fileComment, fileName);
+                boldKeywords = [boldKeywords, boldKeywords2];
+            otherwise
+                error('Invalid node type.');
+        end
+        
+        if ~isempty(curRes)
+            switch nextBool
+                case 1 % AND
+                    res = res && curRes;
+                case 2 % OR
+                    res = res || curRes;
+                otherwise
+                    res = curRes;
+            end
+        end
+            
+    end
+end
+
+function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileName)
+    boldKeyword = [];
     % Choose value to search for
-    if searchParams(iParam).SearchType == 1
+    if param.SearchType == 1
         % Comment
         fileValue = fileComment;
-    elseif searchParams(iParam).SearchType == 2
+    elseif param.SearchType == 2
         % Type
         fileValue = fileType;
-    elseif searchParams(iParam).SearchType == 3
+    elseif param.SearchType == 3
         % File name
         fileValue = fileName;
     else
@@ -55,57 +118,38 @@ for iParam = 1:length(searchParams)
     end
     
     % Apply case sensitivity
-    searchValue = searchParams(iParam).Value;
-    if ~searchParams(iParam).CaseSensitive
+    searchValue = param.Value;
+    if ~param.CaseSensitive
         fileValue = lower(fileValue);
         searchValue = lower(searchValue);
     end
     
-    % Test for equality
-    if searchParams(iParam).EqualityType == 1
-        % Contains
-        allMatches = strfind(fileValue, searchValue);
-        matches = ~isempty(allMatches);
-        % Add bold tags to search keyword(s)
-        if matches
-            filteredComment = '<HTML>';
-            keywordSize = length(searchValue);
-            totalSize = length(fileComment);
-            iCur = 1;
-            % Loop through keywords found
-            for iMatch = 1:length(allMatches)
-                iPos = allMatches(iMatch);
-                if iPos >= iCur
-                    iNext = iPos + keywordSize;
-                    filteredComment = [filteredComment fileComment(iCur:iPos-1) '<B>' fileComment(iPos:iNext-1) '</B>'];
-                    iCur = iNext;
-                end
-            end
-            % Add remaining of string, if any
-            if iCur < totalSize
-                filteredComment = [filteredComment fileComment(iCur:totalSize)];
-            end
-        end
-    elseif searchParams(iParam).EqualityType == 2
-        % Equals
-        matches = strcmp(fileValue, searchValue);
+    % Detect if we're testing multiple files at once
+    if iscell(fileValue)
+        nFiles = length(fileValue);
+        matches = true(1, nFiles);
     else
-        error('Unsupported equality type');
+        fileValue = {fileValue};
+        nFiles = 1;
+        matches = 1;
     end
     
-    % Apply boolean operation if not first filter
-    if iParam > 1
-        if searchParams(iParam).BooleanType == 1
-            % AND
-            res = res & matches;
-        elseif searchParams(iParam).BooleanType == 2
-            % OR
-            res = res | matches;
+    for iFile = 1:nFiles
+        % Test for equality
+        if param.EqualityType == 1
+            % Contains
+            allMatches = strfind(fileValue{iFile}, searchValue);
+            matches(iFile) = ~isempty(allMatches);
+            % Add bold tags to search keyword(s)
+            if matches(iFile)
+                boldKeyword = searchValue;
+            end
+        elseif param.EqualityType == 2
+            % Equals
+            matches(iFile) = any(strcmp(fileValue{iFile}, searchValue));
         else
-            error('Unsupported boolean type');
+            error('Unsupported equality type');
         end
-    else
-        res = matches;
     end
 end
 

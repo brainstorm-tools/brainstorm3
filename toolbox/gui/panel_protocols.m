@@ -300,7 +300,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== SELECT TAB =====
     function DatabaseTabChanged_Callback(varargin)
+        bst_progress('start', 'Database explorer', 'Applying search...');
         UpdateTree(0);
+        % Update process box count
+        panel_nodelist('UpdatePanel', [], 1);
+        bst_progress('stop');
     end
 end
 
@@ -416,6 +420,16 @@ function UpdateTree(resetNodes)
     
 end
 
+function iSearch = GetSelectedSearch()
+    iSearch = 0;
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    % Get selected search tab
+    iSearch = ctrl.jTabpaneSearch.getSelectedIndex();
+end
 
 %% =================================================================================
 %  === NODES FUNCTIONS =============================================================
@@ -1441,7 +1455,7 @@ function CloseAllDatabaseTabs()
     end
 end
 
-function Filter(tabName, filterContents)
+function Filter(tabName, filterRoot)
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
@@ -1453,36 +1467,8 @@ function Filter(tabName, filterContents)
         return
     end
     
-    % Make sure all nodes are loaded in database
-    %TODO: Make it work without doing this (for functional view only)
-    %CreateAllStudyNodes();
-    
-    % Create filter object
-    searchParams = repmat(db_template('SearchParams'), 0);
-    numFilters = size(filterContents, 1);
-    
-    for iFilter = 1:numFilters
-        % Save filter information as numbers rather than strings to
-        % increase efficiency as you could have 100,000s of comparisons
-        searchParams(iFilter).SearchType = find(strcmp(filterContents{iFilter,1}, {'Name', 'File path', 'File type'}));
-        if searchParams(iFilter).SearchType == 2
-            % For file types, force equality
-            searchParams(iFilter).Value = GetNodeTypes(filterContents{iFilter,3});
-            searchParams(iFilter).EqualityType = 2;
-            searchParams(iFilter).CaseSensitive = 0;
-        else
-            iEquality = find(strcmp(filterContents{iFilter,2}, {'Contains', 'Contains (case)', 'Equals', 'Equals (case)'}));
-            equalityCases = [0, 1, 0, 1];
-            equalityValues = [1, 1, 2, 2];
-            searchParams(iFilter).CaseSensitive = equalityCases(iEquality);
-            searchParams(iFilter).EqualityType = equalityValues(iEquality);
-            searchParams(iFilter).Value = filterContents{iFilter,3};
-        end
-        searchParams(iFilter).BooleanType = find(strcmp(filterContents{iFilter,4}, {'And', 'Or'}));
-    end
-    
     % Save to list of active searches
-    Search('add', tabName, searchParams);
+    Search('add', tabName, filterRoot);
     % Update display
     UpdateTree();
 end
@@ -1529,10 +1515,10 @@ function nodeTypes = GetNodeTypes(typeName)
     end
 end
 
-function searchParams = Search(func, indexOrName, params)
+function node = Search(func, indexOrName, inNode)
     global GlobalData
     
-    searchParams = [];
+    node = [];
     numSearches = length(GlobalData.DataBase.ActiveSearches);
     
     switch lower(func)
@@ -1543,14 +1529,14 @@ function searchParams = Search(func, indexOrName, params)
                 index = find(strcmp({GlobalData.DataBase.ActiveSearches.Name}, indexOrName));
             end
             if isempty(index) || index > numSearches
-                searchParams = [];
+                node = [];
             else
-                searchParams = GlobalData.DataBase.ActiveSearches(index).Params;
+                node = GlobalData.DataBase.ActiveSearches(index).SearchNode;
             end
         case 'add'
             activeSearch = db_template('ActiveSearch');
             activeSearch.Name = indexOrName;
-            activeSearch.Params = params;
+            activeSearch.SearchNode = inNode;
             GlobalData.DataBase.ActiveSearches(end + 1) = activeSearch;
         case 'remove'
             if isnumeric(indexOrName)
