@@ -105,8 +105,16 @@ end
 
 %% ===== RUN =====
 function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
+    OutputFile = [];
     % Initialize MNE-Python
-    bst_mne_init('Initialize', 0);
+    [isOk, errorMsg] = bst_mne_init('Initialize', 0);
+    if ~isOk
+        if isempty(errorMsg)
+            errorMsg = 'Could not load Python in Matlab.';
+        end
+        bst_report('Error', sProcess, sInput, errorMsg);
+        return;
+    end
     
     % ===== GET OPTIONS =====
     opt = {};

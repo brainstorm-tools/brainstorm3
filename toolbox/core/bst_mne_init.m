@@ -33,14 +33,17 @@ end
 
 %% ===== INITIALIZE =====
 % USAGE:  isOk = bst_mne_init('Initialize', isInteractive)
-function isOk = Initialize(isInteractive)
+function [isOk, errorMsg] = Initialize(isInteractive)
+    isOk = 0;
+    errorMsg = [];
     % Default behavior
     if (nargin < 1) || isempty(isInteractive)
         isInteractive = 0;
     end
     % Brainstorm must be running
     if ~brainstorm('status')
-        error('Brainstorm must be started before executing this function.');
+        errorMsg = 'Brainstorm must be started before executing this function.';
+        return;
     end
 
     % ===== ACCESS PYTHON EXE =====
@@ -52,7 +55,8 @@ function isOk = Initialize(isInteractive)
     if ~isempty(PythonExe) && ~isempty(PythonConfig.PythonExe) && ~file_compare(PythonExe, PythonConfig.PythonExe)
         % If Python is already loaded: Matlab must be restarted first
         if isLoaded
-            error('Python is already loaded. You must Restart Matlab before running the Python initialization again.');
+            errorMsg = 'Python is already loaded. You must Restart Matlab before running the Python initialization again.';
+            return;
         else
             pyVer = [];
             PythonExe = [];
@@ -65,17 +69,42 @@ function isOk = Initialize(isInteractive)
             try
                 [pyVer, PythonExe, isLoaded] = pyversion(PythonConfig.PythonExe);
             catch
-                disp(['MNE> Error: Invalid Python executable: ' PythonConfig.PythonExe]);
+                errorMsg = ['MNE> Error: Invalid Python executable: ' PythonConfig.PythonExe];
+                return;
             end
             if isempty(pyVer)
                 PythonConfig.PythonExe = [];
+            end
+        else
+            % Try to find Python at typical installation locations
+            if ispc
+                userDir = bst_get('UserDir');
+                % Typical Anaconda path on Windows
+                anacondaFolders = GetFoldersFromPrefix(userDir, 'anaconda');
+                [pyVer, PythonExe, isLoaded] = TryPythonFolders(anacondaFolders, 'python.exe');
+                if isempty(pyVer)
+                    % Typical Python path on Windows
+                    appdataPythonPath = bst_fullfile(userDir, 'AppData', 'Local', 'Programs', 'Python');
+                    appdataFolders = GetFoldersFromPrefix(appdataPythonPath, 'python');
+                    [pyVer, PythonExe, isLoaded] = TryPythonFolders(appdataFolders, 'python.exe');
+                end
+                if ~isempty(pyVer)
+                    % Extract System PATH
+                    [PythonPath, QtDir] = GetPythonPath(PythonExe);
+                    % Save user preferences
+                    PythonConfig.PythonExe = PythonExe;
+                    PythonConfig.PythonPath = PythonPath;
+                    PythonConfig.QtDir = QtDir;
+                    bst_set('PythonConfig', PythonConfig);
+                end
+            %TODO: Try Mac/Linux default paths
             end
         end
         % If Python is still not running
         if isempty(pyVer)
             % If no interactivity
             if ~isInteractive
-                disp('MNE> Error: Python is not set up.');
+                errorMsg = 'MNE> Error: Python is not set up.';
                 return;
             end
             % Ask for Python installation
@@ -111,7 +140,7 @@ function isOk = Initialize(isInteractive)
     disp(['MNE> Python executable: ' PythonExe]);
     % Check Python version
     if isempty(pyVer)
-        disp('MNE> Could not load Python in Matlab.');
+        errorMsg = 'MNE> Could not load Python in Matlab.';
         return;
     elseif (str2num(pyVer) < 3.5)
         disp(['MNE> Minimum version of Python required by MNE: 3.5' 10 ...
@@ -134,6 +163,14 @@ function isOk = Initialize(isInteractive)
     % Set locale
     py.locale.setlocale(py.locale.LC_ALL, 'en_US');
     
+    % Test MNE installation
+    try
+        FIFF = py.mne.io.constants.FIFF;
+    catch
+        errorMsg = 'MNE library not found. Please install it in Python first.';
+        return;
+    end
+    
     isOk = 1;
 end
 
@@ -145,20 +182,25 @@ function [PythonPath, QtDir] = GetPythonPath(PythonExe)
     PythonPath = '';
     QtDir = '';
     % On Windows, if this is a CONDA environment: we must add some extra paths
-    if ispc && ~isempty(strfind(lower(PythonExe), 'anaconda')) && ~isempty(strfind(lower(PythonExe), 'envs'))
+    if ispc && ~isempty(strfind(lower(PythonExe), 'anaconda'))
         % Guess Anaconda folder architecture
         CondaEnvPath = bst_fileparts(PythonExe);
-        CondaDir = bst_fileparts(bst_fileparts(CondaEnvPath));
+        if ~isempty(strfind(lower(PythonExe), 'envs'))
+            CondaDir = bst_fileparts(bst_fileparts(CondaEnvPath));
+        else
+            CondaDir = CondaEnvPath;
+        end
         % Possibly interesting subfolders
         PythonPath = CondaEnvPath;
         tryPath = {...
             bst_fullfile(CondaEnvPath, 'mingw-w64', 'bin'), ...
+            bst_fullfile(CondaEnvPath, 'Library', 'mingw-w64', 'bin'), ...
             bst_fullfile(CondaEnvPath, 'Library', 'usr', 'bin'), ...
-            bst_fullfile(CondaEnvPath, 'Library', 'bin'), ...
             bst_fullfile(CondaEnvPath, 'Library', 'bin'), ...
             bst_fullfile(CondaEnvPath, 'Library', 'Scripts'), ...
             bst_fullfile(CondaEnvPath, 'bin'), ...
-            bst_fullfile(CondaDir, 'condabin')};
+            bst_fullfile(CondaDir, 'condabin'), ...
+            bst_fullfile(CondaDir, 'Scripts')};
         % Add all the folders only if they exist
         for i = 1:length(tryPath)
             if isdir(tryPath{i})
@@ -173,4 +215,36 @@ function [PythonPath, QtDir] = GetPythonPath(PythonExe)
     end
 end
 
+% Extracts folders starting with 'folderPrefix' inside 'parentPath'
+% Example: GetFoldersFromPrefix(bst_get('UserDir'), 'anaconda')
+%   -> Returns {'Anaconda3'} if 'C:\Users\martin\Anaconda3' exists
+function folders = GetFoldersFromPrefix(parentPath, folderPrefix)
+    nChars = length(folderPrefix);
+    files = dir(parentPath);
+    folders = {};
+    for iFile = 1:length(files)
+        if files(iFile).isdir && strncmpi(files(iFile).name, folderPrefix, nChars)
+            folders{end + 1} = bst_fullfile(parentPath, files(iFile).name);
+        end
+    end
+end
 
+% Tries possible Python folders until it finds a python executable
+function [pyVer, PythonExe, isLoaded] = TryPythonFolders(pythonFolders, pythonExe)
+    pyVer = [];
+    PythonExe = [];
+    isLoaded = 0;
+    for iFolder = 1:length(pythonFolders)
+        pythonPath = bst_fullfile(pythonFolders{iFolder}, pythonExe);
+        if exist(pythonPath, 'file') == 2
+            try
+                [pyVer, PythonExe, isLoaded] = pyversion(pythonPath);
+            catch
+            end
+            % Stop if it worked
+            if ~isempty(pyVer)
+                return;
+            end
+        end
+    end
+end
