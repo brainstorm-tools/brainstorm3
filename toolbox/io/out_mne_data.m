@@ -168,7 +168,7 @@ switch ObjType
     case 'Raw'
         % Create Raw object
         first_samp = round(DataMat.Time(1) .* mneInfo{'sfreq'});
-        mneObj = py.mne.io.RawArray(py.numpy.array(DataMat.F), mneInfo, first_samp);
+        mneObj = py.mne.io.RawArray(bst_python_util('Mat2Npy', DataMat.F), mneInfo, first_samp);
         
     case 'Epoched'
         % Sort trials by type, based on the comment of the files
@@ -182,12 +182,12 @@ switch ObjType
             end
         end
         % Create Epoched object
-        mneObj = py.mne.EpochsArray(py.numpy.array(DataMat.F), ...  % Concatenated trials
-            mneInfo, py.numpy.array(events), DataMat.Time(1), event_id);    
+        mneObj = py.mne.EpochsArray(bst_python_util('Mat2Npy', DataMat.F), ...  % Concatenated trials
+            mneInfo, bst_python_util('Mat2Npy', events), DataMat.Time(1), event_id);
         
     case 'Evoked'
         % Create Evoked object
-        mneObj = py.mne.EvokedArray(py.numpy.array(DataMat.F), mneInfo, DataMat.Time(1), DataMat.Comment, uint32(DataMat.nAvg));        
+        mneObj = py.mne.EvokedArray(bst_python_util('Mat2Npy', DataMat.F), mneInfo, DataMat.Time(1), DataMat.Comment, uint32(DataMat.nAvg));
 end
 
 
