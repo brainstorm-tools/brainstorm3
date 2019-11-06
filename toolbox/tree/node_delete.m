@@ -19,7 +19,7 @@ function node_delete(bstNodes, isUserConfirm)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2019
 
 %% ===== INITIALIZATION =====
 % Parse inputs
@@ -98,9 +98,8 @@ switch (lower(nodeType{1}))
                         'Deleting this link will delete permanently the file associated with it.</FONT>'];
                 % Raw file to delete is NOT in the database
                 else
-                    questStr = ['<BR><BR><FONT color="#008000">Warning: Removing links to raw files does not acually remove the raw files.<BR>' ...
-                        'To remove the native files from the hard drive, use the popup menu File > Delete raw file,<BR>' ...
-                        'or do it from your operating system file manager.</FONT>'];
+                    questStr = ['<BR><BR><FONT color="#008000">Removing links to raw files does not delete the original recordings from<BR>' ...
+                        'your hard drive. You can only do this from your operating system file manager.<BR><BR></FONT>'];
                 end
             else
                 questStr = [];
