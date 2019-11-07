@@ -311,9 +311,8 @@ if ~isempty(ChannelMat.HeadPoints) && ~isempty(ChannelMat.HeadPoints.Type)
         end
         % Position
         P.r = py.numpy.array(ChannelMat.HeadPoints.Loc(:,iDig)');
-        % Convert to DigPoint
-        %TODO: Use another structure as DigPoint() not public
-        mneInfo{'dig'}.append(py.mne.io.meas_info.DigPoint(P));
+        % Append to list
+        mneInfo{'dig'}.append(py.dict(P));
     end
 end
 
