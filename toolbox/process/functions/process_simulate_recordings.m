@@ -203,15 +203,20 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     F(iChannels,:) = HeadModelMat.Gain(iChannels,:) * ImageGridAmp;
     % Add noise SNR2 (sensor noise) 
     if isNoise && (SNR2 > 0)
-        % Load the noise covariance matrix
-        NoiseCovMat = load(file_fullpath(sStudyChannel.NoiseCov(1).FileName));
-        % Compute noise signals from noise covariance matric
-        xn = get_noise_signals (NoiseCovMat.NoiseCov(iChannels,iChannels), nTime);
-        xnn = xn./max(max(xn)); % Noise signal between 0 and 1
-        xns = xnn.*max(max(F(iChannels,:))); % Make the noise of similar amplitude than the signal
-        % Add noise to recordings
-        F(iChannels,:) = F(iChannels,:) + SNR2*xns; % Apply the SNR2
-        strNoise = [strNoise, ',Nsc=', num2str(SNR2)];
+        % Check if noise covariance matrix exists
+        if isempty(sStudyChannel.NoiseCov) || isempty(sStudyChannel.NoiseCov.FileName)
+            bst_report('Error', sProcess, [], 'No noise covariance matrix available, cannot add sensor noise.');
+        else
+            % Load the noise covariance matrix
+            NoiseCovMat = load(file_fullpath(sStudyChannel.NoiseCov(1).FileName));
+            % Compute noise signals from noise covariance matric
+            xn = get_noise_signals (NoiseCovMat.NoiseCov(iChannels,iChannels), nTime);
+            xnn = xn./max(max(xn)); % Noise signal between 0 and 1
+            xns = xnn.*max(max(F(iChannels,:))); % Make the noise of similar amplitude than the signal
+            % Add noise to recordings
+            F(iChannels,:) = F(iChannels,:) + SNR2*xns; % Apply the SNR2
+            strNoise = [strNoise, ',Nsc=', num2str(SNR2)];
+        end
     end
     
     % === SAVE RECORDINGS ===
