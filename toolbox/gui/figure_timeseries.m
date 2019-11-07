@@ -1035,10 +1035,10 @@ function FigureZoom(hFig, direction, Factor, center)
         case 'horizontal'
             % Start by displaying the full resolution if necessary
             [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
-            if (GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor > 1)
+            if (GlobalData.DataSet(iDS).Figure(iFig).Handles(1).DownsampleFactor > 1)
                 set(hFig, 'Pointer', 'watch');
                 drawnow;
-                GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor = 1;
+                GlobalData.DataSet(iDS).Figure(iFig).Handles(1).DownsampleFactor = 1;
                 figure_timeseries('PlotFigure', iDS, iFig, [], [], 1);
                 set(hFig, 'Pointer', 'arrow');
             end
