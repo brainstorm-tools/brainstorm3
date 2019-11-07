@@ -1,5 +1,5 @@
-function varargout = bst_python_util(varargin)
-% BST_PYTHON_UTIL:  Various util functions for working with Python objects
+function pyObj = bst_mat2py(matArray)
+% BST_MAT2PY: Converts Matlab matrices to Python arrays
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,20 +21,19 @@ function varargout = bst_python_util(varargin)
 %
 % Authors: Martin Cousineau, 2019
 
-eval(macro_method);
-end
 
-% Convert Numpy array to Matlab array (double)
-function matArray = Npy2Mat(npyArray)
-    shape = cellfun(@int64, cell(npyArray.shape));
-    matArray = double(py.array.array('d', py.numpy.nditer(npyArray)));
-    matArray = reshape(matArray, shape);
-end
-
-% Convert Matlab array to Numpy array
-function npyArray = Mat2Npy(matArray)
-    shape = int64(size(matArray));
-    npyArray = py.numpy.array(matArray(:)');
-    npyArray = npyArray.reshape(shape);
+switch class(matArray)
+    case {'double', 'single', 'logical'}
+        % Convert numerical matrices to Numpy arrays
+        shape = int64(size(matArray));
+        pyObj = py.numpy.array(matArray(:)');
+        pyObj = pyObj.reshape(shape);
+        
+    case 'cell'
+        % Convert cell arrays to Python lists (which support mixed types)
+        pyObj = py.list(matArray(:)');
+        
+    otherwise
+        error(['Unsupported class: ' class(matArray)]);
 end
 

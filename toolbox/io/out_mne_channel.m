@@ -217,9 +217,9 @@ else
             py.mne.transforms.invert_transform(coord_trans{'t_ctf_head_head'}), ...
             FIFF.FIFFV_COORD_DEVICE, FIFF.FIFFV_MNE_COORD_CTF_HEAD);
     % CTF HEAD => NEUROMAG HEAD (all data)
-    ChannelMat = ApplyTransformation(ChannelMat, bst_python_util('Npy2Mat', mneInfo{'ctf_head_t'}{'trans'}), [], 1);
+    ChannelMat = ApplyTransformation(ChannelMat, bst_py2mat(mneInfo{'ctf_head_t'}{'trans'}), [], 1);
     % NEUROMAG HEAD => NEUROMAG DEVICE (MEG ONLY)
-    ChannelMat = ApplyTransformation(ChannelMat, inv(bst_python_util('Npy2Mat', mneInfo{'dev_head_t'}{'trans'})), {'MEG', 'MEG REF', 'MEG GRAD', 'MEG MAG'}, 0);
+    ChannelMat = ApplyTransformation(ChannelMat, inv(bst_py2mat(mneInfo{'dev_head_t'}{'trans'})), {'MEG', 'MEG REF', 'MEG GRAD', 'MEG MAG'}, 0);
 end
 
 
