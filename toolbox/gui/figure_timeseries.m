@@ -1073,8 +1073,8 @@ function FigurePan(hFig, motion)
     % Displacement in X
     if (motion(1) ~= 0)
         % Get initial and current XLim
-        XLimInit = getappdata(hAxes, 'XLimInit');
-        XLim = get(hAxes, 'XLim');
+        XLimInit = getappdata(hAxes(1), 'XLimInit');
+        XLim = get(hAxes(1), 'XLim');
         % Move view along X axis
         XLim = XLim - (XLim(2) - XLim(1)) * motion(1);
         XLim = bst_saturate(XLim, XLimInit, 1);
@@ -1085,8 +1085,8 @@ function FigurePan(hFig, motion)
     % Displacement in Y
     if (motion(2) ~= 0)
         % Get initial and current YLim
-        YLimInit = getappdata(hAxes, 'YLimInit');
-        YLim = get(hAxes, 'YLim');
+        YLimInit = getappdata(hAxes(1), 'YLimInit');
+        YLim = get(hAxes(1), 'YLim');
         % Move view along Y axis
         YLim = YLim - (YLim(2) - YLim(1)) * motion(2);
         YLim = bst_saturate(YLim, YLimInit, 1);
