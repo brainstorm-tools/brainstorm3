@@ -66,8 +66,12 @@ if isstruct(InputFile)
                 fileSubType = ['connect1_', lower(sMat.Method), '_'];
                 sMat.Options.isSymmetric = 0;
             end
-        elseif ismember(lower(sMat.Method), {'pac', 'dpac'}) && isfield(sMat,'sPAC') && ((isfield(sMat.sPAC,'DynamicPAC') && ~isempty(sMat.sPAC.DynamicPAC)) || (isfield(sMat.sPAC,'DirectPAC') && ~isempty(sMat.sPAC.DirectPAC)))
-            fileSubType = [lower(sMat.Method), '_fullmaps_'];
+        elseif ismember(lower(sMat.Method), {'pac', 'dpac', 'tpac'}) && isfield(sMat,'sPAC')
+            if isfield(sMat.sPAC, 'DirectPAC') && ~isempty(sMat.sPAC.DirectPAC)
+                fileSubType = 'pac_fullmaps_';
+            else
+                fileSubType = 'dpac_fullmaps_';
+            end
         else
             fileSubType = [lower(sMat.Method), '_'];
         end
