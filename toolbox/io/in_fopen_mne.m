@@ -29,7 +29,8 @@ if (nargin < 2) || isempty(ImportOptions)
 end
 
 % Check Python object type
-if ~py.isinstance(pyObj, py.sys.modules{'mne.io'}.BaseRaw)
+pyModules = py.sys.modules;
+if ~py.isinstance(pyObj, pyModules{'mne.io'}.BaseRaw)
     error(['Unsupported class: ' class(pyObj)]);
 end
 

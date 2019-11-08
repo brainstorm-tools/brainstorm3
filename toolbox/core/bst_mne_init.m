@@ -248,3 +248,22 @@ function [pyVer, PythonExe, isLoaded] = TryPythonFolders(pythonFolders, pythonEx
         end
     end
 end
+
+% Lists all DLLs loaded in the Python environment (for debugging)
+function loadedDlls = GetLoadedDlls(verbose)
+    if nargin < 1 || isempty(verbose)
+        verbose = 1;
+    end
+
+    curProcess = py.psutil.Process(py.os.getpid());
+    dlls = curProcess.memory_maps();
+    nDlls = length(dlls);
+    loadedDlls = cell(1, nDlls);
+    for iDll = 1:nDlls
+        dll = dlls(iDll);
+        loadedDlls{iDll} = char(dll{1}.path);
+        if verbose
+            disp(loadedDlls{iDll});
+        end
+    end
+end

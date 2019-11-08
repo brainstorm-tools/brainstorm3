@@ -32,7 +32,8 @@ function [ChannelMat, Device, currCtfComp] = in_channel_mne( pyObj, ImportOption
 
 %% ===== PARSE INPUTS =====
 % Check inputs
-if ~py.isinstance(pyObj, py.sys.modules{'mne.io'}.BaseRaw)
+pyModules = py.sys.modules;
+if ~py.isinstance(pyObj, pyModules{'mne.io'}.BaseRaw)
     error(['Unsupported class: ' class(pyObj)]);
 end
 if (nargin < 2) || isempty(ImportOptions)

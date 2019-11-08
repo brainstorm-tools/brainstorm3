@@ -155,7 +155,7 @@ if ~isempty(tNeuromagHead2Bst) && ~isempty(tDev2NeuromagHead)
     % NEUROMAG HEAD => NEUROMAG DEVICE (MEG ONLY)
     ChannelMat = ApplyTransformation(ChannelMat, inv(tDev2NeuromagHead), {'MEG', 'MEG REF', 'MEG GRAD', 'MEG MAG'}, 0);
     % Save in info structure
-    mneInfo{'dev_head_t'}{'trans'}.put(int16(0:15), tDev2NeuromagHead);
+    mneInfo{'dev_head_t'}{'trans'}.put(int16(0:15), bst_mat2py(tDev2NeuromagHead));
     
 % ===== USE CTF/BRAINSTORM COORDINATES =====
 else
