@@ -1,10 +1,16 @@
-function view_clusters(DataFiles, iClusters, hFig)
+function [hFig, iDS, iFig] = view_clusters(DataFiles, iClusters, hFig, ClustersOptions)
 % VIEW_CLUSTERS: Display time series for all the clusters selected in the JList.
 %
-% USAGE:  view_clusters()                     : Display selected data file time series for selected clusters
-%         view_clusters(DataFiles)            : Display input data file time series for selected clusters
-%         view_clusters(DataFiles, iClusters) : Display input data file time series for input clusters
-%         view_clusters(DataFiles, iClusters, hFig) : Specify the figure to use for the display
+% USAGE:  [hFig, iDS, iFig] = view_clusters(DataFiles, iClusters=[selected], hFig=[], ClustersOptions=[]) : Specify the figure to use for the display
+%
+% INPUTS:
+%    - DataFiles : String of cell-array of input data files
+%    - iClusters : Indices of the clusters to display
+%    - hFig      : Re-use existing figure
+%    - ClustersOptions: struct()
+%        |- function          : {'Mean','Max','Power','PCA','FastPCA', 'All'} ?
+%        |- overlayClusters   : {0, 1}
+%        |- overlayConditions : {0, 1}
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -29,6 +35,10 @@ function view_clusters(DataFiles, iClusters, hFig)
 global GlobalData;  
 
 %% ===== GET CLUSTERS LIST =====
+% Get clusters options from GUI
+if (nargin < 4) || isempty(ClustersOptions)
+    ClustersOptions = [];
+end
 % No figure in input: create a new one
 if (nargin < 3) || isempty(hFig)
     hFig = [];
@@ -80,7 +90,9 @@ StudyFile      = '*';
 %    |- function          : {'Mean','Max','Power','PCA','FastPCA', 'All'} ?
 %    |- overlayClusters   : {0, 1}
 %    |- overlayConditions : {0, 1}
-ClustersOptions = panel_cluster('GetClusterOptions');
+if isempty(ClustersOptions)
+    ClustersOptions = panel_cluster('GetClusterOptions');
+end
 if (length(iClusters) == 1)
     ClustersOptions.overlayClusters = 0;
 end
@@ -285,7 +297,7 @@ end
  
 %% ===== CALL DISPLAY FUNCTION ====
 % Plot time series
-hFig = view_timeseries_matrix(DataFiles{1}, clustersActivity, [], ['$' Modality], axesLabels, clustersLabels, clustersColors, hFig, clustersStd);
+[hFig, iDS, iFig] = view_timeseries_matrix(DataFiles{1}, clustersActivity, [], ['$' Modality], axesLabels, clustersLabels, clustersColors, hFig, clustersStd);
 % Store results files in figure appdata
 setappdata(hFig, 'DataFiles', DataFiles);
 setappdata(hFig, 'iClusters', iClusters);
