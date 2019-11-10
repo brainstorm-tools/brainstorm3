@@ -107,6 +107,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     contact_time   = sProcess.options.contact_time.Value{1};
     contact_nimage = sProcess.options.contact_nimage.Value{1};
     Comment        = sProcess.options.Comment.Value;
+    % If using "comment" instead of "Comment" (common scripting error)
+    if isempty(Comment) && isfield(sProcess.options, 'comment') && isfield(sProcess.options.comment, 'Value') && ~isempty(sProcess.options.comment.Value)
+        Comment = sProcess.options.comment.Value;
+    end
     % Amplitude threshold
     if isfield(sProcess.options, 'threshold') && isfield(sProcess.options.threshold, 'Value') && ~isempty(sProcess.options.threshold.Value)
         Threshold = sProcess.options.threshold.Value{1} / 100;

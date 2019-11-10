@@ -109,7 +109,7 @@ bst_process('CallProcess', 'process_snapshot', [sFilesRun200Ds, sFilesRun20Ds], 
     'target',   1, ...  % Sensors/MRI registration
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 
 
 % ===== DETECT EVENTS =====
@@ -175,7 +175,7 @@ bst_process('CallProcess', 'process_noisecov', sFilesNoiseDs, [], ...
 % Process: Snapshot: Noise covariance
 bst_process('CallProcess', 'process_snapshot', sFilesNoiseDs, [], ...
     'target',  3, ...  % Noise covariance
-    'comment', 'Noise covariance');
+    'Comment', 'Noise covariance');
 
 
 % ===== SOURCE ESTIMATION =====
