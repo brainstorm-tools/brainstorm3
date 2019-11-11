@@ -296,6 +296,8 @@ sTfFamousNorm = bst_process('CallProcess', 'process_baseline_norm', sTfFamous, [
 sTfFamousNorm = bst_process('CallProcess', 'process_extract_time', sTfFamousNorm, [], ...
     'timewindow', [-0.2, 0.9], ...
     'overwrite',  1);
+% Configure colormap
+bst_colormaps('SetMaxCustom', 'stat2', [], -30, 30);
 % Display 2DLayout
 hFig = view_timefreq(sTfFamousNorm.FileName, '2DLayout');
 bst_report('Snapshot', hFig, sTfFamousNorm.FileName, 'Famous, EEG: Time-frequency with Morlet wavelets', [200,200,800,600]);
@@ -305,6 +307,8 @@ hFig = view_timefreq(sTfFamousNorm.FileName, 'SingleSensor', 'EEG065');
 panel_display('SetSmoothDisplay', 1, hFig);
 bst_report('Snapshot', hFig, sTfFamousNorm.FileName, 'Famous, EEG065: Time-frequency with Morlet wavelets');
 close(hFig);
+% Restore colormap
+bst_colormaps('RestoreDefaults', 'stat2');
 
 
 
@@ -634,19 +638,19 @@ bst_process('CallProcess', 'process_snapshot', sFilesFacesScrm, [], ...
     'target',   5, ...  % Recordings time series
     'modality', 4, ...  % EEG
     'time',     0.165, ...
-    'Comment',  'Faces vs Scrambled: EEG');
+    'Comment',  'Faces vs Scrambled: EEG, parametric t-test');
 % Process: Snapshot: Recordings time series
 bst_process('CallProcess', 'process_snapshot', sFilesFacesScrm, [], ...
     'target',   5, ...  % Recordings time series
     'modality', 1, ...  % MEG (all)
     'time',     0.165, ...
-    'Comment',  'Faces vs Scrambled: MEG (all)');
+    'Comment',  'Faces vs Scrambled: MEG (all), parametric t-test');
 % Process: Snapshot: Recordings topography (one time)
 bst_process('CallProcess', 'process_snapshot', sFilesFacesScrm, [], ...
     'target',   6, ...  % Recordings topography (one time)
     'modality', 3, ...  % MEG MAG
     'time',     0.165, ...
-    'Comment',  'Faces vs Scrambled: MEG (all) 165ms');
+    'Comment',  'Faces vs Scrambled: MEG (all) 165ms, parametric t-test');
 
 % === FACES vs SCRAMBLED, CLUSTER, SENSOR ===
 % Process: FT t-test unequal cluster [0ms,500ms MEG MAG]          H0:(A=B), H1:(A<>B)
@@ -667,13 +671,13 @@ bst_process('CallProcess', 'process_snapshot', sFilesFacesScrmClust, [], ...
     'target',   5, ...  % Recordings time series
     'modality', 1, ...  % MEG (all)
     'time',     0.165, ...
-    'Comment',  'Faces vs Scrambled: MEG (all)');
+    'Comment',  'Faces vs Scrambled: MEG (all), cluster');
 % Process: Snapshot: Recordings topography (one time)
 bst_process('CallProcess', 'process_snapshot', sFilesFacesScrmClust, [], ...
     'target',   6, ...  % Recordings topography (one time)
     'modality', 3, ...  % MEG MAG
     'time',     0.165, ...
-    'Comment',  'Faces vs Scrambled: MEG (all) 165ms');
+    'Comment',  'Faces vs Scrambled: MEG (all) 165ms, cluster');
 
 % === FACES vs SCRAMBLED, PERMUTATION, dSPM ===
 % Process: Select results files in: sub-01/*/dSPM
