@@ -2,6 +2,7 @@ function panel_sync()
 
 %download
 
+
 filename = "1g.zip";
 url=strcat(string(bst_get('UrlAdr')),"/file/download/test/",filename);
 
@@ -17,12 +18,42 @@ fclose(fileID);
 disp("finish download!");
 
 
-%{
+bst_set('ProtocolId',"341e0d29-c678-4e87-bb28-f0dc3042a826");
 %upload local protocol to cloud
 protocol = bst_get('ProtocolInfo');
 %todo: http create protocol
 protocolid = bst_get('ProtocolId');
+disp(protocolid);
+comment=getfield(protocol,"Comment");
+istudy=getfield(protocol,"iStudy");
+anat=getfield(protocol,"UseDefaultAnat");
+channel=true;
+disp(anat);
+if(getfield(protocol,"UseDefaultChannel")==0)
+    channel=false;
+end
+disp(channel);
+url = strcat(string(bst_get('UrlAdr')),"/protocol/share");
+data=struct('id',protocolid,'name','test1','isprivate',true,...
+    'comment',comment,'istudy',istudy,'usedefaultanat',anat,...
+  'usedefaultchannel',channel);
+[response,status] = bst_call(@HTTP_request,'POST','Default',data,url);
+if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
+    java_dialog('warning',status);
+    return;
+else
+    newid=response.Body.Data;
+    newid=extractBetween(newid,8,strlength(newid)-2);
+    disp(newid);
+    if isempty(bst_get('ProtocolId'))
+        bst_set('ProtocolId',newid);
+        disp('store protocolId successfully');
+    end
+    disp('create protocal successfully');
+end
 
+
+%{
 %go through subjects
 numofsubjects = bst_get('SubjectCount');
 for i = 1:numofsubjects
@@ -32,6 +63,10 @@ for i = 1:numofsubjects
     subjectstudies = bst_get('StudyWithSubject',subject.FileName);
     for j = 1:length(subjectstudies)
         url = strcat(string(bst_get('UrlAdr')),"/study/create");
+        data = struct('filename',1,'name',1,'condition',1,...
+            'dataofStudy',1,'iChannel',1,iHeadModel,1,...
+            'protocolId',protocolid,'subjectId',j,'channels',1);
+        [response,status] = bst_call(@HTTP_request,'POST','Default',data,url);
         %todo: http create study
         %todo: check all files and http create file
     end 
