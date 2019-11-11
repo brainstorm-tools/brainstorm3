@@ -1,7 +1,8 @@
 function panel_sync()
 
 %download
-filename = "3g.zip";
+
+filename = "1g.zip";
 url=strcat(string(bst_get('UrlAdr')),"/file/download/test/",filename);
 
 [response,status] = bst_call(@HTTP_request,'GET','Default',struct(),url);
@@ -13,6 +14,29 @@ filestream = response.Body.Data;
 fileID = fopen(strcat('/Users/chaoyiliu/Desktop/data/',filename),'w');
 fwrite(fileID,filestream,'uint8');
 fclose(fileID);
+disp("finish download!");
+
+
+%{
+%upload local protocol to cloud
+protocol = bst_get('ProtocolInfo');
+%todo: http create protocol
+protocolid = bst_get('ProtocolId');
+
+%go through subjects
+numofsubjects = bst_get('SubjectCount');
+for i = 1:numofsubjects
+    subject = bst_get('Subject', i); 
+    url = strcat(string(bst_get('UrlAdr')),"/subject/create");
+    %todo: http create subject
+    subjectstudies = bst_get('StudyWithSubject',subject.FileName);
+    for j = 1:length(subjectstudies)
+        url = strcat(string(bst_get('UrlAdr')),"/study/create");
+        %todo: http create study
+        %todo: check all files and http create file
+    end 
+end
+%}
 
 
 
