@@ -50,9 +50,9 @@ end
 [res, boldKeywords] = TestSearchTree(searchRoot, fileType, fileComment, fileName);
 
 % Bold contained keywords in node comment
-if ~isempty(boldKeywords)
+if nargout > 1 && ~isempty(boldKeywords)
     for iKeyword = 1:length(boldKeywords)
-        filteredComment = strrep(filteredComment, boldKeywords{iKeyword}, ['<B>' boldKeywords{iKeyword} '</B>']);
+        filteredComment = strAddKeywordDelimiter(filteredComment, boldKeywords{iKeyword}, '<B>', '</B>');
     end
     filteredComment = ['<HTML>' filteredComment];
 end
@@ -90,9 +90,9 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
         if ~isempty(curRes)
             switch nextBool
                 case 1 % AND
-                    res = res && curRes;
+                    res = res & curRes;
                 case 2 % OR
-                    res = res || curRes;
+                    res = res | curRes;
                 otherwise
                     res = curRes;
             end
@@ -125,8 +125,13 @@ function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileNa
     end
     
     % Detect if we're testing multiple files at once
+    if iscell(fileComment)
+        nTotalFiles = length(fileComment);
+    else
+        nTotalFiles = 1;
+    end
     if iscell(fileValue)
-        nFiles = length(fileValue);
+        nFiles = nTotalFiles;
         matches = true(1, nFiles);
     else
         fileValue = {fileValue};
@@ -151,5 +156,54 @@ function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileNa
             error('Unsupported equality type');
         end
     end
+    
+    % Propagate to all files
+    if nFiles == 1 && nTotalFiles > nFiles
+        matches = repmat(matches, 1, nTotalFiles);
+    end
 end
 
+% Adds left and right delimiters around 'keyword' in string 'str' while
+% keeping original case of keyword
+% Example: strAddKeywordDelimiter('This the', 'th', '<B>', '</B>')
+%    = '<B>Th</B>is <B>th</B>e'
+function out = strAddKeywordDelimiter(allStr, keyword, delL, delR)
+    if nargin < 4
+        delR = delL;
+    end
+    isSingle = ~iscell(allStr);
+    if isSingle
+        allStr = {allStr};
+    end
+    nStrings = length(allStr);
+    outStr = cell(1, nStrings);
+    
+    keywordLen = length(keyword);
+    for iStr = 1:nStrings
+        str = allStr{iStr};
+        stringLen = length(str);
+        iPosKeywords = strfind(lower(str), lower(keyword));
+        out = [];
+        iPos = 1;
+        % Loop through keywords
+        for iKeyword = 1:length(iPosKeywords)
+            iPosKeyword = iPosKeywords(iKeyword);
+            % Add portion of string before keyword
+            if iPosKeyword > iPos
+                out = [out str(iPos:iPosKeyword-1)];
+            end
+            % Add keyword + delimiters
+            iPos = iPosKeyword + keywordLen;
+            out = [out delL str(iPosKeyword:iPos - 1) delR];
+        end
+        % Add portion of string after keywords
+        if iPos <= stringLen
+            out = [out str(iPos:stringLen)];
+        end
+        outStr{iStr} = out;
+    end
+    
+    if isSingle
+        outStr = outStr{1};
+    end
+end
