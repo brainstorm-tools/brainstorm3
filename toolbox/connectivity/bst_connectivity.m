@@ -22,7 +22,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017; Hossein Shahabi, 2019
 
 
 %% ===== DEFAULT OPTIONS =====
@@ -36,7 +36,7 @@ Def_OPTIONS.IgnoreBad     = 0;             % For recordings: Ignore bad channels
 Def_OPTIONS.ScoutFunc     = 'all';         % Scout function {mean, max, pca, std, all}
 Def_OPTIONS.ScoutTime     = 'before';      % When to apply scout function: {before, after}
 Def_OPTIONS.RemoveMean    = 1;             % Option for Correlation
-Def_OPTIONS.CohMeasure    = 'mscohere';    % {'mscohere'=Magnitude-square, 'icohere'=Imaginary}
+Def_OPTIONS.CohMeasure    = 'mscohere';    % {'mscohere'=Magnitude-square, 'icohere'=Imaginary, 'icohere2019', 'lcohere2019'}
 Def_OPTIONS.MaxFreqRes    = [];            % Option for spectral estimates (Coherence, spectral Granger)
 Def_OPTIONS.MaxFreq       = [];            % Option for spectral estimates (Coherence, spectral Granger)
 Def_OPTIONS.CohOverlap    = 0.50;          % Option for Coherence
@@ -330,10 +330,10 @@ for iFile = 1:length(FilesA)
                 precision = '%1.1f';
             end
             % Output comment
-            Comment = sprintf(['Coh(' precision 'Hz,%dwin): '], fStep, OPTIONS.Nwin);
-            if strcmpi(OPTIONS.CohMeasure, 'icohere')
-                Comment = ['i', Comment];
-            end
+            Comment = sprintf(['%s(' precision 'Hz,%dwin): '], OPTIONS.CohMeasure, fStep, OPTIONS.Nwin);
+%             if strcmpi(OPTIONS.CohMeasure, 'icohere')
+%                 Comment = ['i', Comment];
+%             end
 
         % ==== GRANGER ====
         case 'granger'
@@ -584,6 +584,29 @@ for iFile = 1:length(FilesA)
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
+            
+        % ==== hcoh ====
+        case 'hcoh'
+            bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, ...
+                size(sInputA.Data,1), size(sInputB.Data,1)));
+            Comment = [OPTIONS.tfMeasure ' | ' OPTIONS.CohMeasure ' | ' sprintf('%ds',OPTIONS.WinParam(1)) ' | ' ...
+                sprintf('%ds',prod(OPTIONS.WinParam)) ' | '] ;
+            
+            % ======
+            OPTIONS.SampleRate        = sfreq;
+            OPTIONS.ExtraInf.nTrials  = length(FilesA);
+            OPTIONS.ExtraInf.trialNum = iFile;
+            OPTIONS.Freqs             = OPTIONS.Freqrange ;
+
+            % ======
+            [cOut,timeSamples] = bst_hcoh(sInputA.Data,OPTIONS);
+            R4d = cOut ;
+            sInputB.Time = timeSamples + sInputB.Time(1) ;
+            [~,~,nTime,nFreq] = size(R4d) ;
+            R = reshape(R4d,[],nTime,nFreq) ;
+            
+            % =======
+            OPTIONS.Nwin = nTime ;
             
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
