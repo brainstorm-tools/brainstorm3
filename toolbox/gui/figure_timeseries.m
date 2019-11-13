@@ -2471,11 +2471,11 @@ function DisplayConfigMenu(hFig, jParent)
                 jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
             end
-        end
-        % Uniform amplitude scales
-        if ~isRaw && (length(hFigAll) > 1)
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Uniform amplitude scales', [], [], @(h,ev)panel_record('UniformTimeSeries_Callback',h,ev));
-            jItem.setSelected(bst_get('UniformizeTimeSeriesScales'));
+            % Uniform amplitude scales
+            if ~isRaw && (length(hFigAll) > 1)
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Uniform amplitude scales', [], [], @(h,ev)panel_record('UniformTimeSeries_Callback',h,ev));
+                jItem.setSelected(bst_get('UniformizeTimeSeriesScales'));
+            end
         end
         % Standardize data
         if strcmpi(FigureId.Type, 'DataTimeSeries')
