@@ -545,15 +545,16 @@ function [sClusters, iClusters] = GetDisplayedClusters(hFig)
             iClusters = [];
             sClusters = [];
         case 'select'
-            % If the target figure is not the figure that is currently selected: nothing to display
-            hFigCur = bst_figures('GetCurrentFigure');
-            if ~isequal(hFigCur, hFig)
-                iClusters = [];
-                sClusters = [];
-            % Get the clusters that are selected in the JList
-            else
+            % Check that the number of clusters is correct
+            % Possible error: if there are multiple files with different clusters displayed together, 
+            % the selection may apply improperly to inappropriate files
+            if (length(sClusters) == ctrl.jListClusters.getModel().getSize())
+                % Get the clusters that are selected in the JList
                 iClusters = ctrl.jListClusters.getSelectedIndices() + 1;
                 sClusters = sClusters(iClusters);
+            else
+                iClusters = [];
+                sClusters = [];
             end
         case 'all'
             % Keep all the significant clusters
