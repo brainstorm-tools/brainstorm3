@@ -1220,14 +1220,14 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
                 B = sort(s, 'descend');
                 if length(B) > MaximumNumberOfData
                     t = B(MaximumNumberOfData);
-                    Valid = Valid & (M > t);
+                    Valid = Valid & (M >= t);
                 end
             else
                 [tmp,tmp,s] = find(M(Valid == 1));
                 B = sort(abs(s), 'descend');
                 if length(B) > MaximumNumberOfData
                     t = B(MaximumNumberOfData);
-                    Valid = Valid & ((M < -t) | (M > t));
+                    Valid = Valid & ((M <= -t) | (M >= t));
                 end
             end
         end
