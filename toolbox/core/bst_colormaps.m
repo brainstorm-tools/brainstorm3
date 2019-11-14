@@ -389,7 +389,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                         DataType = 'pac';
                         
                     case 'Connect'
-                        DataFig = getappdata(sFigure.hFigure, 'DataMinMax');
+                        DataFig = bst_figures('GetFigureHandleField', sFigure.hFigure, 'DataMinMax');
                         DataType = 'connect';
                         
                     case 'Image'
