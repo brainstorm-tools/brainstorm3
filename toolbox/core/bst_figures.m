@@ -1516,7 +1516,16 @@ function ViewTopography(hFig, UseSmoothing)
                 Modalities = {'MEG MAG', 'MEG GRAD2', 'MEG GRAD3'};
             else
                 Modalities = {FigMod};
-            end           
+            end
+            % Keep only the modalities that have valid data
+            iGoodMod = [];
+            for iMod = 1:length(Modalities)
+                iChan = good_channel(GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag, Modalities{iMod});
+                if ~isempty(iChan)
+                    iGoodMod = [iGoodMod, iMod];
+                end
+            end
+            Modalities = Modalities(iGoodMod);
                 
         case {'Timefreq', 'Spectrum', 'Pac'}
             % Get time freq information
