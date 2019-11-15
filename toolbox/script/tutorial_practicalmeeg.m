@@ -1,10 +1,11 @@
 function tutorial_practicalmeeg(bids_dir, reports_dir)
 % TUTORIAL_PRACTICALMEEG: Runs the first subject of Brainstorm/SPM group analysis pipeline
 %
-% ONLINE TUTORIAL: https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
+% WORKSHOP PAGE : https://neuroimage.usc.edu/brainstorm/WorkshopParis2019
+% FULL TUTORIAL : https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
 %
 % INPUTS:
-%    - bids_dir: Path to folder ds000117  (https://openneuro.org/datasets/ds000117)
+%    - bids_dir: Path to folder ds000117-practical  (https://owncloud.icm-institute.org/index.php/s/cNu5jmiOhe7Yuoz/download)
 %       |- derivatives/freesurfer/sub-01                               : Segmentation folder generated with FreeSurfer
 %       |- derivatives/meg_derivatives/sub-01/ses-meg/meg/*.fif        : MEG+EEG recordings (processed with MaxFilter's SSS)
 %       |- derivatives/meg_derivatives/sub-emptyroom/ses-meg/meg/*.fif : Empty room measurements (processed with MaxFilter's SSS)
@@ -23,7 +24,7 @@ ProtocolName = 'PracticalMEEG';
 SubjectName = 'sub-01';
 AnatDir   = fullfile(bids_dir, 'derivatives', 'freesurfer', SubjectName, 'ses-mri', 'anat');
 FifFile   = fullfile(bids_dir, 'derivatives', 'meg_derivatives', SubjectName, 'ses-meg', 'meg', [SubjectName, '_ses-meg_task-facerecognition_run-01_proc-sss_meg.fif']);
-NoiseFile = fullfile(bids_dir, 'derivatives', 'meg_derivatives', 'sub-emptyroom', 'ses-20090409', 'meg', 'sub-emptyroom_ses-20090409_task-noise_meg.fif');
+NoiseFile = fullfile(bids_dir, 'derivatives', 'meg_derivatives', 'sub-emptyroom', 'ses-20090409', 'meg', 'sub-emptyroom_ses-20090409_task-noise_proc-sss_meg.fif');
 % Check input folder
 if (nargin < 1) || isempty(bids_dir) || ~exist(AnatDir,'file') || ~exist(FifFile,'file') || ~exist(NoiseFile,'file')
     error('The first argument must be the full path to the tutorial folder.');
