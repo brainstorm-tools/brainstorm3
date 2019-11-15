@@ -4011,6 +4011,11 @@ function PlotCoils(hFig, Modality, isDetails)
                 if strcmpi(Channels(i).Type, 'MEG MAG') && (nPoints == 4)
                     oriLength = 0.015;
                     chLoc = Channels(i).Loc(:,[1 2 4 3])' .* 1.00;
+                    % Square of integration points is 2x smaller than the actual sensor: simply scale it
+                    chLoc = [2*chLoc(1,:) - .5*chLoc(2,:) - .5*chLoc(4,:);
+                             2*chLoc(2,:) - .5*chLoc(1,:) - .5*chLoc(3,:);
+                             2*chLoc(3,:) - .5*chLoc(2,:) - .5*chLoc(4,:);
+                             2*chLoc(4,:) - .5*chLoc(1,:) - .5*chLoc(3,:)];
                     % Coil patch
                     patch('Vertices', chLoc, 'FaceColor', [1 1 0], patchOpt{:});
                     % Additional details
