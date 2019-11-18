@@ -59,7 +59,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'ImportData', ...                      % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'multiple', ...                        % Selection mode: {single,multiple}
         'files_and_dirs', ...                  % Selection mode: {files,dirs,files_and_dirs}
-        bst_get('FileFilters', 'raw'), ...    % Get all the available file formats
+        bst_get('FileFilters', 'data'), ...    % Get all the available file formats
         'DataIn'};                             % Default file format (field name in DefaultFormats)
     % Epochs indices
     sProcess.options.iepochs.Comment = 'Epoch indices (empty=all):';
