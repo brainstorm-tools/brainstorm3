@@ -1,4 +1,4 @@
-function [response, status] = Checksession(method,header,data,url)
+function [sessionon] = Checksession()
 % HTTP_REQUEST: POST,GET request to construct interaction between front end
 % and back end.
 
@@ -23,11 +23,13 @@ function [response, status] = Checksession(method,header,data,url)
 % Authors: Zeyu Chen, Chaoyi Liu 2019
 
 url = strcat(string(bst_get('UrlAdr')),"/user/checksession");
-[response,status] = bst_call(@HTTP_request,'POST','Default',data,url);
+data=struct('id',1);
+[response,status] = bst_call(@HTTP_request,'POST','Default',data,url,0);
 if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
-    java_dialog('warning',status);
-    return;
+    %java_dialog('warning',status);
+    sessionon=0;
 else
+    sessionon=1;
     disp('session on');
 end
 

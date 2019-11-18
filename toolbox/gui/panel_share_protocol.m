@@ -76,6 +76,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 
     % ===== LOAD DATA =====
     ShareProtocol();
+    if isempty(bst_get('SessionId'))
+        panelName = [];
+        bstPanelNew=[];
+        return;
+    end
     UpdateGroupsList();
     UpdateMembersList();
         
@@ -530,59 +535,59 @@ end
 
 %% ===== Update protocol on cloud =====
 function ShareProtocol()
-import matlab.net.*;
-import matlab.net.http.*;
-type1 = MediaType('text/*');
-type2 = MediaType('application/json','q','.5');
-acceptField = matlab.net.http.field.AcceptField([type1 type2]);
-h1 = HeaderField('Content-Type','application/json');
-h2 = HeaderField('sessionid',bst_get('SessionId'));
-h3 = HeaderField('deviceid',bst_get('DeviceId'));
-header = [acceptField,h1,h2,h3];
-method = RequestMethod.POST;
-sProtocol = bst_get('ProtocolInfo');
-if isempty(bst_get('ProtocolId'))
-    pid = " ";
-else 
-    pid = convertCharsToStrings(bst_get('ProtocolId'));
-end
+    sProtocol = bst_get('ProtocolInfo');
+    if isempty(bst_get('ProtocolId'))
+        pid = " ";
+    else 
+        pid = convertCharsToStrings(bst_get('ProtocolId'));
+    end
 
-if(sProtocol.UseDefaultAnat == 0) uda = false;
-else uda = true;
-end
-if(sProtocol.UseDefaultChannel == 0) udc = false;
-else udc = true;
-end  
-data = struct('Id',pid,'Name',sProtocol.Comment, 'Isprivate', false, ...
-        'Comment',sProtocol.Comment, 'Istudy', size(sProtocol.iStudy,1), ...
-        'Usedefaultanat',uda, 'Usedefaultchannel',udc);
-body=MessageBody(data);
-request_message = RequestMessage(method,header,body);
-show(request_message);
+    
+    if (sProtocol.UseDefaultAnat == 0) 
+        uda = false;
+    else
+        uda = true;
+    end
+    if (sProtocol.UseDefaultChannel == 0) 
+        udc = false;
+    else
+        udc = true;
+    end  
+    data = struct('Id',pid,'Name',sProtocol.Comment, 'Isprivate', false, ...
+            'Comment',sProtocol.Comment, 'Istudy', size(sProtocol.iStudy,1), ...
+            'Usedefaultanat',uda, 'Usedefaultchannel',udc);
 
-
-serveradr = string(bst_get('UrlAdr'));
-url=strcat(serveradr,"/protocol/share");
-disp(url);
-try
-    [resp,~,hist]=send(request_message,URI(url));
-    status = resp.StatusCode;
-    txt=char(status);
-    if strcmp(status,'200')==1 ||strcmp(txt,'OK')==1
+    serveradr = string(bst_get('UrlAdr'));
+    url=strcat(serveradr,"/protocol/share");
+    disp(url);
+    [response,status] = bst_call(@HTTP_request,'POST','Default',data,url,1);
+    if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
+        if strcmp(status,'404')==1 | strcmp(response,'NotFound')==1
+            java_dialog('error','Current protocol has not been uploaded!');
+        else
+            java_dialog('warning',status);
+            return;
+        end
+    else
+        newid=response.Body.Data;
+        newid=extractBetween(newid,8,strlength(newid)-2);
+        disp(newid);
+        if isempty(bst_get('ProtocolId'))
+            bst_set('ProtocolId',newid);
+            disp('store protocolId successfully');
+        end
+        disp('create protocal successfully');
+        
+        %{
         content=resp.Body;
         show(content);
         protocolid = jsondecode(content.Data);
         bst_set('ProtocolId',string(protocolid.id));        
         %java_dialog('msgbox', 'Protocol uploaded!');
         disp('Protocol uploaded!');
-    elseif strcmp(status,'404')==1 || strcmp(txt,'NotFound')==1
-        java_dialog('error','Current protocol has not been uploaded!');
-    else
-        java_dialog('error', txt);
+        %}
     end
-catch
-    java_dialog('warning', 'Load protocol failed!');
-end
+
 end
 
 %% ===== Load protocol groups =====

@@ -1,4 +1,4 @@
-function [response, status] = HTTP_request(method,header,data,url)
+function [response, status] = HTTP_request(method,header,data,url,checksession)
 % HTTP_REQUEST: POST,GET request to construct interaction between front end
 % and back end.
 
@@ -45,6 +45,26 @@ function [response, status] = HTTP_request(method,header,data,url)
             header = [streamheader,sessionheader,deviceheader,protocolheader];
             body=data;
     end
+    
+    if checksession==1
+        [sessionon] = bst_call(@Checksession);
+        if sessionon==0
+            response = {};
+            status = "Session unavailable";
+            disp("Please log in first!");
+            return 
+        end
+    end
+    
+    disp(bst_get('SessionId'))
+    if isempty(bst_get('SessionId'))
+        disp(111)
+         response = {};
+         status = "Session unavailable";
+         disp("Please log in first!");
+         return 
+    end
+    
     if strcmp(method,"POST")==1
         method =RequestMethod.POST;    
     elseif  strcmp(method,"GET")==1

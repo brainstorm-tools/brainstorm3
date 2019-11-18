@@ -1,12 +1,29 @@
 function panel_sync()
 
+%check whether protocal exists in remote database
+protocolid = bst_get('ProtocolId');
+url = strcat(string(bst_get('UrlAdr')),"/protocol/get");
+url = strcat(url,string(protocolid));
+data=[];
+[response,status] = bst_call(@HTTP_request,'GET','Default',data,url,1);
+if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
+    if strcmp(status,'NotFound')==1
+        bst_call(@gui_show, 'panel_share_protocol', 'JavaWindow', 'Share Protocol', [], 1, 0, 0)
+    else
+        java_dialog('warning',status);
+    end
+    return;
+else
+    disp('Start Sync!');
+end
+
 %download
 
 
 filename = "1g.zip";
 url=strcat(string(bst_get('UrlAdr')),"/file/download/test/",filename);
 
-[response,status] = bst_call(@HTTP_request,'GET','Default',struct(),url);
+[response,status] = bst_call(@HTTP_request,'GET','Default',struct(),url,1);
 if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
     java_dialog('warning',status);
     return;
@@ -18,7 +35,6 @@ fclose(fileID);
 disp("finish download!");
 
 
-bst_set('ProtocolId',"341e0d29-c678-4e87-bb28-f0dc3042a826");
 %upload local protocol to cloud
 protocol = bst_get('ProtocolInfo');
 %todo: http create protocol
@@ -37,7 +53,7 @@ url = strcat(string(bst_get('UrlAdr')),"/protocol/share");
 data=struct('id',protocolid,'name','test1','isprivate',true,...
     'comment',comment,'istudy',istudy,'usedefaultanat',anat,...
   'usedefaultchannel',channel);
-[response,status] = bst_call(@HTTP_request,'POST','Default',data,url);
+[response,status] = bst_call(@HTTP_request,'POST','Default',data,url,1);
 if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
     java_dialog('warning',status);
     return;
