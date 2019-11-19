@@ -19,7 +19,8 @@ function varargout = figure_3d( varargin )
 %                 figure_3d('ColorFibers',           fibLines, Color)
 %                 figure_3d('SelectFiberScouts',     hFigConn, iScouts, Color, ColorOnly)
 %     [hFig,hs] = figure_3d('PlotSurface',           hFig, faces, verts, cdata, dataCMap, transparency)
-
+%                 figure_3d('PlotCoils',             hFig, Modality, isDetails)
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
