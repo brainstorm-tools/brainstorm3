@@ -4013,11 +4013,11 @@ function PlotCoils(hFig, Modality, isDetails)
                     oriLength = 0.015;
                     chLoc = Channels(i).Loc(:,[1 2 4 3])' .* 1.00;
                     % Square of integration points is 2x smaller than the actual sensor: simply scale it
-                    a=0.5;
-                    chLoc = [(1+2*a)*chLoc(1,:) - a*chLoc(2,:) - a*chLoc(4,:);
-                             (1+2*a)*chLoc(2,:) - a*chLoc(1,:) - a*chLoc(3,:);
-                             (1+2*a)*chLoc(3,:) - a*chLoc(2,:) - a*chLoc(4,:);
-                             (1+2*a)*chLoc(4,:) - a*chLoc(1,:) - a*chLoc(3,:)];
+                    coilScaleF=0.5;
+                    chLoc = [(1+2*coilScaleF)*chLoc(1,:) - coilScaleF*chLoc(2,:) - coilScaleF*chLoc(4,:);
+                             (1+2*coilScaleF)*chLoc(2,:) - coilScaleF*chLoc(1,:) - coilScaleF*chLoc(3,:);
+                             (1+2*coilScaleF)*chLoc(3,:) - coilScaleF*chLoc(2,:) - coilScaleF*chLoc(4,:);
+                             (1+2*coilScaleF)*chLoc(4,:) - coilScaleF*chLoc(1,:) - coilScaleF*chLoc(3,:)];
                     % Coil patch
                     patch('Vertices', chLoc, 'FaceColor', [1 1 0], patchOpt{:});
                     % Additional details
@@ -4044,11 +4044,11 @@ function PlotCoils(hFig, Modality, isDetails)
                         Color = [.2 1 .2];
                     end
                     % Square of integration points is 2x smaller than the actual sensor: simply scale it
-                    a=0.278;
-                    chLoc = [(1+2*a)*chLoc(1,:) - a*chLoc(2,:) - a*chLoc(4,:);
-                             (1+2*a)*chLoc(2,:) - a*chLoc(1,:) - a*chLoc(3,:);
-                             (1+2*a)*chLoc(3,:) - a*chLoc(2,:) - a*chLoc(4,:);
-                             (1+2*a)*chLoc(4,:) - a*chLoc(1,:) - a*chLoc(3,:)];
+                    coilScaleF=0.278;
+                    chLoc = [(1+2*coilScaleF)*chLoc(1,:) - coilScaleF*chLoc(2,:) - coilScaleF*chLoc(4,:);
+                             (1+2*coilScaleF)*chLoc(2,:) - coilScaleF*chLoc(1,:) - coilScaleF*chLoc(3,:);
+                             (1+2*coilScaleF)*chLoc(3,:) - coilScaleF*chLoc(2,:) - coilScaleF*chLoc(4,:);
+                             (1+2*coilScaleF)*chLoc(4,:) - coilScaleF*chLoc(1,:) - coilScaleF*chLoc(3,:)];
                     % Split in two coils
                     Vertices1 = [chLoc([1,2],:); .6 .* chLoc([2,1],:) + .4 .* chLoc([3,4],:)];
                     Vertices2 = [.4 .* chLoc([1,2],:) + .6 .* chLoc([4,3],:); chLoc([3,4],:)];
