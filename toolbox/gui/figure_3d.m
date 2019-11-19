@@ -4043,7 +4043,7 @@ function PlotCoils(hFig, Modality, isDetails)
                         Color = [.2 1 .2];
                     end
                     % Square of integration points is 2x smaller than the actual sensor: simply scale it
-                    a=0.275;
+                    a=0.278;
                     chLoc = [(1+2*a)*chLoc(1,:) - a*chLoc(2,:) - a*chLoc(4,:);
                              (1+2*a)*chLoc(2,:) - a*chLoc(1,:) - a*chLoc(3,:);
                              (1+2*a)*chLoc(3,:) - a*chLoc(2,:) - a*chLoc(4,:);
