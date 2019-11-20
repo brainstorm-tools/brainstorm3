@@ -1,23 +1,35 @@
 function panel_sync()
 
 %download
-
-
-filename = "1g.zip";
-url=strcat(string(bst_get('UrlAdr')),"/file/download/test/",filename);
-
+filename = "300mb.zip";
+blocksize = 10000000; %10mb
+url=strcat(string(bst_get('UrlAdr')),"/file/download/",filename);
 [response,status] = bst_call(@HTTP_request,'GET','Default',struct(),url);
 if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
     java_dialog('warning',status);
     return;
 end
-filestream = response.Body.Data;
+filesize = double(response.Body.Data);
+start = 0;
 fileID = fopen(strcat('/Users/chaoyiliu/Desktop/data/',filename),'w');
-fwrite(fileID,filestream,'uint8');
+bst_progress('start', 'downloading', 'downloading file',0,filesize);
+while(start < filesize)
+    [response,status] = bst_call(@HTTP_request,'GET','Default',struct(),strcat(url,"/", num2str(start),"/",num2str(blocksize)));
+    if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
+        java_dialog('warning',status);
+        return;
+    end
+    bst_progress('set', start);
+    start = start + blocksize;
+    filestream = response.Body.Data;
+    fwrite(fileID,filestream,'uint8');
+end
+bst_progress('stop');
 fclose(fileID);
 disp("finish download!");
 
 
+%{
 bst_set('ProtocolId',"341e0d29-c678-4e87-bb28-f0dc3042a826");
 %upload local protocol to cloud
 protocol = bst_get('ProtocolInfo');
@@ -51,7 +63,7 @@ else
     end
     disp('create protocal successfully');
 end
-
+%}
 
 %{
 %go through subjects
