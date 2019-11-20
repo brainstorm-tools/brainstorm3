@@ -1,10 +1,28 @@
 function panel_sync()
 
+%check whether protocal exists in remote database
+protocolid = bst_get('ProtocolId');
+url = strcat(string(bst_get('UrlAdr')),"/protocol/get");
+url = strcat(url,string(protocolid));
+data=[];
+[response,status] = bst_call(@HTTP_request,'GET','Default',data,url,1);
+if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
+    if strcmp(status,'NotFound')==1
+        bst_call(@gui_show, 'panel_share_protocol', 'JavaWindow', 'Share Protocol', [], 1, 0, 0)
+    else
+        java_dialog('warning',status);
+    end
+    return;
+else
+    disp('Start Sync!');
+end
+
 %download
 filename = "300mb.zip";
 blocksize = 10000000; %10mb
 url=strcat(string(bst_get('UrlAdr')),"/file/download/",filename);
 [response,status] = bst_call(@HTTP_request,'GET','Default',struct(),url);
+
 if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
     java_dialog('warning',status);
     return;
@@ -49,7 +67,7 @@ url = strcat(string(bst_get('UrlAdr')),"/protocol/share");
 data=struct('id',protocolid,'name','test1','isprivate',true,...
     'comment',comment,'istudy',istudy,'usedefaultanat',anat,...
   'usedefaultchannel',channel);
-[response,status] = bst_call(@HTTP_request,'POST','Default',data,url);
+[response,status] = bst_call(@HTTP_request,'POST','Default',data,url,1);
 if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
     java_dialog('warning',status);
     return;

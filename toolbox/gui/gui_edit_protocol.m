@@ -51,7 +51,7 @@ switch (action)
         data = struct('deviceid',deviceid,'sessionid',sessionid);
         url=strcat(url,"/user/checksession");
         
-        [response,status] = bst_call(@HTTP_request,'POST','None',data,url);
+        [response,status] = bst_call(@HTTP_request,'POST','None',data,url,1);
         if strcmp(status,'200')==1 ||strcmp(status,'OK')==1
             content=response.Body;
             if(strcmp(content.Data,'false')==1)
@@ -101,7 +101,7 @@ ctrl = get(panelProtocolEditor, 'sControls');
         %lock the protocol
         disp("start to lock the protocol...");
         url = strcat(string(bst_get('UrlAdr')),"/protocol/lock/",string(bst_get('ProtocolId')));       
-        [response,status] = bst_call(@HTTP_request,'POST','Default',struct(),url);
+        [response,status] = bst_call(@HTTP_request,'POST','Default',struct(),url,1);
         if strcmp(status,'200')==1 ||strcmp(status,'OK')==1
             content=response.Body;
             show(content);
@@ -112,11 +112,13 @@ ctrl = get(panelProtocolEditor, 'sControls');
         disp('lock protocol successfully!');
         
         %TODO: load the protocol from server
+        url = strcat(string(bst_get('UrlAdr')),"/file/download/",string(bst_get('ProtocolId'))); 
+         
         
         disp("start to unlock the protocol...");
         url=strcat(string(bst_get('UrlAdr')),"/protocol/unlock/",string(bst_get('ProtocolId')));
         disp(url);
-        [response,status]= bst_call(@HTTP_request,'POST','Default',struct(),url);
+        [response,status]= bst_call(@HTTP_request,'POST','Default',struct(),url,1);
         if strcmp(status,'200')==1 ||strcmp(status,'OK')==1
             content=response.Body;
             show(content);
