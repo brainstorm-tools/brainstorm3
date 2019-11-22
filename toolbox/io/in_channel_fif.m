@@ -147,7 +147,7 @@ else
     end
 end
 
-% Apply transformations
+% Calculate transformations
 if ~isempty(info.chs)
     % Save initial EEG electrodes positions
     oldEegLoc = {info.chs.eeg_loc};
@@ -183,6 +183,7 @@ end
 % Load coils definition file
 templates = mne_load_coil_def(coil_def_file);
 Accuracy = 1;
+%transform to ctf coordinate system
 info.chs = mne_add_coil_defs(info.chs,Accuracy,templates);
 % fprintf(1,'\nReady.\n\n');
 
