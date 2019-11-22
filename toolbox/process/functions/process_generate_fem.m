@@ -200,12 +200,22 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
             [node,elem,face] = surf2mesh(newnode, newelem, ...
                                          min(newnode), max(newnode),...
                                          OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, regions, []);  
-
-            % ######################################################################################
-            % TODO: THIS PART SHOULD BE AUTOMATED
-            % ######################################################################################
-            elem((elem(:,5)==0),5) = 3;
-
+            % Sorting compartments from the center of the head
+            allLabels = unique(elem(:,5));
+            dist = zeros(1, length(allLabels));
+            for iLabel = 1:length(allLabels)
+                iElem = find(elem(:,5) == allLabels(iLabel));
+                iVert = unique(reshape(elem(iElem,1:4), [], 1));
+                dist(iLabel) = min(sum(node(iVert,:) .^ 2,2));
+            end
+            [dist, I] = sort(dist);
+            allLabels = allLabels(I);
+            % Relabelling
+            elemLabel = ones(size(elem,1),1);
+            for iLabel = 1:length(allLabels)
+                elemLabel((elem(:,5) == allLabels(iLabel))) = iLabel;
+            end
+            elem(:,5) = elemLabel;
             % Mesh check and repair 
             [no,el] = removeisolatednode(node,elem(:,1:4));
             % Orientation required for the FEM computation (at least with SimBio, may be not for Duneuro)

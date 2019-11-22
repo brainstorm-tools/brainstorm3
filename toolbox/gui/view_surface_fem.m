@@ -170,6 +170,10 @@ for iTissue = 1:Ntissue
     iSelElem = find(FemMat.Tissue == iTissue);
     iRemoveVert = setdiff(1:size(FemMat.Vertices,1), unique(reshape(FemMat.Elements(iSelElem,:), [], 1)));
     [Vertices, tetraMesh] = tess_remove_vert(FemMat.Vertices, FemMat.Elements(iSelElem,:), iRemoveVert);
+    % No vertices: skip
+    if isempty(Vertices)
+        continue;
+    end
     % Convert to triangular mesh
     Faces = [...
         tetraMesh(:,[2,1,3]);
