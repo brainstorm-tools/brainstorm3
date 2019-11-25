@@ -212,7 +212,9 @@ function [accuracy,Time] = classifier_contrast_conditions_CrossVal_bs(trial, Tim
     tndx = Time<0;
     for i = 1:2 %for both groups
         for j = 1:ntrials
-            trial{i}{j} = trial{i}{j} ./ repmat( std(trial{i}{j}(:,tndx)')',1,ntimes );
+            baseStd = std(trial{i}{j}(:,tndx)')';
+            baseStd(baseStd == 0) = 1; % Avoid division by zero
+            trial{i}{j} = trial{i}{j} ./ repmat(baseStd, 1, ntimes);
         end
     end
 
