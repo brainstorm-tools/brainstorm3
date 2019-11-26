@@ -53,11 +53,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     InterfaceScaling = bst_get('InterfaceScaling');
     % Get standard font
     stdFont = bst_get('Font');
-    % WIP: tabs for searches
-    jTabpaneSearch = java_create('javax.swing.JTabbedPane', 'II', javax.swing.JTabbedPane.TOP, javax.swing.JTabbedPane.WRAP_TAB_LAYOUT); 
-    jTabpaneSearch.setFont(bst_get('Font', 11));
-    java_setcb(jTabpaneSearch, 'StateChangedCallback', @DatabaseTabChanged_Callback);
-    
+
     % Creation of the exploration tree
     jTreeProtocols = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100, stdFont.getSize(), stdFont.getFontName());
     jTreeProtocols.setEditable(1);
@@ -85,14 +81,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jScrollPaneNew = java_create('javax.swing.JScrollPane', 'Ljava.awt.Component;', jTreeProtocols);
     jScrollPaneNew.setBorder(javax.swing.BorderFactory.createMatteBorder(1,1,0,1, java.awt.Color(.5,.5,.5)));
     
-    jTabpaneSearch.addTab('Database', jScrollPaneNew);
+    % Tabs for searches
+    jTabpaneSearch = java_create('javax.swing.JTabbedPane', 'II', javax.swing.JTabbedPane.TOP, javax.swing.JTabbedPane.WRAP_TAB_LAYOUT); 
+    jTabpaneSearch.setFont(bst_get('Font', 11));
+    java_setcb(jTabpaneSearch, 'StateChangedCallback', @DatabaseTabChanged_Callback);
+    
+    % Overall container to switch between tabs
+    jContainer = gui_component('Panel');
+    jContainer.add(jScrollPaneNew);
     
     % Export panel to Brainstorm environment
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)
     bstPanelNew = BstPanel(panelName, ...
-                           jTabpaneSearch, ...
+                           jContainer, ...
                            struct('jTreeProtocols', jTreeProtocols, ...
+                           'jContainer', jContainer, ...
+                           'jScrollPaneNew', jScrollPaneNew, ...
                            'jTabpaneSearch', jTabpaneSearch));
 
 
@@ -301,7 +306,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     %% ===== SELECT TAB =====
     function DatabaseTabChanged_Callback(varargin)
         bst_progress('start', 'Database explorer', 'Applying search...');
+        % Update database tree
         UpdateTree(0);
+        % Move scrollbar to the left
+        hScrollbar = jScrollPaneNew.getHorizontalScrollBar();
+        hScrollbar.setValue(0);
         % Update process box count
         panel_nodelist('UpdatePanel', [], 1);
         bst_progress('stop');
@@ -377,7 +386,7 @@ function UpdateTree(resetNodes)
     % Set tree as loading (remove all nodes and add a "Loading..." node)
     ctrl.jTreeProtocols.setLoading(1);
     % Get selected search tab
-    iSearch = ctrl.jTabpaneSearch.getSelectedIndex();
+    iSearch = GetSelectedSearch();
     % Get root node
     nodeRoot = ctrl.jTreeProtocols.getModel.getRoot();
     % Reset existing nodes if required
@@ -429,6 +438,9 @@ function iSearch = GetSelectedSearch()
     end
     % Get selected search tab
     iSearch = ctrl.jTabpaneSearch.getSelectedIndex();
+    if isempty(iSearch) || iSearch < 0
+        iSearch = 0;
+    end
 end
 
 %% =================================================================================
@@ -456,7 +468,7 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
     % Get subject
     sSubject = bst_get('Subject', sStudy.BrainStormSubject);
     % Get selected search tab
-    iSearch = ctrl.jTabpaneSearch.getSelectedIndex();
+    iSearch = GetSelectedSearch();
     % Create node sub-tree
     UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
     isExpandTrials = 1;
@@ -525,7 +537,7 @@ function UpdateNode(category, indices, isExpandTrials)
         return
     end
     % Get selected search tab
-    iSearch = ctrl.jTabpaneSearch.getSelectedIndex();
+    iSearch = GetSelectedSearch();
     % Switch between nodes type to update
     switch lower(category)
         case 'subject'
@@ -1392,8 +1404,22 @@ function AddDatabaseTab(tabName)
     end
     
     % Remove tab callback
-    bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
-    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
+   % bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
+    %java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
+    
+    % Add default Database tab if first tab
+    if ctrl.jTabpaneSearch.getTabCount() == 0
+        % Remove tab callback
+        bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
+        java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
+        
+        ctrl.jContainer.remove(ctrl.jScrollPaneNew);
+        ctrl.jTabpaneSearch.addTab('Database', ctrl.jScrollPaneNew);
+        ctrl.jContainer.add(ctrl.jTabpaneSearch);
+        
+        % Restore callback
+        java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', bakCallback);
+    end
     
     % Create tab
     ctrl.jTabpaneSearch.addTab(tabName, []);
@@ -1418,9 +1444,6 @@ function AddDatabaseTab(tabName)
     ctrl.jTabpaneSearch.setTabComponentAt(index, jPanelTab);
     index = ctrl.jTabpaneSearch.indexOfTab(tabName);
     ctrl.jTabpaneSearch.setSelectedIndex(index);
-    
-    % Restore callback
-    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', bakCallback);
 end
 
 %% ===== CLOSE DATABASE TAB =====
@@ -1436,8 +1459,17 @@ function CloseDatabaseTab(tabName)
         return
     end
     
+    % Remove tab callback
+    bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
+    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
+    
     ctrl.jTabpaneSearch.removeTabAt(index);
     Search('remove', index);
+    CloseDefaultDbTab();
+    
+    % Restore callback and call it exactly once
+    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', bakCallback);
+    bakCallback();
 end
 
 function CloseAllDatabaseTabs()
@@ -1447,12 +1479,36 @@ function CloseAllDatabaseTabs()
         return;
     end
     
-    ctrl.jTabpaneSearch.setSelectedIndex(0);
+    % Remove tab callback
+    bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
+    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
     
     while ctrl.jTabpaneSearch.getTabCount() > 1
-        ctrl.jTabpaneSearch.removeTabAt(1);
+        ctrl.jTabpaneSearch.removeTabAt(0);
         Search('remove', 1);
     end
+
+    CloseDefaultDbTab();
+    
+    % Restore callback and call it exactly once
+    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', bakCallback);
+    bakCallback();
+end
+
+function CloseDefaultDbTab()
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    if ctrl.jTabpaneSearch.getTabCount() ~= 1
+        return;
+    end
+
+    ctrl.jContainer.remove(ctrl.jTabpaneSearch);
+    ctrl.jTabpaneSearch.removeTabAt(0);
+    ctrl.jContainer.add(ctrl.jScrollPaneNew);
 end
 
 function Filter(tabName, filterRoot)

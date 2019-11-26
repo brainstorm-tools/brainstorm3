@@ -1,4 +1,4 @@
-function [bstDefaultNode, nodeSubjectsDB] = node_create_db_subjects( nodeRoot , iSearchFilter )
+function [bstDefaultNode, nodeSubjectsDB] = node_create_db_subjects( nodeRoot , iSearch )
 % NODE_CREATE_DB_SUBJECTS: Create a tree to represent the subjects registered in current protocol.
 % Populate a tree from its root node.
 %
@@ -37,8 +37,8 @@ import org.brainstorm.tree.*;
 if (nargin < 1) || ~isa(nodeRoot, 'org.brainstorm.tree.BstNode')
     error('Usage : node_create_db_subjects(nodeRoot, ProtocolSubjects)');
 end
-if nargin < 2
-    iSearchFilter = [];
+if nargin < 2 || isempty(iSearch)
+    iSearch = 0;
 end
 
 % Set default node
@@ -69,7 +69,7 @@ if ~isempty(ProtocolSubjects.DefaultSubject)
     % Create subject node
     nodeSubject = BstNode('subject', '');
     % Fill it with MRI and surfaces children nodes
-    numElems = node_create_subject( nodeSubject, ProtocolSubjects.DefaultSubject, 0, iSearchFilter);
+    numElems = node_create_subject( nodeSubject, ProtocolSubjects.DefaultSubject, 0, iSearch);
     % Add new node if it has elements that passed the search filter
     if numElems > 0
         % Add subject node to 'Subjects database' node
@@ -100,7 +100,7 @@ for i = 1:length(iSubjectsSorted)
     nodeSubject = BstNode('subject', '');
     % Fill it with MRI and surfaces children nodes
     try
-        numElems = node_create_subject( nodeSubject, ProtocolSubjects.Subject(iSubject), iSubject, iSearchFilter);
+        numElems = node_create_subject( nodeSubject, ProtocolSubjects.Subject(iSubject), iSubject, iSearch);
         % Add subject node to 'Subjects database' node
         if numElems > 0
             nodeSubjectsDB.add(nodeSubject);
