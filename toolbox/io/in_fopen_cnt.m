@@ -225,21 +225,23 @@ if ~isempty(hdr.rejected_segments)
     sFile.events(iEvtGroup) = badEvt;
 end
 
-%% ===== CREATE DUMMY CHANNEL FILE =====
+%% ===== CHANNEL FILE =====
+% Create channel file structure
+ChannelMat = db_template('channelmat');
+ChannelMat.Comment = 'CNT 2D channels';
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, length(hdr.electloc)]);
 % Center of electrodes loc
 x_center = (max([hdr.electloc.x_coord]) + min([hdr.electloc.x_coord])) / 2;
 y_center = (max([hdr.electloc.y_coord]) + min([hdr.electloc.y_coord])) / 2;
 for i = 1:length(hdr.electloc)
-    Channel(i).Name    = hdr.electloc(i).lab;
-    Channel(i).Type    = 'EEG';
-    Channel(i).Loc     = [-hdr.electloc(i).y_coord + y_center; -hdr.electloc(i).x_coord/2 + x_center/2; 0] ./ 100;
-    Channel(i).Orient  = [];
-    Channel(i).Weight  = 1;
-    Channel(i).Comment = [];    
+    ChannelMat.Channel(i).Name    = hdr.electloc(i).lab;
+    ChannelMat.Channel(i).Type    = 'EEG';
+    ChannelMat.Channel(i).Loc     = [-hdr.electloc(i).y_coord + y_center; -hdr.electloc(i).x_coord/2 + x_center/2; 0] ./ 500;
+    ChannelMat.Channel(i).Orient  = [];
+    ChannelMat.Channel(i).Weight  = 1;
+    ChannelMat.Channel(i).Comment = [];    
 end
-% Create Channel file structure
-ChannelMat = db_template('channelmat');
-ChannelMat.Comment = 'CNT 2D channels';
-ChannelMat.Channel = Channel;
+
+
      
 

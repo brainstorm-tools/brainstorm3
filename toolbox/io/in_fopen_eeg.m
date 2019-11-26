@@ -1,7 +1,7 @@
-function sFile = in_fopen_eeg(DataFile)
+function [sFile, ChannelMat] = in_fopen_eeg(DataFile)
 % IN_FOPEN_EEG: Open a Neuroscan .eeg file (list of epochs).
 %
-% USAGE:  sFile = in_fopen_eeg(DataFile)
+% USAGE:  [sFile, ChannelMat] = in_fopen_eeg(DataFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,7 +21,7 @@ function sFile = in_fopen_eeg(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2011
+% Authors: Francois Tadel, 2009-2019
         
 %% ===== READ HEADER =====
 % Read the header
@@ -59,5 +59,23 @@ for i = 1:length(hdr.epochs)
     sFile.epochs(i).channelflag = [];
 end
 
-     
+
+%% ===== CHANNEL FILE =====
+% Create channel file structure
+ChannelMat = db_template('channelmat');
+ChannelMat.Comment = 'CNT 2D channels';
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, length(hdr.electloc)]);
+% Center of electrodes loc
+x_center = (max([hdr.electloc.x_coord]) + min([hdr.electloc.x_coord])) / 2;
+y_center = (max([hdr.electloc.y_coord]) + min([hdr.electloc.y_coord])) / 2;
+for i = 1:length(hdr.electloc)
+    ChannelMat.Channel(i).Name    = hdr.electloc(i).lab;
+    ChannelMat.Channel(i).Type    = 'EEG';
+    ChannelMat.Channel(i).Loc     = [-hdr.electloc(i).y_coord + y_center; -hdr.electloc(i).x_coord/2 + x_center/2; 0] ./ 500;
+    ChannelMat.Channel(i).Orient  = [];
+    ChannelMat.Channel(i).Weight  = 1;
+    ChannelMat.Channel(i).Comment = [];    
+end
+
+
 
