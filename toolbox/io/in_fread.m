@@ -315,7 +315,11 @@ if ~isempty(ImportOptions) && ~isempty(ImportOptions.RemoveBaseline)
     % Remove baseline
     if ~isempty(iTimesBl)
         % Exclude system channels from the baseline correction
-        iChanBl = find(~ismember(lower({ChannelMat.Channel.Type}), {'stim','video','sysclock'}));
+        if ~isempty(ChannelMat) && ~isempty(ChannelMat.Channel)
+            iChanBl = find(~ismember(lower({ChannelMat.Channel.Type}), {'stim','video','sysclock'}));
+        else
+            iChanBl = 1:size(F,1);
+        end
         % Compute baseline
         blValue = mean(F(iChanBl,iTimesBl), 2);
         % Remove from recordings
