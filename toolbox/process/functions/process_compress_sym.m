@@ -159,6 +159,38 @@ function TF = Compress(TF)
 end
 
 
+%% ===== REMOVE DIAGONAL =====
+function TF = RemoveDiagonal(TF, N) %#ok<DEFNU>
+    % If matrix is expanded
+    if (size(TF,1) == N^2)
+        iDel = (1:N) + (0:N-1)*N;
+    % If matrix is compressed
+    elseif (size(TF,1) == sum(1:N))
+        iDel = cumsum(1:N);
+    else
+        disp('Warning: Invalid matrix size, cannot remove diagonal.');
+        return;
+    end
+    % Remove diagonal
+    TF(iDel,:,:,:) = [];
+end
 
+
+%% ===== ADD DIAGONAL =====
+function TFedit = AddDiagonal(TF, N) %#ok<DEFNU>
+    TFedit = zeros(size(TF,1) + N, size(TF,2), size(TF,3), size(TF,4));
+    % If matrix is expanded
+    if (size(TFedit,1) == N^2)
+        iDel = (1:N) + (0:N-1)*N;
+    % If matrix is compressed
+    elseif (size(TFedit,1) == sum(1:N))
+        iDel = cumsum(1:N);
+    else
+        disp('Warning: Invalid matrix size, cannot add diagonal.');
+        return;
+    end
+    % Copy values
+    TFedit(setdiff(1:size(TFedit,1), iDel),:,:,:) = TF;
+end
 
 

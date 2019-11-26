@@ -261,6 +261,16 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
     tThreshOver = [];
     tThreshUnder = [];
     testSide = '';
+    % Connectivity matrices: remove diagonal
+    if isfield(StatMat, 'RefRowNames') && (length(StatMat.RefRowNames) > 1)
+        StatMat.tmap = process_compress_sym('RemoveDiagonal', StatMat.tmap, length(StatMat.RowNames));
+        if isfield(StatMat, 'pmap') && ~isempty(StatMat.pmap)
+            StatMat.pmap = process_compress_sym('RemoveDiagonal', StatMat.pmap, length(StatMat.RowNames));
+        end
+        if isfield(StatMat, 'df') && ~isempty(StatMat.df)
+            StatMat.df = process_compress_sym('RemoveDiagonal', StatMat.df, length(StatMat.RowNames));
+        end
+    end
     % Get or calculate p-values map
     if isfield(StatMat, 'pmap') && ~isempty(StatMat.pmap)
         pmap = StatMat.pmap;
@@ -309,8 +319,13 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
             pmask = filter_timewin_signif(pmask, StatThreshOptions.durThreshold / (StatMat.Time(2)-StatMat.Time(1)));
         end
     end
-   
+    % Return significant values
     threshmap(pmask) = StatMat.tmap(pmask);
+    
+    % Connectivity matrices: add diagonal back
+    if isfield(StatMat, 'RefRowNames') && (length(StatMat.RefRowNames) > 1)
+        threshmap = process_compress_sym('AddDiagonal', threshmap, length(StatMat.RowNames));
+    end
     
     % Only for t-test: get min and max threshold values for adjusting the colormapping
     if isfield(StatMat, 'DisplayUnits') && ~isempty(StatMat.DisplayUnits) && strcmpi(StatMat.DisplayUnits, 't')
