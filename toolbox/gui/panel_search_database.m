@@ -63,15 +63,18 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
     jLabel = gui_component('Label', [], [], 'Equality:');
     c.gridx = 1;
     jPanelSearch1.add(jLabel, c);
-    % Add extra spaces here to enforce a minimum size for this column
-    jLabel = gui_component('Label', [], [], 'Search for:                    ');
+    jLabel = gui_component('Label', [], [], 'Not '); % NOT checkbox
     c.gridx = 2;
     jPanelSearch1.add(jLabel, c);
-    jLabel = gui_component('Label', [], [], ''); % Remove button
+    % Add extra spaces here to enforce a minimum size for this column
+    jLabel = gui_component('Label', [], [], 'Search for:                    ');
     c.gridx = 3;
     jPanelSearch1.add(jLabel, c);
-    jLabel = gui_component('Label', [], [], ''); % AND button
+    jLabel = gui_component('Label', [], [], ''); % Remove button
     c.gridx = 4;
+    jPanelSearch1.add(jLabel, c);
+    jLabel = gui_component('Label', [], [], ''); % AND button
+    c.gridx = 5;
     jPanelSearch1.add(jLabel, c);
     jPanelMain.add(jPanelSearch, BorderLayout.CENTER);
     
@@ -154,11 +157,15 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         java_setcb(jEquality, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
         c.gridx = 1;
         jPanelSearch1.add(jEquality, c);
+        % NOT
+        jNot = gui_component('CheckBox');
+        c.gridx = 2;
+        jPanelSearch1.add(jNot, c);
         % Search keyword
         jSearchFor = gui_component('Text', [], 'hfill');
         java_setcb(jSearchFor, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
         c.weightx = 1;
-        c.gridx = 2;
+        c.gridx = 3;
         jPanelSearch1.add(jSearchFor, c);
         c.weightx = 0;
         % Remove button
@@ -166,11 +173,11 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         if ~addRemoveButton
             jRemove.setEnabled(0);
         end
-        c.gridx = 3;
+        c.gridx = 4;
         jPanelSearch1.add(jRemove, c);
         % Boolean
         jBoolean = gui_component('Button', [], [], '+ and', [], [], @(h,ev)AddSearchRow(orGroup, nextRow + 1));
-        c.gridx = 4;
+        c.gridx = 5;
         jPanelSearch1.add(jBoolean, c);
         
         if addRemoveButton
@@ -349,9 +356,10 @@ function panelContents = GetPanelContents()
         iAndChild = 1;
         while 1
             andRow = andRow + 1;            
-            jSearchBy = GetSearchElement(orPanel, orGroup, andRow, 1);
-            jEquality = GetSearchElement(orPanel, orGroup, andRow, 2);
-            jSearchFor = GetSearchElement(orPanel, orGroup, andRow, 3);
+            jSearchBy  = GetSearchElement(orPanel, orGroup, andRow, 1);
+            jEquality  = GetSearchElement(orPanel, orGroup, andRow, 2);
+            jNot       = GetSearchElement(orPanel, orGroup, andRow, 3);
+            jSearchFor = GetSearchElement(orPanel, orGroup, andRow, 4);
             if isempty(jSearchFor)
                 break;
             end
@@ -375,6 +383,7 @@ function panelContents = GetPanelContents()
             else % Other types: text box
                 param.Value = char(jSearchFor.getText());
             end
+            param.Not = jNot.isSelected();
             andNode = db_template('searchnode');
             andNode.Type = 1; % Search param
             andNode.Value = param;

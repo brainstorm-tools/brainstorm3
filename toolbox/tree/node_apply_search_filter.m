@@ -146,7 +146,7 @@ function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileNa
             allMatches = strfind(fileValue{iFile}, searchValue);
             matches(iFile) = ~isempty(allMatches);
             % Add bold tags to search keyword(s)
-            if matches(iFile)
+            if matches(iFile) && ~param.Not
                 boldKeyword = searchValue;
             end
         elseif param.EqualityType == 2
@@ -155,6 +155,11 @@ function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileNa
         else
             error('Unsupported equality type');
         end
+    end
+    
+    % Apply NOT operator
+    if param.Not
+        matches = ~matches;
     end
     
     % Propagate to all files
