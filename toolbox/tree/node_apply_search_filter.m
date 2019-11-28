@@ -26,10 +26,6 @@ function [res, filteredComment] = node_apply_search_filter(iSearchFilter, fileTy
 %
 % Authors: Martin Cousineau, 2019
 
-if contains(fileComment, 'MyTest')
-    %disp('hey');
-end
-
 filteredComment = fileComment;
 
 % If no filter applied, the file passes by default

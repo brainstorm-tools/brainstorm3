@@ -207,7 +207,7 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         layout = panel.getLayout();
         jSearchBy = GetSearchElement(panel, orGroup, andRow, 1);
         jSearchEqual = GetSearchElement(panel, orGroup, andRow, 2);
-        jSearchFor = GetSearchElement(panel, orGroup, andRow, 3);
+        jSearchFor = GetSearchElement(panel, orGroup, andRow, 4);
         c = layout.getConstraints(jSearchFor);
         panel.remove(jSearchFor);
 
@@ -417,34 +417,62 @@ function panelContents = GetPanelContents()
 end
 
 function searchType = GetSearchType(searchBy)
-    switch searchBy
-        case 'Name'
+    switch lower(searchBy)
+        case 'name'
             searchType = 1;
-        case 'File type'
+        case {'file type', 'type'}
             searchType = 2;
-        case 'File path'
+        case {'file path', 'path'}
             searchType = 3;
         otherwise
             error('Unsupported search type');
     end
 end
 
+function searchStr = GetSearchTypeString(searchType)
+    switch searchType
+        case 1
+            searchStr = 'name';
+        case 2
+            searchStr = 'type';
+        case 3
+            searchStr = 'path';
+        otherwise
+            error('Unsupported search type');
+    end
+end
+
 function [equalityType, caseSensitive] = GetEqualityType(equality)
-    switch equality
-        case 'Contains'
+    switch lower(equality)
+        case 'contains'
             equalityType = 1;
             caseSensitive = 0;
-        case 'Contains (case)'
+        case {'contains (case)', 'contains_case'}
             equalityType = 1;
             caseSensitive = 1;
-        case 'Equals'
+        case 'equals'
             equalityType = 2;
             caseSensitive = 0;
-        case 'Equals (case)'
+        case {'equals (case)', 'equals_case'}
             equalityType = 2;
             caseSensitive = 1;
         otherwise
             error('Unsupported equality type');
+    end
+end
+
+function equalityStr = GetEqualityString(equalityType, caseSensitive)
+    switch equalityType
+        case 1
+            equalityStr = 'CONTAINS';
+        case 2
+            equalityStr = 'EQUALS';
+        otherwise
+            error('Unsupported equality type');
+    end
+    
+    if caseSensitive
+        equalityStr = [equalityStr '_CASE'];
     end
 end
 
@@ -477,6 +505,17 @@ function fileType = GetFileType(searchFor)
     end
 end
 
+function boolStr = GetBoolString(boolValue)
+    switch boolValue
+        case 1
+            boolStr = 'AND';
+        case 2
+            boolStr = 'OR';
+        otherwise
+            error('Unsupported boolean type');
+    end
+end
+
 function val = GetFirstValueNode(root)
     if root.Type == 1
         val = root.Value;
@@ -504,5 +543,268 @@ function elem = GetSearchElement(orPanel, orGroup, andRow, iElem)
             elem = comp;
             return
         end
+    end
+end
+
+function str = FilterToString(filterRoot)
+    str = [];
+    
+    switch filterRoot.Type
+        case 1 % Search parameter
+            type = GetSearchTypeString(filterRoot.Value.SearchType);
+            equality = GetEqualityString(filterRoot.Value.EqualityType, ...
+                filterRoot.Value.CaseSensitive);
+            if filterRoot.Value.Not
+                not = 'NOT ';
+            else
+                not = '';
+            end
+            val = filterRoot.Value.Value;
+            % Convert cells to string
+            if iscell(val)
+                valStr = '';
+                for iVal = 1:length(val)
+                    if iVal > 1
+                        valStr = [valStr ', '];
+                    end
+                    valStr = [valStr '"' val{iVal} '"'];
+                end
+                val = ['{' valStr '}'];
+            else
+                val = ['"' val '"'];
+            end
+            str = [str '[' type ' ' not equality ' ' val ']'];
+            
+        case 2
+            str = [str ' ' GetBoolString(filterRoot.Value) ' '];
+            
+        case 3 % Branch
+            childStr = [];
+            for iChild = 1:length(filterRoot.Children)
+                childStr = [childStr FilterToString(filterRoot.Children(iChild))];
+            end
+            str = [str '(' childStr ')'];
+            
+        otherwise
+            error('Invalid search node type');
+    end
+end
+
+function filterRoot = StringToFilter(filterStr)
+    % Remove unnecessary parentheses
+    if filterStr(1) == '(' && filterStr(end) == ')'
+        filterStr = filterStr(2:end-1);
+    end
+    
+    % State machine
+    STATE_PARAM_START = 1;
+    STATE_BOOL_BLOCK  = 2;
+    STATE_TYPE        = 3;
+    STATE_EQUAL_NOT   = 4;
+    STATE_EQUAL       = 5;
+    STATE_VALUE       = 6;
+    STATE_VALUE_ELEM  = 7;
+    STATE_VALUE_DEL   = 8;
+    STATE_PARAM_END   = 9;
+    
+    % Initialize state machine
+    filterRoot = db_template('searchnode');
+    filterRoot.Type = 3;
+    state = STATE_PARAM_START;
+    nBlocksOpen = 0;
+    curPath = [];
+    iChild = 1;
+    word = [];
+    quoted = 0;
+    wasQuoted = 0;
+    iChar = 0;
+    nChars = length(filterStr);
+
+    % Extract words
+    while iChar < nChars
+        iChar = iChar + 1;
+        c = filterStr(iChar);
+        foundWord = 0;
+
+        if c == '"'
+            if quoted
+                wasQuoted = 1;
+                quoted = 0;
+            else
+                quoted = 1;
+            end
+        elseif (isspace(c) && ~quoted)
+            if ~isempty(word)
+                foundWord = 1;
+            end
+        % Special characters
+        elseif ~quoted && ismember(c, {'(', ')', '[', ']', '{', '}', ','})
+            if isempty(word)
+                word = c;
+            else
+                % Lets finish current word first
+                iChar = iChar - 1;
+            end
+            foundWord = 1;
+        else
+            word = [word c];
+            if iChar == nChars
+                foundWord = 1;
+            end
+        end
+
+        if ~foundWord
+            continue;
+        end
+        
+        % Reserved words/characters (only apply action if not in quotes)
+        if ~wasQuoted
+            reservedWord = 1;
+            switch lower(word)
+                case '('
+                    if state ~= STATE_PARAM_START
+                        error('Cannot open block bracket at position %d.', iChar);
+                    end
+                    node = db_template('searchnode');
+                    node.Type = 3; % Nested block
+                    AddNode(node, curPath, iChild);
+                    curPath(end + 1) = iChild;
+                    nBlocksOpen = nBlocksOpen + 1;
+                    iChild = 1;
+
+                case ')'
+                    if state ~= STATE_BOOL_BLOCK || isempty(curPath)
+                        error('Cannot close block bracket at position %d.', iChar);
+                    end
+                    iChild = curPath(end) + 1;
+                    curPath = curPath(1:length(curPath)-1);
+                    nBlocksOpen = nBlocksOpen - 1;
+
+                case '['
+                    if state ~= STATE_PARAM_START
+                        error('Cannot open search bracket at position %d.', iChar);
+                    end
+                    param = db_template('searchparam');
+                    state = STATE_TYPE;
+
+                case ']'
+                    if state ~= STATE_PARAM_END
+                        error('Cannot close search bracket at position %d.', iChar);
+                    end
+                    node = db_template('searchnode');
+                    node.Type = 1; % Search node
+                    node.Value = param;
+                    AddNode(node, curPath, iChild);
+                    iChild = iChild + 1;
+                    state = STATE_BOOL_BLOCK;
+
+                case {'and', '&', '&&'}
+                    if state ~= STATE_BOOL_BLOCK
+                        error('AND operator cannot be at position %d.', iChar-length(word));
+                    end
+                    node = db_template('searchnode');
+                    node.Type = 2; % Boolean
+                    node.Value = 1; % AND
+                    AddNode(node, curPath, iChild);
+                    iChild = iChild + 1;
+                    state = STATE_PARAM_START;
+
+                case {'or', '|', '||'}
+                    if state ~= STATE_BOOL_BLOCK
+                        error('OR operator cannot be at position %d.', iChar-length(word));
+                    end
+                    node = db_template('searchnode');
+                    node.Type = 2; % Boolean
+                    node.Value = 2; % OR
+                    AddNode(node, curPath, iChild);
+                    iChild = iChild + 1;
+                    state = STATE_PARAM_START;
+
+                case 'not'
+                    if state ~= STATE_EQUAL_NOT
+                        error('NOT operator cannot be at position %d.', iChar-length(word));
+                    end
+                    param.Not = 1;
+                    state = STATE_EQUAL;
+
+                case {'equals', 'equals_case', 'contains', 'contains_case'}
+                    if state ~= STATE_EQUAL && state ~= STATE_EQUAL_NOT
+                        error('Equality operator cannot be at position %d.', iChar-length(word));
+                    end
+                    [param.EqualityType, param.CaseSensitive] = GetEqualityType(word);
+                    state = STATE_VALUE;
+                    
+                case '{'
+                    if state ~= STATE_VALUE
+                        error('Cannot open array bracket at position %d.', iChar);
+                    end
+                    param.Value = {};
+                    state = STATE_VALUE_ELEM;
+                    
+                case '}'
+                    if state ~= STATE_VALUE_DEL
+                        error('Cannot close array bracket at position %d.', iChar);
+                    end
+                    state = STATE_PARAM_END;
+                    
+                case ','
+                    if state ~= STATE_VALUE_DEL
+                        error('Unexpected array delimiter at position %d.', iChar);
+                    end
+                    state = STATE_VALUE_ELEM;
+                    
+                otherwise
+                    reservedWord = 0;
+            end
+        else
+            reservedWord = 0;
+        end
+
+        % Process non-reserved words
+        if ~reservedWord
+            switch state
+                case STATE_TYPE
+                    try
+                        param.SearchType = GetSearchType(word);
+                    catch
+                        error('Unsupported type %s at position %d.', word, iChar-length(word));
+                    end
+                    state = STATE_EQUAL_NOT;
+                    
+                case STATE_VALUE
+                    param.Value = word;
+                    state = STATE_PARAM_END;
+                    
+                case STATE_VALUE_ELEM
+                    param.Value{end + 1} = word;
+                    state = STATE_VALUE_DEL;
+                    
+                otherwise
+                    error('Unexpected word %s at position %d.', word, iChar-length(word));
+            end
+        end
+        
+        word = [];
+        wasQuoted = 0;
+    end
+    
+    if nBlocksOpen > 0
+        error('Missing closing bracket(s).');
+    end
+    
+    function AddNode(node, curPath, iChild)
+        str = 'filterRoot';
+        for iPath = 1:length(curPath)
+            str = [str '.Children(' num2str(curPath(iPath)) ')'];
+        end
+        str = [str '.Children'];
+        if isempty(eval(str))
+            if iChild ~= 1
+                error('Invalid child position');
+            end
+        else
+            str = [str '(' num2str(iChild) ')'];
+        end
+        eval([str ' = node;']);
     end
 end
