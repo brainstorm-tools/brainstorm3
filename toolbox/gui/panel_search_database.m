@@ -38,11 +38,6 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
     % Create main panel
     jPanelMain = gui_component('Panel');
     jPanelMain.setMinimumSize(Dimension(1500,100));
-
-    % Title
-    %fontSize = round(12 * bst_get('InterfaceScaling') / 100);
-    %jLabel = gui_component('Label', [], [], 'Search database', [], [], [], fontSize);
-    %jPanelMain.add(jLabel, BorderLayout.NORTH);
     
     %% Search options
     jPanelSearch = java_create('javax.swing.JPanel');
@@ -87,7 +82,6 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
     % Buttons
     jPanelBtn = gui_river();
     fontSize = round(12 * bst_get('InterfaceScaling') / 100);
-    
     gui_component('Button', jPanelBtn, 'br right', 'Search', [], [], @ButtonSearch_Callback);
     gui_component('Button', jPanelBtn, [], 'Cancel', [], [], @ButtonCancel_Callback);
     jPanelMain.add(jPanelBtn, BorderLayout.SOUTH);
@@ -124,6 +118,16 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
     end
 
 %% ===== ADD SEARCH ROW =====
+    % Dynamically adds a search row to the GUI
+    %
+    % Params:
+    %  - orGroup: int > 0, ID of "OR" group
+    %       Groups are grouped by a OR operation
+    %  - nextRow: int > 0, ID of "AND" row in current "OR" group
+    %  - addRemoveButton: whether the "Remove row" button should be enabled
+    %       The First row of the first "OR" group cannot be removed
+    %
+    % Returns: nothing
     function AddSearchRow(orGroup, nextRow, addRemoveButton)
         import org.brainstorm.icon.*;
         import java.awt.GridBagConstraints;
@@ -181,6 +185,8 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         jPanelSearch1.add(jBoolean, c);
         
         if addRemoveButton
+            % Refresh the dialog if this is not the first row so that it is
+            % automatically resized to include new content
             RefreshDialog();
         else
             jPanelSearch1.revalidate();
@@ -192,17 +198,28 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         % Refresh search panel
         jPanelSearch.revalidate();
         jPanelSearch.repaint();
-        % Refresh dialog
+        % Repack the dialog container to automatically resize it
         bstPanel = bst_get('Panel', panelName);
         panelContainer = get(bstPanel, 'container');
         panelContainer.handle{1}.pack();
     end
 
+    % Callback when the "Search by" dropdown is changed since "File type"
+    % search type has dropdown values rather than free text
+    %
+    % Params:
+    %  - orGroup: int > 0, ID of "OR" group
+    %       Groups are grouped by a OR operation
+    %  - nextRow: int > 0, ID of "AND" row in current "OR" group
+    %  - h, ev: Java callback objects
+    %
+    % Returns: nothing
     function SearchByChanged_Callback(orGroup, andRow, h, ev)
+        % Ensure this is called only once
         if ev.getStateChange() ~= 1
             return
         end
-        % Replace search for field by appropriate type
+        % Replace "Search for" field by appropriate type
         panel = GetOrGroup(orGroup);
         layout = panel.getLayout();
         jSearchBy = GetSearchElement(panel, orGroup, andRow, 1);
@@ -211,6 +228,7 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         c = layout.getConstraints(jSearchFor);
         panel.remove(jSearchFor);
 
+        % If "File type" is selected, create a dropdown of possible values
         if jSearchBy.getSelectedIndex() == 1
             jSearchFor = gui_component('ComboBox', [], [], [], {...
                 {'Channel', 'Data', 'Dipoles', 'Fibers', 'Folder', ...
@@ -219,6 +237,7 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
                 'Subject', 'Surface', 'Time-frequency', 'Video'}});
             jSearchFor.setSelectedIndex(1);
             jSearchEqual.setSelectedIndex(2);
+        % Otherwise, free-form text
         else
             jSearchFor = gui_component('Text', [], 'hfill');
             jSearchEqual.setSelectedIndex(0);
@@ -228,6 +247,14 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         RefreshDialog();
     end
 
+    % Callback when the "Remove" row button is pressed
+    %
+    % Params:
+    %  - orGroup: int > 0, ID of "OR" group
+    %       Groups are grouped by a OR operation
+    %  - nextRow: int > 0, ID of "AND" row in current "OR" group
+    %
+    % Returns: nothing
     function ButtonRemove_Callback(orGroup, andRow)
         % Remove all row elements
         orPanel = GetOrGroup(orGroup);
@@ -243,7 +270,13 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
             end
             lastRow = max(c.gridy, lastRow);
         end
+        
+        % If the "OR" group is now empty, remove it as well
         if orPanel.getComponentCount() == 0
+            % In order to get to the last "OR" group component, we also
+            % need to remove components of the dialog after it. They are
+            % added again after.
+            
             % Remove whole OR Group
             nComponents = jPanelSearch.getComponentCount();
             jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 1)); % Last rigid
@@ -276,10 +309,15 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         RefreshDialog();
     end
 
+    % Returns the panel containing the "OR" group of specified ID
     function panel = GetOrGroup(orGroup)
         panel = jPanelSearch.getComponent(6 * orGroup - 6);
     end
 
+    % Creates the "+ or" button that creates a new "OR" group
+    %
+    % Params:
+    %  - lastOrGroup: ID of the last (most recent / bottom) "OR" group
     function AddOrButton(lastOrGroup)
         import java.awt.Dimension;
         import javax.swing.Box;
@@ -293,10 +331,15 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         jPanelSearch.add(Box.createRigidArea(Dimension(0,3)));
     end
 
+    % Creates a new "OR" group and its first search row
+    %
+    % Params:
+    %  - lastOrGroup: ID of the last (most recent / bottom) "OR" group
     function AddOrSearchRow(lastOrGroup)
         import java.awt.Dimension;
         import javax.swing.Box;
         
+        % Replace "+ or" button by label
         nComponents = jPanelSearch.getComponentCount();
         jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 1)); % Last rigid
         jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 2)); % Button
@@ -305,17 +348,20 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         jPanelSearch.add(jBtnOr2);
         jPanelSearch.add(Box.createRigidArea(Dimension(0,3)));
         
-        %TODO: Create new search field
+        % Create new "OR" group and its first row
         jPanelSearch2 = java_create('javax.swing.JPanel');
         jPanelSearch2.setLayout(java_create('java.awt.GridBagLayout'));
         jPanelSearch.add(jPanelSearch2);
         AddSearchRow(lastOrGroup + 1, 1, 1);
         
+        % Add "+ or" button again
         AddOrButton(lastOrGroup + 1);
         RefreshDialog();       
     end
 end
 
+% Returns the root of a recursive search node structure created from the
+% panel content. See db_template('searchnode')
 function panelContents = GetPanelContents()
     ctrl = bst_get('PanelControls', 'SearchDatabase');
     if isempty(ctrl)
@@ -323,6 +369,7 @@ function panelContents = GetPanelContents()
         return;
     end
     
+    % Create root search node
     nOrComponents = ctrl.jPanelSearch.getComponentCount();
     root = db_template('searchnode');
     root.Type = 3; % Nested block
@@ -346,6 +393,7 @@ function panelContents = GetPanelContents()
             iOrChild = iOrChild + 1;
         end
         
+        % Add parent "OR" node
         orPanel = ctrl.jPanelSearch.getComponent(iOrComp);
         orNode = db_template('searchnode');
         orNode.Type = 3; % Nested block
@@ -355,6 +403,7 @@ function panelContents = GetPanelContents()
         andRow = 0;
         iAndChild = 1;
         while 1
+            % Get components of search row
             andRow = andRow + 1;            
             jSearchBy  = GetSearchElement(orPanel, orGroup, andRow, 1);
             jEquality  = GetSearchElement(orPanel, orGroup, andRow, 2);
@@ -374,7 +423,6 @@ function panelContents = GetPanelContents()
             end
             
             % Add row node
-
             param = db_template('searchparam');
             param.SearchType = GetSearchType(char(jSearchBy.getSelectedItem()));
             [param.EqualityType, param.CaseSensitive] = GetEqualityType(char(jEquality.getSelectedItem()));
@@ -395,7 +443,7 @@ function panelContents = GetPanelContents()
             iAndChild = iAndChild + 1;
         end
         
-        % Remove unnecessary nested block
+        % Remove unnecessary nested blocks, if applicable
         if iAndChild == 2
             orNode = orNode.Children;
         end
@@ -408,7 +456,7 @@ function panelContents = GetPanelContents()
         iOrChild = iOrChild + 1;
     end
     
-    % Check for empty filters
+    % Check for empty searches
     if iOrChild > 1
         panelContents = root;
     else
@@ -416,6 +464,7 @@ function panelContents = GetPanelContents()
     end
 end
 
+% Returns the search type ID from a search by string
 function searchType = GetSearchType(searchBy)
     switch lower(searchBy)
         case 'name'
@@ -429,6 +478,7 @@ function searchType = GetSearchType(searchBy)
     end
 end
 
+% Returns the search by string from the search type ID
 function searchStr = GetSearchTypeString(searchType)
     switch searchType
         case 1
@@ -442,6 +492,7 @@ function searchStr = GetSearchTypeString(searchType)
     end
 end
 
+% Returns the equality ID and case sensitive bool from the equality string
 function [equalityType, caseSensitive] = GetEqualityType(equality)
     switch lower(equality)
         case 'contains'
@@ -461,6 +512,7 @@ function [equalityType, caseSensitive] = GetEqualityType(equality)
     end
 end
 
+% Returns the equality string from the equality ID and case sensitive bool
 function equalityStr = GetEqualityString(equalityType, caseSensitive)
     switch equalityType
         case 1
@@ -476,6 +528,7 @@ function equalityStr = GetEqualityString(equalityType, caseSensitive)
     end
 end
 
+% Returns the file type(s) from the chosen search type dropdown
 function fileType = GetFileType(searchFor)
     switch searchFor
         case 'Folder'
@@ -505,6 +558,7 @@ function fileType = GetFileType(searchFor)
     end
 end
 
+% Returns the boolean string from the selected boolean ID
 function boolStr = GetBoolString(boolValue)
     switch boolValue
         case 1
@@ -516,11 +570,15 @@ function boolStr = GetBoolString(boolValue)
     end
 end
 
+% Returns the value of the first search node we can find (depth-first)
 function val = GetFirstValueNode(root)
+    % If we have a search param node, return
     if root.Type == 1
         val = root.Value;
         return;
     end
+    
+    % Apply function recursively on children and stop at first found value
     val = [];
     for iChild = 1:length(root.Children)
         val = GetFirstValueNode(root.Children(iChild));
@@ -530,12 +588,23 @@ function val = GetFirstValueNode(root)
     end
 end
 
+% Gets a specific component of the search dialog
+%
+% Params:
+%  - orPanel: panel container of the desired "OR" group
+%  - orGroup: ID of desired "OR" group
+%  - andRow: ID of the desired "AND" row in "orGroup"
+%  - iElem: ID of the desired element in the "AND" row
+%
+% Returns: Java component at desired position
 function elem = GetSearchElement(orPanel, orGroup, andRow, iElem)
+    % Get the X and Y grid coordinates of desired component
     layout = orPanel.getLayout();
     nComponents = orPanel.getComponentCount();
     y = (orGroup == 1) + andRow - 1;
     x = iElem - 1;
-    elem = [];
+    % Loop through each component and find the one with the desired X and Y
+    % coordinates
     for iComp = 1:nComponents
         comp = orPanel.getComponent(iComp - 1);
         c = layout.getConstraints(comp);
@@ -544,22 +613,26 @@ function elem = GetSearchElement(orPanel, orGroup, andRow, iElem)
             return
         end
     end
+    % Return empty if not found
+    elem = [];
 end
 
-function str = FilterToString(filterRoot)
+% Converts a search node structure to a string
+function str = SearchToString(searchRoot)
     str = [];
     
-    switch filterRoot.Type
-        case 1 % Search parameter
-            type = GetSearchTypeString(filterRoot.Value.SearchType);
-            equality = GetEqualityString(filterRoot.Value.EqualityType, ...
-                filterRoot.Value.CaseSensitive);
-            if filterRoot.Value.Not
+    switch searchRoot.Type
+        % Search parameter structure, see db_template('searchparam')
+        case 1
+            type = GetSearchTypeString(searchRoot.Value.SearchType);
+            equality = GetEqualityString(searchRoot.Value.EqualityType, ...
+                searchRoot.Value.CaseSensitive);
+            if searchRoot.Value.Not
                 not = 'NOT ';
             else
                 not = '';
             end
-            val = filterRoot.Value.Value;
+            val = searchRoot.Value.Value;
             % Convert cells to string
             if iscell(val)
                 valStr = '';
@@ -575,13 +648,15 @@ function str = FilterToString(filterRoot)
             end
             str = [str '[' type ' ' not equality ' ' val ']'];
             
+        % Boolean
         case 2
-            str = [str ' ' GetBoolString(filterRoot.Value) ' '];
+            str = [str ' ' GetBoolString(searchRoot.Value) ' '];
             
-        case 3 % Branch
+        % Parent node (apply recursively to children)
+        case 3
             childStr = [];
-            for iChild = 1:length(filterRoot.Children)
-                childStr = [childStr FilterToString(filterRoot.Children(iChild))];
+            for iChild = 1:length(searchRoot.Children)
+                childStr = [childStr SearchToString(searchRoot.Children(iChild))];
             end
             str = [str '(' childStr ')'];
             
@@ -590,10 +665,11 @@ function str = FilterToString(filterRoot)
     end
 end
 
-function filterRoot = StringToFilter(filterStr)
+% Converts a search string to a search node structure
+function searchRoot = StringToSearch(searchStr)
     % Remove unnecessary parentheses
-    if filterStr(1) == '(' && filterStr(end) == ')'
-        filterStr = filterStr(2:end-1);
+    if searchStr(1) == '(' && searchStr(end) == ')'
+        searchStr = searchStr(2:end-1);
     end
     
     % State machine
@@ -608,8 +684,8 @@ function filterRoot = StringToFilter(filterStr)
     STATE_PARAM_END   = 9;
     
     % Initialize state machine
-    filterRoot = db_template('searchnode');
-    filterRoot.Type = 3;
+    searchRoot = db_template('searchnode');
+    searchRoot.Type = 3;
     state = STATE_PARAM_START;
     nBlocksOpen = 0;
     curPath = [];
@@ -618,12 +694,12 @@ function filterRoot = StringToFilter(filterStr)
     quoted = 0;
     wasQuoted = 0;
     iChar = 0;
-    nChars = length(filterStr);
+    nChars = length(searchStr);
 
     % Extract words
     while iChar < nChars
         iChar = iChar + 1;
-        c = filterStr(iChar);
+        c = searchStr(iChar);
         foundWord = 0;
 
         if c == '"'
@@ -788,12 +864,23 @@ function filterRoot = StringToFilter(filterStr)
         wasQuoted = 0;
     end
     
+    % Ensure we closed every block
     if nBlocksOpen > 0
         error('Missing closing bracket(s).');
     end
     
+    % Adds a search node at a specific position. This function uses eval
+    % such that you can do a dynamic number of ".Children" calls from the
+    % root node.
+    %
+    % Params:
+    %  - node: db_template('searchnode') to add
+    %  - curPath: list of int, path to active node from root
+    %  - iChild: child position where to add "node" to active node
+    %
+    % Returns: nothing
     function AddNode(node, curPath, iChild)
-        str = 'filterRoot';
+        str = 'searchRoot';
         for iPath = 1:length(curPath)
             str = [str '.Children(' num2str(curPath(iPath)) ')'];
         end
