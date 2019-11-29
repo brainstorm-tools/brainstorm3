@@ -96,7 +96,7 @@ bst_process('CallProcess', 'process_snapshot', sFileRun1, [], ...
     'target',   1, ...  % Sensors/MRI registration
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 
 % Process: Create link to raw file
 % sFilesRun2 = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
@@ -145,7 +145,7 @@ sFileRun1 = bst_process('CallProcess', 'process_ssp_eog', sFileRun1, [], ...
 % Process: Snapshot: SSP projectors (Run1)
 bst_process('CallProcess', 'process_snapshot', sFileRun1, [], ...
     'target',  2, ...  % SSP projectors
-    'comment', 'SSP projectors');
+    'Comment', 'SSP projectors');
 
 
 % ===== SOURCE MODELING =====
@@ -168,7 +168,7 @@ bst_process('CallProcess', 'process_noisecov', sFileNoise, [], ...
 % Process: Snapshot: Noise covariance
 bst_process('CallProcess', 'process_snapshot', sFileNoise, [], ...
     'target',  3, ...  % Noise covariance
-    'comment', 'Noise covariance');
+    'Comment', 'Noise covariance');
 
 % Process: Compute sources (Run1)
 sFileRun1Source = bst_process('CallProcess', 'process_inverse', sFileRun1, [], ...

@@ -35,7 +35,7 @@ function isDeleted = file_delete( fileList, isForced, isRecursive )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2019
 
 % Parse inputs
 if (nargin < 2)
@@ -90,9 +90,9 @@ if ~isForced
     end
     % Raw warning
     if ~all(cellfun(@(c)isempty(strfind(c, '_0raw')), fileList))
-        questStr = [questStr '<BR><FONT color="#CC0000">Warning: Removing links to raw files does not acually remove the raw files.<BR>' ...
-                    'To remove the recordings from the hard drive, use the popup menu File > Delete raw file,<BR>' ...
-                    'or do it from your operating system file manager.</FONT>'];
+        questStr = [questStr '<BR><FONT color="#008000">Removing links to raw files does not delete the original recordings from<BR>' ...
+                        'your hard drive. You can only do this from your operating system file manager.<BR><BR></FONT>'];
+                
     end
     isConfirmed = java_dialog('confirm', questStr, 'Delete files');
 else

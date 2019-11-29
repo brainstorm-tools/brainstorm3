@@ -32,14 +32,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Deface MRI volumes';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 9;
+    sProcess.Index       = 41;
     sProcess.Description = 'https://surfer.nmr.mgh.harvard.edu/fswiki/mri_deface';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
     sProcess.OutputTypes = {'import'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
-    sProcess.isSeparator = 1;
     % Option: Subject name
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';

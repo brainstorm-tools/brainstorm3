@@ -45,6 +45,10 @@ switch targetType
         targetTag = 'tess_outerskull';
     case 'InnerSkull'
         targetTag = 'tess_innerskull';
+    case 'Fibers'
+        targetTag = 'tess_fibers';
+    case 'FEM'
+        targetTag = 'tess_fem'; 
     case 'Other'
         targetTag = 'tess';
 end
@@ -66,6 +70,8 @@ sSubject.iScalp      = setdiff(sSubject.iScalp,      iSurf);
 sSubject.iCortex     = setdiff(sSubject.iCortex,     iSurf);
 sSubject.iOuterSkull = setdiff(sSubject.iOuterSkull, iSurf);
 sSubject.iInnerSkull = setdiff(sSubject.iInnerSkull, iSurf);
+sSubject.iFibers     = setdiff(sSubject.iFibers,     iSurf);
+sSubject.iFEM        = setdiff(sSubject.iFEM,        iSurf);
 sSubject.iOther      = setdiff(sSubject.iOther,      iSurf);
 % Update subject in database
 bst_set('Subject', iSubject, sSubject);

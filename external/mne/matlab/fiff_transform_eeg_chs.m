@@ -76,9 +76,9 @@ for k = 1:length(res)
     end
 end
 
-% if count > 0
-%     fprintf(1,'\t%d EEG electrode locations transformed\n',count);
-% end
+if count > 0
+    fprintf(1,'\t%d EEG electrode locations transformed\n',count);
+end
 
 return;
 

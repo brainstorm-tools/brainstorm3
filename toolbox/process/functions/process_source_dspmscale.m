@@ -22,7 +22,7 @@ function varargout = process_source_dspmscale( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2018
+% Authors: Francois Tadel, 2018-2019
 
 eval(macro_method);
 end
@@ -33,6 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % ===== PROCESS =====
     % Description the process
     sProcess.Comment     = 'Scale averaged dSPM';
+    sProcess.FileTag     = 'scaled';
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 338;
@@ -66,27 +67,38 @@ end
 %% ===== RUN =====
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Load additional fields from the source file
-    ResultsMat = in_bst_results(sInput.FileName, 0, 'nAvg', 'Function');
+    ResultsMat = in_bst_results(sInput.FileName, 0, 'Leff', 'Function');
     % If the input file is a single trial: stop
     if ~strcmpi(ResultsMat.Function, 'dspm2018')
         bst_report('Warning', sProcess, sInput, 'The input file is not an average (nAvg=1), no scaling could be performed.');
         return;
     end
     % If trying to process something that is not a dspm2018 file: warning
-    if ~strcmpi(ResultsMat.Function, 'dspm2018')
+    if strcmpi(ResultsMat.Function, 'dspm2018sc')
+        bst_report('Error', sProcess, sInput, 'The input file has already been scaled with this process.');
+        sInput = [];
+        return;
+    elseif ~strcmpi(ResultsMat.Function, 'dspm2018')
         bst_report('Warning', sProcess, sInput, ['The input file is not a dSPM file estimated with "Compute sources [2018].' 10 'Applying the process on this file may not make sense...']);
     end
-    % Considering that the file is necessarily starting as if (nAvg = 1)
+    % Considering that the file is necessarily starting as if (Leff = 1)
     % nAvgOrig = ResultsMat.nAvg;
-    nAvgOrig = 1;
+    LeffOrig = 1;
 
     % Apply scaling
-    if (nAvgOrig ~= sInput.nAvg)
-        Factor = sqrt(sInput.nAvg) / sqrt(nAvgOrig);
+    if (LeffOrig ~= ResultsMat.Leff)
+        Factor = sqrt(ResultsMat.Leff) / sqrt(LeffOrig);
         % Display information message
-        bst_report('Info', sProcess, sInput, sprintf('Scaling the values by %1.2f to match the number of trials averaged (%d => %d)', ResultsMat.Function, Factor, nAvgOrig, sInput.nAvg));
+        msg = sprintf('Scaling the values by %1.2f to match the number of trials averaged (%d => %d)', Factor, LeffOrig, ResultsMat.Leff);
+        bst_report('Info', sProcess, sInput, msg);
+        disp(['dSPM> ' msg]);
+        sInput.HistoryComment = msg;
         % Apply on full source matrix
         sInput.A = Factor * sInput.A;
+        % Change file tag so we don't allow rescaling
+        sInput.Function = 'dspm2018sc';
+        sInput.Comment = strrep(sInput.Comment, '-unscaled', '');
+        sInput.Leff = 0;
     end
 end
 

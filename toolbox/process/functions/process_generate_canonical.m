@@ -35,13 +35,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Generate SPM canonical surfaces';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 8;
+    sProcess.Index       = 12;
     sProcess.Description = 'https://github.com/neurodebian/spm12/blob/master/spm_eeg_inv_mesh.m';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
     sProcess.OutputTypes = {'import'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
+    sProcess.isSeparator = 1;
     % Option: Subject name
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
@@ -210,7 +211,7 @@ function ComputeInteractive(iSubject, iAnatomy, Resolution) %#ok<DEFNU>
     [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, 1);
     % Error handling
     if ~isOk
-        bst_error(errMsg, 'SPM canonincal surfaces', 0);
+        bst_error(errMsg, 'SPM canonical surfaces', 0);
     elseif ~isempty(errMsg)
         java_dialog('msgbox', ['Warning: ' errMsg]);
     end

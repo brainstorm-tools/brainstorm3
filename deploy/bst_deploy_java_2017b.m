@@ -4,7 +4,9 @@ function bst_deploy_java_2017b(IS_BIN)
 % USAGE:  bst_deploy_java_2017b(IS_BIN=0)
 %
 % INPUTS:
-%    - IS_BIN : Flag to compile Brainstorm using the MCC compiler
+%    - IS_BIN : 0=Package the sources and push the modifications to github
+%               1=Compile Brainstorm using the MCC compiler
+%               2=Compile including SPM and FieldTrip functions
 %
 % STEPS:
 %    - Update doc/version.txt
@@ -37,16 +39,24 @@ function bst_deploy_java_2017b(IS_BIN)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2017
+% Authors: Francois Tadel, 2011-2019
 
 
 %% ===== PARSE INPUTS =====
 if (nargin < 1) || isempty(IS_BIN)
     IS_BIN = 0;
+    IS_FT_SPM = 0;
 elseif ischar(IS_BIN)
     switch(IS_BIN)
-        case '0',   IS_BIN = 0;
-        case '1',   IS_BIN = 1;
+        case '0'
+            IS_BIN = 0;
+            IS_FT_SPM = 0;
+        case '1'
+            IS_BIN = 1;
+            IS_FT_SPM = 0;
+        case '2'
+            IS_BIN = 1;
+            IS_FT_SPM = 1;
         otherwise,  error('Invalid value for IS_BIN.');
     end
 end
@@ -54,13 +64,17 @@ end
 if IS_BIN && ~exist('deploytool', 'file')
     disp('DEPLOY> No compiler available: cannot produce standalone application.');
     IS_BIN = 0;
+    IS_FT_SPM = 0;
 end
 % Get Matlab version
 ReleaseName = bst_get('MatlabReleaseName');
 
 
 %% ===== CONFIGURATION =====
-bstVersion    = '3.4';
+% Get date string
+c = clock;
+strDate = sprintf('%02d%02d%02d', c(1)-2000, c(2), c(3));
+bstVersion = ['3.' strDate];
 % Root brainstorm directory
 bstDir        = bst_get('BrainstormHomeDir');
 bstToolboxDir = fullfile(bstDir, 'toolbox');
@@ -77,12 +91,19 @@ tic;
 if IS_BIN
     % Clear command window
     clc
+    
+    % FieldTrip / SPM
+    if IS_FT_SPM
+        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2017b_spm.prj');
+    else
+        compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2017b.prj');
+    end
+    
     % JDK folder
     jdkDir = 'C:\Program Files\Java\jdk1.7.0_80';
     % Set JAVA_HOME environment variable
     setenv('JAVA_HOME', jdkDir);
     % Javabuilder output
-    compilerFile = fullfile(bstDir, 'deploy', 'bst_javabuilder_2017b.prj');
     compilerDir = fullfile(deployDir, ReleaseName, 'bst_javabuilder');
     compilerOutputDir = fullfile(compilerDir, 'for_testing');
     % Packaging folders
@@ -136,12 +157,9 @@ jSplitPath = jPath.split(';');
 
 %% ===== UPDATE VERSION.TXT =====
 disp([10 'DEPLOY> Updating: ', strrep(versionFile, bstDir, '')]);
-% Get date string
-c = clock;
-strDate = sprintf('%02d%02d%02d', c(1)-2000, c(2), c(3));
 % Version.txt contents
 strVersion = ['% Brainstorm' 10 ...
-              '% v. ' bstVersion ' ' strDate ' (' date ')'];
+              '% v. ' bstVersion ' (' date ')'];
 % Write version.txt
 writeAsciiFile(versionFile, strVersion);
 
@@ -237,20 +255,21 @@ if IS_BIN
     % === COMPILING ===
     disp('DEPLOY> Starting Matlab Compiler...');
     % Starting compiler
-    deploytool('-build', compilerFile);
-    % This stupid call is asynchronous: have to wait manually until it's done
-    % Get the text in the command window, until there is that "Build finished" text in it
-    while(1)
-        pause(2);
-        cmdWinDoc = com.mathworks.mde.cmdwin.CmdWinDocument.getInstance;
-        jString   = cmdWinDoc.getText(cmdWinDoc.getStartPosition.getOffset, cmdWinDoc.getLength);
-        if ~isempty(strfind(char(jString), 'Build finished'))
-            break;
-        elseif ~isempty(strfind(char(jString), 'Build failed'))
-            return;
-        end
-        fprintf(1, '.');
-    end
+%     deploytool('-build', compilerFile);
+    system(['deploytool -build ', compilerFile]);
+%     % This stupid call is asynchronous: have to wait manually until it's done
+%     % Get the text in the command window, until there is that "Build finished" text in it
+%     while(1)
+%         pause(2);
+%         cmdWinDoc = com.mathworks.mde.cmdwin.CmdWinDocument.getInstance;
+%         jString   = cmdWinDoc.getText(cmdWinDoc.getStartPosition.getOffset, cmdWinDoc.getLength);
+%         if ~isempty(strfind(char(jString), 'Build finished'))
+%             break;
+%         elseif ~isempty(strfind(char(jString), 'Build failed'))
+%             return;
+%         end
+%         fprintf(1, '.');
+%     end
 
     % === PACKAGING ===
     disp('DEPLOY> Packaging binary distribution...');

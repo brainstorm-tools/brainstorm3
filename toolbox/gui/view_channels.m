@@ -164,6 +164,10 @@ if isempty(hFig)
     setappdata(hFig, 'SubjectFile',  SubjectFile);
 else
     isNewFig = 0;
+    % Get existing list of selected channels
+    if ~isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels)
+        selChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+    end
 end
 % Make sure that the Modality is saved
 GlobalData.DataSet(iDS).Figure(iFig).Id.Modality = Modality;

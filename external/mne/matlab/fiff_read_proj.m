@@ -137,19 +137,19 @@ for i = 1:length(items)
     projdata(i) = one;
 end
 
-% if length(projdata) > 0
-%     fprintf(1,'\tRead a total of %d projection items:\n', ...
-%         length(projdata));
-%     for k = 1:length(projdata)
-%         fprintf(1,'\t\t%s (%d x %d)',projdata(k).desc, ...
-%             projdata(k).data.nrow,projdata(k).data.ncol);
-%         if projdata(k).active
-%             fprintf(1,' active\n');
-%         else
-%             fprintf(1,' idle\n');
-%         end
-%     end
-% end
+if length(projdata) > 0
+    fprintf(1,'\tRead a total of %d projection items:\n', ...
+        length(projdata));
+    for k = 1:length(projdata)
+        fprintf(1,'\t\t%s (%d x %d)',projdata(k).desc, ...
+            projdata(k).data.nrow,projdata(k).data.ncol);
+        if projdata(k).active
+            fprintf(1,' active\n');
+        else
+            fprintf(1,' idle\n');
+        end
+    end
+end
 
 
 return;

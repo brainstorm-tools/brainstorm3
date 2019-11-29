@@ -127,7 +127,7 @@ for i = 1:length(dirFiles)
         targetSubjFile = file_fullpath(sSubject.FileName);
         targetSubjMat = load(targetSubjFile);
         % Copy default filenames
-        for f = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull'}
+        for f = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'FEM'}
             if isfield(tempSubjMat, f{1}) && ~isempty(tempSubjMat.(f{1}))
                 [tmp, fBase, fExt] = bst_fileparts(tempSubjMat.(f{1}));
                 targetSubjMat.(f{1}) = [bst_fileparts(sSubject.FileName), '/', [fBase, fExt]];

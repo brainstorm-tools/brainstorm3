@@ -540,6 +540,8 @@ function [sCluster, iCluster] = CreateNewCluster(Sensors)
     for i = 1:length(sOtherClusters)
         if isequal(sort(Sensors), sort(sOtherClusters(i).Sensors))
             bst_error('Cluster already exists.', 'Create new cluster', 0);
+            sCluster = sOtherClusters(i);
+            iCluster = i;
             return
         end
     end

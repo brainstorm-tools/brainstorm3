@@ -55,7 +55,7 @@ end
 if (length(iDestStudy) > 1)
     error('Destination study must be unique.');    
 end
-if isequal(iSrcStudies, iDestStudy)
+if isempty(iDestStudy) || isequal(iSrcStudies, iDestStudy)
     return
 end
 % Get protocol directories

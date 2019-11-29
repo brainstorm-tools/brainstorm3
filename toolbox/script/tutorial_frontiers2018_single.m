@@ -179,12 +179,12 @@ for iSubj = 1:16
             'target',   1, ...  % Sensors/MRI registration
             'modality', 1, ...  % MEG (All)
             'orient',   1, ...  % left
-            'comment',  sprintf('MEG/MRI Registration: Subject #%d, Run #%d', iSubj, iRun));
+            'Comment',  sprintf('MEG/MRI Registration: Subject #%d, Run #%d', iSubj, iRun));
         bst_process('CallProcess', 'process_snapshot', sFileRaw, [], ...
             'target',   1, ...  % Sensors/MRI registration
             'modality', 4, ...  % EEG
             'orient',   1, ...  % left
-            'comment',  sprintf('EEG/MRI Registration: Subject #%d, Run #%d', iSubj, iRun));
+            'Comment',  sprintf('EEG/MRI Registration: Subject #%d, Run #%d', iSubj, iRun));
 
         % ===== IMPORT TRIGGERS =====
         % Process: Read from channel
@@ -245,7 +245,7 @@ for iSubj = 1:16
         % Process: Snapshot: Frequency spectrum
         bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
             'target',   10, ...  % Frequency spectrum
-            'comment',  sprintf('Power spctrum: Subject #%d, Run #%d', iSubj, iRun));
+            'Comment',  sprintf('Power spctrum: Subject #%d, Run #%d', iSubj, iRun));
 
         % ===== BAD CHANNELS =====
         if ~isempty(BadChannels{iSubj}{iRun})
@@ -298,7 +298,7 @@ for iSubj = 1:16
         % Process: Snapshot: SSP projectors
         bst_process('CallProcess', 'process_snapshot', sFileClean, [], ...
             'target',   2, ...
-            'comment',  sprintf('Subject #%d, Run #%d', iSubj, iRun));   % SSP projectors
+            'Comment',  sprintf('Subject #%d, Run #%d', iSubj, iRun));   % SSP projectors
         
         % ===== IMPORT BAD EVENTS =====
         % Get bad segments: this is typically done manually, not from a script

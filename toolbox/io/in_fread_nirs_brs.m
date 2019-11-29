@@ -26,13 +26,13 @@ function F = in_fread_nirs_brs(sFile,SamplesBounds)
 
 % Use the full file if samples not specified
 if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % Convert to 1-based samples in the Matlab matrix
-SamplesBounds = SamplesBounds - sFile.prop.samples(1) + 1; 
+SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1; 
 % Check start and stop samples
-if (SamplesBounds(1) < 1) || (SamplesBounds(1) > SamplesBounds(2)) || (SamplesBounds(2) > sFile.prop.samples(2)+1)
+if (SamplesBounds(1) < 1) || (SamplesBounds(1) > SamplesBounds(2)) || (SamplesBounds(2) > round(sFile.prop.times(2) .* sFile.prop.sfreq) + 1)
     error('Invalid samples range.');
 end
     

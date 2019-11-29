@@ -572,7 +572,7 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                 case 'downarrow'
                     MouseWheel_Callback(hFig, [], [], -1);
                 % === DATABASE NAVIGATOR ===
-                case {'f1', 'f2', 'f3', 'f4'}
+                case {'f1', 'f2', 'f3', 'f4', 'f6'}
                     bst_figures('NavigatorKeyPress', hFig, keyEvent);
                 % CTRL+D : Dock figure
                 case 'd'
@@ -1821,7 +1821,7 @@ function PlotSensors3D(iDS, iFig, Channel, ChanLoc)
     % === DEPTH ELECTRODES ===
     % Create objects geometry
     sElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
-    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes);
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes, 1);
     % Plot depth electrodes
     for iElec = 1:length(ElectrodeDepth)
         % Get coordinates
@@ -2801,6 +2801,8 @@ function SetElectrodePosition(hFig, ChannelName, scsXYZ)
     GlobalData.DataSet(iDS).Channel(iChannels(iChan)).Loc = scsXYZ(:);
     % Plot electrodes again
     Handles = PlotElectrodes(iDS, iFig, Handles);
+    % Save modified handles
+    bst_figures('SetFigureHandles', hFig, Handles);
     % Update display
     UpdateVisibleLandmarks(sMri, Handles);
     UpdateVisibleSensors3D(hFig);

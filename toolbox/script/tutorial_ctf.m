@@ -141,13 +141,13 @@ bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',   1, ...  % Sensors/MRI registration
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 
 % Process: Snapshot: Recordings time series
 bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',   5, ...  % Recordings time series
     'modality', 1, ...  % MEG (All)
-    'comment',  'Evoked response');
+    'Comment',  'Evoked response');
 
 % Process: Snapshot: Recordings topography (contact sheet)
 bst_process('CallProcess', 'process_snapshot', sFilesRight(1), [], ...
@@ -156,7 +156,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesRight(1), [], ...
     'orient',   1, ...  % left
     'contact_time',   [0, 0.120], ...
     'contact_nimage', 16, ...
-    'comment',  'Evoked response (Right)');
+    'Comment',  'Evoked response (Right)');
 
 
 
@@ -247,7 +247,7 @@ sFiles = bst_process('CallProcess', 'process_snapshot', sFilesRight(1), [], ...
     'target',   4, ...  % Headmodel spheres
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
-    'comment', 'Overlapping spheres');
+    'Comment', 'Overlapping spheres');
 
 
 %% ===== TUTORIAL #7: HEADMODEL =====
@@ -262,7 +262,7 @@ bst_process('CallProcess', 'process_noisecov', sFilesAvg, [], ...
 % Process: Snapshot: Noise covariance
 bst_process('CallProcess', 'process_snapshot', sFilesRight(1), [], ...
     'target',  3, ...  % Noise covariance
-    'comment', 'Noise covariance');
+    'Comment', 'Noise covariance');
 
 
 %% ===== TUTORIAL #8: SOURCES =====
@@ -300,7 +300,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesSrc, [], ...
     'modality', 1, ...  % MEG (All)
     'orient',   3, ...  % top
     'time',     0.046, ...
-    'comment',  'Source maps at 46ms');
+    'Comment',  'Source maps at 46ms');
 
 
 % ===== DISPLAY SOURCES MANUALLY =====

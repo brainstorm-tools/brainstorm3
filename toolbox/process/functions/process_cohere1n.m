@@ -158,7 +158,7 @@ function Test() %#ok<DEFNU>
         bst_process('CallProcess', 'process_snapshot', sTmp, [], ...
             'target',       11, ...  % Connectivity matrix (image)
             'modality',     1, 'orient', 1, 'time', 0, 'contact_time', [-40, 110], 'contact_nimage', 16, ...
-            'comment',      [sTmp.Comment, ': ' sTmp.Comment]);
+            'Comment',      [sTmp.Comment, ': ' sTmp.Comment]);
     end
     % Save and display report
     ReportFile = bst_report('Save', sTmp);

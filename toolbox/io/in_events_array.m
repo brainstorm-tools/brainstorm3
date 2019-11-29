@@ -58,9 +58,9 @@ end
 % Create [samples; times] array
 switch (format)
     case 'times'
-        evtSamples = round(EventsMat .* sFile.prop.sfreq);
+        evtTimes = round(EventsMat .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
     case 'samples'
-        evtSamples = round(EventsMat);
+        evtTimes = round(EventsMat) ./ sFile.prop.sfreq;
 end
 
 % ===== TIME OFFSET =====
@@ -80,7 +80,7 @@ if isInteractive
     end
     % Add a column for time
     if isAddOffset
-        evtSamples = evtSamples + sFile.prop.samples(1);
+        evtTimes = evtTimes + sFile.prop.times(1);
     end
 end
 
@@ -101,12 +101,10 @@ end
 events.color      = [];
 events.reactTimes = [];
 events.select     = 1;
-% Get time and samples
-events.samples = evtSamples;
-events.times   = evtSamples ./ sFile.prop.sfreq;
-% Epoch: set as 1 for all the occurrences
-events.epochs = ones(1, length(evtSamples));
-
+events.times      = evtTimes;
+events.epochs     = ones(1, length(evtTimes));  % Epoch: set as 1 for all the occurrences
+events.channels   = cell(1, size(events.times, 2));
+events.notes      = cell(1, size(events.times, 2));
 
 
 

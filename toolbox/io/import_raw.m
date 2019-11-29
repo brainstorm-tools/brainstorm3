@@ -123,7 +123,7 @@ for iFile = 1:length(RawFiles)
     % ===== OPENING FILE =====
     bst_progress('start', 'Open raw EEG/MEG recordings', 'Reading file header...');
     % Open file
-    [sFile, ChannelMat, errMsg, DataMat] = in_fopen(RawFiles{iFile}, FileFormat, ImportOptions);
+    [sFile, ChannelMat, errMsg, DataMat, ImportOptions] = in_fopen(RawFiles{iFile}, FileFormat, ImportOptions);
     if isempty(sFile)
         bst_progress('stop');
         return;
@@ -338,9 +338,9 @@ if isSSP
     strWarning = ['The files you imported include SSP/ICA projectors.' 10 10 ...
                   'Review them before processing the files:' 10 ...
                   'tab Record > menu Artifacts > Select active projectors.'];
-    % Non-iteractive: Display message in command window
+    % Non-interactive: Display message in command window
     if ~ImportOptions.DisplayMessages 
-        disp(['BST> ' strrep(strWarning, 10, [10, 'BST> '])]);
+        disp(['BST> ' strrep(strWarning, char(10), [10, 'BST> '])]);
     % Interactive, one file: Open the SSP selection window
     elseif (length(OutputFiles) == 1)
         java_dialog('msgbox', strWarning);

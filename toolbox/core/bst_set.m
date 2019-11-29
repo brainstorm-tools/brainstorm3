@@ -11,6 +11,7 @@ function bst_set( varargin )
 %    - bst_set('LastUsedDirs',      sDirectories)
 %    - bst_set('FieldTripDir',      FieldTripDir)
 %    - bst_set('SpmDir',            SpmDir)
+%    - bst_set('PythonConfig',      PythonConfig)
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_set('iProtocol',         iProtocol)
@@ -60,8 +61,11 @@ function bst_set( varargin )
 %    - bst_set('FlipYAxis',             isFlipY)
 %    - bst_set('AutoScaleY',            isAutoScaleY)
 %    - bst_set('FixedScaleY',           Modality,  Value)
+%    - bst_set('XScale',                XScale)
 %    - bst_set('ShowXGrid',             isShowXGrid)
 %    - bst_set('ShowYGrid',             isShowYGrid)
+%    - bst_set('ShowZeroLines',         isShowZeroLines)
+%    - bst_set('ShowEventsMode',        ShowEventsMode)
 %    - bst_set('Resolution',            [resX,resY])
 %    - bst_set('UseSigProcToolbox',     UseSigProcToolbox)
 %    - bst_set('RawViewerOptions',      RawViewerOptions)
@@ -245,13 +249,15 @@ switch contextName
         end
         GlobalData.Preferences.(contextName).(Modality) = ElectrodeConf;
         
-    case {'UniformizeTimeSeriesScales', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', ...
-          'GraphicsSmoothing', 'DownsampleTimeSeries', 'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
+    case {'UniformizeTimeSeriesScales', 'XScale', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'ShowEventsMode', ...
+          'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', 'GraphicsSmoothing', 'DownsampleTimeSeries', ...
+          'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
           'BFSProperties', 'ImportDataOptions', 'ImportEegRawOptions', 'RawViewerOptions', 'MontageOptions', 'TopoLayoutOptions', ...
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
+          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'PythonConfig', ...
+          'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
         GlobalData.Preferences.(contextName) = contextValue;
 
     case 'ReadOnly'

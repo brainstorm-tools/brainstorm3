@@ -19,10 +19,14 @@ function sScouts = tess_detect_region(sScouts)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013
+% Authors: Francois Tadel, 2013-2019
 
 % Loop on all the scouts
 for i = 1:length(sScouts)
+    % Remove L and R tags
+    if (length(sScouts(i).Label) > 3) && ismember(sScouts(i).Label(end-1:end), {' L', ' R'})
+        sScouts(i).Label = sScouts(i).Label(1:end-2);
+    end
     % Detect region based on the scout name
     % USCBrain labels have subdivisions after ' - ', so remove part after
     ind = strfind(sScouts(i).Label, ' - ');
@@ -287,7 +291,56 @@ for i = 1:length(sScouts)
         % Limbic
         case 'cingulate gyrus',                region = 'L'; 
         case 'subcallosal area',               region = 'L'; 
-        case 'subcallosal gyrus',               region = 'L'; 
+        case 'subcallosal gyrus',              region = 'L'; 
+
+    % ===== BRAINVISA MARSATLAS =====
+        % Prefrontal
+        case 'ofcvl',  region = 'PF';
+        case 'ofcv',   region = 'PF';
+        case 'ofcvm',  region = 'PF';
+        case 'pfcvm',  region = 'PF';
+        % Frontal
+        case 'pmrv',   region = 'F';
+        case 'pmdl',   region = 'F';
+        case 'pmdm',   region = 'F';
+        case 'pfcdl',  region = 'F';
+        case 'pfcdm',  region = 'F';
+        case 'pfrvl',  region = 'F';
+        case 'pfrdli', region = 'F';
+        case 'pfrdls', region = 'F';
+        case 'pfrd',   region = 'F';
+        case 'pfrm',   region = 'F';
+        % Central
+        case 'mv',     region = 'C';
+        case 'mdl',    region = 'C';
+        case 'mdm',    region = 'C';
+        case 'sv',     region = 'C';
+        case 'sdl',    region = 'C';
+        case 'sdm',    region = 'C';
+        % Parietal
+        case 'ipcv',   region = 'P';
+        case 'ipcd',   region = 'P';
+        case 'spc',    region = 'P';
+        case 'spcm',   region = 'P';
+        case 'pcm',    region = 'P';
+        % Temporal
+        case 'itcm',   region = 'T';
+        case 'itcr',   region = 'T';
+        case 'mtcc',   region = 'T';
+        case 'stcc',   region = 'T';
+        case 'stcr',   region = 'T';
+        case 'mtcr',   region = 'T';
+        % Occipital
+        case 'vccm',   region = 'O';
+        case 'vcl',    region = 'O';
+        case 'vcs',    region = 'O';
+        case 'cu',     region = 'O';
+        case 'vcrm',   region = 'O';
+        % Limbic
+        case 'icc',    region = 'L';
+        case 'pcc',    region = 'L';
+        case 'mcc',    region = 'L';
+        case 'acc',    region = 'L';
 
         % DEFAULT: Unknown
         otherwise

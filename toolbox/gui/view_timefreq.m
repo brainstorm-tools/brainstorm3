@@ -185,6 +185,9 @@ end
 if ~isempty(strfind(lower(TimefreqFile), 'noise_correlation'))
     DataMat = in_bst_data(TimefreqFile, 'NeuronNames');
     TfInfo.NeuronNames = DataMat.NeuronNames;
+elseif ~isempty(strfind(lower(TimefreqFile), 'rasterplot'))
+    TfInfo.DisplayAsDots = 1;
+    TfInfo.DisableSmoothDisplay = 1;
 end
 % Set figure data
 setappdata(hFig, 'Timefreq', TfInfo);

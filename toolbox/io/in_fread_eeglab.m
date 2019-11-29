@@ -36,13 +36,13 @@ end
 % Samples not specified: read the entire epoch
 if (nargin < 3) || isempty(SamplesBounds)
     if ~isempty(sFile.epochs)
-        SamplesBounds = sFile.epochs(iEpoch).samples;
+        SamplesBounds = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
     else
-        SamplesBounds = sFile.prop.samples;
+        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
     end
 end
 % Rectify samples to read with the first sample number
-SamplesBounds = SamplesBounds - sFile.prop.samples(1);
+SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq);
 F = [];
 
 

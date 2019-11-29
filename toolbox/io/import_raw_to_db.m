@@ -30,8 +30,6 @@ function NewFiles = import_raw_to_db( DataFile )
 if isempty(sStudy)
     error('File is not registered in the database.');
 end
-% Get protocol folders
-ProtocolInfo = bst_get('ProtocolInfo');
 % Is it a "link to raw file" or not
 isRaw = strcmpi(sStudy.Data(iData).DataType, 'raw');
 % Get subject index
@@ -52,58 +50,11 @@ end
 % Import file
 NewFiles = import_data(sFile, ChannelMat, sFile.format, [], iSubject, [], sStudy.DateOfStudy);
 
-
-% ===== COPY VIDEO LINKS =====
 % If only one file imported: Copy linked videos in destination folder
 if (length(NewFiles) == 1) && ~isempty(sStudy.Image)
-    % Get new and old time start
-    NewMat = in_bst_data(NewFiles{1}, {'Time', 'History'});
-    oldStart = NewMat.Time(1);
-    offsetStart = 0;
-    iEntry = find(strcmpi(NewMat.History(:,2), 'import_time'), 1, 'last');
-    if ~isempty(iEntry)
-        newTime = str2num(NewMat.History{iEntry,3});
-        if ~isempty(newTime)
-            offsetStart = oldStart - newTime(1);
-        end
-    end
-    % Get destination file info
-    [sStudyOut, iStudyOut, iData] = bst_get('DataFile', NewFiles{1});
-    % Copy all the links
-    for iFile = 1:length(sStudy.Image)
-        if strcmpi(file_gettype(sStudy.Image(iFile).FileName), 'videolink')
-            % Read link
-            VideoLinkMat = load(file_fullpath(sStudy.Image(iFile).FileName));
-            % Modify comment
-            VideoLinkMat.Comment = [VideoLinkMat.Comment, ' | ', sStudyOut.Data(iData).Comment];
-            % Set start time
-            if ~isfield(VideoLinkMat, 'VideoStart') || isempty(VideoLinkMat.VideoStart)
-                VideoLinkMat.VideoStart = 0;
-            end
-            VideoLinkMat.VideoStart = VideoLinkMat.VideoStart + offsetStart;
-            % Create output filename
-            [fPath, fBase] = bst_fileparts(sStudy.Image(iFile).FileName);
-            OutputFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sStudyOut.FileName), ['videolink_', file_standardize(fBase), '.mat']);
-            OutputFile = file_unique(OutputFile);
-            % Save new file in Brainstorm format
-            bst_save(OutputFile, VideoLinkMat, 'v7');
-
-            % === UPDATE DATABASE ===
-            % Create structure
-            sImage = db_template('image');
-            sImage.FileName = file_short(OutputFile);
-            sImage.Comment  = VideoLinkMat.Comment;
-            % Add to study
-            iImage = length(sStudyOut.Image) + 1;
-            sStudyOut.Image(iImage) = sImage;
-        end
-    end
-    % Save study
-    bst_set('Study', iStudyOut, sStudyOut);
-    % Update tree
-    panel_protocols('UpdateNode', 'Study', iStudyOut);
-    % Save database
-    db_save();
+    process_import_data_event('CopyVideoLinks', NewFiles{1}, sStudy);
 end
+% Save database
+db_save();
 
 

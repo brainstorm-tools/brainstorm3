@@ -96,10 +96,9 @@ sFile.byteorder  = 'l';
 
 % Properties of the recordings
 % Round to microsec to avoid floating imprecision
-sFile.prop.sfreq   = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
-sFile.prop.samples = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq);
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
+sFile.prop.times = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NIRS-BRS channels';
@@ -249,7 +248,7 @@ function [coords] = load_brainsight_coords(coords_file)
     ic = 1; % counter of entries
     while(~feof(fid))
        line = textscan(fid, '%s', 1, 'delimiter', '\n');
-       if ~strcmp(line{1}{1}(1), '#') % ignore comments
+       if ~isempty(line{1}{1}) && ~strcmp(line{1}{1}(1), '#') % ignore empty lines and comments
            toks = textscan(line{1}{1}, '%s\t%s\t%d\t%f\t%f\t%f%f', ...
                            'WhiteSpace', '\b\t');
            coords(ic).name = toks{1}{1};

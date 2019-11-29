@@ -28,6 +28,10 @@ function [sFile, ChannelMat] = in_fopen_tdt(DataFile)
 % Author: Konstantinos Nasiotis 2019
 
 
+% Not available in the compiled version
+if (exist('isdeployed', 'builtin') && isdeployed)
+    error('Reading TDT files is not available in the compiled version of Brainstorm.');
+end
 
 
  %% ===== GET FILES =====
@@ -111,26 +115,6 @@ sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag  = ones(nChannels, 1);
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                           THIS NEEDS FIXING
-% I load the entire signal from a channel so I can find the number of
-% samples
-% The sampling rates on the examples don't make any sense
-% sFile.prop.samples = [0, round(sFile.prop.times(2)*sFile.prop.sfreq) - 1];
-
-% I LOAD THE ENTIRE CHANNEL HERE FOR TWO REASONS:
-% 1. IT GIVES ME THE TOTAL NUMBER OF SAMPLES (THIS INFO IS NOT STORED ANYWHERE ELSE)
-% 2. ALL THE EVENTS ARE LOADED
-
-data_1_channel = TDTbin2mat(DataFolder, 'CHANNEL',1);
-nSamples = size(data_1_channel.streams.(all_streams{iHighestSampledChannel}).data,2);
-sFile.prop.samples = [0, nSamples - 1];
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
 sFile.header.several_sampling_rates = several_sampling_rates;
 sFile.header.total_channels         = total_channels;
 sFile.header.all_streams            = all_streams;
@@ -185,11 +169,11 @@ if are_there_events
             events(iindex).label      = NO_data.epocs.(all_event_Labels{iEvent}).name;
             events(iindex).color      = rand(1,3);
             events(iindex).epochs     = ones(1,length(NO_data.epocs.(all_event_Labels{iEvent}).onset))  ;
-            events(iindex).times      = NO_data.epocs.(all_event_Labels{iEvent}).onset';
-            events(iindex).samples    = round(events(iEvent).times * general_sampling_rate);
+            events(iindex).times      = round(NO_data.epocs.(all_event_Labels{iEvent}).onset' .* general_sampling_rate) ./ general_sampling_rate;
             events(iindex).reactTimes = [];
             events(iindex).select     = 1;
-            
+            events(iindex).channels   = cell(1, size(events(iindex).times, 2));
+            events(iindex).notes      = cell(1, size(events(iindex).times, 2));
         else
             conditions_in_event = unique(NO_data.epocs.(all_event_Labels{iEvent}).data);
             
@@ -202,15 +186,13 @@ if are_there_events
                 events(iindex).label      = [NO_data.epocs.(all_event_Labels{iEvent}).name num2str(conditions_in_event(iCondition))];
                 events(iindex).color      = rand(1,3);
                 events(iindex).epochs     = ones(1,length(selected_Events_for_condition))  ;
-                events(iindex).times      = NO_data.epocs.(all_event_Labels{iEvent}).onset(selected_Events_for_condition)';
-                events(iindex).samples    = round(events(iindex).times * general_sampling_rate);
+                events(iindex).times      = round(NO_data.epocs.(all_event_Labels{iEvent}).onset(selected_Events_for_condition)' .* general_sampling_rate) ./ general_sampling_rate;
                 events(iindex).reactTimes = [];
                 events(iindex).select     = 1;
-                
+                events(iindex).channels   = cell(1, size(events(iindex).times, 2));
+                events(iindex).notes      = cell(1, size(events(iindex).times, 2));
             end
-
         end
-            
     end
 end
     
@@ -260,20 +242,15 @@ if are_there_spikes
 
                     events(last_event_index).color      = rand(1,3);
                     events(last_event_index).epochs     = ones(1,length(SpikesOfThatNeuronOnChannel_Indices));
-                    events(last_event_index).times      = NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).ts(SpikesOfThatNeuronOnChannel_Indices)';
-                    events(last_event_index).samples    = round(events(last_event_index).times * general_sampling_rate);
+                    events(last_event_index).times      = round(events(NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).ts(SpikesOfThatNeuronOnChannel_Indices)' .* general_sampling_rate)) ./ general_sampling_rate;
                     events(last_event_index).reactTimes = [];
                     events(last_event_index).select     = 1;
+                    events(last_event_index).channels   = cell(1, size(events(last_event_index).times, 2));
+                    events(last_event_index).notes      = cell(1, size(events(last_event_index).times, 2));
                 end
-                
-                
             end
-            
-            
         end
-        
     end
-
 end
 
 % Import this list
@@ -304,14 +281,25 @@ end
     % Download file
     zipFile = bst_fullfile(TDTTmpDir, 'TDT.zip');
     errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'TDT download');
-    if ~isempty(errMsg)
-        % Try twice before giving up
+    
+    
+    % Check if the download was succesful and try again if it wasn't
+    time_before_entering = clock;
+    updated_time = clock;
+    time_out = 60;% timeout within 60 seconds of trying to download the file
+    
+    % Keep trying to download until a timeout is reached
+    while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+        % Try to download until the timeout is reached
         pause(0.1);
         errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'TDT download');
-        if ~isempty(errMsg)
-            error(['Impossible to download TDT.' 10 errMsg]);
-        end
+        updated_time = clock;
     end
+    % If the timeout is reached and there is still an error, abort
+    if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
+        error(['Impossible to download TDT.' 10 errMsg]);
+    end
+    
     % Unzip file
     bst_progress('start', 'TDT', 'Installing TDT...');
     unzip(zipFile, TDTTmpDir);

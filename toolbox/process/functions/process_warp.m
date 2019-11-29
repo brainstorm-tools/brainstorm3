@@ -31,7 +31,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Warp default anatomy';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 22;
+    sProcess.Index       = 11;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutWarping';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};

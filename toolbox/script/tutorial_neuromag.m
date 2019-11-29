@@ -93,7 +93,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesRaw, [], ...
     'target',   1, ...  % Sensors/MRI registration
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 
 
 % ===== REMOVE 60/120/180 Hz =====
@@ -126,7 +126,7 @@ sFilesPsd = bst_process('CallProcess', 'process_psd', [sFilesRaw, sFilesClean], 
 bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
     'target',   10, ...  % Frequency spectrum
     'modality', 1, ...   % MEG (All)
-    'comment',  'Power spectrum density');
+    'Comment',  'Power spectrum density');
 
 
 % ===== CORRECT BLINKS AND HEARTBEATS =====
@@ -176,7 +176,7 @@ sFilesClean = bst_process('CallProcess', 'process_ssp_eog', sFilesClean, [], ...
 % Process: Snapshot: SSP projectors
 bst_process('CallProcess', 'process_snapshot', sFilesClean, [], ...
     'target',  2, ...  % SSP projectors
-    'comment', 'SSP projectors');
+    'Comment', 'SSP projectors');
 
 
 % ===== IMPORT EVENTS =====
@@ -210,7 +210,7 @@ sFilesAvg = bst_process('CallProcess', 'process_cutstim', sFilesAvg, [], ...
 bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',   5, ...  % Recordings time series
     'modality', 1, ...  % MEG (All)
-    'comment',  'Evoked response');
+    'Comment',  'Evoked response');
 
 
 % ===== SOURCE MODELING =====
@@ -259,7 +259,7 @@ sFilesSrc = bst_process('CallProcess', 'process_inverse', sFilesAvg, [], ...
 % Process: Snapshot: Noise covariance
 bst_process('CallProcess', 'process_snapshot', sFilesSrc, [], ...
     'target',  3, ...  % Noise covariance
-    'comment', 'Noise covariance');
+    'Comment', 'Noise covariance');
 
 % Process: Snapshot: Sources (one time)
 bst_process('CallProcess', 'process_snapshot', sFilesSrc, [], ...
@@ -267,7 +267,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesSrc, [], ...
     'modality', 1, ...  % MEG (All)
     'orient',   3, ...  % top
     'time',     0.023, ...
-    'comment',  'Source maps at 35ms');
+    'Comment',  'Source maps at 35ms');
 
 
 % Save and display report

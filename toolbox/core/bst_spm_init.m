@@ -19,7 +19,7 @@ function isOk = bst_spm_init(isInteractive, SpmFunction)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2019
 
 % Deployed: Code already included in the compiled version
 if exist('isdeployed', 'builtin') && isdeployed
@@ -108,6 +108,13 @@ if ~isempty(SpmFunction) && ~exist(SpmFunction, 'file')
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'specest'));
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'preproc'));
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'utilities'));
+        case 'cat12'
+            catDir = bst_fullfile(SpmDir, 'toolbox', 'cat12');
+            if ~file_exist(catDir)
+                error(['Please download and install the SPM12 toolbox "CAT12":' 10 ...
+                       'http://www.neuro.uni-jena.de/vbm/download/']);
+            end
+            addpath(catDir);
     end
 end
     

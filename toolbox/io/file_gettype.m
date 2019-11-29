@@ -28,7 +28,7 @@ function fileType = file_gettype( fileName )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2019
 
 
 %% ===== INPUT: FILE =====
@@ -99,6 +99,10 @@ if ischar(fileName)
                 fileType = 'innerskull';
             elseif ~isempty(strfind(fileName, '_skull'))
                 fileType = 'outerskull';
+            elseif ~isempty(strfind(fileName, '_fibers'))
+                fileType = 'fibers';
+            elseif ~isempty(strfind(fileName, '_fem'))
+                fileType = 'fem';
             else
                 fileType = 'tess';
             end
@@ -158,8 +162,12 @@ elseif isstruct(fileName)
         fileType = 'subjectimage';
     elseif isfield(sMat, 'Scout')
         fileType = 'scout';
-    elseif isfield(sMat, 'Vertices')
+    elseif isfield(sMat, 'Faces')
         fileType = 'tess';
+    elseif isfield(sMat, 'Points')
+        fileType = 'fibers';
+    elseif isfield(sMat, 'Elements')
+        fileType = 'fem';
     elseif isfield(sMat, 'Dipole')
         fileType = 'dipoles';
     elseif isfield(sMat, 'Value')
@@ -168,6 +176,8 @@ elseif isstruct(fileName)
         fileType = 'videolink';
     elseif isfield(sMat, 'Spikes')
         fileType = 'spikes';
+    elseif isfield(sMat, 'Points')
+        fileType = 'fibers';
     else
         fileType = 'unknown';
     end

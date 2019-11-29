@@ -12,6 +12,8 @@ function [ varargout ] = bst_memory( varargin )
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          iSubject, SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          MriFile,  SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          SurfaceFile)
+%         [sFib,iFib] = bst_memory('LoadFiber',            FibFile)
+%         [sFib,iFib] = bst_memory('LoadFiber',            iSubject)
 %
 %          DataValues = bst_memory('GetRecordingsValues',  iDS, iChannel, iTime)
 %       ResultsValues = bst_memory('GetResultsValues',     iDS, iRes, iVertices, TimeValues)
@@ -65,7 +67,7 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -141,6 +143,69 @@ function [sMri, iMri] = GetMri(MriFile) %#ok<DEFNU>
         sMri = GlobalData.Mri(iMri);
     else
         sMri = [];
+    end
+end
+
+
+%% ===== LOAD FIBERS =====
+% USAGE:  [sFib,iFib] = bst_memory('LoadFiber', FibFile)
+%         [sFib,iFib] = bst_memory('LoadFiber', iSubject)
+function [sFib,iFib] = LoadFibers(FibFile)
+    global GlobalData;
+    % ===== PARSE INPUTS =====
+    % If argument is a subject indice
+    if isnumeric(FibFile)
+        % Get subject
+        iSubject = FibFile;
+        sSubject = bst_get('Subject', iSubject);
+        % If subject does not have fibers
+        if isempty(sSubject.Surface) || isempty(sSubject.iFibers)
+            error('No fiber available for subject "%s".', sSubject.Name);
+        end
+        % Get fibers file
+        FibFile = sSubject.Surface(sSubject.iFibers).FileName;
+    else
+        [sSubject, iSubject, iSurfDb] = bst_get('SurfaceFile', FibFile);
+    end
+
+    % ===== CHECK IF LOADED =====
+    % Check if surface is already loaded
+    iFib = find(file_compare({GlobalData.Fibers.FileName}, FibFile));
+    % If fiber is not loaded yet: load it
+    if isempty(iFib)
+        % Unload the unused Anatomies (surfaces + MRIs)
+        UnloadAll('KeepSurface');
+        % Create default structure
+        sFib = db_template('LoadedFibers');
+        % Load fibers matrix
+        FibMat = in_fibers(FibFile);
+        % Build fibers structure
+        for field = fieldnames(sFib)'
+            if isfield(FibMat, field{1})
+                sFib.(field{1}) = FibMat.(field{1});
+            end
+        end
+        % Set filename
+        sFib.FileName = file_win2unix(FibFile);
+        iFib = length(GlobalData.Fibers) + 1;
+        % Save fibers in memory
+        GlobalData.Fibers(iFib) = sFib;
+    % Else: Return the existing instance
+    else
+        sFib = GlobalData.Fibers(iFib);
+    end
+end
+
+
+%% ===== GET FIBERS =====
+function [sFib, iFib] = GetFibers(FibFile) %#ok<DEFNU>
+    global GlobalData;
+    % Check if surface is already loaded
+    iFib = find(file_compare({GlobalData.Fibers.FileName}, FibFile));
+    if ~isempty(iFib)
+        sFib = GlobalData.Fibers(iFib);
+    else
+        sFib = [];
     end
 end
 
@@ -523,13 +588,8 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             sFile = MeasuresMat.sFile;
         end
         % Rebuild Time vector
-        if ~isempty(sFile.epochs)
-            NumberOfSamples = sFile.epochs(1).samples(2) - sFile.epochs(1).samples(1) + 1;
-            Time = linspace(sFile.epochs(1).times(1), sFile.epochs(1).times(2), NumberOfSamples);
-        else
-            NumberOfSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
-            Time = linspace(sFile.prop.times(1), sFile.prop.times(2), NumberOfSamples);
-        end
+        Time = panel_time('GetRawTimeVector', sFile);
+        
         % Check if file exists
         isRetry = 1;
         while isRetry
@@ -582,7 +642,6 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
         sFile.filename     = DataFile;
         sFile.prop.times   = Time([1 end]);
         sFile.prop.sfreq   = 1 ./ (Time(2) - Time(1));
-        sFile.prop.samples = round(sFile.prop.times * sFile.prop.sfreq);
     end
     Measures.DataType     = DataType;
     Measures.ChannelFlag  = MeasuresMat.ChannelFlag;
@@ -638,20 +697,28 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
     
     % ===== CHECK FOR OTHER RAW FILES =====
     if strcmpi(DataType, 'raw') && ~isempty(GlobalData.FullTimeWindow) && ~isempty(GlobalData.FullTimeWindow.CurrentEpoch) && ~isReloadForced
-        bst_error(['Cannot open two raw viewers at the same time.' 10 'Please close the other windows and retry.'], 'Load data file', 0);
-        iDS = [];
-        return
+        res = java_dialog('question', [...
+            'Cannot open two continuous viewers at the same time.' 10 ...
+            'Unload all the other files first?' 10 10], 'Load recordings', [], {'Unload other files', 'Cancel'});
+        % Cancel: Unload the new dataset
+        if isempty(res) || strcmpi(res, 'Cancel')
+            iDS = [];
+            return;
+        % Otherwise: unload all the other datasets
+        else
+            % Unload everything
+            UnloadAll('Forced');
+            % If not everything was unloaded correctly (eg. the user cancelled half way when asked to save the modifications)
+            if ~isempty(GlobalData.DataSet)
+                iDS = [];
+                return;
+            end
+            % New dataset = only dataset
+            iDS = 1;
+        end
     end
     
     % ===== STORE IN GLOBALDATA =====
-%     % Look for a DataSet that have been partly initialized for this study 
-%     % IE. StudyFile was defined but not DataFile (ie. a Channel or Result DataSet)
-%     if isempty(iDS) && ~isempty(sStudy.FileName) 
-%         iDS = GetDataSetStudyNoData(sStudy.FileName);
-%         if (length(iDS) > 1)
-%             iDS = iDS(1);
-%         end
-%     end
     % If no DataSet is available for this data file
     if isempty(iDS)
         % Create new dataset
@@ -673,14 +740,33 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
         isTimeCoherent = CheckTimeWindows();
         % If loaded data is not coherent with previous data
         if ~isTimeCoherent
-            bst_error(['Time definition for this file is not compatible with the other files' 10 ...
-                       'already loaded in Brainstorm.' 10 10 ...
-                       'Close existing windows before opening this file, or use the Navigator.'], 'Load recordings', 0);
-            % Remove it
-            UnloadDataSets(iDS);
-            %GlobalData.DataSet(iDS) = [];
-            iDS = [];
-            return;
+            res = java_dialog('question', [...
+                'The time definition is not compatible with previously loaded files.' 10 ...
+                'Unload all the other files first?' 10 10], 'Load recordings', [], {'Unload other files', 'Cancel'});
+            % Cancel: Unload the new dataset
+            if isempty(res) || strcmpi(res, 'Cancel')
+                UnloadDataSets(iDS);
+                iDS = [];
+                return;
+            % Otherwise: unload all the other datasets
+            else
+                % Save newly created dataset
+                bakDS = GlobalData.DataSet(iDS);
+                % Unload everything
+                UnloadAll('Forced');
+                % If not everything was unloaded correctly (eg. the user cancelled half way when asked to save the modifications)
+                if ~isempty(GlobalData.DataSet)
+                    % Unload the new dataset
+                    UnloadDataSets(iDS);
+                    iDS = [];
+                    return;
+                end
+                % Restore new dataset
+                GlobalData.DataSet = bakDS;
+                iDS = 1;
+                % Update time window
+                isTimeCoherent = CheckTimeWindows();
+            end
         end
     end
     
@@ -830,7 +916,8 @@ function F = FilterLoadedData(F, sfreq)
     isLowPass     = GlobalData.VisualizationFilters.LowPassEnabled;
     isHighPass    = GlobalData.VisualizationFilters.HighPassEnabled;
     isSinRemoval  = GlobalData.VisualizationFilters.SinRemovalEnabled;
-    isMirror      = GlobalData.VisualizationFilters.MirrorEnabled;
+    % isMirror      = GlobalData.VisualizationFilters.MirrorEnabled;
+    isMirror = 0;
     % Get time vector
     nTime = size(F,2);
     % Band-pass filter is active: apply it (only if real recordings => ignore time averages)
@@ -950,7 +1037,7 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
     % Get variables list
     File_whos = whos('-file', ResultsFullFile);
     
-    % ===== Is Result file is already loaded ? ====
+    % ===== Is Result file is already loaded ? ====  
     % If Result file is dependent from a Data file
     if ~isempty(DataFile)
         % Load (or simply get) DataSet associated with DataFile
@@ -982,11 +1069,18 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
     GlobalData.DataSet(iDS).StudyFile   = file_short(sStudy.FileName);
     
     % === NORMAL RESULTS FILE ===
+    NumberOfSamples = [];
+    SamplingRate = [];
     if any(strcmpi('ImageGridAmp', {File_whos.name}))
         % Load results .Mat
         ResultsMat = in_bst_results(ResultsFullFile, 0, 'Comment', 'Time', 'ChannelFlag', 'SurfaceFile', 'HeadModelType', 'ColormapType', 'DisplayUnits', 'GoodChannel', 'Atlas');
+        % Raw file: Use only the loaded time window
+        if ~isempty(DataFile) && strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw') && ~isempty(strfind(ResultsFullFile, '_KERNEL_'))
+            Time = GlobalData.DataSet(iDS).Measures.Time;
+            NumberOfSamples = GlobalData.DataSet(iDS).Measures.NumberOfSamples;
+            SamplingRate = GlobalData.DataSet(iDS).Measures.SamplingRate;
         % If Time does not exist, try to rebuild it
-        if isempty(ResultsMat.Time)
+        elseif isempty(ResultsMat.Time)
             % If DataSet.Measures is empty (if no data was loaded)
             if isempty(GlobalData.DataSet(iDS).Measures.Time)
                 % It is impossible to reconstruct the time vector => impossible to load ResultsFile
@@ -1020,6 +1114,13 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
     if (length(Time) == 1)
         Time = [0,0.001] + Time;
     end
+    % Sampling rate and number of samples
+    if isempty(NumberOfSamples)
+        NumberOfSamples = length(Time);
+    end
+    if isempty(SamplingRate)
+        SamplingRate = Time(2)-Time(1);
+    end
     
     % ===== LOAD CHANNEL FILE =====
     if ~isempty(ChannelFile)
@@ -1036,8 +1137,8 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
     Results.SurfaceFile     = ResultsMat.SurfaceFile;
     Results.Comment         = ResultsMat.Comment;
     Results.Time            = Time([1, end]);
-    Results.NumberOfSamples = length(Time);
-    Results.SamplingRate    = Time(2)-Time(1);
+    Results.NumberOfSamples = NumberOfSamples;
+    Results.SamplingRate    = SamplingRate;
     Results.ColormapType    = ResultsMat.ColormapType;
     Results.DisplayUnits    = ResultsMat.DisplayUnits;
     Results.Atlas           = ResultsMat.Atlas;
@@ -1501,13 +1602,37 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         end
         % Error message if it doesn't match
         if ~isFreqOk
-            bst_error(['Frequency definition for this file is not compatible with the other files' 10 ...
-                       'already loaded in Brainstorm.' 10 10 ...
-                       'Close existing windows before opening this file, or use the Navigator.'], 'Load time-frequency', 0);
-            iDS = [];
-            iTimefreq = [];
-            iResults = [];
-            return
+            res = java_dialog('question', [...
+                'The frequency definition is not compatible with previously loaded files.' 10 ...
+                'Unload all the other files first?' 10 10], 'Load time-frequency', [], {'Unload other files', 'Cancel'});
+            % Cancel: Unload the new dataset
+            if isempty(res) || strcmpi(res, 'Cancel')
+                iDS = [];
+                iTimefreq = [];
+                iResults = [];
+                return;
+            % Otherwise: unload all the other datasets
+            else
+                % Save newly created dataset
+                bakDS = GlobalData.DataSet(iDS);
+                % Unload everything
+                UnloadAll('Forced');
+                % If not everything was unloaded correctly (eg. the user cancelled half way when asked to save the modifications)
+                if ~isempty(GlobalData.DataSet)
+                    iTimefreq = [];
+                    iResults = [];
+                    iDS = [];
+                    return;
+                end
+                % Restore new dataset
+                GlobalData.DataSet = bakDS;
+                if ~isempty(iDS)
+                    iDS = 1;
+                end
+                % Update frequencies
+                GlobalData.UserFrequencies.Freqs = TimefreqMat.Freqs;
+                gui_brainstorm('ShowToolTab', 'FreqPanel');
+            end
         end
         % Current frequency
         if isempty(GlobalData.UserFrequencies.iCurrentFreq)
@@ -1729,11 +1854,14 @@ function R = GetConnectMatrixStd(Timefreq) %#ok<DEFNU>
     if (length(Timefreq.RowNames) == length(Timefreq.RefRowNames)) && (size(Timefreq.Std,1) < length(Timefreq.RowNames)^2)
         Timefreq.Std = process_compress_sym('Expand', Timefreq.Std, length(Timefreq.RowNames));
     end
-    % Reshape Std matrix: [Nrow x Ncol x Ntime x nFreq]
-    nTime = size(Timefreq.Std, 2);
-    nFreq = size(Timefreq.Std, 3);
-    R = reshape(Timefreq.Std, [length(Timefreq.RefRowNames), length(Timefreq.RowNames), nTime, nFreq]);
+    % Reshape Std matrix: [Nrow x Ncol x Ntime x nFreq x nBounds]
+    nTime   = size(Timefreq.Std, 2);
+    nFreq   = size(Timefreq.Std, 3);
+    nBounds = size(Timefreq.Std, 4);
+    R = reshape(Timefreq.Std, [length(Timefreq.RefRowNames), length(Timefreq.RowNames), nTime, nFreq, nBounds]);
 end
+
+
 
 
 %% ===== LOAD MATRIX FILE =====
@@ -1883,7 +2011,7 @@ function [DataValues, Std] = GetRecordingsValues(iDS, iChannel, iTime, isGradMag
         DataType = GlobalData.DataSet(iDS).Measures.DataType;
         % Get standard deviation
         if ~isempty(GlobalData.DataSet(iDS).Measures.Std)
-            Std = GlobalData.DataSet(iDS).Measures.Std(iChannel, iTime);
+            Std = GlobalData.DataSet(iDS).Measures.Std(iChannel, iTime, :, :);
         else
             Std = [];
         end
@@ -1895,7 +2023,9 @@ function [DataValues, Std] = GetRecordingsValues(iDS, iChannel, iTime, isGradMag
             DataValues = bst_scale_gradmag( DataValues, GlobalData.DataSet(iDS).Channel(iChannel));
             % Normalize standard deviation too
             if ~isempty(Std)
-                Std = bst_scale_gradmag(Std, GlobalData.DataSet(iDS).Channel(iChannel));
+                for iBound = 1:size(Std, 4)
+                    Std(:,:,:,iBound) = bst_scale_gradmag(Std(:,:,:,iBound), GlobalData.DataSet(iDS).Channel(iChannel));
+                end
             end
         end
     else
@@ -1952,12 +2082,12 @@ function [ResultsValues, nComponents, Std] = GetResultsValues(iDS, iResult, iVer
         if isempty(iRows)
             ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(:, iTime));
             if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
-                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(:, iTime));
+                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(:, iTime, :, :));
             end
         else
             ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(iRows, iTime));
             if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
-                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(iRows, iTime));
+                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(iRows, iTime, :, :));
             end
         end
     % === KERNEL ONLY ===
@@ -2891,6 +3021,10 @@ function isCancel = UnloadAll(varargin)
     % Forced unload MRI
     if isForced && ~KeepMri
         GlobalData.Mri = repmat(db_template('LoadedMri'), 0);
+    end
+    % Forced unload Fibers
+    if isForced
+        GlobalData.Fibers = repmat(db_template('LoadedFibers'), 0);
     end
     % Forced unload surfaces
     if isForced && ~KeepSurface

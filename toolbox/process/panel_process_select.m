@@ -25,7 +25,7 @@ function varargout = panel_process_select(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2019
 
 eval(macro_method);
 end
@@ -53,6 +53,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     else
         nInputsInit = 2;
         nFiles = [length(sFiles), length(sFiles2)];
+    end
+    % No inputs: skip
+    if isempty(sFiles)
+        return;
     end
     % Get initial type and subject
     InitialDataType = sFiles(1).FileType;
@@ -722,7 +726,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             try
                 procComment = sCurProcess.Function('FormatComment', sCurProcess);
             catch
-                procComment = ['Error: Function "' func2str(sCurProcess.Function) '" is not accessible'];
+                procComment = sCurProcess.Comment;
             end
             % Add "overwrite" option
             if isfield(sCurProcess.options, 'overwrite') && sCurProcess.options.overwrite.Value
@@ -1103,7 +1107,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     
                 case 'montage'
                     % Load channel file of first file in input
-                    ChannelMat = in_bst_channel(sFiles(1).ChannelFile, 'Channel');
+                    ChannelMat = in_bst_channel(sFiles(1).ChannelFile);
                     % Update automatic montages
                     panel_montage('UnloadAutoMontages');
                     if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
@@ -1111,6 +1115,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     end
                     if ismember('NIRS', {ChannelMat.Channel.Type})
                         panel_montage('AddAutoMontagesNirs', ChannelMat);
+                    end
+                    if ~isempty(ChannelMat.Projector)
+                        panel_montage('AddAutoMontagesProj', ChannelMat);
                     end
                     % Get all the montage names
                     AllMontages = panel_montage('GetMontage',[]);
@@ -2930,13 +2937,7 @@ function TimeVector = LoadRawTime(RawFile, FileFormat)
         return;
     end
     % Update time vector
-    if ~isempty(sFile.epochs)
-        NumberOfSamples = sFile.epochs(1).samples(2) - sFile.epochs(1).samples(1) + 1;
-        TimeVector = linspace(sFile.epochs(1).times(1), sFile.epochs(1).times(2), NumberOfSamples);
-    else
-        NumberOfSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
-        TimeVector = linspace(sFile.prop.times(1), sFile.prop.times(2), NumberOfSamples);
-    end
+    TimeVector = panel_time('GetRawTimeVector', sFile);
 end
     
 

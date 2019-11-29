@@ -116,7 +116,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Keep only these indices
     sInput.A = sInput.A(:, iTime, :);
     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
-        sInput.Std = sInput.Std(:, iTime, :);
+        sInput.Std = sInput.Std(:, iTime, :, :);
     end
     if isfield(sInput, 'TFmask') && ~isempty(sInput.TFmask)
         sInput.TFmask = sInput.TFmask(:, iTime, :);

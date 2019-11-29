@@ -21,7 +21,7 @@ function import_anatomy(iSubject)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013
+% Authors: Francois Tadel, 2013-2019
 
 % Get default import directory and formats
 LastUsedDirs = bst_get('LastUsedDirs');
@@ -54,6 +54,10 @@ switch (FileFormat)
         import_anatomy_bs(iSubject, AnatDir, [], 1, [], 0);
     case 'BrainVISA'
         import_anatomy_bv(iSubject, AnatDir, [], 1);
+    case 'CAT12'
+        import_anatomy_cat(iSubject, AnatDir, [], 1, [], 0);
+    case 'CAT12+Thick'
+        import_anatomy_cat(iSubject, AnatDir, [], 1, [], 1);
     case 'CIVET'
         import_anatomy_civet(iSubject, AnatDir, [], 1, [], 0);
     case 'CIVET+Thick'

@@ -44,7 +44,8 @@ iVideo = find(strcmpi({ChannelMat.Channel(:).Type}, 'Video'));
 if isempty(iVideo)
     error('No video time channel in this file');
 end
-[F, TimeVector] = in_fread(sFile, ChannelMat, [], sFile.prop.samples, iVideo);
+SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
+[F, TimeVector] = in_fread(sFile, ChannelMat, [], SamplesBounds, iVideo);
 
 % Read channel data for each event
 videoTimes = [];

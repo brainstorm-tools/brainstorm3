@@ -22,7 +22,7 @@ function varargout = process_delete( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -43,7 +43,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 1;
     % Definition of the options
     % === TARGET
-    sProcess.options.target.Comment = {'Delete selected files', 'Delete folders', 'Delete subjects', 'Delete raw file'};
+    sProcess.options.target.Comment = {'Delete selected files', 'Delete folders', 'Delete subjects'};  % , 'Delete raw file'
     sProcess.options.target.Type    = 'radio';
     sProcess.options.target.Value   = 1;
 end
@@ -110,17 +110,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Delete subjects
             db_delete_subjects( iSubjects );
             
-        % === RAW FILES ===
-        case 4
-            % Continuous raw file 
-            if strcmpi(sInputs(1).FileType, 'raw')
-                for i = 1:length(sInputs)
-                    panel_record('DeleteRawFile', sInputs(i).FileName, 1);
-                end
-            % Other files
-            else
-                bst_report('Error', sProcess, sInputs, 'The option "Delete raw file" can be used only to remove raw files.');
-            end
+%         % === RAW FILES ===
+%         case 4
+%             % Continuous raw file 
+%             if strcmpi(sInputs(1).FileType, 'raw')
+%                 for i = 1:length(sInputs)
+%                     panel_record('DeleteRawFile', sInputs(i).FileName, 1);
+%                 end
+%             % Other files
+%             else
+%                 bst_report('Error', sProcess, sInputs, 'The option "Delete raw file" can be used only to remove raw files.');
+%             end
     end
 end
 

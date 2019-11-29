@@ -22,7 +22,7 @@ function import_protocol(ZipFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2019
 
 global GlobalData;
 
@@ -102,9 +102,26 @@ bst_progress('stop');
         
 %% ===== LOAD PROTOCOL =====
 % Create protocol structure
+sProtocol = db_template('ProtocolInfo');
 sProtocol.Comment  = ProtocolName;
 sProtocol.SUBJECTS = subjectDir;
 sProtocol.STUDIES  = studyDir;
+% Copy informatin from the protocol.mat in this protocol
+protocolFile = bst_fullfile(ProtocolDir, 'data', 'protocol.mat');
+if file_exist(protocolFile)
+    ProtocolMat = load(protocolFile);
+    if isfield(ProtocolMat, 'ProtocolInfo')
+        if isfield(ProtocolMat.ProtocolInfo, 'iStudy') && ~isempty(ProtocolMat.ProtocolInfo.iStudy)
+            sProtocol.iStudy = ProtocolMat.ProtocolInfo.iStudy;
+        end
+        if isfield(ProtocolMat.ProtocolInfo, 'UseDefaultAnat') && ~isempty(ProtocolMat.ProtocolInfo.UseDefaultAnat)
+            sProtocol.UseDefaultAnat = ProtocolMat.ProtocolInfo.UseDefaultAnat;
+        end
+        if isfield(ProtocolMat.ProtocolInfo, 'UseDefaultChannel') && ~isempty(ProtocolMat.ProtocolInfo.UseDefaultChannel)
+            sProtocol.UseDefaultChannel = ProtocolMat.ProtocolInfo.UseDefaultChannel;
+        end
+    end
+end
 % Load the protocol in Brainstorm database
 iProtocol = db_edit_protocol('load', sProtocol);
 % Set current protocol

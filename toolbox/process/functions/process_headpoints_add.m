@@ -29,8 +29,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Add head points';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 25;
+    sProcess.SubGroup    = {'Import', 'Channel file'};
+    sProcess.Index       = 62;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ChannelFile#Automatic_registration';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};

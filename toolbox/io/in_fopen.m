@@ -1,4 +1,4 @@
-function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, ImportOptions)
+function [sFile, ChannelMat, errMsg, DataMat, ImportOptions] = in_fopen(DataFile, FileFormat, ImportOptions)
 % IN_FOPEN:  Open a file for reading in Brainstorm.
 %
 % USAGE:  [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, ImportOptions)
@@ -95,7 +95,7 @@ switch (FileFormat)
     case 'EEG-CURRY'
         [sFile, ChannelMat] = in_fopen_curry(DataFile);
     case {'EEG-EDF', 'EEG-BDF'}
-        [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions);
+        [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptions);
     case 'EEG-EEGLAB'
         [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions);
     case 'EEG-EGI-RAW'
@@ -113,9 +113,9 @@ switch (FileFormat)
     case 'EEG-NEUROSCAN-CNT'
         [sFile, ChannelMat] = in_fopen_cnt(DataFile, ImportOptions);
     case 'EEG-NEUROSCAN-EEG'
-        sFile = in_fopen_eeg(DataFile);
+        [sFile, ChannelMat] = in_fopen_eeg(DataFile);
     case 'EEG-NEUROSCAN-AVG'
-        sFile = in_fopen_avg(DataFile);
+        [sFile, ChannelMat] = in_fopen_avg(DataFile);
     case 'EEG-NEUROSCOPE'
         [sFile, ChannelMat] = in_fopen_neuroscope(DataFile);
     case 'EEG-NEURALYNX'
@@ -146,6 +146,11 @@ switch (FileFormat)
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);
+        
+    % ===== OBJECTS IN MEMORY =====
+    case 'MNE-PYTHON'
+        [sFile, ChannelMat] = in_fopen_mne(DataFile, ImportOptions);
+        
     % ===== CONVERT TO CONTINUOUS =====
     case 'EEG-ASCII'
         [DataMat, ChannelMat] = in_data_ascii(DataFile);
@@ -175,7 +180,6 @@ end
 if isempty(sFile) && ~isempty(DataMat)
     sFile = in_fopen_bstmat(DataMat);
 end
-
 % File could not be opened
 if isempty(sFile) && ischar(DataFile)
     error(['Cannot open data file: ', 10, DataFile]);
@@ -183,6 +187,9 @@ end
 
 % ===== EVENTS =====
 if isfield(sFile, 'events') && ~isempty(sFile.events)
+    % Fix structure
+    sFile.events = struct_fix_events(sFile.events);
+    
     % === SORT BY NAME ===
     % Remove the common components
     [tmp__, evtLabels] = str_common_path({sFile.events.label});
@@ -207,6 +214,16 @@ if isfield(sFile, 'events') && ~isempty(sFile.events)
         end
     end
 end
+
+% Fix output datamat structure if necessary
+if (nargout >= 4) && ~isempty(DataMat) && isfield(DataMat(1), 'Events')
+    for i = 1:length(DataMat)
+        if ~isempty(DataMat(i).Events)
+            DataMat.Events = struct_fix_events(DataMat.Events);
+        end
+    end
+end
+
 
 
 

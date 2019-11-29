@@ -293,24 +293,79 @@ function PastePathList()
     
     % Parse clipboard data
     try
-        eval(str);
-        numEmptyVars = 0;
-        if exist('sFiles', 'var') ~= 1
-            if exist('sFiles1', 'var') ~= 1
-                if isProcess1
-                    error('No files.');
+        % If there is an equal sign, this is a Matlab-formatted list
+        if length(strfind(str, '=')) >= 1
+            eval(str);
+            numEmptyVars = 0;
+            if exist('sFiles', 'var') ~= 1
+                if exist('sFiles1', 'var') ~= 1
+                    if isProcess1
+                        error('No files.');
+                    end
+                    sFiles = [];
+                    numEmptyVars = numEmptyVars + 1;
+                else
+                    sFiles = sFiles1;
                 end
-                sFiles = [];
+            end
+            if exist('sFiles2', 'var') ~= 1
+                sFiles2 = [];
                 numEmptyVars = numEmptyVars + 1;
-            else
-                sFiles = sFiles1;
+            end
+            assert(numEmptyVars < 2);
+        
+        % Otherwise, treat this as an unknown list with either commas (,;)
+        % or white spaces/tabs/line breaks as delimiters
+        else
+            sFiles2 = []; % Only a single list is supported here
+            
+            nChars = length(str);
+            sFiles = {};
+            nFiles = 0;
+            isReading = 0;
+            foundDelimiter = 0;
+            current = [];
+
+            for iChar = 1:nChars
+                c = str(iChar);
+                saveCurrent = 0;
+
+                % Quotes signal beginning or end of a single file path
+                if ismember(c, {'''', '"'})
+                    if isReading
+                        saveCurrent = 1;
+                        isReading = 0;
+                    else
+                        current = [];
+                        isReading = 1;
+                    end
+                % Delimiter signal next file
+                elseif ismember(c, {',', ';'}) && ~isReading
+                    foundDelimiter = 1;
+                    saveCurrent = 1;
+                % White spaces are either skipped or delimiters
+                elseif ismember(c, {' ', char(9), char(10)}) && ~isReading
+                    if foundDelimiter
+                        % skip
+                    else
+                        saveCurrent = 1;
+                    end
+                % Read character
+                else
+                    current = [current c];
+                end
+
+                if saveCurrent && ~isempty(current)
+                    sFiles{end + 1} = current;
+                    nFiles = nFiles + 1;
+                    current = [];
+                end
+            end
+
+            if ~isempty(current) && length(current) > 2
+                sFiles{end + 1} = current;
             end
         end
-        if exist('sFiles2', 'var') ~= 1
-            sFiles2 = [];
-            numEmptyVars = numEmptyVars + 1;
-        end
-        assert(numEmptyVars < 2);
     catch
         java_dialog('error', ['Could not properly parse your list of files.' 10 ...
             'Try to copy some files to see the proper format.']);
