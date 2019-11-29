@@ -1,10 +1,18 @@
-function [res, filteredComment] = node_apply_search_filter(iSearchFilter, fileType, fileComment, fileName)
-% NODE_CREATE_SUBJECT: Create subject node from subject structure.
+function [res, filteredComment] = node_apply_search(iSearch, fileType, fileComment, fileName)
+% NODE_APPLY_SEARCH: Apply a search structure to one or more file (node) in the database tree
 %
-% USAGE:  TODO
+% USAGE:  [res, filteredComment] = node_apply_search(iSearch, fileType, fileComment, fileName)
 %
 % INPUT: 
-%     - nodeSubject : TODO
+%    - iSearch: ID of the search to apply
+%    - fileType: Type of the file(s)
+%    - fileComment: Comment (name) of the file(s)
+%    - fileName: Path of the file(s)
+%
+% OUTPUT: 
+%    - res: Whether the file(s) pass the search (1) or not (0)
+%    - filteredComment: Comment (name) of the file to display on the search
+%                       tab (this allows us to bold searched keywords)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -29,7 +37,7 @@ function [res, filteredComment] = node_apply_search_filter(iSearchFilter, fileTy
 filteredComment = fileComment;
 
 % If no filter applied, the file passes by default
-if iSearchFilter == 0
+if iSearch == 0
     if iscell(fileName)
         res = true(1, length(fileName));
     else
@@ -38,11 +46,13 @@ if iSearchFilter == 0
     return;
 end
 
-searchRoot = panel_protocols('Search', 'get', iSearchFilter);
+% Get the active search
+searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
 if isempty(searchRoot)
-    error(sprintf('Could not find active search #%d', iSearchFilter));
+    error(sprintf('Could not find active search #%d', iSearch));
 end
 
+% Apply the search nodes recursively
 [res, boldKeywords] = TestSearchTree(searchRoot, fileType, fileComment, fileName);
 
 % Bold contained keywords in node comment
@@ -54,6 +64,9 @@ if nargout > 1 && ~isempty(boldKeywords)
 end
 end
 
+% Function that goes through child search nodes recursively
+%
+% Usage: see top of this file
 function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileName)
     if iscell(fileName)
         res = true(1, length(fileName));
@@ -64,6 +77,7 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
     nChildren = length(root.Children);
     boldKeywords = {};
     
+    % Apply each child of search structure
     for iChild = 1:nChildren
         switch root.Children(iChild).Type
             case 1 % Search param
@@ -83,6 +97,7 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
                 error('Invalid node type.');
         end
         
+        % Combine child results using previously found boolean operator
         if ~isempty(curRes)
             switch nextBool
                 case 1 % AND
@@ -97,6 +112,7 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
     end
 end
 
+% Tests a database file using a db_template('searchparam') structure
 function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileName)
     boldKeyword = [];
     % Choose value to search for
@@ -164,14 +180,16 @@ function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileNa
     end
 end
 
-% Adds left and right delimiters around 'keyword' in string 'str' while
+% Adds left and right delimiters around 'keyword' in string 'allStr' while
 % keeping original case of keyword
 % Example: strAddKeywordDelimiter('This the', 'th', '<B>', '</B>')
 %    = '<B>Th</B>is <B>th</B>e'
-function out = strAddKeywordDelimiter(allStr, keyword, delL, delR)
+function outStr = strAddKeywordDelimiter(allStr, keyword, delL, delR)
+    % Repeat left delimiter if right delimiter not specified
     if nargin < 4
         delR = delL;
     end
+    % Support calls from both a single string and cell array of string
     isSingle = ~iscell(allStr);
     if isSingle
         allStr = {allStr};

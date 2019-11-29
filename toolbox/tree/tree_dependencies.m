@@ -692,7 +692,7 @@ end
         end
         % Apply search
         if iSearch > 0
-            isSelected = node_apply_search_filter(iSearch, FileType, Comments, FileNames);
+            isSelected = node_apply_search(iSearch, FileType, Comments, FileNames);
         else
             % Default: all the files are selected
             nFiles = length(FileNames);

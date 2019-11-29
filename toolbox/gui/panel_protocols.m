@@ -429,6 +429,7 @@ function UpdateTree(resetNodes)
     
 end
 
+% Gets the ID of the search currently active (or 0 if no search active)
 function iSearch = GetSelectedSearch()
     iSearch = 0;
     % Get tree handle
@@ -476,34 +477,6 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
     % Mark as updated
     nodeStudy.setUserObject([]);
     ctrl.jTreeProtocols.getModel.reload(nodeStudy);
-end
-
-%% ===== NODE: CREATE ALL STUDY NODES =====
-function CreateAllStudyNodes() %#ok<DEFNU>
-    % Get tree handle
-    ctrl = bst_get('PanelControls', 'protocols');
-    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
-        return;
-    end
-    
-    % Apply recursively starting at root
-    CreateAllStudyNodesRec(ctrl.jTreeProtocols.getModel.getRoot());
-end
-function CreateAllStudyNodesRec(curNode)
-    if isempty(curNode)
-        return
-    end
-
-    % Create node for study if appropriate type and not yet created
-    if ismember(char(curNode.getType()), {'condition', 'rawcondition', 'studysubject', 'study', 'defaultstudy'}) ...
-            && (curNode.getStudyIndex() ~= 0)
-        CreateStudyNode(curNode)
-    end
-    
-    % Apply recursively
-    for iChild = 0:curNode.getChildCount()-1
-        CreateAllStudyNodesRec(curNode.getChildAt(iChild));
-    end
 end
 
 
@@ -1395,6 +1368,7 @@ function ExpandAll(isExpand) %#ok<DEFNU>
 end
 
 %% ===== ADD DATABASE TAB =====
+% Creates a search tab in the database tree
 function AddDatabaseTab(tabName)
     import java.awt.GridBagConstraints;
     % Get tree handle
@@ -1402,10 +1376,6 @@ function AddDatabaseTab(tabName)
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
         return;
     end
-    
-    % Remove tab callback
-   % bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
-    %java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
     
     % Add default Database tab if first tab
     if ctrl.jTabpaneSearch.getTabCount() == 0
@@ -1441,12 +1411,14 @@ function AddDatabaseTab(tabName)
     c.weightx = 0;
     jPanelTab.add(jBtnClose, c);
     
+    % Select new tab
     ctrl.jTabpaneSearch.setTabComponentAt(index, jPanelTab);
     index = ctrl.jTabpaneSearch.indexOfTab(tabName);
     ctrl.jTabpaneSearch.setSelectedIndex(index);
 end
 
 %% ===== CLOSE DATABASE TAB =====
+% Closes the search tab of name "tabName"
 function CloseDatabaseTab(tabName)
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
@@ -1459,12 +1431,12 @@ function CloseDatabaseTab(tabName)
         return
     end
     
-    % Remove tab callback
+    % Remove tab changed callback
     bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
     java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
     
     ctrl.jTabpaneSearch.removeTabAt(index);
-    Search('remove', index);
+    ActiveSearch('remove', index);
     CloseDefaultDbTab();
     
     % Restore callback and call it exactly once
@@ -1472,6 +1444,7 @@ function CloseDatabaseTab(tabName)
     bakCallback();
 end
 
+% Iteratively closes all active database tabs
 function CloseAllDatabaseTabs()
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
@@ -1479,15 +1452,18 @@ function CloseAllDatabaseTabs()
         return;
     end
     
-    % Remove tab callback
+    % Remove tab changed callback
     bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
     java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
     
+    % Remove each tab one by one and release its Java objects
     while ctrl.jTabpaneSearch.getTabCount() > 1
         ctrl.jTabpaneSearch.removeTabAt(0);
-        Search('remove', 1);
+        ActiveSearch('remove', 1);
     end
 
+    % Close the default 'Database' tab since it's not needed without active
+    % searches
     CloseDefaultDbTab();
     
     % Restore callback and call it exactly once
@@ -1495,6 +1471,7 @@ function CloseAllDatabaseTabs()
     bakCallback();
 end
 
+% Closes the 'Default' database tab, only if no search is active
 function CloseDefaultDbTab()
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
@@ -1502,6 +1479,7 @@ function CloseDefaultDbTab()
         return;
     end
     
+    % Do not close this default tab if searches are active
     if ctrl.jTabpaneSearch.getTabCount() ~= 1
         return;
     end
@@ -1511,7 +1489,14 @@ function CloseDefaultDbTab()
     ctrl.jContainer.add(ctrl.jScrollPaneNew);
 end
 
-function Filter(tabName, filterRoot)
+% Applies search structure 'searchRoot' to tab 'tabName'
+%
+% Params:
+%  - tabName: str, name of tab
+%  - searchRoot: db_template('searchnode'), root of search structure
+%
+% Returns: nothing
+function ApplySearch(tabName, searchRoot)
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
@@ -1524,62 +1509,32 @@ function Filter(tabName, filterRoot)
     end
     
     % Save to list of active searches
-    Search('add', tabName, filterRoot);
+    ActiveSearch('add', tabName, searchRoot);
     % Update display
     UpdateTree();
 end
 
-function nodeTypes = GetNodeTypes(typeName)
-    if strcmp(typeName, 'Data')
-        nodeTypes = {'data'};
-    elseif strcmp(typeName, 'Raw data')
-        nodeTypes = {'rawdata'};
-    elseif strcmp(typeName, 'Source')
-        nodeTypes = {'results', 'link'};
-    elseif strcmp(typeName, 'Matrix')
-        nodeTypes = {'matrix'};
-    elseif strcmp(typeName, 'Power spectrum')
-        nodeTypes = {'spectrum'};
-    elseif strcmp(typeName, 'Time-frequency')
-        nodeTypes = {'timefreq'};
-    elseif strcmp(typeName, 'Statistics')
-        nodeTypes = {'pdata', 'presults', 'ptimefreq', 'pmatrix'};
-    elseif strcmp(typeName, 'Subject')
-        nodeTypes = {'subject'};
-    elseif strcmp(typeName, 'Dipoles')
-        nodeTypes = {'dipoles'};
-    elseif strcmp(typeName, 'Noise covariance')
-        nodeTypes = {'noisecov'};
-    elseif strcmp(typeName, 'MRI')
-        nodeTypes = {'anatomy'};
-    elseif strcmp(typeName, 'Surface')
-        nodeTypes = {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'other'};
-    elseif strcmp(typeName, 'Fibers')
-        nodeTypes = {'fibers'};
-    elseif strcmp(typeName, 'Folder')
-        nodeTypes = {'study', 'condition', 'rawcondition'};
-    elseif strcmp(typeName, 'Channel')
-        nodeTypes = {'channel'};
-    elseif strcmp(typeName, 'Head model')
-        nodeTypes = {'headmodel'};
-    elseif strcmp(typeName, 'Kernel')
-        nodeTypes = {'kernel'};
-    elseif strcmp(typeName, 'Video')
-        nodeTypes = {'image', 'video'};
-    else
-        nodeTypes = {typeName};
-    end
-end
-
-function node = Search(func, indexOrName, inNode)
+% Function that lets you modify the ActiveSearches structure
+%
+% Params:
+%  - func: {'Get', 'Add', 'Remove'}, how to modify the search
+%  - indexOrName: ID or name of the search to work with
+%  - inNode: the db_template('searchnode') to save (for 'Add' only)
+%
+% Returns:
+%  - Get: the requested db_template('searchnode') structure
+%  - Other actions: nothing
+function node = ActiveSearch(func, indexOrName, inNode)
     global GlobalData
     
     node = [];
     numSearches = length(GlobalData.DataBase.ActiveSearches);
     
     switch lower(func)
+        % Get saved root node of requested search
         case 'get'
             if isnumeric(indexOrName)
+                % Search IDs start at 2 since ID 1 is reserved for whole DB
                 index = indexOrName + 1;
             else
                 index = find(strcmp({GlobalData.DataBase.ActiveSearches.Name}, indexOrName));
@@ -1589,17 +1544,21 @@ function node = Search(func, indexOrName, inNode)
             else
                 node = GlobalData.DataBase.ActiveSearches(index).SearchNode;
             end
+        % Add root node (inNode) of new search in memory
         case 'add'
             activeSearch = db_template('ActiveSearch');
             activeSearch.Name = indexOrName;
             activeSearch.SearchNode = inNode;
             GlobalData.DataBase.ActiveSearches(end + 1) = activeSearch;
+        % Remove nodes of requested search in memory
         case 'remove'
             if isnumeric(indexOrName)
+                % Search IDs start at 2 since ID 1 is reserved for whole DB
                 index = indexOrName + 1;
             else
                 index = find(strcmp({GlobalData.DataBase.ActiveSearches.Name}, indexOrName));
             end
+            % Ensure we cannot remove search #1 (whole DB) from memory
             if ~isempty(index) && index > 1 && index <= numSearches
                 iKeepNodes = 1:numSearches;
                 iKeepNodes(index) = [];
@@ -1609,9 +1568,20 @@ function node = Search(func, indexOrName, inNode)
     end
 end
 
+% Return the database nodes of requested search, if in memory
+%
+% Params:
+%  - iSearch: ID of the requested search
+%  - explorationMode: how the database is organised in the tree
+%       {'Subjects', 'StudiesSubj', 'StudiesCond'}
+%
+% Returns:
+%  - rootNode: Root node of the requested search
+%  - selNode: The node currently selected in the tree
 function [rootNode, selNode] = GetSearchNodes(iSearch, explorationMode)
     global GlobalData
     
+    % Make sure the search ID exists
     if iSearch + 1 > length(GlobalData.DataBase.ActiveSearches)
         rootNode = [];
         selNode  = [];
@@ -1636,6 +1606,16 @@ function [rootNode, selNode] = GetSearchNodes(iSearch, explorationMode)
     end
 end
 
+% Save the results of a search in memory for a specific display mode
+%
+% Params:
+%  - iSearch: ID of the requested search
+%  - explorationMode: how the database is organised in the tree
+%       {'Subjects', 'StudiesSubj', 'StudiesCond'}
+%  - rootNode: root of the result database nodes
+%  - selNode: the node currently selected in the tree
+%
+% Returns: nothing
 function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode)
     global GlobalData
     
@@ -1657,6 +1637,13 @@ function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode)
     end
 end
 
+% Clears all saved searches nodes from memory
+%
+% Params:
+%  - iSearches: list of search IDs to remove
+%       If empty, clear all searches
+%
+% Returns: nothing
 function ResetSearchNodes(iSearches)
     global GlobalData
     
@@ -1674,52 +1661,4 @@ function ResetSearchNodes(iSearches)
         GlobalData.DataBase.ActiveSearches(iSearch).FuncCondSelNode  = [];
     end
 end
-        
 
-function foundNode = findNode(nodeRoot, findType, iStudy)
-    if ismember(char(nodeRoot.getType()), findType) && nodeRoot.getStudyIndex() == iStudy
-        foundNode = nodeRoot;
-        return;
-    end
-    for iChild = 0:nodeRoot.getChildCount()-1
-        childNode = nodeRoot.getChildAt(iChild);
-        if ~isempty(childNode)
-            foundChildNode = findNode(nodeRoot.getChildAt(iChild), findType, iStudy);
-            if ~isempty(foundChildNode)
-                foundNode = foundChildNode;
-                return;
-            end
-        end
-    end
-    foundNode = [];
-end
-
-function ExpandSelectedNode()
-    % Get tree handle
-    ctrl = bst_get('PanelControls', 'protocols');
-    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
-        return;
-    end
-    
-    nodeRoot = ctrl.jTreeProtocols.getModel.getRoot();
-    if strcmp(bst_get('Layout', 'ExplorationMode'), 'StudiesSubj')
-        % Find condition
-        ProtocolInfo = bst_get('ProtocolInfo');
-        defNode = findNode(nodeRoot, {'study', 'condition', 'rawcondition'}, ProtocolInfo.iStudy);
-    else
-        % Find subject
-        [sSubject, iSubject] = bst_get('Subject');
-        defNode = findNode(nodeRoot, {'subject', 'studysubject'}, iSubject);
-    end
-
-    % If a default node is defined : select and expand it
-    if ~isempty(defNode)
-        % Expand default node
-        ExpandPath(defNode, 1);
-        % If default node is a study node
-        if ismember(char(defNode.getType()), {'study', 'studysubject', 'condition', 'rawcondition'})
-            % Select study node
-            SelectStudyNode(defNode);
-        end
-    end
-end

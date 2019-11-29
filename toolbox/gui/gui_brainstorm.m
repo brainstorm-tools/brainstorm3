@@ -251,16 +251,6 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jToolButtonStudiesCond = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_STUDYDB_COND, TB_DIM, jButtonGroup}, '<HTML><B>Functional data</B> (sorted by conditions):<BR>channels, head models, recordings, results</HTML>', [], []);
         % Search button
         jToolbarSearch      = gui_component('Toolbar', jPanelExplorerTop, java.awt.BorderLayout.EAST, []);
-        
-        %jToolSearchText = gui_component('Text', jToolbarSearch, [], '', [], [], [], 11);
-        %jSize = java_scaled('dimension', 90, 22);
-        %jToolSearchText.setPreferredSize(jSize);
-        %jToolSearchText.setMinimumSize(jSize);
-        %jToolSearchText.setMaximumSize(jSize);
-        %jToolSearchText.setOpaque(0);
-        %jToolSearchText.setBackground(java.awt.Color(0,0,0,0));
-        %jToolSearchText.setBorder([]);
-        
         jToolSearchDatabase = gui_component('Button', jToolbarSearch, [], [], {IconLoader.ICON_ZOOM, TB_DIM, jButtonGroup}, 'Search Database', @ButtonSearch_Callback, []);
     jPanelExplorer.add(jPanelExplorerTop, java.awt.BorderLayout.NORTH);
 
@@ -566,14 +556,14 @@ function GUI = CreateWindow() %#ok<DEFNU>
         end
         
         % Prompt user for search
-        filterRoot = gui_show_dialog('Search Database', @panel_search_database, 0);
-        if isempty(filterRoot)
+        searchRoot = gui_show_dialog('Search Database', @panel_search_database, 0);
+        if isempty(searchRoot)
             return;
         end
 
         % Extract short and unique tab name
         bst_progress('start', 'Database explorer', 'Applying search...');
-        node = panel_search_database('GetFirstValueNode', filterRoot);
+        node = panel_search_database('GetFirstValueNode', searchRoot);
         if iscell(node.Value)
             shortName = node.Value{1};
         else
@@ -590,8 +580,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Create tab
         panel_protocols('AddDatabaseTab', tabName);
         
-        % Apply filter
-        panel_protocols('Filter', tabName, filterRoot);
+        % Apply search
+        panel_protocols('ApplySearch', tabName, searchRoot);
         bst_progress('stop');
     end
 

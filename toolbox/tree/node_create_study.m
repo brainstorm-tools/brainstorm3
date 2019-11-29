@@ -542,7 +542,7 @@ end
             Modifier = 0;
         end
         % Apply search filter
-        [toDisplay, filteredComment] = node_apply_search_filter(iSearch, nodeType, nodeComment, nodeFileName);
+        [toDisplay, filteredComment] = node_apply_search(iSearch, nodeType, nodeComment, nodeFileName);
         % Create node
         allNodes(iNode).type = nodeType;
         allNodes(iNode).comment = filteredComment;
@@ -567,7 +567,7 @@ end
             Modifier = 0;
         end
         % Apply search filter
-        [toDisplay, filteredComment] = node_apply_search_filter(iSearch, nodeType, nodeComment, nodeFileName);
+        [toDisplay, filteredComment] = node_apply_search(iSearch, nodeType, nodeComment, nodeFileName);
         % No need to create child node if not to be displayed
         if ~toDisplay
             iCreatedNode = [];
@@ -615,7 +615,7 @@ end
 function [numElems, node] = CreateNode(parentNode, nodeType, nodeComment, ...
         nodeFileName, iItem, iStudy, iSearch, numElems)
     % Only create Java object is required
-    [isCreated, filteredComment] = node_apply_search_filter(iSearch, nodeType, nodeComment, nodeFileName);
+    [isCreated, filteredComment] = node_apply_search(iSearch, nodeType, nodeComment, nodeFileName);
     if isCreated
         node = parentNode.add(nodeType, filteredComment, nodeFileName, iItem, iStudy);
         numElems = numElems + 1;

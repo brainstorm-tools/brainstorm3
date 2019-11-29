@@ -1,4 +1,4 @@
-function numElems = node_create_subject(nodeSubject, sSubject, iSubject, iSearchFilter)
+function numElems = node_create_subject(nodeSubject, sSubject, iSubject, iSearch)
 % NODE_CREATE_SUBJECT: Create subject node from subject structure.
 %
 % USAGE:  node_create_subject(nodeSubject, sSubject, iSubject)
@@ -32,8 +32,8 @@ function numElems = node_create_subject(nodeSubject, sSubject, iSubject, iSearch
 import org.brainstorm.tree.*;
 
 % Parse inputs
-if nargin < 4 || iSearchFilter == 0
-    iSearchFilter = 0;
+if nargin < 4 || iSearch == 0
+    iSearch = 0;
     % No search applied: ensure the node is added to the database
     numElems = 1;
 else
@@ -66,7 +66,7 @@ else
         [nodeCreated, nodeAnatomy] = CreateNode('anatomy', ...
             char(sSubject.Anatomy(iAnatomy).Comment), ...
             char(sSubject.Anatomy(iAnatomy).FileName), ...
-            iAnatomy, iSubject, iSearchFilter);
+            iAnatomy, iSubject, iSearch);
 
         if nodeCreated
             % If current item is default one
@@ -90,7 +90,7 @@ else
         [nodeCreated, nodeSurface] = CreateNode(lower(SurfaceType), ...
             char(sSubject.Surface(iSurface).Comment), ...
             char(sSubject.Surface(iSurface).FileName), ...
-            iSurface, iSubject, iSearchFilter);
+            iSurface, iSubject, iSearch);
         if nodeCreated
             % If current item is default one
             if ismember(iSurface, sSubject.(['i' SurfaceType]))
@@ -104,10 +104,10 @@ end
 end
 
 function [isCreated, node] = CreateNode(nodeType, nodeComment, ...
-        nodeFileName, iItem, iStudy, iSearchFilter)
+        nodeFileName, iItem, iStudy, iSearch)
     import org.brainstorm.tree.BstNode;
     % Only create Java object is required
-    [isCreated, filteredComment] = node_apply_search_filter(iSearchFilter, nodeType, nodeComment, nodeFileName);
+    [isCreated, filteredComment] = node_apply_search(iSearch, nodeType, nodeComment, nodeFileName);
     if isCreated
         node = BstNode(nodeType, filteredComment, nodeFileName, iItem, iStudy);
     else
