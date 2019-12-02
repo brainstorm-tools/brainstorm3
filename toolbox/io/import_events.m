@@ -183,6 +183,24 @@ for iNew = 1:length(newEvents)
         end
     % Event exists: merge occurrences
     else
+        % Convert new event type if required
+        sizeTimeWindow = size(sFile.events(iEvt).times, 1);
+        sizeNewTimeWindow = size(newEvents(iNew).times, 1);
+        if sizeTimeWindow ~= sizeNewTimeWindow
+            if sizeTimeWindow == 1
+                % Convert to single event
+                disp(['BST> Warning: Event type of "', ...
+                     sFile.events(iEvt).label, ...
+                     '" inconsistent, converting to single event using start time.']);
+                newEvents(iNew).times = newEvents(iNew).times(1,:);
+            else
+                % Convert to extended event
+                disp(['BST> Warning: Event type of "', ...
+                     sFile.events(iEvt).label, ...
+                     '" inconsistent, converting to extended event.']);
+                newEvents(iNew).times = [newEvents(iNew).times; newEvents(iNew).times + 0.001];
+            end
+        end
         % Merge events occurrences
         sFile.events(iEvt).times      = [sFile.events(iEvt).times, newEvents(iNew).times];
         sFile.events(iEvt).epochs     = [sFile.events(iEvt).epochs, newEvents(iNew).epochs];
