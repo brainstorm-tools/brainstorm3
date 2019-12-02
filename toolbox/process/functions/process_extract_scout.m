@@ -876,6 +876,9 @@ function [sScoutsFinal, AllAtlasNames, sSurf] = GetScoutsInfo(sProcess, sInputs,
                 iAllScout = [];
                 % Search all the other atlases
                 for ia = 1:length(sSurf.Atlas)
+                    if isempty(sSurf.Atlas(ia).Scouts)
+                        continue;
+                    end
                     % Search for scout name
                     iScoutSurf = find(strcmpi(ScoutName, {sSurf.Atlas(ia).Scouts.Label}));
                     % Multiple scouts with the same name in an atlas: Error
