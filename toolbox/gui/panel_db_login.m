@@ -276,7 +276,27 @@ UpdatePanel();
                 catch
                     java_dialog('warning', 'Check server url!');
                 end
-               
+                %{
+                data=struct('email',char(jTextEmail.getText()),'password',char(jTextPassword.getText()),...
+                    'deviceid',char(device));
+                url=string(jTextServerUrl.getText());
+                url=url+"/user/login";
+                uri= URI(url);
+                [response,status] = bst_call(@HTTP_request,'POST','Default',data,url,0);
+                if strcmp(status,'200')~=1 && strcmp(status,'OK')~=1
+                    java_dialog('warning',status);
+                elseif strcmp(status,'401')==1 || strcmp(status,'Unauthorized')==1
+                    java_dialog('warning', 'Login failed. Your email or password is wrong!');
+                else
+                    content=response.Body;                      
+                        show(content);
+                        bst_set('Email',jTextEmail.getText());
+                        session = jsondecode(content.Data);
+                        bst_set('SessionId',string(session.sessionid));
+                        bst_set('UrlAdr',jTextServerUrl.getText());
+                        java_dialog('msgbox', 'Log in successfully!');
+                end
+               %}
             end
         end
         %gui_show('Preferences');
