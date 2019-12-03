@@ -185,15 +185,34 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
             OuterMat = in_tess_bst(OuterFile);
             InnerMat = in_tess_bst(InnerFile);
             % Merge all the surfaces
+            if OPTIONS.NumberOfbLayers == 3
             [newnode, newelem] = mergemesh(HeadMat.Vertices,  HeadMat.Faces,...
                                            OuterMat.Vertices, OuterMat.Faces,...
                                            InnerMat.Vertices, InnerMat.Faces);
+            elseif OPTIONS.NumberOfbLayers == 4
+            depth = -OPTIONS.skullThikness/1000;  % thickness of the new layer that should be the skull, experimental, to be vlidated. 
+            [NewVertices, NewFaces, ~] = bst_inflateORdeflate_surface (OuterMat.Vertices, OuterMat.Faces, depth);   
+            % Merge the surfaces
+            [newnode,newelem]=mergemesh(HeadMat.Vertices,  HeadMat.Faces,...
+                NewVertices, NewFaces,...
+               OuterMat.Vertices, OuterMat.Faces,...
+                                           InnerMat.Vertices, InnerMat.Faces);
+            end
+            
+%            % Find the seed point for each region
+%             center_inner = mean(InnerMat.Vertices);
+%             [tmp_,tmp_,tmp_,tmp_,seedRegion1] = raysurf(center_inner, [0 0 1], InnerMat.Vertices, InnerMat.Faces);
+%             [tmp_,tmp_,tmp_,tmp_,seedRegion2] = raysurf(center_inner, [0 0 1], OuterMat.Vertices, OuterMat.Faces);
+%             [tmp_,tmp_,tmp_,tmp_,seedRegion3] = raysurf(center_inner, [0 0 1], HeadMat.Vertices, HeadMat.Faces);
+%             regions = [seedRegion1; seedRegion2; seedRegion3];
+            
             % Find the seed point for each region
             center_inner = mean(InnerMat.Vertices);
-            [tmp_,tmp_,tmp_,tmp_,seedRegion1] = raysurf(center_inner, [0 0 1], InnerMat.Vertices, InnerMat.Faces);
-            [tmp_,tmp_,tmp_,tmp_,seedRegion2] = raysurf(center_inner, [0 0 1], OuterMat.Vertices, OuterMat.Faces);
-            [tmp_,tmp_,tmp_,tmp_,seedRegion3] = raysurf(center_inner, [0 0 1], HeadMat.Vertices, HeadMat.Faces);
-            regions = [seedRegion1; seedRegion2; seedRegion3];
+            % define seeds along the electrode axis
+            orig = center_inner; v0= [0 0 1];
+            [t,~,~,faceidx]=raytrace(orig,v0,newnode,newelem);
+            t=sort(t(faceidx)); t=(t(1:end-1)+t(2:end))*0.5; seedlen=length(t);
+            regions=repmat(orig(:)',seedlen,1)+repmat(v0(:)',seedlen,1).*repmat(t(:),1,3);            
 
             % Create tetrahedral mesh
             factor_bst = 1.e-6;
@@ -259,10 +278,15 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
     FemMat.Vertices = node;
     FemMat.Elements = elem(:,1:4);
     FemMat.Tissue = elem(:,5);
-    FemMat.TissueLabels = {'Inner','Outer','Scalp'};
+    if OPTIONS.NumberOfbLayers == 3
+        FemMat.TissueLabels = {'Inner','Outer','Scalp'};
+    elseif OPTIONS.NumberOfbLayers == 4
+        FemMat.TissueLabels = {'GM','CSF','Skull','Scalp'};
+    end
     % Add history
     FemMat = bst_history('add', FemMat, 'process_generate_fem', [...
         'Method=',    OPTIONS.Method, '', ...
+        'Number of layer=',    OPTIONS.NumberOfbLayers, '', ...
         'MaxVol=',    num2str(OPTIONS.MaxVol), ...
         'KeepRatio=', num2str(OPTIONS.KeepRatio)]);
     % Save to database
@@ -294,6 +318,24 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     % Other options: Switch depending on the method
     switch (Method)
         case 'BEM'
+            % Ask for method
+            res0 = java_dialog('question', [...
+                '<HTML><B>Three Layers</B>:<BR> Generates the volume mesh from the inner skull, <BR>' ...
+                'outer skull and the scalp surfaces<BR>' ...
+                '<B>Four Layers</B>:<BR> Generates the volume mesh from the inner skull, <BR>' ...
+                'outer skull and the scalp surfaces and adds <BR>' ...
+                'the CSF  (experimental).<BR><BR>'], ...
+                'Number of layers', [], {'3 Layers','4 Layers'}, '3 Layers');
+            if isempty(res0)
+                return
+            end    
+            % convert to integer :
+            if strcmp(res0,'3 Layers');  NumberOfbLayers = 3; end
+            if strcmp(res0,'4 Layers');  
+                NumberOfbLayers = 4;
+                skullThikness = 3; % This value will be the thickness of the new skull layer, the previous skull will be CSF ... to discuss and validate
+            end            
+            
             % Ask BEM meshing options
             res = java_dialog('input', {'Max tetrahedral volume (10=coarse, 0.0001=fine):', 'Percentage of elements kept (1-100%):'}, ...
                               'FEM mesh', [], {'0.1', '100'});
@@ -301,7 +343,12 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
             if isempty(res)
                 return
             end
+            
             % Get new values
+            OPTIONS.NumberOfbLayers = NumberOfbLayers;
+            if  OPTIONS.NumberOfbLayers == 4
+                OPTIONS.skullThikness = skullThikness;
+            end
             OPTIONS.MaxVol    = str2num(res{1});
             OPTIONS.KeepRatio = str2num(res{2}) ./ 100;
             if isempty(OPTIONS.MaxVol) || (OPTIONS.MaxVol < 0.000001) || (OPTIONS.MaxVol > 20) || ...
