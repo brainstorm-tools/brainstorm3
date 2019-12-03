@@ -655,7 +655,14 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                                 end
                                 % Copy type
                                 if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
-                                    ChannelMat.Channel(iChanBst).Type = upper(ChanInfo{iChanBids,2});
+                                    chanType = upper(ChanInfo{iChanBids,2});
+                                    % Special case for MEG BIDS: they split channel types into subtypes
+                                    if ismember(chanType, {'MEGMAG', 'MEGGRADAXIAL', 'MEGGRADPLANAR'})
+                                        chanType = 'MEG';
+                                    elseif ismember(chanType, {'MEGREFMAG', 'MEGREFGRADAXIAL', 'MEGREFGRADPLANAR'})
+                                        chanType = 'MEG REF';
+                                    end
+                                    ChannelMat.Channel(iChanBst).Type = chanType;
                                     isModifiedChan = 1;
                                 end
                                 % Copy group
