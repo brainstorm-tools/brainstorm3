@@ -89,6 +89,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jComboMethodEEG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
         jComboMethodEEG.addItem(BstListItem('eeg_3sphereberg', '', '3-shell sphere', []));
         jComboMethodEEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
+        jComboMethodEEG.addItem(BstListItem('duneuro', '', 'Duneuro FEM', []));
         jComboMethodEEG.setSelectedIndex(1);
     else
         jCheckMethodEEG = [];
@@ -391,6 +392,8 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         end
     end
     isOpenMEEG = any(strcmpi(allMethods, 'openmeeg'));
+    % Duneuro
+    isDuneuro = any(strcmpi(allMethods, 'duneuro'));
     % Get protocol description
     ProtocolInfo = bst_get('ProtocolInfo');
 
@@ -641,6 +644,47 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             OPTIONS.BemNames = OPTIONS.BemNames(OPTIONS.BemSelect);
             OPTIONS.BemCond  = OPTIONS.BemCond(OPTIONS.BemSelect);
         end
+        
+        %% ===== DUNEURO =====
+        if isDuneuro
+            % Panel for FEM option
+            % Ask for the source FEM Model
+            sourceModel = java_dialog('question', [...
+                '<HTML><B> Select Source Model <B>'], ...
+                'FEM Source Model', [], {'Venant','Subtraction','Partial_Integration'}, 'Venant');            
+            OPTIONS.FemSourceModel = lower(sourceModel);
+            % Add the source model name to the comment
+            OPTIONS.Comment = [OPTIONS.Comment '  ' sourceModel] ;
+            
+            % Path to the head fem model 
+            OPTIONS.FemHeadFile =  sSubject.Surface(sSubject.iFEM);
+            ProtocolInfo = bst_get('ProtocolInfo');  
+            FemHeadFile = fullfile(ProtocolInfo.SUBJECTS,OPTIONS.FemHeadFile.FileName); 
+            
+            % Get the number of layer and their name 
+            TissueLabels = load(FemHeadFile,'TissueLabels');
+            
+            % Get the number of layer and their name conductivity
+             if length(TissueLabels.TissueLabels) == 3
+                 %%% This is not the best way to do it .... but OK for this version
+                 %%% TODO : build
+                 %%% big panel with basic parameters and advanced
+                 %%% parameters ==> discuss with Francois 
+                    display_text = ['<HTML>Your FEM head model has three layers <BR> '...
+                                             'Enter here the values of the conductivity  <BR> '...
+                                             '' TissueLabels.TissueLabels{1} ', ' TissueLabels.TissueLabels{2} ',  ' TissueLabels.TissueLabels{3}];
+             elseif length(TissueLabels.TissueLabels) == 4
+                    display_text = ['<HTML>Your FEM head model has four layers <BR> '...
+                                             'Enter here the values of the conductivity  <BR> '...
+                                             '' TissueLabels.TissueLabels{1} ', ' TissueLabels.TissueLabels{2} ',  ' TissueLabels.TissueLabels{3} ',  ' TissueLabels.TissueLabels{4}];
+             end
+             [res, isCancel] = java_dialog('input', display_text, 'Conductivity Value');
+
+            if isCancel
+                return
+            end
+            OPTIONS.conductivity  = str2num(res);            
+        end        
         
         % ===== Compute HeadModel =====
         % Start process
