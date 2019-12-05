@@ -488,6 +488,27 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
         vertInfo = whos('-file', OPTIONS.BemFiles{iLayer}, 'Vertices');
         strHistory = [strHistory, ' | ', sprintf('%s %1.4f %dV', OPTIONS.BemNames{iLayer}, OPTIONS.BemCond(iLayer), vertInfo.size(1)) ];
     end
+else     
+    %% ===== COMPUTE: DUNEURO =====
+    if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
+        % Include sensors indices in the OPTIONS structure
+        OPTIONS.iMeg  = [iMeg iRef];
+        OPTIONS.iEeg  = iEeg;
+        OPTIONS.iEcog = iEcog;
+        OPTIONS.iSeeg = iSeeg;% Start progress bar
+        bst_progress('start', 'Head modeler', 'Starting Duneuro...');
+        % Initializations
+        Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
+        %% ====== DUNEURO COMPUTATION ====== %%
+        [Gain, errMessage] = bst_duneuro(OPTIONS);
+        if isempty(Gain)
+            OPTIONS = [];
+            bst_progress('stop');
+            errMessage = ['An unknown error occurred in the computation of the head model:' 10 ...
+                'NaN values found for valid sensors in the Gain matrix'];
+            OPTIONS = [];
+            return;
+        end    
 else
     % Initializations
     Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
@@ -495,7 +516,9 @@ end
 
 %% ===== COMPUTE: BRAINSTORM HEADMODELS =====
 if (~isempty(OPTIONS.MEGMethod) && ~strcmpi(OPTIONS.MEGMethod, 'openmeeg')) || ...
-   (~isempty(OPTIONS.EEGMethod) && ~strcmpi(OPTIONS.EEGMethod, 'openmeeg'))
+   (~isempty(OPTIONS.EEGMethod) && ~strcmpi(OPTIONS.EEGMethod, 'openmeeg')) && ...
+   ~ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}) %% I'm not sure with this test !! 
+
 
     % ===== DEFINE SPHERES FOR EACH SENSOR =====
     Param(1:length(OPTIONS.Channel)) = deal(struct(...
