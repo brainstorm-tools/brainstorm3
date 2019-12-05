@@ -62,7 +62,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option: EEG headmodel
     sProcess.options.eeg.Comment = '   - EEG method:';
     sProcess.options.eeg.Type    = 'combobox';
-    sProcess.options.eeg.Value   = {3, {'<none>', '3-shell sphere', 'OpenMEEG BEM'}};
+    sProcess.options.eeg.Value   = {4, {'<none>', '3-shell sphere', 'OpenMEEG BEM', 'Duneuro FEM'}};
     % Option: ECOG headmodel
     sProcess.options.ecog.Comment = '   - ECOG method:';
     sProcess.options.ecog.Type    = 'combobox';
