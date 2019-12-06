@@ -604,7 +604,7 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                 case 'm'
                     JumpMaximum(hFig);
                 
-                % C : Toggle crosshair visibility 
+                % C : Toggle crosshairs visibility 
                 case 'c'
                    checkCrosshair_Callback(hFig);
                     
@@ -675,8 +675,10 @@ function checkCrosshair_Callback(hFig, varargin)
     % Update crosshairs visibility
     if all(arrayfun(@(c) strcmp(c,'off'),get(hCrosshairs,'Visible')))
         set(hCrosshairs, 'Visible', 'on');
+        Handles.jCheckViewCrosshair.setSelected(1);
     else
         set(hCrosshairs, 'Visible', 'off');
+        Handles.jCheckViewCrosshair.setSelected(0);
     end
 end
 
