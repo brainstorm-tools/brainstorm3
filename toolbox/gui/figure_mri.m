@@ -604,7 +604,7 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                 case 'm'
                     JumpMaximum(hFig);
                 
-                % C : Toggle crosshairs visibility 
+                % C : Toggle crosshair visibility 
                 case 'c'
                    checkCrosshair_Callback(hFig);
                     
