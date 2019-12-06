@@ -673,11 +673,6 @@ function checkCrosshair_Callback(hFig, varargin)
                    Handles.crosshairSagittalH, Handles.crosshairSagittalV, ...
                    Handles.crosshairAxialH, Handles.crosshairAxialV];
     % Update crosshairs visibility
-%     if Handles.jCheckViewCrosshair.isSelected()
-%         set(hCrosshairs, 'Visible', 'on');
-%     else
-%         set(hCrosshairs, 'Visible', 'off');
-%     end
     if all(arrayfun(@(c) strcmp(c,'off'),get(hCrosshairs,'Visible')))
         set(hCrosshairs, 'Visible', 'on');
     else
