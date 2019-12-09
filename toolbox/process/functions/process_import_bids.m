@@ -656,11 +656,15 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                                 % Copy type
                                 if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
                                     chanType = upper(ChanInfo{iChanBids,2});
-                                    % Special case for MEG BIDS: they split channel types into subtypes
-                                    if ismember(chanType, {'MEGMAG', 'MEGGRADAXIAL', 'MEGGRADPLANAR'})
-                                        chanType = 'MEG';
-                                    elseif ismember(chanType, {'MEGREFMAG', 'MEGREFGRADAXIAL', 'MEGREFGRADPLANAR'})
-                                        chanType = 'MEG REF';
+                                    switch (chanType)
+                                        case 'MEGGRADPLANAR'    % Elekta planar gradiometer
+                                            chanType = 'MEG GRAD';
+                                        case 'MEGMAG'           % Elekta/4D/Yokogawa magnetometer
+                                            chanType = 'MEG MAG';
+                                        case 'MEGGRADAXIAL'     % CTF axial gradiometer
+                                            chanType = 'MEG';
+                                        case {'MEGREFMAG', 'MEGREFGRADAXIAL', 'MEGREFGRADPLANAR'}  % CTF/4D references
+                                            chanType = 'MEG REF';
                                     end
                                     ChannelMat.Channel(iChanBst).Type = chanType;
                                     isModifiedChan = 1;
