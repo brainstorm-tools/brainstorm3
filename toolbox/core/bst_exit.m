@@ -77,20 +77,25 @@ try
         end
     end
 catch
-  status = 0;
+  status = -1;
   return;
 end
 
 %% ===== CLOSE WINDOW =====
 % Only in the GUI was created
-if (GlobalData.Program.GuiLevel >= 0)
-    % Hide all the registered panels
-    listPanels = GlobalData.Program.GUI.panels;
-    for iPanel = 1:length(listPanels)
-        gui_hide(listPanels(iPanel)); 
-    end
-    % Close Brainstorm main window
-    ctrl.jBstFrame.dispose();
+try
+  if (GlobalData.Program.GuiLevel >= 0)
+      % Hide all the registered panels
+      listPanels = GlobalData.Program.GUI.panels;
+      for iPanel = 1:length(listPanels)
+          gui_hide(listPanels(iPanel)); 
+      end
+      % Close Brainstorm main window
+      ctrl.jBstFrame.dispose();
+  end
+catch
+  status = -1;
+  return;
 end
 % Release Brainstorm global mutex
 bst_mutex('release', 'Brainstorm');
