@@ -645,9 +645,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jPopup = java_create('javax.swing.JPopupMenu');
         % What field to search for: {'FileName', 'Comment'}
         groupTarget = java_create('javax.swing.ButtonGroup');
-        jRadioFilename = gui_component('RadioMenuItem', jPopup, [], 'Search file names', groupTarget, [], @(h,ev)SetFilterOption('Target', 'FileName'), fontSize);
-        jRadioComment  = gui_component('RadioMenuItem', jPopup, [], 'Search comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Comment'), fontSize);
-        jRadioParent   = gui_component('RadioMenuItem', jPopup, [], 'Search parent comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Parent'), fontSize);
+        jRadioFilename = gui_component('RadioMenuItem', jPopup, [], 'Search file paths', groupTarget, [], @(h,ev)SetFilterOption('Target', 'FileName'), fontSize);
+        jRadioComment  = gui_component('RadioMenuItem', jPopup, [], 'Search names',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Comment'), fontSize);
+        jRadioParent   = gui_component('RadioMenuItem', jPopup, [], 'Search parent names',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Parent'), fontSize);
         jPopup.addSeparator();
         % What to do with the filtered files: {'Select', 'Exclude'}
         groupAction = java_create('javax.swing.ButtonGroup');

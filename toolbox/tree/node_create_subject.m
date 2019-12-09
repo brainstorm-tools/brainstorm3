@@ -7,6 +7,10 @@ function numElems = node_create_subject(nodeSubject, sSubject, iSubject, iSearch
 %     - nodeSubject : BstNode object with Type 'subject' => Root of the subject subtree
 %     - sSubject    : Brainstorm subject structure
 %     - iSubject    : indice of the subject node in Brainstorm subjects list
+%     - iSearch     : ID of the active DB search, or empty/0 if none
+% OUTPUT:
+%     - numElems    : Number of node children elements (including self) that
+%                     pass the active search filter. If 0, node should be hidden
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -32,7 +36,7 @@ function numElems = node_create_subject(nodeSubject, sSubject, iSubject, iSearch
 import org.brainstorm.tree.*;
 
 % Parse inputs
-if nargin < 4 || iSearch == 0
+if nargin < 4 || isempty(iSearch) || iSearch == 0
     iSearch = 0;
     % No search applied: ensure the node is added to the database
     numElems = 1;
@@ -103,6 +107,15 @@ else
 end
 end
 
+% Create a Java object for a database node if it passes the active search
+%
+% Inputs:
+%  - nodeType to iStudy: See BstJava's constructor
+%  - iSearch: ID of the active search filter (or 0 if none)
+%
+% Outputs:
+%  - isCreated: Whether the node was actually created (1 or 0)
+%  - node: Newly created Java object for the node
 function [isCreated, node] = CreateNode(nodeType, nodeComment, ...
         nodeFileName, iItem, iStudy, iSearch)
     import org.brainstorm.tree.BstNode;

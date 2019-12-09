@@ -8,9 +8,11 @@ function [bstDefaultNode, nodeStudiesDB] = node_create_db_studies( nodeRoot, exp
 %    - nodeRoot       : BstNode Java object (tree root)
 %    - expandOrder    : {'condition', 'subject'}, type of the first level nodes:
 %                        Describes how the information is organized : condition/subject or subject/condition
+%    - iSearch        : ID of the active DB search, or empty/0 if none
 % OUTPUT: 
 %    - bstDefaultNode : default BstNode, that should be expanded and selected automatically
 %                       or empty matrix if no default node is defined
+%    - nodeStudiesDB  : Root node of the studies database tree
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -273,6 +275,8 @@ for i = 1:length(ProtocolStudies.Study)
                         % If Condition node was create
                         if ~isempty(nodeCondition)
                             if iSearch ~= 0
+                                % If we have a search filter active, only create
+                                % node if it (or its children) passes the filter
                                 numElems = node_create_study(nodeCondition, sStudy, iStudy, isExpandTrials, [], iSearch);
                                 createNode = foundSearch || numElems > 0;
                             else
@@ -308,6 +312,8 @@ for i = 1:length(ProtocolStudies.Study)
                 nodeStudy = BstNode('study', Comment, sStudy.FileName, iSubject, iStudy);
                 % Add study node to subject node
                 if iSearch ~= 0
+                    % If we have a search filter active, only create
+                    % node if it (or its children) passes the filter
                     numElems = node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, [], iSearch);
                     createNode = foundSearch || numElems > 0;
                 else
@@ -371,6 +377,8 @@ for i = 1:length(ProtocolStudies.Study)
                             % If Condition was created
                             if ~isempty(nodeCondition)
                                 if iSearch ~= 0
+                                    % If we have a search filter active, only create
+                                    % node if it (or its children) passes the filter
                                     numElems = node_create_study(nodeCondition, sStudy, iStudy, isExpandTrials, [], iSearch);
                                     createNode = numElems > 0;
                                 else
@@ -416,6 +424,8 @@ for i = 1:length(ProtocolStudies.Study)
                         nodeSubject = BstNode('defaultstudy', strComment, sStudy.BrainStormSubject, iSubject, iStudy);
                     end
                     if iSearch ~= 0
+                        % If we have a search filter active, only create
+                        % node if it (or its children) passes the filter
                         numElems = node_create_study(nodeSubject, sStudy, iStudy, isExpandTrials, [], iSearch);
                         createNode = numElems > 0;
                     else
@@ -447,6 +457,7 @@ for i = 1:length(ProtocolStudies.Study)
         % node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel); 
         
         % If there are some interesting things to display in the node: prepare for dynamic update
+        % Note: No dynamic update for active searches, so ensure iSearch is empty.
         if iSearch == 0 && (~isempty(sStudy.Data) || ~isempty(sStudy.Result) || ~isempty(sStudy.Stat) || ~isempty(sStudy.Image) || ~isempty(sStudy.Dipoles) || ~isempty(sStudy.Timefreq) || ~isempty(sStudy.Matrix) || ...
             ((~UseDefaultChannel || isDefaultStudyNode) && (~isempty(sStudy.HeadModel) || ~isempty(sStudy.Channel) || ~isempty(sStudy.NoiseCov))))
             % Set the node as un-processed
@@ -559,7 +570,7 @@ for i=1:length(nodeListDefaultStudy_subj)
     % Get parent node
     nodeParent = nodeDefStudy.getParent();
     if ~isempty(nodeParent) && (nodeParent.getChildCount() > 1)
-        % Remove no from parentn
+        % Remove no from parent
         nodeDefStudy.removeFromParent();
         % If first node of parent node is the 'Analysis-intra' node, put it after
         isGlobalCommonNode = strcmpi(nodeParent.getChildAt(0).getType(), 'defaultstudy');

@@ -9,6 +9,10 @@ function numElems = node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials,
 %     - iStudy    : indice of the study node in Brainstorm studies list
 %     - isExpandTrials    : If 1, force the trials list to be expanded at the subtree creation
 %     - UseDefaultChannel : If 1, do not display study's channels and headmodels
+%     - iSearch   : ID of the active DB search, or empty/0 if none
+% OUTPUT:
+%    - numElems   : Number of node children elements (including self) that
+%                   pass the active search filter. If 0, node should be hidden
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -38,7 +42,7 @@ end
 if (nargin < 5) || isempty(UseDefaultChannel)
     UseDefaultChannel = 0;
 end
-if (nargin < 6) || iSearch == 0
+if (nargin < 6) || isempty(iSearch) || iSearch == 0
     iSearch = 0;
     % No search applied: ensure the node is added to the database
     numElems = 1;
@@ -514,7 +518,7 @@ for iImage = 1:length(sStudy.Image)
     end
 end
 
-%TODO: Loop through allNodes and create java objects
+% Loop through all nodes and create java objects where appropriate
 nNodes = iNode - 1;
 CreatedNodes = javaArray('org.brainstorm.tree.BstNode', nodesDisplayed);
 iCreatedNode = 1;
@@ -522,6 +526,7 @@ for iNode = 1:nNodes
     if allNodes(iNode).toDisplay
         % Get parent node
         if allNodes(iNode).iParent == -1
+            % If no parent node specified, parent is root node
             parentNode = nodeStudy;
         else
             parentNode = CreatedNodes(allNodes(allNodes(iNode).iParent).iNode);
@@ -536,6 +541,15 @@ for iNode = 1:nNodes
     end
 end
 
+    % Creates a virtual parent node in the allNodes structure.
+    % Parent nodes are displayed if themselves pass the search filter or if
+    % any of their children or children's children pass the search filter.
+    %
+    % Inputs:
+    %  - nodeParent: ID of parent node in allNodes structure
+    %  - Other inputs: See BstJava's constructor
+    %
+    % Output: ID of created node in allNodes structure
     function iCreatedNode = CreateParentNode(nodeParent, nodeType, nodeComment, ...
         nodeFileName, iItem, iStudy, Modifier)
         if nargin < 8
@@ -561,6 +575,15 @@ end
         end
     end
 
+    % Creates a virtual child node in the allNodes structure.
+    % Child nodes are not created if they themselves do not pass the search
+    % filter. If they do, the display toggle is propagated to all parents.
+    %
+    % Inputs:
+    %  - nodeParent: ID of parent node in allNodes structure
+    %  - Other inputs: See BstJava's constructor
+    %
+    % Output: ID of created node in allNodes structure
     function iCreatedNode = CreateChildNode(nodeParent, nodeType, nodeComment, ...
         nodeFileName, iItem, iStudy, Modifier)
         if nargin < 8
@@ -585,14 +608,22 @@ end
         iCreatedNode = iNode;
         iNode = iNode + 1;
         % Propagate display toggle to parent
+        % (if we've reached this code, the node is to be displayed)
         nodesDisplayed = nodesDisplayed + 1;
         propagateNodeDisplay(nodeParent);
     end
 
+    % Recursive function that toggles ON the display of all parents of a
+    % node.
+    %
+    % Input: ID of the node to toggle ON the display of.
     function propagateNodeDisplay(iCurrentNode)
+        % Stop condition: no more parent or parent already displayed
         if iCurrentNode ~= -1 && ~allNodes(iCurrentNode).toDisplay
+            % Display current node
             allNodes(iCurrentNode).toDisplay = 1;
             nodesDisplayed = nodesDisplayed + 1;
+            % Recursive call to display parent
             propagateNodeDisplay(allNodes(iCurrentNode).iParent);
         end
     end
@@ -611,7 +642,17 @@ function FileName = FileStandard(FileName)
     end
 end
 
-
+% Create a Java object for a database node if it passes the active search
+%
+% Inputs:
+%  - parentNode: Java object of the parent node
+%  - nodeType to iStudy: See BstJava's constructor
+%  - iSearch: ID of the active search filter (or 0 if none)
+%  - numElems: Number of elements to be displayed so far
+%
+% Outputs:
+%  - numElems: Number of elements to be displayed, updated with new node
+%  - node: Newly created Java object for the node
 function [numElems, node] = CreateNode(parentNode, nodeType, nodeComment, ...
         nodeFileName, iItem, iStudy, iSearch, numElems)
     % Only create Java object is required
@@ -623,3 +664,4 @@ function [numElems, node] = CreateNode(parentNode, nodeType, nodeComment, ...
         node = [];
     end
 end
+

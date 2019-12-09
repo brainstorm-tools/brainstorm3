@@ -6,9 +6,11 @@ function [bstDefaultNode, nodeSubjectsDB] = node_create_db_subjects( nodeRoot , 
 %
 % INPUT: 
 %    - nodeRoot       : BstNode Java object (tree root)
+%    - iSearch        : ID of the active DB search, or empty/0 if none
 % OUTPUT: 
 %    - bstDefaultNode : default BstNode, that should be expanded and selected automatically
 %                       or empty matrix if no default node is defined
+%    - nodeSubjectsDB : Root node of the subjects database tree
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

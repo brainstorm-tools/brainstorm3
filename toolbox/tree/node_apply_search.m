@@ -4,7 +4,7 @@ function [res, filteredComment] = node_apply_search(iSearch, fileType, fileComme
 % USAGE:  [res, filteredComment] = node_apply_search(iSearch, fileType, fileComment, fileName)
 %
 % INPUT: 
-%    - iSearch: ID of the search to apply
+%    - iSearch: ID of the search to apply, or root of a search structure
 %    - fileType: Type of the file(s)
 %    - fileComment: Comment (name) of the file(s)
 %    - fileName: Path of the file(s)
@@ -36,20 +36,24 @@ function [res, filteredComment] = node_apply_search(iSearch, fileType, fileComme
 
 filteredComment = fileComment;
 
-% If no filter applied, the file passes by default
-if iSearch == 0
-    if iscell(fileName)
-        res = true(1, length(fileName));
-    else
-        res = 1;
+if isnumeric(iSearch)
+    % If no filter applied, the file passes by default
+    if iSearch == 0
+        if iscell(fileName)
+            res = true(1, length(fileName));
+        else
+            res = 1;
+        end
+        return;
     end
-    return;
-end
-
-% Get the active search
-searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
-if isempty(searchRoot)
-    error(sprintf('Could not find active search #%d', iSearch));
+    % Get the active search
+    searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
+    if isempty(searchRoot)
+        error(sprintf('Could not find active search #%d', iSearch));
+    end
+else
+    % Search structure provided in arguments
+    searchRoot = iSearch;
 end
 
 % Apply the search nodes recursively

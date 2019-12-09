@@ -781,11 +781,12 @@ end
         FileNames = lower(FileNames);
 
         % Eval filter expression to check if selected
-        isSelected = isSelected & cellfun(@(c)eval(NodelistOptions.Eval), FileNames);
+        isFilterSelected = cellfun(@(c)eval(NodelistOptions.Eval), FileNames);
         % Invert selection
         if ~NodelistOptions.isSelect
-            isSelected = ~isSelected;
+            isFilterSelected = ~isFilterSelected;
         end
+        isSelected = isSelected & isFilterSelected;
     end
 
 end
