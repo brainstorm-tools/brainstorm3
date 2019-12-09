@@ -509,13 +509,18 @@ function GUI = CreateWindow() %#ok<DEFNU>
         disp('BST> Warning: Unable to save current window position.');
       end
         
-        % Try to exit via bst_exit function
-        exit_status=bst_exit();
-        if (exit_status == -1)
-            % If window is not registered as a current Brainstorm process : just kill it
-            disp('BST> Warning: Force quiting.');
-            jBstFrame.dispose();
-        end
+      % Try to exit via bst_exit function
+      try
+          exit_status=bst_exit();
+          if (exit_status == -1)
+              % If window is not registered as a current Brainstorm process : just kill it
+              disp('BST> Warning: Force quiting.');
+              jBstFrame.dispose();
+          end
+      catch
+          disp('BST> Warning: Force quiting.');
+          jBstFrame.dispose();
+      end
     end
 
 
