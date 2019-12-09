@@ -493,7 +493,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %  =================================================================================
 %% ===== CLOSE WINDOW =====
     function closeWindow_Callback(varargin)
-      
+      try
         % If GUI was displayed: save current position
         if (GlobalData.Program.GuiLevel >= 1)
             % Update main window size and position
@@ -505,7 +505,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
             % bst_set('Layout', 'MainWindowPos', MainWindowPos);
             GlobalData.Preferences.Layout.MainWindowPos = MainWindowPos;
         end
-        
+      catch
+        disp('BST> Warning: Unable to save current window position.');
+      end
         
         % Try to exit via bst_exit function
         if (~bst_exit())
