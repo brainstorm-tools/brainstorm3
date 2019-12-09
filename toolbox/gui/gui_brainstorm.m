@@ -512,6 +512,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % Try to exit via bst_exit function
         if (~bst_exit())
             % If window is not registered as a current Brainstorm process : just kill it
+            disp('BST> Warning: Force quiting.');
             jBstFrame.dispose();
         end
     end
