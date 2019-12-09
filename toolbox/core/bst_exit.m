@@ -50,32 +50,36 @@ end
 % Stop execution
 rmappdata(0, 'BrainstormRunning');
 % Only in the GUI was created
-if (GlobalData.Program.GuiLevel >= 0)
-    % Protocols list
-    if isfield(ctrl, 'jComboBoxProtocols') && ~isempty(ctrl.jComboBoxProtocols)
-        java_setcb(ctrl.jToolButtonSubject,     'ItemStateChangedCallback', []);
-        java_setcb(ctrl.jToolButtonStudiesSubj, 'ItemStateChangedCallback', []);
-        java_setcb(ctrl.jToolButtonStudiesCond, 'ItemStateChangedCallback', []);
-        comboBoxModel = ctrl.jComboBoxProtocols.getModel();
-        java_setcb(comboBoxModel, 'ContentsChangedCallback', []);
+try
+    if (GlobalData.Program.GuiLevel >= 0)
+        % Protocols list
+        if isfield(ctrl, 'jComboBoxProtocols') && ~isempty(ctrl.jComboBoxProtocols)
+            java_setcb(ctrl.jToolButtonSubject,     'ItemStateChangedCallback', []);
+            java_setcb(ctrl.jToolButtonStudiesSubj, 'ItemStateChangedCallback', []);
+            java_setcb(ctrl.jToolButtonStudiesCond, 'ItemStateChangedCallback', []);
+            comboBoxModel = ctrl.jComboBoxProtocols.getModel();
+            java_setcb(comboBoxModel, 'ContentsChangedCallback', []);
+        end
+        % Panel SCOUTS
+        scoutsManagerControls = bst_get('PanelControls', 'Scout');
+        if ~isempty(scoutsManagerControls)
+            java_setcb(scoutsManagerControls.jListScouts, 'ValueChangedCallback', []);
+        end
+        % Panel CLUSTERS
+        clustersManagerControls = bst_get('PanelControls', 'Cluster');
+        if ~isempty(clustersManagerControls)
+            java_setcb(clustersManagerControls.jListClusters, 'ValueChangedCallback', []);
+        end
+        % PanelContainer TOOLS
+        jTabpaneTools = bst_get('PanelContainer', 'Tools');
+        if ~isempty(jTabpaneTools)
+            java_setcb(jTabpaneTools, 'StateChangedCallback', []);
+        end
     end
-    % Panel SCOUTS
-    scoutsManagerControls = bst_get('PanelControls', 'Scout');
-    if ~isempty(scoutsManagerControls)
-        java_setcb(scoutsManagerControls.jListScouts, 'ValueChangedCallback', []);
-    end
-    % Panel CLUSTERS
-    clustersManagerControls = bst_get('PanelControls', 'Cluster');
-    if ~isempty(clustersManagerControls)
-        java_setcb(clustersManagerControls.jListClusters, 'ValueChangedCallback', []);
-    end
-    % PanelContainer TOOLS
-    jTabpaneTools = bst_get('PanelContainer', 'Tools');
-    if ~isempty(jTabpaneTools)
-        java_setcb(jTabpaneTools, 'StateChangedCallback', []);
-    end
+catch
+  status = 0;
+  return;
 end
-
 
 %% ===== CLOSE WINDOW =====
 % Only in the GUI was created
