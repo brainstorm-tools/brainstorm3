@@ -493,6 +493,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %  =================================================================================
 %% ===== CLOSE WINDOW =====
     function closeWindow_Callback(varargin)
+      
         % If GUI was displayed: save current position
         if (GlobalData.Program.GuiLevel >= 1)
             % Update main window size and position
@@ -504,6 +505,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
             % bst_set('Layout', 'MainWindowPos', MainWindowPos);
             GlobalData.Preferences.Layout.MainWindowPos = MainWindowPos;
         end
+        
+        
         % Try to exit via bst_exit function
         if (~bst_exit())
             % If window is not registered as a current Brainstorm process : just kill it
