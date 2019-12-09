@@ -603,6 +603,10 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                 % M : Jump to maximum
                 case 'm'
                     JumpMaximum(hFig);
+                
+                % C : Toggle crosshairs visibility 
+                case 'c'
+                   checkCrosshair_Callback(hFig);
                     
                 % === SCROLL MRI CUTS ===
                 case {'x','y','z','1','2','3','4','5','6'}
@@ -665,12 +669,16 @@ function checkCrosshair_Callback(hFig, varargin)
     % Get figure Handles
     Handles = bst_figures('GetFigureHandles', hFig);
     % Get all the crosshairs in the figure
-    hCrosshairs = [Handles.crosshairCoronalH, Handles.crosshairCoronalV, Handles.crosshairSagittalH, Handles.crosshairSagittalV, Handles.crosshairAxialH, Handles.crosshairAxialV];
+    hCrosshairs = [Handles.crosshairCoronalH, Handles.crosshairCoronalV, ...
+                   Handles.crosshairSagittalH, Handles.crosshairSagittalV, ...
+                   Handles.crosshairAxialH, Handles.crosshairAxialV];
     % Update crosshairs visibility
-    if Handles.jCheckViewCrosshair.isSelected()
+    if all(arrayfun(@(c) strcmp(c,'off'),get(hCrosshairs,'Visible')))
         set(hCrosshairs, 'Visible', 'on');
+        Handles.jCheckViewCrosshair.setSelected(1);
     else
         set(hCrosshairs, 'Visible', 'off');
+        Handles.jCheckViewCrosshair.setSelected(0);
     end
 end
 
