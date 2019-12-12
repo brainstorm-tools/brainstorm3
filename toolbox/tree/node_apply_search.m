@@ -78,6 +78,7 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
         res = 1;
     end
     nextBool = 0;
+    nextNot = 0;
     nChildren = length(root.Children);
     boldKeywords = {};
     
@@ -92,7 +93,11 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
                     boldKeywords{end + 1} = boldKeyword;
                 end
             case 2 % Boolean
-                nextBool = root.Children(iChild).Value;
+                if root.Children(iChild).Value == 3 % NOT
+                    nextNot = 1;
+                else
+                    nextBool = root.Children(iChild).Value;
+                end
                 curRes = [];
             case 3 % Nested block, apply test recursively
                 [curRes, boldKeywords2] = TestSearchTree(root.Children(iChild), fileType, fileComment, fileName);
@@ -103,6 +108,11 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
         
         % Combine child results using previously found boolean operator
         if ~isempty(curRes)
+            % Apply NOT
+            if nextNot
+                curRes = ~curRes;
+                nextNot = 0;
+            end
             switch nextBool
                 case 1 % AND
                     res = res & curRes;
@@ -162,7 +172,7 @@ function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileNa
             allMatches = strfind(fileValue{iFile}, searchValue);
             matches(iFile) = ~isempty(allMatches);
             % Add bold tags to search keyword(s)
-            if matches(iFile) && ~param.Not
+            if matches(iFile)
                 boldKeyword = searchValue;
             end
         elseif param.EqualityType == 2
@@ -171,11 +181,6 @@ function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileNa
         else
             error('Unsupported equality type');
         end
-    end
-    
-    % Apply NOT operator
-    if param.Not
-        matches = ~matches;
     end
     
     % Propagate to all files

@@ -422,6 +422,19 @@ function panelContents = GetPanelContents()
                 iAndChild = iAndChild + 1;
             end
             
+            % Add NOT node
+            if jNot.isSelected()
+                andNode = db_template('searchnode');
+                andNode.Type = 2; % Boolean
+                andNode.Value = 3; % NOT
+                if iAndChild == 1
+                    orNode.Children = andNode;
+                else
+                    orNode.Children(iAndChild) = andNode;
+                end
+                iAndChild = iAndChild + 1;
+            end
+            
             % Add row node
             param = db_template('searchparam');
             param.SearchType = GetSearchType(char(jSearchBy.getSelectedItem()));
@@ -431,7 +444,6 @@ function panelContents = GetPanelContents()
             else % Other types: text box
                 param.Value = char(jSearchFor.getText());
             end
-            param.Not = jNot.isSelected();
             andNode = db_template('searchnode');
             andNode.Type = 1; % Search param
             andNode.Value = param;
@@ -459,6 +471,7 @@ function panelContents = GetPanelContents()
     % Check for empty searches
     if iOrChild > 1
         panelContents = root;
+        disp(SearchToString(root));
     else
         panelContents = [];
     end
@@ -565,6 +578,8 @@ function boolStr = GetBoolString(boolValue)
             boolStr = 'AND';
         case 2
             boolStr = 'OR';
+        case 3
+            boolStr = 'NOT';
         otherwise
             error('Unsupported boolean type');
     end
@@ -627,11 +642,6 @@ function str = SearchToString(searchRoot)
             type = GetSearchTypeString(searchRoot.Value.SearchType);
             equality = GetEqualityString(searchRoot.Value.EqualityType, ...
                 searchRoot.Value.CaseSensitive);
-            if searchRoot.Value.Not
-                not = 'NOT ';
-            else
-                not = '';
-            end
             val = searchRoot.Value.Value;
             % Convert cells to string
             if iscell(val)
@@ -646,11 +656,15 @@ function str = SearchToString(searchRoot)
             else
                 val = ['"' val '"'];
             end
-            str = [str '[' type ' ' not equality ' ' val ']'];
+            str = [str '[' type ' ' equality ' ' val ']'];
             
         % Boolean
         case 2
-            str = [str ' ' GetBoolString(searchRoot.Value) ' '];
+            % Do not add prefix space to NOT operator
+            if searchRoot.Value < 3
+                str = [str ' '];
+            end
+            str = [str GetBoolString(searchRoot.Value) ' '];
             
         % Parent node (apply recursively to children)
         case 3
@@ -674,9 +688,9 @@ function searchRoot = StringToSearch(searchStr)
     
     % State machine
     STATE_PARAM_START = 1;
-    STATE_BOOL_BLOCK  = 2;
-    STATE_TYPE        = 3;
-    STATE_EQUAL_NOT   = 4;
+    STATE_PARAM_NOT   = 2;
+    STATE_BOOL_BLOCK  = 3;
+    STATE_TYPE        = 4;
     STATE_EQUAL       = 5;
     STATE_VALUE       = 6;
     STATE_VALUE_ELEM  = 7;
@@ -714,7 +728,7 @@ function searchRoot = StringToSearch(searchStr)
                 foundWord = 1;
             end
         % Special characters
-        elseif ~quoted && ismember(c, {'(', ')', '[', ']', '{', '}', ','})
+        elseif ~quoted && ismember(c, {'(', ')', '[', ']', '{', '}', ',', '&', '|'})
             if isempty(word)
                 word = c;
             else
@@ -738,7 +752,7 @@ function searchRoot = StringToSearch(searchStr)
             reservedWord = 1;
             switch lower(word)
                 case '('
-                    if state ~= STATE_PARAM_START
+                    if state ~= STATE_PARAM_START && state ~= STATE_PARAM_NOT
                         error('Cannot open block bracket at position %d.', iChar);
                     end
                     node = db_template('searchnode');
@@ -757,7 +771,7 @@ function searchRoot = StringToSearch(searchStr)
                     nBlocksOpen = nBlocksOpen - 1;
 
                 case '['
-                    if state ~= STATE_PARAM_START
+                    if state ~= STATE_PARAM_START && state ~= STATE_PARAM_NOT
                         error('Cannot open search bracket at position %d.', iChar);
                     end
                     param = db_template('searchparam');
@@ -797,14 +811,18 @@ function searchRoot = StringToSearch(searchStr)
                     state = STATE_PARAM_START;
 
                 case 'not'
-                    if state ~= STATE_EQUAL_NOT
+                    if state ~= STATE_PARAM_START
                         error('NOT operator cannot be at position %d.', iChar-length(word));
                     end
-                    param.Not = 1;
-                    state = STATE_EQUAL;
+                    node = db_template('searchnode');
+                    node.Type = 2; % Boolean
+                    node.Value = 3; % NOT
+                    AddNode(node, curPath, iChild);
+                    iChild = iChild + 1;
+                    state = STATE_PARAM_NOT;
 
                 case {'equals', 'equals_case', 'contains', 'contains_case'}
-                    if state ~= STATE_EQUAL && state ~= STATE_EQUAL_NOT
+                    if state ~= STATE_EQUAL
                         error('Equality operator cannot be at position %d.', iChar-length(word));
                     end
                     [param.EqualityType, param.CaseSensitive] = GetEqualityType(word);
@@ -845,7 +863,7 @@ function searchRoot = StringToSearch(searchStr)
                     catch
                         error('Unsupported type %s at position %d.', word, iChar-length(word));
                     end
-                    state = STATE_EQUAL_NOT;
+                    state = STATE_EQUAL;
                     
                 case STATE_VALUE
                     param.Value = word;

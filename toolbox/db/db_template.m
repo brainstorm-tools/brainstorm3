@@ -1170,15 +1170,14 @@ switch lower(structureName)
             'EqualityType',  1, ...
                 ... % 1 = contains
                 ... % 2 = equals
-            'CaseSensitive', 0, ...
-            'Not',           0);
+            'CaseSensitive', 0);
         
     case 'searchnode'
         template = struct(...
             'Type',     0, ...
                 ... % 0 = null
                 ... % 1 = db_template('SearchParam') value
-                ... % 2 = Boolean value (1 = BOOL_AND, 2 = BOOL_OR)
+                ... % 2 = Boolean value (1 = AND, 2 = OR, 3 = NOT)
                 ... % 3 = Parent node (no value, only children)
             'Value',    [], ...
             'Children', []);
