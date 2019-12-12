@@ -182,7 +182,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 return;
             end
             isTag = node_apply_search(searchRoot, {sInputs.FileType}, ...
-                        {sInputs.Comment}, {sInputs.FileName});
+                        {sInputs.Comment}, {sInputs.FileName}, [sInputs.iStudy]);
     end
     % Ignore or select
     if isSelect

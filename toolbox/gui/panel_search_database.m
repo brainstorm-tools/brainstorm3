@@ -152,7 +152,7 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         end
         c.gridy = nextRow - (orGroup ~= 1);
         % Search by
-        jSearchBy = gui_component('ComboBox', [], [], [], {{'Name', 'File type', 'File path'}}, [], @(h, ev)SearchByChanged_Callback(orGroup, nextRow, h, ev));
+        jSearchBy = gui_component('ComboBox', [], [], [], {{'Name', 'File type', 'File path', 'Parent name'}}, [], @(h, ev)SearchByChanged_Callback(orGroup, nextRow, h, ev));
         java_setcb(jSearchBy, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
         c.gridx = 0;
         jPanelSearch1.add(jSearchBy, c);
@@ -486,6 +486,8 @@ function searchType = GetSearchType(searchBy)
             searchType = 2;
         case {'file path', 'path'}
             searchType = 3;
+        case {'parent name', 'parent'}
+            searchType = 4;
         otherwise
             error('Unsupported search type');
     end
@@ -500,6 +502,8 @@ function searchStr = GetSearchTypeString(searchType)
             searchStr = 'type';
         case 3
             searchStr = 'path';
+        case 4
+            searchStr = 'parent';
         otherwise
             error('Unsupported search type');
     end

@@ -1,13 +1,14 @@
-function [res, filteredComment] = node_apply_search(iSearch, fileType, fileComment, fileName)
+function [res, filteredComment] = node_apply_search(iSearch, fileType, fileComment, fileName, iStudy)
 % NODE_APPLY_SEARCH: Apply a search structure to one or more file (node) in the database tree
 %
-% USAGE:  [res, filteredComment] = node_apply_search(iSearch, fileType, fileComment, fileName)
+% USAGE:  [res, filteredComment] = node_apply_search(iSearch, fileType, fileComment, fileName, iStudy)
 %
 % INPUT: 
 %    - iSearch: ID of the search to apply, or root of a search structure
 %    - fileType: Type of the file(s)
 %    - fileComment: Comment (name) of the file(s)
 %    - fileName: Path of the file(s)
+%    - iStudy: Study ID (optional)
 %
 % OUTPUT: 
 %    - res: Whether the file(s) pass the search (1) or not (0)
@@ -34,6 +35,11 @@ function [res, filteredComment] = node_apply_search(iSearch, fileType, fileComme
 %
 % Authors: Martin Cousineau, 2019
 
+% Parse inputs
+if nargin < 5
+    iStudy = [];
+end
+
 filteredComment = fileComment;
 
 if isnumeric(iSearch)
@@ -57,7 +63,7 @@ else
 end
 
 % Apply the search nodes recursively
-[res, boldKeywords] = TestSearchTree(searchRoot, fileType, fileComment, fileName);
+[res, boldKeywords] = TestSearchTree(searchRoot, fileType, fileComment, fileName, iStudy);
 
 % Bold contained keywords in node comment
 if nargout > 1 && ~isempty(boldKeywords)
@@ -71,7 +77,7 @@ end
 % Function that goes through child search nodes recursively
 %
 % Usage: see top of this file
-function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileName)
+function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileName, iStudy)
     if iscell(fileName)
         res = true(1, length(fileName));
     else
@@ -87,7 +93,7 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
         switch root.Children(iChild).Type
             case 1 % Search param
                 param = root.Children(iChild).Value;
-                [curRes, boldKeyword] = TestParam(param, fileType, fileComment, fileName);
+                [curRes, boldKeyword] = TestParam(param, fileType, fileComment, fileName, iStudy);
                 % Save comment 
                 if any(curRes) && ~isempty(boldKeyword)
                     boldKeywords{end + 1} = boldKeyword;
@@ -127,7 +133,7 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
 end
 
 % Tests a database file using a db_template('searchparam') structure
-function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileName)
+function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileName, iStudy)
     boldKeyword = [];
     % Choose value to search for
     if param.SearchType == 1
@@ -139,6 +145,9 @@ function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileNa
     elseif param.SearchType == 3
         % File name
         fileValue = fileName;
+    elseif param.SearchType == 4
+        % Parent name
+        fileValue = GetParentComment(fileType, fileComment, fileName, iStudy);
     else
         error('Unsupported search type');
     end
@@ -233,5 +242,103 @@ function outStr = strAddKeywordDelimiter(allStr, keyword, delL, delR)
     
     if isSingle
         outStr = outStr{1};
+    end
+end
+
+% Extracts the comments of all parents (including study) of a node
+function ParentComments = GetParentComment(FileTypes, FileComments, FileNames, iStudies)
+    % Parse inputs
+    isSingle = ~iscell(FileNames);
+    isSingleType = ~iscell(FileTypes);
+    isSingleStudy = length(iStudies) <= 1;
+    if isSingle
+        FileNames = {FileNames};
+        FileComments  = {FileComments};
+    end
+    ParentComments = cell(1, length(FileComments));
+    
+    % Find parent for each file
+    for iFile = 1:length(FileNames)
+        % Get current file info
+        if isSingleType
+            FileType = FileTypes;
+        else
+            FileType = FileTypes{iFile};
+        end
+        if isSingleStudy
+            iStudy = iStudies;
+        else
+            iStudy = iStudies(iFile);
+        end
+        
+        % Get parent depending on type of current file
+        switch (FileType)
+            case {'results', 'link'}
+                % Find the file in database
+                if ~isempty(iStudy)
+                    [sStudyFile, iStudyFile, iResultFile] = bst_get('ResultsFile', FileNames{iFile}, iStudy);
+                else
+                    [sStudyFile, iStudyFile, iResultFile] = bst_get('ResultsFile', FileNames{iFile});
+                end
+                ParentComments{iFile} = sStudyFile.Name;
+                % Find the parent in the database
+                if ~isempty(sStudyFile.Result(iResultFile).DataFile)
+                    [sStudyParent, iStudyParent, iDataFile] = bst_get('DataFile', sStudyFile.Result(iResultFile).DataFile, iStudyFile);
+                    if ~isempty(sStudyParent)
+                        ParentComments{iFile} = [ParentComments{iFile} '|' sStudyParent.Data(iDataFile).Comment];
+                    end
+                end
+            case 'timefreq'
+                % Find the file in database
+                if ~isempty(iStudy)
+                    [sStudyFile, iStudyFile, iTfFile] = bst_get('TimefreqFile', FileNames{iFile}, iStudy);
+                else
+                    [sStudyFile, iStudyFile, iTfFile] = bst_get('TimefreqFile', FileNames{iFile});
+                end
+                ParentComments{iFile} = sStudyFile.Name;
+                ParentFile = sStudyFile.Timefreq(iTfFile).DataFile;
+                % Find the parent in the database
+                if ~isempty(ParentFile)
+                    switch (file_gettype(ParentFile))
+                        case 'data'
+                            [sStudyParent, iStudyParent, iDataFile] = bst_get('DataFile', ParentFile, iStudyFile);
+                            if ~isempty(sStudyParent)
+                                ParentComments{iFile} = [ParentComments{iFile} '|' sStudyParent.Data(iDataFile).Comment];
+                            end
+                        case {'results', 'link'}
+                            [sStudyParent, iStudyParent, iResultFile] = bst_get('ResultsFile', ParentFile, iStudyFile);
+                            if ~isempty(sStudyParent)
+                                ParentComments{iFile} = [ParentComments{iFile} '|' sStudyParent.Result(iResultFile).Comment];
+                            end
+                            % Add parent of parent
+                            ParentFile = sStudyParent.Result(iResultFile).DataFile;
+                            if ~isempty(ParentFile)
+                                [sStudyParent, iStudyParent, iDataFile] = bst_get('DataFile', ParentFile, iStudyFile);
+                                if ~isempty(sStudyParent)
+                                    ParentComments{iFile} = [ParentComments{iFile} '|' sStudyParent.Data(iDataFile).Comment];
+                                end
+                            end
+                        case 'matrix'
+                            [sStudyParent, iStudyParent, iMatrixFile] = bst_get('MatrixFile', ParentFile, iStudyFile);
+                            if ~isempty(sStudyParent)
+                                ParentComments{iFile} = [ParentComments{iFile} '|' sStudyParent.Matrix(iMatrixFile).Comment];
+                            end
+                    end
+                end
+            otherwise
+                % Get condition name
+                if isempty(iStudy)
+                    sStudy = bst_get('AnyFile', FileNames{iFile});
+                else
+                    sStudy = bst_get('Study', iStudy);
+                end
+                if ~isempty(sStudy)
+                    ParentComments{iFile} = sStudy.Name;
+                end
+        end
+    end
+    
+    if isSingle
+        ParentComments = ParentComments{1};
     end
 end

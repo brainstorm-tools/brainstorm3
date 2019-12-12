@@ -269,7 +269,7 @@ for i = 1:length(ProtocolStudies.Study)
                                 end
                             end
                             % Create node
-                            [foundSearch, nodeDisplayName] = node_apply_search(iSearch, nodeType, nodeDisplayName, pathCondition);
+                            [foundSearch, nodeDisplayName] = node_apply_search(iSearch, nodeType, nodeDisplayName, pathCondition, iStudy);
                             nodeCondition = BstNode(nodeType, nodeDisplayName, pathCondition, iSubject, 0, intDate);
                         end
                         % If Condition node was create
@@ -308,7 +308,7 @@ for i = 1:length(ProtocolStudies.Study)
                 else
                    [temp_, Comment] = bst_fileparts(sStudy.FileName);
                 end
-                [foundSearch, Comment] = node_apply_search(iSearch, 'study', Comment, sStudy.FileName);
+                [foundSearch, Comment] = node_apply_search(iSearch, 'study', Comment, sStudy.FileName, iStudy);
                 nodeStudy = BstNode('study', Comment, sStudy.FileName, iSubject, iStudy);
                 % Add study node to subject node
                 if iSearch ~= 0

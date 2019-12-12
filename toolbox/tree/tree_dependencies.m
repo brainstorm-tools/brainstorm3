@@ -175,7 +175,7 @@ try
                 switch lower(targetNodeType)
                     case 'data'
                         % Check search options
-                        if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType);
+                        if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                             continue;
                         end
                         % Include the selected data nodes
@@ -389,7 +389,7 @@ try
                 % Get file
                 if strcmpi(targetNodeType, 'timefreq')
                     % Check search options
-                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType);
+                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                         continue;
                     end
                     iDepStudies = [iDepStudies nodeStudies(iNode)];
@@ -401,7 +401,7 @@ try
                 % Get file
                 if strcmpi(targetNodeType, 'ptimefreq')
                     % Check search options
-                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType);
+                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                         continue;
                     end
                     iDepStudies = [iDepStudies nodeStudies(iNode)];
@@ -412,7 +412,7 @@ try
             case {'pdata', 'presults', 'pmatrix'}
                 if strcmpi(targetNodeType, nodeTypes{iNode})
                     % Check search options
-                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType);
+                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                         continue;
                     end
                     iDepStudies = [iDepStudies nodeStudies(iNode)];
@@ -423,7 +423,7 @@ try
             case 'dipoles'
                 if strcmpi(targetNodeType, nodeTypes{iNode})
                     % Check search options
-                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType);
+                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                         continue;
                     end
                     iDepStudies = [iDepStudies nodeStudies(iNode)];
