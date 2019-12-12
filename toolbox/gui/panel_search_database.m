@@ -585,6 +585,20 @@ function boolStr = GetBoolString(boolValue)
     end
 end
 
+% Returns the boolean ID from the selected boolean string
+function boolVal = GetBoolValue(boolStr)
+    switch lower(boolStr)
+        case 'and'
+            boolVal = 1;
+        case 'or'
+            boolVal = 2;
+        case 'not'
+            boolVal = 3;
+        otherwise
+            error('Unsupported boolean type');
+    end
+end
+
 % Returns the value of the first search node we can find (depth-first)
 function val = GetFirstValueNode(root)
     % If we have a search param node, return
@@ -633,6 +647,9 @@ function elem = GetSearchElement(orPanel, orGroup, andRow, iElem)
 end
 
 % Converts a search node structure to a string
+%
+% Param  : search structure, see db_template('searchnode')
+% Returns: search string, e.g. '([name CONTAINS "test"])'
 function str = SearchToString(searchRoot)
     str = [];
     
@@ -680,6 +697,9 @@ function str = SearchToString(searchRoot)
 end
 
 % Converts a search string to a search node structure
+%
+% Param  : search string, e.g. '([name CONTAINS "test"])'
+% Returns: search structure, see db_template('searchnode')
 function searchRoot = StringToSearch(searchStr)
     % Remove unnecessary parentheses
     if searchStr(1) == '(' && searchStr(end) == ')'
@@ -912,4 +932,54 @@ function searchRoot = StringToSearch(searchStr)
         end
         eval([str ' = node;']);
     end
+end
+
+% Concatenates two search structures together
+% e.g. ConcatenateSearches(A, B, 'AND') = (A AND B)
+%
+% Params:
+%  - search1: First search structure, see db_template('searchnode')
+%  - search2: Second search structure
+%  - boolOp : Boolean operator between the two searches (AND or OR)
+%  - not2   : Whether to add a NOT operator before second search
+%
+% Returns: A single concatenated search structure
+function searchRoot = ConcatenateSearches(search1, search2, boolOp, not2)
+    % Parse inputs
+    if nargin < 4 || isempty(not2)
+        not2 = 0;
+    end
+    if nargin < 3 || isempty(boolOp)
+        boolOp = 'AND';
+    end
+    
+    % Remove unnecessary root branch nodes from input searches
+    while search1.Type == 3 && length(search1.Children) == 1
+        search1 = search1.Children(1);
+    end
+    while search2.Type == 3 && length(search2.Children) == 1
+        search2 = search2.Children(1);
+    end
+    
+    % Create new search node with first search
+    searchRoot = db_template('searchnode');
+    searchRoot.Type = 3; % Parent node
+    searchRoot.Children = search1;
+    
+    % Add bool
+    node = db_template('searchnode');
+    node.Type = 2; % Bool
+    node.Value = GetBoolValue(boolOp);
+    searchRoot.Children(end + 1) = node;
+    
+    % Add NOT operator if required
+    if not2
+        node = db_template('searchnode');
+        node.Type = 2; % Bool
+        node.Value = 3; % NOT
+        searchRoot.Children(end + 1) = node;
+    end
+    
+    % Add second search
+    searchRoot.Children(end + 1) = search2;
 end
