@@ -711,9 +711,17 @@ end
 
 % Converts a search string to a search node structure
 %
-% Param  : search string, e.g. '([name CONTAINS "test"])'
+% Params:
+%  - searchStr: Search string, e.g. '([name CONTAINS "test"])'
+%  - searchType: Default search type when parameter block shortened
+%     - This is optional. Int values, see db_template('searchparam')
+%     - E.g. ('"test"', 1) = '([name CONTAINS "test"])'
 % Returns: search structure, see db_template('searchnode')
-function searchRoot = StringToSearch(searchStr)
+function searchRoot = StringToSearch(searchStr, searchType)
+    % Parse inputs
+    if nargin < 2
+        searchType = [];
+    end
     % Remove unnecessary parentheses
     if searchStr(1) == '(' && searchStr(end) == ')'
         searchStr = searchStr(2:end-1);
@@ -729,6 +737,8 @@ function searchRoot = StringToSearch(searchStr)
     STATE_VALUE_ELEM  = 7;
     STATE_VALUE_DEL   = 8;
     STATE_PARAM_END   = 9;
+    STATE_SHORT_ELEM  = 10;
+    STATE_SHORT_DEL   = 11;
     
     % Initialize state machine
     searchRoot = db_template('searchnode');
@@ -753,6 +763,9 @@ function searchRoot = StringToSearch(searchStr)
             if quoted
                 wasQuoted = 1;
                 quoted = 0;
+                if iChar == nChars
+                    foundWord = 1;
+                end
             else
                 quoted = 1;
             end
@@ -862,23 +875,41 @@ function searchRoot = StringToSearch(searchStr)
                     state = STATE_VALUE;
                     
                 case '{'
-                    if state ~= STATE_VALUE
+                    if state == STATE_VALUE
+                        param.Value = {};
+                        state = STATE_VALUE_ELEM;
+                    elseif (state == STATE_PARAM_START || state == STATE_PARAM_NOT) && ~isempty(searchType)
+                        % Special shortened syntax, assume default searchType
+                        param = db_template('searchparam');
+                        param.SearchType = searchType;
+                        state = STATE_SHORT_ELEM;
+                    else
                         error('Cannot open array bracket at position %d.', iChar);
                     end
-                    param.Value = {};
-                    state = STATE_VALUE_ELEM;
                     
                 case '}'
-                    if state ~= STATE_VALUE_DEL
+                    if state == STATE_VALUE_DEL
+                        state = STATE_PARAM_END;
+                    elseif state == STATE_SHORT_DEL
+                        % For shortened syntax, block finished
+                        node = db_template('searchnode');
+                        node.Type = 1; % Search node
+                        node.Value = param;
+                        AddNode(node, curPath, iChild);
+                        iChild = iChild + 1;
+                        state = STATE_BOOL_BLOCK;
+                    else
                         error('Cannot close array bracket at position %d.', iChar);
                     end
-                    state = STATE_PARAM_END;
                     
                 case ','
-                    if state ~= STATE_VALUE_DEL
+                    if state == STATE_VALUE_DEL
+                        state = STATE_VALUE_ELEM;
+                    elseif state == STATE_SHORT_DEL
+                        state = STATE_SHORT_ELEM;
+                    else
                         error('Unexpected array delimiter at position %d.', iChar);
                     end
-                    state = STATE_VALUE_ELEM;
                     
                 otherwise
                     reservedWord = 0;
@@ -894,7 +925,7 @@ function searchRoot = StringToSearch(searchStr)
                     try
                         param.SearchType = GetSearchType(word);
                     catch
-                        error('Unsupported type %s at position %d.', word, iChar-length(word));
+                        error('Unsupported type %s at position %d.', word, iChar-length(word)-wasQuoted*2);
                     end
                     state = STATE_EQUAL;
                     
@@ -906,8 +937,29 @@ function searchRoot = StringToSearch(searchStr)
                     param.Value{end + 1} = word;
                     state = STATE_VALUE_DEL;
                     
+                case STATE_SHORT_ELEM
+                    param.Value{end + 1} = word;
+                    state = STATE_SHORT_DEL;
+                    
+                case {STATE_PARAM_START, STATE_PARAM_NOT}
+                    % Special shortened syntax
+                    % Add node directly with default values
+                    if ~isempty(searchType)
+                        param = db_template('searchparam');
+                        param.SearchType = searchType;
+                        param.Value = word;
+                        node = db_template('searchnode');
+                        node.Type = 1; % Search node
+                        node.Value = param;
+                        AddNode(node, curPath, iChild);
+                        iChild = iChild + 1;
+                        state = STATE_BOOL_BLOCK;
+                    else
+                        error('Unexpected word %s at position %d.', word, iChar-length(word)-wasQuoted*2);
+                    end
+                    
                 otherwise
-                    error('Unexpected word %s at position %d.', word, iChar-length(word));
+                    error('Unexpected word %s at position %d.', word, iChar-length(word)-wasQuoted*2);
             end
         end
         

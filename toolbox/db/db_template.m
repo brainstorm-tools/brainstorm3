@@ -1167,6 +1167,7 @@ switch lower(structureName)
                 ... % 1 = file name (comment)
                 ... % 2 = file type
                 ... % 3 = file path (filename on harddrive)
+                ... % 4 = parent name (comment of any parent)
             'EqualityType',  1, ...
                 ... % 1 = contains
                 ... % 2 = equals
