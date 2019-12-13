@@ -1514,7 +1514,7 @@ function ApplySearch(tabName, searchRoot)
     UpdateTree();
 end
 
-% Function that lets you modify the ActiveSearches structure
+% Function that lets you modify the Searches.Active structure
 %
 % Params:
 %  - func: {'Get', 'Add', 'Remove'}, how to modify the search
@@ -1528,7 +1528,7 @@ function node = ActiveSearch(func, indexOrName, inNode)
     global GlobalData
     
     node = [];
-    numSearches = length(GlobalData.DataBase.ActiveSearches);
+    numSearches = length(GlobalData.DataBase.Searches.Active);
     
     switch lower(func)
         % Get saved root node of requested search
@@ -1537,33 +1537,33 @@ function node = ActiveSearch(func, indexOrName, inNode)
                 % Search IDs start at 2 since ID 1 is reserved for whole DB
                 index = indexOrName + 1;
             else
-                index = find(strcmp({GlobalData.DataBase.ActiveSearches.Name}, indexOrName));
+                index = find(strcmp({GlobalData.DataBase.Searches.Active.Name}, indexOrName));
             end
             if isempty(index) || index > numSearches
                 node = [];
             else
-                node = GlobalData.DataBase.ActiveSearches(index).SearchNode;
+                node = GlobalData.DataBase.Searches.Active(index).SearchNode;
             end
         % Add root node (inNode) of new search in memory
         case 'add'
             activeSearch = db_template('ActiveSearch');
             activeSearch.Name = indexOrName;
             activeSearch.SearchNode = inNode;
-            GlobalData.DataBase.ActiveSearches(end + 1) = activeSearch;
+            GlobalData.DataBase.Searches.Active(end + 1) = activeSearch;
         % Remove nodes of requested search in memory
         case 'remove'
             if isnumeric(indexOrName)
                 % Search IDs start at 2 since ID 1 is reserved for whole DB
                 index = indexOrName + 1;
             else
-                index = find(strcmp({GlobalData.DataBase.ActiveSearches.Name}, indexOrName));
+                index = find(strcmp({GlobalData.DataBase.Searches.Active.Name}, indexOrName));
             end
             % Ensure we cannot remove search #1 (whole DB) from memory
             if ~isempty(index) && index > 1 && index <= numSearches
                 iKeepNodes = 1:numSearches;
                 iKeepNodes(index) = [];
                 ResetSearchNodes(index);
-                GlobalData.DataBase.ActiveSearches = GlobalData.DataBase.ActiveSearches(iKeepNodes);
+                GlobalData.DataBase.Searches.Active = GlobalData.DataBase.Searches.Active(iKeepNodes);
             end
     end
 end
@@ -1582,7 +1582,7 @@ function [rootNode, selNode] = GetSearchNodes(iSearch, explorationMode)
     global GlobalData
     
     % Make sure the search ID exists
-    if iSearch + 1 > length(GlobalData.DataBase.ActiveSearches)
+    if iSearch + 1 > length(GlobalData.DataBase.Searches.Active)
         rootNode = [];
         selNode  = [];
         return;
@@ -1591,16 +1591,16 @@ function [rootNode, selNode] = GetSearchNodes(iSearch, explorationMode)
     switch explorationMode
         case 'Subjects'
             % Anatomy view
-            rootNode = GlobalData.DataBase.ActiveSearches(iSearch+1).AnatRootNode;
-            selNode  = GlobalData.DataBase.ActiveSearches(iSearch+1).AnatSelNode;
+            rootNode = GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode;
+            selNode  = GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode;
         case 'StudiesSubj'
             % Functional view, grouped by subjects
-            rootNode = GlobalData.DataBase.ActiveSearches(iSearch+1).FuncSubjRootNode;
-            selNode  = GlobalData.DataBase.ActiveSearches(iSearch+1).FuncSubjSelNode;
+            rootNode = GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode;
+            selNode  = GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode;
         case 'StudiesCond'
             % Functional view, grouped by conditions
-            rootNode = GlobalData.DataBase.ActiveSearches(iSearch+1).FuncCondRootNode;
-            selNode  = GlobalData.DataBase.ActiveSearches(iSearch+1).FuncCondSelNode;
+            rootNode = GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode;
+            selNode  = GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode;
         otherwise
             error('Unsupported database view mode');
     end
@@ -1622,16 +1622,16 @@ function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode)
     switch explorationMode
         case 'Subjects'
             % Anatomy view
-            GlobalData.DataBase.ActiveSearches(iSearch+1).AnatRootNode = rootNode;
-            GlobalData.DataBase.ActiveSearches(iSearch+1).AnatSelNode  = selNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode = rootNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode  = selNode;
         case 'StudiesSubj'
             % Functional view, grouped by subjects
-            GlobalData.DataBase.ActiveSearches(iSearch+1).FuncSubjRootNode = rootNode;
-            GlobalData.DataBase.ActiveSearches(iSearch+1).FuncSubjSelNode  = selNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode = rootNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode  = selNode;
         case 'StudiesCond'
             % Functional view, grouped by conditions
-            GlobalData.DataBase.ActiveSearches(iSearch+1).FuncCondRootNode = rootNode;
-            GlobalData.DataBase.ActiveSearches(iSearch+1).FuncCondSelNode  = selNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode = rootNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode  = selNode;
         otherwise
             error('Unsupported database view mode');
     end
@@ -1649,16 +1649,16 @@ function ResetSearchNodes(iSearches)
     
     % If no parameter: reset everything
     if nargin < 1 || isempty(iSearches)
-        iSearches = 1:length(GlobalData.DataBase.ActiveSearches);
+        iSearches = 1:length(GlobalData.DataBase.Searches.Active);
     end
     
     for iSearch = iSearches
-        GlobalData.DataBase.ActiveSearches(iSearch).AnatRootNode = [];
-        GlobalData.DataBase.ActiveSearches(iSearch).AnatRootNode = [];
-        GlobalData.DataBase.ActiveSearches(iSearch).FuncSubjRootNode = [];
-        GlobalData.DataBase.ActiveSearches(iSearch).FuncSubjSelNode  = [];
-        GlobalData.DataBase.ActiveSearches(iSearch).FuncCondRootNode = [];
-        GlobalData.DataBase.ActiveSearches(iSearch).FuncCondSelNode  = [];
+        GlobalData.DataBase.Searches.Active(iSearch).AnatRootNode = [];
+        GlobalData.DataBase.Searches.Active(iSearch).AnatRootNode = [];
+        GlobalData.DataBase.Searches.Active(iSearch).FuncSubjRootNode = [];
+        GlobalData.DataBase.Searches.Active(iSearch).FuncSubjSelNode  = [];
+        GlobalData.DataBase.Searches.Active(iSearch).FuncCondRootNode = [];
+        GlobalData.DataBase.Searches.Active(iSearch).FuncCondSelNode  = [];
     end
 end
 

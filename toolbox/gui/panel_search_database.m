@@ -79,11 +79,18 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
     % First dropdown
     AddSearchRow(1, 1, 0);
     
-    % Buttons
-    jPanelBtn = gui_river();
-    fontSize = round(12 * bst_get('InterfaceScaling') / 100);
-    gui_component('Button', jPanelBtn, 'br right', 'Search', [], [], @ButtonSearch_Callback);
-    gui_component('Button', jPanelBtn, [], 'Cancel', [], [], @ButtonCancel_Callback);
+    %% Buttons
+    jPanelBtn = gui_component('Panel');
+    % Save & load toolbar
+    jPanelBtnLeft = gui_component('Toolbar', jPanelBtn, BorderLayout.WEST);
+    gui_component('ToolbarButton', jPanelBtnLeft, [], '', IconLoader.ICON_PROCESS_SELECT, 'Save & load searches', @(h,ev)ShowSaveLoadMenu(ev.getSource()));
+    % Search & Cancel buttons
+    jPanelBtnRight = java_create('javax.swing.JPanel');
+    jSearchBtn = gui_component('Button', [], [], 'Search', [], [], @ButtonSearch_Callback);
+    jCancelBtn = gui_component('Button', [], [], 'Cancel', [], [], @ButtonCancel_Callback);
+    jPanelBtnRight.add(jSearchBtn);
+    jPanelBtnRight.add(jCancelBtn);
+    jPanelBtn.add(jPanelBtnRight, BorderLayout.EAST);
     jPanelMain.add(jPanelBtn, BorderLayout.SOUTH);
     
     % Return a mutex to wait for panel close
@@ -365,6 +372,124 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         AddOrButton(lastOrGroup + 1);
         RefreshDialog();       
     end
+
+    % Save/Load search menu
+    function ShowSaveLoadMenu(jButton)
+        global GlobalData;
+        import org.brainstorm.icon.*;
+        % Create popup menu
+        jPopup = java_create('javax.swing.JPopupMenu');
+        % === LOAD SEARCH ===
+        % If some searches are defined
+        if ~isempty(GlobalData.DataBase.Searches.All)
+            jMenuLoad = gui_component('Menu', jPopup, [], 'Load', IconLoader.ICON_FOLDER_OPEN, [], []);
+            % List all the pipelines
+            for iSearch = 1:length(GlobalData.DataBase.Searches.All)
+                gui_component('MenuItem', jMenuLoad, [], GlobalData.DataBase.Searches.All(iSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)LoadSearch(iSearch));
+            end
+            jPopup.addSeparator();
+        end
+        
+        % === SAVE SEARCH ===
+        jMenuSave = gui_component('Menu', jPopup, [], 'Save', IconLoader.ICON_SAVE, [], []);
+        % List all the searches
+        for iSearch = 1:length(GlobalData.DataBase.Searches.All)
+            gui_component('MenuItem', jMenuSave, [], GlobalData.DataBase.Searches.All(iSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)SaveSearch(iSearch));
+        end
+        % Save new
+        gui_component('MenuItem', jMenuSave, [], 'New...', IconLoader.ICON_SAVE, [], @(h,ev)SaveSearch());
+        jPopup.addSeparator();
+        
+        % Copy to clipboard
+        gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopySearch());
+        % Paste from clipboard
+        gui_component('MenuItem', jPopup, [], 'Paste from clipboard', IconLoader.ICON_PASTE, [], @(h,ev)PasteSearch());
+       
+        % === DELETE SEARCH ===
+        % If some searches are defined
+        if ~isempty(GlobalData.DataBase.Searches.All)
+            jPopup.addSeparator();
+            jMenuDel = gui_component('Menu', jPopup, [], 'Delete', IconLoader.ICON_DELETE, [], []);
+            % List all the searches
+            for iSearch = 1:length(GlobalData.DataBase.Searches.All)
+                gui_component('MenuItem', jMenuDel, [], GlobalData.DataBase.Searches.All(iSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)DeleteSearch(iSearch));
+            end
+        end
+        
+        % Show popup menu
+        jPopup.show(jButton, 0, jButton.getHeight());
+    end
+
+    % Copy to clipboard
+    function CopySearch()
+        searchRoot = GetPanelContents();
+        if isempty(searchRoot)
+            return;
+        end
+        searchString = SearchToString(searchRoot);
+        disp('BST> Copied the following search string to clipboard:');
+        disp(searchString);
+        clipboard('copy', searchString);
+    end
+
+    % Save search
+    function SaveSearch(iSearch)
+        global GlobalData;
+        searchRoot = GetPanelContents();
+        if isempty(searchRoot)
+            return;
+        end
+        % Create new search
+        if (nargin < 1) || isempty(iSearch)
+            % Ask user the name for the new pipeline
+            newName = java_dialog('input', 'Enter a name for the new search:', 'Save search');
+            if isempty(newName)
+                return;
+            end
+            % Check if search already exists
+            if ~isempty(GlobalData.DataBase.Searches.All) && any(strcmpi({GlobalData.DataBase.Searches.All}, newName))
+                bst_error('A search with this name already exists.', 'Save search', 0);
+                return;
+            end
+            % Create new structure
+            newSearch.Name = newName;
+            newSearch.Search = searchRoot;
+            % Add to list
+            if isempty(GlobalData.DataBase.Searches.All)
+                GlobalData.DataBase.Searches.All = newSearch;
+            else
+                GlobalData.DataBase.Searches.All(end+1) = newSearch;
+            end
+        % Update existing search
+        else
+            % Ask for confirmation
+            isConfirm = java_dialog('confirm', ['Overwrite search "' GlobalData.DataBase.Searches.All(iSearch).Name '"?'], 'Save search');
+            % Overwrite existing entry
+            if isConfirm
+                GlobalData.DataBase.Searches.All(iSearch).Search = searchRoot;
+            end
+        end
+    end
+
+    % Delete search
+    function DeleteSearch(iSearch)
+        global GlobalData;
+        % Ask confirmation
+        if ~java_dialog('confirm', ['Delete search "' GlobalData.DataBase.Searches.All(iSearch).Name '"?'], 'Delete search')
+            return;
+        end
+        GlobalData.DataBase.Searches.All(iSearch) = [];
+    end
+
+    % Load search
+    function LoadSearch(iSearch)
+        disp('TODO: Load search');
+    end
+
+    % Paste from clipboard
+    function PasteSearch()
+        disp('TODO: Paste from clipboard');
+    end
 end
 
 % Returns the root of a recursive search node structure created from the
@@ -406,7 +531,6 @@ function panelContents = GetPanelContents()
         orNode.Type = 3; % Nested block
         
         % Iterate through AND rows
-        nAndComponents = orPanel.getComponentCount();
         andRow = 0;
         iAndChild = 1;
         while 1
@@ -417,6 +541,18 @@ function panelContents = GetPanelContents()
             jNot       = GetSearchElement(orPanel, orGroup, andRow, 3);
             jSearchFor = GetSearchElement(orPanel, orGroup, andRow, 4);
             if isempty(jSearchFor)
+                break;
+            end
+            
+            param = db_template('searchparam');
+            param.SearchType = GetSearchType(char(jSearchBy.getSelectedItem()));
+            if param.SearchType == 2 % File type: dropdown
+                param.Value = GetFileType(char(jSearchFor.getSelectedItem()));
+            else % Other types: text box
+                param.Value = char(jSearchFor.getText());
+            end
+            % Skip row if no value entered
+            if isempty(param.Value)
                 break;
             end
             
@@ -443,14 +579,7 @@ function panelContents = GetPanelContents()
             end
             
             % Add row node
-            param = db_template('searchparam');
-            param.SearchType = GetSearchType(char(jSearchBy.getSelectedItem()));
             [param.EqualityType, param.CaseSensitive] = GetEqualityType(char(jEquality.getSelectedItem()));
-            if param.SearchType == 2 % File type: dropdown
-                param.Value = GetFileType(char(jSearchFor.getSelectedItem()));
-            else % Other types: text box
-                param.Value = char(jSearchFor.getText());
-            end
             andNode = db_template('searchnode');
             andNode.Type = 1; % Search param
             andNode.Value = param;
@@ -460,6 +589,10 @@ function panelContents = GetPanelContents()
                 orNode.Children(iAndChild) = andNode;
             end
             iAndChild = iAndChild + 1;
+        end
+        
+        if iAndChild == 1
+            break;
         end
         
         % Remove unnecessary nested blocks, if applicable
@@ -478,7 +611,6 @@ function panelContents = GetPanelContents()
     % Check for empty searches
     if iOrChild > 1
         panelContents = root;
-        disp(SearchToString(root));
     else
         panelContents = [];
     end
