@@ -1,3 +1,6 @@
+December 2019
+---------------------------------------------------------------
+- IO: Added support for Wearable Sensing CSV files
 ---------------------------------------------------------------
 October 2019
 - IO: Conversion functions from/to MNE-python objects (Raw, Epoched, Evoked)
