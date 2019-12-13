@@ -604,17 +604,26 @@ function boolVal = GetBoolValue(boolStr)
 end
 
 % Returns the value of the first search node we can find (depth-first)
-function val = GetFirstValueNode(root)
+% Also returns whether we found a NOT operator before said value
+function [val, foundNot] = GetFirstValueNode(root, foundNot)
+    if nargin < 2
+        foundNot = 0;
+    end
     % If we have a search param node, return
     if root.Type == 1
         val = root.Value;
         return;
+    % Save if we found a NOT operator before the first value node
+    elseif root.Type == 2 && root.Value == 3
+        foundNot = 1;
     end
     
     % Apply function recursively on children and stop at first found value
     val = [];
     for iChild = 1:length(root.Children)
-        val = GetFirstValueNode(root.Children(iChild));
+        [val, foundNot2] = GetFirstValueNode(root.Children(iChild), foundNot);
+        % Propagate if we found a NOT operator
+        foundNot = foundNot | foundNot2;
         if ~isempty(val)
             return;
         end

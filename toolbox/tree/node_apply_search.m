@@ -95,7 +95,7 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
                 param = root.Children(iChild).Value;
                 [curRes, boldKeyword] = TestParam(param, fileType, fileComment, fileName, iStudy);
                 % Save comment 
-                if any(curRes) && ~isempty(boldKeyword)
+                if any(curRes) && ~nextNot && ~isempty(boldKeyword)
                     boldKeywords{end + 1} = boldKeyword;
                 end
             case 2 % Boolean
@@ -106,7 +106,7 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
                 end
                 curRes = [];
             case 3 % Nested block, apply test recursively
-                [curRes, boldKeywords2] = TestSearchTree(root.Children(iChild), fileType, fileComment, fileName);
+                [curRes, boldKeywords2] = TestSearchTree(root.Children(iChild), fileType, fileComment, fileName, iStudy);
                 boldKeywords = [boldKeywords, boldKeywords2];
             otherwise
                 error('Invalid node type.');

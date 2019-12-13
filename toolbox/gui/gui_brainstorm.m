@@ -563,13 +563,17 @@ function GUI = CreateWindow() %#ok<DEFNU>
 
         % Extract short and unique tab name
         bst_progress('start', 'Database explorer', 'Applying search...');
-        node = panel_search_database('GetFirstValueNode', searchRoot);
+        [node, foundNot] = panel_search_database('GetFirstValueNode', searchRoot);
         if iscell(node.Value)
             shortName = node.Value{1};
         else
             shortName = node.Value;
         end
-        shortName = shortName(1:min(length(shortName),10));
+        % Add NOT operator prefix if applicable
+        if foundNot
+            shortName = ['NOT ' shortName];
+        end
+        shortName = shortName(1:min(length(shortName), 12));
         tabName = shortName;
         id = 1;
         while ctrl.jTabpaneSearch.indexOfTab(tabName) >= 0
