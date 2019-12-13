@@ -493,6 +493,14 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %  =================================================================================
 %% ===== CLOSE WINDOW =====
     function closeWindow_Callback(varargin)
+        % Check that global variables are still accessible
+        if ~exist('GlobalData', 'var') || isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'GuiLevel') || isempty(GlobalData.Program.GuiLevel)
+            disp('BST> Error: Brainstorm global variables were cleared.');
+            disp('BST> Never call "clear" in your scripts while Brainstorm is running.');
+            % Force deleting the window
+            jBstFrame.dispose();
+            return;
+        end
         % If GUI was displayed: save current position
         if (GlobalData.Program.GuiLevel >= 1)
             % Update main window size and position
