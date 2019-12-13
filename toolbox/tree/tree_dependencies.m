@@ -84,10 +84,6 @@ if ~isempty(NodelistOptions)
     if ~isempty(strtrim(NodelistOptions.String))
         % Options
         NodelistOptions.isSelect  = strcmpi(NodelistOptions.Action, 'Select');
-        % Make search case insensitive
-        NodelistOptions.String = lower(NodelistOptions.String);
-        % Create filter eval expression
-        NodelistOptions.Eval = CreateFilterEvalExpression(NodelistOptions.String);
     end
 elseif iSearch > 0
     NodelistOptions = bst_get('NodelistOptions');
@@ -690,103 +686,49 @@ end
         if ischar(Comments)
             Comments = {Comments};
         end
-        % Apply search
-        if iSearch > 0
-            isSelected = node_apply_search(iSearch, FileType, Comments, FileNames);
+        isActiveSearch = iSearch > 0;
+        isActiveFilter = ~isempty(NodelistOptions.String);
+        % Get active search
+        if isActiveSearch
+            searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
+            if isempty(searchRoot)
+                error('Could not find active search #%d', iSearch);
+            end
+        end
+        % Get process box filter
+        if isActiveFilter
+            searchString = strtrim(NodelistOptions.String);
+            % Advanced (shortened) search syntax
+            if isempty(strfind(searchString, '"'))
+                % If no quotes found in search string, consider it as a
+                % whole string matching and not search syntax
+                searchString = ['"' searchString '"'];
+            end
+            filterRoot = panel_search_database('StringToSearch', searchString, NodelistOptions.Target);
+            invertSelection = ~NodelistOptions.isSelect;
+            % Concatenate to search filter
+            if isActiveSearch
+                searchRoot = panel_search_database('ConcatenateSearches', ...
+                    searchRoot, filterRoot, 'AND', invertSelection);
+                invertSelection = 0;
+            else
+                searchRoot = filterRoot;
+            end
+        else
+            invertSelection = 0;
+        end
+
+        if isActiveSearch || isActiveFilter
+            % Apply search and filter together
+            isSelected = node_apply_search(searchRoot, FileType, Comments, FileNames, iStudy);
+            if invertSelection
+                isSelected = ~isSelected;
+            end
         else
             % Default: all the files are selected
             nFiles = length(FileNames);
             isSelected = true(1, nFiles);
         end
-        if isempty(NodelistOptions.String)
-            return
-        end
-        % Results links: Add data comment
-        if strcmpi(NodelistOptions.Target, 'Comment')
-            for iFile = 1:length(FileNames)
-                if (nnz(FileNames{iFile} == '|') == 2)
-                    splitFile = str_split(FileNames{iFile}, '|');
-                    if ~isempty(iStudy)
-                        [sDataStudy,tmp,iDataStudy] = bst_get('DataFile', splitFile{3}, iStudy);
-                    else
-                        [sDataStudy,tmp,iDataStudy] = bst_get('DataFile', splitFile{3});
-                    end
-                    if ~isempty(iDataStudy)
-                        Comments{iFile} = [Comments{iFile} '|' sDataStudy.Data(iDataStudy).Comment];
-                    end
-                end
-            end
-        % If searching for comment in parent nodes too
-        elseif strcmpi(NodelistOptions.Target, 'Parent')
-            for iFile = 1:length(FileNames)
-                switch (file_gettype(FileNames{iFile}))
-                    case {'results', 'link'}
-                        % Find the file in database
-                        if ~isempty(iStudy)
-                            [sStudyFile, iStudyFile, iResultFile] = bst_get('ResultsFile', FileNames{iFile}, iStudy);
-                        else
-                            [sStudyFile, iStudyFile, iResultFile] = bst_get('ResultsFile', FileNames{iFile});
-                        end
-                        % Find the parent in the database
-                        if ~isempty(sStudyFile.Result(iResultFile).DataFile)
-                            [sStudyParent, iStudyParent, iDataFile] = bst_get('DataFile', sStudyFile.Result(iResultFile).DataFile, iStudyFile);
-                            if ~isempty(sStudyParent)
-                                Comments{iFile} = [Comments{iFile} '|' sStudyParent.Data(iDataFile).Comment];
-                            end
-                        end
-                    case 'timefreq'
-                        % Find the file in database
-                        if ~isempty(iStudy)
-                            [sStudyFile, iStudyFile, iTfFile] = bst_get('TimefreqFile', FileNames{iFile}, iStudy);
-                        else
-                            [sStudyFile, iStudyFile, iTfFile] = bst_get('TimefreqFile', FileNames{iFile});
-                        end
-                        ParentFile = sStudyFile.Timefreq(iTfFile).DataFile;
-                        % Find the parent in the database
-                        if ~isempty(ParentFile)
-                            switch (file_gettype(ParentFile))
-                                case 'data'
-                                    [sStudyParent, iStudyParent, iDataFile] = bst_get('DataFile', ParentFile, iStudyFile);
-                                    if ~isempty(sStudyParent)
-                                        Comments{iFile} = [Comments{iFile} '|' sStudyParent.Data(iDataFile).Comment];
-                                    end
-                                case {'results', 'link'}
-                                    [sStudyParent, iStudyParent, iResultFile] = bst_get('ResultsFile', ParentFile, iStudyFile);
-                                    if ~isempty(sStudyParent)
-                                        Comments{iFile} = [Comments{iFile} '|' sStudyParent.Result(iResultFile).Comment];
-                                    end
-                                    % Add parent of parent
-                                    ParentFile = sStudyParent.Result(iResultFile).DataFile;
-                                    if ~isempty(ParentFile)
-                                        [sStudyParent, iStudyParent, iDataFile] = bst_get('DataFile', ParentFile, iStudyFile);
-                                        if ~isempty(sStudyParent)
-                                            Comments{iFile} = [Comments{iFile} '|' sStudyParent.Data(iDataFile).Comment];
-                                        end
-                                    end
-                                case 'matrix'
-                                    [sStudyParent, iStudyParent, iMatrixFile] = bst_get('MatrixFile', ParentFile, iStudyFile);
-                                    if ~isempty(sStudyParent)
-                                        Comments{iFile} = [Comments{iFile} '|' sStudyParent.Matrix(iMatrixFile).Comment];
-                                    end
-                            end
-                        end
-                end
-            end
-        end
-        % Switch comments and file names
-        if ismember(NodelistOptions.Target, {'Comment', 'Parent'})
-            FileNames = Comments;
-        end
-        % Force file names to lower case
-        FileNames = lower(FileNames);
-
-        % Eval filter expression to check if selected
-        isFilterSelected = cellfun(@(c)eval(NodelistOptions.Eval), FileNames);
-        % Invert selection
-        if ~NodelistOptions.isSelect
-            isFilterSelected = ~isFilterSelected;
-        end
-        isSelected = isSelected & isFilterSelected;
     end
 
 end
@@ -797,143 +739,5 @@ end
 function isPure = isPureKernel(sResults)
     isPure = cellfun(@isempty, {sResults.DataFile}) & ...
              ~cellfun(@(c)isempty(strfind(c, 'KERNEL')), {sResults.FileName});   
-end
-
-
-%% ===== Building Filter tree =====
-function root = CreateFilterTree(s)
-    s = [s ' '];
-    root = struct();
-    root.word = '';
-    root.children = [];
-    path = [];
-    numChildren = 0;
-    quoting = 0;
-    ADD_BRANCH = 1;
-    END_BRANCH = 2;
-    word = '';
-    
-    for i = 1:length(s)
-        wordEnd = 0;
-        action = 0;
-        
-        % Check for special characters.
-        if s(i) == '"'
-            wordEnd = 1;
-            quoting = ~quoting;
-        elseif s(i) == '(' && ~quoting
-            wordEnd = 1;
-            action = ADD_BRANCH;
-        elseif s(i) == ')' && ~quoting
-            wordEnd = 1;
-            action = END_BRANCH;
-        elseif s(i) == ' ' && ~quoting
-            wordEnd = 1;
-        else
-            word = [word s(i)];
-        end
-        
-        % If this is the end of a word, store it.
-        if wordEnd
-            word = strtrim(word);
-            if ~isempty(word)
-                node = struct();
-                node.word = word;
-                node.children = [];
-                evalString = 'root';
-                for iPath = 1:length(path)
-                    evalString = [evalString '.children(' num2str(path(iPath)) ')'];
-                end
-                evalString = [evalString '.children'];
-                if ~isempty(eval(evalString))
-                    evalString = [evalString '(' num2str(numChildren + 1) ')'];
-                end
-                eval([evalString ' = node;']);
-                numChildren = numChildren + 1;
-            end
-            word = '';
-        end
-        
-        % Create new branch
-        if action == ADD_BRANCH
-            node = struct();
-            node.word = '';
-            node.children = [];
-            iChild = numChildren + 1;
-            path = [path, iChild];
-            evalString = 'root';
-            lastSelector = '';
-            for iPath = 1:length(path)
-                evalString = [evalString lastSelector '.children'];
-                lastSelector = ['(' num2str(path(iPath)) ')'];
-            end
-            if ~isempty(eval(evalString))
-                evalString = [evalString lastSelector];
-            end
-            eval([evalString ' = node;']);
-            numChildren = 0;
-        % Go back one branch
-        elseif action == END_BRANCH
-            path(end) = [];
-            evalString = 'root';
-            for iPath = 1:length(path)
-                evalString = [evalString '.children(' num2str(path(iPath)) ')'];
-            end
-            eval(['numChildren = length(' evalString '.children);']);
-        end
-    end
-end
-
-%% ===== Parsing filter tree recursively =====
-function [res, isWord] = ParseFilterTree(root)
-    % Change reserved words to symbol
-    isWord = 0;
-    if isempty(root.word)
-        res = '';
-    elseif any(strcmpi({'and', '&', '&&', '+'}, root.word))
-        res = '&&';
-    elseif any(strcmpi({'or', '|', '||'}, root.word))
-        res = '||';
-    elseif strcmpi(root.word, 'not')
-        res = '~';
-    % Add query for string to find if not reserved symbol
-    else
-        res = ['~isempty(strfind(c,''' root.word '''))'];
-        isWord = 1;
-    end
-    
-    % Recursive call to children
-    if isfield(root, 'children')
-        lastChildIsWord = 0;
-        for iChild = 1:length(root.children)
-            node = root.children(iChild);
-            [word, isWord] = ParseFilterTree(node);
-            % Add implicit AND if no operator between two tags specified
-            if lastChildIsWord && isWord
-                res = [res ' &&'];
-            end
-            lastChildIsWord = isWord;
-            if isfield(node, 'children') && ~isempty(node.children)
-                res = [res ' (' word ')'];
-            else
-                res = [res ' ' word];
-            end
-        end
-    end
-end
-
-%% ===== Combining filter calls =====
-function evalExpression = CreateFilterEvalExpression(s)
-    root = CreateFilterTree(s);
-    evalExpression = ParseFilterTree(root);
-    
-    % Validate expression
-    c = 'test';
-    try
-        tmp = eval(evalExpression);
-    catch
-        % If there is an error, use an "exclude all" expression instead.
-        evalExpression = '0';
-    end
 end
 

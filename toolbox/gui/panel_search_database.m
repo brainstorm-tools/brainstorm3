@@ -226,6 +226,12 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         jSearchEqual = GetSearchElement(panel, orGroup, andRow, 2);
         jSearchFor = GetSearchElement(panel, orGroup, andRow, 4);
         c = layout.getConstraints(jSearchFor);
+        % Get curent value
+        if isa(jSearchFor, 'javax.swing.JTextField')
+            searchForVal = jSearchFor.getText();
+        else
+            searchForVal = [];
+        end
         panel.remove(jSearchFor);
 
         % If "File type" is selected, create a dropdown of possible values
@@ -239,9 +245,10 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
             jSearchEqual.setSelectedIndex(2);
         % Otherwise, free-form text
         else
-            jSearchFor = gui_component('Text', [], 'hfill');
+            jSearchFor = gui_component('Text', [], 'hfill', searchForVal);
             jSearchEqual.setSelectedIndex(0);
         end
+        java_setcb(jSearchFor, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
 
         panel.add(jSearchFor, c);
         RefreshDialog();
@@ -480,11 +487,11 @@ end
 % Returns the search type ID from a search by string
 function searchType = GetSearchType(searchBy)
     switch lower(searchBy)
-        case 'name'
+        case {'name', 'comment'}
             searchType = 1;
         case {'file type', 'type'}
             searchType = 2;
-        case {'file path', 'path'}
+        case {'file path', 'path', 'filename'}
             searchType = 3;
         case {'parent name', 'parent'}
             searchType = 4;
@@ -721,6 +728,8 @@ function searchRoot = StringToSearch(searchStr, searchType)
     % Parse inputs
     if nargin < 2
         searchType = [];
+    elseif ischar(searchType)
+        searchType = GetSearchType(searchType);
     end
     % Remove unnecessary parentheses
     if searchStr(1) == '(' && searchStr(end) == ')'

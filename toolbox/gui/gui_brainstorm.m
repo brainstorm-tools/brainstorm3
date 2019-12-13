@@ -665,7 +665,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         switch (NodelistOptions.Target)
             case 'FileName', jRadioFilename.setSelected(1);
             case 'Comment',  jRadioComment.setSelected(1);
-            case 'Parent',   jRadioParent.setSelected(1);    
+            case 'Parent',   jRadioParent.setSelected(1);
         end
         switch (NodelistOptions.Action)
             case 'Select',  jRadioSelect.setSelected(1);
