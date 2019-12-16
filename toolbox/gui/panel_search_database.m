@@ -133,14 +133,23 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
     %  - nextRow: int > 0, ID of "AND" row in current "OR" group
     %  - addRemoveButton: whether the "Remove row" button should be enabled
     %       The First row of the first "OR" group cannot be removed
+    %  - refresh: whether we want to refresh the dialog afterwards (def: 1)
+    %  - values: values to set the new row to (default: blank row)
+    %       Structure: db_template('searchparam') + 'Not' field
     %
     % Returns: nothing
-    function AddSearchRow(orGroup, nextRow, addRemoveButton)
+    function AddSearchRow(orGroup, nextRow, addRemoveButton, refresh, values)
         import org.brainstorm.icon.*;
         import java.awt.GridBagConstraints;
         import java.awt.Insets;
         if nargin < 3
             addRemoveButton = 1;
+        end
+        if nargin < 4
+            refresh = 1;
+        end
+        if nargin < 5
+            values = [];
         end
         
         % Get last component
@@ -154,7 +163,7 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         
         % Remove AND button of previous row
         if nextRow > 1
-            andBtn = GetSearchElement(jPanelSearch1, orGroup, nextRow - 1, 5);
+            andBtn = GetSearchElement(jPanelSearch1, orGroup, nextRow - 1, 6);
             andBtn.setVisible(0);
         end
         c.gridy = nextRow - (orGroup ~= 1);
@@ -173,7 +182,11 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         c.gridx = 2;
         jPanelSearch1.add(jNot, c);
         % Search keyword
-        jSearchFor = gui_component('Text', [], 'hfill');
+        if ~isempty(values) && values.SearchType == 2 % File type
+            jSearchFor = gui_component('ComboBox', [], [], [], {GetSearchTypeValues()});
+        else
+            jSearchFor = gui_component('Text', [], 'hfill');
+        end
         java_setcb(jSearchFor, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
         c.weightx = 1;
         c.gridx = 3;
@@ -191,16 +204,32 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         c.gridx = 5;
         jPanelSearch1.add(jBoolean, c);
         
-        if addRemoveButton
+        % Add values if specified
+        if ~isempty(values)
+            jSearchBy.setSelectedIndex(values.SearchType - 1);
+            if isfield(values, 'Not')
+                jNot.setSelected(values.Not);
+            end
+            equalStr = GetEqualityString(values.EqualityType, values.CaseSensitive, 1);
+            jEquality.setSelectedItem(equalStr);
+            if values.SearchType == 2
+                jSearchFor.setSelectedItem(GetFileTypeDropdown(values.Value));
+            else
+                jSearchFor.setText(values.Value);
+            end
+        end
+        
+        if addRemoveButton && refresh
             % Refresh the dialog if this is not the first row so that it is
             % automatically resized to include new content
             RefreshDialog();
-        else
+        elseif refresh
             jPanelSearch1.revalidate();
             jPanelSearch1.repaint();
         end
     end
 
+    % Refreshes and resizes the search dialog
     function RefreshDialog()
         % Refresh search panel
         jPanelSearch.revalidate();
@@ -243,11 +272,7 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
 
         % If "File type" is selected, create a dropdown of possible values
         if jSearchBy.getSelectedIndex() == 1
-            jSearchFor = gui_component('ComboBox', [], [], [], {...
-                {'Channel', 'Data', 'Dipoles', 'Fibers', 'Folder', ...
-                'Head model', 'Kernel', 'MRI', 'Matrix', 'Noise covariance', ...
-                'Power spectrum', 'Raw data', 'Source', 'Statistics', ...
-                'Subject', 'Surface', 'Time-frequency', 'Video'}});
+            jSearchFor = gui_component('ComboBox', [], [], [], {GetSearchTypeValues()});
             jSearchFor.setSelectedIndex(1);
             jSearchEqual.setSelectedIndex(2);
         % Otherwise, free-form text
@@ -291,20 +316,13 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
             % need to remove components of the dialog after it. They are
             % added again after.
             
+            % Remove last OR button
+            RemoveOrSeparator();
             % Remove whole OR Group
-            nComponents = jPanelSearch.getComponentCount();
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 1)); % Last rigid
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 2)); % Button
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 3)); % Mid rigid
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 4)); % Separator
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 5)); % First rigid
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 6)); % OR group
-            % Remove OR button label
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 7)); % Last rigid
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 8)); % OR label
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 9)); % Mid rigid
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 10)); % Separator
-            jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 11)); % First rigid
+            iComp = jPanelSearch.getComponentCount() - 1;
+            jPanelSearch.remove(jPanelSearch.getComponent(iComp));
+            % Remove before-last OR button label
+            RemoveOrSeparator();
             % Add OR button back
             AddOrButton(orGroup - 1);
         else
@@ -314,7 +332,7 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
                 iRow = lastRow;
                 andBtn = [];
                 while isempty(andBtn) && iRow > 0
-                    andBtn = GetSearchElement(orPanel, orGroup, iRow, 5);
+                    andBtn = GetSearchElement(orPanel, orGroup, iRow, 6);
                     iRow = iRow - 1;
                 end
                 andBtn.setVisible(1);
@@ -483,12 +501,131 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
 
     % Load search
     function LoadSearch(iSearch)
-        disp('TODO: Load search');
+        global GlobalData;
+        bst_progress('start', 'Search', 'Loading search...');
+        % Clear search GUI
+        ResetSearchGUI();
+        % Add selected search to GUI
+        SetSearchGUI(GlobalData.DataBase.Searches.All(iSearch).Search);
+        % Refresh GUI
+        RefreshDialog();
+        bst_progress('stop');
     end
 
     % Paste from clipboard
     function PasteSearch()
         disp('TODO: Paste from clipboard');
+    end
+
+    % Resets the search components GUI
+    function ResetSearchGUI()
+        % Remove all search components
+        components = jPanelSearch.getComponents();
+        for iComp = 2:length(components)
+            jPanelSearch.remove(components(iComp));
+        end
+        panel = components(1);
+        components = panel.getComponents();
+        for iComp = 7:length(components)
+            panel.remove(components(iComp));
+        end
+        
+        % Add first search row back
+        AddOrButton(1);
+    end
+
+    % Sets the search GUI with requested search structure
+    function SetSearchGUI(searchRoot)
+        % Refresh OR separator
+        RemoveOrSeparator();
+        AddOrSeparator();
+        % Recursive call to set the search GUI
+        iOr = SetSearchGUIRecursive(searchRoot, 1, 1, 1);
+        % Add last OR button with appropriate callback
+        RemoveOrSeparator();
+        AddOrButton(iOr);
+        
+        % Recursive function that sets the search GUI with a search
+        % structure
+        %
+        % Params:
+        %  - parentNode: Search structure node
+        %  - iOr: Current OR group ID
+        %  - depth: How many recursive calls we have executed so far
+        %  - isFirst: Whether the next search row is the first one of its
+        %             OR group
+        %
+        % Returns: Last OR group ID
+        function [iOr, isFirst] = SetSearchGUIRecursive(parentNode, iOr, depth, isFirst)
+            iAnd = 1;
+            curBool = 0;
+            nextNot = 0;
+            for iChild = 1:length(parentNode.Children)
+                node = parentNode.Children(iChild);
+                switch node.Type
+                    case 1 % Search parameter
+                        node.Value.Not = nextNot;
+                        AddSearchRow(iOr, iAnd, ~isFirst, 0, node.Value);
+                        iAnd = iAnd + 1;
+                        nextNot = 0;
+                        isFirst = 0;
+                    case 2 % Boolean
+                        if node.Value == 3 % NOT
+                            nextNot = 1;
+                        else
+                            % Make sure we don't mix AND and OR in same block
+                            if curBool > 0 && curBool ~= node.Value
+                                error('Cannot mix AND and OR in same block');
+                            end
+                            curBool = node.Value;
+                            if node.Value == 2 % OR
+                                % Second level, can only be AND preceded by an OR
+                                if depth > 1
+                                    error('Only OR boolean only supported in 1st level blocks');
+                                end
+                                iOr = iOr + 1;
+                                curBool = 0;
+                                
+                                % Create new "OR" group and its first row
+                                jPanelSearch2 = java_create('javax.swing.JPanel');
+                                jPanelSearch2.setLayout(java_create('java.awt.GridBagLayout'));
+                                jPanelSearch.add(jPanelSearch2);
+                                AddOrSeparator();
+                            end
+                        end
+                    case 3 % Block
+                        if depth > 2
+                            error('GUI only supports up to two nested blocks');
+                        end
+                        % Recursive call
+                        [iOr, isFirst] = SetSearchGUIRecursive(node, iOr, depth + 1, isFirst);
+                end
+            end
+        end
+    end
+
+    % Adds an OR separator with label (not button)
+    function AddOrSeparator()
+        import java.awt.Dimension;
+        import javax.swing.Box;
+        jPanelSearch.add(Box.createRigidArea(Dimension(0,3)));
+        jSep = java_create('javax.swing.JSeparator');
+        jPanelSearch.add(jSep);
+        jPanelSearch.add(Box.createRigidArea(Dimension(0,3)));
+        jOrLabel = gui_component('Label', [], [], 'or');
+        jOrLabel.setAlignmentX(jPanelSearch.CENTER_ALIGNMENT);
+        jPanelSearch.add(jOrLabel);
+        jPanelSearch.add(Box.createRigidArea(Dimension(0,3)));
+    end
+
+    % Removes an OR separator (can be button or label)
+    function RemoveOrSeparator()
+        nComponents = jPanelSearch.getComponentCount();
+        jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 1)); % Last rigid
+        jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 2)); % OR button / label
+        jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 3)); % Mid rigid
+        jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 4)); % Separator
+        jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 5)); % First rigid
     end
 end
 
@@ -669,49 +806,85 @@ function [equalityType, caseSensitive] = GetEqualityType(equality)
 end
 
 % Returns the equality string from the equality ID and case sensitive bool
-function equalityStr = GetEqualityString(equalityType, caseSensitive)
+function equalityStr = GetEqualityString(equalityType, caseSensitive, isGui)
+    % Parse inputs
+    if nargin < 3
+        isGui = 0;
+    end
+
     switch equalityType
         case 1
-            equalityStr = 'CONTAINS';
+            equalityStr = 'Contains';
         case 2
-            equalityStr = 'EQUALS';
+            equalityStr = 'Equals';
         otherwise
             error('Unsupported equality type');
     end
     
+    % For non GUI searches, put keyword in all caps
+    if ~isGui
+        equalityStr = upper(equalityStr);
+    end
+    
     if caseSensitive
-        equalityStr = [equalityStr '_CASE'];
+        if isGui
+            equalityStr = [equalityStr ' (case)'];
+        else
+            equalityStr = [equalityStr '_CASE'];
+        end
+    end
+end
+
+% Hard coded search type values and their associated dropdown label
+function [labels, values] = GetSearchTypeValues()
+    labels = {'Channel', 'Data', 'Dipoles', 'Fibers', 'Folder', ...
+        'Head model', 'Kernel', 'MRI', 'Matrix', 'Noise covariance', ...
+        'Power spectrum', 'Raw data', 'Source', 'Statistics', ...
+        'Subject', 'Surface', 'Time-frequency', 'Video'};
+    
+    if nargout > 1
+        values = {'Channel', 'Data', 'Dipoles', 'Fibers', ...
+            {'Condition', 'RawCondition'}, 'HeadModel', 'Kernel', ...
+            'Anatomy', 'Matrix', 'NoiseCov', 'Spectrum', 'RawData', ...
+            {'Results', 'Link'}, {'PData', 'PResults', 'PTimeFreq', 'PMatrix'}, ...
+            'Subject', {'Cortex', 'Scalp', 'OuterSkull', 'InnerSkull', 'Other'}, ...
+            'TimeFreq', {'Video', 'Image'}};
     end
 end
 
 % Returns the file type(s) from the chosen search type dropdown
 function fileType = GetFileType(searchFor)
-    switch searchFor
-        case 'Folder'
-            fileType = {'Condition', 'RawCondition'};
-        case 'Head model'
-            fileType = 'HeadModel';
-        case 'MRI'
-            fileType = 'Anatomy';
-        case 'Noise covariance'
-            fileType = 'NoiseCov';
-        case 'Power spectrum'
-            fileType = 'Spectrum';
-        case 'Raw data'
-            fileType = 'RawData';
-        case 'Source'
-            fileType = {'Results', 'Link'};
-        case 'Surface'
-            fileType = {'Cortex', 'Scalp', 'OuterSkull', 'InnerSkull', 'Other'};
-        case 'Statistics'
-            fileType = {'PData', 'PResults', 'PTimeFreq', 'PMatrix'};
-        case 'Time-frequency'
-            fileType = 'TimeFreq';
-        case 'Video'
-            fileType = {'Video', 'Image'};
-        otherwise
-            fileType = searchFor;
+    % Get type values
+    [searchFors, fileTypes] = GetSearchTypeValues();
+    % Look if type value exists
+    for iFor = 1:length(searchFors)
+        if strcmpi(searchFors{iFor}, searchFor)
+            fileType = fileTypes{iFor};
+            return;
+        end
     end
+    % Default: same as input
+    fileType = searchFor;
+end
+
+% Returns the appropriate search type dropdown from the chosen file type(s)
+function searchFor = GetFileTypeDropdown(fileType)
+    % Only check the first file type from the list
+    if iscell(fileType)
+        fileType = fileType{1};
+    end
+
+    % Get type values
+    [searchFors, fileTypes] = GetSearchTypeValues();
+    % Look if type value exists
+    for iType = 1:length(fileTypes)
+        if any(strcmpi(fileType, fileTypes{iType}))
+            searchFor = searchFors{iType};
+            return;
+        end
+    end
+    % Default: same as input
+    searchFor = fileType;
 end
 
 % Returns the boolean string from the selected boolean ID
