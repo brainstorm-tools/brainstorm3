@@ -36,7 +36,7 @@ end
 % Check if global variable was cleared
 if ~exist('GlobalData', 'var') || isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'GuiLevel') || isempty(GlobalData.Program.GuiLevel)
     disp('BST> Error: Brainstorm global variables were cleared.');
-    disp('BST> Never call "clear" in your scripts while Brainstorm is running.');
+    disp('BST> Never call "clear all" in your scripts while Brainstorm is running.');
     status = 0;
     return;
 end
