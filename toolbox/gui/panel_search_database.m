@@ -514,7 +514,41 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
 
     % Paste from clipboard
     function PasteSearch()
-        disp('TODO: Paste from clipboard');
+        % Get text from clipboard
+        searchStr = clipboard('paste');
+        errorMsg = [];
+        try
+            % Convert to search structure
+            searchRoot = StringToSearch(searchStr);
+            % Propagate NOT operators so that they don't precede blocks
+            searchRoot = PropagateNot(searchRoot);
+            % Propagate AND operators since GUI only supports them
+            % following OR operators
+            searchRoot = PropagateAnd(searchRoot);
+        catch e
+            errorMsg = e.message;
+        end
+        
+        % If resulting query has more than 2 nested blocks, this is not
+        % supported by the GUI.
+        if isempty(errorMsg) && GetSearchDepth(searchRoot) > 2
+            errorMsg = 'Queries with more than 2 nested blocks are not supported.';
+        end
+        
+        % Stop execution if an error occurred
+        if ~isempty(errorMsg)
+            java_dialog('error', ['There is an error in your search query.' 10 errorMsg], 'Load search', jPanelMain);
+            return;
+        end
+        
+        bst_progress('start', 'Search', 'Loading search...');
+        % Clear search GUI
+        ResetSearchGUI();
+        % Add selected search to GUI
+        SetSearchGUI(searchRoot);
+        % Refresh GUI
+        RefreshDialog();
+        bst_progress('stop');
     end
 
     % Resets the search components GUI
@@ -1362,3 +1396,236 @@ function searchRoot = ConcatenateSearches(search1, search2, boolOp, not2)
     % Add second search
     searchRoot.Children(end + 1) = search2;
 end
+
+% Propagates NOT operators to their following blocks to ensure all NOTs
+% only precede a search parameter, never a block
+% E.g.: (NOT (a AND b)) -> (NOT a OR NOT b)
+function searchRoot = PropagateNot(searchRoot)
+    if searchRoot.Type == 3 % Parent node
+        searchRoot.Children = PropagateNotRecursive(searchRoot.Children, 0);
+    end
+end
+function [newChildren, curBool] = PropagateNotRecursive(oldChildren, not)
+    % Base case
+    if isempty(oldChildren)
+        newChildren = [];
+        return;
+    end
+
+    newChildren = repmat(db_template('searchnode'), 0);
+    iNew = 1;
+    curBool = 0;
+    for iOld = 1:length(oldChildren)
+        switch oldChildren(iOld).Type
+            % Search parameter structure, see db_template('searchparam')
+            case 1
+                % Add NOT in first of parameter
+                if not
+                    node = db_template('searchnode');
+                    node.Type = 2; % Boolean
+                    node.Value = 3; % NOT
+                    newChildren(iNew) = node;
+                    iNew = iNew + 1;
+                end
+                newChildren(iNew) = oldChildren(iOld);
+                iNew = iNew + 1;
+
+            % Boolean
+            case 2
+                if oldChildren(iOld).Value == 3 % NOT
+                    not = ~not;
+                else % AND or OR
+                    newChildren(iNew) = oldChildren(iOld);
+                    % Invert the boolean operator to propagate NOT
+                    if not
+                        if newChildren(iNew).Value == 1
+                            newChildren(iNew).Value = 2;
+                        else
+                            newChildren(iNew).Value = 1;
+                        end
+                    end
+                    if curBool ~= 0 && curBool ~= newChildren(iNew).Value
+                        error('Different boolean operators cannot be in the same block.');
+                    end
+                    curBool = newChildren(iNew).Value;
+                    iNew = iNew + 1;
+                end
+
+            % Parent node (apply recursively to children)
+            case 3
+                [newChildren2, curBool2] = PropagateNotRecursive(oldChildren(iOld).Children, not);
+                % Concatenate blocks if they have the same boolean operator
+                if curBool2 == 0 || curBool == curBool2
+                    numNew = length(newChildren2);
+                    newChildren(iNew:iNew + numNew - 1) = newChildren2;
+                    iNew = iNew + numNew;
+                else
+                    newChildren(iNew) = oldChildren(iOld);
+                    newChildren(iNew).Children = newChildren2;
+                end
+
+            otherwise
+                error('Invalid search node type');
+        end
+    end
+end
+
+% Propagates AND operators to their following blocks to ensure no query
+% starts with an AND followed by an OR sub-block, which is not supported by
+% the GUI
+% E.g.: (a AND (b OR c)) -> ((a AND b) OR (a AND c))
+function parentNode = PropagateAnd(parentNode, andTerms, nextNot)
+    % Parse inputs (for recursive call)
+    if nargin < 2
+        andTerms = [];
+    end
+    if nargin < 3
+        nextNot = 0;
+    end
+    
+    % Search parameter structure, append to it propagated AND terms
+    if parentNode.Type == 1 && ~isempty(andTerms)
+        newNode = db_template('searchnode');
+        newNode.Type = 3; % Parent node
+        iNew = 1;
+        
+        % Add AND terms
+        for iTerm = 1:length(andTerms.Children)
+            if iNew == 1
+                newNode.Children = andTerms.Children(iTerm);
+            else
+                newNode.Children(iNew) = andTerms.Children(iTerm);
+            end
+            iNew = iNew + 1;
+        end
+        
+        % Add AND node
+        andNode = db_template('searchnode');
+        andNode.Type = 2; % Boolean
+        andNode.Value = 1; % AND
+        newNode.Children(iNew) = andNode;
+        iNew = iNew + 1;
+        
+        % Add NOT node before if required
+        if nextNot
+            notNode = db_template('searchnode');
+            notNode.Type = 2; % Boolean
+            notNode.Value = 3; % NOT
+            newNode.Children(iNew) = notNode;
+            iNew = iNew + 1;
+        end
+        
+        newNode.Children(iNew) = parentNode;
+        parentNode = newNode;
+        
+    elseif parentNode.Type == 3
+        nChildren = length(parentNode.Children);
+        if nChildren == 0
+            return;
+        end
+        
+        % Find boolean operator of current block
+        boolOp = 0;
+        for iChild = 1:nChildren
+            if parentNode.Children(iChild).Type == 2 ... % Boolean
+                    && parentNode.Children(iChild).Value ~= 3 % NOT
+                if boolOp == 0
+                    boolOp = parentNode.Children(iChild).Value;
+                elseif boolOp ~= parentNode.Children(iChild).Value
+                    error('Different boolean operators cannot be in the same block.');
+                end
+            end
+        end
+        
+        skipNodes = zeros(1,nChildren);
+        if boolOp == 1 % AND
+            % Gather AND terms
+            for iChild = 1:length(parentNode.Children)
+                if parentNode.Children(iChild).Type == 1 ... % Parameter
+                        || (parentNode.Children(iChild).Type == 2 ...
+                        && parentNode.Children(iChild).Value == 3) % NOT
+                    if isempty(andTerms)
+                        andTerms = db_template('searchnode');
+                        andTerms.Type = 3; % Parent node
+                        andTerms.Children = parentNode.Children(iChild);
+                    else
+                        andNode = db_template('searchnode');
+                        andNode.Type = 2; % Boolean
+                        andNode.Value = 1; % AND
+                        andTerms.Children(end + 1) = andNode;
+                        andTerms.Children(end + 1) = parentNode.Children(iChild);
+                    end
+                    skipNodes(iChild) = 1;
+                elseif (parentNode.Children(iChild).Type == 2 ... % Boolean
+                        && parentNode.Children(iChild).Value == 1) % AND
+                    skipNodes(iChild) = 1;
+                end
+            end
+        end
+        
+        % Propagate to children
+        newNode = db_template('searchnode');
+        newNode.Type = 3; % Parent node
+        newNode.Children = repmat(db_template('searchnode'), 0);
+        iNew = 1;
+        nextNot = 0;
+        for iChild = 1:length(parentNode.Children)
+            if skipNodes(iChild)
+                continue;
+            end
+            
+            switch parentNode.Children(iChild).Type
+                case 1 % Parameter
+                    newNode.Children(iNew) = PropagateAnd(...
+                        parentNode.Children(iChild), andTerms, nextNot);
+                    iNew = iNew + 1;
+                    nextNot = 0;
+                
+                case 2 % Boolean
+                    if parentNode.Children(iChild).Value == 3 % NOT
+                        nextNot = ~nextNot;
+                    else
+                        newNode.Children(iNew) = parentNode.Children(iChild);
+                        iNew = iNew + 1;
+                    end
+                
+                case 3 % Parent node
+                    newNode.Children(iNew) = PropagateAnd(...
+                        parentNode.Children(iChild), andTerms);
+                    iNew = iNew + 1;
+                    
+                otherwise
+                    error('Invalid search node type');
+            end
+        end
+        
+        % If we did not propagate anything, then add AND terms (base case)
+        if iNew == 1
+            if ~isempty(andTerms) && ~isempty(andTerms.Children)
+                newNode = andTerms;
+            else
+                newNode.Children = [];
+            end
+        % If we have a single block child, remove unnecessary parent block
+        elseif iNew == 2 && newNode.Children.Type == 3 % Parent
+            newNode = newNode.Children;
+        end
+        
+        parentNode = newNode;
+    end
+end
+
+% Returns the maximum depth (number of blocks) of a search structure
+function maxDepth = GetSearchDepth(searchRoot)
+    if searchRoot.Type == 3
+        maxDepth = 0;
+        for iChild = 1:length(searchRoot.Children)
+            depth = 1 + GetSearchDepth(searchRoot.Children(iChild));
+            maxDepth = max(maxDepth, depth);
+        end
+    else
+        maxDepth = 0;
+    end
+end
+
+    
