@@ -243,6 +243,11 @@ if ~isempty(bstOptions)
             all(isfield(bstOptions.Pipelines, {'Name', 'Processes'}))
        GlobalData.Processes.Pipelines = bstOptions.Pipelines;
     end
+    % Get saved searches
+    if isfield(bstOptions, 'Searches') && isstruct(bstOptions.Searches) && ...
+            all(isfield(bstOptions.Searches, {'Name', 'Search'}))
+       GlobalData.DataBase.Searches.All = bstOptions.Searches;
+    end
     % Reset current search filter
     if isfield(GlobalData.Preferences, 'NodelistOptions') && isfield(GlobalData.Preferences.NodelistOptions, 'String') && ~isempty(GlobalData.Preferences.NodelistOptions.String)
         GlobalData.Preferences.NodelistOptions.String = '';
