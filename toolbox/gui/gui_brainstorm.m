@@ -251,7 +251,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jToolButtonStudiesCond = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_STUDYDB_COND, TB_DIM, jButtonGroup}, '<HTML><B>Functional data</B> (sorted by conditions):<BR>channels, head models, recordings, results</HTML>', [], []);
         % Search button
         jToolbarSearch      = gui_component('Toolbar', jPanelExplorerTop, java.awt.BorderLayout.EAST, []);
-        jToolSearchDatabase = gui_component('Button', jToolbarSearch, [], [], {IconLoader.ICON_ZOOM, TB_DIM, jButtonGroup}, 'Search Database', @ButtonSearch_Callback, []);
+        jToolSearchDatabase = gui_component('Button', jToolbarSearch, [], [], {IconLoader.ICON_ZOOM, TB_DIM, jButtonGroup}, 'Search Database', @(h,ev)panel_protocols('PromptSearch'), []);
     jPanelExplorer.add(jPanelExplorerTop, java.awt.BorderLayout.NORTH);
 
     % ==== TOOLS CONTAINER ====
@@ -545,48 +545,6 @@ function GUI = CreateWindow() %#ok<DEFNU>
         end
         % Empty clipboard
         bst_set('Clipboard', []);
-    end
-
-%% ===== SEARCH BUTTON =====
-    function ButtonSearch_Callback(varargin)
-        % Get tree handle
-        ctrl = bst_get('PanelControls', 'protocols');
-        if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
-            return;
-        end
-        
-        % Prompt user for search
-        searchRoot = gui_show_dialog('Search Database', @panel_search_database, 0);
-        if isempty(searchRoot)
-            return;
-        end
-
-        % Extract short and unique tab name
-        bst_progress('start', 'Database explorer', 'Applying search...');
-        [node, foundNot] = panel_search_database('GetFirstValueNode', searchRoot);
-        if iscell(node.Value)
-            shortName = node.Value{1};
-        else
-            shortName = node.Value;
-        end
-        % Add NOT operator prefix if applicable
-        if foundNot
-            shortName = ['NOT ' shortName];
-        end
-        shortName = shortName(1:min(length(shortName), 12));
-        tabName = shortName;
-        id = 1;
-        while ctrl.jTabpaneSearch.indexOfTab(tabName) >= 0
-            id = id + 1;
-            tabName = [shortName ' (' num2str(id) ')'];
-        end
-        
-        % Create tab
-        panel_protocols('AddDatabaseTab', tabName);
-        
-        % Apply search
-        panel_protocols('ApplySearch', tabName, searchRoot);
-        bst_progress('stop');
     end
 
 

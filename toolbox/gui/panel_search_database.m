@@ -28,12 +28,17 @@ end
 
 
 %% ===== CREATE PANEL =====
-function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>  
+function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>  
     panelName = 'SearchDatabase';
     % Java initializations
     import java.awt.*;
     import javax.swing.*;
     import org.brainstorm.icon.*;
+    
+    % Parse inputs
+    if nargin < 1
+        iSearch = 0;
+    end
     
     % Create main panel
     jPanelMain = gui_component('Panel');
@@ -92,6 +97,11 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
     jPanelBtnRight.add(jCancelBtn);
     jPanelBtn.add(jPanelBtnRight, BorderLayout.EAST);
     jPanelMain.add(jPanelBtn, BorderLayout.SOUTH);
+    
+    % Set GUI to requested search if applicable
+    if iSearch > 0
+        LoadActiveSearch(iSearch);
+    end
     
     % Return a mutex to wait for panel close
     bst_mutex('create', panelName);
@@ -236,8 +246,10 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         jPanelSearch.repaint();
         % Repack the dialog container to automatically resize it
         bstPanel = bst_get('Panel', panelName);
-        panelContainer = get(bstPanel, 'container');
-        panelContainer.handle{1}.pack();
+        if ~isempty(bstPanel)
+            panelContainer = get(bstPanel, 'container');
+            panelContainer.handle{1}.pack();
+        end
     end
 
     % Callback when the "Search by" dropdown is changed since "File type"
@@ -505,6 +517,12 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
     function LoadSearch(iSearch)
         global GlobalData;
         SetSearchGUI(GlobalData.DataBase.Searches.All(iSearch).Search);
+    end
+
+    % Load active search
+    function LoadActiveSearch(iSearch)
+        searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
+        SetSearchGUI(searchRoot);
     end
 
     % Paste from clipboard

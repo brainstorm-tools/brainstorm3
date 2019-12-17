@@ -84,7 +84,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Tabs for searches
     jTabpaneSearch = java_create('javax.swing.JTabbedPane', 'II', javax.swing.JTabbedPane.TOP, javax.swing.JTabbedPane.WRAP_TAB_LAYOUT); 
     jTabpaneSearch.setFont(bst_get('Font', 11));
-    java_setcb(jTabpaneSearch, 'StateChangedCallback', @DatabaseTabChanged_Callback);
+    java_setcb(jTabpaneSearch, 'StateChangedCallback', @DatabaseTabChanged_Callback, ...
+        'MouseClickedCallback', @DatabaseTabClicked_Callback);
     
     % Overall container to switch between tabs
     jContainer = gui_component('Panel');
@@ -314,6 +315,27 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Update process box count
         panel_nodelist('UpdatePanel', [], 1);
         bst_progress('stop');
+    end
+
+    %% ===== CLICK TAB =====
+    function DatabaseTabClicked_Callback(jTabbedPane, ev)
+        import org.brainstorm.icon.*;
+        % Process right click
+        if (ev.getButton() == ev.BUTTON3) && ev.getSource().isEnabled()
+            % Do not add menu to default "Database" tab
+            iSearch = jTabbedPane.getSelectedIndex();
+            if iSearch > 0
+                % Create popup menu
+                jPopup = java_create('javax.swing.JPopupMenu');
+                % Menu "Edit search"
+                gui_component('MenuItem', jPopup, [], 'Edit search', IconLoader.ICON_EDIT, [], @(h,ev)PromptSearch(iSearch));
+                % Menu "Close search"
+                gui_component('MenuItem', jPopup, [], 'Close search', IconLoader.ICON_DELETE, [], @(h,ev)CloseDatabaseTab(iSearch));
+                % Show popup menu
+                jPopup.pack();
+                jPopup.show(jTabbedPane, ev.getPoint.getX(), ev.getPoint.getY());
+            end
+        end
     end
 end
 
@@ -1398,7 +1420,8 @@ function AddDatabaseTab(tabName)
     jPanelTab.setLayout(java_create('java.awt.GridBagLayout'));
     jPanelTab.setOpaque(0);
     jLabel = gui_component('label', [], [], [tabName ' ']);
-    jBtnClose = gui_component('button', [], [], ' x ', [], [], @(h,ev)bst_call(@CloseDatabaseTab, tabName));
+    jBtnClose = gui_component('button', [], [], ' x ');
+    java_setcb(jBtnClose, 'ActionPerformedCallback', @(h,ev)CloseDatabaseTab(tabName));
     jBtnClose.setBorder([]);
     
     c = GridBagConstraints();
@@ -1418,7 +1441,7 @@ function AddDatabaseTab(tabName)
 end
 
 %% ===== CLOSE DATABASE TAB =====
-% Closes the search tab of name "tabName"
+% Closes the search tab of name or ID "tabName"
 function CloseDatabaseTab(tabName)
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
@@ -1426,7 +1449,12 @@ function CloseDatabaseTab(tabName)
         return;
     end
     
-    index = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    % Parse inputs
+    if isnumeric(tabName)
+        index = tabName;
+    else
+        index = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    end
     if index == -1
         return
     end
@@ -1489,29 +1517,82 @@ function CloseDefaultDbTab()
     ctrl.jContainer.add(ctrl.jScrollPaneNew);
 end
 
-% Applies search structure 'searchRoot' to tab 'tabName'
+% Prompts the user for a search query with the search panel
 %
 % Params:
-%  - tabName: str, name of tab
-%  - searchRoot: db_template('searchnode'), root of search structure
+%  - tabName: str, name of tab if we are modifying an existing one
+%             Leave blank to create a new tab
 %
 % Returns: nothing
-function ApplySearch(tabName, searchRoot)
+function PromptSearch(tabName)
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
         return;
     end
     
-    index = ctrl.jTabpaneSearch.indexOfTab(tabName);
-    if index == -1
-        return
+    % Parse inputs
+    if nargin < 1
+        tabName = [];
+    end
+    if isempty(tabName)
+        iSearch = [];
+    elseif ~isnumeric(tabName)
+        iSearch = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    else
+        iSearch = tabName;
     end
     
-    % Save to list of active searches
-    ActiveSearch('add', tabName, searchRoot);
+    % Prompt user for search
+    searchRoot = gui_show_dialog('Search Database', @panel_search_database, 0, [], iSearch);
+    if isempty(searchRoot)
+        return;
+    end
+    bst_progress('start', 'Database explorer', 'Applying search...');
+    
+    % Extract short and unique tab name
+    [node, foundNot] = panel_search_database('GetFirstValueNode', searchRoot);
+    if iscell(node.Value)
+        shortName = node.Value{1};
+    else
+        shortName = node.Value;
+    end
+    % Add NOT operator prefix if applicable
+    if foundNot
+        shortName = ['NOT ' shortName];
+    end
+    shortName = shortName(1:min(length(shortName), 12));
+    newTabName = shortName;
+    id = 1;
+    while ctrl.jTabpaneSearch.indexOfTab(newTabName) >= 0 ...
+            && (isempty(tabName) || iSearch ~= ctrl.jTabpaneSearch.indexOfTab(newTabName))
+        id = id + 1;
+        newTabName = [shortName ' (' num2str(id) ')'];
+    end
+    
+    % If this is a new tab, create it
+    if isempty(tabName)
+        % Create tab
+        AddDatabaseTab(newTabName);
+        % Save to list of active searches
+        ActiveSearch('add', newTabName, searchRoot);
+    
+    % If this is an existing tab, modify it
+    else
+        % Update list of active searches
+        ActiveSearch('set', tabName, searchRoot, newTabName);
+        % Rename tab
+        ctrl.jTabpaneSearch.setTitleAt(iSearch, newTabName);
+        jPanelTab = ctrl.jTabpaneSearch.getTabComponentAt(iSearch);
+        jLabel = jPanelTab.getComponent(0);
+        jButton = jPanelTab.getComponent(1);
+        jLabel.setText([newTabName ' '])
+        java_setcb(jButton, 'ActionPerformedCallback', @(h,ev)CloseDatabaseTab(tabName));
+    end
+    
     % Update display
     UpdateTree();
+    bst_progress('stop');
 end
 
 % Function that lets you modify the Searches.Active structure
@@ -1519,12 +1600,13 @@ end
 % Params:
 %  - func: {'Get', 'Add', 'Remove'}, how to modify the search
 %  - indexOrName: ID or name of the search to work with
-%  - inNode: the db_template('searchnode') to save (for 'Add' only)
+%  - inNode: the db_template('searchnode') to save (for Add/Set only)
+%  - newName: the new tab name, for 'Set' only
 %
 % Returns:
 %  - Get: the requested db_template('searchnode') structure
 %  - Other actions: nothing
-function node = ActiveSearch(func, indexOrName, inNode)
+function node = ActiveSearch(func, indexOrName, inNode, newName)
     global GlobalData
     
     node = [];
@@ -1543,6 +1625,23 @@ function node = ActiveSearch(func, indexOrName, inNode)
                 node = [];
             else
                 node = GlobalData.DataBase.Searches.Active(index).SearchNode;
+            end
+        % Replace saved root node with new search
+        case 'set'
+            if isnumeric(indexOrName)
+                % Search IDs start at 2 since ID 1 is reserved for whole DB
+                index = indexOrName + 1;
+            else
+                index = find(strcmp({GlobalData.DataBase.Searches.Active.Name}, indexOrName));
+            end
+            if isempty(index) || index > numSearches
+                node = [];
+            else
+                % Replace with new search values
+                GlobalData.DataBase.Searches.Active(index).Name = newName;
+                GlobalData.DataBase.Searches.Active(index).SearchNode = inNode;
+                % Reset search nodes to force display refresh
+                ResetSearchNodes(index);
             end
         % Add root node (inNode) of new search in memory
         case 'add'
