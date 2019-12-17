@@ -418,6 +418,8 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         gui_component('MenuItem', jMenuSave, [], 'New...', IconLoader.ICON_SAVE, [], @(h,ev)SaveSearch());
         jPopup.addSeparator();
         
+        % Type custom search
+        gui_component('MenuItem', jPopup, [], 'Type search query', IconLoader.ICON_EDIT, [], @(h,ev)TypeSearch());
         % Copy to clipboard
         gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopySearch());
         % Paste from clipboard
@@ -502,53 +504,12 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
     % Load search
     function LoadSearch(iSearch)
         global GlobalData;
-        bst_progress('start', 'Search', 'Loading search...');
-        % Clear search GUI
-        ResetSearchGUI();
-        % Add selected search to GUI
         SetSearchGUI(GlobalData.DataBase.Searches.All(iSearch).Search);
-        % Refresh GUI
-        RefreshDialog();
-        bst_progress('stop');
     end
 
     % Paste from clipboard
     function PasteSearch()
-        % Get text from clipboard
-        searchStr = clipboard('paste');
-        errorMsg = [];
-        try
-            % Convert to search structure
-            searchRoot = StringToSearch(searchStr);
-            % Propagate NOT operators so that they don't precede blocks
-            searchRoot = PropagateNot(searchRoot);
-            % Propagate AND operators since GUI only supports them
-            % following OR operators
-            searchRoot = PropagateAnd(searchRoot);
-        catch e
-            errorMsg = e.message;
-        end
-        
-        % If resulting query has more than 2 nested blocks, this is not
-        % supported by the GUI.
-        if isempty(errorMsg) && GetSearchDepth(searchRoot) > 2
-            errorMsg = 'Queries with more than 2 nested blocks are not supported.';
-        end
-        
-        % Stop execution if an error occurred
-        if ~isempty(errorMsg)
-            java_dialog('error', ['There is an error in your search query.' 10 errorMsg], 'Load search', jPanelMain);
-            return;
-        end
-        
-        bst_progress('start', 'Search', 'Loading search...');
-        % Clear search GUI
-        ResetSearchGUI();
-        % Add selected search to GUI
-        SetSearchGUI(searchRoot);
-        % Refresh GUI
-        RefreshDialog();
-        bst_progress('stop');
+        SetCustomSearch(clipboard('paste'));
     end
 
     % Resets the search components GUI
@@ -570,6 +531,9 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
 
     % Sets the search GUI with requested search structure
     function SetSearchGUI(searchRoot)
+        bst_progress('start', 'Search', 'Loading search...');
+        % Clear search GUI
+        ResetSearchGUI();
         % Refresh OR separator
         RemoveOrSeparator();
         AddOrSeparator();
@@ -578,6 +542,9 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         % Add last OR button with appropriate callback
         RemoveOrSeparator();
         AddOrButton(iOr);
+        % Refresh GUI
+        RefreshDialog();
+        bst_progress('stop');
         
         % Recursive function that sets the search GUI with a search
         % structure
@@ -660,6 +627,48 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
         jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 3)); % Mid rigid
         jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 4)); % Separator
         jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 5)); % First rigid
+    end
+
+    % Let user type their own custom search
+    function TypeSearch()
+        [searchStr, isCancel] = java_dialog('input', ...
+            'Type your query:', 'Search', jPanelMain);
+        if isCancel
+            return;
+        end
+        
+        SetCustomSearch(searchStr);
+    end
+
+    % Sets a user-custom search string to dialog
+    function SetCustomSearch(searchStr)
+         errorMsg = [];
+        try
+            % Convert to search structure
+            searchRoot = StringToSearch(searchStr);
+            % Propagate NOT operators so that they don't precede blocks
+            searchRoot = PropagateNot(searchRoot);
+            % Propagate AND operators since GUI only supports them
+            % following OR operators
+            searchRoot = PropagateAnd(searchRoot);
+        catch e
+            errorMsg = e.message;
+        end
+        
+        % If resulting query has more than 2 nested blocks, this is not
+        % supported by the GUI.
+        if isempty(errorMsg) && GetSearchDepth(searchRoot) > 2
+            errorMsg = 'Queries with more than 2 nested blocks are not supported.';
+        end
+        
+        % Stop execution if an error occurred
+        if ~isempty(errorMsg)
+            java_dialog('error', ['There is an error in your search query.' 10 errorMsg], 'Load search', jPanelMain);
+            return;
+        end
+        
+        % Add selected search to GUI
+        SetSearchGUI(searchRoot);
     end
 end
 
