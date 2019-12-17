@@ -329,6 +329,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jPopup = java_create('javax.swing.JPopupMenu');
                 % Menu "Edit search"
                 gui_component('MenuItem', jPopup, [], 'Edit search', IconLoader.ICON_EDIT, [], @(h,ev)PromptSearch(iSearch));
+                % Menu "Copy search"
+                gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)panel_search_database('CopySearch', iSearch));
                 % Menu "Close search"
                 gui_component('MenuItem', jPopup, [], 'Close search', IconLoader.ICON_DELETE, [], @(h,ev)CloseDatabaseTab(iSearch));
                 % Show popup menu

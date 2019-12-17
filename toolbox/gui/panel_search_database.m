@@ -452,18 +452,6 @@ function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>
         jPopup.show(jButton, 0, jButton.getHeight());
     end
 
-    % Copy to clipboard
-    function CopySearch()
-        searchRoot = GetPanelContents();
-        if isempty(searchRoot)
-            return;
-        end
-        searchString = SearchToString(searchRoot);
-        disp('BST> Copied the following search string to clipboard:');
-        disp(searchString);
-        clipboard('copy', searchString);
-    end
-
     % Save search
     function SaveSearch(iSearch)
         global GlobalData;
@@ -603,6 +591,7 @@ function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>
                                     error('Only OR boolean only supported in 1st level blocks');
                                 end
                                 iOr = iOr + 1;
+                                iAnd = 1;
                                 curBool = 0;
                                 
                                 % Create new "OR" group and its first row
@@ -812,6 +801,22 @@ function panelContents = GetPanelContents()
     else
         panelContents = [];
     end
+end
+
+% Copy search to clipboard
+function CopySearch(iSearch)
+    % Parse inputs
+    if nargin < 1
+        searchRoot = GetPanelContents();
+    else
+        searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
+    end
+    if isempty(searchRoot)
+        return;
+    end
+    searchStr = SearchToString(searchRoot);
+    disp(['BST> Copied the following search string to clipboard: ' searchStr]);
+    clipboard('copy', searchStr);
 end
 
 % Returns the search type ID from a search by string
@@ -1489,6 +1494,7 @@ function [newChildren, curBool] = PropagateNotRecursive(oldChildren, not)
                 else
                     newChildren(iNew) = oldChildren(iOld);
                     newChildren(iNew).Children = newChildren2;
+                    iNew = iNew + 1;
                 end
 
             otherwise
