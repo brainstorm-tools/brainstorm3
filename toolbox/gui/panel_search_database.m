@@ -178,7 +178,7 @@ function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>
         end
         c.gridy = nextRow - (orGroup ~= 1);
         % Search by
-        jSearchBy = gui_component('ComboBox', [], [], [], {{'Name', 'File type', 'File path', 'Parent name'}}, [], @(h, ev)SearchByChanged_Callback(orGroup, nextRow, h, ev));
+        jSearchBy = gui_component('ComboBox', [], [], [], {{'Name', 'File type', 'File path', 'Parent name'}});
         java_setcb(jSearchBy, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
         c.gridx = 0;
         jPanelSearch1.add(jSearchBy, c);
@@ -228,6 +228,9 @@ function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>
                 jSearchFor.setText(values.Value);
             end
         end
+        
+        % Add search by callback after values set
+        java_setcb(jSearchBy, 'ItemStateChangedCallback', @(h, ev)SearchByChanged_Callback(orGroup, nextRow, h, ev));
         
         if addRemoveButton && refresh
             % Refresh the dialog if this is not the first row so that it is
