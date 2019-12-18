@@ -98,7 +98,7 @@ end
 % ===== GET RELEVANT CONDITIONS =====
 epochNames = [];
 isAllEmpty = 1;
-if ~hdr.isRaw
+if ~hdr.isRaw && isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event)
     % Each trial is classified with many criteria
     % Need to ask the user along which creteria the trials should be classified
     % Get all fields of the 'event' structure
@@ -344,7 +344,7 @@ else
 end
 
 % === EVENTS ====
-if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) % && hdr.isRaw
+if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) && isfield(hdr.EEG.event, 'type') % && hdr.isRaw
     % Get event types
     intTypes = [];
     if ischar(hdr.EEG.event(1).type)
