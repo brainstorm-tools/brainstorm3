@@ -96,7 +96,7 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
         case 'filename',  Comment = [Comment ' file paths with tag: ' tag];
         case 'comment',   Comment = [Comment ' file names with tag: ' tag];
         case 'parent',    Comment = [Comment ' parent names with tag: ' tag];
-        case 'advanced',  Comment = [Comment ' file with advanced saerch: ' tag];
+        case 'advanced',  Comment = [Comment ' file with advanced search: ' tag];
     end
 end
 
