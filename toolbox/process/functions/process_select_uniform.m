@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Select uniform number of trials';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'File';
-    sProcess.Index       = 1015;
+    sProcess.Index       = 1016;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/SelectFiles';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};

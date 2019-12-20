@@ -1646,9 +1646,11 @@ function MainPopupMenu(jButton)
     
     % New search
     gui_component('MenuItem', jPopup, [], 'New search', IconLoader.ICON_ZOOM, [], @(h,ev)PromptSearch());
-    % Edit search
     if iSearch > 0
+        % Edit search
         gui_component('MenuItem', jPopup, [], 'Edit search', IconLoader.ICON_EDIT, [], @(h,ev)PromptSearch(iSearch));
+        % Generate pipeline
+        gui_component('MenuItem', jPopup, [], 'Generate pipeline', IconLoader.ICON_CONDITION, [], @(h,ev)GeneratePipeline_Callback(iSearch));
     end
     jPopup.addSeparator();
     
@@ -1786,6 +1788,17 @@ function PasteSearch_Callback()
     end
     
     ApplyCustomSearch(searchStr);
+end
+
+% Generate pipeline
+function GeneratePipeline_Callback(iSearch)
+    % Get active search as string
+    searchRoot = ActiveSearch('get', iSearch);
+    searchStr = panel_search_database('SearchToString', searchRoot);
+    % Open up pipeline editor with Search process and search string
+    sProc = panel_process_select('GetProcess', 'process_select_search');
+    sProc.options.search.Value = searchStr;
+    panel_process_select('ShowPanel', {}, sProc);
 end
 
 % Function that lets you modify the Searches.Active structure

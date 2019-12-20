@@ -50,7 +50,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === FILENAME / COMMENT
     sProcess.options.label1.Comment = 'Where to look for:';
     sProcess.options.label1.Type    = 'label';
-    sProcess.options.search.Comment = {'Search the file paths', 'Search the file names', 'Search the names of the parent file', 'Apply an advanced search'};
+    sProcess.options.search.Comment = {'Search the file paths', 'Search the file names', 'Search the names of the parent file'};
     sProcess.options.search.Type    = 'radio';
     sProcess.options.search.Value   = 2;
     % === SELECT / IGNORE
@@ -75,7 +75,6 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
             case 1,  Method = 'filename';
             case 2,  Method = 'comment';
             case 3,  Method = 'parent';
-            case 4,  Method = 'advanced';
         end
     else
         Method = 'comment';
@@ -96,7 +95,6 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
         case 'filename',  Comment = [Comment ' file paths with tag: ' tag];
         case 'comment',   Comment = [Comment ' file names with tag: ' tag];
         case 'parent',    Comment = [Comment ' parent names with tag: ' tag];
-        case 'advanced',  Comment = [Comment ' file with advanced search: ' tag];
     end
 end
 
@@ -122,7 +120,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             case 1,  Method = 'filename';
             case 2,  Method = 'comment';
             case 3,  Method = 'parent';
-            case 4,  Method = 'advanced';
         end
     else
         Method = 'comment';
@@ -173,16 +170,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         isTag(i) = ~isempty(strfind(upper(sStudy.Matrix(iMatrix).Comment), upTag));
                 end
             end
-        case 'advanced'
-            try
-                searchRoot = panel_search_database('StringToSearch', tag);
-            catch e
-                bst_report('Error', sProcess, [], ['Invalid search syntax: ' e.message]);
-                OutputFiles = {};
-                return;
-            end
-            isTag = node_apply_search(searchRoot, {sInputs.FileType}, ...
-                        {sInputs.Comment}, {sInputs.FileName}, [sInputs.iStudy]);
     end
     % Ignore or select
     if isSelect
