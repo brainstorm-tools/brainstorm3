@@ -421,7 +421,7 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
     end
 
     % Sets the search GUI with requested search structure
-    function errorMsg = SetSearchGUI(searchRoot)
+    function SetSearchGUI(searchRoot)
         bst_progress('start', 'Search', 'Loading search...');
         % Clear search GUI
         ResetSearchGUI();

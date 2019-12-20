@@ -1548,7 +1548,7 @@ function PromptSearch(tabName)
         % Make sure active search is compatible with the edit search GUI
         [res, errorMsg] = panel_search_database('SearchGUICompatible', searchRoot);
         if ~res
-            java_dialog('error', ['Your search query cannot be edited using the GUI.' 10 errorMsg], 'Load search');
+            java_dialog('error', ['Your search query cannot be edited using the GUI.' 10 errorMsg], 'Edit search');
             return;
         end
     end
