@@ -330,7 +330,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 % Menu "Edit search"
                 gui_component('MenuItem', jPopup, [], 'Edit search', IconLoader.ICON_EDIT, [], @(h,ev)PromptSearch(iSearch));
                 % Menu "Copy search"
-                gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)panel_search_database('CopySearch', iSearch));
+                gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopySearch_Callback(iSearch));
                 % Menu "Close search"
                 gui_component('MenuItem', jPopup, [], 'Close search', IconLoader.ICON_DELETE, [], @(h,ev)CloseDatabaseTab(iSearch));
                 % Show popup menu
@@ -1534,22 +1534,47 @@ function PromptSearch(tabName)
     end
     
     % Parse inputs
-    if nargin < 1
-        tabName = [];
-    end
-    if isempty(tabName)
-        iSearch = [];
-    elseif ~isnumeric(tabName)
-        iSearch = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    if nargin < 1 || isempty(tabName)
+        iSearch = 0;
+        searchRoot = [];
     else
-        iSearch = tabName;
+        % Load active search
+        if ~isnumeric(tabName)
+            iSearch = ctrl.jTabpaneSearch.indexOfTab(tabName);
+        else
+            iSearch = tabName;
+        end
+        searchRoot = ActiveSearch('get', iSearch);
+        % Make sure active search is compatible with the edit search GUI
+        [res, errorMsg] = panel_search_database('SearchGUICompatible', searchRoot);
+        if ~res
+            java_dialog('error', ['Your search query cannot be edited using the GUI.' 10 errorMsg], 'Load search');
+            return;
+        end
     end
     
     % Prompt user for search
-    searchRoot = gui_show_dialog('Search Database', @panel_search_database, 0, [], iSearch);
+    searchRoot = gui_show_dialog('Search Database', @panel_search_database, 0, [], searchRoot);
     if isempty(searchRoot)
         return;
     end
+    
+    % Apply search
+    ApplySearch(searchRoot, iSearch);
+end
+
+function ApplySearch(searchRoot, iSearch)
+    % Parse input
+    if nargin < 2
+        iSearch = 0;
+    end
+
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+
     bst_progress('start', 'Database explorer', 'Applying search...');
     
     % Extract short and unique tab name
@@ -1567,13 +1592,13 @@ function PromptSearch(tabName)
     newTabName = shortName;
     id = 1;
     while ctrl.jTabpaneSearch.indexOfTab(newTabName) >= 0 ...
-            && (isempty(tabName) || iSearch ~= ctrl.jTabpaneSearch.indexOfTab(newTabName))
+            && (iSearch == 0 || iSearch ~= ctrl.jTabpaneSearch.indexOfTab(newTabName))
         id = id + 1;
         newTabName = [shortName ' (' num2str(id) ')'];
     end
     
     % If this is a new tab, create it
-    if isempty(tabName)
+    if iSearch == 0
         % Create tab
         AddDatabaseTab(newTabName);
         % Save to list of active searches
@@ -1582,19 +1607,185 @@ function PromptSearch(tabName)
     % If this is an existing tab, modify it
     else
         % Update list of active searches
-        ActiveSearch('set', tabName, searchRoot, newTabName);
+        ActiveSearch('set', iSearch, searchRoot, newTabName);
         % Rename tab
         ctrl.jTabpaneSearch.setTitleAt(iSearch, newTabName);
         jPanelTab = ctrl.jTabpaneSearch.getTabComponentAt(iSearch);
         jLabel = jPanelTab.getComponent(0);
         jButton = jPanelTab.getComponent(1);
         jLabel.setText([newTabName ' '])
-        java_setcb(jButton, 'ActionPerformedCallback', @(h,ev)CloseDatabaseTab(tabName));
+        java_setcb(jButton, 'ActionPerformedCallback', @(h,ev)CloseDatabaseTab(newTabName));
     end
     
     % Update display
     UpdateTree();
     bst_progress('stop');
+end
+
+% Apply custom search
+function ApplyCustomSearch(searchStr)
+    % Try to convert to search structure
+    try
+        searchRoot = panel_search_database('StringToSearch', searchStr);
+    catch e
+        java_dialog('error', ['There is an error in your search query.' 10 e.message], 'Custom search');
+        return;
+    end
+    % Apply converted search
+    ApplySearch(searchRoot);
+end
+
+% Popup menu when 'Search' is clicked from the main Brainstorm GUI
+function MainPopupMenu(jButton)
+    global GlobalData;
+    import org.brainstorm.icon.*;
+    % Get active search
+    iSearch = GetSelectedSearch();
+    % Create popup menu
+    jPopup = java_create('javax.swing.JPopupMenu');
+    
+    % New search
+    gui_component('MenuItem', jPopup, [], 'New search', IconLoader.ICON_ZOOM, [], @(h,ev)PromptSearch());
+    % Edit search
+    if iSearch > 0
+        gui_component('MenuItem', jPopup, [], 'Edit search', IconLoader.ICON_EDIT, [], @(h,ev)PromptSearch(iSearch));
+    end
+    jPopup.addSeparator();
+    
+    % === LOAD SEARCH ===
+    % If some searches are defined
+    if ~isempty(GlobalData.DataBase.Searches.All)
+        jMenuLoad = gui_component('Menu', jPopup, [], 'Load', IconLoader.ICON_FOLDER_OPEN, [], []);
+        % List all the searches
+        for iSavedSearch = 1:length(GlobalData.DataBase.Searches.All)
+            gui_component('MenuItem', jMenuLoad, [], GlobalData.DataBase.Searches.All(iSavedSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)LoadSearch_Callback(iSavedSearch));
+        end
+    end
+
+    % === SAVE SEARCH ===
+    if iSearch > 0
+        jMenuSave = gui_component('Menu', jPopup, [], 'Save', IconLoader.ICON_SAVE, [], []);
+        % List all the searches
+        for iSavedSearch = 1:length(GlobalData.DataBase.Searches.All)
+            gui_component('MenuItem', jMenuSave, [], GlobalData.DataBase.Searches.All(iSavedSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)SaveSearch_Callback(iSearch, iSavedSearch));
+        end
+        % Save new
+        gui_component('MenuItem', jMenuSave, [], 'New...', IconLoader.ICON_SAVE, [], @(h,ev)SaveSearch_Callback(iSearch));
+    end
+    
+    % === DELETE SEARCH ===
+    % If some searches are defined
+    if ~isempty(GlobalData.DataBase.Searches.All)
+        jMenuDel = gui_component('Menu', jPopup, [], 'Delete', IconLoader.ICON_DELETE, [], []);
+        % List all the searches
+        for iSavedSearch = 1:length(GlobalData.DataBase.Searches.All)
+            gui_component('MenuItem', jMenuDel, [], GlobalData.DataBase.Searches.All(iSavedSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)DeleteSearch_Callback(iSavedSearch));
+        end
+    end
+    
+    if ~isempty(GlobalData.DataBase.Searches.All) || iSearch > 0
+        jPopup.addSeparator();
+    end
+
+    % Type custom search
+    gui_component('MenuItem', jPopup, [], 'Type search query', IconLoader.ICON_EDIT, [], @(h,ev)TypeSearch_Callback());
+    % Copy to clipboard
+    if iSearch > 0
+        gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopySearch_Callback());
+    end
+    % Paste from clipboard
+    gui_component('MenuItem', jPopup, [], 'Paste from clipboard', IconLoader.ICON_PASTE, [], @(h,ev)PasteSearch_Callback());
+
+
+    % Show popup menu
+    jPopup.show(jButton, 0, jButton.getHeight());
+end
+
+%% Search menu callbacks
+% Load search callback
+function LoadSearch_Callback(iSearch)
+    global GlobalData;
+    ApplySearch(GlobalData.DataBase.Searches.All(iSearch).Search);
+end
+
+% Save search callback
+function SaveSearch_Callback(iActiveSearch, iSavedSearch)
+    global GlobalData;
+    searchRoot = ActiveSearch('get', iActiveSearch);
+    if isempty(searchRoot)
+        return;
+    end
+    % Create new search
+    if (nargin < 2) || isempty(iSavedSearch)
+        % Ask user the name for the new search
+        newName = java_dialog('input', 'Enter a name for the new search:', 'Save search');
+        if isempty(newName)
+            return;
+        end
+        % Check if search already exists
+        if ~isempty(GlobalData.DataBase.Searches.All) && any(strcmpi({GlobalData.DataBase.Searches.All}, newName))
+            bst_error('A search with this name already exists.', 'Save search', 0);
+            return;
+        end
+        % Create new structure
+        newSearch.Name = newName;
+        newSearch.Search = searchRoot;
+        % Add to list
+        if isempty(GlobalData.DataBase.Searches.All)
+            GlobalData.DataBase.Searches.All = newSearch;
+        else
+            GlobalData.DataBase.Searches.All(end+1) = newSearch;
+        end
+    % Update existing search
+    else
+        % Ask for confirmation
+        isConfirm = java_dialog('confirm', ['Overwrite search "' GlobalData.DataBase.Searches.All(iSavedSearch).Name '"?'], 'Save search');
+        % Overwrite existing entry
+        if isConfirm
+            GlobalData.DataBase.Searches.All(iSavedSearch).Search = searchRoot;
+        end
+    end
+end
+
+% Delete search callback
+function DeleteSearch_Callback(iSearch)
+    global GlobalData;
+    % Ask confirmation
+    if ~java_dialog('confirm', ['Delete search "' GlobalData.DataBase.Searches.All(iSearch).Name '"?'], 'Delete search')
+        return;
+    end
+    GlobalData.DataBase.Searches.All(iSearch) = [];
+end
+
+% Let user type their own custom search
+function TypeSearch_Callback()
+    [searchStr, isCancel] = java_dialog('input', 'Type your query:', 'Search');
+    if isCancel
+        return;
+    end
+
+    ApplyCustomSearch(searchStr);
+end
+
+% Copy search to clipboard
+function CopySearch_Callback(iSearch)
+    searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
+    if isempty(searchRoot)
+        return;
+    end
+    searchStr = panel_search_database('SearchToString', searchRoot);
+    disp(['BST> Copied the following search string to clipboard: ' searchStr]);
+    clipboard('copy', searchStr);
+end
+
+% Paste from clipboard
+function PasteSearch_Callback()
+    searchStr = clipboard('paste');
+    if isempty(searchStr)
+        return;
+    end
+    
+    ApplyCustomSearch(searchStr);
 end
 
 % Function that lets you modify the Searches.Active structure

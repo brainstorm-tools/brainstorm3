@@ -251,7 +251,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jToolButtonStudiesCond = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_STUDYDB_COND, TB_DIM, jButtonGroup}, '<HTML><B>Functional data</B> (sorted by conditions):<BR>channels, head models, recordings, results</HTML>', [], []);
         % Search button
         jToolbarSearch      = gui_component('Toolbar', jPanelExplorerTop, java.awt.BorderLayout.EAST, []);
-        jToolSearchDatabase = gui_component('Button', jToolbarSearch, [], [], {IconLoader.ICON_ZOOM, TB_DIM, jButtonGroup}, 'Search Database', @(h,ev)panel_protocols('PromptSearch'), []);
+        jToolSearchDatabase = gui_component('ToolbarButton', jToolbarSearch, [], [], {IconLoader.ICON_ZOOM, TB_DIM, jButtonGroup}, 'Search Database', @(h,ev)panel_protocols('MainPopupMenu', ev.getSource()), []);
     jPanelExplorer.add(jPanelExplorerTop, java.awt.BorderLayout.NORTH);
 
     % ==== TOOLS CONTAINER ====

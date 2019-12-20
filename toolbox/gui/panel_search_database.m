@@ -28,7 +28,7 @@ end
 
 
 %% ===== CREATE PANEL =====
-function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>  
+function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>  
     panelName = 'SearchDatabase';
     % Java initializations
     import java.awt.*;
@@ -37,7 +37,7 @@ function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>
     
     % Parse inputs
     if nargin < 1
-        iSearch = 0;
+        searchRoot = [];
     end
     
     % Create main panel
@@ -86,9 +86,6 @@ function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>
     
     %% Buttons
     jPanelBtn = gui_component('Panel');
-    % Save & load toolbar
-    jPanelBtnLeft = gui_component('Toolbar', jPanelBtn, BorderLayout.WEST);
-    gui_component('ToolbarButton', jPanelBtnLeft, [], '', IconLoader.ICON_PROCESS_SELECT, 'Save & load searches', @(h,ev)ShowSaveLoadMenu(ev.getSource()));
     % Search & Cancel buttons
     jPanelBtnRight = java_create('javax.swing.JPanel');
     jSearchBtn = gui_component('Button', [], [], 'Search', [], [], @ButtonSearch_Callback);
@@ -99,8 +96,8 @@ function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>
     jPanelMain.add(jPanelBtn, BorderLayout.SOUTH);
     
     % Set GUI to requested search if applicable
-    if iSearch > 0
-        LoadActiveSearch(iSearch);
+    if ~isempty(searchRoot)
+        SetSearchGUI(searchRoot);
     end
     
     % Return a mutex to wait for panel close
@@ -406,121 +403,6 @@ function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>
         RefreshDialog();       
     end
 
-    % Save/Load search menu
-    function ShowSaveLoadMenu(jButton)
-        global GlobalData;
-        import org.brainstorm.icon.*;
-        % Create popup menu
-        jPopup = java_create('javax.swing.JPopupMenu');
-        % === LOAD SEARCH ===
-        % If some searches are defined
-        if ~isempty(GlobalData.DataBase.Searches.All)
-            jMenuLoad = gui_component('Menu', jPopup, [], 'Load', IconLoader.ICON_FOLDER_OPEN, [], []);
-            % List all the pipelines
-            for iSearch = 1:length(GlobalData.DataBase.Searches.All)
-                gui_component('MenuItem', jMenuLoad, [], GlobalData.DataBase.Searches.All(iSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)LoadSearch(iSearch));
-            end
-            jPopup.addSeparator();
-        end
-        
-        % === SAVE SEARCH ===
-        jMenuSave = gui_component('Menu', jPopup, [], 'Save', IconLoader.ICON_SAVE, [], []);
-        % List all the searches
-        for iSearch = 1:length(GlobalData.DataBase.Searches.All)
-            gui_component('MenuItem', jMenuSave, [], GlobalData.DataBase.Searches.All(iSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)SaveSearch(iSearch));
-        end
-        % Save new
-        gui_component('MenuItem', jMenuSave, [], 'New...', IconLoader.ICON_SAVE, [], @(h,ev)SaveSearch());
-        jPopup.addSeparator();
-        
-        % Type custom search
-        gui_component('MenuItem', jPopup, [], 'Type search query', IconLoader.ICON_EDIT, [], @(h,ev)TypeSearch());
-        % Copy to clipboard
-        gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopySearch());
-        % Paste from clipboard
-        gui_component('MenuItem', jPopup, [], 'Paste from clipboard', IconLoader.ICON_PASTE, [], @(h,ev)PasteSearch());
-       
-        % === DELETE SEARCH ===
-        % If some searches are defined
-        if ~isempty(GlobalData.DataBase.Searches.All)
-            jPopup.addSeparator();
-            jMenuDel = gui_component('Menu', jPopup, [], 'Delete', IconLoader.ICON_DELETE, [], []);
-            % List all the searches
-            for iSearch = 1:length(GlobalData.DataBase.Searches.All)
-                gui_component('MenuItem', jMenuDel, [], GlobalData.DataBase.Searches.All(iSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)DeleteSearch(iSearch));
-            end
-        end
-        
-        % Show popup menu
-        jPopup.show(jButton, 0, jButton.getHeight());
-    end
-
-    % Save search
-    function SaveSearch(iSearch)
-        global GlobalData;
-        searchRoot = GetPanelContents();
-        if isempty(searchRoot)
-            return;
-        end
-        % Create new search
-        if (nargin < 1) || isempty(iSearch)
-            % Ask user the name for the new pipeline
-            newName = java_dialog('input', 'Enter a name for the new search:', 'Save search');
-            if isempty(newName)
-                return;
-            end
-            % Check if search already exists
-            if ~isempty(GlobalData.DataBase.Searches.All) && any(strcmpi({GlobalData.DataBase.Searches.All}, newName))
-                bst_error('A search with this name already exists.', 'Save search', 0);
-                return;
-            end
-            % Create new structure
-            newSearch.Name = newName;
-            newSearch.Search = searchRoot;
-            % Add to list
-            if isempty(GlobalData.DataBase.Searches.All)
-                GlobalData.DataBase.Searches.All = newSearch;
-            else
-                GlobalData.DataBase.Searches.All(end+1) = newSearch;
-            end
-        % Update existing search
-        else
-            % Ask for confirmation
-            isConfirm = java_dialog('confirm', ['Overwrite search "' GlobalData.DataBase.Searches.All(iSearch).Name '"?'], 'Save search');
-            % Overwrite existing entry
-            if isConfirm
-                GlobalData.DataBase.Searches.All(iSearch).Search = searchRoot;
-            end
-        end
-    end
-
-    % Delete search
-    function DeleteSearch(iSearch)
-        global GlobalData;
-        % Ask confirmation
-        if ~java_dialog('confirm', ['Delete search "' GlobalData.DataBase.Searches.All(iSearch).Name '"?'], 'Delete search')
-            return;
-        end
-        GlobalData.DataBase.Searches.All(iSearch) = [];
-    end
-
-    % Load search
-    function LoadSearch(iSearch)
-        global GlobalData;
-        SetSearchGUI(GlobalData.DataBase.Searches.All(iSearch).Search);
-    end
-
-    % Load active search
-    function LoadActiveSearch(iSearch)
-        searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
-        SetSearchGUI(searchRoot);
-    end
-
-    % Paste from clipboard
-    function PasteSearch()
-        SetCustomSearch(clipboard('paste'));
-    end
-
     % Resets the search components GUI
     function ResetSearchGUI()
         % Remove all search components
@@ -539,7 +421,7 @@ function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>
     end
 
     % Sets the search GUI with requested search structure
-    function SetSearchGUI(searchRoot)
+    function errorMsg = SetSearchGUI(searchRoot)
         bst_progress('start', 'Search', 'Loading search...');
         % Clear search GUI
         ResetSearchGUI();
@@ -637,48 +519,6 @@ function [bstPanelNew, panelName] = CreatePanel(iSearch)  %#ok<DEFNU>
         jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 3)); % Mid rigid
         jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 4)); % Separator
         jPanelSearch.remove(jPanelSearch.getComponent(nComponents - 5)); % First rigid
-    end
-
-    % Let user type their own custom search
-    function TypeSearch()
-        [searchStr, isCancel] = java_dialog('input', ...
-            'Type your query:', 'Search', jPanelMain);
-        if isCancel
-            return;
-        end
-        
-        SetCustomSearch(searchStr);
-    end
-
-    % Sets a user-custom search string to dialog
-    function SetCustomSearch(searchStr)
-         errorMsg = [];
-        try
-            % Convert to search structure
-            searchRoot = StringToSearch(searchStr);
-            % Propagate NOT operators so that they don't precede blocks
-            searchRoot = PropagateNot(searchRoot);
-            % Propagate AND operators since GUI only supports them
-            % following OR operators
-            searchRoot = PropagateAnd(searchRoot);
-        catch e
-            errorMsg = e.message;
-        end
-        
-        % If resulting query has more than 2 nested blocks, this is not
-        % supported by the GUI.
-        if isempty(errorMsg) && GetSearchDepth(searchRoot) > 2
-            errorMsg = 'Queries with more than 2 nested blocks are not supported.';
-        end
-        
-        % Stop execution if an error occurred
-        if ~isempty(errorMsg)
-            java_dialog('error', ['There is an error in your search query.' 10 errorMsg], 'Load search', jPanelMain);
-            return;
-        end
-        
-        % Add selected search to GUI
-        SetSearchGUI(searchRoot);
     end
 end
 
@@ -804,22 +644,6 @@ function panelContents = GetPanelContents()
     else
         panelContents = [];
     end
-end
-
-% Copy search to clipboard
-function CopySearch(iSearch)
-    % Parse inputs
-    if nargin < 1
-        searchRoot = GetPanelContents();
-    else
-        searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
-    end
-    if isempty(searchRoot)
-        return;
-    end
-    searchStr = SearchToString(searchRoot);
-    disp(['BST> Copied the following search string to clipboard: ' searchStr]);
-    clipboard('copy', searchStr);
 end
 
 % Returns the search type ID from a search by string
@@ -1664,4 +1488,24 @@ function maxDepth = GetSearchDepth(searchRoot)
     end
 end
 
+% Checks if a search structure is compatible with the search panel GUI
+function [res, errorMsg] = SearchGUICompatible(searchRoot)
+    errorMsg = [];
+    try
+        % Propagate NOT operators so that they don't precede blocks
+        searchRoot = PropagateNot(searchRoot);
+        % Propagate AND operators since GUI only supports them
+        % following OR operators
+        searchRoot = PropagateAnd(searchRoot);
+    catch e
+        errorMsg = e.message;
+    end
+
+    % If resulting query has more than 2 nested blocks, this is not
+    % supported by the GUI.
+    if isempty(errorMsg) && GetSearchDepth(searchRoot) > 2
+        errorMsg = 'Queries with more than 2 nested blocks are not supported.';
+    end
     
+    res = isempty(errorMsg);
+end
