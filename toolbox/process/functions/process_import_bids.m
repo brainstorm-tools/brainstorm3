@@ -655,7 +655,18 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                                 end
                                 % Copy type
                                 if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
-                                    ChannelMat.Channel(iChanBst).Type = upper(ChanInfo{iChanBids,2});
+                                    chanType = upper(ChanInfo{iChanBids,2});
+                                    switch (chanType)
+                                        case 'MEGGRADPLANAR'    % Elekta planar gradiometer
+                                            chanType = 'MEG GRAD';
+                                        case 'MEGMAG'           % Elekta/4D/Yokogawa magnetometer
+                                            chanType = 'MEG MAG';
+                                        case 'MEGGRADAXIAL'     % CTF axial gradiometer
+                                            chanType = 'MEG';
+                                        case {'MEGREFMAG', 'MEGREFGRADAXIAL', 'MEGREFGRADPLANAR'}  % CTF/4D references
+                                            chanType = 'MEG REF';
+                                    end
+                                    ChannelMat.Channel(iChanBst).Type = chanType;
                                     isModifiedChan = 1;
                                 end
                                 % Copy group

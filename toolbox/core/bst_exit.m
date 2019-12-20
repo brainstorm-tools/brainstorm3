@@ -24,7 +24,7 @@ function status = bst_exit()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 global GlobalData
 
 % Check that Brainstorm was fully started
@@ -32,6 +32,13 @@ if ~isappdata(0, 'BrainstormRunning')
     disp('BST> Warning: Brainstorm is not started.');
     status = 0;
     return
+end
+% Check if global variable was cleared
+if ~exist('GlobalData', 'var') || isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'GuiLevel') || isempty(GlobalData.Program.GuiLevel)
+    disp('BST> Error: Brainstorm global variables were cleared.');
+    disp('BST> Never call "clear all" in your scripts while Brainstorm is running.');
+    status = 0;
+    return;
 end
 % Get GUI handles
 ctrl = bst_get('BstControls');

@@ -419,7 +419,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             %     isFirstWarnAvg = 0;
             % end
             nAvg = min([nAvgAll 1]);
-            Leff = min([Leff 1]);
+            Leff = min([LeffAll 1]);
             
             % === BAD CHANNELS ===
             if any(BadChannels)

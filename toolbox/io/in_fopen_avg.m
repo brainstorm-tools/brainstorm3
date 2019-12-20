@@ -52,8 +52,8 @@ sFile.channelflag([hdr.electloc.bad] == 1) = -1;
 % ===== CREATE DEFAULT CHANNEL FILE =====
 % Normalize coordinates
 XY = [[hdr.electloc.x_coord]', [hdr.electloc.y_coord]'];
-minXY = min(XY);
-maxXY = max(XY);
+minXY = min(XY,1);
+maxXY = max(XY,1);
 XY(:,1) = (XY(:,1) - (maxXY(1) + minXY(1)) / 2) ./ (maxXY(1) - minXY(1)) .* .0875;
 XY(:,2) = (XY(:,2) - (maxXY(2) + minXY(2)) / 2) ./ (maxXY(2) - minXY(2)) .* .0875;
 % Create channel structure

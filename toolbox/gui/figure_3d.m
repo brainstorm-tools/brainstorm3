@@ -3452,6 +3452,10 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
     % === 3DVIZ ===
     else
         Channel = GlobalData.DataSet(iDS).Channel;
+        % If not modality information, pick the default one
+        if isempty(Modality) && isempty(Figure.SelectedChannels)
+            [AllMod,DispMod,Modality] = bst_get('ChannelModalities',  GlobalData.DataSet(iDS).ChannelFile);
+        end
         % Find sensors of the target modality, select and display them
         if isempty(Modality)
             selChan = Figure.SelectedChannels;
