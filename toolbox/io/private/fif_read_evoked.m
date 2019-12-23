@@ -37,7 +37,7 @@ function [F, TimeVector] = fif_read_evoked(sFile, sfid, iEpoch)
 %   or translated to another program language without the
 %   prior written consent of the author.
 %
-%   Adaptations for Brainstorm by Francois Tadel, 2009.
+%   Adaptations for Brainstorm by Francois Tadel, 2009-2019
 
 
 global FIFF;
@@ -77,7 +77,7 @@ for k = 1:length(evoked)
         is_smsh = [ is_smsh zeros(1,sets(k).naspect) ];
         naspect = naspect + sets(k).naspect;
     end
-    saspects  = fiff_dir_tree_find(evoked(k), FIFF.FIFFB_SMSH_ASPECT);
+    saspects  = fiff_dir_tree_find(evoked(k), FIFF.FIFFB_IAS_ASPECT);
     nsaspects = length(saspects);
     if nsaspects > 0
         sets(k).naspect = sets(k).naspect + nsaspects;

@@ -37,7 +37,7 @@ function [data] = fif_setup_raw(sFile, fid, allow_maxshield)
 %   or translated to another program language without the
 %   prior written consent of the author.
 %
-%   Adaptations for Brainstorm by Francois Tadel, 2009-2014
+%   Adaptations for Brainstorm by Francois Tadel, 2009-2019
 
 
 %% ===== PARSE INPUT =====
@@ -64,8 +64,8 @@ meas = sFile.header.meas;
 %% ===== LOCATE DATA OF INTEREST =====
 raw = fiff_dir_tree_find(meas,FIFF.FIFFB_RAW_DATA);
 if isempty(raw) && allow_maxshield
-    raw = fiff_dir_tree_find(meas,FIFF.FIFFB_SMSH_RAW_DATA);
-    %warning('Reading FIFFB_SMSH_RAW_DATA.');
+    raw = fiff_dir_tree_find(meas,FIFF.FIFFB_IAS_RAW_DATA);
+    %warning('Reading FIFFB_IAS_RAW_DATA.');
 end
 if isempty(raw)
     raw = fiff_dir_tree_find(meas,FIFF.FIFFB_CONTINUOUS_DATA);
