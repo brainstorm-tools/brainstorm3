@@ -128,7 +128,7 @@ end
 
 
 %% ===== COMPUTE =====
-function [events, EventsTrackMode] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero)
+function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero)
     % Parse inputs
     if (nargin < 5)
         isAcceptZero = 0;
@@ -227,17 +227,14 @@ function [events, EventsTrackMode] = Compute(sFile, ChannelMat, StimChan, Events
     nbBlocks = ceil(totalLength / blockLength);
     % Progress bar
     isProgressBar = bst_progress('isVisible');
-    if isProgressBar
-        bst_progress('start', 'Import events', 'Reading events channels...', 0, nbBlocks);
-    end
+    bst_progress('start', 'Import events', 'Reading events channels...', 0, nbBlocks);
 
     trackPrev = [];
     % For each block
     for iBlock = 1:nbBlocks
         % Increment progress bar
-        if isProgressBar
-            bst_progress('inc', 1);
-        end
+        bst_progress('inc', 1);
+
         % === READ BLOCK ===
         % Get samples indices for this block
         samplesBlock = samplesBounds(1) + [(iBlock - 1) * blockLength, iBlock * blockLength - 1];
@@ -347,7 +344,7 @@ function [events, EventsTrackMode] = Compute(sFile, ChannelMat, StimChan, Events
     end
 
     % Close progress bar
-    if isProgressBar
+    if ~isProgressBar
         bst_progress('stop');
     end
 end

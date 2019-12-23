@@ -1,8 +1,8 @@
-function [F,TimeVector] = in_fread_fif(sFile, sfid, iEpoch, SamplesBounds, iChannels)
+function [F,TimeVector] = in_fread_fif(sFile, iEpoch, SamplesBounds, iChannels)
 % IN_READ_FIF:  Read a block of recordings from a FIF file
 %
-% USAGE:  [F,TimeVector] = in_fread_fif(sFile, sfid, iEpoch, SamplesBounds, iChannels)
-%         [F,TimeVector] = in_fread_fif(sFile, sfid, iEpoch, SamplesBounds)            : Read all the channels
+% USAGE:  [F,TimeVector] = in_fread_fif(sFile, iEpoch, SamplesBounds, iChannels)
+%         [F,TimeVector] = in_fread_fif(sFile, iEpoch, SamplesBounds)            : Read all the channels
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,7 +24,7 @@ function [F,TimeVector] = in_fread_fif(sFile, sfid, iEpoch, SamplesBounds, iChan
 %
 % Authors: Francois Tadel, 2009-2019
 
-if (nargin < 5)
+if (nargin < 4)
     iChannels = [];
 end
 
@@ -37,7 +37,9 @@ if ~isfield(sFile.header, 'raw') || isempty(sFile.header.raw)
         TimeVector = linspace(sFile.epochs(iEpoch).times(1), sFile.epochs(iEpoch).times(2), size(F,2));
     % Read data from file
     else
+        sfid = fopen(sFile.filename, 'r', sFile.byteorder);
         [F, TimeVector] = fif_read_evoked(sFile, sfid, iEpoch);
+        fclose(sfid);
     end
     % Specific selection of channels
     if ~isempty(iChannels)
@@ -57,8 +59,41 @@ else
     if isempty(SamplesBounds)
         SamplesBounds = [sFile.header.raw.first_samp, sFile.header.raw.last_samp];
     end
+    % If there are multiple FIF files: check in which one the data should be read
+    if isfield(sFile.header, 'fif_list') && isfield(sFile.header, 'fif_times') && (length(sFile.header.fif_list) > 2)
+        % Check if all the samples are gathered from the same file
+        fif_samples = round(sFile.header.fif_times .* sFile.prop.sfreq);
+        iFile = find((SamplesBounds(1) >= fif_samples(:,1)) & (SamplesBounds(2) <= fif_samples(:,2)));
+        % If this requires reading multiple files, call this function recursively
+        if isempty(iFile)
+            F = [];
+            TimeVector = [];
+            % Select the files to read from
+            iFileStart = find((SamplesBounds(1) >= fif_samples(:,1)) & (SamplesBounds(1) <= fif_samples(:,2)));
+            iFileStop  = find((SamplesBounds(2) >= fif_samples(:,1)) & (SamplesBounds(2) <= fif_samples(:,2)));
+            for iFile = iFileStart:iFileStop
+                % Create local structures for this file
+                sFile_i = sFile;
+                sFile_i.header = sFile.header.fif_headers{iFile};
+                % Read the samples available in this file
+                SamplesBounds_i = bst_saturate(SamplesBounds, fif_samples(iFile,:), 1);
+                [F_i,TimeVector_i] = in_fread_fif(sFile, iEpoch, SamplesBounds_i, iChannels);
+                % Concatenate with previous files
+                F = [F, F_i];
+                TimeVector = [TimeVector, TimeVector_i];
+            end
+            return;
+        else
+            FifFile = sFile.header.fif_list{iFile(1)};
+            sFile.header = sFile.header.fif_headers{iFile};
+        end
+    else
+        FifFile = sFile.filename;
+    end
     % Read block of data
+    sfid = fopen(FifFile, 'r', sFile.byteorder);
     [F, TimeVector] = fif_read_raw_segment(sFile, sfid, SamplesBounds, iChannels);
+    fclose(sfid);
     % Calibration matrix
     Calibration = diag([sFile.header.info.chs.range] .* [sFile.header.info.chs.cal]);
 end

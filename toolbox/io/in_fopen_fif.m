@@ -26,7 +26,7 @@ function [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2019
 
 %% ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(ImportOptions)
@@ -88,7 +88,9 @@ end
 sFile.header.tree = tree;
 sFile.header.info = info;
 sFile.header.meas = meas;
-
+sFile.header.fif_list = {DataFile};
+sFile.header.fif_times = [];
+sFile.header.fif_headers = [];
     
 %% ===== READ CHANNEL FILE =====
 % Read channel file from FIF and default coils file
@@ -145,9 +147,11 @@ elseif (nEpochs == 0)
     % Fill sFile structure   
     sFile.prop.times = double([raw.first_samp, raw.last_samp]) ./ sFile.prop.sfreq;
     sFile.header.raw = raw;
+    sFile.header.fif_times = sFile.prop.times;
+    sFile.header.fif_headers = {sFile.header};
     % Read events information
     if iscell(ImportOptions.EventsMode) || ~strcmpi(ImportOptions.EventsMode, 'ignore')
-        sFile.events = fif_read_events(sFile, ChannelMat, ImportOptions);
+        [sFile.events, ImportOptions] = fif_read_events(sFile, ChannelMat, ImportOptions);
         % Operation cancelled by user
         if isequal(sFile.events, -1)
             sFile = [];
@@ -207,9 +211,99 @@ else
 %     end
 end
 
+
+%% ===== GET LINKED FILES =====
+% Recordings bigger than 2Gb can't be stored in FIF format, and need to be split in multiple files.
+% We expect to call in_fopen_fif.m on the first .fif file in the list, and then the files should be
+% chained using the fields FIFF_REF_FILE_NAME.
+% If linked files are found, in_fopen_fif is called recursively and appended to the definition of the first file.
+
+% Only RAW files can be linked
+if ~isempty(meas) && (nEpochs == 0) && (~isempty(raw.next_fname) || ~isempty(raw.next_num))
+    NextFile = [];
+    % 1) If there is already a file name, try to use it
+    if ~isempty(raw.next_fname)
+        NextFile = bst_fullfile(fPath, raw.next_fname);
+        % File doesn't exist...
+        if ~file_exist(NextFile)
+            NextFile = [];
+        end
+    end
+    % 2) Try to find the format of the files using the file number
+    %    (major problem: sometimes the first file is not numbered)
+    if isempty(NextFile) && ~isempty(raw.next_num)
+        % Trying with -0
+        numTag = sprintf('-%d', raw.next_num - 1);
+        iNum = strfind(sFile.filename, numTag);
+        if ~isempty(iNum)
+            % Keep only the last occurrence (the same string may appear before in the filename)
+            iNum = iNum(end);
+            NextFile = [sFile.filename(1:iNum-1), sprintf('-%d', raw.next_num), sFile.filename(iNum+length(numTag):end)];
+        else
+            % Trying with -00 (for BIDS-compatible split naming: https://github.com/mne-tools/mne-python/blob/cd0eff12535880cd7a6551ad4ceeff771ea8b3a9/mne/io/utils.py#L323)
+            numTag = sprintf('-%02d', raw.next_num - 1);
+            iNum = strfind(sFile.filename, numTag);
+            if ~isempty(iNum)
+                iNum = iNum(end);
+                NextFile = [sFile.filename(1:iNum-1), sprintf('-%02d', raw.next_num), sFile.filename(iNum+length(numTag):end)];
+            end
+        end
+        % File doesn't exist...
+        if ~file_exist(NextFile)
+            NextFile = [];
+        end
+    end
+    % Get the other FIF files in the folder, to look for file #1 (in case number #0 is not numbered)
+    if isempty(NextFile) && (raw.next_num == 1)
+        dirFif = dir(bst_fullfile(fPath, ['*', fExt]));
+        curFile = [fBase, fExt];
+        listFif = setdiff({dirFif.name}, curFile);
+        numTag = sprintf('-%d', raw.next_num);
+        % Remove the num tag in all the filenames, and see if we find the current file
+        for iFile = 1:length(listFif)
+            iNum = strfind(listFif{iFile}, numTag);
+            if ~isempty(iNum)
+                iNum = iNum(end);
+                if strcmp(curFile, [listFif{iFile}(1:iNum-1), listFif{iFile}(iNum+length(numTag):end)])
+                    NextFile = bst_fullfile(fPath, listFif{iFile});
+                    break;
+                end
+            end
+        end
+    end
+    
+    % Read linked file
+    if ~isempty(NextFile)
+        % Load the header of the linked file recursively
+        sFileNext = in_fopen_fif(NextFile, ImportOptions);
+        % Concatenate files (check time compatibility)
+        if isempty(sFileNext)
+            % File could not be read...
+            warning(['FIF> Missing link: Could not read file: ' NextFile]);
+        elseif (sFile.prop.sfreq ~= sFileNext.prop.sfreq) || (sFileNext.prop.times(1) - sFile.prop.times(2) - 1/sFile.prop.sfreq > 0.001)
+            warning(['FIF> Missing link: Recordings in the following files are not contiguous:' 10 ...
+                    DataFile ': ' sprintf('%1.3fs - %1.3fs', sFile.prop.times) 10 ...
+                    NextFile ': ' sprintf('%1.3fs - %1.3fs', sFileNext.prop.times)]);
+        else
+            sFile.prop.times = [sFile.prop.times(1), sFileNext.prop.times(2)];
+            % Add to list of files
+            disp(['FIF> Adding linked file: ' NextFile]);
+            sFile.header.fif_list    = [sFile.header.fif_list, sFileNext.header.fif_list];
+            sFile.header.fif_times   = cat(1, sFile.header.fif_times, sFileNext.header.fif_times);
+            sFile.header.fif_headers = [sFile.header.fif_headers, sFileNext.header.fif_headers];
+            % Import events from the next file
+            if ~isempty(sFileNext.events)
+                sFile = import_events(sFile, [], sFileNext.events);
+            end
+        end
+    else
+        warning(['FIF> Missing link: Could not find the file following "' DataFile '".']);
+    end
+end
+
+
 % Close file
 if ~isempty(fopen(fid))
     fclose(fid);
 end
-
 

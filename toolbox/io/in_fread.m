@@ -62,13 +62,10 @@ end
 
 %% ===== OPEN FILE =====
 % Open file (for some formats, it is open in the low-level function)
-if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF', 'MNE-PYTHON'}) 
+if ismember(sFile.format, {'FIF', 'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF', 'MNE-PYTHON'}) 
     sfid = [];
 else
     sfid = fopen(sFile.filename, 'r', sFile.byteorder);
-%     if (sfid == -1)
-%         error(['The following file has been removed or is used by another program:' 10 sFile.filename]);
-%     end
 end
 
 % Check whether optional field precision is available
@@ -81,7 +78,7 @@ end
 %% ===== READ RECORDINGS BLOCK =====
 switch (sFile.format)
     case 'FIF'
-        [F,TimeVector] = in_fread_fif(sFile, sfid, iEpoch, SamplesBounds, iChannels);
+        [F,TimeVector] = in_fread_fif(sFile, iEpoch, SamplesBounds, iChannels);
     case {'CTF', 'CTF-CONTINUOUS'}
         isContinuous = strcmpi(sFile.format, 'CTF-CONTINUOUS');
         F = in_fread_ctf(sFile, iEpoch, SamplesBounds, ChannelRange, isContinuous);

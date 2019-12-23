@@ -1,8 +1,8 @@
-function Events = fif_read_events(sFile, ChannelMat, ImportOptions)
+function [Events, ImportOptions] = fif_read_events(sFile, ChannelMat, ImportOptions)
 % FIF_READ_EVENTS: Read the events descriptions for a FIF file.
 %
-% USAGE:  Events = fif_read_events(sFile, ChannelMat, ImportOptions) 
-%         Events = fif_read_events(sFile, ChannelMat)
+% USAGE:  [Events, ImportOptions] = fif_read_events(sFile, ChannelMat, ImportOptions) 
+%         [Events, ImportOptions] = fif_read_events(sFile, ChannelMat)
 %
 % INPUT:  
 %     - sFile : Brainstorm structure to pass to the in_fread() function
@@ -34,7 +34,7 @@ function Events = fif_read_events(sFile, ChannelMat, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2014
+% Authors: Francois Tadel, 2009-2019
 
 %% ===== PARSE INPUTS =====
 if (nargin < 3) || isempty(ImportOptions)
@@ -120,12 +120,14 @@ else
     end
     % No answer: exit
     if isempty(res)
+        ImportOptions.EventsMode = 'ignore';
         return
     end
     % Do what user asked for
     switch (res)
         case 'Use file'
             % Read detected file
+            ImportOptions.EventsMode = EventFile;
         case {'Pick file', 'Other file'}
             % Ask for the user event file
             EventFile = java_getfile( 'open', 'FIF event file', fPath, 'single', 'files', ...
@@ -133,15 +135,19 @@ else
             if isempty(EventFile)
                 return
             end
+            ImportOptions.EventsMode = EventFile;
         case 'Event channel'
             % Read events channel
-            Events = process_evt_read('Compute', sFile, ChannelMat, StimChan, 'value');
+            [Events, EventsTrackMode, StimChan] = process_evt_read('Compute', sFile, ChannelMat, StimChan, 'value');
             EventFile = [];
+            ImportOptions.EventsMode = StimChan;
+            ImportOptions.EventsTrackMode = EventsTrackMode;
             % Operation cancelled by user
             if isequal(Events, -1)
                 return
             end
         case 'Ignore'
+            ImportOptions.EventsMode = 'ignore';
             % Return an empty matrix
             return
     end

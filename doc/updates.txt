@@ -1,6 +1,7 @@
-December 2019
 ---------------------------------------------------------------
+December 2019
 - IO: Added support for Wearable Sensing CSV files
+- IO: Added support for split FIF files (> 2Gb)
 ---------------------------------------------------------------
 October 2019
 - IO: Conversion functions from/to MNE-python objects (Raw, Epoched, Evoked)

@@ -38,6 +38,7 @@ function [data] = fif_setup_raw(sFile, fid, allow_maxshield)
 %   prior written consent of the author.
 %
 %   Adaptations for Brainstorm by Francois Tadel, 2009-2019
+%   Section about file links copied from MNE-Python 0.19.1
 
 
 %% ===== PARSE INPUT =====
@@ -181,5 +182,38 @@ data.rawdir = rawdir;
 %     double(data.last_samp)/info.sfreq);
 
 
+%% ===== GET LINK TO NEXT FILE =====
+% Initialize references
+data.next_fname = [];
+data.next_num = [];
+data.next_id = [];
+% Find the reference block
+ref = fiff_dir_tree_find(meas,FIFF.FIFFB_REF);
+if ~isempty(ref)
+    for iBlock = 1:length(ref)
+        for k = 1:length(ref(iBlock).dir)
+            ent = ref(iBlock).dir(k);
+            switch (ent.kind)
+                case FIFF.FIFF_REF_ROLE
+                    % Check the role of the reference: accept only "next file"
+                    tag = fiff_read_tag(fid, ent.pos);
+                    if (tag.data ~= FIFF.FIFFV_ROLE_NEXT_FILE)
+                        break;
+                    end
+                case FIFF.FIFF_REF_FILE_NAME
+                    % Get filename of the next linked file
+                    tag = fiff_read_tag(fid, ent.pos);
+                    data.next_fname = tag.data;
+                case FIFF.FIFF_REF_FILE_NUM
+                    % Some files don't have the name, just the number. So we construct the name from the current name.
+                    tag = fiff_read_tag(fid, ent.pos);
+                    data.next_num = tag.data;
+                case FIFF.FIFF_REF_FILE_ID
+                    tag = fiff_read_tag(fid, ent.pos);
+                    data.next_id = tag.data;
+            end
+        end
+    end
+end
 
 
