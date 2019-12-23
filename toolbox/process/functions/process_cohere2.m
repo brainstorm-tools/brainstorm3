@@ -122,8 +122,9 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
 
     % Change the overlap if it is specified
-    if exist('sProcess.options.overlap.Value{1}')
-        OPTIONS.CohOverlap = sProcess.options.overlap.Value{1}/100 ; 
+    if isfield(sProcess.options, 'overlap') && isfield(sProcess.options.overlap, 'Value') && ...
+       iscell(sProcess.options.overlap.Value) && ~isempty(sProcess.options.overlap.Value) && ~isempty(sProcess.options.overlap.Value{1})
+       OPTIONS.CohOverlap = sProcess.options.overlap.Value{1}/100 ; 
     end
 %     switch (sProcess.options.overlap.Value)
 %         case 1,  OPTIONS.CohOverlap = 0;
