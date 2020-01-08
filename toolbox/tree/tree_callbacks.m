@@ -1079,7 +1079,8 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Less vertices...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)tess_downsize(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Merge surfaces',   IconLoader.ICON_FUSION, [], @(h,ev)SurfaceConcatenate(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Average surfaces', IconLoader.ICON_SURFACE_ADD, [], @(h,ev)SurfaceAverage(GetAllFilenames(bstNodes)));
-                    end
+                        gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)GenerateFemMesh(GetAllFilenames(bstNodes)));                  
+		    end
                 else
                     % === MENU: "ALIGN WITH MRI" ===
                     jMenuAlign = gui_component('Menu', jPopup, [], 'MRI registration', IconLoader.ICON_ALIGN_SURFACES, [], []);
@@ -1119,7 +1120,8 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Swap faces', IconLoader.ICON_FLIP, [], @(h,ev)SurfaceSwapFaces_Callback(filenameFull));
                         if strcmpi(nodeType, 'scalp')
                             gui_component('MenuItem', jPopup, [], 'Fill holes', IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceFillHoles_Callback(filenameFull));
-                        end
+                            gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)GenerateFemMesh(GetAllFilenames(bstNodes)));
+			end
                         if strcmpi(nodeType, 'cortex')
                             gui_component('MenuItem', jPopup, [], 'Extract envelope', IconLoader.ICON_SURFACE_INNERSKULL, [], @(h,ev)SurfaceEnvelope_Callback(filenameFull));
                             if ~isempty(sSubject.iInnerSkull)
@@ -3051,6 +3053,12 @@ function SurfaceAverage(TessFiles)
     elseif ~isempty(errMsg)
         bst_error(errMsg, 'Average surfaces', 0);
     end
+end
+
+%% ===== GENERATE FEM MESH =====
+function GenerateFemMesh(TessFiles)
+    % Mesh the surfaces 
+    fem_mesh(TessFiles);
 end
 
 %% ===== LOAD FREESURFER SPHERE =====
