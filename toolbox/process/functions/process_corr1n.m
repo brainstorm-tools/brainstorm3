@@ -152,7 +152,9 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
     % Get process name
     OPTIONS.ProcessName = func2str(sProcess.Function);
     % Connectivity type: [1xN] or [NxN]
-    isConnNN = ismember(OPTIONS.ProcessName, {'process_corr1n', 'process_cohere1n', 'process_granger1n', 'process_spgranger1n', 'process_plv1n', 'process_corr1n_time', 'process_cohere1n_time', 'process_pte1n', 'process_aec1n'});
+    isConnNN = ismember(OPTIONS.ProcessName, {'process_corr1n', 'process_cohere1n', 'process_granger1n',...
+        'process_spgranger1n', 'process_plv1n', 'process_corr1n_time', 'process_cohere1n_time',...
+        'process_pte1n', 'process_aec1n'});
     
     % === TIME WINDOW ===
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)

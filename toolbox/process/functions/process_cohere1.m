@@ -23,7 +23,7 @@ function varargout = process_cohere1( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2014; Hossein Shahabi, 2019
 
 eval(macro_method);
 end
@@ -53,13 +53,22 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
     sProcess.options.label2.Type    = 'label';
     % === COHERENCE METHOD
-    sProcess.options.cohmeasure.Comment = {'Magnitude-squared', 'Imaginary', 'Measure:'};
-    sProcess.options.cohmeasure.Type    = 'radio_line';
-    sProcess.options.cohmeasure.Value   = 1;
-%     % === OVERLAP
-%     sProcess.options.overlap.Comment = {'0%', '25%', '50%', '75%', 'Overlap:'};
-%     sProcess.options.overlap.Type    = 'radio_line';
-%     sProcess.options.overlap.Value   = 3;
+    sProcess.options.cohmeasure.Comment = {...
+        ['<B>Magnitude-squared Coherence</B><BR>' ...
+        '|C|^2 = |Gxy|^2/(Gxx*Gyy)'], ...
+        ['<B>Imaginary Coherence (2019)</B><BR>' ...
+        'IC    = |imag(C)|'], ...
+        ['<B>Lagged Coherence (2019)</B><BR>' ...
+        'LC    = |imag(C)|/sqrt(1-real(C)^2)'], ...
+        ['<FONT color="#777777"> Imaginary Coherence (before 2019)</FONT><BR>' ...
+        '<FONT color="#777777"> IC    = imag(C)^2 / (1-real(C)^2) </FONT>']; ...
+        'mscohere', 'icohere2019','lcohere2019', 'icohere'};
+    sProcess.options.cohmeasure.Type    = 'radio_label';
+    sProcess.options.cohmeasure.Value   = 'Measure:';
+    % === Overlap
+    sProcess.options.overlap.Comment = 'Overlap for PSD estimation:' ;
+    sProcess.options.overlap.Type    = 'value';
+    sProcess.options.overlap.Value   = {50, '%', []};
     % === MAX FREQUENCY RESOLUTION
     sProcess.options.maxfreqres.Comment = 'Maximum frequency resolution:';
     sProcess.options.maxfreqres.Type    = 'value';
@@ -109,11 +118,14 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
     OPTIONS.MaxFreqRes    = sProcess.options.maxfreqres.Value{1};
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
-    OPTIONS.CohOverlap    = 0.50;
+    OPTIONS.CohOverlap    = 0.50;  % First pre-define the overlap
     OPTIONS.pThresh       = 0.05;  % sProcess.options.pthresh.Value{1};
-    switch (sProcess.options.cohmeasure.Value)
-        case 1,  OPTIONS.CohMeasure = 'mscohere';
-        case 2,  OPTIONS.CohMeasure = 'icohere';
+    OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
+
+    % Change the overlap if it is specified
+    if isfield(sProcess.options, 'overlap') && isfield(sProcess.options.overlap, 'Value') && ...
+       iscell(sProcess.options.overlap.Value) && ~isempty(sProcess.options.overlap.Value) && ~isempty(sProcess.options.overlap.Value{1})
+        OPTIONS.CohOverlap = sProcess.options.overlap.Value{1}/100 ; 
     end
 %     switch (sProcess.options.overlap.Value)
 %         case 1,  OPTIONS.CohOverlap = 0;
@@ -172,8 +184,5 @@ function Test(iTest) %#ok<DEFNU>
     ReportFile = bst_report('Save', sFile);
     bst_report('Open', ReportFile);
 end
-
-
-
 
 

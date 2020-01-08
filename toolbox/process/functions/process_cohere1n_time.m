@@ -19,7 +19,7 @@ function varargout = process_cohere1n_time( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Elizabeth Bock, Francois Tadel, 2015
+% Authors: Elizabeth Bock, Francois Tadel, 2015; Hossein Shahabi, 2019
 
 eval(macro_method);
 end
@@ -49,7 +49,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.win.Comment = 'Estimation window length:';
     sProcess.options.win.Type    = 'value';
     sProcess.options.win.Value   = {.350, 'ms', []};
-    % overlap
+    % === Overlap for Sliding window (Time)
     sProcess.options.overlap.Comment = 'Sliding window overlap:';
     sProcess.options.overlap.Type    = 'value';
     sProcess.options.overlap.Value   = {50, '%', []};
@@ -57,9 +57,18 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
     sProcess.options.label2.Type    = 'label';
     % === COHERENCE METHOD
-    sProcess.options.cohmeasure.Comment = {'Magnitude-squared', 'Imaginary', 'Measure:'};
-    sProcess.options.cohmeasure.Type    = 'radio_line';
-    sProcess.options.cohmeasure.Value   = 1;
+    sProcess.options.cohmeasure.Comment = {...
+        ['<B>Magnitude-squared Coherence</B><BR>' ...
+        '|C|^2 = |Gxy|^2/(Gxx*Gyy)'], ...
+        ['<B>Imaginary Coherence (2019)</B><BR>' ...
+        'IC    = |imag(C)|'], ...
+        ['<B>Lagged Coherence (2019)</B><BR>' ...
+        'LC    = |imag(C)|/sqrt(1-real(C)^2)'], ...
+        ['<FONT color="#777777"> Imaginary Coherence (before 2019)</FONT><BR>' ...
+        '<FONT color="#777777"> IC    = imag(C)^2 / (1-real(C)^2) </FONT>']; ...
+        'mscohere', 'icohere2019','lcohere2019', 'icohere'};
+    sProcess.options.cohmeasure.Type    = 'radio_label';
+    sProcess.options.cohmeasure.Value   = 'Measure:';
 %     % === OVERLAP
 %     sProcess.options.overlap.Comment = {'0%', '25%', '50%', '75%', 'Overlap:'};
 %     sProcess.options.overlap.Type    = 'radio_line';
@@ -124,10 +133,8 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.CohOverlap    = 0.50;
     OPTIONS.pThresh       = 0.05;  % sProcess.options.pthresh.Value{1};
     OPTIONS.isSave        = 0;
-    switch (sProcess.options.cohmeasure.Value)
-        case 1,  OPTIONS.CohMeasure = 'mscohere';
-        case 2,  OPTIONS.CohMeasure = 'icohere';
-    end
+    OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
+
     % Time windows options
     CommentTag    = sProcess.options.commenttag.Value;
     EstTimeWinLen = sProcess.options.win.Value{1};
