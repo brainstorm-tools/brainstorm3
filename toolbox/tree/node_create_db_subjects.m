@@ -45,6 +45,7 @@ end
 
 % Set default node
 bstDefaultNode = [];
+nodeSubjectsDB = [];
 % Get current protocol subjects list
 ProtocolSubjects = bst_get('ProtocolSubjects');
 if (isempty(ProtocolSubjects))

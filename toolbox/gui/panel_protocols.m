@@ -1420,7 +1420,11 @@ function AddDatabaseTab(tabName)
     index = ctrl.jTabpaneSearch.indexOfTab(tabName);
     jPanelTab = java_create('javax.swing.JPanel');
     jPanelTab.setLayout(java_create('java.awt.GridBagLayout'));
-    jPanelTab.setOpaque(0);
+    % Make tabs transparent for better looking display, except on Linux
+    % where it can cause weird behaviors on some environments
+    if isempty(strfind(bst_get('OsType'), 'linux'))
+        jPanelTab.setOpaque(0);
+    end
     jLabel = gui_component('label', [], [], [tabName ' ']);
     jBtnClose = gui_component('button', [], [], ' x ');
     java_setcb(jBtnClose, 'ActionPerformedCallback', @(h,ev)CloseDatabaseTab(tabName));
@@ -1649,8 +1653,6 @@ function MainPopupMenu(jButton)
     if iSearch > 0
         % Edit search
         gui_component('MenuItem', jPopup, [], 'Edit search', IconLoader.ICON_EDIT, [], @(h,ev)PromptSearch(iSearch));
-%         % Generate pipeline
-%         gui_component('MenuItem', jPopup, [], 'Generate pipeline', IconLoader.ICON_CONDITION, [], @(h,ev)GeneratePipeline_Callback(iSearch));
     end
     jPopup.addSeparator();
     
@@ -1792,17 +1794,6 @@ function PasteSearch_Callback()
     
     ApplyCustomSearch(searchStr);
 end
-
-% % Generate pipeline
-% function GeneratePipeline_Callback(iSearch)
-%     % Get active search as string
-%     searchRoot = ActiveSearch('get', iSearch);
-%     searchStr = panel_search_database('SearchToString', searchRoot);
-%     % Open up pipeline editor with Search process and search string
-%     sProc = panel_process_select('GetProcess', 'process_select_search');
-%     sProc.options.search.Value = searchStr;
-%     panel_process_select('ShowPanel', {}, sProc);
-% end
 
 % Generate pipeline
 function GenerateProcessCall_Callback(iSearch)
