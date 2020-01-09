@@ -1693,7 +1693,7 @@ function MainPopupMenu(jButton)
     gui_component('MenuItem', jPopup, [], 'Type search query', IconLoader.ICON_EDIT, [], @(h,ev)TypeSearch_Callback());
     % Copy to clipboard
     if iSearch > 0
-        gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopySearch_Callback());
+        gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopySearch_Callback(iSearch));
     end
     % Paste from clipboard
     gui_component('MenuItem', jPopup, [], 'Paste from clipboard', IconLoader.ICON_PASTE, [], @(h,ev)PasteSearch_Callback());
