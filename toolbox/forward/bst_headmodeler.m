@@ -441,6 +441,7 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
     end
     
     % Start progress bar
+    tic;
     bst_progress('start', 'Head modeler', 'Starting OpenMEEG...');
     % Split in blocks
     if (nBlocks > 1)
@@ -483,6 +484,7 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
         bst_progress('stop');
         return;
     end
+    time_openmeeg = toc
     % Comment in history field
     for iLayer = 1:length(OPTIONS.BemNames)
         vertInfo = whos('-file', OPTIONS.BemFiles{iLayer}, 'Vertices');
@@ -490,6 +492,7 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
     end
 else     
     %% ===== COMPUTE: DUNEURO =====
+    tic;
     if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
         % Include sensors indices in the OPTIONS structure
         OPTIONS.iMeg  = [iMeg iRef];
@@ -501,6 +504,7 @@ else
         Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
         %% ====== DUNEURO COMPUTATION ====== %%
         [Gain, errMessage] = bst_duneuro(OPTIONS);
+       time_duneuro = toc
         if isempty(Gain)
             OPTIONS = [];
             bst_progress('stop');
@@ -509,16 +513,19 @@ else
             OPTIONS = [];
             return;
         end    
-else
-    % Initializations
-    Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
+%     else %% This cause problems while the combined EEG MEG with other
+%     methods is used ===> error at the lines 596 isNan
+%     % Initializations
+%     Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
+    end
 end
 
-%% ===== COMPUTE: BRAINSTORM HEADMODELS =====
-if (~isempty(OPTIONS.MEGMethod) && ~strcmpi(OPTIONS.MEGMethod, 'openmeeg')) || ...
-   (~isempty(OPTIONS.EEGMethod) && ~strcmpi(OPTIONS.EEGMethod, 'openmeeg')) && ...
-   ~ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}) %% I'm not sure with this test !! 
 
+%% ===== COMPUTE: BRAINSTORM HEADMODELS =====
+ 
+if ((~isempty(OPTIONS.MEGMethod) && ~strcmpi(OPTIONS.MEGMethod, 'openmeeg')) || ...
+   (~isempty(OPTIONS.EEGMethod) && ~strcmpi(OPTIONS.EEGMethod, 'openmeeg'))) && ...
+   ~ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}) %% I'm not sure with this test !! 
 
     % ===== DEFINE SPHERES FOR EACH SENSOR =====
     Param(1:length(OPTIONS.Channel)) = deal(struct(...
@@ -649,6 +656,3 @@ else
 end
 bst_progress('stop');
 bst_progress('removeimage');
-
-
-
