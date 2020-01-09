@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+December 2020
+- Database: New search interface
+---------------------------------------------------------------
 December 2019
 - IO: Added support for Wearable Sensing CSV files
 - IO: Added support for split FIF files (> 2Gb)
