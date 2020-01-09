@@ -47,7 +47,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.tag.Type    = 'text';
     sProcess.options.tag.Value   = '';
     % === FILENAME / COMMENT
-    sProcess.options.output.Comment = {'Add to comment', 'Add to file name'};
+    sProcess.options.output.Comment = {'Add to file name', 'Add to file path'};
     sProcess.options.output.Type    = 'radio';
     sProcess.options.output.Value   = 1;
     % === WARNING
