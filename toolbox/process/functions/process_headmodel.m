@@ -58,11 +58,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.label2.Type    = 'label';
     sProcess.options.meg.Comment = '   - MEG method:';
     sProcess.options.meg.Type    = 'combobox';
-    sProcess.options.meg.Value   = {3, {'<none>', 'Single sphere', 'Overlapping spheres', 'OpenMEEG BEM'}};
+    sProcess.options.eeg.Value   = {4, {'<none>', '3-shell sphere', 'OpenMEEG BEM', 'DuNeuro FEM'}};
     % Option: EEG headmodel
     sProcess.options.eeg.Comment = '   - EEG method:';
     sProcess.options.eeg.Type    = 'combobox';
-    sProcess.options.eeg.Value   = {4, {'<none>', '3-shell sphere', 'OpenMEEG BEM', 'Duneuro FEM'}};
+    sProcess.options.eeg.Value   = {4, {'<none>', '3-shell sphere', 'OpenMEEG BEM', 'DuNeuro FEM'}};
     % Option: ECOG headmodel
     sProcess.options.ecog.Comment = '   - ECOG method:';
     sProcess.options.ecog.Type    = 'combobox';
@@ -185,6 +185,3 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Return the data files in input
     OutputFiles = {sInputs.FileName};
 end
-
-
-
