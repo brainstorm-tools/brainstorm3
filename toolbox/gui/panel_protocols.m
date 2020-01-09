@@ -1649,8 +1649,8 @@ function MainPopupMenu(jButton)
     if iSearch > 0
         % Edit search
         gui_component('MenuItem', jPopup, [], 'Edit search', IconLoader.ICON_EDIT, [], @(h,ev)PromptSearch(iSearch));
-        % Generate pipeline
-        gui_component('MenuItem', jPopup, [], 'Generate pipeline', IconLoader.ICON_CONDITION, [], @(h,ev)GeneratePipeline_Callback(iSearch));
+%         % Generate pipeline
+%         gui_component('MenuItem', jPopup, [], 'Generate pipeline', IconLoader.ICON_CONDITION, [], @(h,ev)GeneratePipeline_Callback(iSearch));
     end
     jPopup.addSeparator();
     
@@ -1689,15 +1689,18 @@ function MainPopupMenu(jButton)
         jPopup.addSeparator();
     end
 
-    % Type custom search
-    gui_component('MenuItem', jPopup, [], 'Type search query', IconLoader.ICON_EDIT, [], @(h,ev)TypeSearch_Callback());
     % Copy to clipboard
     if iSearch > 0
         gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopySearch_Callback(iSearch));
     end
     % Paste from clipboard
     gui_component('MenuItem', jPopup, [], 'Paste from clipboard', IconLoader.ICON_PASTE, [], @(h,ev)PasteSearch_Callback());
-
+    % Type custom search
+    gui_component('MenuItem', jPopup, [], 'Type search query', IconLoader.ICON_EDIT, [], @(h,ev)TypeSearch_Callback());
+    % Generate pipeline
+    if iSearch > 0
+        gui_component('MenuItem', jPopup, [], 'Generate process call', IconLoader.ICON_CONDITION, [], @(h,ev)GenerateProcessCall_Callback(iSearch));
+    end
 
     % Show popup menu
     jPopup.show(jButton, 0, jButton.getHeight());
@@ -1790,15 +1793,34 @@ function PasteSearch_Callback()
     ApplyCustomSearch(searchStr);
 end
 
+% % Generate pipeline
+% function GeneratePipeline_Callback(iSearch)
+%     % Get active search as string
+%     searchRoot = ActiveSearch('get', iSearch);
+%     searchStr = panel_search_database('SearchToString', searchRoot);
+%     % Open up pipeline editor with Search process and search string
+%     sProc = panel_process_select('GetProcess', 'process_select_search');
+%     sProc.options.search.Value = searchStr;
+%     panel_process_select('ShowPanel', {}, sProc);
+% end
+
 % Generate pipeline
-function GeneratePipeline_Callback(iSearch)
+function GenerateProcessCall_Callback(iSearch)
     % Get active search as string
     searchRoot = ActiveSearch('get', iSearch);
     searchStr = panel_search_database('SearchToString', searchRoot);
-    % Open up pipeline editor with Search process and search string
-    sProc = panel_process_select('GetProcess', 'process_select_search');
-    sProc.options.search.Value = searchStr;
-    panel_process_select('ShowPanel', {}, sProc);
+    % Generate process call as a string
+    procStr = ['% Process: Select files using search query' 10 ...
+        'sFiles = bst_process(''CallProcess'', ''process_select_search'', sFiles, [], ...' 10 ...
+        '    ''search'', ''' searchStr ''');' 10];
+    % Open text viewer
+    view_text([10 ...
+        'The text below was copied to the clipboard, paste it directly in your scripts.' 10 ...
+        '--------------------------------------------------------------------------------' 10 10 ...
+        procStr 10], 'Search process call');
+    % Copy to clipboard
+    disp('BST> Copied the process call to clipboard');
+    clipboard('copy', procStr);
 end
 
 % Function that lets you modify the Searches.Active structure
