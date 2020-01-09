@@ -48,7 +48,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.condition.Type    = 'text';
     sProcess.options.condition.Value   = '';
     % COMMENT TAG
-    sProcess.options.tag.Comment = 'File comment contains tag: ';
+    sProcess.options.tag.Comment = 'File name contains tag: ';
     sProcess.options.tag.Type    = 'text';
     sProcess.options.tag.Value   = '';
     % INCLUDE BAD TRIALS

@@ -58,6 +58,7 @@ BstMat.ChannelMontages       = GlobalData.ChannelMontages;
 BstMat.DataViewer.DefaultFactor = [];
 BstMat.Pipelines   = GlobalData.Processes.Pipelines;
 BstMat.Preferences = GlobalData.Preferences;
+BstMat.Searches    = GlobalData.DataBase.Searches.All;
 BstMat.Preferences.TopoLayoutOptions.TimeWindow = [];
 
 % ===== SAVING PROTOCOLS =====

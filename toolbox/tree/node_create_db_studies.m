@@ -1,4 +1,4 @@
-function bstDefaultNode = node_create_db_studies( nodeRoot, expandOrder )
+function [bstDefaultNode, nodeStudiesDB] = node_create_db_studies( nodeRoot, expandOrder, iSearch )
 % NODE_CREATE_DB_STUDIES: Create a tree to represent the studies registered in current protocol.
 % Populate a tree from its root node.
 %
@@ -8,9 +8,11 @@ function bstDefaultNode = node_create_db_studies( nodeRoot, expandOrder )
 %    - nodeRoot       : BstNode Java object (tree root)
 %    - expandOrder    : {'condition', 'subject'}, type of the first level nodes:
 %                        Describes how the information is organized : condition/subject or subject/condition
+%    - iSearch        : ID of the active DB search, or empty/0 if none
 % OUTPUT: 
 %    - bstDefaultNode : default BstNode, that should be expanded and selected automatically
 %                       or empty matrix if no default node is defined
+%    - nodeStudiesDB  : Root node of the studies database tree
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -46,6 +48,9 @@ if (isempty(ProtocolStudies))
     return
 end
 isExpandTrials = 1;
+if nargin < 3 || isempty(iSearch)
+    iSearch = 0;
+end
 
 
 %% ===== CREATE TREE BASE =====  
@@ -70,12 +75,14 @@ if ~isempty(sDefaultStudy) % && (~isempty(sDefaultStudy.Data) || ~isempty(sDefau
     % Create analysis node
     nodeGlobal = BstNode('defaultstudy', '(Common files)', sDefaultStudy.FileName, 0, iDefaultStudy);
     % Create node
-    node_create_study(nodeGlobal, sDefaultStudy, iDefaultStudy, isExpandTrials);
-    % Add node to database node
-    nodeStudiesDB.add(nodeGlobal);
-    % If global default study is default study (ProtocolInfo.iStudy)
-    if (ProtocolInfo.iStudy == iDefaultStudy)
-        bstDefaultNode = nodeGlobal;
+    numElems = node_create_study(nodeGlobal, sDefaultStudy, iDefaultStudy, isExpandTrials, [], iSearch);
+    if numElems > 0
+        % Add node to database node
+        nodeStudiesDB.add(nodeGlobal);
+        % If global default study is default study (ProtocolInfo.iStudy)
+        if (ProtocolInfo.iStudy == iDefaultStudy)
+            bstDefaultNode = nodeGlobal;
+        end
     end
 end
 % Get name of group subject
@@ -88,15 +95,17 @@ if ~isempty(sAnalysisStudy) && (~isempty(sAnalysisStudy.Data) || ~isempty(sAnaly
     % Create analysis node
     nodeAnalysis = BstNode('study', '(Inter-subject)', sAnalysisStudy.FileName, 0, iAnalysisStudy);
     % Create node
-    node_create_study(nodeAnalysis, sAnalysisStudy, iAnalysisStudy, isExpandTrials);
-    % Add node to database node
-    nodeStudiesDB.add(nodeAnalysis);
-    % If inter-subject analysis study is default study (ProtocolInfo.iStudy)
-    if (ProtocolInfo.iStudy == iAnalysisStudy)
-        bstDefaultNode = nodeAnalysis;
+    numElems = node_create_study(nodeAnalysis, sAnalysisStudy, iAnalysisStudy, isExpandTrials, [], iSearch);
+    if numElems > 0
+        % Add node to database node
+        nodeStudiesDB.add(nodeAnalysis);
+        % If inter-subject analysis study is default study (ProtocolInfo.iStudy)
+        if (ProtocolInfo.iStudy == iAnalysisStudy)
+            bstDefaultNode = nodeAnalysis;
+        end
+        % Display Global Common Files with it
+        isGlobalDisplayed = 1;
     end
-    % Display Global Common Files with it
-    isGlobalDisplayed = 1;
 end
 
 % === CREATE SUBJECTS NODES ===
@@ -260,14 +269,25 @@ for i = 1:length(ProtocolStudies.Study)
                                 end
                             end
                             % Create node
+                            [foundSearch, nodeDisplayName] = node_apply_search(iSearch, nodeType, nodeDisplayName, pathCondition, iStudy);
                             nodeCondition = BstNode(nodeType, nodeDisplayName, pathCondition, iSubject, 0, intDate);
                         end
                         % If Condition node was create
                         if ~isempty(nodeCondition)
-                            % Add it to the 'StudyDB' node
-                            nodeParent.add(nodeCondition); 
-                            % Reference this node in hashtable
-                            hashTableNodes.put(lower(pathCondition), nodeCondition);
+                            if iSearch ~= 0
+                                % If we have a search filter active, only create
+                                % node if it (or its children) passes the filter
+                                numElems = node_create_study(nodeCondition, sStudy, iStudy, isExpandTrials, [], iSearch);
+                                createNode = foundSearch || numElems > 0;
+                            else
+                                createNode = 1;
+                            end
+                            if createNode
+                                % Add it to the 'StudyDB' node
+                                nodeParent.add(nodeCondition); 
+                                % Reference this node in hashtable
+                                hashTableNodes.put(lower(pathCondition), nodeCondition);
+                            end
                         end
                     end
                     % Set parent node to current
@@ -288,9 +308,20 @@ for i = 1:length(ProtocolStudies.Study)
                 else
                    [temp_, Comment] = bst_fileparts(sStudy.FileName);
                 end
+                [foundSearch, Comment] = node_apply_search(iSearch, 'study', Comment, sStudy.FileName, iStudy);
                 nodeStudy = BstNode('study', Comment, sStudy.FileName, iSubject, iStudy);
                 % Add study node to subject node
-                nodeSubject.add(nodeStudy); 
+                if iSearch ~= 0
+                    % If we have a search filter active, only create
+                    % node if it (or its children) passes the filter
+                    numElems = node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, [], iSearch);
+                    createNode = foundSearch || numElems > 0;
+                else
+                    createNode = 1;
+                end
+                if createNode
+                    nodeSubject.add(nodeStudy);
+                end
             end
         
             
@@ -345,12 +376,22 @@ for i = 1:length(ProtocolStudies.Study)
                             end
                             % If Condition was created
                             if ~isempty(nodeCondition)
-                                % Add it to the 'StudyDB' node
-                                nodeParent.add(nodeCondition); 
-                                % Reference this node in hashtable
-                                hashTableNodes.put(lower(pathCondition), nodeCondition);
-                                % Add it to the list of node to sort
-                                nodeListToSort = [nodeListToSort nodeCondition];
+                                if iSearch ~= 0
+                                    % If we have a search filter active, only create
+                                    % node if it (or its children) passes the filter
+                                    numElems = node_create_study(nodeCondition, sStudy, iStudy, isExpandTrials, [], iSearch);
+                                    createNode = numElems > 0;
+                                else
+                                    createNode = 1;
+                                end
+                                if createNode
+                                    % Add it to the 'StudyDB' node
+                                    nodeParent.add(nodeCondition); 
+                                    % Reference this node in hashtable
+                                    hashTableNodes.put(lower(pathCondition), nodeCondition);
+                                    % Add it to the list of node to sort
+                                    nodeListToSort = [nodeListToSort nodeCondition];
+                                end
                             end
                         end
                         % Set parent node to current
@@ -382,10 +423,20 @@ for i = 1:length(ProtocolStudies.Study)
                         % Default study node
                         nodeSubject = BstNode('defaultstudy', strComment, sStudy.BrainStormSubject, iSubject, iStudy);
                     end
-                    % Add it to the 'StudyDB' node
-                    nodeCondition.add(nodeSubject); 
-                    % Reference this node in hashtable
-                    hashTableNodes.put(lower(pathSubject), nodeSubject);
+                    if iSearch ~= 0
+                        % If we have a search filter active, only create
+                        % node if it (or its children) passes the filter
+                        numElems = node_create_study(nodeSubject, sStudy, iStudy, isExpandTrials, [], iSearch);
+                        createNode = numElems > 0;
+                    else
+                        createNode = 1;
+                    end
+                    if createNode
+                        % Add it to the 'StudyDB' node
+                        nodeCondition.add(nodeSubject); 
+                        % Reference this node in hashtable
+                        hashTableNodes.put(lower(pathSubject), nodeSubject);
+                    end
                 end
                 % Set subject node as the current study node
                 nodeStudy = nodeSubject;
@@ -406,8 +457,9 @@ for i = 1:length(ProtocolStudies.Study)
         % node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel); 
         
         % If there are some interesting things to display in the node: prepare for dynamic update
-        if ~isempty(sStudy.Data) || ~isempty(sStudy.Result) || ~isempty(sStudy.Stat) || ~isempty(sStudy.Image) || ~isempty(sStudy.Dipoles) || ~isempty(sStudy.Timefreq) || ~isempty(sStudy.Matrix) || ...
-            ((~UseDefaultChannel || isDefaultStudyNode) && (~isempty(sStudy.HeadModel) || ~isempty(sStudy.Channel) || ~isempty(sStudy.NoiseCov)))
+        % Note: No dynamic update for active searches, so ensure iSearch is empty.
+        if iSearch == 0 && (~isempty(sStudy.Data) || ~isempty(sStudy.Result) || ~isempty(sStudy.Stat) || ~isempty(sStudy.Image) || ~isempty(sStudy.Dipoles) || ~isempty(sStudy.Timefreq) || ~isempty(sStudy.Matrix) || ...
+            ((~UseDefaultChannel || isDefaultStudyNode) && (~isempty(sStudy.HeadModel) || ~isempty(sStudy.Channel) || ~isempty(sStudy.NoiseCov))))
             % Set the node as un-processed
             nodeStudy.setUserObject(0);
             % Add a "Loading" node
@@ -517,8 +569,8 @@ for i=1:length(nodeListDefaultStudy_subj)
     nodeDefStudy = nodeListDefaultStudy_subj(i);
     % Get parent node
     nodeParent = nodeDefStudy.getParent();
-    if (nodeParent.getChildCount() > 1)
-        % Remove no from parentn
+    if ~isempty(nodeParent) && (nodeParent.getChildCount() > 1)
+        % Remove no from parent
         nodeDefStudy.removeFromParent();
         % If first node of parent node is the 'Analysis-intra' node, put it after
         isGlobalCommonNode = strcmpi(nodeParent.getChildAt(0).getType(), 'defaultstudy');
@@ -544,8 +596,6 @@ end
 
 % Add 'Subjects database' node to root node
 nodeRoot.add(nodeStudiesDB);
-
-
 
 
 
