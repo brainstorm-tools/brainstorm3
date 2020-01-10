@@ -521,7 +521,11 @@ end
 
 % Loop through all nodes and create java objects where appropriate
 nNodes = iNode - 1;
-CreatedNodes = javaArray('org.brainstorm.tree.BstNode', nodesDisplayed);
+if nodesDisplayed > 0
+    CreatedNodes = javaArray('org.brainstorm.tree.BstNode', nodesDisplayed);
+else
+    CreatedNodes = [];
+end
 iCreatedNode = 1;
 for iNode = 1:nNodes
     if allNodes(iNode).toDisplay
