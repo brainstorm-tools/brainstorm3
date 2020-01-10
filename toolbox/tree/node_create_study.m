@@ -33,6 +33,7 @@ function numElems = node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials,
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2015
+%          Martin Cousineau, 2020
 
     
 %% ===== PARSE INPUTS =====
@@ -550,9 +551,8 @@ end
     %  - Other inputs: See BstJava's constructor
     %
     % Output: ID of created node in allNodes structure
-    function iCreatedNode = CreateParentNode(nodeParent, nodeType, nodeComment, ...
-        nodeFileName, iItem, iStudy, Modifier)
-        if nargin < 8
+    function iCreatedNode = CreateParentNode(nodeParent, nodeType, nodeComment, nodeFileName, iItem, iStudy, Modifier)
+        if nargin < 7
             Modifier = 0;
         end
         % Apply search filter
