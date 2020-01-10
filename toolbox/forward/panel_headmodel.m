@@ -22,7 +22,7 @@ function varargout = panel_headmodel(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2019
 
 eval(macro_method);
 end
@@ -75,6 +75,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jComboMethodMEG.addItem(BstListItem('meg_sphere', '', 'Single sphere', []));
         jComboMethodMEG.addItem(BstListItem('os_meg', '', 'Overlapping spheres', []));
         jComboMethodMEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
+        jComboMethodMEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
         jComboMethodMEG.setSelectedIndex(1);
     else
         jCheckMethodMEG = [];
@@ -89,6 +90,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jComboMethodEEG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
         jComboMethodEEG.addItem(BstListItem('eeg_3sphereberg', '', '3-shell sphere', []));
         jComboMethodEEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
+        jComboMethodEEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
         jComboMethodEEG.setSelectedIndex(1);
     else
         jCheckMethodEEG = [];
@@ -391,6 +393,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         end
     end
     isOpenMEEG = any(strcmpi(allMethods, 'openmeeg'));
+    isDuneuro = any(strcmpi(allMethods, 'duneuro'));
     % Get protocol description
     ProtocolInfo = bst_get('ProtocolInfo');
 
@@ -640,6 +643,76 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             end
             OPTIONS.BemNames = OPTIONS.BemNames(OPTIONS.BemSelect);
             OPTIONS.BemCond  = OPTIONS.BemCond(OPTIONS.BemSelect);
+        end
+        
+        %% ===== DUNEURO =====
+        if isDuneuro
+            % Panel for FEM option TODO
+            DuneuroOptions = {};
+            DuneuroOptions.FSelect = {}; % index of the selected tissu ==> should be dynamic and not static ==> link it to the femhead to get the number of
+            DuneuroOptions.FemCond = []; % conductivity of the selected tissu ==> should be dynamic and not static ==> link it to the femhead to get the number of layers ang
+            % use :  [conductivity, tissuLabel]  = get_standard_conductivity(numberOfLayer)
+            
+            % Ask for the source FEM Model
+            sourceModel = java_dialog('question', '<HTML><B> DUNEuro : Select FEM Source Model <B>', ...
+                'FEM Source Model', [], {'Venant','Subtraction','Partial_Integration'}, 'Venant');
+            OPTIONS.FemSourceModel = lower(sourceModel);
+            % Add the source model name to the comment
+            OPTIONS.Comment = [OPTIONS.Comment ' ' sourceModel] ;
+            
+            % Path to the head fem model
+            OPTIONS.FemHeadFile = file_fullpath(sSubject.Surface(sSubject.iFEM).FileName);            
+            % Get the number of layer and their name
+            headData = load(OPTIONS.FemHeadFile, 'TissueLabels');
+            % Get the default conductivity values
+            default_conductivity = get_standard_conductivity(length(headData.TissueLabels)) ;
+            % Ask for the number of layer and their name conductivity
+            if length(headData.TissueLabels) == 3
+                %%% This is not the best way to do it .... but OK for this version
+                %%% TODO : build
+                %%% big panel with basic parameters and advanced
+                %%% parameters ==> discuss with Francois
+                display_text = ['<HTML>Your FEM head model has three layers <BR> '...
+                    'Enter here the values of the conductivity  <BR> '...
+                    '' headData.TissueLabels{1} ', ' headData.TissueLabels{2}...
+                    ',  ' headData.TissueLabels{3}];
+            elseif length(headData.TissueLabels) == 4
+                display_text = ['<HTML>Your FEM head model has four layers <BR> '...
+                    'Enter here the values of the conductivity  <BR> '...
+                    '' headData.TissueLabels{1} ', ' headData.TissueLabels{2}...
+                    ',  ' headData.TissueLabels{3} ',  ' headData.TissueLabels{4}];
+                % else if more .... TODO
+            end
+            opts = strjoin(arrayfun(@(x) num2str(x),default_conductivity,'UniformOutput',false),'  , ');
+            [res, isCancel] = java_dialog('input', display_text, 'Conductivity Value',[],opts);
+            
+            if isCancel
+                return
+            end
+            % TODO : this is a temporary option
+            OPTIONS.conductivity  = str2num(res);
+            
+            % TODO : The conductivities values in the case of the
+            % combined model should be the same for eeg and meg
+            
+            % Why the conductivity pass from 1 0.025 1 to 0.33, 0..xx, 0.33
+            % ? this could confuse the users.
+            
+            % Ask for the layers to keep for the MEG computation
+            solverMethod = 'duneuro'; % TODO : experimental
+            isEeg  = strcmpi(OPTIONS.EEGMethod, solverMethod )  ;
+            isMeg  = strcmpi(OPTIONS.MEGMethod, solverMethod)  ;
+            if isMeg
+                % ask for the tissu to keep for for modeling the
+                opts = headData.TissueLabels;
+                defOpts = zeros(1,length(opts)); defOpts(1) = 1;
+                display_text = ['<HTML> Select the layers to consider for the MEG head mdeling <BR> '];
+                [res, isCancel] = java_dialog('checkbox', display_text, 'Select Volume',[],opts, defOpts);
+                OPTIONS.layerToKeep =  res;
+                if isCancel
+                    return
+                end
+            end
         end
         
         % ===== Compute HeadModel =====

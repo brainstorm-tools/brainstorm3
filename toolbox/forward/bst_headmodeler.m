@@ -68,7 +68,7 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, March 2002
-%          Francois Tadel, 2009-2016
+%          Francois Tadel, 2009-2019
 
 global nfv
 nfv = [];
@@ -488,14 +488,33 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
         vertInfo = whos('-file', OPTIONS.BemFiles{iLayer}, 'Vertices');
         strHistory = [strHistory, ' | ', sprintf('%s %1.4f %dV', OPTIONS.BemNames{iLayer}, OPTIONS.BemCond(iLayer), vertInfo.size(1)) ];
     end
+    
+%% ===== COMPUTE: DUNEURO =====
+elseif ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
+    % Include sensors indices in the OPTIONS structure
+    OPTIONS.iMeg  = [iMeg iRef];
+    OPTIONS.iEeg  = iEeg;
+    OPTIONS.iEcog = iEcog;
+    OPTIONS.iSeeg = iSeeg;
+    % Start progress bar
+    bst_progress('start', 'Head modeler', 'Starting Duneuro...');
+    % Initializations
+    [Gain, errMessage] = bst_duneuro(OPTIONS);
+    if isempty(Gain)
+        OPTIONS = [];
+        errMessage = ['An unknown error occurred in the computation of the head model:' 10 ...
+            'NaN values found for valid sensors in the Gain matrix'];
+        bst_progress('stop');
+        return;
+    end
 else
     % Initializations
     Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
 end
 
 %% ===== COMPUTE: BRAINSTORM HEADMODELS =====
-if (~isempty(OPTIONS.MEGMethod) && ~strcmpi(OPTIONS.MEGMethod, 'openmeeg')) || ...
-   (~isempty(OPTIONS.EEGMethod) && ~strcmpi(OPTIONS.EEGMethod, 'openmeeg'))
+if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'duneuro'})) || ...
+   (~isempty(OPTIONS.EEGMethod) && ~ismember(OPTIONS.EEGMethod, {'openmeeg', 'duneuro'}))
 
     % ===== DEFINE SPHERES FOR EACH SENSOR =====
     Param(1:length(OPTIONS.Channel)) = deal(struct(...

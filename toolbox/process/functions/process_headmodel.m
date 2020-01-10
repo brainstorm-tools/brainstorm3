@@ -19,7 +19,7 @@ function varargout = process_headmodel( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -58,11 +58,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.label2.Type    = 'label';
     sProcess.options.meg.Comment = '   - MEG method:';
     sProcess.options.meg.Type    = 'combobox';
-    sProcess.options.meg.Value   = {3, {'<none>', 'Single sphere', 'Overlapping spheres', 'OpenMEEG BEM'}};
+    sProcess.options.meg.Value   = {3, {'<none>', 'Single sphere', 'Overlapping spheres', 'OpenMEEG BEM', 'DUNEuro FEM'}};
     % Option: EEG headmodel
     sProcess.options.eeg.Comment = '   - EEG method:';
     sProcess.options.eeg.Type    = 'combobox';
-    sProcess.options.eeg.Value   = {3, {'<none>', '3-shell sphere', 'OpenMEEG BEM'}};
+    sProcess.options.eeg.Value   = {3, {'<none>', '3-shell sphere', 'OpenMEEG BEM', 'DUNEuro FEM'}};
     % Option: ECOG headmodel
     sProcess.options.ecog.Comment = '   - ECOG method:';
     sProcess.options.ecog.Type    = 'combobox';
@@ -88,13 +88,15 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     isOpenMEEG = 0;
+    isDuneuro = 0;
     % == MEG options ==
     if isfield(sProcess.options, 'meg') && isfield(sProcess.options.meg, 'Value') && iscell(sProcess.options.meg.Value)
         switch (sProcess.options.meg.Value{1})
             case 1,  sMethod.MEGMethod = '';
             case 2,  sMethod.MEGMethod = 'meg_sphere';
             case 3,  sMethod.MEGMethod = 'os_meg';
-            case 4,  sMethod.MEGMethod = 'openmeeg';   isOpenMEEG = 1;
+            case 4,  sMethod.MEGMethod = 'openmeeg';  isOpenMEEG = 1;
+            case 5,  sMethod.MEGMethod = 'duneuro';   isDuneuro = 1;
         end
     else
         sMethod.MEGMethod = '';
@@ -105,6 +107,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             case 1,  sMethod.EEGMethod = '';
             case 2,  sMethod.EEGMethod = 'eeg_3sphereberg';
             case 3,  sMethod.EEGMethod = 'openmeeg';   isOpenMEEG = 1;
+            case 4,  sMethod.MEGMethod = 'duneuro';    isDuneuro = 1;
         end
     else
         sMethod.EEGMethod = '';
@@ -169,6 +172,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, [], 'OpenMEEG options are not defined.');
             return;
         end
+    end
+    % Copy DUNEuro options to OPTIONS structure
+    if isDuneuro
+        warning('todo');
     end
     % Non-interactive process
     sMethod.Interactive = 0;
