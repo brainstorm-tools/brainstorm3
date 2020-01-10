@@ -44,8 +44,8 @@ DataMat = [];
 errMsg = [];
 
 % SEEG: Detect file format
+[fPath,fBase,fExt] = bst_fileparts(DataFile);
 if ismember(FileFormat, {'SEEG-ALL', 'ECOG-ALL'})
-    [fPath,fBase,fExt] = bst_fileparts(DataFile);
     switch lower(fExt)
         case '.trc',  FileFormat = 'EEG-MICROMED';
         case '.eeg'
@@ -66,6 +66,10 @@ switch (FileFormat)
     % ===== SUPPORTED AS CONTINUOUS FILES =====
     case 'FIF'
         [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions);
+        % Multiple FIF linked: add number of files to the folder name in the database
+        if strcmpi(FileFormat, 'FIF') && isfield(sFile, 'header') && isfield(sFile.header, 'fif_list') && (length(sFile.header.fif_list) >= 2)
+            sFile.condition = sprintf('%s_(%d)', fBase, length(sFile.header.fif_list));
+        end
     case {'CTF', 'CTF-CONTINUOUS'}
         [sFile, ChannelMat] = in_fopen_ctf(DataFile);
     case '4D'

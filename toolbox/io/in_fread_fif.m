@@ -76,7 +76,8 @@ else
                 sFile_i = sFile;
                 sFile_i.header = sFile.header.fif_headers{iFile};
                 % Read the samples available in this file
-                SamplesBounds_i = bst_saturate(SamplesBounds, fif_samples(iFile,:), 1);
+                SamplesBounds_i = [max(min(SamplesBounds(1), fif_samples(iFile,2)), fif_samples(iFile,1)), ...
+                                   max(min(SamplesBounds(2), fif_samples(iFile,2)), fif_samples(iFile,1))];
                 [F_i,TimeVector_i] = in_fread_fif(sFile, iEpoch, SamplesBounds_i, iChannels);
                 % Concatenate with previous files
                 F = [F, F_i];

@@ -274,6 +274,8 @@ if ~isempty(meas) && (nEpochs == 0) && (~isempty(raw.next_fname) || ~isempty(raw
     
     % Read linked file
     if ~isempty(NextFile)
+        % Display linked file
+        disp([10 'FIF> Linking next file: ' NextFile]);
         % Load the header of the linked file recursively
         sFileNext = in_fopen_fif(NextFile, ImportOptions);
         % Concatenate files (check time compatibility)
@@ -287,7 +289,6 @@ if ~isempty(meas) && (nEpochs == 0) && (~isempty(raw.next_fname) || ~isempty(raw
         else
             sFile.prop.times = [sFile.prop.times(1), sFileNext.prop.times(2)];
             % Add to list of files
-            disp(['FIF> Adding linked file: ' NextFile]);
             sFile.header.fif_list    = [sFile.header.fif_list, sFileNext.header.fif_list];
             sFile.header.fif_times   = cat(1, sFile.header.fif_times, sFileNext.header.fif_times);
             sFile.header.fif_headers = [sFile.header.fif_headers, sFileNext.header.fif_headers];
