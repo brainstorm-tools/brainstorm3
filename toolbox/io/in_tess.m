@@ -33,7 +33,7 @@ function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2020
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
@@ -83,6 +83,8 @@ elseif strcmpi(FileFormat, 'ALL')
             FileFormat = 'TRI';
         case '.mat'
             FileFormat = 'BST';
+        case '.msh'
+            FileFormat = 'SIMNIBS';
         case '.nwb'
             FileFormat = 'NWB';
         case {'.pial', '.white', '.inflated', '.nofix', '.orig', '.smoothwm', '.sphere', '.reg', '.surf'}
@@ -185,6 +187,30 @@ switch (FileFormat)
         TessMat = in_tess_curry(TessFile);
         TessMat.Vertices = TessMat.Vertices / 1000;
 
+    case 'SIMNIBS'
+        TessMat = in_tess_simnibs(TessFile);
+        % MNI MRI coord => MRI
+        if ~isempty(sMri)
+            T1 = diag([sMri.Voxsize(:) ./1000; 1]); % scale trans from mm to meters
+            T2 = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]; % rotate and translate from vox to scs.
+            if ~isempty(sMri.InitTransf)
+                T = T2 * T1 * inv(sMri.InitTransf{1,2}) * [1 0 0 1; 0 1 0 1; 0 0 1 1; 0 0 0 1];
+            else
+                T = T2 * T1 * [1 0 0 1; 0 1 0 1; 0 0 1 1; 0 0 0 1];
+            end
+            %we add a voxel because there is a mismatch between origins,
+            %then transform from world to vox, then apply from vox to scs
+
+            % Transform the coordinates
+            temp = [TessMat.Vertices, ones(size(TessMat.Vertices,1),1)];
+            temp = (T * temp')';
+            temp(:,4) = [];
+            TessMat.Vertices = temp;
+
+            % Replace the eyes with scalp (not used for now)
+            TessMat.Tissue(TessMat.Tissue==6) = 5;
+        end
+        
     case 'MNIOBJ'
         TessMat = in_tess_mniobj(TessFile);
         % MNI MRI coord => MRI

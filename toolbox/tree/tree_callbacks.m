@@ -1032,7 +1032,7 @@ switch (lower(action))
                 gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
 
                 % === SET SURFACE TYPE ===
-                if ~bst_get('ReadOnly')
+                if ~bst_get('ReadOnly') && (length(bstNodes) == 1)
                     jItemSetSurfType = gui_component('Menu', jPopup, [], 'Set surface type', IconLoader.ICON_SURFACE, [], []);
                     jItemSetSurfTypeScalp      = gui_component('MenuItem', jItemSetSurfType, [], 'Scalp',       IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)node_set_type(bstNodes(1), 'Scalp'));
                     jItemSetSurfTypeCortex     = gui_component('MenuItem', jItemSetSurfType, [], 'Cortex',      IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)node_set_type(bstNodes(1), 'Cortex'));
@@ -1058,7 +1058,7 @@ switch (lower(action))
                 end
                 
                 % SET AS DEFAULT SURFACE
-                if ~bst_get('ReadOnly')
+                if ~bst_get('ReadOnly') && (length(bstNodes) == 1)
                     iSurface = bstNodes(1).getItemIndex();
                     switch lower(nodeType)
                         case 'scalp',      SurfaceType = 'Scalp';
@@ -1079,6 +1079,8 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Less vertices...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)tess_downsize(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Merge surfaces',   IconLoader.ICON_FUSION, [], @(h,ev)SurfaceConcatenate(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Average surfaces', IconLoader.ICON_SURFACE_ADD, [], @(h,ev)SurfaceAverage(GetAllFilenames(bstNodes)));
+                        AddSeparator(jPopup);
+                        gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)process_generate_fem('ComputeInteractive', iSubject, [], GetAllFilenames(bstNodes)));
                     end
                 else
                     % === MENU: "ALIGN WITH MRI" ===
@@ -1136,6 +1138,7 @@ switch (lower(action))
                 % Export menu (added later)
                 jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_surfaces(filenameFull));
              
+                
 %% ===== POPUP: FIBERS =====
             case 'fibers'             
                 % === DISPLAY ===

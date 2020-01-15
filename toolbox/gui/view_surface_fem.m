@@ -150,13 +150,13 @@ if (size(SurfColor,2) ~= Ntissue)
     if ~isempty(iCSF)
         SurfColor(iCSF,:) = [202 50 150]/255;
     end
-    % Default grey matter color
-    iGrey = find(ismember(labels, {'gray','greymatter','gm','cortex','inner','innerskull'}));
+    % Default gray matter color
+    iGrey = find(ismember(labels, {'gray','gray','greymatter','graymatter','gm','cortex','inner','innerskull'}));
     if ~isempty(iGrey)
         SurfColor(iGrey,:) = [150 150 150]/255;
     end
     % Default white matter color
-    iWhite = find(ismember(labels, {'gray','greymatter','gm','cortex'}));
+    iWhite = find(ismember(labels, {'white','whitematter','wm','cortex'}));
     if ~isempty(iWhite)
         SurfColor(iWhite,:) = [250 250 250]/255;
     end

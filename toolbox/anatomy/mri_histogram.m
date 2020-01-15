@@ -11,7 +11,7 @@ function [Histogram] = mri_histogram(volume, intensityMax, volumeType)
 %     - volume type  : Indication about what is representing this volume
 %                       - 'head'  : full head volume MRI
 %                       - 'brain' : only the brain
-%                       - 'mask'  : a binary mask (grey matter, white matter, etc.)
+%                       - 'mask'  : a binary mask (gray matter, white matter, etc.)
 %                       - '' or not specified : unknown
 % OUTPUT:
 %     - Histogram : structure
@@ -212,7 +212,7 @@ end
 [unikCumulFncY, unikCumulFncYm, unikCumulFncYn] = unique(Histogram.cumulFncY);
 unikFncX = Histogram.fncX(unikCumulFncYm);
 
-% Definition of the grey matter and white matter intensity levels
+% Definition of the gray matter and white matter intensity levels
 switch(volumeType)
     % Head MRI
     case {'', 'head'}
@@ -251,8 +251,8 @@ switch(volumeType)
         end
         
     case 'brain'
-        % Determine an intensity value for the background/grey matter limit
-        % and the grey matter/white matter level
+        % Determine an intensity value for the background/gray matter limit
+        % and the gray matter/white matter level
         % 
         defaultBg = round(interp1(unikCumulFncY, unikFncX, .08));
         defaultWhite = round(interp1(unikCumulFncY, unikFncX, .7));
