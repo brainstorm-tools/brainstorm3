@@ -137,12 +137,13 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 % Output filename: add file tag
                 FileTag = strtrim(strrep(tag, '|', ''));
                 pathName = file_fullpath(sInput(iFile).FileName);
-                OutputFile{1} = strrep(pathName, '.mat', ['_' FileTag '.mat']);
-                OutputFile{1} = file_unique(OutputFile{1});
+                OutputFile = strrep(pathName, '.mat', ['_' FileTag '.mat']);
+                OutputFile = file_unique(OutputFile);
                 % Save file
-                bst_save(OutputFile{1}, TimefreqMat2, 'v6');
+                bst_save(OutputFile, TimefreqMat2, 'v6');
                 % Add file to database structure
-                db_add_data(sInput(iFile).iStudy, OutputFile{1}, TimefreqMat2);
+                db_add_data(sInput(iFile).iStudy, OutputFile, TimefreqMat2);
+                OutputFiles{end + 1} = OutputFile;
             end
         end
         
@@ -159,12 +160,13 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 % Output filename: add file tag
                 FileTag = strtrim(strrep(tag, '|', ''));
                 pathName = file_fullpath(sInput(iFile).FileName);
-                OutputFile{1} = strrep(pathName, '.mat', ['_' FileTag '.mat']);
-                OutputFile{1} = file_unique(OutputFile{1});
+                OutputFile = strrep(pathName, '.mat', ['_' FileTag '.mat']);
+                OutputFile = file_unique(OutputFile);
                 % Save file
-                bst_save(OutputFile{1}, TimefreqMat2, 'v6');
+                bst_save(OutputFile, TimefreqMat2, 'v6');
                 % Add file to database structure
-                db_add_data(sInput(iFile).iStudy, OutputFile{1}, TimefreqMat2);
+                db_add_data(sInput(iFile).iStudy, OutputFile, TimefreqMat2);
+                OutputFiles{end + 1} = OutputFile;
             end
         end
         
@@ -190,12 +192,13 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 % Output filename: add file tag
                 FileTag = strtrim(strrep(tag, '|', ''));
                 pathName = file_fullpath(sInput(iFile).FileName);
-                OutputFile{1} = strrep(pathName, '.mat', ['_' FileTag '.mat']);
-                OutputFile{1} = file_unique(OutputFile{1});
+                OutputFile = strrep(pathName, '.mat', ['_' FileTag '.mat']);
+                OutputFile = file_unique(OutputFile);
                 % Save file
-                bst_save(OutputFile{1}, tPACMat2, 'v6');
+                bst_save(OutputFile, tPACMat2, 'v6');
                 % Add file to database structure
-                db_add_data(sInput(iFile).iStudy, OutputFile{1}, tPACMat2);
+                db_add_data(sInput(iFile).iStudy, OutputFile, tPACMat2);
+                OutputFiles{end + 1} = OutputFile;
             end
         end            
         tpacMat.sPAC.DynamicPAC = tpac_avg;
@@ -220,12 +223,13 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     FileTag = strtrim(strrep(tag, '|', ''));
     pathName = file_fullpath(sInput(1).FileName); 
     % Preparing the output file
-    OutputFile{1} = strrep(pathName, '.mat', ['_' FileTag '.mat']);
-    OutputFile{1} = file_unique(OutputFile{1});
+    OutputFile = strrep(pathName, '.mat', ['_' FileTag '.mat']);
+    OutputFile = file_unique(OutputFile);
     % Save on disk
-    bst_save(OutputFile{1}, tpacMat, 'v6');
+    bst_save(OutputFile, tpacMat, 'v6');
     % Register in database
-    db_add_data(iOutputStudy, OutputFile{1}, tpacMat);
+    db_add_data(iOutputStudy, OutputFile, tpacMat);
+    OutputFiles{end + 1} = OutputFile;
 end
 
 
