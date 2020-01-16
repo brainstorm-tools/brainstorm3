@@ -86,6 +86,9 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
     
     %% Buttons
     jPanelBtn = gui_component('Panel');
+    % Pipeline button
+    jPanelBtnLeft = gui_component('Toolbar', jPanelBtn, BorderLayout.WEST);
+    jPipelineBtn = gui_component('ToolbarButton', jPanelBtnLeft, [], [], IconLoader.ICON_CONDITION, 'Generate process call', @ButtonPipeline_Callback);
     % Search & Cancel buttons
     jPanelBtnRight = java_create('javax.swing.JPanel');
     jSearchBtn = gui_component('Button', [], [], 'Search', [], [], @ButtonSearch_Callback);
@@ -121,6 +124,13 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
         bst_mutex('release', panelName); % Release the MUTEX
     end
 
+%% ===== PIPELINE BUTTON =====
+    function ButtonPipeline_Callback(varargin)
+        % Get search structure from GUI
+        curSearch = GetPanelContents();
+        % Generate a script
+        GenerateProcessScript(curSearch);
+    end
 
 %% ===== KEY TYPED =====
     function PanelSearch_KeyTypedCallback(h, ev)
@@ -870,6 +880,9 @@ end
 % Returns: search string, e.g. '([name CONTAINS "test"])'
 function str = SearchToString(searchRoot)
     str = [];
+    if isempty(searchRoot)
+        return;
+    end
     
     switch searchRoot.Type
         % Search parameter structure, see db_template('searchparam')
@@ -1508,4 +1521,21 @@ function [res, errorMsg] = SearchGUICompatible(searchRoot)
     end
     
     res = isempty(errorMsg);
+end
+
+% Generate a pipeline process script using the input search structure
+function GenerateProcessScript(searchRoot)
+    searchStr = SearchToString(searchRoot);
+    % Generate process call as a string
+    procStr = ['% Process: Select files using search query' 10 ...
+        'sFiles = bst_process(''CallProcess'', ''process_select_search'', sFiles, [], ...' 10 ...
+        '    ''search'', ''' searchStr ''');' 10];
+    % Open text viewer
+    view_text([10 ...
+        'The text below was copied to the clipboard, paste it directly in your scripts.' 10 ...
+        '--------------------------------------------------------------------------------' 10 10 ...
+        procStr 10], 'Search process call');
+    % Copy to clipboard
+    disp('BST> Copied the process call to clipboard');
+    clipboard('copy', procStr);
 end

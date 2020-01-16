@@ -1799,19 +1799,8 @@ end
 function GenerateProcessCall_Callback(iSearch)
     % Get active search as string
     searchRoot = ActiveSearch('get', iSearch);
-    searchStr = panel_search_database('SearchToString', searchRoot);
-    % Generate process call as a string
-    procStr = ['% Process: Select files using search query' 10 ...
-        'sFiles = bst_process(''CallProcess'', ''process_select_search'', sFiles, [], ...' 10 ...
-        '    ''search'', ''' searchStr ''');' 10];
-    % Open text viewer
-    view_text([10 ...
-        'The text below was copied to the clipboard, paste it directly in your scripts.' 10 ...
-        '--------------------------------------------------------------------------------' 10 10 ...
-        procStr 10], 'Search process call');
-    % Copy to clipboard
-    disp('BST> Copied the process call to clipboard');
-    clipboard('copy', procStr);
+    % Generate process script
+    panel_search_database('GenerateProcessScript', searchRoot);
 end
 
 % Function that lets you modify the Searches.Active structure
