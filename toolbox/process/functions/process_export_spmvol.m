@@ -22,7 +22,7 @@ function varargout = process_export_spmvol( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2017
+% Authors: Francois Tadel, 2013-2020
 
 eval(macro_method);
 end
@@ -194,6 +194,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         sInput = bst_process('LoadInputFile', sInputs(iFile).FileName, [], TimeWindow, LoadOptions);
         if isempty(sInput.Data)
             bst_report('Error', sProcess, sInputs(iFile), 'Could load result file.');
+            return;
+        elseif ~isempty(sInput.RowNames) && iscell(sInput.RowNames)
+            bst_report('Error', sProcess, sInputs(iFile), 'Cannot export scouts time series as volume, use full brain results instead.');
             return;
         end
         % Load additional fields
