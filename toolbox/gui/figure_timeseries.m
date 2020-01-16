@@ -34,7 +34,7 @@ function varargout = figure_timeseries( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -3219,7 +3219,7 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     % ===== TIME CURSOR =====
     % Plot time cursor (for non-static datasets)
     if (GlobalData.DataSet(iDS).Measures.NumberOfSamples > 2)
-        ZData = 1.6;
+        ZData = 0.5;
         % Get current time
         curTime = GlobalData.UserTimeWindow.CurrentTime;
         YLim = get(hAxes, 'YLim');
