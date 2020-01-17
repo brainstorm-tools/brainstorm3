@@ -244,24 +244,26 @@ end
 if isempty(TessMat)
     return;
 end
-% Fix the tesselations
-for iTess = 1:length(TessMat)
-    % Make sure all the values are double
-    TessMat(iTess).Vertices = double(TessMat(iTess).Vertices);
-    TessMat(iTess).Faces = double(TessMat(iTess).Faces);
-    % Fix the matrix orientations
-    if (size(TessMat(iTess).Vertices,1) == 3) && (size(TessMat(iTess).Vertices,2) ~= 3) 
-        TessMat(iTess).Vertices = TessMat(iTess).Vertices';
-    end
-    if (size(TessMat(iTess).Faces,1) == 3) && (size(TessMat(iTess).Faces,2) ~= 3) 
-        TessMat(iTess).Faces = TessMat(iTess).Faces';
-    end
-    % Add coordinates offset
-    if ~isempty(OffsetMri) && ~isempty(sMri)
-        TessMat(iTess).Vertices = bst_bsxfun(@plus, TessMat(iTess).Vertices, OffsetMri .* sMri.Voxsize ./ 1000 );
+% Fix the tesselations (not for volume meshes, without Faces field)
+if isfield(TessMat, 'Faces')
+    for iTess = 1:length(TessMat)
+        warning('todo: clean transformations')
+        % Make sure all the values are double
+        TessMat(iTess).Vertices = double(TessMat(iTess).Vertices);
+        TessMat(iTess).Faces = double(TessMat(iTess).Faces);
+        % Fix the matrix orientations
+        if (size(TessMat(iTess).Vertices,1) == 3) && (size(TessMat(iTess).Vertices,2) ~= 3) 
+            TessMat(iTess).Vertices = TessMat(iTess).Vertices';
+        end
+        if (size(TessMat(iTess).Faces,1) == 3) && (size(TessMat(iTess).Faces,2) ~= 3) 
+            TessMat(iTess).Faces = TessMat(iTess).Faces';
+        end
+        % Add coordinates offset
+        if ~isempty(OffsetMri) && ~isempty(sMri)
+            TessMat(iTess).Vertices = bst_bsxfun(@plus, TessMat(iTess).Vertices, OffsetMri .* sMri.Voxsize ./ 1000 );
+        end
     end
 end
-
         
 %% ===== CONVERSION MRI TO SCS =====
 if isConvertScs

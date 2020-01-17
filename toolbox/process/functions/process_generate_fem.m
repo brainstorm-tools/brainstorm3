@@ -2,16 +2,12 @@ function varargout = process_generate_fem( varargin )
 % PROCESS_GENERATE_FEM: Generate tetrahedral/hexahedral FEM mesh.
 %
 % USAGE:     OutputFiles = process_generate_fem('Run',     sProcess, sInputs)
-%         [isOk, errMsg] = process_generate_fem('Compute', iSubject, iAnatomy=[default], isInteractive, OPTIONS)
-%                          process_generate_fem('ComputeInteractive', iSubject, iAnatomy=[default])
+%         [isOk, errMsg] = process_generate_fem('Compute', iSubject, iMris=[default], isInteractive, OPTIONS)
+%                          process_generate_fem('ComputeInteractive', iSubject, iMris=[default])
 %                OPTIONS = process_generate_fem('GetDefaultOptions')
 %                 errMsg = process_generate_fem('InstallIso2mesh', isInteractive)
 %                 errMsg = process_generate_fem('InstallRoast', isInteractive)
 % [NewVertices, NewFaces, NormalOnVertices] = process_generate_fem('inflateORdeflate_surface', Vertices, Faces, depth)
-%
-%
-% TODO:
-%    - Add T2 for simnibs/roast
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -130,7 +126,7 @@ end
 
 
 %% ===== COMPUTE FEM MESHES =====
-function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
+function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     isOk = 0;
     errMsg = '';
 
@@ -151,7 +147,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
     % Empty temporary folder, otherwise it reuses previous files in the folder
     gui_brainstorm('EmptyTempFolder');
             
-    % ===== GET T1 MRI =====
+    % ===== GET T1/T2 MRI =====
     % Get subject
     sSubject = bst_get('Subject', iSubject);
     if isempty(sSubject)
@@ -164,10 +160,59 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
         return
     end
     % Get default MRI if not specified
-    if isempty(iAnatomy)
-        iAnatomy = sSubject.iAnatomy;
+    if isempty(iMris)
+        iMris = 1:length(sSubject.Anatomy);
+        tryDefaultT2 = 0;
+    else
+        tryDefaultT2 = 1;
     end
-    MriFile = file_fullpath(sSubject.Anatomy(iAnatomy).FileName);
+    % If there are multiple MRIs: order them to put the default one first (probably a T1)
+    if (length(iMris) > 1)
+        % Select the default MRI as the T1
+        if ismember(sSubject.iAnatomy, iMris)
+            iT1 = sSubject.iAnatomy;
+            iMris = iMris(iMris ~= sSubject.iAnatomy);
+        else
+            iT1 = [];
+        end
+        % Find other possible T1
+        if isempty(iT1)
+            iT1 = find(~cellfun(@(c)isempty(strfind(c,'t1')), lower({sSubject.Anatomy(iMris).Comment})));
+            if ~isempty(iT1)
+                iT1 = iMris(iT1(1));
+                iMris = iMris(iMris ~= iT1);
+            end
+        end
+        % Find any possible T2
+        iT2 = find(~cellfun(@(c)isempty(strfind(c,'t2')), lower({sSubject.Anatomy(iMris).Comment})));
+        if ~isempty(iT2)
+            iT2 = iMris(iT2(1));
+            iMris = iMris(iMris ~= iT2);
+        else
+            iT2 = [];
+        end
+        % If not identified yet, use first MRI as T1
+        if isempty(iT1)
+            iT1 = iMris(1);
+            iMris = iMris(2:end);
+        end
+        % If not identified yet, use following MRI as T2
+        if isempty(iT2) && tryDefaultT2
+            iT2 = iMris(1);
+        end
+    else
+        iT1 = iMris(1);
+        iT2 = [];
+    end
+    % Get full file names
+    T1File = file_fullpath(sSubject.Anatomy(iT1).FileName);
+    if ~isempty(iT2)
+        T2File = file_fullpath(sSubject.Anatomy(iT2).FileName);
+    else
+        T2File = [];
+    end
+    disp(['FEM> T1 MRI: ' T1File]);
+    disp(['FEM> T2 MRI: ' T2File]);
     
     % ===== GENERATE MESH =====
     switch lower(OPTIONS.Method)
@@ -275,17 +320,21 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
             simnibsDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'simnibs');
             mkdir(simnibsDir);
             % Save MRI in .nii format
-            NiiFile = bst_fullfile(simnibsDir, 'simnibsT1.nii');
-            out_mri_nii(MriFile, NiiFile);
+            T1Nii = bst_fullfile(simnibsDir, 'simnibsT1.nii');
+            out_mri_nii(T1File, T1Nii);
+            if ~isempty(T2File)
+                T2Nii = bst_fullfile(simnibsDir, 'simnibsT2.nii');
+                out_mri_nii(T2File, T2Nii);
+            else
+                T2Nii = [];
+            end
 
             % === CALL SIMNIBS PIPELINE ===
             % Go to simnibs working directory
             curDir = pwd;
             cd(simnibsDir);
             % Call headreco
-            pathToT1 = NiiFile;
-            pathToT2 = []; % TODO : ask user if there is any T2 image  and ask for the path
-            strCall = ['headreco all --noclean  subject_id ' pathToT1 ' ' pathToT2];
+            strCall = ['headreco all --noclean  subject_id ' T1Nii ' ' T2Nii];
             [status, result] = system(strCall);
             % Restore working directory
             cd(curDir);
@@ -301,7 +350,6 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
             % load the mesh and change to bst coordinates :
             mshfilename = bst_fullfile(simnibsDir, 'SimNibsMesh.msh');
             femhead = in_tess(mshfilename); %  this could be load to bst as it is.
-
             % Get the number of layers
             switch (OPTIONS.NbLayers)
                 case 3   % {'brain'  'skull'  'scalp'}
@@ -324,11 +372,9 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
             elem = [femhead.Elements femhead.Tissue];
             % Only tetra could be generated from this method
             OPTIONS.MeshType = 'tetrahedral';
-            % Delete temporary folder
-            file_delete(simnibsDir, 1, 3);
 
         case 'roast'
-            error('todo')
+            error('todo');
             % Install ROAST if needed
             if ~exist('roast', 'file')
                 errMsg = InstallRoast(isInteractive);
@@ -343,23 +389,23 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
             roastDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'roast');
             mkdir(roastDir);
             % Save MRI in .nii format
-            NiiFile = bst_fullfile(roastDir, 'roast.nii');
-            out_mri_nii(MriFile, NiiFile);
+            T1Nii = bst_fullfile(roastDir, 'roastT1.nii');
+            out_mri_nii(T1File, T1Nii);
+            if ~isempty(T2File)
+                T2Nii = bst_fullfile(roastDir, 'roastT2.nii');
+                out_mri_nii(T2File, T2Nii);
+            end
 
             % === CALL ROAST PIPELINE ===
             % Segmentation
             bst_progress('text', 'MRI Segmentation...');
-            fullPathToT1 = NiiFile;
-            fullPathToT2 = [];
-            segment_by_roast(fullPathToT1, fullPathToT2);
+            segment_by_roast(T1Nii, T2Nii);
             % Convert the roast output to fieltrip in order to use prepare mesh
-            baseFilename = 'roast_T1orT2';
-            % Load the masks
-            data = load_untouch_nii([roastDir filesep baseFilename '_masks.nii']);
+            data = load_untouch_nii(bst_fullfile(roastDir, 'roast_T1orT2_masks.nii'));
             allMask = data.img; 
             % Getting the MRI data
             ft_defaults
-            mri = ft_read_mri(NiiFile);
+            mri = ft_read_mri(T1Nii);
             % Define layers
             switch (OPTIONS.NbLayers)
                 case 3
@@ -424,41 +470,34 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
                     bst_progress('text', 'Mesh Generation...'); %
                     %TODO ... Load the mask and apply Johannes process to generate the cubic Mesh
                     % TODO : Add the T2 images to the segmenttion process.
-                    [node,elem] = mesh_by_iso2mesh(fullPathToT1,fullPathToT2);
+                    [node,elem] = mesh_by_iso2mesh(T1Nii, T2Nii);
                     figure;
                     plotmesh(node,elem,'x<90')
                     title('Mesh tetra  with iso2mesh ')
             end
-            % Delete temporary folder
-            file_delete(roastDir, 1, 3);
             
         case 'fieldtrip'
-            error('todo')
-            % Remove the ROAST toolbox from the path in order to avoid the error related to spm...
-            str = which('roast','-all');
-            if ~isempty(str)
-                filepath = fileparts(str{1});
-                rmpath(filepath)
-            end
             % Setup FieldTrip
-            ft_defaults
+            isOk = bst_ft_init(isInteractive);
+            if ~isOk
+                return;
+            end
             
             % === SAVE MRI AS NII ===
             % Create temporary folder for fieldtrip segmentation files
-            fieldtripDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'fieldtripSegmentation');
-            mkdir(fieldtripDir);
+            ftTmp = bst_fullfile(bst_get('BrainstormTmpDir'), 'ftseg');
+            mkdir(ftTmp);
             % Save MRI in .nii format
-            NiiFile = bst_fullfile(fieldtripDir, 'fieldtrip.nii');
-            out_mri_nii(MriFile, NiiFile);
+            T1Nii = bst_fullfile(ftTmp, 'fieldtrip.nii');
+            out_mri_nii(T1File, T1Nii);
 
-            % === CALL Fieltrip PIPELINE ===
-            mri = ft_read_mri(NiiFile);
+            % === CALL FIELDTRIP PIPELINE ===
+            mri = ft_read_mri(T1Nii);
             % Segmentation
             cfg = [];
             cfg.output = TissueLabels;
             mri.coordsys = 'ctf'; % always ctf ==> check the output if it fits with the MRI
             segmentedmri  = ft_volumesegment(cfg, mri);
-
             % Mesh
             cfg        = [];
             cfg.shift  = OPTIONS.NodeShift;
@@ -487,8 +526,6 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
                 elem = [el id];
                 clear el id
             end
-            % Delete temporary folder
-            file_delete(fieldtripDir, 1, 3);
 
         otherwise
             errMsg = ['Invalid method "' OPTIONS.Method '".'];
@@ -517,7 +554,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, isInteractive, OPTIONS)
         'MaxVol=',    num2str(OPTIONS.MaxVol),  '|', ...
         'KeepRatio=', num2str(OPTIONS.KeepRatio)]);
     % Save to database
-    FemFile = file_unique(bst_fullfile(bst_fileparts(MriFile), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
+    FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
     bst_save(FemFile, FemMat, 'v7');
     db_add_surface(iSubject, FemFile, FemMat.Comment);
     % Return success
@@ -527,13 +564,13 @@ end
 
 
 %% ===== COMPUTE/INTERACTIVE =====
-function ComputeInteractive(iSubject, iAnatomy, BemFiles) %#ok<DEFNU>
+function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     % Get inputs
     if (nargin < 3) || isempty(BemFiles)
         BemFiles = [];
     end
-    if (nargin < 2) || isempty(iAnatomy)
-        iAnatomy = [];
+    if (nargin < 2) || isempty(iMris)
+        iMris = [];
     end
     % Get default options
     OPTIONS = GetDefaultOptions();
@@ -545,14 +582,14 @@ function ComputeInteractive(iSubject, iAnatomy, BemFiles) %#ok<DEFNU>
     % Otherwise: Ask for method to use
     else
         res = java_dialog('question', [...
-            '<HTML><B>Iso2mesh</B>:<BR>Calls iso2mesh to create a tetrahedral mesh from the BEM layers<BR>' ...
+            '<HTML><B>Iso2mesh</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
             'generated with Brainstorm (head, inner skull, outer skull).<BR><BR>' ...
-            '<B>SimNIBS</B>:<BR>Calls SimNIBS to segment and mesh the T1 (and T2) MRI.<BR>' ...
+            '<B>SimNIBS</B>:<BR>Call SimNIBS to segment and mesh the <B>T1</B> (and <B>T2</B>) MRI.<BR>' ...
             'SimNIBS must be installed on the computer first.<BR>' ...
             'Website: https://simnibs.github.io/simnibs<BR><BR>'...
-            '<B>ROAST</B>:<BR>Calls the ROAST pipeline to segment and mesh the T1 (and T2) MRI.<BR>' ...
+            '<B>ROAST</B>:<BR>Call ROAST to segment and mesh the <B>T1</B> (and <B>T2</B>) MRI.<BR>' ...
             'ROAST is downloaded and installed automatically when needed.<BR><BR>'...
-            '<B>FieldTrip</B>:<BR>Calls FieldTrip to segment and mesh the T1 MRI.<BR>' ...
+            '<B>FieldTrip</B>:<BR>Call FieldTrip to segment and mesh the <B>T1</B> MRI.<BR>' ...
             'FieldTrip must be installed on the computer first.<BR>' ...
             'Website: http://www.fieldtriptoolbox.org/download<BR><BR>'], ...
             'FEM mesh generation method', [], {'Iso2mesh','SimNIBS','ROAST','FieldTrip'}, 'BEM');
@@ -675,7 +712,7 @@ function ComputeInteractive(iSubject, iAnatomy, BemFiles) %#ok<DEFNU>
     bst_progress('start', 'Generate FEM mesh', ['Generating FEM mesh (' OPTIONS.Method ')...']);
     % Generate FEM mesh
     try
-        [isOk, errMsg] = Compute(iSubject, iAnatomy, 1, OPTIONS);
+        [isOk, errMsg] = Compute(iSubject, iMris, 1, OPTIONS);
         % Error handling
         if ~isOk
             bst_error(errMsg, 'FEM mesh', 0);

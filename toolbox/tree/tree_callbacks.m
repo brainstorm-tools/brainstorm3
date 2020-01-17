@@ -30,7 +30,7 @@ function jPopup = tree_callbacks( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2020
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
@@ -187,7 +187,7 @@ switch (lower(action))
                 % Else, this item is already marked : display it in surface viewer
                 else
                     if strcmpi(nodeType, 'fem')
-                        view_surface_fem(filenameRelative, [], [], 'NewFigure');
+                        view_surface_fem(filenameRelative, [], [], [], 'NewFigure');
                     else
                         view_surface(filenameRelative);
                     end
@@ -583,8 +583,11 @@ switch (lower(action))
                     % Disable if no scalp or cortex available
                     if isempty(sSubject.iCortex) || isempty(sSubject.iScalp) || isempty(sSubject.Anatomy)
                         jItemBem.setEnabled(0);
+                    end
+                    if isempty(sSubject.iScalp) && isempty(sSubject.Anatomy)
                         jItemFem.setEnabled(0);
                     end
+                    
                     % === GENERATE SPM CANONICAL ===
                     AddSeparator(jPopup);
                     jItem1 = gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, []));
@@ -960,67 +963,81 @@ switch (lower(action))
             case 'anatomy'
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
-                % MENU : DISPLAY
-                jMenuDisplay = gui_component('Menu', jPopup, [], 'Display', IconLoader.ICON_ANATOMY, [], []);
-                    % Display
-                    gui_component('MenuItem', jMenuDisplay, [], 'MRI Viewer',           IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative));
-                    gui_component('MenuItem', jMenuDisplay, [], '3D orthogonal slices', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(filenameRelative));
-                    AddSeparator(jMenuDisplay);
-                    % Display as overlay
-                    if ~bstNodes(1).isMarked()
-                        % Get subject structure
-                        sSubject = bst_get('MriFile', filenameRelative);
-                        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                        % Overlay menus
-                        gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
-                        gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(MriFile, filenameRelative));
-                        AddSeparator(jMenuDisplay);
-                    end
-                    gui_component('MenuItem', jMenuDisplay, [], 'Axial slices',    IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'axial', 20));
-                    gui_component('MenuItem', jMenuDisplay, [], 'Coronal slices',  IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'coronal', 20));
-                    gui_component('MenuItem', jMenuDisplay, [], 'Sagittal slices', IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'sagittal', 20));
-                    AddSeparator(jMenuDisplay);
-                    gui_component('MenuItem', jMenuDisplay, [], 'Histogram', IconLoader.ICON_HISTOGRAM, [], @(h,ev)view_mri_histogram(filenameFull));
-                % === MENU: EDIT MRI ===
-                if ~bst_get('ReadOnly')
-                    gui_component('MenuItem', jPopup, [], 'Edit MRI...', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, 'EditMri'));
+                iAnatomy = [];
+                for iFile = 1:length(bstNodes)
+                    iAnatomy(iFile) = bstNodes(iFile).getItemIndex();
                 end
-                % === MENU: SET AS DEFAULT ===
-                iAnatomy = bstNodes(1).getItemIndex();
-                if ~bst_get('ReadOnly') && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked())
-                    gui_component('MenuItem', jPopup, [], 'Set as default MRI', IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, 'Anatomy', iAnatomy));
+                if (length(bstNodes) == 1)
+                    % MENU : DISPLAY
+                    jMenuDisplay = gui_component('Menu', jPopup, [], 'Display', IconLoader.ICON_ANATOMY, [], []);
+                        % Display
+                        gui_component('MenuItem', jMenuDisplay, [], 'MRI Viewer',           IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative));
+                        gui_component('MenuItem', jMenuDisplay, [], '3D orthogonal slices', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(filenameRelative));
+                        AddSeparator(jMenuDisplay);
+                        % Display as overlay
+                        if ~bstNodes(1).isMarked()
+                            % Get subject structure
+                            sSubject = bst_get('MriFile', filenameRelative);
+                            MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                            % Overlay menus
+                            gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                            gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(MriFile, filenameRelative));
+                            AddSeparator(jMenuDisplay);
+                        end
+                        gui_component('MenuItem', jMenuDisplay, [], 'Axial slices',    IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'axial', 20));
+                        gui_component('MenuItem', jMenuDisplay, [], 'Coronal slices',  IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'coronal', 20));
+                        gui_component('MenuItem', jMenuDisplay, [], 'Sagittal slices', IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'sagittal', 20));
+                        AddSeparator(jMenuDisplay);
+                        gui_component('MenuItem', jMenuDisplay, [], 'Histogram', IconLoader.ICON_HISTOGRAM, [], @(h,ev)view_mri_histogram(filenameFull));
+                    % === MENU: EDIT MRI ===
+                    if ~bst_get('ReadOnly')
+                        gui_component('MenuItem', jPopup, [], 'Edit MRI...', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, 'EditMri'));
+                    end
+                    % === MENU: SET AS DEFAULT ===
+                    if ~bst_get('ReadOnly') && (length(bstNodes) == 1) && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked())
+                        gui_component('MenuItem', jPopup, [], 'Set as default MRI', IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, 'Anatomy', iAnatomy));
+                    end
                 end
                 % === REGISTRATION ===
                 if ~bst_get('ReadOnly')
-                    AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Compute MNI transformation', IconLoader.ICON_ANATOMY, [], @(h,ev)NormalizeMri(filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
-                    if ~bstNodes(1).isMarked()
-                        jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
-                        gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 1));
-                        gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 0));
-                        AddSeparator(jMenuRegister);
-                        gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'ncs', 'ncs'));
-                        gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'scs', 'scs'));
-                        gui_component('MenuItem', jMenuRegister, [], 'Reslice / vox2ras transform (.nii)',     IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
-                        AddSeparator(jMenuRegister);
-                        gui_component('MenuItem', jMenuRegister, [], 'Copy fiducials from default MRI',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'vox2ras', 0));
+                    if (length(bstNodes) == 1)
+                        AddSeparator(jPopup);
+                        gui_component('MenuItem', jPopup, [], 'Compute MNI transformation', IconLoader.ICON_ANATOMY, [], @(h,ev)NormalizeMri(filenameRelative));
+                        gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
+                        gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
+                        if ~bstNodes(1).isMarked()
+                            jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
+                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 1));
+                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 0));
+                            AddSeparator(jMenuRegister);
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'ncs', 'ncs'));
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'scs', 'scs'));
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / vox2ras transform (.nii)',     IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
+                            AddSeparator(jMenuRegister);
+                            gui_component('MenuItem', jMenuRegister, [], 'Copy fiducials from default MRI',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'vox2ras', 0));
+                        end
                     end
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)process_generate_fem('ComputeInteractive', iSubject, iAnatomy));
-                    AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, iAnatomy));
-                    gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_segment_cat12('ComputeInteractive', iSubject, iAnatomy));
-                    % SEEG/ECOG
-                    AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', filenameRelative));
+                    if (length(bstNodes) == 1)
+                        gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(filenameRelative));
+                    end
+                    if (length(bstNodes) <= 2)
+                        gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)process_generate_fem('ComputeInteractive', iSubject, iAnatomy));
+                    end
+                    if (length(bstNodes) == 1)
+                        AddSeparator(jPopup);
+                        gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, iAnatomy));
+                        gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_segment_cat12('ComputeInteractive', iSubject, iAnatomy));
+                        % SEEG/ECOG
+                        AddSeparator(jPopup);
+                        gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', filenameRelative));
+                    end
                 end
                 % === MENU: EXPORT ===
                 % Export menu (added later)
-                jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_mri(filenameFull));
-
+                if (length(bstNodes) == 1)
+                    jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_mri(filenameFull));
+                end
 
 %% ===== POPUP: SURFACE =====
             case {'scalp', 'cortex', 'outerskull', 'innerskull', 'other'}

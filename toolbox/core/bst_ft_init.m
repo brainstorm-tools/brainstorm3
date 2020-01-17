@@ -100,4 +100,10 @@ addpath(fullfile(FieldTripDir, 'forward'));
 addpath(fullfile(FieldTripDir, 'src'));
 addpath(fullfile(FieldTripDir, 'utilities'));
 
-    
+% Remove the ROAST toolbox from the path in order to avoid the error related to spm...
+roastExe = which('roast','-all');
+if ~isempty(roastExe)
+    roastDir = fileparts(roastExe{1});
+    disp(['BST> Removing ROAST from path: ' roastDir]);
+    rmpath(roastDir);
+end

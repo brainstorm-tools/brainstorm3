@@ -28,14 +28,14 @@ m = mesh_load_gmsh4(MeshFile);
 [fPath, fBase, fExt] = bst_fileparts(MeshFile);
 
 % Convert to bst format
-femhead = db_template('femmat');
-femhead.Comment  = fBase;
-femhead.Vertices = m.nodes(:,1:3);
-femhead.Elements = m.tetrahedra(:,1:4);
-femhead.Tissue   = m.tetrahedron_regions;
+MeshMat = db_template('femmat');
+MeshMat.Comment  = fBase;
+MeshMat.Vertices = m.nodes(:,1:3);
+MeshMat.Elements = m.tetrahedra(:,1:4);
+MeshMat.Tissue   = m.tetrahedron_regions;
 
-for i = 1:length(unique(femhead.Tissue))
-     femhead.TissueLabels{i}  = [ 'tissue_' num2str(i)];
+for i = 1:length(unique(MeshMat.Tissue))
+     MeshMat.TissueLabels{i}  = [ 'tissue_' num2str(i)];
 end
 
 

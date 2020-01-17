@@ -35,7 +35,7 @@ function [iNewSurfaces, OutputSurfacesFiles, nVertices] = import_surfaces(iSubje
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2020
 
 %% ===== PARSE INPUTS =====
 % Check command line
@@ -152,10 +152,18 @@ for iFile = 1:length(SurfaceFiles)
     importedBaseName = strrep(importedBaseName, '_tess', '');
     % Only one surface
     if (length(Tess) == 1)
-        NewTess = db_template('surfacemat');
-        NewTess.Comment  = Tess(1).Comment;
-        NewTess.Vertices = Tess(1).Vertices;
-        NewTess.Faces    = Tess(1).Faces;
+        % Surface mesh
+        if isfield(Tess, 'Faces')
+            NewTess = db_template('surfacemat');
+            NewTess.Comment  = Tess(1).Comment;
+            NewTess.Vertices = Tess(1).Vertices;
+            if isfield(Tess, 'Faces')   % Volume meshes do not have Faces field
+                NewTess.Faces = Tess(1).Faces;
+            end
+        % Volume FEM mesh
+        else
+            NewTess = Tess;
+        end
     % Multiple surfaces
     else
         [Tess(:).Atlas] = deal(db_template('Atlas'));
@@ -182,8 +190,12 @@ for iFile = 1:length(SurfaceFiles)
     % ===== SAVE BST FILE =====
     % History: File name
     NewTess = bst_history('add', NewTess, 'import', ['Import from: ' TessFile]);
-    % Produce a default surface filename
-    BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_' importedBaseName '.mat']);
+    % Produce a default surface filename (surface of volume mesh)
+    if isfield(NewTess, 'Faces')
+        BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_' importedBaseName '.mat']);
+    else
+        BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_fem_' importedBaseName '.mat']);
+    end
     % Make this filename unique
     BstTessFile = file_unique(BstTessFile);
     % Save new surface in Brainstorm format
