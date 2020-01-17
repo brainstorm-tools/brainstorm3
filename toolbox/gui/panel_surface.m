@@ -620,6 +620,10 @@ function ResectSurface(hFig, iSurf, resectDim, resectValue)
     % If updating FEM mesh, update all layers
     if strcmpi(TessInfo(iSurf).Name, 'FEM')
         iSurf = find(strcmpi({TessInfo.Name}, 'FEM'));
+        bst_progress('start', 'Resect surface', 'Resecting...', 0, length(iSurf)+1);
+        isProgress = 1;
+    else
+        isProgress = 0;
     end
     % Update all selected surfaces
     for i = 1:length(iSurf)
@@ -635,6 +639,10 @@ function ResectSurface(hFig, iSurf, resectDim, resectValue)
     setappdata(hFig, 'Surface', TessInfo);
     % Hide trimmed part of the surface
     for i = 1:length(iSurf)
+        if isProgress
+            bst_progress('text', ['Resecting: ', TessInfo(iSurf(i)).SurfaceFile, '...']);
+            bst_progress('inc', 1);
+        end
         figure_callback(hFig, 'UpdateSurfaceAlpha', hFig, iSurf(i));
     end
     % Deselect both Left and Right buttons
@@ -642,6 +650,13 @@ function ResectSurface(hFig, iSurf, resectDim, resectValue)
     ctrl.jToggleResectLeft.setSelected(0);
     ctrl.jToggleResectRight.setSelected(0);
     ctrl.jToggleResectStruct.setSelected(0);
+    % Close progress bar
+    if isProgress
+        bst_progress('text', 'Updating figure...');
+        bst_progress('inc', 1);
+        drawnow
+        bst_progress('stop');
+    end
 end
 
 

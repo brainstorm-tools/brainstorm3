@@ -475,7 +475,7 @@ function UpdateMenus(sAtlas)
     % Get current surface and atlas
     [sAtlas, iAtlas, sSurf] = GetAtlas();
     % Offer these projection menus only for Cortex surfaces
-    if ~isempty(jMenuProject) && strcmpi(sSurf.Name, 'Cortex')
+    if ~isempty(sAtlas) && ~isempty(jMenuProject) && strcmpi(sSurf.Name, 'Cortex')
         % Get subjectlist
         nSubjects = bst_get('SubjectCount');
         nMenus = 0;
