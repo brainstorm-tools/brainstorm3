@@ -1168,9 +1168,11 @@ switch (lower(action))
               
 %% ===== POPUP: FEM HEAD MODEL =====
             case 'fem'
+                iSubject = bstNodes(1).getStudyIndex();
                 % Display
                 gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative));
-
+                % Extract surfaces
+                gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM'));
                 
                 
 %% ===== POPUP: NOISECOV =====

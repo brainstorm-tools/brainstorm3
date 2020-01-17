@@ -191,6 +191,7 @@ switch (FileFormat)
         TessMat = in_tess_simnibs(TessFile);
         % MNI MRI coord => MRI
         if ~isempty(sMri)
+            warning('todo: clean transformations');
             T1 = diag([sMri.Voxsize(:) ./1000; 1]); % scale trans from mm to meters
             T2 = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]; % rotate and translate from vox to scs.
             if ~isempty(sMri.InitTransf)
@@ -247,7 +248,6 @@ end
 % Fix the tesselations (not for volume meshes, without Faces field)
 if isfield(TessMat, 'Faces')
     for iTess = 1:length(TessMat)
-        warning('todo: clean transformations')
         % Make sure all the values are double
         TessMat(iTess).Vertices = double(TessMat(iTess).Vertices);
         TessMat(iTess).Faces = double(TessMat(iTess).Faces);
