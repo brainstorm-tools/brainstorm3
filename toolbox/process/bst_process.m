@@ -1414,9 +1414,11 @@ function sInputs = GetInputStruct(FileNames)
     FileType = file_gettype(FileNames{1});
     % Remove the full path
     ProtocolInfo = bst_get('ProtocolInfo');
-    FileNames = cellfun(@(c)strrep(c, ProtocolInfo.STUDIES, ''), FileNames, 'UniformOutput', 0);
+    FileNames = cellfun(@(c)strrep(c, [ProtocolInfo.STUDIES, filesep], ''), FileNames, 'UniformOutput', 0);
+    % Convert to linux-style file names
+    FileNames = cellfun(@file_win2unix, FileNames, 'UniformOutput', 0);
     % Group in studies
-    FilePaths = cellfun(@(c)c(1:find((c=='/') | (c=='\'),1,'last')-1), FileNames, 'UniformOutput', 0);
+    FilePaths = cellfun(@(c)c(1:find(c=='/',1,'last')-1), FileNames, 'UniformOutput', 0);
     [uniquePath,I,J] = unique(FilePaths);
     % Loop on studies
     for iPath = 1:length(uniquePath)
@@ -1442,57 +1444,54 @@ function sInputs = GetInputStruct(FileNames)
         if ~isempty(sStudy.Condition)
             [sInputs(iGroupFiles).Condition] = deal(sStudy.Condition{1});
         end
-        % Loop on all the files
-        for iFile = 1:length(GroupFileNames)
-            % Get study
-            switch (FileType)
-                case 'data'
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Data', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Data(iItem);
-                    % Input type
-                    if ~isempty(sItem) && strcmpi(sItem.DataType, 'raw')
-                        InputType = 'raw';
-                    else
-                        InputType = 'data';
-                    end
-                case {'results', 'link'}
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Result', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Result(iItem);
-                    InputType = 'results';
-                case {'presults', 'pdata','ptimefreq','pmatrix'}
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Stat', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Stat(iItem);
-                    InputType = FileType;
-                case 'timefreq'
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Timefreq', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Timefreq(iItem);
-                    InputType = 'timefreq';
-                case 'matrix'
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Matrix', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Matrix(iItem);
-                    InputType = 'matrix';
-                case 'dipoles'
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Dipoles', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Dipoles(iItem);
-                    InputType = 'dipoles';
-                otherwise
-                    error('File format not supported.');
-            end
-            % File was not found
-            if isempty(iItem)
-                disp(['BST> Warning: File not found "' GroupFileNames{iFile} '".']);
-                continue;
-            end
-            % Fill structure
-            iInput = iGroupFiles(iFile);
-            sInputs(iInput).iItem        = iItem;
-            sInputs(iInput).FileType     = InputType;
-            sInputs(iInput).FileName     = sItem.FileName;
-            sInputs(iInput).Comment      = sItem.Comment;
-            % Associated data file
-            if isfield(sItem, 'DataFile')
-                sInputs(iInput).DataFile = sItem.DataFile;
-            end
+        % Look for items in database
+        switch (FileType)
+            case 'data'
+                [tmp, iDb, iList] = intersect({sStudy.Data.FileName}, GroupFileNames);
+                sItems = sStudy.Data(iDb);
+                if ~isempty(sItems) && strcmpi(sItems(1).DataType, 'raw')
+                    InputType = 'raw';
+                else
+                    InputType = 'data';
+                end
+            case {'results', 'link'}
+                [tmp, iDb, iList] = intersect({sStudy.Result.FileName}, GroupFileNames);
+                sItems = sStudy.Result(iDb);
+                InputType = 'results';
+            case {'presults', 'pdata','ptimefreq','pmatrix'}
+                [tmp, iDb, iList] = intersect({sStudy.Stat.FileName}, GroupFileNames);
+                sItems = sStudy.Stat(iDb);
+                InputType = FileType;
+            case 'timefreq'
+                [tmp, iDb, iList] = intersect({sStudy.Timefreq.FileName}, GroupFileNames);
+                sItems = sStudy.Timefreq(iDb);
+                InputType = 'timefreq';
+            case 'matrix'
+                [tmp, iDb, iList] = intersect({sStudy.Matrix.FileName}, GroupFileNames);
+                sItems = sStudy.Matrix(iDb);
+                InputType = 'matrix';
+            case 'dipoles'
+                [tmp, iDb, iList] = intersect({sStudy.Dipoles.FileName}, GroupFileNames);
+                sItems = sStudy.Dipoles(iDb);
+                InputType = 'dipoles';
+            otherwise
+                error('File format not supported.');
+        end
+        % Error: not all files were found
+        if (length(iList) ~= length(GroupFileNames))
+            disp(sprintf('BST> Warning: %d file(s) not found in database.', length(GroupFileNames) - length(iList)));
+            continue;
+        end
+        % Fill structure
+        iInputs = iGroupFiles(iList);
+        iDb = num2cell(iDb);
+        [sInputs(iInputs).iItem]    = deal(iDb{:});
+        [sInputs(iInputs).FileType] = deal(InputType);
+        [sInputs(iInputs).FileName] = deal(sItems.FileName);
+        [sInputs(iInputs).Comment]  = deal(sItems.Comment);
+        % Associated data file
+        if isfield(sItems, 'DataFile')
+            [sInputs(iInputs).DataFile] = deal(sItems.DataFile);
         end
     end
     % Remove entries that were not found in the database
