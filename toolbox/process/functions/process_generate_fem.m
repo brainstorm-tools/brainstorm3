@@ -373,159 +373,158 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Only tetra could be generated from this method
             OPTIONS.MeshType = 'tetrahedral';
 
-        case 'roast'
-            error('todo');
-            % Install ROAST if needed
-            if ~exist('roast', 'file')
-                errMsg = InstallRoast(isInteractive);
-                if ~isempty(errMsg) || ~exist('roast', 'file')
-                    return;
-                end
-            end
-            
-            % === SAVE MRI AS NII ===
-            bst_progress('setimage', 'logo_splash_roast.gif');
-            % Create temporary folder for fieldtrip segmentation files
-            roastDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'roast');
-            mkdir(roastDir);
-            % Save MRI in .nii format
-            T1Nii = bst_fullfile(roastDir, 'roastT1.nii');
-            out_mri_nii(T1File, T1Nii);
-            if ~isempty(T2File)
-                T2Nii = bst_fullfile(roastDir, 'roastT2.nii');
-                out_mri_nii(T2File, T2Nii);
-            end
-
-            % === CALL ROAST PIPELINE ===
-            % Segmentation
-            bst_progress('text', 'MRI Segmentation...');
-            segment_by_roast(T1Nii, T2Nii);
-            % Convert the roast output to fieltrip in order to use prepare mesh
-            data = load_untouch_nii(bst_fullfile(roastDir, 'roast_T1orT2_masks.nii'));
-            allMask = data.img; 
-            % Getting the MRI data
-            ft_defaults
-            mri = ft_read_mri(T1Nii);
-            % Define layers
-            switch (OPTIONS.NbLayers)
-                case 3
-                    white_mask = zeros(size(allMask)); white_mask(allMask == 1) = true;
-                    gray_mask  = zeros(size(allMask)); gray_mask(allMask == 2) = true;
-                    csf_mask   = zeros(size(allMask)); csf_mask(allMask == 3) = true;
-                    brain_mask = white_mask + gray_mask + csf_mask;
-                    bone_mask  = zeros(size(allMask)); bone_mask(allMask == 4) = true;
-                    skin_mask  = zeros(size(allMask)); skin_mask(allMask == 5) = true;
-                    segmentedmri.dim = size(skin_mask);
-                    segmentedmri.transform = [];
-                    segmentedmri.coordsys = 'ctf';
-                    segmentedmri.unit = 'mm';
-                    segmentedmri.brain = brain_mask;
-                    segmentedmri.skull = bone_mask;
-                    segmentedmri.scalp = skin_mask;
-                    segmentedmri.transform = mri.transform;
-                case 5   % {'white', 'gray', 'csf', 'bone', 'skin', 'air'}
-                    white_mask = zeros(size(allMask)); white_mask(allMask == 1) = true;
-                    gray_mask  = zeros(size(allMask)); gray_mask(allMask == 2) = true;
-                    csf_mask   = zeros(size(allMask)); csf_mask(allMask == 3) = true;
-                    bone_mask  = zeros(size(allMask)); bone_mask(allMask== 4) = true;
-                    skin_mask  = zeros(size(allMask)); skin_mask(allMask == 5) = true;
-                    segmentedmri.dim = size(skin_mask);
-                    segmentedmri.transform = [];
-                    segmentedmri.coordsys = 'ctf';
-                    segmentedmri.unit = 'mm';
-                    segmentedmri.gray = gray_mask;
-                    segmentedmri.white = white_mask;
-                    segmentedmri.csf = csf_mask;
-                    segmentedmri.skull = bone_mask;
-                    segmentedmri.scalp = skin_mask;
-                    segmentedmri.transform = mri.transform;
-            end
-
-            % Output mesh type
-            switch (OPTIONS.MeshType)
-                case 'hexahedral'
-                    % Mesh using fieldtrip tools
-                    cfg        = [];
-                    cfg.shift  = OPTIONS.NodeShift ;
-                    cfg.method = 'hexahedral';
-                    mesh = ft_prepare_mesh(cfg,segmentedmri);
-                    % Visualisation : not for brainstorm ...
-                    %TODO : work on brainstom function to display the mesh better than the current version
-                    % convert the mesh to tetra in order to use plotmesh
-                    [el,pos,id] = hex2tet(mesh.hex,mesh.pos,mesh.tissue,2);
-                    elem = [el id];        clear el id
-                    figure;
-                    plotmesh(pos,elem,'x<50')
-                    title('Mesh hexa with vox2hexa')
-                    clear pos elem
-                    % save as hexa ...
-                    node = mesh.pos;
-                    elem = [mesh.hex mesh.tissue];
-                    %             %% convert the hexa to tetra (add the function hex2tet to the toolbox)
-                    %             [el, node, id]=hex2tet(mesh.hex,mesh.pos,mesh.tissue,2);
-                    %             elem = [el id];
-                    %             clear el id
-                case 'tetrahedral'
-                    % Mesh by iso2mesh
-                    bst_progress('text', 'Mesh Generation...'); %
-                    %TODO ... Load the mask and apply Johannes process to generate the cubic Mesh
-                    % TODO : Add the T2 images to the segmenttion process.
-                    [node,elem] = mesh_by_iso2mesh(T1Nii, T2Nii);
-                    figure;
-                    plotmesh(node,elem,'x<90')
-                    title('Mesh tetra  with iso2mesh ')
-            end
-            
-        case 'fieldtrip'
-            % Setup FieldTrip
-            isOk = bst_ft_init(isInteractive);
-            if ~isOk
-                return;
-            end
-            
-            % === SAVE MRI AS NII ===
-            % Create temporary folder for fieldtrip segmentation files
-            ftTmp = bst_fullfile(bst_get('BrainstormTmpDir'), 'ftseg');
-            mkdir(ftTmp);
-            % Save MRI in .nii format
-            T1Nii = bst_fullfile(ftTmp, 'fieldtrip.nii');
-            out_mri_nii(T1File, T1Nii);
-
-            % === CALL FIELDTRIP PIPELINE ===
-            mri = ft_read_mri(T1Nii);
-            % Segmentation
-            cfg = [];
-            cfg.output = TissueLabels;
-            mri.coordsys = 'ctf'; % always ctf ==> check the output if it fits with the MRI
-            segmentedmri  = ft_volumesegment(cfg, mri);
-            % Mesh
-            cfg        = [];
-            cfg.shift  = OPTIONS.NodeShift;
-            cfg.method = 'hexahedral';
-            mesh = ft_prepare_mesh(cfg,segmentedmri);
-
-            % Visualisation : not for brainstorm ...
-            %TODO : work on brainstom function to display the mesh better than the current version
-            % convert the mesh to tetr in order to use plotmesh
-            [el,pos,id] = hex2tet(mesh.hex,mesh.pos,mesh.tissue,2);
-            elem = [el id];
-            clear el id
-            figure;
-            plotmesh(pos,elem,'x<50')
-            clear pos elem
-            % === IMPORT OUTPUT FOLDER ===
-            % Import FEM mesh
-            % use the TETRA or the HEXA
-            if strcmp(OPTIONS.MeshType,'hexahedral')
-                % save as hexa ...
-                node = mesh.pos;
-                elem = [mesh.hex mesh.tissue];
-            elseif strcmp(OPTIONS.MeshType,'tetrahedral')
-                % convert the hexa to tetra (add the function hex2tet to the toolbox)
-                [el, node, id]=hex2tet(mesh.hex,mesh.pos,mesh.tissue,2);
-                elem = [el id];
-                clear el id
-            end
+%         case 'roast'
+%             % Install ROAST if needed
+%             if ~exist('roast', 'file')
+%                 errMsg = InstallRoast(isInteractive);
+%                 if ~isempty(errMsg) || ~exist('roast', 'file')
+%                     return;
+%                 end
+%             end
+%             
+%             % === SAVE MRI AS NII ===
+%             bst_progress('setimage', 'logo_splash_roast.gif');
+%             % Create temporary folder for fieldtrip segmentation files
+%             roastDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'roast');
+%             mkdir(roastDir);
+%             % Save MRI in .nii format
+%             T1Nii = bst_fullfile(roastDir, 'roastT1.nii');
+%             out_mri_nii(T1File, T1Nii);
+%             if ~isempty(T2File)
+%                 T2Nii = bst_fullfile(roastDir, 'roastT2.nii');
+%                 out_mri_nii(T2File, T2Nii);
+%             end
+% 
+%             % === CALL ROAST PIPELINE ===
+%             % Segmentation
+%             bst_progress('text', 'MRI Segmentation...');
+%             segment_by_roast(T1Nii, T2Nii);
+%             % Convert the roast output to fieltrip in order to use prepare mesh
+%             data = load_untouch_nii(bst_fullfile(roastDir, 'roast_T1orT2_masks.nii'));
+%             allMask = data.img; 
+%             % Getting the MRI data
+%             ft_defaults
+%             mri = ft_read_mri(T1Nii);
+%             % Define layers
+%             switch (OPTIONS.NbLayers)
+%                 case 3
+%                     white_mask = zeros(size(allMask)); white_mask(allMask == 1) = true;
+%                     gray_mask  = zeros(size(allMask)); gray_mask(allMask == 2) = true;
+%                     csf_mask   = zeros(size(allMask)); csf_mask(allMask == 3) = true;
+%                     brain_mask = white_mask + gray_mask + csf_mask;
+%                     bone_mask  = zeros(size(allMask)); bone_mask(allMask == 4) = true;
+%                     skin_mask  = zeros(size(allMask)); skin_mask(allMask == 5) = true;
+%                     segmentedmri.dim = size(skin_mask);
+%                     segmentedmri.transform = [];
+%                     segmentedmri.coordsys = 'ctf';
+%                     segmentedmri.unit = 'mm';
+%                     segmentedmri.brain = brain_mask;
+%                     segmentedmri.skull = bone_mask;
+%                     segmentedmri.scalp = skin_mask;
+%                     segmentedmri.transform = mri.transform;
+%                 case 5   % {'white', 'gray', 'csf', 'bone', 'skin', 'air'}
+%                     white_mask = zeros(size(allMask)); white_mask(allMask == 1) = true;
+%                     gray_mask  = zeros(size(allMask)); gray_mask(allMask == 2) = true;
+%                     csf_mask   = zeros(size(allMask)); csf_mask(allMask == 3) = true;
+%                     bone_mask  = zeros(size(allMask)); bone_mask(allMask== 4) = true;
+%                     skin_mask  = zeros(size(allMask)); skin_mask(allMask == 5) = true;
+%                     segmentedmri.dim = size(skin_mask);
+%                     segmentedmri.transform = [];
+%                     segmentedmri.coordsys = 'ctf';
+%                     segmentedmri.unit = 'mm';
+%                     segmentedmri.gray = gray_mask;
+%                     segmentedmri.white = white_mask;
+%                     segmentedmri.csf = csf_mask;
+%                     segmentedmri.skull = bone_mask;
+%                     segmentedmri.scalp = skin_mask;
+%                     segmentedmri.transform = mri.transform;
+%             end
+% 
+%             % Output mesh type
+%             switch (OPTIONS.MeshType)
+%                 case 'hexahedral'
+%                     % Mesh using fieldtrip tools
+%                     cfg        = [];
+%                     cfg.shift  = OPTIONS.NodeShift ;
+%                     cfg.method = 'hexahedral';
+%                     mesh = ft_prepare_mesh(cfg,segmentedmri);
+%                     % Visualisation : not for brainstorm ...
+%                     %TODO : work on brainstom function to display the mesh better than the current version
+%                     % convert the mesh to tetra in order to use plotmesh
+%                     [el,pos,id] = hex2tet(mesh.hex,mesh.pos,mesh.tissue,2);
+%                     elem = [el id];        clear el id
+%                     figure;
+%                     plotmesh(pos,elem,'x<50')
+%                     title('Mesh hexa with vox2hexa')
+%                     clear pos elem
+%                     % save as hexa ...
+%                     node = mesh.pos;
+%                     elem = [mesh.hex mesh.tissue];
+%                     %             %% convert the hexa to tetra (add the function hex2tet to the toolbox)
+%                     %             [el, node, id]=hex2tet(mesh.hex,mesh.pos,mesh.tissue,2);
+%                     %             elem = [el id];
+%                     %             clear el id
+%                 case 'tetrahedral'
+%                     % Mesh by iso2mesh
+%                     bst_progress('text', 'Mesh Generation...'); %
+%                     %TODO ... Load the mask and apply Johannes process to generate the cubic Mesh
+%                     % TODO : Add the T2 images to the segmenttion process.
+%                     [node,elem] = mesh_by_iso2mesh(T1Nii, T2Nii);
+%                     figure;
+%                     plotmesh(node,elem,'x<90')
+%                     title('Mesh tetra  with iso2mesh ')
+%             end
+%             
+%         case 'fieldtrip'
+%             % Setup FieldTrip
+%             isOk = bst_ft_init(isInteractive);
+%             if ~isOk
+%                 return;
+%             end
+%             
+%             % === SAVE MRI AS NII ===
+%             % Create temporary folder for fieldtrip segmentation files
+%             ftTmp = bst_fullfile(bst_get('BrainstormTmpDir'), 'ftseg');
+%             mkdir(ftTmp);
+%             % Save MRI in .nii format
+%             T1Nii = bst_fullfile(ftTmp, 'fieldtrip.nii');
+%             out_mri_nii(T1File, T1Nii);
+% 
+%             % === CALL FIELDTRIP PIPELINE ===
+%             mri = ft_read_mri(T1Nii);
+%             % Segmentation
+%             cfg = [];
+%             cfg.output = TissueLabels;
+%             mri.coordsys = 'ctf'; % always ctf ==> check the output if it fits with the MRI
+%             segmentedmri  = ft_volumesegment(cfg, mri);
+%             % Mesh
+%             cfg        = [];
+%             cfg.shift  = OPTIONS.NodeShift;
+%             cfg.method = 'hexahedral';
+%             mesh = ft_prepare_mesh(cfg,segmentedmri);
+% 
+%             % Visualisation : not for brainstorm ...
+%             %TODO : work on brainstom function to display the mesh better than the current version
+%             % convert the mesh to tetr in order to use plotmesh
+%             [el,pos,id] = hex2tet(mesh.hex,mesh.pos,mesh.tissue,2);
+%             elem = [el id];
+%             clear el id
+%             figure;
+%             plotmesh(pos,elem,'x<50')
+%             clear pos elem
+%             % === IMPORT OUTPUT FOLDER ===
+%             % Import FEM mesh
+%             % use the TETRA or the HEXA
+%             if strcmp(OPTIONS.MeshType,'hexahedral')
+%                 % save as hexa ...
+%                 node = mesh.pos;
+%                 elem = [mesh.hex mesh.tissue];
+%             elseif strcmp(OPTIONS.MeshType,'tetrahedral')
+%                 % convert the hexa to tetra (add the function hex2tet to the toolbox)
+%                 [el, node, id]=hex2tet(mesh.hex,mesh.pos,mesh.tissue,2);
+%                 elem = [el id];
+%                 clear el id
+%             end
 
         otherwise
             errMsg = ['Invalid method "' OPTIONS.Method '".'];
@@ -587,12 +586,13 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             '<B>SimNIBS</B>:<BR>Call SimNIBS to segment and mesh the <B>T1</B> (and <B>T2</B>) MRI.<BR>' ...
             'SimNIBS must be installed on the computer first.<BR>' ...
             'Website: https://simnibs.github.io/simnibs<BR><BR>'...
-            '<B>ROAST</B>:<BR>Call ROAST to segment and mesh the <B>T1</B> (and <B>T2</B>) MRI.<BR>' ...
-            'ROAST is downloaded and installed automatically when needed.<BR><BR>'...
-            '<B>FieldTrip</B>:<BR>Call FieldTrip to segment and mesh the <B>T1</B> MRI.<BR>' ...
-            'FieldTrip must be installed on the computer first.<BR>' ...
-            'Website: http://www.fieldtriptoolbox.org/download<BR><BR>'], ...
-            'FEM mesh generation method', [], {'Iso2mesh','SimNIBS','ROAST','FieldTrip'}, 'BEM');
+            ... '<B>ROAST</B>:<BR>Call ROAST to segment and mesh the <B>T1</B> (and <B>T2</B>) MRI.<BR>' ...
+            ... 'ROAST is downloaded and installed automatically when needed.<BR><BR>'...
+            ... '<B>FieldTrip</B>:<BR>Call FieldTrip to segment and mesh the <B>T1</B> MRI.<BR>' ...
+            ... 'FieldTrip must be installed on the computer first.<BR>' ...
+            ... 'Website: http://www.fieldtriptoolbox.org/download<BR><BR>' ...
+            ], 'FEM mesh generation method', [], {'Iso2mesh','SimNIBS'}, 'BEM');
+            % 'FEM mesh generation method', [], {'Iso2mesh','SimNIBS','ROAST','FieldTrip'}, 'BEM');
         if isempty(res)
             return
         end
@@ -634,78 +634,78 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 case 3,  OPTIONS.NbLayers = 5;
             end          
 
-        case 'roast'
-            % Set parameters
-            % Ask user for the the tissu to segment :
-            opts = {...
-                '5 Layers : gray, white, csf, skull, scalp',...
-                '3 Layers : brain, skull, scalp'};
-            [res, isCancel] = java_dialog('radio', '<HTML> Select the model to segment  <BR>', 'Select Model',[],opts, 1);
-            if isCancel
-                return
-            end
-            if res == 1
-                OPTIONS.TissueLabels = {'gray','white','csf','skull','scalp'};
-            end
-            if res == 2
-                OPTIONS.TissueLabels = {'brain', 'skull', 'scalp'};
-            end
-            OPTIONS.NbLayers = length(OPTIONS.TissueLabels);
-            % Ask user for the mesh element type :
-            [res, isCancel]  = java_dialog('question', [...
-                '<HTML><B>Hexahedral Mesh</B>:<BR> Use the hexa element for the mesh , <BR>' ...
-                '<B>Tetrahedral Mesh</B>:<BR> Use the tetra element for the mesh <BR>(experimental : converts the hexa to tetra)<BR>' ], ...
-                'Mesh type', [], {'hexahedral','tetrahedral'}, 'tetrahedral');
-            if isCancel
-                return
-            end
-            OPTIONS.MeshType = res;
-
-        case 'fieldtrip'
-            % Ask user for the the tissu to segment :
-            opts = {...
-                '5 Layers : gray, white, csf, skull, scalp',...
-                '3 Layers : brain, skull, scalp'};
-            display_text = '<HTML> Select the model to segment  <BR> ';
-            [res, isCancel] = java_dialog('radio', display_text, 'Select Model',[],opts, 1);
-            if isCancel
-                return
-            end
-            if res == 1
-                OPTIONS.TissueLabels = {'gray','white','csf','skull','scalp'};
-            end
-            if res == 2
-                OPTIONS.TissueLabels = {'brain', 'skull', 'scalp'};
-            end
-            OPTIONS.NbLayers = length(OPTIONS.TissueLabels);
-
-            % Ask user for the mesh element type :
-            [res, isCancel]  = java_dialog('question', [...
-                '<HTML><B>Hexahedral Mesh</B>:<BR> Use the hexa element for the mesh , <BR>' ...
-                '<B>Tetrahedral Mesh</B>:<BR> Use the tetra element for the mesh <BR>(experimental : converts the hexa to tetra)<BR>' ], ...
-                'Mesh type', [], {'hexahedral','tetrahedral'}, 'tetrahedral');
-            if isCancel
-                return
-            end
-            OPTIONS.MeshType = res;
-
-            % Ask user for the node shifting
-            [res, isCancel]  = java_dialog('question', ...
-                '<HTML><B>Node Shifting </B>:<BR> Use the shifting option to move the node on the mesh <BR>' , ...
-                'Node Shifting', [], {'Yes','No'}, 'Yes');
-            if isCancel
-                return
-            end
-            if strcmp(res,'Yes')
-                [res, isCancel]  = java_dialog('input', 'Shift the nodes (fitting to the geometry):', ...
-                    'FEM Node Shift', [], '0.3');
-                if isCancel
-                    return
-                end
-            else
-                res = [];
-            end
-            OPTIONS.NodeShift = str2double(res);
+%         case 'roast'
+%             % Set parameters
+%             % Ask user for the the tissu to segment :
+%             opts = {...
+%                 '5 Layers : gray, white, csf, skull, scalp',...
+%                 '3 Layers : brain, skull, scalp'};
+%             [res, isCancel] = java_dialog('radio', '<HTML> Select the model to segment  <BR>', 'Select Model',[],opts, 1);
+%             if isCancel
+%                 return
+%             end
+%             if res == 1
+%                 OPTIONS.TissueLabels = {'gray','white','csf','skull','scalp'};
+%             end
+%             if res == 2
+%                 OPTIONS.TissueLabels = {'brain', 'skull', 'scalp'};
+%             end
+%             OPTIONS.NbLayers = length(OPTIONS.TissueLabels);
+%             % Ask user for the mesh element type :
+%             [res, isCancel]  = java_dialog('question', [...
+%                 '<HTML><B>Hexahedral Mesh</B>:<BR> Use the hexa element for the mesh , <BR>' ...
+%                 '<B>Tetrahedral Mesh</B>:<BR> Use the tetra element for the mesh <BR>(experimental : converts the hexa to tetra)<BR>' ], ...
+%                 'Mesh type', [], {'hexahedral','tetrahedral'}, 'tetrahedral');
+%             if isCancel
+%                 return
+%             end
+%             OPTIONS.MeshType = res;
+% 
+%         case 'fieldtrip'
+%             % Ask user for the the tissu to segment :
+%             opts = {...
+%                 '5 Layers : gray, white, csf, skull, scalp',...
+%                 '3 Layers : brain, skull, scalp'};
+%             display_text = '<HTML> Select the model to segment  <BR> ';
+%             [res, isCancel] = java_dialog('radio', display_text, 'Select Model',[],opts, 1);
+%             if isCancel
+%                 return
+%             end
+%             if res == 1
+%                 OPTIONS.TissueLabels = {'gray','white','csf','skull','scalp'};
+%             end
+%             if res == 2
+%                 OPTIONS.TissueLabels = {'brain', 'skull', 'scalp'};
+%             end
+%             OPTIONS.NbLayers = length(OPTIONS.TissueLabels);
+% 
+%             % Ask user for the mesh element type :
+%             [res, isCancel]  = java_dialog('question', [...
+%                 '<HTML><B>Hexahedral Mesh</B>:<BR> Use the hexa element for the mesh , <BR>' ...
+%                 '<B>Tetrahedral Mesh</B>:<BR> Use the tetra element for the mesh <BR>(experimental : converts the hexa to tetra)<BR>' ], ...
+%                 'Mesh type', [], {'hexahedral','tetrahedral'}, 'tetrahedral');
+%             if isCancel
+%                 return
+%             end
+%             OPTIONS.MeshType = res;
+% 
+%             % Ask user for the node shifting
+%             [res, isCancel]  = java_dialog('question', ...
+%                 '<HTML><B>Node Shifting </B>:<BR> Use the shifting option to move the node on the mesh <BR>' , ...
+%                 'Node Shifting', [], {'Yes','No'}, 'Yes');
+%             if isCancel
+%                 return
+%             end
+%             if strcmp(res,'Yes')
+%                 [res, isCancel]  = java_dialog('input', 'Shift the nodes (fitting to the geometry):', ...
+%                     'FEM Node Shift', [], '0.3');
+%                 if isCancel
+%                     return
+%                 end
+%             else
+%                 res = [];
+%             end
+%             OPTIONS.NodeShift = str2double(res);
     end
 
     % Open progress bar
@@ -729,91 +729,91 @@ end
 
 
 
-%% ===== INSTALL ROAST =====
-function errMsg = InstallRoast(isInteractive)
-    % Initialize variables
-    errMsg = [];
-    curdir = pwd;
-    % Download URL
-    url = 'https://www.parralab.org/roast/roast-3.0.zip';
-
-    % Check if already available in path
-    if exist('roast', 'file')
-        disp([10, 'ROAST path: ', bst_fileparts(which('roast')), 10]);
-        return;
-    end
-    % Local folder where to install ROAST
-    roastDir = bst_fullfile(bst_get('BrainstormUserDir'), 'roast');
-    exePath = bst_fullfile(roastDir, 'roast-3.0', 'roast.m');
-    % If dir doesn't exist in user folder, try to look for it in the Brainstorm folder
-    if ~isdir(roastDir)
-        roastDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'roast');
-        if isdir(roastDirMaster)
-            roastDir = roastDirMaster;
-        end
-    end
-
-    % URL file defines the current version
-    urlFile = bst_fullfile(roastDir, 'url');
-    % Read the previous download url information
-    if isdir(roastDir) && file_exist(urlFile)
-        fid = fopen(urlFile, 'r');
-        prevUrl = fread(fid, [1 Inf], '*char');
-        fclose(fid);
-    else
-        prevUrl = '';
-    end
-    % If file doesnt exist: download
-    if ~isdir(roastDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
-        % If folder exists: delete
-        if isdir(roastDir)
-            file_delete(roastDir, 1, 3);
-        end
-        % Create folder
-        res = mkdir(roastDir);
-        if ~res
-            errMsg = ['Error: Cannot create folder' 10 roastDir];
-            return
-        end
-        % Message
-        if isInteractive
-            isOk = java_dialog('confirm', ...
-                ['ROAST is not installed on your computer (or out-of-date).' 10 10 ...
-                'Download and the latest version of ROAST?'], 'ROAST');
-            if ~isOk
-                errMsg = 'Download aborted by user';
-                return;
-            end
-        end
-        % Download file
-        zipFile = bst_fullfile(roastDir, 'roast.zip');
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download ROAST');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download ROAST:' 10 errMsg1];
-            return;
-        end
-        % Display again progress bar
-        bst_progress('text', 'Installing ROAST...');
-        % Unzip file
-        cd(roastDir);
-        unzip(zipFile);
-        file_delete(zipFile, 1, 3);
-        cd(curdir);
-        % Save download URL in folder
-        fid = fopen(urlFile, 'w');
-        fwrite(fid, url);
-        fclose(fid);
-    end
-    % If installed but not in path: add roast to path
-    if ~exist('roast', 'file')
-        addpath(bst_fileparts(exePath));
-        disp([10, 'ROAST path: ', bst_fileparts(roastDir), 10]);
-        % If the executable is still not accessible
-    else
-        errMsg = ['ROAST could not be installed in: ' roastDir];
-    end
-end
+% %% ===== INSTALL ROAST =====
+% function errMsg = InstallRoast(isInteractive)
+%     % Initialize variables
+%     errMsg = [];
+%     curdir = pwd;
+%     % Download URL
+%     url = 'https://www.parralab.org/roast/roast-3.0.zip';
+% 
+%     % Check if already available in path
+%     if exist('roast', 'file')
+%         disp([10, 'ROAST path: ', bst_fileparts(which('roast')), 10]);
+%         return;
+%     end
+%     % Local folder where to install ROAST
+%     roastDir = bst_fullfile(bst_get('BrainstormUserDir'), 'roast');
+%     exePath = bst_fullfile(roastDir, 'roast-3.0', 'roast.m');
+%     % If dir doesn't exist in user folder, try to look for it in the Brainstorm folder
+%     if ~isdir(roastDir)
+%         roastDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'roast');
+%         if isdir(roastDirMaster)
+%             roastDir = roastDirMaster;
+%         end
+%     end
+% 
+%     % URL file defines the current version
+%     urlFile = bst_fullfile(roastDir, 'url');
+%     % Read the previous download url information
+%     if isdir(roastDir) && file_exist(urlFile)
+%         fid = fopen(urlFile, 'r');
+%         prevUrl = fread(fid, [1 Inf], '*char');
+%         fclose(fid);
+%     else
+%         prevUrl = '';
+%     end
+%     % If file doesnt exist: download
+%     if ~isdir(roastDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
+%         % If folder exists: delete
+%         if isdir(roastDir)
+%             file_delete(roastDir, 1, 3);
+%         end
+%         % Create folder
+%         res = mkdir(roastDir);
+%         if ~res
+%             errMsg = ['Error: Cannot create folder' 10 roastDir];
+%             return
+%         end
+%         % Message
+%         if isInteractive
+%             isOk = java_dialog('confirm', ...
+%                 ['ROAST is not installed on your computer (or out-of-date).' 10 10 ...
+%                 'Download and the latest version of ROAST?'], 'ROAST');
+%             if ~isOk
+%                 errMsg = 'Download aborted by user';
+%                 return;
+%             end
+%         end
+%         % Download file
+%         zipFile = bst_fullfile(roastDir, 'roast.zip');
+%         errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download ROAST');
+%         % If file was not downloaded correctly
+%         if ~isempty(errMsg)
+%             errMsg = ['Impossible to download ROAST:' 10 errMsg1];
+%             return;
+%         end
+%         % Display again progress bar
+%         bst_progress('text', 'Installing ROAST...');
+%         % Unzip file
+%         cd(roastDir);
+%         unzip(zipFile);
+%         file_delete(zipFile, 1, 3);
+%         cd(curdir);
+%         % Save download URL in folder
+%         fid = fopen(urlFile, 'w');
+%         fwrite(fid, url);
+%         fclose(fid);
+%     end
+%     % If installed but not in path: add roast to path
+%     if ~exist('roast', 'file')
+%         addpath(bst_fileparts(exePath));
+%         disp([10, 'ROAST path: ', bst_fileparts(roastDir), 10]);
+%         % If the executable is still not accessible
+%     else
+%         errMsg = ['ROAST could not be installed in: ' roastDir];
+%     end
+% end
 
 
 %% ===== INSTALL ISO2MESH =====
