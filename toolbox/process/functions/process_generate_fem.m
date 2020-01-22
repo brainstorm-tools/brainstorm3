@@ -316,25 +316,29 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
             
             % === SAVE MRI AS NII ===
+            bst_progress('text', 'Exporting MRI...');
             % Create temporary folder for fieldtrip segmentation files
             simnibsDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'simnibs');
             mkdir(simnibsDir);
             % Save MRI in .nii format
-            T1Nii = bst_fullfile(simnibsDir, 'simnibsT1.nii');
-            out_mri_nii(T1File, T1Nii);
+            subjid = strrep(sSubject.Name, '@', '');
+            T1Nii = bst_fullfile(simnibsDir, [subjid 'T1.nii']);
+            sMriT1 = in_mri_bst(T1File);
+            out_mri_nii(sMriT1, T1Nii);
             if ~isempty(T2File)
-                T2Nii = bst_fullfile(simnibsDir, 'simnibsT2.nii');
+                T2Nii = bst_fullfile(simnibsDir, [subjid 'T2.nii']);
                 out_mri_nii(T2File, T2Nii);
             else
                 T2Nii = [];
             end
 
             % === CALL SIMNIBS PIPELINE ===
+            bst_progress('text', 'Calling SimNIBS/headreco...');
             % Go to simnibs working directory
             curDir = pwd;
             cd(simnibsDir);
             % Call headreco
-            strCall = ['headreco all --noclean  subject_id ' T1Nii ' ' T2Nii];
+            strCall = ['headreco all --noclean  ' subjid ' ' T1Nii ' ' T2Nii];
             [status, result] = system(strCall);
             % Restore working directory
             cd(curDir);
@@ -346,10 +350,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
                   
             % === IMPORT OUTPUT FOLDER ===
+            bst_progress('text', 'Importing SimNIBS output...');
             % Import FEM mesh
             % load the mesh and change to bst coordinates :
-            mshfilename = bst_fullfile(simnibsDir, 'SimNibsMesh.msh');
-            femhead = in_tess(mshfilename); %  this could be load to bst as it is.
+            mshfilename = bst_fullfile(simnibsDir, [subjid '.msh']);
+            femhead = in_tess(mshfilename, sMriT1); %  this could be loaded to bst as it is
             % Get the number of layers
             switch (OPTIONS.NbLayers)
                 case 3   % {'brain'  'skull'  'scalp'}
@@ -370,6 +375,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                     % ???
             end
             elem = [femhead.Elements femhead.Tissue];
+            node = femhead.Vertices;
             % Only tetra could be generated from this method
             OPTIONS.MeshType = 'tetrahedral';
 
