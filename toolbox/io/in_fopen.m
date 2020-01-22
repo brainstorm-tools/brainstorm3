@@ -105,6 +105,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions);
     case 'EEG-EGI-RAW'
         sFile = in_fopen_egi(DataFile, [], [], ImportOptions);
+    case 'EEG-EMOTIV'
+        [sFile, ChannelMat] = in_fopen_emotiv(DataFile);
     case 'EEG-GTEC'
         [sFile, ChannelMat] = in_fopen_gtec(DataFile);
     case 'EEG-MANSCAN'

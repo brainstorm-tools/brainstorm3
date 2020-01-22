@@ -2,8 +2,9 @@
 January 2020
 - Database: New search interface
 - Anatomy: 3D mesh generation with iso2mesh, SimNIBS, ROAST and FieldTrip
+- Anatomy: Optimized 3D tetrahedral mesh display
 - IO: Added support for SimNIBS meshes
-- FEM: Optimized 3D mesh display
+- IO: Added support for EmotivPRO EDF recordings
 ---------------------------------------------------------------
 December 2019
 - IO: Added support for Wearable Sensing CSV files
