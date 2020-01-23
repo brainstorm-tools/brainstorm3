@@ -354,7 +354,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Import FEM mesh
             % load the mesh and change to bst coordinates :
             mshfilename = bst_fullfile(simnibsDir, [subjid '.msh']);
-            femhead = in_tess(mshfilename, sMriT1); %  this could be loaded to bst as it is
+            femhead = in_tess(mshfilename, 'SIMNIBS', sMriT1); %  this could be loaded to bst as it is
             % Get the number of layers
             switch (OPTIONS.NbLayers)
                 case 3   % {'brain'  'skull'  'scalp'}
