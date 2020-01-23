@@ -548,7 +548,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         FemMat.Elements = elem(:,1:8);
         FemMat.Tissue = elem(:,9);
     end
-    if ~isempty(TissueLabels) && (length(TissueLabels) == length(FemMat.Tissue))
+    if ~isempty(TissueLabels)
         FemMat.TissueLabels = TissueLabels;
     else
         uniqueLabels = unique(FemMat.Tissue);
