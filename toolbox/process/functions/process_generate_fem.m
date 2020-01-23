@@ -137,13 +137,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     else
         OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
     end
-    % Default tissue labels
-    switch OPTIONS.NbLayers
-        case 3,    TissueLabels = {'brain', 'skull', 'scalp'};
-        case 4,    TissueLabels = {'brain', 'csf', 'skull', 'scalp'};
-        case 5,    TissueLabels = {'gray', 'white', 'csf', 'skull', 'scalp'};
-        otherwise, TissueLabels = {};
-    end
     % Empty temporary folder, otherwise it reuses previous files in the folder
     gui_brainstorm('EmptyTempFolder');
             
@@ -263,7 +256,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Find the seed point for each region
             center_inner = mean(bemMerge{end-1});
             % define seeds along the electrode axis
-            orig = center_inner; 
+            orig = center_inner;
             v0 = [0 0 1];
             [t,tmp,tmp,faceidx] = raytrace(orig,v0,newnode,newelem);
             t = sort(t(faceidx)); 
@@ -285,7 +278,12 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
             [tmp, I] = sort(dist);
             allLabels = allLabels(I);
-            TissueLabels = TissueLabels(I);
+            % Labels: the number of layers may change if one of the input surfaces contains multiple layers
+            if length(TissueLabels) == length(I)
+                TissueLabels = TissueLabels(I);
+            else
+                TissueLabels = [];
+            end
             % Relabelling
             elemLabel = ones(size(elem,1),1);
             for iLabel = 1:length(allLabels)
@@ -358,7 +356,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Get the number of layers
             switch (OPTIONS.NbLayers)
                 case 3   % {'brain'  'skull'  'scalp'}
-                    % replace the SCF, GM by WM and use unique label
+                    % replace the CSF, GM by WM and use unique label
                     femhead.Tissue(femhead.Tissue== 2) = 1; % gm to wm and all form brain label 1
                     femhead.Tissue(femhead.Tissue== 3) = 1; % csf to wm and all form brain label 1
                     % relabel
@@ -371,11 +369,12 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                     femhead.Tissue(femhead.Tissue== 3) = 2; % csf label 2
                     femhead.Tissue(femhead.Tissue== 4) = 3; % skull label 3
                     femhead.Tissue(femhead.Tissue== 5) = 4; % scalp label 4
-                case 5   % {'gray', 'white', 'csf', 'skull', 'scalp',...
-                    % ???
+                case 5   % {'white', 'gray', 'csf', 'skull', 'scalp'}
+                    % Nothing to change
             end
             elem = [femhead.Elements femhead.Tissue];
             node = femhead.Vertices;
+            TissueLabels = femhead.TissueLabels;
             % Only tetra could be generated from this method
             OPTIONS.MeshType = 'tetrahedral';
 
@@ -549,7 +548,14 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         FemMat.Elements = elem(:,1:8);
         FemMat.Tissue = elem(:,9);
     end
-    FemMat.TissueLabels = TissueLabels;
+    if ~isempty(TissueLabels) && (length(TissueLabels) == length(FemMat.Tissue))
+        FemMat.TissueLabels = TissueLabels;
+    else
+        uniqueLabels = unique(FemMat.Tissue);
+        for i = 1:length(uniqueLabels)
+             FemMat.TissueLabels{i} = num2str(uniqueLabels(i));
+        end
+    end
 
     % Add history
     FemMat = bst_history('add', FemMat, 'process_generate_fem', [...
@@ -629,7 +635,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             opts = {...
                 '3 Layers : brain, skull, scalp', ...
                 '4 Layers : brain, csf, skull, scalp', ...
-                '5 Layers : gray, white, csf, skull, scalp'};
+                '5 Layers : white, gray, csf, skull, scalp'};
             [res, isCancel] = java_dialog('radio', '<HTML> Select the model to segment  <BR>', 'Select Model',[],opts, 3);
             if isCancel
                 return
@@ -644,14 +650,14 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
 %             % Set parameters
 %             % Ask user for the the tissu to segment :
 %             opts = {...
-%                 '5 Layers : gray, white, csf, skull, scalp',...
+%                 '5 Layers : white,gray, csf, skull, scalp',...
 %                 '3 Layers : brain, skull, scalp'};
 %             [res, isCancel] = java_dialog('radio', '<HTML> Select the model to segment  <BR>', 'Select Model',[],opts, 1);
 %             if isCancel
 %                 return
 %             end
 %             if res == 1
-%                 OPTIONS.TissueLabels = {'gray','white','csf','skull','scalp'};
+%                 OPTIONS.TissueLabels = {'white', 'gray', 'csf', 'skull', 'scalp'};
 %             end
 %             if res == 2
 %                 OPTIONS.TissueLabels = {'brain', 'skull', 'scalp'};
@@ -670,7 +676,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
 %         case 'fieldtrip'
 %             % Ask user for the the tissu to segment :
 %             opts = {...
-%                 '5 Layers : gray, white, csf, skull, scalp',...
+%                 '5 Layers : white, gray, csf, skull, scalp',...
 %                 '3 Layers : brain, skull, scalp'};
 %             display_text = '<HTML> Select the model to segment  <BR> ';
 %             [res, isCancel] = java_dialog('radio', display_text, 'Select Model',[],opts, 1);
@@ -678,7 +684,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
 %                 return
 %             end
 %             if res == 1
-%                 OPTIONS.TissueLabels = {'gray','white','csf','skull','scalp'};
+%                 OPTIONS.TissueLabels = {'white','gray','csf','skull','scalp'};
 %             end
 %             if res == 2
 %                 OPTIONS.TissueLabels = {'brain', 'skull', 'scalp'};

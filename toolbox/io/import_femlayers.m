@@ -93,6 +93,7 @@ for iFile = 1:length(FemFiles)
 
     % Create one surface per tissue
     Ntissue = max(FemMat.Tissue);
+%     iUsedVert = [];
     bst_progress('start', 'Extract surfaces', 'Extracting surfaces...', 0, Ntissue + 1);
     for iTissue = 1:Ntissue
         bst_progress('text', ['Extracting surfaces: ' FemMat.TissueLabels{iTissue} '...']);
@@ -100,16 +101,25 @@ for iFile = 1:length(FemFiles)
         
         % ===== EXTRACT SURFACE =====
         % Select elements of this tissue
-        Elements = FemMat.Elements(FemMat.Tissue == iTissue, 1:4);
+        Elements = FemMat.Elements(FemMat.Tissue <= iTissue, 1:4);
         % Create a surface for the outside surface of this tissue
         Faces = tess_voledge(FemMat.Vertices, Elements);
         if isempty(Faces)
             continue;
         end
-        % Remove unused vertices
+        % Detect all unused vertices
         Vertices = FemMat.Vertices;
-        iRemoveVert = setdiff(1:size(Vertices,1), unique(Faces(:)'));
-        [Vertices, Faces] = tess_remove_vert(Vertices, Faces, iRemoveVert);
+        iRemoveVert = setdiff((1:size(Vertices,1))', unique(Faces(:)));
+%         % Add vertices that were already used in a previous layer
+%         if ~isempty(iUsedVert)
+%             iRemoveVert = union(iRemoveVert, iUsedVert);
+%         end
+%         % Save the list of vertices used in this layer (add it to the previous ones)
+%         iUsedVert = union(iUsedVert, unique(Faces(:)));
+        % Remove all the unused vertices 
+        if ~isempty(iRemoveVert)
+            [Vertices, Faces] = tess_remove_vert(Vertices, Faces, iRemoveVert);
+        end
 
         % ===== NEW STRUCTURE =====
         NewTess = db_template('surfacemat');

@@ -34,9 +34,25 @@ MeshMat.Vertices = m.nodes(:,1:3);
 MeshMat.Elements = m.tetrahedra(:,1:4);
 MeshMat.Tissue   = m.tetrahedron_regions;
 
-for i = 1:length(unique(MeshMat.Tissue))
-     MeshMat.TissueLabels{i}  = [ 'tissue_' num2str(i)];
-end
+% Replace the eyes with scalp (not used for now)
+MeshMat.Tissue(MeshMat.Tissue==6) = 5;
+            
+% Swap tetrahedrons orientation
+MeshMat.Elements = MeshMat.Elements(:, [2 1 3 4]);
 
+% Default tissue labels
+switch length(unique(MeshMat.Tissue))
+    case 3
+        MeshMat.TissueLabels = {'brain', 'skull', 'scalp'};
+    case 4
+        MeshMat.TissueLabels = {'brain', 'csf', 'skull', 'scalp'};
+    case 5
+        MeshMat.TissueLabels = {'white', 'gray', 'csf', 'skull', 'scalp'};
+    otherwise
+        uniqueLabels = unique(MeshMat.Tissue);
+        for i = 1:length(uniqueLabels)
+             MeshMat.TissueLabels{i} = num2str(uniqueLabels(i));
+        end
+end
 
 

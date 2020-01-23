@@ -193,8 +193,6 @@ switch (FileFormat)
         if ~isempty(sMri)
             TessMat.Vertices = cs_convert(sMri, 'voxel', 'mri', TessMat.Vertices);
             TessMat.Vertices = cs_convert(sMri, 'world', 'scs', TessMat.Vertices);
-            % Replace the eyes with scalp (not used for now)
-            TessMat.Tissue(TessMat.Tissue==6) = 5;
         end
         isConvertScs = 0;
         
