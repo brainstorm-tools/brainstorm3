@@ -3,6 +3,7 @@ January 2020
 - Database: New search interface
 - Anatomy: 3D mesh generation with iso2mesh, SimNIBS, ROAST and FieldTrip
 - Anatomy: Optimized 3D tetrahedral mesh display
+- Anatomy: Added vox2ras matrix to ICBM152 template (world coordinates)
 - IO: Added support for SimNIBS meshes
 - IO: Added support for EmotivPRO EDF recordings
 ---------------------------------------------------------------
