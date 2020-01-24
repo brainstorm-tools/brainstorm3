@@ -66,6 +66,9 @@ for i = 1:length(sSubject.Anatomy)
     if isfield(sMri, 'Header')
         sMriNew.Header = sMri.Header;
     end
+    if isfield(sMri, 'InitTransf')
+        sMriNew.InitTransf = sMri.InitTransf;
+    end
     % Save file back
     bst_save(MriFile, sMriNew, 'v7');
     % Add file to export list
