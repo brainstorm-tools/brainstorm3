@@ -121,7 +121,8 @@ function OPTIONS = GetDefaultOptions()
         'KeepRatio',      1, ...               % iso2mesh: Percentage of elements kept (1-100%)
         'SkullThickness', 0.002, ...           % iso2mesh: Used only with 4 layers, in meters
         'BemFiles',       [], ...              % iso2mesh: List of layers to use for meshing (if not specified, use the files selected in the database 
-        'NodeShift',      0.3);                % fieldtrip: [0 - 0.49] Improves the geometrical properties of the mesh
+        'NodeShift',      0.3, ...             % fieldtrip: [0 - 0.49] Improves the geometrical properties of the mesh
+        'VertexDensity',      0.5);            % SimNibs : [0.1 - X] setting the vertex density (nodes per mm²)  of the surface meshes       
 end
 
 
@@ -336,7 +337,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             curDir = pwd;
             cd(simnibsDir);
             % Call headreco
-            strCall = ['headreco all --noclean  ' subjid ' ' T1Nii ' ' T2Nii];
+             if OPTIONS.VertexDensity ~= 0.5
+                strCall = ['headreco all --noclean -v ' num2str(OPTIONS.VertexDensity) ' subjid '  T1Nii '  ' T2Nii];
+            else % call the default option, where VertexDensity is fixed to 0.5
+                strCall = ['headreco all --noclean  ' subjid ' ' T1Nii ' ' T2Nii];
+            end
             [status, result] = system(strCall);
             % Restore working directory
             cd(curDir);
@@ -645,7 +650,14 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 case 2,  OPTIONS.NbLayers = 4;
                 case 3,  OPTIONS.NbLayers = 5;
             end          
-
+           % Ask for the Vertex density
+           res = java_dialog('input', 'Vertex Density : # nodes per mm² of the surface meshes :', ...
+               'SimNibs Vertex Density', [], '0.5');
+           if isempty(res)
+               return
+           end
+           % Get the value
+           OPTIONS.VertexDensity = str2num(res);
 %         case 'roast'
 %             % Set parameters
 %             % Ask user for the the tissu to segment :
