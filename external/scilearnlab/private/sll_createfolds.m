@@ -1,4 +1,4 @@
-function [foldid,nobs] = fl_createfolds(condid,kfold)
+function [foldid,nobs] = sll_createfolds(condid,kfold)
 
 %preliminary code, undocumented; please do not distribute
 % Author: Dimitrios Pantazis 
@@ -17,7 +17,12 @@ for c = 1:ncond
     for k = 1:kfold
         id{k} = k*ones(1,foldsize(k)); %create folder id elements
     end
-    foldid{c} = [id{:}]; %concatenate foldid elements
-    foldid{c} = foldid{c}(randperm(nobs(c))); %randomize order
+    foldid_cond{c} = [id{:}]; %concatenate foldid elements
+    foldid_cond{c} = foldid_cond{c}(randperm(nobs(c))); %randomize order
 end
-foldid = [foldid{:}];
+
+%assign to proper conditions (if trials are not ordered by condition)
+for c = 1:ncond
+    foldid(find(condid == c)) = foldid_cond{c};
+end
+
