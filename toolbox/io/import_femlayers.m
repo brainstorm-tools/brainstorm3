@@ -120,7 +120,14 @@ for iFile = 1:length(FemFiles)
         if ~isempty(iRemoveVert)
             [Vertices, Faces] = tess_remove_vert(Vertices, Faces, iRemoveVert);
         end
-
+        
+        % call meshfixe via iso2mesh to remove the inner islandes
+        if exist('iso2meshver', 'file') & isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
+             [Vertices,Faces] = meshcheckrepair(Vertices, Faces,'meshfix');
+        else
+            warning('iso2mesh is not found in your machine ... the extracted surface may have some isolated faces')
+        end
+        
         % ===== NEW STRUCTURE =====
         NewTess = db_template('surfacemat');
         NewTess.Comment  = FemMat.TissueLabels{iTissue};
