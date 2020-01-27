@@ -3700,11 +3700,13 @@ switch contextName
             elseif (MatlabVersion <= 803)
                 jf = get(handle(hFig), 'javaframe');
                 jFrame = jf.fHG1Client.getWindow();
-            elseif (MatlabVersion >= 804)
+            elseif (MatlabVersion <= 908)
                 warning('off', 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
                 jf = get(hFig, 'javaframe');
                 warning('on', 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
                 jFrame = jf.fHG2Client.getWindow();
+            else
+                disp('BST> Error: Matlab 2020a deprecated the JavaFrame property.');
             end
         catch
             disp('BST> Warning: Cannot get the JavaFrame property for the selected figure.');
