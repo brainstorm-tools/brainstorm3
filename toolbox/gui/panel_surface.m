@@ -1725,16 +1725,25 @@ function TessInfo = ComputeScalpInterpolation(iDS, iFig, TessInfo)
     if isempty(TessInfo.DataWmat) || ...
             (size(TessInfo.DataWmat,2) ~= length(selChan)) || ...
             (size(TessInfo.DataWmat,1) ~= length(Vertices))
-        switch lower(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
-            case 'eeg',       excludeParam = .3;
-            case 'ecog',      excludeParam = -.015;
-            case 'seeg',      excludeParam = -.015;
-            case 'ecog+seeg', excludeParam = -.015;
-            case 'meg',       excludeParam = .5;
-            otherwise,        excludeParam = 0;
+        % EEG: Use smoothed display, as in 2D/3D topography
+        if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'eeg')
+            TopoInfo.UseSmoothing = 1;
+            TopoInfo.Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
+            Faces = get(TessInfo.hPatch, 'Faces');
+            [bfs_center, bfs_radius] = bst_bfs(Vertices);
+            TessInfo.DataWmat = figure_topo('GetInterpolation', iDS, iFig, TopoInfo, Vertices, Faces, bfs_center, bfs_radius, chan_loc);
+        else
+            switch lower(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
+                case 'eeg',       excludeParam = .3;
+                case 'ecog',      excludeParam = -.015;
+                case 'seeg',      excludeParam = -.015;
+                case 'ecog+seeg', excludeParam = -.015;
+                case 'meg',       excludeParam = .5;
+                otherwise,        excludeParam = 0;
+            end
+            nbNeigh = 4;
+            TessInfo.DataWmat = bst_shepards(Vertices, chan_loc, nbNeigh, excludeParam);
         end
-        nbNeigh = 4;
-        TessInfo.DataWmat = bst_shepards(Vertices, chan_loc, nbNeigh, excludeParam);
     end
     % Set data for current time frame
     TessInfo.Data = TessInfo.DataWmat * TessInfo.Data;
