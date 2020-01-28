@@ -1641,11 +1641,16 @@ switch (lower(action))
                         end
                     end
                     % === DISPLAY ON MRI ===
-                    if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
-                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI   (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative));
-                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative));
+                    if (length(sSubject.Anatomy) == 1)
+                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative));
+                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative));
                     else
-                        gui_component('MenuItem', jMenuActivations, [], 'No MRI available', IconLoader.ICON_WARNING, [], []);
+                        for iAnat = 1:length(sSubject.Anatomy)
+                            gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative));
+                        end
+                        for iAnat = 1:length(sSubject.Anatomy)
+                            gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative));
+                        end
                     end
                     % === DISPLAY ON SPHERE ===
                     if strcmpi(sStudy.Result(iResult).HeadModelType, 'surface') && ~isempty(sSubject) && ~isempty(sSubject.iCortex)
@@ -1722,11 +1727,16 @@ switch (lower(action))
                             gui_component('MenuItem', jMenuActivations, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
                         end
                         % === DISPLAY ON MRI ===
-                        if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
-                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI   (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative));
-                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative));
+                        if (length(sSubject.Anatomy) == 1)
+                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative));
+                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative));
                         else
-                            gui_component('MenuItem', jMenuActivations, [], 'No MRI available', IconLoader.ICON_WARNING, [], []);
+                            for iAnat = 1:length(sSubject.Anatomy)
+                                gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative));
+                            end
+                            for iAnat = 1:length(sSubject.Anatomy)
+                                gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative));
+                            end
                         end
                     % === STAT CLUSTERS ===
                     if ~isempty(strfind(filenameRelative, '_cluster'))
