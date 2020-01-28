@@ -788,7 +788,7 @@ switch (lower(action))
                 [AllMod, DisplayMod] = bst_get('ChannelModalities', filenameRelative);
                 Device = bst_get('ChannelDevice', filenameRelative);
                 % Replace SEEG+ECOG with iEEG
-                if all(ismember({'SEEG','ECOG'}, AllMod))
+                if ~isempty(AllMod) && all(ismember({'SEEG','ECOG'}, AllMod))
                     AllMod = cat(2, {'ECOG+SEEG'}, setdiff(AllMod, {'SEEG','ECOG'}));
                     if ~isempty(DisplayMod)
                         DisplayMod = cat(2, {'ECOG+SEEG'}, setdiff(DisplayMod, {'SEEG','ECOG'}));
@@ -863,7 +863,7 @@ switch (lower(action))
                 % === ADD EEG POSITIONS ===
                 if ismember('EEG', AllMod)
                     fcnPopupImportChannel(bstNodes, jPopup, 2);
-                elseif any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
+                elseif ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
                     fcnPopupImportChannel(bstNodes, jPopup, 1);
                 end  
                    
