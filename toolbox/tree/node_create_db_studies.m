@@ -156,7 +156,7 @@ isRaw = find(listRaw);
 isNonRaw = find(~listRaw);
 % Sort studies by Condition (raw first, non-raw after)
 [tmp__, iStudiesSortedRaw] = sort(cellfun(@(c)c{1}, {ProtocolStudies.Study(isRaw).Condition}, 'UniformOutput', 0));
-[tmp__, iStudiesSortedNonRaw] = sort(cellfun(@(c)c{1}, {ProtocolStudies.Study(isNonRaw).Condition}, 'UniformOutput', 0));
+iStudiesSortedNonRaw = bst_sort_numerical(cellfun(@(c)c{1}, {ProtocolStudies.Study(isNonRaw).Condition}, 'UniformOutput', 0));
 iStudiesSorted = [isRaw(iStudiesSortedRaw), isNonRaw(iStudiesSortedNonRaw)];
 % Check for database inconsistency
 if (length(iStudiesSorted) ~= length(ProtocolStudies.Study))
@@ -597,5 +597,29 @@ end
 % Add 'Subjects database' node to root node
 nodeRoot.add(nodeStudiesDB);
 
+end
 
+
+%% ===== SORTING FUNCTION =====
+% Sort list of strings, in numerical order when starting with numbers
+% Ex: {'1', '2', '101', '201'}
+function I = bst_sort_numerical(c)
+    % Extract integer at the beginning of the strings
+    num = cellfun(@(c)sscanf(c,'%d%*s'), c, 'UniformOutput', 0);
+    isNum = ~cellfun(@isempty, num);
+    % No numbers
+    if ~any(isNum)
+        [tmp, I] = sort(c);
+    % Only numbers
+    elseif all(isNum)
+        [tmp, I] = sort([num{isNum}]);
+    % Mixed list: numbers and letters
+    else
+        [tmp, iSortLetter] = sort(c(~isNum));
+        [tmp, iSortNum] = sort([num{isNum}]);
+        iNum = find(isNum);
+        iLetter = find(~isNum);
+        I = [iNum(iSortNum), iLetter(iSortLetter)];
+    end
+end
 

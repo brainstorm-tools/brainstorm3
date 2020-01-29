@@ -37,8 +37,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 1021;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/SelectFiles#How_to_control_the_output_file_names';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix', 'raw'};
-    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix', 'raw'};
+    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix', 'raw', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
+    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix', 'raw', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Definition of the options

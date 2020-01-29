@@ -159,7 +159,7 @@ if (size(SurfColor,2) ~= Ntissue)
         SurfColor(iCSF,:) = [202 50 150]/255;
     end
     % Default gray matter color
-    iGrey = find(ismember(labels, {'grey','gray','greymatter','graymatter','gm','cortex','inner','innerskull'}));
+    iGrey = find(ismember(labels, {'brain','grey','gray','greymatter','graymatter','gm','cortex','inner','innerskull'}));
     if ~isempty(iGrey)
         SurfColor(iGrey,:) = [150 150 150]/255;
     end
@@ -211,7 +211,7 @@ bst_figures('SetCurrentFigure', hFig, '3D');
 camlight(findobj(hFig, 'Tag', 'FrontLight'), 'headlight');
 % Camera basic orientation
 if isNewFig
-    figure_3d('SetStandardView', hFig, 'top');
+    figure_3d('SetStandardView', hFig, 'left');
 end
 % Show figure
 set(hFig, 'Visible', 'on');

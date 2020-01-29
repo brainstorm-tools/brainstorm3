@@ -189,28 +189,13 @@ switch (FileFormat)
 
     case 'SIMNIBS'
         TessMat = in_tess_simnibs(TessFile);
-        % MNI MRI coord => MRI
+        % World/voxel => SCS coordinates
         if ~isempty(sMri)
-            warning('todo: clean transformations');
-            T1 = diag([sMri.Voxsize(:) ./1000; 1]); % scale trans from mm to meters
-            T2 = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]; % rotate and translate from vox to scs.
-            if ~isempty(sMri.InitTransf)
-                T = T2 * T1 * inv(sMri.InitTransf{1,2}) * [1 0 0 1; 0 1 0 1; 0 0 1 1; 0 0 0 1];
-            else
-                T = T2 * T1 * [1 0 0 1; 0 1 0 1; 0 0 1 1; 0 0 0 1];
-            end
-            %we add a voxel because there is a mismatch between origins,
-            %then transform from world to vox, then apply from vox to scs
-
-            % Transform the coordinates
-            temp = [TessMat.Vertices, ones(size(TessMat.Vertices,1),1)];
-            temp = (T * temp')';
-            temp(:,4) = [];
-            TessMat.Vertices = temp;
-
-            % Replace the eyes with scalp (not used for now)
-            TessMat.Tissue(TessMat.Tissue==6) = 5;
+            TessMat.Vertices=TessMat.Vertices+0.5; %we compensate for half a pixel mismatch in x,y and z between simnibs and bst.
+            TessMat.Vertices = cs_convert(sMri, 'voxel', 'mri', TessMat.Vertices);
+            TessMat.Vertices = cs_convert(sMri, 'world', 'scs', TessMat.Vertices);
         end
+        isConvertScs = 0;
         
     case 'MNIOBJ'
         TessMat = in_tess_mniobj(TessFile);

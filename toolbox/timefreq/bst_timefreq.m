@@ -124,6 +124,11 @@ if isAverage && OPTIONS.SaveKernel
     Messages = 'Incompatible options: 1)Keep the inversion kernel and 2)average trials';
     isError = 1;
     return;
+% Cannot use option "save kernel" with continuous raw files
+elseif OPTIONS.SaveKernel && ischar(Data{1}) && any(~cellfun(@(c)isempty(strfind(c, '@raw')), Data))
+    Messages = 'Cannot use the optimization option "save the inversion kernel" with continuous raw files.';
+    isError = 1;
+    return;
 end
         
 % Progress bar

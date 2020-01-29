@@ -60,7 +60,7 @@ else
         SamplesBounds = [sFile.header.raw.first_samp, sFile.header.raw.last_samp];
     end
     % If there are multiple FIF files: check in which one the data should be read
-    if isfield(sFile.header, 'fif_list') && isfield(sFile.header, 'fif_times') && (length(sFile.header.fif_list) > 2)
+    if isfield(sFile.header, 'fif_list') && isfield(sFile.header, 'fif_times') && (length(sFile.header.fif_list) >= 2)
         % Check if all the samples are gathered from the same file
         fif_samples = round(sFile.header.fif_times .* sFile.prop.sfreq);
         iFile = find((SamplesBounds(1) >= fif_samples(:,1)) & (SamplesBounds(2) <= fif_samples(:,2)));
