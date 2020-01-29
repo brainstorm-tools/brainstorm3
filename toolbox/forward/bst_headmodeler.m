@@ -29,7 +29,7 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %     OpenMEEG: see bst_openmeeg
 %
 %     ======= HEAD DEFINITION =============================================
-%     .CortexFile     : Grey/white or grey/csf interface (also used as source space if source space not secified)
+%     .CortexFile     : Gray/white or gray/csf interface (also used as source space if source space not secified)
 %     .HeadFile       : Head surface (used for volume head models with full head volume)
 %     .InnerSkullFile : Surface used to estimate the overlapping spheres.
 %     .HeadCenter   : [x,y,z] coordinates of the center of the spheres in the sensors coordinate system
@@ -53,7 +53,7 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
