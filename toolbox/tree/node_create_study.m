@@ -136,6 +136,9 @@ if ~isempty(iEmpty)
 end
 % Group comments
 [uniqueComments,tmp,iData2List] = unique(listComments);
+% Sort trials groups in natural order (eg. {'1', '2', '101'})
+[uniqueComments, iSort] = sort_nat(uniqueComments);
+iData2List = iSort(iData2List);
 % Build list of parents
 nLists = length(uniqueComments);
 if (nLists > 0)

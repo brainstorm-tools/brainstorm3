@@ -719,7 +719,7 @@ switch (lower(action))
                         RawFiles = {};
                         for i = 1:length(bstNodes)
                             sStudy = bst_get('Study', bstNodes(i).getStudyIndex());
-                            if (length(sStudy.Data) == 1) && strcmpi(sStudy.Data(1).DataType, 'raw')
+                            if ~isempty(sStudy) && (length(sStudy.Data) == 1) && strcmpi(sStudy.Data(1).DataType, 'raw')
                                 RawFiles{end+1} = sStudy.Data(1).FileName;
                             end
                         end

@@ -32,8 +32,7 @@ function [bstDefaultNode, nodeStudiesDB] = node_create_db_studies( nodeRoot, exp
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
-
+% Authors: Francois Tadel, 2008-2020
 import org.brainstorm.tree.*;
 
 %% ===== PARSE INPUTS =====
@@ -55,12 +54,15 @@ end
 
 %% ===== CREATE TREE BASE =====  
 % === CREATE ROOT ===
+nodeListToSort = [];
 % Create 'Datasets' node
 switch (expandOrder)
     case 'subject'
         nodeStudiesDB = BstNode('studydbsubj', [ProtocolInfo.Comment ' (subjects)'], ProtocolInfo.STUDIES, 0, 0);
     case 'condition'
         nodeStudiesDB = BstNode('studydbcond', [ProtocolInfo.Comment ' (conditions)'], ProtocolInfo.STUDIES, 0, 0);
+        % Sort conditions lists
+        % nodeListToSort = [nodeListToSort, nodeStudiesDB];
 end
 % Create a hashtable to classify the study node
 hashTableNodes = java.util.Hashtable();
@@ -112,7 +114,7 @@ end
 % If exploration by subject : create at least a node per subject
 if strcmpi(expandOrder, 'subject')
     % Sort subjects by Name
-    [tmp__, iSubjectsSorted] = sort({ProtocolSubjects.Subject.Name});
+    [tmp__, iSubjectsSorted] = sort_nat({ProtocolSubjects.Subject.Name});
     % Find group analysis subject
     iSubjectGroup = find(strcmpi({ProtocolSubjects.Subject.Name}, GroupSubject));
     % If it exists: Place it at the top of the list
@@ -145,7 +147,6 @@ end
 nodeListIntra_subj = [];
 nodeListIntra_cond = [];
 nodeListDefaultStudy_subj = [];
-nodeListToSort = [];
 % Get list of raw conditions
 listRaw = false(1, length(ProtocolStudies.Study));
 for i = 1:length(ProtocolStudies.Study)
@@ -155,8 +156,8 @@ end
 isRaw = find(listRaw);
 isNonRaw = find(~listRaw);
 % Sort studies by Condition (raw first, non-raw after)
-[tmp__, iStudiesSortedRaw] = sort(cellfun(@(c)c{1}, {ProtocolStudies.Study(isRaw).Condition}, 'UniformOutput', 0));
-iStudiesSortedNonRaw = bst_sort_numerical(cellfun(@(c)c{1}, {ProtocolStudies.Study(isNonRaw).Condition}, 'UniformOutput', 0));
+[tmp__, iStudiesSortedRaw] = sort_nat(cellfun(@(c)c{1}, {ProtocolStudies.Study(isRaw).Condition}, 'UniformOutput', 0));
+[tmp__, iStudiesSortedNonRaw] = sort_nat(cellfun(@(c)c{1}, {ProtocolStudies.Study(isNonRaw).Condition}, 'UniformOutput', 0));
 iStudiesSorted = [isRaw(iStudiesSortedRaw), isNonRaw(iStudiesSortedNonRaw)];
 % Check for database inconsistency
 if (length(iStudiesSorted) ~= length(ProtocolStudies.Study))
@@ -441,10 +442,7 @@ for i = 1:length(ProtocolStudies.Study)
                 % Set subject node as the current study node
                 nodeStudy = nodeSubject;
             end
-            % Sort conditions lists
-            nodeListToSort = [nodeStudiesDB, nodeStudiesDB];
     end  % ==== END SWITCH ====
-    
 
     % =====================================================================
     % === Add study files to new study node ===============================
@@ -598,28 +596,3 @@ end
 nodeRoot.add(nodeStudiesDB);
 
 end
-
-
-%% ===== SORTING FUNCTION =====
-% Sort list of strings, in numerical order when starting with numbers
-% Ex: {'1', '2', '101', '201'}
-function I = bst_sort_numerical(c)
-    % Extract integer at the beginning of the strings
-    num = cellfun(@(c)sscanf(c,'%d%*s'), c, 'UniformOutput', 0);
-    isNum = ~cellfun(@isempty, num);
-    % No numbers
-    if ~any(isNum)
-        [tmp, I] = sort(c);
-    % Only numbers
-    elseif all(isNum)
-        [tmp, I] = sort([num{isNum}]);
-    % Mixed list: numbers and letters
-    else
-        [tmp, iSortLetter] = sort(c(~isNum));
-        [tmp, iSortNum] = sort([num{isNum}]);
-        iNum = find(isNum);
-        iLetter = find(~isNum);
-        I = [iNum(iSortNum), iLetter(iSortLetter)];
-    end
-end
-
