@@ -1,4 +1,3 @@
-
 function varargout = panel_timefreq_options(varargin)
 % PANEL_TIMEFREQ_OPTIONS: Options for time-frequency computation.
 % 
@@ -9,7 +8,7 @@ function varargout = panel_timefreq_options(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,7 +22,7 @@ function varargout = panel_timefreq_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2017; Hossein Shahabi, 2020
 
 eval(macro_method);
 end
@@ -74,7 +73,17 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     else
         isClusterAll = 0;
     end
-    Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    
+    % Determine which function is calling this pannel 
+    if strcmp(func2str(sProcess.Function),'process_hcoh')
+        switch sProcess.options.tfmeasure.Value
+            case 1,   Method = 'hilbert' ;
+            case 2,   Method = 'morlet' ;
+        end
+    else
+        Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    end
+    
     hFigWavelet = [];
     % Restrict time vector to selected time window
     if isfield(sProcess.options, 'timewindow') && ~isempty(sProcess.options.timewindow) && ~isempty(sProcess.options.timewindow.Value) && iscell(sProcess.options.timewindow.Value) && (length(sProcess.options.timewindow.Value{1}) == 2)
@@ -330,7 +339,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             case 'power',     jRadioMeasPow.setSelected(1);
             case 'magnitude', jRadioMeasMag.setSelected(1);
         end
-    end
+    end 
     % Output
     if ~isempty(jRadioOutAvg)
         if strcmpi(TimefreqOptions.Output, 'all')
@@ -435,7 +444,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             end
         else
             jRadioFreqLinear.setEnabled(1);
-            jRadioFreqBands.setEnabled(1);
+            if strcmp(func2str(sProcess.Function),'process_hcoh')
+                jRadioFreqBands.setEnabled(0);
+            else
+                jRadioFreqBands.setEnabled(1);
+            end
             if ~isempty(jRadioFreqLog)
                 jRadioFreqLog.setEnabled(1);
             end
@@ -467,8 +480,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                 jRadioMeasPow.setEnabled(1);
                 if isForceMeas && jRadioMeasNon.isSelected()
                     jRadioMeasPow.setSelected(1);
-                end                
+                end
             end
+        end
+        % Disable some options when called through connectivity
+        if strcmp(func2str(sProcess.Function),'process_hcoh')
+            jRadioMeasNon.setSelected(1);
+            jRadioMeasPow.setEnabled(0);
+            jRadioMeasMag.setEnabled(0);
         end
         % === OUTPUT ===
         if ~isempty(jRadioOutAvg)
@@ -887,6 +906,4 @@ function Freqs = GetLogFreq(strFreq)
     % Round the vector
     Freqs = unique(round(Freqs .* 10) ./ 10);
 end
-
-
 
