@@ -8,7 +8,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017; Hossein Shahabi, 2019
+% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017; Hossein Shahabi, 2020
 
 
 %% ===== DEFAULT OPTIONS =====
@@ -591,22 +591,17 @@ for iFile = 1:length(FilesA)
                 size(sInputA.Data,1), size(sInputB.Data,1)));
             Comment = [OPTIONS.tfMeasure ' | ' OPTIONS.CohMeasure ' | ' sprintf('%ds',OPTIONS.WinParam(1)) ' | ' ...
                 sprintf('%ds',prod(OPTIONS.WinParam)) ' | '] ;
-            
-            % ======
+            % Additional options for the progress bar inside the function
             OPTIONS.SampleRate        = sfreq;
             OPTIONS.ExtraInf.nTrials  = length(FilesA);
             OPTIONS.ExtraInf.trialNum = iFile;
             OPTIONS.Freqs             = OPTIONS.Freqrange ;
-
             % ======
-            [cOut,timeSamples] = bst_hcoh(sInputA.Data,OPTIONS);
-            R4d = cOut ;
-            sInputB.Time = timeSamples + sInputB.Time(1) ;
-            [~,~,nTime,nFreq] = size(R4d) ;
-            R = reshape(R4d,[],nTime,nFreq) ;
-            
-            % =======
-            OPTIONS.Nwin = nTime ;
+            [R4d,timeSamples] = bst_hcoh(sInputA.Data,OPTIONS);
+            sInputB.Time      = timeSamples + sInputB.Time(1) ;
+            [~,~,nTime,nBand] = size(R4d) ;
+            % Rehaping a 4D matrix to 3 dim
+            R = reshape(R4d,[],nTime,nBand) ;
             
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
