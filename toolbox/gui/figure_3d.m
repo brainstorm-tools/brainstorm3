@@ -406,7 +406,8 @@ function FigureMouseMoveCallback(hFig, varargin)
             end
             zoom(hFig, Factor);
             
-        case {'moveSlices', 'popup'}
+        % Popup or move slices
+        case 'popup'
             FigureId = getappdata(hFig, 'FigureId');
             % TOPO: Select channels
             if strcmpi(FigureId.Type, 'Topography') && ismember(FigureId.SubType, {'2DLayout', '2DDisc', '2DSensorCap', '2DElectrodes'})
@@ -3191,7 +3192,7 @@ function UpdateSurfaceAlpha(hFig, iTess)
     end
         
     % ===== RESECT (DOUBLE) =====
-    if isnumeric(Surface.Resect) && (length(Surface.Resect) == 3) && ~all(Surface.Resect == 0)
+    if isnumeric(Surface.Resect) && (length(Surface.Resect) == 3) && (~all(Surface.Resect == 0) || strcmpi(Surface.Name, 'FEM'))
         % Regular triangular surface
         if ~strcmpi(Surface.Name, 'FEM')
             iNoModif = [];
@@ -3267,11 +3268,11 @@ function UpdateSurfaceAlpha(hFig, iTess)
     % ===== HIDE NON-SELECTED STRUCTURES =====
     % Hide non-selected Structures scouts
     if ~isempty(sSurf.Atlas) && ismember(sSurf.Atlas(sSurf.iAtlas).Name, {'Structures', 'Source model'})
-        % Get scouts display options
-        ScoutsOptions = panel_scout('GetScoutsOptions');
-        % Get selected scouts
-        sScouts = panel_scout('GetSelectedScouts');
-        % Get all the selected vertices
+%         % Get scouts display options
+%         ScoutsOptions = panel_scout('GetScoutsOptions');
+%         % Get selected scouts
+%         sScouts = panel_scout('GetSelectedScouts');
+%         % Get all the selected vertices
 %         if ~isempty(sScouts) && strcmpi(ScoutsOptions.showSelection, 'select')
 %             % Get the list of hidden vertices
 %             iSelVert = unique([sScouts.Vertices]);

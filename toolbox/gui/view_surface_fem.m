@@ -173,7 +173,7 @@ if (size(SurfAlpha,2) ~= Ntissue)
     SurfAlpha = zeros(1,Ntissue);
 end
 if (size(Resect,2) ~= Ntissue)
-    Resect = [0, 0.1, 0];
+    Resect = [0, 0.01, 0];
 end
 % Plot each tissue as a patch object
 for iTissue = 1:Ntissue

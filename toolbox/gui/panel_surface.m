@@ -260,21 +260,31 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jSliderResectX.setValue(0);
         jSliderResectY.setValue(0);
         jSliderResectZ.setValue(0);
-        SliderCallback([], MouseEvent(jSliderResectX, 0, 0, 0, 0, 0, 1, 0), 'ResectX');
-        SliderCallback([], MouseEvent(jSliderResectY, 0, 0, 0, 0, 0, 1, 0), 'ResectY');
-        SliderCallback([], MouseEvent(jSliderResectZ, 0, 0, 0, 0, 0, 1, 0), 'ResectZ');
-        % Redraw all the scouts (for surfaces only)
+        
+        % Get handle to current 3DViz figure
         hFig = bst_figures('GetCurrentFigure', '3D');
-        if ~isempty(hFig)
-            iSurface = getappdata(hFig, 'iSurface');
-            TessInfo = getappdata(hFig, 'Surface');
-            if ~isempty(iSurface) && ~isempty(TessInfo) && (iSurface > length(TessInfo))
-                isAnatomy = strcmpi(TessInfo(iSurface).Name, 'Anatomy');
-                if ~isAnatomy
-                    panel_scout('ReloadScouts', hFig);
-                end
-            end
+        if isempty(hFig)
+            return
         end
+        % Get current surface
+        iSurface = getappdata(hFig, 'iSurface');
+        TessInfo = getappdata(hFig, 'Surface');
+        if isempty(iSurface) || isempty(TessInfo)
+            return;
+        end
+        % MRI: Redraw 3 orientations
+        if strcmpi(TessInfo(iSurface).Name, 'Anatomy')
+            SliderCallback([], MouseEvent(jSliderResectX, 0, 0, 0, 0, 0, 1, 0), 'ResectX');
+            SliderCallback([], MouseEvent(jSliderResectY, 0, 0, 0, 0, 0, 1, 0), 'ResectY');
+            SliderCallback([], MouseEvent(jSliderResectZ, 0, 0, 0, 0, 0, 1, 0), 'ResectZ');
+        % Surface: Call the update function only once
+        else
+            TessInfo(iSurface).Resect = 'none';
+            setappdata(hFig, 'Surface', TessInfo);
+            SliderCallback([], MouseEvent(jSliderResectX, 0, 0, 0, 0, 0, 1, 0), 'ResectX');
+        end
+        % Redraw all the scouts (for surfaces only)
+        % panel_scout('ReloadScouts', hFig);
     end
 
     %% ===== RESECT LEFT TOGGLE CALLBACK =====

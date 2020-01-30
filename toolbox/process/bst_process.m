@@ -103,7 +103,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
             catch
             end
-        end        
+        end
     end
     
     % ===== APPLY PROCESSES =====
