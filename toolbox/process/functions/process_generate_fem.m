@@ -252,7 +252,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
             end
             % Merge all the surfaces
-            [newnode, newelem] = mergemesh(bemMerge{:});
+            [newnode, newelem] = mergesurf(bemMerge{:});
             
             % Find the seed point for each region
             center_inner = mean(bemMerge{end-1});
