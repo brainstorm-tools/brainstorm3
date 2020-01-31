@@ -2226,13 +2226,13 @@ switch contextName
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
             sTemplates(end).Name = 'Colin27_BrainSuite_2016';
         end
-        if ~ismember(lower({sTemplates.Name}), 'bci-dni_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2016';
-            sTemplates(end).Name = 'BCI-DNI_BrainSuite_2016';
+        if ~ismember(lower({sTemplates.Name}), 'bci-dni_brainsuite_2020')
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2020';
+            sTemplates(end).Name = 'BCI-DNI_BrainSuite_2020';
         end
-        if ~ismember(lower({sTemplates.Name}), 'uscbrain_brainsuite_2017')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2017';
-            sTemplates(end).Name = 'USCBrain_BrainSuite_2017';
+        if ~ismember(lower({sTemplates.Name}), 'uscbrain_brainsuite_2020')
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2020';
+            sTemplates(end).Name = 'USCBrain_BrainSuite_2020';
         end
         if ~ismember(lower({sTemplates.Name}), 'fsaverage_2016')
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2016';
