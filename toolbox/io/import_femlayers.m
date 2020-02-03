@@ -34,6 +34,7 @@ function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, File
 %
 % Authors: Francois Tadel, 2020
 
+
 %% ===== PARSE INPUTS =====
 % Check command line
 if ~isnumeric(iSubject) || (iSubject < 0)
@@ -60,6 +61,16 @@ ProtocolInfo = bst_get('ProtocolInfo');
 sSubject = bst_get('Subject', iSubject);
 subjectSubDir = bst_fileparts(sSubject.FileName);
 
+
+%% ===== INSTALL ISO2MESH =====
+% Install iso2mesh if needed
+if ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
+    errMsg = InstallIso2mesh(isInteractive);
+    if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
+        warning('Could not find Iso2mesh on your computer... the extracted surface may have some isolated faces.')
+    end
+end
+            
 
 %% ===== SELECT INPUT FILES =====
 % If surface files to load are not defined : open a dialog box to select it
@@ -93,7 +104,6 @@ for iFile = 1:length(FemFiles)
 
     % Create one surface per tissue
     Ntissue = max(FemMat.Tissue);
-%     iUsedVert = [];
     bst_progress('start', 'Extract surfaces', 'Extracting surfaces...', 0, Ntissue + 1);
     for iTissue = 1:Ntissue
         bst_progress('text', ['Extracting surfaces: ' FemMat.TissueLabels{iTissue} '...']);
@@ -110,22 +120,16 @@ for iFile = 1:length(FemFiles)
         % Detect all unused vertices
         Vertices = FemMat.Vertices;
         iRemoveVert = setdiff((1:size(Vertices,1))', unique(Faces(:)));
-%         % Add vertices that were already used in a previous layer
-%         if ~isempty(iUsedVert)
-%             iRemoveVert = union(iRemoveVert, iUsedVert);
-%         end
-%         % Save the list of vertices used in this layer (add it to the previous ones)
-%         iUsedVert = union(iUsedVert, unique(Faces(:)));
         % Remove all the unused vertices 
         if ~isempty(iRemoveVert)
             [Vertices, Faces] = tess_remove_vert(Vertices, Faces, iRemoveVert);
         end
+        % Remove small elements
+        [Vertices, Faces] = tess_remove_small(Vertices, Faces);
         
         % call meshfixe via iso2mesh to remove the inner islandes
-        if exist('iso2meshver', 'file') & isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-             [Vertices,Faces] = meshcheckrepair(Vertices, Faces,'meshfix');
-        else
-            warning('iso2mesh is not found in your machine ... the extracted surface may have some isolated faces')
+        if exist('meshcheckrepair', 'file')
+             [Vertices, Faces] = meshcheckrepair(Vertices, Faces, 'meshfix');
         end
         
         % ===== NEW STRUCTURE =====
