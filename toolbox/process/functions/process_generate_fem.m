@@ -47,19 +47,49 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
     sProcess.isSeparator = 1;
-    % Option: Subject name
+    % Subject name
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
     sProcess.options.subjectname.Value   = '';
-    % Option: Maximum volume: Max volume of the tetra element, option used by iso2mesh, in this script it will multiplied by e-6;
-    % range from 10 for corse mesh to 1e-4 or less for very fine mesh
+    % Method
+    sProcess.options.method.Comment = {['<B>Iso2mesh</B>:<BR>' ...
+                                           'Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
+                                           'generated with Brainstorm (head, inner skull, outer skull).<BR>' ...
+                                           'Iso2mesh is downloaded and installed automatically by Brainstorm.<BR>'], ...
+                                       ['<B>SimNIBS</B>:<BR>' ...
+                                           'Call SimNIBS to segment and mesh the <B>T1</B> (and <B>T2</B>) MRI.<BR>' ...
+                                           'SimNIBS must be installed on the computer first.<BR>' ...
+                                           'Website: https://simnibs.github.io/simnibs']; ...
+                                       'iso2mesh', 'simnibs'};
+    sProcess.options.method.Type    = 'radio_label';
+    sProcess.options.method.Value   = 'iso2mesh';
+    
+    % Iso2mesh options:
+    sProcess.options.opt1.Comment = '<BR><BR><B>Iso2mesh options</B>: ';
+    sProcess.options.opt1.Type    = 'label';
+    % Iso2mesh: NbLayers
+    sProcess.options.nblayers.Comment = {...
+        '3 layers : brain, skull, scalp', ...
+        '4 layers : brain, csf, skull, scalp', ...
+        '5 layers : white, gray, csf, skull, scalp'; ...
+        '3','4','5'};
+    sProcess.options.nblayers.Type    = 'radio_label';
+    sProcess.options.nblayers.Value   = '3';
+    % Iso2mesh: Max tetrahedral volume
     sProcess.options.maxvol.Comment = 'Max tetrahedral volume (10=coarse, 0.0001=fine, default=0.1): ';
     sProcess.options.maxvol.Type    = 'value';
     sProcess.options.maxvol.Value   = {0.1, '', 4};
-    % Option: keepratio: Percentage of elements being kept after the simplification
+    % Iso2mesh: keepratio: Percentage of elements being kept after the simplification
     sProcess.options.keepratio.Comment = 'Percentage of elements kept (default=100%): ';
     sProcess.options.keepratio.Type    = 'value';
     sProcess.options.keepratio.Value   = {100, '%', 0};
+    % SimNIBS options:
+    sProcess.options.opt2.Comment = '<BR><B>SimNIBS options</B>: ';
+    sProcess.options.opt2.Type    = 'label';
+    % SimNIBS: Vertex density
+    sProcess.options.vertexdensity.Comment = 'Vertex density: nodes per mm2 (0.1-1.5, default=0.5): ';
+    sProcess.options.vertexdensity.Type    = 'value';
+    sProcess.options.vertexdensity.Value   = {0.5, '', 2};
 end
 
 
@@ -73,19 +103,6 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     OPTIONS = struct();
-    % Maximum tetrahedral volume
-    OPTIONS.maxvol = sProcess.options.maxvol.Value{1};
-    if isempty(OPTIONS.maxvol) || (OPTIONS.maxvol < 0.000001) || (OPTIONS.maxvol > 20)
-        bst_report('Error', sProcess, [], 'Invalid maximum tetrahedral volume.');
-        return
-    end
-    % Keep ratio (percentage 0-1)
-    OPTIONS.keepratio = sProcess.options.keepratio.Value{1};
-    if isempty(OPTIONS.keepratio) || (OPTIONS.keepratio < 1) || (OPTIONS.keepratio > 100)
-        bst_report('Error', sProcess, [], 'Invalid kept element percentage.');
-        return
-    end
-    OPTIONS.keepratio = OPTIONS.keepratio ./ 100;
     % Get subject name
     SubjectName = file_standardize(sProcess.options.subjectname.Value);
     if isempty(SubjectName)
@@ -98,6 +115,38 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], ['Subject "' SubjectName '" does not exist.']);
         return
     end
+    % Method
+    OPTIONS.Method = sProcess.options.method.Value;
+    if isempty(OPTIONS.Method) || ~ischar(OPTIONS.Method) || ~ismember(OPTIONS.Method, {'iso2mesh','simnibs'})
+        bst_report('Error', sProcess, [], 'Invalid method.');
+        return
+    end
+    % Iso2mesh: Number of layers
+    OPTIONS.NbLayers = str2num(sProcess.options.nblayers.Value);
+    if isempty(OPTIONS.NbLayers)
+        bst_report('Error', sProcess, [], 'Invalid number of layers.');
+        return
+    end
+    % Iso2mesh: Maximum tetrahedral volume
+    OPTIONS.MaxVol = sProcess.options.maxvol.Value{1};
+    if isempty(OPTIONS.MaxVol) || (OPTIONS.MaxVol < 0.000001) || (OPTIONS.MaxVol > 20)
+        bst_report('Error', sProcess, [], 'Invalid maximum tetrahedral volume.');
+        return
+    end
+    % Iso2mesh: Keep ratio (percentage 0-1)
+    OPTIONS.KeepRatio = sProcess.options.keepratio.Value{1};
+    if isempty(OPTIONS.KeepRatio) || (OPTIONS.KeepRatio < 1) || (OPTIONS.KeepRatio > 100)
+        bst_report('Error', sProcess, [], 'Invalid kept element percentage.');
+        return
+    end
+    OPTIONS.KeepRatio = OPTIONS.KeepRatio ./ 100;
+    % SimNIBS: Maximum tetrahedral volume
+    OPTIONS.VertexDensity = sProcess.options.vertexdensity.Value{1};
+    if isempty(OPTIONS.VertexDensity) || (OPTIONS.VertexDensity < 0.01) || (OPTIONS.VertexDensity > 5)
+        bst_report('Error', sProcess, [], 'Invalid vertex density.');
+        return
+    end
+    
     % Call processing function
     [isOk, errMsg] = Compute(iSubject, [], 0, OPTIONS);
     % Handling errors
@@ -118,11 +167,11 @@ function OPTIONS = GetDefaultOptions()
         'MeshType',       'tetrahedral', ...   % iso2mesh: 'tetrahedral';  simnibs: 'tetrahedral';  roast:'hexahedral'/'tetrahedral';  fieldtrip:'hexahedral'/'tetrahedral' 
         'NbLayers',       3, ...               % iso2mesh: {3,4};          simnibs: {3,4,5};        roast:{3,5};                       fieldtrip:{3,5}
         'MaxVol',         0.1, ...             % iso2mesh: Max tetrahedral volume (10=coarse, 0.0001=fine)
-        'KeepRatio',      1, ...               % iso2mesh: Percentage of elements kept (1-100%)
-        'SkullThickness', 0.002, ...           % iso2mesh: Used only with 4 layers, in meters
+        'KeepRatio',      100, ...             % iso2mesh: Percentage of elements kept (1-100%)
         'BemFiles',       [], ...              % iso2mesh: List of layers to use for meshing (if not specified, use the files selected in the database 
-        'NodeShift',      0.3, ...             % fieldtrip: [0 - 0.49] Improves the geometrical properties of the mesh
-        'VertexDensity',      0.5);            % SimNibs : [0.1 - X] setting the vertex density (nodes per mm²)  of the surface meshes       
+        'VertexDensity',  0.5);                % SimNIBS : [0.1 - X] setting the vertex density (nodes per mm2)  of the surface meshes
+        % 'NodeShift',      0.3, ...             % fieldtrip: [0 - 0.49] Improves the geometrical properties of the mesh
+        % 'SkullThickness', 0.002, ...           % iso2mesh: Used only with 4 layers, in meters
 end
 
 
@@ -252,8 +301,12 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
             end
             % Merge all the surfaces
-            [newnode, newelem] = mergesurf(bemMerge{:});
+            % [newnode, newelem] = mergesurf(bemMerge{:});
+            [newnode, newelem] = mergemesh(bemMerge{:});
             
+            % TODO: Replace mergemesh with mergesurf when iso2mesh fixes mwpath with no inputs in a new release.
+            % See: https://github.com/fangq/iso2mesh/pull/42
+
             % Find the seed point for each region
             center_inner = mean(bemMerge{end-1});
             % define seeds along the electrode axis
@@ -563,12 +616,20 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     end
 
     % Add history
-    FemMat = bst_history('add', FemMat, 'process_generate_fem', [...
-        'Method=',    OPTIONS.Method, '|', ...
-        'Mesh type =',    OPTIONS.MeshType, '|', ...
-        'Number of layer= ',  num2str(OPTIONS.NbLayers), '|', ...
-        'MaxVol=',    num2str(OPTIONS.MaxVol),  '|', ...
-        'KeepRatio=', num2str(OPTIONS.KeepRatio)]);
+    strOptions = '';
+    for f = fieldnames(OPTIONS)'
+        strOptions = [strOptions, f{1}, '='];
+        if isnumeric(OPTIONS.(f{1}))
+            strOptions = [strOptions, num2str(OPTIONS.(f{1}))];
+        elseif ischar(OPTIONS.(f{1}))
+            strOptions = [strOptions, '''', OPTIONS.(f{1}), ''''];
+        elseif iscell(OPTIONS.(f{1})) && ~isempty(OPTIONS.(f{1}))
+            strOptions = [strOptions, sprintf('''%s'',', OPTIONS.(f{1}){:})];
+        end
+        strOptions = [strOptions, ' '];
+    end
+    FemMat = bst_history('add', FemMat, 'process_generate_fem', strOptions);
+
     % Save to database
     FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
     bst_save(FemFile, FemMat, 'v7');
@@ -599,7 +660,8 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     else
         res = java_dialog('question', [...
             '<HTML><B>Iso2mesh</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
-            'generated with Brainstorm (head, inner skull, outer skull).<BR><BR>' ...
+            'generated with Brainstorm (head, inner skull, outer skull).<BR>' ...
+            'Iso2mesh is downloaded and installed automatically by Brainstorm.<BR><BR>' ...
             '<B>SimNIBS</B>:<BR>Call SimNIBS to segment and mesh the <B>T1</B> (and <B>T2</B>) MRI.<BR>' ...
             'SimNIBS must be installed on the computer first.<BR>' ...
             'Website: https://simnibs.github.io/simnibs<BR><BR>'...
@@ -638,10 +700,10 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
         case 'simnibs'
             % Ask for the tissues to segment
             opts = {...
-                '3 Layers : brain, skull, scalp', ...
-                '4 Layers : brain, csf, skull, scalp', ...
-                '5 Layers : white, gray, csf, skull, scalp'};
-            [res, isCancel] = java_dialog('radio', '<HTML> Select the model to segment  <BR>', 'Select Model',[],opts, 3);
+                '3 layers : brain, skull, scalp', ...
+                '4 layers : brain, csf, skull, scalp', ...
+                '5 layers : white, gray, csf, skull, scalp'};
+            [res, isCancel] = java_dialog('radio', '<HTML> Select the model to segment  <BR>', 'Select Model', [], opts, 1);
             if isCancel
                 return
             end
@@ -651,13 +713,14 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 case 3,  OPTIONS.NbLayers = 5;
             end          
            % Ask for the Vertex density
-           res = java_dialog('input', 'Vertex Density : # nodes per mm² of the surface meshes :', ...
-               'SimNibs Vertex Density', [], '0.5');
-           if isempty(res)
+           res = java_dialog('input', '<HTML>Vertex density:<BR>Number of nodes per mm2 of the surface meshes (0.1 - 1.5)', ...
+               'SimNIBS Vertex Density', [], '0.5');
+           if isempty(res) || (length(str2num(res)) ~= 1)
                return
            end
            % Get the value
            OPTIONS.VertexDensity = str2num(res);
+           
 %         case 'roast'
 %             % Set parameters
 %             % Ask user for the the tissu to segment :
