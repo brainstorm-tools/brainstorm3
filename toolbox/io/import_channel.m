@@ -39,7 +39,7 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2020
 
 %% ===== PARSE INPUTS =====
 Output = [];
@@ -214,6 +214,11 @@ switch (FileFormat)
         ChannelMat = in_channel_emse_elp(ChannelFile);
         FileUnits = 'm';
         
+    case 'LOCALITE'
+        ChannelMat = in_channel_ascii(ChannelFile, {'%d','name','X','Y','Z'}, 1, .001);
+        ChannelMat.Comment = 'Localite channels';
+        FileUnits = 'mm';
+                
     case 'NEUROSCAN'  % (*.dat;*.tri;*.txt;*.asc)
         switch (fExt)
             case {'dat', 'txt'}

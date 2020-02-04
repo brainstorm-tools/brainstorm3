@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+February 2020
+- IO: Added support for Localite digitizer (.csv)
+---------------------------------------------------------------
 January 2020
 - Database: New search interface
 - Anatomy: 3D mesh generation with iso2mesh, SimNIBS, ROAST and FieldTrip
