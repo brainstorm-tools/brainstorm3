@@ -96,6 +96,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     SensorTypes     = sProcess.options.sensortypes.Value;
     LowPass         = sProcess.options.lowpass.Value{1};
     numPermutations = sProcess.options.num_permutations.Value{1};
+    kFold           = sProcess.options.kfold.Value{1};
     model           = sProcess.options.model.Value;
     methods         = {'pairwise', 'temporalgen', 'multiclass'};
     method          = methods{sProcess.options.method.Value};
@@ -172,11 +173,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Run max-correlation decoding
         modelName = 'max-correlation';
         bst_progress('start', 'Decoding', 'Decoding with max-correlation model...');
-        d = sll_decodemaxcorr(trial, allConditions, 'method', method, 'numpermutation', numPermutations, 'verbose', 1);
+        d = sll_decodemaxcorr(trial, allConditions, 'method', method, 'numpermutation', numPermutations, 'verbose', 1, 'kfold', kFold);
     else
         % Default: basic SVM model
         modelName = 'SVM';
-        kFold = sProcess.options.kfold.Value{1};
         bst_progress('start', 'Decoding', 'Decoding with SVM model...');
         d = sll_decodesvm(trial, allConditions, 'method', method, 'numpermutation', numPermutations, 'verbose', 2, 'kfold', kFold);
     end

@@ -54,6 +54,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.num_permutations.Comment = 'Number of permutations: ';
     sProcess.options.num_permutations.Type    = 'value';
     sProcess.options.num_permutations.Value   = {50,'',0};
+    % === trial bin size for sub-averaging
+    sProcess.options.kfold.Comment = 'Number of folds: ';
+    sProcess.options.kfold.Type    = 'value';
+    sProcess.options.kfold.Value   = {5,'',0};
     % === decoding method
     sProcess.options.method.Comment = {'Pairwise', 'Temporal generalization', 'Multiclass', 'Decoding method:'};
     sProcess.options.method.Type    = 'radio_line';
