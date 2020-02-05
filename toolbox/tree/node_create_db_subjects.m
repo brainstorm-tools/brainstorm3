@@ -1,4 +1,4 @@
-function [bstDefaultNode, nodeSubjectsDB] = node_create_db_subjects( nodeRoot , iSearch )
+function [bstDefaultNode, nodeSubjectsDB, numTotalElems] = node_create_db_subjects( nodeRoot , iSearch )
 % NODE_CREATE_DB_SUBJECTS: Create a tree to represent the subjects registered in current protocol.
 % Populate a tree from its root node.
 %
@@ -11,6 +11,7 @@ function [bstDefaultNode, nodeSubjectsDB] = node_create_db_subjects( nodeRoot , 
 %    - bstDefaultNode : default BstNode, that should be expanded and selected automatically
 %                       or empty matrix if no default node is defined
 %    - nodeSubjectsDB : Root node of the subjects database tree
+%    - numTotalElems  : Total number of nodes created
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -46,6 +47,7 @@ end
 % Set default node
 bstDefaultNode = [];
 nodeSubjectsDB = [];
+numTotalElems  = 0;
 % Get current protocol subjects list
 ProtocolSubjects = bst_get('ProtocolSubjects');
 if (isempty(ProtocolSubjects))
@@ -77,7 +79,7 @@ if ~isempty(ProtocolSubjects.DefaultSubject)
     if numElems > 0
         % Add subject node to 'Subjects database' node
         nodeSubjectsDB.add(nodeSubject);
-
+        numTotalElems = numTotalElems + numElems;
         % If default subject is the subject associated with the default study
         % Mark it as the default subject
         if file_compare(selectedSubjectFileName, ProtocolSubjects.DefaultSubject.FileName)
@@ -107,7 +109,7 @@ for i = 1:length(iSubjectsSorted)
         % Add subject node to 'Subjects database' node
         if numElems > 0
             nodeSubjectsDB.add(nodeSubject);
-
+            numTotalElems = numTotalElems + numElems;
             % If current subject is the subject associated with the default study
             % Mark it as the default subject
             if file_compare(selectedSubjectFileName, ProtocolSubjects.Subject(iSubject).FileName)

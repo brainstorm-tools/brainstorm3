@@ -420,16 +420,16 @@ function UpdateTree(resetNodes)
     % Switch according to the mode button that is checked
     explorationMode = bst_get('Layout', 'ExplorationMode');
     % Try to load the tree
-    [dbNode, selNode] = GetSearchNodes(iSearch, explorationMode);
+    [dbNode, selNode, numNodes] = GetSearchNodes(iSearch, explorationMode);
     % Fill the tree if empty
     if isempty(dbNode)
         switch explorationMode
-            case 'Subjects',     [selNode, dbNode] = node_create_db_subjects(nodeRoot, iSearch);
-            case 'StudiesSubj',  [selNode, dbNode] = node_create_db_studies(nodeRoot, 'subject', iSearch);
-            case 'StudiesCond',  [selNode, dbNode] = node_create_db_studies(nodeRoot, 'condition', iSearch);
+            case 'Subjects',     [selNode, dbNode, numNodes] = node_create_db_subjects(nodeRoot, iSearch);
+            case 'StudiesSubj',  [selNode, dbNode, numNodes] = node_create_db_studies(nodeRoot, 'subject', iSearch);
+            case 'StudiesCond',  [selNode, dbNode, numNodes] = node_create_db_studies(nodeRoot, 'condition', iSearch);
         end
         % Save node for quick tab changes
-        SaveSearchNodes(iSearch, explorationMode, dbNode, selNode);
+        SaveSearchNodes(iSearch, explorationMode, dbNode, selNode, numNodes);
     else
         nodeRoot.add(dbNode);
     end
@@ -437,8 +437,9 @@ function UpdateTree(resetNodes)
     % Remove "Loading..." node, validate changes and redraw tree
     ctrl.jTreeProtocols.setLoading(0);
     drawnow;
-    % Expand whole database if this is a search
-    if iSearch > 0
+    % Expand whole database if this is a search and we do not have too
+    % many elements
+    if iSearch > 0 && numNodes < 500
         ExpandAll(1);
     % If a default node is defined : select and expand it
     elseif ~isempty(selNode)
@@ -1872,13 +1873,14 @@ end
 % Returns:
 %  - rootNode: Root node of the requested search
 %  - selNode: The node currently selected in the tree
-function [rootNode, selNode] = GetSearchNodes(iSearch, explorationMode)
+function [rootNode, selNode, numNodes] = GetSearchNodes(iSearch, explorationMode)
     global GlobalData
     
     % Make sure the search ID exists
     if iSearch + 1 > length(GlobalData.DataBase.Searches.Active)
         rootNode = [];
         selNode  = [];
+        numNodes = 0;
         return;
     end
     
@@ -1887,14 +1889,17 @@ function [rootNode, selNode] = GetSearchNodes(iSearch, explorationMode)
             % Anatomy view
             rootNode = GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode;
             selNode  = GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode;
+            numNodes = GlobalData.DataBase.Searches.Active(iSearch+1).AnatNumNodes;
         case 'StudiesSubj'
             % Functional view, grouped by subjects
             rootNode = GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode;
             selNode  = GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode;
+            numNodes = GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjNumNodes;
         case 'StudiesCond'
             % Functional view, grouped by conditions
             rootNode = GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode;
             selNode  = GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode;
+            numNodes = GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondNumNodes;
         otherwise
             error('Unsupported database view mode');
     end
@@ -1910,7 +1915,7 @@ end
 %  - selNode: the node currently selected in the tree
 %
 % Returns: nothing
-function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode)
+function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode, numNodes)
     global GlobalData
     
     switch explorationMode
@@ -1918,14 +1923,17 @@ function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode)
             % Anatomy view
             GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode = rootNode;
             GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode  = selNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).AnatNumNodes = numNodes;
         case 'StudiesSubj'
             % Functional view, grouped by subjects
             GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode = rootNode;
             GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode  = selNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjNumNodes = numNodes;
         case 'StudiesCond'
             % Functional view, grouped by conditions
             GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode = rootNode;
             GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode  = selNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondNumNodes = numNodes;
         otherwise
             error('Unsupported database view mode');
     end
