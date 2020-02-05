@@ -257,7 +257,14 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
         end
         % Add comment tag
         sMri.Comment = [sMri.Comment, fileTag];
-
+        
+        % Remove initial file header
+        sMri.Header = [];
+        sMri.Histogram = [];
+        % Remove file history (may contain information in the original file names)
+        sMri.History = [];
+        sMri = bst_history('add', sMri, 'process', ['process_mri_deface: ', OPTIONS.Method]);
+        
         % Save defaced MRI
         bst_progress('text', 'Saving results to database...');
         if OPTIONS.isOverwrite
