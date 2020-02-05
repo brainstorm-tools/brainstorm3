@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 February 2020
 - IO: Added support for Localite digitizer (.csv)
+- Anatomy: Update FSAverage template (new import functions + braintomme atlas)
 ---------------------------------------------------------------
 January 2020
 - Database: New search interface

@@ -635,6 +635,10 @@ function AtlasName = GetAtlasName(fBase)
             AtlasName = 'Lausanne-S250';
         case {'lh.aparc_HCP_MMP1.freesurfer', 'rh.aparc_HCP_MMP1.freesurfer'}
             AtlasName = 'HCP_MMP1';
+        case {'lh.BN_Atlas', 'rh.BN_Atlas'}
+            AtlasName = 'Braintomme';
+        case {'lh.oasis.chubs', 'rh.oasis.chubs'}
+            AtlasName = 'OASIS cortical hubs';
         otherwise
             % FreeSurfer left/right
             if (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
