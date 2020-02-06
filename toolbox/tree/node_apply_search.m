@@ -48,7 +48,7 @@ if isnumeric(iSearch)
         if iscell(fileName)
             res = true(1, length(fileName));
         else
-            res = 1;
+            res = true;
         end
         return;
     end
@@ -81,7 +81,7 @@ function [res, boldKeywords] = TestSearchTree(root, fileType, fileComment, fileN
     if iscell(fileName)
         res = true(1, length(fileName));
     else
-        res = 1;
+        res = true;
     end
     nextBool = 0;
     nextNot = 0;
@@ -171,7 +171,7 @@ function [matches, boldKeyword] = TestParam(param, fileType, fileComment, fileNa
     else
         fileValue = {fileValue};
         nFiles = 1;
-        matches = 1;
+        matches = true;
     end
     
     for iFile = 1:nFiles

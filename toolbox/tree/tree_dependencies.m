@@ -524,7 +524,12 @@ if ~isempty(iTargetStudies)
                 if ~isempty(iFoundData)
                     % Check file filters
                     if ~isempty(NodelistOptions)
-                        iFoundData = iFoundData(isFileSelected({sStudies(i).Data(iFoundData).FileName}, {sStudies(i).Data(iFoundData).Comment}, NodelistOptions, targetNodeType));
+                        % Get specific Data/RawData type
+                        FileType = {sStudies(i).Data(iFoundData).DataType};
+                        iRaw = strcmpi(FileType, 'raw');
+                        FileType(iRaw) = {'rawdata'};
+                        FileType(~iRaw) = {'data'};
+                        iFoundData = iFoundData(isFileSelected({sStudies(i).Data(iFoundData).FileName}, {sStudies(i).Data(iFoundData).Comment}, NodelistOptions, FileType));
                     end
                     iDepStudies = [iDepStudies, repmat(iStudies(i), 1, length(iFoundData))];
                     iDepItems   = [iDepItems,   iFoundData];

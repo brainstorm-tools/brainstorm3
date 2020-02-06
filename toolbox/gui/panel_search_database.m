@@ -1539,3 +1539,105 @@ function GenerateProcessScript(searchRoot)
     disp('BST> Copied the process call to clipboard');
     clipboard('copy', procStr);
 end
+
+% Checks whether a search query is requires only certain file types
+%
+% Outputs:
+%  - isRequired: 1 if the query does require only certain file types, else
+%  - FileTypes : list of file types required, only valid if isRequired is 1
+function [isRequired, FileTypes] = GetRequiredFileTypes(searchRoot, isNot)
+    if nargin < 2
+        isNot = 0;
+    end
+    FileTypes = {};
+    
+    % Base case: Our whole search is a single search param
+    if searchRoot.Type == 1 % Search param
+        if ~isNot && searchRoot.Value.SearchType == 2 % File Type
+            isRequired = 1;
+            FileTypes = searchRoot.Value.Value;
+            if ~iscell(FileTypes)
+                FileTypes = {FileTypes};
+            end
+        else
+            isRequired = 0;
+        end
+        return;
+    % Recursive case: this is a parent node
+    elseif searchRoot.Type == 3 % Parent node
+        boolOp = 0;
+        firstChildRequired = 0;
+        nextNot = 0;
+        isRequired = -1;
+        
+        % Iterate through children
+        for iChild = 1:length(searchRoot.Children)
+            % Save boolean operator of block
+            if searchRoot.Children(iChild).Type == 2 % Boolean
+                if searchRoot.Children(iChild).Value == 3 % NOT
+                    nextNot = 1;
+                else
+                    newBoolOp = searchRoot.Children(iChild).Value;
+                    if boolOp == 0
+                        % Prepare default value based on bool operator of block
+                        if newBoolOp == 1 % AND: Set to 0 as we need only one
+                            isRequired = 0;
+                        else % OR: Set to 1 as we need all of them
+                            isRequired = 1;
+                        end 
+                    elseif boolOp ~= newBoolOp
+                        error('Unsupported query: different boolean operators in same block');
+                    end
+                    boolOp = newBoolOp;
+                end
+            else
+                if nextNot
+                    isNot = ~isNot;
+                end
+                
+                % Get file types of sub-block
+                [isChildrequired, ChildFileTypes] = GetRequiredFileTypes(searchRoot.Children(iChild), isNot);
+                FileTypes(end+1 : end+length(ChildFileTypes)) = ChildFileTypes;
+                
+                if nextNot
+                    isNot = ~isNot;
+                    nextNot = 0;
+                end
+                
+                % Check whether we need this child to have a file type term
+                % depending on this block's boolean operator
+                % (AND: only 1 term needs 1, OR: all terms needs one)
+                switch boolOp
+                    case 0 % First child
+                        firstChildRequired = isChildrequired;
+                    
+                    case 1 % AND
+                        if isChildrequired || firstChildRequired
+                            % Set to 1 as soon as we find one term with a type
+                            isRequired = 1;
+                        end
+                        
+                    case 2 % OR
+                        if ~isChildrequired || ~firstChildRequired
+                            % Set to 0 as soon as we find one term without a type
+                            isRequired = 0;
+                            % No need to continue execution as we know not
+                            % all terms have a file type
+                            return;
+                        end
+                        
+                    case 3 % NOT
+                        isNot = ~isNot;
+                        
+                    otherwise
+                        error('Unsupported boolean type');
+                end
+            end
+        end
+        
+        % Only one term in block
+        if isRequired == -1
+            isRequired = firstChildRequired;
+        end
+    end
+end
