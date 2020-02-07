@@ -420,6 +420,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                     % relabel
                     femhead.Tissue(femhead.Tissue== 4) = 2; % skull label 2
                     femhead.Tissue(femhead.Tissue== 5) = 3; % scalp label 3
+                    % save the index of the cortex ==> will be used as source space after shrinking
+                    femCortexIndex = [1 2]; % just in case later we can use other tissu as source space
                 case 4   % {'brain'  'csf'  'skull'  'scalp'}
                     % replace the GM by WM and use unique label
                     femhead.Tissue(femhead.Tissue== 2) = 1; % gm to wm and all form brain with label 1
@@ -427,8 +429,12 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                     femhead.Tissue(femhead.Tissue== 3) = 2; % csf label 2
                     femhead.Tissue(femhead.Tissue== 4) = 3; % skull label 3
                     femhead.Tissue(femhead.Tissue== 5) = 4; % scalp label 4
+                    % save the index of the cortex ==> will be used as source space after shrinking
+                    femCortexIndex = [1 2];
                 case 5   % {'white', 'gray', 'csf', 'skull', 'scalp'}
                     % Nothing to change
+                    % save the index of the cortex ==> will be used as source space after shrinking
+                    femCortexIndex = [1 2];
             end
             elem = [femhead.Elements femhead.Tissue];
             node = femhead.Vertices;
@@ -593,6 +599,48 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             errMsg = ['Invalid method "' OPTIONS.Method '".'];
             return;
     end
+
+% ===== EXTRACT THE FEM CORTEX SURFACE =====
+    if strcmp(OPTIONS.MeshType ,'tetrahedral')
+        % Select elements of this tissue
+        Elements = elem(elem(:,5) <= max(femCortexIndex), 1:4);
+        % Create a surface for the outside surface of this tissue
+        Faces = tess_voledge(node, Elements);
+        % Detect all unused vertices
+        Vertices = node;
+        iRemoveVert = setdiff((1:size(Vertices,1))', unique(Faces(:)));
+        % Remove all the unused vertices
+        if ~isempty(iRemoveVert)
+            [Vertices, Faces] = tess_remove_vert(Vertices, Faces, iRemoveVert);
+        end
+        % Remove small elements
+        [Vertices, Faces] = tess_remove_small(Vertices, Faces);
+        %     % call meshfixe via iso2mesh to remove the inner islandes
+        %     if exist('meshcheckrepair', 'file')
+        %         [Vertices, Faces] = meshcheckrepair(Vertices, Faces, 'meshfix');
+        %     end
+    else
+        warning('Hexahedaral or other mesh format are not suported for now')
+        Vertices = [];
+        Faces = [];
+        % TODO : Use Gibbon functions to convert exa to tetra  or create
+        % new function
+    end
+    
+    % ===== NEW STRUCTURE =====
+    NewTess = db_template('surfacemat');
+    NewTess.Comment  = 'cortex_fem';
+    NewTess.Vertices = Vertices;
+    NewTess.Faces    = Faces;
+    % ===== SAVE BST FEM CORTEX SURFACE FILE =====
+    % History: File name
+    NewTess.History =['cortex extracted from FEM model by SimNibs Method'];
+    % Produce a default surface filename &   Make this filename unique
+    BstFemFile = file_unique(bst_fullfile(bst_fileparts(T1File), ...
+                    sprintf('tess_%s_%dV.mat', ['cortex_' OPTIONS.Method], length(NewTess.Vertices))));
+    % Save new surface in Brainstorm format
+    bst_save(BstFemFile, NewTess, 'v7'); 
+    db_add_surface(iSubject, BstFemFile, NewTess.Comment);
 
     % ===== SAVE FEM MESH =====
     % Create output structure
