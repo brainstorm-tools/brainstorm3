@@ -186,6 +186,11 @@ else
     [sph_faces, sph_vert] = reducepatch(env_faces, env_vert, nvert / size(env_vert,1));
 end
 
+if isempty(sph_vert)
+    bst_error('The number of vertices chosen produces an empty envelope.', 'Surface envelope', 0);
+    return;
+end
+
 %% ===== CREATE OUTPUT STRUCTURE =====
 % Rescale
 if ~isempty(scale)
