@@ -2649,7 +2649,7 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
     % Apply montage
     if ~isempty(iChannels)
         F = panel_montage('ApplyMontage', sMontage, Fall(iChannels,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
-        if ~isempty(StdAll) && isequal(sMontage.Type, 'selection')
+        if ~isempty(StdAll) && (isequal(sMontage.Type, 'selection') || (isequal(sMontage.Type, 'text') && all(ismember(sMontage.Matrix(:), [0 1])) && all(sum(abs(sMontage.Matrix),2) == 1)))
             Std = panel_montage('ApplyMontage', sMontage, StdAll(iChannels,:,:,:), GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
         end
         % Modify channel names
