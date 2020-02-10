@@ -645,50 +645,50 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             OPTIONS.BemCond  = OPTIONS.BemCond(OPTIONS.BemSelect);
         end
         
-        %% ===== DUNEURO =====
-        if isDuneuro
-            % Ask for the source FEM Model
-            sourceModel = java_dialog('question', '<HTML><B> DUNEuro : Select FEM Source Model <B>', ...
-                'FEM Source Model', [], {'Venant','Subtraction','Partial_Integration'}, 'Venant');
-            OPTIONS.FemSourceModel = lower(sourceModel);
-            % Add the source model name to the comment
-            OPTIONS.Comment = [OPTIONS.Comment ' ' sourceModel] ;
-            
-            % Path to the head fem model
-            OPTIONS.FemHeadFile = file_fullpath(sSubject.Surface(sSubject.iFEM).FileName);            
-            % Get the number of layer and their name
-            headData = load(OPTIONS.FemHeadFile, 'TissueLabels');
-            % Get the default conductivity values
-            defCond = get_standard_conductivity(length(headData.TissueLabels));
-            
-            % Ask for the conductivity of each layer          
-            [res, isCancel] = java_dialog('input', ...
-                ['<HTML>Your FEM head model has three layers: <BR> ' ...
-                 sprintf('%s ', headData.TissueLabels{:}), '<BR><BR>' ...
-                 'Enter the conductivity of each layer: <BR>'], 'Conductivity', [], ...
-                 sprintf('%g ', defCond));
-            if isCancel
-                return
-            end
-            OPTIONS.FemCond = str2num(res);
-            if (length(OPTIONS.FemCond) ~= length(headData.TissueLabels))
-                error('Invalid values');
-            end
-            
-            % TODO : The conductivities values in the case of the
-            % combined model should be the same for eeg and meg
-            
-            % Ask for the layers to keep for the MEG computation
-            if strcmpi(OPTIONS.MEGMethod, 'duneuro')
-                [res, isCancel] = java_dialog('checkbox', ...
-                    '<HTML>Select the layers to consider for the MEG head modeling <BR>', 'Select Volume', [], ...
-                    headData.TissueLabels, [1 zeros(1, length(headData.TissueLabels)-1)]);
-                OPTIONS.layerToKeep =  res;
-                if isCancel
-                    return
-                end
-            end
-        end
+%         %% ===== DUNEURO =====
+%         if isDuneuro
+%             % Ask for the source FEM Model
+%             sourceModel = java_dialog('question', '<HTML><B> DUNEuro : Select FEM Source Model <B>', ...
+%                 'FEM Source Model', [], {'Venant','Subtraction','Partial_Integration'}, 'Venant');
+%             OPTIONS.FemSourceModel = lower(sourceModel);
+%             % Add the source model name to the comment
+%             OPTIONS.Comment = [OPTIONS.Comment ' ' sourceModel] ;
+%             
+%             % Path to the head fem model
+%              OPTIONS.FemHeadFile = file_fullpath(sSubject.Surface(sSubject.iFEM).FileName);            
+%             % Get the number of layer and their name
+%             headData = load(OPTIONS.FemHeadFile, 'TissueLabels');
+%             % Get the default conductivity values
+%             defCond = get_standard_conductivity(length(headData.TissueLabels));
+%             
+%             % Ask for the conductivity of each layer          
+%             [res, isCancel] = java_dialog('input', ...
+%                 ['<HTML>Your FEM head model has three layers: <BR> ' ...
+%                  sprintf('%s ', headData.TissueLabels{:}), '<BR><BR>' ...
+%                  'Enter the conductivity of each layer: <BR>'], 'Conductivity', [], ...
+%                  sprintf('%g ', defCond));
+%             if isCancel
+%                 return
+%             end
+%             OPTIONS.FemCond = str2num(res);
+%             if (length(OPTIONS.FemCond) ~= length(headData.TissueLabels))
+%                 error('Invalid values');
+%             end
+%             
+%             % TODO : The conductivities values in the case of the
+%             % combined model should be the same for eeg and meg
+%             
+%             % Ask for the layers to keep for the MEG computation
+%             if strcmpi(OPTIONS.MEGMethod, 'duneuro')
+%                 [res, isCancel] = java_dialog('checkbox', ...
+%                     '<HTML>Select the layers to consider for the MEG head modeling <BR>', 'Select Volume', [], ...
+%                     headData.TissueLabels, [1 zeros(1, length(headData.TissueLabels)-1)]);
+%                 OPTIONS.layerToKeep =  res;
+%                 if isCancel
+%                     return
+%                 end
+%             end
+%         end
         
         % ===== Compute HeadModel =====
         % Start process
