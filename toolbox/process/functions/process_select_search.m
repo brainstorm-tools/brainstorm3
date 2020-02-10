@@ -215,20 +215,6 @@ function sOutputs = GetAllProtocolFiles(FileTypes, IncludeBad)
         if isempty(FileTypes) || ismember('pdata', FileTypes) || ismember('presults', FileTypes) ...
                 || ismember('ptimefreq', FileTypes) || ismember('pmatrix', FileTypes)
             sData = [sStudies(iStudy).Stat];
-            % Exclude bad trials
-            if ~IncludeBad
-                iBadTrial = [];
-                % Check file by file
-                for iStat = 1:length(sStudies(iStudy).Stat)
-                    if isBadDataTrial(sStudies(iStudy).Stat(iStat).DataFile)
-                        iBadTrial(end + 1) = iStat;
-                    end
-                end
-                % Remove all the bad files
-                if ~isempty(iBadTrial)
-                    sData(iBadTrial) = [];
-                end
-            end
             FileType = strcat('p', {sData.Type});
             SaveFiles(FileType, 0);
         end
