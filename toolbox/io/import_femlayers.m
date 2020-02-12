@@ -1,4 +1,4 @@
-function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, FileFormat)
+function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, FileFormat, isInteractive)
 % IMPORT_FEMLAYERS: Extracts surfaces from FEM 3D mesh and saves them in the database
 % 
 % USAGE: iNewSurfaces = import_surfaces(iSubject, FemFiles, FileFormat)
@@ -11,6 +11,7 @@ function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, File
 %                     => if not specified : files to import are asked to the user
 %    - FileFormat   : String representing the file format to import.
 %                     Please see in_tess.m to get the list of supported file formats
+%    - isInteractive: {0,1} If 0, do not ask any question to the user and use default values
 % OUTPUT:
 %    - iNewSurfaces : Indices of the surfaces added in database
 
@@ -40,6 +41,9 @@ function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, File
 if ~isnumeric(iSubject) || (iSubject < 0)
     error('Invalid subject indice.');
 end
+if (nargin < 4) || isempty(isInteractive)
+    isInteractive = 0;
+end
 if (nargin < 3) || isempty(FemFiles)
     FemFiles = {};
     FileFormat = [];
@@ -65,7 +69,7 @@ subjectSubDir = bst_fileparts(sSubject.FileName);
 %% ===== INSTALL ISO2MESH =====
 % Install iso2mesh if needed
 if ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-    errMsg = InstallIso2mesh(isInteractive);
+    errMsg = process_generate_fem('InstallIso2mesh', isInteractive);
     if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
         warning('Could not find Iso2mesh on your computer... the extracted surface may have some isolated faces.')
     end
