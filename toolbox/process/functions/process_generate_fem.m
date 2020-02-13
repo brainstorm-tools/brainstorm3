@@ -283,21 +283,29 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 end
             % If surfaces are given: get their labels
             else
+            allIndex = [];
                 for iBem = 1:length(OPTIONS.BemFiles)
                     [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', OPTIONS.BemFiles{iBem});
-                    switch (sSubject.Surface(iSurface).SurfaceType)
-                        case 'Scalp',        TissueLabels{iBem} = 'scalp';
-                        case 'OuterSkull',   TissueLabels{iBem} = 'skull';
-                        case 'InnerSkull',   TissueLabels{iBem} = 'brain';
-                        case 'Cortex',       TissueLabels{iBem} = 'gray';
-                        otherwise,           TissueLabels{iBem} = sSubject.Surface(iSurface).Comment;
-                    end
+                    reference = {'white', 'gray', 'csf','skull','scalp'}; % not always true ...? 
+%                    switch (sSubject.Surface(iSurface).SurfaceType)
+%                        case 'Scalp',        TissueLabels{iBem} = 'scalp';
+%                        case 'OuterSkull',   TissueLabels{iBem} = 'skull';
+%                        case 'InnerSkull',   TissueLabels{iBem} = 'brain';
+%                        case 'Cortex',       TissueLabels{iBem} = 'gray';
+%                        otherwise,           TissueLabels{iBem} = sSubject.Surface(iSurface).Comment;
+%                    end
+                     index = find(contains(reference, sSubject.Surface(iSurface).Comment));
+                     TissueLabels{index} = sSubject.Surface(iSurface).Comment;
+                     allIndex = [allIndex, index];
                 end
+                TissueLabels(~cellfun(@isempty, TissueLabels));
+                [toto, realOrder] = sort(allIndex);              
             end
             % Load surfaces
             bemMerge = {};
             for iBem = 1:length(OPTIONS.BemFiles)
-                BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
+%                BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
+                BemMat = in_tess_bst(OPTIONS.BemFiles{realOrder(iBem)});
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
             end
             % Merge all the surfaces
