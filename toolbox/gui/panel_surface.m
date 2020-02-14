@@ -1571,7 +1571,7 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                 
                 % === OPTICAL FLOW ===
                 if ~isempty(GlobalData.DataSet(iDS).Results(iResult).OpticalFlow)
-                    sSurf = bst_memory('GetSurface', TessInfo(iTess).SurfaceFile);
+                    sSurf = bst_memory('LoadSurface', TessInfo(iTess).SurfaceFile);
                     panel_opticalflow('PlotOpticalFlow', hFig, GlobalData.DataSet(iDS).Results(iResult).OpticalFlow, ...
                                       GlobalData.UserTimeWindow.CurrentTime, sSurf); 
                 end
