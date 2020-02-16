@@ -39,7 +39,7 @@ function varargout = figure_3d( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -66,6 +66,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'DockControls',  'on', ...
                   'Units',         'pixels', ...
                   'Color',         [0 0 0], ...
+                  'Pointer',       'arrow', ...
                   'Tag',           FigureId.Type, ...
                   'Renderer',      rendererName, ...
                   'CloseRequestFcn',         @(h,ev)bst_figures('DeleteFigure',h,ev), ...
@@ -209,6 +210,8 @@ function ResizeCallback(hFig, ev)
     % ===== 2DLAYOUT: REPOSITION SCALE CONTROLS =====
     FigureId = getappdata(hFig, 'FigureId');
     if isequal(FigureId.SubType, '2DLayout')
+        % Scale figure
+        Scaling = bst_get('InterfaceScaling') / 100;
         % Get buttons
         hButtonGainMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainMinus');
         hButtonGainPlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainPlus');
@@ -216,7 +219,7 @@ function ResizeCallback(hFig, ev)
         hButtonZoomTimePlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus');
         hButtonZoomTimeMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus');
         % Reposition buttons
-        butSize = 22;
+        butSize = 22 .* Scaling;
         if ~isempty(hButtonZoomTimePlus)
             set(hButtonZoomTimePlus,   'Position', [figPos(3) - 3*(butSize+3) + 1, 3, butSize, butSize]);
             set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 2*(butSize+3) + 1, 3, butSize, butSize]);
