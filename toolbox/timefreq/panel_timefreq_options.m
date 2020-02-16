@@ -636,6 +636,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                 'NumberTitle', 'off', ...
                 'Name',        'Morlet wavelet', ...
                 'Pointer',     'arrow');
+            hAxes1 = axes();
+            hAxes2 = axes();
+            hAxes3 = axes();
         else
             bst_progress('start', 'Morlet wavelets', 'Opening figure...');
             hFigWavelet = uifigure(...
@@ -643,27 +646,30 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                 'Name',        'Morlet wavelet', ...
                 'Pointer',     'arrow', ...
                 'AutoResizeChildren', 'on');
+            hAxes1 = axes(hFigWavelet);
+            hAxes2 = axes(hFigWavelet);
+            hAxes3 = axes(hFigWavelet);
         end
         fontSize = bst_get('FigFont');
         % Frequency resolution
-        hAxes = axes(hFigWavelet, 'Position', [.08, .64, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
-        plot(hAxes, f, FWHM_f);
-        title(hAxes, 'Spectral resolution', 'Interpreter', 'none', 'FontSize', fontSize);
-        xlabel(hAxes, 'Frequency (Hz)', 'FontSize', fontSize);
-        ylabel(hAxes, 'FWHM (Hz)', 'FontSize', fontSize);
+        plot(hAxes1, f, FWHM_f);
+        title(hAxes1, 'Spectral resolution', 'Interpreter', 'none', 'FontSize', fontSize);
+        xlabel(hAxes1, 'Frequency (Hz)', 'FontSize', fontSize);
+        ylabel(hAxes1, 'FWHM (Hz)', 'FontSize', fontSize);
+        set(hAxes1, 'Position', [.08, .64, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
         % Time resolution
-        hAxes = axes(hFigWavelet, 'Position', [.08, .22, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
-        plot(hAxes, f, FWHM_t);
-        title(hAxes, 'Temporal resolution', 'Interpreter', 'none', 'FontSize', fontSize);
-        xlabel(hAxes, 'Frequency (Hz)', 'FontSize', fontSize);
-        ylabel(hAxes, 'FWHM (sec)', 'FontSize', fontSize);
+        plot(hAxes2, f, FWHM_t);
+        title(hAxes2, 'Temporal resolution', 'Interpreter', 'none', 'FontSize', fontSize);
+        xlabel(hAxes2, 'Frequency (Hz)', 'FontSize', fontSize);
+        ylabel(hAxes2, 'FWHM (sec)', 'FontSize', fontSize);
+        set(hAxes2, 'Position', [.08, .22, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
         % Plot morlet wavelet
-        hAxes = axes(hFigWavelet, 'XLim', [t(1), t(end)], 'YLim', [-1,1]*1.05*max(real(W)), ...
+        plot(hAxes3, t,real(W),'linewidth',2)
+        hold(hAxes3, 'on');
+        plot(hAxes3, t,imag(W),'r','linewidth',2)
+        title(hAxes3, 'Complex Morlet wavelet');
+        set(hAxes3, 'XLim', [t(1), t(end)], 'YLim', [-1,1]*1.05*max(real(W)), ...
                    'Position', [.50, .22, .44, .70], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
-        plot(hAxes, t,real(W),'linewidth',2)
-        hold(hAxes, 'on');
-        plot(hAxes, t,imag(W),'r','linewidth',2)
-        title(hAxes, 'Complex Morlet wavelet');
         % Text
         strDesc = ['<HTML>The complex Morlet wavelet is a Gaussian weighted sinusoid (blue for real values, ' ...
                    'red for imaginary values). It has point spread function with Gaussian shape both ' ...
