@@ -94,6 +94,8 @@ if (numel(F) < nTimes * nReadChannels)
     Ftmp(1:numel(F)) = F(:);
     F = Ftmp;
 end
+% Convert to Volts
+F = F .* 1e-6;
 
 
 
