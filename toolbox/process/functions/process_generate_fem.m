@@ -5,9 +5,9 @@ function varargout = process_generate_fem( varargin )
 %         [isOk, errMsg] = process_generate_fem('Compute', iSubject, iMris=[default], isInteractive, OPTIONS)
 %                          process_generate_fem('ComputeInteractive', iSubject, iMris=[default])
 %                OPTIONS = process_generate_fem('GetDefaultOptions')
+%                  label = process_generate_fem('GetFemLabel', label)
 %                 errMsg = process_generate_fem('InstallIso2mesh', isInteractive)
-%                 errMsg = process_generate_fem('InstallRoast', isInteractive)
-% [NewVertices, NewFaces, NormalOnVertices] = process_generate_fem('inflateORdeflate_surface', Vertices, Faces, depth)
+%                 errMsg = process_generate_fem('InstallDuneuro', isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -171,7 +171,6 @@ function OPTIONS = GetDefaultOptions()
         'BemFiles',       [], ...              % iso2mesh: List of layers to use for meshing (if not specified, use the files selected in the database 
         'VertexDensity',  0.5);                % SimNIBS : [0.1 - X] setting the vertex density (nodes per mm2)  of the surface meshes
         % 'NodeShift',      0.3, ...             % fieldtrip: [0 - 0.49] Improves the geometrical properties of the mesh
-        % 'SkullThickness', 0.002, ...           % iso2mesh: Used only with 4 layers, in meters
 end
 
 
@@ -303,20 +302,20 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 TissueLabels = TissueLabels(iSort);
             end
             % Load surfaces
+            bst_progress('text', 'Loading surfaces...');
             bemMerge = {};
-            disp();
+            disp(' ');
             for iBem = 1:length(OPTIONS.BemFiles)
                 disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));
                 BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
             end
-            disp();
+            disp(' ');
             % Merge all the surfaces
-            % [newnode, newelem] = mergesurf(bemMerge{:});
-            [newnode, newelem] = mergemesh(bemMerge{:});
-            
-            % TODO: Replace mergemesh with mergesurf when iso2mesh fixes mwpath with no inputs in a new release.
-            % See: https://github.com/fangq/iso2mesh/pull/42
+            bst_progress('text', 'Merging surfaces (Iso2mesh/mergesurf)...');
+            [newnode, newelem] = mergesurf(bemMerge{:});
+            % [newnode, newelem] = mergemesh(bemMerge{:});
+            % NOTE: mergesurf more robust for intersecting meshes than mergemesh
 
             % Find the seed point for each region
             center_inner = mean(bemMerge{end-1});
@@ -330,8 +329,9 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             regions = repmat(orig(:)',seedlen,1) + repmat(v0(:)',seedlen,1) .* repmat(t(:),1,3);
 
             % Create tetrahedral mesh
+            bst_progress('text', 'Creating 3D mesh (Iso2mesh/surf2mesh)...');
             factor_bst = 1.e-6;
-            [node,elem,face] = surf2mesh(newnode, newelem, min(newnode), max(newnode),...
+            [node,elem] = surf2mesh(newnode, newelem, min(newnode), max(newnode),...
                 OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, regions, []);
             
 %             % Sorting compartments from the center of the head
@@ -352,6 +352,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 %             end
 
             % Relabelling from 1 to Ntissue
+            bst_progress('text', 'Saving 3D mesh...');
             allLabels = unique(elem(:,5));
             elemLabel = ones(size(elem,1),1);
             for iLabel = 1:length(allLabels)
@@ -991,15 +992,13 @@ function errMsg = InstallIso2mesh(isInteractive)
 
     % Get default url
     osType = bst_get('OsType', 0);
-    switch(osType)
-        case 'linux32',  url = 'https://downloads.sourceforge.net/project/iso2mesh/iso2mesh/1.9.0-1%20%28Iso2Mesh%202018%29/iso2mesh-2018-linux32.zip?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fiso2mesh%2Ffiles%2Fiso2mesh%2F1.9.0-1%2520%2528Iso2Mesh%25202018%2529%2Fiso2mesh-2018-linux32.zip%2Fdownload&ts=1568212532';
-        case 'linux64',  url = 'https://downloads.sourceforge.net/project/iso2mesh/iso2mesh/1.9.0-1%20%28Iso2Mesh%202018%29/iso2mesh-2018-linux64.zip?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fiso2mesh%2Ffiles%2Fiso2mesh%2F1.9.0-1%2520%2528Iso2Mesh%25202018%2529%2Fiso2mesh-2018-linux64.zip%2Fdownload&ts=1568212566';
-        case 'mac32',    error('MacOS 32bit systems are not supported');
-        case 'mac64',    url = 'https://downloads.sourceforge.net/project/iso2mesh/iso2mesh/1.9.0-1%20%28Iso2Mesh%202018%29/iso2mesh-2018-osx64.zip?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fiso2mesh%2Ffiles%2Fiso2mesh%2F1.9.0-1%2520%2528Iso2Mesh%25202018%2529%2Fiso2mesh-2018-osx64.zip%2Fdownload&ts=1568212596';
-        case 'sol64',    error('Solaris system is not supported');
-        case 'win32',    url = 'https://downloads.sourceforge.net/project/iso2mesh/iso2mesh/1.9.0-1%20%28Iso2Mesh%202018%29/iso2mesh-2018-win32.zip?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fiso2mesh%2Ffiles%2Fiso2mesh%2F1.9.0-1%2520%2528Iso2Mesh%25202018%2529%2Fiso2mesh-2018-win32.zip%2Fdownload%3Fuse_mirror%3Diweb%26r%3Dhttps%253A%252F%252Fsourceforge.net%252Fprojects%252Fiso2mesh%252Ffiles%252Fiso2mesh%252F1.9.0-1%252520%252528Iso2Mesh%2525202018%252529%252Fiso2mesh-2018-win32.zip&ts=1568212385';
-        case 'win64',    url = 'https://downloads.sourceforge.net/project/iso2mesh/iso2mesh/1.9.0-1%20%28Iso2Mesh%202018%29/iso2mesh-2018-win32.zip?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fiso2mesh%2Ffiles%2Fiso2mesh%2F1.9.0-1%2520%2528Iso2Mesh%25202018%2529%2Fiso2mesh-2018-win32.zip%2Fdownload%3Fuse_mirror%3Diweb%26r%3Dhttps%253A%252F%252Fsourceforge.net%252Fprojects%252Fiso2mesh%252Ffiles%252Fiso2mesh%252F1.9.0-1%252520%252528Iso2Mesh%2525202018%252529%252Fiso2mesh-2018-win32.zip&ts=1568212385';
-        otherwise,       error('OpenMEEG software does not exist for your operating system.');
+    switch (osType)
+        case 'linux64',  url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-linux64.zip';
+        case 'mac32',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx32.zip';
+        case 'mac64',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx64.zip';
+        case 'win32',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
+        case 'win64',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
+        otherwise,       error(['Iso2mesh software does not exist for your operating system (' osType ').']);
     end
 
     % Local folder where to install iso2mesh
@@ -1050,7 +1049,16 @@ function errMsg = InstallIso2mesh(isInteractive)
         errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download Iso2mesh');
         % If file was not downloaded correctly
         if ~isempty(errMsg)
-            errMsg = ['Impossible to download Iso2mesh:' 10 errMsg1];
+            errMsg = ['Impossible to download Iso2mesh automatically:' 10 errMsg];
+            if ~exist('isdeployed', 'builtin') || ~isdeployed
+                errMsg = [errMsg 10 10 ...
+                    'Alternative download solution:' 10 ...
+                    '1) Copy the URL below from the Matlab command window: ' 10 ...
+                    '     ' url 10 ...
+                    '2) Paste it in a web browser' 10 ...
+                    '3) Save the file and unzip it' 10 ...
+                    '4) Add the folder "iso2mesh" to your Matlab path.'];
+            end
             return;
         end
         % Display again progress bar
