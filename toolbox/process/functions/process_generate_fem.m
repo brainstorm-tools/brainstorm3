@@ -254,8 +254,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     else
         T2File = [];
     end
-    disp(['FEM> T1 MRI: ' T1File]);
-    disp(['FEM> T2 MRI: ' T2File]);
     
     % ===== GENERATE MESH =====
     switch lower(OPTIONS.Method)
@@ -281,25 +279,38 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                         'Create them with process "Generate BEM surfaces" first.'];
                     return;
                 end
-            % If surfaces are given: get their labels
+            % If surfaces are given: get their labels and sort from inner to outer
             else
+                % Get tissue label
                 for iBem = 1:length(OPTIONS.BemFiles)
                     [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', OPTIONS.BemFiles{iBem});
-                    switch (sSubject.Surface(iSurface).SurfaceType)
-                        case 'Scalp',        TissueLabels{iBem} = 'scalp';
-                        case 'OuterSkull',   TissueLabels{iBem} = 'skull';
-                        case 'InnerSkull',   TissueLabels{iBem} = 'brain';
-                        case 'Cortex',       TissueLabels{iBem} = 'gray';
-                        otherwise,           TissueLabels{iBem} = sSubject.Surface(iSurface).Comment;
+                    if ~strcmpi(sSubject.Surface(iSurface).SurfaceType, 'Other')
+                        TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).SurfaceType);
+                    else
+                        TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).Comment);
                     end
                 end
+                % Sort from inner to outer
+                iSort = [];
+                iOther = 1:length(OPTIONS.BemFiles);
+                for label = {'white', 'gray', 'csf', 'skull', 'scalp'}
+                    iLabel = find(strcmpi(label{1}, TissueLabels));
+                    iSort = [iSort, iLabel];
+                    iOther(iLabel) = NaN;
+                end
+                iSort = [iSort, iOther(~isnan(iOther))];
+                OPTIONS.BemFiles = OPTIONS.BemFiles(iSort);
+                TissueLabels = TissueLabels(iSort);
             end
             % Load surfaces
             bemMerge = {};
+            disp();
             for iBem = 1:length(OPTIONS.BemFiles)
+                disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));
                 BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
             end
+            disp();
             % Merge all the surfaces
             % [newnode, newelem] = mergesurf(bemMerge{:});
             [newnode, newelem] = mergemesh(bemMerge{:});
@@ -320,25 +331,28 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 
             % Create tetrahedral mesh
             factor_bst = 1.e-6;
-            [node,elem] = surf2mesh(newnode, newelem, min(newnode), max(newnode),...
+            [node,elem,face] = surf2mesh(newnode, newelem, min(newnode), max(newnode),...
                 OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, regions, []);
-            % Sorting compartments from the center of the head
+            
+%             % Sorting compartments from the center of the head
+%             allLabels = unique(elem(:,5));
+%             dist = zeros(1, length(allLabels));
+%             for iLabel = 1:length(allLabels)
+%                 iElem = find(elem(:,5) == allLabels(iLabel));
+%                 iVert = unique(reshape(elem(iElem,1:4), [], 1));
+%                 dist(iLabel) = min(sum(node(iVert,:) .^ 2,2));
+%             end
+%             [tmp, I] = sort(dist);
+%             allLabels = allLabels(I);
+%             % Labels: the number of layers may change if one of the input surfaces contains multiple layers
+%             if length(TissueLabels) == length(I)
+%                 TissueLabels = TissueLabels(I);
+%             else
+%                 TissueLabels = [];
+%             end
+
+            % Relabelling from 1 to Ntissue
             allLabels = unique(elem(:,5));
-            dist = zeros(1, length(allLabels));
-            for iLabel = 1:length(allLabels)
-                iElem = find(elem(:,5) == allLabels(iLabel));
-                iVert = unique(reshape(elem(iElem,1:4), [], 1));
-                dist(iLabel) = min(sum(node(iVert,:) .^ 2,2));
-            end
-            [tmp, I] = sort(dist);
-            allLabels = allLabels(I);
-            % Labels: the number of layers may change if one of the input surfaces contains multiple layers
-            if length(TissueLabels) == length(I)
-                TissueLabels = TissueLabels(I);
-            else
-                TissueLabels = [];
-            end
-            % Relabelling
             elemLabel = ones(size(elem,1),1);
             for iLabel = 1:length(allLabels)
                 elemLabel((elem(:,5) == allLabels(iLabel))) = iLabel;
@@ -353,6 +367,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             OPTIONS.MeshType = 'tetrahedral';
 
         case 'simnibs'
+            disp(['FEM> T1 MRI: ' T1File]);
+            disp(['FEM> T2 MRI: ' T2File]);
             % Check for SimNIBS installation
             status = system('headreco --version');
             if (status ~= 0)
@@ -669,6 +685,34 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     isOk = 1;
 end
 
+
+%% ===== GET FEM LABEL =====
+function label = GetFemLabel(label)
+%     switch lower(label)
+%         case {'skin','scalp','head'}
+%             label = 'scalp';
+%         case {'bone','skull','outer','outerskull'}
+%             label = 'skull';
+%         case 'csf'
+%             label = 'csf';
+%         case {'brain','grey','gray','greymatter','graymatter','gm','cortex','inner','innerskull'}
+%             label = 'gray';
+%         case {'white','whitematter','wm'}
+%             label = 'white';
+%     end
+    label = lower(label);
+    if ~isempty(strfind(label, 'white')) || ~isempty(strfind(label, 'wm'))
+        label = 'white';
+    elseif ~isempty(strfind(label, 'brain')) || ~isempty(strfind(label, 'grey')) || ~isempty(strfind(label, 'gray')) || ~isempty(strfind(label, 'gm')) || ~isempty(strfind(label, 'cortex'))
+        label = 'gray';
+    elseif ~isempty(strfind(label, 'csf')) || ~isempty(strfind(label, 'inner'))
+        label = 'csf';
+    elseif ~isempty(strfind(label, 'bone')) || ~isempty(strfind(label, 'skull')) || ~isempty(strfind(label, 'outer'))
+        label = 'skull';
+    elseif ~isempty(strfind(label, 'skin')) || ~isempty(strfind(label, 'scalp')) || ~isempty(strfind(label, 'head'))
+        label = 'scalp';
+    end
+end
 
 
 %% ===== COMPUTE/INTERACTIVE =====
