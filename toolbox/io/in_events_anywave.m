@@ -30,9 +30,6 @@ function events = in_events_anywave(sFile, EventFile)
 %% Matlab generated script - LOAD THE EVENT FILE
 % Initialize variables.
 
-EventFile = 'F:\Adrien\Ripples\p20d4p3_1200_1800s_5kHz_micro_m.edf.mrk';
-
-
 delimiter = '\t';
 startRow = 2;
 

@@ -99,15 +99,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     TimeWindow_events = sProcess.options.eventtime.Value{1};
     nBins             = sProcess.options.nbins.Value{1};
     
-    %% Start computing the autocorrelograms for each RAW file
-    
+    %% Start computing the correlograms for each RAW file
     for iFile = 1:length(sInputs)
         DataMat = in_bst_data(sInputs(iFile).FileName, 'F', 'Time');
         
         if isempty(TimeWindow)
             TimeWindow = [DataMat.Time(1) DataMat.Time(end)];
         end
-        
         events  = DataMat.F.events;
         
         %% Find the events that contain the selected_string
@@ -122,8 +120,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         iSelectedEvents = iSelectedEvents(keepEventType);
-                
         events = events(iSelectedEvents);
+        
+        %% If events are extended, convert to simple events
+        for iEvent = 1:length(events)
+            if size(events(iEvent).times,1) == 2
+                events(iEvent).times = mean(events(iEvent).times);
+            end
+        end
         
         %% Select only the events that are within the boundaries
         for iEvent = 1:length(events)
@@ -138,11 +142,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         ii = 0;
         for iEvent = 1:length(iSelectedEvents)
             for jEvent = 1:length(iSelectedEvents)
-                
                 if iEvent <= jEvent
-                
                     ii = ii+1;
-
                     if iEvent == jEvent
                         all_labels{ii} = ['AutoCorrelograms (' erase(events(iEvent).label, 'Fast Ripple ') ')'];
                     else
@@ -150,22 +151,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                     
                     [all_correlograms(ii,:), B] = CrossCorr2(events(iEvent).times', events(jEvent).times', binSize, nBins); % THE INPUTS ARE IN SECONDS. THIS SHOULD BE OK.
-                    
                     all_correlograms(ii,B==0) = 0; %getting rid of central bin
-                    
 %                     [A, B] = CrossCorr2(events(iEvent).times, events(jEvent).times, binSize, nBins)
-                    
 %                     [C,B] = CrossCorr2(t1,t2,binsize,nbins)
-
-
                 end
             end
-            
         end
         
         %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         all_correlograms = all_correlograms/10; % CONFIRM THIS WITH ADRIEN - CROSSCORR2 SEEMS TO GIVE 10 TIMES LARGER VALUES THAN CROSSCORR
-        
         disp('CONFIRM THIS WITH ADRIEN - CROSSCORR2 SEEMS TO GIVE 10 TIMES LARGER VALUES THAN CROSSCORR')
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -184,40 +178,36 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         for iCorrelogram = 1:length(all_labels)
             tfOPTIONS.ParentFiles = {sInputs(iFile).FileName};
             % Prepare output file structure
-            FileMat.F = all_correlograms(iCorrelogram,:);
+            FileMat.Value = all_correlograms(iCorrelogram,:);
+            FileMat.Std   = [];
+            FileMat.Description = {'Correlogram'};
             FileMat.Time = B'; 
-            FileMat.Std = [];
-            FileMat.Comment = all_labels{iCorrelogram};
             FileMat.DataType = 'recordings';
-
     %        temp = in_bst(sInputs(iFile).FileName, 'ChannelFlag');
     %        FileMat.ChannelFlag = temp.ChannelFlag;
-            FileMat.ChannelFlag = 1;
-            FileMat.Device      = DataMat.F.device;
-            FileMat.Events      = [];
-
-            FileMat.nAvg = 1;
-            FileMat.ColormapType = [];
+            FileMat.ChannelFlag  = 1;
+            FileMat.nAvg         = 1;
+            FileMat.Events       = [];
+            FileMat.SurfaceFile  = [];
+            FileMat.Atlas        = [];
             FileMat.DisplayUnits = [];
+            FileMat.Comment = all_labels{iCorrelogram};
 
             % Add history field
             FileMat = bst_history('add', FileMat, 'compute', ...
                 ['Auto/Cross-correlogram: [' num2str(TimeWindow_events(1)) ', ' num2str(TimeWindow_events(2)) '] s']);
-
             % Output filename
-            FileName = bst_process('GetNewFilename', bst_fullfile(bst_fileparts(sTargetStudy.BrainStormSubject), ['Correlograms_' erase(sTargetStudy.Condition{1},'@raw')]), 'data_correlogram');
+            FileName = bst_process('GetNewFilename', bst_fullfile(bst_fileparts(sTargetStudy.BrainStormSubject), ['Correlograms_' erase(sTargetStudy.Condition{1},'@raw')]), 'matrix');
             OutputFiles = {FileName};
             % Save output file and add to database
             bst_save(FileName, FileMat, 'v6');
             db_add_data(iTargetStudy, FileName, FileMat);
-                  
         end
     end
     % Display report to user
     bst_report('Info', sProcess, sInputs, 'Success');
     disp('BST> process_timefreq: Success');
 end
-
 
 %% Function that computes crosscorrelation with set binsize and output selected nbins
 % copyright (c) 2004 Francesco P. Battaglia
