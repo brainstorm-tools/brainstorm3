@@ -63,18 +63,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        'iso2mesh', 'simnibs'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'iso2mesh';
-    
-    % Iso2mesh options:
+    % Iso2mesh options: 
     sProcess.options.opt1.Comment = '<BR><BR><B>Iso2mesh options</B>: ';
     sProcess.options.opt1.Type    = 'label';
-    % Iso2mesh: NbLayers
-    sProcess.options.nblayers.Comment = {...
-        '3 layers : brain, skull, scalp', ...
-        '4 layers : brain, csf, skull, scalp', ...
-        '5 layers : white, gray, csf, skull, scalp'; ...
-        '3','4','5'};
-    sProcess.options.nblayers.Type    = 'radio_label';
-    sProcess.options.nblayers.Value   = '3';
+    % Iso2mesh: Merge method
+    sProcess.options.mergemethod.Comment = {'mergemesh', 'mergesurf', 'Input surfaces merged with:'; 'mergemesh', 'mergesurf', ''};
+    sProcess.options.mergemethod.Type    = 'radio_linelabel';
+    sProcess.options.mergemethod.Value   = 'mergemesh';
     % Iso2mesh: Max tetrahedral volume
     sProcess.options.maxvol.Comment = 'Max tetrahedral volume (10=coarse, 0.0001=fine, default=0.1): ';
     sProcess.options.maxvol.Type    = 'value';
@@ -86,6 +81,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % SimNIBS options:
     sProcess.options.opt2.Comment = '<BR><B>SimNIBS options</B>: ';
     sProcess.options.opt2.Type    = 'label';
+    % SimNIBS: NbLayers
+    sProcess.options.nblayers.Comment = {...
+        '3 layers : brain, skull, scalp', ...
+        '4 layers : brain, csf, skull, scalp', ...
+        '5 layers : white, gray, csf, skull, scalp'; ...
+        '3','4','5'};
+    sProcess.options.nblayers.Type    = 'radio_label';
+    sProcess.options.nblayers.Value   = '3';
     % SimNIBS: Vertex density
     sProcess.options.vertexdensity.Comment = 'Vertex density: nodes per mm2 (0.1-1.5, default=0.5): ';
     sProcess.options.vertexdensity.Type    = 'value';
@@ -121,10 +124,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid method.');
         return
     end
-    % Iso2mesh: Number of layers
-    OPTIONS.NbLayers = str2num(sProcess.options.nblayers.Value);
-    if isempty(OPTIONS.NbLayers)
-        bst_report('Error', sProcess, [], 'Invalid number of layers.');
+    % Iso2mesh: Merge method
+    OPTIONS.MergeMethod = sProcess.options.mergemethod.Value;
+    if isempty(OPTIONS.MergeMethod) || ~ischar(OPTIONS.MergeMethod) || ~ismember(OPTIONS.MergeMethod, {'mergesurf','mergemesh'})
+        bst_report('Error', sProcess, [], 'Invalid merge method.');
         return
     end
     % Iso2mesh: Maximum tetrahedral volume
@@ -140,6 +143,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     OPTIONS.KeepRatio = OPTIONS.KeepRatio ./ 100;
+    % SimNIBS: Number of layers
+    OPTIONS.NbLayers = str2num(sProcess.options.nblayers.Value);
+    if isempty(OPTIONS.NbLayers)
+        bst_report('Error', sProcess, [], 'Invalid number of layers.');
+        return
+    end
     % SimNIBS: Maximum tetrahedral volume
     OPTIONS.VertexDensity = sProcess.options.vertexdensity.Value{1};
     if isempty(OPTIONS.VertexDensity) || (OPTIONS.VertexDensity < 0.01) || (OPTIONS.VertexDensity > 5)
@@ -169,6 +178,7 @@ function OPTIONS = GetDefaultOptions()
         'MaxVol',         0.1, ...             % iso2mesh: Max tetrahedral volume (10=coarse, 0.0001=fine)
         'KeepRatio',      100, ...             % iso2mesh: Percentage of elements kept (1-100%)
         'BemFiles',       [], ...              % iso2mesh: List of layers to use for meshing (if not specified, use the files selected in the database 
+        'MergeMethod',    'mergemesh', ...     % iso2mesh: {'mergemesh', 'mergesurf'} Function used to merge the meshes
         'VertexDensity',  0.5);                % SimNIBS : [0.1 - X] setting the vertex density (nodes per mm2)  of the surface meshes
         % 'NodeShift',      0.3, ...             % fieldtrip: [0 - 0.49] Improves the geometrical properties of the mesh
 end
@@ -312,11 +322,17 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
             disp(' ');
             % Merge all the surfaces
-            bst_progress('text', 'Merging surfaces (Iso2mesh/mergesurf)...');
-            [newnode, newelem] = mergesurf(bemMerge{:});
-            % [newnode, newelem] = mergemesh(bemMerge{:});
-            % NOTE: mergesurf more robust for intersecting meshes than mergemesh
-
+            bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
+            switch (OPTIONS.MergeMethod)
+                % Faster and simpler: Simple concatenation without intersection checks
+                case 'mergemesh'
+                    [newnode, newelem] = mergemesh(bemMerge{:});
+                % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
+                case 'mergesurf'
+                    [newnode, newelem] = mergesurf(bemMerge{:});
+                otherwise
+                    error(['Invalid merge method: ' OPTIONS.MergeMethod]);
+            end
             % Find the seed point for each region
             center_inner = mean(bemMerge{end-1});
             % define seeds along the electrode axis
@@ -746,7 +762,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             ... '<B>FieldTrip</B>:<BR>Call FieldTrip to segment and mesh the <B>T1</B> MRI.<BR>' ...
             ... 'FieldTrip must be installed on the computer first.<BR>' ...
             ... 'Website: http://www.fieldtriptoolbox.org/download<BR><BR>' ...
-            ], 'FEM mesh generation method', [], {'Iso2mesh','SimNIBS'}, 'BEM');
+            ], 'FEM mesh generation method', [], {'Iso2mesh','SimNIBS'}, 'Iso2mesh');
             % 'FEM mesh generation method', [], {'Iso2mesh','SimNIBS','ROAST','FieldTrip'}, 'BEM');
         if isempty(res)
             return
@@ -758,6 +774,18 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     % Other options: Switch depending on the method
     switch (OPTIONS.Method)
         case 'iso2mesh'
+            % Ask merging method
+            res = java_dialog('question', [...
+                '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
+                '<B>MergeMesh</B>: Default option (faster).<BR>' ...
+                'Simply concatenates the meshes without any intersection checks.<BR><BR>' ...
+                '<B>MergeSurf</B>: Advanced option (slower).<BR>' ...
+                'Concatenates and checks for intersections, split intersecting elements.<BR><BR>' ...
+                ], 'FEM mesh generation (Iso2mesh)', [], {'MergeMesh','MergeSurf'}, 'MergeMesh');
+            if isempty(res)
+                return
+            end
+            OPTIONS.MergeMethod = lower(res);
             % Ask BEM meshing options
             res = java_dialog('input', {'Max tetrahedral volume (10=coarse, 0.0001=fine):', 'Percentage of elements kept (1-100%):'}, ...
                 'FEM mesh', [], {'0.1', '100'});
