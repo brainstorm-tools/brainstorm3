@@ -654,8 +654,9 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Segmentation
             bst_progress('text', 'MRI segmentation (FieldTrip/ft_volumesegment)...');
             cfg = [];
-            cfg.output = {'white','gray','csf','skull','scalp'};
-            segmentedmri  = ft_volumesegment(cfg, ftMri);
+            TissueLabels = {'white','gray','csf','skull','scalp'};
+            cfg.output = TissueLabels;
+            segmentedmri = ft_volumesegment(cfg, ftMri);
             % Mesh
             bst_progress('text', 'Mesh generation (FieldTrip/ft_prepare_mesh)...');
             cfg = [];
@@ -682,7 +683,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                     mesh.tissue(mesh.tissue == 4) = 3; % skull label 3
                     mesh.tissue(mesh.tissue == 5) = 4; % scalp label 4
                 case 5   
-                    TissueLabels = cfg.output; 
+                    % Nothing to change
             end
             % Return vertices and hexadrons
             node = mesh.pos;
