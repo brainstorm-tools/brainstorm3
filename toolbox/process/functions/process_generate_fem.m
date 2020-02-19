@@ -309,8 +309,20 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
             end
             % Merge all the surfaces
-            % [newnode, newelem] = mergesurf(bemMerge{:});
-            [newnode, newelem] = mergemesh(bemMerge{:});
+            % NOTE: mergesurf more robust for intersecting meshes than mergemesh
+            modality = {'Default(faster): Simply concatenates the meshes => "uses mergmesh: assumes that the surfaces are separated"  ',...
+                        'Advanced(longer): Concatenates the meshes and checks for intersections => "uses mergesurf: split intersecting elements"  ' };
+            [res, isCancel] = java_dialog('radio', ...
+                '<HTML><B> Surface Mesh Merging Options <B>', 'Merge Mesh', [], modality,1);
+            if isCancel;                return;            end
+            if res == 1
+                bst_progress('text', 'Merging surfaces (Iso2mesh/mergemesh)...');
+                tic; [newnode, newelem] = mergemesh(bemMerge{:}); tmergemesh = toc;
+            end
+            if res == 2
+                bst_progress('text', 'Merging surfaces (Iso2mesh/mergesurf)...');
+                tic; [newnode, newelem] = mergesurf(bemMerge{:}); tmergesurf = toc;
+            end
             
             % TODO: Replace mergemesh with mergesurf when iso2mesh fixes mwpath with no inputs in a new release.
             % See: https://github.com/fangq/iso2mesh/pull/42
