@@ -44,8 +44,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Comment = 'Sensor types, indices, names or Groups (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'EEG';
+    % Save ERP
+    sProcess.options.median.Comment = 'Use median LFP of the selected channels';
+    sProcess.options.median.Type    = 'checkbox';
+    sProcess.options.median.Value   = 0;
     % === Legacy
-    sProcess.options.label.Comment = '<FONT color="#999999">The neurons will be selected only within the selected channels</FONT>';
+    sProcess.options.label.Comment = '<FONT color="#999999">If selected the median of the selected channels will be used as input</FONT>';
     sProcess.options.label.Type    = 'label';
     % Band-pass filter
     sProcess.options.bandpass.Comment = 'Frequency band (0=ignore): ';
@@ -86,6 +90,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return;
     end
     
+    use_median = sProcess.options.median.Value;
+
     % === OUTPUT STUDY ===
     % Get output study
     [tmp, iStudy] = bst_process('GetOutputStudy', sProcess, sInputs);
@@ -96,7 +102,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     [uniqueComments,tmp,iData2List] = unique(listComments);
     nLists = length(uniqueComments);
     
-    % Process each even group seperately
+    % Process each event group seperately
     for iList = 1:nLists
         sCurrentInputs = sInputs(iData2List == iList);
     
@@ -107,6 +113,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         iSelectedChannels = select_channels(ChannelMat, dataMat_channelFlag.ChannelFlag, sProcess.options.sensortypes.Value);
         nChannels = length(iSelectedChannels); 
+        
+        % No need for median if only one channel was selected
+        if nChannels == 1
+            use_median = 0;
+        end
         
         if isempty(iSelectedChannels)
             bst_report('Error', sProcess, sCurrentInputs(1), 'No channels to process. Make sure that the Names/Groups assigned are correct');
@@ -139,18 +150,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         for iFile = 1:nTrials
             for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
                 if process_spikesorting_supervised('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label)
-                    % Make sure that the neurons selected appear on the
-                    % channels that were selected
-                    name_Channel_for_spiking_event = process_spikesorting_supervised('GetChannelOfSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label);
-                    if any(ismember(name_Channel_for_spiking_event, {ChannelMat.Channel(iSelectedChannels).Name}))
-                        neuronLabels{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
-                    end
+                    neuronLabels{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
                 end
             end
         end
         
         if isempty(neuronLabels)
-            bst_report('Error', sProcess, sCurrentInputs(1), 'No neurons/spiking events detected on the selected Channels');
+            bst_report('Error', sProcess, sCurrentInputs(1), 'No neurons/spiking events detected.');
             return;
         end 
         
@@ -161,10 +167,23 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % firing rate from each neuron based on the oscillations on each
         % selected electrode.
         
-        labelsForDropDownMenu = cell(length(neuronLabels)*nChannels,1);
-        for iNeuron = 1:length(neuronLabels)
-            for iChannel = 1:nChannels
-                labelsForDropDownMenu{(iNeuron-1)*nChannels + iChannel} = ['Neuron ' erase(neuronLabels{iNeuron},'Spikes Channel ') ' - Ch ' ChannelMat.Channel(iSelectedChannels(iChannel)).Name];
+        
+        if use_median
+            suffix = ChannelMat.Channel(iSelectedChannels(1)).Name;
+            labelsForDropDownMenu = cell(length(neuronLabels),1);
+            all_selected_channels_labels = {ChannelMat.Channel(iSelectedChannels).Name}';
+            for iChannel = 2:length(all_selected_channels_labels)
+                suffix = [suffix ' ' all_selected_channels_labels{iChannel}];
+            end
+            for iNeuron = 1:length(neuronLabels)
+                labelsForDropDownMenu{iNeuron} = ['Neuron ' erase(neuronLabels{iNeuron},'Spikes Channel ') ' - Ch Median [' suffix ']'];
+            end
+        else
+            labelsForDropDownMenu = cell(length(neuronLabels)*nChannels,1);
+            for iNeuron = 1:length(neuronLabels)
+                for iChannel = 1:nChannels
+                    labelsForDropDownMenu{(iNeuron-1)*nChannels + iChannel} = ['Neuron ' erase(neuronLabels{iNeuron},'Spikes Channel ') ' - Ch ' ChannelMat.Channel(iSelectedChannels(iChannel)).Name];
+                end
             end
         end
                 
@@ -184,10 +203,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
             %% Filter the data based on the user input
             sFreq = round(1/diff(DataMat.Time(1:2)));
-            [filtered_F, FiltSpec, Messages] = process_bandpass('Compute', DataMat.F, sFreq, sProcess.options.bandpass.Value{1}(1), sProcess.options.bandpass.Value{1}(2));
+            [filtered_F, FiltSpec, Messages] = process_bandpass('Compute', DataMat.F(iSelectedChannels,:), sFreq, sProcess.options.bandpass.Value{1}(1), sProcess.options.bandpass.Value{1}(2));
 
             %Extract phase
-            angle_filtered_F = angle(hilbert(filtered_F(iSelectedChannels,:)));
+            if use_median
+            	angle_filtered_F = angle(hilbert(median(filtered_F)));
+                nChannels = 1;
+            else 
+                angle_filtered_F = angle(hilbert(filtered_F));
+            end
 
             for iNeuron = 1:length(neuronLabels)
                 iEvent_Neuron = find(ismember({events.label},neuronLabels{iNeuron}));
@@ -204,10 +228,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         for iChannel = 1:nChannels
                             single_spike_entry(iChannel, iBin(iChannel)) = 1;
                         end
-                        all_phases((iNeuron-1)*length(iSelectedChannels)+1:iNeuron*length(iSelectedChannels),:) = all_phases((iNeuron-1)*length(iSelectedChannels)+1:iNeuron*length(iSelectedChannels),:) + single_spike_entry;
+                        all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + single_spike_entry;
                     else
                         [all_phases_single_neuron, bins] = hist(angle_filtered_F(:,iClosest)', EDGES);
-                        all_phases((iNeuron-1)*length(iSelectedChannels)+1:iNeuron*length(iSelectedChannels),:) = all_phases((iNeuron-1)*length(iSelectedChannels)+1:iNeuron*length(iSelectedChannels),:) + all_phases_single_neuron';
+                        if size(all_phases_single_neuron, 1) ~= 1 % If a vector then transpose to 
+                            all_phases_single_neuron = all_phases_single_neuron';
+                        end
+                        all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + all_phases_single_neuron;
                     end
 
                 end
