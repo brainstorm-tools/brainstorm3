@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = {'Peyrache Lab', 'Ripples'};
     sProcess.Index       = 2223;
-    sProcess.Description = 'www.peyrachelab.com';
+    sProcess.Description = 'https://www.jstatsoft.org/article/view/v031i10';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'timefreq'};
@@ -44,6 +44,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Comment = 'Sensor types, indices, names or Groups (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'EEG';
+    % === Legacy
+    sProcess.options.label.Comment = '<FONT color="#999999">The neurons will be selected only within the selected channels</FONT>';
+    sProcess.options.label.Type    = 'label';
     % Band-pass filter
     sProcess.options.bandpass.Comment = 'Frequency band (0=ignore): ';
     sProcess.options.bandpass.Type    = 'range';
