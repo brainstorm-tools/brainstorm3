@@ -350,7 +350,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                     [newnode, newelem] = mergemesh(bemMerge{:});
                 % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
                 case 'mergesurf'
+                 try
                     [newnode, newelem] = mergesurf(bemMerge{:});
+                    catch
+                        errMsg = 'Problem with the function MergeSurf. You can try with MergeMesh.';
+                        bst_progress('stop');
+                        return
+                    end                    
                 otherwise
                     error(['Invalid merge method: ' OPTIONS.MergeMethod]);
             end
