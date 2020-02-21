@@ -89,7 +89,7 @@ switch format
     set(gca,'box','off')
     set(gca,'xtick',[])
     set(gca,'ytick',[])
-    text(1.2, 0, '0'); text(-.05, 1.2, '\pi/2');  text(-1.35, 0, '±\pi');  text(-.075, -1.2, '-\pi/2');
+    text(1.2, 0, '0'); text(-.05, 1.2, '\pi/2');  text(-1.35, 0, 'ï¿½\pi');  text(-.075, -1.2, '-\pi/2');
 
     
   case 'hist'
@@ -107,12 +107,33 @@ switch format
       x = 20;
     end
     
+    % Find parent axis
+    iParent = [];
+    for iArg = 1:length(varargin)
+        if strcmpi(varargin{iArg}, 'parent')
+            iParent = iArg + 1;
+            break;
+        end
+    end
+    
     [t,r] = rose(alpha,x);
     if nargin> 3 && varargin{2}
-      polar(t,2*r/sum(r),formats)
+        if ~isempty(iParent)
+            tag = get(varargin{iParent}, 'tag');
+            h = polar(varargin{iParent},t,2*r/sum(r),formats);
+            set(varargin{iParent}, 'tag', tag);
+        else
+            h = polar(t,2*r/sum(r),formats);
+        end
       mr = max(2*r/sum(r));
     else
-      polar(t,r,formats)
+        if ~isempty(iParent)
+            tag = get(varargin{iParent}, 'tag');
+            h = polar(varargin{iParent},t,r,formats);
+            set(varargin{iParent}, 'tag', tag);
+        else
+            h = polar(t,r,formats);
+        end
       mr = max(r);
     end
     
@@ -126,10 +147,8 @@ switch format
     if s
       r = circ_r(alpha) * mr;
       phi = circ_mean(alpha);
-      hold on;
       zm = r*exp(1i*phi);
-      plot([0 real(zm)], [0, imag(zm)],varargin{4:end})
-      hold off;
+      line([0 real(zm)], [0, imag(zm)], varargin{4:end});
     end
     
    
@@ -140,4 +159,8 @@ switch format
     polar(alpha, ones(size(alpha)), formats);
 end
 
-a = gca;
+if ~isempty(iParent)
+    a = h;
+else
+    a = gca;
+end
