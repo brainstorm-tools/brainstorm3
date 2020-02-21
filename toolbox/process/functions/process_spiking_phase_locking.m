@@ -294,7 +294,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.TF = all_phases;
         FileMat.TFmask = true(size(all_phases, 2), size(all_phases, 3));
         FileMat.Std = [];
-        FileMat.Comment = ['Spiking Phase Locking: ' uniqueComments{iList}];
+        if use_median
+            FileMat.Comment = ['Phase Locking: ' uniqueComments{iList} ' | band [' num2str(sProcess.options.bandpass.Value{1}(1)) ',' num2str(sProcess.options.bandpass.Value{1}(2)) ']Hz | median'];
+        else
+            FileMat.Comment = ['Phase Locking: ' uniqueComments{iList} ' | band [' num2str(sProcess.options.bandpass.Value{1}(1)) ',' num2str(sProcess.options.bandpass.Value{1}(2)) ']Hz'];
+        end
         FileMat.DataType = 'data';
         FileMat.Time = 1;
         FileMat.TimeBands = [];
