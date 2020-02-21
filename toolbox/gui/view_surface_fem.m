@@ -130,6 +130,16 @@ setappdata(hFig, 'SubjectFile',  SubjectFile);
 %% ===== DISPLAY FEM MESH =====
 % Load the input file
 FemMat = load(file_fullpath(SurfaceFile));
+% Check the mesh format here : tetra ok, hexa ==> convert to tetra ==> need some functions on bst-duneuro/matlab/external/gibbon
+if size(FemMat.Elements,2) == 8
+    % convert the mesh to tetra for diplay purpose
+    [tetraElem,tetraNode,tetraLabel]=hex2tet(FemMat.Elements,FemMat.Vertices ,FemMat.Tissue,3);
+    % updates FemMat for display purpose
+    FemMat.Vertices =  tetraNode;
+    FemMat.Elements = tetraElem;
+    FemMat.Tissue = tetraLabel;
+end
+
 if ~isfield(FemMat, 'Vertices') || ~isfield(FemMat, 'Elements') || ~isfield(FemMat, 'Tissue') || ~isfield(FemMat, 'TissueLabels')|| ~isfield(FemMat, 'Comment')
     error('Not a valid FEM mesh.');
 end
