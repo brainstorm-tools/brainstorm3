@@ -512,6 +512,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             seg.skull = sTpm.Cube;
             sTpm = in_mri_nii(bst_fullfile(tempDir, ['c5' subjid 'T1.nii']));
             seg.scalp = sTpm.Cube;
+            % normalize SPM TPM data to [0,1]
+            seg=structfun(@(x) double(x)*(1./255), seg,'UniformOutput',false);
 
             % ===== CALL BRAIN2MESH =====
             bst_progress('text', 'Meshing with Brain2Mesh...');
