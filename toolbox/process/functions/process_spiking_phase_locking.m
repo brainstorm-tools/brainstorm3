@@ -45,7 +45,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'EEG';
     % Save ERP
-    sProcess.options.median.Comment = 'Use median LFP of the selected channels';
+    sProcess.options.median.Comment = 'Compute phase of median LFP of the selected channels';
     sProcess.options.median.Type    = 'checkbox';
     sProcess.options.median.Value   = 0;
     % === Legacy
