@@ -9,6 +9,7 @@ function varargout = process_generate_fem( varargin )
 %                  label = process_generate_fem('GetFemLabel', label)
 %                 errMsg = process_generate_fem('InstallIso2mesh', isInteractive)
 %                 errMsg = process_generate_fem('InstallDuneuro', isInteractive)
+%                 errMsg = process_generate_fem('InstallBrain2mesh', isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -1442,7 +1443,10 @@ function errMsg = InstallDuneuro(isInteractive)
     % If installed but not in path: add to path
     if ~exist('bst_duneuro', 'file')
         addpath(installDir);
-        addpath(bst_fullfile(installDir, 'external'));
+        addpath(bst_fullfile(installDir, 'matlab'));
+        addpath(bst_fullfile(installDir, 'matlab', 'external'));
+        addpath(bst_fullfile(installDir, 'matlab', 'external', 'gibbon'));
+        addpath(bst_fullfile(installDir, 'matlab', 'external', 'eig2nifti'));
         disp([10, 'bst-duneuro path: ', installDir, 10]);
         % If the executable is still not accessible
     else

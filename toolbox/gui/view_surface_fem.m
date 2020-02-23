@@ -132,6 +132,14 @@ setappdata(hFig, 'SubjectFile',  SubjectFile);
 FemMat = load(file_fullpath(SurfaceFile));
 % Check the mesh format here : tetra ok, hexa ==> convert to tetra ==> need some functions on bst-duneuro/matlab/external/gibbon
 if size(FemMat.Elements,2) == 8
+    % Install bst_duneuro if needed, for function hex2tet
+    if ~exist('bst_duneuro', 'file')
+        errMsg = process_generate_fem('InstallDuneuro', 1);
+        if ~isempty(errMsg) || ~exist('bst_duneuro', 'file')
+            bst_progress('stop');
+            return;
+        end
+    end
     % convert the mesh to tetra for diplay purpose
     [tetraElem,tetraNode,tetraLabel]=hex2tet(FemMat.Elements,FemMat.Vertices ,FemMat.Tissue,3);
     % updates FemMat for display purpose
