@@ -2315,6 +2315,9 @@ switch contextName
         for i = 1:length(iStudies)
             % Get study definition
             sStudy = bst_get('Study', iStudies(i));
+            if isempty(sStudy)
+                continue;
+            end
             % Recordings or sources
             switch (DataType)
                 case 'data'
