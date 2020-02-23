@@ -63,7 +63,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         '<FONT color="#777777"> IC    = imag(C)^2 / (1-real(C)^2) </FONT>']; ...
         'mscohere', 'icohere2019','lcohere2019', 'icohere'};
     sProcess.options.cohmeasure.Type    = 'radio_label';
-    sProcess.options.cohmeasure.Value   = 'Measure:';
+    sProcess.options.cohmeasure.Value   = 'mscohere';
     % === Overlap
     sProcess.options.overlap.Comment = 'Overlap for PSD estimation:' ;
     sProcess.options.overlap.Type    = 'value';
