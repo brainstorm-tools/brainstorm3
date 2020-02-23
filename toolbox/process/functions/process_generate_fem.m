@@ -1,3 +1,4 @@
+
 function varargout = process_generate_fem( varargin )
 % PROCESS_GENERATE_FEM: Generate tetrahedral/hexahedral FEM mesh.
 %
@@ -347,16 +348,19 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             switch (OPTIONS.MergeMethod)
                 % Faster and simpler: Simple concatenation without intersection checks
                 case 'mergemesh'
+                    % Concatenate meshes
                     [newnode, newelem] = mergemesh(bemMerge{:});
+                    % Remove duplicated elements
+                    [newnode, newelem] = meshcheckrepair(newnode, newelem, 'dup');
                 % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
                 case 'mergesurf'
-                 try
-                    [newnode, newelem] = mergesurf(bemMerge{:});
+                    try
+                        [newnode, newelem] = mergesurf(bemMerge{:});
                     catch
                         errMsg = 'Problem with the function MergeSurf. You can try with MergeMesh.';
                         bst_progress('stop');
-                        return
-                    end                    
+                        return;
+                    end
                 otherwise
                     error(['Invalid merge method: ' OPTIONS.MergeMethod]);
             end
