@@ -703,7 +703,7 @@ function UpdateDisplayOptions(hFig)
     end
     ctrl.jMenuMontage.setEnabled(~isNoModality);
     % Update montage name
-    if ismember(TsInfo.Modality, {'results', 'timefreq', 'stat', 'none'}) || ~isempty(TsInfo.RowNames)
+    if ismember(TsInfo.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'}) || ~isempty(TsInfo.RowNames)
         ctrl.jMenuMontage.setVisible(0);
     else
         ctrl.jMenuMontage.setVisible(1);

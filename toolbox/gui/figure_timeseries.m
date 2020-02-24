@@ -1322,7 +1322,7 @@ function FigureKeyPressedCallback(hFig, ev)
         iSelectedRows = [];
     end
     % Check if it is a full data file or not
-    isFullDataFile = ~isempty(Modality) && (Modality(1) ~= '$') && ~ismember(Modality, {'results', 'timefreq', 'stat', 'none'});
+    isFullDataFile = ~isempty(Modality) && (Modality(1) ~= '$') && ~ismember(Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
     
     % If Shift key is pressed: montage selection 
@@ -2182,7 +2182,7 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
     % ==== DISPLAY OTHER FIGURES ====
     % Only for MEG and EEG time series
     Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;   
-    isSource = ismember(Modality, {'results', 'timefreq', 'stat', 'none'});
+    isSource = ismember(Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     if ~isempty(Modality) && ismember(Modality, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'}) && ~isSource
         % === View TOPOGRAPHY ===
         jItem = gui_component('MenuItem', jPopup, [], 'View topography', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_figures('ViewTopography', hFig, 1));
@@ -2397,7 +2397,7 @@ function DisplayConfigMenu(hFig, jParent)
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
-    isSource = ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'results', 'timefreq', 'stat', 'none'});
+    isSource = ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     % Get all other figures
     hFigAll = bst_figures('GetFiguresByType', FigureId.Type);
     
@@ -3139,7 +3139,7 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     % ===== PARSE LINE LABELS =====
     % Get colors from montage (not for scouts, only for recordings)
     LinesFilter = [];
-    if ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'timefreq') && (~isempty(TsInfo.Modality) && (TsInfo.Modality(1) ~= '$')) && ~isempty(LinesLabels)
+    if ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'sloreta') && ~strcmpi(TsInfo.Modality, 'timefreq') && (~isempty(TsInfo.Modality) && (TsInfo.Modality(1) ~= '$')) && ~isempty(LinesLabels)
         % Parse montage labels
         [LinesLabels, MontageColors, LinesFilter] = panel_montage('ParseMontageLabels', LinesLabels, DefaultColor);
         % Replace plot colors if available
@@ -3504,7 +3504,7 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % If there are more than 5 channel
     if bst_get('DisplayGFP') && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat') ...
                              && (GlobalData.DataSet(iDS).Measures.NumberOfSamples > 2) && (size(F,1) > 5) ...
-                             && ~isempty(TsInfo.Modality) && ~strcmpi(TsInfo.Modality, 'sources') && ~strcmpi(TsInfo.Modality, 'results') && (TsInfo.Modality(1) ~= '$')
+                             && ~isempty(TsInfo.Modality) && ~strcmpi(TsInfo.Modality, 'sources') && ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'sloreta') && (TsInfo.Modality(1) ~= '$')
         GFP = sqrt(sum((F * fFactor).^2, 1));
         PlotGFP(hAxes, TimeVector, GFP, TsInfo.FlipYAxis, isFastUpdate);
     end
@@ -3519,7 +3519,7 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
     nRows = nLines;
     
     % ===== GROUP CHANNELS BY NAME (NIRS OVERLAY) =====
-    if ~strcmpi(TsInfo.Modality, 'results')
+    if ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'sloreta')
         % Find all the separators
         iSep = find(cellfun(@(c)isempty(strtrim(c)), LinesLabels));
         % Replace separator names with unique names, so that they are not overlayed in the same line

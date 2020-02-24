@@ -423,7 +423,11 @@ function UpdateFigureName(hFig)
             figureName = [figureNameModality strMontage ': ' figureName];
         case 'ResultsTimeSeries'
             if ~isempty(figureNameModality)
-                figureName = [figureNameModality(1:end-2) ': ' figureName];
+                if ismember(figureNameModality, {'results/', 'sloreta/'})
+                    figureName = ['Scout: ' figureName];
+                else
+                    figureName = [figureNameModality(1:end-2) ': ' figureName];
+                end
             end
             % Matrix file: display the file name
             TsInfo = getappdata(hFig, 'TsInfo');
