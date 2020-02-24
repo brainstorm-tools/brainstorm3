@@ -469,10 +469,12 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             matlabbatch{1}.spm.spatial.preproc.channel(1).biasreg = 0.001;
             matlabbatch{1}.spm.spatial.preproc.channel(1).biasfwhm = 60;
             matlabbatch{1}.spm.spatial.preproc.channel(1).write = [0 0];
-            matlabbatch{1}.spm.spatial.preproc.channel(2).vols = {[T2Nii ',1']};
-            matlabbatch{1}.spm.spatial.preproc.channel(2).biasreg = 0.001;
-            matlabbatch{1}.spm.spatial.preproc.channel(2).biasfwhm = 60;
-            matlabbatch{1}.spm.spatial.preproc.channel(2).write = [0 0];
+            if ~isempty(T2Nii)
+                matlabbatch{1}.spm.spatial.preproc.channel(2).vols = {[T2Nii ',1']};
+                matlabbatch{1}.spm.spatial.preproc.channel(2).biasreg = 0.001;
+                matlabbatch{1}.spm.spatial.preproc.channel(2).biasfwhm = 60;
+                matlabbatch{1}.spm.spatial.preproc.channel(2).write = [0 0];
+            end
             matlabbatch{1}.spm.spatial.preproc.tissue(1).tpm = {[tpmFile, ',1']};
             matlabbatch{1}.spm.spatial.preproc.tissue(1).ngaus = 1;
             matlabbatch{1}.spm.spatial.preproc.tissue(1).native = [1 0];
@@ -1267,7 +1269,7 @@ function errMsg = InstallBrain2mesh(isInteractive)
         return;
     end
     % Download url
-    url = 'https://neuroimage.usc.edu/bst/getupdate.php?d=brain2mesh_alpha.zip';
+    url = 'https://neuroimage.usc.edu/bst/getupdate.php?d=Brain2Mesh_alpha.zip';
     % Local folder where to install iso2mesh
     installDir = bst_fullfile(bst_get('BrainstormUserDir'), 'brain2mesh');
     exePath = bst_fullfile(installDir, 'brain2mesh', 'brain2mesh.m');
