@@ -39,7 +39,7 @@ function bst_deploy_java_2020a(IS_BIN)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2019
+% Authors: Francois Tadel, 2011-2020
 
 
 %% ===== PARSE INPUTS =====
@@ -100,7 +100,7 @@ if IS_BIN
     end
     
     % JDK folder
-    jdkDir = 'C:\Program Files\Java\jdk1.8.0_112';
+    jdkDir = 'C:\Program Files\Java\jdk1.8.0_241';
     % Set JAVA_HOME environment variable
     setenv('JAVA_HOME', jdkDir);
     % Javabuilder output
