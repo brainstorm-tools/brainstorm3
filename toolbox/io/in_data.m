@@ -277,7 +277,7 @@ if isRaw
 
     % ===== READING AND SAVING =====
     % Get list of bad segments in file
-    [badSeg, badEpochs] = panel_record('GetBadSegments', sFile);
+    [badSeg, badEpochs, badTimes, badChan] = panel_record('GetBadSegments', sFile);
     % Initialize returned variables
     ImportedData = repmat(db_template('Data'), 0);
 
@@ -321,27 +321,31 @@ if isRaw
         end
 
         % ===== GOOD / BAD TRIAL =====
+        % By default: segment of data is good
+        isBad = 0;
         % If data block has already been marked as bad at an earlier stage, keep it bad 
         if ~isempty(BlocksToRead(iFile).isBad) && BlocksToRead(iFile).isBad
-            isBad = BlocksToRead(iFile).isBad;
-        % Else: Check if not reading in a bad segment
-        else
-            % By default: segment of data is good
-            isBad = 0;
-            % Get the block bounds (in samples #)
-            iTimes = BlocksToRead(iFile).iTimes;
-            % But if there are some bad segments in the file, check that the data we are
-            % reading is not overlapping with one of these segments
-            if ~isempty(iTimes) && ~isempty(badSeg)
-                % Check if this segment is outside of ALL the bad segments (either entirely before or entirely after)
-                if ~all((iTimes(2) < badSeg(1,:)) | (iTimes(1) > badSeg(2,:)))
-                    isBad = 1;
-                end
-            % For files read by epochs: check for bad epochs
-            elseif isempty(iTimes) && ~isempty(badEpochs)
-                if ismember(BlocksToRead(iFile).iEpoch, badEpochs)
-                    isBad = 1;
-                end
+            isBad = 1;
+        end
+        % Get the block bounds (in samples #)
+        iTimes = BlocksToRead(iFile).iTimes;
+        % But if there are some bad segments in the file, check that the data we are reading is not overlapping with one of these segments
+        if ~isempty(iTimes) && ~isempty(badSeg)
+            % Check if this segment is outside of ALL the bad segments (either entirely before or entirely after)
+            iBadSeg = find((iTimes(2) >= badSeg(1,:)) & (iTimes(1) <= badSeg(2,:)));
+        % For files read by epochs: check for bad epochs
+        elseif isempty(iTimes) && ~isempty(badEpochs)
+            iBadSeg = find(BlocksToRead(iFile).iEpoch == badEpochs);
+        end
+        % Mark trial as bad (if not already set)
+        if ~isempty(iBadSeg) && (isempty(badChan) || any(cellfun(@isempty, badChan(iBadSeg))))
+            isBad = 1;
+        end
+        % Add bad channels defined by events
+        if ~isempty(badChan) && ~all(cellfun(@isempty, badChan(iBadSeg))) && ~isempty(ChannelMat)
+            iBadChan = find(ismember({ChannelMat.Channel.Name}, unique(cat(2, {}, badChan{iBadSeg}))));
+            if ~isempty(iBadChan)
+                DataMat.ChannelFlag(iBadChan) = -1;
             end
         end
 
