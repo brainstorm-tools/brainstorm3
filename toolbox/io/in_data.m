@@ -336,19 +336,24 @@ if isRaw
         % For files read by epochs: check for bad epochs
         elseif isempty(iTimes) && ~isempty(badEpochs)
             iBadSeg = find(BlocksToRead(iFile).iEpoch == badEpochs);
+        else
+            iBadSeg = [];
         end
-        % Mark trial as bad (if not already set)
-        if ~isempty(iBadSeg) && (isempty(badChan) || any(cellfun(@isempty, badChan(iBadSeg))))
-            isBad = 1;
-        end
-        % Add bad channels defined by events
-        if ~isempty(badChan) && ~all(cellfun(@isempty, badChan(iBadSeg))) && ~isempty(ChannelMat)
-            iBadChan = find(ismember({ChannelMat.Channel.Name}, unique(cat(2, {}, badChan{iBadSeg}))));
-            if ~isempty(iBadChan)
-                DataMat.ChannelFlag(iBadChan) = -1;
+        % If there are bad segments
+        if ~isempty(iBadSeg)
+            % Mark trial as bad (if not already set)
+            if (isempty(badChan) || any(cellfun(@isempty, badChan(iBadSeg))))
+                isBad = 1;
+            end
+            % Add bad channels defined by events
+            if ~isempty(badChan) && ~all(cellfun(@isempty, badChan(iBadSeg))) && ~isempty(ChannelMat)
+                iBadChan = find(ismember({ChannelMat.Channel.Name}, unique(cat(2, {}, badChan{iBadSeg}))));
+                if ~isempty(iBadChan)
+                    DataMat.ChannelFlag(iBadChan) = -1;
+                end
             end
         end
-
+        
         % ===== ADD HISTORY FIELD =====
         % This records all the processes applied in in_fread (reset field)
         DataMat = bst_history('reset', DataMat);
