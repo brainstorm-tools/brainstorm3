@@ -1183,8 +1183,14 @@ function iTess = AddSurface(hFig, surfaceFile)
             return
         end
         TessInfo(iTess).Name = 'Anatomy';
-        % Initial position of the cuts : middle in each direction
-        TessInfo(iTess).CutsPosition = round(size(sMri.Cube) / 2);
+        % Initial position of the cuts:
+        % If there is a vox2ras transformation available: use coordinates (0,0,0)
+        mriOrigin = cs_convert(sMri, 'world', 'voxel', [0 0 0]);
+        % Otherwise, use the middle slice in each direction
+        if isempty(mriOrigin)
+            mriOrigin = size(sMri.Cube) ./ 2;
+        end
+        TessInfo(iTess).CutsPosition = round(mriOrigin);
         TessInfo(iTess).SurfSmoothValue = .3;
         % Colormap
         TessInfo(iTess).ColormapType = 'anatomy';
