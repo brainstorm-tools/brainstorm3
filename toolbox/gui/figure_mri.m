@@ -1104,12 +1104,14 @@ function [hImgMri, hCrossH, hCrossV] = SetupView(hAxes, xySize, imgSize, orientL
     if ~isempty(orientLabels)
         hLabelOrientL = findobj(hAxes, '-depth', 1, 'Tag', 'LabelOrientL');
         hLabelOrientR = findobj(hAxes, '-depth', 1, 'Tag', 'LabelOrientR');
-        posL = [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
-        posR = [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        % posL = [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        % posR = [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        posL = [0, 0];
+        posR = [xySize(1), 0];
         if isempty(hLabelOrientL) || isempty(hLabelOrientR)
             fontSize = bst_get('FigFont');
-            text(posL(1), posL(2), orientLabels{1}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientL');
-            text(posR(1), posR(2), orientLabels{2}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientR');
+            text(posL(1), posL(2), orientLabels{1}, 'verticalalignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientL');
+            text(posR(1), posR(2), orientLabels{2}, 'verticalalignment', 'bottom', 'HorizontalAlignment', 'left', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientR');
         else
             set(hLabelOrientL, 'Position', posL);
             set(hLabelOrientR, 'Position', posR);
