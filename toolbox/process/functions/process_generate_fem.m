@@ -6,6 +6,7 @@ function varargout = process_generate_fem( varargin )
 %                          process_generate_fem('ComputeInteractive', iSubject, iMris=[default])
 %                OPTIONS = process_generate_fem('GetDefaultOptions')
 %                  label = process_generate_fem('GetFemLabel', label)
+%             NewFemFile = process_generate_fem('SwitchHexaTetra', FemFile)
 %                 errMsg = process_generate_fem('InstallIso2mesh', isInteractive)
 %                 errMsg = process_generate_fem('InstallDuneuro', isInteractive)
 %                 errMsg = process_generate_fem('InstallBrain2mesh', isInteractive)
@@ -1464,5 +1465,30 @@ function errMsg = InstallDuneuro(isInteractive)
         % If the executable is still not accessible
     else
         errMsg = ['bst-duneuro could not be installed in: ' installDir];
+    end
+end
+
+
+%% ===== HEXA <=> TETRA =====
+function NewFemFile = SwitchHexaTetra(FemFile, isInteractive) %#ok<DEFNU>
+    % Install bst_duneuro if needed
+    if ~exist('bst_duneuro', 'file')
+        errMsg = InstallDuneuro(isInteractive);
+        if ~isempty(errMsg) || ~exist('bst_duneuro', 'file')
+            return;
+        end
+    end
+    % Get file in database
+    [sSubject, iSubject] = bst_get('SurfaceFile', FemFile);
+    FemFullFile = file_fullpath(FemFile);
+    % Get dimensions of the Elements variable
+    elemSize = whos('-file', FemFullFile, 'Elements');
+    % Check type of the mesh
+    if isempty(elemSize) || (length(elemSize.size) ~= 2) || ~ismember(elemSize.size(2), [4 8])
+        error(['Invalid FEM mesh file: ' FemFile]);
+    elseif (elemSize.size(2) == 8)
+        [iNewTess, NewFemFile] = fem_hexa2tetra(iSubject, FemFullFile, 'BSTFEM', isInteractive);
+    elseif (elemSize.size(2) == 4)
+        [iNewTess, NewFemFile] = fem_tetra2hexa(iSubject, FemFullFile, 'BSTFEM', isInteractive);
     end
 end

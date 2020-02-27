@@ -141,9 +141,9 @@ if size(FemMat.Elements,2) == 8
         end
     end
     % convert the mesh to tetra for diplay purpose
-    [tetraElem,tetraNode,tetraLabel]=hex2tet(FemMat.Elements,FemMat.Vertices ,FemMat.Tissue,3);
+    [tetraElem,tetraNode,tetraLabel] = hex2tet(double(FemMat.Elements), FemMat.Vertices, double(FemMat.Tissue), 3);
     % updates FemMat for display purpose
-    FemMat.Vertices =  tetraNode;
+    FemMat.Vertices = tetraNode;
     FemMat.Elements = tetraElem;
     FemMat.Tissue = tetraLabel;
 end
