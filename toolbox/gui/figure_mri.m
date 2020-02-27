@@ -44,7 +44,7 @@ function varargout = figure_mri(varargin)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, 2004
-%          Francois Tadel, 2008-2019
+%          Francois Tadel, 2008-2020
 
 eval(macro_method);
 end
@@ -410,19 +410,21 @@ function ResizeCallback(hFig, varargin)
     figPos = get(hFig, 'Position');
     % Get figure Handles
     Handles = bst_figures('GetFigureHandles', hFig);
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Configuration
     if ~Handles.jCheckViewSliders.isSelected()
         sliderH = 0;
         titleH  = 0;
     else
-        sliderH = 20;
-        titleH  = 25;
+        sliderH = 20 .* Scaling;
+        titleH  = 25 .* Scaling;
     end
     % Get colorbar
     hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
     % Reserve space for the colorbar
     if ~isempty(hColorbar)
-        colorbarMargin = 45;
+        colorbarMargin = 45 .* Scaling;
     else
         colorbarMargin = 0;
     end
@@ -449,12 +451,12 @@ function ResizeCallback(hFig, varargin)
     
     % Resize colorbar
     if ~isempty(hColorbar)
-        colorbarWidth = 15;
+        colorbarWidth = 15 .* Scaling;
         posColor = [...
             figPos(3) - colorbarMargin, ...
-            posS(2) + sliderH + 15, ...
+            posS(2) + sliderH + 15 .* Scaling, ...
             colorbarWidth, ...
-            posS(4) - sliderH - titleH - 15];
+            posS(4) - sliderH - titleH - 15 .* Scaling];
         % Reposition the colorbar
         set(hColorbar, 'Units', 'pixels', 'Position', max([1 1 1 1], posColor));
     end

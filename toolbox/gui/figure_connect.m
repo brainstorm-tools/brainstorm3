@@ -289,10 +289,12 @@ function UpdateContainer(hFig, container)
         titlePos = get(TitlesHandle(1), 'Position'); 
         titleHeight = titlePos(4);
     end
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
-    marginHeight  = 25;
-    marginWidth   = 45;
+    colorbarWidth = 15 .* Scaling;
+    marginHeight  = 25 .* Scaling;
+    marginWidth   = 45 .* Scaling;
     % If there is a colorbar 
     if ~isempty(hColorbar)
         % Reposition the colorbar
@@ -300,15 +302,15 @@ function UpdateContainer(hFig, container)
                        'Position', [figPos(3) - marginWidth, ...
                                     marginHeight, ...
                                     colorbarWidth, ...
-                                    max(1, min(90, figPos(4) - marginHeight - 3))]);
+                                    max(1, min(90, figPos(4) - marginHeight - 3 .* Scaling))]);
         % Reposition the container
         marginAxes = 0;
         if ~isempty(container)
             set(container, 'Units',    'pixels', ...
                            'Position', [marginAxes, ...
                                         marginAxes, ...
-                                        figPos(3) - colorbarWidth - marginWidth - marginAxes, ... 
-                                        figPos(4) - 2*marginAxes - titleHeight]);
+                                        max(1, figPos(3) - colorbarWidth - marginWidth - marginAxes), ... 
+                                        max(1, figPos(4) - 2*marginAxes - titleHeight)]);
         end
         uistack(hColorbar,'top',1);
     else

@@ -124,26 +124,30 @@ function ResizeCallback(hFig, ev)
     end
     % Get figure position and size in pixels
     figPos = get(hFig, 'Position');
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
-    marginTop     = 25;
-    marginBottom  = 35;
-    marginLeft    = 50;
+    colorbarWidth = 15 .* Scaling;
+    marginTop     = 25 .* Scaling;
+    marginBottom  = 35 .* Scaling;
+    marginLeft    = 50 .* Scaling;
 
     % If colorbar: Add a small label to hide the x10^exp on top of the colorbar
     hLabelHideExp = findobj(hFig, '-depth', 1, 'tag', 'labelMaskExp');
     % Reposition the colorbar
     if ~isempty(hColorbar)
-        marginRight = 55;
+        marginRight = 55 .* Scaling;
         % Position colorbar
-        colorbarPos = [figPos(3) - marginRight + 10, ...
+        colorbarPos = [figPos(3) - marginRight + 10 .* Scaling, ...
                        marginBottom, ...
                        colorbarWidth, ...
-                       figPos(4) - marginTop - marginBottom];
+                       max(1, figPos(4) - marginTop - marginBottom)];
         set(hColorbar, 'Units', 'pixels', 'Position', colorbarPos);
         % Add mask for exponent
-        maskPos = [colorbarPos(1), colorbarPos(2) + colorbarPos(4) + 5, ...
-                   figPos(3)-colorbarPos(1), figPos(4)-colorbarPos(2)-colorbarPos(4)];
+        maskPos = [colorbarPos(1), ...
+                   colorbarPos(2) + colorbarPos(4) + 5 .* Scaling, ...
+                   max(1, figPos(3)-colorbarPos(1)), ...
+                   max(1, figPos(4)-colorbarPos(2)-colorbarPos(4))];
         if isempty(hLabelHideExp)
             uicontrol(hFig,'style','text','units','pixels', 'pos', maskPos, 'tag', 'labelMaskExp', ...
                       'BackgroundColor', get(hFig, 'Color'));
@@ -152,14 +156,14 @@ function ResizeCallback(hFig, ev)
         end
     else
         delete(hLabelHideExp);
-        marginRight = 30;
+        marginRight = 30 .* Scaling;
     end
     % Reposition the axes
     set(hAxes, 'Units',    'pixels', ...
                'Position', [marginLeft, ...
                             marginBottom, ...
-                            figPos(3) - marginLeft - marginRight, ...
-                            figPos(4) - marginTop - marginBottom]);
+                            max(1, figPos(3) - marginLeft - marginRight), ...
+                            max(1, figPos(4) - marginTop - marginBottom)]);
 end
 
 

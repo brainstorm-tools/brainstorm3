@@ -180,10 +180,12 @@ function ResizeCallback(hFig, ev)
     hAxes = hAxes(1);
     % Get figure position and size in pixels
     figPos = get(hFig, 'Position');
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
-    marginHeight  = 25;
-    marginWidth   = 45;
+    colorbarWidth = 15 .* Scaling;
+    marginHeight  = 25 .* Scaling;
+    marginWidth   = 45 .* Scaling;
     
     % If there is a colorbar 
     if ~isempty(hColorbar)
@@ -192,13 +194,13 @@ function ResizeCallback(hFig, ev)
                        'Position', [figPos(3) - marginWidth, ...
                                     marginHeight, ...
                                     colorbarWidth, ...
-                                    max(1, min(90, figPos(4) - marginHeight - 3))]);
+                                    max(1, min(90 .* Scaling, figPos(4) - marginHeight - 3 .* Scaling))]);
         % Reposition the axes
         marginAxes = 10;
         set(hAxes, 'Units',    'pixels', ...
                    'Position', [marginAxes, ...
                                 marginAxes, ...
-                                figPos(3) - colorbarWidth - marginWidth - 2, ... % figPos(3) - colorbarWidth - marginWidth - marginAxes, ...
+                                max(1, figPos(3) - colorbarWidth - marginWidth - 2 .* Scaling), ... % figPos(3) - colorbarWidth - marginWidth - marginAxes, ...
                                 max(1, figPos(4) - 2*marginAxes)]);
     % No colorbar : data axes can take all the figure space
     else
@@ -210,8 +212,6 @@ function ResizeCallback(hFig, ev)
     % ===== 2DLAYOUT: REPOSITION SCALE CONTROLS =====
     FigureId = getappdata(hFig, 'FigureId');
     if isequal(FigureId.SubType, '2DLayout')
-        % Scale figure
-        Scaling = bst_get('InterfaceScaling') / 100;
         % Get buttons
         hButtonGainMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainMinus');
         hButtonGainPlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainPlus');

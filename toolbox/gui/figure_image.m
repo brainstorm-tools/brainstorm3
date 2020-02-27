@@ -21,7 +21,7 @@ function varargout = figure_image( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2017
+% Authors: Francois Tadel, 2014-2020
 
 eval(macro_method);
 end
@@ -133,46 +133,50 @@ function ResizeCallback(hFig, ev)
     end
     % Get figure position and size in pixels
     figPos = get(hFig, 'Position');
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
-    marginTop     = 10;
+    colorbarWidth = 15 .* Scaling;
+    marginTop     = 10 .* Scaling;
     
     % Define the size of the bottom margin, function of the labels that have to be displayed
     XTickLabel = get(hAxes, 'XTickLabel');
     if isempty(XTickLabel)
-        marginBottom = 25;
+        marginBottom = 25 .* Scaling;
     elseif iscell(XTickLabel) && ~isempty(XTickLabel{1}) && isempty(num2str(XTickLabel{1}))
         % Get the largest frequency band string
         strMax = max(cellfun(@length, XTickLabel));
-        marginBottom = 35 + 5 * min(15, strMax);
+        marginBottom = (35 + 5 * min(15, strMax)) .* Scaling;
     else
-        marginBottom = 40;
+        marginBottom = 40 .* Scaling;
     end
     
     % Define the size of the left margin in function of the labels that have to be displayed
     YTickLabel = get(hAxes, 'YTickLabel');
     if isempty(YTickLabel) || ~iscell(YTickLabel) || isempty(YTickLabel{1}) || ~ischar(YTickLabel{1})
-        marginLeft = 25;
+        marginLeft = 25 .* Scaling;
     else
         % Get the largest frequency band string
         strMax = max(cellfun(@length, YTickLabel));
-        marginLeft = 40 + 5 * min(15, strMax);
+        marginLeft = (40 + 5 * min(15, strMax)) .* Scaling;
     end
 
     % If colorbar: Add a small label to hide the x10^exp on top of the colorbar
     hLabelHideExp = findobj(hFig, '-depth', 1, 'tag', 'labelMaskExp');
     % Reposition the colorbar
     if ~isempty(hColorbar)
-        marginRight = 55;
+        marginRight = 55 .* Scaling;
         % Position colorbar
-        colorbarPos = [figPos(3) - marginRight + 10, ...
+        colorbarPos = [figPos(3) - marginRight + 10 .* Scaling, ...
                        marginBottom, ...
                        colorbarWidth, ...
-                       figPos(4) - marginTop - marginBottom];
+                       max(1, figPos(4) - marginTop - marginBottom)];
         set(hColorbar, 'Units', 'pixels', 'Position', colorbarPos);
         % Add mask for exponent
-        maskPos = [colorbarPos(1), colorbarPos(2) + colorbarPos(4) + 5, ...
-                   figPos(3)-colorbarPos(1), figPos(4)-colorbarPos(2)-colorbarPos(4)];
+        maskPos = [colorbarPos(1), ...
+                   colorbarPos(2) + colorbarPos(4) + 5 .* Scaling, ...
+                   max(1, figPos(3)-colorbarPos(1)), ...
+                   max(1, figPos(4)-colorbarPos(2)-colorbarPos(4))];
         if isempty(hLabelHideExp)
             uicontrol(hFig,'style','text','units','pixels', 'pos', maskPos, 'tag', 'labelMaskExp', ...
                       'BackgroundColor', get(hFig, 'Color'));
@@ -181,14 +185,14 @@ function ResizeCallback(hFig, ev)
         end
     else
         delete(hLabelHideExp);
-        marginRight = 30;
+        marginRight = 30 .* Scaling;
     end
     % Reposition the axes
     set(hAxes, 'Units',    'pixels', ...
                'Position', [marginLeft, ...
                             marginBottom, ...
-                            figPos(3) - marginLeft - marginRight, ...
-                            figPos(4) - marginTop - marginBottom]);
+                            max(1, figPos(3) - marginLeft - marginRight), ...
+                            max(1, figPos(4) - marginTop - marginBottom)]);
 end
 
 

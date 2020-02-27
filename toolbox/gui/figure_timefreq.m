@@ -23,7 +23,7 @@ function varargout = figure_timefreq( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2020
 
 eval(macro_method);
 end
@@ -168,44 +168,46 @@ function ResizeCallback(hFig, ev)
     end
     % Get figure position and size in pixels
     figPos = get(hFig, 'Position');
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
+    colorbarWidth = 15 .* Scaling;
     if ismember(lower(TfInfo.DisplayMode), {'2dlayout', '2dlayoutopt'})
-        marginLeft   = 10;
-        marginTop    = 5;
-        marginBottom = 20;
-        marginRight  = 10;
+        marginLeft   = 10 .* Scaling;
+        marginTop    = 5 .* Scaling;
+        marginBottom = 20 .* Scaling;
+        marginRight  = 10 .* Scaling;
     else
-        marginTop    = 25;
-        marginBottom = 35;
-        marginRight  = 30;
+        marginTop    = 25 .* Scaling;
+        marginBottom = 35 .* Scaling;
+        marginRight  = 30 .* Scaling;
         % Define the size of the left margin in function of the labels that have to be displayed
         if ~iscell(GlobalData.UserFrequencies.Freqs)
             if all(GlobalData.UserFrequencies.Freqs == round(GlobalData.UserFrequencies.Freqs))
-                marginLeft = 40;
+                marginLeft = 40 .* Scaling;
             else
-                marginLeft = 55;
+                marginLeft = 55 .* Scaling;
             end
         else
             % Get the largest frequency band string
             strMax = max(cellfun(@length, GlobalData.UserFrequencies.Freqs(:,1)));
-            marginLeft = 20 + 5*strMax;
+            marginLeft = (20 + 5*strMax) .* Scaling;
         end
     end
     % If colorbar: Add a small label to hide the x10^exp on top of the colorbar
     hLabelHideExp = findobj(hFig, '-depth', 1, 'tag', 'labelMaskExp');
     % Reposition the colorbar
     if ~isempty(hColorbar)
-        marginRight = 55;
+        marginRight = 55 .* Scaling;
         % Position colorbar
-        colorbarPos = [figPos(3) - marginRight + 10, ...
+        colorbarPos = [figPos(3) - marginRight + 10 .* Scaling, ...
                        marginBottom, ...
                        colorbarWidth, ...
                        max(1, figPos(4) - marginTop - marginBottom)];
                        %max(1, min(90, figPos(4) - marginTop - marginBottom))];
         set(hColorbar, 'Units', 'pixels', 'Position', colorbarPos);
         % Add mask for exponent
-        maskPos = [colorbarPos(1), colorbarPos(2) + colorbarPos(4) + 5, ...
+        maskPos = [colorbarPos(1), colorbarPos(2) + colorbarPos(4) + 5 .* Scaling, ...
                    figPos(3)-colorbarPos(1), figPos(4)-colorbarPos(2)-colorbarPos(4)];
         if isempty(hLabelHideExp)
             uicontrol(hFig,'style','text','units','pixels', 'pos', maskPos, 'tag', 'labelMaskExp', ...
