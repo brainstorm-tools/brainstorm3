@@ -1,4 +1,3 @@
-
 function varargout = process_generate_fem( varargin )
 % PROCESS_GENERATE_FEM: Generate tetrahedral/hexahedral FEM mesh.
 %
@@ -663,7 +662,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % === CALL FIELDTRIP PIPELINE ===
             % Convert MRI to fieldtrip structure
             bst_progress('text', 'Reading T1 MRI...');
-            ftMri = out_fieldtrip_mri(T1File);
+            bstMri = in_mri(T1File);
+            ftMri = out_fieldtrip_mri(bstMri);
             % Segmentation
             bst_progress('text', 'MRI segmentation (FieldTrip/ft_volumesegment)...');
             cfg = [];
@@ -678,7 +678,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             cfg.downsample = OPTIONS.Downsample;
             cfg.shift = OPTIONS.NodeShift;
             mesh = ft_prepare_mesh(cfg, segmentedmri);
-
+            
+            % Reorder labels based on requested order
+            iRelabel = cellfun(@(c)find(strcmpi(c,TissueLabels)), mesh.tissuelabel)';
+            mesh.tissue = iRelabel(mesh.tissue);
             % Group tissues
             switch (OPTIONS.NbLayers)
                 case 3
@@ -698,8 +701,16 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 case 5   
                     % Nothing to change
             end
-            % Return vertices and hexadrons
-            node = mesh.pos;
+            % Convert from FieldTrip world coordinates back to FieldTrip voxel coordinates
+            M = inv(ftMri.transform);
+            node = [mesh.pos, ones(size(mesh.pos, 1),1)] * M(1:3,:)';
+            % Convert to to Brainstorm voxel coordinates
+            node(:,1) = node(:,1) + 1;
+            node(:,2) = size(bstMri.Cube,2) - node(:,2);
+            node(:,3) = size(bstMri.Cube,3) - node(:,3);
+            % Convert to SCS coordinates
+            node = cs_convert(bstMri, 'voxel', 'scs', node);
+            % Return hexadrons
             elem = [mesh.hex mesh.tissue];
             % Only hexa could be generated from this method
             OPTIONS.MeshType = 'hexahedral';

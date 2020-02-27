@@ -94,11 +94,11 @@ end
 isOk = 1;
 
 % Add some subfolders
-addpath(fullfile(FieldTripDir, 'specest'));
-addpath(fullfile(FieldTripDir, 'preproc'));
-addpath(fullfile(FieldTripDir, 'forward'));
-addpath(fullfile(FieldTripDir, 'src'));
-addpath(fullfile(FieldTripDir, 'utilities'));
+for subfolder = {'specest', 'preproc', 'forward', 'src', 'utilities'}
+    if isdir(fullfile(FieldTripDir, subfolder{1}))
+        addpath(fullfile(FieldTripDir, subfolder{1}));
+    end
+end
 
 % Remove the ROAST toolbox from the path in order to avoid the error related to spm...
 roastExe = which('roast','-all');
