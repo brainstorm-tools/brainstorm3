@@ -1349,26 +1349,26 @@ function UpdateCoordinates(sMri, Handles)
     end
     Handles.jLabelValue.setText(strValue);
     % === MRI (millimeters) ===
-    Handles.jTextCoordMriX.setText(sprintf('x: %3.1f', mriXYZ(1) * 1000));
-    Handles.jTextCoordMriY.setText(sprintf('y: %3.1f', mriXYZ(2) * 1000));
-    Handles.jTextCoordMriZ.setText(sprintf('z: %3.1f', mriXYZ(3) * 1000));
+    Handles.jTextCoordMriX.setText(sprintf('x: %3.2f', mriXYZ(1) * 1000));
+    Handles.jTextCoordMriY.setText(sprintf('y: %3.2f', mriXYZ(2) * 1000));
+    Handles.jTextCoordMriZ.setText(sprintf('z: %3.2f', mriXYZ(3) * 1000));
     % === SCS/CTF (millimeters) ===
     if ~isempty(scsXYZ)
-        Handles.jTextCoordScsX.setText(sprintf('x: %3.1f', scsXYZ(1) * 1000));
-        Handles.jTextCoordScsY.setText(sprintf('y: %3.1f', scsXYZ(2) * 1000));
-        Handles.jTextCoordScsZ.setText(sprintf('z: %3.1f', scsXYZ(3) * 1000));
+        Handles.jTextCoordScsX.setText(sprintf('x: %3.2f', scsXYZ(1) * 1000));
+        Handles.jTextCoordScsY.setText(sprintf('y: %3.2f', scsXYZ(2) * 1000));
+        Handles.jTextCoordScsZ.setText(sprintf('z: %3.2f', scsXYZ(3) * 1000));
     end
     % === RAS (millimeters) ===
     if ~isempty(wrlXYZ)
-        Handles.jTextCoordWrlX.setText(sprintf('x: %3.1f', wrlXYZ(1) * 1000));
-        Handles.jTextCoordWrlY.setText(sprintf('y: %3.1f', wrlXYZ(2) * 1000));
-        Handles.jTextCoordWrlZ.setText(sprintf('z: %3.1f', wrlXYZ(3) * 1000));
+        Handles.jTextCoordWrlX.setText(sprintf('x: %3.2f', wrlXYZ(1) * 1000));
+        Handles.jTextCoordWrlY.setText(sprintf('y: %3.2f', wrlXYZ(2) * 1000));
+        Handles.jTextCoordWrlZ.setText(sprintf('z: %3.2f', wrlXYZ(3) * 1000));
     end
     % === MNI coordinates system ===
     if ~isempty(mniXYZ)
-        Handles.jTextCoordMniX.setText(sprintf('x: %3.1f', mniXYZ(1) * 1000));
-        Handles.jTextCoordMniY.setText(sprintf('y: %3.1f', mniXYZ(2) * 1000));
-        Handles.jTextCoordMniZ.setText(sprintf('z: %3.1f', mniXYZ(3) * 1000));
+        Handles.jTextCoordMniX.setText(sprintf('x: %3.2f', mniXYZ(1) * 1000));
+        Handles.jTextCoordMniY.setText(sprintf('y: %3.2f', mniXYZ(2) * 1000));
+        Handles.jTextCoordMniZ.setText(sprintf('z: %3.2f', mniXYZ(3) * 1000));
         isMni = 1;
     else
         isMni = 0;

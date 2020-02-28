@@ -272,6 +272,10 @@ if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
     sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
 end
+% Add MNI tag
+if strcmpi(FileFormat, 'ALL-MNI')
+    sMri.Comment = [sMri.Comment ' (MNI)'];
+end
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
 % Get imported base name

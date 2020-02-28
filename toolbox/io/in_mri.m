@@ -235,8 +235,8 @@ end
 
 %% ===== SAVE MNI TRANSFORMATION =====
 if isMni && ~isempty(vox2ras) && (~isfield(MRI, 'NCS') || ~isfield(MRI.NCS, 'R') || isempty(MRI.NCS.R))
-    % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-    vox2ras = vox2ras * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
+    % 2nd operation: Change reference from (0,0,0) to (1,1,1)
+    vox2ras = vox2ras * [1 0 0 -1; 0 1 0 -1; 0 0 1 -1; 0 0 0 1];
     % 1st operation: Convert from MRI(mm) to voxels
     vox2ras = vox2ras * diag(1 ./ [MRI.Voxsize, 1]);
     % Copy MNI transformation to output structure
