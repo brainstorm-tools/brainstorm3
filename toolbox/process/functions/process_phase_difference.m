@@ -1,6 +1,6 @@
-function varargout = process_spiking_phase_difference( varargin )
-% PROCESS_SPIKING_PHASE_DIFFERENCE: Computes the phase locking difference 
-% of spikes on the timeseries.
+function varargout = process_phase_difference( varargin )
+% PROCESS_PHASE_DIFFERENCE: Computes the phase difference histogram between
+% timeseries
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -29,7 +29,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Spiking Phase Difference';
+    sProcess.Comment     = 'Phase Difference';
     sProcess.FileTag     = 'phaseLocking';
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = {'Peyrache Lab', 'Ripples'};
