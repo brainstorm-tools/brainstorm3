@@ -163,7 +163,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         
         %% Create the label of the file on the database based on the selection
-                
         labelsForDropDownMenu = cell(nChannelsA * nChannelsB, 1);
         
         for iChannelA = 1:nChannelsA
@@ -178,7 +177,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     suffixA = [suffixA ']'];
                 else
                     suffixA = ['Ch: ' ChannelMat.Channel(iSelectedChannelsA(iChannelA)).Name];
-
                 end
 
                 if use_medianB
@@ -193,7 +191,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
 
                 labelsForDropDownMenu{(iChannelA-1)*nChannelsB+ iChannelB} = [suffixA suffixB];
-                
             end
         end
   
@@ -204,13 +201,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         EDGES = linspace(-pi, pi, nBins+1);
 
         progressPos = bst_progress('set',0);
-        bst_progress('text', 'Accumulating phase differences for each trial between the selected channels...');
+        bst_progress('text', 'Accumulating phase differences for each trial...');
         
         nTrials = length(sCurrentInputs);
         for iFile = 1:nTrials
-
-            
-            DataMat = in_bst(sCurrentInputs(iFile).FileName);
 
             % Collect required fields
             DataMat = in_bst(sCurrentInputs(iFile).FileName);
@@ -325,7 +319,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % This is added here - Let's hear it from Francois
         FileMat.pValues = pValues;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
         % Add history field
         FileMat = bst_history('add', FileMat, 'compute', ...
