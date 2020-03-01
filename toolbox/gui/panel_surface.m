@@ -1186,6 +1186,10 @@ function iTess = AddSurface(hFig, surfaceFile)
         % Initial position of the cuts:
         % If there is a vox2ras transformation available: use coordinates (0,0,0)
         mriOrigin = cs_convert(sMri, 'world', 'voxel', [0 0 0]);
+        % Check that the positions are somewhat in the middle of the MRI
+        if ~isempty(mriOrigin) && (any(mriOrigin < 0.25*size(sMri.Cube)) || any(mriOrigin > 0.75*size(sMri.Cube)))
+            mriOrigin = [];
+        end
         % Otherwise, use the middle slice in each direction
         if isempty(mriOrigin)
             mriOrigin = size(sMri.Cube) ./ 2;
