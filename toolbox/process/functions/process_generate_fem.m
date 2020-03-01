@@ -62,14 +62,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        'iso2mesh', 'brain2mash', 'simnibs', 'fieldtrip'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'iso2mesh';
-    % SimNIBS/FieldTrip: NbLayers
-    sProcess.options.nblayers.Comment = {...
-        '3 layers : brain, skull, scalp', ...
-        '4 layers : brain, csf, skull, scalp', ...
-        '5 layers : white, gray, csf, skull, scalp'; ...
-        '3','4','5'};
-    sProcess.options.nblayers.Type    = 'radio_label';
-    sProcess.options.nblayers.Value   = '3';
     % Iso2mesh options: 
     sProcess.options.opt1.Comment = '<BR><BR><B>Iso2mesh options</B>: ';
     sProcess.options.opt1.Type    = 'label';
@@ -138,12 +130,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid method.');
         return
     end
-    % Number of layers
-    OPTIONS.NbLayers = str2num(sProcess.options.nblayers.Value);
-    if isempty(OPTIONS.NbLayers)
-        bst_report('Error', sProcess, [], 'Invalid number of layers.');
-        return
-    end
     % Iso2mesh: Merge method
     OPTIONS.MergeMethod = sProcess.options.mergemethod.Value;
     if isempty(OPTIONS.MergeMethod) || ~ischar(OPTIONS.MergeMethod) || ~ismember(OPTIONS.MergeMethod, {'mergesurf','mergemesh'})
@@ -207,7 +193,6 @@ function OPTIONS = GetDefaultOptions()
     OPTIONS = struct(...
         'Method',         'iso2mesh', ...      % {'iso2mesh', 'brain2mesh', 'simnibs', 'roast', 'fieldtrip'}
         'MeshType',       'tetrahedral', ...   % iso2mesh: 'tetrahedral';  simnibs: 'tetrahedral';  roast:'hexahedral'/'tetrahedral';  fieldtrip:'hexahedral'/'tetrahedral' 
-        'NbLayers',       3, ...               % iso2mesh: {3,4};          simnibs: {3,4,5};        roast:{3,5};                       fieldtrip:{3,5}
         'MaxVol',         0.1, ...             % iso2mesh: Max tetrahedral volume (10=coarse, 0.0001=fine)
         'KeepRatio',      100, ...             % iso2mesh: Percentage of elements kept (1-100%)
         'BemFiles',       [], ...              % iso2mesh: List of layers to use for meshing (if not specified, use the files selected in the database 
@@ -546,6 +531,16 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = 'Mesh generation with Brain2Mesh/tetgen1.5 failed.';
                 return;
             end
+            % Remove unwanted tissues (label <= 0)
+            iRemove = find(elem(:,end) <= 0);
+            if ~isempty(iRemove)
+                elem(iRemove,:) = [];
+            end
+            % Relabel the tissues in the same order as the other options
+            iRelabel = [5 4 3 2 1];
+            elem(:,end) = reshape(iRelabel(elem(:,end)), [], 1);
+            % Name tissue labels
+            TissueLabels = {'scalp','white','gray','csf','skull'};
             
         case 'simnibs'
             disp(['FEM> T1 MRI: ' T1File]);
@@ -631,25 +626,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             femhead = in_tess(mshfilename, 'SIMNIBS', sMriT1); %  this could be loaded to bst as it is
             % Keep cortex surface
             cortexElem = femhead.Elements(femhead.Tissue <= 2, :);
-            % Get the number of layers
-            switch (OPTIONS.NbLayers)
-                case 3
-                    TissueLabels = {'brain', 'skull', 'scalp'};
-                    % Replace the CSF, GM by WM and use unique label
-                    femhead.Tissue(femhead.Tissue== 2) = 1; % gm to wm and all form brain label 1
-                    femhead.Tissue(femhead.Tissue== 3) = 1; % csf to wm and all form brain label 1
-                    femhead.Tissue(femhead.Tissue== 4) = 2; % skull label 2
-                    femhead.Tissue(femhead.Tissue== 5) = 3; % scalp label 3
-                case 4
-                    TissueLabels = {'brain', 'csf', 'skull', 'scalp'};
-                    % Replace the GM by WM and use unique label
-                    femhead.Tissue(femhead.Tissue== 2) = 1; % gm to wm and all form brain with label 1
-                    femhead.Tissue(femhead.Tissue== 3) = 2; % csf label 2
-                    femhead.Tissue(femhead.Tissue== 4) = 3; % skull label 3
-                    femhead.Tissue(femhead.Tissue== 5) = 4; % scalp label 4
-                case 5   
-                    TissueLabels = femhead.TissueLabels;   % {'white', 'gray', 'csf', 'skull', 'scalp'}
-            end
+            % Get outputs
+            TissueLabels = femhead.TissueLabels;   % {'white', 'gray', 'csf', 'skull', 'scalp'}
             elem = [femhead.Elements femhead.Tissue];
             node = femhead.Vertices;
             % Only tetra could be generated from this method
@@ -732,25 +710,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Reorder labels based on requested order
             iRelabel = cellfun(@(c)find(strcmpi(c,TissueLabels)), mesh.tissuelabel)';
             mesh.tissue = iRelabel(mesh.tissue);
-            % Group tissues
-            switch (OPTIONS.NbLayers)
-                case 3
-                    TissueLabels = {'brain', 'skull', 'scalp'};
-                    % Replace the CSF, GM by WM and use unique label
-                    mesh.tissue(mesh.tissue == 2) = 1; % gm to wm and all form brain label 1
-                    mesh.tissue(mesh.tissue == 3) = 1; % csf to wm and all form brain label 1
-                    mesh.tissue(mesh.tissue == 4) = 2; % skull label 2
-                    mesh.tissue(mesh.tissue == 5) = 3; % scalp label 3
-                case 4
-                    TissueLabels = {'brain', 'csf', 'skull', 'scalp'};
-                    % Replace the GM by WM and use unique label
-                    mesh.tissue(mesh.tissue == 2) = 1; % gm to wm and all form brain with label 1
-                    mesh.tissue(mesh.tissue == 3) = 2; % csf label 2
-                    mesh.tissue(mesh.tissue == 4) = 3; % skull label 3
-                    mesh.tissue(mesh.tissue == 5) = 4; % scalp label 4
-                case 5   
-                    % Nothing to change
-            end
             % Convert from FieldTrip world coordinates back to FieldTrip voxel coordinates
             M = inv(ftMri.transform);
             node = [mesh.pos, ones(size(mesh.pos, 1),1)] * M(1:3,:)';
@@ -877,15 +836,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     bst_progress('text', 'Saving FEM mesh...');
     % Create output structure
     FemMat = db_template('femmat');
-    FemMat.Comment = sprintf('FEM %dV (%s, %d layers)', length(node), OPTIONS.Method, OPTIONS.NbLayers);
-    FemMat.Vertices = node;
-    if strcmp(OPTIONS.MeshType, 'tetrahedral')
-        FemMat.Elements = elem(:,1:4);
-        FemMat.Tissue = elem(:,5);
-    else
-        FemMat.Elements = elem(:,1:8);
-        FemMat.Tissue = elem(:,9);
-    end
     if ~isempty(TissueLabels)
         FemMat.TissueLabels = TissueLabels;
     else
@@ -893,6 +843,15 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         for i = 1:length(uniqueLabels)
              FemMat.TissueLabels{i} = num2str(uniqueLabels(i));
         end
+    end
+    FemMat.Comment = sprintf('FEM %dV (%s, %d layers)', length(node), OPTIONS.Method, length(FemMat.TissueLabels));
+    FemMat.Vertices = node;
+    if strcmp(OPTIONS.MeshType, 'tetrahedral')
+        FemMat.Elements = elem(:,1:4);
+        FemMat.Tissue = elem(:,5);
+    else
+        FemMat.Elements = elem(:,1:8);
+        FemMat.Tissue = elem(:,9);
     end
 
     % Add history
@@ -963,7 +922,6 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     if ~isempty(BemFiles) && iscell(BemFiles)
         OPTIONS.Method = 'iso2mesh';
         OPTIONS.BemFiles = BemFiles;
-        OPTIONS.NbLayers = length(BemFiles);
     % Otherwise: Ask for method to use
     else
         res = java_dialog('question', [...
@@ -987,7 +945,6 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             return
         end
         OPTIONS.Method = lower(res);
-        OPTIONS.NbLayers = 3;
     end
     
     % Other options: Switch depending on the method
@@ -1023,21 +980,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
         case 'brain2mesh'
             % No extra options
             
-        case 'simnibs'
-            % Ask for the tissues to segment
-            opts = {...
-                '3 layers : brain, skull, scalp', ...
-                '4 layers : brain, csf, skull, scalp', ...
-                '5 layers : white, gray, csf, skull, scalp'};
-            [res, isCancel] = java_dialog('radio', '<HTML> Select the model to segment  <BR>', 'Select Model', [], opts, 1);
-            if isCancel
-                return
-            end
-            switch res
-                case 1,  OPTIONS.NbLayers = 3;
-                case 2,  OPTIONS.NbLayers = 4;
-                case 3,  OPTIONS.NbLayers = 5;
-            end          
+        case 'simnibs'    
             % Ask for the Vertex density
             res = java_dialog('input', '<HTML>Vertex density:<BR>Number of nodes per mm2 of the surface meshes (0.1 - 1.5)', ...
                 'SimNIBS Vertex Density', [], num2str(OPTIONS.VertexDensity));
@@ -1053,20 +996,6 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             OPTIONS.NbVertices = str2double(res);
 
         case 'fieldtrip'
-            % Ask for the tissues to segment
-            opts = {...
-                '3 layers : brain, skull, scalp', ...
-                '4 layers : brain, csf, skull, scalp', ...
-                '5 layers : white, gray, csf, skull, scalp'};
-            [res, isCancel] = java_dialog('radio', '<HTML> Select the model to segment  <BR>', 'Select Model', [], opts, 1);
-            if isCancel
-                return
-            end
-            switch res
-                case 1,  OPTIONS.NbLayers = 3;
-                case 2,  OPTIONS.NbLayers = 4;
-                case 3,  OPTIONS.NbLayers = 5;
-            end
             % Ask user for the downsampling factor
             [res, isCancel]  = java_dialog('input', ['Downsample volume before meshing:' 10 '(integer, 1=no downsampling)'], ...
                 'FieldTrip FEM mesh', [], num2str(OPTIONS.Downsample));
@@ -1083,22 +1012,6 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             OPTIONS.NodeShift = str2double(res);
             
 %         case 'roast'
-%             % Set parameters
-%             % Ask user for the the tissu to segment :
-%             opts = {...
-%                 '5 Layers : white,gray, csf, skull, scalp',...
-%                 '3 Layers : brain, skull, scalp'};
-%             [res, isCancel] = java_dialog('radio', '<HTML> Select the model to segment  <BR>', 'Select Model',[],opts, 1);
-%             if isCancel
-%                 return
-%             end
-%             if res == 1
-%                 OPTIONS.TissueLabels = {'white', 'gray', 'csf', 'skull', 'scalp'};
-%             end
-%             if res == 2
-%                 OPTIONS.TissueLabels = {'brain', 'skull', 'scalp'};
-%             end
-%             OPTIONS.NbLayers = length(OPTIONS.TissueLabels);
 %             % Ask user for the mesh element type :
 %             [res, isCancel]  = java_dialog('question', [...
 %                 '<HTML><B>Hexahedral Mesh</B>:<BR> Use the hexa element for the mesh , <BR>' ...

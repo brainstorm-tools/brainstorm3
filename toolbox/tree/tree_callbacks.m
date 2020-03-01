@@ -1173,11 +1173,10 @@ switch (lower(action))
             case 'fem'
                 iSubject = bstNodes(1).getStudyIndex();
                 if (length(bstNodes) == 1)
-                    % Display
                     gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative, [], [], [], 'NewFigure'));
-                    % Extract surfaces
+                    AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_mergelayers, filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
-                    % Convert mesh type		
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)process_generate_fem('SwitchHexaTetra', filenameRelative, 1));
                 end
                 
