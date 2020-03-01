@@ -540,7 +540,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             iRelabel = [5 4 3 2 1];
             elem(:,end) = reshape(iRelabel(elem(:,end)), [], 1);
             % Name tissue labels
-            TissueLabels = {'scalp','white','gray','csf','skull'};
+            TissueLabels = {'white','gray','csf','skull','scalp'};
             
         case 'simnibs'
             disp(['FEM> T1 MRI: ' T1File]);
