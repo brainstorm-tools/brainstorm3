@@ -18,7 +18,7 @@ function ImaGIN_Epileptogenicity(S)
 % =============================================================================-
 %
 % Authors: Olivier David
-%          Francois Tadel, 2017
+%          Francois Tadel, 2017-2020
 
 
 %% ===== INPUTS =====
@@ -197,9 +197,9 @@ for i00 = 1:size(latency, 2)
     % ===== PROCESS EACH FILE SEPARATELY =====
     for i0 = 1:size(DD,1)
         if (length(Horizon) == 1)
-            TimeWindow = 0 : TimeResolution : Horizon+1+max(latency(:));
+            TimeWindow = min(latency(:)) : TimeResolution : Horizon+1+max(latency(:));
         elseif (length(Horizon) > 1)
-            TimeWindow = 0 : TimeResolution : Horizon(i0)+1+max(latency(:));
+            TimeWindow = min(latency(:)) : TimeResolution : Horizon(i0)+1+max(latency(:));
         end
         
         % Load seizure

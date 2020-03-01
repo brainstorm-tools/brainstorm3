@@ -2171,9 +2171,9 @@ function [OutputFiles, OutputFiles2, sInputs, sInputs2] = CallProcess(sProcess, 
         %  Simple "value" type call: just the value instead of the cell list
         if ~isempty(defVal) && iscell(defVal) && isnumeric(newVal)
             updateVal{1} = newVal;
-        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange'}) && isempty(defVal) && ~isempty(newVal) && ~iscell(newVal)
+        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static'}) && isempty(defVal) && ~isempty(newVal) && ~iscell(newVal)
             updateVal = {newVal, 's', []};
-        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','combobox'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
+        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
             updateVal{1} = newVal;
         % Generic call: just copy the value
         else

@@ -23,7 +23,7 @@ function varargout = process_epileptogenicity( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2020
 
 eval(macro_method);
 end
@@ -59,10 +59,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Group   = 'input';
     % === FREQUENCY RANGE
     sProcess.options.freqband.Comment = 'Frequency band (default=[60,200]): ';
-    sProcess.options.freqband.Type    = 'freqrange';
-    sProcess.options.freqband.Value   = [];
+    sProcess.options.freqband.Type    = 'freqrange_static';
+    sProcess.options.freqband.Value   = {[60 200], 'Hz', 3};
     % === LATENCY
-    sProcess.options.latency.Comment = 'Latency, one or multiple time points (s): ';
+    sProcess.options.latency.Comment = 'Latency: <FONT COLOR="#808080"><I>(eg. "t1", "[t1,t2,...]", "start:step:stop")</I></FONT>';
     sProcess.options.latency.Type    = 'text';
     sProcess.options.latency.Value   = '0:2:20';
     % === TIME CONSTANT
@@ -112,6 +112,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputsB, 'Invalid latency list: no time points identified.');
         return;
     end
+    if isempty(OPTIONS.FreqBand)
+        bst_report('Error', sProcess, sInputsB, ['Invalid frequency band: ' num2str(OPTIONS.FreqBand)]);
+        return;
+    end
     if (length(sInputsA) > 1) && (~all(strcmpi(sInputsA(1).SubjectFile, {sInputsA.SubjectFile})) || ~all(strcmpi(sInputsA(1).SubjectFile, {sInputsB.SubjectFile})))
         bst_report('Error', sProcess, sInputsB, 'All the input files must be attached to the same subject.');
         return;
@@ -125,10 +129,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     for i = 1:length(sInputsB)
         DataMat = in_bst_data(sInputsB(i).FileName, 'Time');
         if (min(OPTIONS.Latency) < DataMat.Time(1))
-            bst_report('Error', sProcess, sInputsB, sprintf('Latency %0.3fs is outside of an input files (%0.3f-%0.3fs).', min(OPTIONS.Latency), DataMat.Time(1), DataMat.Time(end)));
+            bst_report('Error', sProcess, sInputsB, sprintf('Latency %0.3fs is outside of an input file: [%0.3f,-%0.3fs].', min(OPTIONS.Latency), DataMat.Time(1), DataMat.Time(end)));
             return;
         elseif (max(OPTIONS.Latency) + OPTIONS.HorizonT > DataMat.Time(end))
-            bst_report('Error', sProcess, sInputsB, sprintf('Latency %0.3fs (+ sliding window %0.3fs) is outside of an input files: [%0.3f,%0.3f]s.', max(OPTIONS.Latency), OPTIONS.HorizonT, DataMat.Time(1), DataMat.Time(end)));
+            bst_report('Error', sProcess, sInputsB, sprintf('Latency %0.3fs (+ sliding window %0.3fs) is outside of an input file: [%0.3f,%0.3f]s.', max(OPTIONS.Latency), OPTIONS.HorizonT, DataMat.Time(1), DataMat.Time(end)));
             return;
         end
     end
@@ -348,6 +352,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         tmpMat = load(tmpFile);
         tmpMat.tmap(tmpMat.tmap < 0) = 0;
         tmpMat = bst_history('add', tmpMat, 'epilepto', strHistory);
+        % Update file in the database
         bst_save(tmpFile, tmpMat, 'v6');
     end
     
@@ -359,7 +364,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % File comment = File name
         [tmp, Comment] = bst_fileparts(listFiles(i).name);
         % Import file
-        tmpFile = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's');
+        tmpFile = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's', [fileLatency(1), fileLatency(end)]);
         % Add history field
         tmpFile = bst_history('add', tmpFile, 'epilepto', strHistory);
     end
