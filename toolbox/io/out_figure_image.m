@@ -86,7 +86,7 @@ if (nargin <= 1) && (nargout == 0)
     bst_set('DefaultFormats',  DefaultFormats);
 elseif (nargout == 0)
     [fPath,fBase,fExt] = bst_fileparts(imgFile);
-    if isempty(fExt)
+    if ~isempty(fExt)
         FileFormat = upper(fExt(2:end));
     else
         FileFormat = '';
