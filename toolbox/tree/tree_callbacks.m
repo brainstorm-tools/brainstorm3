@@ -1172,11 +1172,13 @@ switch (lower(action))
 %% ===== POPUP: FEM HEAD MODEL =====
             case 'fem'
                 iSubject = bstNodes(1).getStudyIndex();
-                % Display
-                gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative));
-                % Extract surfaces
-                gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
-                
+                if (length(bstNodes) == 1)
+                    gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative, [], [], [], 'NewFigure'));
+                    AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_mergelayers, filenameFull));
+                    gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
+                    gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)process_generate_fem('SwitchHexaTetra', filenameRelative, 1));
+                end
                 
 %% ===== POPUP: NOISECOV =====
             case {'noisecov', 'ndatacov'}
@@ -2995,13 +2997,18 @@ end
 %% ===== EXTRACT ENVELOPE =====
 function SurfaceEnvelope_Callback(TessFile)
     % Ask user the new number of vertices
-    res = java_dialog('input', {'Number of vertices:', 'Dilate factor: (negative value for erosion)'}, 'Extract envelope', [], {'5000', '1'});
+    res = java_dialog('input', {'Number of vertices: (max 10000)', 'Dilate factor: (negative value for erosion)'}, 'Extract envelope', [], {'5000', '1'});
     if isempty(res) || (length(res) < 2) || isnan(str2double(res{1})) || isnan(str2double(res{2}))
         return
     end
     % Read user input
     newNbVertices = str2double(res{1});
     dilateMask = str2double(res{2});
+    % Validate user input
+    if newNbVertices > 10000
+        java_dialog('error', 'You cannot extract an envelope greater than 10000 vertices.', 'Extract envelope');
+        return
+    end
     % Progress bar
     bst_progress('start', 'Cortex envelope', 'Extracting envelope...');
     % Compute surface based on MRI mask

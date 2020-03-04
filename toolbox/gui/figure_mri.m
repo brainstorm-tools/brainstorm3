@@ -44,7 +44,7 @@ function varargout = figure_mri(varargin)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, 2004
-%          Francois Tadel, 2008-2019
+%          Francois Tadel, 2008-2020
 
 eval(macro_method);
 end
@@ -75,6 +75,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
         'DockControls',  'off', ...
         'Units',         'pixels', ...
         'Color',         [0 0 0], ...
+        'Pointer',       'arrow', ...
         'Tag',           FigureId.Type, ...
         'Renderer',      rendererName, ...
         'BusyAction',    'cancel', ...
@@ -409,19 +410,21 @@ function ResizeCallback(hFig, varargin)
     figPos = get(hFig, 'Position');
     % Get figure Handles
     Handles = bst_figures('GetFigureHandles', hFig);
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Configuration
     if ~Handles.jCheckViewSliders.isSelected()
         sliderH = 0;
         titleH  = 0;
     else
-        sliderH = 20;
-        titleH  = 25;
+        sliderH = 20 .* Scaling;
+        titleH  = 25 .* Scaling;
     end
     % Get colorbar
     hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
     % Reserve space for the colorbar
     if ~isempty(hColorbar)
-        colorbarMargin = 45;
+        colorbarMargin = 45 .* Scaling;
     else
         colorbarMargin = 0;
     end
@@ -448,12 +451,12 @@ function ResizeCallback(hFig, varargin)
     
     % Resize colorbar
     if ~isempty(hColorbar)
-        colorbarWidth = 15;
+        colorbarWidth = 15 .* Scaling;
         posColor = [...
             figPos(3) - colorbarMargin, ...
-            posS(2) + sliderH + 15, ...
+            posS(2) + sliderH + 15 .* Scaling, ...
             colorbarWidth, ...
-            posS(4) - sliderH - titleH - 15];
+            posS(4) - sliderH - titleH - 15 .* Scaling];
         % Reposition the colorbar
         set(hColorbar, 'Units', 'pixels', 'Position', max([1 1 1 1], posColor));
     end
@@ -1061,8 +1064,8 @@ function [hImgMri, hCrossH, hCrossV] = SetupView(hAxes, xySize, imgSize, orientL
     % MRI image
     hImgMri = findobj(hAxes, '-depth', 1, 'Tag', 'ImageMriSlice');
     if isempty(hImgMri) && ~isempty(imgSize)
-        hImgMri = image('XData',        [1, xySize(1)], ...
-                        'YData',        [1, xySize(2)], ...
+        hImgMri = image('XData',        [xySize(1)./imgSize(2), xySize(1)], ...
+                        'YData',        [xySize(2)./imgSize(1), xySize(2)], ...
                         'CData',        zeros(imgSize(1), imgSize(2)), ...
                         'CDataMapping', 'scaled', ...
                         'Parent',       hAxes, ...
@@ -1071,9 +1074,13 @@ function [hImgMri, hCrossH, hCrossV] = SetupView(hAxes, xySize, imgSize, orientL
     
     % Get axes dimensions
     AxesPos = get(hAxes, 'Position');
-    % Get default axis limits
-    XLim = [0 xySize(1)] + 0.5;
-    YLim = [0 xySize(2)] + 0.5;
+    % Get default axis limits (first voxel = .5,.5,.5)
+    XLim = [0 xySize(1)];
+    YLim = [0 xySize(2)];
+    if ~isempty(imgSize)
+    	XLim = XLim + 0.5 * xySize(1)./imgSize(2);
+        XLim = XLim + 0.5 * xySize(2)./imgSize(1);
+    end
     % Adapt display to the limiting axis (for full width display when zooming in)
     Xr = xySize(1) / AxesPos(3);
     Yr = xySize(2) / AxesPos(4);
@@ -1099,12 +1106,14 @@ function [hImgMri, hCrossH, hCrossV] = SetupView(hAxes, xySize, imgSize, orientL
     if ~isempty(orientLabels)
         hLabelOrientL = findobj(hAxes, '-depth', 1, 'Tag', 'LabelOrientL');
         hLabelOrientR = findobj(hAxes, '-depth', 1, 'Tag', 'LabelOrientR');
-        posL = [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
-        posR = [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        % posL = [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        % posR = [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        posL = [0, 0];
+        posR = [xySize(1), 0];
         if isempty(hLabelOrientL) || isempty(hLabelOrientR)
             fontSize = bst_get('FigFont');
-            text(posL(1), posL(2), orientLabels{1}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientL');
-            text(posR(1), posR(2), orientLabels{2}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientR');
+            text(posL(1), posL(2), orientLabels{1}, 'verticalalignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientL');
+            text(posR(1), posR(2), orientLabels{2}, 'verticalalignment', 'bottom', 'HorizontalAlignment', 'left', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientR');
         else
             set(hLabelOrientL, 'Position', posL);
             set(hLabelOrientR, 'Position', posR);
@@ -1340,26 +1349,26 @@ function UpdateCoordinates(sMri, Handles)
     end
     Handles.jLabelValue.setText(strValue);
     % === MRI (millimeters) ===
-    Handles.jTextCoordMriX.setText(sprintf('x: %3.1f', mriXYZ(1) * 1000));
-    Handles.jTextCoordMriY.setText(sprintf('y: %3.1f', mriXYZ(2) * 1000));
-    Handles.jTextCoordMriZ.setText(sprintf('z: %3.1f', mriXYZ(3) * 1000));
+    Handles.jTextCoordMriX.setText(sprintf('x: %3.2f', mriXYZ(1) * 1000));
+    Handles.jTextCoordMriY.setText(sprintf('y: %3.2f', mriXYZ(2) * 1000));
+    Handles.jTextCoordMriZ.setText(sprintf('z: %3.2f', mriXYZ(3) * 1000));
     % === SCS/CTF (millimeters) ===
     if ~isempty(scsXYZ)
-        Handles.jTextCoordScsX.setText(sprintf('x: %3.1f', scsXYZ(1) * 1000));
-        Handles.jTextCoordScsY.setText(sprintf('y: %3.1f', scsXYZ(2) * 1000));
-        Handles.jTextCoordScsZ.setText(sprintf('z: %3.1f', scsXYZ(3) * 1000));
+        Handles.jTextCoordScsX.setText(sprintf('x: %3.2f', scsXYZ(1) * 1000));
+        Handles.jTextCoordScsY.setText(sprintf('y: %3.2f', scsXYZ(2) * 1000));
+        Handles.jTextCoordScsZ.setText(sprintf('z: %3.2f', scsXYZ(3) * 1000));
     end
     % === RAS (millimeters) ===
     if ~isempty(wrlXYZ)
-        Handles.jTextCoordWrlX.setText(sprintf('x: %3.1f', wrlXYZ(1) * 1000));
-        Handles.jTextCoordWrlY.setText(sprintf('y: %3.1f', wrlXYZ(2) * 1000));
-        Handles.jTextCoordWrlZ.setText(sprintf('z: %3.1f', wrlXYZ(3) * 1000));
+        Handles.jTextCoordWrlX.setText(sprintf('x: %3.2f', wrlXYZ(1) * 1000));
+        Handles.jTextCoordWrlY.setText(sprintf('y: %3.2f', wrlXYZ(2) * 1000));
+        Handles.jTextCoordWrlZ.setText(sprintf('z: %3.2f', wrlXYZ(3) * 1000));
     end
     % === MNI coordinates system ===
     if ~isempty(mniXYZ)
-        Handles.jTextCoordMniX.setText(sprintf('x: %3.1f', mniXYZ(1) * 1000));
-        Handles.jTextCoordMniY.setText(sprintf('y: %3.1f', mniXYZ(2) * 1000));
-        Handles.jTextCoordMniZ.setText(sprintf('z: %3.1f', mniXYZ(3) * 1000));
+        Handles.jTextCoordMniX.setText(sprintf('x: %3.2f', mniXYZ(1) * 1000));
+        Handles.jTextCoordMniY.setText(sprintf('y: %3.2f', mniXYZ(2) * 1000));
+        Handles.jTextCoordMniZ.setText(sprintf('z: %3.2f', mniXYZ(3) * 1000));
         isMni = 1;
     else
         isMni = 0;

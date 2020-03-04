@@ -262,6 +262,12 @@ if isStat
     if ~isempty(grid)
         ResultsMat.SPM.SortedT = sort(sMriSrc.Cube(:));
     end
+    % Time vector
+    if isempty(TimeVector) || (length(TimeVector) ~= size(ResultsMat.tmap,2))
+        ResultsMat.Time = 0:(size(map,2)-1);
+    else
+        ResultsMat.Time = TimeVector;
+    end
 % === REGULAR SOURCE FILE ===
 else
     % New results structure
@@ -269,6 +275,12 @@ else
     ResultsMat.ImageGridAmp  = [map, map];
     ResultsMat.ImagingKernel = [];
     FileType = 'results';
+    % Time vector
+    if isempty(TimeVector) || (length(TimeVector) ~= size(ResultsMat.ImageGridAmp,2))
+        ResultsMat.Time = 0:(size(map,2)-1);
+    else
+        ResultsMat.Time = TimeVector;
+    end
 end
 
 % === SAVE NEW FILE ===
@@ -278,11 +290,8 @@ ResultsMat.SurfaceFile   = file_win2unix(file_short(SurfaceFile));
 ResultsMat.HeadModelFile = [];
 ResultsMat.nComponents   = 1;
 ResultsMat.DisplayUnits  = DisplayUnits;
-% Time vector
-if isempty(TimeVector) || (length(TimeVector) ~= size(map,2))
-    ResultsMat.Time = 0:(size(map,2)-1);
-else
-    ResultsMat.Time = TimeVector;
+if isequal(DisplayUnits, 's')
+    ResultsMat.ColormapType = 'time';
 end
 % Surface model
 if isempty(grid)

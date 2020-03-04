@@ -11,7 +11,9 @@ function errorMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractiv
 %    - isInteractive: If 0, no input or user interaction
 %    - sFid         : Structure with the fiducials coordinates
 %    - isExtraMaps  : If 1, create an extra folder "CAT12" to save the thickness maps
-%    - isKeepMri    : Keep existing MRI volumes (when running segmentation from Brainstorm)
+%    - isKeepMri    : 0=Delete all existing anatomy files
+%                     1=Keep existing MRI volumes (when running segmentation from Brainstorm)
+%                     2=Keep existing MRI and surfaces
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -85,7 +87,7 @@ bst_memory('UnloadAll', 'Forced');
 % Get subject definition
 sSubject = bst_get('Subject', iSubject);
 % Check for existing anatomy
-if (~isKeepMri && ~isempty(sSubject.Anatomy)) || ~isempty(sSubject.Surface)
+if (~isempty(sSubject.Anatomy) && (isKeepMri == 0)) || (~isempty(sSubject.Surface) && (isKeepMri < 2))
     % Ask user whether the previous anatomy should be removed
     if isInteractive
         isDel = java_dialog('confirm', ['Warning: There is already an anatomy defined for this subject.' 10 10 ...
@@ -116,6 +118,7 @@ nVertHemi = round(nVertices / 2);
 
 
 %% ===== PARSE CAT12 FOLDER =====
+isProgress = bst_progress('isVisible');
 bst_progress('start', 'Import CAT12 folder', 'Parsing folder...');
 % Find MRI
 MriFile = file_find(CatDir, '*.nii', 1, 0);
@@ -515,8 +518,9 @@ if isInteractive
     figure_3d('SetStandardView', hFig, 'left');
 end
 % Close progress bar
-bst_progress('stop');
-
+if ~isProgress
+    bst_progress('stop');
+end
 
 
 

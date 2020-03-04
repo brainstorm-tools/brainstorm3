@@ -218,7 +218,7 @@ switch (FileFormat)
         ChannelMat = in_channel_ascii(ChannelFile, {'%d','name','X','Y','Z'}, 1, .001);
         ChannelMat.Comment = 'Localite channels';
         FileUnits = 'mm';
-                
+
     case 'NEUROSCAN'  % (*.dat;*.tri;*.txt;*.asc)
         switch (fExt)
             case {'dat', 'txt'}
@@ -245,6 +245,11 @@ switch (FileFormat)
                 ChannelMat = in_channel_emse_elp(ChannelFile);
                 FileUnits = 'mm';
         end
+        
+    case 'SIMNIBS'
+        ChannelMat = in_channel_ascii(ChannelFile, {'%s','X','Y','Z','name'}, 0, .001);
+        ChannelMat.Comment = '10-10 electrodes';
+        FileUnits = 'mm';
         
     case {'INTRANAT', 'INTRANAT_MNI'}
         switch (fExt)
@@ -298,7 +303,7 @@ if isempty(ChannelMat) || ((~isfield(ChannelMat, 'Channel') || isempty(ChannelMa
 end
 % Are the SCS coordinates defined for this file?
 isScsDefined = isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3);
-if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD'})
+if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS'})
     isApplyVox2ras = 1;
 end
 
@@ -388,7 +393,11 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0)
             end
         end
     end
-    isAlignScs = 1;
+    if strcmpi(FileFormat, 'SIMNIBS')
+        isAlignScs = 0;
+    else
+        isAlignScs = 1;
+    end
 elseif isfield(ChannelMat, 'TransfMegLabels') && iscell(ChannelMat.TransfMegLabels) && ismember('Native=>Brainstorm/CTF', ChannelMat.TransfMegLabels)
     % No need to duplicate this transformation if it was previously
     % computed, e.g. in in_channel_ctf. (It would be identity the second

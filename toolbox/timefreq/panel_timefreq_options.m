@@ -1,4 +1,3 @@
-
 function varargout = panel_timefreq_options(varargin)
 % PANEL_TIMEFREQ_OPTIONS: Options for time-frequency computation.
 % 
@@ -23,7 +22,7 @@ function varargout = panel_timefreq_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2020
 
 eval(macro_method);
 end
@@ -627,47 +626,66 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
         % If valid values: show time resolution
         [f, FWHM_t, FWHM_f, t, W] = morlet_design(sOptions.MorletFc, sOptions.MorletFwhmTc);
-        % Convert to FWHM
-        
-        
+
         % Plot the values
-        hFigWavelet = figure(...
-            'MenuBar',     'none', ...
-            'Toolbar',     'none', ...
-            'NumberTitle', 'off', ...
-            'Name',        'Morlet wavelet');
+        isJavacomponent = bst_get('isJavacomponent');
+        if isJavacomponent
+            hFigWavelet = figure(...
+                'MenuBar',     'none', ...
+                'Toolbar',     'none', ...
+                'NumberTitle', 'off', ...
+                'Name',        'Morlet wavelet', ...
+                'Pointer',     'arrow');
+            hAxes1 = axes();
+            hAxes2 = axes();
+            hAxes3 = axes();
+        else
+            bst_progress('start', 'Morlet wavelets', 'Opening figure...');
+            hFigWavelet = uifigure(...
+                'NumberTitle', 'off', ...
+                'Name',        'Morlet wavelet', ...
+                'Pointer',     'arrow', ...
+                'AutoResizeChildren', 'on');
+            hAxes1 = axes(hFigWavelet);
+            hAxes2 = axes(hFigWavelet);
+            hAxes3 = axes(hFigWavelet);
+        end
         fontSize = bst_get('FigFont');
         % Frequency resolution
-        hAxes = subplot(2,2,1);
-        plot(f, FWHM_f);
-        title('Spectral resolution', 'Interpreter', 'none', 'FontSize', fontSize);
-        xlabel('Frequency (Hz)', 'FontSize', fontSize);
-        ylabel('FWHM (Hz)', 'FontSize', fontSize);
-        set(hAxes, 'Position', [.08, .64, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
+        plot(hAxes1, f, FWHM_f);
+        title(hAxes1, 'Spectral resolution', 'Interpreter', 'none', 'FontSize', fontSize);
+        xlabel(hAxes1, 'Frequency (Hz)', 'FontSize', fontSize);
+        ylabel(hAxes1, 'FWHM (Hz)', 'FontSize', fontSize);
+        set(hAxes1, 'Position', [.08, .64, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
         % Time resolution
-        hAxes = subplot(2,2,3);
-        plot(f, FWHM_t);
-        title('Temporal resolution', 'Interpreter', 'none', 'FontSize', fontSize);
-        xlabel('Frequency (Hz)', 'FontSize', fontSize);
-        ylabel('FWHM (sec)', 'FontSize', fontSize);
-        set(hAxes, 'Position', [.08, .22, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
+        plot(hAxes2, f, FWHM_t);
+        title(hAxes2, 'Temporal resolution', 'Interpreter', 'none', 'FontSize', fontSize);
+        xlabel(hAxes2, 'Frequency (Hz)', 'FontSize', fontSize);
+        ylabel(hAxes2, 'FWHM (sec)', 'FontSize', fontSize);
+        set(hAxes2, 'Position', [.08, .22, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
         % Plot morlet wavelet
-        hAxes = subplot(2,2,[2,4]);
-        plot(t,real(W),'linewidth',2)
-        hold on
-        plot(t,imag(W),'r','linewidth',2)
-        title('Complex Morlet wavelet');
-        set(hAxes, 'XLim', [t(1), t(end)], 'YLim', [-1,1]*1.05*max(real(W)), ...
+        plot(hAxes3, t,real(W),'linewidth',2)
+        hold(hAxes3, 'on');
+        plot(hAxes3, t,imag(W),'r','linewidth',2)
+        title(hAxes3, 'Complex Morlet wavelet');
+        set(hAxes3, 'XLim', [t(1), t(end)], 'YLim', [-1,1]*1.05*max(real(W)), ...
                    'Position', [.50, .22, .44, .70], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
         % Text
         strDesc = ['<HTML>The complex Morlet wavelet is a Gaussian weighted sinusoid (blue for real values, ' ...
                    'red for imaginary values). It has point spread function with Gaussian shape both ' ...
                    'in time (temporal resolution) and in frequency (spectral resolution). Resolution is ' ...
                    'given in units of FWHM (full width half maximum) for several frequencies.'];
-        [jLabelDesc, hLabelDesc] = javacomponent(javax.swing.JLabel(strDesc), [0 0 1 1], hFigWavelet);
-        set(hLabelDesc, 'Units', 'Normalized', 'Position', [.01, .0, .99, .13], 'BackgroundColor', get(hFigWavelet, 'Color'));
-        bgColor = get(hFigWavelet, 'Color');
-        jLabelDesc.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
+        if isJavacomponent
+            [jLabelDesc, hLabelDesc] = javacomponent(javax.swing.JLabel(strDesc), [0 0 1 1], hFigWavelet);
+            set(hLabelDesc, 'Units', 'Normalized', 'Position', [.01, .0, .99, .13], 'BackgroundColor', get(hFigWavelet, 'Color'));
+            bgColor = get(hFigWavelet, 'Color');
+            jLabelDesc.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
+        else
+            figPos = get(hFigWavelet, 'Position');
+            hLabelDesc = uihtml(hFigWavelet, 'Position', [5, 5, figPos(3)*.99, figPos(4)*.13], 'HTMLSource', strDesc);
+            drawnow;
+            bst_progress('stop');
+        end
     end
 
 %% ===== CREATE TIME BANDS =====

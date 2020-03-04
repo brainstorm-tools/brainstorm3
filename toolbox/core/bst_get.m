@@ -138,6 +138,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('MatlabVersion')         : Matlab version (version number * 100, eg. 801)
 %    - bst_get('MatlabReleaseName')     : Matlab version (release name, eg. "R2014a")
 %    - bst_get('JavaVersion')           : Java version
+%    - bst_get('isJavacomponent')       : Returns 1 if javacomponent is available (Matlab < 2020a), 0 otherwise
 %    - bst_get('SystemMemory')          : Amount of memory available, in Mb
 %    - bst_get('ByteOrder')             : {'l','b'} - Byte order used to read and save binary files 
 %    - bst_get('TSDisplayMode')         : {'butterfly','column'}
@@ -218,7 +219,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2020
 %          Martin Cousineau, 2017
 
 %% ==== PARSE INPUTS ====
@@ -281,6 +282,10 @@ switch contextName
         else 
             argout1 = str2num(strver(1:iDot(2)-1));
         end
+        
+    case 'isJavacomponent'
+        % After Matlab 2020a, javacomponent() and JavaFrame property have been deprecated
+        argout1 = (bst_get('MatlabVersion') < 908);
         
     case 'SystemMemory'
         maxvar = [];
@@ -2310,6 +2315,9 @@ switch contextName
         for i = 1:length(iStudies)
             % Get study definition
             sStudy = bst_get('Study', iStudies(i));
+            if isempty(sStudy)
+                continue;
+            end
             % Recordings or sources
             switch (DataType)
                 case 'data'
@@ -3407,6 +3415,7 @@ switch contextName
                     {'.csv'},                      'EEG: Localite (*.csv)',                      'LOCALITE'; ...
                     {'.dat','.tri','.txt','.asc'}, 'EEG: Neuroscan (*.dat;*.tri;*.txt;*.asc)',   'NEUROSCAN'; ...
                     {'.pos','.pol','.elp','.txt'}, 'EEG: Polhemus (*.pos;*.pol;*.elp;*.txt)',    'POLHEMUS'; ...
+                    {'.csv'},                      'EEG: SimNIBS (*.csv)',             'SIMNIBS'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ (*.*)',       'ASCII_NXYZ'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ_MNI (*.*)',   'ASCII_NXYZ_MNI'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ_World (*.*)', 'ASCII_NXYZ_WORLD'; ...
@@ -3518,6 +3527,10 @@ switch contextName
             argout1 = 8;
         else
             argout1 = 9;
+        end
+        InterfaceScaling = bst_get('InterfaceScaling');
+        if (InterfaceScaling ~= 100)
+            argout1 = argout1 * InterfaceScaling / 100;
         end
         
     case 'Font'

@@ -39,7 +39,7 @@ function varargout = figure_3d( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -66,6 +66,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'DockControls',  'on', ...
                   'Units',         'pixels', ...
                   'Color',         [0 0 0], ...
+                  'Pointer',       'arrow', ...
                   'Tag',           FigureId.Type, ...
                   'Renderer',      rendererName, ...
                   'CloseRequestFcn',         @(h,ev)bst_figures('DeleteFigure',h,ev), ...
@@ -179,10 +180,12 @@ function ResizeCallback(hFig, ev)
     hAxes = hAxes(1);
     % Get figure position and size in pixels
     figPos = get(hFig, 'Position');
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
-    marginHeight  = 25;
-    marginWidth   = 45;
+    colorbarWidth = 15 .* Scaling;
+    marginHeight  = 25 .* Scaling;
+    marginWidth   = 45 .* Scaling;
     
     % If there is a colorbar 
     if ~isempty(hColorbar)
@@ -191,13 +194,13 @@ function ResizeCallback(hFig, ev)
                        'Position', [figPos(3) - marginWidth, ...
                                     marginHeight, ...
                                     colorbarWidth, ...
-                                    max(1, min(90, figPos(4) - marginHeight - 3))]);
+                                    max(1, min(90 .* Scaling, figPos(4) - marginHeight - 3 .* Scaling))]);
         % Reposition the axes
         marginAxes = 10;
         set(hAxes, 'Units',    'pixels', ...
                    'Position', [marginAxes, ...
                                 marginAxes, ...
-                                figPos(3) - colorbarWidth - marginWidth - 2, ... % figPos(3) - colorbarWidth - marginWidth - marginAxes, ...
+                                max(1, figPos(3) - colorbarWidth - marginWidth - 2 .* Scaling), ... % figPos(3) - colorbarWidth - marginWidth - marginAxes, ...
                                 max(1, figPos(4) - 2*marginAxes)]);
     % No colorbar : data axes can take all the figure space
     else
@@ -216,7 +219,7 @@ function ResizeCallback(hFig, ev)
         hButtonZoomTimePlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus');
         hButtonZoomTimeMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus');
         % Reposition buttons
-        butSize = 22;
+        butSize = 22 .* Scaling;
         if ~isempty(hButtonZoomTimePlus)
             set(hButtonZoomTimePlus,   'Position', [figPos(3) - 3*(butSize+3) + 1, 3, butSize, butSize]);
             set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 2*(butSize+3) + 1, 3, butSize, butSize]);
@@ -3166,7 +3169,7 @@ function UpdateSurfaceAlpha(hFig, iTess)
     FaceVertexAlphaData = ones(length(sSurf.Faces),1) * (1-Surface.SurfAlpha);
     
     % ===== HEMISPHERE SELECTION (CHAR) =====
-    if ischar(Surface.Resect)
+    if ischar(Surface.Resect) && ~strcmpi(Surface.Resect, 'none')
         % Detect hemispheres
         [rH, lH, isConnected] = tess_hemisplit(sSurf);
         % If there is no separation between  left and right: use the numeric split
@@ -3723,12 +3726,20 @@ function ViewAxis(hFig, isVisible)
         isVisible = isempty(findobj(hAxes, 'Tag', 'AxisXYZ'));
     end
     if isVisible
-        line([0 0.15], [0 0], [0 0], 'Color', [1 0 0], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        line([0 0], [0 0.15], [0 0], 'Color', [0 1 0], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        line([0 0], [0 0], [0 0.15], 'Color', [0 0 1], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        text(0.151, 0, 0, 'X', 'Color', [1 0 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        text(0, 0.151, 0, 'Y', 'Color', [0 1 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        text(0, 0, 0.151, 'Z', 'Color', [0 0 1], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        % Get dimensions of current axes
+        XLim = get(hAxes, 'XLim');
+        YLim = get(hAxes, 'XLim');
+        ZLim = get(hAxes, 'XLim');
+        d = max(abs([XLim(:); YLim(:); ZLim(:)]));
+        % Draw axis lines
+        line([0 d], [0 0], [0 0], 'Color', [1 0 0], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        line([0 0], [0 d], [0 0], 'Color', [0 1 0], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        line([0 0], [0 0], [0 d], 'Color', [0 0 1], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        text(d+0.002, 0, 0, 'X', 'Color', [1 0 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        text(0, d+0.002, 0, 'Y', 'Color', [0 1 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        text(0, 0, d+0.002, 'Z', 'Color', [0 0 1], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        % Enforce camera target at (0,0,0)
+        camtarget(hAxes, [0,0,0]);
     else
         hAxisXYZ = findobj(hAxes, 'Tag', 'AxisXYZ');
         if ~isempty(hAxisXYZ)

@@ -68,8 +68,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jToolbar.add(Box.createHorizontalGlue());
         jToolbar.addSeparator(Dimension(10, TB_DIM.getHeight()));
         % Add/Remove button
-        gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SURFACE_ADD, TB_DIM},    'Add a surface',              @(h,ev)ButtonAddSurfaceCallback);
-        gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SURFACE_REMOVE, TB_DIM}, 'Remove surface from figure', @(h,ev)ButtonRemoveSurfaceCallback);
+        jButtonSurfAdd = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SURFACE_ADD, TB_DIM},    'Add a surface',              @(h,ev)ButtonAddSurfaceCallback);
+        jButtonSurfDel = gui_component('ToolbarButton', jToolbar, [], [], {IconLoader.ICON_SURFACE_REMOVE, TB_DIM}, 'Remove surface from figure', @(h,ev)ButtonRemoveSurfaceCallback);
         
     % ==== OPTION PANELS =====
     jPanelOptions = gui_component('Panel');
@@ -200,7 +200,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % => constructor BstPanel(jHandle, panelName, sControls)
     bstPanelNew = BstPanel(panelName, ...
                            jPanelNew, ...
-                           struct('jToolbar',       jToolbar, ...
+                           struct('jToolbar',               jToolbar, ...
+                                  'jButtonSurfAdd',         jButtonSurfAdd, ...
+                                  'jButtonSurfDel',         jButtonSurfDel, ...
                                   'jPanelOptions',          jPanelOptions, ...                    
                                   'jLabelNbVertices',       jLabelNbVertices, ...
                                   'jLabelNbFaces',          jLabelNbFaces, ...
@@ -831,13 +833,14 @@ end
 %  =================================================================================
 %% ===== UPDATE PANEL =====
 function UpdatePanel(varargin)
+    global GlobalData;
     % Get panel controls
     ctrl = bst_get('PanelControls', 'Surface');
     if isempty(ctrl)
         return
     end
     % If no current 3D figure defined
-    hFig = bst_figures('GetCurrentFigure', '3D');
+    [hFig, iFig, iDS] = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
         % Remove surface buttons
         CreateSurfaceList(ctrl.jToolbar, 0);
@@ -859,6 +862,9 @@ function UpdatePanel(varargin)
             % Update surface properties
             UpdateSurfaceProperties();
         end
+        % Disable the add/remove surface buttons for MRI viewer
+        isMriViewer = strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'MriViewer');
+        gui_enable([ctrl.jButtonSurfAdd, ctrl.jButtonSurfDel], ~isMriViewer);
     end
 end
 
@@ -1177,8 +1183,18 @@ function iTess = AddSurface(hFig, surfaceFile)
             return
         end
         TessInfo(iTess).Name = 'Anatomy';
-        % Initial position of the cuts : middle in each direction
-        TessInfo(iTess).CutsPosition = round(size(sMri.Cube) / 2);
+        % Initial position of the cuts:
+        % If there is a vox2ras transformation available: use coordinates (0,0,0)
+        mriOrigin = cs_convert(sMri, 'world', 'voxel', [0 0 0]);
+        % Check that the positions are somewhat in the middle of the MRI
+        if ~isempty(mriOrigin) && (any(mriOrigin < 0.25*size(sMri.Cube)) || any(mriOrigin > 0.75*size(sMri.Cube)))
+            mriOrigin = [];
+        end
+        % Otherwise, use the middle slice in each direction
+        if isempty(mriOrigin)
+            mriOrigin = size(sMri.Cube) ./ 2;
+        end
+        TessInfo(iTess).CutsPosition = round(mriOrigin);
         TessInfo(iTess).SurfSmoothValue = .3;
         % Colormap
         TessInfo(iTess).ColormapType = 'anatomy';
@@ -1571,7 +1587,7 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                 
                 % === OPTICAL FLOW ===
                 if ~isempty(GlobalData.DataSet(iDS).Results(iResult).OpticalFlow)
-                    sSurf = bst_memory('GetSurface', TessInfo(iTess).SurfaceFile);
+                    sSurf = bst_memory('LoadSurface', TessInfo(iTess).SurfaceFile);
                     panel_opticalflow('PlotOpticalFlow', hFig, GlobalData.DataSet(iDS).Results(iResult).OpticalFlow, ...
                                       GlobalData.UserTimeWindow.CurrentTime, sSurf); 
                 end

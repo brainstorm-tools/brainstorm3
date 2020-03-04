@@ -703,7 +703,7 @@ function UpdateDisplayOptions(hFig)
     end
     ctrl.jMenuMontage.setEnabled(~isNoModality);
     % Update montage name
-    if ismember(TsInfo.Modality, {'results', 'timefreq', 'stat', 'none'}) || ~isempty(TsInfo.RowNames)
+    if ismember(TsInfo.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'}) || ~isempty(TsInfo.RowNames)
         ctrl.jMenuMontage.setVisible(0);
     else
         ctrl.jMenuMontage.setVisible(1);
@@ -2575,11 +2575,12 @@ end
 %    [bad_start_1, bad_start_2, ...
 %     bad_stop_1,  bad_stop_2, ...]
 % This array contains the sample indices of all the bad segments in the file
-function [badSeg, badEpochs, badTimes] = GetBadSegments(sFile) %#ok<DEFNU>
+function [badSeg, badEpochs, badTimes, badChan] = GetBadSegments(sFile) %#ok<DEFNU>
     % Initialize empty list
     badSeg = [];
     badEpochs = [];
     badTimes = [];
+    badChan = {};
     % Get all the events
     events = sFile.events;
     if isempty(events)
@@ -2597,6 +2598,8 @@ function [badSeg, badEpochs, badTimes] = GetBadSegments(sFile) %#ok<DEFNU>
                 badTimes = [badTimes, repmat(events(iEvt).times, 2, 1)];
             end
             badEpochs = [badEpochs, events(iEvt).epochs];
+            % Get channel events
+            badChan = [badChan, events(iEvt).channels];
         end
     end
     badSeg = round(badTimes .* sFile.prop.sfreq);

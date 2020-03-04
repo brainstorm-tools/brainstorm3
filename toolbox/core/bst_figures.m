@@ -423,7 +423,11 @@ function UpdateFigureName(hFig)
             figureName = [figureNameModality strMontage ': ' figureName];
         case 'ResultsTimeSeries'
             if ~isempty(figureNameModality)
-                figureName = [figureNameModality(1:end-2) ': ' figureName];
+                if ismember(figureNameModality, {'results/', 'sloreta/'})
+                    figureName = ['Scout: ' figureName];
+                else
+                    figureName = [figureNameModality(1:end-2) ': ' figureName];
+                end
             end
             % Matrix file: display the file name
             TsInfo = getappdata(hFig, 'TsInfo');
@@ -1921,7 +1925,9 @@ function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
                 case 'Pac'
                     figure_pac('UpdateFigurePlot', Figure.hFigure);
                 case 'Connect'
-                    warning('todo: reload figure');
+                    bst_progress('start', 'Connectivity graph', 'Reloading connectivity graph...');
+                    figure_connect('UpdateFigurePlot', Figure.hFigure);
+                    bst_progress('stop');
                 case 'Image'
                     % ReloadCall only
                 case 'Video'

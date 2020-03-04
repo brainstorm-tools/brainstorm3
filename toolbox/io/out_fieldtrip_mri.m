@@ -42,13 +42,15 @@ ftMri.(FieldName) = bstMri.Cube(:, end:-1:1, end:-1:1);
 ftMri.unit        = 'mm';
 ftMri.coordsys    = 'ctf';
 
-% Rough estimation of the original fieldtrip transformation (voxel=>head)
-ftMri.transform = [bstMri.SCS.R, bstMri.SCS.T; 0 0 0 1] * ...                        % Brainstorm transformation MRI(mm) => SCS(mm)
-                  [diag([1 -1 -1]), [0; ftMri.dim(2); ftMri.dim(3)]; 0 0 0 1] * ...  % Transformation orientation convention
-                  diag([bstMri.Voxsize, 1]);                                         % Scaling MRI(voxel)=>MRI(mm)
-
-
-
-
-
-
+% If a vox2ras transformation exists: use it
+if isfield(bstMri, 'InitTransf') && ~isempty(bstMri.InitTransf) && any(ismember(bstMri.InitTransf(:,1), 'vox2ras'))
+    iTransf = find(strcmpi(bstMri.InitTransf(:,1), 'vox2ras'));
+    vox2ras = bstMri.InitTransf{iTransf(1),2};
+    % Convert to 0-based (nifti header) to 1-based (what FieldTrip uses)
+    ftMri.transform = inv(inv(vox2ras) + [zeros(4,3), [1;1;1;0]]);
+% Otherwise: Rough estimation of the original fieldtrip transformation (voxel=>head)
+elseif ~isempty(bstMri.SCS.R) && ~isempty(bstMri.SCS.T)
+    ftMri.transform = [bstMri.SCS.R, bstMri.SCS.T; 0 0 0 1] * ...                        % Brainstorm transformation MRI(mm) => SCS(mm)
+                      [diag([1 -1 -1]), [0; ftMri.dim(2); ftMri.dim(3)]; 0 0 0 1] * ...  % Transformation orientation convention
+                      diag([bstMri.Voxsize, 1]);                                         % Scaling MRI(voxel)=>MRI(mm)
+end

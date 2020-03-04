@@ -130,6 +130,24 @@ setappdata(hFig, 'SubjectFile',  SubjectFile);
 %% ===== DISPLAY FEM MESH =====
 % Load the input file
 FemMat = load(file_fullpath(SurfaceFile));
+% Check the mesh format here : tetra ok, hexa ==> convert to tetra ==> need some functions on bst-duneuro/matlab/external/gibbon
+if size(FemMat.Elements,2) == 8
+    % Install bst_duneuro if needed, for function hex2tet
+    if ~exist('bst_duneuro', 'file')
+        errMsg = process_generate_fem('InstallDuneuro', 1);
+        if ~isempty(errMsg) || ~exist('bst_duneuro', 'file')
+            bst_progress('stop');
+            return;
+        end
+    end
+    % convert the mesh to tetra for diplay purpose
+    [tetraElem,tetraNode,tetraLabel] = hex2tet(double(FemMat.Elements), FemMat.Vertices, double(FemMat.Tissue), 3);
+    % updates FemMat for display purpose
+    FemMat.Vertices = tetraNode;
+    FemMat.Elements = tetraElem;
+    FemMat.Tissue = tetraLabel;
+end
+
 if ~isfield(FemMat, 'Vertices') || ~isfield(FemMat, 'Elements') || ~isfield(FemMat, 'Tissue') || ~isfield(FemMat, 'TissueLabels')|| ~isfield(FemMat, 'Comment')
     error('Not a valid FEM mesh.');
 end
@@ -143,30 +161,25 @@ if (size(SurfColor,2) ~= Ntissue)
     ColorOrder = panel_scout('GetScoutsColorTable');
     SurfColor = ColorOrder(1:Ntissue, :);
     labels = lower(FemMat.TissueLabels);
-    % Default skin color
-    iSkin = find(ismember(labels, {'skin','scalp','head'}));
-    if ~isempty(iSkin)
-        SurfColor(iSkin,:) = [255 213 119]/255;
-    end
-    % Default bone color
-    iBone = find(ismember(labels, {'bone','skull','outer','outerskull'}));
-    if ~isempty(iBone)
-        SurfColor(iBone,:) = [140  85  85]/255;
-    end
-    % Default CSF color
-    iCSF = find(ismember(labels, 'csf'));
-    if ~isempty(iCSF)
-        SurfColor(iCSF,:) = [202 50 150]/255;
-    end
-    % Default gray matter color
-    iGrey = find(ismember(labels, {'brain','grey','gray','greymatter','graymatter','gm','cortex','inner','innerskull'}));
-    if ~isempty(iGrey)
-        SurfColor(iGrey,:) = [150 150 150]/255;
-    end
-    % Default white matter color
-    iWhite = find(ismember(labels, {'white','whitematter','wm','cortex'}));
-    if ~isempty(iWhite)
-        SurfColor(iWhite,:) = [250 250 250]/255;
+    % Get default color for each layer
+    for iTissue = 1:Ntissue
+        switch process_generate_fem('GetFemLabel', labels{iTissue})
+            case 'white'
+                % SurfColor(iTissue,:) = [250 250 250]/255;
+                SurfColor(iTissue,:) = [220, 220, 220] ./ 255;
+            case 'gray'
+                % SurfColor(iTissue,:) = [150 150 150]/255;
+                SurfColor(iTissue,:) = [130, 130, 130] ./ 255;
+            case 'csf'
+                % SurfColor(iTissue,:) = [202 50 150]/255;
+                SurfColor(iTissue,:) = [44, 152, 254]/255;
+            case 'skull'
+                % SurfColor(iTissue,:) = [140  85  85]/255;
+                SurfColor(iTissue,:) = [255 255 255] ./ 255;
+            case 'scalp'
+                % SurfColor(iTissue,:) = [255 213 119]/255;
+                SurfColor(iTissue,:) = [255, 205, 184] ./ 255;
+        end
     end
 end
 if (size(SurfAlpha,2) ~= Ntissue)

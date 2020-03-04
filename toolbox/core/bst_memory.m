@@ -2235,7 +2235,7 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         % => In some cases, one time point can correspond to two time bands
         if (length(iTime) == 1) && (length(iTimeBands) > 1) 
             iTime = iTimeBands(1);
-        else
+        elseif ~isempty(iTimeBands)
             iTime = iTimeBands;
         end
     end

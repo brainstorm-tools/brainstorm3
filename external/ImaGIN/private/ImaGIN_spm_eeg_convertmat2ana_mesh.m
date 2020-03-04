@@ -207,20 +207,26 @@ for k = 1:size(Fname, 1)
 
         % Output file name
         J = round(1000*time(j));
-        if (maxTime < 1e1)
-            outFile = sprintf('sample_%d.gii', J);
-        elseif (maxTime < 1e2)
-            outFile = sprintf('sample_%0.2d.gii', J);
-        elseif (maxTime < 1e3)
-            outFile = sprintf('sample_%0.3d.gii', J);
-        elseif (maxTime < 1e4)
-            outFile = sprintf('sample_%0.4d.gii', J);
-        elseif (maxTime < 1e5)
-            outFile = sprintf('sample_%0.5d.gii', J);
-        elseif (maxTime < 1e6)
-            outFile = sprintf('sample_%0.6d.gii', J);
+        if (J >= 0)
+            strSign = 'p';
         else
-            outFile = sprintf('sample_%d.gii', J);            
+            strSign = 'n';
+            J = abs(J);
+        end
+        if (maxTime < 1e1)
+            outFile = sprintf('sample_%s%d.gii', strSign, J);
+        elseif (maxTime < 1e2)
+            outFile = sprintf('sample_%s%0.2d.gii', strSign, J);
+        elseif (maxTime < 1e3)
+            outFile = sprintf('sample_%s%0.3d.gii', strSign, J);
+        elseif (maxTime < 1e4)
+            outFile = sprintf('sample_%s%0.4d.gii', strSign, J);
+        elseif (maxTime < 1e5)
+            outFile = sprintf('sample_%s%0.5d.gii', strSign, J);
+        elseif (maxTime < 1e6)
+            outFile = sprintf('sample_%s%0.6d.gii', strSign, J);
+        else
+            outFile = sprintf('sample_%s%d.gii', strSign, J);            
         end
         % Save .gii file
         out_spm_gii(MeshFile, outFile, EMap);

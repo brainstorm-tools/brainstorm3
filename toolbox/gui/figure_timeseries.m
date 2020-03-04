@@ -65,6 +65,7 @@ function hFig = CreateFigure(FigureId)
                   'Tag',           FigureId.Type, ...
                   'Renderer',      rendererName, ...
                   'Color',         [.8 .8 .8], ...
+                  'Pointer',       'arrow', ...
                   'CloseRequestFcn',          @(h,ev)bst_figures('DeleteFigure',h,ev), ...
                   'KeyPressFcn',              @(h,ev)bst_call(@FigureKeyPressedCallback, h, ev), ...
                   'WindowButtonDownFcn',      @FigureMouseDownCallback, ...
@@ -1153,10 +1154,12 @@ function ResizeCallback(hFig, ev)
     nAxes = length(hAxes);
     % Is time bar display or hidden (for RAW viewer)
     TsInfo = getappdata(hFig, 'TsInfo');
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     
     % ===== LEFT MARGIN =====
     % Default left margin
-    marginLeft = 58;
+    marginLeft = 58 * Scaling;
     % Get current montage
     if ~isempty(TsInfo) && ~isempty(TsInfo.MontageName)
         % Get selected montage
@@ -1165,16 +1168,16 @@ function ResizeCallback(hFig, ev)
         if ~isempty(sMontage) && ~isempty(sMontage.DispNames) && strcmpi(sMontage.Type, 'text') && (length(sMontage.DispNames) < length(sMontage.ChanNames))
             % Get the longest display name for a channel
             strMax = max(cellfun(@length, sMontage.DispNames));
-            marginLeft = 20 + 6*strMax;
+            marginLeft = (20 + 6*strMax) * Scaling;
         end
     end
     
     % ===== REPOSITION AXES =====
     % With or without time bars
     if isempty(TsInfo) || TsInfo.ShowEvents
-        axesPos = [marginLeft, 40,  figPos(3)-marginLeft-27,  figPos(4)-60];
+        axesPos = [marginLeft, 40*Scaling,  figPos(3)-marginLeft-5-22*Scaling,  figPos(4)-60*Scaling];
     else
-        axesPos = [marginLeft,  1,  figPos(3)-marginLeft-27,  figPos(4)];
+        axesPos = [marginLeft,  1,  figPos(3)-marginLeft-5-22*Scaling,  figPos(4)];
     end
     % Reposition axes
     if (nAxes == 1)
@@ -1186,7 +1189,7 @@ function ResizeCallback(hFig, ev)
         % Get number of rows and columns
         nRows = floor(sqrt(nAxes));
         nCols = ceil(nAxes / nRows);
-        margins = [marginLeft, 40, 27, 20];
+        margins = [marginLeft, 40*Scaling, 5+22*Scaling, 20*Scaling];
         axesSize = [(figPos(3)-margins(3)) / nCols, ...
                     (figPos(4)-margins(4)) / nRows];
         % Resize all the axes independently
@@ -1208,12 +1211,12 @@ function ResizeCallback(hFig, ev)
         hButtonBackward  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonBackward');
         hButtonBackward2 = findobj(hFig, '-depth', 1, 'Tag', 'ButtonBackward2');
         % Update time bar position
-        barPos = [axesPos(1), 5, axesPos(3) - 40, 12];
+        barPos = [5 + 30*Scaling, 3, axesPos(1) + axesPos(3) - 70*Scaling - 5, 16*Scaling];
         set(hRawTimeBar, 'Units', 'pixels', 'Position', barPos);
         % Update buttons position
-        set(hButtonForward,  'Position',  [barPos(1) + barPos(3) + 33, 3, 30, 16]);
-        set(hButtonBackward, 'Position',  [barPos(1) + barPos(3) + 3, 3, 30, 16]);
-        set(hButtonBackward2, 'Position', [barPos(1) - 30, 3, 30, 16]);
+        set(hButtonForward,  'Position',  [barPos(1) + barPos(3) + 3 + 30*Scaling, 3, 30*Scaling, 16*Scaling]);
+        set(hButtonBackward, 'Position',  [barPos(1) + barPos(3) + 3, 3, 30*Scaling, 16*Scaling]);
+        set(hButtonBackward2, 'Position', [barPos(1) - 30*Scaling, 3, 30*Scaling, 16*Scaling]);
     end
     
     % ===== REPOSITION EVENTS BAR =====
@@ -1229,7 +1232,7 @@ function ResizeCallback(hFig, ev)
     hTextCursor = findobj(hFig, '-depth', 1, 'Tag', 'TextCursor');
     % Update events bar position
     if ~isempty(hTextCursor)
-        eventPos = [3, axesPos(2) + axesPos(4) + 1, axesPos(1) - 2, figPos(4) - axesPos(2) - axesPos(4) - 5];
+        eventPos = [3*Scaling, axesPos(2) + axesPos(4) + 1, axesPos(1) - 2, figPos(4) - axesPos(2) - axesPos(4) - 5*Scaling];
         eventPos(eventPos < 1) = 1;
         set(hTextCursor, 'Units', 'pixels', 'Position', eventPos);
     end
@@ -1238,7 +1241,7 @@ function ResizeCallback(hFig, ev)
     hTextTimeSel = findobj(hFig, '-depth', 1, 'Tag', 'TextTimeSel');
     if ~isempty(hTextTimeSel)
         % Update time bar position
-        barPos = [axesPos(1), 3, axesPos(3) - 40, 16];
+        barPos = [axesPos(1), 3*Scaling, axesPos(3) - 40*Scaling, 16*Scaling];
         barPos(barPos < 1) = 1;
         set(hTextTimeSel, 'Units', 'pixels', 'Position', barPos);
     end
@@ -1255,7 +1258,7 @@ function ResizeCallback(hFig, ev)
     hButtonZoomPlus      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomPlus');
     hButtonZoomUp        = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomUp');
     % Update positions
-    butSize = 22;
+    butSize = 22 * Scaling;
     if ~isempty(hButtonZoomTimePlus)
         set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 3*butSize, 3, butSize, butSize]);
         set(hButtonZoomTimePlus,   'Position', [figPos(3) - 2*butSize, 3, butSize, butSize]);
@@ -1319,7 +1322,7 @@ function FigureKeyPressedCallback(hFig, ev)
         iSelectedRows = [];
     end
     % Check if it is a full data file or not
-    isFullDataFile = ~isempty(Modality) && (Modality(1) ~= '$') && ~ismember(Modality, {'results', 'timefreq', 'stat', 'none'});
+    isFullDataFile = ~isempty(Modality) && (Modality(1) ~= '$') && ~ismember(Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
     
     % If Shift key is pressed: montage selection 
@@ -2179,7 +2182,7 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
     % ==== DISPLAY OTHER FIGURES ====
     % Only for MEG and EEG time series
     Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;   
-    isSource = ismember(Modality, {'results', 'timefreq', 'stat', 'none'});
+    isSource = ismember(Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     if ~isempty(Modality) && ismember(Modality, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'}) && ~isSource
         % === View TOPOGRAPHY ===
         jItem = gui_component('MenuItem', jPopup, [], 'View topography', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_figures('ViewTopography', hFig, 1));
@@ -2394,10 +2397,16 @@ function DisplayConfigMenu(hFig, jParent)
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
-    isSource = ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'results', 'timefreq', 'stat', 'none'});
+    isSource = ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     % Get all other figures
     hFigAll = bst_figures('GetFiguresByType', FigureId.Type);
     
+    % Get calling object
+    if isa(jParent, 'matlab.ui.eventdata.ActionData')
+        jParent = jParent.Source;
+    elseif isa(jParent, 'java.awt.event.ActionEvent')
+        jParent = jParent.getSource();
+    end
     % Create popup
     if isa(jParent, 'javax.swing.JMenu')
         jPopup = jParent;
@@ -2405,6 +2414,11 @@ function DisplayConfigMenu(hFig, jParent)
     else
         jPopup = java_create('javax.swing.JPopupMenu');
         isPopup = 1;
+    end
+    % Get current mouse position if needed to display popup menu later (new Matlab versions)
+    if isPopup && ~isjava(jParent)
+        javaMouse = java.awt.MouseInfo.getPointerInfo().getLocation();
+        matlabMouse = get(0,'PointerLocation');
     end
     
     % === DISPLAY MODE ===
@@ -2585,8 +2599,23 @@ function DisplayConfigMenu(hFig, jParent)
     
     % Show popup
     if isPopup
-        gui_brainstorm('ShowPopup', jPopup, jParent);
-        jPopup.show(jParent, -jPopup.getWidth(), 0);
+        if isjava(jParent)
+            gui_brainstorm('ShowPopup', jPopup, jParent);
+            jPopup.show(jParent, -jPopup.getWidth(), 0);
+        else
+            % Show initial popup
+            gui_popup(jPopup);
+            % Get offset from the corner of the button that was clicked
+            matlabFig = get(hFig, 'Position');
+            matlabButton = get(jParent, 'Position');
+            matlabOffset = [matlabMouse(1) - matlabFig(1) - matlabButton(1) + 1, ...
+                            matlabMouse(2) - matlabFig(2) - matlabButton(2) - matlabButton(4) + 1];
+            % Move popup accordingly
+            ScreenDef = bst_get('ScreenDef');
+            jPopup.setLocation(java.awt.Point(...
+                javaMouse.getX() - matlabOffset(1).*ScreenDef.zoomFactor - jPopup.getWidth(), ...
+                javaMouse.getY() + matlabOffset(2).*ScreenDef.zoomFactor));
+        end
     end
 end
 
@@ -3110,7 +3139,7 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     % ===== PARSE LINE LABELS =====
     % Get colors from montage (not for scouts, only for recordings)
     LinesFilter = [];
-    if ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'timefreq') && (~isempty(TsInfo.Modality) && (TsInfo.Modality(1) ~= '$')) && ~isempty(LinesLabels)
+    if ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'sloreta') && ~strcmpi(TsInfo.Modality, 'timefreq') && (~isempty(TsInfo.Modality) && (TsInfo.Modality(1) ~= '$')) && ~isempty(LinesLabels)
         % Parse montage labels
         [LinesLabels, MontageColors, LinesFilter] = panel_montage('ParseMontageLabels', LinesLabels, DefaultColor);
         % Replace plot colors if available
@@ -3475,7 +3504,7 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % If there are more than 5 channel
     if bst_get('DisplayGFP') && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat') ...
                              && (GlobalData.DataSet(iDS).Measures.NumberOfSamples > 2) && (size(F,1) > 5) ...
-                             && ~isempty(TsInfo.Modality) && ~strcmpi(TsInfo.Modality, 'sources') && ~strcmpi(TsInfo.Modality, 'results') && (TsInfo.Modality(1) ~= '$')
+                             && ~isempty(TsInfo.Modality) && ~strcmpi(TsInfo.Modality, 'sources') && ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'sloreta') && (TsInfo.Modality(1) ~= '$')
         GFP = sqrt(sum((F * fFactor).^2, 1));
         PlotGFP(hAxes, TimeVector, GFP, TsInfo.FlipYAxis, isFastUpdate);
     end
@@ -3490,7 +3519,7 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
     nRows = nLines;
     
     % ===== GROUP CHANNELS BY NAME (NIRS OVERLAY) =====
-    if ~strcmpi(TsInfo.Modality, 'results')
+    if ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'sloreta')
         % Find all the separators
         iSep = find(cellfun(@(c)isempty(strtrim(c)), LinesLabels));
         % Replace separator names with unique names, so that they are not overlayed in the same line
@@ -3798,76 +3827,36 @@ function CreateScaleButtons(iDS, iFig)
     hFig  = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
     TsInfo = getappdata(hFig, 'TsInfo');
-    % Get figure background color
-    bgColor = get(hFig, 'Color');
-    % Get fixed font
-    jFontDefault = bst_get('Font');
-    jFont = java.awt.Font(jFontDefault.getFamily(), java.awt.Font.PLAIN, 11);
-    % Create scale buttons
-    jButton = javaArray('java.awt.Component', 10);
-    jButton(1) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_LEFT);   % javax.swing.JButton('<');
-    jButton(2) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_RIGHT);  % javax.swing.JButton('>');
-    jButton(3) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_MINUS);   % javax.swing.JButton('v');
-    jButton(4) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_PLUS);     % javax.swing.JButton('^');
-    jButton(5) = javax.swing.JToggleButton('AS');
-    jButton(6) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_MENU_LEFT_TS);
-    jButton(7) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_UP);
-    jButton(8) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_PLUS);
-    jButton(9) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_ZOOM_MINUS);
-    jButton(10) = gui_component('toolbarbutton', [], [], [], IconLoader.ICON_SCROLL_DOWN);
-    % Configure buttons
-    for i = 1:length(jButton)
-        jButton(i).setBackground(java.awt.Color(bgColor(1), bgColor(2), bgColor(3)));
-        jButton(i).setFocusPainted(0);
-        jButton(i).setFocusable(0);
-        jButton(i).setMargin(java.awt.Insets(0,0,0,0));
-        jButton(i).setFont(jFont);
-    end
-    % Create Matlab objects
-    [j1, h1] = javacomponent(jButton(1), [0, 0, .01, .01], hFig);
-    [j2, h2] = javacomponent(jButton(2), [0, 0, .01, .01], hFig);
-    [j3, h3] = javacomponent(jButton(3), [0, 0, .01, .01], hFig);
-    [j4, h4] = javacomponent(jButton(4), [0, 0, .01, .01], hFig);
-    [j5, h5] = javacomponent(jButton(5), [0, 0, .01, .01], hFig);
-    [j6, h6] = javacomponent(jButton(6), [0, 0, .01, .01], hFig);
-    [j7, h7] = javacomponent(jButton(7), [0, 0, .01, .01], hFig);
-    [j8, h8] = javacomponent(jButton(8), [0, 0, .01, .01], hFig);
-    [j9, h9] = javacomponent(jButton(9), [0, 0, .01, .01], hFig);
-    [j10, h10] = javacomponent(jButton(10), [0, 0, .01, .01], hFig);
-    
-    % Configure Gain buttons
-    set(h1,  'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
-    set(h2,  'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
-    set(h3,  'Tag', 'ButtonGainMinus', 'Units', 'pixels');
-    set(h4,  'Tag', 'ButtonGainPlus',  'Units', 'pixels');
-    set(h5,  'Tag', 'ButtonAutoScale', 'Units', 'pixels');
-    set(h6,  'Tag', 'ButtonMenu', 'Units', 'pixels');
-    set(h7, 'Tag', 'ButtonZoomUp',        'Units', 'pixels');
-    set(h8, 'Tag', 'ButtonZoomPlus',      'Units', 'pixels');
-    set(h9, 'Tag', 'ButtonZoomMinus',     'Units', 'pixels');
-    set(h10, 'Tag', 'ButtonZoomDown',      'Units', 'pixels');
-    j1.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
-    j2.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>');
-    j3.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B></TD></TR></TABLE>');
-    j4.setToolTipText('<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B></TD></TR></TABLE>');
-    j5.setToolTipText('Auto-scale amplitude when changing page');
-    j6.setToolTipText('Display configuration');
-    j7.setToolTipText('<HTML><TABLE><TR><TD>Scroll up</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse up]<BR> &nbsp; [Middle click + Mouse up]</B></TD></TR></TABLE>');
-    j8.setToolTipText('<HTML><TABLE><TR><TD>Vertical zoom in</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>');
-    j9.setToolTipText('<HTML><TABLE><TR><TD>Vertical zoom out</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>');
-    j10.setToolTipText('<HTML><TABLE><TR><TD>Scroll down</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B></TD></TR></TABLE>');
-    java_setcb(j1, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', .9091));
-    java_setcb(j2, 'ActionPerformedCallback', @(h,ev)FigureZoomLinked(hFig, 'horizontal', 1.1));
-    java_setcb(j3, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, .9091));
-    java_setcb(j4, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1));
-    java_setcb(j5, 'ActionPerformedCallback', @(h,ev)SetAutoScale(hFig, ev.getSource().isSelected()));
-    java_setcb(j6, 'ActionPerformedCallback', @(h,ev)DisplayConfigMenu(hFig, j6));
-    java_setcb(j7, 'ActionPerformedCallback', @(h,ev)FigurePan(hFig, [0, -.9]));
-    java_setcb(j8, 'ActionPerformedCallback', @(h,ev)FigureZoom(hFig, 'vertical', 1.3, 0));
-    java_setcb(j9, 'ActionPerformedCallback', @(h,ev)FigureZoom(hFig, 'vertical', .7692, 0));
-    java_setcb(j10, 'ActionPerformedCallback', @(h,ev)FigurePan(hFig, [0, .9]));
-    % Select buttons
-    j5.setSelected(TsInfo.AutoScaleY);
+    % Create buttons
+    h1  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_LEFT, ...
+        '<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>', ...
+        @(h,ev)FigureZoomLinked(hFig, 'horizontal', .9091), 'ButtonZoomTimeMinus');
+    h2  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_RIGHT, ...
+        '<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>', ...
+        @(h,ev)FigureZoomLinked(hFig, 'horizontal', 1.1), 'ButtonZoomTimePlus');
+    h3  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_MINUS, ...
+        '<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B></TD></TR></TABLE>', ...
+        @(h,ev)UpdateTimeSeriesFactor(hFig, .9091), 'ButtonGainMinus');
+    h4  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_PLUS, ...
+        '<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B></TD></TR></TABLE>', ...
+        @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1), 'ButtonGainPlus');
+    h5  = bst_javacomponent(hFig, 'toggle', [], 'AS', [], ...
+        'Auto-scale amplitude when changing page', ...
+        @(h,ev)SetAutoScale(hFig, ev), 'ButtonAutoScale', TsInfo.AutoScaleY);
+    h6  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_MENU_LEFT_TS, ...
+        'Display configuration', @(h,ev)DisplayConfigMenu(hFig, ev), 'ButtonMenu');
+    h7  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_UP, ...
+        '<HTML><TABLE><TR><TD>Scroll up</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse up]<BR> &nbsp; [Middle click + Mouse up]</B></TD></TR></TABLE>', ...
+        @(h,ev)FigurePan(hFig, [0, -.9]), 'ButtonZoomUp');
+    h8  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_ZOOM_PLUS, ...
+        '<HTML><TABLE><TR><TD>Vertical zoom in</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>', ...
+        @(h,ev)FigureZoom(hFig, 'vertical', 1.3, 0), 'ButtonZoomPlus');
+    h9  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_ZOOM_MINUS, ...
+        '<HTML><TABLE><TR><TD>Vertical zoom out</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>', ...
+        @(h,ev)FigureZoom(hFig, 'vertical', .7692, 0), 'ButtonZoomMinus');
+    h10 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_DOWN, ...
+        '<HTML><TABLE><TR><TD>Scroll down</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B></TD></TR></TABLE>', ...
+        @(h,ev)FigurePan(hFig, [0, .9]), 'ButtonZoomDown');
     % Visible / not visible
     if isRaw
         set([h1 h2], 'Visible', 'off');
@@ -4137,11 +4126,21 @@ end
 
 %% ===== SET AUTO SCALE =====
 function SetAutoScale(hFig, isAutoScale)
+    % If passed event structure (callback function): get calling object status
+    if isa(isAutoScale, 'matlab.ui.eventdata.ActionData')
+        isAutoScale = get(isAutoScale.Source, 'Value');
+    elseif isa(isAutoScale, 'java.awt.event.ActionEvent')
+        isAutoScale = isAutoScale.getSource().isSelected();
+    end
     % Update status of figure button 
     hButtonAutoScale = findobj(hFig, 'Tag', 'ButtonAutoScale');
     if ~isempty(hButtonAutoScale)
-        jButton = get(hButtonAutoScale, 'JavaPeer');
-        jButton.setSelected(isAutoScale);
+        if isa(hButtonAutoScale, 'matlab.ui.control.UIControl')
+            set(hButtonAutoScale, 'Value', isAutoScale);
+        else
+            jButton = get(hButtonAutoScale, 'JavaPeer');
+            jButton.setSelected(isAutoScale);
+        end
     end
     % Save preference
     bst_set('AutoScaleY', isAutoScale);
@@ -4252,41 +4251,7 @@ function PlotRawTimeBar(iDS, iFig)
              'Box',        'off');
         % Check if buttons already exist
         if isempty(findobj(hFig, 'Tag', 'ButtonForward'))
-            % Create all buttons
-            jButton = javaArray('java.awt.Component', 3);
-            jButton(1) = javax.swing.JButton('>>>');
-            jButton(2) = javax.swing.JButton('<<<');
-            jButton(3) = javax.swing.JButton('<<<');
-            % Get fixed font
-            jFontDefault = bst_get('Font');
-            jFont = java.awt.Font(jFontDefault.getFamily(), java.awt.Font.PLAIN, 11);
-            % Configure buttons
-            for i = 1:length(jButton)
-                jButton(i).setBackground(java.awt.Color(bgColor(1), bgColor(2), bgColor(3)));
-                jButton(i).setFocusPainted(0);
-                jButton(i).setFocusable(0);
-                jButton(i).setMargin(java.awt.Insets(0,0,0,0));
-                jButton(i).setFont(jFont);
-            end
-            [j1, h1] = javacomponent(jButton(1), [0, 0, .01, .01], hFig);
-            [j2, h2] = javacomponent(jButton(2), [0, 0, .01, .01], hFig);
-            [j3, h3] = javacomponent(jButton(3), [0, 0, .01, .01], hFig);
-            % Configure Forward/Backward buttons
-            set(h1, 'Tag', 'ButtonForward',   'Units', 'pixels');
-            set(h2, 'Tag', 'ButtonBackward',  'Units', 'pixels');
-            set(h3, 'Tag', 'ButtonBackward2', 'Units', 'pixels');
-            % Different shortcuts on MacOS
-            if strncmp(computer,'MAC',3)
-                j1.setToolTipText('<HTML><TABLE><TR><TD>Next page</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [Fn+F4]</B> : Half page</TD></TR></TABLE>');
-                j2.setToolTipText('<HTML><TABLE><TR><TD>Previous page</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [SHIFT+Fn+F4]</B> : Half page</TD></TR></TABLE>');
-                j3.setToolTipText('<HTML><TABLE><TR><TD>Previous page</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [SHIFT+Fn+F4]</B> : Half page</TD></TR></TABLE>');
-            else
-                j1.setToolTipText('<HTML><TABLE><TR><TD>Next page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [F4]</B> : Half page<BR><B> - [F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE UP]</B>: +10 pages</TD></TR></TABLE>');
-                j2.setToolTipText('<HTML><TABLE><TR><TD>Previous page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [SHIFT+F4]</B> : Half page<BR><B> - [SHIFT+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE DOWN]</B>: -10 pages</TD></TR></TABLE>');
-                j3.setToolTipText('<HTML><TABLE><TR><TD>Previous page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [SHIFT+F4]</B> : Half page<BR><B> - [SHIFT+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE DOWN]</B>: -10 pages</TD></TR></TABLE>'); 
-            end
-            % Callbacks
-            % If full epoch is shown, and there are epochs => Next epoch
+            % Callbacks: If full epoch is shown, and there are epochs => Next epoch
             if (length(GlobalData.FullTimeWindow.Epochs) > 1) && isequal(GlobalData.UserTimeWindow.Time, FullTime)
                 keyNext = 'epoch+';
                 keyPrev = 'epoch-';
@@ -4297,9 +4262,21 @@ function PlotRawTimeBar(iDS, iFig)
                 keyPrev.Key = 'leftarrow';
                 keyPrev.Modifier = {'control'};
             end
-            java_setcb(j1, 'ActionPerformedCallback', @(h,ev)panel_time('TimeKeyCallback', keyNext));
-            java_setcb(j2, 'ActionPerformedCallback', @(h,ev)panel_time('TimeKeyCallback', keyPrev));
-            java_setcb(j3, 'ActionPerformedCallback', @(h,ev)panel_time('TimeKeyCallback', keyPrev));
+            % Tooltips: Different shortcuts on MacOS
+            if strncmp(computer,'MAC',3)
+                tooltipNext = '<HTML><TABLE><TR><TD>Next page</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [Fn+F4]</B> : Half page</TD></TR></TABLE>';
+                tooltipPrev = '<HTML><TABLE><TR><TD>Previous page</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [SHIFT+Fn+F4]</B> : Half page</TD></TR></TABLE>';
+            else
+                tooltipNext = '<HTML><TABLE><TR><TD>Next page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [F4]</B> : Half page<BR><B> - [F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE UP]</B>: +10 pages</TD></TR></TABLE>';
+                tooltipPrev = '<HTML><TABLE><TR><TD>Previous page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [SHIFT+F4]</B> : Half page<BR><B> - [SHIFT+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE DOWN]</B>: -10 pages</TD></TR></TABLE>'; 
+            end
+            % Create buttons
+            bst_javacomponent(hFig, 'button', [], '>>>', [], tooltipNext, ...
+                @(h,ev)panel_time('TimeKeyCallback', keyNext), 'ButtonForward');
+            bst_javacomponent(hFig, 'button', [], '<<<', [], tooltipPrev, ...
+                @(h,ev)panel_time('TimeKeyCallback', keyPrev), 'ButtonBackward');
+            bst_javacomponent(hFig, 'button', [], '<<<', [], tooltipPrev, ...
+                @(h,ev)panel_time('TimeKeyCallback', keyPrev), 'ButtonBackward2');
         end
         % Plot events dots on the raw time bar
         PlotEventsDots_TimeBar(hFig);

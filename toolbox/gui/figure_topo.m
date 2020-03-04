@@ -22,7 +22,7 @@ function varargout = figure_topo( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2020
 
 eval(macro_method);
 end
@@ -1014,9 +1014,10 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     if TopoLayoutOptions.ShowLegend
         % Create legend label
         if isDrawLegend
-            % Get figure color
-            % figColor = get(hFig, 'Color');
-            figPos   = get(hFig, 'Position');
+            % Scale figure
+            Scaling = bst_get('InterfaceScaling') / 100;
+            % Get figure position
+            figPos = get(hFig, 'Position');
             % Find opposite colors
             if (sum(figColor .^ 2) > 0.8)
                 textColor = [0 0 0];
@@ -1028,7 +1029,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                 'Parent',        hFig, ...
                 'Tag',           'AxesTimestamp', ...
                 'Units',         'Pixels', ...
-                'Position',      [0, 0, figPos(3), 50], ...
+                'Position',      [0, 0, figPos(3), 50.*Scaling], ...
                 'Color',         'none', ...
                 'XColor',        figColor, ...
                 'YColor',        figColor, ...
@@ -1049,7 +1050,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                 10 / figPos(3), .5, '', ...
                 'FontUnits',   'points', ...
                 'FontWeight',  'bold', ...
-                'FontSize',    8, ...
+                'FontSize',    8 .* Scaling, ...
                 'Color',       textColor, ...
                 'Interpreter', 'none', ...
                 'Tag',         'LabelTimestamp', ...
@@ -1237,59 +1238,28 @@ function UpdateTopo2dLayout(iDS, iFig)
 end
 
 
-
-
 %% ===== 2D LAYOUT: CREATE BUTTONS =====
 function CreateButtons2dLayout(iDS, iFig)
     import org.brainstorm.icon.*;
     global GlobalData;
     % Get figure
     hFig  = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
-%     % Get figure background color
-%     bgColor = get(hFig, 'Color');
-    % Get fixed font
-    jFontDefault = bst_get('Font');
-    jFont = java.awt.Font(jFontDefault.getFamily(), java.awt.Font.PLAIN, 11);
     % Create scale buttons
-    jButton = javaArray('java.awt.Component', 5);
-    jButton(1) = javax.swing.JButton('^');
-    jButton(2) = javax.swing.JButton('v');
-    jButton(3) = javax.swing.JButton('...');
-    jButton(4) = javax.swing.JButton('<');
-    jButton(5) = javax.swing.JButton('>');
-    % Configure buttons
-    for i = 1:length(jButton)
-%         jButton(i).setBackground(java.awt.Color(bgColor(1), bgColor(2), bgColor(3)));
-        jButton(i).setFocusPainted(0);
-        jButton(i).setFocusable(0);
-        jButton(i).setMargin(java.awt.Insets(0,0,0,0));
-        jButton(i).setFont(jFont);
-    end
-    % Create Matlab objects
-    [j1, h1] = javacomponent(jButton(1), [0, 0, .01, .01], hFig);
-    [j2, h2] = javacomponent(jButton(2), [0, 0, .01, .01], hFig);
-    [j3, h3] = javacomponent(jButton(3), [0, 0, .01, .01], hFig);
-    [j4, h4] = javacomponent(jButton(4), [0, 0, .01, .01], hFig);
-    [j5, h5] = javacomponent(jButton(5), [0, 0, .01, .01], hFig);
-    % Configure Gain buttons
-    set(h1,  'Tag', 'ButtonGainPlus',  'Units', 'pixels');
-    set(h2,  'Tag', 'ButtonGainMinus', 'Units', 'pixels');
-    set(h3,  'Tag', 'ButtonSetTimeWindow', 'Units', 'pixels');
-    set(h4,  'Tag', 'ButtonZoomTimePlus',  'Units', 'pixels');
-    set(h5,  'Tag', 'ButtonZoomTimeMinus', 'Units', 'pixels');
-    j1.setToolTipText('<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [SHIFT + Mouse wheel]</B></TD></TR></TABLE>');
-    j2.setToolTipText('<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [SHIFT + Mouse wheel]</B></TD></TR></TABLE>');
-    j3.setToolTipText('Set time window manually');
-    j4.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [CTRL + Mouse wheel]</B></TD></TR></TABLE>');
-    j5.setToolTipText('<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [CTRL + Mouse wheel]</B></TD></TR></TABLE>');
-    java_setcb(j1, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1));
-    java_setcb(j2, 'ActionPerformedCallback', @(h,ev)UpdateTimeSeriesFactor(hFig, .9091));
-    java_setcb(j3, 'ActionPerformedCallback', @(h,ev)SetTopoLayoutOptions('TimeWindow'));
-    java_setcb(j4, 'ActionPerformedCallback', @(h,ev)UpdateTopoTimeWindow(hFig, .9091));
-    java_setcb(j5, 'ActionPerformedCallback', @(h,ev)UpdateTopoTimeWindow(hFig, 1.1));
-    % Up button
-    j1.setMargin(java.awt.Insets(3,0,0,0));
-    j1.setFont(bst_get('Font', 12));    
+    h1 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_UP, ...
+        '<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [SHIFT + Mouse wheel]</B></TD></TR></TABLE>', ...
+        @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1), 'ButtonGainPlus');
+    h2 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_DOWN, ...
+        '<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [SHIFT + Mouse wheel]</B></TD></TR></TABLE>', ...
+        @(h,ev)UpdateTimeSeriesFactor(hFig, .9091), 'ButtonGainMinus');
+    h3 = bst_javacomponent(hFig, 'button', [], '...', [], ...
+        'Set time window manually', ...
+        @(h,ev)SetTopoLayoutOptions('TimeWindow'), 'ButtonSetTimeWindow');
+    h4 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_LEFT, ...
+        '<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [CTRL + Mouse wheel]</B></TD></TR></TABLE>', ...
+        @(h,ev)UpdateTopoTimeWindow(hFig, .9091), 'ButtonZoomTimePlus');
+    h5  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_RIGHT, ...
+        '<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [CTRL + Mouse wheel]</B></TD></TR></TABLE>', ...
+        @(h,ev)UpdateTopoTimeWindow(hFig, 1.1), 'ButtonZoomTimeMinus');
     % Visible / not visible
     TopoLayoutOptions = bst_get('TopoLayoutOptions');
     if ~TopoLayoutOptions.ShowLegend
