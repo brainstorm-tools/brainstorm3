@@ -201,42 +201,44 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             DataMat = in_bst(sCurrentInputs(iFile).FileName);
             events = DataMat.Events;
 
-            %% Filter the data based on the user input
-            sFreq = round(1/diff(DataMat.Time(1:2)));
-            [filtered_F, FiltSpec, Messages] = process_bandpass('Compute', DataMat.F(iSelectedChannels,:), sFreq, sProcess.options.bandpass.Value{1}(1), sProcess.options.bandpass.Value{1}(2));
-            
-            %Extract phase
-            if use_median
-            	angle_filtered_F = angle(hilbert(median(filtered_F)));
-                nChannels = 1;
-            else 
-                angle_filtered_F = angle(hilbert(filtered_F));
-            end
+            if ~isempty(events)
+                %% Filter the data based on the user input
+                sFreq = round(1/diff(DataMat.Time(1:2)));
+                [filtered_F, FiltSpec, Messages] = process_bandpass('Compute', DataMat.F(iSelectedChannels,:), sFreq, sProcess.options.bandpass.Value{1}(1), sProcess.options.bandpass.Value{1}(2));
 
-            for iNeuron = 1:length(neuronLabels)
-                iEvent_Neuron = find(ismember({events.label},neuronLabels{iNeuron}));
+                %Extract phase
+                if use_median
+                    angle_filtered_F = angle(hilbert(median(filtered_F)));
+                    nChannels = 1;
+                else 
+                    angle_filtered_F = angle(hilbert(filtered_F));
+                end
 
-                if ~isempty(iEvent_Neuron)
-                    % Get the index of the closest timeBin
-                    [temp, iClosest] = histc(events(iEvent_Neuron).times,DataMat.Time);
 
-                    % Function hist fails to give correct output when a single
-                    % spike occurs. Taking care of it here
-                    if length(iClosest) == 1
-                        single_spike_entry = zeros(nChannels, nBins);
-                        [temp, iBin] = histc(angle_filtered_F(:,iClosest), EDGES); 
-                        for iChannel = 1:nChannels
-                            single_spike_entry(iChannel, iBin(iChannel)) = 1;
+                for iNeuron = 1:length(neuronLabels)
+                    iEvent_Neuron = find(ismember({events.label},neuronLabels{iNeuron}));
+
+                    if ~isempty(iEvent_Neuron)
+                        % Get the index of the closest timeBin
+                        [temp, iClosest] = histc(events(iEvent_Neuron).times,DataMat.Time);
+
+                        % Function hist fails to give correct output when a single
+                        % spike occurs. Taking care of it here
+                        if length(iClosest) == 1
+                            single_spike_entry = zeros(nChannels, nBins);
+                            [temp, iBin] = histc(angle_filtered_F(:,iClosest), EDGES); 
+                            for iChannel = 1:nChannels
+                                single_spike_entry(iChannel, iBin(iChannel)) = 1;
+                            end
+                            all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + single_spike_entry;
+                        else
+                            [all_phases_single_neuron, bins] = hist(angle_filtered_F(:,iClosest)', EDGES);
+                            if size(all_phases_single_neuron, 1) ~= 1 % If a vector then transpose to 
+                                all_phases_single_neuron = all_phases_single_neuron';
+                            end
+                            all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + all_phases_single_neuron;
                         end
-                        all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + single_spike_entry;
-                    else
-                        [all_phases_single_neuron, bins] = hist(angle_filtered_F(:,iClosest)', EDGES);
-                        if size(all_phases_single_neuron, 1) ~= 1 % If a vector then transpose to 
-                            all_phases_single_neuron = all_phases_single_neuron';
-                        end
-                        all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + all_phases_single_neuron;
                     end
-
                 end
             end
             bst_progress('set', round(iFile / nTrials * 100));
