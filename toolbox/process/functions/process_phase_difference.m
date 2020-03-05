@@ -241,17 +241,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_progress('set', round(iFile / nTrials * 100));
         end
         
-        % Change the dimensions to make it compatible with Brainstorm TF
-        all_phases = permute(all_phases, [1,3,2]);
-        
         %% Compute the p-values for both Rayleigh and Omnibus tests
         pValues = struct;
+        preferredPhase = zeros(size(all_phases,1),1);
         
-        for iDistribution = 1:size(all_phases,1)
-            bins_with_values = all_phases(iDistribution,:)~=0;
-            [pValues(iDistribution).Rayleigh, z] = circ_rtest(EDGES(bins_with_values), all_phases(iDistribution,bins_with_values));
-            [pValues(iDistribution).OmniBus, m]  = circ_otest(EDGES(bins_with_values), all_phases(iDistribution,bins_with_values));
+        for iNeuron = 1:size(all_phases,1)
+            bins_with_values = all_phases(iNeuron,:)~=0;
+            [pValues(iNeuron).Rayleigh, z] = circ_rtest(EDGES(bins_with_values), all_phases(iNeuron,bins_with_values));
+            [pValues(iNeuron).OmniBus, m]  = circ_otest(EDGES(bins_with_values), all_phases(iNeuron,bins_with_values));
+            
+            % Get the preferred Phase
+            w = all_phases(iNeuron,:);
+            single_neuron_phase = [];
+            for iBin = 1:size(all_phases,2)
+                single_neuron_phase = [single_neuron_phase; ones(w(iBin),1) * EDGES(iBin)];
+            end
+            mean_value = circ_mean(single_neuron_phase);
+            preferredPhase(iNeuron) = mean_value * (180/pi);
         end
+
+        
+        %% Change the dimensions to make it compatible with Brainstorm TF
+        all_phases = permute(all_phases, [1,3,2]);
+        
         
 %%         %%
 % %         Instead of the edges, keep only the mid-point of the bins
@@ -318,6 +330,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % This is added here - Let's hear it from Francois
         FileMat.pValues = pValues;
+        FileMat.preferredPhase = preferredPhase;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         % Add history field
