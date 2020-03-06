@@ -20,6 +20,13 @@ function SpyCircus2Neuroscope(convertedFilePath, convertedFileBase, varargin)
 % (at your option) any later version.
 
 
+%% Testing parameters
+
+convertedFilePath = 'F:\Adrien\Ripples\AA20_d4_20171205-103721-001-p001_0\AA20_d4_20171205-103721-001-p001_0'
+convertedFileBase = 'AA20_d4_20171205-103721-001-p001_0';
+
+
+
 
 hdfBaseName = fullfile(convertedFilePath,convertedFileBase);
 
@@ -36,7 +43,7 @@ temp_data = full(sparse(double(temp_x)+1,double(temp_y)+1,double(temp_data)));
 temp_data = temp_data(:,1:tempNb);
 temp_data = reshape(temp_data,[sampleNb chNb tempNb]);
 
-XMLfile = [fbasename '.xml'];
+XMLfile = fullfile(convertedFilePath,[convertedFileBase '.xml']);
 if ~exist(XMLfile,'file')
     error('Error: no xml file')
 end
@@ -59,7 +66,7 @@ for c=1:tempNb
     
     %spike times;
     dset = ['/spiketimes/temp_' num2str(c-1)];
-    cellSpkT    = h5read([hdfBaseName '.result.hdf5'],dset);
+    cellSpkT    = hdf5read([hdfBaseName '.result.hdf5'],dset);
     
     if ~elecGpNbClu(e)
         elecGpSpkT{e}   = cellSpkT;
@@ -77,7 +84,7 @@ for e=1:elecGpNb
     spkT    = elecGpSpkT{e};
     if ~isempty(spkT)
         [elecGpSpkT{e},spkIx]    = sort(spkT,'ascend');
-        fname   = [fbasename '.res.' num2str(e)];
+        fname   = [convertedFileBase '.res.' num2str(e)];
         fid     = fopen(fname,'w');
         fprintf(fid,'%.0f\n',elecGpSpkT{e});
         fclose(fid);
@@ -86,7 +93,7 @@ for e=1:elecGpNb
         clu = elecGpClu{e};
         nClu = length(unique(clu));
         clu = [nClu;clu(spkIx)];
-        fname   = [fbasename '.clu.' num2str(e)];
+        fname   = [convertedFileBase '.clu.' num2str(e)];
         fid     = fopen(fname,'w');
         fprintf(fid,'%.0f\n',clu);
         fclose(fid);
@@ -99,8 +106,8 @@ end
 
 for e = 1:elecGpNb
     if ismember(e,elecGp)
-        waveforms = load_spk_from_dat(fbasename,e);
-        fid       = fopen([fbasename,'.spk.',num2str(e)],'w');
+        waveforms = load_spk_from_dat(convertedFileBase,e);
+        fid       = fopen([convertedFileBase,'.spk.',num2str(e)],'w');
         fwrite(fid,waveforms(:),'int16');
         fclose(fid);
 
@@ -118,7 +125,7 @@ for e = 1:elecGpNb
         wpowers   = sum(waveforms.^2,1)/size(waveforms,1)/100;
         wranges   = range(waveforms,1);
 
-        fid       = fopen([fbasename,'.fet.',num2str(e)],'w');
+        fid       = fopen([convertedFileBase,'.fet.',num2str(e)],'w');
         Fet       = double([PCAs_global; int64(wranges); int64(wpowers); elecGpSpkT{e}']);
         nFeatures = size(Fet, 1);
         
@@ -135,7 +142,7 @@ for e = 1:elecGpNb
     end
 end
 
-UpdateXml_SpkGrps(fbasename)
+UpdateXml_SpkGrps(convertedFileBase)
 
 
         

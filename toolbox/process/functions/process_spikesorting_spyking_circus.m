@@ -184,7 +184,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Create the xml
         createXML(ChannelMat, Fs, convertedFilePath, convertedFileBase)
         
-        SpyCircus2Neuroscope(convertedFilePath, convertedFileBase, varargin)
+        SpyCircus2Neuroscope(convertedFilePath, convertedFileBase)
         
         
         
