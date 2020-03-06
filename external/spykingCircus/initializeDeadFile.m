@@ -1,6 +1,5 @@
 function deadFile = initializeDeadFile(RawFilename, output_dir, events)
 
-
     if isempty(events)
         return
     end
@@ -18,7 +17,12 @@ function deadFile = initializeDeadFile(RawFilename, output_dir, events)
             end
         end
     end
+    
+    if isempty(final)
+        final = '';
+    end
 
+    % Save to file
     deadFile = fullfile(output_dir, ['dead_' RawFilename '.txt']);
     outFid = fopen(deadFile, 'w');
     fprintf(outFid,final);

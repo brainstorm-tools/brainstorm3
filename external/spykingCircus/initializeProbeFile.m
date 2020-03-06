@@ -30,6 +30,8 @@ if nEmptyMontage == length(ChannelMat.Channel)
             ChannelMat.Channel(iChannel).Group = 'GROUP1'; % Just adding an entry here
         end
     end
+elseif nEmptyMontage == 0
+    keepChannels = 1:length(ChannelMat.Channel);
 end
 
 temp_ChannelsMat = ChannelMat.Channel(keepChannels);

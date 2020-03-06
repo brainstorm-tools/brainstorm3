@@ -125,6 +125,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Converting to int16. Using the same converter as for kilosort
         convertedRawFilename = in_spikesorting_convertforkilosort(sInputs(i), sProcess.options.binsize.Value{1} * 1e9); % This converts into int16.
         
+        
+        
+        [convertedFilePath convertedFileBase convertedFileExtension] = fileparts(convertedRawFilename);
+        
+        
+        
         %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
         bst_progress('text', 'Spike-sorting...');
         
@@ -140,26 +146,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
                                     
         % Create the prameters files
-        deadFile = initializeDeadFile(fBase, convertedFilePath, events);
-        probeFile = initializeProbeFile(fBase, convertedFilePath, ChannelMat);
-        initializeSpykingCircusParameters(fBase, probeFile, deadFile, convertedFilePath, Fs)        
+        deadFile = initializeDeadFile(convertedFileBase, convertedFilePath, events);
+        probeFile = initializeProbeFile(convertedFileBase, convertedFilePath, ChannelMat);
+        initializeSpykingCircusParameters(convertedFileBase, probeFile, deadFile, convertedFilePath, Fs)        
         
         
         
-        %% ASK THE USER TO RUN SPYKING CIRCUS THROUGH A TERMINAL ON THEIR OWN
+        %% ASK THE USER TO RUN SPYKING CIRCUS THROUGH A TERMINAL ON THEIR OWN ON WINDOWS MACHINES
         if ispc
-            
-            isOk = java_dialog('confirm', ...
-                ['SpykingCircus needs to be manually run on windows machines' 10 10 ...
-                     'Please run it from the terminal and press ok when done'], 'Spyking Circus');
-            if ~isOk
-                bst_report('Error', sProcess, sInput, 'Cancelled by user');
+            isYes = java_dialog('confirm', ...
+                ['SpykingCircus needs to be manually run on windows machines' 10 ...
+                 'Please run it from the terminal outside of Matlab.' 10 10 ...
+                 ['Files will be created within: ' convertedFilePath] 10 10 ...
+                 'Has the Spyking Circus finished?'], 'Spyking Circus');
+            if ~isYes
+                bst_report('Error', sProcess, sInputs(i), 'Cancelled by user');
                 return;
-            end
+            end            
+            % Check if the Spyking Circus files were created
             
-            % Check if the files were created
-            
-            1
+        else
+            currentDirectory = pwd;
+            cd(convertedFilePath)
+            aaaa = system(['spyking-circus ' [convertedFileBase convertedFileExtension]])
         end
         
             
