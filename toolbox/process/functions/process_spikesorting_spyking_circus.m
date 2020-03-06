@@ -149,16 +149,22 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         deadFile = initializeDeadFile(convertedFileBase, convertedFilePath, events);
         probeFile = initializeProbeFile(convertedFileBase, convertedFilePath, ChannelMat);
         initializeSpykingCircusParameters(convertedFileBase, probeFile, deadFile, convertedFilePath, Fs)        
-        
-        
-        
+                
         %% ASK THE USER TO RUN SPYKING CIRCUS THROUGH A TERMINAL ON THEIR OWN ON WINDOWS MACHINES
         if ispc
+            disp(' ')
+            disp('########################################################')
+            disp('Folder to run Spyking Circus from:')
+            disp(convertedFilePath)
+            disp('########################################################')
+            disp(' ')
+
             isYes = java_dialog('confirm', ...
                 ['SpykingCircus needs to be manually run on windows machines' 10 ...
                  'Please run it from the terminal outside of Matlab.' 10 10 ...
                  ['Files will be created within: ' convertedFilePath] 10 10 ...
                  'Has the Spyking Circus finished?'], 'Spyking Circus');
+            
             if ~isYes
                 bst_report('Error', sProcess, sInputs(i), 'Cancelled by user');
                 return;
@@ -166,9 +172,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Check if the Spyking Circus files were created
             
         else
-            currentDirectory = pwd;
+            previousDirectory = pwd;
             cd(convertedFilePath)
-            aaaa = system(['spyking-circus ' [convertedFileBase convertedFileExtension]])
+            spyking_circus_output = system(['spyking-circus ' [convertedFileBase convertedFileExtension]])
         end
         
             
@@ -248,6 +254,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Update links
         db_links('Study', sInputs(i).iStudy);
         panel_protocols('UpdateNode', 'Study', sInputs(i).iStudy);
+        
+        % Go back to the previous directory
+        cd(previousDirectory)
+
+        
     end
     
     %%%%%%%%%%%%%%%%%%%%%%   Prepare to exit    %%%%%%%%%%%%%%%%%%%%%%%

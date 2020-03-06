@@ -30,11 +30,15 @@ if nEmptyMontage == length(ChannelMat.Channel)
             ChannelMat.Channel(iChannel).Group = 'GROUP1'; % Just adding an entry here
         end
     end
+    temp_ChannelsMat = ChannelMat.Channel(keepChannels);
+
 elseif nEmptyMontage == 0
     keepChannels = 1:length(ChannelMat.Channel);
+    temp_ChannelsMat = ChannelMat.Channel(keepChannels);
+else
+    temp_ChannelsMat = ChannelMat.Channel;
 end
 
-temp_ChannelsMat = ChannelMat.Channel(keepChannels);
 
 montages = unique({temp_ChannelsMat.Group});
 montages = montages(find(~cellfun(@isempty, montages)));
