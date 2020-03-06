@@ -81,17 +81,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
 
     
-    %% Initialize Spyking circus Parameters (This is a copy of StandardConfig_MOVEME)
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     %% Compute on each raw input independently
     for i = 1:length(sInputs)
         [fPath, fBase] = bst_fileparts(sInputs(i).FileName);
@@ -105,7 +94,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         DataMat = in_bst_data(sInputs(i).FileName, 'F');
         ChannelMat = in_bst_channel(sInputs(i).ChannelFile);
         
-        
         %% Make sure we perform the spike sorting on the channels that have spikes. IS THIS REALLY NECESSARY? it would just take longer
 
         numChannels = 0;
@@ -116,221 +104,45 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         sFile = DataMat.F;
+        events = DataMat.F.events;
         
+% % % % % % % % % % % % %         %% %%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
+% % % % % % % % % % % % %         outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_kilosort_spikes']);
+% % % % % % % % % % % % %         
+% % % % % % % % % % % % %         % Clear if directory already exists
+% % % % % % % % % % % % %         if exist(outputPath, 'dir') == 7
+% % % % % % % % % % % % %             try
+% % % % % % % % % % % % %                 rmdir(outputPath, 's');
+% % % % % % % % % % % % %             catch
+% % % % % % % % % % % % %                 error('Couldnt remove spikes folder. Make sure the current directory is not that folder.')
+% % % % % % % % % % % % %             end
+% % % % % % % % % % % % %         end
+% % % % % % % % % % % % %         mkdir(outputPath);
         
+        %% Convert the raw data to the right input for SpykingCircus
+        bst_progress('start', 'SpykingCircus spike-sorting', 'Converting to SpykingCircus Input...');
         
-        %% %%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
-        outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_kilosort_spikes']);
-        
-        % Clear if directory already exists
-        if exist(outputPath, 'dir') == 7
-            try
-                rmdir(outputPath, 's');
-            catch
-                error('Couldnt remove spikes folder. Make sure the current directory is not that folder.')
-            end
-        end
-        
-        mkdir(outputPath);
-        
-        %% Prepare the ChannelMat File
-        % This is a file that just contains information for the location of
-        % the electrodes.
-        
-        Nchannels = numChannels;
-        connected = true(Nchannels, 1);
-        chanMap   = 1:Nchannels;
-        chanMap0ind = chanMap - 1;
-        
-        
-        %% Use the same algorithm that I use for the 2d channel display for converting 3d to 2d
-        
-        Channels = ChannelMat.Channel;
-        
-        try
-            Montages = unique({Channels.Group});
-            channelsMontage = zeros(1,length(Channels));
-            montageOccurences = zeros(1,length(Montages));
-            for iChannel = 1:length(Channels)
-                for iMontage = 1:length(Montages)
-                    if strcmp(Channels(iChannel).Group, Montages{iMontage})
-                        channelsMontage(iChannel) = iMontage;
-                        montageOccurences(iMontage) = montageOccurences(iMontage)+1;
-                    end
-                end
-            end
-                
-        catch
-            Montages = 'All';
-            
-            for iChannel = 1:length(Channels)
-                Channels(iChannel).Group = 'All';
-            end
-            
-            montageOccurences = length(Channels);
-            channelsMontage = ones(1,length(Channels)); % This holds the code of the montage each channel holds 
-        end
-
-        
-        %% Adjust the possible clusters based on the number of channels
-                
-        doubleChannels = 2*max(montageOccurences); % Each Montage will be treated as its own entity.
-        ops.Nfilt = ceil(doubleChannels/32)*32;    % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)
-        
-        
-        %% If the coordinates are assigned, convert 3d to 2d
-        
-        if sum(sum([ChannelMat.Channel.Loc]))~=0 % If values are already assigned
-            alreadyAssignedLocations = 1;
-        else
-            alreadyAssignedLocations = 0;
-        end
-        
-        
-        channelsCoords  = zeros(length(Channels),3); % THE 3D COORDINATES
-        
-        if alreadyAssignedLocations
-            for iChannel = 1:length(Channels)
-                for iMontage = 1:length(Montages)
-                    if strcmp(Channels(iChannel).Group, Montages{iMontage})
-                        channelsCoords(iChannel,1:3) = Channels(iChannel).Loc;
-                    end
-                end
-            end
-
-            % APPLY TRANSORMATION TO A FLAT SURFACE (X-Y COORDINATES: IGNORE Z)
-            converted_coordinates = zeros(length(Channels),3);
-            for iMontage = 1:length(Montages)
-                single_array_coords = channelsCoords(channelsMontage==iMontage,:);
-                % SVD approach
-                [U, S, V] = svd(single_array_coords-mean(single_array_coords));
-                lower_rank = 2;% Get only the first two components
-                converted_coordinates(channelsMontage==iMontage,:)=U(:,1:lower_rank)*S(1:lower_rank,1:lower_rank)*V(:,1:lower_rank)'+mean(single_array_coords);
-            end
-
-            xcoords = converted_coordinates(:,1); 
-            ycoords = converted_coordinates(:,2);
-        else 
-            xcoords = [1:length(Channels)]';
-            ycoords = ones(length(Channels),1);
-        end
-        
-        kcoords = channelsMontage'; % grouping of channels (i.e. tetrode groups)
-        fs = sFile.prop.sfreq; % sampling frequency
-
-        save(bst_fullfile(outputPath, 'chanMap.mat'), ...
-            'chanMap','connected', 'xcoords', 'ycoords', 'kcoords', 'chanMap0ind', 'fs')
-        
-        
-        %% Width of the spike-waveforms - NEEDS TO BE EVEN
-        ops.nt0  = 0.0017*fs; % Width of the spike Waveforms. (1.7ms) THIS NEEDS TO BE EVEN. AN ODD VALUE DOESN'T GIVE ANY WAVEFORMS (The Kilosort2Neurosuite Function doesn't accommodate odd numbers)
-        if mod(ops.nt0,2)
-            ops.nt0 =ops.nt0+1;
-        end
-        
-        
-        
-        
-        %% Kilosort outputs a rez.mat file. The supervised part (Klusters) gets as input the rez file, and a .xml file (with parameters).
-        % I can create this .xml file from an excel file according to what
-        % the Buzsaki lab uses.
-        %  The buzsaki lab has a converter for "intan" files. Using this:
-        
-        % Create .xml file (Compatible with Buzsaki lab inputs)
-        xml_filename = bst_fullfile(outputPath, [fBase '.xlsx']);
-
-        A1 = {'SEE DERIVATION BELOW','','','','','X','Y','','BY VERTICAL POSITION/SHANK (IE FOR DISPLAY)','','','Neuroscope Channel';
-              'Neronexus/ Omnetics site','Intan pin','Intan Channel','','','X Coordinates','Y Coordinates','','','Neuronexus/ Omnetics Site','Intan Pin','Intan Channel'};
-        
-        uniqueKCoords = unique(kcoords)';
-        nChannelsInMontage = cell(length(uniqueKCoords),1);
-        for iType = uniqueKCoords
-            nChannelsInMontage{iType} = find(kcoords==iType);
-        end
-
-        ii = 0;
-        for iType = uniqueKCoords
-            for iChannel = nChannelsInMontage{iType}' % 1x96
-                ii = ii+1;
-                A3{ii,1}  = iChannel;
-                A3{ii,2}  = iChannel-1; % Acquisition system codename - INTAN STARTS CHANNEL NUMBERING FROM 0. These .xlsx are made for INTAN I assume
-                A3{ii,3}  = iChannel-1;
-                A3{ii,4}  = ['SHANK ' num2str(iType)];
-                A3{ii,5}  = '';
-                A3{ii,6}  = xcoords(iChannel); % x coord - THIS PROBABLY SHOULD BE RELATIVE TO EACH ARRAY - NOT GLOBAL COORDINATES
-                A3{ii,7}  = ycoords(iChannel);
-                A3{ii,8}  = '';
-                A3{ii,9}  = ['SHANK ' num2str(iType)];
-                A3{ii,10} = iChannel; % This is for the display - Neuronexus/Omnetics Site
-                A3{ii,11} = iChannel-1; % This is for the display - Intan Pin
-                A3{ii,12} = iChannel-1; % This is for the display - Intan Channel
-            end
-        end
-        
-        sheet = 1;
-        xlswrite(xml_filename,A1,sheet,'A1')
-        xlswrite(xml_filename,A3,sheet,'A3')
-        
-        
-        previous_directory = pwd;
-        cd(outputPath);
-        
-        
-        % Some defaults values I found in bz.MakeXMLFromProbeMaps
-        defaults.NumberOfChannels = length(kcoords);
-        defaults.SampleRate = fs;
-        defaults.BitsPerSample = 16;
-        defaults.VoltageRange = 20;
-        defaults.Amplification = 1000;
-        defaults.LfpSampleRate = 1250;
-        defaults.PointsPerWaveform = ops.nt0;
-        defaults.PeakPointInWaveform = 16;
-        defaults.FeaturesPerWave = 3;
-        
-        [tmp, xmlFileBase] = bst_fileparts(xml_filename);
-        bz_MakeXMLFromProbeMaps({xmlFileBase}, '','',1,defaults) % This creates a Barcode_f096_kilosort_spikes.xml
-        weird_xml_filename = dir('*.xml');
-        [tmp, weird_xml_fileBase] = bst_fileparts(weird_xml_filename.name);
-        file_move([weird_xml_fileBase '.xml'],[xmlFileBase '.xml']); % Barcode_f096.xml
-        
-        
-        %% Convert to the right input for KiloSort
-        
-        bst_progress('start', 'KiloSort spike-sorting', 'Converting to KiloSort Input...');
-        
-        converted_raw_File = in_spikesorting_convertforkilosort(sInputs(i), sProcess.options.binsize.Value{1} * 1e9); % This converts into int16.
+        % Converting to int16. Using the same converter as for kilosort
+        convertedRawFilename = in_spikesorting_convertforkilosort(sInputs(i), sProcess.options.binsize.Value{1} * 1e9); % This converts into int16.
         
         %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
         bst_progress('text', 'Spike-sorting...');
         
-       
         
-        %% Some residual parameters that need the outputPath and the converted Raw signal
-        ops.fbinary  =  converted_raw_File; % will be created for 'openEphys'
-        ops.fproc    = bst_fullfile(outputPath, 'temp_wh.bin'); % residual from RAM of preprocessed data		% It was .dat, I changed it to .bin - Make sure this is correct
-        ops.chanMap  = bst_fullfile(outputPath, 'chanMap.mat'); % make this file using createChannelMapFile.m
-        ops.root     = outputPath; % 'openEphys' only: where raw files are
-        ops.basename = xmlFileBase;
-        ops.fs       = fs; % sampling rate
-        ops.NchanTOT = numChannels; % total number of channels
-        ops.Nchan    = numChannels; % number of active channels
+        %% Initialize Spyking circus Parameters 
+        Fs = DataMat.F.prop.sfreq;
         
-        
-        %% KiloSort
-        if ops.GPU     
-            gpuDevice(1); % initialize GPU (will erase any existing GPU arrays)
-        end
-        
-        
-        [rez, DATA, uproj] = preprocessData(ops); % preprocess data and extract spikes for initialization
-        rez                = fitTemplates(rez, DATA, uproj);  % fit templates iteratively
-        rez                = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)        
-        
-        %% save matlab results file
-        save(fullfile(ops.root,  'rez.mat'), 'rez', '-v7.3');
-        % remove temporary file
-        delete(ops.fproc);
+        protocol = bst_get('ProtocolInfo');
+        convertedFilePath = bst_fullfile(bst_get('BrainstormTmpDir'), ...
+                                        'Unsupervised_Spike_Sorting', ...
+                                        protocol.Comment, ...
+                                        sInputs(i).FileName);
 
+                                    
+        % Create the prameters files
+        deadFile = initializeDeadFile(fBase, convertedFilePath, events);
+        probeFile = initializeProbeFile(fBase, convertedFilePath, ChannelMat);
+        initializeSpykingCircusParameters(fBase, probeFile, deadFile, convertedFilePath, Fs)        
         
         
         %% Now convert the rez.mat and the .xml to Neuroscope format so it can be read from Klusters

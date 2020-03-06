@@ -1,145 +1,100 @@
-function initializeProbeFile(convertedRawFilename, output_dir, ChannelMat)
+function probeFile = initializeProbeFile(RawFilename, output_dir, ChannelMat)
 
-% convertedRawFilename = 'asjhgfjhsdgf' % no extension
-% output_dir           = 'F:\Adrien\spyking circus test\';
+% convertedRawFilename = '0020' % no extension
+% output_dir           = 'F:\Adrien\spyking circus test\'; % The temp file folder that the spikesorting takes place %
 
-% probe_file = 'F:\Adrien\spyking circus test\020_AA.prb';
-% output_dir = 'F:\Adrien\spyking circus test';
+% %% Testing inputs
+% RawFilename = 'a';
+% output_dir = 'C:\Users\McGill\Desktop';
+% ChannelMat = load('Z:\brainstorm_db\Ripples_Research\data\Jonathan\@rawEEG_2\channel.mat');
 
-
-output_dir = 'C:\Users\McGill\Desktop';
-convertedRawFilename = 'a';
-
-
-
-
-outFid = fopen(fullfile(output_dir, [convertedRawFilename '.prb']), 'w');
-
+%% Initialize
 Channels = ChannelMat.Channel;
-
-%% Get which channels belong to which montages
 nChannels = length(Channels);
 
 
-AssignedToMontages = find(cellfun(@isempty,{Channels.Group}));
+%% Get which channels belong to which montages
+
+% First check if any montages have been assigned
+allMontages = {ChannelMat.Channel.Group};
+
+nEmptyMontage = length(find(cellfun(@isempty,allMontages)));
+
+if nEmptyMontage == length(ChannelMat.Channel)
+    keepChannels = find(ismember({ChannelMat.Channel.Type}, 'EEG') | ismember({ChannelMat.Channel.Type}, 'SEEG'));
+    
+    % No montages have been assigned. Assign all EEG/SEEG channels to a
+    % single montage
+    for iChannel = 1:length(ChannelMat.Channel)
+        if strcmp(ChannelMat.Channel(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG')
+            ChannelMat.Channel(iChannel).Group = 'GROUP1'; % Just adding an entry here
+        end
+    end
+end
+
+temp_ChannelsMat = ChannelMat.Channel(keepChannels);
+
+montages = unique({temp_ChannelsMat.Group});
+montages = montages(find(~cellfun(@isempty, montages)));
+
+ChannelsInMontage  = cell(length(montages),2);
+for iMontage = 1:length(montages)
+    ChannelsInMontage{iMontage,1} = ChannelMat.Channel(strcmp({ChannelMat.Channel.Group}, montages{iMontage})); % Only the channels from the Montage should be loaded here to be used in the spike-events
+    
+    for iChannel = 1:length(ChannelsInMontage{iMontage})
+        ChannelsInMontage{iMontage,2} = [ChannelsInMontage{iMontage,2} find(strcmp({ChannelMat.Channel.Name}, ChannelsInMontage{iMontage}(iChannel).Name))];
+    end
+end
+
+nMontages = length(montages);
+%% Insert the positioning of the electrodes to the probe file
+% CONVERSION FROM 3D TO 2D NEEDED
+
+% NOT REALLY NEEDED - MAYBE IN THE FUTURE
 
 
+%% Start putting together everything
 
-Montages = unique({Channels.Group});
-
-
-%% Input the 
-fprintf(outFid,['total_nb_channels	=  %s\n' ...
-'radius	= 100\n' ...
-'channel_groups = {\n'], num2str(nChannels));
-
-
-
-
-                    fclose(outFid)
-
-
-
-
-
+major_prefix = ['total_nb_channels	=  ' num2str(nChannels) '\nradius	=	100\n\nchannel_groups = {\n'];
+all_entries = [];
 
 for iMontage = 1:nMontages
 
-
-
-
-
-
-
-for iCHannel = 1:length(nChannelsINMontraes)
-
-if all(Loc == 0)
-    do the regular
+    prefix = [' ' num2str(iMontage - 1) ': {''channels'':['];
+    channel_numbers = [];
+    for iChannel = 1:length(ChannelsInMontage{iMontage,1})
+        if iChannel~=length(ChannelsInMontage{iMontage,1})
+            channel_numbers = [channel_numbers num2str(ChannelsInMontage{iMontage,2}(iChannel) - 1) ', '];
+        else
+            channel_numbers = [channel_numbers num2str(ChannelsInMontage{iMontage,2}(iChannel) - 1)];
+        end
+    end
+    channels_line = [prefix channel_numbers '],\n'];
     
+    graph_line = '\t''graph'': [],\n';
     
-else
-    NEEDS CONVERSION FROM 3D TO 2D
+    geometry_numbers = [];
+    prefix = '\t''geometry'': {';
+    for iChannel = 1:length(ChannelsInMontage{iMontage,1})
+        if iChannel~=length(ChannelsInMontage{iMontage,1})
+            geometry_numbers = [geometry_numbers num2str(ChannelsInMontage{iMontage,2}(iChannel)-1) ': [' num2str((iMontage-1)*200) ', ' num2str(iChannel-1) '], '];
+        else
+            geometry_numbers = [geometry_numbers num2str(ChannelsInMontage{iMontage,2}(iChannel)-1) ': [' num2str((iMontage-1)*200) ', ' num2str(iChannel-1) ']} '];
+        end
+    end
+    geometry_line = [prefix geometry_numbers '\n\t},\n'];
+    all_entries = [all_entries channels_line graph_line geometry_line];
+    
 end
+    
+final = [major_prefix all_entries '}'];
 
+%% Write to file
+probeFile = fullfile(output_dir, [RawFilename '.prb']);
 
-
-
-
-
-
-
-
-
-
-
- 0: {'channels':[0, 1, 2, 3],
-	'graph': [],
-	'geometry': {0: [0, 0], 1: [0, 1], 2: [0, 2], 3: [0, 3]}
-	},
- 1: {'channels':[4, 5, 6, 7],
-	'graph': [],
-	'geometry': {4: [200, 0], 5: [200, 1], 6: [200, 2], 7: [200, 3]}
-	},
- 2: {'channels':[8, 9, 10, 11],
-	'graph': [],
-	'geometry': {8: [400, 0], 9: [400, 1], 10: [400, 2], 11: [400, 3]}
-	},	
- 3: {'channels':[12, 13, 14, 15],
-	'graph': [],
-	'geometry': {12: [600, 0], 13: [600, 1], 14: [600, 2], 15: [600, 3]}
-	},	
- 4: {'channels':[16, 17, 18, 19],
-	'graph': [],
-	'geometry': {16: [800, 0], 17: [800, 1], 18: [800, 2], 19: [800, 3]}
-	},		
- 5: {'channels':[20, 21, 22, 23],
-	'graph': [],
-	'geometry': {20: [1000, 0], 21: [1000, 1], 22: [1000, 2], 23: [1000, 3]}
-	},		
- 6: {'channels':[24, 25, 26, 27],
-	'graph': [],
-	'geometry': {24: [1200, 0], 25: [1200, 1], 26: [1200, 2], 27: [1200, 3]}
-	},
- 7: {'channels':[28, 29, 30, 31],
-	'graph': [],
-	'geometry': {28: [1400, 0], 29: [1400, 1], 30: [1400, 2], 31: [1400, 3]}
-	},	
- 8: {'channels':[32, 33, 34, 35],
-	'graph': [],
-	'geometry': {32: [1600, 0], 33: [1600, 1], 34: [1600, 2], 35: [1600, 3]}
-	},	
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+outFid = fopen(probeFile, 'w');
+fprintf(outFid,final);
+fclose(outFid);
 
 
 end

@@ -1,4 +1,4 @@
-function initializeSpykingCircusParameters(convertedRawFilename, probe_file, output_dir, Fs)
+function initializeSpykingCircusParameters(convertedRawFilename, probe_file, dead_file, output_dir, Fs)
 
 % convertedRawFilename: the Filename of the converted to .dat file that the
 % spike sorter creates. This will be the input to the spikesorter
@@ -12,13 +12,16 @@ function initializeSpykingCircusParameters(convertedRawFilename, probe_file, out
 % Fs: sampling rate of the raw file
 
 
-
+% %% TESTING VALUES
+% output_dir = 'C:\Users\McGill\Desktop\'
+% convertedRawFilename = 'a';
 % probe_file = 'F:\Adrien\spyking circus test\020_AA.prb';
-% output_dir = 'F:\Adrien\spyking circus test';
+% dead_file = 'F:\Adrien\spyking circus test\dead_file_AA20_day4_secondlook.txt';
 % Fs = 30000;
+% 
 
-outFid = fopen([convertedRawFilename '.params'], 'w');
-
+%% Drop everything in the file
+outFid = fopen(fullfile(output_dir, [convertedRawFilename '.params']), 'w');
 
 fprintf(outFid,['### Note that depending on the file format selected, the parameters in the data section can vary\n' ...
 '### You should refer to the documentation to know what are the needed parameters for a given\n' ...
@@ -49,7 +52,7 @@ fprintf(outFid,['### Note that depending on the file format selected, the parame
 'trig_windows   =            # The time windows of those external stimuli [in trig units]\n' ...
 'trig_unit      = ms         # The unit in which times are expressed: can be ms or timestep\n' ...
 'clean_artefact = False      # If True, external artefacts induced by triggers will be suppressed from data\n' ...
-'dead_file      =            # Portion of the signals that should be excluded from the analysis [in dead units]\n' ...
+'dead_file      = %s         # Portion of the signals that should be excluded from the analysis [in dead units]\n' ...
 'dead_unit      = ms         # The unit in which times for dead regions are expressed: can be ms or timestep\n' ...
 'ignore_times   = False      # If True, any spike in the dead regions will be ignored by the analysis\n' ...
 'make_plots     =            # Generate sanity plots of the averaged artefacts [Nothing or None if no plots]\n\n' ...
@@ -119,7 +122,7 @@ fprintf(outFid,['### Note that depending on the file format selected, the parame
 'filter_done    = False      # Will become True automatically after filtering\n' ...
 'artefacts_done = False      # Will become True automatically after removing artefacts\n' ...
 'median_done    = False      # Will become True automatically after removing common median\n' ...
-'ground_done    = False      # Will become True automatically after removing common ground\n'],probe_file,output_dir,num2str(Fs));
+'ground_done    = False      # Will become True automatically after removing common ground\n'],probe_file,output_dir,num2str(Fs),dead_file);
 
 fclose(outFid);
 

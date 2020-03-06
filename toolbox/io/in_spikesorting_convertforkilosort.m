@@ -37,7 +37,7 @@ parentPath = bst_fullfile(bst_get('BrainstormTmpDir'), ...
                        protocol.Comment, ...
                        sInput.FileName);
 
-% Make sure the temporary directory exist, otherwise create it
+% Make sure the temporary directory exists, otherwise create it
 if ~exist(parentPath, 'dir')
     mkdir(parentPath);
 end
@@ -53,7 +53,7 @@ max_samples = ram / 8 / numChannels;
 
 converted_raw_File = bst_fullfile(parentPath, ['raw_data_no_header_' sInput.Condition(5:end) '.dat']);
 
-bst_progress('start', 'Spike-sorting', 'Converting to KiloSort Input...', 0, ceil(fileSamples(2)/max_samples));
+bst_progress('start', 'Spike-sorting', 'Converting to KiloSort/SpykingCircus Input...', 0, ceil(fileSamples(2)/max_samples));
 
 if exist(converted_raw_File, 'file') == 2
     disp('File already converted')
