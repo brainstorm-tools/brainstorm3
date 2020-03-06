@@ -145,6 +145,27 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         initializeSpykingCircusParameters(fBase, probeFile, deadFile, convertedFilePath, Fs)        
         
         
+        
+        %% ASK THE USER TO RUN SPYKING CIRCUS THROUGH A TERMINAL ON THEIR OWN
+        if ispc
+            
+            isOk = java_dialog('confirm', ...
+                ['SpykingCircus needs to be manually run on windows machines' 10 10 ...
+                     'Please run it from the terminal and press ok when done'], 'Spyking Circus');
+            if ~isOk
+                bst_report('Error', sProcess, sInput, 'Cancelled by user');
+                return;
+            end
+            
+            % Check if the files were created
+            
+            1
+        end
+        
+            
+        
+        
+        
         %% Now convert the rez.mat and the .xml to Neuroscope format so it can be read from Klusters
         %  Downloaded from: https://github.com/brendonw1/KilosortWrapper
         %  This creates 4 types of files x Number of montages (Groups of electrodes)
