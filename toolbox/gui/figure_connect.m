@@ -2304,9 +2304,11 @@ function [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig)
     RegionDataPair = bst_figures('GetFigureHandleField', hFig, 'RegionDataPair');
     RegionDataMask = ones(size(RegionDataPair,1),1);
     if (size(RegionDataPair,1) > 0)
+        % Get colormap
+        sColormap = bst_colormaps('GetColormap', hFig);
         % Get threshold option
         ThresholdAbsoluteValue = getappdata(hFig, 'ThresholdAbsoluteValue');
-        if (ThresholdAbsoluteValue)
+        if (ThresholdAbsoluteValue) || sColormap.isAbsoluteValues
             RegionDataPair(:,3) = abs(RegionDataPair(:,3));
         end
         % Get threshold
