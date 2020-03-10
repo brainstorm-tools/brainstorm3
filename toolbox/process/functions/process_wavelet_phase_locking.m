@@ -234,7 +234,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
 
 
-% 
+
 % DataMat.Time = 0:1/1e3:2;
 % y = chirp(DataMat.Time,100,2,200);
 % OPTIONS.MorletFc = 1;
@@ -259,7 +259,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 %     end
 % end
 % 
-% 
+% % 
 % figure(1);plot(DataMat.Time, y)
 % xlabel('Time (s)')
 % ylabel('Amplitude')
@@ -276,6 +276,24 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 % xlabel('Time (s)')
 % ylabel('Phase (radians)')
 % title 'Chirp - Continuous phase'
+% 
+% 
+% % Do the same with the previous filtering function
+% sFreq = round(1/diff(DataMat.Time(1:2)));
+% [filtered_F, FiltSpec, Messages] = process_bandpass('Compute', y, sFreq, OPTIONS.Freqs(1), OPTIONS.Freqs(end));
+% 
+% phase_filtered = angle(hilbert(filtered_F));
+% 
+% 
+% figure(4);
+% 
+% plot(DataMat.Time, phase_filtered(1,:))
+% hold on
+% plot(DataMat.Time, TF_phase_max_bin(1,:))
+% legend 'Filtered' 'Wavelet'
+% xlabel('Time (s)')
+% ylabel('Phase (radians)')
+% title 'Continuous phase'
 
 
 
