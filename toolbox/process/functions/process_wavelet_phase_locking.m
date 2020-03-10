@@ -1,4 +1,4 @@
-function varargout = process_spiking_phase_locking( varargin )
+function varargout = process_wavelet_phase_locking( varargin )
 % PROCESS_SPIKING_PHASE_LOCKING: Computes the phase locking of spikes on
 % the timeseries.
 
@@ -29,7 +29,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Spiking Phase Locking';
+    sProcess.Comment     = 'Wavelet Phase Locking';
     sProcess.FileTag     = 'phaseLocking';
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = {'Peyrache Lab', 'Ripples'};
@@ -44,7 +44,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Comment = 'Sensor types, indices, names or Groups (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'EEG';
-    % Save ERP
+    % Save median LFP
     sProcess.options.median.Comment = 'Compute phase of median LFP of the selected channels';
     sProcess.options.median.Type    = 'checkbox';
     sProcess.options.median.Value   = 0;
@@ -52,11 +52,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.label.Comment = '<FONT color="#999999">If selected the median of the selected channels will be used as input</FONT>';
     sProcess.options.label.Type    = 'label';
     % Band-pass filter
-    sProcess.options.bandpass.Comment = 'Frequency band (0=ignore): ';
+    sProcess.options.bandpass.Comment = 'Wavelet Frequency range: ';
     sProcess.options.bandpass.Type    = 'range';
     sProcess.options.bandpass.Value   = {[600, 800], 'Hz', 1};
+    % Binning
+    sProcess.options.TFBin.Comment = 'Wavelet Frequency bins: ';
+    sProcess.options.TFBin.Type    = 'value';
+    sProcess.options.TFBin.Value   = {10, 'bins', 0};
     % Phase Binning
-    sProcess.options.phaseBin.Comment = 'Phase Binning: ';
+    sProcess.options.phaseBin.Comment = 'Phase Histogram binning: ';
     sProcess.options.phaseBin.Type    = 'value';
     sProcess.options.phaseBin.Value   = {30, 'degrees', 0};
 end
@@ -113,6 +117,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         iSelectedChannels = select_channels(ChannelMat, dataMat_channelFlag.ChannelFlag, sProcess.options.sensortypes.Value);
         nChannels = length(iSelectedChannels); 
+        
+        
+        
+        
+        % ADD AN CHECK FOR LOW FREQUENCIES / EDGE EFFECRTS
+        % DEPENDING ON THE FREQUENCY EDGES
+                
+        
+        disp('DO I EVEN NEED THE MEDIAN OPTION HERE?')
+        
         
         % No need for median if only one channel was selected
         if nChannels == 1
@@ -194,7 +208,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         EDGES = linspace(-pi,pi, nBins);
         EDGES_extended = [EDGES(1)-abs(diff(EDGES(1:2))) EDGES EDGES(end)+abs(diff(EDGES(1:2)))];
         
-
         progressPos = bst_progress('set',0);
         bst_progress('text', 'Accumulating spiking phases for each neuron...');
         for iFile = 1:nTrials
@@ -205,18 +218,94 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
             if ~isempty(events)
                 %% Filter the data based on the user input
-                sFreq = round(1/diff(DataMat.Time(1:2)));
-                [filtered_F, FiltSpec, Messages] = process_bandpass('Compute', DataMat.F(iSelectedChannels,:), sFreq, sProcess.options.bandpass.Value{1}(1), sProcess.options.bandpass.Value{1}(2));
+                
+                
+                
+%                 %Extract phase
+%                 if use_median
+%                     angle_filtered_F = angle(hilbert(median(filtered_F)));
+%                     nChannels = 1;
+%                 else 
+%                     angle_filtered_F = angle(hilbert(filtered_F));
+%                 end
 
-                %Extract phase
-                if use_median
-                    angle_filtered_F = angle(hilbert(median(filtered_F)));
-                    nChannels = 1;
-                else 
-                    angle_filtered_F = angle(hilbert(filtered_F));
+%% CHIRP PARADIGM - DELETE AFTER THE FUNCTION IS COMPLETE
+
+
+
+
+% 
+% DataMat.Time = 0:1/1e3:2;
+% y = chirp(DataMat.Time,100,2,200);
+% OPTIONS.MorletFc = 1;
+% OPTIONS.MorletFwhmTc = 3;
+% OPTIONS.Freqs = linspace(1, 200, 10);
+% TF = morlet_transform(y, DataMat.Time, OPTIONS.Freqs, OPTIONS.MorletFc, OPTIONS.MorletFwhmTc, 'n');
+% 
+% 
+% TF_power = abs(TF);
+% TF_phase = angle(TF);
+% 
+% [maxPowerPerBin, iMaxPowerPerBin] = max(TF_power, [], 3);
+% 
+% 
+% % Then create a phase vector (for each channel) that is
+% % comprised of the phase that the frequency with the
+% % maximum power on each timebin had
+% TF_phase_max_bin = zeros(size(TF, 1),size(TF, 2));
+% for iChannel = 1:size(TF, 1)
+%     for iTimebin = 1:size(TF, 2)
+%         TF_phase_max_bin(iChannel,iTimebin) = TF_phase(iChannel, iTimebin, iMaxPowerPerBin(iChannel,iTimebin));
+%     end
+% end
+% 
+% 
+% figure(1);plot(DataMat.Time, y)
+% xlabel('Time (s)')
+% ylabel('Amplitude')
+% title 'Chirp'
+% 
+% 
+% figure(2);imagesc(DataMat.Time, OPTIONS.Freqs, squeeze(abs(TF))')
+% set (gca,'Ydir','normal')
+% xlabel('Time (s)')
+% ylabel('Frequency (Hz)')
+% title 'Chirp - Time Frequency Decomposition'
+% 
+% figure(3);plot(DataMat.Time, TF_phase_max_bin(1,:));
+% xlabel('Time (s)')
+% ylabel('Phase (radians)')
+% title 'Chirp - Continuous phase'
+
+
+
+%%
+
+                OPTIONS.MorletFc = 1;
+                OPTIONS.MorletFwhmTc = 3;
+                OPTIONS.Freqs = linspace(sProcess.options.bandpass.Value{1}(1), sProcess.options.bandpass.Value{1}(2), sProcess.options.TFBin.Value{1});
+                TF = morlet_transform(DataMat.F(iSelectedChannels,:), DataMat.Time, OPTIONS.Freqs, OPTIONS.MorletFc, OPTIONS.MorletFwhmTc, 'n');
+
+                
+                %% Get the frequency with the maximum power for every timebin
+                TF_power = abs(TF);
+                TF_phase = angle(TF);
+                
+                [maxPowerPerBin, iMaxPowerPerBin] = max(TF_power, [], 3);
+                
+                
+                % Then create a phase vector (for each channel) that is
+                % comprised of the phase that the frequency with the
+                % maximum power on each timebin had
+                TF_phase_max_bin = zeros(size(TF, 1),size(TF, 2));
+                for iChannel = 1:size(TF, 1)
+                    for iTimebin = 1:size(TF, 2)
+                        TF_phase_max_bin(iChannel,iTimebin) = TF_phase(iChannel, iTimebin, iMaxPowerPerBin(iChannel,iTimebin));
+                    end
                 end
-
-
+                
+                %% Get the phase histogram for every neuron
+                
                 for iNeuron = 1:length(neuronLabels)
                     iEvent_Neuron = find(ismember({events.label},neuronLabels{iNeuron}));
 
@@ -228,13 +317,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         % spike occurs. Taking care of it here
                         if length(iClosest) == 1
                             single_spike_entry = zeros(nChannels, nBins + 2);
-                            [temp, iBin] = histc(angle_filtered_F(:,iClosest), EDGES_extended); 
+                            [temp, iBin] = histc(TF_phase_max_bin(:,iClosest), EDGES_extended); 
                             for iChannel = 1:nChannels
                                 single_spike_entry(iChannel, iBin(iChannel)) = 1;
                             end
                             all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + single_spike_entry;
                         else
-                            [all_phases_single_neuron, bins] = hist(angle_filtered_F(:,iClosest)', EDGES_extended);
+                            [all_phases_single_neuron, bins] = hist(TF_phase_max_bin(:,iClosest)', EDGES_extended);
                             if size(all_phases_single_neuron, 1) ~= 1 % If a vector then transpose to 
                                 all_phases_single_neuron = all_phases_single_neuron';
                             end
@@ -273,39 +362,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         %% Change the dimensions to make it compatible with Brainstorm TF
         all_phases = permute(all_phases, [1,3,2]);
         
-        
-        %%
-        % Instead of the edges, keep only the mid-point of the bins
-%         bins = EDGES(1:end-1) + diff(EDGES)/2;
-
-        % Plots
-%         %% This is what the final call to the phases should print
-%         iNeuron = 1;
-%         iChannel = 1;
-%         
-%         w = squeeze(all_phases(iNeuron, iChannel, :));
-%         
-%         single_neuron_and_channel_phase = [];
-%         for iBin = 1:nBins
-%             single_neuron_and_channel_phase = [single_neuron_and_channel_phase ;ones(w(iBin),1)*EDGES(iBin)];
-%         end
-%             
-%         [pval_rayleigh z] = circ_rtest(single_neuron_and_channel_phase);
-%         [pval_omnibus m] = circ_otest(single_neuron_and_channel_phase);
-%         [mean_value, upper_limit, lower_limit] = circ_mean(single_neuron_and_channel_phase);
-%         mean_value_degrees = mean_value * (180/pi);
-%         
-%     %     figure(1); polarhistogram(single_neuron_and_channel_phase, nBins,'FaceColor','blue','FaceAlpha',.3, 'Normalization','probability');
-%     % %     figure(1); polarhistogram(single_neuron_and_channel_phase,12,'FaceColor','red','FaceAlpha',.3);
-%     %     pax = gca;
-%     %     pax.ThetaAxisUnits = 'radians';
-%     %     title({['Rayleigh test p=' num2str(pval_rayleigh)], ['Omnibus test p=' num2str(pval_omnibus)], ['Preferred phase: ' num2str(mean_value_degrees) '^o']})
-%     % %     rlim([0 1])
-%     
-%         figure(2);
-%         circ_plot(single_neuron_and_channel_phase,'hist',[], nBins,true,true,'linewidth',2,'color','r');
-%         pax = gca;
-%         title({['Rayleigh test p=' num2str(pval_rayleigh)], ['Omnibus test p=' num2str(pval_omnibus)], ['Preferred phase: ' num2str(mean_value_degrees) '^o']})
 
         %% Build the output file
         tfOPTIONS.ParentFiles = {sCurrentInputs.FileName};
@@ -315,9 +371,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.TFmask = true(size(all_phases, 2), size(all_phases, 3));
         FileMat.Std = [];
         if use_median
-            FileMat.Comment = ['Phase Locking: ' uniqueComments{iList} ' | band (' num2str(sProcess.options.bandpass.Value{1}(1)) ',' num2str(sProcess.options.bandpass.Value{1}(2)) ')Hz | median'];
+            FileMat.Comment = ['Wavelet Phase Locking: ' uniqueComments{iList} ' | band (' num2str(sProcess.options.bandpass.Value{1}(1)) ',' num2str(sProcess.options.bandpass.Value{1}(2)) ')Hz | median'];
         else
-            FileMat.Comment = ['Phase Locking: ' uniqueComments{iList} ' | band (' num2str(sProcess.options.bandpass.Value{1}(1)) ',' num2str(sProcess.options.bandpass.Value{1}(2)) ')Hz'];
+            FileMat.Comment = ['Wavelet Phase Locking: ' uniqueComments{iList} ' | band (' num2str(sProcess.options.bandpass.Value{1}(1)) ',' num2str(sProcess.options.bandpass.Value{1}(2)) ')Hz'];
         end
         FileMat.DataType = 'data';
         FileMat.Time = 1;
