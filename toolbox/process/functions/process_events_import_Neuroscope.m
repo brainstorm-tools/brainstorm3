@@ -108,8 +108,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     %% Get the number of Montages that exist in the Neuroscope files
     directoryContents = dir(folder);
 
-    iCluFiles = find(contains({directoryContents.name}, '.clu'));
-    iResFiles = find(contains({directoryContents.name}, '.res'));
+    iCluFiles = find(contains({directoryContents.name}, '.clu.'));
+    iResFiles = find(contains({directoryContents.name}, '.res.'));
     % iFetFiles = find(contains({directoryContents.name}, '.fet'));
     nMontages = length(iCluFiles); % How many "montages exist"
 
