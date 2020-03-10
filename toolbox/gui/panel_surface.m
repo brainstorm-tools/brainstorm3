@@ -1561,7 +1561,11 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                 % === CHECKS ===
                 % If min/max values for this file were not computed yet
                 if isempty(TessInfo(iTess).DataMinMax)
-                    TessInfo(iTess).DataMinMax = bst_memory('GetResultsMaximum', iDS, iResult);
+                    if isequal(GlobalData.DataSet(iDS).Results(iResult).ColormapType, 'time')
+                        TessInfo(iTess).DataMinMax = GlobalData.DataSet(iDS).Results(iResult).Time;
+                    else
+                        TessInfo(iTess).DataMinMax = bst_memory('GetResultsMaximum', iDS, iResult);
+                    end
                 end
                 % Reset Overlay cube
                 TessInfo(iTess).OverlayCube = [];

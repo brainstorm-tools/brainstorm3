@@ -142,6 +142,7 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'global';
+            sColormap.isRealMin        = 1;
         % Time-frequency maps
         case 'timefreq'
             sColormap.Name             = 'cmap_magma';

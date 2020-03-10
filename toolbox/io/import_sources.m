@@ -176,6 +176,7 @@ end
 %% ===== READ SOURCE FILES =====
 sMri = [];
 maps = cell(1, length(SourceFiles));
+SPM = cell(1, length(SourceFiles));
 % Loop on each input file
 for iFile = 1:length(SourceFiles)
     % === GET FILE TYPE ===  
@@ -241,27 +242,31 @@ for iFile = 1:length(SourceFiles)
         end
         break;
     end
+    % Load SPM results
+    if isStat
+        % Load SPM.mat
+        SpmMat = load(fullfile(fPath, 'SPM.mat'));
+        SPM{iFile} = SpmMat.SPM;
+        % Add sorted T values in the file if importing from a volume (not keeping the full distribution otherwise)
+        if ~isempty(grid)
+            SPM{iFile}.SortedT = sort(sMriSrc.Cube(:));
+        end
+    end
 end
 % Concatenate in time all the selected files
 map = cat(2, maps{:});
 
 % === STATISTICAL THRESHOLD (SPM) ===
 if isStat
-    % Load SPM.mat
-    SpmMat = load(fullfile(fPath, 'SPM.mat'));
     % New stat/results structure
     ResultsMat = db_template('statmat');
     ResultsMat.tmap       = map;
     ResultsMat.pmap       = [];
     ResultsMat.df         = [];
-    ResultsMat.SPM        = SpmMat.SPM;
+    ResultsMat.SPM        = SPM;
     ResultsMat.Correction = 'no';
     ResultsMat.Type       = 'results';
     FileType = 'presults';
-    % Add sorted T values in the file if importing from a volume (not keeping the full distribution otherwise)
-    if ~isempty(grid)
-        ResultsMat.SPM.SortedT = sort(sMriSrc.Cube(:));
-    end
     % Time vector
     if isempty(TimeVector) || (length(TimeVector) ~= size(ResultsMat.tmap,2))
         ResultsMat.Time = 0:(size(map,2)-1);
