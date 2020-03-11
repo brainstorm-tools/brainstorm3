@@ -195,11 +195,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
   
         %% Accumulate the phases that each neuron fired upon
-        nBins = round(360/sProcess.options.phaseBin.Value{1});
-        all_phases = zeros(length(labelsForDropDownMenu), nBins+1);
+        nBins = round(360/sProcess.options.phaseBin.Value{1}) + 1;
+        all_phases = zeros(length(labelsForDropDownMenu), nBins-1); 
 
-        EDGES = linspace(-pi, pi, nBins+1);
+        EDGES = linspace(-pi,pi,nBins);
+        centerOfBins = EDGES(1:end-1) + (pi/180*sProcess.options.phaseBin.Value{1})/2;
 
+        
         progressPos = bst_progress('set',0);
         bst_progress('text', 'Accumulating phase differences for each trial...');
         
@@ -218,13 +220,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if use_medianA
             	angle_filtered_F_A = angle(hilbert(median(filtered_F_A)));
             else 
-                angle_filtered_F_A = angle(hilbert(filtered_F_A));
+                angle_filtered_F_A = zeros(size(filtered_F_A));
+                for iChannel = 1:size(filtered_F_A,1)
+                    angle_filtered_F_A(iChannel,:) = angle(hilbert(filtered_F_A(iChannel,:)));
+                end
             end
             %Extract phase
             if use_medianB
             	angle_filtered_F_B = angle(hilbert(median(filtered_F_B)));
             else 
-                angle_filtered_F_B = angle(hilbert(filtered_F_B));
+                angle_filtered_F_B = zeros(size(filtered_F_B));
+                for iChannel = 1:size(filtered_F_B,1)
+                    angle_filtered_F_B(iChannel,:) = angle(hilbert(filtered_F_B(iChannel,:)));
+                end
             end
 
             ii = 0;
@@ -233,8 +241,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     ii = ii + 1;
                     ph = abs(angle_filtered_F_A(iChannelA,:) - angle_filtered_F_B(iChannelB,:));
                     ph(ph>pi) = 2*pi-ph(ph>pi);
-                    [nBinOccurences, iBin] = histc(ph, EDGES); 
-                    
+%                     [nBinOccurences, iBin] = histc(ph, EDGES); 
+                    [nBinOccurences,iBin] = histcounts(ph,EDGES);
+
                     all_phases(ii,:) = all_phases(ii,:) + nBinOccurences;
                 end
             end
@@ -309,7 +318,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.DataType = 'data';
         FileMat.Time = 1;
         FileMat.TimeBands = [];
-        FileMat.Freqs = EDGES;
+        FileMat.Freqs = centerOfBins;
         FileMat.RefRowNames = [];
         FileMat.RowNames = labelsForDropDownMenu;
         FileMat.Measure = 'power';

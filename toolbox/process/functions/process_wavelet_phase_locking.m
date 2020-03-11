@@ -202,11 +202,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
                 
         %% Accumulate the phases that each neuron fired upon
-        nBins = round(360/sProcess.options.phaseBin.Value{1});
-        all_phases = zeros(length(labelsForDropDownMenu), nBins + 2); % I add one more bin at the start and one at the end
+        nBins = round(360/sProcess.options.phaseBin.Value{1}) + 1;
+        all_phases = zeros(length(labelsForDropDownMenu), nBins-1); 
 
-        EDGES = linspace(-pi,pi, nBins);
-        EDGES_extended = [EDGES(1)-abs(diff(EDGES(1:2))) EDGES EDGES(end)+abs(diff(EDGES(1:2)))];
+        EDGES = linspace(-pi,pi,nBins);
+        centerOfBins = EDGES(1:end-1) + (pi/180*sProcess.options.phaseBin.Value{1})/2;
         
         progressPos = bst_progress('set',0);
         bst_progress('text', 'Accumulating spiking phases for each neuron...');
@@ -233,8 +233,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
 
 
-
-
+% 
+% 
 % DataMat.Time = 0:1/1e3:2;
 % y = chirp(DataMat.Time,100,2,200);
 % OPTIONS.MorletFc = 1;
@@ -311,7 +311,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 
                 [maxPowerPerBin, iMaxPowerPerBin] = max(TF_power, [], 3);
                 
-                
                 % Then create a phase vector (for each channel) that is
                 % comprised of the phase that the frequency with the
                 % maximum power on each timebin had
@@ -331,17 +330,23 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         % Get the index of the closest timeBin
                         [temp, iClosest] = histc(events(iEvent_Neuron).times,DataMat.Time);
 
+                        %% % ADD A TEST HERE FOR VERIFICATION THE CODE WORKS
+%                         iClosest = TF_phase_max_bin(1,:)<0 & TF_phase_max_bin(1,:)>-pi/6;
+                        %%
+                        
                         % Function hist fails to give correct output when a single
                         % spike occurs. Taking care of it here
                         if length(iClosest) == 1
-                            single_spike_entry = zeros(nChannels, nBins + 2);
-                            [temp, iBin] = histc(TF_phase_max_bin(:,iClosest), EDGES_extended); 
+                            single_spike_entry = zeros(nChannels, nBins-1);
                             for iChannel = 1:nChannels
-                                single_spike_entry(iChannel, iBin(iChannel)) = 1;
+                                [temp,edges] = histcounts(TF_phase_max_bin(:,iClosest),EDGES);
+                                iBin = find(edges);
+                                single_spike_entry(iChannel, iBin) = 1;
                             end
                             all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + single_spike_entry;
                         else
-                            [all_phases_single_neuron, bins] = hist(TF_phase_max_bin(:,iClosest)', EDGES_extended);
+%                             [all_phases_single_neuron, bins] = hist(TF_phase_max_bin(:,iClosest)', EDGES_extended);
+                            [all_phases_single_neuron,edges] = histcounts(TF_phase_max_bin(:,iClosest)',EDGES);
                             if size(all_phases_single_neuron, 1) ~= 1 % If a vector then transpose to 
                                 all_phases_single_neuron = all_phases_single_neuron';
                             end
@@ -354,8 +359,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
        
-        %% Get rid of the extra bins at start and finish (the extra bins were added due to the wrong entries of histc on the edges)
-        all_phases = all_phases(:,2:end-1);
+%         %% Get rid of the extra bins at start and finish (the extra bins were added due to the wrong entries of histc on the edges)
+%         all_phases = all_phases(:,2:end-1);
         
         %% Compute the p-values for both Rayleigh and Omnibus tests
         pValues = struct;
@@ -396,7 +401,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.DataType = 'data';
         FileMat.Time = 1;
         FileMat.TimeBands = [];
-        FileMat.Freqs = EDGES;
+        FileMat.Freqs = centerOfBins;
         FileMat.RefRowNames = [];
         FileMat.RowNames = labelsForDropDownMenu;
         FileMat.Measure = 'power';

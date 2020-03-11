@@ -188,12 +188,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
                 
         %% Accumulate the phases that each neuron fired upon
-        nBins = round(360/sProcess.options.phaseBin.Value{1});
-        all_phases = zeros(length(labelsForDropDownMenu), nBins + 2); % I add one more bin at the start and one at the end
+        nBins = round(360/sProcess.options.phaseBin.Value{1}) + 1;
+        all_phases = zeros(length(labelsForDropDownMenu), nBins-1); 
 
-        EDGES = linspace(-pi,pi, nBins);
-        EDGES_extended = [EDGES(1)-abs(diff(EDGES(1:2))) EDGES EDGES(end)+abs(diff(EDGES(1:2)))];
+        EDGES = linspace(-pi,pi,nBins);
         
+        centerOfBins = EDGES(1:end-1) + (pi/180*sProcess.options.phaseBin.Value{1})/2;
 
         progressPos = bst_progress('set',0);
         bst_progress('text', 'Accumulating spiking phases for each neuron...');
@@ -213,7 +213,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     angle_filtered_F = angle(hilbert(median(filtered_F)));
                     nChannels = 1;
                 else 
-                    angle_filtered_F = angle(hilbert(filtered_F));
+                    angle_filtered_F = zeros(size(filtered_F));
+                    for iChannel = 1:size(filtered_F,1)
+                        angle_filtered_F(iChannel,:) = angle(hilbert(filtered_F(iChannel,:)));
+                    end
                 end
 
 
@@ -223,23 +226,37 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     if ~isempty(iEvent_Neuron)
                         % Get the index of the closest timeBin
                         [temp, iClosest] = histc(events(iEvent_Neuron).times,DataMat.Time);
+                        
+%%                                 % ADD A TEST HERE FOR VERIFICATION THE CODE WORKS
+%                                 iClosest = angle_filtered_F(1,:)<0 & angle_filtered_F(1,:)>-pi/6;
+% %                                 iClosest = 1:length(DataMat.Time);
+% 
+%                                 figure(1);
+%                                 plot(DataMat.Time, angle_filtered_F(1,:))
+%                                 hold on
+%                                 plot(DataMat.Time(iClosest), angle_filtered_F(1,iClosest),'*')
+                        %%                       
 
                         % Function hist fails to give correct output when a single
                         % spike occurs. Taking care of it here
                         if length(iClosest) == 1
-                            single_spike_entry = zeros(nChannels, nBins + 2);
-                            [temp, iBin] = histc(angle_filtered_F(:,iClosest), EDGES_extended); 
+                            single_spike_entry = zeros(nChannels, nBins-1);
                             for iChannel = 1:nChannels
-                                single_spike_entry(iChannel, iBin(iChannel)) = 1;
+                                [temp,edges] = histcounts(angle_filtered_F(iChannel,iClosest),EDGES);
+                                iBin = find(temp);
+                                single_spike_entry(iChannel, iBin) = 1;
                             end
                             all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + single_spike_entry;
                         else
-                            [all_phases_single_neuron, bins] = hist(angle_filtered_F(:,iClosest)', EDGES_extended);
+%                             [all_phases_single_neuron, bins] = hist(angle_filtered_F(:,iClosest)', EDGES_extended);
+                            [all_phases_single_neuron,edges] = histcounts(angle_filtered_F(:,iClosest)',EDGES);
+                            
                             if size(all_phases_single_neuron, 1) ~= 1 % If a vector then transpose to 
                                 all_phases_single_neuron = all_phases_single_neuron';
                             end
                             all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + all_phases_single_neuron;
                         end
+                      
                     end
                 end
             end
@@ -247,8 +264,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
        
-        %% Get rid of the extra bins at start and finish (the extra bins were added due to the wrong entries of histc on the edges)
-        all_phases = all_phases(:,2:end-1);
+%         %% Get rid of the extra bins at start and finish (the extra bins were added due to the wrong entries of histc on the edges)
+%         all_phases = all_phases(:,2:end-1);
         
         %% Compute the p-values for both Rayleigh and Omnibus tests
         pValues = struct;
@@ -273,40 +290,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         %% Change the dimensions to make it compatible with Brainstorm TF
         all_phases = permute(all_phases, [1,3,2]);
         
-        
-        %%
-        % Instead of the edges, keep only the mid-point of the bins
-%         bins = EDGES(1:end-1) + diff(EDGES)/2;
-
-        % Plots
-%         %% This is what the final call to the phases should print
-%         iNeuron = 1;
-%         iChannel = 1;
-%         
-%         w = squeeze(all_phases(iNeuron, iChannel, :));
-%         
-%         single_neuron_and_channel_phase = [];
-%         for iBin = 1:nBins
-%             single_neuron_and_channel_phase = [single_neuron_and_channel_phase ;ones(w(iBin),1)*EDGES(iBin)];
-%         end
-%             
-%         [pval_rayleigh z] = circ_rtest(single_neuron_and_channel_phase);
-%         [pval_omnibus m] = circ_otest(single_neuron_and_channel_phase);
-%         [mean_value, upper_limit, lower_limit] = circ_mean(single_neuron_and_channel_phase);
-%         mean_value_degrees = mean_value * (180/pi);
-%         
-%     %     figure(1); polarhistogram(single_neuron_and_channel_phase, nBins,'FaceColor','blue','FaceAlpha',.3, 'Normalization','probability');
-%     % %     figure(1); polarhistogram(single_neuron_and_channel_phase,12,'FaceColor','red','FaceAlpha',.3);
-%     %     pax = gca;
-%     %     pax.ThetaAxisUnits = 'radians';
-%     %     title({['Rayleigh test p=' num2str(pval_rayleigh)], ['Omnibus test p=' num2str(pval_omnibus)], ['Preferred phase: ' num2str(mean_value_degrees) '^o']})
-%     % %     rlim([0 1])
-%     
-%         figure(2);
-%         circ_plot(single_neuron_and_channel_phase,'hist',[], nBins,true,true,'linewidth',2,'color','r');
-%         pax = gca;
-%         title({['Rayleigh test p=' num2str(pval_rayleigh)], ['Omnibus test p=' num2str(pval_omnibus)], ['Preferred phase: ' num2str(mean_value_degrees) '^o']})
-
         %% Build the output file
         tfOPTIONS.ParentFiles = {sCurrentInputs.FileName};
 
@@ -322,7 +305,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.DataType = 'data';
         FileMat.Time = 1;
         FileMat.TimeBands = [];
-        FileMat.Freqs = EDGES;
+        FileMat.Freqs = centerOfBins;
         FileMat.RefRowNames = [];
         FileMat.RowNames = labelsForDropDownMenu;
         FileMat.Measure = 'power';
