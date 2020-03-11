@@ -143,7 +143,8 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
         % Check if loaded file is epoched
         if isempty(sFile.epochs) || (length(sFile.epochs) == 1) || strcmpi(sFile.format, 'CTF-CONTINUOUS')
             Messages = 'Only the files that contain two epochs or more can be converted to continuous files.';
-            sFile = [];
+            % No need to make this an error, continue with this already continuous file.
+            % sFile = [];
             return;
         end
         % Process each epoch

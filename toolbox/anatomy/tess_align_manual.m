@@ -154,11 +154,11 @@ function AlignButtonMotion_Callback(hObject, ev)
         % Selected button
         switch (gTessAlign.selectedButton)
             case gTessAlign.hButtonTransX
-                Tnew = [motionFigure(2) / 5, 0, 0];
+                Tnew = [motionFigure(2) / 25, 0, 0];
             case gTessAlign.hButtonTransY
-                Tnew = [0, motionFigure(2) / 5, 0];
+                Tnew = [0, motionFigure(2) / 25, 0];
             case gTessAlign.hButtonTransZ
-                Tnew = [0, 0, motionFigure(2) / 5];
+                Tnew = [0, 0, motionFigure(2) / 25];
             case gTessAlign.hButtonRotX
                 a = motionFigure(2);
                 Rnew = [1,      0,       0; 
