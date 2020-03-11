@@ -287,6 +287,10 @@ else
         ResultsMat.Time = TimeVector;
     end
 end
+% Fix identical time points
+if (length(ResultsMat.Time) == 2) && (ResultsMat.Time(1) == ResultsMat.Time(2))
+    ResultsMat.Time(2) = ResultsMat.Time(2) + 0.001;
+end
 
 % === SAVE NEW FILE ===
 ResultsMat.Comment       = Comment;

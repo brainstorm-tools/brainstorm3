@@ -1356,6 +1356,9 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                 else
                     dataBounds = GlobalData.DataSet(iDS).Measures.Time;
                 end
+                if (length(dataBounds) == 2) && (dataBounds(1) == dataBounds(2))
+                    dataBounds(2) = dataBounds(2) + 0.001;
+                end
                 if (max(abs(dataBounds)) > 2)
                     fFactor = 1;
                     fUnits = 's';
