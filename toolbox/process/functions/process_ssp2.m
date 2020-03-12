@@ -627,7 +627,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                     errMsg = sprintf(' - Add %d files in the process list (Total: %d)', nBlockTotal - nBlock, nBlockTotal);
                 end
                 bst_report('Error', sProcess, sInputsA, ['Not enough time samples to compute projectors. You may:' 10 errMsg]);
-                bst_progress('stop');
                 return;
             end
             
