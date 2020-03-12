@@ -339,8 +339,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         if length(iClosest) == 1
                             single_spike_entry = zeros(nChannels, nBins-1);
                             for iChannel = 1:nChannels
-                                [temp,edges] = histcounts(TF_phase_max_bin(:,iClosest),EDGES);
-                                iBin = find(edges);
+                                [temp,edges] = histcounts(TF_phase_max_bin(iChannel,iClosest),EDGES);
+                                iBin = find(temp);
                                 single_spike_entry(iChannel, iBin) = 1;
                             end
                             all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + single_spike_entry;
