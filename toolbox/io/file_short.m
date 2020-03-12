@@ -1,5 +1,5 @@
 function [FileName, FileType, isAnatomy] = file_short( FileName )
-% FILE_SHORT: Return the full filename from a relative filename
+% FILE_SHORT: Return a relative filename from the full filename 
 % 
 % USAGE:  [FileName, FileType, isAnatomy] = file_short( FileName )
 %         [FileName, FileType, isAnatomy] = file_short( FileNames )

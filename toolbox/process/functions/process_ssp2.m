@@ -614,13 +614,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 nTimePerBlock = length(TimeVector);
                 nBlock = ceil(size(F,2) / nTimePerBlock);
                 nBlockTotal = ceil(nMinSmp / nTimePerBlock);
-                if isRawA
+                if isRawA && ~isempty(evtName)
                     errMsg = sprintf(' - Add %d events (Total: %d)', nBlockTotal - nBlock, nBlockTotal);
                     if ~isExtended
                         nAddTime = ceil((nMinSmp - size(F,2)) / nBlock / 2);
                         newTimeWin = round([evtSmpRange(1) - nAddTime, evtSmpRange(2) + nAddTime] ./ sFile.prop.sfreq .* 1000);
                         errMsg = sprintf([errMsg, 10, ' - Increase the time window around each event to [%d,%d] ms'], newTimeWin(1), newTimeWin(2));
                     end
+                elseif isRawA && strcmpi(sFile.format, 'CTF') && length(sFile.epochs) > 1
+                    errMsg = ' - Convert the input files to continuous.';
                 else
                     errMsg = sprintf(' - Add %d files in the process list (Total: %d)', nBlockTotal - nBlock, nBlockTotal);
                 end

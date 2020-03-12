@@ -46,7 +46,9 @@ function [Results, OPTIONS] = bst_inverse_linear_2018(HeadModel,OPTIONS)
 % INPUTS:
 %    - HeadModel: Array of Brainstorm head model structures
 %         |- Gain       : Forward field matrix for all the channels (unconstrained source orientations)
+%         |- GridLoc    : Dipole locations
 %         |- GridOrient : Dipole orientation matrix
+%         |- HeadModelType : 'volume', 'surface' or 'mixed'?
 %    - OPTIONS: structure
 %         |- NoiseCovMat        : Noise covariance structure
 %         |   |- NoiseCov       : Noise covariance matrix

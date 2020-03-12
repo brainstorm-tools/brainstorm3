@@ -2694,7 +2694,7 @@ function CallProcessOnRaw(ProcessName)
             panel_ssp_selection('OpenRaw');
         end
         % Find the event type that was processed
-        if ~isempty(sProcesses) && isfield(sProcesses(1).options, 'eventname') && ~isempty(sProcesses(1).options.eventname)
+        if ~isempty(sProcesses) && isfield(sProcesses(1).options, 'eventname') && ~isempty(sProcesses(1).options.eventname.Value)
             % Get all the events
             sEvents = GetEvents();
             % Find processed event
