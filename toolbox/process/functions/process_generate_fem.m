@@ -161,7 +161,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid number of vertices.');
         return
     end
-    NbVertices
     % FieldTrip: Node shift
     OPTIONS.NodeShift = sProcess.options.nodeshift.Value{1};
     if isempty(OPTIONS.NodeShift) || (OPTIONS.NodeShift < 0) || (OPTIONS.NodeShift >= 0.5)
@@ -710,16 +709,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Reorder labels based on requested order
             iRelabel = cellfun(@(c)find(strcmpi(c,TissueLabels)), mesh.tissuelabel)';
             mesh.tissue = iRelabel(mesh.tissue);
-            % Convert from FieldTrip world coordinates back to FieldTrip voxel coordinates
-            M = inv(ftMri.transform);
-            node = [mesh.pos, ones(size(mesh.pos, 1),1)] * M(1:3,:)';
-            % Convert to to Brainstorm voxel coordinates
-            node(:,1) = node(:,1) + 1;
-            node(:,2) = size(bstMri.Cube,2) - node(:,2);
-            node(:,3) = size(bstMri.Cube,3) - node(:,3);
-            % Convert to SCS coordinates
-            node = cs_convert(bstMri, 'voxel', 'scs', node);
             % Return hexadrons
+            node = mesh.pos;
             elem = [mesh.hex mesh.tissue];
             % Only hexa could be generated from this method
             OPTIONS.MeshType = 'hexahedral';

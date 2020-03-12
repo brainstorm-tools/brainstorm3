@@ -19,7 +19,7 @@ function varargout = process_ft_prepare_leadfield( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2020
 
 eval(macro_method);
 end
@@ -225,8 +225,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         return;
                     end
                 end
-                % Convert to meters (same as the sensors)
-                ftGeometry = ft_convert_units(ftGeometry, 'm');
+%                 % Convert to meters (same as the sensors)
+%                 ftGeometry = ft_convert_units(ftGeometry, 'm');
                 
             % Brainstorm: Use the surfaces available in the database
             case 'brainstorm'
@@ -301,8 +301,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             cfg.grad   = ftGrad;    % Sensor positions
             % Call FieldTrip function: ft_prepare_headmodel
             ftHeadmodelMeg = ft_prepare_headmodel(cfg, ftGeometry);
-            % Convert to meters (same units as the sensors)
-            ftHeadmodelMeg = ft_convert_units(ftHeadmodelMeg, 'm');
+%             % Convert to meters (same units as the sensors)
+%             ftHeadmodelMeg = ft_convert_units(ftHeadmodelMeg, 'm');
             % Display sensors/headmodel alignment
             if isVerbose
                 figure; hold on;
@@ -346,8 +346,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             cfg.elec   = ftElec;    % Sensor positions
             % Call FieldTrip function: ft_prepare_headmodel
             ftHeadmodelEeg = ft_prepare_headmodel(cfg, ftGeometry);
-            % Convert to meters (same units as the sensors)
-            ftHeadmodelEeg = ft_convert_units(ftHeadmodelEeg, 'm');
+%             % Convert to meters (same units as the sensors)
+%             ftHeadmodelEeg = ft_convert_units(ftHeadmodelEeg, 'm');
             % Display sensors/headmodel alignment
             if isVerbose
                 figure; hold on;
