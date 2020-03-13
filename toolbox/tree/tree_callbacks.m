@@ -1227,7 +1227,8 @@ switch (lower(action))
                     % gui_component('MenuItem', jPopup, [], 'Compute sources [2009]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2009'));
                     % gui_component('MenuItem', jPopup, [], 'Compute sources [2016]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2016'));
                     gui_component('MenuItem', jPopup, [], 'Compute sources [2018]', IconLoader.ICON_RESULTS, [], @(h,ev)selectHeadmodelAndComputeSources(bstNodes, '2018'));
-                end
+                    gui_component('MenuItem', jPopup, [], 'View lead field vectors', IconLoader.ICON_RESULTS, [], @(h,ev)view_leadfields(bstNodes)); 
+		end
                 % === SET AS DEFAULT HEADMODEL ===
                 if ~bst_get('ReadOnly') && (~ismember(iHeadModel, sStudy.iHeadModel) || ~bstNodes(1).isMarked())
                     AddSeparator(jPopup);
