@@ -3,6 +3,7 @@ March 2020
 - Anatomy: Many imporvements in FEM mesh generation and manipulations
 - Anatomy: BEM generation with FieldTrip
 - Anatomy: Fixes in coordinate system conversions for FieldTrip anatomy files
+- GUI: View leadfield vectors
 ---------------------------------------------------------------
 February 2020
 - IO: Added support for Localite digitizer (.csv)

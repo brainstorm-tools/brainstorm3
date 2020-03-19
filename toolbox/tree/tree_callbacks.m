@@ -1246,6 +1246,7 @@ switch (lower(action))
                     [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
                     gui_component('MenuItem', jPopup, [], 'Check spheres', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_spheres(filenameFull, ChannelFile, sSubject));
                 end
+                
                 % === CHECK SOURCE GRID ===
                 if strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'volume') 
                     if ~bst_get('ReadOnly') && ~isSepGain
@@ -1258,6 +1259,9 @@ switch (lower(action))
                     end
                     gui_component('MenuItem', jPopup, [], 'Check source grid (volume)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull, 'V'));
                     gui_component('MenuItem', jPopup, [], 'Check source grid (surface)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull, 'S'));
+                end
+                if isempty(strfind(filenameRelative, 'headmodel_grid_'))
+                    gui_component('MenuItem', jPopup, [], 'View lead field vectors', IconLoader.ICON_RESULTS, [], @(h,ev)bst_call(@view_leadfields, GetAllFilenames(bstNodes))); 
                 end
                 % Copy to other conditions/subjects 
                 if ~bst_get('ReadOnly')
