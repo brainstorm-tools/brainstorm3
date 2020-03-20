@@ -45,7 +45,7 @@ if isempty(iProtocol) || (iProtocol == 0)
     bst_error('Invalid protocol indice.', 'Export protocol', 0); 
     return
 end
-% Get 
+% Get protocol description
 ProtocolInfo = bst_get('ProtocolInfo');
 % Get output filename
 if isempty(OutputFile)
@@ -68,6 +68,9 @@ if isempty(OutputFile)
     LastUsedDirs.ExportProtocol = bst_fileparts(OutputFile);
     bst_set('LastUsedDirs', LastUsedDirs);
 end
+% Force saving database
+db_save(1);
+
 
 %% ===== ZIP FILES =====
 % Progress bar
