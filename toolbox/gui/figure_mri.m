@@ -1540,6 +1540,9 @@ function MouseButtonUp_Callback(hFig, varargin)
                     Handles = bst_figures('GetFigureHandles', hFig);
                     sMri = panel_surface('GetSurfaceMri', hFig);
                     MouseMoveCrosshair(hAxes, sMri, Handles);
+                    % Select channel
+                    ChannelName = get(clickSource, 'UserData');
+                    bst_figures('ToggleSelectedRow', ChannelName);
             end
         % Mouse was moved
         else
