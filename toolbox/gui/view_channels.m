@@ -173,7 +173,7 @@ end
 GlobalData.DataSet(iDS).Figure(iFig).Id.Modality = Modality;
 % Set application data
 setappdata(hFig, 'DataFile', '');
-setappdata(hFig, 'AllChannelsDisplayed', 1);
+setappdata(hFig, 'isSensorsOnly', 1);
 
 % ===== DISPLAY SENSORS =====
 % Update figure selection

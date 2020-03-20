@@ -124,7 +124,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'isSelectingCoordinates',  0);
     setappdata(hFig, 'hasMoved',    0);
     setappdata(hFig, 'isPlotEditToolbar',   0);
-    setappdata(hFig, 'AllChannelsDisplayed', 0);
+    setappdata(hFig, 'isSensorsOnly', 0);
     setappdata(hFig, 'ChannelsToSelect', []);
     setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'isStatic', 0);
@@ -666,8 +666,11 @@ function FigureMouseUpCallback(hFig, varargin)
             hSensorsMarkers = findobj(hAxes, '-depth', 1, 'Tag', 'SensorsMarkers');
             hElectrodeGrid  = findobj(hAxes, '-depth', 1, 'Tag', 'ElectrodeGrid');
             hNirsCapPatch   = findobj(hAxes, '-depth', 1, 'Tag', 'NirsCapPatch');
+            % Selecting from sensor text
+            if strcmpi(get(clickObject,'Tag'), 'SensorsLabels')
+                vi = get(clickObject, 'UserData');
             % Selecting from 3DElectrodes patch
-            if ~isempty(hElectrodeGrid)
+            elseif ~isempty(hElectrodeGrid)
                 % Select the nearest sensor from the mouse
                 [p, v, vi] = select3d(hElectrodeGrid(1));
                 % Get the correspondance electrodes/vertex
@@ -700,9 +703,6 @@ function FigureMouseUpCallback(hFig, varargin)
                 elseif (sphName(1) == 'D')
                     vi = find(D == sphInd);
                 end
-            % Selecting from sensor text
-            elseif strcmpi(get(clickObject,'Tag'), 'SensorsLabels')
-                vi = get(clickObject, 'UserData');
             % Selecting from sensors patch
             elseif (length(hSensorsPatch) == 1)
                 % Select the nearest sensor from the mouse
@@ -728,18 +728,18 @@ function FigureMouseUpCallback(hFig, varargin)
             
             % Convert to real channel indices
             if ~isempty(vi)
-                % Is figure used only to display channels
-                AllChannelsDisplayed = getappdata(hFig, 'AllChannelsDisplayed');
-                % If not all the channels are displayed: need to convert the selected sensor indice
-                if ~AllChannelsDisplayed
+%                 % Is figure used only to display channels
+%                 isSensorsOnly = getappdata(hFig, 'isSensorsOnly');
+%                 % If not all the channels are displayed: need to convert the selected sensor indice
+%                 if ~isSensorsOnly
                     % Get channel indice (in Channel array)
                     if (vi <= length(Figure.SelectedChannels))
                         iSelChan = Figure.SelectedChannels(vi);
                     end
-                else
-                    AllModalityChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], Figure.Id.Modality);
-                    iSelChan = AllModalityChannels(vi);
-                end
+%                 else
+%                     AllModalityChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], Figure.Id.Modality);
+%                     iSelChan = AllModalityChannels(vi);
+%                 end
             end
             
             % Check if sensors where marked to be selected somewhere else in the code
@@ -909,7 +909,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
     % Get selected channels
     [SelChan, iSelChan] = GetFigSelectedRows(hFig);
     % Get if figure should contain all the modality sensors (display channel net)
-    AllChannelsDisplayed = getappdata(hFig, 'AllChannelsDisplayed');
+    isSensorsOnly = getappdata(hFig, 'isSensorsOnly');
     % Check if it is a realignment figure
     isAlignFig = ~isempty(findobj(hFig, '-depth', 1, 'Tag', 'AlignToolbar'));
     % If figure is 2D
@@ -1112,7 +1112,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 % === CHANNELS ===
                 % RETURN: VIEW SELECTED CHANNELS
                 case 'return'
-                    if ~isAlignFig && ~isempty(SelChan) && ~AllChannelsDisplayed
+                    if ~isAlignFig && ~isempty(SelChan) && ~isSensorsOnly
                         TfInfo = getappdata(hFig, 'Timefreq');
                         % Show time series for selected sensors
                         if isempty(TfInfo)
@@ -1125,7 +1125,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 % DELETE: SET CHANNELS AS BAD
                 case {'delete', 'backspace'}
                     isMulti2dLayout = (isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hLines') && (length(GlobalData.DataSet(iDS).Figure(iFig).Handles.hLines) >= 2));
-                    if ~isAlignFig && ~isempty(SelChan) && ~AllChannelsDisplayed && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
+                    if ~isAlignFig && ~isempty(SelChan) && ~isSensorsOnly && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
                             (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(iSelChan)) && ~isMulti2dLayout
                         % Shift+Delete: Mark non-selected as bad
                         newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
