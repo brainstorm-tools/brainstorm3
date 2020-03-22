@@ -615,8 +615,22 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
                   
             % === IMPORT OUTPUT FOLDER ===
-            bst_progress('text', 'Importing SimNIBS output...');
-            % Import FEM mesh
+        bst_progress('text', 'Importing SimNIBS output...');
+        
+         % === IMPORT CAT12 OUTPUT ===
+        CatDir = bst_fullfile(simnibsDir, ['m2m_' subjid], 'segment', 'cat');
+        if isdir(CatDir)
+            catErrMsg = import_anatomy_cat(iSubject, CatDir, OPTIONS.NbVertices, 0, [], 0, 2);
+            if ~isempty(catErrMsg)
+                bst_report('Warning', 'process_generate_fem', [], ['Could not import CAT12 segmentation: ' 10 catErrMsg]);
+            end
+        else
+            bst_report('Warning', 'process_generate_fem', [], ['CAT12 segmentation not found in SimNIBS output folder: ' 10 CatDir]);
+        end       
+       
+        %%=== IMPORT FEM MESH OUTPUT ===
+        % Import the tetrahedral mesh
+        if ~isempty(strfind(OPTIONS.MeshType, 'tetrahedral'))
             mshfilename = bst_fullfile(simnibsDir, [subjid '.msh']);
             if ~file_exist(mshfilename)
                 errMsg = ['Could not find SimNIBS output mesh: ' mshfilename];
@@ -625,19 +639,23 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             femhead = in_tess(mshfilename, 'SIMNIBS', sMriT1); %  this could be loaded to bst as it is
             % Keep cortex surface
             cortexElem = femhead.Elements(femhead.Tissue <= 2, :);
+            
             % Get outputs
-            TissueLabels = femhead.TissueLabels;   % {'white', 'gray', 'csf', 'skull', 'scalp'}
-            elem = [femhead.Elements femhead.Tissue];
-            node = femhead.Vertices;
-            % Only tetra could be generated from this method
-            OPTIONS.MeshType = 'tetrahedral';
-
-            % === EXTRACT THE FEM CORTEX SURFACE ===
+            if strcmp(OPTIONS.MeshType, 'tetrahedral & hexahedral')
+                node{1} = femhead.Vertices;
+                elem{1} = [femhead.Elements femhead.Tissue]; % {'white', 'gray', 'csf', 'skull', 'scalp'}
+                TissueLabels{1} = femhead.TissueLabels;
+            else
+                TissueLabels = femhead.TissueLabels;   % {'white', 'gray', 'csf', 'skull', 'scalp'}
+                elem = [femhead.Elements femhead.Tissue];
+                node = femhead.Vertices;
+            end
+            % === EXTRACT THE TETRA FEM CORTEX SURFACE ===
             bst_progress('text', 'Saving cortex envelope...');
             % Create a surface for the outside surface of this tissue
             cortexFaces = tess_voledge(node, cortexElem);
             % Remove all the unused vertices
-            cortexVertices = node;
+            cortexVertices = femhead.Vertices;
             iRemoveVert = setdiff((1:size(cortexVertices,1))', unique(cortexFaces(:)));
             if ~isempty(iRemoveVert)
                 [cortexVertices, cortexFaces] = tess_remove_vert(cortexVertices, cortexFaces, iRemoveVert);
@@ -646,37 +664,106 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [cortexVertices, cortexFaces] = tess_remove_small(cortexVertices, cortexFaces);
             % New surface structure
             NewTess = db_template('surfacemat');
-            NewTess.Comment  = 'cortex_fem';
+            NewTess.Comment  = 'cortex_fem_tetra';
             NewTess.Vertices = cortexVertices;
             NewTess.Faces    = cortexFaces;
             % History: File name
-            NewTess.History = 'Cortex extracted from FEM model by SimNibs Method';
+            NewTess.History = 'Cortex tetra extracted from FEM model by SimNibs Method';
             % Produce a default surface filename &   Make this filename unique
             CortexFile = file_unique(bst_fullfile(bst_fileparts(T1File), ...
-                            sprintf('tess_%s_%dV.mat', ['cortex_' OPTIONS.Method], length(NewTess.Vertices))));
+                sprintf('tess_%s_%dV.mat', ['cortex_tetra_' OPTIONS.Method], length(NewTess.Vertices))));
             % Save new surface in Brainstorm format
-            bst_save(CortexFile, NewTess, 'v7'); 
+            bst_save(CortexFile, NewTess, 'v7');
             db_add_surface(iSubject, CortexFile, NewTess.Comment);
-
-            % === IMPORT CAT12 OUTPUT ===
-            CatDir = bst_fullfile(simnibsDir, ['m2m_' subjid], 'segment', 'cat');
-            if isdir(CatDir)
-                catErrMsg = import_anatomy_cat(iSubject, CatDir, OPTIONS.NbVertices, 0, [], 0, 2);
-                if ~isempty(catErrMsg)
-                    bst_report('Warning', 'process_generate_fem', [], ['Could not import CAT12 segmentation: ' 10 catErrMsg]);
-                end
-            else
-                bst_report('Warning', 'process_generate_fem', [], ['CAT12 segmentation not found in SimNIBS output folder: ' 10 CatDir]);
+        end
+        
+        % Import the hexahedaral mesh        
+        if ~isempty(strfind(OPTIONS.MeshType, 'hexahedral'))
+            % ==== IMPORT THE FINAL MASK AND GENERTE HEXA ====
+            % Import finla mask
+            maskfilename = bst_fullfile(simnibsDir, ['m2m_' subjid], [subjid  '_final_contr.nii.gz']);
+            % mri_segmented_final = ft_read_mri(simNibsMask);
+            [sMri, vox2ras]  = in_mri(maskfilename);    %bMri = in_mri(maskfilename)
+            % Re-write to the fieldtrip format
+            mri_segmented = bstMri2ftMri(sMri, vox2ras);      
+            %mri_segmented = out_fieldtrip_mri(sMri);            ==> @
+            %Ftadel : cette function rajoute des changement sur les coordonnees 
+            % Assuming that the data are comming from SimNibs
+            mri_segmented.anatomylabel = {'white' 'gray' 'csf' 'skull' 'scalp'};
+            % Replace the eyes by the scalp
+            mri_segmented.anatomy(mri_segmented.anatomy == 6) = 5;
+            % Generate the cubic mesh
+            ft_defaults
+            bst_progress('text', 'Mesh generation (FieldTrip/ft_prepare_mesh)...');
+            cfg        = [];
+            cfg.shift  = OPTIONS.NodeShift;
+            cfg.method = 'hexahedral';
+            cfg.spmversion = 'spm12';
+            cfg.downsample = OPTIONS.Downsample;
+            mri_segmented.seg = mri_segmented.anatomy;
+            mesh = ft_prepare_mesh(cfg,(mri_segmented));
+%          quick check the mesh
+%                            [tetraElem,tetraNode,tetraLabel] = hex2tet(double(mesh.hex), mesh.pos, double(mesh.tissue), 3);
+%                            figure; plotmesh(tetraNode, [tetraElem tetraLabel],'x>0'); hold on;
+%                            tetraNode2 = ft_warp_apply(inv(mri_segmented.transform), tetraNode, 'homogeneous');
+%                            %              [tetraNode3, Transf] = cs_convert(sMri, src, dest, P)
+%                            figure; plotmesh(tetraNode2, [tetraElem tetraLabel],'x>0'); hold on;
+%             correct the mesh
+            if ~isempty(sMriT1)
+                mesh.pos = mesh.pos + 0.5; %we compensate for half a pixel mismatch in x,y and z between simnibs and bst.
+                mesh.pos = cs_convert(sMriT1, 'voxel', 'mri', mesh.pos);
+                mesh.pos = cs_convert(sMriT1, 'world', 'scs', mesh.pos);
+            end     
+            % check if the two methodes are selected 
+            if strcmp(OPTIONS.MeshType, 'tetrahedral & hexahedral')
+                node{2} = mesh.pos;
+                elem{2} = [mesh.hex mesh.tissue];
+                TissueLabels{2} = mri_segmented.anatomylabel;
+            else % only hexa
+                node = mesh.pos;
+                elem = [mesh.hex mesh.tissue];
+                TissueLabels = mri_segmented.anatomylabel;
+            end        
+          
+            % === EXTRACT THE HEXA FEM CORTEX SURFACE ===
+            bst_progress('text', 'Saving cortex envelope...');
+            % Keep cortex surface
+            [tetraElem,tetraNode,tetraLabel] = hex2tet(double(mesh.hex), mesh.pos, double(mesh.tissue), 3);
+            cortexElem = tetraElem(tetraLabel <= 2, :);
+            % Create a surface for the outside surface of this tissue
+            cortexFaces = tess_voledge(tetraNode, cortexElem);
+            % Remove all the unused vertices
+            cortexVertices = tetraNode;
+            iRemoveVert = setdiff((1:size(cortexVertices,1))', unique(cortexFaces(:)));
+            if ~isempty(iRemoveVert)
+                [cortexVertices, cortexFaces] = tess_remove_vert(cortexVertices, cortexFaces, iRemoveVert);
             end
-            
-            % === IMPORT 10-10 POSITIONS ===
-            PosFile = bst_fullfile(simnibsDir, ['m2m_' subjid], 'eeg_positions', 'EEG10-10_UI_Jurak_2007.csv');
-            if file_exist(PosFile)
-                % Create a condition "eeg_positions"
-                iStudy = db_add_condition(iSubject, 'eeg_positions');
-                % Import channel file
-                import_channel(iStudy, PosFile, 'SIMNIBS');
-            end
+            % Remove small elements
+            [cortexVertices, cortexFaces] = tess_remove_small(cortexVertices, cortexFaces);
+            % New surface structure
+            %             [newelem, evol]=meshreorient(cortexVertices, cortexFaces);
+            NewTess = db_template('surfacemat');
+            NewTess.Comment  = 'cortex_fem_hexa';
+            NewTess.Vertices = cortexVertices;
+            NewTess.Faces    = cortexFaces;
+            % History: File name
+            NewTess.History = 'Cortex hexa extracted from FEM model by SimNibs Method';
+            % Produce a default surface filename &   Make this filename unique
+            CortexFile = file_unique(bst_fullfile(bst_fileparts(T1File), ...
+                sprintf('tess_%s_%dV.mat', ['cortex_hexa_' OPTIONS.Method], length(NewTess.Vertices))));
+            % Save new surface in Brainstorm format
+            bst_save(CortexFile, NewTess, 'v7');
+            db_add_surface(iSubject, CortexFile, NewTess.Comment);
+        end
+        
+        % === IMPORT 10-10 POSITIONS ===
+        PosFile = bst_fullfile(simnibsDir, ['m2m_' subjid], 'eeg_positions', 'EEG10-10_UI_Jurak_2007.csv');
+        if file_exist(PosFile)
+            % Create a condition "eeg_positions"
+            iStudy = db_add_condition(iSubject, 'eeg_positions');
+            % Import channel file
+            import_channel(iStudy, PosFile, 'SIMNIBS');
+        end
 
         case 'fieldtrip'
             % Setup FieldTrip
@@ -823,8 +910,20 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     end
 
 
-    % ===== SAVE FEM MESH =====
-    bst_progress('text', 'Saving FEM mesh...');
+    
+% ===== SAVE FEM MESH =====
+bst_progress('text', 'Saving FEM mesh...');
+if ~isempty(strfind(OPTIONS.MeshType, 'tetrahedral'))
+    if strcmp(OPTIONS.MeshType, 'tetrahedral & hexahedral')
+        %create a temporary structure to save the hexa data
+        temp.node = node{2};
+        temp.elem = elem{2};
+        temp.TissueLabels = TissueLabels{2};        
+        % extrat the tetra data
+        node = node{1};
+        elem = elem{1};
+        TissueLabels = TissueLabels{1};
+    end
     % Create output structure
     FemMat = db_template('femmat');
     if ~isempty(TissueLabels)
@@ -832,19 +931,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     else
         uniqueLabels = unique(FemMat.Tissue);
         for i = 1:length(uniqueLabels)
-             FemMat.TissueLabels{i} = num2str(uniqueLabels(i));
+            FemMat.TissueLabels{i} = num2str(uniqueLabels(i));
         end
     end
-    FemMat.Comment = sprintf('FEM %dV (%s, %d layers)', length(node), OPTIONS.Method, length(FemMat.TissueLabels));
+    FemMat.Comment = sprintf('FEM tetra %dV (%s, %d layers)', length(node), OPTIONS.Method, length(FemMat.TissueLabels));
     FemMat.Vertices = node;
-    if strcmp(OPTIONS.MeshType, 'tetrahedral')
-        FemMat.Elements = elem(:,1:4);
-        FemMat.Tissue = elem(:,5);
-    else
-        FemMat.Elements = elem(:,1:8);
-        FemMat.Tissue = elem(:,9);
-    end
-
+    FemMat.Elements = elem(:,1:4);
+    FemMat.Tissue = elem(:,5);
     % Add history
     strOptions = '';
     for f = fieldnames(OPTIONS)'
@@ -859,12 +952,55 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         strOptions = [strOptions, ' '];
     end
     FemMat = bst_history('add', FemMat, 'process_generate_fem', strOptions);
-
+    
     % Save to database
-    FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
+    FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_tetra_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
     bst_save(FemFile, FemMat, 'v7');
     db_add_surface(iSubject, FemFile, FemMat.Comment);
-    % Return success
+end
+
+if ~isempty(strfind(OPTIONS.MeshType, 'hexahedral')) 
+    if strcmp(OPTIONS.MeshType, 'tetrahedral & hexahedral')
+        node = temp.node;
+        elem = temp.elem;
+        TissueLabels = temp.TissueLabels;
+    end
+ % Create output structure
+    FemMat = db_template('femmat');
+    if ~isempty(TissueLabels)
+        FemMat.TissueLabels = TissueLabels;
+    else
+        uniqueLabels = unique(FemMat.Tissue);
+        for i = 1:length(uniqueLabels)
+            FemMat.TissueLabels{i} = num2str(uniqueLabels(i));
+        end
+    end
+    FemMat.Comment = sprintf('FEM hexa %dV (%s, %d layers)', length(node), OPTIONS.Method, length(FemMat.TissueLabels));
+    FemMat.Vertices = node;
+    FemMat.Elements = elem(:,1:8);
+    FemMat.Tissue = elem(:,9);
+    
+    % Add history
+    strOptions = '';
+    for f = fieldnames(OPTIONS)'
+        strOptions = [strOptions, f{1}, '='];
+        if isnumeric(OPTIONS.(f{1}))
+            strOptions = [strOptions, num2str(OPTIONS.(f{1}))];
+        elseif ischar(OPTIONS.(f{1}))
+            strOptions = [strOptions, '''', OPTIONS.(f{1}), ''''];
+        elseif iscell(OPTIONS.(f{1})) && ~isempty(OPTIONS.(f{1}))
+            strOptions = [strOptions, sprintf('''%s'',', OPTIONS.(f{1}){:})];
+        end
+        strOptions = [strOptions, ' '];
+    end
+    FemMat = bst_history('add', FemMat, 'process_generate_fem', strOptions);
+    
+    % Save to database
+    FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_hexa_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
+    bst_save(FemFile, FemMat, 'v7');
+    db_add_surface(iSubject, FemFile, FemMat.Comment);
+end
+% Return success
     isOk = 1;
 end
 
@@ -972,6 +1108,17 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             % No extra options
             
         case 'simnibs'    
+                 % Ask  for the mesh type elemets
+        [resMesh, isCancel] = java_dialog('checkbox', ...
+            '<HTML>Select the SimNibs mesh elements format output <BR>', 'Select mesh elements', [], ...
+            {'Tetrahedral','Hexahedral'}, [1, 0]);
+        
+        if sum(resMesh) == 0
+            return
+        end
+        
+        if resMesh(1) == 1
+            % Tetra are selected
             % Ask for the Vertex density
             res = java_dialog('input', '<HTML>Vertex density:<BR>Number of nodes per mm2 of the surface meshes (0.1 - 1.5)', ...
                 'SimNIBS Vertex Density', [], num2str(OPTIONS.VertexDensity));
@@ -985,6 +1132,39 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 return
             end
             OPTIONS.NbVertices = str2double(res);
+            OPTIONS.MeshType = 'tetrahedral';
+        end
+        
+        if resMesh(2) == 1
+            % hexa is selected or also selected
+            %%%% Case of the hexa mesh
+            % Setup FieldTrip
+            isOk = bst_ft_init;
+            if ~isOk
+                errMsg = 'FieldTrip must be in the Matlab path for using this feature.';
+                % maybe we don't need fieldtrip for this, only 1 or 2  functions from simbio discuss with @ftadel 
+                return;
+            end
+            % Ask user for the downsampling factor
+            [res, isCancel]  = java_dialog('input', ['Downsample volume before meshing:' 10 '(integer, 1=no downsampling)'], ...
+                'SimNibs/FieldTrip FEM mesh : Hexa', [], num2str(OPTIONS.Downsample));
+            if isCancel || isempty(str2double(res))
+                return
+            end
+            OPTIONS.Downsample = str2double(res);
+            % Ask user for the node shifting
+            [res, isCancel]  = java_dialog('input', 'Shift the nodes to fit geometry [0-0.49]:', ...
+                'SimNibs/FieldTrip FEM mesh : Hexa', [], num2str(OPTIONS.NodeShift));
+            if isCancel || isempty(str2double(res))
+                return
+            end
+            OPTIONS.NodeShift = str2double(res);
+            OPTIONS.MeshType = 'hexahedral';
+        end
+        % both method are selected
+        if sum(resMesh) == 2
+            OPTIONS.MeshType = 'tetrahedral & hexahedral';
+        end     
 
         case 'fieldtrip'
             % Ask user for the downsampling factor
