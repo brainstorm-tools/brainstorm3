@@ -86,6 +86,10 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
     
     %% Buttons
     jPanelBtn = gui_component('Panel');
+    % Hide parent nodes
+    jPanelBtnNorth = java_create('javax.swing.JPanel');
+    jCheckHideParent = gui_component('CheckBox', jPanelBtnNorth, [], 'Hide parent nodes from search?');
+    jPanelBtn.add(jPanelBtnNorth, BorderLayout.NORTH);
     % Pipeline button
     jPanelBtnLeft = gui_component('Toolbar', jPanelBtn, BorderLayout.WEST);
     jPipelineBtn = gui_component('ToolbarButton', jPanelBtnLeft, [], [], IconLoader.ICON_CONDITION, 'Generate process call', @ButtonPipeline_Callback);
@@ -108,7 +112,8 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, ...
                            jPanelMain, ...
-                           struct('jPanelSearch', jPanelSearch));
+                           struct('jPanelSearch', jPanelSearch, ...
+                                  'jCheckHideParent', jCheckHideParent));
     
 %% =================================================================================
 %  === INTERNAL CALLBACKS ==========================================================
@@ -443,6 +448,10 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
         % Add last OR button with appropriate callback
         RemoveOrSeparator();
         AddOrButton(iOr);
+        % Hide parent checkbox
+        if ~node_show_parents(searchRoot)
+            jCheckHideParent.setSelected(1);
+        end
         % Refresh GUI
         RefreshDialog();
         bst_progress('stop');
@@ -545,6 +554,7 @@ function panelContents = GetPanelContents()
     nOrComponents = ctrl.jPanelSearch.getComponentCount();
     root = db_template('searchnode');
     root.Type = 3; % Nested block
+    root.Value = ctrl.jCheckHideParent.isSelected();
     orGroup = 0;
     iOrChild = 1;
     
@@ -740,15 +750,15 @@ end
 
 % Hard coded search type values and their associated dropdown label
 function [labels, values] = GetSearchTypeValues()
-    labels = {'Channel', 'Data', 'Dipoles', 'Fibers', 'Folder', ...
-        'Head model', 'Kernel', 'MRI', 'Matrix', 'Noise covariance', ...
-        'Power spectrum', 'Raw data', 'Source', 'Statistics', ...
-        'Subject', 'Surface', 'Time-frequency', 'Video'};
+    labels = {'Channel', 'Data', 'Dipoles', 'Fibers', 'Folder (non-raw)', 'Folder (raw)', ...
+        'Folder (all)', 'Head model', 'Kernel', 'MRI', 'Matrix', 'Noise covariance', ...
+        'Power spectrum', 'Raw data', 'Source (full map)', 'Source (link)', 'Source (all)', ...
+        'Statistics', 'Subject', 'Surface', 'Time-frequency', 'Video'};
     
     if nargout > 1
-        values = {'Channel', 'Data', 'Dipoles', 'Fibers', ...
-            {'Condition', 'RawCondition'}, 'HeadModel', 'Kernel', ...
-            'Anatomy', 'Matrix', 'NoiseCov', 'Spectrum', 'RawData', ...
+        values = {'Channel', 'Data', 'Dipoles', 'Fibers', 'Condition', 'RawCondition', ...
+            {'Condition', 'RawCondition'}, 'HeadModel', 'Kernel', 'Anatomy', ...
+            'Matrix', 'NoiseCov', 'Spectrum', 'RawData', 'Results', 'Link', ...
             {'Results', 'Link'}, {'PData', 'PResults', 'PTimeFreq', 'PMatrix'}, ...
             'Subject', {'Cortex', 'Scalp', 'OuterSkull', 'InnerSkull', 'Other'}, ...
             'TimeFreq', {'Video', 'Image'}};
@@ -1291,13 +1301,14 @@ function [newChildren, curBool] = PropagateNotRecursive(oldChildren, not)
         switch oldChildren(iOld).Type
             % Search parameter structure, see db_template('searchparam')
             case 1
-                % Add NOT in first of parameter
+                % Add NOT in front of parameter
                 if not
                     node = db_template('searchnode');
                     node.Type = 2; % Boolean
                     node.Value = 3; % NOT
                     newChildren(iNew) = node;
                     iNew = iNew + 1;
+                    not = 0;
                 end
                 newChildren(iNew) = oldChildren(iOld);
                 iNew = iNew + 1;
@@ -1413,22 +1424,31 @@ function parentNode = PropagateAnd(parentNode, andTerms, nextNot)
         skipNodes = zeros(1,nChildren);
         if boolOp == 1 % AND
             % Gather AND terms
+            skipAnd = 0;
             for iChild = 1:length(parentNode.Children)
+                isNot = parentNode.Children(iChild).Type == 2 ...
+                        && parentNode.Children(iChild).Value == 3;
                 if parentNode.Children(iChild).Type == 1 ... % Parameter
-                        || (parentNode.Children(iChild).Type == 2 ...
-                        && parentNode.Children(iChild).Value == 3) % NOT
+                        || isNot % NOT
                     if isempty(andTerms)
                         andTerms = db_template('searchnode');
                         andTerms.Type = 3; % Parent node
                         andTerms.Children = parentNode.Children(iChild);
                     else
-                        andNode = db_template('searchnode');
-                        andNode.Type = 2; % Boolean
-                        andNode.Value = 1; % AND
-                        andTerms.Children(end + 1) = andNode;
+                        if skipAnd
+                            skipAnd = 0;
+                        else
+                            andNode = db_template('searchnode');
+                            andNode.Type = 2; % Boolean
+                            andNode.Value = 1; % AND
+                            andTerms.Children(end + 1) = andNode;
+                        end
                         andTerms.Children(end + 1) = parentNode.Children(iChild);
                     end
                     skipNodes(iChild) = 1;
+                    if isNot
+                        skipAnd = 1;
+                    end
                 elseif (parentNode.Children(iChild).Type == 2 ... % Boolean
                         && parentNode.Children(iChild).Value == 1) % AND
                     skipNodes(iChild) = 1;

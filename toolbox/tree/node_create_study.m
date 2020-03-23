@@ -1,10 +1,11 @@
-function numElems = node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch)
+function numElems = node_create_study(nodeStudy, nodeRoot, sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch)
 % NODE_CREATE_STUDY: Create study node from study structure.
 %
 % USAGE:  node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel)
 %
 % INPUT: 
 %     - nodeStudy : BstNode object with Type 'study' => Root of the study subtree
+%     - nodeRoot  : BstNode object, root of the whole database tree
 %     - sStudy    : Brainstorm study structure
 %     - iStudy    : indice of the study node in Brainstorm studies list
 %     - isExpandTrials    : If 1, force the trials list to be expanded at the subtree creation
@@ -50,6 +51,7 @@ if (nargin < 6) || isempty(iSearch) || iSearch == 0
 else
     numElems = 0;
 end
+showParentNodes = node_show_parents(iSearch);
 
 % Is the parent a default study node ?
 if strcmpi(nodeStudy.getType(), 'defaultstudy')
@@ -533,7 +535,9 @@ iCreatedNode = 1;
 for iNode = 1:nNodes
     if allNodes(iNode).toDisplay
         % Get parent node
-        if allNodes(iNode).iParent == -1
+        if ~showParentNodes && ~isempty(nodeRoot)
+            parentNode = nodeRoot;
+        elseif allNodes(iNode).iParent == -1
             % If no parent node specified, parent is root node
             parentNode = nodeStudy;
         else
@@ -626,12 +630,38 @@ end
     % Input: ID of the node to toggle ON the display of.
     function propagateNodeDisplay(iCurrentNode)
         % Stop condition: no more parent or parent already displayed
-        if iCurrentNode ~= -1 && ~allNodes(iCurrentNode).toDisplay
+        if iCurrentNode ~= -1 && ~allNodes(iCurrentNode).toDisplay && showParentNodes
             % Display current node
             allNodes(iCurrentNode).toDisplay = 1;
             nodesDisplayed = nodesDisplayed + 1;
             % Recursive call to display parent
             propagateNodeDisplay(allNodes(iCurrentNode).iParent);
+        end
+    end
+
+    % Create a Java object for a database node if it passes the active search
+    %
+    % Inputs:
+    %  - parentNode: Java object of the parent node
+    %  - nodeType to iStudy: See BstJava's constructor
+    %  - iSearch: ID of the active search filter (or 0 if none)
+    %  - numElems: Number of elements to be displayed so far
+    %
+    % Outputs:
+    %  - numElems: Number of elements to be displayed, updated with new node
+    %  - node: Newly created Java object for the node
+    function [numElems, node] = CreateNode(parentNode, nodeType, nodeComment, ...
+            nodeFileName, iItem, iStudy, iSearch, numElems)
+        % Only create Java object is required
+        [isCreated, filteredComment] = node_apply_search(iSearch, nodeType, nodeComment, nodeFileName, iStudy);
+        if isCreated
+            if ~showParentNodes && ~isempty(nodeRoot)
+                parentNode = nodeRoot;
+            end
+            node = parentNode.add(nodeType, filteredComment, nodeFileName, iItem, iStudy);
+            numElems = numElems + 1;
+        else
+            node = [];
         end
     end
 end
@@ -646,29 +676,6 @@ function FileName = FileStandard(FileName)
     % Remove first slash (filenames all relative)
     if (FileName(1) == '/')
         FileName = FileName(2:end);
-    end
-end
-
-% Create a Java object for a database node if it passes the active search
-%
-% Inputs:
-%  - parentNode: Java object of the parent node
-%  - nodeType to iStudy: See BstJava's constructor
-%  - iSearch: ID of the active search filter (or 0 if none)
-%  - numElems: Number of elements to be displayed so far
-%
-% Outputs:
-%  - numElems: Number of elements to be displayed, updated with new node
-%  - node: Newly created Java object for the node
-function [numElems, node] = CreateNode(parentNode, nodeType, nodeComment, ...
-        nodeFileName, iItem, iStudy, iSearch, numElems)
-    % Only create Java object is required
-    [isCreated, filteredComment] = node_apply_search(iSearch, nodeType, nodeComment, nodeFileName, iStudy);
-    if isCreated
-        node = parentNode.add(nodeType, filteredComment, nodeFileName, iItem, iStudy);
-        numElems = numElems + 1;
-    else
-        node = [];
     end
 end
 

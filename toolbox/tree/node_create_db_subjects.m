@@ -43,6 +43,7 @@ end
 if nargin < 2 || isempty(iSearch)
     iSearch = 0;
 end
+showParentNodes = node_show_parents(iSearch);
 
 % Set default node
 bstDefaultNode = [];
@@ -74,9 +75,9 @@ if ~isempty(ProtocolSubjects.DefaultSubject)
     % Create subject node
     nodeSubject = BstNode('subject', '');
     % Fill it with MRI and surfaces children nodes
-    numElems = node_create_subject( nodeSubject, ProtocolSubjects.DefaultSubject, 0, iSearch);
+    numElems = node_create_subject(nodeSubject, nodeSubjectsDB, ProtocolSubjects.DefaultSubject, 0, iSearch);
     % Add new node if it has elements that passed the search filter
-    if numElems > 0
+    if numElems > 0 && showParentNodes
         % Add subject node to 'Subjects database' node
         nodeSubjectsDB.add(nodeSubject);
         numTotalElems = numTotalElems + numElems;
@@ -105,9 +106,9 @@ for i = 1:length(iSubjectsSorted)
     nodeSubject = BstNode('subject', '');
     % Fill it with MRI and surfaces children nodes
     try
-        numElems = node_create_subject( nodeSubject, ProtocolSubjects.Subject(iSubject), iSubject, iSearch);
+        numElems = node_create_subject(nodeSubject, nodeSubjectsDB, ProtocolSubjects.Subject(iSubject), iSubject, iSearch);
         % Add subject node to 'Subjects database' node
-        if numElems > 0
+        if numElems > 0 && showParentNodes
             nodeSubjectsDB.add(nodeSubject);
             numTotalElems = numTotalElems + numElems;
             % If current subject is the subject associated with the default study

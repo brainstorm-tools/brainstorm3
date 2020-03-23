@@ -184,11 +184,13 @@ try
                         if ~isempty(iFoundResults) && ~isempty(sStudy.Result(iFoundResults))
                             ResultsFiles = {sStudy.Result(iFoundResults).FileName};
                             ResultsComments = {sStudy.Result(iFoundResults).Comment};
+                            ResultsTypes = {'results', 'link'};
+                            ResultsTypes = ResultsTypes(1 + [sStudy.Result(iFoundResults).isLink]);
                             % The results that were found
                             if ~isempty(iFoundResults)
                                 % === Check file filters ===
                                 if ~isempty(NodelistOptions)
-                                    iFoundResults = iFoundResults(isFileSelected(ResultsFiles, ResultsComments, NodelistOptions, targetNodeType, iStudy));
+                                    iFoundResults = iFoundResults(isFileSelected(ResultsFiles, ResultsComments, NodelistOptions, ResultsTypes, iStudy));
                                 end
                                 iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundResults))];
                                 iDepItems   = [iDepItems iFoundResults];
@@ -270,11 +272,13 @@ try
                                     iFoundResults = iResWithData(file_compare(sStudy.Data(iData).FileName, {sStudy.Result(iResWithData).DataFile}));
                                     ResultsFiles = {sStudy.Result(iFoundResults).FileName};
                                     ResultsComment = {sStudy.Result(iFoundResults).Comment};
+                                    ResultsTypes = {'results', 'link'};
+                                    ResultsTypes = ResultsTypes(1 + [sStudy.Result(iFoundResults).isLink]);
                                     % The results that were found
                                     if ~isempty(iFoundResults)
                                         % === Check file filters ===
                                         if ~isempty(NodelistOptions)
-                                            iFoundResults = iFoundResults(isFileSelected(ResultsFiles, ResultsComment, NodelistOptions, targetNodeType, iStudy));
+                                            iFoundResults = iFoundResults(isFileSelected(ResultsFiles, ResultsComment, NodelistOptions, ResultsTypes, iStudy));
                                         end
                                         iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundResults))];
                                         iDepItems   = [iDepItems iFoundResults];
@@ -540,10 +544,13 @@ if ~isempty(iTargetStudies)
                 % === Check file filters ===
                 ResultsFiles = {sStudies(i).Result.FileName};
                 ResultsComments = {sStudies(i).Result.Comment};
+                ResultsTypes = {'results', 'link'};
+                ResultsTypes = ResultsTypes(1 + [sStudies(i).Result.isLink]);
+                
                 if ~isempty(ResultsFiles)
                     % Get non-pure kernels + Check file filters
                     if ~isempty(NodelistOptions)
-                        iValidResult = find(~isPureKernel(sStudies(i).Result) & isFileSelected(ResultsFiles, ResultsComments, NodelistOptions, targetNodeType, iStudies(i)));
+                        iValidResult = find(~isPureKernel(sStudies(i).Result) & isFileSelected(ResultsFiles, ResultsComments, NodelistOptions, ResultsTypes, iStudies(i)));
                     else
                         iValidResult = find(~isPureKernel(sStudies(i).Result));
                     end
