@@ -88,7 +88,8 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
     jPanelBtn = gui_component('Panel');
     % Hide parent nodes
     jPanelBtnNorth = java_create('javax.swing.JPanel');
-    jCheckHideParent = gui_component('CheckBox', jPanelBtnNorth, [], 'Hide parent nodes from search?');
+    jPanelBtnNorth.setLayout(java_create('java.awt.FlowLayout', 'I', java.awt.FlowLayout.RIGHT));
+    jCheckHideParent = gui_component('CheckBox', jPanelBtnNorth, [], 'Hide parent nodes');
     jPanelBtn.add(jPanelBtnNorth, BorderLayout.NORTH);
     % Pipeline button
     jPanelBtnLeft = gui_component('Toolbar', jPanelBtn, BorderLayout.WEST);
@@ -302,10 +303,12 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
             jSearchFor = gui_component('ComboBox', [], [], [], {GetSearchTypeValues()});
             jSearchFor.setSelectedIndex(1);
             jSearchEqual.setSelectedIndex(2);
+            jSearchEqual.setEnabled(0);
         % Otherwise, free-form text
         else
             jSearchFor = gui_component('Text', [], 'hfill', searchForVal);
             jSearchEqual.setSelectedIndex(0);
+            jSearchEqual.setEnabled(1);
         end
         java_setcb(jSearchFor, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
 
@@ -750,16 +753,16 @@ end
 
 % Hard coded search type values and their associated dropdown label
 function [labels, values] = GetSearchTypeValues()
-    labels = {'Channel', 'Data', 'Dipoles', 'Fibers', 'Folder (non-raw)', 'Folder (raw)', ...
-        'Folder (all)', 'Head model', 'Kernel', 'MRI', 'Matrix', 'Noise covariance', ...
-        'Power spectrum', 'Raw data', 'Source (full map)', 'Source (link)', 'Source (all)', ...
+    labels = {'Channel', 'Data', 'Dipoles', 'Fibers', 'Folder (imported)', 'Folder (raw)', ...
+        'Folder (all)', 'Head model', 'MRI', 'Matrix', 'Noise covariance', ...
+        'Power spectrum', 'Raw data', 'Source (file)', 'Source (link)', 'Source (kernel)' ...
         'Statistics', 'Subject', 'Surface', 'Time-frequency', 'Video'};
     
     if nargout > 1
         values = {'Channel', 'Data', 'Dipoles', 'Fibers', 'Condition', 'RawCondition', ...
-            {'Condition', 'RawCondition'}, 'HeadModel', 'Kernel', 'Anatomy', ...
+            {'Condition', 'RawCondition'}, 'HeadModel', 'Anatomy', ...
             'Matrix', 'NoiseCov', 'Spectrum', 'RawData', 'Results', 'Link', ...
-            {'Results', 'Link'}, {'PData', 'PResults', 'PTimeFreq', 'PMatrix'}, ...
+            'Kernel', {'PData', 'PResults', 'PTimeFreq', 'PMatrix'}, ...
             'Subject', {'Cortex', 'Scalp', 'OuterSkull', 'InnerSkull', 'Other'}, ...
             'TimeFreq', {'Video', 'Image'}};
     end
