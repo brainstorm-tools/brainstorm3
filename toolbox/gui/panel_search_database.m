@@ -783,22 +783,25 @@ end
 
 % Returns the appropriate search type dropdown from the chosen file type(s)
 function searchFor = GetFileTypeDropdown(fileType)
-    % Only check the first file type from the list
-    if iscell(fileType)
-        fileType = fileType{1};
-    end
-
     % Get type values
     [searchFors, fileTypes] = GetSearchTypeValues();
     % Look if type value exists
     for iType = 1:length(fileTypes)
-        if any(strcmpi(fileType, fileTypes{iType}))
-            searchFor = searchFors{iType};
-            return;
+        if iscell(fileType) && iscell(fileTypes{iType})
+            if length(fileType) == length(fileTypes{iType}) && all(ismember(fileType, fileTypes{iType}))
+                searchFor = searchFors{iType};
+                return;
+            end
+        elseif ~iscell(fileType) && ~iscell(fileTypes{iType})
+            if strcmpi(fileType, fileTypes{iType})
+                searchFor = searchFors{iType};
+                return;
+            end
         end
     end
-    % Default: same as input
-    searchFor = fileType;
+    
+    % Default: empty
+    searchFor = [];
 end
 
 % Returns the boolean string from the selected boolean ID
@@ -1688,26 +1691,11 @@ end
 function [isValid, invalidType] = ValidFileTypes(searchRoot)
     % Parameters with file types as search value
     if searchRoot.Type == 1 && searchRoot.Value.SearchType == 2
-        [labels, values] = GetSearchTypeValues();
-        value = searchRoot.Value.Value;
-        isValid = 0;
-        for iValue = 1:length(values)
-            if iscell(value) && iscell(values{iValue})
-                if length(value) == length(values{iValue}) && all(ismember(value, values{iValue}))
-                    isValid = 1;
-                    break;
-                end
-            elseif ~iscell(value) && ~iscell(values{iValue})
-                if strcmpi(value, values{iValue})
-                    isValid = 1;
-                    break;
-                end
-            end
-        end
-        
-        if ~isValid
-            invalidType = value;
+        if isempty(GetFileTypeDropdown(searchRoot.Value.Value))
+            isValid = 0;
+            invalidType = searchRoot.Value.Value;
         else
+            isValid = 1;
             invalidType = [];
         end
         
