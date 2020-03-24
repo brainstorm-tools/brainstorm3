@@ -86,18 +86,15 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
     
     %% Buttons
     jPanelBtn = gui_component('Panel');
-    % Hide parent nodes
-    jPanelBtnNorth = java_create('javax.swing.JPanel');
-    jPanelBtnNorth.setLayout(java_create('java.awt.FlowLayout', 'I', java.awt.FlowLayout.RIGHT));
-    jCheckHideParent = gui_component('CheckBox', jPanelBtnNorth, [], 'Hide parent nodes');
-    jPanelBtn.add(jPanelBtnNorth, BorderLayout.NORTH);
     % Pipeline button
     jPanelBtnLeft = gui_component('Toolbar', jPanelBtn, BorderLayout.WEST);
     jPipelineBtn = gui_component('ToolbarButton', jPanelBtnLeft, [], [], IconLoader.ICON_CONDITION, 'Generate process call', @ButtonPipeline_Callback);
     % Search & Cancel buttons
     jPanelBtnRight = java_create('javax.swing.JPanel');
+    jCheckHideParent = gui_component('CheckBox', [], [], 'Hide parent nodes');
     jSearchBtn = gui_component('Button', [], [], 'Search', [], [], @ButtonSearch_Callback);
     jCancelBtn = gui_component('Button', [], [], 'Cancel', [], [], @ButtonCancel_Callback);
+    jPanelBtnRight.add(jCheckHideParent);
     jPanelBtnRight.add(jSearchBtn);
     jPanelBtnRight.add(jCancelBtn);
     jPanelBtn.add(jPanelBtnRight, BorderLayout.EAST);
@@ -237,6 +234,7 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
             jEquality.setSelectedItem(equalStr);
             if values.SearchType == 2
                 jSearchFor.setSelectedItem(GetFileTypeDropdown(values.Value));
+                jEquality.setEnabled(0);
             else
                 jSearchFor.setText(values.Value);
             end
@@ -1543,6 +1541,22 @@ function [res, errorMsg] = SearchGUICompatible(searchRoot)
         errorMsg = 'Queries with more than 2 nested blocks are not supported.';
     end
     
+    % Make sure all file types are supported
+    [isValid, invalidType] = ValidFileTypes(searchRoot);
+    if ~isValid
+        if iscell(invalidType)
+            typeStr = [];
+            for iType = 1:length(invalidType)
+                if iType > 1
+                    typeStr = [typeStr ', '];
+                end
+                typeStr = [typeStr invalidType{iType}];
+            end
+            invalidType = typeStr;
+        end
+        errorMsg = ['The following file type is not supported by the GUI: ' invalidType];
+    end
+    
     res = isempty(errorMsg);
 end
 
@@ -1662,5 +1676,53 @@ function [isRequired, FileTypes] = GetRequiredFileTypes(searchRoot, isNot)
         if isRequired == -1
             isRequired = firstChildRequired;
         end
+    end
+end
+
+% Checks whether a search query has file types that are not supported by
+% the GUI
+%
+% Outputs:
+%  - isValid: 1 if the query does require only certain file types, else
+%  - FileTypes : list of file types required, only valid if isRequired is 1
+function [isValid, invalidType] = ValidFileTypes(searchRoot)
+    % Parameters with file types as search value
+    if searchRoot.Type == 1 && searchRoot.Value.SearchType == 2
+        [labels, values] = GetSearchTypeValues();
+        value = searchRoot.Value.Value;
+        isValid = 0;
+        for iValue = 1:length(values)
+            if iscell(value) && iscell(values{iValue})
+                if length(value) == length(values{iValue}) && all(ismember(value, values{iValue}))
+                    isValid = 1;
+                    break;
+                end
+            elseif ~iscell(value) && ~iscell(values{iValue})
+                if strcmpi(value, values{iValue})
+                    isValid = 1;
+                    break;
+                end
+            end
+        end
+        
+        if ~isValid
+            invalidType = value;
+        else
+            invalidType = [];
+        end
+        
+    % Parent node: apply recursively
+    elseif searchRoot.Type == 3
+        for iChild = 1:length(searchRoot.Children)
+            [isValid, invalidType] = ValidFileTypes(searchRoot.Children(iChild));
+            if ~isValid
+                return;
+            end
+        end
+    
+    % Other types of nodes: no file type
+    else
+        isValid = 1;
+        invalidType = [];
     end
 end
