@@ -1187,6 +1187,7 @@ switch lower(structureName)
                 ... % 1 = db_template('SearchParam') value
                 ... % 2 = Boolean value (1 = AND, 2 = OR, 3 = NOT)
                 ... % 3 = Parent node (no value, only children)
+                ...     % Exception: value of 1 = hide parent nodes in GUI
             'Value',    [], ...
             'Children', []);
 

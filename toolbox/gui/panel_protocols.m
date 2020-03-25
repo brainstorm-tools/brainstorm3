@@ -498,7 +498,7 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
     % Create node sub-tree
     UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
     isExpandTrials = 1;
-    node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
+    node_create_study(nodeStudy, [], sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
     % Mark as updated
     nodeStudy.setUserObject([]);
     ctrl.jTreeProtocols.getModel.reload(nodeStudy);
@@ -614,7 +614,7 @@ function UpdateNode(category, indices, isExpandTrials)
                             sSubject = bst_get('Subject', sStudy.BrainStormSubject);
                             % Create new study node (default node / normal node)
                             UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
-                            node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
+                            node_create_study(nodeStudy, [], sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
                             % Refresh node display
                             ctrl.jTreeProtocols.getModel.reload(nodeStudy);
                             drawnow
@@ -1609,6 +1609,9 @@ function ApplySearch(searchRoot, iSearch)
         jButton = jPanelTab.getComponent(1);
         jLabel.setText([newTabName ' '])
         java_setcb(jButton, 'ActionPerformedCallback', @(h,ev)CloseDatabaseTab(newTabName));
+        % Update database
+        UpdateTree(0);
+        panel_nodelist('UpdatePanel', [], 1);
     end
     
     bst_progress('stop');

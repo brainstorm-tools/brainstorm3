@@ -89,6 +89,7 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
     % Pipeline button
     jPanelBtnLeft = gui_component('Toolbar', jPanelBtn, BorderLayout.WEST);
     jPipelineBtn = gui_component('ToolbarButton', jPanelBtnLeft, [], [], IconLoader.ICON_CONDITION, 'Generate process call', @ButtonPipeline_Callback);
+    jCheckHideParent = gui_component('CheckBox', jPanelBtnLeft, [], 'Hide parent nodes');
     % Search & Cancel buttons
     jPanelBtnRight = java_create('javax.swing.JPanel');
     jSearchBtn = gui_component('Button', [], [], 'Search', [], [], @ButtonSearch_Callback);
@@ -108,7 +109,8 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, ...
                            jPanelMain, ...
-                           struct('jPanelSearch', jPanelSearch));
+                           struct('jPanelSearch', jPanelSearch, ...
+                                  'jCheckHideParent', jCheckHideParent));
     
 %% =================================================================================
 %  === INTERNAL CALLBACKS ==========================================================
@@ -231,6 +233,7 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
             jEquality.setSelectedItem(equalStr);
             if values.SearchType == 2
                 jSearchFor.setSelectedItem(GetFileTypeDropdown(values.Value));
+                jEquality.setEnabled(0);
             else
                 jSearchFor.setText(values.Value);
             end
@@ -297,10 +300,12 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
             jSearchFor = gui_component('ComboBox', [], [], [], {GetSearchTypeValues()});
             jSearchFor.setSelectedIndex(1);
             jSearchEqual.setSelectedIndex(2);
+            jSearchEqual.setEnabled(0);
         % Otherwise, free-form text
         else
             jSearchFor = gui_component('Text', [], 'hfill', searchForVal);
             jSearchEqual.setSelectedIndex(0);
+            jSearchEqual.setEnabled(1);
         end
         java_setcb(jSearchFor, 'KeyTypedCallback', @PanelSearch_KeyTypedCallback);
 
@@ -443,6 +448,10 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
         % Add last OR button with appropriate callback
         RemoveOrSeparator();
         AddOrButton(iOr);
+        % Hide parent checkbox
+        if ~node_show_parents(searchRoot)
+            jCheckHideParent.setSelected(1);
+        end
         % Refresh GUI
         RefreshDialog();
         bst_progress('stop');
@@ -545,6 +554,7 @@ function panelContents = GetPanelContents()
     nOrComponents = ctrl.jPanelSearch.getComponentCount();
     root = db_template('searchnode');
     root.Type = 3; % Nested block
+    root.Value = ctrl.jCheckHideParent.isSelected();
     orGroup = 0;
     iOrChild = 1;
     
@@ -740,16 +750,16 @@ end
 
 % Hard coded search type values and their associated dropdown label
 function [labels, values] = GetSearchTypeValues()
-    labels = {'Channel', 'Data', 'Dipoles', 'Fibers', 'Folder', ...
-        'Head model', 'Kernel', 'MRI', 'Matrix', 'Noise covariance', ...
-        'Power spectrum', 'Raw data', 'Source', 'Statistics', ...
-        'Subject', 'Surface', 'Time-frequency', 'Video'};
+    labels = {'Channel', 'Data', 'Dipoles', 'Fibers', 'Folder (imported)', 'Folder (raw)', ...
+        'Folder (all)', 'Head model', 'MRI', 'Matrix', 'Noise covariance', 'Power spectrum', ...
+        'Raw data', 'Source (file)', 'Source (link)', 'Source (all)', 'Source (shared kernel)', ...
+        'Statistics', 'Subject', 'Surface', 'Time-frequency', 'Video'};
     
     if nargout > 1
-        values = {'Channel', 'Data', 'Dipoles', 'Fibers', ...
-            {'Condition', 'RawCondition'}, 'HeadModel', 'Kernel', ...
-            'Anatomy', 'Matrix', 'NoiseCov', 'Spectrum', 'RawData', ...
-            {'Results', 'Link'}, {'PData', 'PResults', 'PTimeFreq', 'PMatrix'}, ...
+        values = {'Channel', 'Data', 'Dipoles', 'Fibers', 'Condition', 'RawCondition', ...
+            {'Condition', 'RawCondition'}, 'HeadModel', 'Anatomy', ...
+            'Matrix', 'NoiseCov', 'Spectrum', 'RawData', 'Results', 'Link', ...
+            {'Results', 'Link'}, 'Kernel', {'PData', 'PResults', 'PTimeFreq', 'PMatrix'}, ...
             'Subject', {'Cortex', 'Scalp', 'OuterSkull', 'InnerSkull', 'Other'}, ...
             'TimeFreq', {'Video', 'Image'}};
     end
@@ -772,22 +782,25 @@ end
 
 % Returns the appropriate search type dropdown from the chosen file type(s)
 function searchFor = GetFileTypeDropdown(fileType)
-    % Only check the first file type from the list
-    if iscell(fileType)
-        fileType = fileType{1};
-    end
-
     % Get type values
     [searchFors, fileTypes] = GetSearchTypeValues();
     % Look if type value exists
     for iType = 1:length(fileTypes)
-        if any(strcmpi(fileType, fileTypes{iType}))
-            searchFor = searchFors{iType};
-            return;
+        if iscell(fileType) && iscell(fileTypes{iType})
+            if length(fileType) == length(fileTypes{iType}) && all(ismember(fileType, fileTypes{iType}))
+                searchFor = searchFors{iType};
+                return;
+            end
+        elseif ~iscell(fileType) && ~iscell(fileTypes{iType})
+            if strcmpi(fileType, fileTypes{iType})
+                searchFor = searchFors{iType};
+                return;
+            end
         end
     end
-    % Default: same as input
-    searchFor = fileType;
+    
+    % Default: empty
+    searchFor = [];
 end
 
 % Returns the boolean string from the selected boolean ID
@@ -1291,13 +1304,14 @@ function [newChildren, curBool] = PropagateNotRecursive(oldChildren, not)
         switch oldChildren(iOld).Type
             % Search parameter structure, see db_template('searchparam')
             case 1
-                % Add NOT in first of parameter
+                % Add NOT in front of parameter
                 if not
                     node = db_template('searchnode');
                     node.Type = 2; % Boolean
                     node.Value = 3; % NOT
                     newChildren(iNew) = node;
                     iNew = iNew + 1;
+                    not = 0;
                 end
                 newChildren(iNew) = oldChildren(iOld);
                 iNew = iNew + 1;
@@ -1413,22 +1427,31 @@ function parentNode = PropagateAnd(parentNode, andTerms, nextNot)
         skipNodes = zeros(1,nChildren);
         if boolOp == 1 % AND
             % Gather AND terms
+            skipAnd = 0;
             for iChild = 1:length(parentNode.Children)
+                isNot = parentNode.Children(iChild).Type == 2 ...
+                        && parentNode.Children(iChild).Value == 3;
                 if parentNode.Children(iChild).Type == 1 ... % Parameter
-                        || (parentNode.Children(iChild).Type == 2 ...
-                        && parentNode.Children(iChild).Value == 3) % NOT
+                        || isNot % NOT
                     if isempty(andTerms)
                         andTerms = db_template('searchnode');
                         andTerms.Type = 3; % Parent node
                         andTerms.Children = parentNode.Children(iChild);
                     else
-                        andNode = db_template('searchnode');
-                        andNode.Type = 2; % Boolean
-                        andNode.Value = 1; % AND
-                        andTerms.Children(end + 1) = andNode;
+                        if skipAnd
+                            skipAnd = 0;
+                        else
+                            andNode = db_template('searchnode');
+                            andNode.Type = 2; % Boolean
+                            andNode.Value = 1; % AND
+                            andTerms.Children(end + 1) = andNode;
+                        end
                         andTerms.Children(end + 1) = parentNode.Children(iChild);
                     end
                     skipNodes(iChild) = 1;
+                    if isNot
+                        skipAnd = 1;
+                    end
                 elseif (parentNode.Children(iChild).Type == 2 ... % Boolean
                         && parentNode.Children(iChild).Value == 1) % AND
                     skipNodes(iChild) = 1;
@@ -1518,6 +1541,22 @@ function [res, errorMsg] = SearchGUICompatible(searchRoot)
     % supported by the GUI.
     if isempty(errorMsg) && GetSearchDepth(searchRoot) > 2
         errorMsg = 'Queries with more than 2 nested blocks are not supported.';
+    end
+    
+    % Make sure all file types are supported
+    [isValid, invalidType] = ValidFileTypes(searchRoot);
+    if ~isValid
+        if iscell(invalidType)
+            typeStr = [];
+            for iType = 1:length(invalidType)
+                if iType > 1
+                    typeStr = [typeStr ', '];
+                end
+                typeStr = [typeStr invalidType{iType}];
+            end
+            invalidType = typeStr;
+        end
+        errorMsg = ['The following file type is not supported by the GUI: ' invalidType];
     end
     
     res = isempty(errorMsg);
@@ -1639,5 +1678,38 @@ function [isRequired, FileTypes] = GetRequiredFileTypes(searchRoot, isNot)
         if isRequired == -1
             isRequired = firstChildRequired;
         end
+    end
+end
+
+% Checks whether a search query has file types that are not supported by
+% the GUI
+%
+% Outputs:
+%  - isValid: 1 if the query does require only certain file types, else
+%  - FileTypes : list of file types required, only valid if isRequired is 1
+function [isValid, invalidType] = ValidFileTypes(searchRoot)
+    % Parameters with file types as search value
+    if searchRoot.Type == 1 && searchRoot.Value.SearchType == 2
+        if isempty(GetFileTypeDropdown(searchRoot.Value.Value))
+            isValid = 0;
+            invalidType = searchRoot.Value.Value;
+        else
+            isValid = 1;
+            invalidType = [];
+        end
+        
+    % Parent node: apply recursively
+    elseif searchRoot.Type == 3
+        for iChild = 1:length(searchRoot.Children)
+            [isValid, invalidType] = ValidFileTypes(searchRoot.Children(iChild));
+            if ~isValid
+                return;
+            end
+        end
+    
+    % Other types of nodes: no file type
+    else
+        isValid = 1;
+        invalidType = [];
     end
 end
