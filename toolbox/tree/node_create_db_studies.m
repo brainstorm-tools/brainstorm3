@@ -240,6 +240,7 @@ for i = 1:length(ProtocolStudies.Study)
                     nodeCondition = hashTableNodes.get(lower(pathCondition));
                     % If node does not already exist : create it
                     if isempty(nodeCondition)
+                        foundSearch = 0;
                         % === ANALYSIS-INTRA ===
                         % "(Analysis)" node for intra-subjects results
                         if strcmpi(sStudy.Condition{iCondition}, bst_get('DirAnalysisIntra'))
