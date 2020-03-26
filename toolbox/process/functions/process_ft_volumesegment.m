@@ -31,10 +31,10 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'FieldTrip: ft_volumesegment';
+    sProcess.Comment     = 'Segment MRI with FieldTrip (ft_volumesegment)';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 31;
+    sProcess.Index       = 32;
     sProcess.Description = 'http://www.fieldtriptoolbox.org/faq/how_is_the_segmentation_defined';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import', 'data'};
@@ -47,12 +47,20 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.subjectname.Value      = 'NewSubject';
     sProcess.options.subjectname.InputTypes = {'import'};
     % Label
-    sProcess.options.label1.Comment = '<BR><B>Layers to extract</B>:';
+    sProcess.options.label1.Comment = '<BR><B>Tissues to segment</B>:';
     sProcess.options.label1.Type    = 'label';
+    % Option: White
+    sProcess.options.iswhite.Comment = 'White matter';
+    sProcess.options.iswhite.Type    = 'checkbox';
+    sProcess.options.iswhite.Value   = 0;
+    % Option: Gray
+    sProcess.options.isgray.Comment = 'Gray matter';
+    sProcess.options.isgray.Type    = 'checkbox';
+    sProcess.options.isgray.Value   = 0;
     % Option: Brain
-    sProcess.options.isbrain.Comment = 'Brain';
-    sProcess.options.isbrain.Type    = 'checkbox';
-    sProcess.options.isbrain.Value   = 1;
+    sProcess.options.iscsf.Comment = 'Brain/CSF';
+    sProcess.options.iscsf.Type    = 'checkbox';
+    sProcess.options.iscsf.Value   = 1;
     % Option: Skull
     sProcess.options.isskull.Comment = 'Skull <FONT color="#999999">&nbsp;&nbsp;&nbsp;&nbsp;(requires the Image Processing toolbox)</FONT>';
     sProcess.options.isskull.Type    = 'checkbox';
@@ -64,18 +72,20 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Label
     sProcess.options.label2.Comment = '<BR><B>Files to save for each layer</B>:';
     sProcess.options.label2.Type    = 'label';
-    % Save MRI
-    sProcess.options.ismri.Comment = 'MRI mask <FONT color="#999999">&nbsp;&nbsp;&nbsp;&nbsp;(for FieldTrip headmodels)</FONT>';
-    sProcess.options.ismri.Type    = 'checkbox';
-    sProcess.options.ismri.Value   = 1;
     % Save surface
     sProcess.options.istess.Comment = 'Surface <FONT color="#999999">&nbsp;&nbsp;&nbsp;&nbsp;(for OpenMEEG BEM)</FONT>';
     sProcess.options.istess.Type    = 'checkbox';
     sProcess.options.istess.Value   = 1;
-    % Number of vertices 
-    sProcess.options.nvertbrain.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Number of vertices (inner skull): ';
-    sProcess.options.nvertbrain.Type    = 'value';
-    sProcess.options.nvertbrain.Value   = {1922, '', 0};
+    % Number of vertices
+    sProcess.options.nvertwhite.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Number of vertices (white matter): ';
+    sProcess.options.nvertwhite.Type    = 'value';
+    sProcess.options.nvertwhite.Value   = {15000, '', 0};
+    sProcess.options.nvertgray.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Number of vertices (gray matter): ';
+    sProcess.options.nvertgray.Type    = 'value';
+    sProcess.options.nvertgray.Value   = {15000, '', 0};
+    sProcess.options.nvertcsf.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Number of vertices (inner skull): ';
+    sProcess.options.nvertcsf.Type    = 'value';
+    sProcess.options.nvertcsf.Value   = {1922, '', 0};
     sProcess.options.nvertskull.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Number of vertices (outer skull): ';
     sProcess.options.nvertskull.Type    = 'value';
     sProcess.options.nvertskull.Value   = {1922, '', 0};
@@ -132,9 +142,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             return;
         end
     end
-    if sProcess.options.isbrain.Value
-        OPTIONS.layers{end+1} = 'brain';
-        OPTIONS.nVertices(end+1) = sProcess.options.nvertbrain.Value{1};
+    if sProcess.options.iscsf.Value
+        OPTIONS.layers{end+1} = 'csf';
+        OPTIONS.nVertices(end+1) = sProcess.options.nvertcsf.Value{1};
+    end
+    if sProcess.options.isgray.Value
+        OPTIONS.layers{end+1} = 'gray';
+        OPTIONS.nVertices(end+1) = sProcess.options.nvertgray.Value{1};
+    end
+    if sProcess.options.iswhite.Value
+        OPTIONS.layers{end+1} = 'white';
+        OPTIONS.nVertices(end+1) = sProcess.options.nvertwhite.Value{1};
     end
     if isempty(OPTIONS.layers)
         bst_report('Error', sProcess, [], 'Nothing to extract.');
@@ -142,7 +160,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Get output 
     OPTIONS.isSaveTess = sProcess.options.istess.Value;
-    OPTIONS.isSaveMri  = sProcess.options.ismri.Value;
     
     % ===== LOOP ON SUBJECTS =====
     for isub = 1:length(SubjectNames)
@@ -177,18 +194,18 @@ end
 
 %% ===== DEFAULT OPTIONS =====
 function OPTIONS = GetDefaultOptions()
-    OPTIONS.layers      = {'scalp', 'skull', 'brain'};
-    OPTIONS.nVertices   = [1922, 1922, 1922];
+    OPTIONS.layers      = {'scalp', 'skull', 'csf', 'gray', 'white'};
+    OPTIONS.nVertices   = [1922, 1922, 1922, 15000, 15000];
     OPTIONS.isSaveTess  = 1;
-    OPTIONS.isSaveMri   = 1;
 end
 
 
 %% ===== COMPUTE =====
-function [isOk, errMsg] = Compute(iSubject, iMri, OPTIONS)
+function [isOk, errMsg, TissueFile] = Compute(iSubject, iMri, OPTIONS)
     isOk = 0;
     errMsg = '';
-
+    TissueFile = [];
+    
     % ===== DEFAULT OPTIONS =====
     Def_OPTIONS = GetDefaultOptions();
     if isempty(OPTIONS)
@@ -213,11 +230,15 @@ function [isOk, errMsg] = Compute(iSubject, iMri, OPTIONS)
     % ===== CALL FIELDTRIP =====
     % Initialize fieldtrip
     bst_ft_init();
+    % Replace CSF with BRAIN if white/grey not needed
+    if ~any(ismember({'white','gray'}, OPTIONS.layers)) && ismember('csf', OPTIONS.layers)
+        OPTIONS.layers{ismember(OPTIONS.layers, {'csf'})} = 'brain';
+    end
     % Run ft_volumesegment: Tissue segmentation
     bst_progress('text', 'Calling FieldTrip function: ft_volumesegment...');
     cfg = [];
     cfg.output = OPTIONS.layers;
-    ftSegmented = ft_volumesegment(cfg, ftMri);    
+    ftSegmented = ft_volumesegment(cfg, ftMri);
     % Check if something was returned
     if isempty(ftSegmented)
         errMsg = 'Something went wrong during the execution of the FieldTrip function ft_volumesegment. Check the command window...';
@@ -225,7 +246,7 @@ function [isOk, errMsg] = Compute(iSubject, iMri, OPTIONS)
     end
     % Run ft_prepare_mesh: Mesh the different layers
     if OPTIONS.isSaveTess
-        bst_progress('text', 'Calling FieldTrip funciton: ft_prepare_mesh...');
+        bst_progress('text', 'Calling FieldTrip function: ft_prepare_mesh...');
         cfg = [];
         cfg.tissue = OPTIONS.layers;
         cfg.numvertices = OPTIONS.nVertices;
@@ -237,7 +258,8 @@ function [isOk, errMsg] = Compute(iSubject, iMri, OPTIONS)
     end
 
     % ===== SAVE OUTPUT IN DATABASE =====
-    % Save each layer as a volume and a surface 
+    sMriTissue = [];
+    % Save each layer as a volume and a surface
     for i = 1:length(OPTIONS.layers)
         % If layer was not computed
         if ~isfield(ftSegmented, OPTIONS.layers{i}) || isempty(ftSegmented.(OPTIONS.layers{i}))
@@ -245,40 +267,24 @@ function [isOk, errMsg] = Compute(iSubject, iMri, OPTIONS)
         end
         % Get layer name
         switch (OPTIONS.layers{i})
-            case 'brain', bemName = 'innerskull';  SurfaceType = 'InnerSkull';
-            case 'skull', bemName = 'outerskull';  SurfaceType = 'OuterSkull';
-            case 'scalp', bemName = 'scalp';       SurfaceType = 'Scalp';
+            case 'white', bemName = 'white';       SurfaceType = 'Cortex';     iTissue = 1;
+            case 'gray',  bemName = 'cortex';      SurfaceType = 'Cortex';     iTissue = 2;
+            case 'csf',   bemName = 'innerskull';  SurfaceType = 'InnerSkull'; iTissue = 3;
+            case 'brain', bemName = 'innerskull';  SurfaceType = 'InnerSkull'; iTissue = 3;
+            case 'skull', bemName = 'outerskull';  SurfaceType = 'OuterSkull'; iTissue = 4;
+            case 'scalp', bemName = 'scalp';       SurfaceType = 'Scalp';      iTissue = 5;
         end
 
         % === SAVE AS MRI ===
         bst_progress('text', ['Saving volume: ' OPTIONS.layers{i}]);
         % Convert to Brainstorm MRI structure
-        sNewMri = in_mri_fieldtrip(ftSegmented, OPTIONS.layers{i});
-        % Set comment
-        sNewMri.Comment = file_unique(['mask_' bemName], {sSubject.Anatomy.Comment});
-        % Copy some fields from the original MRI
-        if isfield(sMri, 'SCS') 
-            sNewMri.SCS = sMri.SCS;
+        bstSegmented = in_mri_fieldtrip(ftSegmented, OPTIONS.layers{i});
+        % Create structure once
+        if isempty(sMriTissue)
+            sMriTissue = bstSegmented;
         end
-        if isfield(sMri, 'NCS') 
-            sNewMri.NCS = sMri.NCS;
-        end
-        if isfield(sMri, 'History') 
-            sNewMri.History = sMri.History;
-        end
-        % Add history tag
-        sNewMri = bst_history('add', sNewMri, 'segment', 'MRI processed with ft_volumesegment.');
-        % Output file name
-        NewMriFile = file_unique(strrep(file_fullpath(MriFile), '.mat', ['_', OPTIONS.layers{i}, '.mat']));
-        % If we want the file in the database
-        if OPTIONS.isSaveMri
-            % Save new MRI in Brainstorm format
-            sNewMri = out_mri_bst(sNewMri, NewMriFile);
-            % Add to subject
-            iAnatomy = length(sSubject.Anatomy) + 1;
-            sSubject.Anatomy(iAnatomy).Comment  = sNewMri.Comment;
-            sSubject.Anatomy(iAnatomy).FileName = file_short(NewMriFile);
-        end
+        % Copy binary mask to atlas of tissues
+        sMriTissue.Cube(bstSegmented.Cube ~= 0) = iTissue;
 
         % === SAVE AS SURFACE ===
         % If we want the surface in the database
@@ -292,7 +298,7 @@ function [isOk, errMsg] = Compute(iSubject, iMri, OPTIONS)
             fileTag = sprintf('_%dV', OPTIONS.nVertices(i));
             sTess.Comment = file_unique(['bem_' bemName '_ft' fileTag], {sSubject.Surface.Comment});
             % Output file name
-            NewTessFile = file_unique(bst_fullfile(bst_fileparts(NewMriFile), ['tess_' bemName 'bem_ft' fileTag '.mat']));
+            NewTessFile = file_unique(bst_fullfile(bst_fileparts(file_fullpath(MriFile)), ['tess_' bemName 'bem_ft' fileTag '.mat']));
             % Save file
             bst_save(NewTessFile, sTess, 'v7');
             % Add to subject
@@ -307,6 +313,30 @@ function [isOk, errMsg] = Compute(iSubject, iMri, OPTIONS)
         end
     end
 
+    % ===== SAVE TISSUE ATLAS =====
+    % Set comment
+    sMriTissue.Comment = file_unique('tissues', {sSubject.Surface.Comment});
+    % Copy some fields from the original MRI
+    if isfield(sMri, 'SCS') 
+        sMriTissue.SCS = sMri.SCS;
+    end
+    if isfield(sMri, 'NCS') 
+        sMriTissue.NCS = sMri.NCS;
+    end
+    if isfield(sMri, 'History') 
+        sMriTissue.History = sMri.History;
+    end
+    % Add history tag
+    sMriTissue = bst_history('add', sMriTissue, 'segment', 'Tissues segmentation generated with ft_volumesegment.');
+    % Output file name
+    TissueFile = file_unique(strrep(file_fullpath(MriFile), '.mat', '_tissues.mat'));
+    % Save new MRI in Brainstorm format
+    sMriTissue = out_mri_bst(sMriTissue, TissueFile);
+    % Add to subject
+    iAnatomy = length(sSubject.Anatomy) + 1;
+    sSubject.Anatomy(iAnatomy).Comment  = sMriTissue.Comment;
+    sSubject.Anatomy(iAnatomy).FileName = file_short(TissueFile);
+    
     % ===== UPDATE GUI =====
     % Save subject
     bst_set('Subject', iSubject, sSubject);
@@ -326,22 +356,28 @@ function ComputeInteractive(iSubject, iMris) %#ok<DEFNU>
     end
     % Get default options
     OPTIONS = GetDefaultOptions();
-    if ~isequal(OPTIONS.layers, {'scalp', 'skull', 'brain'})
-        error('Fix the default options');
-    end
+    % Select layers to segment
+    isSelect = ismember(OPTIONS.layers, {'scalp', 'skull', 'csf'});
+    isSelect = logical(java_dialog('checkbox', 'Select tissues to segment:', 'FieldTrip: ft_volumesegment', [], OPTIONS.layers, isSelect));
+    OPTIONS.layers = OPTIONS.layers(isSelect);
+    % Save surfaces
+    OPTIONS.isSaveTess = java_dialog('confirm', ['Generate surface meshes?', 10, ...
+        'This would be useful for computing OpenMEEG BEM forward models.']);
     % Ask BEM meshing options
-    res = java_dialog('input', {'Number of vertices (head):', 'Number of vertices (outer skull):', 'Number of vertices (inner skull):'}, ...
-        'FieldTrip BEM meshes', [], {num2str(OPTIONS.nVertices(1)), num2str(OPTIONS.nVertices(2)), num2str(OPTIONS.nVertices(3))});
-    if isempty(res)
-        return
+    if OPTIONS.isSaveTess
+        res = java_dialog('input', OPTIONS.layers, 'Number of vertices', [], cellfun(@num2str, num2cell(OPTIONS.nVertices(isSelect), 1), 'UniformOutput', 0));
+        if isempty(res)
+            return
+        end
+        % Get new values
+        OPTIONS.nVertices = cellfun(@str2num, res);
+        if (length(OPTIONS.nVertices) ~= nnz(isSelect))
+            bst_error('Invalid options.', 'FieldTrip BEM mesh', 0);
+            return;
+        end
+    else
+        OPTIONS.nVertices = OPTIONS.nVertices(isSelect);
     end
-    % Get new values
-    OPTIONS.nVertices = [str2num(res{1}), str2num(res{2}), str2num(res{3})];
-    if (length(OPTIONS.nVertices) ~= 3)
-        bst_error('Invalid options.', 'FieldTrip BEM mesh', 0);
-        return
-    end
- 
     % Open progress bar
     bst_progress('start', 'Generate BEM mesh', 'Initialization...');
     % Generate BEM mesh

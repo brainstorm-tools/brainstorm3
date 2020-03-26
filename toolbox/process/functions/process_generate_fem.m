@@ -627,41 +627,21 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 
 
         case 'fieldtrip'
-            % Setup FieldTrip
-            isOk = bst_ft_init(isInteractive);
+            % Segmentation process
+            OPTIONS.layers     = {'white','gray','csf','skull','scalp'};
+            OPTIONS.isSaveTess = 0;
+            [isOk, errMsg, TissueFile] = process_ft_volumesegment('Compute', iSubject, iT1, OPTIONS);
             if ~isOk
-                errMsg = 'FieldTrip must be in the Matlab path for using this feature.';
                 return;
             end
-
-            % === CALL FIELDTRIP PIPELINE ===
-            % Convert MRI to fieldtrip structure
-            bst_progress('text', 'Reading T1 MRI...');
-            bstMri = in_mri(T1File);
-            ftMri = out_fieldtrip_mri(bstMri);
-            % Segmentation
-            bst_progress('text', 'MRI segmentation (FieldTrip/ft_volumesegment)...');
-            cfg = [];
-            TissueLabels = {'white','gray','csf','skull','scalp'};
-            cfg.output = TissueLabels;
-            segmentedmri = ft_volumesegment(cfg, ftMri);
-            % Mesh
-            bst_progress('text', 'Mesh generation (FieldTrip/ft_prepare_mesh)...');
-            cfg = [];
-            cfg.method = 'hexahedral';
-            cfg.spmversion = 'spm12';
-            cfg.downsample = OPTIONS.Downsample;
-            cfg.shift = OPTIONS.NodeShift;
-            mesh = ft_prepare_mesh(cfg, segmentedmri);
-
-            % Reorder labels based on requested order
-            iRelabel = cellfun(@(c)find(strcmpi(c,TissueLabels)), mesh.tissuelabel)';
-            mesh.tissue = iRelabel(mesh.tissue);
-            % Return hexadrons
-            node = mesh.pos;
-            elem = [mesh.hex mesh.tissue];
-            % Only hexa could be generated from this method
-            OPTIONS.MeshType = 'hexahedral';
+            TissueLabels = OPTIONS.layers;
+            % Get index of tissue file
+            [sSubject, iSubject, iTissue] = bst_get('MriFile', TissueFile);
+            % Mesh process
+            [isOk, errMsg, FemFile] = process_ft_prepare_mesh_hexa('Compute', iSubject, iTissue, OPTIONS);
+            if ~isOk
+                return;
+            end
 
 %         case 'roast'
 %             % Install ROAST if needed
@@ -1403,3 +1383,6 @@ function NewFemFile = SwitchHexaTetra(FemFile, isInteractive) %#ok<DEFNU>
         [iNewTess, NewFemFile] = fem_tetra2hexa(iSubject, FemFullFile, 'BSTFEM', isInteractive);
     end
 end
+
+
+

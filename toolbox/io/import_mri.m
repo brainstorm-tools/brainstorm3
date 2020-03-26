@@ -270,6 +270,7 @@ end
 % Add a Comment field in MRI structure, if it does not exist yet
 if ~isempty(Comment)
     sMri.Comment = Comment;
+    importedBaseName = file_standardize(Comment);
 else
     if ~isfield(sMri, 'Comment')
         sMri.Comment = 'MRI';
@@ -284,14 +285,14 @@ else
     if strcmpi(FileFormat, 'ALL-MNI')
         sMri.Comment = [sMri.Comment ' (MNI)'];
     end
+    % Get imported base name
+    [tmp__, importedBaseName] = bst_fileparts(MriFile);
+    importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
+    importedBaseName = strrep(importedBaseName, '_subjectimage', '');
+    importedBaseName = strrep(importedBaseName, '.nii', '');
 end
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
-% Get imported base name
-[tmp__, importedBaseName] = bst_fileparts(MriFile);
-importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
-importedBaseName = strrep(importedBaseName, '_subjectimage', '');
-importedBaseName = strrep(importedBaseName, '.nii', '');
 % Produce a default anatomy filename
 BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag '.mat']);
 % Make this filename unique
