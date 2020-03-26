@@ -304,7 +304,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.gridx = 3;  c.gridy = 4;  Handles.jTextCoordMniY = gui_component('label', Handles.jPanelCoordinates, c, '...');
     c.gridx = 4;  c.gridy = 4;  Handles.jTextCoordMniZ = gui_component('label', Handles.jPanelCoordinates, c, '...');    
     c.gridx = 2;  c.gridy = 4;  c.gridwidth = 3;  
-    Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#505050"><U>Click here to compute MNI transformation</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig));
+    Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#E00000"><U>Click here to compute MNI transformation</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig));
     
     % ===== VALIDATION BAR =====
     % Default constrains

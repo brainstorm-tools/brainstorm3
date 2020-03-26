@@ -1,7 +1,7 @@
-function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust)
+function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment)
 % IMPORT_MRI: Import a MRI file in a subject of the Brainstorm database
 % 
-% USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1)
+% USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[])
 %               BstMriFiles = import_mri(iSubject, MriFiles, ...)   % Import multiple volumes at once
 %
 % INPUT:
@@ -12,6 +12,7 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 %    - FileFormat : String, one on the file formats in in_mri
 %    - isInteractive : If 1, importation will be interactive (MRI is displayed after loading)
 %    - isAutoAdjust  : If isInteractive=0 and isAutoAdjust=1, relice/resample automatically without user confirmation
+%    - Comment       : Comment of the output file
 % OUTPUT:
 %    - BstMriFile : Full path to the new file if success, [] if error
 
@@ -44,6 +45,9 @@ if (nargin < 4) || isempty(isInteractive)
 end
 if (nargin < 5) || isempty(isAutoAdjust)
     isAutoAdjust = 1;
+end
+if (nargin < 5) || isempty(Comment)
+    Comment = 1;
 end
 % Initialize returned variables
 BstMriFile = [];
@@ -264,17 +268,22 @@ end
 
 %% ===== SAVE MRI IN BRAINSTORM FORMAT =====
 % Add a Comment field in MRI structure, if it does not exist yet
-if ~isfield(sMri, 'Comment')
-    sMri.Comment = 'MRI';
-end
-% Use filename as comment
-if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
-    [fPath, fBase, fExt] = bst_fileparts(MriFile);
-    sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
-end
-% Add MNI tag
-if strcmpi(FileFormat, 'ALL-MNI')
-    sMri.Comment = [sMri.Comment ' (MNI)'];
+if ~isempty(Comment)
+    sMri.Comment = Comment;
+else
+    if ~isfield(sMri, 'Comment')
+        sMri.Comment = 'MRI';
+    end
+    % Use filename as comment
+    if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
+        [fPath, fBase, fExt] = bst_fileparts(MriFile);
+        fBase = strrep(fBase, '.nii', '');
+        sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
+    end
+    % Add MNI tag
+    if strcmpi(FileFormat, 'ALL-MNI')
+        sMri.Comment = [sMri.Comment ' (MNI)'];
+    end
 end
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
@@ -282,20 +291,19 @@ subjectSubDir = bst_fileparts(sSubject.FileName);
 [tmp__, importedBaseName] = bst_fileparts(MriFile);
 importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
 importedBaseName = strrep(importedBaseName, '_subjectimage', '');
+importedBaseName = strrep(importedBaseName, '.nii', '');
 % Produce a default anatomy filename
 BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag '.mat']);
 % Make this filename unique
 BstMriFile = file_unique(BstMriFile);
 % Save new MRI in Brainstorm format
 sMri = out_mri_bst(sMri, BstMriFile);
-% Clear memory
-MriComment = sMri.Comment;
 
 %% ===== STORE NEW MRI IN DATABASE ======
 % New anatomy structure
 sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
 sSubject.Anatomy(iAnatomy).FileName = file_short(BstMriFile);
-sSubject.Anatomy(iAnatomy).Comment  = MriComment;
+sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
 % Default anatomy: do not change
 if isempty(sSubject.iAnatomy)
     sSubject.iAnatomy = iAnatomy;

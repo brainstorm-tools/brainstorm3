@@ -282,6 +282,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     else
         T2File = [];
     end
+    FemFile = [];
     
     % ===== GENERATE MESH =====
     switch lower(OPTIONS.Method)
@@ -541,6 +542,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Name tissue labels
             TissueLabels = {'white','gray','csf','skull','scalp'};
             
+            
         case 'simnibs'
             disp(['FEM> T1 MRI: ' T1File]);
             disp(['FEM> T2 MRI: ' T2File]);
@@ -569,8 +571,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 [sMriT1, errNorm] = bst_normalize_mni(T1File);
                 % Handle errors
                 if ~isempty(errNorm)
-                    errMsg = [errMsg 10 'Error trying to compute the MNI transformation: ' 10 errNorm 10 ...
-                        'The surfaces will not be properly aligned with the MRI.'];
+                    errMsg = ['Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
                     return;
                 end
             end
@@ -615,68 +616,15 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
                   
             % === IMPORT OUTPUT FOLDER ===
-            bst_progress('text', 'Importing SimNIBS output...');
-            % Import FEM mesh
-            mshfilename = bst_fullfile(simnibsDir, [subjid '.msh']);
-            if ~file_exist(mshfilename)
-                errMsg = ['Could not find SimNIBS output mesh: ' mshfilename];
+            [errorImport, FemFile] = import_anatomy_simnibs(iSubject, simnibsDir, OPTIONS.NbVertices, isInteractive, [], 0, 1);
+            % Handle errors
+            if ~isempty(errorImport)
+                errMsg = ['Error trying to import the SimNIBS output: ' 10 errorImport];
                 return;
             end
-            femhead = in_tess(mshfilename, 'SIMNIBS', sMriT1); %  this could be loaded to bst as it is
-            % Keep cortex surface
-            cortexElem = femhead.Elements(femhead.Tissue <= 2, :);
-            % Get outputs
-            TissueLabels = femhead.TissueLabels;   % {'white', 'gray', 'csf', 'skull', 'scalp'}
-            elem = [femhead.Elements femhead.Tissue];
-            node = femhead.Vertices;
             % Only tetra could be generated from this method
             OPTIONS.MeshType = 'tetrahedral';
 
-            % === EXTRACT THE FEM CORTEX SURFACE ===
-            bst_progress('text', 'Saving cortex envelope...');
-            % Create a surface for the outside surface of this tissue
-            cortexFaces = tess_voledge(node, cortexElem);
-            % Remove all the unused vertices
-            cortexVertices = node;
-            iRemoveVert = setdiff((1:size(cortexVertices,1))', unique(cortexFaces(:)));
-            if ~isempty(iRemoveVert)
-                [cortexVertices, cortexFaces] = tess_remove_vert(cortexVertices, cortexFaces, iRemoveVert);
-            end
-            % Remove small elements
-            [cortexVertices, cortexFaces] = tess_remove_small(cortexVertices, cortexFaces);
-            % New surface structure
-            NewTess = db_template('surfacemat');
-            NewTess.Comment  = 'cortex_fem';
-            NewTess.Vertices = cortexVertices;
-            NewTess.Faces    = cortexFaces;
-            % History: File name
-            NewTess.History = 'Cortex extracted from FEM model by SimNibs Method';
-            % Produce a default surface filename &   Make this filename unique
-            CortexFile = file_unique(bst_fullfile(bst_fileparts(T1File), ...
-                            sprintf('tess_%s_%dV.mat', ['cortex_' OPTIONS.Method], length(NewTess.Vertices))));
-            % Save new surface in Brainstorm format
-            bst_save(CortexFile, NewTess, 'v7'); 
-            db_add_surface(iSubject, CortexFile, NewTess.Comment);
-
-            % === IMPORT CAT12 OUTPUT ===
-            CatDir = bst_fullfile(simnibsDir, ['m2m_' subjid], 'segment', 'cat');
-            if isdir(CatDir)
-                catErrMsg = import_anatomy_cat(iSubject, CatDir, OPTIONS.NbVertices, 0, [], 0, 2);
-                if ~isempty(catErrMsg)
-                    bst_report('Warning', 'process_generate_fem', [], ['Could not import CAT12 segmentation: ' 10 catErrMsg]);
-                end
-            else
-                bst_report('Warning', 'process_generate_fem', [], ['CAT12 segmentation not found in SimNIBS output folder: ' 10 CatDir]);
-            end
-            
-            % === IMPORT 10-10 POSITIONS ===
-            PosFile = bst_fullfile(simnibsDir, ['m2m_' subjid], 'eeg_positions', 'EEG10-10_UI_Jurak_2007.csv');
-            if file_exist(PosFile)
-                % Create a condition "eeg_positions"
-                iStudy = db_add_condition(iSubject, 'eeg_positions');
-                % Import channel file
-                import_channel(iStudy, PosFile, 'SIMNIBS');
-            end
 
         case 'fieldtrip'
             % Setup FieldTrip
@@ -825,27 +773,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 
     % ===== SAVE FEM MESH =====
     bst_progress('text', 'Saving FEM mesh...');
-    % Create output structure
-    FemMat = db_template('femmat');
-    if ~isempty(TissueLabels)
-        FemMat.TissueLabels = TissueLabels;
-    else
-        uniqueLabels = unique(FemMat.Tissue);
-        for i = 1:length(uniqueLabels)
-             FemMat.TissueLabels{i} = num2str(uniqueLabels(i));
-        end
-    end
-    FemMat.Comment = sprintf('FEM %dV (%s, %d layers)', length(node), OPTIONS.Method, length(FemMat.TissueLabels));
-    FemMat.Vertices = node;
-    if strcmp(OPTIONS.MeshType, 'tetrahedral')
-        FemMat.Elements = elem(:,1:4);
-        FemMat.Tissue = elem(:,5);
-    else
-        FemMat.Elements = elem(:,1:8);
-        FemMat.Tissue = elem(:,9);
-    end
-
-    % Add history
+    % Assemble OPTIONS string (for saving in file history)
     strOptions = '';
     for f = fieldnames(OPTIONS)'
         strOptions = [strOptions, f{1}, '='];
@@ -858,12 +786,37 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         end
         strOptions = [strOptions, ' '];
     end
-    FemMat = bst_history('add', FemMat, 'process_generate_fem', strOptions);
-
-    % Save to database
-    FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
-    bst_save(FemFile, FemMat, 'v7');
-    db_add_surface(iSubject, FemFile, FemMat.Comment);
+    % Save FemFile if not already done above
+    if isempty(FemFile)
+        % Create output structure
+        FemMat = db_template('femmat');
+        if ~isempty(TissueLabels)
+            FemMat.TissueLabels = TissueLabels;
+        else
+            uniqueLabels = unique(FemMat.Tissue);
+            for i = 1:length(uniqueLabels)
+                 FemMat.TissueLabels{i} = num2str(uniqueLabels(i));
+            end
+        end
+        FemMat.Comment = sprintf('FEM %dV (%s, %d layers)', length(node), OPTIONS.Method, length(FemMat.TissueLabels));
+        FemMat.Vertices = node;
+        if strcmp(OPTIONS.MeshType, 'tetrahedral')
+            FemMat.Elements = elem(:,1:4);
+            FemMat.Tissue = elem(:,5);
+        else
+            FemMat.Elements = elem(:,1:8);
+            FemMat.Tissue = elem(:,9);
+        end
+        % Add history
+        FemMat = bst_history('add', FemMat, 'process_generate_fem', strOptions);
+        % Save to database
+        FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
+        bst_save(FemFile, FemMat, 'v7');
+        db_add_surface(iSubject, FemFile, FemMat.Comment);
+    % Otherwise: just add the options string to the history
+    else
+        bst_history('add', FemFile, 'process_generate_fem', strOptions);
+    end
     % Return success
     isOk = 1;
 end
