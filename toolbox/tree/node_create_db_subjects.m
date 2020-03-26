@@ -31,9 +31,9 @@ function [bstDefaultNode, nodeSubjectsDB, numTotalElems] = node_create_db_subjec
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2010
+% Authors: Francois Tadel, 2008-2020
+%          Martin Cousineau, 2019-2020
 
-global GlobalData
 import org.brainstorm.tree.*;
 
 %% ===== PARSE INPUTS =====

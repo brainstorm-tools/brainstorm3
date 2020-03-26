@@ -554,9 +554,9 @@ function UpdateNode(category, indices, isExpandTrials)
                             nodeSubject.removeAllChildren();
                             % Create new subject node (default node / normal node)
                             if (iSubject == 0)
-                                node_create_subject(nodeSubject, ProtocolSubjects.DefaultSubject, 0);
+                                node_create_subject(nodeSubject, nodeRoot, ProtocolSubjects.DefaultSubject, 0, 0);
                             else
-                                node_create_subject(nodeSubject, ProtocolSubjects.Subject(iSubject), iSubject);
+                                node_create_subject(nodeSubject, nodeRoot, ProtocolSubjects.Subject(iSubject), iSubject, 0);
                             end
                             % Refresh node display
                             treeModel.reload(nodeSubject);

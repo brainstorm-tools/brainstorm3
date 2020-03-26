@@ -1,7 +1,7 @@
 function numElems = node_create_subject(nodeSubject, nodeRoot, sSubject, iSubject, iSearch)
 % NODE_CREATE_SUBJECT: Create subject node from subject structure.
 %
-% USAGE:  node_create_subject(nodeSubject, sSubject, iSubject)
+% USAGE:  node_create_subject(nodeSubject, nodeRoot, sSubject, iSubject)
 %
 % INPUT: 
 %     - nodeSubject : BstNode object with Type 'subject' => Root of the subject subtree
@@ -32,6 +32,7 @@ function numElems = node_create_subject(nodeSubject, nodeRoot, sSubject, iSubjec
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2016
+%          Martin Cousineau, 2019-2020
 
 % If iSubject=0 => default subject
 import org.brainstorm.tree.*;
