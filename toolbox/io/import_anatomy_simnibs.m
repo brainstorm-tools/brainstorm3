@@ -308,7 +308,7 @@ NewTess.Comment  = 'cortex_fem';
 NewTess.Vertices = cortexVertices;
 NewTess.Faces    = cortexFaces;
 % History: File name
-NewTess.History = 'Cortex extracted from SimNIBS FEM model';
+NewTess = bst_history('add', NewTess, 'create', 'Cortex extracted from SimNIBS FEM model');
 % Produce a default surface filename &   Make this filename unique
 CortexFile = file_unique(bst_fullfile(bst_fileparts(T1File), ...
                 sprintf('tess_cortex_simnibs_%dV.mat', length(NewTess.Vertices))));

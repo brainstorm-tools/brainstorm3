@@ -144,7 +144,7 @@ if size(FemMat.Elements,2) == 8
     [tetraElem,tetraNode,tetraLabel] = hex2tet(double(FemMat.Elements), FemMat.Vertices, double(FemMat.Tissue), 3);
     % updates FemMat for display purpose
     FemMat.Vertices = tetraNode;
-    FemMat.Elements = tetraElem;
+    FemMat.Elements = tetraElem(:, [2 1 3 4]);
     FemMat.Tissue = tetraLabel;
 end
 

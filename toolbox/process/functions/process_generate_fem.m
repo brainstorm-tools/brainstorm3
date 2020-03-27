@@ -1378,9 +1378,9 @@ function NewFemFile = SwitchHexaTetra(FemFile, isInteractive) %#ok<DEFNU>
     if isempty(elemSize) || (length(elemSize.size) ~= 2) || ~ismember(elemSize.size(2), [4 8])
         error(['Invalid FEM mesh file: ' FemFile]);
     elseif (elemSize.size(2) == 8)
-        [iNewTess, NewFemFile] = fem_hexa2tetra(iSubject, FemFullFile, 'BSTFEM', isInteractive);
+        NewFemFile = fem_hexa2tetra(FemFullFile);
     elseif (elemSize.size(2) == 4)
-        [iNewTess, NewFemFile] = fem_tetra2hexa(iSubject, FemFullFile, 'BSTFEM', isInteractive);
+        NewFemFile = fem_tetra2hexa(FemFullFile);
     end
 end
 
