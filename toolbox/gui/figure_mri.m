@@ -64,6 +64,10 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     else
         rendererName = 'opengl';
     end
+    % Disable the Java-related warnings after 2019b
+    if (bst_get('MatlabVersion') >= 907)
+        warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+    end
     
     % ===== FIGURE =====
     hFig = figure(...
