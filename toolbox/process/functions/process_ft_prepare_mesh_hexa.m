@@ -133,16 +133,20 @@ function [isOk, errMsg, FemFile] = Compute(iSubject, iMri, OPTIONS)
     sSubject = bst_get('Subject', iSubject);
     % If not specified, use default MRI
     if isempty(iMri)
-        iMri = find(strcmpi({sSubject.Anatomy.FileName}, 'tissues'));
+        iMri = find(strcmpi({sSubject.Anatomy.Comment}, 'tissues'), 1);
         if isempty(iMri)
-            errMsg = 'Tissue segmentation not available,,,';
-            return;
+            iMri = find(~cellfun(@(c)isempty(strfind(c, 'tissue')), {sSubject.Anatomy.Comment}), 1);
+            if isempty(iMri)
+                errMsg = 'Tissue segmentation not available,,,';
+                return;
+            end
         end
     end
 
     % ===== LOAD INPUT =====
     % Load Brainstorm MRI
     MriFile = sSubject.Anatomy(iMri).FileName;
+    disp(['BST> Using tissue segmentation: ' MriFile]);
     sMri = in_mri_bst(MriFile);
     % Convert to FieldTrip structure
     ftMri = out_fieldtrip_mri(sMri, 'anatomy');
