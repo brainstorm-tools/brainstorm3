@@ -349,7 +349,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                     % Concatenate meshes
                     [newnode, newelem] = mergemesh(bemMerge{:});
                     % Remove duplicated elements
-                    newelem = unique(sort(newelem,2),'rows');
+                    % newelem = unique(sort(newelem,2),'rows');
                 % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
                 case 'mergesurf'
                     try
