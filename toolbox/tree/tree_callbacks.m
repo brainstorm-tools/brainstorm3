@@ -578,8 +578,8 @@ switch (lower(action))
                         jItem.setEnabled(0);
                     end
                     % === GENERATE BEM ===
-                    jItemBem = gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)process_generate_bem('ComputeInteractive', iSubject, []));
-                    jItemFem = gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)process_generate_fem('ComputeInteractive', iSubject, []));
+                    jItemBem = gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, []));
+                    jItemFem = gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'ComputeInteractive', iSubject, []));
                     % Disable if no scalp or cortex available
                     if isempty(sSubject.Anatomy)
                         jItemBem.setEnabled(0);
@@ -589,9 +589,9 @@ switch (lower(action))
                     end
                     % === SEGMENTATION ===
                     AddSeparator(jPopup);
-                    jItem1 = gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_FEM, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, []));
-                    jItem2 = gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)process_segment_cat12('ComputeInteractive', iSubject, []));
-                    jItem3 = gui_component('MenuItem', jPopup, [], 'FieldTrip MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)process_ft_volumesegment('ComputeInteractive', iSubject, []));
+                    jItem1 = gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_canonical, 'ComputeInteractive', iSubject, []));
+                    jItem2 = gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_cat12, 'ComputeInteractive', iSubject, []));
+                    jItem3 = gui_component('MenuItem', jPopup, [], 'FieldTrip MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, []));
                     if isempty(sSubject.Anatomy)
                         jItem1.setEnabled(0);
                         jItem2.setEnabled(0);
@@ -1024,22 +1024,22 @@ switch (lower(action))
                     AddSeparator(jPopup);
                     if ~isAtlas && (length(bstNodes) == 1)
                         gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(filenameRelative));
-                        gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)process_generate_bem('ComputeInteractive', iSubject, iAnatomy));
+                        gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, iAnatomy));
                     end
                     if ~isAtlas && (length(bstNodes) <= 2)
-                        gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)process_generate_fem('ComputeInteractive', iSubject, iAnatomy));
+                        gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'ComputeInteractive', iSubject, iAnatomy));
                     end
                     if ~isAtlas && (length(bstNodes) == 1)
                         AddSeparator(jPopup);
-                        gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_FEM, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, iAnatomy));
-                        gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)process_segment_cat12('ComputeInteractive', iSubject, iAnatomy));
-                        gui_component('MenuItem', jPopup, [], 'FieldTrip MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)process_ft_volumesegment('ComputeInteractive', iSubject, iAnatomy));                   
+                        gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_canonical, 'ComputeInteractive', iSubject, iAnatomy));
+                        gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_cat12, 'ComputeInteractive', iSubject, iAnatomy));
+                        gui_component('MenuItem', jPopup, [], 'FieldTrip MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, iAnatomy));                   
                         % SEEG/ECOG
                         AddSeparator(jPopup);
                         gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', filenameRelative));
                     end
                     if isAtlas && (length(bstNodes) == 1)
-                        gui_component('MenuItem', jPopup, [], 'Generate hexa mesh (FieldTrip)', IconLoader.ICON_FEM, [], @(h,ev)process_ft_prepare_mesh_hexa('ComputeInteractive', iSubject, iAnatomy));                   
+                        gui_component('MenuItem', jPopup, [], 'Generate hexa mesh (FieldTrip)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_prepare_mesh_hexa, 'ComputeInteractive', iSubject, iAnatomy));                   
                     end
                 end
                 % === MENU: EXPORT ===
@@ -1161,7 +1161,7 @@ switch (lower(action))
                 % Generate FEM mesh
                 if ~bst_get('ReadOnly')
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)process_generate_fem('ComputeInteractive', iSubject, [], GetAllFilenames(bstNodes)));
+                    gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'ComputeInteractive', iSubject, [], GetAllFilenames(bstNodes)));
                 end
                 % === MENU: EXPORT ===
                 % Export menu (added later)
@@ -1186,7 +1186,7 @@ switch (lower(action))
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_mergelayers, filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
-                    gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)process_generate_fem('SwitchHexaTetra', filenameRelative, 1));
+                    gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'SwitchHexaTetra', filenameRelative, 1));
                 end
                 
 %% ===== POPUP: NOISECOV =====
@@ -1216,7 +1216,7 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Copy to other subjects',   IconLoader.ICON_HEADMODEL, [], @(h,ev)db_set_noisecov(bstNodes(1).getStudyIndex(), 'AllSubjects', isDataCov));
                     end
                 end
-                
+
 %% ===== POPUP: HEADMODEL =====
             case 'headmodel'
                 % Get study description

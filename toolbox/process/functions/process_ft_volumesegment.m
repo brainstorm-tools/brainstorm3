@@ -359,6 +359,9 @@ function ComputeInteractive(iSubject, iMris) %#ok<DEFNU>
     % Select layers to segment
     isSelect = ismember(OPTIONS.layers, {'scalp', 'skull', 'csf'});
     isSelect = logical(java_dialog('checkbox', 'Select tissues to segment:', 'FieldTrip: ft_volumesegment', [], OPTIONS.layers, isSelect));
+    if isempty(isSelect) || all(~isSelect)
+        return;
+    end
     OPTIONS.layers = OPTIONS.layers(isSelect);
     % Save surfaces
     OPTIONS.isSaveTess = java_dialog('confirm', ['Generate surface meshes?', 10, ...
