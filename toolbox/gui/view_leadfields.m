@@ -36,6 +36,7 @@ end
 %% ===== GET DATA =====
 LF_finale = [];
 HeadmodelMat = cell(1, length(HeadmodelFiles));
+SubjectName = cell(1, length(HeadmodelFiles));
 CortexSurface = [];
 ChannelMat = [];
 Channels = [];
@@ -75,7 +76,6 @@ for iFile = 1:length(HeadmodelFiles)
     % Load channel file
     if (iFile == 1)
         ChannelMat = in_bst_channel(sStudy.Channel.FileName, 'Channel');
-%        SubjectName = bst_fileparts(bst_fileparts(sStudy.Channel.FileName));
     else
         newChanMat = in_bst_channel(sStudy.Channel.FileName, 'Channel');
         if ~isequal({ChannelMat.Channel.Name}, {newChanMat.Channel.Name})
@@ -264,7 +264,7 @@ bst_progress('stop');
                 'Color',     ColorOrder(mod(iLF-1, length(ColorOrder)) + 1, :), ...
                 'Tag',       'lfArrows');
             % Arrow legends
-            strLegend{iLF} = [SubjectName{iLF} ' : ' selectedModality  ' ' HeadmodelMat{iLF}.([selectedModality 'Method'])];
+            strLegend{iLF} = [SubjectName{iLF} ' : ' selectedModality  ' ' HeadmodelMat{iLF}.Comment];
             hold on
         end
 
