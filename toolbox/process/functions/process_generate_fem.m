@@ -396,6 +396,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 %                 TissueLabels = [];
 %             end
 
+            % Removing the 0 label (if less than 10% of the elements)
+            iNull = find(elem(:,5) == 0);
+            if (length(iNull) < 0.1 * length(elem))
+                elem(iNull,:) = [];
+            end
             % Relabelling from 1 to Ntissue
             bst_progress('text', 'Saving 3D mesh...');
             allLabels = unique(elem(:,5));
