@@ -47,7 +47,7 @@ if (nargin < 5) || isempty(isAutoAdjust)
     isAutoAdjust = 1;
 end
 if (nargin < 5) || isempty(Comment)
-    Comment = 1;
+    Comment = 'MRI';
 end
 % Initialize returned variables
 BstMriFile = [];
@@ -268,29 +268,35 @@ end
 
 %% ===== SAVE MRI IN BRAINSTORM FORMAT =====
 % Add a Comment field in MRI structure, if it does not exist yet
-if ~isempty(Comment)
-    sMri.Comment = Comment;
-    importedBaseName = file_standardize(Comment);
+if ~isfield(sMri,'Comment')
+    if ~isempty(Comment) && isstring(Comment)
+        sMri.Comment = Comment;
+        importedBaseName = file_standardize(Comment);
+    else
+      % Use filename as comment
+      if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
+          [fPath, fBase, fExt] = bst_fileparts(MriFile);
+          fBase = strrep(fBase, '.nii', '');
+          sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
+      end
+      % Add MNI tag
+      if strcmpi(FileFormat, 'ALL-MNI')
+          sMri.Comment = [sMri.Comment ' (MNI)'];
+      end
+      % Get imported base name
+      [tmp__, importedBaseName] = bst_fileparts(MriFile);
+      importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
+      importedBaseName = strrep(importedBaseName, '_subjectimage', '');
+      importedBaseName = strrep(importedBaseName, '.nii', '');
+    end
 else
-    if ~isfield(sMri, 'Comment')
-        sMri.Comment = 'MRI';
-    end
-    % Use filename as comment
-    if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
-        [fPath, fBase, fExt] = bst_fileparts(MriFile);
-        fBase = strrep(fBase, '.nii', '');
-        sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
-    end
-    % Add MNI tag
-    if strcmpi(FileFormat, 'ALL-MNI')
-        sMri.Comment = [sMri.Comment ' (MNI)'];
-    end
-    % Get imported base name
-    [tmp__, importedBaseName] = bst_fileparts(MriFile);
-    importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
-    importedBaseName = strrep(importedBaseName, '_subjectimage', '');
-    importedBaseName = strrep(importedBaseName, '.nii', '');
+  % Check for non valid 
+  if ~isstring(sMri.Comment)
+      sMri.Comment = 'MRI';
+  end
+  importedBaseName = file_standardize(Comment);
 end
+
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
 % Produce a default anatomy filename
