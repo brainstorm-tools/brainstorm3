@@ -87,7 +87,6 @@ for i = 1:length(items)
             error(me,'Projection item description missing');
         end
     end
-    
     tag = find_tag(item,FIFF.FIFF_PROJ_ITEM_CH_NAME_LIST);
     if ~isempty(tag)
         namelist = tag.data;
