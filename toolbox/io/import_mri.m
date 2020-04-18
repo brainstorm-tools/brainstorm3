@@ -46,8 +46,8 @@ end
 if (nargin < 5) || isempty(isAutoAdjust)
     isAutoAdjust = 1;
 end
-if (nargin < 5) || isempty(Comment)
-    Comment = 1;
+if (nargin < 6) || isempty(Comment)
+    Comment = 'MRI';
 end
 % Initialize returned variables
 BstMriFile = [];
