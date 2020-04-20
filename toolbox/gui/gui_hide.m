@@ -97,6 +97,8 @@ switch (panelName)
         bst_mutex('release', 'InverseOptionsMEM');
     case 'OpenmeegOptions'
         bst_mutex('release', 'OpenmeegOptions');
+    case 'DuneuroOptions'
+        bst_mutex('release', 'DuneuroOptions');
     case 'BemOptions'
         bst_mutex('release', 'BemOptions');
     case 'SourceGrid'

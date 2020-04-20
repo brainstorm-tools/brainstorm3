@@ -8,7 +8,6 @@ function varargout = process_generate_fem( varargin )
 %                  label = process_generate_fem('GetFemLabel', label)
 %             NewFemFile = process_generate_fem('SwitchHexaTetra', FemFile)
 %                 errMsg = process_generate_fem('InstallIso2mesh', isInteractive)
-%                 errMsg = process_generate_fem('InstallDuneuro', isInteractive)
 %                 errMsg = process_generate_fem('InstallBrain2mesh', isInteractive)
 
 % @=============================================================================
@@ -557,13 +556,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = ['SimNIBS is not installed or not added to the system path:' 10 'the command "headreco" could not be found.' 10 10 'To install SimNIBS, visit: https://simnibs.github.io/simnibs'];
                 return;
             end
-            % Install bst_duneuro if needed
-            if ~exist('bst_duneuro', 'file')
-                errMsg = InstallDuneuro(isInteractive);
-                if ~isempty(errMsg) || ~exist('bst_duneuro', 'file')
-                    return;
-                end
-            end
 
             % ===== VERIFY FIDUCIALS IN T1 MRI =====
             % Load MRI file
@@ -658,7 +650,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 %             end
 %             
 %             % === SAVE MRI AS NII ===
-%             bst_progress('setimage', 'logo_splash_roast.gif');
+%             bst_progress('setimage', 'logo_roast.gif');
 %             % Create temporary folder for fieldtrip segmentation files
 %             roastDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'roast');
 %             mkdir(roastDir);
@@ -1260,120 +1252,8 @@ function errMsg = InstallBrain2mesh(isInteractive)
 end
 
 
-%% ===== INSTALL DUNEURO =====
-function errMsg = InstallDuneuro(isInteractive)
-    % Initialize variables
-    errMsg = [];
-    curdir = pwd;
-    % Check if already available in path
-    if exist('bst_duneuro', 'file')
-        disp([10, 'bst-duneuro path: ', bst_fileparts(which('bst_duneuro')), 10]);
-        return;
-    end
-    
-    % === GET CURRENT ONLINE VERSION ===
-    % Reading function: urlread replaced with webread in Matlab 2014b
-    if (bst_get('MatlabVersion') <= 803)
-        url_read_fcn = @urlread;
-    else
-        url_read_fcn = @webread;
-    end
-    % Read online version.txt
-    try
-        str = url_read_fcn('https://neuroimage.usc.edu/bst/getversion_duneuro.php');
-    catch
-        errMsg = 'Could not get current online version of bst_duneuro.';
-        return;
-    end
-    if (length(str) < 6)
-        return;
-    end
-    DuneuroVersion = str(1:6);
-    % Get download URL
-    url = ['https://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_' DuneuroVersion '.zip'];
-
-    % Local folder where to install the program
-    installDir = bst_fullfile(bst_get('BrainstormUserDir'), 'bst_duneuro');
-    downloadDir = bst_get('BrainstormUserDir');
-    exePath = bst_fullfile(installDir, 'bst_duneuro.m');
-    % If dir doesn't exist in user folder, try to look for it in the Brainstorm folder
-    if ~isdir(installDir)
-        installDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'bst_duneuro');
-        if isdir(installDirMaster)
-            installDir = installDirMaster;
-        end
-    end
-
-    % URL file defines the current version
-    urlFile = bst_fullfile(installDir, 'url');
-    % Read the previous download url information
-    if isdir(installDir) && file_exist(urlFile)
-        fid = fopen(urlFile, 'r');
-        prevUrl = fread(fid, [1 Inf], '*char');
-        fclose(fid);
-    else
-        prevUrl = '';
-    end
-    % If file doesnt exist: download
-    if ~isdir(installDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
-        % If folder exists: delete
-        if isdir(installDir)
-            file_delete(installDir, 1, 3);
-        end
-        % Message
-        if isInteractive
-            isOk = java_dialog('confirm', ...
-                ['bst-duneuro is not installed on your computer (or out-of-date).' 10 10 ...
-                'Download and the latest version of bst-duneuro?'], 'bst-duneuro');
-            if ~isOk
-                errMsg = 'Download aborted by user';
-                return;
-            end
-        end
-        % Download file
-        zipFile = bst_fullfile(downloadDir, 'bst_duneuro.zip');
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download bst-duneuro');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download bst-duneuro:' 10 errMsg];
-            return;
-        end
-        % Display again progress bar
-        bst_progress('text', 'Installing bst-duneuro...');
-        % Unzip file
-        cd(downloadDir);
-        unzip(zipFile);
-        file_delete(zipFile, 1, 3);
-        cd(curdir);
-        % Save download URL in folder
-        fid = fopen(urlFile, 'w');
-        fwrite(fid, url);
-        fclose(fid);
-    end
-    % If installed but not in path: add to path
-    if ~exist('bst_duneuro', 'file')
-        addpath(installDir);
-        addpath(bst_fullfile(installDir, 'matlab'));
-        addpath(bst_fullfile(installDir, 'matlab', 'external'));
-        addpath(bst_fullfile(installDir, 'matlab', 'external', 'gibbon'));
-        addpath(bst_fullfile(installDir, 'matlab', 'external', 'eig2nifti'));
-        disp([10, 'bst-duneuro path: ', installDir, 10]);
-        % If the executable is still not accessible
-    else
-        errMsg = ['bst-duneuro could not be installed in: ' installDir];
-    end
-end
-
-
 %% ===== HEXA <=> TETRA =====
-function NewFemFile = SwitchHexaTetra(FemFile, isInteractive) %#ok<DEFNU>
-    % Install bst_duneuro if needed
-    if ~exist('bst_duneuro', 'file')
-        errMsg = InstallDuneuro(isInteractive);
-        if ~isempty(errMsg) || ~exist('bst_duneuro', 'file')
-            return;
-        end
-    end
+function NewFemFile = SwitchHexaTetra(FemFile) %#ok<DEFNU>
     % Get file in database
     [sSubject, iSubject] = bst_get('SurfaceFile', FemFile);
     FemFullFile = file_fullpath(FemFile);

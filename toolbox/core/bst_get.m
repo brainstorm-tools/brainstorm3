@@ -167,6 +167,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('TimefreqOptions_psd')
 %    - bst_get('TimefreqOptions_hilbert')
 %    - bst_get('OpenMEEGOptions')
+%    - bst_get('DuneuroOptions')
 %    - bst_get('GridOptions_headmodel')
 %    - bst_get('GridOptions_dipfit')
 %    - bst_get('UniformizeTimeSeriesScales') : {0,1} - If 1, the Y-axis of all the time series figures have the scale
@@ -3050,6 +3051,10 @@ switch contextName
         defPref.isAdaptative = 1;
         defPref.isSplit      = 0;
         defPref.SplitLength  = 4000;
+        argout1 = FillMissingFields(contextName, defPref);
+        
+    case 'DuneuroOptions'
+        defPref = duneuro_defaults();        
         argout1 = FillMissingFields(contextName, defPref);
         
     case 'GridOptions_dipfit'

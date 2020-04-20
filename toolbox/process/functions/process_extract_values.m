@@ -317,7 +317,7 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
     end
     % Do not accept PAC files
     if ~isempty(strfind(sInputs(1).FileName, '_pac'))|| ~isempty(strfind(sInputs(1).FileName, '_dpac'))
-        bst_report('Error', sProcess, sInputs(1), 'Connectivity and PAC files are not supported yet. Ask on the forum if you need it.');
+        bst_report('Error', sProcess, sInputs(1), 'PAC files are not supported yet. Ask on the forum if you need it.');
         return;
     end
     
