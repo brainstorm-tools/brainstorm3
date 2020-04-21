@@ -1,12 +1,26 @@
 function events = in_events_graph(sFile, EventFile)
 % IN_EVENTS_GRAPH: Read Neuromag Graph events files
 %
-% Example file:
+% This file reads different variations of the .evl file in which
+% Megin (Elekta) Graph users save their events.
+%
+% The following example shows the default evl export format from Graph.
+% Example 1 of evl file:
 %   | (beamformer::saved-event-list 
 %   |  :source-file "/path/file.fif"
 %   |  :events '(
 %   |   ((:time  28.8425) (:class :manual) (:length  0.069))
 %   |   ((:time  31.194) (:class :manual) (:length  0.0415))
+%   | )) 
+%
+% The following example shows a variation of the default evl format which
+% is used in some Megin (Elekta) labs.
+% Example 2 of evl file:
+%   | (beamformer::saved-event-list 
+%   |  :source-file "/path/file.fif"
+%   |  :events '(
+%   | ((:time  991.73) (:class "A") (:level  2.47042716145e-11))
+%   | ((:time  1019.15) (:class "B") (:level  2.6210856402e-11))
 %   | )) 
 
 % @=============================================================================
@@ -28,6 +42,7 @@ function events = in_events_graph(sFile, EventFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2015
+%          Juan GPC, 2020
 
 % Open file
 fid = fopen(EventFile, 'r');
