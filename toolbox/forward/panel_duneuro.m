@@ -61,28 +61,16 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         OPTIONS.FemFile = file_fullpath(sSubject.Surface(sSubject.iFEM).FileName);
     end
     % Default options
-%     defOPTIONS = bst_get('DuneuroOptions');
+    % defOPTIONS = bst_get('DuneuroOptions');
     defOPTIONS = duneuro_defaults();
     OPTIONS = struct_copy_fields(OPTIONS, defOPTIONS, 0);
 
     % ==== GET MESH INFO ====
-    % Get the information from the head model
-    fields = whos('-file', OPTIONS.FemFile);
-    ivar = find(strcmpi({fields.name}, 'Elements'));
-    if isempty(ivar)
-        error(['Invalid FEM mesh: missing field "Elements" in "' OPTIONS.FemFile '".']);
-    end
-    switch fields(ivar).size(2)
-        case 4,    ElementType = 'tetrahedron';
-        case 8,    ElementType = 'hexahedron';
-        otherwise, error('Mesh element type is not defined');
-    end
     % Load tissue labels
     FemMat = load(OPTIONS.FemFile, 'TissueLabels');
     % Get default conductivities
     OPTIONS.FemNames = FemMat.TissueLabels;
     OPTIONS.FemCond = GetDefaultCondutivity(OPTIONS.FemNames);
-    
     % EEG: Select all layers; MEG: Select only the innermost layer
     if isMegOnly
         OPTIONS.FemSelect = zeros(size(OPTIONS.FemCond));
@@ -90,7 +78,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     else
         OPTIONS.FemSelect = ones(size(OPTIONS.FemCond));
     end
-    
     
     % ==== FRAME STRUCTURE ====
     % Create main panel: split in top (interface) / left(standard options) / right (details)
@@ -114,8 +101,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     c.weightx = 1;
     c.weighty = 0;
     
-    % ======================================================================================================
-
     % ===== PANEL LEFT: FEM LAYERS =====
     jPanelLayers = gui_river([2,2], [0,6,6,6], 'FEM layers & conductivities');
         nLayers = length(OPTIONS.FemNames);
@@ -170,8 +155,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     c.gridy = 3;
     jPanelLeft.add(jPanelSrcModel, c);
     
-    % ======================================================================================================
-    
     % ==== PANEL RIGHT: VENANT OPTIONS ====
     jPanelOptVen = gui_river([3,3], [0,6,6,6], 'Venant options');
         % Number of moments
@@ -187,9 +170,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         jTextWeightExp = gui_component('texttime', jPanelOptVen, 'tab', '', [], '', [], []);
         gui_validate_text(jTextWeightExp, [], [], 1:3, '', 0, OPTIONS.SrcWeightExp, []);
         % Relaxation Factor
-        gui_component('label', jPanelOptVen, 'br', 'Relaxation Factor (1e-3, 1e-9): ', [], '', [], []);
-        jTextRelaxFactor = gui_component('text', jPanelOptVen, 'tab', sprintf('%e', OPTIONS.SrcRelaxFactor), [], '', [], []);
-        % gui_validate_text(jTextWeightExp, [], [], 1:3, '', 0, OPTIONS.SrcRelaxFactor, []);
+        gui_component('label', jPanelOptVen, 'br', 'Relaxation factor exponent (3-9): ', [], '', [], []);
+        jTextRelaxFactor = gui_component('texttime', jPanelOptVen, 'tab', sprintf('%e', OPTIONS.SrcRelaxFactor), [], '', [], []);
+        gui_validate_text(jTextRelaxFactor, [], [], 3:9, '', 0, OPTIONS.SrcRelaxFactor, []);
         % Mixed moments
         jCheckMixedMoments = gui_component('checkbox', jPanelOptVen, 'br', 'Mixed moments', [], '', [], []);
         if (OPTIONS.SrcMixedMoments == 1)
