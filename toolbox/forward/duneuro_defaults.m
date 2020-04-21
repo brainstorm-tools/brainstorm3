@@ -27,12 +27,11 @@ function cfg = duneuro_defaults(cfg)
 
 % Brainstorm-side General options
 cfgDef.FemCond          = [];
-cfgDef.FemSele          = [];
+cfgDef.FemSelect        = [];
 cfgDef.UseTensor        = false;
 cfgDef.Isotropic        = true;
 cfgDef.SrcShrink        = 0;
 % DUNEuro general settings
-cfgDef.IniFile          = 'duneuro_minifile.mini';
 cfgDef.FemType          = 'fitted';                % 'fitted' or 'unfitted'
 cfgDef.SolverType       = 'cg';                    % 'cg' or 'dg'
 cfgDef.GeometryAdapted  = false;                   % 'true' or 'false'

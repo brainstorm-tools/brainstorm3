@@ -150,12 +150,13 @@ else
     cfg.UseTensor = true;
 end
 % Write mesh model
-out_fem(FemMat, fullfile(TmpDir, MeshFile));
+MeshFile = fullfile(TmpDir, MeshFile);
+out_fem(FemMat, MeshFile);
 
 
 %% ===== SOURCE MODEL =====
 % Write the source/dipole file
-DipoleFile = 'dipole_model.txt';
+DipoleFile = fullfile(TmpDir, 'dipole_model.txt');
 % Unconstrained orientation for each dipole. ie the output file have 3*N dipoles (3 directions for each)
 %     [x1,y1,z1, 1, 0, 0,;
 %      x1,y1,z1, 0, 1, 0;
@@ -163,7 +164,7 @@ DipoleFile = 'dipole_model.txt';
 %      x2,y2,z2, 1, 0, 0;
 %      .... ];
 dipoles = [kron(cfg.GridLoc, ones(3,1)), kron(ones(size(cfg.GridLoc,1), 1), eye(3))];
-fid = fopen(fullfile(TmpDir, DipoleFile), 'wt+');
+fid = fopen(DipoleFile, 'wt+');
 fprintf(fid, '%d %d %d %d %d %d \n', dipoles');
 fclose(fid);
 
@@ -177,17 +178,17 @@ if isEeg
     fclose(fid); 
 end
 % Write the MEG sensors file
-CoilFile = 'coil_model.txt';
-ProjFile = 'projection_model.txt';
+CoilFile = fullfile(TmpDir, 'coil_model.txt');
+ProjFile = fullfile(TmpDir, 'projection_model.txt');
 if isMeg
     % Write coil file
     CoilsLoc = MegChannels(:,2:4);
-    fid = fopen(fullfile(TmpDir, CoilFile), 'wt+');
+    fid = fopen(CoilFile, 'wt+');
     fprintf(fid, '%d %d %d  \n', CoilsLoc');
     fclose(fid);
     % Write projection file
     CoilsOrient = MegChannels(:,5:7);
-    fid = fopen(fullfile(TmpDir, ProjFile), 'wt+');
+    fid = fopen(ProjFile, 'wt+');
     fprintf(fid, '%d %d %d  \n', CoilsOrient');
     fclose(fid);
 end
@@ -196,22 +197,23 @@ end
 %% ===== CONDUCTIVITY MODEL =====
 % Isotropic without tensor
 if ~cfg.UseTensor
-    CondFile = 'conductivity_model.con';
-    fid = fopen(fullfile(TmpDir, CondFile) , 'w');
+    CondFile = fullfile(TmpDir, 'conductivity_model.con');
+    fid = fopen(CondFile, 'w');
     fprintf(fid, '%d\t', cfg.FemCond);
     fclose(fid);
 % With tensor (isotropic or anisotropic)
 else
-    CondFile = 'conductivity_model.knw';
-    out_fem_knw(cfg.elem, cfg.CondTensor, fullfile(TmpDir, CondFile));
+    CondFile = fullfile(TmpDir, 'conductivity_model.knw');
+    out_fem_knw(cfg.elem, cfg.CondTensor, CondFile);
 end
 
 
 %% ===== WRITE MINI FILE =====
 % Open the mini file
-fid = fopen(fullfile(TmpDir, cfg.IniFile), 'wt+');
+IniFile = fullfile(TmpDir, 'duneuro_minifile.mini');
+fid = fopen(IniFile, 'wt+');
 % General setting
-fprintf(fid, '__name = %s\n\n', cfg.IniFile);
+fprintf(fid, '__name = %s\n\n', IniFile);
 if strcmp(cfg.SolverType, 'cg')
     fprintf(fid, 'type = %s\n', cfg.FemType);
 end
@@ -239,13 +241,13 @@ if strcmp(dnModality, 'meg') || strcmp(dnModality, 'meeg')
 end
 % [dipoles]
 fprintf(fid, '[dipoles]\n');
-fprintf(fid, 'filename = %s\n', fullfile(TmpDir, DipoleFile));
+fprintf(fid, 'filename = %s\n', DipoleFile);
 % [volume_conductor.grid]
 fprintf(fid, '[volume_conductor.grid]\n');
-fprintf(fid, 'filename = %s\n', fullfile(TmpDir, MeshFile));
+fprintf(fid, 'filename = %s\n', MeshFile);
 % [volume_conductor.tensors]
 fprintf(fid, '[volume_conductor.tensors]\n');
-fprintf(fid, 'filename = %s\n', fullfile(TmpDir, CondFile));
+fprintf(fid, 'filename = %s\n', CondFile);
 % [solver]
 fprintf(fid, '[solver]\n');
 fprintf(fid, 'solver_type = %s\n', cfg.SolvSolverType);
@@ -299,7 +301,7 @@ fclose(fid);
 
 %% ===== RUN DUNEURO ======
 % Assemble command line
-callStr = ['"' DuneuroExe '"' ' ' '"' bst_fullfile(TmpDir, cfg.IniFile) '"'];
+callStr = ['"' DuneuroExe '"' ' ' '"' IniFile '"'];
 bst_progress('text', 'DUNEuro: Computing leadfield...');
 disp(['DUNEURO> System call: ' callStr]);
 tic;
