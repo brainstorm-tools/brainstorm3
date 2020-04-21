@@ -123,6 +123,33 @@ if strcmp(dnModality, 'meg')
 elseif strcmp(dnModality,'meeg') && (sum(cfg.FemSelect) ~= length(unique(cfg.elem(:,5))))
     errMsg = 'Reduced head model cannot be used when computing MEG+EEG simultaneously.';
 end
+% Hexa mesh: detect whether the geometry was adapted
+if strcmpi(ElementType, 'hexahedron')
+    GeometryAdapted = [];
+    % Detect using the options of the Brainstorm process that created the file
+    if isfield(FemMat, 'History') && ~isempty(FemMat.History) && ~isempty(strfind([FemMat.History{:,3}], 'NodeShift'))
+        strOptions = [FemMat.History{:,3}];
+        iTag = strfind(strOptions, 'NodeShift');
+        val = sscanf(strOptions(iTag:end), 'NodeShift=%f');
+        if ~isempty(val)
+            GeometryAdapted = (val > 0);
+        end
+    end
+    % Otherwise, try to guess based on the geometry
+    if isempty(GeometryAdapted)
+        % Compute the distance between the first two nodes of each element
+        dist = sqrt(sum([FemMat.Vertices(FemMat.Elements(:,1),1) - FemMat.Vertices(FemMat.Elements(:,2),1), ...
+         FemMat.Vertices(FemMat.Elements(:,2),2) - FemMat.Vertices(FemMat.Elements(:,2),2), ...
+         FemMat.Vertices(FemMat.Elements(:,2),3) - FemMat.Vertices(FemMat.Elements(:,2),3)] .^ 2, 2));
+        % If the distance is not constant: then the geomtry is adapted
+        GeometryAdapted = (max(abs(dist - dist(1))) > 1e-9);
+    end
+    % Copy value in DUNEuro options
+    if ~isempty(GeometryAdapted)
+        cfg.GeometryAdapted = GeometryAdapted;
+        disp(['DUNEURO> Detected parameter: GeometryAdapted=', bool2str(GeometryAdapted)]);
+    end
+end
 % Isotropic
 if (cfg.Isotropic)
     % Isotropic without tensor

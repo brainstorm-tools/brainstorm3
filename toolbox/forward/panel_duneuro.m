@@ -153,15 +153,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             case 'cg', jRadioSolverTypeCg.setSelected(1);
             case 'dg', jRadioSolverTypeDg.setSelected(1);
         end
-        % GeometryAdapted (only for hexa mesh)
-        jCheckGeometryAdapted = gui_component('checkbox', jPanelSolverType, 'br', 'Use GeometryAdapted', [], '', [], []);
-        if strcmpi(ElementType, 'hexahedron')
-            if OPTIONS.GeometryAdapted
-                jCheckGeometryAdapted.setSelected(1);
-            end
-        else
-            jCheckGeometryAdapted.setEnabled(0);   % Tetra mesh: option disabled
-        end   
     c.gridy = 3;
     jPanelLeft.add(jPanelSolverType, c);
     
@@ -275,7 +266,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                   'jRadioFemTypeUnfit',    jRadioFemTypeUnfit, ...
                   'jRadioSolverTypeCg',    jRadioSolverTypeCg, ...
                   'jRadioSolverTypeDg',    jRadioSolverTypeDg, ...
-                  'jCheckGeometryAdapted', jCheckGeometryAdapted, ...
                   'jRadioSrcModelVen',     jRadioSrcModelVen, ...
                   'jRadioSrcModelSub',     jRadioSrcModelSub, ...
                   'jRadioSrcModelPar',     jRadioSrcModelPar, ...
@@ -397,8 +387,6 @@ function s = GetPanelContents() %#ok<DEFNU>
     elseif ctrl.jRadioSolverTypeDg.isSelected()
         s.SolverType = 'dg';
     end
-    % Geomtry adapted
-    s.GeometryAdapted = ctrl.jCheckGeometryAdapted.isSelected();
     % Source model
     if ctrl.jRadioSrcModelVen.isSelected()
         s.SrcModel = 'venant';
