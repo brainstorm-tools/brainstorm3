@@ -82,7 +82,7 @@ if isempty(OutputFile)
             OutputFile = bst_fullfile(fPath, 'MarkerFile-bst.mrk');
         case 'FIF'
             OutputFile = bst_fullfile(fPath, [fBase, '.eve']);
-        case 'GRAPH2'
+        case 'GRAPH'
             OutputFile = bst_fullfile(fPath, ['events_' fBase, '.evl']);
         case {'ARRAY-TIMES', 'ARRAY-SAMPLES'}
             OutputFile = bst_fullfile(fPath, [file_standardize(sFile.events(1).label), '.txt']);
@@ -103,7 +103,7 @@ if isempty(OutputFile)
          {'.vmrk'},         'BrainVision BrainAmp (*.vmrk)', 'BRAINAMP'; ...
          {'.mrk'},          'CTF MarkerFile (*.mrk)',       'CTF'; ...
          {'.eve','.fif'},   'Elekta-Neuromag/MNE (*.eve)',  'FIF'; ...
-         {'.evl'},          'Elekta-Neuromag Graph (Alternative Style) (*.evl)', 'GRAPH2'; ...
+         {'.evl'},          'Elekta-Neuromag Graph (Alternative Style) (*.evl)', 'GRAPH_ALT'; ...
          {'.txt'},          'Array of times (*.txt)',       'ARRAY-TIMES'; ... 
          {'.txt'},          'Array of samples (*.txt)',     'ARRAY-SAMPLES'; ...
          {'.txt','.csv'},   'CSV text file: label, time, duration (*.txt;*.csv)', 'CSV-TIME'; ...
@@ -124,7 +124,7 @@ else
         case '.vmrk',  FileFormat = 'BRAINAMP';
         case '.mrk',   FileFormat = 'CTF';
         case '.eve',   FileFormat = 'FIF';
-        case '.evl',   FileFormat = 'GRAPH2';
+        case '.evl',   FileFormat = 'GRAPH_ALT';
         case '.txt',   FileFormat = 'ARRAY-TIMES';
         case '.csv',   FileFormat = 'CSV-TIME';
     end
@@ -148,8 +148,8 @@ switch FileFormat
             OutputFile(end-4:end) = '.eve';
         end
         out_events_eve(sFile, OutputFile);
-    case 'GRAPH2' 
-        out_events_graph2(sFile, OutputFile);
+    case 'GRAPH_ALT' 
+        out_events_graph(sFile, OutputFile,'alternativeStyle');
     case 'CSV-TIME'
         out_events_csv(sFile, OutputFile);
     case 'ARRAY-TIMES'
