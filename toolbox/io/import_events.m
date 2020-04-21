@@ -121,8 +121,6 @@ if isempty(newEvents)
             newEvents = in_events_neuroscan(sFile, EventFile);
         case 'GRAPH'
             newEvents = in_events_graph(sFile, EventFile);
-        case 'GRAPH2'
-            newEvents = in_events_graph2(sFile, EventFile);
         case 'TRL'
             newEvents = in_events_trl(sFile, EventFile);
         case 'KIT'
