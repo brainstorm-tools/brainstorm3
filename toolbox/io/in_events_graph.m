@@ -52,7 +52,7 @@ end
 
 %list of reader functions for different formats
 listOfReaders={@readDefaultFormat,...
-          @readAlternateFormat};
+          @readAlternativeFormat};
 errorMsg = 'Unable to read the Graph events-list file.';
 
 for i = 1:length(listOfReaders)
@@ -126,7 +126,7 @@ end
 
 end
 
-function events = readAlternateFormat(fid)
+function events = readAlternativeFormat(fid)
 
 % Initialize returned structure
 events = repmat(db_template('event'), 0);
