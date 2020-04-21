@@ -132,17 +132,17 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     c.gridy = 1;
     jPanelLeft.add(jPanelLayers, c);
 
-    % ==== PANEL LEFT: FEM METHOD TYPE ====
-    jPanelType = gui_river([1,1], [0,6,6,6], 'FEM method type');
-        jGroupFemType = ButtonGroup();
-        jRadioFemTypeFit   = gui_component('radio', jPanelType, 'br', 'Fitted',   jGroupFemType, '', [], []);
-        jRadioFemTypeUnfit = gui_component('radio', jPanelType, 'br', 'Unfitted', jGroupFemType, '', [], []);
-        switch lower(OPTIONS.FemType)
-            case 'fitted',   jRadioFemTypeFit.setSelected(1);
-            case 'unfitted', jRadioFemTypeUnfit.setSelected(1);
-        end
-    c.gridy = 2;
-    jPanelLeft.add(jPanelType, c);
+%     % ==== PANEL LEFT: FEM METHOD TYPE ====
+%     jPanelType = gui_river([1,1], [0,6,6,6], 'FEM method type');
+%         jGroupFemType = ButtonGroup();
+%         jRadioFemTypeFit   = gui_component('radio', jPanelType, 'br', 'Fitted',   jGroupFemType, '', [], []);
+%         jRadioFemTypeUnfit = gui_component('radio', jPanelType, 'br', 'Unfitted', jGroupFemType, '', [], []);
+%         switch lower(OPTIONS.FemType)
+%             case 'fitted',   jRadioFemTypeFit.setSelected(1);
+%             case 'unfitted', jRadioFemTypeUnfit.setSelected(1);
+%         end
+%     c.gridy = 2;
+%     jPanelLeft.add(jPanelType, c);
         
     % ==== PANEL LEFT: FEM SOLVER TYPE ====
     jPanelSolverType = gui_river([1,1], [0,6,6,6], 'FEM solver type');
@@ -153,10 +153,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             case 'cg', jRadioSolverTypeCg.setSelected(1);
             case 'dg', jRadioSolverTypeDg.setSelected(1);
         end
-    c.gridy = 3;
+    c.gridy = 2;
     jPanelLeft.add(jPanelSolverType, c);
-    
-    % ======================================================================================================
     
     % ==== PANEL RIGHT: FEM SOURCE MODEL ====
     jPanelSrcModel = gui_river([1,1], [0,6,6,6], 'FEM source model');
@@ -169,8 +167,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             case 'subtraction',         jRadioSrcModelSub.setSelected(1);
             case 'partial_integration', jRadioSrcModelPar.setSelected(1);   
         end
-    c.gridy = 1;
-    jPanelRight.add(jPanelSrcModel, c);
+    c.gridy = 3;
+    jPanelLeft.add(jPanelSrcModel, c);
+    
+    % ======================================================================================================
     
     % ==== PANEL RIGHT: VENANT OPTIONS ====
     jPanelOptVen = gui_river([3,3], [0,6,6,6], 'Venant options');
@@ -200,7 +200,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         if (OPTIONS.SrcRestrict == 1)
             jCheckRestrict.setSelected(1);
         end
-    c.gridy = 2;
+    c.gridy = 1;
     jPanelRight.add(jPanelOptVen, c);
     
     % ==== PANEL RIGHT: SUBTRACTION OPTIONS ====
@@ -213,7 +213,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         gui_component('label', jPanelOptSub, 'br', 'intorderadd_lb (1-5): ', [], '', [], []);
         jTextIntorderadd_lb = gui_component('texttime', jPanelOptSub, 'tab', '', [], '', [], []);
         gui_validate_text(jTextIntorderadd_lb, [], [], 0:5, '', 0, OPTIONS.SrcIntorderadd_lb, []);
-    c.gridy = 3;
+    c.gridy = 2;
     jPanelRight.add(jPanelOptSub, c);
     
     % ==== PANEL RIGHT: INPUT OPTIONS ====
@@ -223,7 +223,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         jTextSrcShrink = gui_component('texttime', jPanelInput, '', '', [], '', [], []);
         gui_validate_text(jTextSrcShrink, [], [], {0,100,100}, '', 0, OPTIONS.SrcShrink, []);
         gui_component('label', jPanelInput, '', '  mm');
-    c.gridy = 4;
+    c.gridy = 3;
     jPanelRight.add(jPanelInput, c);
     
     % ==== PANEL RIGHT: OUTPUT OPTIONS ====
@@ -233,17 +233,17 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         if (OPTIONS.BstSaveTransfer)
             jCheckSaveTransfer.setSelected(1);
         end
-    c.gridy = 5;
+    c.gridy = 4;
     jPanelRight.add(jPanelOutput, c);
     
     % ===== VALIDATION BUTTONS =====
     jPanelValid = gui_river([1,1], [12,6,6,6]);
     % Add a glue at the bottom of the right panel (for appropriate scaling with the left)
-    c.gridy   = 6;
+    c.gridy   = 5;
     c.weighty = 1;
     jPanelRight.add(Box.createVerticalGlue(), c);
     % Add a glue at the bottom of the left panel (for appropriate scaling with the right)
-    c.gridy   = 7;
+    c.gridy   = 6;
     c.weighty = 1;
     jPanelLeft.add(Box.createVerticalGlue(), c);
     % Expert/normal mode
@@ -262,8 +262,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     % Create the BstPanel object that is returned by the function
     ctrl = struct('jCheckLayer',           jCheckLayer, ...
                   'jTextCond',             jTextCond, ...
-                  'jRadioFemTypeFit',      jRadioFemTypeFit, ...
-                  'jRadioFemTypeUnfit',    jRadioFemTypeUnfit, ...
+                  ... 'jRadioFemTypeFit',      jRadioFemTypeFit, ...
+                  ... 'jRadioFemTypeUnfit',    jRadioFemTypeUnfit, ...
                   'jRadioSolverTypeCg',    jRadioSolverTypeCg, ...
                   'jRadioSolverTypeDg',    jRadioSolverTypeDg, ...
                   'jRadioSrcModelVen',     jRadioSrcModelVen, ...
@@ -324,7 +324,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             ExpertMode = bst_get('ExpertMode');
             % Show/hide panels
             jPanelRight.setVisible(ExpertMode);
-            jPanelType.setVisible(ExpertMode);
+%             jPanelType.setVisible(ExpertMode);
             jPanelSolverType.setVisible(ExpertMode);
             jPanelSrcModel.setVisible(ExpertMode);
             jPanelOptVen.setVisible(ExpertMode && jRadioSrcModelVen.isSelected());
@@ -375,12 +375,12 @@ function s = GetPanelContents() %#ok<DEFNU>
         s.FemSelect(i) = ctrl.jCheckLayer(i).isSelected();
         s.FemCond(i) = str2double(char(ctrl.jTextCond(i).getText()));
     end
-    % FEM method type
-    if ctrl.jRadioFemTypeFit.isSelected()
-        s.FemType = 'fitted';
-    elseif ctrl.jRadioFemTypeUnfit.isSelected()
-        s.FemType = 'unfitted';
-    end
+%     % FEM method type
+%     if ctrl.jRadioFemTypeFit.isSelected()
+%         s.FemType = 'fitted';
+%     elseif ctrl.jRadioFemTypeUnfit.isSelected()
+%         s.FemType = 'unfitted';
+%     end
     % FEM solver type
     if ctrl.jRadioSolverTypeCg.isSelected()
         s.SolverType = 'cg';
