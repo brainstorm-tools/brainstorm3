@@ -49,6 +49,31 @@ fid = fopen(EventFile, 'r');
 if (fid < 0)
     error(['Cannot open file ', EventFile]);
 end
+
+%list of reader functions for different formats
+listOfReaders={@readDefaultFormat,...
+          @readAlternateFormat};
+errorMsg = 'Unable to read the Graph events-list file.';
+
+for i = 1:length(listOfReaders)
+    try
+        frewind(fid);
+        events = listOfReaders{i}(fid);
+    catch
+        errorMsg = [errorMsg newline lasterr];
+        if (i < length(listOfReaders))
+          continue;
+        else
+          error(errorMsg);
+        end
+    end
+end
+        
+% Close file
+fclose(fid);
+
+
+function events = readDefaultFormat(fid)
 % Initialize returned structure
 events = repmat(db_template('event'), 0);
 evtMat = zeros(2,0);
@@ -79,8 +104,7 @@ while 1
     evtMat(:,end+1) = res(:);
     evtLabel{end+1} = 'Graph';
 end
-% Close file
-fclose(fid);
+
 % If nothing was read: return
 if isempty(evtMat)
     error('This file does not contain any Neuromag Graph events.');
@@ -100,5 +124,67 @@ for iEvt = 1:length(uniqueLabel)
     events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
+end
 
+function events = readAlternateFormat(fid)
+
+% Initialize returned structure
+events = repmat(db_template('event'), 0);
+evtMat = zeros(1,0);
+evtLabel = {};
+
+% Read file line by line
+while 1
+    % Read one line
+    newLine = fgetl(fid);
+    if ~ischar(newLine)
+        break;
+    end
+    % Strip spaces
+    newLine(newLine == ' ') = [];
+    % Lines to skip
+    if isempty(newLine)
+        continue;
+    end
+    % If the line does not contain ":time": skip
+    if ( isempty(strfind(newLine, ':time')) || ...
+         isempty(strfind(newLine, '"')) ) %#ok<*STREMP>
+        continue;
+    end
+    % Parse the line: "((:timeXXXXXX) (:class "XXX") (:levelXXXXXXXXX))"
+    % 
+    res = sscanf(newLine, '((:time%f)');
+    if isempty(res)
+        continue;
+    end
+    
+    posQuotes = strfind(newLine,'"');
+    
+    evtMat(:,end+1) = res;
+    evtLabel{end+1} = newLine(posQuotes(1)+1:posQuotes(2)-1);
+end
+
+
+% If nothing was read: return
+if isempty(evtMat)
+    error('This file does not contain any Neuromag Graph events.');
+end
+
+% Find all the event types
+uniqueLabel = unique(evtLabel);
+% Convert to a structure matrix
+for iEvt = 1:length(uniqueLabel)
+    iOcc = find(strcmpi(uniqueLabel{iEvt}, evtLabel));
+    events(iEvt).label       = uniqueLabel{iEvt};
+    events(iEvt).epochs      = ones(1,length(iOcc));
+    events(iEvt).times       = round(evtMat(1,iOcc)* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+    events(iEvt).reactTimes  = [];
+    events(iEvt).select      = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+end
+
+end
+
+end
 
