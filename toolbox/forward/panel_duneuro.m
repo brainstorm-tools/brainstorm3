@@ -219,16 +219,18 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     c.gridy = 4;
     jPanelRight.add(jPanelOutput, c);
     
-    % ===== VALIDATION BUTTONS =====
-    jPanelValid = gui_river([1,1], [12,6,6,6]);
-    % Add a glue at the bottom of the right panel (for appropriate scaling with the left)
-    c.gridy   = 5;
-    c.weighty = 1;
-    jPanelRight.add(Box.createVerticalGlue(), c);
+    % ===== GLUE =====
     % Add a glue at the bottom of the left panel (for appropriate scaling with the right)
     c.gridy   = 6;
     c.weighty = 1;
     jPanelLeft.add(Box.createVerticalGlue(), c);
+    % Add a glue at the bottom of the right panel (for appropriate scaling with the left)
+    c.gridy   = 5;
+    c.weighty = 1;
+    jPanelRight.add(Box.createVerticalGlue(), c);
+
+    % ===== VALIDATION BUTTONS =====
+    jPanelValid = gui_river([1,1], [12,6,6,6]);
     % Expert/normal mode
     jButtonExpert = gui_component('button', jPanelValid, [], 'Show details', [], [], @SwitchExpertMode_Callback, []);
     gui_component('label', jPanelValid, 'hfill', ' ');
@@ -238,6 +240,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     c.gridy = 4;
     c.weighty = 0;
     jPanelLeft.add(jPanelValid, c);
+    
+    % ===== HELP BUTTON =====
+    jPanelHelp = gui_river([1,1], [12,6,6,6]);
+    jButtonHelp = gui_component('Button', jPanelHelp, 'right', 'Help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Duneuro', '-browser'), []);
+    jButtonHelp.setForeground(Color(.7, 0, 0));
+    c.gridy = 6;
+    c.weighty = 0;
+    jPanelRight.add(jPanelHelp, c);
     
     % ===== PANEL CREATION =====
     % Return a mutex to wait for panel close
@@ -293,7 +303,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         % Update comment
         UpdatePanel(1);
     end
-    
 
     %% ===== UPDATE PANEL ======
     % USAGE:  UpdatePanel(isForced = 0)
