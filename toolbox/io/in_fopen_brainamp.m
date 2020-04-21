@@ -1,5 +1,5 @@
 function [sFile, ChannelMat] = in_fopen_brainamp(DataFile)
-% IN_FOPEN_BRAINAMP: Open a BrainVision BrainAmp .eeg file.
+% IN_FOPEN_BRAINAMP: Open a BrainVision BrainAmp .eeg/.dat file.
 %
 % USAGE:  [sFile, ChannelMat] = in_fopen_brainamp(DataFile)
 
@@ -154,8 +154,8 @@ fclose(fid);
 
 
 %% ===== REBUILD ACQ INFO =====
-% BINARY and MULTIPLEXED files
-if (strcmpi(hdr.DataFormat, 'BINARY') && strcmpi(hdr.DataOrientation, 'MULTIPLEXED'))
+% BINARY files
+if strcmpi(hdr.DataFormat, 'BINARY')
     % EEG file: get size
     dirInfo = dir(DataFile);
     % Get number of samples
@@ -175,7 +175,7 @@ if (strcmpi(hdr.DataFormat, 'BINARY') && strcmpi(hdr.DataOrientation, 'MULTIPLEX
 elseif (strcmpi(hdr.DataFormat, 'ASCII') && strcmpi(hdr.DataOrientation, 'VECTORIZED'))
     hdr.nsamples = hdr.DataPoints;
 else
-    error(['Only reading binary multiplexed or vectorize ASCII data format.' 10 'Please contact us if you would like to read other types of files in Brainstorm.']);
+    error(['Only reading binary or vectorized ASCII data format.' 10 'Please contact us if you would like to read other types of files in Brainstorm.']);
 end
 
 
