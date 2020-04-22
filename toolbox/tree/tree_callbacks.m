@@ -1028,6 +1028,7 @@ switch (lower(action))
                     end
                     if ~isAtlas && (length(bstNodes) <= 2)
                         gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'ComputeInteractive', iSubject, iAnatomy));
+                        gui_component('MenuItem', jPopup, [], 'Generate FEM tensor', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@bst_generate_conductivity_tensor, iSubject, iAnatomy));
                     end
                     if ~isAtlas && (length(bstNodes) == 1)
                         AddSeparator(jPopup);
