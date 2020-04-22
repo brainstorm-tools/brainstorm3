@@ -190,6 +190,11 @@ if file_exist(dbFile)
             ' - Import again your database folder (File > Import database).'], 'Database error');
         bstOptions = [];
     end
+    % Invalid structure read from dbFile
+    if any(~isfield(bstOptions, {'iProtocol', 'ProtocolsListInfo', 'ProtocolsListSubjects', 'ProtocolsListStudies', 'BrainStormDbDir'}))
+        disp(['BST> Warning: Ignoring corrupted options file: ' dbFile]);
+        bstOptions = [];
+    end
 else
     bstOptions = [];
 end
