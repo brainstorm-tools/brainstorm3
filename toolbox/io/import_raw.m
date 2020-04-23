@@ -250,7 +250,7 @@ for iFile = 1:length(RawFiles)
         % Remove fiducials only from polhemus and ascii files
         isRemoveFid = ismember(FileFormat, {'MEGDRAW', 'POLHEMUS', 'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN', 'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'ASCII_NXY', 'ASCII_XY', 'ASCII_NTP', 'ASCII_TP'});
         % Perform the NAS/LPA/RPA registration for some specific file formats
-        isAlign = ismember(FileFormat, {'NIRS-BRS'});
+        isAlign = ismember(FileFormat, {'NIRS-BRS','NIRS-SNIRF'});
         % Detect auxiliary EEG channels
         ChannelMat = channel_detect_type(ChannelMat, isAlign, isRemoveFid);
         % Do not align data coming from Brainstorm exported files (already aligned)
