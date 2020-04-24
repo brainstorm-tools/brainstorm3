@@ -47,7 +47,7 @@ if (nargin < 5) || isempty(isAutoAdjust)
     isAutoAdjust = 1;
 end
 if (nargin < 6) || isempty(Comment)
-    Comment = 'MRI';
+    Comment = [];
 end
 % Initialize returned variables
 BstMriFile = [];
@@ -181,7 +181,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     % Get volumes dimensions
     refSize = size(sMriRef.Cube);
     newSize = size(sMri.Cube);
-    isSameSize = all(refSize == newSize) && all(sMriRef.Voxsize == sMriRef.Voxsize);
+    isSameSize = all(refSize(1:3) == newSize(1:3)) && all(sMriRef.Voxsize == sMriRef.Voxsize);
     % Initialize list of options to register this new MRI with the existing one
     strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
     cellOptions = {};
@@ -272,7 +272,7 @@ if ~isempty(Comment)
     sMri.Comment = Comment;
     importedBaseName = file_standardize(Comment);
 else
-    if ~isfield(sMri, 'Comment')
+    if ~isfield(sMri, 'Comment') || isempty(sMri.Comment)
         sMri.Comment = 'MRI';
     end
     % Use filename as comment
