@@ -1,6 +1,9 @@
 ---------------------------------------------------------------
 April 2020
 - FEM: Integration of bst-duneuro into Brainstorm
+- FEM: Computation of DTI tensors
+- IO: Anonymize FIF files
+- Doc: New FEM tutorials
 ---------------------------------------------------------------
 March 2020
 - Anatomy: Many imporvements in FEM mesh generation and manipulations
