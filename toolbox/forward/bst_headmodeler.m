@@ -27,6 +27,7 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %
 %     ======= METHODS OPTIONS =============================================
 %     OpenMEEG: see bst_openmeeg
+%     DUNEuro: see bst_duneuro
 %
 %     ======= HEAD DEFINITION =============================================
 %     .CortexFile     : Gray/white or gray/csf interface (also used as source space if source space not secified)
@@ -195,7 +196,12 @@ if ~isempty(iRef) && ~isempty(strfind(lower(OPTIONS.Channel(iRef(1)).Comment), '
 end
 % Get number of coils for each sensor
 nCoilsPerSensor = cellfun(@(c)size(c,2), {OPTIONS.Channel.Loc});
-
+% Include sensors indices in the OPTIONS structure (for DUNEuro and OpenMEEG)
+OPTIONS.iMeg  = [iMeg iRef];
+OPTIONS.iEeg  = iEeg;
+OPTIONS.iEcog = iEcog;
+OPTIONS.iSeeg = iSeeg;
+    
 
 %% ===== OUTPUT FILENAME ===========================================================================
 %  =================================================================================================
@@ -309,7 +315,7 @@ switch (OPTIONS.HeadModelType)
         sAtlas = sCortex.Atlas(iAtlas);
         % Add DBA message if required
         if any(~cellfun(@(c)isempty(strfind(c,'D')), {sAtlas.Scouts.Region}))
-            bst_progress('setimage', 'logo_splash_dba.gif');
+            bst_progress('setimage', 'logo_dba.gif');
             bst_progress('setlink', 'http://www.cenir.org');
         end
         % Initialize grid of points
@@ -417,14 +423,12 @@ if ~isempty(allLoc)
         return;
     end
 end
-
+% Initialize empty gain matrix
+Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
+        
+        
 %% ===== COMPUTE: OPENMEEG =====
 if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
-    % Include sensors indices in the OPTIONS structure
-    OPTIONS.iMeg  = [iMeg iRef];
-    OPTIONS.iEeg  = iEeg;
-    OPTIONS.iEcog = iEcog;
-    OPTIONS.iSeeg = iSeeg;
     % If OpenMEEG options not defined: Let user edit them
     if ~isfield(OPTIONS, 'BemFiles') || isempty(OPTIONS.BemFiles)
         errMessage = 'OpenMEEG options are not defined.';
@@ -433,7 +437,7 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
     end
     % Number of blocks
     nv = length(OPTIONS.GridLoc);
-    if OPTIONS.isSplit && (OPTIONS.SplitLength < nv);
+    if OPTIONS.isSplit && (OPTIONS.SplitLength < nv)
         BlockSize = OPTIONS.SplitLength;
         nBlocks = ceil(nv / BlockSize);
     else
@@ -443,9 +447,7 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting OpenMEEG...');
     % Split in blocks
-    if (nBlocks > 1)
-        % Initializations
-        Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
+    if (nBlocks > 1)      
         % Backup copy of the GridLoc field
         bakGridLoc = OPTIONS.GridLoc;
         % Call OpenMEEG: Process by blocks
@@ -461,21 +463,21 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
             end
             % Copy the leadfield of the processed vertices in the final leadfield matrix
             iCol = sort([3*iVert-2, 3*iVert-1, 3*iVert]);
-            Gain(:,iCol) = tmpGain;
+            Gain_om(:,iCol) = tmpGain;
         end
         % Restore GridLoc
         OPTIONS.GridLoc = bakGridLoc;
     % Do not split
     else
-        [Gain, errMessage] = bst_openmeeg(OPTIONS);
-        if isempty(Gain)
+        [Gain_om, errMessage] = bst_openmeeg(OPTIONS);
+        if isempty(Gain_om)
             OPTIONS = [];
             bst_progress('stop');
             return;
         end
     end
     % Check if the process crashed
-    if isempty(Gain) || all(isnan(Gain(:)))
+    if isempty(Gain_om) || all(isnan(Gain_om(:)))
         OPTIONS = [];
         if isempty(errMessage)
             errMessage = 'OpenMEEG could not run properly.';
@@ -483,34 +485,38 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
         bst_progress('stop');
         return;
     end
+    % Add values to previous Gain matrix
+    Gain(~isnan(Gain_om)) = Gain_om(~isnan(Gain_om));
     % Comment in history field
     for iLayer = 1:length(OPTIONS.BemNames)
         vertInfo = whos('-file', OPTIONS.BemFiles{iLayer}, 'Vertices');
         strHistory = [strHistory, ' | ', sprintf('%s %1.4f %dV', OPTIONS.BemNames{iLayer}, OPTIONS.BemCond(iLayer), vertInfo.size(1)) ];
     end
-    
+end
+
+
 %% ===== COMPUTE: DUNEURO =====
-elseif ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
-    % Include sensors indices in the OPTIONS structure
-    OPTIONS.iMeg  = [iMeg iRef];
-    OPTIONS.iEeg  = iEeg;
-    OPTIONS.iEcog = iEcog;
-    OPTIONS.iSeeg = iSeeg;
+if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting Duneuro...');
-    % Initializations
-    [Gain, errMessage] = bst_duneuro(OPTIONS);
-    if isempty(Gain)
+    bst_progress('setimage', 'logo_duneuro.png');
+    % Run duneuro FEM computation
+    [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
+    % Remove logo from progress bar
+    bst_progress('removeimage');
+    % If process crashed
+    if isempty(Gain_dn)
         OPTIONS = [];
-        errMessage = ['An unknown error occurred in the computation of the head model:' 10 ...
-            'NaN values found for valid sensors in the Gain matrix'];
+        if isempty(errMessage)
+            errMessage = 'DUNEuro could not run properly.';
+        end
         bst_progress('stop');
         return;
     end
-else
-    % Initializations
-    Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
+    % Add values to previous Gain matrix
+    Gain(~isnan(Gain_dn)) = Gain_dn(~isnan(Gain_dn));
 end
+
 
 %% ===== COMPUTE: BRAINSTORM HEADMODELS =====
 if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'duneuro'})) || ...
@@ -552,7 +558,7 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
         bst_progress('inc', 1);
         iSrc = (0:BlockSize-1) + iBlock;
         % If last block too long, remove unnecessary indices
-        if(iSrc(end) > nv),  
+        if (iSrc(end) > nv)
             iSrc = iSrc(1):nv;
         end
         % Convert into indices in the final gain matrix (size: [nchannels, 3*nsources])

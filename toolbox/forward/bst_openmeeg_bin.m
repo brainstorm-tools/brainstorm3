@@ -165,7 +165,7 @@ end
 %% ===== OPENMEEG LIBRARY PATH =====
 % Progress bar
 bst_progress('text', 'OpenMEEG', 'OpenMEEG: Initialization...');
-bst_progress('setimage', 'logo_splash_openmeeg.gif');
+bst_progress('setimage', 'logo_openmeeg.gif');
 bst_progress('setlink', 'http://openmeeg.github.io');
 % Library path
 if ~ispc

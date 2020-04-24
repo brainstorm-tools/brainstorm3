@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+April 2020
+- FEM: Integration of bst-duneuro into Brainstorm
+---------------------------------------------------------------
 March 2020
 - Anatomy: Many imporvements in FEM mesh generation and manipulations
 - Anatomy: BEM generation with FieldTrip

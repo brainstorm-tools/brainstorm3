@@ -55,6 +55,7 @@ function bst_set( varargin )
 %    - bst_set('TimefreqOptions_hilbert', Options)
 %    - bst_set('TimefreqOptions_plv',     Options)
 %    - bst_set('OpenMEEGOptions',         Options)
+%    - bst_set('DuneuroOptions',         Options)
 %    - bst_set('GridOptions_headmodel',   Options)
 %    - bst_set('GridOptions_dipfit',      Options)
 %    - bst_set('UniformizeTimeSeriesScales', isUniform)
@@ -256,7 +257,7 @@ switch contextName
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'PythonConfig', ...
+          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'PythonConfig', ...
           'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
         GlobalData.Preferences.(contextName) = contextValue;
 
