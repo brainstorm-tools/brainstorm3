@@ -2330,6 +2330,10 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuFile, [], 'Fix broken link', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('FixFileLink', RawFile));
                         gui_component('MenuItem', jMenuFile, [], 'Copy to database', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('CopyRawToDatabase', RawFile));
                         % gui_component('MenuItem', jMenuFile, [], 'Delete raw file', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('DeleteRawFile', RawFile));
+                        % FIF: Anonymize
+                        if strcmpi(nodeType, 'rawdata') && (strcmpi(Device, 'Vectorview306') || all(ismember({'MEG MAG', 'MEG GRAD'}, AllMod)))
+                            gui_component('MenuItem', jMenuFile, [], 'Anonymize FIF file', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@file_anonymize, filenameFull));
+                        end
                     end
                     gui_component('Menu', jMenuFile, [], 'Extra acquisition files', IconLoader.ICON_RAW_DATA, [], @(h,ev)CreateMenuExtraFiles(ev.getSource(), RawFile));
                 end
