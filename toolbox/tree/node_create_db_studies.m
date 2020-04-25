@@ -53,6 +53,7 @@ isExpandTrials = 1;
 if nargin < 3 || isempty(iSearch)
     iSearch = 0;
 end
+showParentNodes = node_show_parents(iSearch);
 
 
 %% ===== CREATE TREE BASE =====  
@@ -80,8 +81,8 @@ if ~isempty(sDefaultStudy) % && (~isempty(sDefaultStudy.Data) || ~isempty(sDefau
     % Create analysis node
     nodeGlobal = BstNode('defaultstudy', '(Common files)', sDefaultStudy.FileName, 0, iDefaultStudy);
     % Create node
-    numElems = node_create_study(nodeGlobal, sDefaultStudy, iDefaultStudy, isExpandTrials, [], iSearch);
-    if numElems > 0
+    numElems = node_create_study(nodeGlobal, nodeStudiesDB, sDefaultStudy, iDefaultStudy, isExpandTrials, [], iSearch);
+    if numElems > 0 && showParentNodes
         % Add node to database node
         nodeStudiesDB.add(nodeGlobal);
         numTotalElems = numTotalElems + numElems;
@@ -101,8 +102,8 @@ if ~isempty(sAnalysisStudy) && (~isempty(sAnalysisStudy.Data) || ~isempty(sAnaly
     % Create analysis node
     nodeAnalysis = BstNode('study', '(Inter-subject)', sAnalysisStudy.FileName, 0, iAnalysisStudy);
     % Create node
-    numElems = node_create_study(nodeAnalysis, sAnalysisStudy, iAnalysisStudy, isExpandTrials, [], iSearch);
-    if numElems > 0
+    numElems = node_create_study(nodeAnalysis, nodeStudiesDB, sAnalysisStudy, iAnalysisStudy, isExpandTrials, [], iSearch);
+    if numElems > 0 && showParentNodes
         % Add node to database node
         nodeStudiesDB.add(nodeAnalysis);
         numTotalElems = numTotalElems + numElems;
@@ -140,8 +141,10 @@ if strcmpi(expandOrder, 'subject')
         % Create subject node
         nodeSubject = BstNode('studysubject', strComment, sSubject.FileName, iSubject, 0);
         % Add subject node to root node
-        nodeStudiesDB.add(nodeSubject);
-        numTotalElems = numTotalElems + 1;
+        if showParentNodes
+            nodeStudiesDB.add(nodeSubject);
+            numTotalElems = numTotalElems + 1;
+        end
         % Add node reference to nodes hashtable
         hashTableNodes.put(sSubject.Name, nodeSubject);
     end
@@ -237,6 +240,7 @@ for i = 1:length(ProtocolStudies.Study)
                     nodeCondition = hashTableNodes.get(lower(pathCondition));
                     % If node does not already exist : create it
                     if isempty(nodeCondition)
+                        foundSearch = 0;
                         % === ANALYSIS-INTRA ===
                         % "(Analysis)" node for intra-subjects results
                         if strcmpi(sStudy.Condition{iCondition}, bst_get('DirAnalysisIntra'))
@@ -284,15 +288,17 @@ for i = 1:length(ProtocolStudies.Study)
                             if iSearch ~= 0
                                 % If we have a search filter active, only create
                                 % node if it (or its children) passes the filter
-                                numElems = node_create_study(nodeCondition, sStudy, iStudy, isExpandTrials, [], iSearch);
-                                createNode = foundSearch || numElems > 0;
+                                numElems = node_create_study(nodeCondition, nodeStudiesDB, sStudy, iStudy, isExpandTrials, [], iSearch);
                             else
                                 numElems = 1;
-                                createNode = 1;
                             end
-                            if createNode
+                            if foundSearch || (numElems > 0 && showParentNodes)
                                 % Add it to the 'StudyDB' node
-                                nodeParent.add(nodeCondition); 
+                                if showParentNodes
+                                    nodeParent.add(nodeCondition);
+                                else
+                                    nodeStudiesDB.add(nodeCondition);
+                                end
                                 numTotalElems = numTotalElems + numElems;
                                 % Reference this node in hashtable
                                 hashTableNodes.put(lower(pathCondition), nodeCondition);
@@ -323,14 +329,16 @@ for i = 1:length(ProtocolStudies.Study)
                 if iSearch ~= 0
                     % If we have a search filter active, only create
                     % node if it (or its children) passes the filter
-                    numElems = node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, [], iSearch);
-                    createNode = foundSearch || numElems > 0;
+                    numElems = node_create_study(nodeStudy, nodeStudiesDB, sStudy, iStudy, isExpandTrials, [], iSearch);
                 else
                     numElems = 1;
-                    createNode = 1;
                 end
-                if createNode
-                    nodeSubject.add(nodeStudy);
+                if foundSearch || (numElems > 0 && showParentNodes)
+                    if showParentNodes
+                        nodeSubject.add(nodeStudy);
+                    else
+                        nodeStudiesDB.add(nodeStudy);
+                    end
                     numTotalElems = numTotalElems + numElems;
                 end
             end
@@ -390,15 +398,17 @@ for i = 1:length(ProtocolStudies.Study)
                                 if iSearch ~= 0
                                     % If we have a search filter active, only create
                                     % node if it (or its children) passes the filter
-                                    numElems = node_create_study(nodeCondition, sStudy, iStudy, isExpandTrials, [], iSearch);
-                                    createNode = numElems > 0;
+                                    numElems = node_create_study(nodeCondition, nodeStudiesDB, sStudy, iStudy, isExpandTrials, [], iSearch);
                                 else
                                     numElems = 1;
-                                    createNode = 1;
                                 end
-                                if createNode
+                                if numElems > 0 && showParentNodes
                                     % Add it to the 'StudyDB' node
-                                    nodeParent.add(nodeCondition);
+                                    if showParentNodes
+                                        nodeParent.add(nodeCondition);
+                                    else
+                                        nodeStudiesDB.add(nodeCondition);
+                                    end
                                     numTotalElems = numTotalElems + numElems;
                                     % Reference this node in hashtable
                                     hashTableNodes.put(lower(pathCondition), nodeCondition);
@@ -439,15 +449,17 @@ for i = 1:length(ProtocolStudies.Study)
                     if iSearch ~= 0
                         % If we have a search filter active, only create
                         % node if it (or its children) passes the filter
-                        numElems = node_create_study(nodeSubject, sStudy, iStudy, isExpandTrials, [], iSearch);
-                        createNode = numElems > 0;
+                        numElems = node_create_study(nodeSubject, nodeStudiesDB, sStudy, iStudy, isExpandTrials, [], iSearch);
                     else
                         numElems = 1;
-                        createNode = 1;
                     end
-                    if createNode
+                    if numElems > 0 && showParentNodes
                         % Add it to the 'StudyDB' node
-                        nodeCondition.add(nodeSubject);
+                        if showParentNodes
+                            nodeCondition.add(nodeSubject);
+                        else
+                            nodeStudiesDB.add(nodeSubject);
+                        end
                         numTotalElems = numTotalElems + numElems;
                         % Reference this node in hashtable
                         hashTableNodes.put(lower(pathSubject), nodeSubject);

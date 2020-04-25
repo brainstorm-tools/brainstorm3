@@ -350,6 +350,10 @@ else
     clf(hFig);
     figure(hFig);
 end
+% Disable the Java-related warnings after 2019b
+if (bst_get('MatlabVersion') >= 907)
+    warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+end
 
 % Plot frequency response
 hAxesFreqz = axes('Units', 'pixels', 'Parent', hFig, 'Tag', 'AxesFreqz');

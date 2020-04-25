@@ -64,6 +64,10 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     else
         rendererName = 'opengl';
     end
+    % Disable the Java-related warnings after 2019b
+    if (bst_get('MatlabVersion') >= 907)
+        warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+    end
     
     % ===== FIGURE =====
     hFig = figure(...
@@ -304,7 +308,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.gridx = 3;  c.gridy = 4;  Handles.jTextCoordMniY = gui_component('label', Handles.jPanelCoordinates, c, '...');
     c.gridx = 4;  c.gridy = 4;  Handles.jTextCoordMniZ = gui_component('label', Handles.jPanelCoordinates, c, '...');    
     c.gridx = 2;  c.gridy = 4;  c.gridwidth = 3;  
-    Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#505050"><U>Click here to compute MNI transformation</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig));
+    Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#E00000"><U>Click here to compute MNI transformation</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig));
     
     % ===== VALIDATION BAR =====
     % Default constrains
@@ -1540,6 +1544,9 @@ function MouseButtonUp_Callback(hFig, varargin)
                     Handles = bst_figures('GetFigureHandles', hFig);
                     sMri = panel_surface('GetSurfaceMri', hFig);
                     MouseMoveCrosshair(hAxes, sMri, Handles);
+                    % Select channel
+                    ChannelName = get(clickSource, 'UserData');
+                    bst_figures('ToggleSelectedRow', ChannelName);
             end
         % Mouse was moved
         else
@@ -2241,7 +2248,9 @@ function UpdateVisibleSensors3D(hFig, slicesToUpdate)
                 % Convert positions to MRI coordinates
                 ChanMri = cs_convert(sMri, 'scs', 'mri', ChanLoc) .* 1000;
                 % Is there any point close to the current slices
-                if any(abs(ChanMri(:,iDim) - slicesLoc(iDim)) <= nTol)
+                % if any(abs(ChanMri(:,iDim) - slicesLoc(iDim)) <= nTol)
+                % Is the slice between the first and the last contact of this electrode
+                if (slicesLoc(iDim) >= min(ChanMri(:,iDim)) - nTol) && (slicesLoc(iDim) <= max(ChanMri(:,iDim)) + nTol)
                     Visible = 'on';
                 else
                     Visible = 'off';

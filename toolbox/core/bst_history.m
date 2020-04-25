@@ -70,6 +70,11 @@ elseif ischar(FileMat)
 else
     error('Invalid structure type.');
 end
+% Reset History field if not properly set
+if isfield(FileMat, 'History') && (~iscell(FileMat.History) || (size(FileMat.History,2) ~= 3))
+    FileMat = rmfield(FileMat, 'History');
+end
+    
 
 %% ===== ACTION =====
 switch lower(action)

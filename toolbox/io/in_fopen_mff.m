@@ -107,8 +107,8 @@ end
 %% ===== DOWNLOAD MFF JAR FILE =====
 function downloadAndInstallMffLibrary()
     % Current up-to-date version
-    mffVer  = 2.02;
-    zipFile = 'mffmatlabio-2.02.zip';
+    mffVer  = 3.1;
+    zipFile = 'mffmatlabio-3.1.zip';
     % Check whether JAR file is in Java path
     [jarPath, jarExists] = bst_get('MffJarFile');
     mffDir = fileparts(jarPath);

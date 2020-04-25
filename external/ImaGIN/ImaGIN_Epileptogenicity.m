@@ -209,7 +209,7 @@ for i00 = 1:size(latency, 2)
         % Load baseline
         B = spm_eeg_load(deblank(BB(i0,:)));
         timebaseline = time(B);
-        TimeWindowBaseline = timebaseline(1) : (TimeWindow(2)-TimeWindow(1)) : (timebaseline(end)-1);
+        TimeWindowBaseline = timebaseline(1) : TimeResolution : (timebaseline(end)-1);
         
         % Compute power using multitaper
         try

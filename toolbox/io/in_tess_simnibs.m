@@ -31,8 +31,8 @@ m = mesh_load_gmsh4(MeshFile);
 MeshMat = db_template('femmat');
 MeshMat.Comment  = fBase;
 MeshMat.Vertices = m.nodes(:,1:3);
-MeshMat.Elements = m.tetrahedra(:,1:4);
-MeshMat.Tissue   = m.tetrahedron_regions;
+MeshMat.Elements = double(m.tetrahedra(:,1:4));
+MeshMat.Tissue   = double(m.tetrahedron_regions);
 
 % Replace the eyes with scalp (not used for now)
 MeshMat.Tissue(MeshMat.Tissue==6) = 5;

@@ -1,10 +1,11 @@
-function numElems = node_create_subject(nodeSubject, sSubject, iSubject, iSearch)
+function numElems = node_create_subject(nodeSubject, nodeRoot, sSubject, iSubject, iSearch)
 % NODE_CREATE_SUBJECT: Create subject node from subject structure.
 %
-% USAGE:  node_create_subject(nodeSubject, sSubject, iSubject)
+% USAGE:  node_create_subject(nodeSubject, nodeRoot, sSubject, iSubject)
 %
 % INPUT: 
 %     - nodeSubject : BstNode object with Type 'subject' => Root of the subject subtree
+%     - nodeRoot    : BstNode object, root of the whole database tree
 %     - sSubject    : Brainstorm subject structure
 %     - iSubject    : indice of the subject node in Brainstorm subjects list
 %     - iSearch     : ID of the active DB search, or empty/0 if none
@@ -31,6 +32,7 @@ function numElems = node_create_subject(nodeSubject, sSubject, iSubject, iSearch
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2016
+%          Martin Cousineau, 2019-2020
 
 % If iSubject=0 => default subject
 import org.brainstorm.tree.*;
@@ -43,6 +45,7 @@ if nargin < 4 || isempty(iSearch) || iSearch == 0
 else
     numElems = 0;
 end
+showParentNodes = node_show_parents(iSearch);
 
 % Update node fields
 nodeSubject.setFileName(sSubject.FileName);
@@ -77,7 +80,11 @@ else
             if ismember(iAnatomy, sSubject.iAnatomy)
                 nodeAnatomy.setMarked(1);
             end
-            nodeSubject.add(nodeAnatomy);
+            if showParentNodes
+                nodeSubject.add(nodeAnatomy);
+            else
+                nodeRoot.add(nodeAnatomy);
+            end
             numElems = numElems + 1;
         end
     end
@@ -100,7 +107,11 @@ else
             if ismember(iSurface, sSubject.(['i' SurfaceType]))
                 nodeSurface.setMarked(1);
             end
-            nodeSubject.add(nodeSurface);
+            if showParentNodes
+                nodeSubject.add(nodeSurface);
+            else
+                nodeRoot.add(nodeSurface);
+            end
             numElems = numElems + 1;
         end
     end

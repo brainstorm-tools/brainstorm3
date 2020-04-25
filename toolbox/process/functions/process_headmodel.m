@@ -75,6 +75,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.openmeeg.Comment = {'panel_openmeeg', 'OpenMEEG options: '};
     sProcess.options.openmeeg.Type    = 'editpref';
     sProcess.options.openmeeg.Value   = bst_get('OpenMEEGOptions');
+    % Options: OpenMEEG Options
+    sProcess.options.duneuro.Comment = {'panel_duneuro', 'DUNEuro options: '};
+    sProcess.options.duneuro.Type    = 'editpref';
+    sProcess.options.duneuro.Value   = bst_get('DuneuroOptions');
 end
 
 
@@ -107,7 +111,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             case 1,  sMethod.EEGMethod = '';
             case 2,  sMethod.EEGMethod = 'eeg_3sphereberg';
             case 3,  sMethod.EEGMethod = 'openmeeg';   isOpenMEEG = 1;
-            case 4,  sMethod.MEGMethod = 'duneuro';    isDuneuro = 1;
+            case 4,  sMethod.EEGMethod = 'duneuro';    isDuneuro = 1;
         end
     else
         sMethod.EEGMethod = '';
@@ -175,7 +179,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Copy DUNEuro options to OPTIONS structure
     if isDuneuro
-        warning('todo');
+        if ~isempty(sProcess.options.duneuro.Value)
+            sMethod = struct_copy_fields(sMethod, sProcess.options.duneuro.Value, 1);
+            bst_set('DuneuroOptions', sProcess.options.duneuro.Value);
+        else
+            bst_report('Error', sProcess, [], 'DUNEuro options are not defined.');
+            return;
+        end
     end
     % Non-interactive process
     sMethod.Interactive = 0;

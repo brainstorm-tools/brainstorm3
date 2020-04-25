@@ -1190,6 +1190,10 @@ function iTess = AddSurface(hFig, surfaceFile)
         if ~isempty(mriOrigin) && (any(mriOrigin < 0.25*size(sMri.Cube)) || any(mriOrigin > 0.75*size(sMri.Cube)))
             mriOrigin = [];
         end
+        % Otherwise, if there is a SCS transformation available: use coordinates corresponding to world=(0,0,0) in ICBM152
+        if isempty(mriOrigin)
+            mriOrigin = cs_convert(sMri, 'scs', 'voxel', [.026, 0, .045]);
+        end
         % Otherwise, use the middle slice in each direction
         if isempty(mriOrigin)
             mriOrigin = size(sMri.Cube) ./ 2;
@@ -1561,7 +1565,11 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                 % === CHECKS ===
                 % If min/max values for this file were not computed yet
                 if isempty(TessInfo(iTess).DataMinMax)
-                    TessInfo(iTess).DataMinMax = bst_memory('GetResultsMaximum', iDS, iResult);
+                    if isequal(GlobalData.DataSet(iDS).Results(iResult).ColormapType, 'time')
+                        TessInfo(iTess).DataMinMax = GlobalData.DataSet(iDS).Results(iResult).Time;
+                    else
+                        TessInfo(iTess).DataMinMax = bst_memory('GetResultsMaximum', iDS, iResult);
+                    end
                 end
                 % Reset Overlay cube
                 TessInfo(iTess).OverlayCube = [];

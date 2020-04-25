@@ -74,7 +74,11 @@ for i = 1:length(items)
     end
     tag = find_tag(item,FIFF.FIFF_DESCRIPTION);
     if ~isempty(tag)
-        desc = tag.data;
+        if ischar(desc)
+          desc = tag.data;
+        else
+          desc=['proj_item_' num2str(i)];
+        end 
     else
         tag = find_tag(item,FIFF.FIFF_NAME);
         if ~isempty(tag)

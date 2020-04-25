@@ -117,7 +117,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Initialize returned values
     OutputFiles = {};
     % Forcing the concatenation of the inputs
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)'};
+    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 2;
     % Input options

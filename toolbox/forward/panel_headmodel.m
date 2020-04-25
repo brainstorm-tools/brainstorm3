@@ -383,8 +383,9 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         % Replace codes with comments
         sMethod.Comment = strrep(sMethod.Comment, 'os_meg',          'Overlapping spheres');
         sMethod.Comment = strrep(sMethod.Comment, 'meg_sphere',      'Single sphere');
-        sMethod.Comment = strrep(sMethod.Comment, 'openmeeg',        'OpenMEEG BEM');
         sMethod.Comment = strrep(sMethod.Comment, 'eeg_3sphereberg', '3-shell sphere');
+        sMethod.Comment = strrep(sMethod.Comment, 'openmeeg',        'OpenMEEG BEM');
+        sMethod.Comment = strrep(sMethod.Comment, 'duneuro',         'DUNEuro FEM');
         % Grid type
         if strcmpi(sMethod.HeadModelType, 'volume')
             sMethod.Comment = [sMethod.Comment ' (volume)'];
@@ -439,6 +440,11 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
 %         if isfield(ChannelMat, 'Projector')
 %             OPTIONS.Projector = ChannelMat.Projector;
 %         end
+        % List of sensors
+        OPTIONS.iMeg  = [good_channel(OPTIONS.Channel, [], 'MEG'), good_channel(OPTIONS.Channel, [], 'MEG REF')];
+        OPTIONS.iEeg  = good_channel(OPTIONS.Channel, [], 'EEG');
+        OPTIONS.iEcog = good_channel(OPTIONS.Channel, [], 'ECOG');
+        OPTIONS.iSeeg = good_channel(OPTIONS.Channel, [], 'SEEG');
 
         % ===== BEST FITTING SPHERE =====
         % BestFittingSphere : .HeadCenter, .Radii, .Conductivity
@@ -558,7 +564,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             bst_error('Please import a cortex surface for this subject.', 'Head model', 0);
             return
         end
-
+                
         % ===== OPENMEEG =====
         if isOpenMEEG
             % Interactive interface to set the OpenMEEG options
@@ -583,11 +589,6 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
                     OPTIONS.BemNames{end+1} = 'Brain';
                     OPTIONS.BemCond(end+1)  = 1;
                 end
-                % List of sensors
-                OPTIONS.iMeg  = [good_channel(OPTIONS.Channel, [], 'MEG'), good_channel(OPTIONS.Channel, [], 'MEG REF')];
-                OPTIONS.iEeg  = good_channel(OPTIONS.Channel, [], 'EEG');
-                OPTIONS.iEcog = good_channel(OPTIONS.Channel, [], 'ECOG');
-                OPTIONS.iSeeg = good_channel(OPTIONS.Channel, [], 'SEEG');
                 % EEG: Select all layers; MEG: Select only the innermost layer
                 if ismember('openmeeg', {OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
                     OPTIONS.BemSelect = ones(size(OPTIONS.BemCond));
@@ -645,63 +646,36 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             OPTIONS.BemCond  = OPTIONS.BemCond(OPTIONS.BemSelect);
         end
         
-%         %% ===== DUNEURO =====
-%         if isDuneuro
-%             % Ask for the source FEM Model
-%             sourceModel = java_dialog('question', '<HTML><B> DUNEuro : Select FEM Source Model <B>', ...
-%                 'FEM Source Model', [], {'Venant','Subtraction','Partial_Integration'}, 'Venant');
-%             OPTIONS.FemSourceModel = lower(sourceModel);
-%             % Add the source model name to the comment
-%             OPTIONS.Comment = [OPTIONS.Comment ' ' sourceModel] ;
-%             
-%             % Path to the head fem model
-%              OPTIONS.FemHeadFile = file_fullpath(sSubject.Surface(sSubject.iFEM).FileName);            
-%             % Get the number of layer and their name
-%             headData = load(OPTIONS.FemHeadFile, 'TissueLabels');
-%             % Get the default conductivity values
-%             defCond = get_standard_conductivity(length(headData.TissueLabels));
-%             
-%             % Ask for the conductivity of each layer          
-%             [res, isCancel] = java_dialog('input', ...
-%                 ['<HTML>Your FEM head model has three layers: <BR> ' ...
-%                  sprintf('%s ', headData.TissueLabels{:}), '<BR><BR>' ...
-%                  'Enter the conductivity of each layer: <BR>'], 'Conductivity', [], ...
-%                  sprintf('%g ', defCond));
-%             if isCancel
-%                 return
-%             end
-%             OPTIONS.FemCond = str2num(res);
-%             if (length(OPTIONS.FemCond) ~= length(headData.TissueLabels))
-%                 error('Invalid values');
-%             end
-%             
-%             % TODO : The conductivities values in the case of the
-%             % combined model should be the same for eeg and meg
-%             
-%             % Ask for the layers to keep for the MEG computation
-%             if strcmpi(OPTIONS.MEGMethod, 'duneuro')
-%                 [res, isCancel] = java_dialog('checkbox', ...
-%                     '<HTML>Select the layers to consider for the MEG head modeling <BR>', 'Select Volume', [], ...
-%                     headData.TissueLabels, [1 zeros(1, length(headData.TissueLabels)-1)]);
-%                 OPTIONS.layerToKeep =  res;
-%                 if isCancel
-%                     return
-%                 end
-%             end
-%         end
+        % ===== DUNEURO =====
+        if isDuneuro
+            % Get default FEM head model
+            if isempty(sSubject.iFEM)
+                errMessage = 'No FEM head model available for this subject.';
+                return;
+            end
+            OPTIONS.FemFile = file_fullpath(sSubject.Surface(sSubject.iFEM(1)).FileName);
+            % Let user edit DUNEuro options
+            DuneuroOptions = gui_show_dialog('DUNEuro options', @panel_duneuro, 1, [], OPTIONS);
+            if isempty(DuneuroOptions)
+                bst_progress('stop');
+                return;
+            end
+            % Copy the selected options to the OPTIONS structure
+            OPTIONS = struct_copy_fields(OPTIONS, DuneuroOptions, 1);
+        end
         
-        % ===== Compute HeadModel =====
+        % ===== COMPUTE HEADMODEL =====
         % Start process
         [OPTIONS, errMessage] = bst_headmodeler(OPTIONS);
         if isempty(OPTIONS)
             return
         end
 
-        % ===== VERIFICATION FOR OVERLAP.SPHERES =====
-        if strcmpi(OPTIONS.MEGMethod, 'os_meg')
-            % Display all the spheres
-            % view_spheres(OPTIONS.HeadModelFile, ChannelFile, sSubject);
-        end
+%         % ===== VERIFICATION FOR OVERLAP.SPHERES =====
+%         if strcmpi(OPTIONS.MEGMethod, 'os_meg')
+%             % Display all the spheres
+%             view_spheres(OPTIONS.HeadModelFile, ChannelFile, sSubject);
+%         end
         
 %         % ===== VERIFICATION FOR OPENMEEG =====
 %         % Calculate the overlapping sphere / 3-shell sphere models for the same sensors, to validate values

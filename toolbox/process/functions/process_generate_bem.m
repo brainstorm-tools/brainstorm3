@@ -19,7 +19,7 @@ function varargout = process_generate_bem( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2013
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -119,4 +119,39 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 
+%% ===== COMPUTE/INTERACTIVE =====
+function isOk = ComputeInteractive(iSubject, iMri) %#ok<DEFNU>
+    isOk = 0;
+    % Get inputs
+    if (nargin < 2) || isempty(iMri)
+        iMri = [];
+    end
+    % Ask which method to use
+    res = java_dialog('question', [...
+        '<HTML><B>Brainstorm</B>:<BR>Create BEM surfaces from <B>T1</B> MRI, <B>scalp</B> and <B>cortex</B> surfaces.<BR>' ...
+        'Warp MNI template skull surfaces to fit the head shape of the subject.<BR><BR>' ...
+        '<B>FieldTrip</B>:<BR>Call ft_volumesegment to segment ft_prepare_mesh to mesh the <B>T1 MRI</B>.<BR>' ...
+        'FieldTrip must be installed on the computer first.<BR>' ...
+        'Website: http://www.fieldtriptoolbox.org/download<BR><BR>' ...
+        ], 'BEM mesh generation method', [], {'Brainstorm','FieldTrip'}, 'Brainstorm');
+    if isempty(res)
+        return
+    end
+    Method = lower(res);
+    % Call appropriate method
+    switch (Method)
+        case 'brainstorm'
+            % Get subject
+            sSubject = bst_get('Subject', iSubject);
+            % If there are no scalp and no cortex: Only FieldTrip available
+            if isempty(sSubject.iCortex) || isempty(sSubject.iScalp)
+                bst_error('The selected method requires the cortex and scalp surfaces.', 'Generate BEM surfaces', 0);
+                return;
+            end
+            % Run computation
+            isOk = tess_bem(iSubject);
+        case 'fieldtrip'
+            process_ft_volumesegment('ComputeInteractive', iSubject, iMri);
+    end
+end
 

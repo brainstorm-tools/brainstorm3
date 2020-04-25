@@ -108,8 +108,9 @@ if strcmpi(osType, 'mac64') && ~isdir(bst_fullfile(OpenmeegDir, 'lib'))
 end
 
 % If binary file doesnt exist: download
-if (bst_get('AutoUpdates') || isempty(prevUrl)) && ...
-   (~isdir(OpenmeegDir) || (~strcmpi(osType, 'mac64') && isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*')))) || ~strcmpi(prevUrl, url) || isUpdate)
+if isUpdate || ...
+   ((bst_get('AutoUpdates') || isempty(prevUrl)) && ...
+    (~isdir(OpenmeegDir) || (~strcmpi(osType, 'mac64') && isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*')))) || ~strcmpi(prevUrl, url)))
     % If folder exists: delete
     if isdir(OpenmeegDir)
         file_delete(OpenmeegDir, 1, 3);
@@ -196,7 +197,7 @@ end
 %% ===== OPENMEEG LIBRARY PATH =====
 % Progress bar
 bst_progress('text', 'OpenMEEG', 'OpenMEEG: Initialization...');
-bst_progress('setimage', 'logo_splash_openmeeg.gif');
+bst_progress('setimage', 'logo_openmeeg.gif');
 bst_progress('setlink', 'http://openmeeg.github.io');
 % Library path
 if ~ispc

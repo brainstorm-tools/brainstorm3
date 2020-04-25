@@ -246,7 +246,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     OutputFiles{1} = DataFile;
 end
 
-
+            
 %% ===== APPLY THRESHOLD =====
 function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOptions)
     % If options not provided, read them from the interface
@@ -288,22 +288,18 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
             warning('SPM must be in the Matlab path to compute the statistical thresold for this file.');
             pmask = ones(size(StatMat.tmap));
         else
-            % Compute threshold for statistical map
-            df = [StatMat.SPM.xCon(1).eidf, StatMat.SPM.xX.erdf];
-            S = StatMat.SPM.xVol.S;    %-search Volume {voxels}
-            R = StatMat.SPM.xVol.R;    %-search Volume {resels}
-            % Correction
-            switch (StatThreshOptions.Correction)
-                % Note: always one-sided t-test, really the case?
-                case {'none', 'no'}
-                    tThreshOver = spm_u(StatThreshOptions.pThreshold, df, 'T');
-                case 'bonferroni'
-                    tThreshOver = spm_uc_Bonf(StatThreshOptions.pThreshold, df, 'T', S, 1);
-                case 'fdr'
-                    tThreshOver = spm_uc(StatThreshOptions.pThreshold, df, 'T', R, 1, S);
+            % Threshold each time point independently
+            if iscell(StatMat.SPM)
+                pmask = false(size(StatMat.tmap));
+                for iTime = 1:size(StatMat.tmap, 2)
+                    tThreshOver = GetSpmThreshold(StatMat.SPM{iTime}, StatThreshOptions.Correction, StatThreshOptions.pThreshold);
+                    pmask(:,iTime) = (StatMat.tmap(:,iTime) >= tThreshOver);
+                end
+            % Threshold all the time points in the same way
+            else
+                tThreshOver = GetSpmThreshold(StatMat.SPM, StatThreshOptions.Correction, StatThreshOptions.pThreshold);
+                pmask = (StatMat.tmap >= tThreshOver);
             end
-            % Activated voxels
-            pmask = (StatMat.tmap >= tThreshOver);
             tThreshUnder = [];
         end
     else
@@ -400,3 +396,25 @@ if isinf(maxUnder)
     iMaxUnder = [];
 end
 end
+
+
+%% ===== COMPUTE SPM THRESHOLD =====
+function tThreshOver = GetSpmThreshold(SPM, Method, pThreshold)
+    % Compute threshold for statistical map
+    df = [SPM.xCon(1).eidf, SPM.xX.erdf];
+    S = SPM.xVol.S;    %-search Volume {voxels}
+    R = SPM.xVol.R;    %-search Volume {resels}
+    % Correction
+    switch (Method)
+        % Note: always one-sided t-test, really the case?
+        case {'none', 'no'}
+            tThreshOver = spm_u(pThreshold, df, 'T');
+        case 'bonferroni'
+            tThreshOver = spm_uc_Bonf(pThreshold, df, 'T', S, 1);
+        case 'fdr'
+            tThreshOver = spm_uc(pThreshold, df, 'T', R, 1, S);
+    end
+end
+
+
+

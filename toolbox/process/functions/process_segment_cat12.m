@@ -34,14 +34,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Segment MRI with SPM12/CAT12';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 32;
+    sProcess.Index       = 31;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
     sProcess.OutputTypes = {'import'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
-    sProcess.isSeparator = 1;
     % Option: Subject name
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
@@ -254,7 +253,7 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     end
     % Open progress bar
     bst_progress('start', 'CAT12', 'CAT12 MRI segmentation...');
-    bst_progress('setimage', 'logo_splash_cat.gif');
+    bst_progress('setimage', 'logo_cat.gif');
     % Ask for number of vertices
     nVertices = java_dialog('input', 'Number of vertices on the cortex surface:', 'CAT12 segmentation', [], '15000');
     if isempty(nVertices)

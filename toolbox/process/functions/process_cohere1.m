@@ -92,7 +92,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === OUTPUT MODE
     sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
     sProcess.options.label3.Type    = 'label';
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)'};
+    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
 end

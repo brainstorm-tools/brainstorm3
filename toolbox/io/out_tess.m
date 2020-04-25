@@ -1,7 +1,7 @@
 function out_tess(BstFile, OutputFile, FileFormat, sMri)
 % OUT_TESS: Exports a Brainstorm surface in another file format.
 %
-% USAGE:  out_tess(TessFile, OutputFile, FileFormat, sMri);
+% USAGE:  out_tess(BstFile, OutputFile, FileFormat, sMri);
 %
 % INPUT: 
 %     - BstFile    : Tesselation file from the Brainstorm database

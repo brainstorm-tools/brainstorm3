@@ -86,7 +86,7 @@ function hFig = CreateFigure(FigureId)
     % Prepare figure appdata
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'isPlotEditToolbar', 0);
-    setappdata(hFig, 'AllChannelsDisplayed', 0);
+    setappdata(hFig, 'isSensorsOnly', 0);
     setappdata(hFig, 'GraphSelection', []);
     setappdata(hFig, 'isStatic', 0);
     setappdata(hFig, 'isStaticFreq', 1);

@@ -142,6 +142,7 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'global';
+            sColormap.isRealMin        = 1;
         % Time-frequency maps
         case 'timefreq'
             sColormap.Name             = 'cmap_magma';
@@ -1354,6 +1355,9 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                     dataBounds = GlobalData.DataSet(iDS).Dipoles(1).Time;
                 else
                     dataBounds = GlobalData.DataSet(iDS).Measures.Time;
+                end
+                if (length(dataBounds) == 2) && (dataBounds(1) == dataBounds(2))
+                    dataBounds(2) = dataBounds(2) + 0.001;
                 end
                 if (max(abs(dataBounds)) > 2)
                     fFactor = 1;

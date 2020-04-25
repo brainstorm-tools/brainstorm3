@@ -160,6 +160,10 @@ function figureEditMask_OpeningFcn(hObject, eventdata, handles, varargin)
     drawnow
     
     % === Replace Matlab slider by Java slider ===
+    % Disable the Java-related warnings after 2019b
+    if (bst_get('MatlabVersion') >= 907)
+        warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+    end
 %     sliderPos = get(handles.sliderPreview, 'Position');
 %     hParent = get(handles.sliderPreview, 'Parent');
     delete(handles.sliderPreview);

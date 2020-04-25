@@ -117,7 +117,7 @@ localRel.month = str2num(Release(3:4));
 localRel.day   = str2num(Release(5:6));
 
 % Check Matlab version
-if (bst_get('MatlabVersion') <= 803)
+if (MatlabVersion <= 803)
     disp('BST> Warning: For better graphics, use Matlab >= 2014b');
 end
 % % Force Matlab to recycle the files instead of deleting them
@@ -188,6 +188,11 @@ if file_exist(dbFile)
             ' - Try to delete files in your home folder' 10 ...
             ' - Change the temporary folder in the Brainstorm preferences' 10 ...
             ' - Import again your database folder (File > Import database).'], 'Database error');
+        bstOptions = [];
+    end
+    % Invalid structure read from dbFile
+    if any(~isfield(bstOptions, {'iProtocol', 'ProtocolsListInfo', 'ProtocolsListSubjects', 'ProtocolsListStudies', 'BrainStormDbDir'}))
+        disp(['BST> Warning: Ignoring corrupted options file: ' dbFile]);
         bstOptions = [];
     end
 else

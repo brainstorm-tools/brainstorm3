@@ -8,7 +8,6 @@ function varargout = process_generate_fem( varargin )
 %                  label = process_generate_fem('GetFemLabel', label)
 %             NewFemFile = process_generate_fem('SwitchHexaTetra', FemFile)
 %                 errMsg = process_generate_fem('InstallIso2mesh', isInteractive)
-%                 errMsg = process_generate_fem('InstallDuneuro', isInteractive)
 %                 errMsg = process_generate_fem('InstallBrain2mesh', isInteractive)
 
 % @=============================================================================
@@ -161,7 +160,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid number of vertices.');
         return
     end
-    NbVertices
     % FieldTrip: Node shift
     OPTIONS.NodeShift = sProcess.options.nodeshift.Value{1};
     if isempty(OPTIONS.NodeShift) || (OPTIONS.NodeShift < 0) || (OPTIONS.NodeShift >= 0.5)
@@ -283,6 +281,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     else
         T2File = [];
     end
+    FemFile = [];
     
     % ===== GENERATE MESH =====
     switch lower(OPTIONS.Method)
@@ -349,7 +348,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                     % Concatenate meshes
                     [newnode, newelem] = mergemesh(bemMerge{:});
                     % Remove duplicated elements
-                    newelem = unique(sort(newelem,2),'rows');
+                    % newelem = unique(sort(newelem,2),'rows');
                 % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
                 case 'mergesurf'
                     try
@@ -396,6 +395,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 %                 TissueLabels = [];
 %             end
 
+            % Removing the 0 label (if less than 10% of the elements)
+            iNull = find(elem(:,5) == 0);
+            if (length(iNull) < 0.1 * length(elem))
+                elem(iNull,:) = [];
+            end
             % Relabelling from 1 to Ntissue
             bst_progress('text', 'Saving 3D mesh...');
             allLabels = unique(elem(:,5));
@@ -541,7 +545,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             elem(:,end) = reshape(iRelabel(elem(:,end)), [], 1);
             % Name tissue labels
             TissueLabels = {'white','gray','csf','skull','scalp'};
-            
         case 'simnibs'
             disp(['FEM> T1 MRI: ' T1File]);
             disp(['FEM> T2 MRI: ' T2File]);
@@ -551,10 +554,19 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = ['SimNIBS is not installed or not added to the system path:' 10 'the command "headreco" could not be found.' 10 10 'To install SimNIBS, visit: https://simnibs.github.io/simnibs'];
                 return;
             end
-            % Install bst_duneuro if needed
-            if ~exist('bst_duneuro', 'file')
-                errMsg = InstallDuneuro(isInteractive);
-                if ~isempty(errMsg) || ~exist('bst_duneuro', 'file')
+
+            % ===== VERIFY FIDUCIALS IN T1 MRI =====
+            % Load MRI file
+            sMriT1 = in_mri_bst(T1File);
+            % If the SCS transformation is not defined: compute MNI transformation to get a default one
+            if isempty(sMriT1) || ~isfield(sMriT1, 'SCS') || ~isfield(sMriT1.SCS, 'NAS') || ~isfield(sMriT1.SCS, 'LPA') || ~isfield(sMriT1.SCS, 'RPA') || (length(sMriT1.SCS.NAS)~=3) || (length(sMriT1.SCS.LPA)~=3) || (length(sMriT1.SCS.RPA)~=3) || ~isfield(sMriT1.SCS, 'R') || isempty(sMriT1.SCS.R) || ~isfield(sMriT1.SCS, 'T') || isempty(sMriT1.SCS.T)
+                % Issue warning
+                bst_report('Warning', 'process_generate_fem', [], 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.');
+                % Compute MNI transformation
+                [sMriT1, errNorm] = bst_normalize_mni(T1File);
+                % Handle errors
+                if ~isempty(errNorm)
+                    errMsg = ['Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
                     return;
                 end
             end
@@ -616,113 +628,32 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
                   
             % === IMPORT OUTPUT FOLDER ===
-            bst_progress('text', 'Importing SimNIBS output...');
-            % Import FEM mesh
-            mshfilename = bst_fullfile(simnibsDir, [subjid '.msh']);
-            if ~file_exist(mshfilename)
-                errMsg = ['Could not find SimNIBS output mesh: ' mshfilename];
+            [errorImport, FemFile] = import_anatomy_simnibs(iSubject, simnibsDir, OPTIONS.NbVertices, isInteractive, [], 0, 1);
+            % Handle errors
+            if ~isempty(errorImport)
+                errMsg = ['Error trying to import the SimNIBS output: ' 10 errorImport];
                 return;
             end
-            femhead = in_tess(mshfilename, 'SIMNIBS', sMriT1); %  this could be loaded to bst as it is
-            % Keep cortex surface
-            cortexElem = femhead.Elements(femhead.Tissue <= 2, :);
-            % Get outputs
-            TissueLabels = femhead.TissueLabels;   % {'white', 'gray', 'csf', 'skull', 'scalp'}
-            elem = [femhead.Elements femhead.Tissue];
-            node = femhead.Vertices;
             % Only tetra could be generated from this method
             OPTIONS.MeshType = 'tetrahedral';
 
-            % === EXTRACT THE FEM CORTEX SURFACE ===
-            bst_progress('text', 'Saving cortex envelope...');
-            % Create a surface for the outside surface of this tissue
-            cortexFaces = tess_voledge(node, cortexElem);
-            % Remove all the unused vertices
-            cortexVertices = node;
-            iRemoveVert = setdiff((1:size(cortexVertices,1))', unique(cortexFaces(:)));
-            if ~isempty(iRemoveVert)
-                [cortexVertices, cortexFaces] = tess_remove_vert(cortexVertices, cortexFaces, iRemoveVert);
-            end
-            % Remove small elements
-            [cortexVertices, cortexFaces] = tess_remove_small(cortexVertices, cortexFaces);
-            % New surface structure
-            NewTess = db_template('surfacemat');
-            NewTess.Comment  = 'cortex_fem';
-            NewTess.Vertices = cortexVertices;
-            NewTess.Faces    = cortexFaces;
-            % History: File name
-            NewTess.History = 'Cortex extracted from FEM model by SimNibs Method';
-            % Produce a default surface filename &   Make this filename unique
-            CortexFile = file_unique(bst_fullfile(bst_fileparts(T1File), ...
-                            sprintf('tess_%s_%dV.mat', ['cortex_' OPTIONS.Method], length(NewTess.Vertices))));
-            % Save new surface in Brainstorm format
-            bst_save(CortexFile, NewTess, 'v7'); 
-            db_add_surface(iSubject, CortexFile, NewTess.Comment);
-
-            % === IMPORT CAT12 OUTPUT ===
-            CatDir = bst_fullfile(simnibsDir, ['m2m_' subjid], 'segment', 'cat');
-            if isdir(CatDir)
-                catErrMsg = import_anatomy_cat(iSubject, CatDir, OPTIONS.NbVertices, 0, [], 0, 2);
-                if ~isempty(catErrMsg)
-                    bst_report('Warning', 'process_generate_fem', [], ['Could not import CAT12 segmentation: ' 10 catErrMsg]);
-                end
-            else
-                bst_report('Warning', 'process_generate_fem', [], ['CAT12 segmentation not found in SimNIBS output folder: ' 10 CatDir]);
-            end
-            
-            % === IMPORT 10-10 POSITIONS ===
-            PosFile = bst_fullfile(simnibsDir, ['m2m_' subjid], 'eeg_positions', 'EEG10-10_UI_Jurak_2007.csv');
-            if file_exist(PosFile)
-                % Create a condition "eeg_positions"
-                iStudy = db_add_condition(iSubject, 'eeg_positions');
-                % Import channel file
-                import_channel(iStudy, PosFile, 'SIMNIBS');
-            end
 
         case 'fieldtrip'
-            % Setup FieldTrip
-            isOk = bst_ft_init(isInteractive);
+            % Segmentation process
+            OPTIONS.layers     = {'white','gray','csf','skull','scalp'};
+            OPTIONS.isSaveTess = 0;
+            [isOk, errMsg, TissueFile] = process_ft_volumesegment('Compute', iSubject, iT1, OPTIONS);
             if ~isOk
-                errMsg = 'FieldTrip must be in the Matlab path for using this feature.';
                 return;
             end
-
-            % === CALL FIELDTRIP PIPELINE ===
-            % Convert MRI to fieldtrip structure
-            bst_progress('text', 'Reading T1 MRI...');
-            bstMri = in_mri(T1File);
-            ftMri = out_fieldtrip_mri(bstMri);
-            % Segmentation
-            bst_progress('text', 'MRI segmentation (FieldTrip/ft_volumesegment)...');
-            cfg = [];
-            TissueLabels = {'white','gray','csf','skull','scalp'};
-            cfg.output = TissueLabels;
-            segmentedmri = ft_volumesegment(cfg, ftMri);
-            % Mesh
-            bst_progress('text', 'Mesh generation (FieldTrip/ft_prepare_mesh)...');
-            cfg = [];
-            cfg.method = 'hexahedral';
-            cfg.spmversion = 'spm12';
-            cfg.downsample = OPTIONS.Downsample;
-            cfg.shift = OPTIONS.NodeShift;
-            mesh = ft_prepare_mesh(cfg, segmentedmri);
-
-            % Reorder labels based on requested order
-            iRelabel = cellfun(@(c)find(strcmpi(c,TissueLabels)), mesh.tissuelabel)';
-            mesh.tissue = iRelabel(mesh.tissue);
-            % Convert from FieldTrip world coordinates back to FieldTrip voxel coordinates
-            M = inv(ftMri.transform);
-            node = [mesh.pos, ones(size(mesh.pos, 1),1)] * M(1:3,:)';
-            % Convert to to Brainstorm voxel coordinates
-            node(:,1) = node(:,1) + 1;
-            node(:,2) = size(bstMri.Cube,2) - node(:,2);
-            node(:,3) = size(bstMri.Cube,3) - node(:,3);
-            % Convert to SCS coordinates
-            node = cs_convert(bstMri, 'voxel', 'scs', node);
-            % Return hexadrons
-            elem = [mesh.hex mesh.tissue];
-            % Only hexa could be generated from this method
-            OPTIONS.MeshType = 'hexahedral';
+            TissueLabels = OPTIONS.layers;
+            % Get index of tissue file
+            [sSubject, iSubject, iTissue] = bst_get('MriFile', TissueFile);
+            % Mesh process
+            [isOk, errMsg, FemFile] = process_ft_prepare_mesh_hexa('Compute', iSubject, iTissue, OPTIONS);
+            if ~isOk
+                return;
+            end
 
 %         case 'roast'
 %             % Install ROAST if needed
@@ -734,7 +665,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 %             end
 %             
 %             % === SAVE MRI AS NII ===
-%             bst_progress('setimage', 'logo_splash_roast.gif');
+%             bst_progress('setimage', 'logo_roast.gif');
 %             % Create temporary folder for fieldtrip segmentation files
 %             roastDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'roast');
 %             mkdir(roastDir);
@@ -834,27 +765,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 
     % ===== SAVE FEM MESH =====
     bst_progress('text', 'Saving FEM mesh...');
-    % Create output structure
-    FemMat = db_template('femmat');
-    if ~isempty(TissueLabels)
-        FemMat.TissueLabels = TissueLabels;
-    else
-        uniqueLabels = unique(FemMat.Tissue);
-        for i = 1:length(uniqueLabels)
-             FemMat.TissueLabels{i} = num2str(uniqueLabels(i));
-        end
-    end
-    FemMat.Comment = sprintf('FEM %dV (%s, %d layers)', length(node), OPTIONS.Method, length(FemMat.TissueLabels));
-    FemMat.Vertices = node;
-    if strcmp(OPTIONS.MeshType, 'tetrahedral')
-        FemMat.Elements = elem(:,1:4);
-        FemMat.Tissue = elem(:,5);
-    else
-        FemMat.Elements = elem(:,1:8);
-        FemMat.Tissue = elem(:,9);
-    end
-
-    % Add history
+    % Assemble OPTIONS string (for saving in file history)
     strOptions = '';
     for f = fieldnames(OPTIONS)'
         strOptions = [strOptions, f{1}, '='];
@@ -867,12 +778,37 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         end
         strOptions = [strOptions, ' '];
     end
-    FemMat = bst_history('add', FemMat, 'process_generate_fem', strOptions);
-
-    % Save to database
-    FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
-    bst_save(FemFile, FemMat, 'v7');
-    db_add_surface(iSubject, FemFile, FemMat.Comment);
+    % Save FemFile if not already done above
+    if isempty(FemFile)
+        % Create output structure
+        FemMat = db_template('femmat');
+        if ~isempty(TissueLabels)
+            FemMat.TissueLabels = TissueLabels;
+        else
+            uniqueLabels = unique(FemMat.Tissue);
+            for i = 1:length(uniqueLabels)
+                 FemMat.TissueLabels{i} = num2str(uniqueLabels(i));
+            end
+        end
+        FemMat.Comment = sprintf('FEM %dV (%s, %d layers)', length(node), OPTIONS.Method, length(FemMat.TissueLabels));
+        FemMat.Vertices = node;
+        if strcmp(OPTIONS.MeshType, 'tetrahedral')
+            FemMat.Elements = elem(:,1:4);
+            FemMat.Tissue = elem(:,5);
+        else
+            FemMat.Elements = elem(:,1:8);
+            FemMat.Tissue = elem(:,9);
+        end
+        % Add history
+        FemMat = bst_history('add', FemMat, 'process_generate_fem', strOptions);
+        % Save to database
+        FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
+        bst_save(FemFile, FemMat, 'v7');
+        db_add_surface(iSubject, FemFile, FemMat.Comment);
+    % Otherwise: just add the options string to the history
+    else
+        bst_history('add', FemFile, 'process_generate_fem', strOptions);
+    end
     % Return success
     isOk = 1;
 end
@@ -1331,120 +1267,8 @@ function errMsg = InstallBrain2mesh(isInteractive)
 end
 
 
-%% ===== INSTALL DUNEURO =====
-function errMsg = InstallDuneuro(isInteractive)
-    % Initialize variables
-    errMsg = [];
-    curdir = pwd;
-    % Check if already available in path
-    if exist('bst_duneuro', 'file')
-        disp([10, 'bst-duneuro path: ', bst_fileparts(which('bst_duneuro')), 10]);
-        return;
-    end
-    
-    % === GET CURRENT ONLINE VERSION ===
-    % Reading function: urlread replaced with webread in Matlab 2014b
-    if (bst_get('MatlabVersion') <= 803)
-        url_read_fcn = @urlread;
-    else
-        url_read_fcn = @webread;
-    end
-    % Read online version.txt
-    try
-        str = url_read_fcn('https://neuroimage.usc.edu/bst/getversion_duneuro.php');
-    catch
-        errMsg = 'Could not get current online version of bst_duneuro.';
-        return;
-    end
-    if (length(str) < 6)
-        return;
-    end
-    DuneuroVersion = str(1:6);
-    % Get download URL
-    url = ['https://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_' DuneuroVersion '.zip'];
-
-    % Local folder where to install the program
-    installDir = bst_fullfile(bst_get('BrainstormUserDir'), 'bst_duneuro');
-    downloadDir = bst_get('BrainstormUserDir');
-    exePath = bst_fullfile(installDir, 'bst_duneuro.m');
-    % If dir doesn't exist in user folder, try to look for it in the Brainstorm folder
-    if ~isdir(installDir)
-        installDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'bst_duneuro');
-        if isdir(installDirMaster)
-            installDir = installDirMaster;
-        end
-    end
-
-    % URL file defines the current version
-    urlFile = bst_fullfile(installDir, 'url');
-    % Read the previous download url information
-    if isdir(installDir) && file_exist(urlFile)
-        fid = fopen(urlFile, 'r');
-        prevUrl = fread(fid, [1 Inf], '*char');
-        fclose(fid);
-    else
-        prevUrl = '';
-    end
-    % If file doesnt exist: download
-    if ~isdir(installDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
-        % If folder exists: delete
-        if isdir(installDir)
-            file_delete(installDir, 1, 3);
-        end
-        % Message
-        if isInteractive
-            isOk = java_dialog('confirm', ...
-                ['bst-duneuro is not installed on your computer (or out-of-date).' 10 10 ...
-                'Download and the latest version of bst-duneuro?'], 'bst-duneuro');
-            if ~isOk
-                errMsg = 'Download aborted by user';
-                return;
-            end
-        end
-        % Download file
-        zipFile = bst_fullfile(downloadDir, 'bst_duneuro.zip');
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download bst-duneuro');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download bst-duneuro:' 10 errMsg];
-            return;
-        end
-        % Display again progress bar
-        bst_progress('text', 'Installing bst-duneuro...');
-        % Unzip file
-        cd(downloadDir);
-        unzip(zipFile);
-        file_delete(zipFile, 1, 3);
-        cd(curdir);
-        % Save download URL in folder
-        fid = fopen(urlFile, 'w');
-        fwrite(fid, url);
-        fclose(fid);
-    end
-    % If installed but not in path: add to path
-    if ~exist('bst_duneuro', 'file')
-        addpath(installDir);
-        addpath(bst_fullfile(installDir, 'matlab'));
-        addpath(bst_fullfile(installDir, 'matlab', 'external'));
-        addpath(bst_fullfile(installDir, 'matlab', 'external', 'gibbon'));
-        addpath(bst_fullfile(installDir, 'matlab', 'external', 'eig2nifti'));
-        disp([10, 'bst-duneuro path: ', installDir, 10]);
-        % If the executable is still not accessible
-    else
-        errMsg = ['bst-duneuro could not be installed in: ' installDir];
-    end
-end
-
-
 %% ===== HEXA <=> TETRA =====
-function NewFemFile = SwitchHexaTetra(FemFile, isInteractive) %#ok<DEFNU>
-    % Install bst_duneuro if needed
-    if ~exist('bst_duneuro', 'file')
-        errMsg = InstallDuneuro(isInteractive);
-        if ~isempty(errMsg) || ~exist('bst_duneuro', 'file')
-            return;
-        end
-    end
+function NewFemFile = SwitchHexaTetra(FemFile) %#ok<DEFNU>
     % Get file in database
     [sSubject, iSubject] = bst_get('SurfaceFile', FemFile);
     FemFullFile = file_fullpath(FemFile);
@@ -1454,8 +1278,11 @@ function NewFemFile = SwitchHexaTetra(FemFile, isInteractive) %#ok<DEFNU>
     if isempty(elemSize) || (length(elemSize.size) ~= 2) || ~ismember(elemSize.size(2), [4 8])
         error(['Invalid FEM mesh file: ' FemFile]);
     elseif (elemSize.size(2) == 8)
-        [iNewTess, NewFemFile] = fem_hexa2tetra(iSubject, FemFullFile, 'BSTFEM', isInteractive);
+        NewFemFile = fem_hexa2tetra(FemFullFile);
     elseif (elemSize.size(2) == 4)
-        [iNewTess, NewFemFile] = fem_tetra2hexa(iSubject, FemFullFile, 'BSTFEM', isInteractive);
+        NewFemFile = fem_tetra2hexa(FemFullFile);
     end
 end
+
+
+

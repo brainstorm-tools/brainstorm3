@@ -145,6 +145,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
 
     % ===== EXPORT INPUT FILES =====
+    % Empty temporary folder
+    gui_brainstorm('EmptyTempFolder');
     % Work in Brainstorm's temporary folder
     workDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'ImaGIN_epileptogenicity');
     % Make sure Matlab is not currently in the work directory
@@ -364,7 +366,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % File comment = File name
         [tmp, Comment] = bst_fileparts(listFiles(i).name);
         % Import file
-        tmpFile = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's', [fileLatency(1), fileLatency(end)]);
+        tmpFile = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's', [min(fileLatency), max(fileLatency)]);
         % Add history field
         tmpFile = bst_history('add', tmpFile, 'epilepto', strHistory);
     end
@@ -436,8 +438,4 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         panel_protocols('UpdateNode', 'Study', iStudy);
     end
 end
-
-    
-
-
 
