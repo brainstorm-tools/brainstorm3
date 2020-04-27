@@ -36,7 +36,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2018
+% Authors: Francois Tadel, 2016-2020
 
 % ===== LOAD INPUTS =====
 % Initialize returned variables
@@ -223,6 +223,11 @@ if ~isempty(errMsg)
     return;
 end
 
+% ===== REMOVE NEW NEGATIVE VALUES =====
+% If some negative values appeared just because of the registration/reslicing: remove them
+if any(sMriReg.Cube(:) < 0) && ~any(sMriSrc.Cube(:) < 0)
+    sMriReg.Cube(sMriReg.Cube < 0) = 0;
+end
 
 % ===== UPDATE FIDUCIALS =====
 if isUpdateScs || isUpdateNcs

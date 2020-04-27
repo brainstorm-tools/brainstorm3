@@ -24,7 +24,7 @@ function TessMat = in_tess_mrimask(MriFile, isMni)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2020
 
 % Parse inputs
 if (nargin < 2) || isempty(isMni)
@@ -40,7 +40,7 @@ if ischar(MriFile)
     % Read volume
     isInteractive = ~isAseg;
     if isMni
-        sMri = in_mri(MriFile, 'ALL-MNI', isInteractive);
+        sMri = in_mri(MriFile, 'ALL-MNI', isInteractive, 0);
     else
 %         % Do not normalize the labels for BrainSuite
 %         % Labels are normalized for FreeSurfer (default behavior)

@@ -34,7 +34,7 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2020
 
 % ===== Parse inputs =====
 if (nargin < 3) || isempty(FileFormat)
@@ -135,7 +135,8 @@ end
 %% ===== LOAD MRI FILE =====
 bst_progress('start', 'Import MRI', ['Loading file "' MriFile '"...']);
 % Load MRI
-sMri = in_mri(MriFile, FileFormat, isInteractive);
+isNormalize = 0;
+sMri = in_mri(MriFile, FileFormat, isInteractive, isNormalize);
 if isempty(sMri)
     bst_progress('stop');
     return

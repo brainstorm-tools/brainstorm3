@@ -33,7 +33,8 @@ function varargout = panel_surface(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2020
+%          Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -1184,15 +1185,24 @@ function iTess = AddSurface(hFig, surfaceFile)
         end
         TessInfo(iTess).Name = 'Anatomy';
         % Initial position of the cuts:
-        % If there is a vox2ras transformation available: use coordinates (0,0,0)
-        mriOrigin = cs_convert(sMri, 'world', 'voxel', [0 0 0]);
-        % Check that the positions are somewhat in the middle of the MRI
+        % If there is a MNI transformation available: use coordinates (0,0,0)
+        mriOrigin = cs_convert(sMri, 'mni', 'voxel', [0 0 0]);
         if ~isempty(mriOrigin) && (any(mriOrigin < 0.25*size(sMri.Cube)) || any(mriOrigin > 0.75*size(sMri.Cube)))
             mriOrigin = [];
+        end
+        % If there is a vox2ras transformation available: use coordinates (0,0,0)
+        if isempty(mriOrigin)
+            mriOrigin = cs_convert(sMri, 'world', 'voxel', [0 0 0]);
+            if ~isempty(mriOrigin) && (any(mriOrigin < 0.25*size(sMri.Cube)) || any(mriOrigin > 0.75*size(sMri.Cube)))
+                mriOrigin = [];
+            end
         end
         % Otherwise, if there is a SCS transformation available: use coordinates corresponding to world=(0,0,0) in ICBM152
         if isempty(mriOrigin)
             mriOrigin = cs_convert(sMri, 'scs', 'voxel', [.026, 0, .045]);
+            if ~isempty(mriOrigin) && (any(mriOrigin < 0.25*size(sMri.Cube)) || any(mriOrigin > 0.75*size(sMri.Cube)))
+                mriOrigin = [];
+            end
         end
         % Otherwise, use the middle slice in each direction
         if isempty(mriOrigin)
@@ -1200,7 +1210,7 @@ function iTess = AddSurface(hFig, surfaceFile)
         end
         TessInfo(iTess).CutsPosition = round(mriOrigin);
         TessInfo(iTess).SurfSmoothValue = .3;
-        % Colormap
+        % Colormap: depends on the range of values
         TessInfo(iTess).ColormapType = 'anatomy';
         bst_colormaps('AddColormapToFigure', hFig, TessInfo(iTess).ColormapType);
         % Update figure's surfaces list and current surface pointer

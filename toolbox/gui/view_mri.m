@@ -36,7 +36,7 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2020
 
 
 %% ===== PARSE INPUTS =====
@@ -164,9 +164,6 @@ elseif isempty(hFig)
     setappdata(hFig, 'DataFile',     '');
     setappdata(hFig, 'SubjectFile',  SubjectFile);
     setappdata(hFig, 'FigureId',     FigureId);
-    % Add colormap
-    bst_colormaps('AddColormapToFigure', hFig, 'anatomy');
-    
     % Add MRI to the figure
     iSurface = panel_surface('AddSurface', hFig, MriFile);
     if isempty(iSurface)
@@ -174,9 +171,6 @@ elseif isempty(hFig)
     end
     % Get loaded MRI
     sMri = bst_memory('LoadMri', MriFile);
-%     % If is not the primary MRI: do not allow fiducials editing
-%     if (iAnatomy ~= 1)
-%         isEditFiducials = 0;
     % If fiducials not defined: force MRI edition
     if isempty(sMri.SCS) || ~isfield(sMri.SCS, 'NAS') || ~isfield(sMri.SCS, 'LPA') || ~isfield(sMri.SCS, 'RPA') || ...
            isempty(sMri.NCS) || ~isfield(sMri.NCS, 'AC')  || ~isfield(sMri.NCS, 'PC')  || ~isfield(sMri.NCS, 'IH') || ...
@@ -197,7 +191,7 @@ if ~isempty(OverlayFile)
         return;
     end
 end
-isOverlay = ~isempty(OverlayFile); % && ~strcmpi(OverlayType, 'surface');
+isOverlay = ~isempty(OverlayFile);
 % Configure the operations that are allowed
 figure_mri('SetFigureStatus', hFig, isEditFiducials, isEditVolume, isOverlay, 0, 1);
 
@@ -214,13 +208,6 @@ bst_figures('UpdateFigureName', hFig);
 set(hFig, 'Visible', 'on');
 bst_progress('stop');
 
-% % In compiled mode, it's need to call the resize callback to redraw the controls (WHY???)
-% if exist('isdeployed', 'builtin') && isdeployed
-%     pos = get(hFig, 'Position');
-%     set(hFig, 'Position', pos - [0 0 20 20]);
-%     drawnow;
-%     set(hFig, 'Position', pos);
-% end
 % Select surface tab
 if isNewFig
     gui_brainstorm('SetSelectedTab', 'Surface');
