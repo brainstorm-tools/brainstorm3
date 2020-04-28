@@ -75,8 +75,8 @@ function  [DataMat, ChannelMat] = in_fopen_snirf(DataFile)
         % this assume measure are raw; need to change for Hbo,HbR,HbT
         channel     = jnirs.nirs.data.measurementList(i_chan);
         
-        [channel_label,measure] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, wavelengths(channel.wavelengthIndex)); 
-        Channels(i_chan).Name       =  channel_label;
+        [channel_label,measure]     = nst_format_channel(channel.sourceIndex, channel.detectorIndex, wavelengths(channel.wavelengthIndex)); 
+        Channels(i_chan).Name       = channel_label;
        
         Channels(i_chan).Type       = 'NIRS';
         Channels(i_chan).Weight     = 1;
@@ -116,7 +116,7 @@ function  [DataMat, ChannelMat] = in_fopen_snirf(DataFile)
         
         for i_landmark=1:n_landmark
             name = fix_str(jnirs.nirs.probe.landmarkLabels(:,:,i_landmark));
-            coord= jnirs.nirs.probe.landmarkPos(i_landmark,:);
+            coord= scale*jnirs.nirs.probe.landmarkPos(i_landmark,:);
             switch name
                 case 'Nasion'
                     ChannelMat.SCS.NAS = coord;
