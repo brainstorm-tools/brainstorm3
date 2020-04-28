@@ -36,10 +36,16 @@ function  [DataMat, ChannelMat] = in_fopen_snirf(DataFile)
     else
         src_pos     = jnirs.nirs.probe.sourcePos;
         det_pos     = jnirs.nirs.probe.detectorPos;
+        
+        % If src and det are 2D pos, then set z to 1 to avoid issue at (x=0,y=0,z=0)
+        if all(src_pos(:,3)==0) &&  all(det_pos(:,3)==0)
+            src_pos(:,3)=1;
+            det_pos(:,3)=1;
+        end    
     end
     
     LengthUnit= fix_str(jnirs.nirs.metaDataTags.LengthUnit);
-    % Todo : check scale, issue when an optodes is at pos [ 0 0 0]
+    % Todo : check scale
     switch LengthUnit  
         case 'mm'
             scale=0.001;

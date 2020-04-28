@@ -64,8 +64,14 @@ end
 
 % Todo : export detectorLabels and sourceLabels (string array)
 snirfdata.SNIRFData.probe.wavelengths=ChannelMatOut.Nirs.Wavelengths;
+
 snirfdata.SNIRFData.probe.sourcePos=src_pos;
-snirfdata.SNIRFData.probe.detectorPos=det_pos;
+snirfdata.SNIRFData.probe.sourcePos(:,3)=0; % set z to 0
+snirfdata.SNIRFData.probe.sourcePos3D=src_pos;
+
+snirfdata.SNIRFData.probe.detectorPos=det_pos; 
+snirfdata.SNIRFData.probe.detectorPos(:,3)=0; % set z to 0 
+snirfdata.SNIRFData.probe.detectorPos3D=det_pos;
 
 % Set Stim 
 n_event=length(DataMat.Events);
