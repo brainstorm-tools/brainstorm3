@@ -36,7 +36,24 @@ function  [DataMat, ChannelMat] = in_fopen_snirf(DataFile)
     else
         src_pos     = jnirs.nirs.probe.sourcePos;
         det_pos     = jnirs.nirs.probe.detectorPos;
-    end    
+    end
+    
+    LengthUnit= fix_str(jnirs.nirs.metaDataTags.LengthUnit);
+    % Todo : check scale, issue when an optodes is at pos [ 0 0 0]
+    switch LengthUnit  
+        case 'mm'
+            scale=0.001;
+        case 'cm'
+            scale=0.01;
+        case 'm'
+            scale=1;
+        otherwise
+            scale=1;
+    end
+    
+    src_pos=src_pos*scale;
+    det_pos=det_pos*scale;
+    
     
     % Read measurment list 
     nb_channels         = size(jnirs.nirs.data.measurementList,2);
@@ -51,15 +68,16 @@ function  [DataMat, ChannelMat] = in_fopen_snirf(DataFile)
     for i_chan=1:nb_channels
         % this assume measure are raw; need to change for Hbo,HbR,HbT
         channel     = jnirs.nirs.data.measurementList(i_chan);
-
-        Channels(i_chan).Name       =  nst_format_channel(channel.sourceIndex, channel.detectorIndex, wavelengths(channel.wavelengthIndex)); 
+        
+        [channel_label,measure] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, wavelengths(channel.wavelengthIndex)); 
+        Channels(i_chan).Name       =  channel_label;
        
         Channels(i_chan).Type       = 'NIRS';
         Channels(i_chan).Weight     = 1;
         
         Channels(i_chan).Loc(:,1)   = src_pos(channel.sourceIndex  ,:);
         Channels(i_chan).Loc(:,2)   = det_pos(channel.detectorIndex,:);
-        Channels(i_chan).Group      = measure_tag;
+        Channels(i_chan).Group      = measure;
     end
     
     for i_aux=1:nb_aux
@@ -158,11 +176,12 @@ function str = fix_str(str)
         str=str';
     end    
     
-    %remove extra space at the end
-    str=strrep(str,' ','');
+    
+    str=strrep(str,' ',''); %remove extra space at the end
+    str=strrep(str,setstr(0),''); % remove this weird character
 end
 
-function channel_label = nst_format_channel(isrc, idet, measure)
+function [channel_label,measure] = nst_format_channel(isrc, idet, measure)
 % NST_FORMAT_CHANNEL make channel label from source, dectector and measure information.
 %
 %   CHANNEL_LABEL = NST_FORMAT_CHANNEL(ISRC, IDET, MEAS)

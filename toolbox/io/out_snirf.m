@@ -3,6 +3,9 @@ function  out_snirf(ExportFile,DataMat,ChannelMatOut)
 % Create an empty snirf data structure
 snirfdata=jsnirfcreate();
 
+% Set meta data
+snirfdata.SNIRFData.metaDataTags.LengthUnit="m";
+
 
 nirs_channels = strcmpi({ChannelMatOut.Channel.Type}, 'NIRS')';
 nirs_aux = ~nirs_channels;
@@ -25,14 +28,9 @@ end
 % Set Probe; maybe can be simplified with the export of the measurment list
 [isrcs, idets, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(nirs_channels).Name});
 
-src_pos=[];
-for i_src=unique(isrcs) % iterate over the source index
-    src_pos(end+1,:)=ChannelMatOut.Channel(i_src).Loc(:,1)';
-end    
-det_pos=[];
-for i_det=unique(idets) % iterate over the detector index
-    det_pos(end+1,:)=ChannelMatOut.Channel(i_det).Loc(:,2)';
-end    
+src_pos= zeros(length(unique(isrcs)),3); 
+det_pos= zeros(length(unique(idets)),3); 
+
 
 % Todo : export detectorLabels and sourceLabels (string array)
 snirfdata.SNIRFData.probe.wavelengths=ChannelMatOut.Nirs.Wavelengths;
@@ -40,27 +38,34 @@ snirfdata.SNIRFData.probe.sourcePos=src_pos;
 snirfdata.SNIRFData.probe.detectorPos=det_pos;
 
 % Set landmark position (eg fiducials) 
-% Todo : make sure those landmark are defined ? Add AC,PC,IH
-snirfdata.SNIRFData.probe.landmarkPos =  [ ChannelMatOut.SCS.NAS ; ...
-                                           ChannelMatOut.SCS.LPA ; ...
-                                           ChannelMatOut.SCS.RPA ] ;
-                                           
-snirfdata.SNIRFData.probe.landmarkLabels(1)="Nasion";
-snirfdata.SNIRFData.probe.landmarkLabels(2)="LeftEar";
-snirfdata.SNIRFData.probe.landmarkLabels(3)="RightEar";
+n_landmark=length(ChannelMatOut.HeadPoints.Label);
+snirfdata.SNIRFData.probe.landmarkPos=zeros(n_landmark,3);
+for i_landmark=1:n_landmark
+    snirfdata.SNIRFData.probe.landmarkPos(i_landmark,:)=ChannelMatOut.HeadPoints.Loc(:,i_landmark)';
+    snirfdata.SNIRFData.probe.landmarkLabels(i_landmark)=string(ChannelMatOut.HeadPoints.Label{i_landmark}); 
+end    
 
 % Set Measurment list
 for ichan=1:n_channel
     measurement=struct('sourceIndex',[],'detectorIndex',[],...
               'wavelengthIndex',[],'dataType',1,'dataTypeIndex',1); 
-          
-    measurement.sourceIndex=isrcs(ichan);
-    measurement.detectorIndex=idets(ichan);
-    measurement.wavelengthIndex=find(ChannelMatOut.Nirs.Wavelengths==chan_measures(ichan));
+    [isrcs, idets, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(ichan).Name});
+
+    src_pos(isrcs,:)=ChannelMatOut.Channel(ichan).Loc(:,1)';
+    det_pos(idets,:)=ChannelMatOut.Channel(ichan).Loc(:,2)';
+
+    measurement.sourceIndex=isrcs;
+    measurement.detectorIndex=idets;
+    measurement.wavelengthIndex=find(ChannelMatOut.Nirs.Wavelengths==chan_measures);
 
     snirfdata.SNIRFData.data.measurementList(ichan)=measurement;      
 
-end   
+end 
+
+% Todo : export detectorLabels and sourceLabels (string array)
+snirfdata.SNIRFData.probe.wavelengths=ChannelMatOut.Nirs.Wavelengths;
+snirfdata.SNIRFData.probe.sourcePos=src_pos;
+snirfdata.SNIRFData.probe.detectorPos=det_pos;
 
 % Set Stim 
 n_event=length(DataMat.Events);
@@ -210,5 +215,17 @@ end
 
 end
 
+function measure_types = nst_measure_types()
+% NST_MEASURE_TYPES return an enumeration of measure types (eg wavelength, Hb)
+%
+% MEASURE_TYPES = NST_MEASURE_TYPES()
+%    MEASURE_TYPES: struct with numerical fields listing all available
+%                   channel types:
+%                   - MEASURE_TYPES.WAVELENGTH
+%                   - MEASURE_TYPES.Hb
+
+measure_types.WAVELENGTH = 1;
+measure_types.HB = 2;
+end
 
 
