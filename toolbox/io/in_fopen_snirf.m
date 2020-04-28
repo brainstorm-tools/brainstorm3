@@ -146,8 +146,39 @@ function  [DataMat, ChannelMat] = in_fopen_snirf(DataFile)
     end
     
     % Read Stim 
-    
-    
+    n_event=length(jnirs.nirs.stim);
+    events(n_event)=db_template('event');
+    ColorTable = panel_record('GetEventColorTable');
+
+    for i_event=1:n_event
+       event = db_template('event');
+       event.label=fix_str(jnirs.nirs.stim(i_event).name);
+       
+       is_extended= ~all( jnirs.nirs.stim(i_event).data(:,2)==0);
+       n_stim=size(jnirs.nirs.stim(i_event).data,1);
+       if is_extended
+          evt_time=zeros(2, n_stim);
+       else
+          evt_time=zeros(1, n_stim);
+       end    
+       
+       for i_stim=1:n_stim
+           evt_time(1,i_stim)=jnirs.nirs.stim(i_event).data(i_stim,1);
+           if is_extended
+               evt_time(2,i_stim)=evt_time(1,i_stim)+jnirs.nirs.stim(i_event).data(i_stim,2);
+           end     
+       end
+       event.reactTimes = [];
+       event.times      = evt_time;
+       event.epochs     = ones(1, n_stim); 
+       event.channels   = cell(1, n_stim);
+       event.notes      = cell(1, n_stim);
+       iColor = mod(i_event-1, length(ColorTable)) + 1;
+       event.color = ColorTable(iColor,:);
+            
+       
+       events(i_event)=event;
+    end   
     
     
     %% ===== FILL STRUCTURE =====
@@ -165,6 +196,7 @@ function  [DataMat, ChannelMat] = in_fopen_snirf(DataFile)
     DataMat.Device          = 'Unknown';
     DataMat.F               = data; 
     DataMat.Time            = time;
+    DataMat.Events          = events;
 
     DataMat.ChannelFlag = ones(nb_channels + nb_aux, 1); % GOOD=1; BAD=-1;
 
