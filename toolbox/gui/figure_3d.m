@@ -2305,7 +2305,7 @@ function varargout = PlotFibers(hFig, FibPoints, Colors)
             'can be challenging for the' 10 'average computer. We recommend ', ...
             'you downsample them first.'], 'Display fibers', [], questionOptions);
         if isCancel || strcmp(res, questionOptions{1})
-            iFibers = sort(randsample(numFibers, numMaxFibers));
+            iFibers = sort(randperm(numFibers, numMaxFibers));
         else
             iFibers = 1:numFibers;
         end
