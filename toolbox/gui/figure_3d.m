@@ -4205,13 +4205,14 @@ function hPairs = PlotNirsCap(hFig, isDetails)
         % Pair locations: detectors
         locPairDet = cellfun(@(c)c(:,2)', {Channels(iChanPairs).Loc}, 'UniformOutput', 0);
         locPairDet = cat(1, locPairDet{:});
-
-        % Make the position of the links more superficial, so they can be outside of the head and selected with the mouse
-        normSrc = sqrt(sum(locPairSrc .^ 2, 2));
-        normDet = sqrt(sum(locPairDet .^ 2, 2));
-        locPairSrc = bst_bsxfun(@times, locPairSrc, (normSrc + 0.0035) ./ normSrc);
-        locPairDet = bst_bsxfun(@times, locPairDet, (normDet + 0.0035) ./ normDet);
         
+        % Make the position of the links more superficial, so they can be outside of the head and selected with the mouse
+        if any(~locPairDet(:,3)== locPairDet(1,3) ) || any(~locPairSrc(:,3)==locPairSrc(1,3)) 
+            normSrc = sqrt(sum(locPairSrc .^ 2, 2));
+            normDet = sqrt(sum(locPairDet .^ 2, 2));
+            locPairSrc = bst_bsxfun(@times, locPairSrc, (normSrc + 0.0035) ./ normSrc);
+            locPairDet = bst_bsxfun(@times, locPairDet, (normDet + 0.0035) ./ normDet);
+        end
         % Display connections as lines
         hPairs = line(...
             [locPairSrc(:,1)'; locPairDet(:,1)'], ...
