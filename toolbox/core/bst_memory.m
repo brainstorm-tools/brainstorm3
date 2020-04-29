@@ -1687,6 +1687,14 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         end
     end
     
+    % ===== REMOVE NAN =====
+    % Replace NaN values with 0, and add them to the mask
+    iNan = find(isnan(TimefreqMat.TF));
+    if ~isempty(iNan)
+        disp(sprintf('BST> Error: There are %d abnormal NaN values in this file, check the computation process.', length(iNan)));
+        TimefreqMat.TF(iNan) = 0;
+    end
+    
     % ===== CREATE NEW TIMEFREQ ENTRY =====
     % Create structure
     Timefreq = db_template('LoadedTimefreq');
