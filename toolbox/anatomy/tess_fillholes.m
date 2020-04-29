@@ -21,7 +21,7 @@ function [Vertices, Faces] = tess_fillholes(sMri, Vertices, Faces, fillFactor, e
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2020
 
 % ===== PARSE INPUTS =====
 if (nargin < 5) || isempty(erodeFinal)
@@ -52,10 +52,11 @@ nVertices = length(Vertices);
 % ===== MRI MASK =====
 bst_progress('text', 'Fill: Computing interpolation...');
 % Compute surface -> mri interpolation
-tess2mri_interp = tess_tri_interp(Vertices, Faces, size(sMri.Cube), 0);
+mriSize = size(sMri.Cube(:,:,:,1));
+tess2mri_interp = tess_tri_interp(Vertices, Faces, mriSize, 0);
 % Compute mrimask
 bst_progress('text', 'Fill: Computing MRI mask...');
-mrimask = tess_mrimask(size(sMri.Cube), tess2mri_interp);
+mrimask = tess_mrimask(mriSize, tess2mri_interp);
 % Fill holes in the MRI
 bst_progress('text', 'Fill: Filling holes...');
 if (fillFactor >= 1)

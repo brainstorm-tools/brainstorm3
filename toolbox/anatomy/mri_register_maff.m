@@ -19,7 +19,7 @@ function Transf = mri_register_maff(sMri)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2019
+% Authors: Francois Tadel, 2015-2020
 
 % Open progress bar
 isProgress = bst_progress('isVisible');
@@ -39,7 +39,7 @@ tpm = bst_spm_load_priors8(tpmFile);
 % Reset volume origin to the middle of the volume
 mriTransf = eye(4);
 mriTransf(1:3,1:3) = diag(sMri.Voxsize);
-mriTransf(1:3,4) = - ceil(size(sMri.Cube) / 2);
+mriTransf(1:3,4) = - ceil(size(sMri.Cube(:,:,:,1)) / 2);
 % Registration
 samp = 3;
 bst_progress('text', 'SPM registration (maff): First pass...');
@@ -86,7 +86,7 @@ function Affine = bst_spm_maff8(sMri, MG,samp,fwhm,tpm,Affine)
     ff   = prod(4*pi*(s./sMri.Voxsize./sk).^2 + 1)^(1/2);
 
     % Load the image
-    g = double(sMri.Cube(1:3:end,1:3:end,1:3:end));
+    g = double(sMri.Cube(1:3:end, 1:3:end, 1:3:end, 1));  % Use first volume only
     d = size(g);
 
     mn = min(g(:));

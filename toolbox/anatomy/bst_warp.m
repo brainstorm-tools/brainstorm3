@@ -97,6 +97,9 @@ if ~isSurfaceOnly
     % Process coordinates by blocks: Doing all at once costs too much memory, doing only 1 at a time costs too much time
     bst_progress('start', 'Warp anatomy', 'Warping MRI...', 1, 100);
     sizeMri = size(sMriSrc.Cube);
+    if (length(sizeMri) > 3)
+        error('No support for 4D volumes. Ask on the Brainstorm for help.');
+    end
     newCube = ones(sizeMri);
     nVoxels = numel(newCube);
     BLOCK_SIZE = 10000; 

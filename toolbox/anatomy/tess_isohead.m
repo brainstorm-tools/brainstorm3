@@ -22,7 +22,7 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2020
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
@@ -84,7 +84,7 @@ if ~isfield(sMri, 'Histogram') || isempty(sMri.Histogram) || isempty(sMri.SCS) |
     return
 end
 % Threshold mri to the level estimated in the histogram
-headmask = (sMri.Cube > sMri.Histogram.bgLevel);
+headmask = (sMri.Cube(:,:,:,1) > sMri.Histogram.bgLevel);
 % Closing all the faces of the cube
 headmask(1,:,:)   = 0*headmask(1,:,:);
 headmask(end,:,:) = 0*headmask(1,:,:);

@@ -57,7 +57,7 @@ function varargout = panel_scout(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2020
 
 eval(macro_method);
 end
@@ -3984,7 +3984,7 @@ function ExportScoutsToMri()
     GridLoc = cs_convert(sMri, 'scs', 'voxel', GridLoc);
 
     % Loop on all the scouts to export
-    sMri.Cube = 0 * sMri.Cube;
+    sMri.Cube = 0 * sMri.Cube(:,:,:,1);
     for i = 1:length(sScouts)
         % Get vertices coordinates
         bst_progress('text', sprintf('Computing scout envelope... [%d/%d]', i, length(sScouts)));
@@ -4906,7 +4906,7 @@ function iScout = EditScoutMri(iScout)
         % Display only specified vertices
         isMask = (sum(tess2mri_interp(:,iVertices),2) > 0);
         % Create mask volume (same size than the MRI)
-        initMask = reshape(uint8(full(isMask)) * 255, size(sMri.Cube));
+        initMask = reshape(uint8(full(isMask)) * 255, size(sMri.Cube(:,:,:,1)));
     else
         % No scout: empty initial mask
         initMask = [];
@@ -4930,7 +4930,7 @@ function iScout = EditScoutMri(iScout)
     
     % === EDIT MASK ===
     % Open mask editor
-    newMask = mri_editMask(sMri.Cube, sMri.Voxsize, initMask, initPosition, sColormap.Name);
+    newMask = mri_editMask(sMri.Cube(:,:,:,1), sMri.Voxsize, initMask, initPosition, sColormap.Name);
     if isempty(newMask) || isequal(logical(newMask), logical(initMask))
         return
     end
@@ -4938,7 +4938,7 @@ function iScout = EditScoutMri(iScout)
     newMask = mri_dilate(newMask);
     % Mask was modified: find the vertices inside the new mask
     rVertices = round(mriVertices);
-    iVerticesInMri = sub2ind(size(sMri.Cube), rVertices(:,1), rVertices(:,2), rVertices(:,3));
+    iVerticesInMri = sub2ind(size(newMask), rVertices(:,1), rVertices(:,2), rVertices(:,3));
     % Find the vertices inside the mask
     iVerticesInMask = find(newMask(iVerticesInMri));
     % If no vertices : cannot define a scout

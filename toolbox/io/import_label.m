@@ -22,7 +22,7 @@ function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtla
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2020
 
 import sun.misc.BASE64Decoder;
 
@@ -313,7 +313,8 @@ for iFile = 1:length(LabelFiles)
             if isempty(sMriMask)
                 return;
             end
-            sMriMask.Cube = double(sMriMask.Cube);
+            % Select only the first volume (if more than one) 
+            sMriMask.Cube = double(sMriMask.Cube(:,:,:,1));
             % Display warning when no MNI transformation available
             if isMni && (~isfield(sMriMask, 'NCS') || ~isfield(sMriMask.NCS, 'R') || isempty(sMriMask.NCS.R))
                 isMni = 0;

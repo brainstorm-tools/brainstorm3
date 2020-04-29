@@ -1499,7 +1499,7 @@ function DisplayFigurePopup(hFig)
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
         end
         % === View SOURCES ===
-        if isempty(TfFile) && isempty(ResultsFile) && ~isempty(sStudy.Result)
+        if isempty(TfFile) && isempty(ResultsFile) && isfield(sStudy, 'Result') && ~isempty(sStudy.Result)
             jItem = gui_component('MenuItem', jPopup, [], 'View sources', IconLoader.ICON_RESULTS, [], @(h,ev)bst_figures('ViewResults',hFig));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
         end

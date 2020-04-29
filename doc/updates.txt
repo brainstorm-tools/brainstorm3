@@ -3,6 +3,7 @@ April 2020
 - FEM: Integration of bst-duneuro into Brainstorm
 - FEM: Computation of DTI tensors
 - Anatomy: Improve volume import and display (types other than uint8, negative values)
+- Anatomy: Support for time-varying volumes
 - IO: Anonymize FIF files
 - Doc: New FEM tutorials
 ---------------------------------------------------------------

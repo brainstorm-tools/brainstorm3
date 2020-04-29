@@ -35,6 +35,8 @@ if ischar(MriFile)
 else
     bstMri = MriFile;
 end
+% Keep only the first volume, if multiple
+bstMri.Cube = bstMri.Cube(:,:,:,1);
 
 % Check that the SCS coordinates are available
 if isempty(bstMri.SCS.R) || isempty(bstMri.SCS.T)

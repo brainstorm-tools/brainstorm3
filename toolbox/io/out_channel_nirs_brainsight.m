@@ -58,7 +58,7 @@ end
 % Convert to MRI coordinates if available
 if nargin >= 3
     sMri = in_mri_bst(MriFile);
-    volDim = size(sMri.Cube);
+    volDim = size(sMri.Cube(:,:,:,1));
     pixDim = sMri.Voxsize;
     
     % Same code as in out_mri_nii.m to make sure exported coordinates have the

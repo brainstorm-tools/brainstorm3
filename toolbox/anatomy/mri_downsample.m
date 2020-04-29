@@ -22,7 +22,7 @@ function sMri = mri_downsample( sMri, n )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2018
+% Authors: Francois Tadel, 2013-2020
 
 % If input is a structure: Get cube
 if isstruct(sMri)
@@ -42,13 +42,12 @@ K = ones(n,n,n) ./ n^3;
 % Apply convolution kernel
 Cube = convn(Cube, K ,'same');
 % Take 1 voxel every n in each direction
-Cube = Cube(1:n:end, 1:n:end, 1:n:end);
+Cube = Cube(1:n:end, 1:n:end, 1:n:end, :);
 
 % Update full MRI structure
 if isstruct(sMri)
     sMri.Cube = Cube;
     % Update voxel size
-%     fscale = oldSize ./ size(sMri.Cube);
     fscale = [n n n];
     sMri.Voxsize = fscale .* sMri.Voxsize;
     Tdownsample = diag([fscale, 1]);

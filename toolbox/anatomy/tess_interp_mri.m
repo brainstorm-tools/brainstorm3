@@ -38,7 +38,7 @@ if ~isfield(MRI,'SCS') || ~isfield(MRI.SCS,'R') || ~isfield(MRI.SCS,'T') || isem
     error(['MRI SCS (Subject Coordinate System) was not defined or subjectimage file is from another version of Brainstorm.' 10 10,...
            'Please define the SCS fiducials on this MRI.']);
 end
-cubeSize = size(MRI.Cube);
+cubeSize = size(MRI.Cube(:,:,:,1));
 % Progres bar
 isProgress = bst_progress('isVisible');
 if ~isProgress

@@ -22,7 +22,7 @@ function [hFig, iDS, iFig] = view_surface_sphere(SurfaceFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2015
+% Authors: Francois Tadel, 2013-2020
 
 % Initialize returned variables
 global GlobalData;
@@ -68,7 +68,7 @@ end
 sSubject = bst_get('SurfaceFile', SurfaceFile);
 sMri = in_mri_bst(sSubject.Anatomy(1).FileName);
 % Convert: FreeSurfer RAS coord => Voxel
-mriSize = size(sMri.Cube) / 2;
+mriSize = size(sMri.Cube(:,:,:,1)) / 2;
 sphVertices = bst_bsxfun(@plus, sphVertices .* 1000, mriSize);
 % Convert: Voxel => SCS
 sphVertices = cs_convert(sMri, 'voxel', 'scs', sphVertices);

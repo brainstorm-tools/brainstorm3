@@ -360,7 +360,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if isVolume
                 sMriOut = sMri;
                 % Build interpolated cube
-                sMriOut.Cube = tess_interp_mri_data(MriInterp, size(sMri.Cube), sInput.Data(:,i), isVolumeGrid);
+                sMriOut.Cube = tess_interp_mri_data(MriInterp, size(sMri.Cube(:,:,:,1)), sInput.Data(:,i), isVolumeGrid);
                 % Downsample volume
                 if (VolDownsample > 1)
                     sMriOut = mri_downsample(sMriOut, VolDownsample);

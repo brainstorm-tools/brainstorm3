@@ -116,14 +116,14 @@ switch (FileFormat)
         TessMat = in_tess_mesh(TessFile);
         % Convert into local MRI coordinates
         if ~isempty(sMri)
-            mriSize = size(sMri.Cube) .* sMri.Voxsize(:)' ./ 1000;
+            mriSize = size(sMri.Cube(:,:,:,1)) .* sMri.Voxsize(:)' ./ 1000;
             TessMat.Vertices = bst_bsxfun(@minus, mriSize, TessMat.Vertices);
         end
     case 'GII'
         TessMat = in_tess_gii(TessFile);
         % Convert into local MRI coordinates
         if ~isempty(sMri)
-            mriSize = size(sMri.Cube) .* (sMri.Voxsize(:))' ./ 1000;
+            mriSize = size(sMri.Cube(:,:,:,1)) .* (sMri.Voxsize(:))' ./ 1000;
             for iTess = 1:length(TessMat)
                 TessMat(iTess).Vertices = bst_bsxfun(@minus, mriSize, TessMat(iTess).Vertices);
             end
@@ -166,7 +166,7 @@ switch (FileFormat)
         [TessMat.Vertices, TessMat.Faces] = mne_read_surface(TessFile);
         % FreeSurfer RAS coord => MRI  (NEW VERSION: 12-Jan-2016 / relative size: 28-Aug-2017)
         if ~isempty(sMri)
-            TessMat.Vertices = bst_bsxfun(@plus, TessMat.Vertices, (size(sMri.Cube)/2 + [0 1 0]) .* sMri.Voxsize / 1000);
+            TessMat.Vertices = bst_bsxfun(@plus, TessMat.Vertices, (size(sMri.Cube(:,:,:,1))/2 + [0 1 0]) .* sMri.Voxsize / 1000);
         else
             TessMat.Vertices = bst_bsxfun(@plus, TessMat.Vertices, [128 129 128] / 1000);
         end

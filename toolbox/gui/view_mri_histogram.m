@@ -39,7 +39,7 @@ if ~isfield(MRI, 'Histogram') || isempty(MRI.Histogram)
     % Load full MRI
     MRI = load(MriFile);
     % Compute histogram
-    Histogram = mri_histogram(MRI.Cube);
+    Histogram = mri_histogram(MRI.Cube(:,:,:,1));
     % Save histogram
     s.Histogram = Histogram;
     bst_save(MriFile, s, 'v7', 1);
