@@ -137,6 +137,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_eyelink(DataFile);
     case 'NIRS-BRS'
         [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile);
+    case 'NIRS-SNIRF'
+        [DataMat, ChannelMat]= in_fopen_snirf(DataFile);
     case 'BST-BIN'
         [sFile, ChannelMat] = in_fopen_bst(DataFile);
     case 'SPM-DAT'
