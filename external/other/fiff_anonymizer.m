@@ -710,8 +710,8 @@ end
 function test = isPositiveNumericInteger(i)
 try
   if ( isnumeric(i)   && ...
-       ~isinf(i)      && ...
-      (floor(i) == i) && ...
+       ~isinf(i)      && ...      %mod(i,1) == 0 would also work fine
+      (floor(i) == cei(i)) && ... %in these two cases.
       (i > 0) )
     test = true;
   else
