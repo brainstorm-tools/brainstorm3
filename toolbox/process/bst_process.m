@@ -276,7 +276,9 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         end
         % Get all the studies to update
         allStudies = bst_get('Study', unique([sInputs.iStudy]));
-        StudyToRedraw = cat(2, StudyToRedraw, {allStudies.FileName});
+        if ~isempty(allStudies)
+            StudyToRedraw = cat(2, StudyToRedraw, {allStudies.FileName});
+        end
         % Are those studies supposed to be reloaded
         isReload = isReload || (~strcmpi(sProcesses(iProc).Category, 'Filter') && isfield(sProcesses(iProc).options, 'overwrite') && isfield(sProcesses(iProc).options.overwrite, 'Value') && isequal(sProcesses(iProc).options.overwrite.Value, 1));
     end
