@@ -26,7 +26,7 @@ if notCell
     str = {str};
 end
 
-str = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), str, 'UniformOutput', 0);
+str = cellfun(@(c)c(~ismember(c, [' .,?!-_@#$%^&*+*=()[]{}|/' char(0)])), str, 'UniformOutput', 0);
 
 if notCell
     str = str{1};

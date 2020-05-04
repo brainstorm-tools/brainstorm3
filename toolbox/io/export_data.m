@@ -303,6 +303,7 @@ else
                 DataMat.F = F;
                 bst_save(ExportFile, DataMat, 'v6');
             case 'FT-TIMELOCK'
+                DataMat.F = F;
                 ftData = out_fieldtrip_data(DataMat, ChannelMatOut, [], 1);
                 bst_save(ExportFile, ftData, 'v6');
             case 'EEG-CARTOOL-EPH'
@@ -313,7 +314,11 @@ else
                 % Write data
                 dlmwrite(ExportFile, F' * 1000, 'newline', 'unix', 'precision', '%0.7f', 'delimiter', '\t', '-append');
             case 'NIRS-SNIRF'
-                out_snirf(ExportFile,DataMat,ChannelMatOut);
+                if isRawIn
+                    DataMat.Events = DataMat.F.events;
+                end
+                DataMat.F = F;
+                out_data_snirf(ExportFile, DataMat, ChannelMatOut);
             case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'EXCEL'}
                 out_matrix_ascii(ExportFile, F, FileFormat, {ChannelMatOut.Channel.Name}, DataMat.Time, []);
             otherwise

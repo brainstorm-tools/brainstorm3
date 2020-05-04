@@ -104,8 +104,6 @@ switch (sFile.format)
         out_fwrite_ctf(sFile, iEpoch, SamplesBounds, ChannelRange, isContinuous, F);
     case 'EEG-EDF'
         out_fwrite_edf(sFile, sfid, SamplesBounds, ChannelRange, F);
-    case 'NIRS-SNIRF'
-        out_fwrite_snirf(sFile, sfid, SamplesBounds, ChannelRange, F);
     otherwise
         error('Unsupported file format.');
 end

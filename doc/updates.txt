@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+Mai 2020
+- IO: Support for fNIRS format .snirf
+---------------------------------------------------------------
 April 2020
 - FEM: Integration of bst-duneuro into Brainstorm
 - FEM: Computation of DTI tensors

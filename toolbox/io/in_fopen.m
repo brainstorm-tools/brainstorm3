@@ -137,8 +137,6 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_eyelink(DataFile);
     case 'NIRS-BRS'
         [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile);
-    case 'NIRS-SNIRF'
-        [DataMat, ChannelMat]= in_fopen_snirf(DataFile);
     case 'BST-BIN'
         [sFile, ChannelMat] = in_fopen_bst(DataFile);
     case 'SPM-DAT'
@@ -187,6 +185,8 @@ switch (FileFormat)
         if any(abs((DataMat(1).Time(2) - DataMat(1).Time(1)) - diff(DataMat(1).Time)) > 1e-3)
             error(['The input file has a non-linear time vector.' 10 'This is currently not supported, interpolate your recordings on continuous time vector first.']);
         end
+    case 'NIRS-SNIRF'
+        [DataMat, ChannelMat] = in_data_snirf(DataFile);
     otherwise
         error('Unknown file format');
 end
