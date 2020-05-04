@@ -119,10 +119,10 @@ function fiff_anonymizer(inFile, varargin)
 %  Author: Juan Garcia-Prieto, juangpc@gmail.com
 %  License: MIT
 %
-%  Version 0.8 - April 2020
+%  Version 0.9 - May 2020
 %
-VERSION = 0.8;
-DATE = 'April 2020';
+VERSION = 0.9;
+DATE = 'May 2020';
 MAX_VALID_FIFF_VERSION = 1.3;
 
 opts = configure_options(inFile, varargin{:});
@@ -140,7 +140,7 @@ if opts.verbose
   disp(' ');
 end
 
-[inFid, ~] = fopen(opts.inputFile, 'r+', 'ieee-be');
+[inFid, ~] = fopen(opts.inputFile, 'r', 'ieee-be');
 if(opts.verbose && inFid>0)
   display(['Input file opened: ' opts.inputFile]);
 end
@@ -592,8 +592,8 @@ defaultOutFile = fullfile(inFilePath, [inFileName '_anonymized' inFileExt]);
 
 addParameter(inParams, 'verbose', false, @islogical);
 addParameter(inParams, 'output_file', defaultOutFile, @ischar);
-addParameter(inParams, 'set_measurement_date_offset', 0, @isPositiveIntegerValuedNumeric);
-addParameter(inParams, 'set_subject_birthday_offset', 0, @isPositiveIntegerValuedNumeric);
+addParameter(inParams, 'set_measurement_date_offset', 0, @isPositiveNumericInteger);
+addParameter(inParams, 'set_subject_birthday_offset', 0, @isPositiveNumericInteger);
 addParameter(inParams, 'delete_input_file_after', false, @islogical);
 addParameter(inParams, 'delete_confirmation', true, @islogical);
 addParameter(inParams, 'brute', false, @islogical);
@@ -707,3 +707,18 @@ function h = enumHandedness(i)
   h = handednessEnum{i+1};
 end
 
+function test = isPositiveNumericInteger(i)
+try
+  if ( isnumeric(i)   && ...
+       ~isinf(i)      && ...
+      (floor(i) == i) && ...
+      (i > 0) )
+    test = true;
+  else
+    test = false;
+  end
+catch
+  test = false;
+end
+
+end
