@@ -5,7 +5,7 @@ function [hFig, iDS, iFig] = view_connect(TimefreqFile, DisplayMode, hFig)
 %
 % INPUT: 
 %     - TimefreqFile : Path to connectivity file to visualize
-%     - DisplayMode  : {'Image', 'GraphFull', '3DGraph'}
+%     - DisplayMode  : {'Image', 'GraphFull', '3DGraph', 'Fibers'}
 %     - hFig         : If defined, display file in existing figure
 %
 % OUTPUT : 
@@ -17,7 +17,7 @@ function [hFig, iDS, iFig] = view_connect(TimefreqFile, DisplayMode, hFig)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,7 @@ function [hFig, iDS, iFig] = view_connect(TimefreqFile, DisplayMode, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2016; Martin Cousineau, 2019
 
 
 %% ===== PARSE INPUTS =====
@@ -44,6 +44,14 @@ if (nargin < 3) || isempty(hFig) || isequal(hFig,0)
 elseif isequal(hFig,'NewFigure')
     hFig = [];
     CreateMode = 'AlwaysCreate';
+end
+
+% If fibers are requested, plot the graph as well
+if strcmpi(DisplayMode, 'Fibers')
+    DisplayMode = 'GraphFull';
+    plotFibers = 1;
+else
+    plotFibers = 0;
 end
 
 % Initializations
@@ -141,6 +149,7 @@ if strcmpi(DisplayMode, 'Image')
     % Close progress bar and return
     bst_progress('stop');
     return;
+
 end
 
 % Check numbers of rows
@@ -172,12 +181,44 @@ if ~isNewFig
     figure_connect('ResetDisplay', hFig);
 end
 
+%% ===== DISPLAY FIBERS =====
+if plotFibers
+    bst_progress('start', 'View connectivity map', 'Loading fibers...');
+    % Get necessary surface files
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    try
+        surfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+        fibersFile = sSubject.Surface(sSubject.iFibers).FileName;
+        assert(~isempty(surfaceFile) && ~isempty(fibersFile));
+    catch
+        bst_error('Cannot display connectivity results on fibers without fibers and cortex files.');
+        return;
+    end
+    
+    % Prepare fibers figure
+    FigureFibId = db_template('FigureId');
+    FigureFibId.Type = '3DViz';
+    hFigFib = bst_figures('CreateFigure', iDS, FigureFibId);
+    setappdata(hFigFib, 'EmptyFigure', 1);
+
+    % Display fibers
+    hFigFib = view_surface(fibersFile, [], [], hFigFib);
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.hFigFib = hFigFib;
+    
+    % Display cortex surface
+    panel_surface('AddSurface', hFigFib, surfaceFile);
+    % Add transparency to cortex surface
+    iSurface = getappdata(hFigFib, 'iSurface');
+    panel_surface('SetSurfaceTransparency', hFigFib, iSurface, 0.8);
+end
+
 
 %% ===== INITIALIZE FIGURE =====
 % Configure app data
 setappdata(hFig, 'DataFile',     GlobalData.DataSet(iDS).DataFile);
 setappdata(hFig, 'StudyFile',    GlobalData.DataSet(iDS).StudyFile);
 setappdata(hFig, 'SubjectFile',  GlobalData.DataSet(iDS).SubjectFile);
+setappdata(hFig, 'plotFibers',   plotFibers);
 % Static dataset
 isStatic = (GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples <= 1) || ...
            ((GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples == 2) && isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:,1,:,:,:), GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:,2,:,:,:)));
@@ -231,10 +272,8 @@ setappdata(hFig, 'Timefreq', TfInfo);
 % Display options panel
 gui_brainstorm('ShowToolTab', 'Display');
 
-
 %% ===== DRAW FIGURE =====
 figure_connect('LoadFigurePlot', hFig);
-
 
 %% ===== UPDATE ENVIRONMENT =====
 % Update figure selection

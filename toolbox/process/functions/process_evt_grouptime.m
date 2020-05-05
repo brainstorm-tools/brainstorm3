@@ -8,7 +8,7 @@ function varargout = process_evt_grouptime( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -76,7 +76,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             continue;
         end
         % Call the grouping function
-        [sFile.events, isModified] = Compute(sFile.events);
+        [sFile.events, isModified] = Compute(sFile.events, sFile.proc.sfreq);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
@@ -97,7 +97,7 @@ end
 
 
 %% ===== GROUP EVENTS =====
-function [events, isModified] = Compute(events)
+function [events, isModified] = Compute(events, sfreq)
     % List of all the events [indices; 
     AllEvt = zeros(2,0);
     isModified = 0;
@@ -108,7 +108,7 @@ function [events, isModified] = Compute(events)
             continue;
         end
         % Add to the list of all the processes
-        AllEvt = [AllEvt, [events(iEvt).samples; repmat(iEvt, size(events(iEvt).samples))]];
+        AllEvt = [AllEvt, [round(events(iEvt).times .* sfreq); repmat(iEvt, size(events(iEvt).times))]];
     end
     % Process each unique time value
     uniqueSamples = unique(AllEvt(1,:));
@@ -123,12 +123,13 @@ function [events, isModified] = Compute(events)
         newLabel = events(iEvts(1)).label;
         for i = 1:length(iEvts)
             % Find the occurrence indice
-            iOcc = find(events(iEvts(i)).samples == uniqueSamples(iSmp));
+            iOcc = find(round(events(iEvts(i)).times .* sfreq) == uniqueSamples(iSmp));
             % Get the values 
             if (i == 1)
-                newTime   = events(iEvts(i)).times(iOcc);
-                newSample = events(iEvts(i)).samples(iOcc);
-                newEpoch  = events(iEvts(i)).epochs(iOcc);
+                newTime     = events(iEvts(i)).times(iOcc);
+                newEpoch    = events(iEvts(i)).epochs(iOcc);
+                newChannels = events(iEvts(i)).channels(iOcc);
+                newNotes    = events(iEvts(i)).notes(iOcc);
             % Add all the labels to the new event category
             else
                 % Try to convert to numerical values
@@ -143,9 +144,10 @@ function [events, isModified] = Compute(events)
                 end
             end
             % Remove this occurrence
-            events(iEvts(i)).times(iOcc)   = [];
-            events(iEvts(i)).samples(iOcc) = [];
-            events(iEvts(i)).epochs(iOcc)  = [];
+            events(iEvts(i)).times(iOcc)    = [];
+            events(iEvts(i)).epochs(iOcc)   = [];
+            events(iEvts(i)).channels(iOcc) = [];
+            events(iEvts(i)).notes(iOcc)    = [];
         end
         
         % Find this event in the list
@@ -162,13 +164,15 @@ function [events, isModified] = Compute(events)
             events(iNewEvt) = sEvent;
         end
         % Add occurrences
-        events(iNewEvt).times   = [events(iNewEvt).times,   newTime];
-        events(iNewEvt).samples = [events(iNewEvt).samples, newSample];
-        events(iNewEvt).epochs  = [events(iNewEvt).epochs,  newEpoch];
+        events(iNewEvt).times    = [events(iNewEvt).times,   newTime];
+        events(iNewEvt).epochs   = [events(iNewEvt).epochs,  newEpoch];
+        events(iNewEvt).channels = [events(iNewEvt).channels,  newChannels];
+        events(iNewEvt).notes    = [events(iNewEvt).notes,  newNotes];
         % Sort
         [events(iNewEvt).times, indSort] = unique(events(iNewEvt).times);
-        events(iNewEvt).samples = events(iNewEvt).samples(indSort);
-        events(iNewEvt).epochs  = events(iNewEvt).epochs(indSort);
+        events(iNewEvt).epochs   = events(iNewEvt).epochs(indSort);
+        events(iNewEvt).channels = events(iNewEvt).channels(indSort);
+        events(iNewEvt).notes    = events(iNewEvt).notes(indSort);
         isModified = 1;
     end
 end

@@ -17,7 +17,7 @@ function [hFig, iDS, iFig] = view_matrix( MatFile, DisplayMode, hFig )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,9 @@ function [hFig, iDS, iFig] = view_matrix( MatFile, DisplayMode, hFig )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2015
+% Authors: Francois Tadel, 2010-2019
+
+global GlobalData;
 
 % ===== READ INPUTS =====
 % Read matrix file
@@ -70,7 +72,7 @@ else
     Value = sMat.Value;
     Std   = sMat.Std;
     % Apply online filters
-    if (size(Value,2) > 50)
+    if (size(Value,2) > 50) && GlobalData.VisualizationFilters.FullSourcesEnabled
         sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
         Value = bst_memory('FilterLoadedData', Value, sfreq);
     end
@@ -117,10 +119,19 @@ switch lower(DisplayMode)
             Labels{3} = 1:size(Value,2);
         end
         Labels{4} = [];
+        % Create the dimension labels
+        [tmp, MatFileName] = bst_fileparts(MatFile);
+        if ~isempty(strfind(MatFileName, '_temporalgen'))
+            % For temporal generalization decoding, matrix is a Time x Time
+            DimLabels = {'Time (s)', 'Time (s)'};
+            Labels{1} = sMat.Time;
+        else
+            DimLabels = {'Signals', 'Time (s)'};
+        end
         % Create the image volume: [N1 x N2 x Ntime x Nfreq]
         M = reshape(Value, size(Value,1), 1, size(Value,2), 1);
         % Show the image
-        [hFig, iDS, iFig] = view_image_reg(M, Labels, [1,3], {'Signals','Time (s)'}, MatFile, hFig, [], 1, '$freq');
+        [hFig, iDS, iFig] = view_image_reg(M, Labels, [1,3], DimLabels, MatFile, hFig, [], 1, '$freq');
         % Add stat info in the file
         if ~isempty(StatInfo)
             setappdata(hFig, 'StatInfo', StatInfo);

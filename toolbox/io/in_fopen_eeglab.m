@@ -14,7 +14,7 @@ function [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -98,7 +98,7 @@ end
 % ===== GET RELEVANT CONDITIONS =====
 epochNames = [];
 isAllEmpty = 1;
-if ~hdr.isRaw
+if ~hdr.isRaw && isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event)
     % Each trial is classified with many criteria
     % Need to ask the user along which creteria the trials should be classified
     % Get all fields of the 'event' structure
@@ -288,10 +288,9 @@ sFile.format     = 'EEG-EEGLAB';
 sFile.device     = 'EEGLAB';
 sFile.byteorder  = 'l';
 % Properties of the recordings
-sFile.prop.times   = [hdr.Time(1), hdr.Time(end)];
-sFile.prop.sfreq   = 1 ./ (hdr.Time(2) - hdr.Time(1));
-sFile.prop.samples = round(sFile.prop.times .* sFile.prop.sfreq);
-sFile.prop.nAvg    = 1;
+sFile.prop.times = [hdr.Time(1), hdr.Time(end)];
+sFile.prop.sfreq = 1 ./ (hdr.Time(2) - hdr.Time(1));
+sFile.prop.nAvg  = 1;
 sFile.header = hdr;
 % Channel file
 if ImportOptions.DisplayMessages
@@ -314,7 +313,6 @@ for i = 1:nEpochs
     else
         sFile.epochs(i).select  = 0;
     end
-    sFile.epochs(i).samples = sFile.prop.samples;
     sFile.epochs(i).times   = sFile.prop.times;
     sFile.epochs(i).nAvg    = 1;
     sFile.epochs(i).bad     = ~ismember(i, iGoodTrials);
@@ -346,7 +344,7 @@ else
 end
 
 % === EVENTS ====
-if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) % && hdr.isRaw
+if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) && isfield(hdr.EEG.event, 'type') % && hdr.isRaw
     % Get event types
     intTypes = [];
     if ischar(hdr.EEG.event(1).type)
@@ -400,20 +398,24 @@ if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) % && hdr.isRaw
         if ~isempty(iEmpty)
             [allSmp{iEmpty}] = deal(1);
         end
-        events(iEvt).samples = round([allSmp{:}]);
+        samples = round([allSmp{:}]);
         % Add durations if there are more than one sample
         if isfield(hdr.EEG.event(listOcc), 'duration') && ~ischar(hdr.EEG.event(listOcc(1)).duration)
             allDur = [hdr.EEG.event(listOcc).duration];
-            if any(allDur > 1) && (length(events(iEvt).samples) == length(allDur))
-                events(iEvt).samples(2,:) = events(iEvt).samples + allDur; 
+            if any(allDur > 1) && (length(samples) == length(allDur))
+                samples(2,:) = samples + allDur; 
             end
         end
         % For epoched files: convert events to samples local to each epoch 
         if ~hdr.isRaw
-            events(iEvt).samples = events(iEvt).samples - (events(iEvt).epochs - 1) * (sFile.prop.samples(2) - sFile.prop.samples(1) + 1) + sFile.prop.samples(1) - 1;
+            nSamples = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq) + 1;
+            samples = samples - (events(iEvt).epochs - 1) * nSamples + sFile.prop.times(1) * sFile.prop.sfreq - 1;
         end
         % Compute times
-        events(iEvt).times = events(iEvt).samples ./ sFile.prop.sfreq;
+        events(iEvt).times = samples ./ sFile.prop.sfreq;
+        % Additional fields
+        events(iEvt).channels = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).notes    = cell(1, size(events(iEvt).times, 2));
     end
     % Save structure
     sFile.events = events;

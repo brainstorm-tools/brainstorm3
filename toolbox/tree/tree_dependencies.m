@@ -21,7 +21,7 @@ function [ iDepStudies, iDepItems, targetNodeType ] = tree_dependencies( bstNode
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -77,19 +77,17 @@ if strcmpi(targetNodeType, 'any') && (length(bstNodes) >= 1)
     end
 end
 
+iSearch = panel_protocols('GetSelectedSearch');
+
 % Pre-process file filters
 if ~isempty(NodelistOptions)
-    % If nothing entered
-    if isempty(NodelistOptions.String) || isempty(strtrim(NodelistOptions.String))
-        NodelistOptions = [];
-    else
+    if ~isempty(strtrim(NodelistOptions.String))
         % Options
         NodelistOptions.isSelect  = strcmpi(NodelistOptions.Action, 'Select');
-        % Make search case insensitive
-        NodelistOptions.String = lower(NodelistOptions.String);
-        % Create filter eval expression
-        NodelistOptions.Eval = CreateFilterEvalExpression(NodelistOptions.String);
     end
+elseif iSearch > 0
+    NodelistOptions = bst_get('NodelistOptions');
+    NodelistOptions.String = '';
 end
 
 % Capture selection errors
@@ -173,7 +171,7 @@ try
                 switch lower(targetNodeType)
                     case 'data'
                         % Check search options
-                        if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions);
+                        if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                             continue;
                         end
                         % Include the selected data nodes
@@ -186,11 +184,13 @@ try
                         if ~isempty(iFoundResults) && ~isempty(sStudy.Result(iFoundResults))
                             ResultsFiles = {sStudy.Result(iFoundResults).FileName};
                             ResultsComments = {sStudy.Result(iFoundResults).Comment};
+                            ResultsTypes = {'results', 'link'};
+                            ResultsTypes = ResultsTypes(1 + [sStudy.Result(iFoundResults).isLink]);
                             % The results that were found
                             if ~isempty(iFoundResults)
                                 % === Check file filters ===
                                 if ~isempty(NodelistOptions)
-                                    iFoundResults = iFoundResults(isFileSelected(ResultsFiles, ResultsComments, NodelistOptions, iStudy));
+                                    iFoundResults = iFoundResults(isFileSelected(ResultsFiles, ResultsComments, NodelistOptions, ResultsTypes, iStudy));
                                 end
                                 iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundResults))];
                                 iDepItems   = [iDepItems iFoundResults];
@@ -208,7 +208,7 @@ try
                             if ~isempty(iFoundTf)
                                 % === Check file filters ===
                                 if ~isempty(NodelistOptions)
-                                    iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions));
+                                    iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, targetNodeType));
                                 end
                                 iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundTf))];
                                 iDepItems   = [iDepItems iFoundTf];
@@ -226,7 +226,7 @@ try
                             if ~isempty(iFoundDip)
                                 % === Check file filters ===
                                 if ~isempty(NodelistOptions)
-                                    iFoundDip = iFoundDip(isFileSelected(DipolesFiles, DipolesComments, NodelistOptions));
+                                    iFoundDip = iFoundDip(isFileSelected(DipolesFiles, DipolesComments, NodelistOptions, targetNodeType));
                                 end
                                 iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundDip))];
                                 iDepItems   = [iDepItems iFoundDip];
@@ -257,7 +257,7 @@ try
                             FoundDataFiles = {sStudy.Data(iFoundData).FileName};
                             FoundDataComments = {sStudy.Data(iFoundData).Comment};
                             if ~isempty(NodelistOptions)
-                                iFoundData = iFoundData(isFileSelected(FoundDataFiles, FoundDataComments, NodelistOptions));
+                                iFoundData = iFoundData(isFileSelected(FoundDataFiles, FoundDataComments, NodelistOptions, targetNodeType));
                             end
                             iDepItems = [iDepItems, iFoundData];
                             iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundData))];
@@ -272,11 +272,13 @@ try
                                     iFoundResults = iResWithData(file_compare(sStudy.Data(iData).FileName, {sStudy.Result(iResWithData).DataFile}));
                                     ResultsFiles = {sStudy.Result(iFoundResults).FileName};
                                     ResultsComment = {sStudy.Result(iFoundResults).Comment};
+                                    ResultsTypes = {'results', 'link'};
+                                    ResultsTypes = ResultsTypes(1 + [sStudy.Result(iFoundResults).isLink]);
                                     % The results that were found
                                     if ~isempty(iFoundResults)
                                         % === Check file filters ===
                                         if ~isempty(NodelistOptions)
-                                            iFoundResults = iFoundResults(isFileSelected(ResultsFiles, ResultsComment, NodelistOptions, iStudy));
+                                            iFoundResults = iFoundResults(isFileSelected(ResultsFiles, ResultsComment, NodelistOptions, ResultsTypes, iStudy));
                                         end
                                         iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundResults))];
                                         iDepItems   = [iDepItems iFoundResults];
@@ -295,7 +297,7 @@ try
                                 if ~isempty(iFoundTf)
                                     % === Check file filters ===
                                     if ~isempty(NodelistOptions)
-                                        iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions));
+                                        iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, targetNodeType));
                                     end
                                     iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundTf))];
                                     iDepItems   = [iDepItems iFoundTf];
@@ -313,7 +315,7 @@ try
                                 if ~isempty(iFoundDip)
                                     % === Check file filters ===
                                     if ~isempty(NodelistOptions)
-                                        iFoundDip = iFoundDip(isFileSelected(DipolesFiles, DipolesComments, NodelistOptions));
+                                        iFoundDip = iFoundDip(isFileSelected(DipolesFiles, DipolesComments, NodelistOptions, targetNodeType));
                                     end
                                     iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundDip))];
                                     iDepItems   = [iDepItems iFoundDip];
@@ -340,7 +342,7 @@ try
                         fileComment = nodeComments{iNode};
                         % If results is not a shared kernel (not attached to a datafile)
                         if ~isPureKernel(sStudy.Result(iResult)) 
-                            if isempty(NodelistOptions) || isFileSelected(fileName, fileComment, NodelistOptions, iStudy)
+                            if isempty(NodelistOptions) || isFileSelected(fileName, fileComment, NodelistOptions, targetNodeType, iStudy)
                                 % Include results list
                                 iDepStudies = [iDepStudies iStudy];
                                 iDepItems   = [iDepItems   iResult];
@@ -357,7 +359,7 @@ try
                             if ~isempty(iFoundTf)
                                 % === Check file filters ===
                                 if ~isempty(NodelistOptions)
-                                    iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions));
+                                    iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, targetNodeType));
                                 end
                                 iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundTf))];
                                 iDepItems   = [iDepItems iFoundTf];
@@ -374,7 +376,7 @@ try
                             if ~isempty(iFoundDip)
                                 % === Check file filters ===
                                 if ~isempty(NodelistOptions)
-                                    iFoundDip = iFoundDip(isFileSelected(DipolesFiles, DipolesComments, NodelistOptions));
+                                    iFoundDip = iFoundDip(isFileSelected(DipolesFiles, DipolesComments, NodelistOptions, targetNodeType));
                                 end
                                 iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundDip))];
                                 iDepItems   = [iDepItems iFoundDip];
@@ -387,7 +389,7 @@ try
                 % Get file
                 if strcmpi(targetNodeType, 'timefreq')
                     % Check search options
-                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions);
+                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                         continue;
                     end
                     iDepStudies = [iDepStudies nodeStudies(iNode)];
@@ -399,7 +401,7 @@ try
                 % Get file
                 if strcmpi(targetNodeType, 'ptimefreq')
                     % Check search options
-                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions);
+                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                         continue;
                     end
                     iDepStudies = [iDepStudies nodeStudies(iNode)];
@@ -410,7 +412,7 @@ try
             case {'pdata', 'presults', 'pmatrix'}
                 if strcmpi(targetNodeType, nodeTypes{iNode})
                     % Check search options
-                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions);
+                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                         continue;
                     end
                     iDepStudies = [iDepStudies nodeStudies(iNode)];
@@ -421,7 +423,7 @@ try
             case 'dipoles'
                 if strcmpi(targetNodeType, nodeTypes{iNode})
                     % Check search options
-                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions);
+                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                         continue;
                     end
                     iDepStudies = [iDepStudies nodeStudies(iNode)];
@@ -434,7 +436,7 @@ try
                 switch lower(targetNodeType)
                     case 'matrix'
                         % Check file filters
-                        if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions)
+                        if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
                             continue;
                         end
                         % Include the selected data node
@@ -450,7 +452,7 @@ try
                             TimefreqComments = {sStudy.Timefreq(iFoundTf).Comment};
                             % === Check file filters ===
                             if ~isempty(NodelistOptions)
-                                iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions));
+                                iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, targetNodeType));
                             end
                             iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundTf))];
                             iDepItems   = [iDepItems iFoundTf];
@@ -476,7 +478,7 @@ try
                             FoundMatrixFiles = {sStudy.Matrix(iFoundMatrix).FileName};
                             FoundMatrixComments = {sStudy.Matrix(iFoundMatrix).Comment};
                             if ~isempty(NodelistOptions)
-                                iFoundMatrix = iFoundMatrix(isFileSelected(FoundMatrixFiles, FoundMatrixComments, NodelistOptions));
+                                iFoundMatrix = iFoundMatrix(isFileSelected(FoundMatrixFiles, FoundMatrixComments, NodelistOptions, targetNodeType));
                             end
                             iDepItems = [iDepItems, iFoundMatrix];
                             iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundMatrix))];
@@ -492,7 +494,7 @@ try
                                 if ~isempty(iFoundTf)
                                     % === Check file filters ===
                                     if ~isempty(NodelistOptions)
-                                        iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions));
+                                        iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, targetNodeType));
                                     end
                                     iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundTf))];
                                     iDepItems   = [iDepItems iFoundTf];
@@ -526,7 +528,12 @@ if ~isempty(iTargetStudies)
                 if ~isempty(iFoundData)
                     % Check file filters
                     if ~isempty(NodelistOptions)
-                        iFoundData = iFoundData(isFileSelected({sStudies(i).Data(iFoundData).FileName}, {sStudies(i).Data(iFoundData).Comment}, NodelistOptions));
+                        % Get specific Data/RawData type
+                        FileType = {sStudies(i).Data(iFoundData).DataType};
+                        iRaw = strcmpi(FileType, 'raw');
+                        FileType(iRaw) = {'rawdata'};
+                        FileType(~iRaw) = {'data'};
+                        iFoundData = iFoundData(isFileSelected({sStudies(i).Data(iFoundData).FileName}, {sStudies(i).Data(iFoundData).Comment}, NodelistOptions, FileType));
                     end
                     iDepStudies = [iDepStudies, repmat(iStudies(i), 1, length(iFoundData))];
                     iDepItems   = [iDepItems,   iFoundData];
@@ -537,10 +544,13 @@ if ~isempty(iTargetStudies)
                 % === Check file filters ===
                 ResultsFiles = {sStudies(i).Result.FileName};
                 ResultsComments = {sStudies(i).Result.Comment};
+                ResultsTypes = {'results', 'link'};
+                ResultsTypes = ResultsTypes(1 + [sStudies(i).Result.isLink]);
+                
                 if ~isempty(ResultsFiles)
                     % Get non-pure kernels + Check file filters
                     if ~isempty(NodelistOptions)
-                        iValidResult = find(~isPureKernel(sStudies(i).Result) & isFileSelected(ResultsFiles, ResultsComments, NodelistOptions, iStudies(i)));
+                        iValidResult = find(~isPureKernel(sStudies(i).Result) & isFileSelected(ResultsFiles, ResultsComments, NodelistOptions, ResultsTypes, iStudies(i)));
                     else
                         iValidResult = find(~isPureKernel(sStudies(i).Result));
                     end
@@ -573,7 +583,7 @@ if ~isempty(iTargetStudies)
                     if ~isempty(NodelistOptions)
                         PossibleFiles = {sStudies(i).Timefreq.FileName};
                         PossibleComments = {sStudies(i).Timefreq.Comment};
-                        iFoundTf = find(isFileSelected(PossibleFiles, PossibleComments, NodelistOptions));
+                        iFoundTf = find(isFileSelected(PossibleFiles, PossibleComments, NodelistOptions, targetNodeType));
                     else
                         iFoundTf = 1:length(sStudies(i).Timefreq);
                     end
@@ -630,7 +640,7 @@ if ~isempty(iTargetStudies)
                     if ~isempty(NodelistOptions)
                         PossibleFiles = {sStudies(i).Matrix.FileName};
                         PossibleComments = {sStudies(i).Matrix.Comment};
-                        iFoundMat = find(isFileSelected(PossibleFiles, PossibleComments, NodelistOptions));
+                        iFoundMat = find(isFileSelected(PossibleFiles, PossibleComments, NodelistOptions, targetNodeType));
                     else
                         iFoundMat = 1:length(sStudies(i).Matrix);
                     end
@@ -656,7 +666,7 @@ if ~isempty(iTargetStudies)
                     if ~isempty(NodelistOptions)
                         StatFiles = {sStudies(i).Stat(iStat).FileName};
                         StatComments = {sStudies(i).Stat(iStat).Comment};
-                        iFoundMat = iStat(isFileSelected(StatFiles, StatComments, NodelistOptions));
+                        iFoundMat = iStat(isFileSelected(StatFiles, StatComments, NodelistOptions, targetNodeType));
                     else
                         iFoundMat = iStat;
                     end
@@ -670,131 +680,69 @@ if ~isempty(iTargetStudies)
     end
 end
 
-end
-
-
-%% ===== CHECK FILE NAME/COMMENT =====
-function isSelected = isFileSelected(FileNames, Comments, NodelistOptions, iStudy)
-    % Parse inputs
-    if (nargin < 4) || isempty(iStudy)
-        iStudy = [];
-    end
-    % Nothing selected
-    if isempty(NodelistOptions)
-        return
-    end
-    % No input
-    if isempty(FileNames) || isempty(Comments)
-        isSelected = [];
-        return;
-    end
-    % Force files list in cells
-    if ischar(FileNames)
-        FileNames = {FileNames};
-    end
-    if ischar(Comments)
-        Comments = {Comments};
-    end
-    % Default: all the files are selected
-    isSelected = true(1, length(FileNames));
-    % Results links: Add data comment
-    if strcmpi(NodelistOptions.Target, 'Comment')
-        for i = 1:length(FileNames)
-            if (nnz(FileNames{i} == '|') == 2)
-                splitFile = str_split(FileNames{i}, '|');
-                if ~isempty(iStudy)
-                    [sStudy,tmp,iData] = bst_get('DataFile', splitFile{3}, iStudy);
-                else
-                    [sStudy,tmp,iData] = bst_get('DataFile', splitFile{3});
-                end
-                if ~isempty(iData)
-                    Comments{i} = [Comments{i} '|' sStudy.Data(iData).Comment];
-                end
+    %% ===== CHECK FILE NAME/COMMENT =====
+    function isSelected = isFileSelected(FileNames, Comments, NodelistOptions, FileType, iStudy)
+        % Parse inputs
+        if (nargin < 5) || isempty(iStudy)
+            iStudy = [];
+        end
+        % No input
+        if isempty(FileNames) || isempty(Comments)
+            isSelected = [];
+            return;
+        end
+        % Force files list in cells
+        if ischar(FileNames)
+            FileNames = {FileNames};
+        end
+        if ischar(Comments)
+            Comments = {Comments};
+        end
+        isActiveSearch = iSearch > 0;
+        isActiveFilter = ~isempty(NodelistOptions.String);
+        % Get active search
+        if isActiveSearch
+            searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
+            if isempty(searchRoot)
+                error('Could not find active search #%d', iSearch);
             end
         end
-    % If searching for comment in parent nodes too
-    elseif strcmpi(NodelistOptions.Target, 'Parent')
-        for i = 1:length(FileNames)
-            switch (file_gettype(FileNames{i}))
-                case {'results', 'link'}
-                    % Find the file in database
-                    if ~isempty(iStudy)
-                        [sStudyFile, iStudyFile, iResult] = bst_get('ResultsFile', FileNames{i}, iStudy);
-                    else
-                        [sStudyFile, iStudyFile, iResult] = bst_get('ResultsFile', FileNames{i});
-                    end
-                    % Find the parent in the database
-                    if ~isempty(sStudyFile.Result(iResult).DataFile)
-                        [sStudyParent, iStudyParent, iData] = bst_get('DataFile', sStudyFile.Result(iResult).DataFile, iStudyFile);
-                        if ~isempty(sStudyParent)
-                            Comments{i} = [Comments{i} '|' sStudyParent.Data(iData).Comment];
-                        end
-                    end
-                case 'timefreq'
-                    % Find the file in database
-                    if ~isempty(iStudy)
-                        [sStudyFile, iStudyFile, iTf] = bst_get('TimefreqFile', FileNames{i}, iStudy);
-                    else
-                        [sStudyFile, iStudyFile, iTf] = bst_get('TimefreqFile', FileNames{i});
-                    end
-                    ParentFile = sStudyFile.Timefreq(iTf).DataFile;
-                    % Find the parent in the database
-                    if ~isempty(ParentFile)
-                        switch (file_gettype(ParentFile))
-                            case 'data'
-                                [sStudyParent, iStudyParent, iData] = bst_get('DataFile', ParentFile, iStudyFile);
-                                if ~isempty(sStudyParent)
-                                    Comments{i} = [Comments{i} '|' sStudyParent.Data(iData).Comment];
-                                end
-                            case {'results', 'link'}
-                                [sStudyParent, iStudyParent, iResult] = bst_get('ResultsFile', ParentFile, iStudyFile);
-                                if ~isempty(sStudyParent)
-                                    Comments{i} = [Comments{i} '|' sStudyParent.Result(iResult).Comment];
-                                end
-                                % Add parent of parent
-                                ParentFile = sStudyParent.Result(iResult).DataFile;
-                                if ~isempty(ParentFile)
-                                    [sStudyParent, iStudyParent, iData] = bst_get('DataFile', ParentFile, iStudyFile);
-                                    if ~isempty(sStudyParent)
-                                        Comments{i} = [Comments{i} '|' sStudyParent.Data(iData).Comment];
-                                    end
-                                end
-                            case 'matrix'
-                                [sStudyParent, iStudyParent, iMatrix] = bst_get('MatrixFile', ParentFile, iStudyFile);
-                                if ~isempty(sStudyParent)
-                                    Comments{i} = [Comments{i} '|' sStudyParent.Matrix(iMatrix).Comment];
-                                end
-                        end
-                    end
+        % Get process box filter
+        if isActiveFilter
+            searchString = strtrim(NodelistOptions.String);
+            % Advanced (shortened) search syntax
+            if isempty(strfind(searchString, '"'))
+                % If no quotes found in search string, consider it as a
+                % whole string matching and not search syntax
+                searchString = ['"' searchString '"'];
             end
+            filterRoot = panel_search_database('StringToSearch', searchString, NodelistOptions.Target);
+            invertSelection = ~NodelistOptions.isSelect;
+            % Concatenate to search filter
+            if isActiveSearch
+                searchRoot = panel_search_database('ConcatenateSearches', ...
+                    searchRoot, filterRoot, 'AND', invertSelection);
+                invertSelection = 0;
+            else
+                searchRoot = filterRoot;
+            end
+        else
+            invertSelection = 0;
+        end
+
+        if isActiveSearch || isActiveFilter
+            % Apply search and filter together
+            isSelected = node_apply_search(searchRoot, FileType, Comments, FileNames, iStudy);
+            if invertSelection
+                isSelected = ~isSelected;
+            end
+        else
+            % Default: all the files are selected
+            nFiles = length(FileNames);
+            isSelected = true(1, nFiles);
         end
     end
-    % Switch comments and file names
-    if ismember(NodelistOptions.Target, {'Comment', 'Parent'})
-        FileNames = Comments;
-    end
-    % Force file names to lower case
-    FileNames = lower(FileNames);
-%     % Remove all the file paths
-%     if ~NodelistOptions.isComment
-%         for i = 1:length(FileNames)
-%             if (nnz(FileNames{i} == '|') == 2)
-%                 splitFile = str_split(FileNames{i}, '|');
-%                 [tmp, fBase1] = bst_fileparts(splitFile{2});
-%                 [tmp, fBase2] = bst_fileparts(splitFile{3});
-%                 FileNames{i} = [fBase1 '|' fBase2];
-%             else
-%                 [tmp, FileNames{i}] = bst_fileparts(FileNames{i});
-%             end
-%         end
-%     end
 
-    % Eval filter expression to check if selected
-    isSelected = isSelected & cellfun(@(c)eval(NodelistOptions.Eval), FileNames);
-    % Invert selection
-    if ~NodelistOptions.isSelect
-        isSelected = ~isSelected;
-    end
 end
 
 
@@ -803,143 +751,5 @@ end
 function isPure = isPureKernel(sResults)
     isPure = cellfun(@isempty, {sResults.DataFile}) & ...
              ~cellfun(@(c)isempty(strfind(c, 'KERNEL')), {sResults.FileName});   
-end
-
-
-%% ===== Building Filter tree =====
-function root = CreateFilterTree(s)
-    s = [s ' '];
-    root = struct();
-    root.word = '';
-    root.children = [];
-    path = [];
-    numChildren = 0;
-    quoting = 0;
-    ADD_BRANCH = 1;
-    END_BRANCH = 2;
-    word = '';
-    
-    for i = 1:length(s)
-        wordEnd = 0;
-        action = 0;
-        
-        % Check for special characters.
-        if s(i) == '"'
-            wordEnd = 1;
-            quoting = ~quoting;
-        elseif s(i) == '(' && ~quoting
-            wordEnd = 1;
-            action = ADD_BRANCH;
-        elseif s(i) == ')' && ~quoting
-            wordEnd = 1;
-            action = END_BRANCH;
-        elseif s(i) == ' ' && ~quoting
-            wordEnd = 1;
-        else
-            word = [word s(i)];
-        end
-        
-        % If this is the end of a word, store it.
-        if wordEnd
-            word = strtrim(word);
-            if ~isempty(word)
-                node = struct();
-                node.word = word;
-                node.children = [];
-                evalString = 'root';
-                for iPath = 1:length(path)
-                    evalString = [evalString '.children(' num2str(path(iPath)) ')'];
-                end
-                evalString = [evalString '.children'];
-                if ~isempty(eval(evalString))
-                    evalString = [evalString '(' num2str(numChildren + 1) ')'];
-                end
-                eval([evalString ' = node;']);
-                numChildren = numChildren + 1;
-            end
-            word = '';
-        end
-        
-        % Create new branch
-        if action == ADD_BRANCH
-            node = struct();
-            node.word = '';
-            node.children = [];
-            iChild = numChildren + 1;
-            path = [path, iChild];
-            evalString = 'root';
-            lastSelector = '';
-            for iPath = 1:length(path)
-                evalString = [evalString lastSelector '.children'];
-                lastSelector = ['(' num2str(path(iPath)) ')'];
-            end
-            if ~isempty(eval(evalString))
-                evalString = [evalString lastSelector];
-            end
-            eval([evalString ' = node;']);
-            numChildren = 0;
-        % Go back one branch
-        elseif action == END_BRANCH
-            path(end) = [];
-            evalString = 'root';
-            for iPath = 1:length(path)
-                evalString = [evalString '.children(' num2str(path(iPath)) ')'];
-            end
-            eval(['numChildren = length(' evalString '.children);']);
-        end
-    end
-end
-
-%% ===== Parsing filter tree recursively =====
-function [res, isWord] = ParseFilterTree(root)
-    % Change reserved words to symbol
-    isWord = 0;
-    if isempty(root.word)
-        res = '';
-    elseif any(strcmpi({'and', '&', '&&', '+'}, root.word))
-        res = '&&';
-    elseif any(strcmpi({'or', '|', '||'}, root.word))
-        res = '||';
-    elseif strcmpi(root.word, 'not')
-        res = '~';
-    % Add query for string to find if not reserved symbol
-    else
-        res = ['~isempty(strfind(c,''' root.word '''))'];
-        isWord = 1;
-    end
-    
-    % Recursive call to children
-    if isfield(root, 'children')
-        lastChildIsWord = 0;
-        for iChild = 1:length(root.children)
-            node = root.children(iChild);
-            [word, isWord] = ParseFilterTree(node);
-            % Add implicit AND if no operator between two tags specified
-            if lastChildIsWord && isWord
-                res = [res ' &&'];
-            end
-            lastChildIsWord = isWord;
-            if isfield(node, 'children') && ~isempty(node.children)
-                res = [res ' (' word ')'];
-            else
-                res = [res ' ' word];
-            end
-        end
-    end
-end
-
-%% ===== Combining filter calls =====
-function evalExpression = CreateFilterEvalExpression(s)
-    root = CreateFilterTree(s);
-    evalExpression = ParseFilterTree(root);
-    
-    % Validate expression
-    c = 'test';
-    try
-        tmp = eval(evalExpression);
-    catch
-        % If there is an error, use an "exclude all" expression instead.
-        evalExpression = '0';
-    end
 end
 

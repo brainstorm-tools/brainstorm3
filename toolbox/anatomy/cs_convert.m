@@ -26,7 +26,7 @@ function [P, Transf] = cs_convert(sMri, src, dest, P)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -72,8 +72,8 @@ if strcmpi(src, 'world') || strcmpi(dest, 'world')
         return;
     end
     vox2ras = sMri.InitTransf{iTransf,2};
-    % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-    vox2ras = vox2ras * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
+    % 2nd operation: Change reference from (0,0,0) to (1,1,1)
+    vox2ras = vox2ras * [1 0 0 -1; 0 1 0 -1; 0 0 1 -1; 0 0 0 1];
     % 1st operation: Convert from MRI(mm) to voxels
     vox2ras = vox2ras * diag(1 ./ [sMri.Voxsize, 1]);
     % Convert to meters: transformation MRI=>WORLD (in meters)

@@ -7,7 +7,7 @@ function [TimeUnits, precision] = gui_validate_text(jTextValid, jTextMin, jTextM
 %     - jTextMax       : Value in jTextValid must be inferior to value in jTextMax (set to [] to ignore)
 %     - TimeVector     : Either a full time vector (matrix) or {start, stop, sfreq} (cell)
 %     - TimeUnits      : Units used to represent the values: {'ms','s','scalar','list','optional'}; detected if not specified
-%     - dispPrecision  : Number of digits to display after the point (0=integer); detected if not specified
+%     - precision      : Number of digits to display after the point (0=integer); detected if not specified
 %     - initValue      : Initial value of the control
 %     - fcnCallback    : Callback that is executed after each validation of the jTextValid control
 
@@ -15,7 +15,7 @@ function [TimeUnits, precision] = gui_validate_text(jTextValid, jTextMin, jTextM
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.

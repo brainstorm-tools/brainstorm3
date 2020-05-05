@@ -11,7 +11,7 @@ function varargout = process_evt_detect( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -181,7 +181,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Read channel to process
         if ~isempty(TimeWindow)
-            SamplesBounds = sFile.prop.samples(1) + bst_closest(TimeWindow, DataMat.Time) - 1;
+            SamplesBounds = round(sFile.prop.times(1) .* sFile.prop.sfreq) + bst_closest(TimeWindow, DataMat.Time) - 1;
         else
             SamplesBounds = [];
         end
@@ -203,7 +203,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Get list of bad segments in file
             badSeg = panel_record('GetBadSegments', sFile);
             % Adjust with beginning of file
-            badSeg = badSeg - sFile.prop.samples(1) + 1;
+            badSeg = badSeg - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
             if ~isempty(badSeg)
                 % Create file mask
                 Fmask = true(size(F));
@@ -240,9 +240,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Existing event: reset it
             if ~isempty(iEvt)
                 sEvent = sFile.events(iEvt);
-                sEvent.epochs  = [];
-                sEvent.samples = [];
-                sEvent.times   = [];
+                sEvent.epochs     = [];
+                sEvent.times      = [];
                 sEvent.reactTimes = [];
             % Else: create new event
             else
@@ -254,9 +253,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sEvent.color = panel_record('GetNewEventColor', iEvt, sFile.events);
             end
             % Times, samples, epochs
-            sEvent.times   = detectedEvt{i};
-            sEvent.samples = round(sEvent.times .* sFile.prop.sfreq);
-            sEvent.epochs  = ones(1, size(sEvent.times,2));
+            sEvent.times    = detectedEvt{i};
+            sEvent.epochs   = ones(1, size(sEvent.times,2));
+            sEvent.channels = cell(1, size(sEvent.times, 2));
+            sEvent.notes    = cell(1, size(sEvent.times, 2));
             % Add to events structure
             sFile.events(iEvt) = sEvent;
             nEvents = nEvents + 1;

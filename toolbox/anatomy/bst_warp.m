@@ -16,7 +16,7 @@ function [OutputSurfaces, OutputMri] = bst_warp(destPts, srcPts, SurfaceFiles, M
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -97,6 +97,9 @@ if ~isSurfaceOnly
     % Process coordinates by blocks: Doing all at once costs too much memory, doing only 1 at a time costs too much time
     bst_progress('start', 'Warp anatomy', 'Warping MRI...', 1, 100);
     sizeMri = size(sMriSrc.Cube);
+    if (length(sizeMri) > 3)
+        error('No support for 4D volumes. Ask on the Brainstorm for help.');
+    end
     newCube = ones(sizeMri);
     nVoxels = numel(newCube);
     BLOCK_SIZE = 10000; 

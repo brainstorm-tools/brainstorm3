@@ -5,7 +5,7 @@ function varargout = process_decoding_crossval( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -212,7 +212,9 @@ function [accuracy,Time] = classifier_contrast_conditions_CrossVal_bs(trial, Tim
     tndx = Time<0;
     for i = 1:2 %for both groups
         for j = 1:ntrials
-            trial{i}{j} = trial{i}{j} ./ repmat( std(trial{i}{j}(:,tndx)')',1,ntimes );
+            baseStd = std(trial{i}{j}(:,tndx)')';
+            baseStd(baseStd == 0) = 1; % Avoid division by zero
+            trial{i}{j} = trial{i}{j} ./ repmat(baseStd, 1, ntimes);
         end
     end
 

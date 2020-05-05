@@ -9,7 +9,7 @@ function F = in_fread_edf(sFile, sfid, SamplesBounds, ChannelsRange)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,7 +36,6 @@ if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, nChannels];
 end
 if (nargin < 3) || isempty(SamplesBounds)
-    %SamplesBounds = sFile.prop.samples;
     SamplesBounds = [0, sFile.header.nrec * sFile.header.signal(ChannelsRange(1)).nsamples - 1];
 end
 nTimes = sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq;

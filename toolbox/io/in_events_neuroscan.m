@@ -9,7 +9,7 @@ function events = in_events_neuroscan(sFile, EventFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -48,14 +48,15 @@ for iEvt = 1:length(uniqueStim)
     % Add event structure
     events(iEvt).label   = ['Stim ' uniqueStim{iEvt}];
     events(iEvt).epochs  = ones(1, length(iMrk));
-    events(iEvt).samples = double(mrk{6}(iMrk)');
-    events(iEvt).times   = events(iEvt).samples ./ sFile.prop.sfreq;
+    events(iEvt).times   = double(mrk{6}(iMrk)') ./ sFile.prop.sfreq;
     events(iEvt).select  = 1;
     if any(mrk{5}(iMrk) ~= 0)
         events(iEvt).reactTimes = mrk{5}(iMrk)';
     else
         events(iEvt).reactTimes = [];
     end
+    events(iEvt).channels = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes    = cell(1, size(events(iEvt).times, 2));
 end
 
 % === PROCESS RESPONSE ===
@@ -66,13 +67,14 @@ for iEvt = 1:length(uniqueResp)
     % Add event structure
     events(iEvtAll).label   = ['Resp ' uniqueResp{iEvt}];
     events(iEvtAll).epochs  = ones(1, length(iMrk));
-    events(iEvtAll).samples = double(mrk{6}(iMrk)');
-    events(iEvtAll).times   = events(iEvt).samples ./ sFile.prop.sfreq;
+    events(iEvtAll).times   = double(mrk{6}(iMrk)') ./ sFile.prop.sfreq;
     events(iEvtAll).select  = 1;
     if any(mrk{5}(iMrk) ~= 0)
         events(iEvtAll).reactTimes = mrk{5}(iMrk)';
     else
         events(iEvtAll).reactTimes = [];
     end
+    events(iEvtAll).channels = cell(1, size(events(iEvtAll).times, 2));
+    events(iEvtAll).notes    = cell(1, size(events(iEvtAll).times, 2));
 end
 

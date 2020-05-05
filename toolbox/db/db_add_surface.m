@@ -7,7 +7,7 @@ function [ iSurface ] = db_add_surface( iSubject, FileName, Comment, SurfaceType
 %    - iSubject    : Indice of the subject where to add the surface
 %    - FileName    : Relative path to the file in which the tesselation is defined
 %    - Comment     : Surface description
-%    - SurfaceType : String {'Cortex', 'Scalp', 'InnerSkull', 'OuterSkull', 'Other'}
+%    - SurfaceType : String {'Cortex', 'Scalp', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM', 'Other'}
 % OUTPUT:
 %    - iSurface : indice of the surface that was created in the sSubject structure
 
@@ -15,7 +15,7 @@ function [ iSurface ] = db_add_surface( iSubject, FileName, Comment, SurfaceType
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -29,7 +29,7 @@ function [ iSurface ] = db_add_surface( iSubject, FileName, Comment, SurfaceType
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008
+% Authors: Francois Tadel, 2008-2019
 
 % If surface type is not defined : detect it
 if (nargin < 4)
@@ -40,6 +40,8 @@ if (nargin < 4)
         case 'scalp',       SurfaceType = 'Scalp';
         case 'outerskull',  SurfaceType = 'OuterSkull';
         case 'innerskull',  SurfaceType = 'InnerSkull';  
+        case 'fibers',      SurfaceType = 'Fibers';
+        case 'fem',         SurfaceType = 'FEM';
         otherwise,          SurfaceType = 'Other';  
     end
 end

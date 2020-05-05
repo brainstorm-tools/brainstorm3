@@ -9,7 +9,7 @@ function varargout = process_select_files_data( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -52,7 +52,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.condition.Type    = 'text';
     sProcess.options.condition.Value   = '';
     % COMMENT TAG
-    sProcess.options.tag.Comment = 'File comment contains tag: ';
+    sProcess.options.tag.Comment = 'File name contains tag: ';
     sProcess.options.tag.Type    = 'text';
     sProcess.options.tag.Value   = '';
     % INCLUDE BAD TRIALS

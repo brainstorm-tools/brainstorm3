@@ -10,7 +10,7 @@ function ChannelMat = in_channel_ant_xensor(ChannelFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -70,9 +70,22 @@ while 1
             case 'labels'
                 % If labels where not read yet: read them
                 if isempty(ChannelMat.Channel(iChannel).Name)
-                    ChannelMat.Channel(iChannel).Name = strtrim(read_line);
+                    % Remove extra spaces
+                    read_line = strtrim(read_line);
+                    % All channels in one line separated by tabs
+                    if any(read_line == 9)
+                        chNames = strtrim(str_split(read_line, char(9)));
+                        if (length(chNames) == length(ChannelMat.Channel))
+                            [ChannelMat.Channel.Name] = deal(chNames{:});
+                        end
+                    else
+                        ChannelMat.Channel(iChannel).Name = strtrim(read_line);
+                        iChannel = iChannel + 1;
+                    end
+                else
+                    iChannel = iChannel + 1;
                 end
-                iChannel = iChannel + 1;
+                
             case 'pos'
                 % If the channel names are defined at every line ("Name: X Y Z")
                 if any(read_line == ':')

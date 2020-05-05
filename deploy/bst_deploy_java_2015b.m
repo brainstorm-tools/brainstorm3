@@ -24,7 +24,7 @@ function bst_deploy_java_2015b(IS_BIN)
 % This software is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPL
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -70,7 +70,10 @@ ReleaseName = bst_get('MatlabReleaseName');
 
 
 %% ===== CONFIGURATION =====
-bstVersion    = '3.4';
+% Get date string
+c = clock;
+strDate = sprintf('%02d%02d%02d', c(1)-2000, c(2), c(3));
+bstVersion = ['3.' strDate];
 % Root brainstorm directory
 bstDir        = bst_get('BrainstormHomeDir');
 bstToolboxDir = fullfile(bstDir, 'toolbox');
@@ -153,12 +156,9 @@ jSplitPath = jPath.split(';');
 
 %% ===== UPDATE VERSION.TXT =====
 disp([10 'DEPLOY> Updating: ', strrep(versionFile, bstDir, '')]);
-% Get date string
-c = clock;
-strDate = sprintf('%02d%02d%02d', c(1)-2000, c(2), c(3));
 % Version.txt contents
 strVersion = ['% Brainstorm' 10 ...
-              '% v. ' bstVersion ' ' strDate ' (' date ')'];
+              '% v. ' bstVersion ' (' date ')'];
 % Write version.txt
 writeAsciiFile(versionFile, strVersion);
 

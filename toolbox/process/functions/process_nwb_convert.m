@@ -8,7 +8,7 @@ function varargout = process_nwb_convert( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -171,54 +171,12 @@ function [sFile, Messages, recType] = Compute(sFile, recType, ChannelMat)
         end
         
         %% Initialize EPOCHS and EVENTS structure
-        %%% Copied from in_fopen_NWB
-
-        nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch
-
-        all_conditions   = nwb2.intervals_trials.vectordata.get('condition').data;
-        uniqueConditions = unique(nwb2.intervals_trials.vectordata.get('condition').data);
-        timeBoundsTrials = double([nwb2.intervals_trials.start_time.data.load nwb2.intervals_trials.stop_time.data.load]);
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % THIS FIELD MIGHT NOT BE PRESENT ON ALL DATASETS
-        % I'M KEEPING IT HERE FOR REFERENCE
-        % % Get error trials
-        % badTrials = nwb2.intervals_trials.vectordata.get('error_run').data.load;
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-        iUniqueConditionsTrials = zeros(length(uniqueConditions),1); % This will hold the index of each trial for each condition
-
-        % Get number of epochs
-        nEpochs = length(nwb2.intervals_trials.start_time.data.load);
-        % Get number of averaged trials
-        nAvg = 1;
-
-
-        % === EPOCHS FILE ===
-        if (nEpochs > 1)
-            % Build epochs structure
-            for iEpoch = 1:nEpochs
-
-                ii = find(strcmp(uniqueConditions, all_conditions{iEpoch}));
-                iUniqueConditionsTrials(ii) =  iUniqueConditionsTrials(ii)+1;
-                sFile.epochs(iEpoch).label       = [all_conditions{iEpoch} ' (#' num2str(iUniqueConditionsTrials(ii)) ')'];
-                sFile.epochs(iEpoch).times       = timeBoundsTrials(iEpoch,:);
-                sFile.epochs(iEpoch).samples     = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
-                sFile.epochs(iEpoch).nAvg        = nAvg;
-                sFile.epochs(iEpoch).select      = 1;
-                sFile.epochs(iEpoch).bad         = 0;
-        %         sFile.epochs(iEpoch).bad         = badTrials(iEpoch); 
-                sFile.epochs(iEpoch).channelflag = [];
-            end
-            
-            % Assign events to the appropriate epochs
-            events = in_events_nwb(sFile, nwb2, nEpochs, ChannelMat);
-            sFile.events = events;
-
-            sFile.format    = 'NWB';
-        elseif (nEpochs == 1)
-            sFile.prop.nAvg = nAvg;
-            sFile.format    = 'NWB-CONTINUOUS';
-        end
+        nwb2 = sFile.header.nwb;
+        [sFile, nEpochs] = in_trials_nwb(sFile, nwb2);
+        
+        % Assign events to the appropriate epochs
+        events = in_events_nwb(sFile, nwb2, nEpochs, ChannelMat);
+        sFile.events = events;
     end
 end
 

@@ -7,7 +7,7 @@ function F = in_fread_intan(sFile, SamplesBounds, selectedChannels, precision)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,8 @@ function F = in_fread_intan(sFile, SamplesBounds, selectedChannels, precision)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis 2018
+% Authors: Konstantinos Nasiotis, 2018
+%          Francois Tadel, 2019
 
 
 % Parse inputs
@@ -34,7 +35,7 @@ if (nargin < 3) || isempty(selectedChannels)
     selectedChannels = 1:sFile.header.ChannelCount;
 end
 if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 nChannels = length(selectedChannels);
@@ -42,7 +43,12 @@ nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
 
 if sFile.header.chan_headers.AcqType==1
     % Read the corresponding recordings
-    data_and_headers = read_Intan_RHD2000_file(sFile.header.DataFile,1,0,SamplesBounds(1) + 1,nSamples,precision);
+    switch (sFile.header.FileExt)
+        case '.rhd'
+            data_and_headers = read_Intan_RHD2000_file(sFile.header.DataFile, 1, 0, SamplesBounds(1) + 1, nSamples, precision);
+        case '.rhs'
+            data_and_headers = read_Intan_RHS2000_file(sFile.header.DataFile, 1, 0, SamplesBounds(1) + 1, nSamples);
+    end
 end
     
 F = zeros(nChannels, nSamples, precision);
@@ -60,3 +66,5 @@ for iChannel = selectedChannels
         F(ii,:) = data_and_headers.amplifier_channels(iChannel).amplifier_data;
     end
 end
+
+

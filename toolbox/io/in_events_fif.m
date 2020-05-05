@@ -7,7 +7,7 @@ function events = in_events_fif(sFile, EventFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -66,21 +66,19 @@ uniqueEvents = unique(EventsMat(:,3));
 events = repmat(db_template('event'), [1, length(uniqueEvents)]);
 % Get occurrences for each event
 for i = 1:length(uniqueEvents)
-    % Build event label
-    events(i).label = sprintf('Event #%d', uniqueEvents(i));
-    % Other useless stuff
-    events(i).reactTimes = [];
-    events(i).select     = 1;
     % Get occurrence for this event
     iSmp = (EventsMat(:,3) == uniqueEvents(i));
     if isempty(iSmp)
         continue;
     end
-    % Get time and samples
-    events(i).samples = EventsMat(iSmp, 1)';
-    events(i).times   = EventsMat(iSmp, 2)';
-    % Epoch: set as 1 for all the occurrences
-    events(i).epochs = ones(1, length(iSmp));
+    % Build events structure
+    events(i).label      = sprintf('Event #%d', uniqueEvents(i));
+    events(i).times      = EventsMat(iSmp, 2)';
+    events(i).epochs     = ones(1, length(iSmp));  % Epoch: set as 1 for all the occurrences
+    events(i).reactTimes = [];
+    events(i).select     = 1;
+    events(i).channels   = cell(1, size(events(i).times, 2));
+    events(i).notes      = cell(1, size(events(i).times, 2));
 end
 
 

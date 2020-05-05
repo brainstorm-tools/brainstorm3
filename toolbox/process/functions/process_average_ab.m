@@ -7,7 +7,7 @@ function varargout = process_average_ab( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function varargout = process_average_ab( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2019
 
 eval(macro_method);
 end
@@ -46,9 +46,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.isSourceAbsolute = -1;
     
     % === WEIGHTED AVERAGE
-    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(nAvg(i) * x(i)) / sum(nAvg(i))</FONT>';
+    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(Leff_i * x(i)) / sum(Leff_i)</FONT>';
     sProcess.options.weighted.Type       = 'checkbox';
     sProcess.options.weighted.Value      = 0;
+    sProcess.options.weightedlabel.Comment    = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#777777">Leff_i = Effective number of averages for file #i</FONT>';
+    sProcess.options.weightedlabel.Type       = 'label';
     % === SCALE NORMALIZE SOURCE MAPS (DEPRECATED AFTER INVERSE 2018) 
     sProcess.options.scalenormalized.Comment    = 'Adjust normalized source maps for SNR increase.<BR><FONT color="#777777"><I>Example: dSPM(Average) = sqrt(Navg) * Average(dSPM)</I></FONT>';
     sProcess.options.scalenormalized.Type       = 'checkbox';
@@ -92,12 +94,18 @@ function sOutput = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     % === COMPUTE THE AVERAGES ===
     % Weighted average
     if isWeighted
-        sOutput.A = (sInputA.nAvg .* sInputA.A + sInputB.nAvg .* sInputB.A) ./ (sInputA.nAvg + sInputB.nAvg);
+        % sOutput.A = (sInputA.nAvg .* sInputA.A + sInputB.nAvg .* sInputB.A) ./ (sInputA.nAvg + sInputB.nAvg);
+        sOutput.A = (sInputA.Leff .* sInputA.A + sInputB.Leff .* sInputB.A) ./ (sInputA.Leff + sInputB.Leff);
         sOutput.nAvg = sInputA.nAvg + sInputB.nAvg;
+        sOutput.Leff = sInputA.Leff + sInputB.Leff;
     % Regular average
     else
         sOutput.A = (sInputA.A + sInputB.A) ./ 2;
         sOutput.nAvg = 2;
+        % Effective number of averages
+        % Leff = 1 / sum_i(w_i^2 / Leff_i),    with N=2, w1=1/N, w2=1/N
+        %      = N^2 / (1/Leff_A + 1/Leff_B))
+        sOutput.Leff = 2^2 ./ (1./sInputA.Leff + 1./sInputB.Leff);
     end
     
     % === SCALE dSPM VALUES (DEPRECATED AFTER INVERSE 2018) ===

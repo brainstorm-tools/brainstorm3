@@ -5,7 +5,7 @@ function varargout = process_inverse_2018( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -346,12 +346,13 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             DataFile = sStudy.Data(iDatas(iEntry)).FileName;
             % Load data file info (only 'mem' requires the recordings to be loaded here)
             if strcmpi(OPTIONS.InverseMethod, 'mem')
-                DataMat = in_bst_data(DataFile, 'ChannelFlag', 'Time', 'nAvg', 'F');
+                DataMat = in_bst_data(DataFile, 'ChannelFlag', 'Time', 'nAvg', 'Leff', 'F');
             else
-                DataMat = in_bst_data(DataFile, 'ChannelFlag', 'Time', 'nAvg');
+                DataMat = in_bst_data(DataFile, 'ChannelFlag', 'Time', 'nAvg', 'Leff');
             end
             ChannelFlag = DataMat.ChannelFlag;
             nAvg        = DataMat.nAvg;
+            Leff        = DataMat.Leff;
             Time        = DataMat.Time;
             % Is it a Raw file?
             isRaw = strcmpi(sStudy.Data(iDatas(iEntry)).DataType, 'raw');
@@ -361,18 +362,23 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             [iRelatedStudies, iRelatedData] = bst_get('DataForStudy', iStudy);
             % List all the data files
             nAvgAll     = zeros(1,length(iRelatedStudies));
+            LeffAll     = zeros(1,length(iRelatedStudies));
             BadChannels = [];
             nChannels   = [];
             for i = 1:length(iRelatedStudies)
                 % Get data file
                 sStudyRel = bst_get('Study', iRelatedStudies(i));
-                DataFull = file_fullpath(sStudyRel.Data(iRelatedData(i)).FileName);
                 % Read bad channels and nAvg
-                DataMat = load(DataFull, 'ChannelFlag', 'nAvg');
+                DataMat = in_bst_data(sStudyRel.Data(iRelatedData(i)).FileName, 'ChannelFlag', 'nAvg', 'Leff');
                 if isfield(DataMat, 'nAvg') && ~isempty(DataMat.nAvg)
                     nAvgAll(i) = DataMat.nAvg;
                 else
                     nAvgAll(i) = 1;
+                end
+                if isfield(DataMat, 'Leff') && ~isempty(DataMat.Leff)
+                    LeffAll(i) = DataMat.Leff;
+                else
+                    LeffAll(i) = 1;
                 end
                 % Count number of times the channe is bad
                 if isempty(BadChannels)
@@ -412,7 +418,8 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             %     end
             %     isFirstWarnAvg = 0;
             % end
-            nAvg = min([nAvgAll 1]);
+            nAvg = min([nAvgAll, 1]);
+            Leff = min([LeffAll, 1]);
             
             % === BAD CHANNELS ===
             if any(BadChannels)
@@ -747,6 +754,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         end
         ResultsMat.GridAtlas = HeadModelInit.GridAtlas;
         ResultsMat.nAvg      = nAvg;
+        ResultsMat.Leff      = Leff;
         ResultsMat.Options   = OPTIONS;
         % History
         ResultsMat = bst_history('add', ResultsMat, 'compute', ['Source estimation: ' OPTIONS.InverseMethod]);

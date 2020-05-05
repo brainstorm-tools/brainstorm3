@@ -9,7 +9,7 @@ function varargout = figure_timefreq( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,7 +23,7 @@ function varargout = figure_timefreq( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2020
 
 eval(macro_method);
 end
@@ -53,6 +53,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'Tag',           FigureId.Type, ...
                   'Renderer',      rendererName, ...
                   'Color',         [.8 .8 .8], ...
+                  'Pointer',       'arrow', ...
                   'CloseRequestFcn',         @FigureClosedCallback, ...
                   'KeyPressFcn',             @FigureKeyPressedCallback, ...
                   'WindowButtonDownFcn',     @FigureMouseDownCallback, ...
@@ -167,44 +168,46 @@ function ResizeCallback(hFig, ev)
     end
     % Get figure position and size in pixels
     figPos = get(hFig, 'Position');
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
+    colorbarWidth = 15 .* Scaling;
     if ismember(lower(TfInfo.DisplayMode), {'2dlayout', '2dlayoutopt'})
-        marginLeft   = 10;
-        marginTop    = 5;
-        marginBottom = 20;
-        marginRight  = 10;
+        marginLeft   = 10 .* Scaling;
+        marginTop    = 5 .* Scaling;
+        marginBottom = 20 .* Scaling;
+        marginRight  = 10 .* Scaling;
     else
-        marginTop    = 25;
-        marginBottom = 35;
-        marginRight  = 30;
+        marginTop    = 25 .* Scaling;
+        marginBottom = 35 .* Scaling;
+        marginRight  = 30 .* Scaling;
         % Define the size of the left margin in function of the labels that have to be displayed
         if ~iscell(GlobalData.UserFrequencies.Freqs)
             if all(GlobalData.UserFrequencies.Freqs == round(GlobalData.UserFrequencies.Freqs))
-                marginLeft = 40;
+                marginLeft = 40 .* Scaling;
             else
-                marginLeft = 55;
+                marginLeft = 55 .* Scaling;
             end
         else
             % Get the largest frequency band string
             strMax = max(cellfun(@length, GlobalData.UserFrequencies.Freqs(:,1)));
-            marginLeft = 20 + 5*strMax;
+            marginLeft = (20 + 5*strMax) .* Scaling;
         end
     end
     % If colorbar: Add a small label to hide the x10^exp on top of the colorbar
     hLabelHideExp = findobj(hFig, '-depth', 1, 'tag', 'labelMaskExp');
     % Reposition the colorbar
     if ~isempty(hColorbar)
-        marginRight = 55;
+        marginRight = 55 .* Scaling;
         % Position colorbar
-        colorbarPos = [figPos(3) - marginRight + 10, ...
+        colorbarPos = [figPos(3) - marginRight + 10 .* Scaling, ...
                        marginBottom, ...
                        colorbarWidth, ...
                        max(1, figPos(4) - marginTop - marginBottom)];
                        %max(1, min(90, figPos(4) - marginTop - marginBottom))];
         set(hColorbar, 'Units', 'pixels', 'Position', colorbarPos);
         % Add mask for exponent
-        maskPos = [colorbarPos(1), colorbarPos(2) + colorbarPos(4) + 5, ...
+        maskPos = [colorbarPos(1), colorbarPos(2) + colorbarPos(4) + 5 .* Scaling, ...
                    figPos(3)-colorbarPos(1), figPos(4)-colorbarPos(2)-colorbarPos(4)];
         if isempty(hLabelHideExp)
             uicontrol(hFig,'style','text','units','pixels', 'pos', maskPos, 'tag', 'labelMaskExp', ...
@@ -649,7 +652,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 panel_display('SetSelectedRowName', hFig, keyEvent.Key);
             end
         % === DATABASE NAVIGATOR ===
-        case {'f1', 'f2', 'f3', 'f4'}
+        case {'f1', 'f2', 'f3', 'f4', 'f6'}
             bst_figures('NavigatorKeyPress', hFig, keyEvent)
         % === DATA FILES : OTHER VIEWS ===
         % CTRL+D : Dock figure
@@ -1044,6 +1047,8 @@ function UpdateFigurePlot(hFig, isForced)
             % Plot time-frequency map
             if (TfInfo.HighResolution)
                 PlotTimefreqSurfHigh(hAxes, Time, Freqs, TF, TFmask);
+            elseif TfInfo.DisplayAsDots
+                PlotTimefreqAsDots(hAxes, Time, TF);
             else
                 PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask);
             end
@@ -1069,6 +1074,10 @@ function UpdateFigurePlot(hFig, isForced)
     hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
     if ~isempty(hColorbar)
         set(hColorbar, 'FontSize', bst_get('FigFont'), 'FontUnits', 'points');
+    end
+    % Do not display colorbar for single color dots
+    if TfInfo.DisplayAsDots
+        sColormap.DisplayColorbar = 0;
     end
 %     % Get figure colormap
 %     ColormapInfo = getappdata(hFig, 'Colormap');
@@ -1119,7 +1128,7 @@ function hSurf = PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask
     else
         Y = 1:size(Freqs,1)+1;
     end
-    
+
     % Grid values
     [XData,YData] = meshgrid(X,Y);
     % Plot new surface  
@@ -1153,6 +1162,26 @@ function hSurf = PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask
              end
          end
      end
+end
+
+%% ===== PLOT TIME-FREQ AS DOTS =====
+function hSurf = PlotTimefreqAsDots(hAxes, Time, TF)
+    % Delete previous objects
+    surfTag = 'TimefreqSurf';
+    hOld = findobj(hAxes, '-depth', 1, 'tag', surfTag);
+    delete(hOld);
+    % Extract coordinates
+    [X,Y,Z] = find(squeeze(TF));
+    % Convert X coordinates from samples to time
+    X = X / size(TF,2) * (Time(end) - Time(1)) + Time(1);
+    % Plot as dots
+    hSurf = line(X, Y, Z, ...
+       'Color', 'black', ...
+       'LineStyle', 'none', ...
+       'Marker', '.', ...
+       'MarkerSize', 5, ...
+       'Tag', surfTag, ...
+       'Parent', hAxes);
 end
 
 
@@ -1501,21 +1530,45 @@ function PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, is2DLayout)
         % Define position of the image in the figure
         XData = X(iRow) + [-.5,.5] * axesSize(1);
         YData = Y(iRow) + [-.5,.5] * axesSize(2);
-        [Xgrid, Ygrid] = meshgrid(linspace(XData(1), XData(2), size(TF_sensor,2) + 1), ...
-                                  linspace(YData(1), YData(2), size(TF_sensor,1) + 1));
-        % Create surface to show images
-        hSurf = surf('Parent',    hAxes, ...
-                     'XData',     Xgrid, ...
-                     'YData',     Ygrid, ...
-                     'ZData',     ones(size(Xgrid)), ...
-                     'CData',     TF_sensor, ...
-                     'EdgeColor', 'none', ...
-                     'tag',       'TimefreqSurfSmall', ...
-                     'ButtonDownFcn', @(h,ev)ImageClicked_Callback(hFig, TfInfo.FileName, RowNames{iRow}));
-        % Mask edge effects
-        if ~isempty(TFmask)
-            set(hSurf, 'FaceAlpha', 'flat', ...
-                       'AlphaData', double(TFmask));
+        %
+        if TfInfo.DisplayAsDots
+            % Extract coordinates
+            [Xd,Yd,Zd] = find(TF_sensor);
+            % Reshape coordinates for small figure
+            Xd = Xd / size(TF_sensor,1) * (XData(2) - XData(1)) + XData(1);
+            Yd = Yd / size(TF_sensor,2) * (YData(2) - YData(1)) + YData(1);
+            % Create white background
+            rectangle('Position', [XData(1), YData(1), XData(2) - XData(1), YData(2) - YData(1)], ...
+                'FaceColor', 'white', ...
+                'EdgeColor', 'white', ...
+                'Parent',    hAxes, ...
+                'ButtonDownFcn', @(h,ev)ImageClicked_Callback(hFig, TfInfo.FileName, RowNames{iRow}));
+            % Create dots
+            line(Xd, Yd, Zd, ...
+                 'Color', 'black', ...
+                 'LineStyle', 'none', ...
+                 'Marker', '.', ...
+                 'MarkerSize', 3, ...
+                 'Parent',    hAxes, ...
+                 'Tag', 'TimefreqSurfSmall', ...
+                 'ButtonDownFcn', @(h,ev)ImageClicked_Callback(hFig, TfInfo.FileName, RowNames{iRow}));
+        else
+            [Xgrid, Ygrid] = meshgrid(linspace(XData(1), XData(2), size(TF_sensor,2) + 1), ...
+                                      linspace(YData(1), YData(2), size(TF_sensor,1) + 1));
+            % Create surface to show images
+            hSurf = surf('Parent',    hAxes, ...
+                         'XData',     Xgrid, ...
+                         'YData',     Ygrid, ...
+                         'ZData',     ones(size(Xgrid)), ...
+                         'CData',     TF_sensor, ...
+                         'EdgeColor', 'none', ...
+                         'tag',       'TimefreqSurfSmall', ...
+                         'ButtonDownFcn', @(h,ev)ImageClicked_Callback(hFig, TfInfo.FileName, RowNames{iRow}));
+            % Mask edge effects
+            if ~isempty(TFmask)
+                set(hSurf, 'FaceAlpha', 'flat', ...
+                           'AlphaData', double(TFmask));
+            end
         end
         % Add text legend
         text(X(iRow), Y(iRow)-.51*axesSize(2), 2, RowNames{iRow}, ...

@@ -1,10 +1,7 @@
 function ChannelMat = in_channel_ascii(ChannelFile, Format, nSkipLines, Factor)
 % IN_CHANNEL_ASCII:  Read 3D cartesian positions for a set of electrodes from an ASCII file.
 %
-% USAGE:  ChannelMat = in_channel_ascii(ChannelFile, Format, nSkipLines, Factor)
-%         ChannelMat = in_channel_ascii(ChannelFile, Format, nSkipLines) : Default Factor=.01 (centimeters)
-%         ChannelMat = in_channel_ascii(ChannelFile, Format)             : Default nSkipLines=0
-%         ChannelMat = in_channel_ascii(ChannelFile)                     : Default Format={'X','Y','Z'}
+% USAGE:  ChannelMat = in_channel_ascii(ChannelFile, Format={'X','Y','Z'}, nSkipLines=0, Factor=0.1(cm))
 %
 % INPUTS: 
 %     - ChannelFile : Full path to the file
@@ -20,7 +17,7 @@ function ChannelMat = in_channel_ascii(ChannelFile, Format, nSkipLines, Factor)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +31,7 @@ function ChannelMat = in_channel_ascii(ChannelFile, Format, nSkipLines, Factor)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2011
+% Authors: Francois Tadel, 2009-2019
 
 %% ===== PARSE INPUTS =====
 % Check arguments

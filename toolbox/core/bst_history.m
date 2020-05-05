@@ -12,7 +12,7 @@ function FileMat = bst_history(action, FileMat, eventType, eventDesc)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -70,6 +70,11 @@ elseif ischar(FileMat)
 else
     error('Invalid structure type.');
 end
+% Reset History field if not properly set
+if isfield(FileMat, 'History') && (~iscell(FileMat.History) || (size(FileMat.History,2) ~= 3))
+    FileMat = rmfield(FileMat, 'History');
+end
+    
 
 %% ===== ACTION =====
 switch lower(action)

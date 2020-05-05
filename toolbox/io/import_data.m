@@ -28,7 +28,7 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -222,6 +222,7 @@ for iFile = 1:length(DataFiles)
         % Remove epochs that are too short
         if (ImportOptions.IgnoreShortEpochs >= 1)
             ImportedDataMat(iTooShort) = [];
+            bst_report('Warning', 'process_import_data_event', DataFile, sprintf('%d epochs were ignored because they are shorter than the others.', length(iTooShort)));
         end
     end
 
@@ -479,7 +480,9 @@ end
 if ~isempty(iAllStudies)
     iAllStudies = unique(iAllStudies);
     panel_protocols('UpdateNode', 'Study', iAllStudies);
-    if (length(iAllStudies) == 1)
+    if (length(NewFiles) == 1)
+        panel_protocols('SelectNode', [], NewFiles{1});
+    elseif (length(iAllStudies) == 1)
         panel_protocols('SelectStudyNode', iAllStudies(1));
     end
 end

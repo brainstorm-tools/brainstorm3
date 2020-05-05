@@ -11,7 +11,7 @@ function tutorial_phantom_elekta(tutorial_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -92,8 +92,9 @@ LinkFile = file_fullpath(sFilesKojak(1).FileName);
 LinkMat = load(LinkFile, 'F');
 if ~isempty(LinkMat.F.events) && ~isempty(LinkMat.F.events(1).times)
     LinkMat.F.events(1).times(1)   = [];
-    LinkMat.F.events(1).samples(1) = [];
     LinkMat.F.events(1).epochs(1)  = [];
+    LinkMat.F.events(1).channels(1)= [];
+    LinkMat.F.events(1).notes(1)   = [];
 end
 bst_save(LinkFile, LinkMat, 'v6', 1);
 

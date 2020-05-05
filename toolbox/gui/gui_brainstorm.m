@@ -14,7 +14,7 @@ function varargout = gui_brainstorm( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -117,6 +117,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Export protocol', IconLoader.ICON_SAVE,[],[], fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Copy raw files to database', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@MakeProtocolPortable), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Export as zip file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_protocol), fontSize);
+        gui_component('MenuItem', jMenuFile, [], 'Rename protocol', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@db_rename_protocol), fontSize);
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Delete protocol', IconLoader.ICON_DELETE, [],[], fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Remove all files', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 1), fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Only detach from database', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@db_delete_protocol, 1, 0), fontSize);
@@ -130,8 +131,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %         gui_component('MenuItem', jMenuFile, [], 'Set database folder', IconLoader.ICON_EXPLORER,    [], @(h,ev)bst_call(@SetDatabaseFolder), []);
 %         jMenuFile.addSeparator();
         % === PROCESSES ===
-        gui_component('MenuItem', jMenuFile, [], 'Report viewer',        IconLoader.ICON_EDIT,    [], @(h,ev)bst_call(@bst_report, 'Open', 'current'), fontSize);
-        gui_component('MenuItem', jMenuFile, [], 'Reload last pipeline', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@bst_report, 'Recall', 'current'), fontSize);
+        gui_component('MenuItem', jMenuFile, [], 'Report viewer',        IconLoader.ICON_PROCESS,    [], @(h,ev)bst_call(@bst_report, 'Open', 'current'), fontSize);
+        gui_component('MenuItem', jMenuFile, [], 'Reload last pipeline', IconLoader.ICON_RELOAD, [], @(h,ev)bst_call(@bst_report, 'Recall', 'current'), fontSize);
         % === SET PREFERENCES ===
         gui_component('MenuItem', jMenuFile, [], 'Edit preferences', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@gui_show, 'panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0), fontSize);
         jMenuFile.addSeparator();
@@ -248,6 +249,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jToolButtonSubject     = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_SUBJECTDB,    TB_DIM, jButtonGroup}, '<HTML><B>Anatomy</B>:<BR>MRI, surfaces</HTML>', [], []);
         jToolButtonStudiesSubj = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_STUDYDB_SUBJ, TB_DIM, jButtonGroup}, '<HTML><B>Functional data</B> (sorted by subjects):<BR>channels, head models, recordings, results</HTML>', [], []);
         jToolButtonStudiesCond = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_STUDYDB_COND, TB_DIM, jButtonGroup}, '<HTML><B>Functional data</B> (sorted by conditions):<BR>channels, head models, recordings, results</HTML>', [], []);
+        % Search button
+        jToolbarSearch      = gui_component('Toolbar', jPanelExplorerTop, java.awt.BorderLayout.EAST, []);
+        jToolSearchDatabase = gui_component('ToolbarButton', jToolbarSearch, [], [], {IconLoader.ICON_ZOOM, TB_DIM, jButtonGroup}, 'Search Database', @(h,ev)panel_protocols('MainPopupMenu', ev.getSource()), []);
     jPanelExplorer.add(jPanelExplorerTop, java.awt.BorderLayout.NORTH);
 
     % ==== TOOLS CONTAINER ====
@@ -460,6 +464,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
              'jToolButtonSubject',     jToolButtonSubject, ...
              'jToolButtonStudiesSubj', jToolButtonStudiesSubj, ...
              'jToolButtonStudiesCond', jToolButtonStudiesCond, ...
+             'jToolSearchDatabase',    jToolSearchDatabase, ...
              'jComboBoxProtocols',     jComboBoxProtocols, ...
              'jButtonRecordingsA',      jButtonRecordingsA, ...
              'jButtonSourcesA',         jButtonSourcesA, ...
@@ -492,6 +497,14 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %  =================================================================================
 %% ===== CLOSE WINDOW =====
     function closeWindow_Callback(varargin)
+        % Check that global variables are still accessible
+        if ~exist('GlobalData', 'var') || isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'GuiLevel') || isempty(GlobalData.Program.GuiLevel)
+            disp('BST> Error: Brainstorm global variables were cleared.');
+            disp('BST> Never call "clear" in your scripts while Brainstorm is running.');
+            % Force deleting the window
+            jBstFrame.dispose();
+            return;
+        end
         % If GUI was displayed: save current position
         if (GlobalData.Program.GuiLevel >= 1)
             % Update main window size and position
@@ -536,7 +549,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
             % Update the Layout structure
             bst_set('Layout', 'ExplorationMode', ExplorationMode);
             % Update tree display
-            panel_protocols('UpdateTree');
+            panel_protocols('UpdateTree', 0);
         end
         % Empty clipboard
         bst_set('Clipboard', []);
@@ -602,9 +615,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jPopup = java_create('javax.swing.JPopupMenu');
         % What field to search for: {'FileName', 'Comment'}
         groupTarget = java_create('javax.swing.ButtonGroup');
-        jRadioFilename = gui_component('RadioMenuItem', jPopup, [], 'Search file names', groupTarget, [], @(h,ev)SetFilterOption('Target', 'FileName'), fontSize);
-        jRadioComment  = gui_component('RadioMenuItem', jPopup, [], 'Search comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Comment'), fontSize);
-        jRadioParent   = gui_component('RadioMenuItem', jPopup, [], 'Search parent comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Parent'), fontSize);
+        jRadioFilename = gui_component('RadioMenuItem', jPopup, [], 'Search file paths', groupTarget, [], @(h,ev)SetFilterOption('Target', 'FileName'), fontSize);
+        jRadioComment  = gui_component('RadioMenuItem', jPopup, [], 'Search names',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Comment'), fontSize);
+        jRadioParent   = gui_component('RadioMenuItem', jPopup, [], 'Search parent names',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Parent'), fontSize);
         jPopup.addSeparator();
         % What to do with the filtered files: {'Select', 'Exclude'}
         groupAction = java_create('javax.swing.ButtonGroup');
@@ -618,7 +631,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         switch (NodelistOptions.Target)
             case 'FileName', jRadioFilename.setSelected(1);
             case 'Comment',  jRadioComment.setSelected(1);
-            case 'Parent',   jRadioParent.setSelected(1);    
+            case 'Parent',   jRadioParent.setSelected(1);
         end
         switch (NodelistOptions.Action)
             case 'Select',  jRadioSelect.setSelected(1);
@@ -933,6 +946,8 @@ function SetCurrentProtocol(iProtocol)
         jComboBoxProtocols.repaint();
     end
     % ===== UPDATE GUI =====
+    % Close any active searches
+    panel_protocols('CloseAllDatabaseTabs');
     % Update tree model
     panel_protocols('UpdateTree');
     % Update "Time Window" 
@@ -1307,6 +1322,14 @@ function BrainstormDbDir = SetDatabaseFolder(varargin) %#ok<DEFNU>
             bst_error(['The folder you selected is probably a protocol folder:' 10 BrainstormDbDir 10 10 ...
                 'The database folder is designed to contain multiple protocol folders.' 10 ...
                 'Please select a valid database folder.'], 'Database folder', 0);
+        elseif file_compare(bst_get('BrainstormTmpDir'), BrainstormDbDir)
+            bst_error('Your temporary and database directories must be different.', 'Database folder', 0);
+        elseif dir_contains(bst_get('BrainstormTmpDir'), BrainstormDbDir)
+            bst_error('Your temporary directory cannot contain your database directory.', 'Database folder', 0);
+        elseif file_compare(bst_get('BrainstormHomeDir'), BrainstormDbDir)
+            bst_error('Your application and database directories must be different.', 'Database folder', 0);
+        elseif dir_contains(bst_get('BrainstormHomeDir'), BrainstormDbDir)
+            bst_error('Your application directory cannot contain your database directory.', 'Database folder', 0);
         else
             isStop = 1;
         end

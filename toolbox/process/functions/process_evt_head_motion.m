@@ -5,7 +5,7 @@ function varargout = process_evt_head_motion(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -29,16 +29,17 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description of the process
-    sProcess.Comment     = 'Detect head motion events (CTF)';
+    sProcess.Comment     = 'Detect head motion (CTF)';
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion#Mark_head_motion_events';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
-    sProcess.Index       = 70;
+    sProcess.Index       = 48;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % Definition of the options
     sProcess.options.warning.Comment = 'Only for CTF MEG recordings with HLC channels recorded.<BR><BR>';
     sProcess.options.warning.Type    = 'label';
@@ -277,10 +278,11 @@ function sFile = CreateEvents(sFile, EvtName, Events)
         sFile.events(iEvt).label = EvtName;
         sFile.events(iEvt).color = panel_record('GetNewEventColor', iEvt, sFile.events);
     end
-    sFile.events(iEvt).times   = Events;
-    sFile.events(iEvt).samples = round(sFile.events(iEvt).times .* sFile.prop.sfreq);
-    sFile.events(iEvt).epochs  = ones(1, size(sFile.events(iEvt).times,2));
+    sFile.events(iEvt).times      = Events;
+    sFile.events(iEvt).epochs     = ones(1, size(sFile.events(iEvt).times,2));
     sFile.events(iEvt).reactTimes = [];
+    sFile.events(iEvt).channels   = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).notes      = cell(1, size(sFile.events(iEvt).times, 2));
 end
 
 
@@ -308,7 +310,7 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
         nEpochs = 1;
     end
     if nargin < 2 || isempty(SamplesBounds)
-        SamplesBounds = sFile.prop.samples; % This is single epoch samples if epoched.
+        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq); % This is single epoch samples if epoched.
     end
     
     ChannelMat = in_bst_channel(sInput.ChannelFile);

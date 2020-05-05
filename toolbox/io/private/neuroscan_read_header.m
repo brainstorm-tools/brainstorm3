@@ -8,7 +8,7 @@ function sHeader = neuroscan_read_header(NeuroscanFile, fileFormat, isEvents)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -306,12 +306,16 @@ switch lower(fileFormat)
         h.dataformat = 'float';
     case 'eeg'
         sizeHeader = 13;
-        h.bytes_per_samp = ((EVT_offset - h.datapos) / h.compsweeps - sizeHeader) / h.pnts / h.nchannels;
-        switch(h.bytes_per_samp)
-            case 2,    h.dataformat = 'int16';
-            case 4,    h.dataformat = 'int32';
-            otherwise, error('Unknown file format.');
+        h.bytes_per_samp = floor(((EVT_offset - h.datapos) / h.compsweeps - sizeHeader) / h.pnts / h.nchannels);
+        if (h.bytes_per_samp == 2)
+            h.dataformat = 'int16';
+        elseif (h.bytes_per_samp >= 4)
+            h.dataformat = 'int32';
+            h.bytes_per_samp = 4;
+        else
+            error('Unknown file format.');
         end
+        h.epoch_size = h.nchannels * h.pnts * h.bytes_per_samp + sizeHeader;
     otherwise
         error('Unknown data format');
 end
@@ -324,10 +328,8 @@ if strcmpi(fileFormat, 'eeg')
     nEpochs = h.compsweeps;
     % Read the headers of all the sweeps
     for i = 1:nEpochs
-        % sizeEpoch = sizeHeader + nTime * nChannels * hdr.header.bytes_per_samp;
-        sizeEpoch = (EVT_offset - h.datapos) / nEpochs;
         % Position cursor in file to read this data block
-        pos = h.datapos + (i - 1) * sizeEpoch;
+        pos = h.datapos + (i - 1) * h.epoch_size;
         fseek(fid, double(pos), 'bof');
         % Read sweeps header	
         epochs(i).accept   = fread(fid, 1, 'char');     % 1 byte

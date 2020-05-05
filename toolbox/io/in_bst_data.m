@@ -13,7 +13,7 @@ function DataMat = in_bst_data( DataFile, varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -27,7 +27,7 @@ function DataMat = in_bst_data( DataFile, varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2015
+% Authors: Francois Tadel, 2009-2019
 
 
 % ===== PARSE INPUTS =====
@@ -72,6 +72,10 @@ else
         FieldsToRead{end + 1} = 'ZScore';
         isAddZScore = 1;
     end
+    % When reading Leff, make sure nAvg is read as well
+    if ~isRaw && ismember('Leff', FieldsToRead) && ~ismember('nAvg', FieldsToRead)
+        FieldsToRead{end + 1} = 'nAvg';
+    end
 end
 
 % ===== LOAD FILE =====
@@ -90,12 +94,18 @@ end
 
 % ===== MISSING FIELDS =====
 for i = 1:length(FieldsToRead)
-    if ~isfield(DataMat, FieldsToRead{i})
-        switch(FieldsToRead{i}) 
-            case 'nAvg'
-                DataMat.nAvg = 1;
+    if ~isfield(DataMat, FieldsToRead{i}) || isempty(DataMat.(FieldsToRead{i}))
+        switch(FieldsToRead{i})
             case 'DataType'
                 DataMat.DataType = 'recordings';
+            case 'nAvg'
+                DataMat.nAvg = 1;
+            case 'Leff'
+                if isfield(DataMat, 'nAvg') && ~isempty(DataMat.nAvg)
+                    DataMat.Leff = DataMat.nAvg;
+                else
+                    DataMat.Leff = 1;
+                end
             otherwise
                 DataMat.(FieldsToRead{i}) = [];
         end
@@ -108,6 +118,7 @@ if isAddF
 end
 
 % ===== APPLY Z-SCORE =====
+% DEPRECATED
 if ismember('ZScore', FieldsToRead) && ~isempty(DataMat.ZScore)
     DataMat.F = process_zscore_dynamic('Compute', DataMat.F, DataMat.ZScore);
     DataMat = rmfield(DataMat, 'ZScore');
@@ -134,6 +145,26 @@ end
 % ===== FIX TRANSPOSED TIME VECTOR =====
 if isfield(DataMat, 'Time') && (size(DataMat.Time,1) > 1)
     DataMat.Time = DataMat.Time';
+end
+
+% ===== FIX EVENTS STRUCTURES =====
+% Imported file
+if isfield(DataMat, 'Events') && ~isempty(DataMat.Events)
+    [DataMat.Events, isModified] = struct_fix_events(DataMat.Events);
+    % Update file if it was modified
+    if isModified
+        UpdateMat.Events = DataMat.Events;
+        bst_save(DataFileFull, UpdateMat, 'v6', 1);
+    end
+end
+% Link to raw file
+if isfield(DataMat, 'F') && ~isempty(DataMat.F) && isstruct(DataMat.F) && isfield(DataMat.F, 'events') && ~isempty(DataMat.F.events)
+    [DataMat.F.events, isModified] = struct_fix_events(DataMat.F.events);
+    % Update file if it was modified
+    if isModified
+        UpdateMat.F = DataMat.F;
+        bst_save(DataFileFull, UpdateMat, 'v6', 1);
+    end
 end
 
 

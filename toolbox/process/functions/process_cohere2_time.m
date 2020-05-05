@@ -5,7 +5,7 @@ function varargout = process_cohere2_time( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_cohere2_time( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Elizabeth Bock, Francois Tadel, 2015
+% Authors: Elizabeth Bock, Francois Tadel, 2015; Hossein Shahabi, 2019
 
 eval(macro_method);
 end
@@ -50,7 +50,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.win.Comment = 'Estimation window length:';
     sProcess.options.win.Type    = 'value';
     sProcess.options.win.Value   = {.350, 'ms', []};
-    % overlap
+    % === Overlap for Sliding window (Time)
     sProcess.options.overlap.Comment = 'Sliding window overlap:';
     sProcess.options.overlap.Type    = 'value';
     sProcess.options.overlap.Value   = {50, '%', []};
@@ -58,9 +58,18 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
     sProcess.options.label2.Type    = 'label';
     % === COHERENCE METHOD
-    sProcess.options.cohmeasure.Comment = {'Magnitude-squared', 'Imaginary', 'Measure:'};
-    sProcess.options.cohmeasure.Type    = 'radio_line';
-    sProcess.options.cohmeasure.Value   = 1;
+    sProcess.options.cohmeasure.Comment = {...
+        ['<B>Magnitude-squared Coherence</B><BR>' ...
+        '|C|^2 = |Gxy|^2/(Gxx*Gyy)'], ...
+        ['<B>Imaginary Coherence (2019)</B><BR>' ...
+        'IC    = |imag(C)|'], ...
+        ['<B>Lagged Coherence (2019)</B><BR>' ...
+        'LC    = |imag(C)|/sqrt(1-real(C)^2)'], ...
+        ['<FONT color="#777777"> Imaginary Coherence (before 2019)</FONT><BR>' ...
+        '<FONT color="#777777"> IC    = imag(C)^2 / (1-real(C)^2) </FONT>']; ...
+        'mscohere', 'icohere2019','lcohere2019', 'icohere'};
+    sProcess.options.cohmeasure.Type    = 'radio_label';
+    sProcess.options.cohmeasure.Value   = 'Measure:';
 %     % === OVERLAP
 %     sProcess.options.overlap.Comment = {'0%', '25%', '50%', '75%', 'Overlap:'};
 %     sProcess.options.overlap.Type    = 'radio_line';
@@ -109,7 +118,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     % Initialize returned values
     OutputFiles = {};
     % Forcing the concatenation of the inputs
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)'};
+    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 2;
     % Input options
@@ -125,10 +134,8 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.CohOverlap    = 0.50;
     OPTIONS.pThresh       = 0.05;  % sProcess.options.pthresh.Value{1};
     OPTIONS.isSave        = 0;
-    switch (sProcess.options.cohmeasure.Value)
-        case 1,  OPTIONS.CohMeasure = 'mscohere';
-        case 2,  OPTIONS.CohMeasure = 'icohere';
-    end
+    OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
+
     % Time windows options
     CommentTag    = sProcess.options.commenttag.Value;
     EstTimeWinLen = sProcess.options.win.Value{1};

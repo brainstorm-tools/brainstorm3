@@ -39,7 +39,7 @@ function varargout = bst_report( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -989,7 +989,7 @@ function jFrame = HtmlViewer(strHtml, figTitle)
             gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_ARROW_RIGHT, 'Next report',     @(h,ev)Open('next'));
             jToolbar.addSeparator();
             gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_FOLDER_OPEN, 'Load report file',  @(h,ev)Open());
-            gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_SAVE, 'Export report to HTML',  @(h,ev)Export());
+            gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_SAVE, 'Export report',  @(h,ev)Export());
             jToolbar.addSeparator();
             gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_PROCESS, 'Reload pipeline', @(h,ev)Recall('loaded'));
             jToolbar.addSeparator();
@@ -1193,6 +1193,10 @@ function Recall(target)
     if (sProcesses(1).nInputs == 1)
         % Get current files list
         sCurFiles = panel_nodelist('GetFiles', 'Process1');
+        if isequal(sCurFiles, -1)
+            bst_progress('stop');
+            return;
+        end
         % Update files list if modified
         if (isempty(sCurFiles) && ~isempty(FileNames)) || (~isempty(sCurFiles) && isstruct(sCurFiles) && ~isequal({sCurFiles.FileName}, FileNames))
             % Reset files lists
@@ -1235,6 +1239,10 @@ function Recall(target)
         % Get current files list
         sCurFilesA = panel_nodelist('GetFiles', 'Process2A');
         sCurFilesB = panel_nodelist('GetFiles', 'Process2B');
+        if isequal(sCurFilesA, -1) || isequal(sCurFilesB, -1)
+            bst_progress('stop');
+            return;
+        end
         
         % Update files list if modified
         if (isempty(sCurFilesA) && ~isempty(FileNamesA)) || (~isempty(sCurFilesA) && isstruct(sCurFilesA) && ~isequal({sCurFilesA.FileName}, FileNamesA)) || ...
@@ -1280,7 +1288,7 @@ end
 %% ===== EXPORT =====
 % USAGE:  bst_report('Export', ReportFile, HtmlFile=[ask])
 %         bst_report('Export', ReportFile, HtmlDir)
-function HtmlFile = Export(ReportFile, HtmlFile)
+function HtmlFile = Export(ReportFile, HtmlFile, FileFormat)
     global GlobalData;
 
     % === PARSE INPUTS ===
@@ -1297,6 +1305,10 @@ function HtmlFile = Export(ReportFile, HtmlFile)
     if (nargin < 2) || isempty(HtmlFile)
         HtmlFile = [];
     end
+    % Get output format (HTML or PNG)
+    if (nargin < 3) || isempty(FileFormat)
+        FileFormat = 'HTML';
+    end
     
     % === GET OUTPUT FILE ===
     % If input is a directory
@@ -1312,7 +1324,13 @@ function HtmlFile = Export(ReportFile, HtmlFile)
         [fPath, fBase, fExt] = bst_fileparts(ReportFile);
         HtmlFile = bst_fullfile(LastUsedDirs.ExportImage, [fBase, '.html']);
         % Select file
-        HtmlFile = java_getfile('save', 'Export report...', HtmlFile, 'single', 'file', {{'*'}, 'HTML file (*.html)', 'HTML'}, 1);
+        [HtmlFile, FileFormat] = java_getfile('save', ...
+            'Export report...', ... % Window title
+            HtmlFile, ... % Default file
+            'single', 'files_and_dirs', ... % Selection mode
+            {'.html', 'HTML file (*.html)', 'HTML';, ... % Output formats
+             '.png',  'PNG images (*.png)', 'PNG'}, ...
+             1); % Default format
         % If no file was selected: exit
         if isempty(HtmlFile)
             return;
@@ -1322,28 +1340,57 @@ function HtmlFile = Export(ReportFile, HtmlFile)
         bst_set('LastUsedDirs', LastUsedDirs);
     end
     
-    % === SAVE FILE ===
-    % Progress bar
-    bst_progress('start', 'Report viewer', 'Exporting report to HTML...');
     % Load report file
     if isequal(ReportFile, 'current')
         ReportsMat = GlobalData.ProcessReports;
     else
         ReportsMat = load(ReportFile, 'Reports');
     end
-    % Print report to HTML
-    html = PrintToHtml(ReportsMat.Reports, 1);
-    % Open file for writing
-    fid = fopen(HtmlFile, 'wt');
-    if (fid == 0)
-        error(['Could not write file: ' HtmlFile]);
+    
+    % === SAVE FILE ===
+    % Save report images as PNG
+    if strcmp(FileFormat, 'PNG')
+        % Progress bar
+        bst_progress('start', 'Report viewer', 'Exporting report images in PNG...');
+        
+        [folder, filename, fileext] = bst_fileparts(HtmlFile);
+        nRows = size(ReportsMat.Reports, 1);
+        iImage = 1;
+
+        % Loop through entries in report
+        for iRow = 1:nRows
+            % Save images
+            if strcmp(ReportsMat.Reports{iRow,1}, 'image')
+                imwrite(ReportsMat.Reports{iRow,4}, ...
+                    bst_fullfile(folder, ...
+                    [filename sprintf('_%#02d', iImage) fileext]));
+                iImage = iImage + 1;
+            end
+        end
+        
+        % Warn user if no image was found
+        if iImage == 1
+            java_dialog('warning', 'No images found in this report.', 'Export report');
+        end
+    % Default: save report as HTML
+    else
+        % Progress bar
+        bst_progress('start', 'Report viewer', 'Exporting report to HTML...');
+        % Print report to HTML
+        html = PrintToHtml(ReportsMat.Reports, 1);
+        % Open file for writing
+        fid = fopen(HtmlFile, 'wt');
+        if (fid == 0)
+            error(['Could not write file: ' HtmlFile]);
+        end
+        % Write file
+        fwrite(fid, html);
+        % Close file
+        fclose(fid);
+        % End message
+        disp(['Report exported to: ' HtmlFile]);
     end
-    % Write file
-    fwrite(fid, html);
-    % Close file
-    fclose(fid);
-    % End message
-    disp(['Report exported to: ' HtmlFile]);
+    
     % Close progress bar
     bst_progress('stop');
 end

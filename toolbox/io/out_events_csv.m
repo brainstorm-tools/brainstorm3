@@ -1,5 +1,5 @@
 function out_events_csv( sFile, EventsFile )
-% OUT_EVENTS_CSV: Export events to a comma-separated text file (CSV).
+% OUT_EVENTS_CSV: Export events to a comma-separated text file (CSV): event_name, latency, duration
 %
 % USAGE:  out_events_csv( sFile, EventsFile )
 
@@ -7,7 +7,7 @@ function out_events_csv( sFile, EventsFile )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function out_events_csv( sFile, EventsFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2019
 
 % Concatenate all the events together
 allTime = zeros(2,0);
@@ -54,10 +54,10 @@ for i = 1:length(allInd)
     sEvt = sFile.events(allInd(i));
     % Simple events
     if (size(sEvt.times, 1) == 1)
-        fprintf(fout, '%s, %g\n', sEvt.label, allTime(1,i));
+        fprintf(fout, '%s, %g, 0\n', sEvt.label, allTime(1,i));
     % Extended events
     elseif (size(sEvt.times, 1) == 2)
-        fprintf(fout, '%s, %g, %g\n', sEvt.label, allTime(1,i), allTime(2,i));
+        fprintf(fout, '%s, %g, %g\n', sEvt.label, allTime(1,i), allTime(2,i) - allTime(1,i));
     end
 end
 % Close file

@@ -12,7 +12,7 @@ function varargout = process_duplicate( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,7 +26,7 @@ function varargout = process_duplicate( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -134,7 +134,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             for iSubj = 1:length(uniqueSubj)
                 oldName = uniqueSubj{iSubj};
                 % Cannot duplicate the default subject
-                if strcmpi(oldName, bst_get('DirDefaultSubject'));
+                if strcmpi(oldName, bst_get('DirDefaultSubject'))
                     bst_report('Error', sProcess, sInputs, 'Cannot duplicate default subject.');
                     continue;
                 end
@@ -144,7 +144,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 [newName, Messages] = DuplicateSubject(oldName, fileTag, 0);
                 % Update the filenames
                 if ~isempty(newName)
-                    OutputFiles = cat(2, OutputFiles, strrep({sInputs(iInputSubj).FileName}, oldName, newName));
+                    for iFile = 1:length(iInputSubj)
+                        fNameSplit = str_split(sInputs(iInputSubj(iFile)).FileName);
+                        OutputFiles = cat(2, OutputFiles, bst_fullfile(newName, fNameSplit{2:end}));
+                    end
                 else
                     bst_report('Error', sProcess, sInputs, Messages);
                     continue;

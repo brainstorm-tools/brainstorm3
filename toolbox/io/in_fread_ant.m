@@ -1,5 +1,5 @@
 function F = in_fread_ant(sFile, SamplesBounds)
-% IN_FREAD_ANT:  Read a block of recordings from a ANT EEProbe .cnt file
+% IN_FREAD_ANT:  Read a block of recordings from a ANT EEProbe .cnt/.avr file
 %
 % USAGE:  F = in_fread_ant(sFile, SamplesBounds) : Read all channels
 
@@ -7,7 +7,7 @@ function F = in_fread_ant(sFile, SamplesBounds)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,11 +21,11 @@ function F = in_fread_ant(sFile, SamplesBounds)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel 2012-2017
+% Author: Francois Tadel 2012-2019
 
 % Use the full file if samples not specified
 if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 % Check start and stop samples
 if (SamplesBounds(1) < 0) || (SamplesBounds(1) > SamplesBounds(2)) || (SamplesBounds(2) >= sFile.header.nsample)

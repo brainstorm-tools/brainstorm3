@@ -5,7 +5,7 @@ function varargout = process_mni_affine( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,13 +31,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Compute MNI transformation';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 8;
+    sProcess.Index       = 10;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ImportAnatomy#MNI_transformation';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
     sProcess.OutputTypes = {'import'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
+    sProcess.isSeparator = 1;
     % Option: Subject name
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';

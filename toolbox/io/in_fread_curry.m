@@ -7,7 +7,7 @@ function F = in_fread_curry(sFile, sfid, iEpoch, SamplesBounds, ChannelsRange)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function F = in_fread_curry(sFile, sfid, iEpoch, SamplesBounds, ChannelsRange)
 % =============================================================================@
 %
 % Authors: Initial code from EEGLAB plugin loadcurry 2.0: Matt Pontifex, pontifex@msu.edu
-%          Adaptation for Brainstorm 3: Francois Tadel, 2018
+%          Adaptation for Brainstorm 3: Francois Tadel, 2018-2019
 
 % Parse inputs
 if (nargin < 3)
@@ -30,14 +30,16 @@ if (nargin < 3)
 end
 if (nargin < 4) || isempty(SamplesBounds)
     if ~isempty(sFile.epochs)
-        SamplesBounds = sFile.epochs(iEpoch).samples;
+        SamplesBounds = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
     else
-        SamplesBounds = sFile.prop.samples;
+        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
     end
 end
 if (nargin < 5) || isempty(ChannelsRange)
     ChannelsRange = [1, sFile.header.nChannels];
 end
+% Get number of samples from the beginning of the file
+SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq);
 
 % Ascii files not supported
 if (sFile.header.nASCII == 1)
@@ -92,6 +94,8 @@ if (numel(F) < nTimes * nReadChannels)
     Ftmp(1:numel(F)) = F(:);
     F = Ftmp;
 end
+% Convert to Volts
+F = F .* 1e-6;
 
 
 

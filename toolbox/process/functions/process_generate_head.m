@@ -5,7 +5,7 @@ function varargout = process_generate_head( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Generate head surface';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 6;
+    sProcess.Index       = 20;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/LabelFreeSurfer#The_head_surface_looks_bad';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};

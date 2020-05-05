@@ -14,7 +14,7 @@ function varargout = process_spikesorting_kilosort( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -78,7 +78,11 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     ProtocolInfo = bst_get('ProtocolInfo');
-    
+
+    % Not available in the compiled version
+    if (exist('isdeployed', 'builtin') && isdeployed)
+        error('This function is not available in the compiled version of Brainstorm.');
+    end
     % Check for Excel writer toolbox
     TestExcel = 'excelWriterTest.xlsx';
     try
@@ -507,10 +511,11 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
         end
         events(index).color       = rand(1,3);
         events(index).epochs      = ones(1,length(spikeTimes(selectedSpikes)));
-        events(index).samples     = spikeTimes(selectedSpikes)'; % The timestamps are in SAMPLES
-        events(index).times       = events(index).samples./sFile.prop.sfreq;
+        events(index).times       = spikeTimes(selectedSpikes)' ./ sFile.prop.sfreq; % The timestamps are in SAMPLES
         events(index).reactTimes  = [];
         events(index).select      = 1;
+        events(index).channels    = cell(1, size(events(index).times, 2));
+        events(index).notes       = cell(1, size(events(index).times, 2));
     end
     
     % Add existing non-spike events for backup
@@ -555,22 +560,53 @@ function downloadAndInstallKiloSort()
         mkdir(KiloSortTmpDir);
     end
     
+    
     % Download KiloSort
     url_KiloSort = 'https://github.com/cortex-lab/KiloSort/archive/master.zip';
     KiloSortZipFile = bst_fullfile(KiloSortTmpDir, 'kilosort.zip');
     if exist(KiloSortZipFile, 'file') ~= 2
         errMsg = gui_brainstorm('DownloadFile', url_KiloSort, KiloSortZipFile, 'KiloSort download');
-        if ~isempty(errMsg)
+        
+        % Check if the download was succesful and try again if it wasn't
+        time_before_entering = clock;
+        updated_time = clock;
+        time_out = 60;% timeout within 60 seconds of trying to download the file
+
+        % Keep trying to download until a timeout is reached
+        while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+            % Try to download until the timeout is reached
+            pause(0.1);
+            errMsg = gui_brainstorm('DownloadFile', url_KiloSort, KiloSortZipFile, 'KiloSort download');
+            updated_time = clock;
+        end
+        % If the timeout is reached and there is still an error, abort
+        if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
             error(['Impossible to download KiloSort.' 10 errMsg]);
         end
     end
+    
+    
     % Download KiloSortWrapper (For conversion to Neurosuite - Klusters)
     url_KiloSort_wrapper = 'https://github.com/brendonw1/KilosortWrapper/archive/master.zip';
     KiloSortWrapperZipFile = bst_fullfile(KiloSortTmpDir, 'kilosort_wrapper.zip');
     if exist(KiloSortWrapperZipFile, 'file') ~= 2
-        errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSort download');
-        if ~isempty(errMsg)
-            error(['Impossible to download KiloSort Wrapper.' 10 errMsg]);
+        errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSortWrapper download');
+        
+        % Check if the download was succesful and try again if it wasn't
+        time_before_entering = clock;
+        updated_time = clock;
+        time_out = 60;% timeout within 60 seconds of trying to download the file
+        
+        % Keep trying to download until a timeout is reached
+        while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+            % Try to download until the timeout is reached
+            pause(0.1);
+            errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSortWrapper download');
+            updated_time = clock;
+        end
+        % If the timeout is reached and there is still an error, abort
+        if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
+            error(['Impossible to download KiloSortWrapper.' 10 errMsg]);
         end
     end
     
@@ -579,17 +615,46 @@ function downloadAndInstallKiloSort()
     PhyZipFile = bst_fullfile(KiloSortTmpDir, 'phy.zip');
     if exist(PhyZipFile, 'file') ~= 2
         errMsg = gui_brainstorm('DownloadFile', url_Phy, PhyZipFile, 'Phy download');
-        if ~isempty(errMsg)
+        
+        % Check if the download was succesful and try again if it wasn't
+        time_before_entering = clock;
+        updated_time = clock;
+        time_out = 60;% timeout within 60 seconds of trying to download the file
+        
+        % Keep trying to download until a timeout is reached
+        while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+            % Try to download until the timeout is reached
+            pause(0.1);
+            errMsg = gui_brainstorm('DownloadFile', url_Phy, PhyZipFile, 'Phy download');
+            updated_time = clock;
+        end
+        % If the timeout is reached and there is still an error, abort
+        if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
             error(['Impossible to download Phy.' 10 errMsg]);
         end
     end
+    
     % Download npy-matlab
     url_npy = 'https://github.com/kwikteam/npy-matlab/archive/master.zip';
     npyZipFile = bst_fullfile(KiloSortTmpDir, 'npy.zip');
     if exist(npyZipFile, 'file') ~= 2
         errMsg = gui_brainstorm('DownloadFile', url_npy, npyZipFile, 'npy-matlab download');
-        if ~isempty(errMsg)
-            error(['Impossible to download npy-Matlab.' 10 errMsg]);
+        
+        % Check if the download was succesful and try again if it wasn't
+        time_before_entering = clock;
+        updated_time = clock;
+        time_out = 60;% timeout within 60 seconds of trying to download the file
+        
+        % Keep trying to download until a timeout is reached
+        while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+            % Try to download until the timeout is reached
+            pause(0.1);
+            errMsg = gui_brainstorm('DownloadFile', url_npy, npyZipFile, 'npy-matlab download');
+            updated_time = clock;
+        end
+        % If the timeout is reached and there is still an error, abort
+        if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
+            error(['Impossible to download npy-matlab.' 10 errMsg]);
         end
     end
     
@@ -689,11 +754,12 @@ function events = LoadKlustersEvents(SpikeSortedMat, iMontage)
             events(index).label       = [spikesPrefix ' ' ChannelsInMontage(iElectrode).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
         end
         events(index).color       = rand(1,3);
-        events(index).samples     = fet(selectedSpikes,end)'; % The timestamps are in SAMPLES
-        events(index).times       = events(index).samples./sFile.prop.sfreq;
-        events(index).epochs      = ones(1,length(events(index).samples));
+        events(index).times       = fet(selectedSpikes,end)' ./ sFile.prop.sfreq;  % The timestamps are in SAMPLES
+        events(index).epochs      = ones(1,length(events(index).times));
         events(index).reactTimes  = [];
         events(index).select      = 1;
+        events(index).channels    = cell(1, size(events(index).times, 2));
+        events(index).notes       = cell(1, size(events(index).times, 2));
     end
 end
 

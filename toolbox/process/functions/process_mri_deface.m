@@ -5,7 +5,7 @@ function varargout = process_mri_deface( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_mri_deface( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019
+% Authors: Francois Tadel, 2019-2020
 %          Inspired from SPM12 function spm_deface
 
 eval(macro_method);
@@ -32,14 +32,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Deface MRI volumes';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 9;
+    sProcess.Index       = 41;
     sProcess.Description = 'https://surfer.nmr.mgh.harvard.edu/fswiki/mri_deface';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
     sProcess.OutputTypes = {'import'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
-    sProcess.isSeparator = 1;
     % Option: Subject name
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
@@ -200,14 +199,19 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
                     end
                 end
                 % Compute cut mask on first volume only
+                mriSize = size(sMri.Cube);
                 if (iFile == 1)
                     % Get MNI transformation
                     vox2mni = cs_convert(sMri, 'voxel', 'mni');
                     % Get cut plane in MRI coordinates
                     cutPlane = OPTIONS.MNIplane * vox2mni;
                     % Get voxel indices under the MNI plane defined in input
-                    [i,j,k] = ndgrid(1:size(sMri.Cube,1), 1:size(sMri.Cube,2), 1:size(sMri.Cube,3));
+                    [i,j,k] = ndgrid(1:mriSize(1), 1:mriSize(2), 1:mriSize(3));
                     iCut = cutPlane(1)*i + cutPlane(2)*j + cutPlane(3)*k + cutPlane(4) < 0;
+                end
+                % Replicate over multiple volumes
+                if (mriSize(4) > 1)
+                    iCut = repmat(iCut, [1 1 1 mriSize(4)]);
                 end
                 % Set to zero the voxels below the plane
                 sMri.Cube(iCut) = 0;
@@ -258,7 +262,14 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
         end
         % Add comment tag
         sMri.Comment = [sMri.Comment, fileTag];
-
+        
+        % Remove initial file header
+        sMri.Header = [];
+        sMri.Histogram = [];
+        % Remove file history (may contain information in the original file names)
+        sMri.History = [];
+        sMri = bst_history('add', sMri, 'process', ['process_mri_deface: ', OPTIONS.Method]);
+        
         % Save defaced MRI
         bst_progress('text', 'Saving results to database...');
         if OPTIONS.isOverwrite

@@ -12,7 +12,7 @@ function [data] = fif_setup_raw(sFile, fid, allow_maxshield)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -37,7 +37,8 @@ function [data] = fif_setup_raw(sFile, fid, allow_maxshield)
 %   or translated to another program language without the
 %   prior written consent of the author.
 %
-%   Adaptations for Brainstorm by Francois Tadel, 2009-2014
+%   Adaptations for Brainstorm by Francois Tadel, 2009-2019
+%   Section about file links copied from MNE-Python 0.19.1
 
 
 %% ===== PARSE INPUT =====
@@ -64,8 +65,8 @@ meas = sFile.header.meas;
 %% ===== LOCATE DATA OF INTEREST =====
 raw = fiff_dir_tree_find(meas,FIFF.FIFFB_RAW_DATA);
 if isempty(raw) && allow_maxshield
-    raw = fiff_dir_tree_find(meas,FIFF.FIFFB_SMSH_RAW_DATA);
-    %warning('Reading FIFFB_SMSH_RAW_DATA.');
+    raw = fiff_dir_tree_find(meas,FIFF.FIFFB_IAS_RAW_DATA);
+    %warning('Reading FIFFB_IAS_RAW_DATA.');
 end
 if isempty(raw)
     raw = fiff_dir_tree_find(meas,FIFF.FIFFB_CONTINUOUS_DATA);
@@ -181,5 +182,38 @@ data.rawdir = rawdir;
 %     double(data.last_samp)/info.sfreq);
 
 
+%% ===== GET LINK TO NEXT FILE =====
+% Initialize references
+data.next_fname = [];
+data.next_num = [];
+data.next_id = [];
+% Find the reference block
+ref = fiff_dir_tree_find(meas,FIFF.FIFFB_REF);
+if ~isempty(ref)
+    for iBlock = 1:length(ref)
+        for k = 1:length(ref(iBlock).dir)
+            ent = ref(iBlock).dir(k);
+            switch (ent.kind)
+                case FIFF.FIFF_REF_ROLE
+                    % Check the role of the reference: accept only "next file"
+                    tag = fiff_read_tag(fid, ent.pos);
+                    if (tag.data ~= FIFF.FIFFV_ROLE_NEXT_FILE)
+                        break;
+                    end
+                case FIFF.FIFF_REF_FILE_NAME
+                    % Get filename of the next linked file
+                    tag = fiff_read_tag(fid, ent.pos);
+                    data.next_fname = tag.data;
+                case FIFF.FIFF_REF_FILE_NUM
+                    % Some files don't have the name, just the number. So we construct the name from the current name.
+                    tag = fiff_read_tag(fid, ent.pos);
+                    data.next_num = tag.data;
+                case FIFF.FIFF_REF_FILE_ID
+                    tag = fiff_read_tag(fid, ent.pos);
+                    data.next_id = tag.data;
+            end
+        end
+    end
+end
 
 

@@ -5,7 +5,7 @@ function sFileOut = out_fopen_brainamp(OutputFile, sFileIn, ChannelMat)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -66,7 +66,7 @@ header.SamplingInterval = 1e6 ./ sFileOut.prop.sfreq;
 header.BinaryFormat     = 'IEEE_FLOAT_32';
 header.bytesize         = 4;
 header.byteformat       = 'float32';
-header.nsamples         = sFileOut.prop.samples(2) - sFileOut.prop.samples(1) + 1;
+header.nsamples         = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) .* sFileOut.prop.sfreq) + 1;
 sFileOut.header = header;
 
 % ===== WRITE VHDR =====

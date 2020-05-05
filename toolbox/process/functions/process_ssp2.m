@@ -10,7 +10,7 @@ function varargout = process_ssp2( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -355,7 +355,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 return;
             end
             % Extended / simple event
-            isExtended = (size(events(iEvt).samples, 1) == 2);
+            isExtended = (size(events(iEvt).times, 1) == 2);
             % Simple events: get the samples to read around each event
             if ~isExtended
                 evtSmpRange = round(evtTimeWindow .* sFile.prop.sfreq);
@@ -387,10 +387,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 bst_progress('set', progressPos + round(iOcc / nOcc * 50));
                 % Simple event: read a time window around the marker
                 if ~isExtended
-                    SamplesBounds = events(iEvt).samples(1,iOcc) + evtSmpRange;
+                    SamplesBounds = round(events(iEvt).times(1,iOcc) .* sFile.prop.sfreq) + evtSmpRange;
                 % Extended event: read the full event
                 else
-                    SamplesBounds = events(iEvt).samples(:,iOcc)' + evtSmpRange;
+                    SamplesBounds = round(events(iEvt).times(:,iOcc)' .* sFile.prop.sfreq) + evtSmpRange;
                 end
                 % Check that this epoch is within the segment of file to consider
                 TimeBounds = SamplesBounds ./ sFile.prop.sfreq;
@@ -402,7 +402,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                     nInfoBad = nInfoBad + 1;
                     continue;
                 % Check if this this segment is  outside of the file bounds
-                elseif (SamplesBounds(1) < sFile.prop.samples(1)) || (SamplesBounds(2) > sFile.prop.samples(2)) 
+                elseif (TimeBounds(1) < sFile.prop.times(1)) || (TimeBounds(2) > sFile.prop.times(2)) 
                     bst_report('Info', sProcess, sInputsA(iFile), sprintf('Event %s #%d is too close to the beginning or end of the file: ignored...', evtName, iOcc));
                     continue;
                 end
@@ -614,13 +614,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 nTimePerBlock = length(TimeVector);
                 nBlock = ceil(size(F,2) / nTimePerBlock);
                 nBlockTotal = ceil(nMinSmp / nTimePerBlock);
-                if isRawA
+                if isRawA && ~isempty(evtName)
                     errMsg = sprintf(' - Add %d events (Total: %d)', nBlockTotal - nBlock, nBlockTotal);
                     if ~isExtended
                         nAddTime = ceil((nMinSmp - size(F,2)) / nBlock / 2);
                         newTimeWin = round([evtSmpRange(1) - nAddTime, evtSmpRange(2) + nAddTime] ./ sFile.prop.sfreq .* 1000);
                         errMsg = sprintf([errMsg, 10, ' - Increase the time window around each event to [%d,%d] ms'], newTimeWin(1), newTimeWin(2));
                     end
+                elseif isRawA && strcmpi(sFile.format, 'CTF') && length(sFile.epochs) > 1
+                    errMsg = ' - Convert the input files to continuous.';
                 else
                     errMsg = sprintf(' - Add %d files in the process list (Total: %d)', nBlockTotal - nBlock, nBlockTotal);
                 end
@@ -834,6 +836,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         sOutput.DataType    = 'recordings';
         sOutput.Device      = 'ArtifactERP';
         sOutput.nAvg        = nAvg;
+        sOutput.Leff        = nAvg;
         % Get output study
         [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputsB);
         sOutputStudy = bst_get('Study', iOutputStudy);
@@ -871,6 +874,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             sOutput.Time        = TimeVector;
             sOutput.ChannelFlag = [];
             sOutput.nAvg        = nAvg;
+            sOutput.Leff        = nAvg;
             % Description of the signals: IC*
             sOutput.Description = cell(size(proj.Components,1),1);
             for i = 1:size(proj.Components,1)

@@ -23,7 +23,7 @@ function varargout = process_spike_field_coherence( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -284,30 +284,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.ParentFiles = {sCurrentInputs.FileName};
 
         % Prepare output file structure
+        FileMat = db_template('timefreqmat');
         FileMat.TF = SFC;
         FileMat.Time = everything(1).Freqs; % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
         FileMat.TFmask = [];
         FileMat.Freqs = 1:nElectrodes;      % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
-        FileMat.Std = [];
         FileMat.Comment = ['Spike Field Coherence: ' uniqueComments{iList}];
         FileMat.DataType = 'data';
-        FileMat.TimeBands = [];
-        FileMat.RefRowNames = [];
         FileMat.RowNames = labelsForDropDownMenu;
         FileMat.Measure = 'power';
         FileMat.Method = 'morlet';
         FileMat.DataFile = []; % Leave blank because multiple parents
-        FileMat.SurfaceFile = [];
-        FileMat.GridLoc = [];
-        FileMat.GridAtlas = [];
-        FileMat.Atlas = [];
-        FileMat.HeadModelFile = [];
-        FileMat.HeadModelType = [];
-        FileMat.nAvg = [];
-        FileMat.ColormapType = [];
-        FileMat.DisplayUnits = [];
         FileMat.Options = tfOPTIONS;
-        FileMat.History = [];
 
         % Add history field
         FileMat = bst_history('add', FileMat, 'compute', ...
@@ -370,8 +358,9 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
 
         % Check that the entire segment around the spikes i.e. :[-150,150]ms
         % is inside the trial segment and keep only those events
-        events_within_segment = trial.Events(spikeEvents(iNeuron)).samples(trial.Events(spikeEvents(iNeuron)).times > trial.Time(1)   + abs(sProcess.options.timewindow.Value{1}(1)) & ...
-                                                                           trial.Events(spikeEvents(iNeuron)).times < trial.Time(end) - abs(sProcess.options.timewindow.Value{1}(2)));
+        iSel = trial.Events(spikeEvents(iNeuron)).times > trial.Time(1)   + abs(sProcess.options.timewindow.Value{1}(1)) & ...
+               trial.Events(spikeEvents(iNeuron)).times < trial.Time(end) - abs(sProcess.options.timewindow.Value{1}(2));
+        events_within_segment = round(trial.Events(spikeEvents(iNeuron)).times(iSel) .* sampling_rate);
 
         %% Create a matrix that holds all the segments around the spike
         % of that neuron, for all electrodes.

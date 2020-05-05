@@ -29,7 +29,7 @@ function varargout = brainstorm( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -142,6 +142,29 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
             cd(current_path);
         end
     end
+    
+    % === INITIALIZE NWB-ECoG LIBRARY ===
+    NWB_ECoGDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB', 'ECoG');        
+    initialization_flag_file = bst_fullfile(NWB_ECoGDir,'NWB_ECoGinitialized.mat');
+    if exist(initialization_flag_file,'file') == 2
+        load(initialization_flag_file);
+        if ~NWB_ECoGinitialized
+            disp('Installing NWB - ECoG library...');
+            % The generateCore needs to run from a specific folder
+            current_path = pwd;
+            cd(NWB_ECoGDir);
+            % Add NWB to Matlab path
+            addpath(genpath(NWB_ECoGDir));
+            % Generate the NWB Schema (First time run)
+            generateCore(bst_fullfile('ecog.namespace.yaml'))
+            % Update Initialization flag
+            NWB_ECoGinitialized = 1;
+            save(bst_fullfile(NWB_ECoGDir,'NWB_ECoGinitialized.mat'), 'NWB_ECoGinitialized');
+            cd(current_path);
+        end
+    end
+    
+    
 
 end
 % Deployed: Remove one of the two JOGL packages from the Java classpath

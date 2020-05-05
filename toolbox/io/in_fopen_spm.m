@@ -5,7 +5,7 @@ function [sFile, ChannelMat] = in_fopen_spm(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -56,8 +56,7 @@ sFile.filename     = MatFile;
 sFile.format       = 'SPM-DAT';
 sFile.prop.sfreq   = double(D.Fsample);
 sFile.prop.nAvg    = 1;
-sFile.prop.samples = round(D.timeOnset(1) .* sFile.prop.sfreq) + [0, (D.Nsamples - 1)];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = (round(D.timeOnset(1) .* sFile.prop.sfreq) + [0, (D.Nsamples - 1)]) ./ sFile.prop.sfreq;
 sFile.channelflag  = ones(nChannels,1);
 sFile.device       = 'SPM';
 sFile.comment      = fBase;
@@ -159,9 +158,10 @@ if isfield(D, 'trials') && isfield(D.trials, 'events') && isfield(D.trials.event
         % Set event
         sFile.events(iEvt).label   = strtrim(uniqueEvt{iEvt});
         sFile.events(iEvt).times   = t;
-        sFile.events(iEvt).samples = round(t .* sFile.prop.sfreq);
         sFile.events(iEvt).epochs  = 1 + 0*t(1,:);
         sFile.events(iEvt).select  = 1;
+        sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+        sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
     end
 end
 

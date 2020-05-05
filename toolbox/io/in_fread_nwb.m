@@ -1,5 +1,5 @@
 function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isContinuous)
-% IN_FREAD_INTAN Read a block of recordings from nwb files
+% IN_FREAD_NWB Read a block of recordings from nwb files
 %
 % USAGE:  F = in_fread_nwb(sFile, SamplesBounds=[], iChannels=[])
 
@@ -7,7 +7,7 @@ function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isCont
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,7 +36,7 @@ nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead 
 
 %% Assign the bounds based on the trials or the continuous selection
 if isempty(SamplesBounds) && isContinuous
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
     timeBounds    = SamplesBounds./sFile.prop.sfreq;
 elseif (~isempty(SamplesBounds) && isContinuous) || (~isempty(SamplesBounds) && ~isContinuous)
     timeBounds    = SamplesBounds./sFile.prop.sfreq;
@@ -66,10 +66,14 @@ F = zeros(nChannels, nSamples);
 % Get the Intracranial signals
 iEEG = 0;
 for iChannel = 1:nChannels
-    if strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'EEG') 
+    if strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'EEG') || strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'SEEG')
         iEEG = iEEG + 1;
-        F(iChannel,:) = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
-    
+        
+        if ~isempty(sFile.header.RawKey)
+            F(iChannel,:) = nwb2.acquisition.get(sFile.header.RawKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
+        else
+            F(iChannel,:) = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
+        end
     else
         % Get the additional/behavioral channels
         if ~isempty(sFile.header.allBehaviorKeys)

@@ -7,7 +7,7 @@ function F = in_fread_brainamp(sFile, sfid, SamplesBounds)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,20 +25,39 @@ function F = in_fread_brainamp(sFile, sfid, SamplesBounds)
 
 % Parse inputs
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
-% BINARY and MULTIPLEXED files
-if (strcmpi(sFile.header.DataFormat, 'BINARY') && strcmpi(sFile.header.DataOrientation, 'MULTIPLEXED'))
+% BINARY files
+if strcmpi(sFile.header.DataFormat, 'BINARY')
     nChan = sFile.header.NumberOfChannels;
-    % Get start and length of block to read
-    offsetData = SamplesBounds(1) * nChan * sFile.header.bytesize;
     nSamplesToRead = SamplesBounds(2) - SamplesBounds(1) + 1;
-    % Position file at the beginning of the data block
-    fseek(sfid, offsetData, 'bof');
-    % Read all values at once
-    F = fread(sfid, [nChan, nSamplesToRead], sFile.header.byteformat);
-    
+    % MULTIPLEXED files
+    if strcmpi(sFile.header.DataOrientation, 'MULTIPLEXED')
+        % Get start and length of block to read
+        offsetData = SamplesBounds(1) * nChan * sFile.header.bytesize;
+        % Position file at the beginning of the data block
+        fseek(sfid, offsetData, 'bof');
+        % Read all values at once
+        F = fread(sfid, [nChan, nSamplesToRead], sFile.header.byteformat);
+    % VECTORIZED
+    elseif strcmpi(sFile.header.DataOrientation, 'VECTORIZED')
+        % Get blocks of samples to skip at the beginning and end of each channel
+        offsetStart = SamplesBounds(1) * sFile.header.bytesize;
+        offsetEnd = (round(sFile.prop.times(2) .* sFile.prop.sfreq) - SamplesBounds(2)) * sFile.header.bytesize;
+        % Blocks of samples to skip between two blocks to read
+        offsetSkip = offsetStart + offsetEnd;
+        % Position file at the beginning of the trial
+        fseek(sfid, offsetStart, 'bof');
+        % Read the requested samples for all the channels
+        % => WARNING: CALL TO FREAD WITH SKIP=0 DOES NOT WORK PROPERLY
+        if (offsetSkip == 0)
+            F = fread(sfid, [nSamplesToRead, nChan], sFile.header.byteformat)';
+        else
+            precision = sprintf('%d*%s', nSamplesToRead, sFile.header.byteformat);
+            F = fread(sfid, [nSamplesToRead, nChan], precision, offsetSkip)';
+        end
+    end
 % ASCII and VECTORIZED files
 elseif (strcmpi(sFile.header.DataFormat, 'ASCII') && strcmpi(sFile.header.DataOrientation, 'VECTORIZED'))
     % Open file
@@ -70,7 +89,7 @@ elseif (strcmpi(sFile.header.DataFormat, 'ASCII') && strcmpi(sFile.header.DataOr
     % Close file
     fclose(fid);
     % Select only the requested time points
-    iTime = (SamplesBounds(1):SamplesBounds(2)) - sFile.prop.samples(1) + 1;
+    iTime = (SamplesBounds(1):SamplesBounds(2)) - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
     F = F(:,iTime);
 end
 

@@ -5,7 +5,7 @@ function [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions, channelsOnl
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,9 +21,13 @@ function [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions, channelsOnl
 %
 % Authors: Martin Cousineau, Francois Tadel, 2018-2019
 
-if bst_get('MatlabVersion') < 803
+if (bst_get('MatlabVersion') < 803)
     error('Importing MFF files requires at least Matlab 2014a.');
 end
+if (exist('isdeployed', 'builtin') && isdeployed)
+    error('Importing MFF files is not supported yet with the compiled version of Brainstorm.');
+end
+
 
 %% ===== PARSE INPUTS =====
 if strcmp(DataFile, 'downloadAndInstallMffLibrary')
@@ -103,8 +107,8 @@ end
 %% ===== DOWNLOAD MFF JAR FILE =====
 function downloadAndInstallMffLibrary()
     % Current up-to-date version
-    mffVer  = 2.02;
-    zipFile = 'mffmatlabio-2.02.zip';
+    mffVer  = 3.1;
+    zipFile = 'mffmatlabio-3.1.zip';
     % Check whether JAR file is in Java path
     [jarPath, jarExists] = bst_get('MffJarFile');
     mffDir = fileparts(jarPath);

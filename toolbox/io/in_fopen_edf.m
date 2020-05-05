@@ -1,13 +1,13 @@
-function [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions)
+function [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptions)
 % IN_FOPEN_EDF: Open a BDF/EDF file (continuous recordings)
 %
-% USAGE:  [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions)
+% USAGE:  [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptions)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2019
         
 
 % Parse inputs
@@ -169,9 +169,21 @@ end
 % Detect interrupted signals (time non-linear)
 hdr.interrupted = ischar(hdr.unknown1) && (length(hdr.unknown1) >= 5) && isequal(hdr.unknown1(1:5), 'EDF+D');
 if hdr.interrupted
-    warning(['Interrupted EDF file ("EDF+D"): requires conversion to "EDF+C". ' 10 ...
+    if ImportOptions.DisplayMessages
+        [res, isCancel] = java_dialog('question', ...
+            ['Interrupted EDF file ("EDF+D") detected. It is recommended to convert it' 10 ...
+            'to a continuous ("EDF+C") file first. Do you want to continue reading this' 10 ...
+            'file as continuous and attempt to fix the timing of event markers?' 10 ...
+            'NOTE: This may not work as intended, use at your own risk!']);
+        hdr.fixinterrupted = ~isCancel && strcmpi(res, 'yes');
+    else
+        hdr.fixinterrupted = 1;
+    end
+    if ~hdr.fixinterrupted
+        warning(['Interrupted EDF file ("EDF+D"): requires conversion to "EDF+C". ' 10 ...
              'Brainstorm will read this file as a continuous file ("EDF+C"), the timing of the samples after the first discontinuity will be wrong.' 10 ...
              'This may not cause any major problem unless there are time markers in the file, they might be inaccurate in all the segments >= 2.']);
+    end
 end
 
 
@@ -327,10 +339,9 @@ if ~isempty(iChanWrongRate)
 end
 
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.signal(iChanFreqRef).sfreq;
-sFile.prop.samples = [0, hdr.signal(iChanFreqRef).nsamples * hdr.nrec - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.signal(iChanFreqRef).sfreq;
+sFile.prop.times = [0, hdr.signal(iChanFreqRef).nsamples * hdr.nrec - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 
 
 
@@ -344,11 +355,11 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
     % Read EDF annotations
     if strcmpi(sFile.format, 'EEG-EDF')
         evtList = {};
-        % Process separately the multiple annotation channels
-        for ichan = 1:length(iEvtChans)
-            % Read annotation channel epoch by epoch
-            for irec = 1:hdr.nrec
-                bst_progress('text', sprintf('Reading annotations... [%d%%]', round((irec + (ichan-1)*hdr.nrec)/length(iEvtChans)/hdr.nrec*100)));
+        % In EDF+, the first annotation channel has epoch time stamps (EDF
+        % calls epochs records).  So read all annotation channels per epoch.
+        for irec = 1:hdr.nrec
+            for ichan = 1:length(iEvtChans)
+                bst_progress('text', sprintf('Reading annotations... [%d%%]', round((ichan + (irec-1)*length(iEvtChans))/length(iEvtChans)/hdr.nrec*100)));
                 % Sample indices for the current epoch (=record)
                 SampleBounds = [irec-1,irec] * sFile.header.signal(iEvtChans(ichan)).nsamples - [0,1];
                 % Read record
@@ -358,11 +369,41 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                 if isempty(Fsplit)
                     continue;
                 end
-                % Get first time stamp
-                if (irec == 1)
-                    t0 = str2double(char(Fsplit{1}));
+                if ichan == 1
+                    % Get record time stamp
+                    t0_rec = str2double(char(Fsplit{1}));
+                    if (irec == 1)
+                        t0_file = t0_rec;
+                    % Find discontinuities
+                    elseif abs(t0_rec - prev_rec - hdr.reclen) > 1e-8
+                        % Brainstorm fills partial/interrupted records with zeros
+                        bstTime = prev_rec + hdr.reclen;
+                        timeDiff = bstTime - t0_rec;
+                        % If we want to fix timing, apply skip to initial timestamp
+                        if hdr.fixinterrupted
+                            t0_file = t0_file - timeDiff;
+                        end
+                        % Warn user of discontinuity
+                        if timeDiff > 0
+                            expectMsg = 'blank data';
+                        else
+                            expectMsg = 'skipped data';
+                        end
+                        startTime = min(t0_rec - t0_file - [0, timeDiff]); % before and after t0_file adjustment
+                        endTime  = max(t0_rec - t0_file - [0, timeDiff]);
+                        fprintf('WARNING: Found discontinuity between %.3fs and %.3fs, expect %s in between.\n', startTime, endTime, expectMsg);
+                        % Create event for users information
+                        if timeDiff < 0
+                            endTime = startTime; % no extent in this case, there is skipped time.
+                        end
+                        evtList(end+1,:) = {'EDF+D Discontinuity', [startTime; endTime]};
+                    end
+                    prev_rec = t0_rec;
                 end
-                % If there is an initial time: 3 values (ex: "+44.00000+44.47200Event1)
+                
+                %% FIXME: There can be multiple text annotations (separated by 20) for a single onset/duration.
+                %% The zero characters should not be removed above as they delimit the TALs (Time-stamped Annotations Lists)
+                % If there is an initial time: 3 values (ex: "+44.00000+44.47200Event1Event2)
                 if (mod(length(Fsplit),2) == 1) && (length(Fsplit) >= 3)
                     iStart = 2;
                 % If there is no initial time: 2 values (ex: "+44.00000Epoch1)
@@ -395,7 +436,7 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                         continue;
                     end
                     % Add to list of read events
-                    evtList(end+1,:) = {label, (t-t0) + [0;duration]};
+                    evtList(end+1,:) = {label, (t-t0_file) + [0;duration]};
                 end
             end
         end
@@ -418,18 +459,19 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                     t = t(1,:);
                 end
                 % Set event
-                sFile.events(iEvt).label   = strtrim(uniqueEvt{iEvt});
-                sFile.events(iEvt).times   = t;
-                sFile.events(iEvt).samples = round(t .* sFile.prop.sfreq);
-                sFile.events(iEvt).epochs  = 1 + 0*t(1,:);
-                sFile.events(iEvt).select  = 1;
+                sFile.events(iEvt).label    = strtrim(uniqueEvt{iEvt});
+                sFile.events(iEvt).times    = round(t .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+                sFile.events(iEvt).epochs   = 1 + 0*t(1,:);
+                sFile.events(iEvt).select   = 1;
+                sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+                sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
             end
         end
         
     % BDF Status line
-    elseif strcmpi(sFile.format, 'EEG-BDF')
+    elseif strcmpi(sFile.format, 'EEG-BDF') && ~strcmpi(ImportOptions.EventsTrackMode, 'ignore')
         % Ask how to read the events
-        events = process_evt_read('Compute', sFile, ChannelMat, ChannelMat.Channel(iEvtChans).Name, ImportOptions.EventsTrackMode);
+        [events, ImportOptions.EventsTrackMode] = process_evt_read('Compute', sFile, ChannelMat, ChannelMat.Channel(iEvtChans).Name, ImportOptions.EventsTrackMode);
         if isequal(events, -1)
             sFile = [];
             ChannelMat = [];

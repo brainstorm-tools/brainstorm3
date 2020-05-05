@@ -7,7 +7,7 @@ function [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -53,7 +53,6 @@ sFile.device   = 'Brainstorm';
 sFile.comment  = DataMat(1).Comment;
 sFile.prop.times   = [DataMat(1).Time(1), DataMat(1).Time(end)];
 sFile.prop.sfreq   = 1 ./ (DataMat(1).Time(2) - DataMat(1).Time(1));
-sFile.prop.samples = round(sFile.prop.times .* sFile.prop.sfreq);
 sFile.prop.currCtfComp = 3;
 sFile.prop.destCtfComp = 3;
 if isfield(DataMat(1), 'Events') && ~isempty(DataMat(1).Events)

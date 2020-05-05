@@ -12,7 +12,7 @@ function [ChannelMat, Device] = in_channel_fif( sFile, ImportOptions )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -147,8 +147,9 @@ else
     end
 end
 
-% Save initial EEG electrodes positions
+% Calculate transformations
 if ~isempty(info.chs)
+    % Save initial EEG electrodes positions
     oldEegLoc = {info.chs.eeg_loc};
     % Transform coil and electrode locations to the desired coordinate frame
     for i = 1:length(meg_trans)
@@ -182,6 +183,7 @@ end
 % Load coils definition file
 templates = mne_load_coil_def(coil_def_file);
 Accuracy = 1;
+%transform to ctf coordinate system
 info.chs = mne_add_coil_defs(info.chs,Accuracy,templates);
 % fprintf(1,'\nReady.\n\n');
 

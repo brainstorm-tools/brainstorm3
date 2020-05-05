@@ -14,7 +14,7 @@ function varargout = process_spikesorting_ultramegasort2000( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function varargout = process_spikesorting_ultramegasort2000( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018-2019; Martin Cousineau, 2018
 
 eval(macro_method);
 end
@@ -91,6 +91,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     ProtocolInfo = bst_get('ProtocolInfo');
     
+    % Not available in the compiled version
+    if (exist('isdeployed', 'builtin') && isdeployed)
+        bst_report('Error', sProcess, sInputs, 'This function is not available in the compiled version of Brainstorm.');
+        return
+    end
     if sProcess.options.binsize.Value{1} <= 0
         bst_report('Error', sProcess, sInputs, 'Invalid maximum amount of RAM specified.');
         return
@@ -268,8 +273,22 @@ function downloadAndInstallUltraMegaSort2000()
     % Download file
     zipFile = bst_fullfile(UltraMegaSort2000TmpDir, 'master.zip');
     errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'UltraMegaSort2000 download');
-    if ~isempty(errMsg)
-        error(['Impossible to download UltraMegaSort2000:' errMsg]);
+    
+    % Check if the download was succesful and try again if it wasn't
+    time_before_entering = clock;
+    updated_time = clock;
+    time_out = 60;% timeout within 60 seconds of trying to download the file
+    
+    % Keep trying to download until a timeout is reached
+    while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+        % Try to download until the timeout is reached
+        pause(0.1);
+        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'UltraMegaSort2000 download');
+        updated_time = clock;
+    end
+    % If the timeout is reached and there is still an error, abort
+    if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
+        error(['Impossible to download UltraMegaSort2000.' 10 errMsg]);
     end
     % Unzip file
     bst_progress('start', 'UltraMegaSort2000', 'Installing UltraMegaSort2000...');

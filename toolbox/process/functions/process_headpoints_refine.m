@@ -4,7 +4,7 @@ function varargout = process_headpoints_refine( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -29,8 +29,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Refine registration';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 21;
+    sProcess.SubGroup    = {'Import', 'Channel file'};
+    sProcess.Index       = 60;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ChannelFile#Automatic_registration';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};

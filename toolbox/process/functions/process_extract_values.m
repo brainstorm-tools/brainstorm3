@@ -8,7 +8,7 @@ function varargout = process_extract_values( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_extract_values( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2016
+% Authors: Francois Tadel, 2015-2020
 
 eval(macro_method);
 end
@@ -317,7 +317,7 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
     end
     % Do not accept PAC files
     if ~isempty(strfind(sInputs(1).FileName, '_pac'))|| ~isempty(strfind(sInputs(1).FileName, '_dpac'))
-        bst_report('Error', sProcess, sInputs(1), 'Connectivity and PAC files are not supported yet. Ask on the forum if you need it.');
+        bst_report('Error', sProcess, sInputs(1), 'PAC files are not supported yet. Ask on the forum if you need it.');
         return;
     end
     
@@ -404,6 +404,7 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
             FileMat.Comment     = sLoaded.Comment;
             FileMat.Time        = sLoaded.Time;
             FileMat.nAvg        = sLoaded.nAvg;
+            FileMat.Leff        = sLoaded.Leff;
             FileMat.SurfaceFile = sLoaded.SurfaceFile;
             FileMat.Atlas       = sLoaded.Atlas;
             % Interpret as matrix file in the rest of the function
@@ -529,6 +530,11 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
             % Cannot do any sensor selection on connectivity NxN results
             if isfield(FileMat, 'RefRowNames') && (length(FileMat.RefRowNames) > 1)
                 bst_report('Error', sProcess, sInputs(iInput), 'Cannot select rows for connectivity [NxN] results.');
+                return;
+            end
+            % Cannot select signals in sources results
+            if ~isempty(Description) && isnumeric(Description)
+                bst_report('Error', sProcess, sInputs(iInput), 'Cannot select rows in source maps.');
                 return;
             end
             % Try to find row names in the file
@@ -763,10 +769,12 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
         newMat{1}.HeadModelType = LoadedMat{1}.HeadModelType;
         newMat{1}.SurfaceFile   = LoadedMat{1}.SurfaceFile;
         newMat{1}.nAvg          = LoadedMat{1}.nAvg;
+        newMat{1}.Leff          = LoadedMat{1}.Leff;
     % Else: Create a new empty matrix structure
     else
         newMat = {db_template('matrixmat')};
         newMat{1}.nAvg = LoadedMat{1}.nAvg;
+        newMat{1}.Leff = LoadedMat{1}.Leff;
         if (OPTIONS.Dim == 0)
             newMat = repmat(newMat, 1, length(LoadedMat));
             % Copy channel names
@@ -775,6 +783,7 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
                     newMat{i}.Description = LoadedMat{i}.Description;
                     newMat{i}.ChannelFlag = LoadedMat{i}.ChannelFlag;
                     newMat{i}.nAvg        = LoadedMat{i}.nAvg;
+                    newMat{i}.Leff        = LoadedMat{i}.Leff;
                 end
             end
         end

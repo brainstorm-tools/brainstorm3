@@ -8,7 +8,7 @@ function varargout = panel_filter(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = panel_filter(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2019
 
 eval(macro_method);
 end
@@ -74,9 +74,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jTextSinRem.setEnabled(0);
         jLabelSinRem = gui_component('label', jPanelFilter, [], ' Hz');
         % === MIRROR ===
-        jCheckMirror = gui_component('checkbox', jPanelFilter, 'br', 'Mirror signal before filtering', [], [], @CheckMirror_Callback);
+        % jCheckMirror = gui_component('checkbox', jPanelFilter, 'br', 'Mirror signal before filtering', [], [], @CheckMirror_Callback);
         % === FILTER SOURCES ===
-        jCheckFullSources = gui_component('checkbox', jPanelFilter, 'br', 'Filter full source files', [], [], @CheckFullSources_Callback);
+        jCheckFullSources = gui_component('checkbox', jPanelFilter, 'br', 'Filter all results', [], [], @CheckFullSources_Callback);
     jPanelTop.add(jPanelFilter, BorderLayout.CENTER);
            
     % Create the BstPanel object that is returned by the function
@@ -92,7 +92,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jCheckSinRem',    jCheckSinRem, ...
                                   'jTextSinRem',     jTextSinRem, ...
                                   'jLabelSinRem',    jLabelSinRem, ...
-                                  'jCheckMirror',    jCheckMirror, ...
+                                  ... 'jCheckMirror',    jCheckMirror, ...
                                   'jCheckFullSources', jCheckFullSources));
                                                             
 
@@ -120,14 +120,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         UpdatePanel();
         ApplyFilters();
     end
-    % ===== MIRROR CHECK BOX =====
-    function CheckMirror_Callback(varargin)
-        global GlobalData;
-        GlobalData.VisualizationFilters.MirrorEnabled = jCheckMirror.isSelected();
-        if GlobalData.VisualizationFilters.SinRemovalEnabled || GlobalData.VisualizationFilters.LowPassEnabled || GlobalData.VisualizationFilters.HighPassEnabled
-            ApplyFilters();
-        end
-    end
+%     % ===== MIRROR CHECK BOX =====
+%     function CheckMirror_Callback(varargin)
+%         global GlobalData;
+%         GlobalData.VisualizationFilters.MirrorEnabled = jCheckMirror.isSelected();
+%         if GlobalData.VisualizationFilters.SinRemovalEnabled || GlobalData.VisualizationFilters.LowPassEnabled || GlobalData.VisualizationFilters.HighPassEnabled
+%             ApplyFilters();
+%         end
+%     end
     % ===== FULL SOURCES CHECKBOX =====
     function CheckFullSources_Callback(varargin)
         global GlobalData;
@@ -231,7 +231,7 @@ function UpdatePanel()
     ctrl.jCheckHighpass.setSelected(Filters.HighPassEnabled);
     ctrl.jCheckLowpass.setSelected(Filters.LowPassEnabled);
     ctrl.jCheckSinRem.setSelected(Filters.SinRemovalEnabled);
-    ctrl.jCheckMirror.setSelected(Filters.MirrorEnabled);
+    % ctrl.jCheckMirror.setSelected(Filters.MirrorEnabled);
     ctrl.jCheckFullSources.setSelected(Filters.FullSourcesEnabled);
     % Change tab color
     if (Filters.HighPassEnabled || Filters.LowPassEnabled || (Filters.SinRemovalEnabled && ~isempty(Filters.SinRemovalValue)))

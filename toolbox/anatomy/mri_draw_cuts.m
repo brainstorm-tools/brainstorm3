@@ -30,7 +30,7 @@ function [hCuts, OutputOptions] = mri_draw_cuts(hFig, OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -44,8 +44,9 @@ function [hCuts, OutputOptions] = mri_draw_cuts(hFig, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2006-2018
+% Authors: Francois Tadel, 2006-2020
 
+global GlobalData;
 
 %% ===== INITIALIZATION =====
 isOverlay = ~isempty(OPTIONS.OverlayCube);
@@ -70,7 +71,12 @@ switch (FigureId.Type)
         Handles = bst_figures('GetFigureHandles', hFig);
         hTarget = [Handles.imgs_mri, Handles.imgc_mri, Handles.imga_mri];
 end
-
+% Get index for 4th dimension ("time")
+if ~isempty(GlobalData.UserTimeWindow.NumberOfSamples) && (size(OPTIONS.sMri.Cube, 4) == GlobalData.UserTimeWindow.NumberOfSamples) && (GlobalData.UserTimeWindow.CurrentTime == round(GlobalData.UserTimeWindow.CurrentTime))
+    i4 = GlobalData.UserTimeWindow.CurrentTime;
+else
+    i4 = 1;
+end
 
 
 %% ===== DISPLAY SLICES =====
@@ -85,7 +91,7 @@ for iCoord = 1:3
     if OPTIONS.isMipAnatomy 
         % If the maximum is not yet computed: compute it
         if isempty(OPTIONS.MipAnatomy{iCoord})
-            sliceMri = double(mri_getslice(OPTIONS.sMri.Cube, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipAnatomy)');
+            sliceMri = double(mri_getslice(OPTIONS.sMri.Cube(:,:,:,i4), OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipAnatomy)');
             OutputOptions.MipAnatomy{iCoord} = sliceMri;
         % Else: use the previously computed maximum
         else
@@ -93,7 +99,7 @@ for iCoord = 1:3
         end
     % Else: just extract a slice from the volume
     else
-        sliceMri = double(mri_getslice(OPTIONS.sMri.Cube, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipAnatomy)');
+        sliceMri = double(mri_getslice(OPTIONS.sMri.Cube(:,:,:,i4), OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipAnatomy)');
     end
     
     % === GET OVERLAY SLICE ===

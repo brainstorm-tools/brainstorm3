@@ -12,7 +12,7 @@ function [sFile, ChannelMat] = in_fopen_cnt(DataFile, ImportOptions)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -50,9 +50,8 @@ sFile.header     = hdr;
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
 % Time and samples indices
-sFile.prop.samples = [0, hdr.data.numsamples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.times = [0, hdr.data.numsamples - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % Get bad channels
 sFile.channelflag = ones(length(hdr.electloc),1);
 sFile.channelflag([hdr.electloc.bad] == 1) = -1;
@@ -179,13 +178,19 @@ if ~isempty(hdr.events)
         newColor = ColorTable(iColor,:);
         
         % Add events occurrence
-        iEvt = length(sFile.events(iEvtGroup).samples) + 1;
+        iEvt = length(sFile.events(iEvtGroup).times) + 1;
         sFile.events(iEvtGroup).color            = newColor;
         sFile.events(iEvtGroup).epochs(iEvt)     = 1;
-        sFile.events(iEvtGroup).samples(iEvt)    = Events(i).iTime;
         sFile.events(iEvtGroup).times(iEvt)      = evtTime;
         sFile.events(iEvtGroup).reactTimes(iEvt) = reactTime;
         sFile.events(iEvtGroup).select           = select;
+        if (iEvt == 1)
+            sFile.events(iEvtGroup).channels = {{}};
+            sFile.events(iEvtGroup).notes    = {[]};
+        else
+            sFile.events(iEvtGroup).channels{iEvt} = {};
+            sFile.events(iEvtGroup).notes{iEvt}    = [];
+        end
     end
     
     % Get events groups that have no multiple responses
@@ -210,30 +215,33 @@ if ~isempty(hdr.rejected_segments)
     end
     % Create new event
     badEvt = db_template('event');
-    badEvt.label   = evtLabel;
-    badEvt.color   = [1 0 0];
-    badEvt.epochs  = ones(1, size(hdr.rejected_segments,1));
-    badEvt.samples = hdr.rejected_segments';
-    badEvt.times   = badEvt.samples / sFile.prop.sfreq;
-    badEvt.select  = 0;
+    badEvt.label    = evtLabel;
+    badEvt.color    = [1 0 0];
+    badEvt.epochs   = ones(1, size(hdr.rejected_segments,1));
+    badEvt.times    = hdr.rejected_segments' ./ sFile.prop.sfreq;
+    badEvt.select   = 0;
+    badEvt.channels = cell(1, size(badEvt.times, 2));
+    badEvt.notes    = cell(1, size(badEvt.times, 2));
     sFile.events(iEvtGroup) = badEvt;
 end
 
-%% ===== CREATE DUMMY CHANNEL FILE =====
+%% ===== CHANNEL FILE =====
+% Create channel file structure
+ChannelMat = db_template('channelmat');
+ChannelMat.Comment = 'CNT 2D channels';
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, length(hdr.electloc)]);
 % Center of electrodes loc
 x_center = (max([hdr.electloc.x_coord]) + min([hdr.electloc.x_coord])) / 2;
 y_center = (max([hdr.electloc.y_coord]) + min([hdr.electloc.y_coord])) / 2;
 for i = 1:length(hdr.electloc)
-    Channel(i).Name    = hdr.electloc(i).lab;
-    Channel(i).Type    = 'EEG';
-    Channel(i).Loc     = [-hdr.electloc(i).y_coord + y_center; -hdr.electloc(i).x_coord/2 + x_center/2; 0] ./ 100;
-    Channel(i).Orient  = [];
-    Channel(i).Weight  = 1;
-    Channel(i).Comment = [];    
+    ChannelMat.Channel(i).Name    = hdr.electloc(i).lab;
+    ChannelMat.Channel(i).Type    = 'EEG';
+    ChannelMat.Channel(i).Loc     = [-hdr.electloc(i).y_coord + y_center; -hdr.electloc(i).x_coord/2 + x_center/2; 0] ./ 500;
+    ChannelMat.Channel(i).Orient  = [];
+    ChannelMat.Channel(i).Weight  = 1;
+    ChannelMat.Channel(i).Comment = [];    
 end
-% Create Channel file structure
-ChannelMat = db_template('channelmat');
-ChannelMat.Comment = 'CNT 2D channels';
-ChannelMat.Channel = Channel;
+
+
      
 

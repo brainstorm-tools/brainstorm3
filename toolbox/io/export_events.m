@@ -14,7 +14,7 @@ function export_events(sFile, ChannelMat, OutputFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -82,6 +82,8 @@ if isempty(OutputFile)
             OutputFile = bst_fullfile(fPath, 'MarkerFile-bst.mrk');
         case 'FIF'
             OutputFile = bst_fullfile(fPath, [fBase, '.eve']);
+        case 'GRAPH'
+            OutputFile = bst_fullfile(fPath, ['events_' fBase, '.evl']);
         case {'ARRAY-TIMES', 'ARRAY-SAMPLES'}
             OutputFile = bst_fullfile(fPath, [file_standardize(sFile.events(1).label), '.txt']);
         case 'CSV-TIME'
@@ -101,9 +103,10 @@ if isempty(OutputFile)
          {'.vmrk'},         'BrainVision BrainAmp (*.vmrk)', 'BRAINAMP'; ...
          {'.mrk'},          'CTF MarkerFile (*.mrk)',       'CTF'; ...
          {'.eve','.fif'},   'Elekta-Neuromag/MNE (*.eve)',  'FIF'; ...
+         {'.evl'},          'Elekta-Neuromag Graph (Alternative Style) (*.evl)', 'GRAPH_ALT'; ...
          {'.txt'},          'Array of times (*.txt)',       'ARRAY-TIMES'; ... 
          {'.txt'},          'Array of samples (*.txt)',     'ARRAY-SAMPLES'; ...
-         {'.txt','.csv'},   'CSV text file: label,time (*.txt;*.csv)', 'CSV-TIME'; ...
+         {'.txt','.csv'},   'CSV text file: label, time, duration (*.txt;*.csv)', 'CSV-TIME'; ...
          {'.txt'},          'CTF Video Times (*.txt)',      'CTFVIDEO'}, ...
          DefaultFormats.EventsOut);
     % If no file was selected: exit
@@ -121,6 +124,7 @@ else
         case '.vmrk',  FileFormat = 'BRAINAMP';
         case '.mrk',   FileFormat = 'CTF';
         case '.eve',   FileFormat = 'FIF';
+        case '.evl',   FileFormat = 'GRAPH_ALT';
         case '.txt',   FileFormat = 'ARRAY-TIMES';
         case '.csv',   FileFormat = 'CSV-TIME';
     end
@@ -144,6 +148,8 @@ switch FileFormat
             OutputFile(end-4:end) = '.eve';
         end
         out_events_eve(sFile, OutputFile);
+    case 'GRAPH_ALT' 
+        out_events_graph(sFile, OutputFile,'alternativeStyle');
     case 'CSV-TIME'
         out_events_csv(sFile, OutputFile);
     case 'ARRAY-TIMES'
@@ -160,7 +166,7 @@ switch FileFormat
         if (length(sFile.events) > 1)
             error('Cannot export more than one event at a time with this format.');
         end
-        eve = sFile.events.samples;
+        eve = round(sFile.events.times * sFile.prop.sfreq);
         strEve = sprintf(['%d' 10], round(eve));
         % Save file
         fid = fopen(OutputFile, 'w');

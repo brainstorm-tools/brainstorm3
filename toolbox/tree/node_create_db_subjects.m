@@ -1,4 +1,4 @@
-function bstDefaultNode = node_create_db_subjects( nodeRoot )
+function [bstDefaultNode, nodeSubjectsDB, numTotalElems] = node_create_db_subjects( nodeRoot , iSearch )
 % NODE_CREATE_DB_SUBJECTS: Create a tree to represent the subjects registered in current protocol.
 % Populate a tree from its root node.
 %
@@ -6,15 +6,18 @@ function bstDefaultNode = node_create_db_subjects( nodeRoot )
 %
 % INPUT: 
 %    - nodeRoot       : BstNode Java object (tree root)
+%    - iSearch        : ID of the active DB search, or empty/0 if none
 % OUTPUT: 
 %    - bstDefaultNode : default BstNode, that should be expanded and selected automatically
 %                       or empty matrix if no default node is defined
+%    - nodeSubjectsDB : Root node of the subjects database tree
+%    - numTotalElems  : Total number of nodes created
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,17 +31,24 @@ function bstDefaultNode = node_create_db_subjects( nodeRoot )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2010
+% Authors: Francois Tadel, 2008-2020
+%          Martin Cousineau, 2019-2020
 
 import org.brainstorm.tree.*;
 
 %% ===== PARSE INPUTS =====
-if (nargin ~= 1) || ~isa(nodeRoot, 'org.brainstorm.tree.BstNode')
+if (nargin < 1) || ~isa(nodeRoot, 'org.brainstorm.tree.BstNode')
     error('Usage : node_create_db_subjects(nodeRoot, ProtocolSubjects)');
 end
+if nargin < 2 || isempty(iSearch)
+    iSearch = 0;
+end
+showParentNodes = node_show_parents(iSearch);
 
 % Set default node
 bstDefaultNode = [];
+nodeSubjectsDB = [];
+numTotalElems  = 0;
 % Get current protocol subjects list
 ProtocolSubjects = bst_get('ProtocolSubjects');
 if (isempty(ProtocolSubjects))
@@ -65,14 +75,17 @@ if ~isempty(ProtocolSubjects.DefaultSubject)
     % Create subject node
     nodeSubject = BstNode('subject', '');
     % Fill it with MRI and surfaces children nodes
-    node_create_subject( nodeSubject, ProtocolSubjects.DefaultSubject, 0);
-    % Add subject node to 'Subjects database' node
-    nodeSubjectsDB.add(nodeSubject);
-    
-    % If default subject is the subject associated with the default study
-    % Mark it as the default subject
-    if file_compare(selectedSubjectFileName, ProtocolSubjects.DefaultSubject.FileName)
-        bstDefaultNode = nodeSubject;
+    numElems = node_create_subject(nodeSubject, nodeSubjectsDB, ProtocolSubjects.DefaultSubject, 0, iSearch);
+    % Add new node if it has elements that passed the search filter
+    if numElems > 0 && showParentNodes
+        % Add subject node to 'Subjects database' node
+        nodeSubjectsDB.add(nodeSubject);
+        numTotalElems = numTotalElems + numElems;
+        % If default subject is the subject associated with the default study
+        % Mark it as the default subject
+        if file_compare(selectedSubjectFileName, ProtocolSubjects.DefaultSubject.FileName)
+            bstDefaultNode = nodeSubject;
+        end
     end
 end
 
@@ -93,14 +106,16 @@ for i = 1:length(iSubjectsSorted)
     nodeSubject = BstNode('subject', '');
     % Fill it with MRI and surfaces children nodes
     try
-        node_create_subject( nodeSubject, ProtocolSubjects.Subject(iSubject), iSubject);
+        numElems = node_create_subject(nodeSubject, nodeSubjectsDB, ProtocolSubjects.Subject(iSubject), iSubject, iSearch);
         % Add subject node to 'Subjects database' node
-        nodeSubjectsDB.add(nodeSubject);
-
-        % If current subject is the subject associated with the default study
-        % Mark it as the default subject
-        if file_compare(selectedSubjectFileName, ProtocolSubjects.Subject(iSubject).FileName)
-            bstDefaultNode = nodeSubject;
+        if numElems > 0 && showParentNodes
+            nodeSubjectsDB.add(nodeSubject);
+            numTotalElems = numTotalElems + numElems;
+            % If current subject is the subject associated with the default study
+            % Mark it as the default subject
+            if file_compare(selectedSubjectFileName, ProtocolSubjects.Subject(iSubject).FileName)
+                bstDefaultNode = nodeSubject;
+            end
         end
     catch
         % Could not create node

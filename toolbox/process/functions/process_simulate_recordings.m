@@ -7,7 +7,7 @@ function varargout = process_simulate_recordings( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -203,15 +203,20 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     F(iChannels,:) = HeadModelMat.Gain(iChannels,:) * ImageGridAmp;
     % Add noise SNR2 (sensor noise) 
     if isNoise && (SNR2 > 0)
-        % Load the noise covariance matrix
-        NoiseCovMat = load(file_fullpath(sStudyChannel.NoiseCov(1).FileName));
-        % Compute noise signals from noise covariance matric
-        xn = get_noise_signals (NoiseCovMat.NoiseCov(iChannels,iChannels), nTime);
-        xnn = xn./max(max(xn)); % Noise signal between 0 and 1
-        xns = xnn.*max(max(F(iChannels,:))); % Make the noise of similar amplitude than the signal
-        % Add noise to recordings
-        F(iChannels,:) = F(iChannels,:) + SNR2*xns; % Apply the SNR2
-        strNoise = [strNoise, ',Nsc=', num2str(SNR2)];
+        % Check if noise covariance matrix exists
+        if isempty(sStudyChannel.NoiseCov) || isempty(sStudyChannel.NoiseCov.FileName)
+            bst_report('Error', sProcess, [], 'No noise covariance matrix available, cannot add sensor noise.');
+        else
+            % Load the noise covariance matrix
+            NoiseCovMat = load(file_fullpath(sStudyChannel.NoiseCov(1).FileName));
+            % Compute noise signals from noise covariance matric
+            xn = get_noise_signals (NoiseCovMat.NoiseCov(iChannels,iChannels), nTime);
+            xnn = xn./max(max(xn)); % Noise signal between 0 and 1
+            xns = xnn.*max(max(F(iChannels,:))); % Make the noise of similar amplitude than the signal
+            % Add noise to recordings
+            F(iChannels,:) = F(iChannels,:) + SNR2*xns; % Apply the SNR2
+            strNoise = [strNoise, ',Nsc=', num2str(SNR2)];
+        end
     end
     
     % === SAVE RECORDINGS ===
@@ -224,6 +229,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     DataMat.DataType    = 'recordings';
     DataMat.Device      = 'simulation';
     DataMat.nAvg        = 1;
+    DataMat.Leff        = 1;
     DataMat.Events      = [];
     % Add history entry
     DataMat = bst_history('add', DataMat, 'simulate', ['Simulated from file: ' sInput.FileName]);
@@ -249,12 +255,14 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         ResultsMat.DataFile      = file_short(DataFile);
         ResultsMat.HeadModelFile = HeadModelFile;
         ResultsMat.HeadModelType = HeadModelMat.HeadModelType;
+        if ~strcmpi(HeadModelMat.HeadModelType, 'surface')
+            ResultsMat.GridLoc    = HeadModelMat.GridLoc;
+            ResultsMat.GridOrient = HeadModelMat.GridOrient;
+            ResultsMat.GridAtlas  = HeadModelMat.GridAtlas;
+        end
         ResultsMat.ChannelFlag   = [];
         ResultsMat.GoodChannel   = iChannels;
         ResultsMat.SurfaceFile   = SurfaceFile;
-        ResultsMat.GridLoc       = HeadModelMat.GridLoc;
-        ResultsMat.GridOrient    = HeadModelMat.GridOrient;
-        ResultsMat.GridAtlas     = HeadModelMat.GridAtlas;
         % Add history entry
         ResultsMat = bst_history('add', ResultsMat, 'simulate', ['Simulated from file: ' sInput.FileName]);
         % Output filename

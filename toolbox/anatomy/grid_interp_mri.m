@@ -19,7 +19,7 @@ function grid2mri_interp = grid_interp_mri(GridLoc, MRI, SurfaceFile, isWait, nD
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +34,7 @@ function grid2mri_interp = grid_interp_mri(GridLoc, MRI, SurfaceFile, isWait, nD
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2006 (University of Geneva)
-%          Francois Tadel, 2008-2017 (USC/McGill)
+%          Francois Tadel, 2008-2020 (USC/McGill)
 
 % Show progress bar
 if (nargin < 7) || isempty(GridSmooth)
@@ -65,7 +65,7 @@ if ~isfield(MRI,'SCS') || ~isfield(MRI.SCS,'R') || ~isfield(MRI.SCS,'T') || isem
     error(['MRI SCS (Subject Coordinate System) was not defined or subjectimage file is from another version of Brainstorm.' 10 10,...
            'Please define the SCS fiducials on this MRI.']);
 end
-cubeSize = size(MRI.Cube);
+cubeSize = size(MRI.Cube(:,:,:,1));
 % Convert coordinates
 GridLoc = cs_convert(MRI, 'scs', 'voxel', GridLoc);
 
@@ -109,7 +109,7 @@ if ~isempty(SurfaceFile)
     % Get brain mask
     mrimask = bst_memory('GetSurfaceMask', SurfaceFile);
 else
-    mrimask = (MRI.Cube ~= 0);
+    mrimask = (MRI.Cube(:,:,:,1) ~= 0);
 end
 % Number of neighbors to consider
 if (GridSmooth == 0)

@@ -11,7 +11,7 @@ function hFig = view_mri_histogram( MriFile )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -39,7 +39,7 @@ if ~isfield(MRI, 'Histogram') || isempty(MRI.Histogram)
     % Load full MRI
     MRI = load(MriFile);
     % Compute histogram
-    Histogram = mri_histogram(MRI.Cube);
+    Histogram = mri_histogram(MRI.Cube(:,:,:,1));
     % Save histogram
     s.Histogram = Histogram;
     bst_save(MriFile, s, 'v7', 1);
@@ -53,6 +53,7 @@ clear MRI
 % Create figure
 hFig = figure('Name',        'MRI Histogram', ...
               'Color',        get(0,'defaultUicontrolBackgroundColor'), ...
+              'Pointer',      'arrow', ...
               'NumberTitle',  'off', ...
               'DockControls', 'off', ...
               'Menubar',      'none', ...

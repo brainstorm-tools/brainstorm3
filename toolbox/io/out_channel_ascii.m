@@ -21,7 +21,7 @@ function out_channel_ascii( BstFile, OutputFile, Format, isEEG, isHeadshape, isH
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -65,7 +65,7 @@ Loc    = zeros(3,0);
 Label  = {};
 if isEEG && isfield(BstMat, 'Channel') && ~isempty(BstMat.Channel)
     for i = 1:length(BstMat.Channel)
-        if ~isempty(BstMat.Channel(i).Loc) && ~all(BstMat.Channel(i).Loc == 0)
+        if ~isempty(BstMat.Channel(i).Loc) && ~all(BstMat.Channel(i).Loc(:) == 0)
             Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
             Label{end+1} = strrep(BstMat.Channel(i).Name, ' ', '_');
         end

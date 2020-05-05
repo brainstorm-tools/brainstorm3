@@ -5,7 +5,7 @@ function varargout = process_export_bids( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -65,6 +65,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.emptyroom.Type    = 'text';
     sProcess.options.emptyroom.Value   = 'emptyroom, noise';
     % Replace existing files
+    sProcess.options.defacemri.Comment = 'Deface MRI before export?';
+    sProcess.options.defacemri.Type    = 'checkbox';
+    sProcess.options.defacemri.Value   = 0;
+    % Replace existing files
     sProcess.options.overwrite.Comment = 'Overwrite existing files?';
     sProcess.options.overwrite.Type    = 'checkbox';
     sProcess.options.overwrite.Value   = 0;
@@ -100,6 +104,7 @@ end
 function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     % Parse inputs
     outputFolder  = sProcess.options.bidsdir.Value{1};
+    defaceMri     = sProcess.options.defacemri.Value;
     overwrite     = sProcess.options.overwrite.Value;
     dewarPosition = sProcess.options.dewarposition.Value;
     eegReference  = sProcess.options.eegreference.Value;
@@ -194,8 +199,16 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % Sort inputs by subjects and acquisition time
     bst_progress('start', 'Export', 'Sorting input files...');
-    sInputs = SortInputs(sInputs);
+    [sInputs, mrisToDeface] = SortInputs(sInputs, defaceMri);
     nInputs = length(sInputs);
+    
+    % Deface MRIs if requested
+    if defaceMri && ~isempty(mrisToDeface)
+        defaceResult = process_mri_deface('Compute', mrisToDeface, struct('isDefaceHead', 0));
+        if isempty(defaceResult)
+            defaceMri = 0;
+        end
+    end
     
     CreateDatasetDescription(outputFolder, overwrite, datasetMetadata);
     firstAcq = [];
@@ -398,7 +411,12 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 mriFile = bst_fullfile(anatFolder, [prefix '_T1w.nii']);
                 if (exist(mriFile, 'file') ~= 2 && exist([mriFile '.gz'], 'file') ~= 2) || overwrite
-                    export_mri(sSubject.Anatomy(1).FileName, mriFile);
+                    if defaceMri
+                        origMri = GetDefacedMri(sSubject);
+                    else
+                        origMri = sSubject.Anatomy(1).FileName;
+                    end
+                    export_mri(origMri, mriFile);
                     mriGzFile = gzip(mriFile);
                     if ~isempty(mriGzFile)
                         delete(mriFile);
@@ -704,6 +722,7 @@ function CreateDatasetDescription(parentFolder, overwrite, description)
     ProtocolInfo = bst_get('ProtocolInfo');
     description = addField(description, 'Name', ProtocolInfo.Comment);
     description = addField(description, 'BIDSVersion', '1.1.1');
+    description = addField(description, 'Authors', []);
     
     fid = fopen(jsonFile, 'wt');
     jsonText = bst_jsonencode(description);
@@ -713,7 +732,7 @@ end
 
 function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq, AllChannelNames, AllEventNames)
     % Skip if it exists and we're not overwriting
-    txtFile = bst_fullfile(parentFolder, 'README.txt');
+    txtFile = bst_fullfile(parentFolder, 'README');
     if exist(txtFile, 'file') == 2 && ~overwrite
         return;
     end
@@ -780,12 +799,6 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
     fprintf(fid, [channels 10]);
     fprintf(fid, ['Events:' 10]);
     fprintf(fid, events);
-    fclose(fid);
-    
-    % Create .bidsignore file to pass validation
-    bidsIgnoreFile = bst_fullfile(parentFolder, '.bidsignore');
-    fid = fopen(bidsIgnoreFile, 'wt');
-    fprintf(fid, 'README.txt');
     fclose(fid);
 end
 
@@ -968,15 +981,26 @@ function str = bool2str(bool)
     end
 end
 
-function sInputs = SortInputs(sInputs)
+function [sInputs, mrisToDeface] = SortInputs(sInputs, defaceMri)
     % Group inputs by subject
     iOrder = zeros(1, length(sInputs));
     iNext = 1;
     [uniqueSubj,I,J] = unique({sInputs.SubjectFile});
+    mrisToDeface = {};
+    
     for iUniqueSub = 1:length(uniqueSubj)
         iSubs = find(J == iUniqueSub);
         nSubs = length(iSubs);
         skip  = zeros(1,nSubs);
+        
+        % If the subject does not have a defaced MRI, add its MRI file to
+        % the list of MRIs to deface.
+        if defaceMri
+            sSubject = bst_get('Subject', uniqueSubj{iUniqueSub});
+            if ~isempty(sSubject.Anatomy) && isempty(GetDefacedMri(sSubject)) && ~isempty(sSubject.Anatomy(1).FileName)
+                mrisToDeface{end + 1} = sSubject.Anatomy(1).FileName;
+            end
+        end
         
         % Within subjects, group inputs by acquisition time
         for iSub = 1:nSubs
@@ -1069,5 +1093,15 @@ function myStruct = addField(myStruct, field, value)
         disp(['Warning: Specified field "' field '" will be ignored.']);
     end
     myStruct.(field) = value;
+end
+
+function defacedMri = GetDefacedMri(sSubject)
+    defacedMri = [];
+    
+    for iAnatomy = 1:length(sSubject.Anatomy)
+        if ~isempty(strfind(sSubject.Anatomy(iAnatomy).Comment, ' | deface'))
+            defacedMri = sSubject.Anatomy(iAnatomy).FileName;
+        end
+    end
 end
 

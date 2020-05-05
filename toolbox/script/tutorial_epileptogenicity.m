@@ -11,7 +11,7 @@ function tutorial_epileptogenicity(tutorial_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -152,25 +152,23 @@ sfreq = 512;
 sEvt1 = db_template('event');
 sEvt1(1).label   = 'Onset';
 sEvt1(1).epochs  = 1;
+sEvt1(1).channels= {{}};
+sEvt1(1).notes   = {[]};
 sEvt1(2).label   = 'Baseline';
 sEvt1(2).epochs  = 1;
+sEvt1(2).channels= {{}};
+sEvt1(2).notes   = {[]};
 % SZ1
 sEvt1(1).times   = 120.800;
 sEvt1(2).times   = [72.800; 77.800];
-sEvt1(1).samples = sEvt1(1).times .* sfreq;
-sEvt1(2).samples = sEvt1(2).times .* sfreq;
 % SZ2
 sEvt2 = sEvt1;
 sEvt2(1).times   = 143.510;
 sEvt2(2).times   = [103.510; 108.510];
-sEvt2(1).samples = sEvt2(1).times .* sfreq;
-sEvt2(2).samples = sEvt2(2).times .* sfreq;
 % SZ3
 sEvt3 = sEvt1;
 sEvt3(1).times   = 120.287;
 sEvt3(2).times   = [45.287; 50.287];
-sEvt3(1).samples = sEvt3(1).times .* sfreq;
-sEvt3(2).samples = sEvt3(2).times .* sfreq;
 % Process: Events: Import from file
 bst_process('CallProcess', 'process_evt_import', sFilesRaw(1), [], ...
     'evtfile', {sEvt1, 'struct'}, ...

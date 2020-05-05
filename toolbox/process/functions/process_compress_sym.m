@@ -9,7 +9,7 @@ function varargout = process_compress_sym( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -132,12 +132,12 @@ function fullTF = Expand(TF, N, isConjugate)
     indAll1 = sub2ind([N,N], iA(:), iB(:));
     indAll2 = sub2ind([N,N], iB(:), iA(:));
     % Rebuild full matrix
-    fullTF = zeros(N*N, size(TF,2), size(TF,3));
-    fullTF(indAll1,:,:) = TF;
+    fullTF = zeros(N*N, size(TF,2), size(TF,3), size(TF,4));
+    fullTF(indAll1,:,:,:) = TF;
     if isConjugate
-        fullTF(indAll2,:,:) = conj(TF);
+        fullTF(indAll2,:,:,:) = conj(TF);
     else
-        fullTF(indAll2,:,:) = TF;
+        fullTF(indAll2,:,:,:) = TF;
     end
 end
 
@@ -155,10 +155,42 @@ function TF = Compress(TF)
     % Find the values below the diagonal
     indAll = find(iB <= iA);
     % Keep only those values
-    TF = TF(indAll,:,:);
+    TF = TF(indAll,:,:,:);
 end
 
 
+%% ===== REMOVE DIAGONAL =====
+function TF = RemoveDiagonal(TF, N) %#ok<DEFNU>
+    % If matrix is expanded
+    if (size(TF,1) == N^2)
+        iDel = (1:N) + (0:N-1)*N;
+    % If matrix is compressed
+    elseif (size(TF,1) == sum(1:N))
+        iDel = cumsum(1:N);
+    else
+        disp('Warning: Invalid matrix size, cannot remove diagonal.');
+        return;
+    end
+    % Remove diagonal
+    TF(iDel,:,:,:) = [];
+end
 
+
+%% ===== ADD DIAGONAL =====
+function TFedit = AddDiagonal(TF, N) %#ok<DEFNU>
+    TFedit = zeros(size(TF,1) + N, size(TF,2), size(TF,3), size(TF,4));
+    % If matrix is expanded
+    if (size(TFedit,1) == N^2)
+        iDel = (1:N) + (0:N-1)*N;
+    % If matrix is compressed
+    elseif (size(TFedit,1) == sum(1:N))
+        iDel = cumsum(1:N);
+    else
+        disp('Warning: Invalid matrix size, cannot add diagonal.');
+        return;
+    end
+    % Copy values
+    TFedit(setdiff(1:size(TFedit,1), iDel),:,:,:) = TF;
+end
 
 

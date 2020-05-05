@@ -5,7 +5,7 @@ function varargout = process_dipole_scanning( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_dipole_scanning( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Elizabeth Bock, John C. Mosher, Francois Tadel, 2013-2016
+% Authors: Elizabeth Bock, John C. Mosher, Francois Tadel, 2013-2019
 
 eval(macro_method);
 end
@@ -97,7 +97,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         DataMatP.Time = sResultP.Time;
         DataMatP.F = [];
         DataMatP.Comment = sResultP.Comment;
-        DataMatP.nAvg = sResultP.nAvg;
+        % DataMatP.nAvg = sResultP.nAvg;
+        DataMatP.Leff = sResultP.Leff;
     else
         DataMatP = in_bst_data(sResultP.DataFile);
     end
@@ -115,7 +116,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % So ImageGridAmp should also be correct.
     % But we need to calculate the possible Factor here for any other
     % manipulation of the data, as needed below.
-    Factor = sqrt(DataMatP.nAvg / sResultP.nAvg); % is unity if both equal.
+    Factor = sqrt(DataMatP.Leff / sResultP.Leff); % is unity if both equal.
     if Factor ~= 1
         fprintf('BST Dipole Scanning> Need additional factor of %.2f (sqrt of %.1f) to account for average.\n',Factor, Factor^2);
     end

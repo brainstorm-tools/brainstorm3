@@ -8,7 +8,7 @@ function varargout = process_spgranger1n( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -70,7 +70,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === OUTPUT MODE
     sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
     sProcess.options.label3.Type    = 'label';
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)'};
+    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
 end
@@ -126,7 +126,7 @@ function Test() %#ok<DEFNU>
         bst_process('CallProcess', 'process_snapshot', sTmp, [], ...
             'target',       11, ...  % Connectivity matrix (image)
             'modality',     1, 'orient', 1, 'time', 0, 'contact_time', [-40, 110], 'contact_nimage', 16, ...
-            'comment',      [sFile.Comment, ': ' sTmp.Comment]);
+            'Comment',      [sFile.Comment, ': ' sTmp.Comment]);
     end
     % Save and display report
     ReportFile = bst_report('Save', sTmp);

@@ -5,7 +5,7 @@ function str = str_remove_spec_chars( str )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,7 +26,7 @@ if notCell
     str = {str};
 end
 
-str = cellfun(@(c)c(~ismember(c, ' .,?!-_@#$%^&*+*=()[]{}|/')), str, 'UniformOutput', 0);
+str = cellfun(@(c)c(~ismember(c, [' .,?!-_@#$%^&*+*=()[]{}|/' char(0)])), str, 'UniformOutput', 0);
 
 if notCell
     str = str{1};

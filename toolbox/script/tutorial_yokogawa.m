@@ -11,7 +11,7 @@ function tutorial_yokogawa(tutorial_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -95,13 +95,13 @@ bst_process('CallProcess', 'process_snapshot', sFileRaw, [], ...
     'target',   1, ...  % Sensors/MRI registration
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 % Process: Snapshot: Sensors/MRI registration
 bst_process('CallProcess', 'process_snapshot', sFileRaw, [], ...
     'target',   1, ...  % Sensors/MRI registration
     'modality', 4, ...  % EEG
     'orient',   1, ...  % left
-    'comment',  'EEG/MRI Registration');
+    'Comment',  'EEG/MRI Registration');
 
 
 % ===== FREQUENCY FILTERS =====
@@ -136,7 +136,7 @@ sFilesPsd = bst_process('CallProcess', 'process_psd', [sFileRaw sFileClean], [],
 % Process: Snapshot: Frequency spectrum
 bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
     'target',   10, ...  % Frequency spectrum
-    'comment',  'Power spectrum density');
+    'Comment',  'Power spectrum density');
 
 
 % ===== BAD CHANNELS AND AVERAGE REF =====
@@ -196,7 +196,7 @@ bst_process('CallProcess', 'process_ica', sFileClean, [], ...
 % Process: Snapshot: SSP projectors
 bst_process('CallProcess', 'process_snapshot', sFileClean, [], ...
     'target',  2, ...  % SSP projectors
-    'comment', 'SSP projectors');
+    'Comment', 'SSP projectors');
 
 
 % ===== IMPORT EVENTS =====
@@ -224,24 +224,24 @@ sFilesAvg = bst_process('CallProcess', 'process_average', sFilesEpochs, [], ...
 bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',   5, ...  % Recordings time series
     'modality', 1, ...  % MEG (All)
-    'comment',  'Evoked response (MEG)');
+    'Comment',  'Evoked response (MEG)');
 bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',   5, ...  % Recordings time series
     'modality', 4, ...  % EEG
-    'comment',  'Evoked response (EEG)');
+    'Comment',  'Evoked response (EEG)');
 % Process: Snapshot: Recordings topography (one time, MEG + EEG)
 bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',   6, ...  % Recordings topography (one time)
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
     'time',     0.0190, ...
-    'comment', 'Evoked response (MEG topography)');
+    'Comment', 'Evoked response (MEG topography)');
 bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',   6, ...  % Recordings topography (one time)
     'modality', 4, ...  % EEG
     'orient',   1, ...  % left
     'time',     0.0190, ...
-    'comment', 'Evoked response (EEG topography)');
+    'Comment', 'Evoked response (EEG topography)');
 
 
 % ===== SOURCE MODELING =====
@@ -318,12 +318,12 @@ bst_process('CallProcess', 'process_snapshot', sFilesSrcMeg, [], ...
     'target',   8, ...  % Sources (one time)
     'orient',   3, ...  % top
     'time',     0.019, ...
-    'comment',  'Source maps at 19ms (MEG)');
+    'Comment',  'Source maps at 19ms (MEG)');
 bst_process('CallProcess', 'process_snapshot', sFilesSrcEeg, [], ...
     'target',   8, ...  % Sources (one time)
     'orient',   3, ...  % top
     'time',     0.019, ...
-    'comment',  'Source maps at 19ms (EEG)');
+    'Comment',  'Source maps at 19ms (EEG)');
 
 
 % Save and display report

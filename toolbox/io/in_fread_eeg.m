@@ -8,7 +8,7 @@ function F = in_fread_eeg(sFile, sfid, iEpoch, SamplesBounds)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -24,18 +24,19 @@ function F = in_fread_eeg(sFile, sfid, iEpoch, SamplesBounds)
 %
 % Author: Francois Tadel, 2009-2011
 
+fileSamples = round(sFile.prop.times .* sFile.prop.sfreq);
 % Parse inputs
 if (nargin < 4) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = fileSamples;
 % Check start and stop samples
-elseif (SamplesBounds(1) < sFile.prop.samples(1)) || (SamplesBounds(1) > SamplesBounds(2)) || (SamplesBounds(2) > sFile.prop.samples(2))
+elseif (SamplesBounds(1) < fileSamples(1)) || (SamplesBounds(1) > SamplesBounds(2)) || (SamplesBounds(2) > fileSamples(2))
     error('Invalid samples range.');
 end
 
 % Get some information on the file
 nChannels = sFile.header.epochs(iEpoch).datasize(1);
 % Position cursor in file to read this data block
-startSample = SamplesBounds(1) - sFile.prop.samples(1);
+startSample = SamplesBounds(1) - fileSamples(1);
 pos = double(sFile.header.epochs(iEpoch).datapos) + startSample * nChannels * double(sFile.header.data.bytes_per_samp);
 fseek(sfid, double(pos), 'bof');
 % Read [nChannels, nSamples]

@@ -8,7 +8,7 @@ function varargout = process_import_bids( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -72,6 +72,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.groupsessions.Comment = 'Import multiple anat sessions to the same subject';
     sProcess.options.groupsessions.Type    = 'checkbox';
     sProcess.options.groupsessions.Value   = 1;
+    % Compute BEM surfaces
+    sProcess.options.bem.Comment = 'Generate BEM skull surfaces (recommended for ECoG)';
+    sProcess.options.bem.Type    = 'checkbox';
+    sProcess.options.bem.Value   = 1;
+    % Register anatomy
+    sProcess.options.anatregister.Comment = {'SPM12', 'No', 'Coregister anatomical volumes:'; ...
+                                             'spm12', 'no', ''};
+    sProcess.options.anatregister.Type    = 'radio_linelabel';
+    sProcess.options.anatregister.Value   = 'spm12';
 end
 
 
@@ -98,12 +107,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid number of vertices.');
         return;
     end
-    % Channels align
-    OPTIONS.ChannelAlign = 2 * double(sProcess.options.channelalign.Value);
-    % Subject selection
+    % Other options
+    OPTIONS.ChannelAlign     = 2 * double(sProcess.options.channelalign.Value);
     OPTIONS.SelectedSubjects = strtrim(str_split(sProcess.options.selectsubj.Value, ','));
-    % Group sessions
-    OPTIONS.isGroupSessions = sProcess.options.groupsessions.Value;
+    OPTIONS.isGroupSessions  = sProcess.options.groupsessions.Value;
+    OPTIONS.isGenerateBem    = sProcess.options.bem.Value;
+    OPTIONS.RegisterMethod   = sProcess.options.anatregister.Value;
     
     % === IMPORT DATASET ===
     % Import dataset
@@ -139,7 +148,9 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         'isInteractive',    1, ...
         'ChannelAlign',     0, ...
         'SelectedSubjects', [], ...
-        'isGroupSessions',  1);
+        'isGroupSessions',  1, ...
+        'isGenerateBem',    1, ...
+        'RegisterMethod',   'spm12');
     OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 
     % ===== GET THE BIDS FOLDER =====
@@ -252,7 +263,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     SubjectSessDir{end+1}    = {sessFolders{isess}, derivFolders{isess}};
                     SubjectMriFiles{end+1}   = allMriFiles;
                 end
-            % There are no segmentations, check if there is one T1 volume per sesssion or per subject
+            % There are no segmentations, check if there is one T1 volume per session or per subject
             else
                 % If there is one anatomy per session
                 if isSessMri && ~OPTIONS.isGroupSessions
@@ -382,10 +393,14 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         end
         % Import MRI
         if ~isSkipAnat && ~isempty(SubjectMriFiles{iSubj})
+            MrisToRegister = {};
             % Import first MRI
             BstMriFile = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractiveAnat, 0);
             if isempty(BstMriFile)
-                errorMsg = ['Could not load MRI file: ' SubjectMriFiles{iSubj}];
+                if ~isempty(errorMsg)
+                    errorMsg = [errorMsg, 10];
+                end
+                errorMsg = [errorMsg, 'Could not load MRI file: ', SubjectMriFiles{iSubj}];
             % Compute additional files
             else
                 % If there was no segmentation imported before: normalize and create head surface
@@ -394,11 +409,53 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     [sMri, errorMsg] = bst_normalize_mni(BstMriFile);
                     % Generate head surface
                     tess_isohead(iSubject, 10000, 0, 2);
+                else
+                    MrisToRegister{end+1} = BstMriFile;
                 end
                 % Add other volumes
                 for i = 2:length(SubjectMriFiles{iSubj})
-                    import_mri(iSubject, SubjectMriFiles{iSubj}{i}, 'ALL', 0, 1);
+                    MrisToRegister{end+1} = import_mri(iSubject, SubjectMriFiles{iSubj}{i}, 'ALL', 0, 1);
                 end
+            end
+            % Register anatomical volumes if requested
+            if strcmpi(OPTIONS.RegisterMethod, 'spm12')
+                for i = 1:length(MrisToRegister)
+                    % If nothing was imported
+                    if isempty(MrisToRegister{i})
+                        continue;
+                    end
+                    % Register MRI onto first MRI imported
+                    MriFileReg = mri_coregister(MrisToRegister{i}, [], 'spm', 0);
+                    % If the registration was successful
+                    if ~isempty(MriFileReg)
+                        % Reslice volume
+                        mri_reslice(MriFileReg, [], 'vox2ras', 'vox2ras');
+                        % Delete original volume
+                        if (file_delete(MrisToRegister{i}, 1) == 1)
+                            % Find file in database
+                            [sSubject, iSubject, iMri] = bst_get('MriFile', MrisToRegister{i});
+                            % Delete reference
+                            sSubject.Anatomy(iMri) = [];
+                            % Update database
+                            bst_set('Subject', iSubject, sSubject);
+                        end
+                    end
+                end
+            end
+        end
+        % Compute BEM skull surfaces
+        if ~isSkipAnat && OPTIONS.isGenerateBem
+            sFiles = bst_process('CallProcess', 'process_generate_bem', [], [], ...
+                'subjectname', SubjectName{iSubj}, ...
+                'nscalp',      1922, ...
+                'nouter',      1922, ...
+                'ninner',      1922, ...
+                'thickness',   4);
+            if isempty(sFiles)
+                if ~isempty(errorMsg)
+                    errorMsg = [errorMsg, 10];
+                end
+                errorMsg = [errorMsg, 'Could not generate BEM surfaces for subject: ', SubjectName{iSubj}];
             end
         end
         % Error handling
@@ -581,7 +638,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         % For all the loaded files
                         for iRaw = 1:length(newFiles)
                             % Get channel file
-                            ChannelFile = bst_get('ChannelFileForStudy', newFiles{iRaw});
+                            [ChannelFile, sStudy, iStudy] = bst_get('ChannelFileForStudy', newFiles{iRaw});
                             % Load channel file
                             ChannelMat = in_bst_channel(ChannelFile);
                             % Get current list of good/bad channels
@@ -598,7 +655,18 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                                 end
                                 % Copy type
                                 if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
-                                    ChannelMat.Channel(iChanBst).Type = upper(ChanInfo{iChanBids,2});
+                                    chanType = upper(ChanInfo{iChanBids,2});
+                                    switch (chanType)
+                                        case 'MEGGRADPLANAR'    % Elekta planar gradiometer
+                                            chanType = 'MEG GRAD';
+                                        case 'MEGMAG'           % Elekta/4D/Yokogawa magnetometer
+                                            chanType = 'MEG MAG';
+                                        case 'MEGGRADAXIAL'     % CTF axial gradiometer
+                                            chanType = 'MEG';
+                                        case {'MEGREFMAG', 'MEGREFGRADAXIAL', 'MEGREFGRADPLANAR'}  % CTF/4D references
+                                            chanType = 'MEG REF';
+                                    end
+                                    ChannelMat.Channel(iChanBst).Type = chanType;
                                     isModifiedChan = 1;
                                 end
                                 % Copy group
@@ -617,7 +685,11 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                             end
                             % Save channel file modifications
                             if isModifiedChan
+                                % Update channel file
                                 bst_save(file_fullpath(ChannelFile), ChannelMat, 'v7');
+                                % Update database
+                                [sStudy.Channel.Modalities, sStudy.Channel.DisplayableSensorTypes] = channel_get_modalities(ChannelMat.Channel);
+                                bst_set('Study', iStudy, sStudy);
                             end
                             % Save data file modifications
                             if isModifiedData
@@ -683,6 +755,16 @@ function MriFiles = GetSubjectMri(anatFolder)
     if ~isempty(MriFiles) && any(isMpRage)
         iMpRage = find(isMpRage);
         MriFiles = cat(2, MriFiles(iMpRage), MriFiles(setdiff(1:length(MriFiles), iMpRage)));
+    end
+    % Find T2w volumes
+    mriDir = dir(bst_fullfile(anatFolder, '*T2w.nii*'));
+    for i = 1:length(mriDir)
+        MriFiles{end+1} = bst_fullfile(anatFolder, mriDir(i).name);
+    end
+    % Find CT volumes
+    mriDir = dir(bst_fullfile(anatFolder, '*CT.nii*'));
+    for i = 1:length(mriDir)
+        MriFiles{end+1} = bst_fullfile(anatFolder, mriDir(i).name);
     end
 end
 

@@ -11,7 +11,7 @@ function F = in_fread_ricoh(sFile, iEpoch, SamplesBounds, iChannels)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -32,13 +32,13 @@ if (nargin < 4) || isempty(iChannels)
     iChannels = [];
 end
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 if (nargin < 2) || isempty(iEpoch)
     iEpoch = 1;
 end
 % Sample bounds: convert from relative values (map with time) to absolute number
-SamplesBounds = SamplesBounds - sFile.prop.samples(1);
+SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq);
 
 % Switch depending on the file type
 switch (sFile.header.acq.acq_type)

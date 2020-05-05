@@ -5,7 +5,7 @@ function varargout = process_channel_project( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -30,15 +30,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Project electrodes on scalp';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = {'Import', 'Import recordings'};
-    sProcess.Index       = 40;
+    sProcess.SubGroup    = {'Import', 'Channel file'};
+    sProcess.Index       = 42;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy?highlight=(Project electrodes+on+scalp+surface)#Register_electrodes_with_MRI';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
 end
 
 

@@ -15,7 +15,7 @@ function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -123,7 +123,7 @@ for iFile = 1:length(RawFiles)
     % ===== OPENING FILE =====
     bst_progress('start', 'Open raw EEG/MEG recordings', 'Reading file header...');
     % Open file
-    [sFile, ChannelMat, errMsg, DataMat] = in_fopen(RawFiles{iFile}, FileFormat, ImportOptions);
+    [sFile, ChannelMat, errMsg, DataMat, ImportOptions] = in_fopen(RawFiles{iFile}, FileFormat, ImportOptions);
     if isempty(sFile)
         bst_progress('stop');
         return;
@@ -135,6 +135,10 @@ for iFile = 1:length(RawFiles)
     % Yokogawa non-registered warning
     if ~isempty(errMsg) && ImportOptions.DisplayMessages
         java_dialog('warning', errMsg, 'Open raw EEG/MEG recordings');
+    end
+    % Multiple FIF linked
+    if ImportOptions.DisplayMessages && strcmpi(FileFormat, 'FIF') && isfield(sFile, 'header') && isfield(sFile.header, 'fif_list') && (length(sFile.header.fif_list) >= 2)
+        java_dialog('msgbox', ['Multiple files were linked together:' 10 sprintf('- %s\n', sFile.header.fif_list{:}), 10], 'Open split FIF files');
     end
 
     % ===== OUTPUT STUDY =====
@@ -246,7 +250,7 @@ for iFile = 1:length(RawFiles)
         % Remove fiducials only from polhemus and ascii files
         isRemoveFid = ismember(FileFormat, {'MEGDRAW', 'POLHEMUS', 'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN', 'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'ASCII_NXY', 'ASCII_XY', 'ASCII_NTP', 'ASCII_TP'});
         % Perform the NAS/LPA/RPA registration for some specific file formats
-        isAlign = ismember(FileFormat, {'NIRS-BRS'});
+        isAlign = ismember(FileFormat, {'NIRS-BRS','NIRS-SNIRF'});
         % Detect auxiliary EEG channels
         ChannelMat = channel_detect_type(ChannelMat, isAlign, isRemoveFid);
         % Do not align data coming from Brainstorm exported files (already aligned)
@@ -338,9 +342,9 @@ if isSSP
     strWarning = ['The files you imported include SSP/ICA projectors.' 10 10 ...
                   'Review them before processing the files:' 10 ...
                   'tab Record > menu Artifacts > Select active projectors.'];
-    % Non-iteractive: Display message in command window
+    % Non-interactive: Display message in command window
     if ~ImportOptions.DisplayMessages 
-        disp(['BST> ' strrep(strWarning, 10, [10, 'BST> '])]);
+        disp(['BST> ' strrep(strWarning, char(10), [10, 'BST> '])]);
     % Interactive, one file: Open the SSP selection window
     elseif (length(OutputFiles) == 1)
         java_dialog('msgbox', strWarning);

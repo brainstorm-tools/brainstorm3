@@ -1,5 +1,5 @@
 function import_anatomy(iSubject)
-% IMPORT_ANATOMY: Import a full anatomy folder in interactive mode (BrainVISA, BrainSuite, FreeSurfer, CIVET)
+% IMPORT_ANATOMY: Import a full anatomy folder in interactive mode (BrainVISA, BrainSuite, FreeSurfer, CIVET, SimNIBS)
 %
 % USAGE:  import_anatomy(iSubject)
 
@@ -7,7 +7,7 @@ function import_anatomy(iSubject)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function import_anatomy(iSubject)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013
+% Authors: Francois Tadel, 2013-2020
 
 % Get default import directory and formats
 LastUsedDirs = bst_get('LastUsedDirs');
@@ -54,12 +54,18 @@ switch (FileFormat)
         import_anatomy_bs(iSubject, AnatDir, [], 1, [], 0);
     case 'BrainVISA'
         import_anatomy_bv(iSubject, AnatDir, [], 1);
+    case 'CAT12'
+        import_anatomy_cat(iSubject, AnatDir, [], 1, [], 0);
+    case 'CAT12+Thick'
+        import_anatomy_cat(iSubject, AnatDir, [], 1, [], 1);
     case 'CIVET'
         import_anatomy_civet(iSubject, AnatDir, [], 1, [], 0);
     case 'CIVET+Thick'
         import_anatomy_civet(iSubject, AnatDir, [], 1, [], 1);
     case 'HCPv3'
         import_anatomy_hcp_v3(iSubject, AnatDir, 1);
+    case 'SimNIBS'
+        import_anatomy_simnibs(iSubject, AnatDir, [], 1, [], 0);
 end
 
 

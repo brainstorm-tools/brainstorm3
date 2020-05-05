@@ -1,13 +1,13 @@
-function nScoutProj = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas )
+function nScoutProj = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas, isSingleHemi )
 % BST_PROJECT_SCOUTS: Project scouts on a different surface (need the FreeSurfer registered spheres).
 %
-% USAGE:  nScoutProj = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas=[all] )
+% USAGE:  nScoutProj = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas=[all], isSingleHemi=0 )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,9 +21,12 @@ function nScoutProj = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2019
 
 % ===== PARSE INPUTS ======
+if (nargin < 4) || isempty(isSingleHemi)
+    isSingleHemi = 0;
+end
 if (nargin < 3) || isempty(sAtlas)
     sAtlas = [];
 end
@@ -36,12 +39,12 @@ if file_compare(srcSurfFile, destSurfFile)
     return;
 end
 % Compute interpolation  
-[Wmat, sSrcSubj, sDestSubj, srcSurfMat, destSurfMat] = tess_interp_tess2tess(srcSurfFile, destSurfFile, 1);
+[Wmat, sSrcSubj, sDestSubj, srcSurfMat, destSurfMat] = tess_interp_tess2tess(srcSurfFile, destSurfFile, 1, [], isSingleHemi);
 % Source subject and destination subject are the same
 isSameSubject = file_compare(sSrcSubj.FileName, sDestSubj.FileName);
-% If no scouts in input, copy all the scouts in the first atlas
-if isempty(sAtlas) && ~isempty(srcSurfMat.Atlas) && ~isempty(srcSurfMat.Atlas(1).Scouts)
-    sAtlas = srcSurfMat.Atlas(1);
+% If no scouts in input, project everything
+if isempty(sAtlas)
+    sAtlas = srcSurfMat.Atlas;
 end
 % Check if there are things to project
 if isempty(sAtlas)
@@ -53,15 +56,23 @@ ratio = size(destSurfMat.Vertices,1) ./ size(srcSurfMat.Vertices,1);
 
 % ===== PROCESS ATLAS/SCOUTS =====
 for iAtlas = 1:length(sAtlas)
+    % Initialize probability maps
+    scoutIndex = zeros(size(destSurfMat.Vertices,1),1);
+    scoutProba = zeros(size(destSurfMat.Vertices,1),1);
+    % Project scouts one by one and keep for each vertex only the maximum probability
     for iScout = 1:length(sAtlas(iAtlas).Scouts)
-        % Current scout
-        sScout = sAtlas(iAtlas).Scouts(iScout);
         % Vertex map on the original surface
         vMap = zeros(size(srcSurfMat.Vertices,1),1);
-        vMap(sScout.Vertices) = 1;
+        vMap(sAtlas(iAtlas).Scouts(iScout).Vertices) = 1;
         % Project to destination surface
         vMapProj = full(Wmat * vMap);
+        % Keep only the projections that have a higher probability than the previous scouts
+        isHigherProba = vMapProj > scoutProba;
+        scoutProba(isHigherProba) = vMapProj(isHigherProba);
+        scoutIndex(isHigherProba) = iScout;
+    end
         
+% DISABLED 2018
 %         % If the number of vertices does not decrease: force the selection of the closest vertex to each input vertex
 %         if (ratio > 0.9)
 %             for iVert = 1:length(sScout.Vertices)
@@ -71,18 +82,24 @@ for iAtlas = 1:length(sAtlas)
 %                 vMapProj(iVertClosest) = 2;
 %             end
 %         end
+    
+    % Create all the scouts in the destination surface
+    for iScout = 1:length(sAtlas(iAtlas).Scouts)
+        % Current scout
+        sScout = sAtlas(iAtlas).Scouts(iScout);
         
-        % Consider the projected vertex maps as a probability of being part of the projected scout
-        % Sort the projected values and keep the highest ones, up to desired number of vertices
-        iVertPossible = find(vMapProj > 0);
-        [tmp,I] = sort(vMapProj(iVertPossible), 1, 'descend');
-        % Keep the highest values
-        nVertices = round(ratio * length(sScout.Vertices));
-        iVertices = iVertPossible(I(1:min(nVertices,length(I))));
-        
-        % Nothing found...
+        % Get vertices identified in this scout
+        iVertices = find(scoutIndex == iScout);
         if isempty(iVertices)
             continue;
+        end
+        % Limit the growth to extra vertices when not projecting an entire atlas
+        if (length(sAtlas(iAtlas).Scouts) < 10)
+            % Sort the projected values and keep the highest ones, up to desired number of vertices
+            [tmp,I] = sort(scoutProba(iVertices), 1, 'descend');
+            % Keep the highest values
+            nVertices = round(ratio * length(sScout.Vertices));
+            iVertices = iVertices(I(1:min(nVertices,length(I))));
         end
         
         % Identify seed (closest point to the center of mass of the scout)
@@ -92,10 +109,10 @@ for iAtlas = 1:length(sAtlas)
         iSeed = iVertices(iMin);
         
         % Get destination atlas
-        iAtlasDest = find(strcmpi({destSurfMat.Atlas.Name}, sAtlas.Name));
+        iAtlasDest = find(strcmpi({destSurfMat.Atlas.Name}, sAtlas(iAtlas).Name));
         if isempty(iAtlasDest)
             iAtlasDest = length(destSurfMat.Atlas) + 1;
-            destSurfMat.Atlas(iAtlasDest).Name = sAtlas.Name;
+            destSurfMat.Atlas(iAtlasDest).Name = sAtlas(iAtlas).Name;
         end
         % Destination scout name
         if isSameSubject

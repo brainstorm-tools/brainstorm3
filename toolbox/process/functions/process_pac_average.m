@@ -5,7 +5,7 @@ function varargout = process_pac_average( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -146,6 +146,23 @@ function [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat, usePhase)
             end
             tpacMat.sPAC.DirectPAC = pac;
             FileTag = 'timefreq_pac_fullmaps';
+            %% Recompute nesting frequencies
+            pacDims = size(pac);
+            if length(pacDims) < 4
+                % Ensure we have 4 dimensions
+                pacDims = [ones(1,4-length(pacDims)), pacDims];
+                pac = reshape(pac,pacDims);
+            end
+            [nSources, nWindows, nLow, nHigh] = size(pac);
+            for iSource = 1:nSources
+                for iWindow = 1:nWindows
+                    curPac = pac(iSource,iWindow,:,:);
+                    [tmp, maxInd] = max(curPac(:));
+                    [indFa, indFp] = ind2sub([nLow, nHigh], maxInd);
+                    tpacMat.sPAC.NestingFreq(iSource,iWindow) = tpacMat.sPAC.LowFreqs(indFp);
+                    tpacMat.sPAC.NestedFreq(iSource,iWindow) = tpacMat.sPAC.HighFreqs(indFa);
+                end
+            end
             
         elseif isfield(spac,'DynamicPAC')    
             if usePhase

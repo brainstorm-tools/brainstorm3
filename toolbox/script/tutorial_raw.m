@@ -16,7 +16,7 @@ function tutorial_raw(tutorial_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -85,7 +85,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesRaw, [], ...
     'target',   1, ...  % Sensors/MRI registration
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 
 
 % ===== REMOVE 60/180/240 Hz =====
@@ -115,7 +115,7 @@ sFilesPsd = bst_process('CallProcess', 'process_psd', [sFilesRaw, sFilesClean], 
 bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
     'target',   10, ...  % Frequency spectrum
     'modality', 1, ...   % MEG (All)
-    'comment',  'Power spectrum density');
+    'Comment',  'Power spectrum density');
 
 
 % ===== CORRECT BLINKS AND HEARTBEATS =====
@@ -155,7 +155,7 @@ sFilesClean = bst_process('CallProcess', 'process_ssp_eog', sFilesClean, [], ...
 % Process: Snapshot: SSP projectors
 bst_process('CallProcess', 'process_snapshot', sFilesClean, [], ...
     'target',  2, ...  % SSP projectors
-    'comment', 'SSP projectors');
+    'Comment', 'SSP projectors');
 
 
 % ===== IMPORT EVENTS =====
@@ -188,7 +188,7 @@ sFilesAvg = bst_process('CallProcess', 'process_average', sFilesEpochs, [], ...
 bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',   5, ...  % Recordings time series
     'modality', 1, ...  % MEG (All)
-    'comment',  'Evoked response');
+    'Comment',  'Evoked response');
 
 
 % ===== SOURCE MODELING =====
@@ -212,7 +212,7 @@ bst_process('CallProcess', 'process_noisecov', sFilesEpochs, [], ...
 % Process: Snapshot: Noise covariance
 bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',  3, ...  % Noise covariance
-    'comment', 'Noise covariance');
+    'Comment', 'Noise covariance');
 
 % Process: Compute sources
 sFilesSrcAvg = bst_process('CallProcess', 'process_inverse', sFilesAvg, [], ...
@@ -248,7 +248,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesSrcAvg, [], ...
     'modality', 1, ...  % MEG (All)
     'orient',   3, ...  % top
     'time',     0.035, ...
-    'comment',  'Source maps at 35ms');
+    'Comment',  'Source maps at 35ms');
 
 
 

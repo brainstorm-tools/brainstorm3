@@ -18,7 +18,7 @@ function [hFig, iDS, iFig] = view_timefreq(TimefreqFile, DisplayMode, RowName, i
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -185,6 +185,9 @@ end
 if ~isempty(strfind(lower(TimefreqFile), 'noise_correlation'))
     DataMat = in_bst_data(TimefreqFile, 'NeuronNames');
     TfInfo.NeuronNames = DataMat.NeuronNames;
+elseif ~isempty(strfind(lower(TimefreqFile), 'rasterplot'))
+    TfInfo.DisplayAsDots = 1;
+    TfInfo.DisableSmoothDisplay = 1;
 end
 % Set figure data
 setappdata(hFig, 'Timefreq', TfInfo);

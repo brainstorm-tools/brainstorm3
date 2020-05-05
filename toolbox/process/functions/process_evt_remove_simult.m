@@ -7,7 +7,7 @@ function varargout = process_evt_remove_simult( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function varargout = process_evt_remove_simult( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2019
 
 eval(macro_method);
 end
@@ -102,10 +102,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, sInputs(iFile), 'This file does not contain any event. Skipping File...');
             continue;
         end
-        % Convert the distance in time to distance in samples
-        ds = round(dt .* sFile.prop.sfreq);
         % Call the detection function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, evtA, evtB, ds, isDelete);
+        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, evtA, evtB, dt, isDelete);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
@@ -126,7 +124,7 @@ end
 
 
 %% ===== RENAME SIMULTANEOUS EVENTS =====
-function [eventsNew, isModified] = Compute(sInput, events, evtA, evtB, ds, isDelete)
+function [eventsNew, isModified] = Compute(sInput, events, evtA, evtB, dt, isDelete)
     % Initialize returned variables
     isModified = 0;
     eventsNew = events;
@@ -147,8 +145,8 @@ function [eventsNew, isModified] = Compute(sInput, events, evtA, evtB, ds, isDel
     end
     % Look of all the events A that are too close to event B
     iRemoveA = [];
-    for iOcc = 1:size(events(iEvtA).samples,2)
-        if any(abs(events(iEvtA).samples(iOcc) - events(iEvtB).samples) <= ds)
+    for iOcc = 1:size(events(iEvtA).times,2)
+        if any(abs(events(iEvtA).times(iOcc) - events(iEvtB).times) <= dt)
             iRemoveA(end+1) = iOcc;
         end
     end
@@ -157,7 +155,7 @@ function [eventsNew, isModified] = Compute(sInput, events, evtA, evtB, ds, isDel
         return;
     end
     % Display info message with the number of events removed
-    bst_report('Info', 'process_evt_remove_simult', sInput, sprintf('Removed %d events "%s" that were less than %d samples away from an event "%s".', length(iRemoveA), evtA, ds, evtB));
+    bst_report('Info', 'process_evt_remove_simult', sInput, sprintf('Removed %d events "%s" that were less than %d ms away from an event "%s".', length(iRemoveA), evtA, round(dt*1000), evtB));
     % If we need to rename the events to a new category
     if ~isDelete
         % Create new event name for the removed occurrences
@@ -165,19 +163,21 @@ function [eventsNew, isModified] = Compute(sInput, events, evtA, evtB, ds, isDel
         % Create new event
         iEvtRm = length(eventsNew) + 1;
         eventsNew(iEvtRm) = db_template('event');
-        eventsNew(iEvtRm).label   = newLabel;
-        eventsNew(iEvtRm).color   = [1 0 0];
-        eventsNew(iEvtRm).times   = eventsNew(iEvtA).times(:,iRemoveA);
-        eventsNew(iEvtRm).samples = eventsNew(iEvtA).samples(:,iRemoveA);
-        eventsNew(iEvtRm).epochs  = eventsNew(iEvtA).epochs(iRemoveA);
+        eventsNew(iEvtRm).label    = newLabel;
+        eventsNew(iEvtRm).color    = [1 0 0];
+        eventsNew(iEvtRm).times    = eventsNew(iEvtA).times(:,iRemoveA);
+        eventsNew(iEvtRm).epochs   = eventsNew(iEvtA).epochs(iRemoveA);
+        eventsNew(iEvtRm).channels = eventsNew(iEvtA).channels(iRemoveA);
+        eventsNew(iEvtRm).notes    = eventsNew(iEvtA).notes(iRemoveA);
     end
     % Remove occurrences / remove event
     if isequal(iRemoveA, 1:size(eventsNew(iEvtA).times,2))
         eventsNew(iEvtA) = [];
     else
-        eventsNew(iEvtA).times(:,iRemoveA)   = [];
-        eventsNew(iEvtA).samples(:,iRemoveA) = [];
-        eventsNew(iEvtA).epochs(iRemoveA)    = [];
+        eventsNew(iEvtA).times(:,iRemoveA)  = [];
+        eventsNew(iEvtA).epochs(iRemoveA)   = [];
+        eventsNew(iEvtA).channels(iRemoveA) = [];
+        eventsNew(iEvtA).notes(iRemoveA)    = [];
     end
     isModified = 1;
 end

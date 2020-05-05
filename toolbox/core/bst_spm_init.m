@@ -5,7 +5,7 @@ function isOk = bst_spm_init(isInteractive, SpmFunction)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,8 +19,9 @@ function isOk = bst_spm_init(isInteractive, SpmFunction)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2020
 
+isOk = 0;
 % Deployed: Code already included in the compiled version
 if exist('isdeployed', 'builtin') && isdeployed
     isOk = 1;
@@ -39,14 +40,18 @@ SpmDir = bst_get('SpmDir');
 if ~isempty(SpmDir) && ~isInteractive
     disp(['BST> SPM install: ' SpmDir]);
 end
-% % Check if SPM is already initialized
-% if exist('spm', 'file')
-%     isOk = 1;
-%     return;
-% end
-isOk = 0;
+
+% Check if SPM is already initialized, but in the wrong place (eg. FieldTrip folder)
+if exist('spm.m', 'file') && ~file_compare(bst_fileparts(which('spm')), SpmDir)
+    wrongPaths = intersect(str_split(path,';'), str_split(genpath(bst_fileparts(which('spm'))),';'));
+    for iPath = 1:length(wrongPaths)
+        disp(['SPM> Removed conflicting folder from path: ' wrongPaths{iPath}]);
+        rmpath(wrongPaths{iPath});
+    end
+end
+
 % If SPM is not accessible in the path
-if ~exist('spm.m', 'file')
+if ~exist('spm_jobman.m', 'file')
     % If defined, add to the folder
     if ~isempty(SpmDir)
         addpath(SpmDir);
@@ -55,7 +60,8 @@ if ~exist('spm.m', 'file')
         % Warning message
         if ~java_dialog('confirm', [...
             'This process requires the SPM toolbox to be installed on your computer.', 10, ...
-            'Download the toolbox at: http://www.fil.ion.ucl.ac.uk/spm/software/download' 10 10 ...
+            'Download the toolbox at: http://www.fil.ion.ucl.ac.uk/spm/software/download' 10 ...
+            'Then add the installation path in Brainstorm (File > Edit preferences).' 10 10 ...
             'Is SPM already installed on your computer?'])
             bst_error('SPM was not set up properly.', 'SPM setup', 0);
             return;
@@ -108,6 +114,13 @@ if ~isempty(SpmFunction) && ~exist(SpmFunction, 'file')
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'specest'));
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'preproc'));
             addpath(fullfile(SpmDir, 'external', 'fieldtrip', 'utilities'));
+        case 'cat12'
+            catDir = bst_fullfile(SpmDir, 'toolbox', 'cat12');
+            if ~file_exist(catDir)
+                error(['Please download and install the SPM12 toolbox "CAT12":' 10 ...
+                       'http://www.neuro.uni-jena.de/vbm/download/']);
+            end
+            addpath(catDir);
     end
 end
     

@@ -5,7 +5,7 @@ function varargout = process_import_channel( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -42,7 +42,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Set channel file';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = {'Import', 'Import recordings'};
+    sProcess.SubGroup    = {'Import', 'Channel file'};
     sProcess.Index       = 30;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy#Prepare_the_channel_file';
     % Definition of the input accepted by this process
@@ -50,6 +50,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'data', 'raw', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % Option: File to import
     sProcess.options.channelfile.Comment = 'File to import:';
     sProcess.options.channelfile.Type    = 'filename';

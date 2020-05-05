@@ -5,7 +5,7 @@ function gui_popup( jPopup, jParent, x, y )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -38,6 +38,9 @@ if ~isjava(jParent) && ~isempty(jParent)
     % Fix stupid bug in some older Matlab versions
     if any(bst_get('MatlabVersion') == [709, 710, 711])
         jParent = jPopup;
+    % Matlab >= 2020 deprecated the JavaFrame property, impossible to attach JPopupMenu to a figure
+    elseif (bst_get('MatlabVersion') >= 908)
+        jParent = jPopup;
     else
         % Get the handle of the java figure
         jParent = bst_get('JFrame', jParent);
@@ -49,7 +52,7 @@ if ~isjava(jParent) && ~isempty(jParent)
 end
 % Show popup
 jPopup.setLocation(mouseLoc);
-jPopup.setInvoker(jParent);
+jPopup.setInvoker(jPopup);
 jPopup.setVisible(1);
 drawnow;
     

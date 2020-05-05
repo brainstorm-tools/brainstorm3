@@ -22,7 +22,7 @@ function [hFig, iDS, iFig] = view_spectrum(TimefreqFile, DisplayMode, RowName, i
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -71,7 +71,7 @@ bst_progress('start', 'View time-frequency map', 'Loading data...');
 % Load file
 [iDS, iTimefreq] = bst_memory('LoadTimefreqFile', TimefreqFile);
 if isempty(iDS)
-    % error('Cannot load timefreq file.');
+    bst_progress('stop');
     hFig = [];
     iFig = [];
     return
@@ -149,6 +149,9 @@ else
 end
 TsInfo.ShowXGrid = bst_get('ShowXGrid');
 TsInfo.ShowYGrid = bst_get('ShowYGrid');
+TsInfo.ShowZeroLines = bst_get('ShowZeroLines');
+TsInfo.ShowEventsMode = bst_get('ShowEventsMode');
+TsInfo.XScale = bst_get('XScale');
 setappdata(hFig, 'TsInfo', TsInfo);
 
 % Display options panel

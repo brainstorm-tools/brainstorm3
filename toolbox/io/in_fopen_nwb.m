@@ -8,7 +8,7 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,6 +26,10 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 
 
 %% ===== INSTALL NWB LIBRARY =====
+% Not available in the compiled version
+if (exist('isdeployed', 'builtin') && isdeployed)
+    error('Reading NWB files is not available in the compiled version of Brainstorm.');
+end
 % Check if the NWB builder has already been downloaded
 NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
 % Install toolbox
@@ -52,12 +56,16 @@ try
     all_raw_keys = keys(nwb2.acquisition);
 
     for iKey = 1:length(all_raw_keys)
-        if ismember(all_raw_keys{iKey}, {'ECoG','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
+        if ismember(all_raw_keys{iKey}, {'ECoG','raw','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
             iRawDataKey = iKey;
             RawDataPresent = 1;
+            break
         else
             RawDataPresent = 0;
         end
+    end
+    if isempty(all_raw_keys)
+        RawDataPresent = 0;
     end
 catch
     RawDataPresent = 0;
@@ -131,6 +139,7 @@ catch
     disp('No behavior in this .nwb file')
     additionalChannelsPresent = 0;
     nAdditionalChannels = 0;
+    allBehaviorKeys = [];
 end
     
 
@@ -149,72 +158,23 @@ if RawDataPresent
     sFile.prop.sfreq    = nwb2.acquisition.get(all_raw_keys{iRawDataKey}).starting_time_rate;
     sFile.header.RawKey = all_raw_keys{iRawDataKey};
     sFile.header.LFPKey = [];
+    
+    nChannels = nwb2.acquisition.get(all_raw_keys{iRawDataKey}).data.dims(2);
+    nSamples  = nwb2.acquisition.get(all_raw_keys{iRawDataKey}).data.dims(1);
+
 elseif LFPDataPresent
     sFile.prop.sfreq = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).starting_time_rate;
     sFile.header.LFPKey = all_lfp_keys{iLFPDataKey};
     sFile.header.RawKey = [];
-end
-
-
-
-nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2);
-
-
-
-
-
-%%
-%% Check for epochs/trials
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% CHANGES IN THE EPOCHS SECTION SHOULD ALSO BE COPIED TO
-% PROCESS_NWB_CONVERT
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-all_conditions   = nwb2.intervals_trials.vectordata.get('condition').data;
-uniqueConditions = unique(nwb2.intervals_trials.vectordata.get('condition').data);
-timeBoundsTrials = double([nwb2.intervals_trials.start_time.data.load nwb2.intervals_trials.stop_time.data.load]);
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% THIS FIELD MIGHT NOT BE PRESENT ON ALL DATASETS
-% I'M KEEPING IT HERE FOR REFERENCE
-% % Get error trials
-% badTrials = nwb2.intervals_trials.vectordata.get('error_run').data.load;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-iUniqueConditionsTrials = zeros(length(uniqueConditions),1); % This will hold the index of each trial for each condition
-
-% Get number of epochs
-nEpochs = length(nwb2.intervals_trials.start_time.data.load);
-% Get number of averaged trials
-nAvg = 1;
-
-% === EPOCHS FILE ===
-if (nEpochs > 1)
-    % Build epochs structure
-    for iEpoch = 1:nEpochs
-        ii = find(strcmp(uniqueConditions, all_conditions{iEpoch}));
-        iUniqueConditionsTrials(ii) =  iUniqueConditionsTrials(ii)+1;
-        sFile.epochs(iEpoch).label       = [all_conditions{iEpoch} ' (#' num2str(iUniqueConditionsTrials(ii)) ')'];
-        sFile.epochs(iEpoch).times       = timeBoundsTrials(iEpoch,:);
-        sFile.epochs(iEpoch).samples     = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
-        sFile.epochs(iEpoch).nAvg        = nAvg;
-        sFile.epochs(iEpoch).select      = 1;
-        sFile.epochs(iEpoch).bad         = 0;
-%         sFile.epochs(iEpoch).bad         = badTrials(iEpoch); 
-        sFile.epochs(iEpoch).channelflag = [];
-    end
-    sFile.format    = 'NWB';
-elseif (nEpochs == 1)
-    sFile.prop.nAvg = nAvg;
-    sFile.format    = 'NWB-CONTINUOUS';
-end
     
+    nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2);
+    nSamples  = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1);
 
+end
+
+
+%% Check for epochs/trials
+[sFile, nEpochs] = in_trials_nwb(sFile, nwb2);
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
@@ -223,13 +183,18 @@ ChannelMat.Comment = 'NWB channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels + nAdditionalChannels]);
 
 
-amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Check which one to select here!!!
+% % % % % amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load;
+amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.id.data.load;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 group_name      = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data;
 
 % Get coordinates and set to 0 if they are not available
-x = nwb2.general_extracellular_ephys_electrodes.vectordata.get('x').data.load';
-y = nwb2.general_extracellular_ephys_electrodes.vectordata.get('y').data.load';
-z = nwb2.general_extracellular_ephys_electrodes.vectordata.get('z').data.load';
+x = nwb2.general_extracellular_ephys_electrodes.vectordata.get('x').data.load'./1000; % NWB saves in m ???
+y = nwb2.general_extracellular_ephys_electrodes.vectordata.get('y').data.load'./1000;
+z = nwb2.general_extracellular_ephys_electrodes.vectordata.get('z').data.load'./1000;
 
 x(isnan(x)) = 0;
 y(isnan(y)) = 0;
@@ -242,7 +207,7 @@ for iChannel = 1:nChannels
     ChannelMat.Channel(iChannel).Loc     = [x(iChannel);y(iChannel);z(iChannel)];
                                         
     ChannelMat.Channel(iChannel).Group   = group_name{iChannel};
-    ChannelMat.Channel(iChannel).Type    = 'EEG';
+    ChannelMat.Channel(iChannel).Type    = 'SEEG';
     
     ChannelMat.Channel(iChannel).Orient  = [];
     ChannelMat.Channel(iChannel).Weight  = 1;
@@ -285,11 +250,10 @@ end
 %% Add information read from header
 sFile.byteorder    = 'l';  % Not confirmed - just assigned a value
 sFile.filename     = DataFile;
-sFile.device       = nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
+sFile.device       = 'NWB'; %nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
 sFile.header.nwb   = nwb2;
 sFile.comment      = nwb2.identifier;
-sFile.prop.samples = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag  = ones(nChannels + nAdditionalChannels, 1);
@@ -305,8 +269,10 @@ sFile.header.allBehaviorKeys           = allBehaviorKeys;
 
 events = in_events_nwb(sFile, nwb2, nEpochs, ChannelMat);
 
-% Import this list
-sFile = import_events(sFile, [], events);
+if ~isempty(events)
+    % Import this list
+    sFile = import_events(sFile, [], events);
+end
 
 end
 
@@ -330,15 +296,24 @@ function downloadNWB()
     % Download file
     zipFile = bst_fullfile(NWBTmpDir, 'NWB.zip');
     errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'NWB download');
-    if ~isempty(errMsg)
-        % Try twice before giving up
+    
+    % Check if the download was succesful and try again if it wasn't
+    time_before_entering = clock;
+    updated_time = clock;
+    time_out = 60;% timeout within 60 seconds of trying to download the file
+    
+    % Keep trying to download until a timeout is reached
+    while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
+        % Try to download until the timeout is reached
         pause(0.1);
         errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'NWB download');
-        if ~isempty(errMsg)
-            file_delete(NWBTmpDir, 1, 3);
-            error(['Impossible to download NWB.' 10 errMsg]);
-        end
+        updated_time = clock;
     end
+    % If the timeout is reached and there is still an error, abort
+    if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
+        error(['Impossible to download NWB.' 10 errMsg]);
+    end
+    
     % Unzip file
     bst_progress('start', 'NWB', 'Installing NWB...');
     unzip(zipFile, NWBTmpDir);

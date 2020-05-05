@@ -12,7 +12,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -84,24 +84,19 @@ end
 try
     % Get doc folder
     docDir = bst_get('BrainstormDocDir');
-    % Read "version.txt"
+    % Open "version.txt"
     fid = fopen(bst_fullfile(docDir, 'version.txt'), 'rt');
-    Name = fgetl(fid); % the name line
-    STR2 = fgetl(fid); % the second line with version, release and date
-    % Format should be "Version 2.0 (R14) 27-June-2005" in that order.
-    %  We will read last three items as Version, Release, and Date
-    fclose(fid);
+    % Get program name
+    Name = fgetl(fid);
     Name = Name(3:end); %trim the comment
-    STR2 = fliplr(STR2); % easier handling if read backwards
-    [Date,STR2] = strtok(STR2);
-    [Release,STR2] = strtok(STR2);
-    Version = strtok(STR2);
-    % reverse them to original
-    Version = fliplr(Version);
-    Release = fliplr(Release);
-    Date = fliplr(Date); 
-    Date = strrep(Date, '(', '');
-    Date = strrep(Date, ')', '');
+    % Get version and date
+    strVer = fgetl(fid);
+    cellVer = textscan(strVer(3:end), 'v. %s %s');
+    Version = cellVer{1}{1};
+    Release = cellVer{1}{1}(3:end);
+    Date = cellVer{2}{1}(2:end-1);
+    % Close file
+    fclose(fid);
 catch
     Name = 'Brainstorm';
     Version = '?';
@@ -122,7 +117,7 @@ localRel.month = str2num(Release(3:4));
 localRel.day   = str2num(Release(5:6));
 
 % Check Matlab version
-if (bst_get('MatlabVersion') <= 803)
+if (MatlabVersion <= 803)
     disp('BST> Warning: For better graphics, use Matlab >= 2014b');
 end
 % % Force Matlab to recycle the files instead of deleting them
@@ -175,7 +170,7 @@ disp('BST> Loading configuration file...');
 % Get user database file : brainstorm.mat
 dbFile = bst_get('BrainstormDbFile');
 % Current DB version
-CurrentDbVersion = 4;
+CurrentDbVersion = 5.02;
 % Get default colormaps list
 sDefColormaps = bst_colormaps('Initialize');
 isDbLoaded = 0;
@@ -193,6 +188,11 @@ if file_exist(dbFile)
             ' - Try to delete files in your home folder' 10 ...
             ' - Change the temporary folder in the Brainstorm preferences' 10 ...
             ' - Import again your database folder (File > Import database).'], 'Database error');
+        bstOptions = [];
+    end
+    % Invalid structure read from dbFile
+    if any(~isfield(bstOptions, {'iProtocol', 'ProtocolsListInfo', 'ProtocolsListSubjects', 'ProtocolsListStudies', 'BrainStormDbDir'}))
+        disp(['BST> Warning: Ignoring corrupted options file: ' dbFile]);
         bstOptions = [];
     end
 else
@@ -248,14 +248,19 @@ if ~isempty(bstOptions)
             all(isfield(bstOptions.Pipelines, {'Name', 'Processes'}))
        GlobalData.Processes.Pipelines = bstOptions.Pipelines;
     end
+    % Get saved searches
+    if isfield(bstOptions, 'Searches') && isstruct(bstOptions.Searches) && ...
+            all(isfield(bstOptions.Searches, {'Name', 'Search'}))
+       GlobalData.DataBase.Searches.All = bstOptions.Searches;
+    end
     % Reset current search filter
     if isfield(GlobalData.Preferences, 'NodelistOptions') && isfield(GlobalData.Preferences.NodelistOptions, 'String') && ~isempty(GlobalData.Preferences.NodelistOptions.String)
         GlobalData.Preferences.NodelistOptions.String = '';
     end
     % Check database structure for updates
-    % => Disabled because the database structure was not modified since 2013
-    % db_update(CurrentDbVersion);
-else
+    db_update(CurrentDbVersion);
+end
+if GlobalData.DataBase.DbVersion == 0
     % Database version is not defined, so it up-to-date
     GlobalData.DataBase.DbVersion = CurrentDbVersion;
 end
@@ -264,7 +269,7 @@ if isempty(GlobalData.Colormaps)
     GlobalData.Colormaps = sDefColormaps;
 end
 % Check that default montages are loaded
-if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)', 'Scalp current density', 'Head distance'}, {GlobalData.ChannelMontages.Montages.Name}))
+if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'}, {GlobalData.ChannelMontages.Montages.Name}))
     disp('BST> Loading default montages...');
     % Load default selections
     panel_montage('LoadDefaultMontages');

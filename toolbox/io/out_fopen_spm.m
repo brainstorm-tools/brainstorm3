@@ -5,7 +5,7 @@ function sFileOut = out_fopen_spm(OutputFile, sFileIn, ChannelMat)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,7 +33,7 @@ DatFile = bst_fullfile(fPath, [fBase, '.dat']);
 
 % Create .mat structure
 D.type      = 'continuous';
-D.Nsamples  = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
+D.Nsamples  = round((sFileIn.prop.times(2) - sFileIn.prop.times(1)) .* sFileIn.prop.sfreq) + 1;
 D.Fsample   = sFileIn.prop.sfreq;
 D.timeOnset = sFileIn.prop.times(1);
 % Trials

@@ -8,7 +8,7 @@ function varargout = process_snapshot( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -54,7 +54,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === Orientation 
     sProcess.options.orient.Comment = 'Orientation: ';
     sProcess.options.orient.Type    = 'combobox';
-    sProcess.options.orient.Value   = {1, {'left', 'right', 'top', 'bottom', 'front', 'back'}};
+    sProcess.options.orient.Value   = {1, {'left', 'right', 'top', 'bottom', 'front', 'back', 'left_intern', 'right_intern'}};
     % === TIME: Single view
     sProcess.options.time.Comment = 'Time (in seconds):';
     sProcess.options.time.Type    = 'value';
@@ -107,6 +107,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     contact_time   = sProcess.options.contact_time.Value{1};
     contact_nimage = sProcess.options.contact_nimage.Value{1};
     Comment        = sProcess.options.Comment.Value;
+    % If using "comment" instead of "Comment" (common scripting error)
+    if isempty(Comment) && isfield(sProcess.options, 'comment') && isfield(sProcess.options.comment, 'Value') && ~isempty(sProcess.options.comment.Value)
+        Comment = sProcess.options.comment.Value;
+    end
     % Amplitude threshold
     if isfield(sProcess.options, 'threshold') && isfield(sProcess.options.threshold, 'Value') && ~isempty(sProcess.options.threshold.Value)
         Threshold = sProcess.options.threshold.Value{1} / 100;

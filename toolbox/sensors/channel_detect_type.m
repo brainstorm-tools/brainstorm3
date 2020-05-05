@@ -7,7 +7,7 @@ function ChannelMat = channel_detect_type( ChannelMat, isAlign, isRemoveFid )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -53,14 +53,14 @@ for i = 1:length(iCheck)
     % Check name
     chName = lower(ChannelMat.Channel(iChan).Name);
     switch(chName)
-        case {'nas', 'nasion', 'nz', 'fidnas', 'fidnz'}  % NASION
+        case {'nas', 'nasion', 'nz', 'fidnas', 'fidnz', 'n'}  % NASION
             if ~isempty(ChannelMat.Channel(iChan).Loc) && ~all(ChannelMat.Channel(iChan).Loc == 0)
                 iDelChan = [iDelChan, iChan];
                 % ChannelMat.SCS.NAS = ChannelMat.Channel(iChan).Loc(:,1)' .* 1000;
                 ChannelMat.SCS.NAS = ChannelMat.Channel(iChan).Loc(:,1)';  % CHANGED 09-May-2013 (suspected bug, not tested)
             end
             ChannelMat.Channel(iChan).Type = 'Misc';
-        case {'lpa', 'pal', 'og', 'left', 'fidt9', 'leftear'} % LEFT EAR
+        case {'lpa', 'pal', 'og', 'left', 'fidt9', 'leftear', 'l'} % LEFT EAR
             if ~isempty(ChannelMat.Channel(iChan).Loc) && ~all(ChannelMat.Channel(iChan).Loc == 0)
                 iDelChan = [iDelChan, iChan];
                 % ChannelMat.SCS.LPA = ChannelMat.Channel(iChan).Loc(:,1)' .* 1000;
@@ -71,7 +71,7 @@ for i = 1:length(iCheck)
                 HeadPoints.Type  = [HeadPoints.Type,  'CARDINAL'];
             end
             ChannelMat.Channel(iChan).Type = 'Misc';
-        case {'rpa', 'par', 'od', 'right', 'fidt10', 'rightear'} % RIGHT EAR
+        case {'rpa', 'par', 'od', 'right', 'fidt10', 'rightear', 'r'} % RIGHT EAR
             if ~isempty(ChannelMat.Channel(iChan).Loc) && ~all(ChannelMat.Channel(iChan).Loc == 0)
                 iDelChan = [iDelChan, iChan];
                 % ChannelMat.SCS.RPA = ChannelMat.Channel(iChan).Loc(:,1)' .* 1000;

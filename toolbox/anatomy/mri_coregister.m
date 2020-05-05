@@ -22,7 +22,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,7 +36,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2018
+% Authors: Francois Tadel, 2016-2020
 
 % ===== LOAD INPUTS =====
 % Initialize returned variables
@@ -97,14 +97,14 @@ switch lower(Method)
         % Code initially coming from Olivier David's ImaGIN_anat_spm.m function
         % Initial translation according to centroids
         % Reference volume
-        Vref = spm_vol(NiiRefFile);
+        Vref = spm_vol([NiiRefFile, ',1']);
         [Iref,XYZref] = spm_read_vols(Vref);
         Iindex = find(Iref>max(Iref(:))/6);
         Zindex = find(max(XYZref(3,:))-XYZref(3,:)<200);
         index = intersect(Iindex,Zindex);
         CentroidRef = mean(XYZref(:,index),2);
         % Volume to register
-        V2 = spm_vol(NiiSrcFile);
+        V2 = spm_vol([NiiSrcFile, ',1']);
         [I2,XYZ2] = spm_read_vols(V2);
         Iindex = find(I2>max(I2(:))/6);
         Zindex = find(max(XYZ2(3,:))-XYZ2(3,:)<200);
@@ -119,8 +119,8 @@ switch lower(Method)
         % Create coregistration batch
         if isReslice
             % Coreg: Estimate and reslice
-            matlabbatch{1}.spm.spatial.coreg.estwrite.ref      = {NiiRefFile};
-            matlabbatch{1}.spm.spatial.coreg.estwrite.source   = {NiiSrcFile};
+            matlabbatch{1}.spm.spatial.coreg.estwrite.ref      = {[NiiRefFile, ',1']};
+            matlabbatch{1}.spm.spatial.coreg.estwrite.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.other    = {''};
             matlabbatch{1}.spm.spatial.coreg.estwrite.eoptions = spm_get_defaults('coreg.estimate');
             matlabbatch{1}.spm.spatial.coreg.estwrite.woptions = spm_get_defaults('coreg.write');
@@ -129,8 +129,8 @@ switch lower(Method)
             NiiRegFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'rspm_src.nii');
         else
             % Coreg: Estimate
-            matlabbatch{1}.spm.spatial.coreg.estimate.ref      = {NiiRefFile};
-            matlabbatch{1}.spm.spatial.coreg.estimate.source   = {NiiSrcFile};
+            matlabbatch{1}.spm.spatial.coreg.estimate.ref      = {[NiiRefFile, ',1']};
+            matlabbatch{1}.spm.spatial.coreg.estimate.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.other    = {''};
             matlabbatch{1}.spm.spatial.coreg.estimate.eoptions = spm_get_defaults('coreg.estimate');
             % Output file
@@ -223,6 +223,11 @@ if ~isempty(errMsg)
     return;
 end
 
+% ===== REMOVE NEW NEGATIVE VALUES =====
+% If some negative values appeared just because of the registration/reslicing: remove them
+if any(sMriReg.Cube(:) < 0) && ~any(sMriSrc.Cube(:) < 0)
+    sMriReg.Cube(sMriReg.Cube < 0) = 0;
+end
 
 % ===== UPDATE FIDUCIALS =====
 if isUpdateScs || isUpdateNcs

@@ -9,7 +9,7 @@ function [Projector, errMsg] = import_ssp(ChannelFile, SspFiles, ApplyToData, Sa
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -121,7 +121,13 @@ if isempty(Projector)
             switch (FileFormat)
                 case 'BST'
                     % Load file
-                    ProjMat = in_bst_channel(SspFiles{iFile}, 'Projector');
+                    ProjMat = in_bst_channel(SspFiles{iFile}, 'Projector', 'RowNames');
+                    if ~isempty(ChannelMat) && ~isempty(ProjMat.Projector) && ~isempty(ProjMat.RowNames) % && isfield(ProjMat, 'RowNames'), always because we ask for it explicitly
+                        [ProjMat, errMsg] = VerifyProjectorChannels(ChannelMat, ProjMat);
+                        if ~isempty(errMsg)
+                            return;
+                        end
+                    end
                     % Get projectors
                     newProj = ProjMat.Projector;
                 case 'ASCII'
@@ -247,6 +253,37 @@ if ~isProgress
     bst_progress('stop');
 end
 
+end
 
+function [ProjMat, errMsg] = VerifyProjectorChannels(ChannelMat, ProjMat)
+    errMsg = [];
+    % Check consistency
+    if numel(ProjMat.RowNames) ~= size(ProjMat.Projector(1).Components, 1)
+        errMsg = 'Inconsistent number of projector channel names.';
+        ProjMat = [];
+        return;
+    end
+    % Find channels involved. If any are missing in ChannelMat, the
+    % projector is not valid.
+    iProjNeeded = find(any(ProjMat.Projector(1).Components ~= 0, 2));
+    [isChanInProj, iProjPresent] = ismember({ChannelMat.Channel.Name}, ProjMat.RowNames);
+    % Remove zeros for those not found.
+    iProjPresent(iProjPresent == 0) = [];
+    Missing = ~ismember(iProjNeeded, iProjPresent);
+    if any(Missing)
+        Example = ProjMat.RowNames{iProjNeeded(find(Missing, 1))};
+        errMsg = sprintf('Projector contains channels not present in channel file (e.g. %s).', Example);
+        ProjMat = [];
+        return;
+    end
+    if numel(ChannelMat.Channel) > size(ProjMat.Projector(1).Components, 1)
+        for p = 1:numel(ProjMat.Projector)
+            % Add rows or zeros for additional channels.
+            tempProj = zeros(numel(ChannelMat.Channel), size(ProjMat.Projector(p).Components, 2));
+            tempProj(isChanInProj, :) = ProjMat.Projector(p).Components(iProjPresent, :);
+            ProjMat.Projector(p).Components = tempProj;
+        end
+    end
+end
 
 

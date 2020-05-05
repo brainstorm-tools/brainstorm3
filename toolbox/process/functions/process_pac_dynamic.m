@@ -7,7 +7,7 @@ function varargout = process_pac_dynamic( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -266,6 +266,11 @@ tic
         [sInput, nSignals] = bst_process('LoadInputFile', sInputsA(iFile).FileName, OPTIONS.Target, OPTIONS.TimeWindow, LoadOptions);
         if isempty(sInput) || isempty(sInput.Data)
             return;
+        end
+        
+        % Get time window of first file if none specified in parameters
+        if isempty(OPTIONS.TimeWindow)
+            OPTIONS.TimeWindow = sInput.Time([1, end]);
         end
         
         % Get sampling frequency

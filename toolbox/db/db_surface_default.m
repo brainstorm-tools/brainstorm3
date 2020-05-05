@@ -7,7 +7,7 @@ function sSubject = db_surface_default( iSubject, SurfaceType, iSurface, isUpdat
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -38,7 +38,11 @@ if (nargin < 3) || isempty(iSurface)
     % Try to find the default surface in the brainstormsubject.mat file
     subjMat = load(bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.FileName));
     % Default surface name
-    defSurfFile = subjMat.(SurfaceType);
+    if isfield(subjMat, SurfaceType)
+        defSurfFile = subjMat.(SurfaceType);
+    else
+        defSurfFile = [];
+    end
         
     % == ANATOMY ==
     if strcmpi(SurfaceType, 'Anatomy')
