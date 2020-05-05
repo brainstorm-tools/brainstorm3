@@ -60,7 +60,11 @@ end
 if(isa(filename,'H5ML.id'))
     loc=filename;
 else
-    loc = H5F.open(filename);
+    if(exist('h5read','file'))
+        loc = H5F.open(filename);
+    else
+        error('HDF5 is not supported');
+    end
 end
 
 opt.rootpath=path;
@@ -68,7 +72,19 @@ opt.rootpath=path;
 if(~(isfield(opt,'complexformat') && iscellstr(opt.complexformat) && numel(opt.complexformat)==2))
     opt.complexformat={};
 end
-   
+
+releaseid=0;
+v=ver('MATLAB');
+if(~isempty(v))
+    releaseid=datenum(v(1).Date);
+end
+
+if((isfield(opt,'order') && strcmpi(opt.order,'alphabet'))  || releaseid<datenum('1-Jan-2015') )
+    opt.order='H5_INDEX_NAME';
+else
+    opt.order='H5_INDEX_CRT_ORDER';
+end
+
 try
   if(nargin>1 && ~isempty(path))
       try
@@ -113,16 +129,13 @@ function [data, meta]=load_one(loc, opt)
 data = struct();
 meta = struct();
 inputdata=struct('data',data,'meta',meta,'opt',opt);
-order='H5_INDEX_CRT_ORDER';
-if(isfield(opt,'order') && strcmpi(opt.order,'alphabet'))
-   order='H5_INDEX_NAME';
-end
+
 
 % Load groups and datasets
 try
-    [status,count,inputdata] = H5L.iterate(loc,order,'H5_ITER_INC',0,@group_iterate,inputdata);
+    [status,count,inputdata] = H5L.iterate(loc,opt.order,'H5_ITER_INC',0,@group_iterate,inputdata);
 catch
-    if(strcmp(order,'H5_INDEX_CRT_ORDER'))
+    if(strcmp(opt.order,'H5_INDEX_CRT_ORDER'))
         [status,count,inputdata] = H5L.iterate(loc,'H5_INDEX_NAME','H5_ITER_INC',0,@group_iterate,inputdata);
     end
 end
