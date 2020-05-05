@@ -119,7 +119,7 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.MaxMode          = 'global';
         % Anatomy colormap
         case 'anatomy'
-            sColormap.Name             = 'bone';
+            sColormap.Name             = 'gray';
             sColormap.CMap             = bone(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
