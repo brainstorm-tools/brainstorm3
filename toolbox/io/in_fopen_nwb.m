@@ -206,7 +206,8 @@ for iChannel = 1:nChannels
     ChannelMat.Channel(iChannel).Name    = ['amp' num2str(amp_channel_IDs(iChannel))]; % This gives the AMP labels (it is not in order, but it seems to be the correct values - COME BACK TO THAT)
     ChannelMat.Channel(iChannel).Loc     = [x(iChannel);y(iChannel);z(iChannel)];
                                         
-    ChannelMat.Channel(iChannel).Group   = group_name{iChannel};
+%     ChannelMat.Channel(iChannel).Group   = group_name(iChannel);
+    ChannelMat.Channel(iChannel).Group   = [];
     ChannelMat.Channel(iChannel).Type    = 'SEEG';
     
     ChannelMat.Channel(iChannel).Orient  = [];
