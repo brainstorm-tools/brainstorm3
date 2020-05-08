@@ -40,8 +40,10 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 
 % ===== LOAD INPUTS =====
 % Initialize returned variables
-sMriReg = [];
+MriFileReg = [];
 errMsg = [];
+fileTag = '';
+sMriReg = [];
 % Progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
@@ -64,6 +66,11 @@ elseif ischar(MriFileSrc)
     sMriRef = in_mri_bst(MriFileRef);
 else
     error('Invalid call.');
+end
+% Not available for multiple volumes
+if (size(sMriRef.Cube, 4) > 1) || (size(sMriSrc.Cube, 4) > 1)
+    errMsg = 'The input files cannot contain multiple volumes.';
+    return;
 end
 % Inialize various variables
 isUpdateScs = 0;
@@ -173,9 +180,6 @@ switch lower(Method)
         end
         % Handle errors
         if ~isempty(errMsg)
-            if ~isempty(MriFileSrc)
-                bst_error(errMsg, 'MRI reslice', 0);
-            end
             return;
         end
         % Get MNI transformations
@@ -217,9 +221,6 @@ switch lower(Method)
 end
 % Handle errors
 if ~isempty(errMsg)
-    if ~isempty(MriFileSrc)
-        bst_error(errMsg, 'MRI reslice', 0);
-    end
     return;
 end
 

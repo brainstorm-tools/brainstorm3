@@ -280,12 +280,12 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
     if isempty(dirEig)
         errMsg = ['Missing *.eig.nii.gz in output folder.', 10, 'Check the Matlab command window for more information.'];
     end
-    DtiFile = fullfile(tmpDir, dirEig.name);
+    DtiNii = fullfile(tmpDir, dirEig.name);
 
     % ===== 4. EIG2NIFTI =====
     bst_progress('text', 'Saving output data...');
     % Reading volumes
-    import_mri(iSubject, DtiFile, 'Nifti1', 0, 0, 'DTI-EIG');
+    DtiFile = import_mri(iSubject, DtiNii, 'Nifti1', 0, 0, 'DTI-EIG');
 end
 
 
