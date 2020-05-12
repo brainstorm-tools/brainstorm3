@@ -1,16 +1,16 @@
 function varargout = process_fooof_py(varargin)
-% PROCESS_FOOOF: Applies the "Fitting Oscillations and One Over F" 
+% PROCESS_FOOOF: Applies the "Fitting Oscillations and One Over F"
 % algorithm on a Welch's PSD
 
 % @=============================================================================
 % This software is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
-% 
+%
 % Copyright (c)2000-2020 Brainstorm by the University of Southern California
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPL
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
-% 
+%
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
 % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
 % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
@@ -20,7 +20,7 @@ function varargout = process_fooof_py(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% 
+%
 
 eval(macro_method);
 end
@@ -77,7 +77,7 @@ function [freqBand, peakWidthLims, maxPeaks, minPeakHeight, peakThresh, aperMode
     freqBand = sProcess.options.freqBand.Value{1};
     peakWidthLims = sProcess.options.peakWidthLimits.Value{1};
     maxPeaks = sProcess.options.maxPeaks.Value{1};
-    minPeakHeight = log10(exp(sProcess.options.minPeakHeight.Value{1})); % convert from ln to log10
+    minPeakHeight = sProcess.options.minPeakHeight.Value{1}/10; % convert from ln to log10
     peakThresh = sProcess.options.peakThreshold.Value{1};
     aperMode = sProcess.options.aperiodicMode.Value;
 end
@@ -92,7 +92,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     % set options
     settings = struct('peak_width_limits' ,pwl,'max_n_peaks', maxp,...
         'min_peak_height', minph,'peak_threshold', pet,'aperiodic_mode',...
-        ams,'verbose',0); 
+        ams,'verbose',0);
     rm = 1; % Always return model
     for iP = 1:length(sInputs)
         clear fg
@@ -100,7 +100,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         % Initialize returned list of files
         OutputFile = {};
         % Check input frequency bounds
-        if any(fB <= 0) || fB(1) >= fB(2)  
+        if any(fB <= 0) || fB(1) >= fB(2)
             bst_report('error','Invalid Frequency range');
             return
         end
@@ -125,7 +125,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
                     'max_peaks',            maxp,...
                     'min_peak_height',      minph,...
                     'peak_threshold',       pet,...
-                    'aperiodic_mode',       ams);  
+                    'aperiodic_mode',       ams);
         [~, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iP));
         OutputFile{end+1} = SaveFile(inputFile, fp, fg, iOutputStudy);
     end
@@ -139,7 +139,7 @@ function NewFile = SaveFile(inputFile, FOOOF_params, FOOOF_group, iOutputStudy)
     FileMat = inputFile;
     FileMat.FOOOF_params    = FOOOF_params;
     FileMat.FOOOF           = FOOOF_group;
-    
+
     if contains(FileMat.Comment, 'PSD:')
         FileMat.Comment     = strrep(FileMat.Comment, 'PSD:', 'FOOOF:');
     else
@@ -197,7 +197,7 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
 %   Not all settings need to be defined by the user.
 %     Any settings that are not provided are set to default values.
 %     To run with all defaults, input settings as an empty struct.
-    
+
     % Check settings - get defaults for those not provided
     settings = fooof_check_settings(settings);
     % Import python modules
@@ -223,7 +223,7 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
     % Extract outputs
     fooof_results = fm.get_results();
     fooof_results = fooof_unpack_results(fooof_results);
-    
+
     % Re-calculating r-squared
     %   r_squared doesn't seem to get computed properly (in NaN).
     %   It is unclear why this happens, other than the error can be traced
@@ -233,7 +233,7 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
     coefs = corrcoef(double(py.array.array('d', fm.power_spectrum)), ...
                      double(py.array.array('d', fm.fooofed_spectrum_)));
     fooof_results.r_squared = coefs(2);
-    
+
     % Also return the actual model fit, if requested
     %   This will default to not return model, if variable not set
     if exist('return_model', 'var') && return_model
@@ -311,5 +311,5 @@ function results_out = fooof_unpack_results(results_in)
     % Note: r_squared gets recalculated, so doesn't need type casting
     %   Just in case, the code for type casting is:
     %results_out.r_squared = ...
-    %    double(py.array.array('d', py.numpy.nditer(results_in.r_squared)));    
+    %    double(py.array.array('d', py.numpy.nditer(results_in.r_squared)));
 end
