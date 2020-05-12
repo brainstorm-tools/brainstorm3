@@ -345,7 +345,7 @@ function aperiodic_params = simple_ap_fit(freqs, power_spectrum, aperiodic_mode)
 
 
 %       Set guess params for lorentzian aperiodic fit, guess params set at init
-    options = optimset('Display', 'off', 'TolX', 1e-5, 'TolFun', 1e-10, ...
+    options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
         'MaxFunEvals', 5000, 'MaxIter', 5000);
 
     if aperiodic_mode == 1 % no knee
@@ -393,7 +393,7 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
 %       Second aperiodic fit - using results of first fit as guess parameters
 %       See note in _simple_ap_fit about warnings
 
-    options = optimset('Display', 'off', 'TolX', 1e-5, 'TolFun', 1e-10, ...
+    options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
         'MaxFunEvals', 5000, 'MaxIter', 5000);
     guess_vec = popt;
 
@@ -642,7 +642,7 @@ function  gaussian_params = fit_peak_guess(guess, freqs, flat_spec, cf_bound, fr
         end
     end
 
-    options = optimset('Display', 'off', 'TolX', 1e-5, 'TolFun', 1e-10, ...
+    options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
         'MaxFunEvals', 5000, 'MaxIter', 5000);
 
     gaussian_params = fminsearch(@error_gaussian,...
