@@ -707,11 +707,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         disp(sprintf('BST> %s: Processing %d blocks of %d time points.', sProcess.Comment, nBlockCol, BlockSizeCol));
     end
 
-    % Note, if we wanted to split the function here, so the above can be used in ProcessFilter2 for example, these variables are needed below:
-    %  sMat sInput sProcess txtProgress iEpoch(=1)  iSelRows nRow nBlockRow BlockSizeRow nBlockCol nCol BlockSizeCol
-    %  isRaw : sFileIn ChannelMat ImportOptions [RawFileOut RawFileFormat (could be moved below)] isReadAll (isRaw implicit) : FullFileMat
-    %  (notRaw) : matValues (instead of sFileIn) stdValues TFmask
-    
     % ===== PROCESS BLOCKS =====
     isFirstLoop = 1;
     % Loop on row blocks
@@ -963,32 +958,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         end
     end % rows
     
-    %     % Copy leading and trailing unprocessed rows for raw data.
-    %     if isRaw && ~isReadAll && ~isempty(iSelRows) && ~isTimeChange
-    %         bst_progress('text', [txtProgress, ' [copying other channels]']);
-    %         for iSelRows = {1:(iSelRows(1)-1), (iSelRows(end)+1):numel(sMat.ChannelFlag)}
-    %             iSelRows = iSelRows{1}; %#ok<FXSET>
-    %             nRow = numel(iSelRows);
-    %             nBlockRow = ceil(nRow / BlockSizeRow);
-    %             % Loop on row blocks
-    %             for iBlockRow = 1:nBlockRow
-    %                 % Indices of rows to process
-    %                 iRow = 1 + (((iBlockRow-1)*BlockSizeRow) : min(iBlockRow * BlockSizeRow - 1, nRow - 1))';
-    %                 iRow = iSelRows(iRow);
-    %                 % Loop on col blocks
-    %                 for iBlockCol = 1:nBlockCol
-    %                     % Indices of columns to process
-    %                     iCol = 1 + (((iBlockCol-1)*BlockSizeCol) : min(iBlockCol * BlockSizeCol - 1, nCol - 1));
-    %                     % Progress bar
-    %                     bst_progress('set', round(((iBlockRow - 1) * nBlockCol + iBlockCol) / (nBlockRow * nBlockCol) * 100));
-    %                     SamplesBounds = round(sFileIn.prop.times(1) .* sFileIn.prop.sfreq) + iCol([1,end]) - 1;
-    %                     % Read & write
-    %                     sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iRow, in_fread(sFileIn, ChannelMat, iEpoch, SamplesBounds, iRow, ImportOptions));
-    %                 end
-    %             end
-    %         end
-    %     end
-
     % Save all the RAW file at once
     if isReadAll
         sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, [], [], OutFullFileMat);
