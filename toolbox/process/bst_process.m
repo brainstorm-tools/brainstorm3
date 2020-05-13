@@ -920,17 +920,23 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                         while iWriteBlockRowStart <= iWriteBlockRowEnd
                             if ~isTimeChange
                                 % Fill the row gaps with unprocessed data.
-                                iWriteBlockRow = iWriteBlockRowStart:min(iRow(end), iRow(1) + BlockSizeRow - 1);
+                                iWriteBlockRow = iWriteBlockRowStart:min(iWriteBlockRowEnd, iWriteBlockRowStart + BlockSizeRow - 1);
                                 WriteBlock = zeros(numel(iWriteBlockRow), nOutTime);
-                                [iProcessedA, iProcessedWriteBloc] = ismember(iRow, iWriteBlockRow);
-                                WriteBlock(iProcessedWriteBloc, :) = sInput.A(iProcessedA);
-                                WriteBlock(~iProcessedWriteBloc, :) = in_fread(sFileIn, ChannelMat, iEpoch, SamplesBounds, iWriteBlockRow(~iProcessedWriteBloc), ImportOptions);
+                                [Unused, iProcessedA, iProcessedB] = intersect(iRow, iWriteBlockRow);
+                                if ~isempty(iProcessedA)
+                                    WriteBlock(iProcessedB, :) = sInput.A(iProcessedA, :);
+                                end
+                                if numel(iProcessedB) < numel(iWriteBlockRow)
+                                    iNonProcB = setdiff(1:numel(iWriteBlockRow), iProcessedB);
+                                    WriteBlock(iNonProcB, :) = in_fread(sFileIn, ChannelMat, iEpoch, SamplesBounds, iWriteBlockRow(iNonProcB), ImportOptions);
+                                end
                                 sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iWriteBlockRow, WriteBlock);
                             else
                                 % Avoid row gaps.
-                                iWriteBlockRow = iWriteBlockRowStart:iRow(find(diff(iRow) > 1 & iRow(2:end) >= iWriteBlockRowStart, 1, 'first'));
-                                iProcessedA = ismember(iRow, iWriteBlockRow);
-                                sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iWriteBlockRow, sInput.A(iProcessedA));
+                                iWriteBlockRow = iWriteBlockRowStart:min([iWriteBlockRowEnd, iWriteBlockRowStart + BlockSizeRow - 1, ...
+                                    iRow(find(diff(iRow) > 1 & iRow(2:end) >= iWriteBlockRowStart, 1, 'first'))]);
+                                isProcessedA = ismember(iRow, iWriteBlockRow);
+                                sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iWriteBlockRow, sInput.A(isProcessedA, :));
                             end
                             iWriteBlockRowStart = iWriteBlockRow(end) + 1;
                         end
