@@ -77,7 +77,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         if ~isempty(sSubject.iInnerSkull)
             sInner = bst_memory('LoadSurface', sSubject.Surface(sSubject.iInnerSkull).FileName);
         else
-            sInner = sEnvelope;
+            sInner = [];
         end
         % If this is the default subject: do not show the option "use group grid"
         if (iSubject == 0)
