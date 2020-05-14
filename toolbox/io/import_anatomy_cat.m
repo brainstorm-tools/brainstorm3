@@ -330,8 +330,8 @@ if ~isempty(TessRhFile)
     end
 end
 
-% Left FSAverage
-if ~isempty(FsAvgLhFile)
+% Left FSAverage (only if the spheres are available)
+if ~isempty(FsAvgLhFile) && ~isempty(TessLsphFile)
     % Import file
     [iAvgLh, BstFsAvgLhFile, nVertOrigAvgL] = import_surfaces(iSubject, FsAvgLhFile, 'GII-WORLD', 0);
     BstFsAvgLhFile = BstFsAvgLhFile{1};
@@ -348,8 +348,8 @@ if ~isempty(FsAvgLhFile)
         errorMsg = [errorMsg err];
     end
 end
-% Right FSAverage
-if ~isempty(FsAvgRhFile)
+% Right FSAverage (only if the spheres are available)
+if ~isempty(FsAvgRhFile) && ~isempty(TessRsphFile)
     % Import file
     [iAvgRh, BstFsAvgRhFile, nVertOrigAvgR] = import_surfaces(iSubject, FsAvgRhFile, 'GII-WORLD', 0);
     BstFsAvgRhFile = BstFsAvgRhFile{1};
@@ -367,8 +367,8 @@ if ~isempty(FsAvgRhFile)
     end
 end
 
-% Left FSAverage 32k
-if ~isempty(Fs32kLhFile)
+% Left FSAverage 32k (only if the spheres are available)
+if ~isempty(Fs32kLhFile) && ~isempty(TessLsphFile)
     % Import file
     [i32kLh, BstFs32kLhFile, nVertOrig32kL] = import_surfaces(iSubject, Fs32kLhFile, 'GII-WORLD', 0);
     BstFs32kLhFile = BstFs32kLhFile{1};
@@ -385,8 +385,8 @@ if ~isempty(Fs32kLhFile)
         errorMsg = [errorMsg err];
     end
 end
-% Right FSAverage 32k
-if ~isempty(Fs32kRhFile)
+% Right FSAverage 32k (only if the spheres are available)
+if ~isempty(Fs32kRhFile) && ~isempty(TessRsphFile)
     % Import file
     [i32kRh, BstFs32kRhFile, nVertOrig32kR] = import_surfaces(iSubject, Fs32kRhFile, 'GII-WORLD', 0);
     BstFs32kRhFile = BstFs32kRhFile{1};
@@ -417,17 +417,20 @@ end
 
 %% ===== PROJECT ATLASES =====
 rmFiles = {};
-% Project FSAverage atlases
-if ~isempty(FsAvgLhFile) && ~isempty(FsAvgRhFile)
-    bst_project_scouts(BstFsAvgLhFile, BstTessLhFile, [], 1);
-    bst_project_scouts(BstFsAvgRhFile, BstTessRhFile, [], 1);
-    rmFiles = cat(2, rmFiles, {BstFsAvgLhFile, BstFsAvgRhFile});
-end
-% Project FSAverage 32k atlases
-if ~isempty(Fs32kLhFile) && ~isempty(Fs32kRhFile)
-    bst_project_scouts(BstFs32kLhFile, BstTessLhFile, [], 1);
-    bst_project_scouts(BstFs32kRhFile, BstTessRhFile, [], 1);
-    rmFiles = cat(2, rmFiles, {BstFs32kLhFile, BstFs32kRhFile});
+% If the registered spheres are available
+if ~isempty(TessLsphFile) && ~isempty(TessRsphFile)
+    % Project FSAverage atlases
+    if ~isempty(FsAvgLhFile) && ~isempty(FsAvgRhFile)
+        bst_project_scouts(BstFsAvgLhFile, BstTessLhFile, [], 1);
+        bst_project_scouts(BstFsAvgRhFile, BstTessRhFile, [], 1);
+        rmFiles = cat(2, rmFiles, {BstFsAvgLhFile, BstFsAvgRhFile});
+    end
+    % Project FSAverage 32k atlases
+    if ~isempty(Fs32kLhFile) && ~isempty(Fs32kRhFile)
+        bst_project_scouts(BstFs32kLhFile, BstTessLhFile, [], 1);
+        bst_project_scouts(BstFs32kRhFile, BstTessRhFile, [], 1);
+        rmFiles = cat(2, rmFiles, {BstFs32kLhFile, BstFs32kRhFile});
+    end
 end
 
 
