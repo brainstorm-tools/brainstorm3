@@ -306,6 +306,10 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
     % Run SPM batch
     spm_jobman('initcfg');
     spm_jobman('run',matlabbatch);
+    % Close CAT12 figures
+    close([findall(0, 'Type', 'Figure', 'Tag', 'Interactive'), ...
+           findall(0, 'Type', 'Figure', 'Tag', 'CAT')]);
+    
     
 %     % ===== PROJECT ATLASES =====
 %         fs_central = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_surfaces', 'lh.central.freesurfer.gii');
