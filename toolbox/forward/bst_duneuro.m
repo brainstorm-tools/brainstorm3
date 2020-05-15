@@ -120,8 +120,9 @@ if strcmp(dnModality, 'meg')
         FemMat.Elements(iRemove,:) = [];
         FemMat.Tissue(iRemove,:) = [];
     end
-elseif strcmp(dnModality,'meeg') && (sum(cfg.FemSelect) ~= length(unique(cfg.elem(:,5))))
+elseif strcmp(dnModality,'meeg') && (sum(cfg.FemSelect) ~= length(unique(FemMat.Tissue)))
     errMsg = 'Reduced head model cannot be used when computing MEG+EEG simultaneously.';
+    return;
 end
 % Hexa mesh: detect whether the geometry was adapted
 if strcmpi(ElementType, 'hexahedron')
