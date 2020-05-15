@@ -1146,7 +1146,7 @@ function errMsg = InstallIso2mesh(isInteractive)
         fclose(fid);
     end
     % If installed but not in path: add to path
-    if ~exist('iso2meshver', 'file') && isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
+    if ~exist('iso2meshver', 'file') && file_exist(exePath)
         addpath(bst_fileparts(exePath));
         disp([10, 'Iso2mesh path: ', bst_fileparts(exePath), 10]);
         % Set iso2mesh temp folder
