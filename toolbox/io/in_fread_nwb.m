@@ -70,11 +70,9 @@ for iChannel = 1:nChannels
         iEEG = iEEG + 1;
         
         if ~isempty(sFile.header.RawKey)
-%             F(iChannel,:) = nwb2.acquisition.get(sFile.header.RawKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
-            F(iChannel,:) = nwb2.acquisition.get(sFile.header.RawKey).data.load([SamplesBounds(1)+1, selectedChannels(iEEG)], [SamplesBounds(2)+1, selectedChannels(iEEG)]);
+            F(iChannel,:) = nwb2.acquisition.get(sFile.header.RawKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
         else
-%             F(iChannel,:) = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
-            F(iChannel,:) = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([SamplesBounds(1)+1, selectedChannels(iEEG)], [SamplesBounds(2)+1, selectedChannels(iEEG)]);
+            F(iChannel,:) = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
         end
     else
         % Get the additional/behavioral channels

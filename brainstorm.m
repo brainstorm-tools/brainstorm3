@@ -135,8 +135,7 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
             % Add NWB to Matlab path
             addpath(genpath(NWBDir));
             % Generate the NWB Schema (First time run)
-%             generateCore(bst_fullfile('nwb-schema','core','nwb.namespace.yaml'))
-            generateCore()
+            generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
             % Update Initialization flag
             NWB_initialized = 1;
             save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
