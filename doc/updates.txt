@@ -1,6 +1,8 @@
 ---------------------------------------------------------------
 Mai 2020
 - IO: Support for fNIRS format .snirf
+- Anatomy: Updated CAT12 to version 12.7
+- Doc: Updated decoding tutorial with new processes
 ---------------------------------------------------------------
 April 2020
 - FEM: Integration of bst-duneuro into Brainstorm

@@ -134,7 +134,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 
-%% ===== COMPUTE CANONICAL SURFACES =====
+%% ===== COMPUTE CAT12 SEGMENTATION =====
 function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphReg, isExtraMaps, isInteractive)
     isOk = 0;
     errMsg = '';
@@ -151,9 +151,10 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
         return;
     end
     % Check DARTEL template
-    dartelTpm = bst_fullfile(bst_get('SpmDir'), 'toolbox', 'cat12', 'templates_volumes', 'Template_1_IXI555_MNI152.nii');
+    SpmDir = bst_get('SpmDir');
+    dartelTpm = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_volumes', 'Template_1_IXI555_MNI152.nii');
     if ~file_exist(dartelTpm)
-        dartelTpm = bst_fullfile(bst_get('SpmDir'), 'toolbox', 'cat12', 'templates_1.50mm', 'Template_1_IXI555_MNI152.nii');
+        dartelTpm = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_1.50mm', 'Template_1_IXI555_MNI152.nii');
         if ~file_exist(dartelTpm)
             errMsg = ['Missing CAT12 template: ' 10 dartelTpm];
             return;
@@ -227,10 +228,12 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
     % ===== SAVE MRI AS NII =====
     % Empty temporary folder, otherwise it reuses previous files in the folder
     gui_brainstorm('EmptyTempFolder');
-    % Save MRI in .nii format
+    % Create temporay folder for CAT12 output
     catDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'cat12');
     mkdir(catDir);
-    NiiFile = bst_fullfile(catDir, 'spm_cat12.nii');
+    % Save MRI in .nii format
+    subjid = strrep(sSubject.Name, '@', '');
+    NiiFile = bst_fullfile(catDir, [subjid, '.nii']);
     out_mri_nii(sMri, NiiFile);
     % If a "world transformation" was not available in the MRI in the database, it was set to a default when saving to .nii
     % Let's reload this file to get the transformation matrix, it will be used when importing the results
@@ -262,6 +265,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
     matlabbatch{1}.spm.tools.cat.estwrite.output.labelnative = 1;
     matlabbatch{1}.spm.tools.cat.estwrite.output.jacobianwarped = 0;
     matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [0 0];
+    matlabbatch{1}.spm.tools.cat.estwrite.output.TPMC.native = 1;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.native = 1;
     % Spherical registration (much slower)
     if isSphReg
         matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 1;
@@ -296,11 +301,25 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
             matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel = 0;
             matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 0;
     end
-    
+    % Switch to CAT12 expert mode
+    cat12('expert');
     % Run SPM batch
     spm_jobman('initcfg');
     spm_jobman('run',matlabbatch);
-        
+    
+%     % ===== PROJECT ATLASES =====
+%         fs_central = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_surfaces', 'lh.central.freesurfer.gii');
+%         fs_sphere  = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_surfaces', 'lh.sphere.freesurfer.gii');
+%         fs_annot   = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'atlases_surfaces', 'lh.aparc_DK40.freesurfer.annot');
+% 
+%         subj_spherereg = bst_fullfile(catDir, 'surf', ['lh.sphere.reg.' subjid '.gii']);
+%         subj_annot = ['lh.aparc_DK40.' subjid '.annot'];
+% 
+%         cmd = sprintf('CAT_ResampleSurf "%s" "%s" "%s" NULL "%s" "%s"',...
+%           fs_central, fs_sphere, subj_spherereg, fs_annot, subj_annot);
+%         [ST, RS] = cat_system(cmd);
+%         cat_check_system_output(ST,RS,opt.verb-2);
+    
     % ===== IMPORT OUTPUT FOLDER =====
     % Import CAT12 anatomy folder
     isKeepMri = 1;
