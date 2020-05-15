@@ -107,10 +107,11 @@ else
     ProtocolMat.LastAccessDate    = datestr(now);
     ProtocolMat.LastAccessUserDir = bst_get('UserDir');
     % Remove useless fields
+    StudyDir = ProtocolMat.ProtocolInfo.STUDIES;
     ProtocolMat.ProtocolInfo = rmfield(ProtocolMat.ProtocolInfo, 'STUDIES');
     ProtocolMat.ProtocolInfo = rmfield(ProtocolMat.ProtocolInfo, 'SUBJECTS');
     ProtocolMat.ProtocolSubjects.Subject = ProtocolMat.ProtocolSubjects.Subject(iSubject);
-    [sStudies, iStudies] = bst_get('StudyWithSubject', ProtocolMat.ProtocolSubjects.Subject.FileName);
+    [sStudies, iStudies] = bst_get('StudyWithSubject', ProtocolMat.ProtocolSubjects.Subject.FileName, 'default_study', 'intra_subject');
     ProtocolMat.ProtocolStudies.Study = ProtocolMat.ProtocolStudies.Study(iStudies);
     ProtocolFile = bst_fullfile(dataFolder, 'protocol.mat');
     bst_save(ProtocolFile, ProtocolMat, 'v7');
@@ -124,9 +125,13 @@ else
 end
 % Zip
 zip(OutputFile, ListZip);
-% Remove temporary protocol file
+% Restore protocol file
 if ~isempty(iSubject)
-    file_delete(ProtocolFile, 1);
+    % Remove temporary protocol file
+    file_delete(bst_fullfile(StudyDir, 'protocol.mat'), 1);
+    % Save again the original one
+    GlobalData.DataBase.isProtocolModified(iProtocol) = 1;
+    db_save(1);
 end
 % Restore initial folder
 cd(prevFolder);

@@ -139,13 +139,13 @@ if isempty(TessRhFile)
     errorMsg = [errorMsg 'Surface file was not found: rh.central' 10];
 end
 
-% Find FSAverage surfaces in CAT12 program folder
+% FSAverage surfaces in CAT12 program folder
 CatExeDir = bst_fullfile(bst_get('SpmDir'), 'toolbox', 'cat12');
 FsAvgLhFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'lh.central.freesurfer.gii');
 FsAvgRhFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'rh.central.freesurfer.gii');
 Fs32kLhFile = bst_fullfile(CatExeDir, 'templates_surfaces_32k', 'lh.central.freesurfer.gii');
 Fs32kRhFile = bst_fullfile(CatExeDir, 'templates_surfaces_32k', 'rh.central.freesurfer.gii');
-% Find FSAverage spheres in CAT12 program folder
+% FSAverage spheres in CAT12 program folder
 FsAvgLsphFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'lh.sphere.freesurfer.gii');
 FsAvgRsphFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'rh.sphere.freesurfer.gii');
 Fs32kLsphFile = bst_fullfile(CatExeDir, 'templates_surfaces_32k', 'lh.sphere.freesurfer.gii');
@@ -186,6 +186,13 @@ AnnotAvgRhFiles(cellfun(@isempty, AnnotAvgRhFiles)) = [];
 Annot32kLhFiles(cellfun(@isempty, Annot32kLhFiles)) = [];
 Annot32kRhFiles(cellfun(@isempty, Annot32kRhFiles)) = [];
 
+% Find tissue probability maps
+TpmFiles = {file_find(CatDir, 'p2*.nii', 2), ...  % White matter
+            file_find(CatDir, 'p1*.nii', 2), ...  % Gray matter
+            file_find(CatDir, 'p3*.nii', 2), ...  % CSF
+            file_find(CatDir, 'p4*.nii', 2), ...  % Skull
+            file_find(CatDir, 'p5*.nii', 2), ...  % Scalp
+            file_find(CatDir, 'p6*.nii', 2)};     % Background
 % Find thickness maps
 if isExtraMaps
     ThickLhFile = file_find(CatDir, 'lh.thickness.*', 2);
@@ -285,9 +292,7 @@ elseif ~isKeepMri
     waitfor(hFig);
 end
 % Load SCS and NCS field to make sure that all the points were defined
-warning('off','MATLAB:load:variableNotFound');
-sMri = load(BstMriFile, 'SCS', 'NCS');
-warning('on','MATLAB:load:variableNotFound');
+sMri = in_mri_bst(BstMriFile);
 if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import CAT12 folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive
@@ -330,8 +335,8 @@ if ~isempty(TessRhFile)
     end
 end
 
-% Left FSAverage
-if ~isempty(FsAvgLhFile)
+% Left FSAverage (only if the spheres are available)
+if ~isempty(FsAvgLhFile) && ~isempty(TessLsphFile)
     % Import file
     [iAvgLh, BstFsAvgLhFile, nVertOrigAvgL] = import_surfaces(iSubject, FsAvgLhFile, 'GII-WORLD', 0);
     BstFsAvgLhFile = BstFsAvgLhFile{1};
@@ -348,8 +353,8 @@ if ~isempty(FsAvgLhFile)
         errorMsg = [errorMsg err];
     end
 end
-% Right FSAverage
-if ~isempty(FsAvgRhFile)
+% Right FSAverage (only if the spheres are available)
+if ~isempty(FsAvgRhFile) && ~isempty(TessRsphFile)
     % Import file
     [iAvgRh, BstFsAvgRhFile, nVertOrigAvgR] = import_surfaces(iSubject, FsAvgRhFile, 'GII-WORLD', 0);
     BstFsAvgRhFile = BstFsAvgRhFile{1};
@@ -367,8 +372,8 @@ if ~isempty(FsAvgRhFile)
     end
 end
 
-% Left FSAverage 32k
-if ~isempty(Fs32kLhFile)
+% Left FSAverage 32k (only if the spheres are available)
+if ~isempty(Fs32kLhFile) && ~isempty(TessLsphFile)
     % Import file
     [i32kLh, BstFs32kLhFile, nVertOrig32kL] = import_surfaces(iSubject, Fs32kLhFile, 'GII-WORLD', 0);
     BstFs32kLhFile = BstFs32kLhFile{1};
@@ -385,8 +390,8 @@ if ~isempty(Fs32kLhFile)
         errorMsg = [errorMsg err];
     end
 end
-% Right FSAverage 32k
-if ~isempty(Fs32kRhFile)
+% Right FSAverage 32k (only if the spheres are available)
+if ~isempty(Fs32kRhFile) && ~isempty(TessRsphFile)
     % Import file
     [i32kRh, BstFs32kRhFile, nVertOrig32kR] = import_surfaces(iSubject, Fs32kRhFile, 'GII-WORLD', 0);
     BstFs32kRhFile = BstFs32kRhFile{1};
@@ -417,17 +422,20 @@ end
 
 %% ===== PROJECT ATLASES =====
 rmFiles = {};
-% Project FSAverage atlases
-if ~isempty(FsAvgLhFile) && ~isempty(FsAvgRhFile)
-    bst_project_scouts(BstFsAvgLhFile, BstTessLhFile, [], 1);
-    bst_project_scouts(BstFsAvgRhFile, BstTessRhFile, [], 1);
-    rmFiles = cat(2, rmFiles, {BstFsAvgLhFile, BstFsAvgRhFile});
-end
-% Project FSAverage 32k atlases
-if ~isempty(Fs32kLhFile) && ~isempty(Fs32kRhFile)
-    bst_project_scouts(BstFs32kLhFile, BstTessLhFile, [], 1);
-    bst_project_scouts(BstFs32kRhFile, BstTessRhFile, [], 1);
-    rmFiles = cat(2, rmFiles, {BstFs32kLhFile, BstFs32kRhFile});
+% If the registered spheres are available
+if ~isempty(TessLsphFile) && ~isempty(TessRsphFile)
+    % Project FSAverage atlases
+    if ~isempty(FsAvgLhFile) && ~isempty(FsAvgRhFile)
+        bst_project_scouts(BstFsAvgLhFile, BstTessLhFile, [], 1);
+        bst_project_scouts(BstFsAvgRhFile, BstTessRhFile, [], 1);
+        rmFiles = cat(2, rmFiles, {BstFsAvgLhFile, BstFsAvgRhFile});
+    end
+    % Project FSAverage 32k atlases
+    if ~isempty(Fs32kLhFile) && ~isempty(Fs32kRhFile)
+        bst_project_scouts(BstFs32kLhFile, BstTessLhFile, [], 1);
+        bst_project_scouts(BstFs32kRhFile, BstTessRhFile, [], 1);
+        rmFiles = cat(2, rmFiles, {BstFs32kLhFile, BstFs32kRhFile});
+    end
 end
 
 
@@ -490,6 +498,64 @@ if isExtraMaps && ~isempty(CortexHiFile) && ~isempty(ThickLhFile) && ~isempty(Th
     iStudy = db_add_condition(iSubject, 'CAT12');
     % Import cortical thickness
     ThickFile = import_sources(iStudy, CortexHiFile, ThickLhFile, ThickRhFile, 'FS');
+end
+
+
+%% ===== IMPORT TISSUE LABELS =====
+if ~isempty(TpmFiles)
+    bst_progress('start', 'Import CAT12 folder', 'Importing tissue probability maps...');
+    sMriTissue = [];
+    pCube = [];
+    % Find for each voxel in which tissue there is the highest probability
+    for iTissue = 1:length(TpmFiles)
+        % Skip missing tissue
+        if isempty(TpmFiles{iTissue})
+            continue;
+        end
+        % Load probability map
+        sMriProb = in_mri_nii(TpmFiles{iTissue});
+        % First volume: Copy structure
+        if isempty(sMriTissue)
+            sMriTissue = sMriProb;
+            sMriTissue.Cube = 0 .* sMriTissue.Cube;
+            pCube = sMriTissue.Cube;
+        end
+        % Set label for the voxels that have a probability higher than the previous volumes
+        maskLabel = ((sMriProb.Cube > pCube) & (sMriProb.Cube > 0));
+        sMriTissue.Cube(maskLabel) = iTissue;
+        pCube(maskLabel) = sMriProb.Cube(maskLabel);
+    end
+    % Save tissues atlas
+    if ~isempty(sMriTissue)
+        % Get updated subject definition
+        sSubject = bst_get('Subject', iSubject);
+        % Replace background with zeros
+        sMriTissue.Cube(sMriTissue.Cube == 6) = 0;
+        % Set comment
+        sMriTissue.Comment = file_unique('tissues', {sSubject.Surface.Comment});
+        % Copy some fields from the original MRI
+        if isfield(sMri, 'SCS') 
+            sMriTissue.SCS = sMri.SCS;
+        end
+        if isfield(sMri, 'NCS') 
+            sMriTissue.NCS = sMri.NCS;
+        end
+        if isfield(sMri, 'History') 
+            sMriTissue.History = sMri.History;
+        end
+        % Add history tag
+        sMriTissue = bst_history('add', sMriTissue, 'segment', 'Tissues segmentation generated with CAT12.');
+        % Output file name
+        TissueFile = file_unique(strrep(file_fullpath(BstMriFile), '.mat', '_tissues.mat'));
+        % Save new MRI in Brainstorm format
+        sMriTissue = out_mri_bst(sMriTissue, TissueFile);
+        % Add to subject
+        iAnatomy = length(sSubject.Anatomy) + 1;
+        sSubject.Anatomy(iAnatomy).Comment  = sMriTissue.Comment;
+        sSubject.Anatomy(iAnatomy).FileName = file_short(TissueFile);
+        % Save subject
+        bst_set('Subject', iSubject, sSubject);
+    end
 end
 
 

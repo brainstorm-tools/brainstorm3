@@ -374,7 +374,7 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
             % Get the .nii transformation in both volumes
             iTransfPre  = find(strcmpi(sMriPre.InitTransf(:,1),  'vox2ras'));
             iTransfPost = find(strcmpi(sMriPostReg.InitTransf(:,1), 'vox2ras'));
-            if (isempty(iTransfPre) || isempty(iTransfPost)) && (~isequal(size(sMriPre.Cube), size(sMriPost.Cube)) || ~isequal(sMriPre.Voxsize, sMriPostReg.Voxsize))
+            if (isempty(iTransfPre) || isempty(iTransfPost)) && (~isequal(size(sMriPre.Cube(:,:,:,1)), size(sMriPost.Cube(:,:,:,1))) || ~isequal(sMriPre.Voxsize, sMriPostReg.Voxsize))
                 errMsg = 'The pre and post volumes are not registered or were not initially in .nii format.';
                 return;
             end

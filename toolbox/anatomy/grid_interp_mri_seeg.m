@@ -27,7 +27,7 @@ function grid2mri_interp = grid_interp_mri_seeg(GridLoc, MRI)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2020
 
 % ===== CHECK MRI =====
 % Check that MRI SCS is well defined
@@ -35,7 +35,7 @@ if ~isfield(MRI,'SCS') || ~isfield(MRI.SCS,'R') || ~isfield(MRI.SCS,'T') || isem
     error(['MRI SCS (Subject Coordinate System) was not defined or subjectimage file is from another version of Brainstorm.' 10 10,...
            'Please define the SCS fiducials on this MRI.']);
 end
-cubeSize = size(MRI.Cube);
+cubeSize = size(MRI.Cube(:,:,:,1));
 % Convert coordinates
 GridLoc = cs_convert(MRI, 'scs', 'voxel', GridLoc);
 

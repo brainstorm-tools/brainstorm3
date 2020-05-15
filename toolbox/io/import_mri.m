@@ -34,7 +34,7 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2020
 
 % ===== Parse inputs =====
 if (nargin < 3) || isempty(FileFormat)
@@ -135,7 +135,8 @@ end
 %% ===== LOAD MRI FILE =====
 bst_progress('start', 'Import MRI', ['Loading file "' MriFile '"...']);
 % Load MRI
-sMri = in_mri(MriFile, FileFormat, isInteractive);
+isNormalize = 0;
+sMri = in_mri(MriFile, FileFormat, isInteractive, isNormalize);
 if isempty(sMri)
     bst_progress('stop');
     return
@@ -162,7 +163,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 val   = sMriRef.InitTransf{it,2};
                 switch (ttype)
                     case 'permute'
-                        sMri.Cube = permute(sMri.Cube, val);
+                        sMri.Cube = permute(sMri.Cube, [val, 4]);
                         sMri.Voxsize = sMri.Voxsize(val);
                     case 'flipdim'
                         sMri.Cube = bst_flip(sMri.Cube, val(1));
@@ -179,9 +180,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     
     % === ASK REGISTRATION METHOD ===
     % Get volumes dimensions
-    refSize = size(sMriRef.Cube);
-    newSize = size(sMri.Cube);
-    isSameSize = all(refSize(1:3) == newSize(1:3)) && all(sMriRef.Voxsize == sMriRef.Voxsize);
+    refSize = size(sMriRef.Cube(:,:,:,1));
+    newSize = size(sMri.Cube(:,:,:,1));
+    isSameSize = all(refSize == newSize) && all(sMriRef.Voxsize(1:3) == sMri.Voxsize(1:3));
     % Initialize list of options to register this new MRI with the existing one
     strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
     cellOptions = {};

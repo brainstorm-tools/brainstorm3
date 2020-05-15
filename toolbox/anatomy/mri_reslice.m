@@ -1,5 +1,5 @@
 function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
-% MRI_RESLICE: Use the MNI transformation to .
+% MRI_RESLICE: Relice a volume based on a reference volume.
 %
 % USAGE:  [MriFileReg, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
 %            [sMriReg, errMsg, fileTag] = mri_reslice(sMriSrc,    sMriRef, ...)
@@ -36,11 +36,14 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2017
+% Authors: Francois Tadel, 2016-2020
 
 % ===== PARSE INPUTS =====
-sMriReg = [];
+% Initialize returned values
+MriFileReg = [];
 errMsg = [];
+fileTag = '';
+sMriReg = [];
 % Progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
@@ -68,7 +71,6 @@ end
 
 
 % ===== GET NCS/SCS TRANSFORMATIONS =====
-fileTag = '';
 % Source MRI
 if ischar(TransfSrc)
     if strcmpi(TransfSrc, 'ncs')
@@ -126,9 +128,6 @@ if ischar(TransfRef)
 end
 % Handle errors
 if ~isempty(errMsg)
-    if ~isempty(MriFileSrc)
-        bst_error(errMsg, 'MRI reslice', 0);
-    end
     return;
 end
 
@@ -158,10 +157,16 @@ Zgrid2 = reshape(allGrid(3,:), size(Zgrid2));
 % newCube = uint8(interp3(Y1, X1, Z1, double(sMriSrc.Cube), Xgrid2, Ygrid2, Zgrid2, 'spline', 0));
 
 % OPTION #2: Cubic interp, very similar results, much faster
-newCube = uint8(interp3(Y1 .* sMriSrc.Voxsize(2), ...
-                        X1 .* sMriSrc.Voxsize(1), ...
-                        Z1 .* sMriSrc.Voxsize(3), ...
-                        double(sMriSrc.Cube), Xgrid2, Ygrid2, Zgrid2, 'cubic', 0));
+n4 = size(sMriSrc.Cube,4);
+newCube = cell(1,n4);
+for i4 = 1:n4
+    newCube{i4} = single(interp3(...
+        Y1 .* sMriSrc.Voxsize(2), ...
+        X1 .* sMriSrc.Voxsize(1), ...
+        Z1 .* sMriSrc.Voxsize(3), ...
+        double(sMriSrc.Cube(:,:,:,i4)), Xgrid2, Ygrid2, Zgrid2, 'cubic', 0));
+end
+newCube = cat(4, newCube{:});
 
 %     % OPTION #3: Spline interp by block, too slow, but ok for memory usage
 %     if any(size(sMriSrc.Cube) > 256)

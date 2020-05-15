@@ -13,6 +13,7 @@ function varargout = panel_surface(varargin)
 %                    panel_surface('ApplyDefaultDisplay')
 %           [isOk] = panel_surface('SetSurfaceData',        hFig, iTess, dataType, dataFile, isStat)
 %           [isOk] = panel_surface('UpdateSurfaceData',     hFig, iSurfaces)
+%                    panel_surface('UpdateSurfaceColormap', hFig, iSurfaces)
 %                    panel_surface('UpdateOverlayCube',     hFig, iTess)
 
 % @=============================================================================
@@ -33,7 +34,8 @@ function varargout = panel_surface(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2020
+%          Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -429,7 +431,7 @@ function SliderCallback(hObject, event, target)
             if isAnatomy
                 % Get MRI size
                 sMri = bst_memory('GetMri', TessInfo(iSurface).SurfaceFile);
-                cubeSize = size(sMri.Cube);
+                cubeSize = size(sMri.Cube(:,:,:,1));
                 % Change slice position
                 newPos = round((jSlider.getValue()+100) / 200 * cubeSize(dim));
                 newPos = bst_saturate(newPos, [1, cubeSize(dim)]);
@@ -679,7 +681,9 @@ function ButtonAddSurfaceCallback(surfaceType)
     if isempty(hFig)
         return
     end
-    % Get Current subject
+    % Get displayed surfaces
+    TessInfo = getappdata(hFig, 'Surface');
+    % Get current subject
     SubjectFile = getappdata(hFig, 'SubjectFile');
     if isempty(SubjectFile)
         return
@@ -740,8 +744,14 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(iAseg)
             typesList{end+1} = 'ASEG';
         end
+        % Remove surfaces that are already displayed
+        if ~isempty(TessInfo)
+            typesList = setdiff(typesList, {TessInfo.Name});
+        end
+        % Nothing more
         if isempty(typesList)
-            return
+            bst_error('There are no additional anatomy files that you can add to this figure.', 'Add surface', 0);
+            return;
         end
         % Ask user which kind of surface he wants to add to the figure 3DViz
         surfaceType = java_dialog('question', 'What kind of surface would you like to display ?', 'Add surface', [], typesList, typesList{1});
@@ -772,8 +782,6 @@ function ButtonAddSurfaceCallback(surfaceType)
         otherwise
             return;
     end
-    % Get surface list
-    TessInfo = getappdata(hFig, 'Surface');
     % Add surface to the figure
     iTess = AddSurface(hFig, SurfaceFile);
     % 3D MRI: Update Colormap
@@ -1038,7 +1046,8 @@ function UpdateSurfaceProperties()
     % Ignore for MRI slices
     if isAnatomy
         sMri = bst_memory('GetMri', TessInfo(iSurface).SurfaceFile);
-        ResectXYZ = double(TessInfo(iSurface).CutsPosition) ./ size(sMri.Cube) * 200 - 100;
+        mriSize = size(sMri.Cube(:,:,:,1));
+        ResectXYZ = double(TessInfo(iSurface).CutsPosition) ./ mriSize * 200 - 100;
         radioSelected = 'none';
     elseif ischar(TessInfo(iSurface).Resect)
         ResectXYZ = [0,0,0];
@@ -1183,24 +1192,40 @@ function iTess = AddSurface(hFig, surfaceFile)
             return
         end
         TessInfo(iTess).Name = 'Anatomy';
+        % Multiple volumes: set as data source
+        if (size(sMri.Cube,4) > 1)
+            TessInfo(iTess).DataSource.Type = 'MriTime';
+            % TessInfo(iTess).DataSource.FileName = surfaceFile;
+            setappdata(hFig, 'isStatic', 0);
+        end
         % Initial position of the cuts:
-        % If there is a vox2ras transformation available: use coordinates (0,0,0)
-        mriOrigin = cs_convert(sMri, 'world', 'voxel', [0 0 0]);
-        % Check that the positions are somewhat in the middle of the MRI
-        if ~isempty(mriOrigin) && (any(mriOrigin < 0.25*size(sMri.Cube)) || any(mriOrigin > 0.75*size(sMri.Cube)))
+        mriSize = size(sMri.Cube(:,:,:,1));
+        % If there is a MNI transformation available: use coordinates (0,0,0)
+        mriOrigin = cs_convert(sMri, 'mni', 'voxel', [0 0 0]);
+        if ~isempty(mriOrigin) && (any(mriOrigin < 0.25*mriSize) || any(mriOrigin > 0.75*mriSize))
             mriOrigin = [];
+        end
+        % If there is a vox2ras transformation available: use coordinates (0,0,0)
+        if isempty(mriOrigin)
+            mriOrigin = cs_convert(sMri, 'world', 'voxel', [0 0 0]);
+            if ~isempty(mriOrigin) && (any(mriOrigin < 0.25*mriSize) || any(mriOrigin > 0.75*mriSize))
+                mriOrigin = [];
+            end
         end
         % Otherwise, if there is a SCS transformation available: use coordinates corresponding to world=(0,0,0) in ICBM152
         if isempty(mriOrigin)
             mriOrigin = cs_convert(sMri, 'scs', 'voxel', [.026, 0, .045]);
+            if ~isempty(mriOrigin) && (any(mriOrigin < 0.25*mriSize) || any(mriOrigin > 0.75*mriSize))
+                mriOrigin = [];
+            end
         end
         % Otherwise, use the middle slice in each direction
         if isempty(mriOrigin)
-            mriOrigin = size(sMri.Cube) ./ 2;
+            mriOrigin = mriSize ./ 2;
         end
         TessInfo(iTess).CutsPosition = round(mriOrigin);
         TessInfo(iTess).SurfSmoothValue = .3;
-        % Colormap
+        % Colormap: depends on the range of values
         TessInfo(iTess).ColormapType = 'anatomy';
         bst_colormaps('AddColormapToFigure', hFig, TessInfo(iTess).ColormapType);
         % Update figure's surfaces list and current surface pointer
@@ -1301,7 +1326,7 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
         sizeThreshold = 1;
     end
     % Static figure
-    setappdata(hFig, 'isStatic', (GlobalData.DataSet(iDS).Measures.NumberOfSamples <= 2));
+    setappdata(hFig, 'isStatic', isempty(GlobalData.DataSet(iDS).Measures.NumberOfSamples) || (GlobalData.DataSet(iDS).Measures.NumberOfSamples <= 2));
     
     % === PREPARE SURFACE ===
     TessInfo(iTess).DataSource.Type     = dataType;
@@ -1514,7 +1539,7 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                     TessInfo(iTess) = ComputeScalpInterpolation(iDS, iFig, TessInfo(iTess));
                 end
                 % Update "Static" status for this figure
-                setappdata(hFig, 'isStatic', (GlobalData.DataSet(iDS).Measures.NumberOfSamples <= 2));
+                setappdata(hFig, 'isStatic', isempty(GlobalData.DataSet(iDS).Measures.NumberOfSamples) || (GlobalData.DataSet(iDS).Measures.NumberOfSamples <= 2));
 
             case 'Source'
                 % === LOAD RESULTS VALUES ===
@@ -1718,15 +1743,27 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                 % Get base MRI
                 sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
                 % Check the MRI dimensions
-                if ~isequal(size(sMriOverlay.Cube), size(sMri.Cube))
+                if ~isequal(size(sMriOverlay.Cube(:,:,:,1)), size(sMri.Cube(:,:,:,1)))
                     bst_error('The dimensions of the two volumes do not match.', 'Data mismatch', 0);
                     isOk = 0;
                     return;
+                end
+                % Get index for 4th dimension ("time")
+                if ~isempty(GlobalData.UserTimeWindow.NumberOfSamples) && (size(sMriOverlay.Cube, 4) == GlobalData.UserTimeWindow.NumberOfSamples) && (GlobalData.UserTimeWindow.CurrentTime == round(GlobalData.UserTimeWindow.CurrentTime))
+                    i4 = GlobalData.UserTimeWindow.CurrentTime;
+                    sMriOverlay.Cube = sMriOverlay.Cube(:,:,:,i4);
+                    % Update "Static" status for this figure
+                    setappdata(hFig, 'isStatic', 0);
                 end
                 % Reset Overlay cube
                 TessInfo(iTess).DataMinMax = double([min(sMriOverlay.Cube(:)), max(sMriOverlay.Cube(:))]);
                 TessInfo(iTess).OverlayCube = double(sMriOverlay.Cube);
                 
+            case 'MriTime'
+                % Update MRI volume
+                figure_callback(hFig, 'UpdateSurfaceColor', hFig, iTess);
+                % Get updated surface definition
+                TessInfo = getappdata(hFig, 'Surface');
             otherwise
                 % Nothing to do
         end
@@ -1860,7 +1897,7 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
             end
         end     
         % === DISPLAY ON MRI ===
-        if strcmpi(TessInfo(iTess).Name, 'Anatomy') && ~isempty(TessInfo(iTess).DataSource.Type) && isempty(TessInfo(iTess).OverlayCube)
+        if strcmpi(TessInfo(iTess).Name, 'Anatomy') && ~isempty(TessInfo(iTess).DataSource.Type) && ~strcmpi(TessInfo(iTess).DataSource.Type, 'MriTime') && isempty(TessInfo(iTess).OverlayCube)
             % Progress bar
             isProgressBar = bst_progress('isVisible');
             bst_progress('start', 'Display MRI', 'Updating values...');
@@ -2117,7 +2154,7 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
             end
             % Build interpolated cube
             MriInterp = TessInfo(iTess).DataWmat;
-            OverlayCube = tess_interp_mri_data(MriInterp, size(sMri.Cube), TessInfo(iTess).Data, isVolumeGrid);
+            OverlayCube = tess_interp_mri_data(MriInterp, size(sMri.Cube(:,:,:,1)), TessInfo(iTess).Data, isVolumeGrid);
         case 'Source'
             % Get loaded results file
             [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(iTess).DataSource.FileName);
@@ -2151,7 +2188,7 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
                     end
                     % Build interpolated cube
                     MriInterp = TessInfo(iTess).DataWmat;
-                    OverlayCube = tess_interp_mri_data(MriInterp, size(sMri.Cube), TessInfo(iTess).Data, isVolumeGrid);
+                    OverlayCube = tess_interp_mri_data(MriInterp, size(sMri.Cube(:,:,:,1)), TessInfo(iTess).Data, isVolumeGrid);
                 case 'results'
                     % Check source grid type
                     if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTf).DataFile)
@@ -2209,7 +2246,7 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
             DataSurf = TessInfo(iTess).Data;
         end
         % === UPDATE MASK ===
-        mriSize = size(sMri.Cube);
+        mriSize = size(sMri.Cube(:,:,:,1));
         % Build interpolated cube
         TessInfo(iTess).OverlayCube = tess_interp_mri_data(MriInterp, mriSize, DataSurf, isVolumeGrid);
     end

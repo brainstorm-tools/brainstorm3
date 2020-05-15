@@ -41,7 +41,7 @@ if ((nargin == 3) || (nargin == 4))
         % Load MRI .MAT file
         mriMat = in_mri_bst(mriFileName);
         % Get some of the MRI fields 
-        mriCube = mriMat.Cube;
+        mriCube = mriMat.Cube(:,:,:,1);
     % Call: viewMriSlices(mriCube, orientation, nbSlices)
     elseif (ndims(varargin{1}) == 3)
         mriCube = varargin{1};

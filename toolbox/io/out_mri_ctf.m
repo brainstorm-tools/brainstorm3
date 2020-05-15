@@ -29,6 +29,8 @@ function out_mri_ctf( sMri, OutputFile )
 %
 % Authors: Francois Tadel, 2011-2015
 
+% Keep only the first volume, if multiple
+sMri.Cube = sMri.Cube(:,:,:,1);
 
 % ===== CONVERT FIDUCIALS =====
 nas = [sMri.SCS.NAS(1) ./ sMri.Voxsize(1), ...

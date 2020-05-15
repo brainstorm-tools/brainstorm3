@@ -264,13 +264,13 @@ function UniformizeTimeSeriesScales(isUniform)
                     hAxes = sFigure.Handles(iPlot).hAxes;
                     % Get maximal value
                     fmax = max(abs(FigureDataMinMax{iMod})) * sFigure.Handles(iPlot).DisplayFactor;
-                    % If displaying absolute values (only positive values)
-                    if (FigureDataMinMax{iMod}(1) >= 0)
-                        ylim = 1.05 .* [0, fmax];
-                    % Else : displaying positive and negative values
-                    else
+                    % If displaying positive and negative values
+                    if (FigureDataMinMax{iMod}(1) < -eps) || ((FigureDataMinMax{iMod}(1) < 0) && (FigureDataMinMax{iMod}(2) <= eps))
                         ylim = 1.05 .* [-fmax, fmax];
-                    end      
+                    % Else: displaying absolute values (only positive values)
+                    else
+                        ylim = 1.05 .* [0, fmax];
+                    end    
                     % Update figure Y-axis limits
                     set(hAxes, 'YLim', ylim);
                     setappdata(hAxes, 'YLimInit', ylim);
@@ -3338,12 +3338,12 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     PlotHandles.DisplayUnits  = fUnits;
     % Get automatic YLim
     if (Fmax ~= 0)
-        % If data to plot are absolute values
-        if (PlotHandles.DataMinMax(1) >= -eps)
-            YLim = 1.05 * PlotHandles.DisplayFactor * [0, Fmax];
-        % Else, there are positive and negative values
-        else
+        % If data to plot are relative values
+        if (PlotHandles.DataMinMax(1) < -eps) || ((PlotHandles.DataMinMax(1) < 0) && (PlotHandles.DataMinMax(2) <= eps))
             YLim = 1.05 * PlotHandles.DisplayFactor * [-Fmax, Fmax];
+        % Otherwise: absolute values
+        else
+            YLim = 1.05 * PlotHandles.DisplayFactor * [0, Fmax];
         end
     else
         YLim = [-1, 1];

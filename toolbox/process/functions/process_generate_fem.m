@@ -48,7 +48,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'import'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
-    sProcess.isSeparator = 1;
     % Subject name
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
@@ -1162,7 +1161,7 @@ function errMsg = InstallIso2mesh(isInteractive)
         fclose(fid);
     end
     % If installed but not in path: add to path
-    if ~exist('iso2meshver', 'file') && isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
+    if ~exist('iso2meshver', 'file') && file_exist(exePath)
         addpath(bst_fileparts(exePath));
         disp([10, 'Iso2mesh path: ', bst_fileparts(exePath), 10]);
         % Set iso2mesh temp folder

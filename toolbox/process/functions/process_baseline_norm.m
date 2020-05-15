@@ -76,11 +76,13 @@ function sProcess = DefineOptions(sProcess)
     sProcess.options.baseline.Value   = [];
     sProcess.options.baseline.Group   = 'input';
     % === Sensor types
-    sProcess.options.sensortypes.Comment    = 'Sensor types or names (empty=all): ';
-    sProcess.options.sensortypes.Type       = 'text';
-    sProcess.options.sensortypes.Value      = 'MEG, EEG';
-    sProcess.options.sensortypes.InputTypes = {'data'};
-    sProcess.options.sensortypes.Group      = 'input';
+    if ~strcmpi(sProcess.Category, 'Filter2')
+        sProcess.options.sensortypes.Comment    = 'Sensor types or names (empty=all): ';
+        sProcess.options.sensortypes.Type       = 'text';
+        sProcess.options.sensortypes.Value      = 'MEG, EEG';
+        sProcess.options.sensortypes.InputTypes = {'data'};
+        sProcess.options.sensortypes.Group      = 'input';
+    end
     % === Source absolute value
     sProcess.options.source_abs.Comment    = ['Normalize absolute values (or norm for unconstrained sources)<BR>' ...
                                               '<FONT color=#7F7F7F>Not recommended (see online tutorials for help)</FONT>'];

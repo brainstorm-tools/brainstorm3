@@ -33,12 +33,12 @@ function [fid, nifti] = out_mri_nii( sMri, OutputFile, typeMatlab, Nt )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2020
 
 % ===== PARSE INPUTS =====
 % Write header of full file
 if (nargin < 4) || isempty(Nt)
-    Nt = 1;
+    Nt = [];
     isHdrOnly = 0;
 else
     isHdrOnly = 1;
@@ -56,6 +56,9 @@ byteOrder = 'l';
 if ischar(sMri)
     BstMriFile = sMri;
     sMri = in_mri_bst(BstMriFile);
+end
+if isempty(Nt)
+    Nt = size(sMri.Cube, 4);
 end
 % Get maximum
 MaxVal = max(abs(sMri.Cube(:)));
@@ -97,7 +100,7 @@ switch (typeMatlab)
         sMri.Cube  = double(sMri.Cube);
 end
 % Size of the volume
-volDim = size(sMri.Cube);
+volDim = size(sMri.Cube(:,:,:,1));
 pixDim = sMri.Voxsize;
 % Set up other field values
 hdr.dim    = [3 + (Nt > 1), volDim, Nt, 0, 0, 0];
@@ -293,16 +296,16 @@ Nz = hdr.dim(4);      % Number of Z slices
 
 % Write image file
 if ~isHdrOnly
-    %Nxy = Nx*Ny;
-    % for t = 1:Nt
-       for z = 1:Nz
-          count = fwrite(fid, sMri.Cube(:,:,z), typeMatlab);
-    %       if (count ~= Nxy)
-    %           fclose(fid);
-    %           error('Error writing file'); 
-    %       end
-       end
-    % end
+    % Nxy = Nx*Ny;
+    for t = 1:Nt
+        for z = 1:Nz
+            count = fwrite(fid, sMri.Cube(:,:,z,t), typeMatlab);
+%             if (count ~= Nxy)
+%                 fclose(fid);
+%                 error('Error writing file');
+%             end
+        end
+    end
     fclose(fid);
 end
 

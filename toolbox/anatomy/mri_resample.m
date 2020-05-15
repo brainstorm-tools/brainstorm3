@@ -56,9 +56,9 @@ else
     error('Invalid call.');
 end
 % Ask for destination sampling
+oldCubeDim = size(sMri.Cube(:,:,:,1));
 if (nargin < 3) || isempty(CubeDim) || isempty(Voxsize)
     % Default values: current ones
-    oldCubeDim = size(sMri.Cube);
     oldVoxsize = sMri.Voxsize;
     % Ask for size and resolution
     res = java_dialog('input', {'New MRI dimensions in voxels: [x,y,z]', 'New MRI resolution in millimeters: [x,y,z]'}, 'Resample MRI', [], ...
@@ -92,23 +92,28 @@ end
 % ===== INTERPOLATE MRI VOLUME =====
 bst_progress('text', 'Resampling volume...');
 % Original position vectors
-X1 = (((0:size(sMri.Cube,1)-1) + 0.5) - size(sMri.Cube,1)/2) .* sMri.Voxsize(1);
-Y1 = (((0:size(sMri.Cube,2)-1) + 0.5) - size(sMri.Cube,2)/2) .* sMri.Voxsize(2);
-Z1 = (((0:size(sMri.Cube,3)-1) + 0.5) - size(sMri.Cube,3)/2) .* sMri.Voxsize(3);
+X1 = (((0:oldCubeDim(1)-1) + 0.5) - oldCubeDim(1)/2) .* sMri.Voxsize(1);
+Y1 = (((0:oldCubeDim(2)-1) + 0.5) - oldCubeDim(2)/2) .* sMri.Voxsize(2);
+Z1 = (((0:oldCubeDim(3)-1) + 0.5) - oldCubeDim(3)/2) .* sMri.Voxsize(3);
 % Destination position vectors
 X2 = (((0:CubeDim(1)-1) + 0.5) - CubeDim(1)/2) .* Voxsize(1);
 Y2 = (((0:CubeDim(2)-1) + 0.5) - CubeDim(2)/2) .* Voxsize(2);
 Z2 = (((0:CubeDim(3)-1) + 0.5) - CubeDim(3)/2) .* Voxsize(3);
 % Mesh grids
 [Xgrid2, Ygrid2, Zgrid2] = meshgrid(Y2, X2, Z2);
-% Interpolate volume
-newCube = uint8(interp3(Y1, X1, Z1, double(sMri.Cube), Xgrid2, Ygrid2, Zgrid2, 'spline', 0));
-
+% Interpolate volume(s)
+n4 = size(sMri.Cube,4);
+newCube = cell(1,n4);
+for i4 = 1:n4
+    newCube{i4} = single(interp3(Y1, X1, Z1, double(sMri.Cube(:,:,:,i4)), Xgrid2, Ygrid2, Zgrid2, 'spline', 0));
+end
+newCube = cat(4, newCube{:});
+        
 
 % ===== TRANSFORM COORDINATES =====
 % Transformation: old MRI => new MRI   (millimeters, so no scaling)
 R = eye(3);
-T = - size(sMri.Cube) ./2 .*sMri.Voxsize + CubeDim ./2 .*Voxsize;
+T = - oldCubeDim ./2 .*sMri.Voxsize + CubeDim ./2 .*Voxsize;
 Transf = [R, T'; 0 0 0 1];
 % Initialize transformed structure
 sMriNew         = sMri;

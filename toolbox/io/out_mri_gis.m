@@ -49,7 +49,7 @@ if (fid < 0)
    error('Cannot open file'); 
 end
 % Prepare volume matrix
-OutputVolume = int16(sMri.Cube);
+OutputVolume = int16(sMri.Cube(:,:,:,1));
 OutputVolume = OutputVolume(end:-1:1, end:-1:1, end:-1:1);
 % Save volume matrix
 fwrite(fid, OutputVolume, 'int16');

@@ -54,7 +54,7 @@ DG = spm_data_read(VG);
 % Reset volume origin to the middle of the volume
 mriTransf = eye(4);
 mriTransf(1:3,1:3) = diag(sMri.Voxsize);
-mriTransf(1:3,4) = - ceil(size(sMri.Cube) / 2);
+mriTransf(1:3,4) = - ceil(size(sMri.Cube(:,:,:,1)) / 2);
 
 VF.mat = mriTransf;
 

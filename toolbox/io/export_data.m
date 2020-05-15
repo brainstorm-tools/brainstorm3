@@ -124,6 +124,7 @@ if isempty(ExportFile)
         case 'EEG-CARTOOL-EPH', DefaultExt = '.eph';
         case 'EEG-EGI-RAW',     DefaultExt = '.raw';
         case 'EEG-EDF',         DefaultExt = '.edf';
+        case 'NIRS-SNIRF',      DefaultExt = '.snirf';
         case 'ASCII-CSV',       DefaultExt = '.csv';
         case 'ASCII-CSV-HDR',   DefaultExt = '.csv';
         case 'ASCII-SPC',       DefaultExt = '.txt';  
@@ -177,6 +178,7 @@ elseif isempty(FileFormat)
         case '.eph',   FileFormat = 'EEG-CARTOOL-EPH';
         case '.raw',   FileFormat = 'EEG-EGI-RAW';
         case '.edf',   FileFormat = 'EEG-EDF';
+        case '.snirf', FileFormat = 'NIRS-SNIRF';
         case '.txt',   FileFormat = 'ASCII-CSV';
         case '.csv',   FileFormat = 'ASCII-SPC';
         case '.xlsx',  FileFormat = 'EXCEL';
@@ -301,6 +303,7 @@ else
                 DataMat.F = F;
                 bst_save(ExportFile, DataMat, 'v6');
             case 'FT-TIMELOCK'
+                DataMat.F = F;
                 ftData = out_fieldtrip_data(DataMat, ChannelMatOut, [], 1);
                 bst_save(ExportFile, ftData, 'v6');
             case 'EEG-CARTOOL-EPH'
@@ -310,6 +313,12 @@ else
                 dlmwrite(ExportFile, [size(F,1), size(F,2), samplingFreq], 'newline', 'unix', 'precision', '%d', 'delimiter', ' ');
                 % Write data
                 dlmwrite(ExportFile, F' * 1000, 'newline', 'unix', 'precision', '%0.7f', 'delimiter', '\t', '-append');
+            case 'NIRS-SNIRF'
+                if isRawIn
+                    DataMat.Events = DataMat.F.events;
+                end
+                DataMat.F = F;
+                out_data_snirf(ExportFile, DataMat, ChannelMatOut);
             case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'EXCEL'}
                 out_matrix_ascii(ExportFile, F, FileFormat, {ChannelMatOut.Channel.Name}, DataMat.Time, []);
             otherwise

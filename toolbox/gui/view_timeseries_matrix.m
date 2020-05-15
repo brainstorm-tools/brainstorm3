@@ -92,7 +92,7 @@ if ~isempty(Std) && ~iscell(Std)
 end
 if ~iscell(AxesLabels)
     AxesLabels = {AxesLabels};
-end;
+end
 iFig = [];
 
 

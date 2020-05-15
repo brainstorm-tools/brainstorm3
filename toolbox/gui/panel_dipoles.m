@@ -24,7 +24,8 @@ function varargout = panel_dipoles(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Elizabeth Bock, 2010-2017
+% Authors: Elizabeth Bock, 2010-2017
+%          Francois Tadel, 2010-2020
 
 eval(macro_method);
 end
@@ -900,7 +901,7 @@ end
 %% ===== COMPUTE DENSITY VOLUMES =====
 function Cube = ComputeDensity(sMri, sDipoles) %#ok<DEFNU>
     % Initialize cube
-    sizeCube = size(sMri.Cube);
+    sizeCube = size(sMri.Cube(:,:,:,1));
     Cube = zeros(sizeCube);
     
     % Gaussian kernel

@@ -127,6 +127,11 @@ if isempty(hFig)
 else
     isNewFig = 0;
 end
+% If there is already a volume displayed in this figure, create a new one
+TessInfo = getappdata(hFig, 'Surface');
+if ~isempty(TessInfo) && ismember('Anatomy', {TessInfo.Name})
+    [hFig, iFig, isNewFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');
+end
 % Set application data
 setappdata(hFig, 'SubjectFile',  SubjectFile);
 

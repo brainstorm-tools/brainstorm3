@@ -469,7 +469,7 @@ function ResizeCallback(hFig, varargin)
     % Get MRI display size
     sMri = panel_surface('GetSurfaceMri', hFig);
     if ~isempty(sMri)
-        FOV = size(sMri.Cube) .* sMri.Voxsize;
+        FOV = size(sMri.Cube(:,:,:,1)) .* sMri.Voxsize;
         % Update views
         SetupView(Handles.axs, [FOV(2),FOV(3)], [], []);
         SetupView(Handles.axc, [FOV(1),FOV(3)], [], []);
@@ -1006,7 +1006,7 @@ function [sMri, Handles] = SetupMri(hFig)
     Handles = bst_figures('GetFigureHandles', hFig);
     
     % ===== PREPARE DISPLAY =====
-    cubeSize = size(sMri.Cube);
+    cubeSize = size(sMri.Cube(:,:,:,1));
     FOV      = cubeSize .* sMri.Voxsize;
     % Empty axes
     cla(Handles.axs);
@@ -1212,7 +1212,7 @@ function MriTransform(hButton, Transf, iDim)
             switch iDim
                 case 1
                     % Permutation of dimensions Y/Z
-                    sMri.Cube = permute(sMri.Cube, [1 3 2]);
+                    sMri.Cube = permute(sMri.Cube, [1 3 2 4]);
                     sMri.InitTransf(end+1,[1 2]) = {'permute', [1 3 2]};
                     % Flip / Z
                     sMri.Cube = bst_flip(sMri.Cube, 3);
@@ -1221,7 +1221,7 @@ function MriTransform(hButton, Transf, iDim)
                     sMri.Voxsize = sMri.Voxsize([1 3 2]);
                 case 2
                     % Permutation of dimensions X/Z
-                    sMri.Cube = permute(sMri.Cube, [3 2 1]);
+                    sMri.Cube = permute(sMri.Cube, [3 2 1 4]);
                     sMri.InitTransf(end+1,[1 2]) = {'permute', [3 2 1]};
                     % Flip / Z
                     sMri.Cube = bst_flip(sMri.Cube, 3);
@@ -1230,7 +1230,7 @@ function MriTransform(hButton, Transf, iDim)
                     sMri.Voxsize = sMri.Voxsize([3 2 1]);
                 case 3
                     % Permutation of dimensions X/Y
-                    sMri.Cube = permute(sMri.Cube, [2 1 3]);
+                    sMri.Cube = permute(sMri.Cube, [2 1 3 4]);
                     sMri.InitTransf(end+1,[1 2]) = {'permute', [2 1 3]};
                     % Flip / Y
                     sMri.Cube = bst_flip(sMri.Cube, 2);
@@ -1244,7 +1244,7 @@ function MriTransform(hButton, Transf, iDim)
             sMri.InitTransf(end+1,[1 2]) = {'flipdim', [iDim size(sMri.Cube,iDim)]};
         case 'Permute'
             % Permute MRI dimensions
-            sMri.Cube = permute(sMri.Cube, [3 1 2]);
+            sMri.Cube = permute(sMri.Cube, [3 1 2 4]);
             sMri.InitTransf(end+1,[1 2]) = {'permute', [3 1 2]};
             % Update voxel size
             sMri.Voxsize = sMri.Voxsize([3 1 2]);
@@ -1339,13 +1339,14 @@ function UpdateCoordinates(sMri, Handles)
     Handles.jLabelTitleA.setText(sprintf('<HTML>&nbsp;&nbsp;&nbsp;<B>Axial</B>:&nbsp;&nbsp;&nbsp;z=%d', voxXYZ(3)));
     Handles.jLabelTitleC.setText(sprintf('<HTML>&nbsp;&nbsp;&nbsp;<B>Coronal</B>:&nbsp;&nbsp;&nbsp;y=%d', voxXYZ(2)));
     % Display value of the selected voxel
-    if (all(voxXYZ >= 1) && all(voxXYZ <= size(sMri.Cube)))
+    mriSize = size(sMri.Cube(:,:,:,1));
+    if (all(voxXYZ >= 1) && all(voxXYZ <= mriSize))
         % Try to get the values from the overlay mask
         TessInfo = getappdata(Handles.hFig, 'Surface');
-        if ~isempty(TessInfo) && ~isempty(TessInfo.OverlayCube) && all(size(TessInfo.OverlayCube) == size(sMri.Cube))
+        if ~isempty(TessInfo) && ~isempty(TessInfo.OverlayCube) && all(size(TessInfo.OverlayCube) == mriSize)
             value = TessInfo.OverlayCube(voxXYZ(1), voxXYZ(2), voxXYZ(3));
         else
-            value = sMri.Cube(voxXYZ(1), voxXYZ(2), voxXYZ(3));
+            value = sMri.Cube(voxXYZ(1), voxXYZ(2), voxXYZ(3), 1);
         end
         strValue = sprintf('value=%g', value);
     else
@@ -1665,7 +1666,7 @@ function MouseMoveCrosshair(hAxes, sMri, Handles)
     % Convert to voxels
     voxPos = cs_convert(sMri, 'mri', 'voxel', mouse3DPos);
     % Limit values to MRI cube
-    mriSize = size(sMri.Cube);
+    mriSize = size(sMri.Cube(:,:,:,1));
     voxPos(1) = min(max(voxPos(1), 1), mriSize(1));
     voxPos(2) = min(max(voxPos(2), 1), mriSize(2));
     voxPos(3) = min(max(voxPos(3), 1), mriSize(3));
@@ -1715,7 +1716,7 @@ function mouse3DPos = GetMouseLocation(hAxes, sMri, Handles)
             mouse3DPos(2) = mouse2DPos(2);
     end
     % Limit values to MRI cube
-    mriSize = size(sMri.Cube) .* sMri.Voxsize;
+    mriSize = size(sMri.Cube(:,:,:,1)) .* sMri.Voxsize;
     mouse3DPos(1) = min(max(mouse3DPos(1), sMri.Voxsize(1)), mriSize(1));
     mouse3DPos(2) = min(max(mouse3DPos(2), sMri.Voxsize(2)), mriSize(2));
     mouse3DPos(3) = min(max(mouse3DPos(3), sMri.Voxsize(3)), mriSize(3));
@@ -2875,12 +2876,6 @@ function ExportOverlay(hFig)
     sMriOverlay = bst_memory('LoadMri', MriFile);
     % Replace the values with the current overlay
     sMriOverlay.Cube = double(TessInfo.OverlayCube);
-%     % Normalize the values to fit in int16
-%     sMriOverlay.Cube = (sMriOverlay.Cube - min(sMriOverlay.Cube(:))) / max(sMriOverlay.Cube(:)) * double(intmax('int16'));
-%     % Convert volume to int16
-%     sMriOverlay.Cube = int16(sMriOverlay.Cube);
-%     % Enforce the original zero values
-%     sMriOverlay.Cube(sMriOverlay.Cube == 0) = 0;
     % Save volume
     export_mri(sMriOverlay);
 end

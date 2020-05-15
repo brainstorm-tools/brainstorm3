@@ -24,7 +24,7 @@ function TessMat = in_tess_mrimask(MriFile, isMni)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2020
 
 % Parse inputs
 if (nargin < 2) || isempty(isMni)
@@ -40,22 +40,13 @@ if ischar(MriFile)
     % Read volume
     isInteractive = ~isAseg;
     if isMni
-        sMri = in_mri(MriFile, 'ALL-MNI', isInteractive);
+        sMri = in_mri(MriFile, 'ALL-MNI', isInteractive, 0);
     else
-%         % Do not normalize the labels for BrainSuite
-%         % Labels are normalized for FreeSurfer (default behavior)
-%         % For FreeSurfer, the labels go from 0-255 so the normalization
-%         % does not have any effect
-%         sMri = in_mri(MriFile, 'ALL', isInteractive, ~isBrainSuite);
-
-        % Actually, when loading an atlas, the values should NEVER be normalized...
         sMri = in_mri(MriFile, 'ALL', isInteractive, 0);
-        
         if isBrainSuite
             sMri.Cube = mod(sMri.Cube,1000);
         end
     end
-    
     if isempty(sMri)
         TessMat = [];
         return;
@@ -81,7 +72,8 @@ else
     MriFile = [];
     VolumeLabels = [];
 end
-sMri.Cube = double(sMri.Cube);
+% Convert to double and keep only the first volume (if multiple)
+sMri.Cube = double(sMri.Cube(:,:,:,1));
 % Get al the values in the MRI
 allValues = unique(sMri.Cube);
 % If values are not integers, it is not a mask or an atlas: it has to be binarized first

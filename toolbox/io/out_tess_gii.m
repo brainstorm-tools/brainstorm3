@@ -54,7 +54,7 @@ if isSPM && ~isempty(TessFile)
     % Get transformation
     if ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R)
         sMri.NCS.R = [1 0 0; 0 1 0; 0 0 1];
-        sMri.NCS.T = -size(sMri.Cube)'./2;
+        sMri.NCS.T = -size(sMri.Cube(:,:,:,1))'./2;
     end
     % Convert MNI coordinates
     TessMat.Vertices = cs_convert(sMri, 'scs', 'mni', TessMat.Vertices);

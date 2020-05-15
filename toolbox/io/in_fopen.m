@@ -181,6 +181,12 @@ switch (FileFormat)
         DataMat = in_data_neuroscan_dat(DataFile);
     case 'FT-TIMELOCK'
         [DataMat, ChannelMat] = in_data_fieldtrip(DataFile);
+        % Check that time is linear
+        if any(abs((DataMat(1).Time(2) - DataMat(1).Time(1)) - diff(DataMat(1).Time)) > 1e-3)
+            error(['The input file has a non-linear time vector.' 10 'This is currently not supported, interpolate your recordings on continuous time vector first.']);
+        end
+    case 'NIRS-SNIRF'
+        [DataMat, ChannelMat] = in_data_snirf(DataFile);
     otherwise
         error('Unknown file format');
 end

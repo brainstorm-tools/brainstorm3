@@ -45,11 +45,11 @@ function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2020
 
 % Parse inputs
 if (nargin < 4) || isempty(isNormalize)
-    isNormalize = 1;
+    isNormalize = 0;
 end
 if (nargin < 3) || isempty(isInteractive)
     isInteractive = 1;
@@ -111,9 +111,9 @@ switch (FileFormat)
         MRI = in_mri_gis(MriFile, ByteOrder);
     case {'Nifti1', 'Analyze'}
         if isInteractive
-            [MRI, vox2ras] = in_mri_nii(MriFile, 0, []); % Function automatically detects right byte order
+            [MRI, vox2ras] = in_mri_nii(MriFile, 1, []); % Function automatically detects right byte order
         else
-            [MRI, vox2ras] = in_mri_nii(MriFile, 0, 1); % Function automatically detects right byte order
+            [MRI, vox2ras] = in_mri_nii(MriFile, 1, 1); % Function automatically detects right byte order
         end
     case 'MGH'
         if isInteractive
@@ -154,15 +154,26 @@ end
 
 
 %% ===== NORMALIZE VALUES =====
-% Normalize if the cube is not already in uint8 (and if not loading an atlas)
-if isNormalize && ~strcmpi(FileFormat, 'ALL-MNI') && ~isa(MRI.Cube, 'uint8')
-    % Convert to double for calculations
-    MRI.Cube = double(MRI.Cube);
-    % Start values at zeros
-    MRI.Cube = MRI.Cube - min(MRI.Cube(:));
-    % Normalize between 0 and 255 and save as uint8
-    MRI.Cube = uint8(MRI.Cube ./ max(MRI.Cube(:)) .* 255);
+% Remove NaN
+if any(isnan(MRI.Cube(:)))
+    MRI.Cube(isnan(MRI.Cube)) = 0;
 end
+% Simplify data type
+if ~isa(MRI.Cube, 'uint8')
+    % If only int values between 0 and 255: Reduce storage size by forcing to uint8 
+    if (max(MRI.Cube(:)) <= 255) && (min(MRI.Cube(:)) >= 0) && (max(abs(MRI.Cube(:) - round(MRI.Cube(:)))) < 1e-10)
+        MRI.Cube = uint8(MRI.Cube);
+    % Normalize if the cube is not already in uint8 (and if not loading an atlas)
+    elseif isNormalize && ~strcmpi(FileFormat, 'ALL-MNI')
+        % Convert to double for calculations
+        MRI.Cube = double(MRI.Cube);
+        % Start values at zeros
+        MRI.Cube = MRI.Cube - min(MRI.Cube(:));
+        % Normalize between 0 and 255 and save as uint8
+        MRI.Cube = uint8(MRI.Cube ./ max(MRI.Cube(:)) .* 255);
+    end
+end
+
 
 %% ===== CONVERT OLD STRUCTURES TO NEW ONES =====
 % Apply a coordinates correction

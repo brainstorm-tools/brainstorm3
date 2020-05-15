@@ -1499,7 +1499,7 @@ function DisplayFigurePopup(hFig)
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
         end
         % === View SOURCES ===
-        if isempty(TfFile) && isempty(ResultsFile) && ~isempty(sStudy.Result)
+        if isempty(TfFile) && isempty(ResultsFile) && isfield(sStudy, 'Result') && ~isempty(sStudy.Result)
             jItem = gui_component('MenuItem', jPopup, [], 'View sources', IconLoader.ICON_RESULTS, [], @(h,ev)bst_figures('ViewResults',hFig));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
         end
@@ -2305,7 +2305,7 @@ function varargout = PlotFibers(hFig, FibPoints, Colors)
             'can be challenging for the' 10 'average computer. We recommend ', ...
             'you downsample them first.'], 'Display fibers', [], questionOptions);
         if isCancel || strcmp(res, questionOptions{1})
-            iFibers = sort(randsample(numFibers, numMaxFibers));
+            iFibers = sort(randperm(numFibers, numMaxFibers));
         else
             iFibers = 1:numFibers;
         end
@@ -4205,13 +4205,14 @@ function hPairs = PlotNirsCap(hFig, isDetails)
         % Pair locations: detectors
         locPairDet = cellfun(@(c)c(:,2)', {Channels(iChanPairs).Loc}, 'UniformOutput', 0);
         locPairDet = cat(1, locPairDet{:});
-
-        % Make the position of the links more superficial, so they can be outside of the head and selected with the mouse
-        normSrc = sqrt(sum(locPairSrc .^ 2, 2));
-        normDet = sqrt(sum(locPairDet .^ 2, 2));
-        locPairSrc = bst_bsxfun(@times, locPairSrc, (normSrc + 0.0035) ./ normSrc);
-        locPairDet = bst_bsxfun(@times, locPairDet, (normDet + 0.0035) ./ normDet);
         
+        % Make the position of the links more superficial, so they can be outside of the head and selected with the mouse
+        if any(~locPairDet(:,3)== locPairDet(1,3) ) || any(~locPairSrc(:,3)==locPairSrc(1,3)) 
+            normSrc = sqrt(sum(locPairSrc .^ 2, 2));
+            normDet = sqrt(sum(locPairDet .^ 2, 2));
+            locPairSrc = bst_bsxfun(@times, locPairSrc, (normSrc + 0.0035) ./ normSrc);
+            locPairDet = bst_bsxfun(@times, locPairDet, (normDet + 0.0035) ./ normDet);
+        end
         % Display connections as lines
         hPairs = line(...
             [locPairSrc(:,1)'; locPairDet(:,1)'], ...
