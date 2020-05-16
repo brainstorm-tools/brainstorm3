@@ -1,27 +1,27 @@
 function varargout = process_adjust_coordinates(varargin)
-    % PROCESS_ADJUST_COORDINATES: Adjust, recompute, or remove various coordinate transformations.
-    
-    % @=============================================================================
-    % This function is part of the Brainstorm software:
-    % https://neuroimage.usc.edu/brainstorm
-    %
-    % Copyright (c)2000-2020 University of Southern California & McGill University
-    % This software is distributed under the terms of the GNU General Public License
-    % as published by the Free Software Foundation. Further details on the GPLv3
-    % license can be found at http://www.gnu.org/copyleft/gpl.html.
-    %
-    % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
-    % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
-    % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-    % MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
-    % LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
-    %
-    % For more information type "brainstorm license" at command prompt.
-    % =============================================================================@
-    %
-    % Authors: Marc Lalancette, 2018
-    
-    eval(macro_method);
+% PROCESS_ADJUST_COORDINATES: Adjust, recompute, or remove various coordinate transformations.
+
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c)2000-2020 University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Authors: Marc Lalancette, 2018
+
+eval(macro_method);
 end
 
 
@@ -52,11 +52,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.head.Type    = 'checkbox';
     sProcess.options.head.Comment = 'Adjust head position to median location - CTF only.';
     sProcess.options.head.Value   = 0;
-    sProcess.options.head.Controller = 'Adjust';
-    sProcess.options.bad.Type    = 'checkbox';
-    sProcess.options.bad.Comment = 'For adjust option, exclude bad segments.';
-    sProcess.options.bad.Value   = 1;
-    sProcess.options.bad.Class = 'Adjust';
     sProcess.options.points.Type    = 'checkbox';
     sProcess.options.points.Comment = 'Refine MRI coregistration using digitized head points.';
     sProcess.options.points.Value   = 0;
@@ -170,11 +165,11 @@ function OutputFiles = Run(sProcess, sInputs)
         
         % ----------------------------------------------------------------
         if ~sProcess.options.remove.Value && sProcess.options.head.Value
-            [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs(iFile), sProcess);
+            [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs(iFile), sProcess);            
             if Failed
                 continue;
             end
-        end % adjust head position
+        end % adjust head position        
         
         % ----------------------------------------------------------------
         if ~sProcess.options.remove.Value && sProcess.options.points.Value
@@ -436,14 +431,12 @@ end % RemoveTransformation
 
 
 function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInput, sProcess)
+    if nargin < 4
+        sProcess = [];
+    end
     Failed = false;
     % Check the input is CTF.
-    isRaw = (length(sInput.FileName) > 9) && ~isempty(strfind(sInput.FileName, 'data_0raw'));
-    if isRaw
-        DataMat = in_bst_data(sInput.FileName, {'Device', 'F'});
-    else
-        DataMat = in_bst_data(sInput.FileName, {'Device', 'Events', 'Time'});
-    end
+    DataMat = in_bst_data(sInput.FileName, 'Device');
     if ~strcmp(DataMat.Device, 'CTF')
         bst_report('Error', sProcess, sInput, ...
             'Adjust head position is currently only available for CTF data.');
@@ -451,9 +444,9 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInput, sProcess)
         return;
     end
     
-    % The data could be changed such that the head position could be
-    % readjusted (e.g. by deleting segments).  This is allowed and the
-    % previous adjustment will be replaced.
+    % The data could be changed such that the head position
+    % could be readjusted (e.g. by deleting segments).  This is
+    % allowed and the previous adjustment will be replaced.
     if isfield(ChannelMat, 'TransfMegLabels') && iscell(ChannelMat.TransfMegLabels) && ...
             ismember('AdjustedNative', ChannelMat.TransfMegLabels)
         bst_report('Info', sProcess, sInput, ...
@@ -463,41 +456,17 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInput, sProcess)
     % Load head coil locations, in m.
     bst_progress('text', 'Loading head coil locations...');
     %                 bst_progress('inc', 1);
-    [Locations, HeadSamplePeriod] = process_evt_head_motion('LoadHLU', sInput, [], false);
+    Locations = process_evt_head_motion('LoadHLU', sInput, [], false);
     if isempty(Locations)
         % No HLU channels. Error already reported. Skip this file.
         Failed = true;
         return;
     end
     bst_progress('text', 'Correcting head position...');
-    % Exclude all bad segments.
-    if sProcess.options.bad.Value
-        if isRaw
-            DataMat = DataMat.F;
-        else
-            DataMat.events = DataMat.Events;
-            DataMat.prop.sfreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
-        end
-        [BadSegments, BadEpoch] = panel_record('GetBadSegments', DataMat); % - DataMat.prop.sfreq * DataMat.Time(1) + 1;
-        if ~isempty(BadSegments)
-            % Convert to continuous (non-epoched) sample indices, but rounding up
-            % the number of samples per epoch to an integer multiple of HeadSamplePeriod.
-            nSamples = ceil(numel(DataMat.Time)/HeadSamplePeriod) * HeadSamplePeriod;
-            [nChannels, nHeadSamples, nEpochs] = size(Locations);
-            Locations = reshape(Locations, nChannels, []);
-            iHeadSamples = 1 + ((1:(nHeadSamples*nEpochs)) - 1) * HeadSamplePeriod;
-            iBad = [];
-            for iSeg = 1:size(BadSegments, 2)
-                iBad = [iBad, nSamples * (BadEpoch(1,iSeg) - 1) + (BadSegments(1,iSeg):BadSegments(2,iSeg))]; %#ok<AGROW>
-                % iBad = [iBad, find((DataMat.Time >= badTimes(1,iSeg)) & (DataMat.Time <= badTimes(2,iSeg)))];
-            end
-            % Exclude bad samples.
-            Locations(:, ismember(iHeadSamples, iBad)) = [];
-        end
-    end
-    
-    % If a collection was aborted, the channels will be filled with zeros. Remove these.
-    Locations(:, all(Locations == 0, 1)) = []; % (This reshapes to continuous.)
+    % If a collection was aborted, the channels will be filled with
+    % zeros. We must remove these locations.
+    % This reshapes to continuous if in epochs, but works either way.
+    Locations(:, all(Locations == 0, 1)) = [];
     
     MedianLoc = MedianLocation(Locations);
     %         disp(MedianLoc);
@@ -581,47 +550,34 @@ end % AdjustHeadPosition
 
 
 
-function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
+function InitLoc = ReferenceHeadLocation(ChannelMat, sInput)
     % Compute initial head location in Dewar coordinates.
-    
-    % Here we want to recreate the correct triangle shape from the relative
-    % head coil locations and in the position saved as the reference
-    % (initial) head position according to Brainstorm coordinate
-    % transformation matrices.
     
     if nargin < 2
         sInput = [];
     end
-    Message = '';
     
-    % These aren't exactly the coil positions in the .hc file, which are not saved
-    % anywhere in Brainstorm, but was verified to give the same transformation.
-    % The SCS coil coordinates are from the digitized coil positions.
+    % This isn't exactly the coil positions in the .hc file, but was verified
+    % to give the same transformation.
     if isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && ...
             (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3)
-        %         % Use the SCS distances from origin, with left and right PA points symmetrical.
-        %         LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
-        %         NasDist = ChannelMat.SCS.NAS(1);
-        InitLoc = [ChannelMat.SCS.NAS(:), ChannelMat.SCS.LPA(:), ChannelMat.SCS.RPA(:); ones(1, 3)];
-    elseif ~isempty(sInput) && isfield(sInput, 'header') && isfield(sInput.header, 'hc') && isfield(sInput.header.hc, 'SCS') && ...
-            all(isfield(sInput.header.hc.SCS, {'NAS','LPA','RPA'})) && length(sInput.header.hc.SCS.NAS) == 3
-        % Initial head coil locations from the CTF .hc file, but NOT in SCS coordinates!
-        InitLoc = [sInput.header.hc.SCS.NAS(:), sInput.header.hc.SCS.LPA(:), sInput.header.hc.SCS.RPA(:)]; % 3x3 by columns
-        InitLoc = LocationTransform(InitLoc) * [InitLoc; ones(1, 3)];
-        %InitLoc = InitLoc(:);
+        % Use the SCS distances from origin, with left and right PA points
+        % symmetrical.
+        LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
+        NasDist = ChannelMat.SCS.NAS(1);
     else
-        % Just use some reasonable distances, with a warning.
-        Message = 'Exact reference head coil locations not available. Using reasonable (adult) locations according to head position.';
+        % Just use some reasonable distances.
         LeftRightDist = 0.14;
         NasDist = 0.10;
-        InitLoc = [[NasDist; 0; 0; 1], [0; LeftRightDist/2; 0; 1], [0; -LeftRightDist/2; 0; 1]];
     end
-    % InitLoc above is in Native coordiates.  Bring it back to Dewar
+    InitLoc = [[NasDist; 0; 0; 1], [0; LeftRightDist/2; 0; 1], ...
+        [0; -LeftRightDist/2; 0; 1]];
+    % That InitLoc is in Native coordiates.  Bring it back to Dewar
     % coordinates to compare with HLU channels.
     %
     % Take into account if the initial/reference head position was
     % "adjusted", i.e. replaced by the median position throughout the
-    % recording.  If so, use all transformations from 'Dewar=>Native' to
+    % recording.  If so, use all transformations between 'Dewar=>Native' to
     % this adjustment transformation.  (In practice there shouldn't be any
     % between them.)
     iDewToNat = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
