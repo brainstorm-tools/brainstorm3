@@ -144,7 +144,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
                 % Process each input file
                 for iInput = 1:length(sInputs)
-                    % Capture process crashes
+                    % Capture processes crashes
                     try
                         % Apply filter to file
                         if strcmpi(sProcesses(iProc).Category, 'filter')
@@ -173,7 +173,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                     bst_progress('start', 'Process', ['Running process: ' sProcesses(iProc).Comment '...'], 0, 100 * length(sProcesses));
                     bst_progress('set', 100 * (iProc-1));
                 end
-                % Capture process crashes
+                % Capture processes crashes
                 try
                     OutputFiles = ProcessStat(sProcesses(iProc), sInputs, sInputs2);
                 catch
@@ -190,7 +190,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
                 % Process each input file
                 for iInput = 1:length(sInputs)
-                    % Capture process crashes
+                    % Capture processes crashes
                     try
                         if strcmpi(sProcesses(iProc).Category, 'file')
                             tmpFiles = sProcesses(iProc).Function('Run', sProcesses(iProc), sInputs(iInput));
@@ -222,7 +222,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                     bst_progress('start', 'Process', ['Running process: ' sProcesses(iProc).Comment '...'], 0, 100 * length(sProcesses));
                     bst_progress('set', 100 * (iProc-1));
                 end
-                % Capture process crashes
+                % Capture processes crashes
                 try
                     if strcmpi(sProcesses(iProc).Category, 'custom')
                         if isempty(sInputs2)
@@ -361,13 +361,8 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         if isempty(iSelRows)
             bst_report('Error', sProcess, sInput, ['Selected sensor types are not available in file "' sInput.FileName '".']);
             return;
-        elseif numel(iSelRows) == numel(ChannelMat.Channel) 
-            % All selected.
-            iSelRows = [];
-            AllSensorTypes = [];
-        else
-            AllSensorTypes = unique({ChannelMat.Channel(iSelRows).Type});
         end
+        AllSensorTypes = unique({ChannelMat.Channel(iSelRows).Type});
     % All the signals
     else
         iSelRows = [];
@@ -472,8 +467,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             return;
         end
         % ERROR: Cannot process channel/channel uncompensated CTF files
-        if ismember(1,sProcess.processDim) && ~isReadAll && ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && ...
-                (sFileIn.prop.currCtfComp ~= 3) && (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+        if ismember(1,sProcess.processDim) && ~isReadAll && ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && (sFileIn.prop.currCtfComp ~= 3) && (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
             bst_report('Error', sProcess, sInput, [...
                 'This CTF file was not saved with the 3rd order compensation.' 10 ...
                 'To process this file, you have the following options: ' 10 ...
@@ -483,35 +477,13 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         end
         % ERROR: SSP cannot be applied for channel/channel processing
         if ismember(1,sProcess.processDim) && ~isReadAll && ~isempty(ChannelMat.Projector) && any([ChannelMat.Projector.Status] == 1)
-            % Verify if any channels that need to be projected are selected.
-            % Build projector matrix
-            Projector = process_ssp2('BuildProjector', ChannelMat.Projector, 1);
-            % Apply projector
-            if ~isempty(Projector)
-                % Get bad channels
-                iBadChan = find(sMat.ChannelFlag == -1);
-                % Remove bad channels from the projector (similar as in process_megreg)
-                if ~isempty(iBadChan)
-                    Projector(iBadChan,:) = 0;
-                    Projector(:,iBadChan) = 0;
-                    Projector(iBadChan,iBadChan) = eye(length(iBadChan));
-                end
-                % Apply projector
-                if ~isempty(iSelRows)
-                    % Channels that are modified by projector.
-                    isProjected = sum(Projector ~= 0, 2) > 1;
-                    if any(isProjected(iSelRows))
-                        
-                        bst_report('Error', sProcess, sInput, [...
-                            'This file contains SSP projectors, which require all the channels to be read at the same time.' 10 ...
-                            'To process this file, you have the following options: ' 10 ...
-                            '  1) Check the option "Process the entire file at once" (possible only if the entire file fits in memory).' 10 ...
-                            '  2) Run the process "Artifacts > Apply SSP & CTF compensation" first to save a compensated file.' 10 ...
-                            '  3) Delete the SSP from this file, process it, then recalculate the SSP on the new file.']);
-                        return;
-                    end
-                end
-            end
+            bst_report('Error', sProcess, sInput, [...
+                'This file contains SSP projectors, which require all the channels to be read at the same time.' 10 ...
+                'To process this file, you have the following options: ' 10 ...
+                '  1) Check the option "Process the entire file at once" (possible only if the entire file fits in memory).' 10 ...
+                '  2) Run the process "Artifacts > Apply SSP & CTF compensation" first to save a compensated file.' 10 ...
+                '  3) Delete the SSP from this file, process it, then recalculate the SSP on the new file.']);
+            return;
         end
         % If there are some projectors that are not saved yet: cannot accept default channel files
         if (sSubject.UseDefaultChannel ~= 0) && ~isempty(ChannelMat.Projector) && any([ChannelMat.Projector.Status] == 1)
@@ -526,12 +498,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         ImportOptions = db_template('ImportOptions');
         ImportOptions.ImportMode      = 'Time';
         ImportOptions.DisplayMessages = 0;
-        if ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && ...
-                (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
-            ImportOptions.UseCtfComp  = 1;
-        else
-            ImportOptions.UseCtfComp  = 0; % otherwise reading raw CTF file without selecting any MEG channels would fail.
-        end
+        ImportOptions.UseCtfComp      = 1;
         ImportOptions.UseSsp          = 1;
         ImportOptions.RemoveBaseline  = 'no';
         % Force reading of the entire RAW file at once
@@ -722,7 +689,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             % Indices of columns to process
             iCol = 1 + (((iBlockCol-1)*BlockSizeCol) : min(iBlockCol * BlockSizeCol - 1, nCol - 1));
             % Progress bar
-            newPos = progressPos + round(((iBlockRow - 1) * nBlockCol + iBlockCol) / (nBlockRow * nBlockCol) * (100 - progressPos));
+            newPos = progressPos + round(((iBlockRow - 1) * nBlockCol + iBlockCol) / (nBlockRow * nBlockCol) * 100);
             if (newPos ~= prevPos)
                 bst_progress('set', newPos);
                 prevPos = newPos;
@@ -740,6 +707,8 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     sInput.A = in_fread(sFileIn, ChannelMat, iEpoch, SamplesBounds, iRow, ImportOptions);
                 end
                 sInput.Std = [];
+                % Template continuous file (for the output)
+                sFileTemplate = sFileIn;
                 % Progress bar: processing
                 bst_progress('text', [txtProgress, ' [processing]']);
             else
@@ -771,16 +740,13 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             end
 
             % === INITIALIZE OUTPUT ===
-            nOutTime = length(sInput.TimeVector);
             % Split along columns (time): No support for change in sample numbers (resample)
             if ismember(2, sProcess.processDim)
-                if nOutTime ~= nCol
-                    bst_report('Error', sProcess, sInput, 'Split along columns (time): No support for change in sample numbers (resample)');
-                    return;
-                end
+                nOutTime = nCol;
                 iOutTime = iCol;
             % All the other options (split by row, no split): support for resampling
             else
+                nOutTime = length(sInput.TimeVector);
                 iOutTime = iCol(1) - 1 + (1:length(sInput.TimeVector));
             end
 
@@ -788,12 +754,8 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             if isFirstLoop
                 isFirstLoop = 0;
                 bst_progress('text', [txtProgress, ' [creating new file]']);
-                if isRaw
-                    % Template continuous file (for the output)
-                    sFileTemplate = sFileIn;
-                end
                 % Did time definition change?
-                isTimeChange = ~ismember(2, sProcess.processDim) && ~isequal(sInput.TimeVector, sMat.Time) && (isRaw || (~((size(matValues,2) == 1) && (length(sMat.Time) == 2))));
+                isTimeChange = ~ismember(2, sProcess.processDim) && ~isequal(sInput.TimeVector, sMat.Time) && (isRaw || ~((size(matValues,2) == 1) && (length(sMat.Time) == 2)));
                 % Output time vector
                 if isTimeChange
                     OldFreq = 1./(sMat.Time(2) - sMat.Time(1));
@@ -894,6 +856,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             if isRaw
                 bst_progress('text', [txtProgress, ' [writing]']);
                 if isReadAll
+                    %FullFileMat(iRow, iCol) = sInput.A;
                     if isTimeChange
                         OutFullFileMat(iRow,:) = sInput.A;
                     else
@@ -962,8 +925,8 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         if isRaw && ~isReadAll && ~isempty(iSelRows) && ~isTimeChange
             iRowEndPrevious = iRow(end);
         end
-    end % rows
-    
+    end
+
     % Save all the RAW file at once
     if isReadAll
         sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, [], [], OutFullFileMat);
@@ -1029,7 +992,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         sMat.Function = sInput.Function;
     end
     % ChannelFlag 
-    if isfield(sInput, 'ChannelFlag') && ~isempty(sInput.ChannelFlag)
+     if isfield(sInput, 'ChannelFlag') && ~isempty(sInput.ChannelFlag)
         sMat.ChannelFlag = sInput.ChannelFlag;
         if isRaw
             sMat.F.channelflag = sInput.ChannelFlag;
