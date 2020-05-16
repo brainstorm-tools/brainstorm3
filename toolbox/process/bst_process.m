@@ -545,10 +545,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         % Get size of input data
         [nRow, nCol, nFreq] = size(matValues);
     end
-    % Process only the required rows
-    if ~isempty(iSelRows)
-        nRow = numel(iSelRows);
-    end
     % If native file with multiple epochs: ERROR
     if isRaw && (nEpochs > 1)
         bst_report('Error', sProcess, sInput, 'Impossible to process native epoched/averaged files. Please import them in database or convert them to continuous.');
@@ -657,6 +653,11 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     end
     
     % ===== SPLIT IN BLOCKS =====
+    OutMeasure = [];
+    OutLeff = [];
+    OutputMat = [];
+    OutputStd = [];
+    OutputTFmask = [];
     % Get maximum size of a data block
     MaxSize = ProcessOptions.MaxBlockSize;
     if isfield(ProcessOptions, 'LastMaxBlockSize') && MaxSize ~= ProcessOptions.LastMaxBlockSize
@@ -715,14 +716,14 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         iRow = 1 + (((iBlockRow-1)*BlockSizeRow) : min(iBlockRow * BlockSizeRow - 1, nRow - 1));
         % Process only the required rows
         if ~isempty(iSelRows)
-            iRow = iSelRows(iRow);
+            [tmp__, iRowProcess] = intersect(iRow, iSelRows);
         end
         % Loop on col blocks
         for iBlockCol = 1:nBlockCol
             % Indices of columns to process
             iCol = 1 + (((iBlockCol-1)*BlockSizeCol) : min(iBlockCol * BlockSizeCol - 1, nCol - 1));
             % Progress bar
-            newPos = progressPos + round(((iBlockRow - 1) * nBlockCol + iBlockCol) / (nBlockRow * nBlockCol) * (100 - progressPos));
+            newPos = progressPos + round(((iBlockRow - 1) * nBlockCol + iBlockCol) / (nBlockRow * nBlockCol) * 100);
             if (newPos ~= prevPos)
                 bst_progress('set', newPos);
                 prevPos = newPos;
@@ -762,8 +763,42 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             % Send indices to the process
             sInput.iBlockRow = iBlockRow;
             sInput.iBlockCol = iBlockCol;
-            sInput.iRowProcess = iRow;
-            sInput = sProcess.Function('Run', sProcess, sInput);
+            % Process all rows
+            if isempty(iSelRows) || isequal(iRowProcess, 1:size(sInput.A,1))
+                sInput.iRowProcess = (1:size(sInput.A,1))';
+                sInput = sProcess.Function('Run', sProcess, sInput);
+            % Process only a subset of rows
+            elseif ~isempty(iRowProcess)
+                sInput.iRowProcess = iRowProcess;
+                tmp1 = sInput.A;
+                % Main data matrix
+                sInput.A = sInput.A(iRowProcess,:,:);
+                % Standard error
+                if ~isempty(sInput.Std)
+                    tmp2 = sInput.Std;
+                    sInput.Std = sInput.Std(iRowProcess,:,:,:);
+                end
+                % Process file
+                sInput = sProcess.Function('Run', sProcess, sInput);
+                % Get results
+                if ~isempty(sInput)
+                    % If the number of time points is constant: Keep the non-processed values unchanged
+                    if (size(tmp1,2) == size(sInput.A,2)) && (size(tmp1,3) == size(sInput.A,3))
+                        tmp1(iRowProcess,:,:) = sInput.A;
+                        sInput.A = tmp1;
+                    % If the time vector was changed: Set all the non-processed values to zero
+                    else
+                        tmp1 = zeros(size(tmp1,1), size(sInput.A,2), size(sInput.A,3));
+                        tmp1(iRowProcess,:,:) = sInput.A;
+                        sInput.A = tmp1;
+                    end
+                    % Standard error
+                    if ~isempty(sInput.Std)
+                        tmp2(iRowProcess,:,:,:) = sInput.Std;
+                        sInput.Std = tmp2;
+                    end
+                end
+            end
 
             % If an error occured
             if isempty(sInput)
@@ -818,6 +853,18 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                 else
                     OutTime = sMat.Time;
                 end
+                % If reading the entire file: Initialize output matrix
+                if isReadAll
+                    OutFullFileMat = zeros(size(FullFileMat,1), length(OutTime));
+                end
+                % Output measure
+                if isfield(sInput, 'Measure')
+                    OutMeasure = sInput.Measure;                   
+                end
+                % Output Leff
+                if isfield(sInput, 'Leff')
+                    OutLeff = sInput.Leff;                   
+                end
                 % RAW: Create a new raw file to store the results
                 if isRaw
                     % Create an empty Brainstorm-binary file
@@ -829,14 +876,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     elseif ~isempty(errMsg)
                         bst_report('Warning', sProcess, sInput, errMsg);
                     end
-                    % If reading the entire raw file: Initialize output matrix
-                    if isReadAll
-                        if isTimeChange
-                            OutFullFileMat = zeros(size(FullFileMat,1), length(OutTime));
-                        else
-                            OutFullFileMat = FullFileMat;
-                        end
-                    end
+
                     % Output channel file 
                     ChannelMatOut = ChannelMat;
                     % Mark the projectors as already applied to the file
@@ -847,46 +887,18 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                             end
                         end
                     end
-                    % Initialize raw row reading index.
-                    if ~isReadAll && ~isempty(iSelRows) && ~isTimeChange
-                        iRowEndPrevious = 0;
-                    end
-                else % not raw
-                    if isTimeChange
-                        OutputMat = zeros(nRow, nOutTime, nFreq);
-                    else
-                        OutputMat = matValues;
-                    end
-                    if isTimeChange
-                        if ~isempty(sInput.Std)
-                            OutputStd = zeros(nRow, nOutTime, nFreq);
-                        else
-                            OutputStd = [];
-                        end
-                    else
-                        OutputStd = stdValues;
-                    end
-                    if isTimeChange
-                        if ~isempty(sInput.TFmask)
-                            OutputTFmask = zeros(size(sInput.TFmask,1), nOutTime, size(sInput.TFmask,3));
-                        else
-                            OutputTFmask = [];
-                        end
-                    else
-                        OutputTFmask = TFmask;
-                    end
-                end
-                % Output measure
-                if isfield(sInput, 'Measure')
-                    OutMeasure = sInput.Measure;
                 else
-                    OutMeasure = [];
-                end
-                % Output Leff
-                if isfield(sInput, 'Leff')
-                    OutLeff = sInput.Leff;
-                else
-                    OutLeff = [];
+                    OutputMat = zeros(nRow, nOutTime, nFreq);
+                    if ~isempty(stdValues)
+                        OutputStd = zeros(nRow, nOutTime, nFreq);
+                    else
+                        OutputStd = [];
+                    end
+                    if ~isempty(TFmask)
+                        OutputTFmask = zeros(size(TFmask,1), nOutTime, size(TFmask,3));
+                    else
+                        OutputTFmask = [];
+                    end
                 end
             end
 
@@ -902,50 +914,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                 else
                     % Indices to write
                     SamplesBounds = round(sFileOut.prop.times(1) .* sFileOut.prop.sfreq) + iOutTime([1,end]) - 1;
-                    % Can only write continuous channel range.
-                    if ~isempty(iSelRows) && (~isTimeChange || iRow(end) - iRow(1) + 1 ~= numel(iRow))
-                        % There are unprocessed rows.
-                        if ~isTimeChange
-                            iWriteBlockRowStart = iRowEndPrevious + 1;
-                            % If last row block, go all the way to last channel.
-                            if iBlockRow == nBlockRow
-                                iWriteBlockRowEnd = numel(sMat.ChannelFlag);
-                            else
-                                iWriteBlockRowEnd = iRow(end);
-                            end
-                        else
-                            iWriteBlockRowStart = iRow(1);
-                            iWriteBlockRowEnd = iRow(end);
-                        end
-                        while iWriteBlockRowStart <= iWriteBlockRowEnd
-                            if ~isTimeChange
-                                % Fill the row gaps with unprocessed data.
-                                iWriteBlockRow = iWriteBlockRowStart:min(iWriteBlockRowEnd, iWriteBlockRowStart + BlockSizeRow - 1);
-                                WriteBlock = zeros(numel(iWriteBlockRow), nOutTime);
-                                [Unused, iProcessedA, iProcessedB] = intersect(iRow, iWriteBlockRow);
-                                if ~isempty(iProcessedA)
-                                    WriteBlock(iProcessedB, :) = sInput.A(iProcessedA, :);
-                                end
-                                if numel(iProcessedB) < numel(iWriteBlockRow)
-                                    iNonProcB = setdiff(1:numel(iWriteBlockRow), iProcessedB);
-                                    WriteBlock(iNonProcB, :) = in_fread(sFileIn, ChannelMat, iEpoch, SamplesBounds, iWriteBlockRow(iNonProcB), ImportOptions);
-                                end
-                                sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iWriteBlockRow, WriteBlock);
-                            else
-                                % Avoid row gaps.
-                                iWriteBlockRow = iWriteBlockRowStart:min([iWriteBlockRowEnd, iWriteBlockRowStart + BlockSizeRow - 1, ...
-                                    iRow(find(diff(iRow) > 1 & iRow(2:end) >= iWriteBlockRowStart, 1, 'first'))]);
-                                isProcessedA = ismember(iRow, iWriteBlockRow);
-                                sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iWriteBlockRow, sInput.A(isProcessedA, :));
-                            end
-                            iWriteBlockRowStart = iWriteBlockRow(end) + 1;
-                        end
-                    else
-                        % Write block
-                        sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iRow, sInput.A);
-                    end
+                    % Write block
+                    sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, SamplesBounds, iRow, sInput.A);
                 end
-            else % not raw
+            else
                 OutputMat(iRow,iOutTime,:) = sInput.A;
                 if ~isempty(stdValues) && ~isempty(sInput.Std)
                     OutputStd(iRow,iOutTime,:,:) = sInput.Std;
@@ -958,9 +930,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     OutputTFmask = [];
                 end
             end
-        end % columns
-        if isRaw && ~isReadAll && ~isempty(iSelRows) && ~isTimeChange
-            iRowEndPrevious = iRow(end);
         end
     end % rows
     
