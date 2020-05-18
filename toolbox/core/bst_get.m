@@ -167,6 +167,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('TimefreqOptions_fft')
 %    - bst_get('TimefreqOptions_psd')
 %    - bst_get('TimefreqOptions_hilbert')
+%    - bst_get('TimefreqOptions_fooof')
 %    - bst_get('OpenMEEGOptions')
 %    - bst_get('DuneuroOptions')
 %    - bst_get('GridOptions_headmodel')
@@ -3044,6 +3045,18 @@ switch contextName
         if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
             argout1.FreqBands = defPref.FreqBands;
         end
+        
+    case 'TimefreqOptions_fooof'
+        defPref.freqRange       = [1,40];
+        defPref.peakType        = 1;
+        defPref.peakWidthLimits = [0.5,12];
+        defPref.maxPeaks        = 3;
+        defPref.minPeakHeight   = 3;
+        defPref.peakThresh      = 2;
+        defPref.proxThresh      = 2;
+        defPref.aperMode        = 1;
+        defPref.guessWeight     = 1;
+        argout1 = FillMissingFields(contextName, defPref);
     
     case 'ExportBidsOptions'
         defPref.ProjName    = [];
