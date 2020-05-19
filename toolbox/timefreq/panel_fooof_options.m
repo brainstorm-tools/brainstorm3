@@ -210,7 +210,7 @@ end
 %  === EXTERNAL CALLBACK ===========================================================
 %  =================================================================================   
 %% ===== GET PANEL CONTENTS =====
-function s = GetPanelContents()
+function s = GetPanelContents(varargin)
     global ctrl
     if isempty(ctrl) || ~isfield(ctrl,'jTextFreqLower') % If options not opened
         s = bst_get('TimefreqOptions_fooof');    
