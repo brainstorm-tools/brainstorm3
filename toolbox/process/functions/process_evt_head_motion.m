@@ -290,7 +290,13 @@ end
 function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBounds, ReshapeContinuous)
     % Load and downsample continuous head localization channels.
     % HeadSamplePeriod is in (MEG) samples per (head) sample, not seconds.
-    % Locations are in meters.
+    % Locations are in meters, [nChannels, nSamples, nEpochs] possibly converted to continuous.
+    
+    % For now removing bad segments is done in process_adjust_coordinates only.
+    %     , RemoveBadSegments
+    %     if nargin < 4 || isempty(RemoveBadSegments)
+    %         RemoveBadSegments = false;
+    %     end
     
     if nargin < 3 || isempty(ReshapeContinuous)
         ReshapeContinuous = true;

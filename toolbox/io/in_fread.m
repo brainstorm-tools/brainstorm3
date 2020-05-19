@@ -258,12 +258,15 @@ end
 %% ===== GRADIENT CORRECTION =====
 % 3rd-order gradient correction
 if ~isempty(ImportOptions) && ImportOptions.UseCtfComp && ~strcmpi(sFile.format, 'BST-DATA') && ~isempty(ChannelMat) && ~isempty(ChannelMat.MegRefCoef) && ~isempty(sFile.prop.currCtfComp) && ~isequal(sFile.prop.currCtfComp, sFile.prop.destCtfComp)
-    iMeg = good_channel(ChannelMat.Channel,[],'MEG');
-    iRef = good_channel(ChannelMat.Channel,[],'MEG REF');
-    if ~isempty(iChannels) && (length(iChannels) ~= length(ChannelMat.Channel))
-        error('CTF compensators require that you read all the channels at the same time.');
-    else
-        F(iMeg,:) = F(iMeg,:) - ChannelMat.MegRefCoef * F(iRef,:);
+    AllSensorTypes = unique({ChannelMat.Channel(iChannels).Type});
+    if isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'}))
+        iMeg = good_channel(ChannelMat.Channel,[],'MEG');
+        iRef = good_channel(ChannelMat.Channel,[],'MEG REF');
+        if ~isempty(iChannels) && (length(iChannels) ~= length(ChannelMat.Channel))
+            error('CTF compensators require that you read all the channels at the same time.');
+        else
+            F(iMeg,:) = F(iMeg,:) - ChannelMat.MegRefCoef * F(iRef,:);
+        end
     end
 end
 
@@ -271,10 +274,10 @@ end
 if ~isempty(ImportOptions) && ImportOptions.UseSsp && ~strcmpi(sFile.format, 'BST-DATA') && ~isempty(ChannelMat) && ~isempty(ChannelMat.Projector)
     % Build projector matrix
     Projector = process_ssp2('BuildProjector', ChannelMat.Projector, 1);
-    % Get bad channels
-    iBadChan = find(sFile.channelflag == -1);
     % Apply projector
     if ~isempty(Projector)
+        % Get bad channels
+        iBadChan = find(sFile.channelflag == -1);
         % Remove bad channels from the projector (similar as in process_megreg)
         if ~isempty(iBadChan)
             Projector(iBadChan,:) = 0;
@@ -283,13 +286,17 @@ if ~isempty(ImportOptions) && ImportOptions.UseSsp && ~strcmpi(sFile.format, 'BS
         end
         % Apply projector
         if ~isempty(iChannels)
-            % If there are projectors involved and only subselection of channels: 
-            % We must have all data needed to apply the projector, otherwise it doesn't make sense
-            missingChannels = setdiff(find(any(Projector(iChannels,:), 1)), iChannels);
-            if ~isempty(missingChannels)
-                bst_report('Warning', 'process_import_data_raw', [], ['Missing channels in order to apply existing SSP/ICA projectors. To read the corrected values for channel "' ChannelMat.Channel(iChannels(1)).Name '", first apply the existing projectors with the process Artifacts > Apply SSP and CTF compensation']); 
-            else
-                F = Projector(iChannels, iChannels) * F;
+            % Channels that are modified by projector.
+            isProjected = sum(Projector ~= 0, 2) > 1;
+            if any(isProjected(iChannels))
+                % If there are projectors involved and only subselection of channels:
+                % We must have all data needed to apply the projector, otherwise it doesn't make sense
+                missingChannels = setdiff(find(any(Projector(iChannels,:), 1)), iChannels);
+                if ~isempty(missingChannels)
+                    bst_report('Warning', 'process_import_data_raw', [], ['Missing channels in order to apply existing SSP/ICA projectors. To read the corrected values for channel "' ChannelMat.Channel(iChannels(1)).Name '", first apply the existing projectors with the process Artifacts > Apply SSP and CTF compensation']);
+                else
+                    F = Projector(iChannels, iChannels) * F;
+                end
             end
         else
             F = Projector * F;
