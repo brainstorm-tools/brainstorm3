@@ -40,6 +40,7 @@ if (nargin <= 2)
     if isempty(sEnvelope)
         return;
     end
+    sInner = [];
 end
 if (nargin < 1) || isempty(Options)
     Options.Method        = 'adaptive';

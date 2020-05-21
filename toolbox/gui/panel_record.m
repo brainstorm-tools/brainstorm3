@@ -2087,9 +2087,14 @@ function EventConvertToExtended()
     evtWindow = round(evtWindow .* sfreq) ./ sfreq;
     
     % Apply modificiation to each event type
+    if isempty(GlobalData.FullTimeWindow) || isempty(GlobalData.FullTimeWindow.CurrentEpoch)
+        FullTimeWindow = GlobalData.DataSet(iDS).Measures.Time;
+    else
+        FullTimeWindow = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
+    end
     for i = 1:length(sEvents)
-        sEvents(i).times = [max(GlobalData.DataSet(iDS).Measures.Time(1), sEvents(i).times(1,:) + evtWindow(1)); ...
-                            min(GlobalData.DataSet(iDS).Measures.Time(2), sEvents(i).times(1,:) + evtWindow(2))];
+        sEvents(i).times = [max(FullTimeWindow(1), sEvents(i).times(1,:) + evtWindow(1)); ...
+                            min(FullTimeWindow(2), sEvents(i).times(1,:) + evtWindow(2))];
         % Update event
         SetEvents(sEvents(i), iEvents(i));
     end

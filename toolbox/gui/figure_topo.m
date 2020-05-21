@@ -1101,10 +1101,18 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         fUnits = strrep(fUnits, '}', '');
         fUnits = strrep(fUnits, '\mu', 'u');
         fUnits = strrep(fUnits, '\Delta', 'd');
+        % Round values if large values
+        if (fScaled > 5)
+            strAmp = sprintf('%d', round(fScaled));
+        else
+            fRound = 10^(round(-log10(fScaled)) + 3);
+            fScaled = round(fScaled * fRound) / fRound;
+            strAmp = sprintf('%g', fScaled);
+        end
         % Create legend text
-        strLegend = sprintf(['Max amplitude: %d %s\n' ...
+        strLegend = sprintf(['Max amplitude: %s %s\n' ...
                              'Time window: [%d, %d] ms'], ...
-                            round(fScaled), fUnits, msTime(1), msTime(2));
+                            strAmp, fUnits, msTime(1), msTime(2));
         % Update legend
         set(PlotHandles.hLabelLegend, 'String', strLegend, 'Visible', 'on');
         set(PlotHandles.hOverlayLegend, 'Visible', 'on');
