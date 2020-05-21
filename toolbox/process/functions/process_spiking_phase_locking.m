@@ -191,6 +191,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     iEvent_Neuron = find(ismember({events.label},neuronLabels{iNeuron}));
 
                     if ~isempty(iEvent_Neuron)
+                        
+                        % Make sure the spike is not at the edge of the
+                        % time window of the trial (This causes problems during the binning)
+                        events(iEvent_Neuron).times = events(iEvent_Neuron).times(events(iEvent_Neuron).times>DataMat.Time(1) & ...
+                                                                                  events(iEvent_Neuron).times<DataMat.Time(end));
+                        
+                        
                         % Get the index of the closest timeBin
                         [temp, iClosest] = histc(events(iEvent_Neuron).times,DataMat.Time);
                         
@@ -230,10 +237,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_progress('set', round(iFile / nTrials * 100));
         end
         
-       
-%         %% Get rid of the extra bins at start and finish (the extra bins were added due to the wrong entries of histc on the edges)
-%         all_phases = all_phases(:,2:end-1);
-        
         %% Compute the p-values for both Rayleigh and Omnibus tests
         pValues = struct;
         preferredPhase = zeros(size(all_phases,1),1);
@@ -264,11 +267,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.TF = all_phases;
         FileMat.TFmask = true(size(all_phases, 2), size(all_phases, 3));
         FileMat.Std = [];
-        if use_median
-            FileMat.Comment = ['Phase Locking: ' uniqueComments{iList} ' | band (' num2str(sProcess.options.bandpass.Value{1}(1)) ',' num2str(sProcess.options.bandpass.Value{1}(2)) ')Hz | median'];
-        else
-            FileMat.Comment = ['Phase Locking: ' uniqueComments{iList} ' | band (' num2str(sProcess.options.bandpass.Value{1}(1)) ',' num2str(sProcess.options.bandpass.Value{1}(2)) ')Hz'];
-        end
+        FileMat.Comment = ['Phase Locking: ' uniqueComments{iList} ' | band (' num2str(sProcess.options.bandpass.Value{1}(1)) ',' num2str(sProcess.options.bandpass.Value{1}(2)) ')Hz'];
         FileMat.DataType = 'data';
         FileMat.Time = 1;
         FileMat.TimeBands = [];
