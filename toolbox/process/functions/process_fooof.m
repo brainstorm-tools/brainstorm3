@@ -115,7 +115,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, pt, pwl, maxp, minph, 
             bst_report('error','Invalid Frequency range');
             return
         end
-        fMask = round(inputFile.Freqs,1) >= fB(1) & inputFile.Freqs <= fB(2);
+        fMask = bst_round(inputFile.Freqs,1) >= fB(1) & inputFile.Freqs <= fB(2);
         fs = inputFile.Freqs(fMask);
         spec = log10(squeeze(inputFile.TF(:,1,fMask)));
         if any(fs == 0) % Model cannot handle 0 Hz input
@@ -125,7 +125,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, pt, pwl, maxp, minph, 
         % Initalize FOOOF structs
         fg(size(spec,1)) = struct('FOOOF',[]);
         for chan = 1:size(spec,1)
-            bst_progress('set', round(chan / size(spec,1),2) * 100);
+            bst_progress('set', bst_round(chan / size(spec,1),2) * 100);
             % Fit aperiodic
             aperiodic_pars = robust_ap_fit(fs,spec(chan,:),am);
             % Remove aperiodic
@@ -178,7 +178,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, pt, pwl, maxp, minph, 
                     'aperiodic_mode',       ams,...
                     'guess_weight',         gws);
         % Save file
-        [~, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iP));
+        [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iP));
         OutputFile{end+1} = SaveFile(inputFile, fp, fs, fg, iOutputStudy);
     end
 
@@ -210,7 +210,7 @@ function OutputFile = FOOOF_python(sProcess, sInputs, fB, pwl, maxp, minph, pet,
         fg(size(inputFile.TF,1)) = struct('FOOOF',[]);
         % Iterate across channels
         for chan = 1:size(inputFile.TF,1)
-            bst_progress('set', round(chan / size(inputFile.TF,1),2) * 100);
+            bst_progress('set', bst_round(chan / size(inputFile.TF,1),2) * 100);
             % Run FOOOF on a single channel
             fr = fooof_py(fs',squeeze(inputFile.TF(chan,1,:))',fB,settings,rm);
             % Fix FOOOF error (Python and MATLAB give different values)
@@ -238,7 +238,7 @@ function OutputFile = FOOOF_python(sProcess, sInputs, fB, pwl, maxp, minph, pet,
                     'peak_threshold',       pet,...
                     'aperiodic_mode',       ams);  
         
-        [~, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iP));
+        [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iP));
         OutputFile{end+1} = SaveFile(inputFile, fp, frqs, fg, iOutputStudy);
     end
 
@@ -254,7 +254,7 @@ function NewFile = SaveFile(inputFile, FOOOF_params, FOOOF_freqs, FOOOF_group, i
     FileMat.FOOOF_freqs     = FOOOF_freqs;
     FileMat.FOOOF           = FOOOF_group;
     % Comment: Add FOOOF
-    if contains(FileMat.Comment, 'PSD:')
+    if ~isempty(strfind(FileMat.Comment, 'PSD:'))
         FileMat.Comment     = strrep(FileMat.Comment, 'PSD:', 'FOOOF:');
     else
         FileMat.Comment     = strcat(FileMat.Comment, ' | FOOOF');
@@ -446,7 +446,7 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
         flatspec(flatspec(:) < 0) = 0;
 
 %       Use percential threshold, in terms of # of points, to extract and re-fit
-        perc_thresh = prctile(flatspec, 2.5);
+        perc_thresh = bst_prctile(flatspec, 2.5);
         perc_mask = flatspec <= perc_thresh;
         freqs_ignore = freqs(perc_mask);
         spectrum_ignore = power_spectrum(perc_mask);

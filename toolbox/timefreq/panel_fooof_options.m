@@ -29,8 +29,7 @@ end
 
 
 %% ===== CREATE PANEL =====
-function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>  
-    global ctrl
+function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     panelName = 'FOOOFOptions';
     % Java initializations
     import java.awt.*;
@@ -39,10 +38,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
     
     fooof_type = sProcess.options.fooofType.Value;
-    panelTitle = join({'Displaying options for FOOOF type: ', ... 
-        sProcess.options.fooofType.Comment{fooof_type}});
+    panelTitle = ['Displaying options for FOOOF type: ', ...
+        sProcess.options.fooofType.Comment{fooof_type}];
     % Create main main panel
-    jPanelNew = gui_river(panelTitle{1});
+    jPanelNew = gui_river(panelTitle);
+    options = bst_get('TimefreqOptions_fooof');
     
     % ===== FREQUENCY RANGE =====
     jPanelFreqs = gui_river([1,1]);
@@ -52,11 +52,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                             gui_component('label', jPanelFreqs, [], ' - ');
         jTextFreqUpper =    gui_component('text', jPanelFreqs, 'hfill', '40.0');
         jTextFreqUpper.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
-                            gui_component('label', jPanelFreqs, [], ' Hz');                
-        initStart = 1.0;    initStop  = 40.0;   
+                            gui_component('label', jPanelFreqs, [], ' Hz');
         precision = 1; bounds = {-1e30, 1e30, 10};
-        valUnits = gui_validate_text(jTextFreqLower, [], jTextFreqUpper, bounds, 'Hz', precision, initStart, @GetPanelContents);
-        [~,~] = gui_validate_text(jTextFreqUpper, jTextFreqLower, [], bounds, valUnits, precision, initStop,  @GetPanelContents);
+        valUnits = gui_validate_text(jTextFreqLower, [], jTextFreqUpper, bounds, 'Hz', precision, options.freqRange(1), []);
+        gui_validate_text(jTextFreqUpper, jTextFreqLower, [], bounds, valUnits, precision, options.freqRange(2), []);
     jPanelNew.add('br', jPanelFreqs);
     
     % ===== PEAK TYPE =====
@@ -64,12 +63,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jPanelPeakType = gui_river([1,1]);
                             gui_component('label', jPanelPeakType, 'br', 'Peak Model:');
         jButtonGroup2 = ButtonGroup();
-            jRadioGauss =   gui_component('radio', jPanelPeakType, [], 'Gaussian', jButtonGroup2, [], @GetPanelContents);
-            jRadioCauchy =  gui_component('radio', jPanelPeakType, [], 'Cauchy*', jButtonGroup2, [], @GetPanelContents);
-            jRadioBest =    gui_component('radio', jPanelPeakType, [], 'Best of Both*', jButtonGroup2, [], @GetPanelContents);
+            jRadioGauss =   gui_component('radio', jPanelPeakType, [], 'Gaussian', jButtonGroup2);
+            jRadioCauchy =  gui_component('radio', jPanelPeakType, [], 'Cauchy*', jButtonGroup2);
+            jRadioBest =    gui_component('radio', jPanelPeakType, [], 'Best of Both*', jButtonGroup2);
                             gui_component('label', jPanelPeakType, [], '(* experimental)');
         % Set Default
-        jRadioGauss.setSelected(1);
+        jRadioGauss.setSelected(options.peakType);
         jPanelNew.add('br', jPanelPeakType);
     end
     
@@ -82,9 +81,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jTextPeakWidthUpper =   gui_component('text', jPanelPeakWidth, 'hfill', '12.0');
         jTextPeakWidthUpper.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
                                 gui_component('label', jPanelPeakWidth, [], ' Hz');                
-        initStart = 0.5;    initStop  = 12.0;    precision = 1;
-        gui_validate_text(jTextPeakWidthLower, [], jTextPeakWidthUpper, bounds, 'Hz', precision, initStart, @GetPanelContents);
-        gui_validate_text(jTextPeakWidthUpper, jTextPeakWidthLower, [], bounds, 'Hz', precision, initStop,  @GetPanelContents);
+        precision = 1;
+        gui_validate_text(jTextPeakWidthLower, [], jTextPeakWidthUpper, bounds, 'Hz', precision, options.peakWidthLimits(1), []);
+        gui_validate_text(jTextPeakWidthUpper, jTextPeakWidthLower, [], bounds, 'Hz', precision, options.peakWidthLimits(2),  []);
     jPanelNew.add('br', jPanelPeakWidth);
     
     % ===== MAX NUMBER OF PEAKS =====
@@ -92,8 +91,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                         gui_component('label', jPanelMaxPeaks, [], 'Maximum number of peaks:');
         jTextMaxPeaks = gui_component('text', jPanelMaxPeaks, 'hfill', '3');
         jTextMaxPeaks.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
-        initStart = 3;    precision = 0;
-        gui_validate_text(jTextMaxPeaks, [], [], bounds, 'Hz', precision, initStart, @GetPanelContents);
+        precision = 0;
+        gui_validate_text(jTextMaxPeaks, [], [], bounds, 'Hz', precision, options.maxPeaks, []);
     jPanelNew.add('br', jPanelMaxPeaks);
     
     % ===== MIN PEAK HEIGHT =====
@@ -102,8 +101,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jTextMinPeakH = gui_component('text', jPanelMinPeakH, 'hfill', '3.0');
         jTextMinPeakH.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
                         gui_component('label', jPanelMinPeakH, [], ' dB');
-        initStart = 3;    precision = 1;
-        gui_validate_text(jTextMinPeakH, [], [], bounds, 'Hz', precision, initStart, @GetPanelContents);
+        precision = 1;
+        gui_validate_text(jTextMinPeakH, [], [], bounds, 'Hz', precision, options.minPeakHeight, []);
     jPanelNew.add('br', jPanelMinPeakH);
     
     % ===== PEAK THRESHOLD =====
@@ -112,8 +111,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jTextPeakThresh =   gui_component('text', jPanelPeakThresh, 'hfill', '2.0');
         jTextPeakThresh.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
                             gui_component('label', jPanelPeakThresh, [], ' stdev of noise');
-        initStart = 2;    precision = 1;
-        gui_validate_text(jTextPeakThresh, [], [], bounds, 'Hz', precision, initStart, @GetPanelContents);
+        precision = 1;
+        gui_validate_text(jTextPeakThresh, [], [], bounds, 'Hz', precision, options.peakThresh, []);
     jPanelNew.add('br', jPanelPeakThresh);
     
     % ===== PROXIMITY THRESHOLD =====
@@ -123,8 +122,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             jTextProxThresh =   gui_component('text', jPanelProxThresh, 'hfill', '2.0');
             jTextProxThresh.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
                                 gui_component('label', jPanelProxThresh, [], ' stdev of distribution');
-            initStart = 2;    precision = 1;
-            gui_validate_text(jTextProxThresh, [], [], bounds, 'Hz', precision, initStart, @GetPanelContents);
+            precision = 1;
+            gui_validate_text(jTextProxThresh, [], [], bounds, 'Hz', precision, options.proxThresh, []);
         jPanelNew.add('br', jPanelProxThresh);
     end
     
@@ -132,10 +131,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jPanelAperMode = gui_river([1,1]);
                         gui_component('label', jPanelAperMode, 'br', 'Aperiodic Mode:');
     jButtonGroup1 = ButtonGroup();
-        jRadioFixed =   gui_component('radio', jPanelAperMode, [],   'Fixed', jButtonGroup1, [], @GetPanelContents);
-        jRadioKnee =    gui_component('radio', jPanelAperMode, [], 'Knee', jButtonGroup1, [], @GetPanelContents);
+        jRadioFixed =   gui_component('radio', jPanelAperMode, [],   'Fixed', jButtonGroup1);
+        jRadioKnee =    gui_component('radio', jPanelAperMode, [], 'Knee', jButtonGroup1);
     % Set Default
-    jRadioFixed.setSelected(1);
+    jRadioFixed.setSelected(options.aperMode);
     jPanelNew.add('br', jPanelAperMode);
     
     % ===== GUESS WEIGHT =====
@@ -143,11 +142,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jPanelGuessWeight = gui_river([1,1]);
                          gui_component('label', jPanelGuessWeight, 'br', 'Aperiodic Mode:');
         jButtonGroup3 = ButtonGroup();
-            jRadioNone = gui_component('radio', jPanelGuessWeight, [], 'None', jButtonGroup3, [], @GetPanelContents);
-            jRadioWeak = gui_component('radio', jPanelGuessWeight, [], 'Weak', jButtonGroup3, [], @GetPanelContents);
-            jRadioStrong = gui_component('radio', jPanelGuessWeight, [], 'Strong', jButtonGroup3, [], @GetPanelContents);
+            jRadioNone = gui_component('radio', jPanelGuessWeight, [], 'None', jButtonGroup3);
+            jRadioWeak = gui_component('radio', jPanelGuessWeight, [], 'Weak', jButtonGroup3);
+            jRadioStrong = gui_component('radio', jPanelGuessWeight, [], 'Strong', jButtonGroup3);
         % Set Default
-        jRadioNone.setSelected(1);
+        jRadioNone.setSelected(options.guessWeight);
         jPanelNew.add('br', jPanelGuessWeight);
     end
     % ===== VALIDATION BUTTON =====
@@ -177,7 +176,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                       'jRadioNone',          jRadioNone, ...
                       'jRadioWeak',          jRadioWeak, ...
                       'jRadioStrong',        jRadioStrong, ...
-                      'Method',              Method);
+                      'Method',              Method, ...
+                      'FooofType',           fooof_type);
     elseif fooof_type == 2
         ctrl = struct('jTextFreqLower',      jTextFreqLower, ...
                       'jTextFreqUpper',      jTextFreqUpper, ...
@@ -188,18 +188,19 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                       'jTextPeakThresh',     jTextPeakThresh, ...
                       'jRadioFixed',         jRadioFixed, ...
                       'jRadioKnee',          jRadioKnee, ...
-                      'Method',              Method);        
+                      'Method',              Method, ...
+                      'FooofType',           fooof_type);
     end
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, jPanelScroll, ctrl);
-    
-    GetPanelContents();
     
 %% =================================================================================
 %  === INTERNAL CALLBACK ===========================================================
 %  =================================================================================
 %% ===== OK BUTTON =====
     function ButtonOk_Callback(varargin)
+        % Save panel values
+        GetPanelContents();
         % Release mutex and keep the panel opened
         bst_mutex('release', panelName);
     end
@@ -210,11 +211,14 @@ end
 %  === EXTERNAL CALLBACK ===========================================================
 %  =================================================================================   
 %% ===== GET PANEL CONTENTS =====
-function s = GetPanelContents(varargin)
-    global ctrl
-    if isempty(ctrl) || ~isfield(ctrl,'jTextFreqLower') % If options not opened
-        s = bst_get('TimefreqOptions_fooof');    
-    elseif isfield(ctrl,'jRadioNone') % Field only in Matlab standalone
+function s = GetPanelContents()
+    ctrl = bst_get('PanelControls', 'FOOOFOptions');
+    s = bst_get('TimefreqOptions_fooof');
+    if isempty(ctrl) % If options not opened
+        return;
+    end
+    
+    if ctrl.FooofType == 1 % Matlab standalone
         s.freqRange =      [str2double(ctrl.jTextFreqLower.getText()) str2double(ctrl.jTextFreqUpper.getText())];
         if ctrl.jRadioGauss.isSelected()
             s.peakType = 1;
@@ -237,7 +241,7 @@ function s = GetPanelContents(varargin)
             s.guessWeight = 2;   else    
             s.guessWeight = 3;
         end
-    else
+    else % Python
         s.freqRange =      [str2double(ctrl.jTextFreqLower.getText()) str2double(ctrl.jTextFreqUpper.getText())];
         s.peakWidthLimits =[str2double(ctrl.jTextPeakWidthLower.getText()) str2double(ctrl.jTextPeakWidthUpper.getText())];
         s.maxPeaks =        str2double(ctrl.jTextMaxPeaks.getText());
