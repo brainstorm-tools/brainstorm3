@@ -67,8 +67,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             jRadioCauchy =  gui_component('radio', jPanelPeakType, [], 'Cauchy*', jButtonGroup2);
             jRadioBest =    gui_component('radio', jPanelPeakType, [], 'Best of Both*', jButtonGroup2);
                             gui_component('label', jPanelPeakType, [], '(* experimental)');
-        % Set Default
-        jRadioGauss.setSelected(options.peakType);
+        % Maintain selected option
+        jRadioGauss.setSelected(options.peakType == 1);
+        jRadioCauchy.setSelected(options.peakType == 2);
+        jRadioBest.setSelected(options.peakType == 3);
         jPanelNew.add('br', jPanelPeakType);
     end
     
@@ -133,8 +135,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jButtonGroup1 = ButtonGroup();
         jRadioFixed =   gui_component('radio', jPanelAperMode, [],   'Fixed', jButtonGroup1);
         jRadioKnee =    gui_component('radio', jPanelAperMode, [], 'Knee', jButtonGroup1);
-    % Set Default
-    jRadioFixed.setSelected(options.aperMode);
+    % Maintain selected option
+    jRadioFixed.setSelected(options.aperMode == 1);
+    jRadioKnee.setSelected(options.aperMode == 2);
     jPanelNew.add('br', jPanelAperMode);
     
     % ===== GUESS WEIGHT =====
@@ -146,7 +149,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             jRadioWeak = gui_component('radio', jPanelGuessWeight, [], 'Weak', jButtonGroup3);
             jRadioStrong = gui_component('radio', jPanelGuessWeight, [], 'Strong', jButtonGroup3);
         % Set Default
-        jRadioNone.setSelected(options.guessWeight);
+        jRadioNone.setSelected(options.guessWeight == 1);
+        jRadioWeak.setSelected(options.guessWeight == 2);
+        jRadioStrong.setSelected(options.guessWeight == 3);
         jPanelNew.add('br', jPanelGuessWeight);
     end
     % ===== VALIDATION BUTTON =====
