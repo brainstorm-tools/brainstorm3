@@ -194,6 +194,9 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
             case 'Video'
                 hFig = figure_video('CreateFigure', FigureId);
                 FigHandles = db_template('DisplayHandlesVideo');
+            case 'SpikePhaseLocking'
+                hFig = figure_spiking_phase('CreateFigure', FigureId);
+                FigHandles = db_template('DisplayHandlesTimefreq');
             otherwise
                 error(['Invalid figure type : ', FigureId.Type]);
         end
