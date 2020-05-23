@@ -1032,6 +1032,54 @@ function UpdateFigurePlot(hFig, isForced)
     if isempty(TF)
         return;
     end
+    % FOOOF: Swap TF data for relevant FOOOF data
+    if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options,'isFOOOF')
+        switch TfInfo.FOOOFDisp
+            case 'model'
+                fFreqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF_freqs;
+                i_model = ismember(Freqs, fFreqs);
+                TF = NaN(size(TF));
+                for chan = 1:size(TF,1)
+                    TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.FOOOF(chan).FOOOF.fooofed_spectrum;
+                    switch TfInfo.Function
+                        case 'power'
+                            TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.FOOOF(chan).FOOOF.fooofed_spectrum;
+                        case 'magnitude'
+                            TF(chan,1,i_model) = sqrt(abs(GlobalData.DataSet(iDS).Timefreq.FOOOF(chan).FOOOF.fooofed_spectrum));
+                        case 'log'
+                            TF(chan,1,i_model) = 10 .* log10(abs(GlobalData.DataSet(iDS).Timefreq.FOOOF(chan).FOOOF.fooofed_spectrum));
+                    end
+                end
+            case 'aperiodic'
+                fFreqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF_freqs;
+                i_model = ismember(Freqs, fFreqs);
+                TF = NaN(size(TF));
+                for chan = 1:size(TF,1)
+                    switch TfInfo.Function
+                        case 'power'
+                            TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.FOOOF(chan).FOOOF.ap_fit;
+                        case 'magnitude'
+                            TF(chan,1,i_model) = sqrt(abs(GlobalData.DataSet(iDS).Timefreq.FOOOF(chan).FOOOF.ap_fit));
+                        case 'log'
+                            TF(chan,1,i_model) = 10 .* log10(abs(GlobalData.DataSet(iDS).Timefreq.FOOOF(chan).FOOOF.ap_fit));
+                    end
+                end
+            case 'peaks'
+                fFreqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF_freqs;
+                i_model = ismember(Freqs, fFreqs);
+                TF = NaN(size(TF));
+                for chan = 1:size(TF,1)
+                    switch TfInfo.Function
+                        case 'power'
+                            TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.FOOOF(chan).FOOOF.peak_fit;
+                        case 'magnitude'
+                            TF(chan,1,i_model) = sqrt(abs(GlobalData.DataSet(iDS).Timefreq.FOOOF(chan).FOOOF.peak_fit));
+                        case 'log'
+                            TF(chan,1,i_model) = 10 .* log10(abs(GlobalData.DataSet(iDS).Timefreq.FOOOF(chan).FOOOF.peak_fit));
+                    end
+                end
+        end
+    end
     % Row names
     if ~isempty(RowNames) && ischar(RowNames)
         RowNames = {RowNames};

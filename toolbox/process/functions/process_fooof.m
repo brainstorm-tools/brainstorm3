@@ -261,6 +261,7 @@ function NewFile = SaveFile(inputFile, FOOOF_params, FOOOF_freqs, FOOOF_group, i
     end
     % History: Computation
     FileMat = bst_history('add', FileMat, 'compute', 'FOOOF');
+    FileMat.Options.isFOOOF = 1; % Marks as FOOOF PSD object for bst
     % ===== SAVE FILE =====
     % Get output study
     sOutputStudy = bst_get('Study', iOutputStudy);
@@ -404,7 +405,6 @@ function aperiodic_params = simple_ap_fit(freqs, power_spectrum, aperiodic_mode)
 %         aperiodic_params : 1d array
 %             Parameter estimates for aperiodic fit.
 
-
 %       Set guess params for lorentzian aperiodic fit, guess params set at init
     options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
         'MaxFunEvals', 5000, 'MaxIter', 5000);
@@ -547,7 +547,6 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
 
                 le_ind = sum(flat_iter(1:max_ind) <= half_height);
                 ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height);
-
 
                 % Keep bandwidth estimation from the shortest side.
                 % We grab shortest to avoid estimating very large std from overalapping peaks.
@@ -810,11 +809,9 @@ function guess = drop_peak_overlap(guess, gauss_overlap_thresh)
             drop_inds = [drop_inds (ind - 1 + find(guess(ind:ind+1,2) == ...
                 min(guess(ind,2),guess(ind+1,2))))];
         end
-
     end
     % Drop any peaks guesses that overlap too much, based on threshold.
     guess(drop_inds,:) = [];
-
 end
 
 function  model_params = fit_peak_guess(guess, freqs, flat_spec, fit_type, guess_weight)

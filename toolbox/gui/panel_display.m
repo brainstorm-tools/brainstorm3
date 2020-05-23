@@ -73,10 +73,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelFOOOF.setVisible(0);
         % Radio: Select function to apply on top of the TF values
         jButtonGroup = ButtonGroup();
-        jRadioFunSpectrum = gui_component('Radio', jPanelFOOOF, 'br', 'Spectrum',      jButtonGroup, '', @DisplayOptions_Callback);
-        jRadioFunModel   = gui_component('Radio', jPanelFOOOF, 'br', 'FOOOF Model',  jButtonGroup, '', @DisplayOptions_Callback);
-        jRadioFunAperiodic   = gui_component('Radio', jPanelFOOOF, 'br', 'Aperiodic', jButtonGroup, '', @DisplayOptions_Callback);
-        jRadioFunPeaks   = gui_component('Radio', jPanelFOOOF, 'br', 'Peaks', jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFSpectrum = gui_component('Radio', jPanelFOOOF, 'br', 'Spectrum',      jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFModel   = gui_component('Radio', jPanelFOOOF, 'br', 'FOOOF Model',  jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFAperiodic   = gui_component('Radio', jPanelFOOOF, 'br', 'Aperiodic only', jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFPeaks   = gui_component('Radio', jPanelFOOOF, 'br', 'Peaks only', jButtonGroup, '', @DisplayOptions_Callback);
     jPanelNew.add(jPanelFOOOF);
     
     % ===== PAC: PAC/FLOW/FHIGH =====
@@ -159,6 +159,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Set max panel sizes
     drawnow;
     jPanelFunction.setMaximumSize(java.awt.Dimension(jPanelFunction.getMaximumSize().getWidth(), jPanelFunction.getPreferredSize().getHeight()));
+    jPanelFOOOF.setMaximumSize(java.awt.Dimension(jPanelFOOOF.getMaximumSize().getWidth(), jPanelFOOOF.getPreferredSize().getHeight()));
     jPanelPac.setMaximumSize(java.awt.Dimension(jPanelPac.getMaximumSize().getWidth(), jPanelPac.getPreferredSize().getHeight()));
     jPanelSelect.setMaximumSize(java.awt.Dimension(jPanelSelect.getMaximumSize().getWidth(), jPanelSelect.getPreferredSize().getHeight()));
     jPanelThreshold.setMaximumSize(java.awt.Dimension(jPanelThreshold.getMaximumSize().getWidth(), jPanelThreshold.getPreferredSize().getHeight()));
@@ -178,10 +179,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jCheckHideEdge.setEnabled(0);
     jCheckHighRes.setEnabled(0);
     
-    jRadioFunSpectrum.setEnabled(0);
-    jRadioFunModel.setEnabled(0);
-    jRadioFunAperiodic.setEnabled(0);
-    jRadioFunPeaks.setEnabled(0);
+    jRadioFSpectrum.setEnabled(0);
+    jRadioFSpectrum.setSelected(1);
+    jRadioFModel.setEnabled(0);
+    jRadioFAperiodic.setEnabled(0);
+    jRadioFPeaks.setEnabled(0);
     
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)
@@ -189,6 +191,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                            jPanelNew, ...
                            struct('jPanelSelect',           jPanelSelect, ...
                                   'jPanelFunction',         jPanelFunction, ...
+                                  'jPanelFOOOF',            jPanelFOOOF, ...
                                   'jPanelPac',              jPanelPac, ...
                                   'jPanelThreshold',        jPanelThreshold, ...
                                   'jPanelDistance',         jPanelDistance, ...
@@ -200,10 +203,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jRadioFunMag',           jRadioFunMag, ...
                                   'jRadioFunLog',           jRadioFunLog, ...
                                   'jRadioFunPhase',         jRadioFunPhase, ...
-                                  'jRadioFunSpectrum',      jRadioFunSpectrum, ...
-                                  'jRadioFunModel',         jRadioFunModel, ...
-                                  'jRadioFunAperiodic',     jRadioFunAperiodic, ...
-                                  'jRadioFunPeaks',         jRadioFunPeaks, ...
+                                  'jRadioFSpectrum',      jRadioFSpectrum, ...
+                                  'jRadioFModel',         jRadioFModel, ...
+                                  'jRadioFAperiodic',     jRadioFAperiodic, ...
+                                  'jRadioFPeaks',         jRadioFPeaks, ...
                                   'jRadioPacMax',           jRadioPacMax, ...
                                   'jRadioPacFlow',          jRadioPacFlow, ...
                                   'jRadioPacFhigh',         jRadioPacFhigh, ...
@@ -326,10 +329,15 @@ function UpdatePanel(hFig)
         ctrl.jRadioFunMag.setEnabled(0);
         ctrl.jRadioFunLog.setEnabled(0);
         ctrl.jRadioFunPhase.setEnabled(0);
+        ctrl.jRadioFSpectrum.setEnabled(0);
+        ctrl.jRadioFModel.setEnabled(0);
+        ctrl.jRadioFAperiodic.setEnabled(0);
+        ctrl.jRadioFPeaks.setEnabled(0);
         ctrl.jCheckHideEdge.setEnabled(0);
         ctrl.jCheckHighRes.setEnabled(0);
         ctrl.jPanelSelect.setVisible(0);
         ctrl.jPanelFunction.setVisible(0);
+        ctrl.jPanelFOOOF.setVisible(0);
         ctrl.jPanelPac.setVisible(0);
         ctrl.jPanelThreshold.setVisible(0);
         ctrl.jPanelDistance.setVisible(0);
@@ -361,9 +369,14 @@ function UpdatePanel(hFig)
         ctrl.jRadioFunMag.setEnabled(0);
         ctrl.jRadioFunLog.setEnabled(0);
         ctrl.jRadioFunPhase.setEnabled(0);
+        ctrl.jRadioFSpectrum.setEnabled(0);
+        ctrl.jRadioFModel.setEnabled(0);
+        ctrl.jRadioFAperiodic.setEnabled(0);
+        ctrl.jRadioFPeaks.setEnabled(0);
         ctrl.jCheckHideEdge.setEnabled(0);
         ctrl.jCheckHighRes.setEnabled(0);
         ctrl.jPanelFunction.setVisible(0);
+        ctrl.jPanelFOOOF.setVisible(0)
         ctrl.jPanelPac.setVisible(0);
         ctrl.jPanelThreshold.setVisible(0);
         ctrl.jPanelDistance.setVisible(0);
@@ -400,6 +413,8 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFunMag.setEnabled(1);
                 ctrl.jRadioFunLog.setEnabled(1);
                 ctrl.jRadioFunPhase.setEnabled(0);
+                % Also display FOOOF panel
+                ctrl.jPanelFOOOF.setVisible(1);
             case 'phase'
                 ctrl.jRadioFunPower.setEnabled(0);
                 ctrl.jRadioFunMag.setEnabled(0);
@@ -412,6 +427,25 @@ function UpdatePanel(hFig)
             ctrl.jPanelFunction.setVisible(0);
         else
             ctrl.jPanelFunction.setVisible(1);
+            % If current figure is a FOOOF PSD
+            if isfield(GlobalData.DataSet(iDS).Timefreq.Options,'isFOOOF')
+                ctrl.jRadioFSpectrum.setEnabled(1);
+                ctrl.jRadioFModel.setEnabled(1);
+                ctrl.jRadioFAperiodic.setEnabled(1);
+                ctrl.jRadioFPeaks.setEnabled(1);
+                switch TfInfo.FOOOFDisp
+                    case 'spectrum', ctrl.jRadioFSpectrum.setSelected(1);
+                    case 'model', ctrl.jRadioFModel.setSelected(1);
+                    case 'aperiodic', ctrl.jRadioFAperiodic.setSelected(1);
+                    case 'peaks', ctrl.jRadioFPeaks.setSelected(1);
+                end
+            else
+                ctrl.jRadioFSpectrum.setSelected(1);
+                ctrl.jRadioFSpectrum.setEnabled(0);
+                ctrl.jRadioFModel.setEnabled(0);
+                ctrl.jRadioFAperiodic.setEnabled(0);
+                ctrl.jRadioFPeaks.setEnabled(0);
+            end                
         end
 
         % === PAC PANEL ===
@@ -593,6 +627,17 @@ function sOptions = GetDisplayOptions()
     else
         sOptions.Function = 'other';
     end
+    % Get FOOOF display specifics 
+    if ctrl.jRadioFSpectrum.isSelected()
+        sOptions.FOOOFDisp = 'spectrum';
+    elseif ctrl.jRadioFModel.isSelected()
+        sOptions.FOOOFDisp = 'model';
+    elseif ctrl.jRadioFAperiodic.isSelected()
+        sOptions.FOOOFDisp = 'aperiodic';
+    elseif ctrl.jRadioFPeaks.isSelected()
+        sOptions.FOOOFDisp = 'peaks';
+    end
+    
     % Hide edge effects / Resolution
     sOptions.HideEdgeEffects = ctrl.jCheckHideEdge.isSelected();
     sOptions.HighResolution = ctrl.jCheckHighRes.isSelected();
@@ -646,11 +691,15 @@ function SetDisplayOptions(sOptions)
     else
         % Get figure configuration
         TfInfo = getappdata(hFig, 'Timefreq');
+        % Get data description
+        [iDS, iTimefreq] = bst_memory('GetDataSetTimefreq', TfInfo.FileName);
         if isempty(TfInfo)
             return
         end
+        
         % If nothing changed or RowUpdate for 2DLayout: return
         if isequal(TfInfo.Function, sOptions.Function) && ...
+           isequal(TfInfo.FOOOFDisp, sOptions.FOOOFDisp) && ...
            isequal(TfInfo.HideEdgeEffects, sOptions.HideEdgeEffects) && ...
            isequal(TfInfo.HighResolution, sOptions.HighResolution) && ...
            (isequal(TfInfo.RowName, sOptions.RowName) || ismember(TfInfo.DisplayMode, {'2DLayout', '2DLayoutOpt', 'AllSensors'}))
@@ -674,6 +723,7 @@ function SetDisplayOptions(sOptions)
                 bst_set('LastPsdDisplayFunction', sOptions.Function);
             end
         end
+        TfInfo.FOOOFDisp  = sOptions.FOOOFDisp;
         TfInfo.HideEdgeEffects = sOptions.HideEdgeEffects;
         TfInfo.HighResolution  = sOptions.HighResolution;
         % Update figure handles
