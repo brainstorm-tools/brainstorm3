@@ -874,14 +874,14 @@ function err = error_model(params, xVals, yVals, fit_type, guess, guess_weight)
     switch guess_weight
         case 1
             err = sum((yVals - fitted_vals).^2);
-        case 2
+        case 2 % Add small weight to deviations from guess m and amp
             err = sum((yVals - fitted_vals).^2) + ...
                  1E2*sum((params(:,1)-guess(:,1)).^2) + ...
                  1E2*sum((params(:,2)-guess(:,2)).^2);
-        case 3
+        case 3 % Add large weight to deviations from guess m and amp
             err = sum((yVals - fitted_vals).^2) + ...
-                 1E10*sum((params(:,1)-guess(:,1)).^2) + ...
-                 1E10*sum((params(:,2)-guess(:,2)).^2);
+                 1E7*sum((params(:,1)-guess(:,1)).^2) + ...
+                 1E7*sum((params(:,2)-guess(:,2)).^2);
     end
 end
 %% ===== FOOOF_py =====
