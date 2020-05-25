@@ -2188,6 +2188,7 @@ switch (lower(action))
                     % ===== CLUSTERS/SCOUTS =====
                     else
                         gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
+%                         gui_component('MenuItem', jPopup, [], 'FOOOF Parameters', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));)
                     end
                 end
                 % Project sources

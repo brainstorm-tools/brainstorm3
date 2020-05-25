@@ -252,9 +252,8 @@ function NewFile = SaveFile(inputFile, FOOOF_params, FOOOF_freqs, FOOOF_group, i
     % ===== PREPARE OUTPUT STRUCTURE =====
     % Create file structure
     FileMat = inputFile;
-    FileMat.FOOOF_params    = FOOOF_params;
-    FileMat.FOOOF_freqs     = FOOOF_freqs;
-    FileMat.FOOOF           = FOOOF_group;
+    FileMat.FOOOF           = struct('FOOOF_options',FOOOF_params,...
+        'FOOOF_freqs', FOOOF_freqs, 'FOOOF_data', FOOOF_group);
     % Comment: Add FOOOF
     if ~isempty(strfind(FileMat.Comment, 'PSD:'))
         FileMat.Comment     = strrep(FileMat.Comment, 'PSD:', 'FOOOF:');
@@ -263,7 +262,6 @@ function NewFile = SaveFile(inputFile, FOOOF_params, FOOOF_freqs, FOOOF_group, i
     end
     % History: Computation
     FileMat = bst_history('add', FileMat, 'compute', 'FOOOF');
-    FileMat.Options.isFOOOF = 1; % Marks as FOOOF PSD object for bst
     % ===== SAVE FILE =====
     % Get output study
     sOutputStudy = bst_get('Study', iOutputStudy);
