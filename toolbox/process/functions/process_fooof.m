@@ -261,7 +261,6 @@ function NewFile = SaveFile(inputFile, FOOOF_params, FOOOF_freqs, FOOOF_group, i
     end
     % History: Computation
     FileMat = bst_history('add', FileMat, 'compute', 'FOOOF');
-    FileMat.Options.isFOOOF = 1; % Marks as FOOOF PSD object for bst
     % ===== SAVE FILE =====
     % Get output study
     sOutputStudy = bst_get('Study', iOutputStudy);

@@ -428,7 +428,7 @@ function UpdatePanel(hFig)
         else
             ctrl.jPanelFunction.setVisible(1);
             % If current figure is a FOOOF PSD
-            if isfield(GlobalData.DataSet(iDS).Timefreq.Options,'isFOOOF')
+            if ~isempty(GlobalData.DataSet(iDS).Timefreq.FOOOF)
                 ctrl.jRadioFSpectrum.setEnabled(1);
                 ctrl.jRadioFModel.setEnabled(1);
                 ctrl.jRadioFAperiodic.setEnabled(1);
