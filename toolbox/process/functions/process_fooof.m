@@ -106,6 +106,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, pt, pwl, maxp, minph, 
         case 3,     gws = 'strong';
     end
     for iP = 1:length(sInputs)
+        bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iP) ' of ' num2str(length(sInputs))]);
         clear fg
         inputFile = in_bst_timefreq(sInputs(iP).FileName);
         % Initialize returned list of files
@@ -196,6 +197,7 @@ function OutputFile = FOOOF_python(sProcess, sInputs, fB, pwl, maxp, minph, pet,
         ams,'verbose',0); 
     rm = 1; % Always return model
     for iP = 1:length(sInputs)
+        bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iP) ' of ' num2str(length(sInputs))]);
         clear fg
         inputFile = in_bst_timefreq(sInputs(iP).FileName);
         % Initialize returned list of files
