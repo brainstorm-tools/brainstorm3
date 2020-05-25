@@ -376,10 +376,9 @@ if isEvents
         fseek(fid, double(evtOffset), 'cof');
         % Check event type
         if ~ismember(evtType, [1,2,3])
+            % If events were supposed to be read: error
             if (h.numevents > 0)
                 error(sprintf('Invalid event type: %d', evtType));
-            else
-                disp(sprintf('CNT> Invalid event type: %d', evtType));
             end
         else
             % Define size of each event block
