@@ -580,7 +580,7 @@ switch (lower(action))
                     end
                     % === GENERATE BEM ===
                     jItemBem = gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, []));
-                    jItemFem = gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'ComputeInteractive', iSubject, []));
+                    jItemFem = gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, []));
                     % Disable if no scalp or cortex available
                     if isempty(sSubject.Anatomy)
                         jItemBem.setEnabled(0);
@@ -1028,7 +1028,7 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, iAnatomy));
                     end
                     if ~isAtlas && (length(bstNodes) <= 2)
-                        gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'ComputeInteractive', iSubject, iAnatomy));
+                        gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, iAnatomy));
                     end
                     if ~isAtlas && (length(bstNodes) == 1)
                         AddSeparator(jPopup);
@@ -1162,7 +1162,7 @@ switch (lower(action))
                 % Generate FEM mesh
                 if ~bst_get('ReadOnly')
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'ComputeInteractive', iSubject, [], GetAllFilenames(bstNodes)));
+                    gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, [], GetAllFilenames(bstNodes)));
                 end
                 % === MENU: EXPORT ===
                 % Export menu (added later)
@@ -1187,7 +1187,7 @@ switch (lower(action))
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_mergelayers, filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
-                    gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'SwitchHexaTetra', filenameRelative));
+                    gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
                 end
                 
 %% ===== POPUP: NOISECOV =====

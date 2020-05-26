@@ -1,5 +1,5 @@
-function varargout = process_generate_fem( varargin )
-% PROCESS_GENERATE_FEM: Generate tetrahedral/hexahedral FEM mesh.
+function varargout = process_fem_mesh( varargin )
+% PROCESS_FEM_MESH: Generate tetrahedral/hexahedral FEM mesh.
 %
 % USAGE:     OutputFiles = process_generate_fem('Run',     sProcess, sInputs)
 %         [isOk, errMsg] = process_generate_fem('Compute', iSubject, iMris=[default], isInteractive, OPTIONS)
@@ -375,7 +375,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             bst_progress('text', 'Creating 3D mesh (Iso2mesh/surf2mesh)...');
             factor_bst = 1.e-6;
             [node,elem] = surf2mesh(newnode, newelem, min(newnode), max(newnode),...
-                OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, regions, []);
+                OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, regions, [], []); ..., 'tetgen1.5');
             
 %             % Sorting compartments from the center of the head
 %             allLabels = unique(elem(:,5));
