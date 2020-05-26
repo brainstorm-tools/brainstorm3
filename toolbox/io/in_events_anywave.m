@@ -2,10 +2,6 @@ function events = in_events_anywave(sFile, EventFile)
 % IN_EVENTS_ANYWAVE: Read the events descriptions for a AnyWave file.
 %
 % USAGE:  events = in_events_anywave(sFile, EventFile)
-%
-% This function is based on the Yokogawa MEG reader toolbox version 1.4.
-% For copyright and license information and software documentation, 
-% please refer to the contents of the folder brainstorm3/external/yokogawa
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
