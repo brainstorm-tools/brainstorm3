@@ -56,11 +56,19 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % ===== Coordinates =====
         jPanelCoordinates = gui_river('Coordinates (millimeters)');
             % Coordinates
-            jPanelCoordinates.add(JLabel('  '));
-            gui_component('label', jPanelCoordinates, 'tab', '  ');
-            gui_component('label', jPanelCoordinates, 'tab', '       X');
-            gui_component('label', jPanelCoordinates, 'tab', '       Y');
-            gui_component('label', jPanelCoordinates, 'tab', '       Z');
+            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', ' '));
+            jLabelX = gui_component('label', jPanelCoordinates, 'tab', '   X');
+            jLabelY = gui_component('label', jPanelCoordinates, 'tab', '   Y');
+            jLabelZ = gui_component('label', jPanelCoordinates, 'tab', '   Z');
+            jLabelX.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelY.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelZ.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelX.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelY.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelZ.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelX.setFont(jFontText);
+            jLabelY.setFont(jFontText);
+            jLabelZ.setFont(jFontText);
             % === MRI ===
             jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'MRI: '));
             jLabelCoordMriX = JLabel('-');
