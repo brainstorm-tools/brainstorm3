@@ -1,17 +1,14 @@
 function [sFile, ChannelMat] = in_fopen_tdt(DataFile)
-
-%% IN_FOPEN_TDT: Open recordings saved in the Tucker Davis Technologies format
-
-% The importer needs the folder that the files are in. I selected one type
+% IN_FOPEN_TDT Open recordings saved in the Tucker Davis Technologies format.
+%
+% The importer needs the folder that the files are in. K Nasiotis selected one type
 % of files to work as the "raw file" - (.Tbk)
-
-
- %% 
- % @=============================================================================
+ 
+% @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +22,7 @@ function [sFile, ChannelMat] = in_fopen_tdt(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Konstantinos Nasiotis 2019, 2020
+% Author: Konstantinos Nasiotis 2019-2020
 
 
 % Not available in the compiled version
