@@ -749,19 +749,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 
     % ===== SAVE FEM MESH =====
     bst_progress('text', 'Saving FEM mesh...');
-    % Assemble OPTIONS string (for saving in file history)
-    strOptions = '';
-    for f = fieldnames(OPTIONS)'
-        strOptions = [strOptions, f{1}, '='];
-        if isnumeric(OPTIONS.(f{1}))
-            strOptions = [strOptions, num2str(OPTIONS.(f{1}))];
-        elseif ischar(OPTIONS.(f{1}))
-            strOptions = [strOptions, '''', OPTIONS.(f{1}), ''''];
-        elseif iscell(OPTIONS.(f{1})) && ~isempty(OPTIONS.(f{1}))
-            strOptions = [strOptions, sprintf('''%s'',', OPTIONS.(f{1}){:})];
-        end
-        strOptions = [strOptions, ' '];
-    end
     % Save FemFile if not already done above
     if isempty(FemFile)
         % Create output structure
@@ -784,14 +771,14 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             FemMat.Tissue = elem(:,9);
         end
         % Add history
-        FemMat = bst_history('add', FemMat, 'process_fem_mesh', strOptions);
+        FemMat = bst_history('add', FemMat, 'process_fem_mesh', OPTIONS);
         % Save to database
         FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
         bst_save(FemFile, FemMat, 'v7');
         db_add_surface(iSubject, FemFile, FemMat.Comment);
     % Otherwise: just add the options string to the history
     else
-        bst_history('add', FemFile, 'process_fem_mesh', strOptions);
+        bst_history('add', FemFile, 'process_fem_mesh', OPTIONS);
     end
     % Return success
     isOk = 1;

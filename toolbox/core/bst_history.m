@@ -26,10 +26,12 @@ function FileMat = bst_history(action, FileMat, eventType, eventDesc)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010
+% Authors: Francois Tadel, 2010-2020
 
 if (nargin < 4)
     eventDesc = [];
+elseif isstruct(eventDesc)
+    eventDesc = PrintOptStruct(eventDesc);
 end
 
 %% ===== PARSE INPUTS =====
@@ -136,6 +138,29 @@ if isModified && ~isempty(FileName)
     save(FileName, '-struct', 'FileMat', '-append');
 end
 
+end
+
+
+
+%% =================================================================================
+%  === HELPER FUNCTIONS ============================================================
+%  =================================================================================
+
+%% ===== PRINT OPTIONS STRUCT =====
+function str = PrintOptStruct(s)
+    str = '';
+    for f = fieldnames(s)'
+        str = [str, f{1}, '='];
+        if isnumeric(s.(f{1}))
+            str = [str, num2str(s.(f{1}))];
+        elseif ischar(s.(f{1}))
+            str = [str, '''', s.(f{1}), ''''];
+        elseif iscell(s.(f{1})) && ~isempty(s.(f{1}))
+            str = [str, sprintf('''%s'',', s.(f{1}){:})];
+        end
+        str = [str, ' '];
+    end
+end
 
 
 

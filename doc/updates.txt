@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
-Mai 2020
+May 2020
+- FEM: Import and management of tissue segmentations
 - IO: Support for fNIRS format .snirf
 - Anatomy: Updated CAT12 to version 12.7
 - Doc: Updated decoding tutorial with new processes

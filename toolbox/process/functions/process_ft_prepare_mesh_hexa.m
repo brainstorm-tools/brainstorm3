@@ -180,22 +180,8 @@ function [isOk, errMsg, FemFile] = Compute(iSubject, iMri, OPTIONS)
     FemMat.Vertices = mesh.pos;
     FemMat.Elements = mesh.hex;
     FemMat.Tissue   = mesh.tissue;
-
-    % Assemble OPTIONS string (for saving in file history)
-    strOptions = '';
-    for f = fieldnames(OPTIONS)'
-        strOptions = [strOptions, f{1}, '='];
-        if isnumeric(OPTIONS.(f{1}))
-            strOptions = [strOptions, num2str(OPTIONS.(f{1}))];
-        elseif ischar(OPTIONS.(f{1}))
-            strOptions = [strOptions, '''', OPTIONS.(f{1}), ''''];
-        elseif iscell(OPTIONS.(f{1})) && ~isempty(OPTIONS.(f{1}))
-            strOptions = [strOptions, sprintf('''%s'',', OPTIONS.(f{1}){:})];
-        end
-        strOptions = [strOptions, ' '];
-    end
     % Add history
-    FemMat = bst_history('add', FemMat, 'preparemesh', strOptions);
+    FemMat = bst_history('add', FemMat, 'preparemesh', OPTIONS);
     % Save to database
     FemFile = file_unique(bst_fullfile(bst_fileparts(file_fullpath(MriFile)), sprintf('tess_fem_fieldtrip_%dV.mat', length(FemMat.Vertices))));
     bst_save(FemFile, FemMat, 'v7');
