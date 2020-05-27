@@ -1,14 +1,14 @@
 function varargout = process_fem_mesh( varargin )
 % PROCESS_FEM_MESH: Generate tetrahedral/hexahedral FEM mesh.
 %
-% USAGE:     OutputFiles = process_generate_fem('Run',     sProcess, sInputs)
-%         [isOk, errMsg] = process_generate_fem('Compute', iSubject, iMris=[default], isInteractive, OPTIONS)
-%                          process_generate_fem('ComputeInteractive', iSubject, iMris=[default])
-%                OPTIONS = process_generate_fem('GetDefaultOptions')
-%                  label = process_generate_fem('GetFemLabel', label)
-%             NewFemFile = process_generate_fem('SwitchHexaTetra', FemFile)
-%                 errMsg = process_generate_fem('InstallIso2mesh', isInteractive)
-%                 errMsg = process_generate_fem('InstallBrain2mesh', isInteractive)
+% USAGE:     OutputFiles = process_fem_mesh('Run',     sProcess, sInputs)
+%         [isOk, errMsg] = process_fem_mesh('Compute', iSubject, iMris=[default], isInteractive, OPTIONS)
+%                          process_fem_mesh('ComputeInteractive', iSubject, iMris=[default])
+%                OPTIONS = process_fem_mesh('GetDefaultOptions')
+%                  label = process_fem_mesh('GetFemLabel', label)
+%             NewFemFile = process_fem_mesh('SwitchHexaTetra', FemFile)
+%                 errMsg = process_fem_mesh('InstallIso2mesh', isInteractive)
+%                 errMsg = process_fem_mesh('InstallBrain2mesh', isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -562,7 +562,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % If the SCS transformation is not defined: compute MNI transformation to get a default one
             if isempty(sMriT1) || ~isfield(sMriT1, 'SCS') || ~isfield(sMriT1.SCS, 'NAS') || ~isfield(sMriT1.SCS, 'LPA') || ~isfield(sMriT1.SCS, 'RPA') || (length(sMriT1.SCS.NAS)~=3) || (length(sMriT1.SCS.LPA)~=3) || (length(sMriT1.SCS.RPA)~=3) || ~isfield(sMriT1.SCS, 'R') || isempty(sMriT1.SCS.R) || ~isfield(sMriT1.SCS, 'T') || isempty(sMriT1.SCS.T)
                 % Issue warning
-                bst_report('Warning', 'process_generate_fem', [], 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.');
+                bst_report('Warning', 'process_fem_mesh', [], 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.');
                 % Compute MNI transformation
                 [sMriT1, errNorm] = bst_normalize_mni(T1File);
                 % Handle errors
@@ -784,14 +784,14 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             FemMat.Tissue = elem(:,9);
         end
         % Add history
-        FemMat = bst_history('add', FemMat, 'process_generate_fem', strOptions);
+        FemMat = bst_history('add', FemMat, 'process_fem_mesh', strOptions);
         % Save to database
         FemFile = file_unique(bst_fullfile(bst_fileparts(T1File), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
         bst_save(FemFile, FemMat, 'v7');
         db_add_surface(iSubject, FemFile, FemMat.Comment);
     % Otherwise: just add the options string to the history
     else
-        bst_history('add', FemFile, 'process_generate_fem', strOptions);
+        bst_history('add', FemFile, 'process_fem_mesh', strOptions);
     end
     % Return success
     isOk = 1;

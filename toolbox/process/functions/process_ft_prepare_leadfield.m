@@ -181,7 +181,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Get previously computed mri mask from the database
                 iTissue = find(strcmpi({sSubject.Anatomy.Comment}, 'tissues'), 1);
                 if isempty(iTissue)
-                    iTissue = find(~cellfun(@(c)isempty(strfind(c, 'tissue')), {sSubject.Anatomy.Comment}), 1);
+                    iTissue = find(~cellfun(@(c)isempty(strfind(lower(c), 'tissue')), {sSubject.Anatomy.Comment}), 1);
                 end
                 % If tissue mask doesn't exist yet: compute it
                 if isempty(iTissue)

@@ -1,7 +1,7 @@
-function errorMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractive, sFid, isExtraMaps, isKeepMri)
+function errorMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractive, sFid, isExtraMaps, isKeepMri, isTissues)
 % IMPORT_ANATOMY_CAT: Import a full CAT12 folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_cat(iSubject, CatDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isKeepMri=0)
+% USAGE:  errorMsg = import_anatomy_cat(iSubject, CatDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isKeepMri=0, isTissues=1)
 %
 % INPUT:
 %    - iSubject     : Indice of the subject where to import the MRI
@@ -14,6 +14,8 @@ function errorMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractiv
 %    - isKeepMri    : 0=Delete all existing anatomy files
 %                     1=Keep existing MRI volumes (when running segmentation from Brainstorm)
 %                     2=Keep existing MRI and surfaces
+%    - isTissues     : If 1, combine the tissue probability maps (/mri/p*.nii) into a "tissue" volume
+%
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -35,9 +37,13 @@ function errorMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractiv
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019
+% Authors: Francois Tadel, 2019-2020
 
 %% ===== PARSE INPUTS =====
+% Import tissues
+if (nargin < 8) || isempty(isTissues)
+    isTissues = 1;
+end
 % Keep MRI
 if (nargin < 7) || isempty(isKeepMri)
     isKeepMri = 0;
@@ -187,12 +193,14 @@ Annot32kLhFiles(cellfun(@isempty, Annot32kLhFiles)) = [];
 Annot32kRhFiles(cellfun(@isempty, Annot32kRhFiles)) = [];
 
 % Find tissue probability maps
-TpmFiles = {file_find(CatDir, 'p2*.nii', 2), ...  % White matter
-            file_find(CatDir, 'p1*.nii', 2), ...  % Gray matter
-            file_find(CatDir, 'p3*.nii', 2), ...  % CSF
-            file_find(CatDir, 'p4*.nii', 2), ...  % Skull
-            file_find(CatDir, 'p5*.nii', 2), ...  % Scalp
-            file_find(CatDir, 'p6*.nii', 2)};     % Background
+if isTissues
+    TpmFiles = {file_find(CatDir, 'p2*.nii', 2), ...  % White matter
+                file_find(CatDir, 'p1*.nii', 2), ...  % Gray matter
+                file_find(CatDir, 'p3*.nii', 2), ...  % CSF
+                file_find(CatDir, 'p4*.nii', 2), ...  % Skull
+                file_find(CatDir, 'p5*.nii', 2), ...  % Scalp
+                file_find(CatDir, 'p6*.nii', 2)};     % Background
+end
 % Find thickness maps
 if isExtraMaps
     ThickLhFile = file_find(CatDir, 'lh.thickness.*', 2);
@@ -502,7 +510,7 @@ end
 
 
 %% ===== IMPORT TISSUE LABELS =====
-if ~isempty(TpmFiles)
+if isTissues && ~isempty(TpmFiles)
     bst_progress('start', 'Import CAT12 folder', 'Importing tissue probability maps...');
     sMriTissue = [];
     pCube = [];

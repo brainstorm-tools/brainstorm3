@@ -135,9 +135,9 @@ function [isOk, errMsg, FemFile] = Compute(iSubject, iMri, OPTIONS)
     if isempty(iMri)
         iMri = find(strcmpi({sSubject.Anatomy.Comment}, 'tissues'), 1);
         if isempty(iMri)
-            iMri = find(~cellfun(@(c)isempty(strfind(c, 'tissue')), {sSubject.Anatomy.Comment}), 1);
+            iMri = find(~cellfun(@(c)isempty(strfind(lower(c), 'tissue')), {sSubject.Anatomy.Comment}), 1);
             if isempty(iMri)
-                errMsg = 'Tissue segmentation not available,,,';
+                errMsg = 'Tissue segmentation not available...';
                 return;
             end
         end
