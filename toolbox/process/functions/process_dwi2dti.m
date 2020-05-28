@@ -3,7 +3,7 @@ function varargout = process_dwi2dti( varargin )
 %
 % USAGE:     OutputFiles = process_dwi2dti('Run',     sProcess, sInputs)
 %         [isOk, errMsg] = process_dwi2dti('Compute', iSubject, DwiFile, BvalFile, BvecFile)
-%                          process_dwi2dti('ComputeInteractive', iSubject)
+%                DtiFile = process_dwi2dti('ComputeInteractive', iSubject)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -42,7 +42,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'import'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
-    sProcess.isSeparator = 1;
     % File selection options
     SelectOptionsNii = {...
         '', ...                            % Filename

@@ -127,8 +127,9 @@ switch lower(structureName)
             'Comment',         '', ...
             'Vertices',        [], ...   % [Nvert x 3] double: List of position of the nodes with their three cartesian coordinates
             'Elements',        [], ...   % [Nelem x 4] integers for tetrahedral meshes; or [Nelem x 8] integers for hexahedral meshes (1-based indices in the Vertices matrix)
-            'Tissue',          [], ...   % [1 x Nelem] integer: tissue classification for each node
+            'Tissue',          [], ...   % [Nelem x 1] integer: tissue classification for each node
             'TissueLabels',    [], ...   % [1 x Ntissue] cell array: label of the tissues in this head model
+            'Tensors',         [], ...   % [Nelem x 12] double: Conductivity tensors: [V1(1:3) V2(1:3) V3(1:3) L1 L2 L3]
             'History',         []);
         
     case 'datamat'

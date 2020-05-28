@@ -1761,16 +1761,13 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         jDialog = jPanelProcess.getTopLevelAncestor();
         jDialog.setAlwaysOnTop(0);
         jDialog.setVisible(0);
-%         isModal = jDialog.isModal();
-%         jDialog.setModal(0);
         drawnow;
         % Display options dialog window
-        value = gui_show_dialog(sCurProcess.Comment, fcnPanel, 1, [], sCurProcess, sFiles);
+        value = bst_call(@gui_show_dialog, sCurProcess.Comment, fcnPanel, 1, [], sCurProcess, sFiles);
         drawnow;
         % Restore pipeline editor
         jDialog.setVisible(1);
         jDialog.setAlwaysOnTop(1);
-%         jDialog.setModal(isModal);
         drawnow;
         
         % Editing was cancelled
