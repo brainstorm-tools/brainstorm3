@@ -98,6 +98,8 @@ function [sMri,iMri] = LoadMri(MriFile)
     end
 
     % ===== CHECK IF LOADED =====
+    % Use short file name
+    MriFile = file_short(MriFile);
     % Check if surface is already loaded
     iMri = find(file_compare({GlobalData.Mri.FileName}, MriFile));
     % If MRI is not loaded yet: load it
@@ -3386,10 +3388,8 @@ end
 %% ===== UNLOAD MRI =====
 function UnloadMri(MriFile) %#ok<DEFNU>
     global GlobalData;
-    % Get SUBJECTS directory
-    ProtocolInfo = bst_get('ProtocolInfo');
     % Force relative path
-    MriFile = strrep(MriFile, ProtocolInfo.SUBJECTS, '');
+    MriFile = file_short(MriFile);
     % Check if MRI is already loaded
     iMri = find(file_compare({GlobalData.Mri.FileName}, MriFile));
     % If it is: unload it

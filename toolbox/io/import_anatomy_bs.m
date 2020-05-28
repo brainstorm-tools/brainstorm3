@@ -411,7 +411,7 @@ if ~isempty(HeadFile)
     BstHeadFile = tess_downsize( BstHeadHiFile, 1082, 'reducepatch' );
     % Load MRI
     bst_progress('start', 'Import BrainSuite folder', 'Filling holes in the head surface...');
-    sMri = bst_memory('LoadMri', BstMriFile);
+    sMri = in_mri_bst(BstMriFile);
     % Load head surface
     sHead = in_tess_bst(BstHeadFile);
     % Remove holes
