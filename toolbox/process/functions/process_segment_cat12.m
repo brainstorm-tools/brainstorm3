@@ -32,7 +32,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Segment MRI with SPM12/CAT12';
+    sProcess.Comment     = 'Segment MRI with CAT12';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 31;
@@ -65,13 +65,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.tpmnii.Type    = 'filename';
     sProcess.options.tpmnii.Value   = SelectOptions;
     % Option: Spherical registration
-    sProcess.options.sphreg.Comment = 'Use spherical registration<BR><I>Required for atlases, group analysis and thickness maps</I>';
+    sProcess.options.sphreg.Comment = 'Use spherical registration<BR><I><FONT color="#777777">Required for atlases, group analysis and thickness maps</FONT></I>';
     sProcess.options.sphreg.Type    = 'checkbox';
     sProcess.options.sphreg.Value   = 1;
-    % Option: Import thickness map
-    sProcess.options.thickness.Comment = 'Import cortical thickness map';
-    sProcess.options.thickness.Type    = 'checkbox';
-    sProcess.options.thickness.Value   = 0;
+    % Option: Import extra map
+    sProcess.options.extramaps.Comment = 'Import additonal cortical maps<BR><I><FONT color="#777777">Cortical thickness, gyrification index, sulcal depth</FONT></I>';
+    sProcess.options.extramaps.Type    = 'checkbox';
+    sProcess.options.extramaps.Value   = 0;
 end
 
 
@@ -103,12 +103,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         TpmNii = bst_get('SpmTpmAtlas');
     end
     % Thickness maps
-    if isfield(sProcess.options, 'thickness') && isfield(sProcess.options.thickness, 'Value') && ~isempty(sProcess.options.thickness.Value)
-        isExtraMaps = sProcess.options.thickness.Value;
+    if isfield(sProcess.options, 'extramaps') && isfield(sProcess.options.extramaps, 'Value') && ~isempty(sProcess.options.extramaps.Value)
+        isExtraMaps = sProcess.options.extramaps.Value;
     else
         isExtraMaps = 0;
     end
-    sProcess.options.thickness.Value
     % Get subject name
     SubjectName = file_standardize(sProcess.options.subjectname.Value);
     if isempty(SubjectName)
@@ -273,7 +272,14 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
     else
         matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 5;
     end
-        
+    % Extra cortical maps
+    if isExtraMaps
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.data_surf(1) = cfg_dep('CAT12: Segmentation (current release): Left Central Surface', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('()',{1}, '.','lhcentral', '()',{':'}));
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.GI = 1;
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.SD = 1;
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.FD = 0;
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.nproc = 0;
+    end
     % Switch depending on CAT12 versions
     switch (catVer)
         case 12
@@ -303,6 +309,10 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
     end
     % Switch to CAT12 expert mode
     cat12('expert');
+    % Hide CAT12 figures
+    set([findall(0, 'Type', 'Figure', 'Tag', 'Interactive'), ...
+         findall(0, 'Type', 'Figure', 'Tag', 'CAT'), ...
+         findall(0, 'Type', 'Figure', 'Tag', 'Graphics')], 'Visible', 'off');
     % Run SPM batch
     spm_jobman('initcfg');
     spm_jobman('run',matlabbatch);
