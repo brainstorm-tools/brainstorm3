@@ -244,7 +244,8 @@ for iData = 1:length(Data)
                     % Detect bad segments
                     sMat.events = sMat.Events;
                     sMat.prop.sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
-                    BadSegments = panel_record('GetBadSegments', sMat) - sMat.prop.sfreq * sMat.Time(1) + 1;
+                    isChannelEvtBad = 0;
+                    BadSegments = panel_record('GetBadSegments', sMat, isChannelEvtBad) - sMat.prop.sfreq * sMat.Time(1) + 1;
                 end
                 nAvg = sMat.nAvg;
                 OPTIONS.TimeVector = sMat.Time;
@@ -350,7 +351,8 @@ for iData = 1:length(Data)
                         % Detect bad segments
                         sMat.events = sMat.Events;
                         sMat.prop.sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
-                        BadSegments = panel_record('GetBadSegments', sMat) - sMat.prop.sfreq * sMat.Time(1) + 1;
+                        isChannelEvtBad = 0;
+                        BadSegments = panel_record('GetBadSegments', sMat, isChannelEvtBad) - sMat.prop.sfreq * sMat.Time(1) + 1;
                     end
                     % Get indices of channels for this results file
                     F = F(ResultsMat.GoodChannel, :);
@@ -879,7 +881,8 @@ function [F, TimeVector, BadSegments] = ReadRawRecordings(sFile, TimeVector, Cha
     % PSD: we don't want the bad segments
     if strcmpi(OPTIONS.Method, 'psd')
         % Get list of bad segments in file
-        BadSegments = panel_record('GetBadSegments', sFile);
+        isChannelEvtBad = 0;
+        BadSegments = panel_record('GetBadSegments', sFile, isChannelEvtBad);
         % Convert them to the beginning of the time section that is processed
         BadSegments = BadSegments - SamplesBounds(1) + 1;
     else
