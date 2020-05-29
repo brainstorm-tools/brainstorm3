@@ -2580,7 +2580,11 @@ end
 %    [bad_start_1, bad_start_2, ...
 %     bad_stop_1,  bad_stop_2, ...]
 % This array contains the sample indices of all the bad segments in the file
-function [badSeg, badEpochs, badTimes, badChan] = GetBadSegments(sFile) %#ok<DEFNU>
+function [badSeg, badEpochs, badTimes, badChan] = GetBadSegments(sFile, isChannelEvtBad) %#ok<DEFNU>
+    % Parse inputs
+    if (nargin < 2) || isempty(isChannelEvtBad)
+        isChannelEvtBad = 1;
+    end
     % Initialize empty list
     badSeg = [];
     badEpochs = [];
@@ -2595,16 +2599,25 @@ function [badSeg, badEpochs, badTimes, badChan] = GetBadSegments(sFile) %#ok<DEF
     for iEvt = 1:length(events)
         % Consider only the non-empty events that have the "bad" string in them
         if IsEventBad(events(iEvt).label) && ~isempty(events(iEvt).times)
+            % Exclude all the channel-specific events
+            if ~isChannelEvtBad
+                iOccBad = find(cellfun(@isempty, events(iEvt).channels));
+                if isempty(iOccBad)
+                    continue;
+                end
+            else
+                iOccBad = 1:size(events(iEvt).times,2);
+            end
             % If extended event
             if (size(events(iEvt).times,1) == 2)
-                badTimes = [badTimes, events(iEvt).times];
+                badTimes = [badTimes, events(iEvt).times(:,iOccBad)];
             % Else: single event
             else
-                badTimes = [badTimes, repmat(events(iEvt).times, 2, 1)];
+                badTimes = [badTimes, repmat(events(iEvt).times(:,iOccBad), 2, 1)];
             end
-            badEpochs = [badEpochs, events(iEvt).epochs];
+            badEpochs = [badEpochs, events(iEvt).epochs(iOccBad)];
             % Get channel events
-            badChan = [badChan, events(iEvt).channels];
+            badChan = [badChan, events(iEvt).channels(iOccBad)];
         end
     end
     badSeg = round(badTimes .* sFile.prop.sfreq);
