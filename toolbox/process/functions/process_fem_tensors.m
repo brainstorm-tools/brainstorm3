@@ -198,6 +198,7 @@ function [isOk, errMsg] = Compute(iSubject, DtiFile, FemFile, isInteractive, OPT
 
     % ===== SIMULATE CONDUCTIVITY TENSORS =====
     if strcmpi(OPTIONS.AnisoMethod, 'simulated')
+        bst_progress('text', 'Simulated eigen values...');
         % Compute the new eigen values
         switch (OPTIONS.SimConstrMethod)
             case 'wang'
@@ -218,52 +219,128 @@ function [isOk, errMsg] = Compute(iSubject, DtiFile, FemFile, isInteractive, OPT
     % ===== COMPUTE DTI CONDUCTIVITY TENSORS =====
     % Convert the DTI-EIG tensors from voxel to scs + interpolate on centroids of mesh elements
     elseif ismember(OPTIONS.AnisoMethod, {'ema', 'ema+vc'})
-        error('todo');
-%         % === INTERPOLATE DTI TENSORS ===
-%         % Load T1 MRI (for SCS coordinates)
-%         sMri = in_mri_bst(MriFile);
-%         % Load DTI-EIG volumes
-%         sEigDti = in_mri_bst(DtiFile);
-%         % Convert coordinates of element centroids to voxel coordinates
-%         [C, Transf] = cs_convert(sMri, 'scs', 'voxel', ElemCenter);
-%         
-% %         %%%%%%% WRONG!!!!!!!! Index can't be guessed like this!!
-% %         % Get the WM only   
-% %         C = C(FemMat.Tissue == 1, :);  
-% 
-%         % Interpolate the eigen vectors
-%         V1a = [interpn(sEigDti.Cube(:,:,:,1), C(:,1), C(:,2), C(:,3)), ...
-%                interpn(sEigDti.Cube(:,:,:,2), C(:,1), C(:,2), C(:,3)), ...
-%                interpn(sEigDti.Cube(:,:,:,3), C(:,1), C(:,2), C(:,3))];
-%         V2a = [interpn(sEigDti.Cube(:,:,:,4), C(:,1), C(:,2), C(:,3)), ...
-%                interpn(sEigDti.Cube(:,:,:,5), C(:,1), C(:,2), C(:,3)), ...
-%                interpn(sEigDti.Cube(:,:,:,6), C(:,1), C(:,2), C(:,3))];
-%         V3a = [interpn(sEigDti.Cube(:,:,:,7), C(:,1), C(:,2), C(:,3)), ...
-%                interpn(sEigDti.Cube(:,:,:,8), C(:,1), C(:,2), C(:,3)), ...
-%                interpn(sEigDti.Cube(:,:,:,9), C(:,1), C(:,2), C(:,3))];
-%         L1a = interpn(sEigDti.Cube(:,:,:,10), C(:,1), C(:,2), C(:,3));
-%         L2a = interpn(sEigDti.Cube(:,:,:,11), C(:,1), C(:,2), C(:,3));
-%         L3a = interpn(sEigDti.Cube(:,:,:,12), C(:,1), C(:,2), C(:,3));
-% 
-%         % Anand's code
-%         La = inv(Transf(1:3,1:3) / Transf(4,4));
-%         % Rotate the eigen vectors
-%         [V1rot,V2rot,V3rot] = PPD_linear(V1a,V2a,V3a,La);
-%         
-%         
-%         % Call the main function : bst_compute_anisotropy_tensors
-%         % METHOD 2 : 'ema': direct transformation approcah with volume constraint  [Güllmar et al NeuroImage 2010]
-%         % METHOD 7 : 'ema+vc': As SimBio toolbox  [Rullmann et al 2008 / Vorwerk et al 2014 ]
-%         options.AnisoMethod = OPTIONS.AnisoMethod;
-%         options.iTissueAniso = iTissueAniso;
-%         [tmp, options.iTissueRef] = max(OPTIONS.FemCond);
-% 
-%         [aniso_conductivity, Tensors, param] = ...
-%             bst_compute_anisotropy_tensors(FemMat, OPTIONS.FemCond, Tensors, L1a,L2a,L3a,V1rot,V2rot,V3rot,options);
+        % === LOAD DTI TENSORS ===
+        bst_progress('text', 'Loading volumes: T1 and DTI-EIG...');
+        % Load T1 MRI (for SCS coordinates)
+        sMri = in_mri_bst(MriFile);
+        % Load DTI-EIG volumes
+        sDti = in_mri_bst(DtiFile);
+        
+        % === INTERPOLATE DTI TENSORS ===
+        bst_progress('text', 'Interpolating DTI tensors...');
+        % Get indices of anisotropic elements
+        iElemAniso = find(ismember(FemMat.Tissue, iTissueAniso));
+        % Convert coordinates of element centroids to voxel coordinates
+        [C, Transf] = cs_convert(sMri, 'scs', 'voxel', ElemCenter(iElemAniso,:));
+        % Interpolate all the DTI values on the centroids of the FEM elements
+        % V1,V2,V3: Eigen vectors, L1,L2,L3: Eigen values
+        V1a = [interpn(sDti.Cube(:,:,:,1), C(:,1), C(:,2), C(:,3)), ...
+               interpn(sDti.Cube(:,:,:,2), C(:,1), C(:,2), C(:,3)), ...
+               interpn(sDti.Cube(:,:,:,3), C(:,1), C(:,2), C(:,3))];
+        V2a = [interpn(sDti.Cube(:,:,:,4), C(:,1), C(:,2), C(:,3)), ...
+               interpn(sDti.Cube(:,:,:,5), C(:,1), C(:,2), C(:,3)), ...
+               interpn(sDti.Cube(:,:,:,6), C(:,1), C(:,2), C(:,3))];
+        V3a = [interpn(sDti.Cube(:,:,:,7), C(:,1), C(:,2), C(:,3)), ...
+               interpn(sDti.Cube(:,:,:,8), C(:,1), C(:,2), C(:,3)), ...
+               interpn(sDti.Cube(:,:,:,9), C(:,1), C(:,2), C(:,3))];
+        L1a = interpn(sDti.Cube(:,:,:,10), C(:,1), C(:,2), C(:,3));
+        L2a = interpn(sDti.Cube(:,:,:,11), C(:,1), C(:,2), C(:,3));
+        L3a = interpn(sDti.Cube(:,:,:,12), C(:,1), C(:,2), C(:,3));
+        % Ensure that all the eigen values are positives
+        L1a = abs(L1a); 
+        L2a = abs(L2a); 
+        L3a = abs(L3a);
+        
+        % === DETECT INVALID EIGENVALUES ===
+        % Ensure maximal ratio of 10 between the largest and smallest conductivity eigenvalues
+        maxRatio = 10;
+        L = [L1a, L2a, L3a];
+        [minL, iMinL] = min(L, [], 2);
+        [maxL, iMaxL] = max(L, [], 2);
+        iElemFix = find((maxL > 0) & (maxL ./ minL >= maxRatio));
+        if ~isempty(iElemFix)
+            disp(['BST> Warning: ' num2str(length(iElemFix)) ' element(s) have max/min eigenvalue ratios > ' num2str(maxRatio) '.']);
+            for iElem = iElemFix
+                L(iElem,iMinL(iElem)) = L(iElem,iMaxL(iElem)) ./ maxRatio;
+            end
+            L1a = L(:,1);
+            L2a = L(:,2);
+            L3a = L(:,3);
+        end
+        % Replace zero L2 and L3
+        L2a(L2a == 0) = L1a(L2a == 0) ./ maxRatio;
+        L3a(L3a == 0) = L2a(L3a == 0);
+        % Detect invalid: All eigenvalues are zero, or L1<L2 or L1<L3 (cases where BDP fails or is not part of the wm mask)
+        iElemInvalid = find((maxL == 0) | (L1a < L2a) | (L1a < L3a));
+        % Remove all elements with invalid eigenvalues: we'll keep the isotropic tensors
+        V1a(iElemInvalid,:) = [];
+        V2a(iElemInvalid,:) = [];
+        V3a(iElemInvalid,:) = [];
+        L1a(iElemInvalid) = [];
+        L2a(iElemInvalid) = [];
+        L3a(iElemInvalid) = [];
+        iElemAniso(iElemInvalid) = [];
+        
+        
+        % === COMPUTE CONDUCTIVITY TENSORS ===
+        bst_progress('text', ['Computing conductivity tensors (' OPTIONS.AnisoMethod ')...']);
+        % Anand's code
+        La = inv(Transf(1:3,1:3) / Transf(4,4));
+        % Rotate the eigen vectors
+        [V1rot,V2rot,V3rot] = PPD_linear_local(V1a,V2a,V3a,La);
+        % Isotropic conductivity for all the elements
+        tissueCond = reshape(OPTIONS.FemCond(FemMat.Tissue(iElemAniso)), [], 1);
 
+        % Switch different methods
+        switch (OPTIONS.AnisoMethod)
+            % METHOD 2 : direct transformation approcah with volume constraint  [Güllmar et al NeuroImage 2010]
+            case 'ema'
+                % Apply the volume approach
+                % Tuch parameters
+                k = 0.844;  % +/- 0.0545
+                de = 0.124;
+                lm1 = k .* (L1a - de);
+                lm2 = k .* (L2a - de);
+                lm3 = k .* (L3a - de);
+                % Apply the normalized volume
+                lm1n = tissueCond .* lm1 ./ (lm1.*lm2.*lm3).^(1/3);
+                lm2n = tissueCond .* lm2 ./ (lm1.*lm2.*lm3).^(1/3);
+                lm3n = tissueCond .* lm3 ./ (lm1.*lm2.*lm3).^(1/3);
+
+            % METHOD 7 : As SimBio toolbox  [Rullmann et al 2008 / Vorwerk et al 2014 ]
+            case 'ema+vc'
+                % 1 - Apply the Tuch process Sigm = sD
+                % Compute sacling factor
+                meanDiffusity = (sum(L1a .* L2a .* L3a) ./ length(iElemAniso)) .^ (1/3);
+                scalingFactor = tissueCond ./ meanDiffusity;
+                disp(['BST> EMA+VC: meanDiffusity = ', num2str(meanDiffusity)]);
+                % Scale eigen values
+                lm1 = scalingFactor .* L1a;
+                lm2 = scalingFactor .* L2a;
+                lm3 = scalingFactor .* L3a;
+                % Apply the normalized volume
+                lm1n = tissueCond .* lm1 ./ (lm1.*lm2.*lm3).^(1/3);
+                lm2n = tissueCond .* lm2 ./ (lm1.*lm2.*lm3).^(1/3);
+                lm3n = tissueCond .* lm3 ./ (lm1.*lm2.*lm3).^(1/3);
+                % Max value of the conductivity should not be larger than the reference value (eg. CSF) 
+                lm1n = min(lm1n, max(OPTIONS.FemCond));
+                lm2n = min(lm2n, max(OPTIONS.FemCond));
+                lm3n = min(lm3n, max(OPTIONS.FemCond));
+        end
+        % Set the anisotropic conductivity tensors
+        Tensors(iElemAniso, 1:12) = [V1rot, V2rot, V3rot, lm1n, lm2n, lm3n];
+                
+        % Scale the isotropic WM(others) tensors within the anisotropic tissue 
+        % by the mean of the computed value from the Wolter approach
+        meanCond = mean(Tensors(iElemAniso, 10:12), 2);
+        meanMeanCond = mean(meanCond);
+        stdMeanCond = std(meanCond);
+        Tensors(iElemInvalid, 10:12) = repmat(meanMeanCond, length(iElemInvalid), 3);
+        % Display some statistics in the command window
+        disp(['BST> Anistropic conductivity (mean) = ' num2str(meanMeanCond)]);
+        disp(['BST> Anistropic conductivity (std)  = ' num2str(stdMeanCond)]);
     end
 
-    
     % ===== SAVE TENSORS =====
     bst_progress('text', 'Saving tensors...');
     % Add history entry
@@ -271,7 +348,6 @@ function [isOk, errMsg] = Compute(iSubject, DtiFile, FemFile, isInteractive, OPT
     % Save tensors to the FemFile
     FemMat.Tensors = Tensors;
     bst_save(FemFile, FemMat, 'v7');
-
     % Return success
     isOk = 1;
 end
@@ -305,4 +381,104 @@ function ComputeInteractive(iSubject, FemFile) %#ok<DEFNU>
     % Close progress bar
     bst_progress('stop');
 end
+
+
+
+%% =================================================================================
+%  === HELPER FUNCTIONS ============================================================
+%  =================================================================================
+
+%% ===== SVRREG: PPD_LINEAR =====
+% SVReg: Surface-Constrained Volumetric Registration
+% Created by Anand A. Joshi, Chitresh Bhushan, David W. Shattuck, Richard M. Leahy
+%
+% PPD Rotates the eigenvectors of the diffusion matrix with Preservation of
+% Principle component(PPD) algorithm & generates new eigenvectors.
+%
+% INPUTS:
+%    - V1 : Principal eigenvector (corresponding to eigenvalue L1)
+%    - V2 : Second eigenvector (corresponding to eigenvalue L2)
+%    - V3 : Third eigenvector (corresponding to eigenvalue L3) such that L1>L2>L3
+%
+% OUTPUTS:
+%    - W1 : Rotated principal eigenvector
+%    - W2 : Rotated second eigenvector
+%    - W3 : Rotated third eigenvector
+function [W1, W2, W3] = PPD_linear_local(V1, V2, V3, L)
+    % Convert to double for higher precision
+    V1 = double(V1);
+    V2 = double(V2);
+    V3 = double(V3);
+    % Normalizing V1, V2, V3
+    V1 = norm_vector(V1);
+    V2 = norm_vector(V2);
+    V3 = norm_vector(V3);
+    % Applying Jacobian to V1
+    n1 = (L*V1')';
+    n1 = norm_vector(n1);
+    % Applying Jacobian to V2
+    n2 = (L*V2')';
+    n2 = norm_vector(n2);
+
+    cosTheta1 = sum(V1.*n1, 2);
+    axis1 = cross(V1', n1')';
+
+    % Projection of n2 perpendicular to n1
+    temp = zeros(size(n1));
+    n1_dot_n2 = sum(n1.*n2, 2);
+    temp(:,1) = n1(:,1).*n1_dot_n2;
+    temp(:,2) = n1(:,2).*n1_dot_n2;
+    temp(:,3) = n1(:,3).*n1_dot_n2;
+    proj_n2 = n2 - temp;
+    proj_n2 = norm_vector(proj_n2);
+
+    V2rot = rot_vector(V2, axis1, cosTheta1);
+    V3rot = rot_vector(V3, axis1, cosTheta1);
+
+    cosTheta2 = sum(V2rot.*proj_n2, 2);
+    axis2 = cross(V2rot, proj_n2);
+    % Outputs
+    W1 = n1;
+    W2 = rot_vector(V2rot, axis2, cosTheta2);
+    W3 = rot_vector(V3rot, axis2, cosTheta2);
+end
+
+
+%% ===== SVRREG: NORM_VECTOR =====
+% Returns normalized vectors
+function v_out = norm_vector(v)
+    v_norm = sqrt(sum(v.^2, 2));
+    v_out = v ./ v_norm;
+    v_out(isnan(v_out)) = 0;
+end
+
+%% ===== SVRREG: NORM_VECTOR =====
+% Rotates vector v about axis by angle theta. Function takes cosine of
+% theta as argument. axis may not be a unit vector. Here vectors are stored
+% in 4th dimesion of matrix a & b (usually the eigenvectors).
+% Uses Rodrigues' rotation formula.
+function v_rot = rot_vector(v, axis, cosTheta)
+    axis = norm_vector(axis);
+
+    term1 = zeros(size(v));
+    term1(:,1) = v(:,1).*cosTheta;
+    term1(:,2) = v(:,2).*cosTheta;
+    term1(:,3) = v(:,3).*cosTheta;
+
+    term2 = zeros(size(v));
+    sinTheta = sqrt(1 - (cosTheta.^2));
+    temp = cross(axis, v);
+    term2(:,1) = temp(:,1).*sinTheta;
+    term2(:,2) = temp(:,2).*sinTheta;
+    term2(:,3) = temp(:,3).*sinTheta;
+
+    term3 = zeros(size(v));
+    temp = sum(axis.*v, 2).*(1-cosTheta);
+    term3(:,1) = axis(:,1).*temp;
+    term3(:,2) = axis(:,2).*temp;
+    term3(:,3) = axis(:,3).*temp;
+
+    v_rot = term1 + term2 + term3;
+end
+
 

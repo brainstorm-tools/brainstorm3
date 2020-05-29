@@ -71,7 +71,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         % Loop on each layer
         for i = 1:nLayers
             gui_component('label', jPanelLayers, 'br', [OPTIONS.FemNames{i} ':'], [], [], [], []);
-            jTextCond(i) = gui_component('texttime', jPanelLayers, 'tab', num2str(OPTIONS.FemCond(i), '%g'), [], [], [], []);
+            jTextCond(i) = gui_component('texttime', jPanelLayers, 'tab', '', [], [], [], []);
+            gui_validate_text(jTextCond(i), [], [], {0.0001,1000,10000}, 'S/m', [], OPTIONS.FemCond(i), []);
+            gui_component('label', jPanelLayers, 'tab', 'S/m     ', [], [], [], []);
             jGroupRadio = ButtonGroup();
             jRadioLayerIso(i) = gui_component('radio', jPanelLayers, 'tab', 'Isotropic', jGroupRadio, [], @(h,ev)UpdatePanel(), []);
             jRadioLayerAniso(i) = gui_component('radio', jPanelLayers, 'tab', 'Anisotropic', jGroupRadio, [], @(h,ev)UpdatePanel(), []);
@@ -91,14 +93,15 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     % ===== SIMULATED OPTIONS =====
     jPanelSim = gui_river([2,2], [6,6,6,6], 'Simulated anisotropy');
         % Ratio
-        jLabelRatio = gui_component('label', jPanelSim, '', 'Ratio longitudinal/transversal: ', [], [], [], []);
+        jLabelRatio = gui_component('label', jPanelSim, '', 'Ratio longitudinal/transversal (integer): ', [], [], [], []);
         SimRatio = 10;
-        jTextSimRatio = gui_component('texttime', jPanelSim, '', num2str(SimRatio, '%g'), [], [], [], []);
+        jTextSimRatio = gui_component('texttime', jPanelSim, '', '', [], [], [], []);
+        gui_validate_text(jTextSimRatio, [], [], {1,100,1}, '', [], SimRatio, []);
         % Constraint
         jGroupConstr = ButtonGroup();
         jRadioConstrWang = gui_component('radio', jPanelSim, 'br', '<HTML><B>Wang</B>''s constraint:<BR><FONT color="#777777">[sig_r*sig_t = sig^2]</FONT>', jGroupConstr, [], [], []);
         jRadioConstrWolters = gui_component('radio', jPanelSim, 'br', '<HTML><B>Wolters</B>''s constraint (volume):<BR><FONT color="#777777">[(4/3)*pi*(sig_r*sig_t^2) = (4/3)*pi*(sig^3)]</FONT>', jGroupConstr, [], [], []);
-        jRadioConstrWang.setSelected(1);
+        jRadioConstrWolters.setSelected(1);
     jPanelNew.add(jPanelSim);
     
     % ===== VALIDATION BUTTONS =====
