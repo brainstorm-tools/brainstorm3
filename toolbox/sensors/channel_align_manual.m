@@ -295,9 +295,15 @@ end
 Channel = GlobalData.DataSet(gChanAlign.iDS).Channel;
 iChan = good_channel(Channel, [], Modality);
 gChanAlign.iGlobal2Local = zeros(1, length(Channel));
-gChanAlign.iGlobal2Local(iChan) = 1:size(gChanAlign.SensorsVertices,1);
+if isNirs
+    gChanAlign.iGlobal2Local(iChan) = 1:size(iChan,2);
+    gChanAlign.SensorsLabels(iChan) = {GlobalData.DataSet(gChanAlign.iDS).Channel(iChan).Name};
+    
+else    
+    gChanAlign.iGlobal2Local(iChan) = 1:size(gChanAlign.SensorsVertices,1);
+end    
 % EEG/NIRS: Get the labels of the electrodes
-if isEeg || isNirs
+if isEeg
     iTextChan = length(gChanAlign.hSensorsLabels) - (1:length(iChan)) + 1;
     gChanAlign.SensorsLabels(iTextChan) = {GlobalData.DataSet(gChanAlign.iDS).Channel(iChan).Name};
 end
