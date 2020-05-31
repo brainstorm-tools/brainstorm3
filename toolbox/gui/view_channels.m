@@ -201,7 +201,7 @@ if is3DElectrodes
     end
 elseif ismember(lower(Modality), {'ctf', 'vectorview306', '4d', 'kit', 'kriss', 'babymeg', 'ricoh'})
     figure_3d('PlotCoils', hFig, Modality, isMarkers);
-elseif strcmpi(Modality, 'NIRS-BRS')
+elseif ismember(lower(Modality), {'nirs','nirs-brs'})
     figure_3d('PlotNirsCap', hFig, isMarkers);
 else
     isMesh = ~isequal(Modality, 'SEEG');

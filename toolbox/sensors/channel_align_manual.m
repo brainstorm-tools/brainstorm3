@@ -152,7 +152,7 @@ if isMeg
 % EEG Electrodes / NIRS optodes
 elseif isNirs || isEeg
     % View sensors
-    view_channels(ChannelFile, Modality, 1, 1, hFig);
+    view_channels(ChannelFile, Modality, 0, 1, hFig);
     % Hide sensors labels
     hSensorsLabels = findobj(hFig, 'Tag', 'SensorsLabels');
     set(hSensorsLabels, 'Visible', 'off');
@@ -162,6 +162,11 @@ end
 % Get sensors patch
 hSensorsPatch = findobj(hFig, 'Tag', 'SensorsPatch');
 hSensorsMarkers = findobj(hFig, 'Tag', 'SensorsMarkers');
+
+if isNirs && isempty(hSensorsPatch)
+    hSensorsPatch = findobj(hFig, 'Tag', 'NirsCapPatch');
+    hSensorsMarkers = findobj(hFig, 'Tag', 'NirsCapText');
+end    
 if (isempty(hSensorsPatch) || (~isempty(hSensorsPatch) && ~ishandle(hSensorsPatch(1)))) && ...
    (isempty(hSensorsMarkers) || (~isempty(hSensorsMarkers) && ~ishandle(hSensorsMarkers(1))))
     bst_error('Cannot display sensors patch', 'Align electrode contacts', 0);

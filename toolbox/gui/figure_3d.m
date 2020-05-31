@@ -4207,7 +4207,7 @@ function hPairs = PlotNirsCap(hFig, isDetails)
         locPairDet = cat(1, locPairDet{:});
         
         % Make the position of the links more superficial, so they can be outside of the head and selected with the mouse
-        if any(~locPairDet(:,3)== locPairDet(1,3) ) || any(~locPairSrc(:,3)==locPairSrc(1,3)) 
+        if length(unique(locPairDet(:,3))) > 1 || length(unique(locPairSrc(:,3))) > 1
             normSrc = sqrt(sum(locPairSrc .^ 2, 2));
             normDet = sqrt(sum(locPairDet .^ 2, 2));
             locPairSrc = bst_bsxfun(@times, locPairSrc, (normSrc + 0.0035) ./ normSrc);
@@ -4228,30 +4228,31 @@ function hPairs = PlotNirsCap(hFig, isDetails)
             %set(hPairs(i), 'UserData', iChannels(iChanPairs(i)));
             set(hPairs(i), 'UserData', uniquePairs(i,:));
         end
-
-        % ===== DISPLAY TEXT =====
-        % Text display properties
-        textOpt = {...
-            'Parent',              hAxes, ...
-            'HorizontalAlignment', 'center', ...
-            'FontSize',            bst_get('FigFont') + 2, ...
-            'FontUnits',           'points', ...
-            'FontWeight',          'normal', ...
-            'Tag',                 'NirsCapText', ...
-            'Interpreter',         'none'};
-        % Display text for sources
-        for i = 1:size(locSrc,1)
-            txtLoc = locSrc(i,:) .* 1.08;
-            text(txtLoc(1), txtLoc(2), txtLoc(3), Snames{i}, 'Color', [1,.8,0], textOpt{:});
-        end
-        % Display text for detectors
-        for i = 1:size(locDet,1)
-            txtLoc = locDet(i,:) .* 1.08;
-            text(txtLoc(1), txtLoc(2), txtLoc(3), Dnames{i}, 'Color', [.8,1,0], textOpt{:});
-        end
     else
         hPairs = [];
     end
+    
+    
+    % ===== DISPLAY TEXT =====
+    % Text display properties
+    textOpt = {...
+        'Parent',              hAxes, ...
+        'HorizontalAlignment', 'center', ...
+        'FontSize',            bst_get('FigFont') + 2, ...
+        'FontUnits',           'points', ...
+        'FontWeight',          'normal', ...
+        'Tag',                 'NirsCapText', ...
+        'Interpreter',         'none'};
+    % Display text for sources
+    for i = 1:size(locSrc,1)
+        txtLoc = locSrc(i,:) .* 1.08;
+        text(txtLoc(1), txtLoc(2), txtLoc(3), Snames{i}, 'Color', [1,.8,0], textOpt{:});
+    end
+    % Display text for detectors
+    for i = 1:size(locDet,1)
+        txtLoc = locDet(i,:) .* 1.08;
+        text(txtLoc(1), txtLoc(2), txtLoc(3), Dnames{i}, 'Color', [.8,1,0], textOpt{:});
+    end    
 end
 
 
