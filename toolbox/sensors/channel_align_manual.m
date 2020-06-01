@@ -152,7 +152,7 @@ if isMeg
 % EEG Electrodes / NIRS optodes
 elseif isNirs || isEeg
     % View sensors
-    view_channels(ChannelFile, Modality, 1, 1, hFig);
+    view_channels(ChannelFile, Modality, isEeg, 1, hFig);
     % Hide sensors labels
     hSensorsLabels = findobj(hFig, 'Tag', 'SensorsLabels');
     set(hSensorsLabels, 'Visible', 'off');
@@ -162,6 +162,11 @@ end
 % Get sensors patch
 hSensorsPatch = findobj(hFig, 'Tag', 'SensorsPatch');
 hSensorsMarkers = findobj(hFig, 'Tag', 'SensorsMarkers');
+
+if isNirs && isempty(hSensorsPatch)
+    hSensorsPatch = findobj(hFig, 'Tag', 'NirsCapPatch');
+    hSensorsMarkers = findobj(hFig, 'Tag', 'NirsCapText');
+end    
 if (isempty(hSensorsPatch) || (~isempty(hSensorsPatch) && ~ishandle(hSensorsPatch(1)))) && ...
    (isempty(hSensorsMarkers) || (~isempty(hSensorsMarkers) && ~ishandle(hSensorsMarkers(1))))
     bst_error('Cannot display sensors patch', 'Align electrode contacts', 0);
@@ -290,9 +295,15 @@ end
 Channel = GlobalData.DataSet(gChanAlign.iDS).Channel;
 iChan = good_channel(Channel, [], Modality);
 gChanAlign.iGlobal2Local = zeros(1, length(Channel));
-gChanAlign.iGlobal2Local(iChan) = 1:size(gChanAlign.SensorsVertices,1);
+if isNirs
+    gChanAlign.iGlobal2Local(iChan) = 1:size(iChan,2);
+    gChanAlign.SensorsLabels(iChan) = {GlobalData.DataSet(gChanAlign.iDS).Channel(iChan).Name};
+    
+else    
+    gChanAlign.iGlobal2Local(iChan) = 1:size(gChanAlign.SensorsVertices,1);
+end    
 % EEG/NIRS: Get the labels of the electrodes
-if isEeg || isNirs
+if isEeg
     iTextChan = length(gChanAlign.hSensorsLabels) - (1:length(iChan)) + 1;
     gChanAlign.SensorsLabels(iTextChan) = {GlobalData.DataSet(gChanAlign.iDS).Channel(iChan).Name};
 end
