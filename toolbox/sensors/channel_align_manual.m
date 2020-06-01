@@ -152,7 +152,7 @@ if isMeg
 % EEG Electrodes / NIRS optodes
 elseif isNirs || isEeg
     % View sensors
-    view_channels(ChannelFile, Modality, 0, 1, hFig);
+    view_channels(ChannelFile, Modality, isEeg, 1, hFig);
     % Hide sensors labels
     hSensorsLabels = findobj(hFig, 'Tag', 'SensorsLabels');
     set(hSensorsLabels, 'Visible', 'off');
