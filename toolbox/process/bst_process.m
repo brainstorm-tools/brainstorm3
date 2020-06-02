@@ -806,16 +806,13 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             end
 
             % === INITIALIZE OUTPUT ===
-            nOutTime = length(sInput.TimeVector);
             % Split along columns (time): No support for change in sample numbers (resample)
             if ismember(2, sProcess.processDim)
-                if nOutTime ~= nCol
-                    bst_report('Error', sProcess, sInput, 'Split along columns (time): No support for change in sample numbers (resample)');
-                    return;
-                end
+                nOutTime = nCol;
                 iOutTime = iCol;
             % All the other options (split by row, no split): support for resampling
             else
+                nOutTime = length(sInput.TimeVector);
                 iOutTime = iCol(1) - 1 + (1:length(sInput.TimeVector));
             end
 
