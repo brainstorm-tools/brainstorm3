@@ -913,6 +913,10 @@ function LoadRecordingsMatrix(iDS)
     % If there is only one time sample : copy it to get 2 time samples
     if (size(GlobalData.DataSet(iDS).Measures.F, 2) == 1)
         GlobalData.DataSet(iDS).Measures.F = repmat(GlobalData.DataSet(iDS).Measures.F, [1,2]);
+        % Also duplicate Std if present
+        if isfield(DataMat, 'Std') && ~isempty(DataMat.Std)
+            GlobalData.DataSet(iDS).Measures.Std = repmat(GlobalData.DataSet(iDS).Measures.Std, [1,2]);
+        end    
     end
 end
 
