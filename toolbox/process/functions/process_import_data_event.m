@@ -81,7 +81,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.separator.Type = 'separator';
     sProcess.options.separator.Comment = ' ';
     % Create conditions
-    sProcess.options.createcond.Comment = 'Create one condition for each event type';
+    sProcess.options.createcond.Comment = 'Create a separate folder for each event type';
     sProcess.options.createcond.Type    = 'checkbox';
     sProcess.options.createcond.Value   = 1;
     % Ignore shorter epochs
