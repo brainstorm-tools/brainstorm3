@@ -806,19 +806,25 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             end
 
             % === INITIALIZE OUTPUT ===
-            % Split along columns (time): No support for change in sample numbers (resample)
             if ismember(2, sProcess.processDim)
-                nOutTime = nCol;
                 iOutTime = iCol;
-            % All the other options (split by row, no split): support for resampling
-            else
-                nOutTime = length(sInput.TimeVector);
-                iOutTime = iCol(1) - 1 + (1:length(sInput.TimeVector));
             end
-
+            
             % Create output variable
             if isFirstLoop
                 isFirstLoop = 0;
+                % Split along columns (time): No support for change in sample numbers (resample)
+                if ismember(2, sProcess.processDim)
+                    if length(sInput.TimeVector) ~= length(iCol)
+                        bst_report('Error', sProcess, sInput, 'Split along columns (time): No support for change in sample numbers (resample)');
+                        return;
+                    end
+                    nOutTime = nCol;
+                % All the other options (split by row, no split): support for resampling
+                else
+                    nOutTime = length(sInput.TimeVector);
+                    iOutTime = 1:nOutTime;
+                end
                 bst_progress('text', [txtProgress, ' [creating new file]']);
                 if isRaw
                     % Template continuous file (for the output)
