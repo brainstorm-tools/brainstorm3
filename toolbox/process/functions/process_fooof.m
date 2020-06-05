@@ -29,9 +29,9 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'FOOOF';
+    sProcess.Comment     = 'Generate FOOOF models';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'Frequency';
+    sProcess.SubGroup    = {'Frequency','FOOOF'};
     sProcess.Index       = 503;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'timefreq'};
@@ -60,10 +60,11 @@ end
 
 
 %% ===== GET OPTIONS =====
-function [fooofType, freqBand, peakType, peakWidthLims, maxPeaks, minPeakHeight, peakThresh, proxThresh, aperMode, guessWeight] = GetOptions(sProcess)
+function [fooofType, freqBand, allFreqs, peakType, peakWidthLims, maxPeaks, minPeakHeight, peakThresh, proxThresh, repOpt, aperMode, guessWeight] = GetOptions(sProcess)
     fooofType = sProcess.options.fooofType.Value;
     opts = panel_fooof_options('GetPanelContents');
     freqBand = opts.freqRange;
+    allFreqs = opts.allFreqs;
     peakWidthLims = opts.peakWidthLimits;
     maxPeaks = opts.maxPeaks;
     minPeakHeight = opts.minPeakHeight/10; % convert from dB to B
@@ -73,24 +74,25 @@ function [fooofType, freqBand, peakType, peakWidthLims, maxPeaks, minPeakHeight,
         proxThresh = opts.proxThresh;    
         guessWeight = opts.guessWeight;
         peakType = opts.peakType;
+        repOpt = opts.repOpt;
     else
-        proxThresh = []; guessWeight = []; peakType = [];
+        proxThresh = []; guessWeight = []; peakType = []; repOpt = [];
     end
 end
 
 %% ===== RUN =====
 function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     % Fetch user settings
-    [fT, fB, pt, pwl, maxp, minph, pet, prt, am, gw] = GetOptions(sProcess);
+    [fT, fB, aF, pt, pwl, maxp, minph, pet, prt, rOpt, am, gw] = GetOptions(sProcess);
     if fT == 1 % Matlab standalone FOOOF
-        OutputFile = FOOOF_matlab(sProcess, sInputs, fB, pt, pwl, maxp, minph, pet, prt, am, gw);  
+        OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, minph, pet, prt, rOpt, am, gw);  
     else % Python FOOOF
-        OutputFile = FOOOF_python(sProcess, sInputs, fB, pwl, maxp, minph, pet, am);
+        OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, pet, am);
     end    
 end
 
 %% ===== MATLAB STANDALONE FOOOF =====
-function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, pt, pwl, maxp, minph, pet, prt, am, gw)
+function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, minph, pet, prt, rOpt, am, gw)
     switch pt
         case 1,     pts = 'gaussian';
         case 2,     pts = 'cauchy';
@@ -112,17 +114,19 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, pt, pwl, maxp, minph, 
         % Initialize returned list of files
         OutputFile = {};
         % Check input frequency bounds
-        if any(fB <= 0) || fB(1) >= fB(2)
+        if (any(fB <= 0) || fB(1) >= fB(2)) && ~aF
             bst_report('error','Invalid Frequency range');
             return
         end
-        fMask = bst_round(inputFile.Freqs,1) >= fB(1) & inputFile.Freqs <= fB(2);
-        fs = inputFile.Freqs(fMask);
-        spec = log10(squeeze(inputFile.TF(:,1,fMask)));
-        if any(fs == 0) % Model cannot handle 0 Hz input
-            bst_report('error','Frequency range cannot include 0 Hz');
-            return
+        % Find all frequency values within user limits
+        if aF
+            fMask = inputFile.Freqs > 0;
+        else
+            fMask = bst_round(inputFile.Freqs,1) >= fB(1) & inputFile.Freqs <= fB(2);
         end
+        fs = inputFile.Freqs(fMask);
+        fB = [fs(1) fs(end)]; % Adjust to data limits
+        spec = log10(squeeze(inputFile.TF(:,1,fMask))); % extract spectra
         % Initalize FOOOF structs
         fg(size(spec,1)) = struct('FOOOF',[]);
         for chan = 1:size(spec,1)
@@ -133,6 +137,12 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, pt, pwl, maxp, minph, 
             flat_spec = flatten_spectrum(fs,spec(chan,:),aperiodic_pars,am);
             % Fit peaks
             [peak_pars, pti] = fit_peaks(fs,flat_spec,maxp,pet,minph,pwl/2,prt,pt,gw);
+            if rOpt % Check thresholding requirements are met again using rOpt
+                peak_pars(peak_pars(:,2) < minph,:)     = []; % remove peaks shorter than limit
+                peak_pars(peak_pars(:,3) < pwl(1)/2,:)  = []; % remove peaks narrower than limit
+                peak_pars(peak_pars(:,3) > pwl(2)/2,:)  = []; % remove peaks broader than limit
+                peak_pars = drop_peak_overlap(peak_pars, prt); % remove smallest of two peaks fit too closely
+            end
             % Refit aperiodic
             aperiodic = spec(chan,:);
             if strcmp(pti,'gaussian')
@@ -186,7 +196,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, pt, pwl, maxp, minph, 
 end
 
 %% ===== PYTHON FOOOF =====
-function OutputFile = FOOOF_python(sProcess, sInputs, fB, pwl, maxp, minph, pet, am)
+function OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, pet, am)
     switch am
         case 1,     ams = 'fixed';
         case 2,     ams = 'knee';
@@ -203,11 +213,15 @@ function OutputFile = FOOOF_python(sProcess, sInputs, fB, pwl, maxp, minph, pet,
         % Initialize returned list of files
         OutputFile = {};
         % Check input frequency bounds
-        if any(fB <= 0) || fB(1) >= fB(2)  
+        if (any(fB <= 0) || fB(1) >= fB(2)) && ~aF
             bst_report('error','Invalid Frequency range');
             return
         end
         fs = inputFile.Freqs;
+        if aF % All frequencies
+            fs_tmp = fs(fs > 0);
+            fB = [fs_tmp(1) fs_tmp(end)]; % Adjust to data limits
+        end
         % Preallocate space for FOOOF models
         fg(size(inputFile.TF,1)) = struct('FOOOF',[]);
         % Iterate across channels

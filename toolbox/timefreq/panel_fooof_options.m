@@ -1,8 +1,8 @@
 function varargout = panel_fooof_options(varargin)
-% PANEL_TIMEFREQ_OPTIONS: Options for time-frequency computation.
+% PANEL_FOOOF_OPTIONS: Options for FOOOF modelling.
 % 
-% USAGE:  bstPanelNew = panel_timefreq_options('CreatePanel')
-%                   s = panel_timefreq_options('GetPanelContents')
+% USAGE:  bstPanelNew = panel_fooof_options('CreatePanel')
+%                   s = panel_fooof_options('GetPanelContents')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,7 +22,7 @@ function varargout = panel_fooof_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2020
+% Authors: Francois Tadel, Martin Cousineau, Luc Wilson 2020
 
 eval(macro_method);
 end
@@ -47,12 +47,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     % ===== FREQUENCY RANGE =====
     jPanelFreqs = gui_river([1,1]);
                             gui_component('label', jPanelFreqs, [], 'Frequency range for analysis:');
-        jTextFreqLower =    gui_component('text', jPanelFreqs, 'hfill', '1.0');
+        jTextFreqLower =    gui_component('text', jPanelFreqs, 'hfill', []);
         jTextFreqLower.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
                             gui_component('label', jPanelFreqs, [], ' - ');
-        jTextFreqUpper =    gui_component('text', jPanelFreqs, 'hfill', '40.0');
+        jTextFreqUpper =    gui_component('text', jPanelFreqs, 'hfill', []);
         jTextFreqUpper.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
-                            gui_component('label', jPanelFreqs, [], ' Hz');
+                            gui_component('label', jPanelFreqs, [], ' Hz  ');
+        jCheckFreqAll =     gui_component('checkbox', jPanelFreqs, [], 'All frequencies', [], [], @AllFreqCallback);
+        jCheckFreqAll.setSelected(options.allFreqs)
         precision = 1; bounds = {-1e30, 1e30, 10};
         valUnits = gui_validate_text(jTextFreqLower, [], jTextFreqUpper, bounds, 'Hz', precision, options.freqRange(1), []);
         gui_validate_text(jTextFreqUpper, jTextFreqLower, [], bounds, valUnits, precision, options.freqRange(2), []);
@@ -129,6 +131,15 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jPanelNew.add('br', jPanelProxThresh);
     end
     
+    % ===== REPEAT THRESHOLDING OPTIONS =====    
+    if fooof_type == 1
+        jPanelRepOpt = gui_river([1,1]);
+            jCheckRep =     gui_component('checkbox', jPanelRepOpt, [], 'Threshold after fitting (experimental)');
+        % Maintain selected option
+        jCheckRep.setSelected(options.repOpt);
+        jPanelNew.add('br', jPanelRepOpt);
+    end
+    
     % ===== APERIODIC MODE =====
     jPanelAperMode = gui_river([1,1]);
                         gui_component('label', jPanelAperMode, 'br', 'Aperiodic Mode:');
@@ -167,6 +178,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     if fooof_type == 1
         ctrl = struct('jTextFreqLower',      jTextFreqLower, ...
                       'jTextFreqUpper',      jTextFreqUpper, ...
+                      'jCheckFreqAll',       jCheckFreqAll, ...
                       'jRadioGauss',         jRadioGauss, ...
                       'jRadioCauchy',        jRadioCauchy, ...
                       'jRadioBest',          jRadioBest, ...
@@ -176,6 +188,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                       'jTextMinPeakH',       jTextMinPeakH, ...
                       'jTextPeakThresh',     jTextPeakThresh, ...
                       'jTextProxThresh',     jTextProxThresh, ...
+                      'jCheckRep',           jCheckRep, ...
                       'jRadioFixed',         jRadioFixed, ...
                       'jRadioKnee',          jRadioKnee, ...
                       'jRadioNone',          jRadioNone, ...
@@ -186,6 +199,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     elseif fooof_type == 2
         ctrl = struct('jTextFreqLower',      jTextFreqLower, ...
                       'jTextFreqUpper',      jTextFreqUpper, ...
+                      'jCheckFreqAll',       jCheckFreqAll, ...
                       'jTextPeakWidthLower', jTextPeakWidthLower, ...
                       'jTextPeakWidthUpper', jTextPeakWidthUpper, ...
                       'jTextMaxPeaks',       jTextMaxPeaks, ...
@@ -196,6 +210,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                       'Method',              Method, ...
                       'FooofType',           fooof_type);
     end
+    % Callback to frequency option
+    AllFreqCallback()
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, jPanelScroll, ctrl);
     
@@ -210,6 +226,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         bst_mutex('release', panelName);
     end
 
+%% ===== ALL FREQS CHECKBOX =====
+    function AllFreqCallback(varargin)
+        ctrl.jTextFreqLower.setEnabled(~ctrl.jCheckFreqAll.isSelected());
+        ctrl.jTextFreqUpper.setEnabled(~ctrl.jCheckFreqAll.isSelected());
+    end
 end
 
 %% =================================================================================
@@ -225,6 +246,7 @@ function s = GetPanelContents()
     
     if ctrl.FooofType == 1 % Matlab standalone
         s.freqRange =      [str2double(ctrl.jTextFreqLower.getText()) str2double(ctrl.jTextFreqUpper.getText())];
+        s.allFreqs =        ctrl.jCheckFreqAll.isSelected();
         if ctrl.jRadioGauss.isSelected()
             s.peakType = 1;
         elseif ctrl.jRadioCauchy.isSelected()
@@ -236,6 +258,7 @@ function s = GetPanelContents()
         s.minPeakHeight =   str2double(ctrl.jTextMinPeakH.getText());
         s.peakThresh =      str2double(ctrl.jTextPeakThresh.getText());
         s.proxThresh =      str2double(ctrl.jTextProxThresh.getText());
+        s.repOpt =         ctrl.jCheckRep.isSelected();
         if ctrl.jRadioFixed.isSelected()
             s.aperMode =    1;   else    
             s.aperMode =    2;
@@ -248,6 +271,7 @@ function s = GetPanelContents()
         end
     else % Python
         s.freqRange =      [str2double(ctrl.jTextFreqLower.getText()) str2double(ctrl.jTextFreqUpper.getText())];
+        s.allFreqs =        ctrl.jCheckFreqAll.isSelected();
         s.peakWidthLimits =[str2double(ctrl.jTextPeakWidthLower.getText()) str2double(ctrl.jTextPeakWidthUpper.getText())];
         s.maxPeaks =        str2double(ctrl.jTextMaxPeaks.getText());
         s.minPeakHeight =   str2double(ctrl.jTextMinPeakH.getText());

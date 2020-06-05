@@ -3048,12 +3048,14 @@ switch contextName
         
     case 'TimefreqOptions_fooof'
         defPref.freqRange       = [1,40];
+        defPref.allFreqs        = 0;
         defPref.peakType        = 1;
         defPref.peakWidthLimits = [0.5,12];
         defPref.maxPeaks        = 3;
         defPref.minPeakHeight   = 3;
         defPref.peakThresh      = 2;
         defPref.proxThresh      = 2;
+        defPref.repOpt          = 0;
         defPref.aperMode        = 1;
         defPref.guessWeight     = 1;
         argout1 = FillMissingFields(contextName, defPref);
