@@ -88,7 +88,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
             eStats = extractStats(inputFile, pmse, pr2, pfe);
         end    
         [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iP));
-        OutputFile{end+1} = SaveFile(inputFile, ep, ePeaks, es, eStats, pt, fb, iOutputStudy);
+        OutputFile{end+1} = SaveFile(sInputs(iP).FileName, inputFile, ep, ePeaks, es, eStats, pt, fb, iOutputStudy);
     end
 end
 
@@ -192,7 +192,7 @@ function bandName = findBand(cf,bands)
 end
 
 %% ===== SAVE FILE =====
-function NewFile = SaveFile(inputFile, ep, ePeaks, es, eStats, pt, fb, iOutputStudy)
+function inFileName = SaveFile(inFileName, inputFile, ep, ePeaks, es, eStats, pt, fb, iOutputStudy)
 
     % ===== PREPARE OUTPUT STRUCTURE =====
     % Create file structure
@@ -219,14 +219,6 @@ function NewFile = SaveFile(inputFile, ep, ePeaks, es, eStats, pt, fb, iOutputSt
     % History: Computation
     FileMat = bst_history('add', FileMat, 'extract', opts);
     % ===== SAVE FILE =====
-    % Get output study
-    sOutputStudy = bst_get('Study', iOutputStudy);
-    % File tag
-    fileTag = 'timefreq_psd';
-    % Output filename
-    NewFile = bst_process('GetNewFilename', bst_fileparts(sOutputStudy.FileName), fileTag);
-    % Save file
-    bst_save(NewFile, FileMat, 'v6');
-    % Add file to database structure
-    db_add_data(iOutputStudy, NewFile, FileMat);
+    bst_save(file_fullpath(inFileName), FileMat, 'v6');
+    db_reload_studies(iOutputStudy)
 end
