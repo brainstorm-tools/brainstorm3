@@ -29,7 +29,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Analyze FOOOF models';
+    sProcess.Comment     = 'Extract FOOOF features';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Frequency','FOOOF'};
     sProcess.Index       = 504;
@@ -43,6 +43,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.extPeaks.Comment   = 'Extract peaks';
     sProcess.options.extPeaks.Type      = 'checkbox';
     sProcess.options.extPeaks.Value     = 0;
+    % === EXTRACT APERIODIC ===
+    sProcess.options.extAper.Comment   = 'Extract aperiodic';
+    sProcess.options.extAper.Type      = 'checkbox';
+    sProcess.options.extAper.Value     = 0;
     % ===  EXTRACT STATS ===
     sProcess.options.extStats.Comment   = 'Extract stats';
     sProcess.options.extStats.Type      = 'checkbox';
@@ -61,8 +65,9 @@ end
 
 
 %% ===== GET OPTIONS =====
-function [extPeaks, extStats, PeakType, SortBy, FreqBands, pullMSE, pullR2, pullFreqError] = GetOptions(sProcess)
+function [extPeaks, extAper, extStats, PeakType, SortBy, FreqBands, pullMSE, pullR2, pullFreqError] = GetOptions(sProcess)
     extPeaks = sProcess.options.extPeaks.Value;
+    extAper = sProcess.options.extAper.Value;
     extStats = sProcess.options.extStats.Value;
     opts = panel_fooof_analysis_options('GetPanelContents');
     PeakType = opts.PeakType;
@@ -77,18 +82,23 @@ end
 function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFile = {}; % Initialize
     % Fetch user settings
-    [ep, es, pt, sb, fb, pmse, pr2, pfe] = GetOptions(sProcess);
+    [ep, ea, es, pt, sb, fb, pmse, pr2, pfe] = GetOptions(sProcess);
     for iP = 1:length(sInputs)
+        bst_progress('text','Standby: Extracting FOOOF features');
         inputFile = in_bst_timefreq(sInputs(iP).FileName); 
-        ePeaks = []; eStats = [];
+        ePeaks = []; eAper = []; eStats = []; % to avoid SaveFile errors
         if ep % Extract Peaks
             ePeaks = extractPeaks(inputFile, pt, sb, fb);
+        end
+        if ea % Extract Aperiodic
+            eAper = extractAperiodic(inputFile);
         end
         if es % Extract Stats
             eStats = extractStats(inputFile, pmse, pr2, pfe);
         end    
         [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iP));
-        OutputFile{end+1} = SaveFile(sInputs(iP).FileName, inputFile, ep, ePeaks, es, eStats, pt, fb, iOutputStudy);
+        OutputFile{end+1} = SaveFile(file_fullpath(sInputs(iP).FileName),...
+            inputFile, ep, ePeaks, ea, eAper, es, eStats, pt, fb, iOutputStudy);
     end
 end
 
@@ -152,32 +162,57 @@ function ePeaks = extractPeaks(inputFile, pt, sb, fb)
     end
 end
 
-function eStats = extractStats(inputFile, pmse, pr2, pfr)
+function eAper = extractAperiodic(inputFile)
+    ChanNames = inputFile.RowNames;
+    FOOOFdata = inputFile.FOOOF.FOOOF_data;
+    VarNames = {'channel', 'offset', 'exponent', 'knee_frequency'};
+    VarTypes = {'string', 'double', 'double', 'double'};
+    hasKnee = length(FOOOFdata(1).FOOOF.aperiodic_params)-2;
+    eAper = table('Size', [length(ChanNames), 3+hasKnee], 'VariableNames', ...
+                {VarNames{logical([1 1 1 hasKnee])}}, 'VariableTypes', ...
+                {VarTypes{logical([1 1 1 hasKnee])}});
+    for chan = 1:length(ChanNames)
+            eAper.channel(chan) = ChanNames(chan);
+            eAper.offset(chan) = FOOOFdata(chan).FOOOF.aperiodic_params(1);
+        if hasKnee % Legacy FOOOF alters order of parameters
+            eAper.exponent(chan) = FOOOFdata(chan).FOOOF.aperiodic_params(3);
+            eAper.knee_frequency(chan) = FOOOFdata(chan).FOOOF.aperiodic_params(2);
+        else
+            eAper.exponent(chan) = FOOOFdata(chan).FOOOF.aperiodic_params(2);
+        end
+    end       
+end
+
+function eStats = extractStats(inputFile, pmse, pr2, pfe)
+    if ~any([pmse pr2 pfe])
+        eStats = 'No stats selected';
+        return
+    end
     ChanNames = inputFile.RowNames;
     FOOOFdata = inputFile.FOOOF.FOOOF_data;
     VarUse = logical([1,pmse,pr2]);
     VarNames = {'channel', 'MSE', 'r_squared'};
     VarTypes = {'string','double','double'};
-    Cols = sum([1,pmse,pr2]);
+    Cols = sum(VarUse);
     % Preallocate space
     eStats = table('Size', [length(ChanNames), Cols], 'VariableNames', ...
         {VarNames{1,VarUse}}, 'VariableTypes', {VarTypes{1,VarUse}});
     eStats = table2struct(eStats);
     for chan = 1:length(ChanNames)
+        eStats(chan).channel = ChanNames(chan);
         if pmse
             eStats(chan).MSE = FOOOFdata(chan).FOOOF.error;
         end
         if pr2
             eStats(chan).r_squared = FOOOFdata(chan).FOOOF.r_squared;
         end
-        if pfr
+        if pfe
             spec = squeeze(log10(inputFile.TF(chan,1,ismember(inputFile.Freqs,inputFile.FOOOF.FOOOF_freqs))));
             fspec = squeeze(log10(FOOOFdata(chan).FOOOF.fooofed_spectrum))';
             eStats(chan).frequency_wise_error = table('Size',[length(spec),1],...
                 'VariableNames',{'abs_error'}, 'VariableTypes',{'double'});
             eStats(chan).frequency_wise_error.abs_error = abs(spec-fspec);
         end
-        eStats(chan).channel = ChanNames(chan);
     end 
     eStats = struct2table(eStats);
 end
@@ -192,33 +227,39 @@ function bandName = findBand(cf,bands)
 end
 
 %% ===== SAVE FILE =====
-function inFileName = SaveFile(inFileName, inputFile, ep, ePeaks, es, eStats, pt, fb, iOutputStudy)
+function inFileName = SaveFile(inFileName, inputFile, ep, ePeaks, ea, eAper, es, eStats, pt, fb, iOutputStudy)
 
     % ===== PREPARE OUTPUT STRUCTURE =====
     % Create file structure
     FileMat = inputFile;
+    opts = [];
     if ep % Extracted peaks
         FileMat.FOOOF.extractedPeaks = ePeaks;
         if pt == 2 % Used frequnecy bands
             FileMat.FOOOF.bands = fb;
         else
-            FileMat.FOOOF = rmfield(FileMat.FOOOF, 'bands');
+            if isfield(FileMat.FOOOF,'bands')
+                FileMat.FOOOF = rmfield(FileMat.FOOOF, 'bands');
+            end
         end
-        opts = 'Peak parameters';
+        opts = 'Peaks';
+    end
+    if ea
+        FileMat.FOOOF.extractedAperiodics = eAper;
+        opts = [opts '/Aperiodics'];
     end
     if es % Extracted stats
         FileMat.FOOOF.extractedStats = eStats;
-        if ep 
-            opts = 'Peak parameters and model stats';
-        else
-            opts = 'Model stats';
-        end
+        opts = [opts '/Stats'];
     end
+    opts = strip(opts,'left','/');
     % Comment
+    % Two cases in the event that we are overwriting a previous FOOOF analysis
+    FileMat.Comment     = strrep(FileMat.Comment, 'Analyzed FOOOF', 'FOOOF');
     FileMat.Comment     = strrep(FileMat.Comment, 'FOOOF', 'Analyzed FOOOF');
     % History: Computation
     FileMat = bst_history('add', FileMat, 'extract', opts);
     % ===== SAVE FILE =====
-    bst_save(file_fullpath(inFileName), FileMat, 'v6');
+    bst_save(inFileName, FileMat, 'v6');
     db_reload_studies(iOutputStudy)
 end

@@ -36,6 +36,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     import javax.swing.*;
     
     extPeaks = sProcess.options.extPeaks.Value;
+    extAper = sProcess.options.extAper.Value;
     extStats = sProcess.options.extStats.Value;
     % Create main main panel
     jPanelNew = gui_river('Manage FOOOF analysis options');
@@ -43,8 +44,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     
     % In case no options selected
     if ~any([extPeaks extStats])
-    jPanelNote = gui_river();
-            gui_component('label', jPanelNote, [], 'Please select at least one option');
+        jPanelNote = gui_river();
+        if any(extAper) % Modular if statement
+            gui_component('label', jPanelNote, [], 'No options available for selected feature(s)');
+        else
+            gui_component('label', jPanelNote, [], 'Please select at least one feature to extract');
+        end
         jPanelNew.add('br', jPanelNote);
     end
     
