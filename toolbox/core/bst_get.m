@@ -2944,6 +2944,16 @@ switch contextName
             'gamma1', '30, 59', 'mean'; ...
             'gamma2', '60, 90', 'mean'};
         
+    case 'DefaultFreqBandsFOOOF'
+        argout1 = {...
+            'delta',     '2, 4'; ...
+            'theta',     '5, 7'; ...
+            'alpha',    '8, 12'; ...
+            'beta',    '15, 29'; ...
+            'gamma1',  '30, 59'; ...
+            'gamma2', '60, 90'};
+        
+        
     case 'TimefreqOptions_morlet'
         defPref.isTimeBands     = 0;
         defPref.isFreqBands     = 0;
@@ -3059,6 +3069,19 @@ switch contextName
         defPref.aperMode        = 1;
         defPref.guessWeight     = 1;
         argout1 = FillMissingFields(contextName, defPref);
+        
+    case 'TimefreqOptions_fooof_analysis'
+        defPref.PeakType        = 1;
+        defPref.SortBy          = 1;
+        defPref.FreqBands       = bst_get('DefaultFreqBandsFOOOF');
+        defPref.Freqs           = [];
+        defPref.pullMSE         = 0;
+        defPref.pullR2          = 0;
+        defPref.pullFreqError   = 0;
+        argout1 = FillMissingFields(contextName, defPref);
+        if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
+            argout1.FreqBands = defPref.FreqBands;
+        end
     
     case 'ExportBidsOptions'
         defPref.ProjName    = [];
