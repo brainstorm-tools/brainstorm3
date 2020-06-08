@@ -333,7 +333,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             bst_progress('text', 'Loading surfaces...');
             bemMerge = {};
             disp(' ');
-            for iBem = 1:length(OPTIONS.BemFiles)
+            nBem = length(OPTIONS.BemFiles);
+            for iBem = 1:nBem
                 disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));
                 BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
@@ -360,56 +361,47 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 otherwise
                     error(['Invalid merge method: ' OPTIONS.MergeMethod]);
             end
-            % Find the seed point for each region
-            center_inner = mean(bemMerge{end-1});
-            % define seeds along the electrode axis
+            % Center of the head = barycenter of the innermost BEM layer (hopefully the inner skull?)
+            center_inner = mean(bemMerge{1}, 1);
+            % Find the intersection between the vertical axis (from the head center to the vertex) and all the BEM layers
             orig = center_inner;
             v0 = [0 0 1];
-            [t,tmp,tmp,faceidx] = raytrace(orig,v0,newnode,newelem);
-            t = sort(t(faceidx)); 
-            t = (t(1:end-1)+t(2:end))*0.5; 
-            seedlen = length(t);
-            regions = repmat(orig(:)',seedlen,1) + repmat(v0(:)',seedlen,1) .* repmat(t(:),1,3);
-
+            [dist,tmp,tmp,iFace] = raytrace(orig,v0,newnode,newelem);
+            dist = dist(iFace);
+            % Sort from bottom to top
+            [dist,I] = sort(dist);
+            iFace = iFace(I);
+            % Keep only superior part of the head (less chances of having multiple intersections for one layer)
+            iFace = iFace(end-nBem+1:end);
+            dist = dist(end-nBem+1:end);
+            % Define region seeds for all the BEM regions: head center, then half-way between each layer
+            dist = dist(:);
+            distSeed = [0; (dist(1:end-1) + dist(2:end)) .* 0.5];
+            regions = repmat(orig, nBem, 1) + distSeed * v0;
+            
             % Create tetrahedral mesh
             bst_progress('text', 'Creating 3D mesh (Iso2mesh/surf2mesh)...');
             factor_bst = 1.e-6;
             [node,elem] = surf2mesh(newnode, newelem, min(newnode), max(newnode),...
-                OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, regions, [], []); ..., 'tetgen1.5');
+                OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, regions, [], [], 'tetgen1.5');
             
-%             % Sorting compartments from the center of the head
-%             allLabels = unique(elem(:,5));
-%             dist = zeros(1, length(allLabels));
-%             for iLabel = 1:length(allLabels)
-%                 iElem = find(elem(:,5) == allLabels(iLabel));
-%                 iVert = unique(reshape(elem(iElem,1:4), [], 1));
-%                 dist(iLabel) = min(sum(node(iVert,:) .^ 2,2));
-%             end
-%             [tmp, I] = sort(dist);
-%             allLabels = allLabels(I);
-%             % Labels: the number of layers may change if one of the input surfaces contains multiple layers
-%             if length(TissueLabels) == length(I)
-%                 TissueLabels = TissueLabels(I);
-%             else
-%                 TissueLabels = [];
-%             end
-
-            % Removing the 0 label (if less than 10% of the elements)
-            iNull = find(elem(:,5) == 0);
-            if (length(iNull) < 0.1 * length(elem))
-                elem(iNull,:) = [];
+            % Removing the label 0 (Tetgen 1.4) or higher than number of layers (Tetgen 1.5)
+            bst_progress('text', 'Fixing 3D mesh...');
+            iOther = find((elem(:,5) == 0) & (elem(:,5) > nBem));
+            if ~isempty(iOther) && (length(iOther) < 0.1 * length(elem))
+                elem(iOther,:) = [];
             end
-            % Relabelling from 1 to Ntissue
-            bst_progress('text', 'Saving 3D mesh...');
+            % Check labelling from 1 to nBem
             allLabels = unique(elem(:,5));
-            elemLabel = ones(size(elem,1),1);
-            for iLabel = 1:length(allLabels)
-                elemLabel((elem(:,5) == allLabels(iLabel))) = iLabel;
+            if ~isequal(allLabels(:)', 1:nBem)
+                errMsg = ['Problem with Tetget: Brainstorm cannot understand the output labels (' num2str(allLabels(:)') ').'];
+                bst_progress('stop');
+                return;
             end
-            elem(:,5) = elemLabel;
+            
             % Mesh check and repair
             [no,el] = removeisolatednode(node,elem(:,1:4));
-            % Orientation required for the FEM computation (at least with SimBio, may be not for Duneuro)
+            % Orientation required for the FEM computation (at least with SimBio, maybe not for Duneuro)
             newelem = meshreorient(no, el(:,1:4));
             elem = [newelem elem(:,5)];
             % Only tetra could be generated from this method
