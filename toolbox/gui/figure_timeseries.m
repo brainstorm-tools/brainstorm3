@@ -3870,7 +3870,7 @@ function CreateScaleButtons(iDS, iFig)
     if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'column') || ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries')
         set([h7 h8 h9 h10], 'Visible', 'off');
     end
-    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'spectrum')
+    if (isempty(TsInfo) && ~strcmpi(TsInfo.DisplayMode, 'column')) || ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'spectrum')
         set(h11, 'Visible', 'off');
     end
 end
@@ -4165,6 +4165,12 @@ end
 
 %% ===== RESCALE SPECTRUM AMPLITUDE =====
 function RescaleSpectrumAmplitude(hFig, ev)
+    TsInfo = getappdata(hFig, 'TsInfo');
+    % Only for butterfly display mode
+    if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'butterfly')
+        return;
+    end
+
     global GlobalData
     % ===== GET DATA =====
     % Get figure description
