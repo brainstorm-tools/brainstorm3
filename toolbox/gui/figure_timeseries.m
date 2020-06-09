@@ -3857,15 +3857,21 @@ function CreateScaleButtons(iDS, iFig)
     h10 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_DOWN, ...
         '<HTML><TABLE><TR><TD>Scroll down</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B></TD></TR></TABLE>', ...
         @(h,ev)FigurePan(hFig, [0, .9]), 'ButtonZoomDown');
+    h11 = bst_javacomponent(hFig, 'button', [], 'RS', [], ...
+        'Re-scale amplitude', ...
+        @(h,ev)RescaleSpectrumAmplitude(hFig, ev), 'ButtonAutoScale');
     % Visible / not visible
     if isRaw
         set([h1 h2], 'Visible', 'off');
     end
-    if isempty(TsInfo) || isempty(TsInfo.FileName) || ~ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
+    if (isempty(TsInfo) || isempty(TsInfo.FileName) || ~ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat'))
         set(h5, 'Visible', 'off');
     end
     if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'column') || ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries')
         set([h7 h8 h9 h10], 'Visible', 'off');
+    end
+    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'spectrum')
+        set(h11, 'Visible', 'off');
     end
 end
 
@@ -4155,6 +4161,39 @@ function SetAutoScale(hFig, isAutoScale)
     bst_figures('ReloadFigures', hFig);
     % Hide progress bar
     bst_progress('stop');
+end
+
+%% ===== RESCALE SPECTRUM AMPLITUDE =====
+function RescaleSpectrumAmplitude(hFig, ev)
+    global GlobalData
+    % ===== GET DATA =====
+    % Get figure description
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    % Get data to plot
+    [Time, Freqs, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
+    % Redimension TF according to what we want to display
+    TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
+    % Get Plot handles
+    PlotHandles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
+    hAxes = PlotHandles.hAxes;
+    
+    % Get limits of currently plotted data
+    XLim = get(hAxes, 'XLim');    
+    [val, idx1] = min(abs(Freqs - XLim(1)));
+    [val, idx2] = min(abs(Freqs - XLim(2)));
+    curTF = TF(:, idx1:idx2);
+    YLim = [min(curTF(:)), max(curTF(:))];
+    
+    % Power of 10 in the legend rather than in the axis
+    if (PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2))
+        Fpow = round(log10(max(abs(PlotHandles.DataMinMax))));
+        if (Fpow < -3)
+            YLim = YLim * 10^-Fpow;
+        end
+    end
+    
+    % Rescale axis
+    set(hAxes, 'YLim', YLim);
 end
 
 
