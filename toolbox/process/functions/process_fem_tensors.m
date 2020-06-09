@@ -163,23 +163,6 @@ function [isOk, errMsg] = Compute(iSubject, DtiFile, FemFile, isInteractive, OPT
     % Generate triedre on each point (normalized vectors)
     vElemCenter = bst_bsxfun(@minus, ElemCenter, mean(FemMat.Vertices));
     vElemCenter = vElemCenter ./ sqrt(sum(vElemCenter.^2, 2));
-%     % Compute the tangential vectors
-%     vector_t1 = zeros(nNodes,3);
-%     vector_t2 = zeros(nNodes,3);
-%     for iNode = 1:nElem
-%         r = null(vElemCenter(iNode,:));
-%         vector_t1(iNode,:) = r(:,1)';
-%         vector_t2(iNode,:) = r(:,2)';
-%     end
-%     
-%     % Generate the local tensor according to the golobal coordinates X,Y,Z
-%     A = bst_bsxfun(@times, repmat(eye(3,3), [1,1,nTissues]), reshape(OPTIONS.FemCond,1,1,nTissues));
-%     % Transformation matrix and tensor mapping on each direction
-%     for iElem = 1:length(FemMat.Tissue)
-%         cfg.eigen.eigen_vector{iElem} = [vElemCenter(iElem,:)', vector_t1(iElem,:)', vector_t2(iElem,:)'];
-%         cfg.eigen.eigen_value{iElem} = A(:,:,FemMat.Tissue(iElem));    
-%     end
-%     Tensors = cfg.eigen;
 
     % Compute the tangential vectors
     bst_progress('text', 'Computing tengential vectors... 0%%');

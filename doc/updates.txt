@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+June 2020
+- FEM: Computation and display of tetrahedral conductivity tensors
+---------------------------------------------------------------
 May 2020
 - FEM: Import and management of tissue segmentations
 - IO: Support for fNIRS format .snirf

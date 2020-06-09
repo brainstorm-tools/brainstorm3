@@ -2043,9 +2043,12 @@ end
 
 
 %% ===== PLOT MRI =====
-% Usage:  hs = panel_surface('PlotMri', hFig, posXYZ) : Set the position of cuts and plot MRI
-%         hs = panel_surface('PlotMri', hFig)         : Plot MRI for current positions
-function hs = PlotMri(hFig, posXYZ)
+% Usage:  hs = panel_surface('PlotMri', hFig, posXYZ=[current], isFast=0) : Set the position of cuts and plot MRI
+function hs = PlotMri(hFig, posXYZ, isFast)
+    % Parse inputs
+    if (nargin < 3) || isempty(isFast)
+        isFast = 0;
+    end
     % Get MRI
     [sMri,TessInfo,iTess,iMri] = GetSurfaceMri(hFig);
     % Set positions or use default
@@ -2083,6 +2086,7 @@ function hs = PlotMri(hFig, posXYZ)
     OPTIONS.UpsampleImage    = MriOptions.UpsampleImage;
     OPTIONS.MipAnatomy       = TessInfo(iTess).MipAnatomy;
     OPTIONS.MipFunctional    = TessInfo(iTess).MipFunctional;
+    OPTIONS.isFast           = isFast;
     % Plot cuts
     [hs, OutputOptions] = mri_draw_cuts(hFig, OPTIONS);
 

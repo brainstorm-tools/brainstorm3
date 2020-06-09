@@ -489,14 +489,12 @@ function FigureMouseMoveCallback(hFig, varargin)
                         % Get the new position of the slice
                         oldPos = TessInfo(iTess).CutsPosition(moveAxis);
                         newPos = round(bst_saturate(oldPos + val, [1 size(sMri.Cube, moveAxis)]));
-
                         % Plot a patch that indicates the location of the cut
                         PlotSquareCut(hFig, TessInfo(iTess), moveAxis, newPos);
-
-                        % Draw a new X-cut according to the mouse motion
+                        % Draw a new MRI cut according to the mouse motion
                         posXYZ = [NaN, NaN, NaN];
                         posXYZ(moveAxis) = newPos;
-                        panel_surface('PlotMri', hFig, posXYZ);
+                        panel_surface('PlotMri', hFig, posXYZ, 1);
                     end
                 end
             end
@@ -542,7 +540,10 @@ function FigureMouseUpCallback(hFig, varargin)
         setappdata(hFig, 'clickAction', 'MouseDownNotConsumed');
     end
     if isappdata(hFig, 'moveAxis')
+        moveAxis = getappdata(hFig, 'moveAxis');
         rmappdata(hFig, 'moveAxis');
+    else
+        moveAxis = [];
     end
     if isappdata(hFig, 'moveDirection')
         rmappdata(hFig, 'moveDirection');
@@ -834,6 +835,18 @@ function FigureMouseUpCallback(hFig, varargin)
             else
                 % Update "Surfaces" panel
                 panel_surface('UpdateSurfaceProperties');
+                % Draw a new MRI cut according to the mouse motion (to draw tensors after moving)
+                if ~isempty(moveAxis) && isequal(Figure.Id.SubType, 'Tensors')
+                    % Get MRI
+                    [sMri,TessInfo,iTess] = panel_surface('GetSurfaceMri', hFig);
+                    if isempty(iTess)
+                        return
+                    end
+                    % Update the last slice with full rendering (including tensors)
+                    posXYZ = [NaN, NaN, NaN];
+                    posXYZ(moveAxis) = TessInfo(iTess).CutsPosition(moveAxis);
+                    panel_surface('PlotMri', hFig, posXYZ, 0);
+                end
             end
         end
     end 

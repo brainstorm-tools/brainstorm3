@@ -1190,7 +1190,12 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Compute FEM tensors', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_tensors, 'ComputeInteractive', iSubject, filenameFull));
-%                     gui_component('MenuItem', jPopup, [], 'Display FEM tensors', IconLoader.ICON_FEM, [], @(h,ev)bst_view_tensor(iSubject));
+                    % If there are tensors to display
+                    varInfo = whos('-file', filenameFull, 'Tensors');
+                    if ~isempty(varInfo) && all(varInfo.size >= 12)
+                        gui_component('MenuItem', jPopup, [], 'Display FEM tensors (ellipses)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse'));
+                        gui_component('MenuItem', jPopup, [], 'Display FEM tensors (arrows)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow'));
+                    end
                 end
                 
 %% ===== POPUP: NOISECOV =====
