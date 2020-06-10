@@ -54,7 +54,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mniplane.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[a, b, c, d]: ';
     sProcess.options.mniplane.Type    = 'value';
     sProcess.options.mniplane.Value   = {[0, -11, 9.6, 1], 'list', 3};
-    sProcess.options.mniplanedef.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#777777"><I>Default: a=-0, b=-11, c=9.6, d=1</I></FONT>';
+    sProcess.options.mniplanedef.Comment = '<FONT color="#777777"><I>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cut face: a=0, b=-11, c=9.6, d=1<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cut neck: a=0, b=0, c=1, d=0.085 (Z&lt;-85)</I></FONT>';
     sProcess.options.mniplanedef.Type    = 'label';
     % Option: Recompute head surface
     sProcess.options.defacehead.Comment = 'Recompute head surface';
@@ -480,6 +480,4 @@ function [exePath, talFile, faceFile, errMsg] = InstallMriDeface(isInteractive)
         errMsg = ['mri_convert could not be installed in: ' mriDefaceDir];
     end
 end
-
-
 
