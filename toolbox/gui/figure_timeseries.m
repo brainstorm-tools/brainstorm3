@@ -84,6 +84,7 @@ function hFig = CreateFigure(FigureId)
         set(hFig, 'defaultLegendAutoUpdate', 'off');
     end
     % Prepare figure appdata
+    setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'isPlotEditToolbar', 0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -4175,29 +4176,38 @@ function ScaleToFitY(hFig, ev)
     if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'butterfly')
         return;
     end
+    % Get figure data
+    FigureId = getappdata(hFig, 'FigureId');
+    isSpectrum = strcmpi(FigureId.Type, 'spectrum');
+    [PlotHandles, iFig, iDS] = bst_figures('GetFigureHandles', hFig);
+    hAxes = PlotHandles.hAxes;
 
     % ===== GET DATA =====
-    % Get data to plot
-    [Time, Freqs, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
-    % Redimension TF according to what we want to display
-    TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
-    % Get Plot handles
-    [PlotHandles,iFig,iDS] = bst_figures('GetFigureHandles', hFig);
-    hAxes = PlotHandles.hAxes;
+    if isSpectrum
+        % Get data to plot
+        [Time, XVector, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
+        % Redimension TF according to what we want to display
+        TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
+    else
+        TF = GetFigureData(iDS, iFig);
+        TF = TF{1};
+        [XVector, iTime] = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
+        XVector = XVector(iTime);
+    end
     
     % Get limits of currently plotted data
     XLim = get(hAxes, 'XLim');    
-    [val, idx1] = min(abs(Freqs - XLim(1)));
-    [val, idx2] = min(abs(Freqs - XLim(2)));
+    [val, idx1] = min(abs(XVector - XLim(1)));
+    [val, idx2] = min(abs(XVector - XLim(2)));
     curTF = TF(:, idx1:idx2);
-    YLim = [min(curTF(:)), max(curTF(:))];
+    YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles.DisplayFactor;
     % Add 5% margin above and below
     YSpan = YLim(2) - YLim(1);
     YLim(1) = YLim(1) - YSpan * 0.05;
     YLim(2) = YLim(2) + YSpan * 0.05;
     
     % Power of 10 in the legend rather than in the axis
-    if (PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2))
+    if isSpectrum && PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
         Fpow = round(log10(max(abs(PlotHandles.DataMinMax))));
         if (Fpow < -3)
             YLim = YLim * 10^-Fpow;
