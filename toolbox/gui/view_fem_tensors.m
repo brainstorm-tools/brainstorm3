@@ -1,13 +1,13 @@
-function [hFig, iDS, iFig] = view_fem_tensors(FemFile, DisplayMode, iTissues, MriFile, hFig)
+function [hFig, iDS, iFig] = view_fem_tensors(FemFile, DisplayMode, iTissues, AnatFile, hFig)
 % VIEW_FEM_TENSORS: Display FEM conductivity tensors.
 %
-% USAGE:  [hFig, iDS, iFig] = view_fem_tensors(FemFile, DisplayMode='ellipse', iTissues=[ask], MriFile=[default], hFig=[NewFigure])
+% USAGE:  [hFig, iDS, iFig] = view_fem_tensors(FemFile, DisplayMode='ellipse', iTissues=[ask], AnatFile=[default MRI], hFig=[NewFigure])
 %
 % INPUT:
 %     - FemFile     : full path to the FEM mesh file to display 
 %     - DisplayMode : {'ellipse', 'arrow'}
 %     - iTissues    : List of tissues to display in the file (if not defined, ask the user)
-%     - MriFile     : Path to a MRI file in the database
+%     - AnatFile    : Path to a MRI or FEM file in the database
 %     - hFig        : Specify the figure in which to display the surface (otherwise creates a new figure)
 %
 % OUTPUT : 
@@ -49,8 +49,8 @@ else
     error('Invalid figure handle.');
 end
 % Parse inputs
-if (nargin < 4) || isempty(MriFile)
-    MriFile = [];
+if (nargin < 4) || isempty(AnatFile)
+    AnatFile = [];
 end
 if (nargin < 3) || isempty(iTissues)
     % Load the tissue names
@@ -90,6 +90,29 @@ else
     SubjectFile = sSubject.FileName;
 end
 
+%% ===== GET MRI REFERENCE =====
+% Use default MRI for this subject
+if isempty(AnatFile)
+    if isempty(sSubject.Anatomy) || isempty(sSubject.iAnatomy)
+        error('No MRI available for this subject.');
+    end
+    AnatFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+end
+% Get reference MRI
+AnatType = file_gettype(AnatFile);
+switch (AnatType)
+    case 'subjectimage'
+        MriFile = AnatFile;
+        FigSubType = 'TensorsMri';
+        CoordSystem = 'voxel';
+    case 'fem'
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+        FigSubType = 'TensorsFem';
+        CoordSystem = 'scs';
+    otherwise
+        error('Unsupported file type.');
+end
+
 
 %% ===== CREATE NEW FIGURE =====
 % If target figure is not specified
@@ -97,7 +120,7 @@ if isempty(hFig)
     % Prepare FigureId structure
     FigureId = db_template('FigureId');
     FigureId.Type     = '3DViz';
-    FigureId.SubType  = 'Tensors';
+    FigureId.SubType  = FigSubType;
     FigureId.Modality = '';
     % Create figure
     [hFig, iFig, isNewFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');
@@ -113,22 +136,6 @@ end
 setappdata(hFig, 'SubjectFile',  SubjectFile);
 
 
-%% ===== DISPLAY ANATOMY =====
-if isNewFig
-    % Use default MRI for this subject
-    if isempty(MriFile)
-        if isempty(sSubject.Anatomy) || isempty(sSubject.iAnatomy)
-            error('No MRI available for this subject.');
-        end
-        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    end
-    % Display MRI
-    view_mri_3d(MriFile, [], 0.7, hFig);
-    % Get MRI
-    sMri = bst_memory('GetMri', MriFile);
-end
-
-    
 %% ===== LOAD FEM TENSORS =====
 % Display progress bar
 isProgress = ~bst_progress('isVisible');
@@ -140,6 +147,8 @@ FemMat = load(file_fullpath(FemFile));
 if ~isfield(FemMat, 'Tensors') || any(size(FemMat.Tensors) < 12)
     error('No FEM conductivity tensor in this file.');
 end
+% Load MRI
+sMri = bst_memory('LoadMri', MriFile);
 % Select tissues to display
 bst_progress('text', 'Preparing tensors display...');
 iElemTissue = find(ismember(FemMat.Tissue, iTissues));
@@ -155,8 +164,12 @@ for i = 1:3
 end
 % Compute average distance between element center and vertices
 TensorDisplay.tol = 0.5 .* sqrt(mean(sum(bst_bsxfun(@minus, FemMat.Vertices(FemMat.Elements(iElemTissue(1:10:end),1),:), TensorDisplay.ElemCenter(1:10:end,:)) .^ 2, 2)));
+% For MRI: Tolerance factor must be scaled and in mm
+if strcmpi(AnatType, 'subjectimage')
+    TensorDisplay.tol = TensorDisplay.tol .* max(sMri.Voxsize) .* 1000;
+end
 % Convert FEM element centers to voxel coordinates
-TensorDisplay.ElemCenterVox = cs_convert(sMri, 'scs', 'voxel', TensorDisplay.ElemCenter);
+TensorDisplay.ElemCenterAnat = cs_convert(sMri, 'scs', CoordSystem, TensorDisplay.ElemCenter);
 % Save display mode
 TensorDisplay.DisplayMode = DisplayMode;
 % Save display info in figure handles
@@ -165,13 +178,31 @@ Handles.TensorDisplay = TensorDisplay;
 bst_figures('SetFigureHandles', hFig, Handles);
 
 
+%% ===== DISPLAY ANATOMY =====
+if isNewFig
+    switch (AnatType)
+        case 'subjectimage'
+            view_mri_3d(AnatFile, [], 0.7, hFig);           
+        case 'fem'
+            alphaLayer = zeros(length(FemMat.TissueLabels));
+            alphaLayer(iTissues) = 0.5;
+            view_surface_fem(AnatFile, alphaLayer, [], [], hFig);
+    end
+end
+
+
 %% ===== UPDATE INTERFACE =====
 bst_progress('text', 'Creating figure...');
-% Plot initial Z slice
-TessInfo = getappdata(hFig, 'Surface');
-posXYZ = [NaN, NaN, NaN];
-posXYZ(3) = TessInfo(1).CutsPosition(3);
-panel_surface('PlotMri', hFig, posXYZ, 0);
+% Plot one slice of tensors
+switch (AnatType)
+    % MRI: Plot initial Z slice
+    case 'subjectimage'
+        TessInfo = getappdata(hFig, 'Surface');
+        figure_3d('PlotTensorCut', hFig, TessInfo(1).CutsPosition(3), 3, 0);
+    % FEM mesh: Plot mid-saggital plane (Y=0)
+    case 'fem'
+        figure_3d('PlotTensorCut', hFig, 0, 2, 1);
+end
 % Set figure as current figure
 bst_figures('SetCurrentFigure', hFig, '3D');
 % Finish creating new figure

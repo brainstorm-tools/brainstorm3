@@ -836,16 +836,23 @@ function FigureMouseUpCallback(hFig, varargin)
                 % Update "Surfaces" panel
                 panel_surface('UpdateSurfaceProperties');
                 % Draw a new MRI cut according to the mouse motion (to draw tensors after moving)
-                if ~isempty(moveAxis) && isequal(Figure.Id.SubType, 'Tensors')
-                    % Get MRI
-                    [sMri,TessInfo,iTess] = panel_surface('GetSurfaceMri', hFig);
-                    if isempty(iTess)
-                        return
+                if ~isempty(moveAxis)
+                    % Tensors on MRI slices
+                    if isequal(Figure.Id.SubType, 'TensorsMri')
+                        [sMri,TessInfo,iTess] = panel_surface('GetSurfaceMri', hFig);
+                        if isempty(iTess)
+                            return
+                        end
+                        % Update the last slice with full rendering (including tensors)
+                        posXYZ = [NaN, NaN, NaN];
+                        posXYZ(moveAxis) = TessInfo(iTess).CutsPosition(moveAxis);
+                        panel_surface('PlotMri', hFig, posXYZ, 0);
+                    % Tensors on FEM mesh
+                    elseif isequal(Figure.Id.SubType, 'TensorsFem')
+                        TessInfo = getappdata(TensorsFem);
+                        
+                        error('todo');
                     end
-                    % Update the last slice with full rendering (including tensors)
-                    posXYZ = [NaN, NaN, NaN];
-                    posXYZ(moveAxis) = TessInfo(iTess).CutsPosition(moveAxis);
-                    panel_surface('PlotMri', hFig, posXYZ, 0);
                 end
             end
         end
@@ -3033,7 +3040,7 @@ function SmoothSurface(hFig, iTess, smoothValue)
     % Get surfaces list 
     TessInfo = getappdata(hFig, 'Surface');
     % Ignore MRI slices
-    if strcmpi(TessInfo(iTess).Name, 'Anatomy')
+    if ismember(TessInfo(iTess).Name, {'Anatomy', 'FEM'})
         return
     end
     % Get surfaces vertices
@@ -4448,6 +4455,7 @@ function JumpMaximum(hFig)
     UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
 end
 
+
 %% ===== SELECT FIBER SCOUTS =====
 function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     global GlobalData;
@@ -4455,7 +4463,7 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     if nargin < 4
         ColorOnly = 0;
     end
-    %% Get fibers information
+    % Get fibers information
     hFigFib = bst_figures('GetFigureHandleField', hFigConn, 'hFigFib');
     % If the fiber figure is closed, propagate to connectivity figure
     if ~ishandle(hFigFib)
@@ -4468,7 +4476,7 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
     
     
-    %% If fibers not yet assigned to atlas, do so now
+    % If fibers not yet assigned to atlas, do so now
     if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
         ScoutNames     = bst_figures('GetFigureHandleField', hFigConn, 'RowNames');
         ScoutCentroids = bst_figures('GetFigureHandleField', hFigConn, 'RowLocs');
@@ -4476,14 +4484,13 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
         % Save in memory to avoid recomputing
         GlobalData.Fibers(iFib) = FibMat;
     end
-    
     bst_progress('start', 'Fibers Connectivity', 'Selecting appropriate fibers...');
     
     % Get scout assignment
     iFile = find(ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile}));
     assign = FibMat.Scouts(iFile).Assignment;
     
-    %% Find pair of scouts in list fiber assignments
+    % Find pair of scouts in list fiber assignments
     % Reshape iScouts to use bsxfun
     iScoutsBsx = reshape(iScouts', [1 size(iScouts')]);
     % Get the matches for the pairs and for the flipped pairs
@@ -4494,7 +4501,7 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     [tmp, iFoundFibers] = sort(iFoundFibers);
     iFoundScouts = iFoundScouts(iFoundFibers);
     
-    %% Plot selected fibers
+    % Plot selected fibers
     % If we have different scouts, force plotting all fibers again
     if ~ColorOnly || length(TessInfo(iTess).hPatch) ~= length(iFoundScouts)
         % Remove old fibers
@@ -4508,4 +4515,96 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     % Update figure's surfaces list and current surface pointer
     setappdata(hFigFib, 'Surface',  TessInfo);
     bst_progress('stop');
+end
+
+
+%% ===== PLOT TENSORS =====
+function hTensorCut = PlotTensorCut(hFig, sliceLocation, dim, isRelative)
+    % Get figure handles
+    Handles = bst_figures('GetFigureHandles', hFig);
+    s = Handles.TensorDisplay;
+    if isempty(s)
+        hTensorCut = [];
+        return;
+    end
+    % Get axes
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+    if isempty(hAxes)
+        return;
+    end
+    % Convert relative slice to absolute
+    if isRelative
+        TessInfo = getappdata(hFig, 'Surface');
+        Vertices = get(TessInfo(1).hPatch, 'Vertices');
+        % Compute mean and max of the coordinates
+        meanVertx = mean(Vertices(:,dim), 1);
+        maxVertx  = max(abs(Vertices(:,dim)), [], 1);
+        % Limit values
+        sliceLocation = sliceLocation .* maxVertx + meanVertx;
+    end
+    % Find elements in the current cut
+    iElemCut = find(abs(s.ElemCenterAnat(:,dim) - sliceLocation) < s.tol);
+    % Scaling tensor object size
+    factor = 4 / 1000; % 4=optimal value for the SCS coordinates, 1000=display S/m values at a millimeter scale
+    % Different display modes
+    switch lower(s.DisplayMode)
+        case 'ellipse'
+            % Delete previous slices
+            delete(findobj(hAxes, '-depth', 1, 'Tag', 'TensorEllipses'));
+            % Define ellipse geometry
+            nVert = 32;
+            [sphereVertex, sphereFaces] = tess_sphere(nVert);
+            % Assemble faces
+            tensorFaces = repmat(sphereFaces, length(iElemCut), 1) + ...
+                repmat(reshape(repmat((0:length(iElemCut)-1)*nVert, size(sphereFaces,1), 1), [], 1), 1, 3);
+            % Assemble colors: abs([v(2,1) v(1,1) v(3,1)])
+            tensorColor = reshape(repmat(abs(s.Tensors(iElemCut,[2,1,3]))', size(sphereFaces,1), 1), 3, [])';
+            % Assemble all tensors ellipsoids
+            tensorVertices = repmat(sphereVertex, length(iElemCut), 1);
+            for i = 1:length(iElemCut)
+                iVertSph = ((i-1) * nVert + 1) : i*nVert;
+                % Scaling
+                tensorVertices(iVertSph,:) = bst_bsxfun(@times, tensorVertices(iVertSph,:), s.Tensors(iElemCut(i), 10:12) .* factor);
+                % Rotation
+                tensorVertices(iVertSph,:) = (reshape(s.Tensors(iElemCut(i), 1:9),3,3) * tensorVertices(iVertSph,:)')';
+                % Translation
+                tensorVertices(iVertSph,:) = bst_bsxfun(@plus, tensorVertices(iVertSph,:), s.ElemCenter(iElemCut(i),:));
+            end
+            % Plot tensors
+            hTensorCut = patch(...
+                'Faces',            tensorFaces, ...
+                'Vertices',         tensorVertices,...
+                'FaceColor',        'flat', ...
+                'FaceVertexCData',  tensorColor, ...
+                'EdgeColor',        'none', ...
+                'BackfaceLighting', 'unlit', ...
+                'AmbientStrength',  0.7, ...
+                'DiffuseStrength',  0.3, ...
+                'SpecularStrength', 0, ...
+                'FaceLighting',     'gouraud', ...
+                'Tag',              'TensorEllipses', ...
+                'Parent',           hAxes);
+
+        case 'arrow'
+            % Delete previous slices
+            delete(findobj(hAxes, '-depth', 1, 'Tag', 'TensorArrows'));
+            % Assemble colors: abs([v(2,1) v(1,1) v(3,1)])
+            tensorColor = reshape(repmat(abs(s.Tensors(iElemCut,[2,1,3]))', 2, 1), 3, [])';
+            % Vertices: Segments from element centers in the direction of the tensor
+            vertArrows = [s.ElemCenter(iElemCut,:)'; ...
+                          s.ElemCenter(iElemCut,:)' + factor .* s.Tensors(iElemCut, 10:12)' .* s.Tensors(iElemCut, 1:3)'];
+            % Display arrows
+            hTensorCut = patch(...
+                'Vertices', reshape(vertArrows, 3, [])', ...
+                'Faces', [(1:2:2*length(iElemCut))', (2:2:2*length(iElemCut))'], ...
+                'LineWidth',        1, ...
+                'FaceVertexCData',  tensorColor, ...
+                'FaceColor',       'none', ...
+                'EdgeColor',       'flat', ...
+                'MarkerFaceColor', 'none', ...
+                'Tag',              'TensorArrows', ...
+                'Parent',           hAxes);
+        otherwise
+            error('Invalid display mode.');
+    end
 end

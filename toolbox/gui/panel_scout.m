@@ -1110,6 +1110,8 @@ function [sScouts, sSurf, iSurf] = GetScouts(SurfaceFile)
                 sScouts = sScouts(iScouts);
             end
         end
+    elseif (length(sSurf) > 1)
+        sSurf = sSurf(1);
     end
 end
 

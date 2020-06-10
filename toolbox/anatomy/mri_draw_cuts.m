@@ -174,18 +174,6 @@ for iCoord = 1:3
     switch (FigureId.Type)
         case {'3DViz', 'Topography'}
             hCut = PlotSlice3DViz(hTarget, cmapSlice, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.sMri, AlphaMap, OPTIONS.UpsampleImage);
-            % Plot tensors
-            if isequal(FigureId.SubType, 'Tensors') && ~OPTIONS.isFast
-                isProgress = bst_progress('isVisible');
-                if ~isProgress
-                    bst_progress('start', 'MRI display', 'Updating tensors...');
-                end
-                PlotTensor3DViz(hFig, hTarget, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.sMri);
-                if ~isProgress
-                    drawnow;
-                    bst_progress('stop');
-                end
-            end
         case 'MriViewer'
             hCut = PlotSliceMriViewer(hTarget(iCoord), cmapSlice);
     end
@@ -319,89 +307,5 @@ function hCut = PlotSliceMriViewer(hImg, cmapSlice)
 end
 
 
-%% ===== PLOT TENSORS IN 3D FIGURE =====
-function hTensorCut = PlotTensor3DViz(hFig, hAxes, sliceLocation, dim, sMri)
-    % Get figure handles
-    Handles = bst_figures('GetFigureHandles', hFig);
-    s = Handles.TensorDisplay;
-    if isempty(s)
-        hTensorCut = [];
-        return;
-    end
-    % Find elements in the current cut
-    iElemCut = find(abs(s.ElemCenterVox(:,dim) - sliceLocation) < s.tol .* sMri.Voxsize(dim) .* 1000);
-    % Scaling tensor object size
-    factor = 4 / 1000; % 4=optimal value for the SCS coordinates, 1000=display S/m values at a millimeter scale
-    % Different display modes
-    switch lower(s.DisplayMode)
-        case 'ellipse'
-            % Delete previous slices
-            delete(findobj(hAxes, '-depth', 1, 'Tag', 'TensorEllipses'));
-            % Define ellipse geometry
-            nVert = 32;
-            [sphereVertex, sphereFaces] = tess_sphere(nVert);
-            % Assemble faces
-            tensorFaces = repmat(sphereFaces, length(iElemCut), 1) + ...
-                repmat(reshape(repmat((0:length(iElemCut)-1)*nVert, size(sphereFaces,1), 1), [], 1), 1, 3);
-            % Assemble colors: abs([v(2,1) v(1,1) v(3,1)])
-            tensorColor = reshape(repmat(abs(s.Tensors(iElemCut,[2,1,3]))', size(sphereFaces,1), 1), 3, [])';
-            % Assemble all tensors ellipsoids
-            tensorVertices = repmat(sphereVertex, length(iElemCut), 1);
-            for i = 1:length(iElemCut)
-                iVertSph = ((i-1) * nVert + 1) : i*nVert;
-                % Scaling
-                tensorVertices(iVertSph,:) = bst_bsxfun(@times, tensorVertices(iVertSph,:), s.Tensors(iElemCut(i), 10:12) .* factor);
-                % Rotation
-                tensorVertices(iVertSph,:) = (reshape(s.Tensors(iElemCut(i), 1:9),3,3) * tensorVertices(iVertSph,:)')';
-                % Translation
-                tensorVertices(iVertSph,:) = bst_bsxfun(@plus, tensorVertices(iVertSph,:), s.ElemCenter(iElemCut(i),:));
-            end
-            % Plot tensors
-            hTensorCut = patch(...
-                'Faces',            tensorFaces, ...
-                'Vertices',         tensorVertices,...
-                'FaceColor',        'flat', ...
-                'FaceVertexCData',  tensorColor, ...
-                'EdgeColor',        'none', ...
-                'BackfaceLighting', 'unlit', ...
-                'AmbientStrength',  0.7, ...
-                'DiffuseStrength',  0.3, ...
-                'SpecularStrength', 0, ...
-                'FaceLighting',     'gouraud', ...
-                'Tag',              'TensorEllipses', ...
-                'Parent',           hAxes);
-
-        case 'arrow'
-            % Delete previous slices
-            delete(findobj(hAxes, '-depth', 1, 'Tag', 'TensorArrows'));
-%             delete(findobj(hAxes, '-depth', 1, 'Tag', 'TensorDots'));
-            % Assemble colors: abs([v(2,1) v(1,1) v(3,1)])
-            tensorColor = reshape(repmat(abs(s.Tensors(iElemCut,[2,1,3]))', 2, 1), 3, [])';
-            % Vertices: Segments from element centers in the direction of the tensor
-            vertArrows = [s.ElemCenter(iElemCut,:)'; ...
-                          s.ElemCenter(iElemCut,:)' + factor .* s.Tensors(iElemCut, 10:12)' .* s.Tensors(iElemCut, 1:3)'];
-            % Display arrows
-            hTensorCut = patch(...
-                'Vertices', reshape(vertArrows, 3, [])', ...
-                'Faces', [(1:2:2*length(iElemCut))', (2:2:2*length(iElemCut))'], ...
-                'LineWidth',        1, ...
-                'FaceVertexCData',  tensorColor, ...
-                'FaceColor',       'none', ...
-                'EdgeColor',       'flat', ...
-                'MarkerFaceColor', 'none', ...
-                'Tag',              'TensorArrows', ...
-                'Parent',           hAxes);
-%             % Add markers at the center of the elements
-%             hTensorDots = line(s.ElemCenter(iElemCut,1), s.ElemCenter(iElemCut,2), s.ElemCenter(iElemCut,3), ...
-%                 'Parent',          hAxes, ...
-%                 'LineStyle',       'none', ...
-%                 'MarkerEdgeColor', [1 1 1], ...
-%                 'MarkerSize',      4, ...
-%                 'Marker',          '.', ...
-%                 'Tag',             'TensorDots');
-        otherwise
-            error('Invalid display mode.');
-    end
-end
 
 
