@@ -1436,6 +1436,11 @@ function FigureKeyPressedCallback(hFig, ev)
             if isControl && isFullDataFile
                 panel_record('JumpToVideoTime', hFig);
             end
+        % Y : Scale to fit Y axis
+        case 'y'
+            if strcmpi(TsInfo.DisplayMode, 'butterfly')
+                ScaleToFitY(hFig, ev);
+            end
         % RETURN: VIEW SELECTED CHANNELS
         case 'return'
             if isMenuSelectedChannels && isFullDataFile               
@@ -2523,6 +2528,11 @@ function DisplayConfigMenu(hFig, jParent)
                 case 'magnitude',  jScaleMag.setSelected(1);
                 case 'log',        jScaleLog.setSelected(1);
             end
+        end
+        % Scale to fit Y
+        if strcmpi(TsInfo.DisplayMode, 'butterfly')
+            jMenu.addSeparator();
+            gui_component('MenuItem', jMenu, [], 'Scale selection to fit screen', IconLoader.ICON_Y, [], @(h,ev)ScaleToFitY(hFig, ev));
         end
         
     % === LINES ===
@@ -3857,9 +3867,6 @@ function CreateScaleButtons(iDS, iFig)
     h10 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_DOWN, ...
         '<HTML><TABLE><TR><TD>Scroll down</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B></TD></TR></TABLE>', ...
         @(h,ev)FigurePan(hFig, [0, .9]), 'ButtonZoomDown');
-    h11 = bst_javacomponent(hFig, 'button', [], 'RS', [], ...
-        'Re-scale amplitude', ...
-        @(h,ev)RescaleSpectrumAmplitude(hFig, ev), 'ButtonAutoScale');
     % Visible / not visible
     if isRaw
         set([h1 h2], 'Visible', 'off');
@@ -3869,9 +3876,6 @@ function CreateScaleButtons(iDS, iFig)
     end
     if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'column') || ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries')
         set([h7 h8 h9 h10], 'Visible', 'off');
-    end
-    if (isempty(TsInfo) && ~strcmpi(TsInfo.DisplayMode, 'column')) || ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'spectrum')
-        set(h11, 'Visible', 'off');
     end
 end
 
@@ -4164,23 +4168,20 @@ function SetAutoScale(hFig, isAutoScale)
 end
 
 %% ===== RESCALE SPECTRUM AMPLITUDE =====
-function RescaleSpectrumAmplitude(hFig, ev)
+function ScaleToFitY(hFig, ev)
     TsInfo = getappdata(hFig, 'TsInfo');
     % Only for butterfly display mode
     if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'butterfly')
         return;
     end
 
-    global GlobalData
     % ===== GET DATA =====
-    % Get figure description
-    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
     % Get data to plot
     [Time, Freqs, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
     % Redimension TF according to what we want to display
     TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
     % Get Plot handles
-    PlotHandles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
+    [PlotHandles,iFig,iDS] = bst_figures('GetFigureHandles', hFig);
     hAxes = PlotHandles.hAxes;
     
     % Get limits of currently plotted data
@@ -4189,6 +4190,10 @@ function RescaleSpectrumAmplitude(hFig, ev)
     [val, idx2] = min(abs(Freqs - XLim(2)));
     curTF = TF(:, idx1:idx2);
     YLim = [min(curTF(:)), max(curTF(:))];
+    % Add 5% margin above and below
+    YSpan = YLim(2) - YLim(1);
+    YLim(1) = YLim(1) - YSpan * 0.05;
+    YLim(2) = YLim(2) + YSpan * 0.05;
     
     % Power of 10 in the legend rather than in the axis
     if (PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2))
@@ -4200,6 +4205,9 @@ function RescaleSpectrumAmplitude(hFig, ev)
     
     % Rescale axis
     set(hAxes, 'YLim', YLim);
+    % Update TimeCursor position
+    hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
+    set(hCursor, 'YData', ylim);
 end
 
 
