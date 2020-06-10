@@ -57,7 +57,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2Mesh<BR>', ...
                                        '<B>SimNIBS</B>:<BR>Call SimNIBS to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.', ...
                                        '<B>FieldTrip</B>:<BR> Call FieldTrip to create hexahedral mesh of the <B>T1 MRI</B>.'; ...
-                                       'iso2mesh', 'brain2mash', 'simnibs', 'fieldtrip'};
+                                       'iso2mesh', 'brain2mesh', 'simnibs', 'fieldtrip'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'iso2mesh';
     % Iso2mesh options: 
@@ -97,6 +97,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.nodeshift.Comment = 'Node shift [0 - 0.49]: ';
     sProcess.options.nodeshift.Type    = 'value';
     sProcess.options.nodeshift.Value   = {OPTIONS.NodeShift, '', 2};
+    % Volumes options: 
+    sProcess.options.opt0.Comment = '<BR><B>Input T1/T2 volumes</B>: <I>(SimNIBS, Brain2mesh)</I>';
+    sProcess.options.opt0.Type    = 'label';
+    % Volumes: Neck MNI Z-coordinate
+    sProcess.options.zneck.Comment = 'Cut neck below MNI Z coordinate (0=disable): ';
+    sProcess.options.zneck.Type    = 'value';
+    sProcess.options.zneck.Value   = {OPTIONS.Zneck, '', 0};
 end
 
 
@@ -120,6 +127,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     [sSubject, iSubject] = bst_get('Subject', SubjectName);
     if isempty(iSubject)
         bst_report('Error', sProcess, [], ['Subject "' SubjectName '" does not exist.']);
+        return
+    end
+    % Volumes: Neck MNI Z-coordinate
+    OPTIONS.Zneck = sProcess.options.zneck.Value{1};
+    if isempty(OPTIONS.Zneck) || (OPTIONS.Zneck > 0)
+        bst_report('Error', sProcess, [], 'Invalid neck MNI Z coordinate (must be negative or zero).');
         return
     end
     % Method
@@ -197,7 +210,8 @@ function OPTIONS = GetDefaultOptions()
         'VertexDensity',  0.5, ...             % SimNIBS: [0.1 - X] setting the vertex density (nodes per mm2)  of the surface meshes
         'NbVertices',     15000, ...           % SimNIBS: Number of vertices for the cortex surface imported from CAT12 
         'NodeShift',      0.3, ...             % FieldTrip: [0 - 0.49] Improves the geometrical properties of the mesh
-        'Downsample',     3);                  % FieldTrip: Integer, Downsampling factor to apply to the volumes before meshing
+        'Downsample',     3, ...               % FieldTrip: Integer, Downsampling factor to apply to the volumes before meshing
+        'Zneck',          -85);                % Input T1/T2: Cut volumes below neck (MNI Z-coordinate)
 end
 
 
@@ -273,10 +287,38 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         iT1 = iMris(1);
         iT2 = [];
     end
-    % Get full file names
-    T1File = file_fullpath(sSubject.Anatomy(iT1).FileName);
-    if ~isempty(iT2)
+    
+    % ===== LOAD/CUT T1 =====
+    if ismember(lower(OPTIONS.Method), {'brain2mesh', 'simnibs'})
+        T1File = file_fullpath(sSubject.Anatomy(iT1).FileName);
+        sMriT1 = in_mri_bst(T1File);
+        % Cut neck (below MNI coordinate below Z=Zneck)
+        if (OPTIONS.Zneck < 0)
+            [sMriT1, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT1, [0, 0, 1, -OPTIONS.Zneck./1000]);
+            % Error handling (if MNI normalization failed)
+            if ~isempty(errNorm)
+                errMsg = ['Error trying to compute the MNI transformation for T1: ' 10 errNorm 10 'Disable the option to cut the neck.'];
+                return;
+            end
+        elseif (OPTIONS.Zneck > 0)
+            errMsg = 'Invalid neck MNI Z coordinate (must be negative or zero).';
+            return;
+        end
+    end
+
+    % ===== LOAD/CUT T2 =====
+    if ~isempty(iT2) && ismember(lower(OPTIONS.Method), {'brain2mesh', 'simnibs'})
         T2File = file_fullpath(sSubject.Anatomy(iT2).FileName);
+        sMriT2 = in_mri_bst(T2File);
+        % Cut neck (below MNI coordinate below Z=Zneck)
+        if (OPTIONS.Zneck < 0)
+            [sMriT2, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT2, [0, 0, 1, -OPTIONS.Zneck./1000]);
+            % Error handling (if MNI normalization failed)
+            if ~isempty(errNorm)
+                errMsg = ['Error trying to compute the MNI transformation for T2: ' 10 errNorm 10 'Disable the option to cut the neck.'];
+                return;
+            end
+        end
     else
         T2File = [];
     end
@@ -435,14 +477,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Create temporary folder for segmentation files
             tempDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'brain2mesh');
             mkdir(tempDir);
-            % Save MRI in .nii format
+            % Save T1 MRI in .nii format
             subjid = strrep(sSubject.Name, '@', '');
             T1Nii = bst_fullfile(tempDir, [subjid 'T1.nii']);
-            sMriT1 = in_mri_bst(T1File);
             out_mri_nii(sMriT1, T1Nii);
+            % Save T2 MRI in .nii format
             if ~isempty(T2File)
                 T2Nii = bst_fullfile(tempDir, [subjid 'T2.nii']);
-                sMriT2 = in_mri_bst(T2File);
                 out_mri_nii(sMriT2, T2Nii);
                 % Check the size of the volumes
                 if ~isequal(size(sMriT1.Cube), size(sMriT2.Cube)) || ~isequal(size(sMriT1.Voxsize), size(sMriT2.Voxsize))
@@ -549,21 +590,19 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
 
             % ===== VERIFY FIDUCIALS IN T1 MRI =====
-            % Load MRI file
-            sMriT1 = in_mri_bst(T1File);
             % If the SCS transformation is not defined: compute MNI transformation to get a default one
             if isempty(sMriT1) || ~isfield(sMriT1, 'SCS') || ~isfield(sMriT1.SCS, 'NAS') || ~isfield(sMriT1.SCS, 'LPA') || ~isfield(sMriT1.SCS, 'RPA') || (length(sMriT1.SCS.NAS)~=3) || (length(sMriT1.SCS.LPA)~=3) || (length(sMriT1.SCS.RPA)~=3) || ~isfield(sMriT1.SCS, 'R') || isempty(sMriT1.SCS.R) || ~isfield(sMriT1.SCS, 'T') || isempty(sMriT1.SCS.T)
                 % Issue warning
                 bst_report('Warning', 'process_fem_mesh', [], 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.');
                 % Compute MNI transformation
-                [sMriT1, errNorm] = bst_normalize_mni(T1File);
+                [sMriT1, errNorm] = bst_normalize_mni(sMriT1);
                 % Handle errors
                 if ~isempty(errNorm)
                     errMsg = ['Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
                     return;
                 end
             end
-            
+
             % === SAVE T1 MRI AS NII ===
             bst_progress('text', 'Exporting MRI...');
             % Empty temporary folder, otherwise it may reuse previous files in the folder
@@ -571,13 +610,14 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Create temporary folder for segmentation files
             simnibsDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'simnibs');
             mkdir(simnibsDir);
-            % Save MRI in .nii format
+            % Save T1 MRI in .nii format
             subjid = strrep(sSubject.Name, '@', '');
             T1Nii = bst_fullfile(simnibsDir, [subjid 'T1.nii']);
             out_mri_nii(sMriT1, T1Nii);
+            % Save T2 MRI in .nii format
             if ~isempty(T2File)
                 T2Nii = bst_fullfile(simnibsDir, [subjid 'T2.nii']);
-                out_mri_nii(T2File, T2Nii);
+                out_mri_nii(sMriT2, T2Nii);
             else
                 T2Nii = [];
             end
