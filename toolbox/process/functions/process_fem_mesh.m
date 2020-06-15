@@ -287,10 +287,16 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         iT1 = iMris(1);
         iT2 = [];
     end
-    
+    % Get full file names
+    T1File = file_fullpath(sSubject.Anatomy(iT1).FileName);
+    if ~isempty(iT2)
+        T2File = file_fullpath(sSubject.Anatomy(iT2).FileName);
+    else
+        T2File = [];
+    end
+        
     % ===== LOAD/CUT T1 =====
     if ismember(lower(OPTIONS.Method), {'brain2mesh', 'simnibs'})
-        T1File = file_fullpath(sSubject.Anatomy(iT1).FileName);
         sMriT1 = in_mri_bst(T1File);
         % Cut neck (below MNI coordinate below Z=Zneck)
         if (OPTIONS.Zneck < 0)
@@ -307,8 +313,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     end
 
     % ===== LOAD/CUT T2 =====
-    if ~isempty(iT2) && ismember(lower(OPTIONS.Method), {'brain2mesh', 'simnibs'})
-        T2File = file_fullpath(sSubject.Anatomy(iT2).FileName);
+    if ~isempty(T2File) && ismember(lower(OPTIONS.Method), {'brain2mesh', 'simnibs'})
         sMriT2 = in_mri_bst(T2File);
         % Cut neck (below MNI coordinate below Z=Zneck)
         if (OPTIONS.Zneck < 0)
@@ -319,8 +324,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 return;
             end
         end
-    else
-        T2File = [];
     end
     FemFile = [];
     
