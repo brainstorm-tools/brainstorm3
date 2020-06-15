@@ -2533,7 +2533,7 @@ function DisplayConfigMenu(hFig, jParent)
         % Scale to fit Y
         if strcmpi(TsInfo.DisplayMode, 'butterfly')
             jMenu.addSeparator();
-            jItem = gui_component('MenuItem', jMenu, [], 'Scale selection to fit screen', IconLoader.ICON_Y, [], @(h,ev)ScaleToFitY(hFig, ev));
+            jItem = gui_component('MenuItem', jMenu, [], 'Scale to fit screen', IconLoader.ICON_Y, [], @(h,ev)ScaleToFitY(hFig, ev));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0));
         end
         
