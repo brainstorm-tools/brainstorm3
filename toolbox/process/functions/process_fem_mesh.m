@@ -211,7 +211,7 @@ function OPTIONS = GetDefaultOptions()
         'NbVertices',     15000, ...           % SimNIBS: Number of vertices for the cortex surface imported from CAT12 
         'NodeShift',      0.3, ...             % FieldTrip: [0 - 0.49] Improves the geometrical properties of the mesh
         'Downsample',     3, ...               % FieldTrip: Integer, Downsampling factor to apply to the volumes before meshing
-        'Zneck',          -85);                % Input T1/T2: Cut volumes below neck (MNI Z-coordinate)
+        'Zneck',          -115);               % Input T1/T2: Cut volumes below neck (MNI Z-coordinate)
 end
 
 
