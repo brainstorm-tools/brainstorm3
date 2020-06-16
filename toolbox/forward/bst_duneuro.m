@@ -31,6 +31,10 @@ errMsg = '';
 gui_brainstorm('EmptyTempFolder');
 % Install bst_duneuro if needed
 [DuneuroExe, errMsg] = duneuro_install();
+if isempty(DuneuroExe)
+    DuneuroExe = bst_fullfile(bst_get('BrainstormUserDir'), 'bst_duneuro','bin','bst_duneuro_meeg_win64');
+    errMsg= '';
+end
 if ~isempty(errMsg) || isempty(DuneuroExe)
     return;
 end
@@ -107,6 +111,14 @@ end
 %% ===== HEAD MODEL =====
 % Load FEM mesh
 FemMat = load(cfg.FemFile);
+% check if the Tensors is available and not empty in order to use the
+% tensors
+if isfield(FemMat,'Tensors')
+    if ~isempty(FemMat.Tensors)
+        cfg.UseTensor = 1;
+    end
+end
+
 % Get mesh type
 switch size(FemMat.Elements,2)
     case 4,  ElementType = 'tetrahedron';
@@ -175,11 +187,19 @@ else
         return;
     end
     MeshFile = 'head_model.geo';
-    cfg.UseTensor = true;
+    cfg.UseTensor = 1;
 end
 % Write mesh model
-MeshFile = fullfile(TmpDir, MeshFile);
-out_fem(FemMat, MeshFile);
+MeshFile = fullfile(TmpDir, MeshFile); 
+out_fem(FemMat, MeshFile); % This is not working for the geo file, it is not
+% recognized by duneuro... ask francois to review his implementation 
+% temporary version where I call the previous function 
+if cfg.UseTensor
+    cfg.node = FemMat.Vertices;
+    cfg.elem = [FemMat.Elements FemMat.Tissue];
+    cfg.head_filename = MeshFile ;
+    bst_write_cauchy_geometry(cfg)
+end
 
 
 %% ===== SOURCE MODEL =====
@@ -231,10 +251,20 @@ if ~cfg.UseTensor
     fclose(fid);
 % With tensor (isotropic or anisotropic)
 else
-    CondFile = fullfile(TmpDir, 'conductivity_model.knw');
-    out_fem_knw(cfg.elem, cfg.CondTensor, CondFile);
+    CondFile = fullfile(TmpDir, 'conductivity_model.knw'); 
+    % Transformation matrix  and tensor mapping on each direction
+    CondTensor = zeros(length(FemMat.Elements),6) ;
+    for ind =1 : length(FemMat.Elements)
+        temp0 = reshape(FemMat.Tensors(ind,:),3,[]);
+        T1 = temp0(:,1:3); % get the 3 eigen vectors
+         l =  diag(temp0(:,4)); % get the eigen value as 3x3
+        temp = T1 * l * T1'; % reconstruct the tensors
+%         CondTensor(ind,:) = [temp(1) temp(5) temp(9) temp(4) temp(7) temp(8)];
+        CondTensor(ind,:) = [temp(1) temp(5) temp(9) temp(4) temp(8) temp(7)]; % this is the right order       
+    end
+    % write the tensors 
+    out_fem_knw(FemMat, CondTensor, CondFile);
 end
-
 
 %% ===== WRITE MINI FILE =====
 % Open the mini file
