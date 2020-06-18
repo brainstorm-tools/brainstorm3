@@ -26,7 +26,6 @@ function [Gain, errMsg] = bst_duneuro(cfg)
 
 % Initialize returned values
 Gain = [];
-errMsg = '';
 % Empty temp folder
 gui_brainstorm('EmptyTempFolder');
 % Install bst_duneuro if needed
@@ -231,8 +230,18 @@ if ~cfg.UseTensor
     fclose(fid);
 % With tensor (isotropic or anisotropic)
 else
-    CondFile = fullfile(TmpDir, 'conductivity_model.knw');
-    out_fem_knw(cfg.elem, cfg.CondTensor, CondFile);
+    CondFile = fullfile(TmpDir, 'conductivity_model.knw'); 
+    % Transformation matrix  and tensor mapping on each direction
+    CondTensor = zeros(length(FemMat.Elements),6) ;
+    for ind =1 : length(FemMat.Elements)
+        temp0 = reshape(FemMat.Tensors(ind,:),3,[]);
+        T1 = temp0(:,1:3); % get the 3 eigen vectors
+        l =  diag(temp0(:,4)); % get the eigen value as 3x3
+        temp = T1 * l * T1'; % reconstruct the tensors
+        CondTensor(ind,:) = [temp(1) temp(5) temp(9) temp(4) temp(8) temp(7)]; % this is the right order       
+    end
+    % write the tensors 
+    out_fem_knw(FemMat, CondTensor, CondFile);
 end
 
 
