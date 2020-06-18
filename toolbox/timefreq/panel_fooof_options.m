@@ -152,7 +152,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     % ===== GUESS WEIGHT =====
     if fooof_type == 1
         jPanelGuessWeight = gui_river([1,1]);
-                         gui_component('label', jPanelGuessWeight, 'br', 'Aperiodic Mode:');
+                         gui_component('label', jPanelGuessWeight, 'br', 'Guess Weight:');
         jButtonGroup3 = ButtonGroup();
             jRadioNone = gui_component('radio', jPanelGuessWeight, [], 'None', jButtonGroup3);
             jRadioWeak = gui_component('radio', jPanelGuessWeight, [], 'Weak', jButtonGroup3);

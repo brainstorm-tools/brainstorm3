@@ -1,7 +1,6 @@
 function varargout = process_fooof_analysis(varargin)
-% PROCESS_FOOOF: Applies the "Fitting Oscillations and One Over F"
-% algorithm on a Welch's PSD
-
+% PROCESS_FOOOF_ANALYSIS: Extracts features from FOOOF models
+%
 % @=============================================================================
 % This software is part of the Brainstorm software:
 % http://neuroimage.usc.edu/brainstorm
@@ -20,7 +19,7 @@ function varargout = process_fooof_analysis(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-%
+% Author: Luc Wilson, 2020
 
 eval(macro_method);
 end
