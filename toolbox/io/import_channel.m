@@ -251,6 +251,10 @@ switch (FileFormat)
         ChannelMat.Comment = '10-10 electrodes';
         FileUnits = 'mm';
         
+    case 'TVB'
+        ChannelMat = in_channel_tvb(ChannelFile);
+        FileUnits = 'm';
+        
     case {'INTRANAT', 'INTRANAT_MNI'}
         switch (fExt)
             case 'pts'

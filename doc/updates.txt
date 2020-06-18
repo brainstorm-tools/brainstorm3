@@ -3,6 +3,7 @@ June 2020
 - FEM: Computation and display of tetrahedral conductivity tensors
 - Distrib: New default binary distribution: Matlab 2020a
 - Distrib: Compatibility with Matlab 2020b prerelease
+- IO: Support for The Virtual Brain .h5 EEG recordings (TVB)
 ---------------------------------------------------------------
 May 2020
 - FEM: Import and management of tissue segmentations
