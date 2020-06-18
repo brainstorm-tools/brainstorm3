@@ -413,13 +413,16 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFunMag.setEnabled(1);
                 ctrl.jRadioFunLog.setEnabled(1);
                 ctrl.jRadioFunPhase.setEnabled(0);
-                % Also display FOOOF panel
-                ctrl.jPanelFOOOF.setVisible(1);
             case 'phase'
                 ctrl.jRadioFunPower.setEnabled(0);
                 ctrl.jRadioFunMag.setEnabled(0);
                 ctrl.jRadioFunLog.setEnabled(0);
                 ctrl.jRadioFunPhase.setEnabled(1);            
+        end
+        % Display FOOOF panel
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq), 'FOOOF') && ...
+                ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF)
+            ctrl.jPanelFOOOF.setVisible(1);
         end
         % Entire panel
         if ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'none', 'power', 'magnitude', 'log', 'phase'}) ...
