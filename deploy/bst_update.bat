@@ -19,7 +19,7 @@ REM =============================
 
 
 ECHO Downloading updates...
-powershell -Command "(New-Object Net.WebClient).DownloadFile('https://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09', 'brainstorm3_update.zip')"
+powershell -Command "(New-Object Net.WebClient).DownloadFile('http://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09', 'brainstorm3_update.zip')"
 
 ECHO Deleting previous install...
 RMDIR /S /Q brainstorm3

@@ -45,7 +45,7 @@ end
 
 % ===== NUMBER OF USERS =====
 % Read list of users
-str = url_read_fcn('https://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
+str = url_read_fcn('http://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
 % Extract values
 dates = textscan(str, '%d %d');
 dates = double([dates{1}, dates{2}]);
@@ -62,7 +62,7 @@ hFig(end+1) = fig_report(year, nUsersTotal, 0, ...
        
 % ===== LOG ANALYSIS =====
 % Read list of users
-str = url_read_fcn('https://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
+str = url_read_fcn('http://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
 % Extract values
 c = textscan(str, '%02d%02d%c');
 dates = double([c{1}, c{2}]);
@@ -95,7 +95,7 @@ nUpdate(iBad) = interp1(xUpdate(~iBad), nUpdate(~iBad), xUpdate(iBad), 'pchip');
 
 % ===== NUMBER OF FORUM POSTS =====
 % Read list of users
-str = url_read_fcn('https://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
+str = url_read_fcn('http://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
 % Extract values
 dates = textscan(str, '%d %d');
 dates = double([dates{1}, dates{2}]);

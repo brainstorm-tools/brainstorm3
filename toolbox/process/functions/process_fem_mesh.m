@@ -1190,7 +1190,7 @@ function errMsg = InstallBrain2mesh(isInteractive)
         return;
     end
     % Download url
-    url = 'https://neuroimage.usc.edu/bst/getupdate.php?d=Brain2Mesh_alpha2.zip';
+    url = 'http://neuroimage.usc.edu/bst/getupdate.php?d=Brain2Mesh_alpha2.zip';
     % Local folder where to install iso2mesh
     installDir = bst_fullfile(bst_get('BrainstormUserDir'), 'brain2mesh');
     exePath = bst_fullfile(installDir, 'brain2mesh', 'brain2mesh.m');

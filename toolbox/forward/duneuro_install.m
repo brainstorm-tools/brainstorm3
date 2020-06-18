@@ -50,7 +50,7 @@ else
 end
 % Read online version.txt
 try
-    str = url_read_fcn('https://neuroimage.usc.edu/bst/getversion_duneuro.php');
+    str = url_read_fcn('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
 catch
     errMsg = 'Could not get current online version of bst_duneuro.';
     return;
@@ -60,7 +60,7 @@ if (length(str) < 6)
 end
 DuneuroVersion = str(1:6);
 % Get download URL
-url = ['https://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_' DuneuroVersion '.zip'];
+url = ['http://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_' DuneuroVersion '.zip'];
 
 % Local folder where to install the program
 installDir = bst_fullfile(bst_get('BrainstormUserDir'), 'bst_duneuro');

@@ -1548,35 +1548,6 @@ function MakeProtocolPortable()
 end
 
 
-% %% ===== TEST CONNECTION =====
-% function TestConnection()
-%     % Test address
-%     srcUrl  = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015';
-%     % Get URL
-%     handler = sun.net.www.protocol.http.Handler;
-%     jUrl = java.net.URL([],srcUrl,handler);
-%     % Get proxy
-%     com.mathworks.mlwidgets.html.HTMLPrefs.setProxySettings;
-%     proxy = com.mathworks.webproxy.WebproxyFactory.findProxyForURL(java.net.URL(srcUrl));
-%     % Create connection
-%     if ~isempty(proxy)
-%         connection = jUrl.openConnection(proxy);
-%     else
-%         connection = jUrl.openConnection();
-%     end
-%     % Set connection properties
-%     connection.setRequestProperty('Range', 'bytes=0-');
-%     connection.setRequestProperty('User-Agent', 'MATLAB-Brainstorm');
-%     java.net.Authenticator.setDefault([]);
-%     % Open connection
-%     connection.connect();
-%     % Make sure response code is in the 200 range.
-%     connection.getResponseCode()
-%     % Check for valid content length.
-%     contentLength = connection.getContentLength();
-% end
-
-
 %% ===== SHOW GUIDELINES =====
 function ShowGuidelines(ScenarioName)
     % Close tab if it already exists

@@ -2210,47 +2210,47 @@ switch contextName
         end
         % Get defaults from internet 
         if ~ismember(lower({sTemplates.Name}), 'icbm152')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
             sTemplates(end).Name = 'ICBM152';
         end
         if ~ismember(lower({sTemplates.Name}), 'icbm152_2019')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
             sTemplates(end).Name = 'ICBM152_2019';
         end
         if ~ismember(lower({sTemplates.Name}), 'icbm152_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
             sTemplates(end).Name = 'ICBM152_BrainSuite_2016';
         end
         if ~ismember(lower({sTemplates.Name}), 'colin27_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
             sTemplates(end).Name = 'Colin27_2016';
         end
         if ~ismember(lower({sTemplates.Name}), 'colin27_2012')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2012';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2012';
             sTemplates(end).Name = 'Colin27_2012';
         end
         if ~ismember(lower({sTemplates.Name}), 'colin27_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
             sTemplates(end).Name = 'Colin27_BrainSuite_2016';
         end
         if ~ismember(lower({sTemplates.Name}), 'bci-dni_brainsuite_2020')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2020';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2020';
             sTemplates(end).Name = 'BCI-DNI_BrainSuite_2020';
         end
         if ~ismember(lower({sTemplates.Name}), 'uscbrain_brainsuite_2020')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2020';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2020';
             sTemplates(end).Name = 'USCBrain_BrainSuite_2020';
         end
         if ~ismember(lower({sTemplates.Name}), 'fsaverage_2020')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2020';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2020';
             sTemplates(end).Name = 'FSAverage_2020';
         end
         if ~ismember(lower({sTemplates.Name}), 'infant7w_2015b')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015b';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015b';
             sTemplates(end).Name = 'Infant7w_2015b';
         end
         if ~ismember(lower({sTemplates.Name}), 'oreilly_1y')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1y';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1y';
             sTemplates(end).Name = 'Oreilly_1y';
         end
         % If a specific template was requested
