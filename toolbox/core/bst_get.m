@@ -2698,15 +2698,12 @@ switch contextName
         end
         
     case 'UseSigProcToolbox'
-        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'HasSigProcToolbox')
-            isToolboxInstalled = GlobalData.Preferences.HasSigProcToolbox;
-        else
+        if isempty(GlobalData.Program.HasSigProcToolbox)
             % Check if Signal Processing Toolbox is installed
-            isToolboxInstalled = exist('fir2', 'file');
-            GlobalData.Preferences.HasSigProcToolbox = isToolboxInstalled;
+            GlobalData.Program.HasSigProcToolbox = exist('fir2', 'file') == 2;
         end
         % Return user preferences
-        if ~isToolboxInstalled
+        if ~GlobalData.Program.HasSigProcToolbox
             argout1 = 0;
         elseif isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseSigProcToolbox')
             argout1 = GlobalData.Preferences.UseSigProcToolbox;
