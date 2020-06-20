@@ -46,8 +46,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option: Method
     sProcess.options.method_title.Comment = '<BR>Defacing method:';
     sProcess.options.method_title.Type    = 'label';
-    sProcess.options.method.Comment = {'FreeSurfer: mri_deface', 'SPM: Cut below a plane in MNI coordinates (a.x+b.y+c.z+d=0)'; ...
-                                       'freesurfer', 'spm'};
+    sProcess.options.method.Comment = {'FreeSurfer: mri_deface', 'BrainSuite: Remove the face with a pre-defined mask', 'SPM: Cut below a plane in MNI coordinates (a.x+b.y+c.z+d=0)'; ...
+                                       'freesurfer', 'brainsuite', 'spm'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'spm';
     % SPM: MNI plane coordinates
@@ -251,6 +251,26 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
                 sMriDefaced = in_mri_nii(fileNiiDefaced);
                 % Saves defaced volume
                 sMri.Cube = sMriDefaced.Cube;
+                
+            case 'brainsuite'
+                % Get ICBM152 defacing template
+                sTemplate = bst_get('AnatomyDefaults', 'ICBM152');
+                MaskFile = bst_fullfile(sTemplate.FilePath, 'facemask_300z.nii.gz');
+                if isempty(MaskFile)
+                    errMsg = ['Could not find face mask: ' MaskFile];
+                    if ~isProgress
+                        bst_progress('stop');
+                    end
+                    return;
+                end
+                % Load mask file
+                sMask = in_mri(MaskFile, 'Nifti1');
+                sMask.NCS.R = eye(3);
+                sMask.NCS.T = [-99; -135; -184];
+                % Reslice to the space of the MRI to deface
+                sMaskReslice = mri_reslice(sMask, sMri, 'ncs', 'ncs');
+                % Apply mask
+                sMri.Cube(sMaskReslice.Cube == 0) = 0;
                 
             otherwise
                 errMsg = ['Invalid defacing method: ' OPTIONS.Method];
