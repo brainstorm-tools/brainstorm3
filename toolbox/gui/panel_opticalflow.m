@@ -786,6 +786,9 @@ function PlotOpticalFlow(hFig, opticalFlow, currentTime, sSurf)
     
     flowField = flowField(:,:,timeIdx);
     
+    % Uncomment scale and the second quiver 3 to have a scaled
+    % representation aver time of the vector's norm.
+    
     % scale = sum(flowField.^2,'all')/scalingParameter;
     useful = sum(flowField.^2, 2) > filterParameter;   % Le filtre s'applique sur chaque image au lieu de s'appliquer sur le tout
     flowField(~useful,:) = 0;
