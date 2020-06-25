@@ -354,6 +354,7 @@ function Compute(ResultsFile, inputs) %#ok<DEFNU>
     if inputs.segment
         bst_progress('start', 'Optical Flow', 'Segmenting into stable and transition states ...');
 
+        % interval = timeInterval(1) : SamplingInterval : timeInterval(2)+2*eps;
         [stableStates, transientStates, stablePoints, transientPoints, dEnergy] = ...
                bst_opticalflow_states(flowField, FV.Faces, FV.Vertices, 3, timeInterval, SamplingInterval, true);
 
@@ -451,6 +452,7 @@ function save_flow(ResultsFile, inputs, flowField, flowFieldRotated, ...
     else
         opticalFlow.timeInterval = [inputs.tStart inputs.tEnd]; % Time interval
     end
+%    opticalFlow.timeInterval = [inputs.tStart inputs.tEnd]; % Time interval
     opticalFlow.samplingInterval = Time(2)-Time(1); % Time interval
     opticalFlow.hornSchunck = inputs.hornSchunck; % Regularization
     opticalFlow.int_dF = int_dF;
@@ -720,7 +722,7 @@ function PlotOpticalFlow(hFig, opticalFlow, currentTime, sSurf)
     % Process figure (removing old flows if necessary + getting surface axes)
     nVertices = size(sSurf.Vertices, 1);
     [ax, currentName] = process_surface(hFig);
-
+    
     % First check if we need to do anything
     flagPlotFlow = 0;
     for n = 1:length(opticalFlow)
@@ -775,6 +777,8 @@ function PlotOpticalFlow(hFig, opticalFlow, currentTime, sSurf)
     else
         flowField = opticalFlow.flowField;
     end
+    
+    % Leo rescaling parameters
         
     scalingParameter = mean(sum(flowField.^2, [1 2]));
     timeMaxAvg = mean(max(sum(flowField.^2,2),[],1));
@@ -793,6 +797,10 @@ function PlotOpticalFlow(hFig, opticalFlow, currentTime, sSurf)
     %    Vertices(:,1), Vertices(:,2), Vertices(:,3), ...
     %    flowField(:,1), flowField(:,2), flowField(:,3), ...
     %    6*scale, 'c', 'LineWidth', 2, 'Tag', 'Optical Flow'); % Color is cyan, works well with hot colormap
+    % CODE USED IN VIEW_LEADFIELDS
+    % quiver3(HeadmodelMat{iLF}.GridLoc(:,1), HeadmodelMat{iLF}.GridLoc(:,2), HeadmodelMat{iLF}.GridLoc(:,3),
+    % LeadField(:,1), LeadField(:,2), LeadField(:,3), 5, 'Parent', hAxes, 'LineWidth', 1,
+    % 'Color',     ColorOrder(mod(iLF-1, length(ColorOrder)) + 1, :), 'Tag',       'lfArrows');
     hold(ax,'off');
 
     % Modify figure name if we are in stable/transient state
