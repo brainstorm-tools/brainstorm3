@@ -44,6 +44,19 @@ function [stable, transient, stablePoints, transientPoints, dEnergy] = ...
 % Setup: get displacement energy
 [syed, triangleAreas] = geometry_tesselation(Faces, Vertices, dimension);
 dEnergy = zeros(1, size(flowField,3));
+% dEnergy2 = zeros(1, size(flowField,3));
+for m = 1:size(flowField,3)
+    % /!\ /!\
+    % Léo : Pour moi le calcul de la variation d'énergie est faux !!
+    % Pourquoi prendre le flux sur les côtés plutôt que la moyenne sur les
+    % sommets ? Le triangle ne se déplace qu'une seule fois, décomposition
+    % sur les côtés injustifiée de mon point de vue.
+    % /!\ /!\
+%     v12 = sum((flowField(Faces(:,1),:,m)+flowField(Faces(:,2),:,m)).^2,2) / 4;
+%     v23 = sum((flowField(Faces(:,2),:,m)+flowField(Faces(:,3),:,m)).^2,2) / 4;
+%     v13 = sum((flowField(Faces(:,1),:,m)+flowField(Faces(:,3),:,m)).^2,2) / 4;
+%     dEnergy(m) = sum(triangleAreas.*(v12+v23+v13));
+    
     % Version Leo, 16/03/2020
     dEnergy(m) = sum(triangleAreas.*sum((flowField(Faces(:,1),:,m)+flowField(Faces(:,2),:,m)+flowField(Faces(:,3),:,m)).^2,2));
 end
@@ -68,7 +81,7 @@ if displayFlag
     interval(maxima), s(maxima), 'r*');
   hold(hEnergy, 'off');
   xlabel('Time (ms)')
-  ylabel('\partial Energy')
+  ylabel('\partial Energy filtered')
 end
 
 % Find transient and stable (defined as not-transient) states
@@ -79,6 +92,7 @@ stable = stable_states(s, maxima, minima, transient);
 stable = sortrows(stable);
 
 % Get list of transient and stable state intervals
+% Il faut revoir clean_flow_states.
 extrema = clean_flow_states(transient, stable, samplingInterval);
 transient = extrema(extrema(:,4) > 1-eps, 1:2); transientPoints = [];
 for m = 1:size(transient,1)
@@ -380,13 +394,13 @@ if maxOrMin % Local maxima == local minima of negative
   signal = -1*signal;
 end
 valleys = [];
-% Crï¿½ation of the convolution filter
+% Création of the convolution filter
 smoothingFilter = (1);
 for i = 1:6
     smoother = (1/4)*[1 2 1];
     smoothingFilter = conv(smoothingFilter, smoother);
 end
-% On crï¿½ï¿½ le signal 'miroir sur lequel on va appliquer le filtre
+% On créé le signal 'miroir sur lequel on va appliquer le filtre
 x = size(signal,2);
 s = zeros(1, x+2*6);
 s(7:6+x) = signal;
