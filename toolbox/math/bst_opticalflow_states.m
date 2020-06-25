@@ -119,6 +119,7 @@ if displayFlag
   end
 end
 
+% Uncomment following lines to display the unfilterd/original figure.
 % if displayFlag
 %     figure;
 %     h2Energy = axes;
@@ -208,25 +209,6 @@ for m = 2:size(extrema,1)
     end
   end
 end
-
-
-%     elseif m < size(extrema,1) && extrema(m,2) > extrema(m+1,1) - minInterval ...
-%         && (abs(extrema(m,3)-extrema(m-1,3))<threshold)
-%       if extrema(m,2)-extrema(m,1) > extrema(m+1,2)-extrema(m+1,1)
-%         tag = extrema(m,4);
-%       else
-%         tag = extrema(m+1,4);
-%       end
-%       extrema(m,2) = extrema(m+1,2); % 2nd interval's beginning is 1st interval
-%       extrema(m+1,1) = extrema(m,1); % 1st interval's end is 2nd interval
-%       extrema(m,4) = tag; % Both get same label ...
-%       extrema(m+1,4) = tag; % ... of the bigger interval
-%     else
-%       extrema(m,1) = max(extrema(m,1) - minInterval, 1); % 2nd interval's beginning is 1st interval
-%       extrema(m,2) = min(extrema(m,2) + minInterval, length(dEnergy)); % 1st interval's end is 2nd interval
-%     end
-%   end
-% end
 
 % Merge consecutive states of the same type
 for m = 2:size(extrema,1)
@@ -410,23 +392,6 @@ for i = 1:6
 end
 s = conv(s, smoothingFilter, 'same');
 s = s(7:6+x);
-% s(tStart) = signal(tStart); s(tEnd) = signal(tEnd); s(tStart+1) = (s(tStart)+signal(tStart+1)+s(tStart+2))/3; s(tEnd-1) = (s(tEnd)+signal(tEnd-1)+s(tEnd-2))/3;
-% s = conv(s, smoothingFilter, 'same');
-% s(tStart) = signal(tStart); s(tEnd) = signal(tEnd); s(tStart+1) = (s(tStart)+signal(tStart+1)+s(tStart+2))/3; s(tEnd-1) = (s(tEnd)+signal(tEnd-1)+s(tEnd-2))/3;
-% s = conv(s, smoothingFilter, 'same');
-% s(tStart) = signal(tStart); s(tEnd) = signal(tEnd); s(tStart+1) = (s(tStart)+signal(tStart+1)+s(tStart+2))/3; s(tEnd-1) = (s(tEnd)+signal(tEnd-1)+s(tEnd-2))/3;
-% s = conv(s, smoothingFilter, 'same');
-% s(tStart) = signal(tStart); s(tEnd) = signal(tEnd); s(tStart+1) = (s(tStart)+signal(tStart+1)+s(tStart+2))/3; s(tEnd-1) = (s(tEnd)+signal(tEnd-1)+s(tEnd-2))/3;
-% s = conv(s, smoothingFilter, 'same');
-% s(tStart) = signal(tStart); s(tEnd) = signal(tEnd); s(tStart+1) = (s(tStart)+signal(tStart+1)+s(tStart+2))/3; s(tEnd-1) = (s(tEnd)+signal(tEnd-1)+s(tEnd-2))/3;
-
-% figure; 
-% hEnergy = axes;
-% plot(hEnergy, tStart:tEnd, s, 'Color', [0 0 0])
-% axis([tStart tEnd min(0,min(s)) max(0,max(s))]);
-% hold(hEnergy, 'on');
-
-% Find local minima (of flipped signal if maxima desired)
 
 for t = (tStart+1):(tEnd-1)
   if s(t) < s(t-1) 
@@ -528,25 +493,5 @@ if dimension == 3
 else
     FaceNormals = [];
 end
-
-% % Calculate normals to surface at each vertex (from normals at each face)
-% VertNormals = zeros(size(Vertices,1),3);
-% bst_progress('start', 'Optical Flow', ...
-%   'Computing normals to surface at every vertex ...', 1, size(Faces,1));
-% for facesIdx=1:size(Faces,1); 
-%   VertNormals(Faces(facesIdx,:),:) = ...
-%     VertNormals(Faces(facesIdx,:),:) + ...
-%     repmat(FaceNormals(facesIdx,:), [3 1]);
-%   
-%   if mod(facesIdx,20) == 0
-%     bst_progress('inc', 20); % Update progress bar
-%   end
-% end 
-% bst_progress('stop');
-% 
-% % Normalize perpendicular-to-surface vectors for each vertex
-% VertNormals = VertNormals ./ ...
-%   repmat(sqrt(sum(VertNormals.^2,2)),1,3);
-% VertNormals(isnan(VertNormals)) = 0; % For pathological anatomy
 
 end
