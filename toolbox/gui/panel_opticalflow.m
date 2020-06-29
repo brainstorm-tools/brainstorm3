@@ -58,7 +58,6 @@ function [bstPanelNew, panelName] = CreatePanel(TimeVector) %#ok<DEFNU>
 
     % Calculate HHD as well as optical flow
     jCheckHHD = JCheckBox('Calculate HHD', 0);
-    jCheckHHD.setEnabled(false); % ======>>>>> RIGHT NOW, HHD IS NOT ENABLED
     java_setcb(jCheckHHD, 'ActionPerformedCallback', @(h,ev)UpdatePanel());
     jPanelSetup.add('br', jCheckHHD);
 
@@ -331,9 +330,15 @@ function Compute(ResultsFile, inputs) %#ok<DEFNU>
         [flowField, int_dF, errorData, errorReg, poincare, timeInterval] = ...
             bst_call(@bst_opticalflow, F, FV, Time, ...
             inputs.tStart, inputs.tEnd, inputs.hornSchunck);
-        if isfield(inputs, 'depthHHD') %  ... and, optionally, HHD
-            % [U A H Vcurl Vdiv index] = ...
-            %   HHD(dataFile, FV, Time, inputs.tStart, inputs.tEnd, inputs.depthHHD);
+        if isfield(inputs, 'depthHHD') %  ... and, optionally, HHD 
+            [U, A, H, Vcurl, Vdiv, index] = bst_opticalflow_hhd(flowField, FV, inputs.depthHHD);
+            flowFieldHHD.DivergingPotential = U;
+            flowFieldHHD.RotatingPotential = A;
+            flowFieldHHD.HarmonicComponent = H;
+            flowFieldHHD.RotatingComponent = Vcurl;
+            flowFieldHHD.DivergingComponent = Vdiv;
+        else
+            flowFieldHHD = [];
         end
 
         if inputs.rotate % Rotate flow so that tangent bundle is for circumsphere
@@ -343,7 +348,7 @@ function Compute(ResultsFile, inputs) %#ok<DEFNU>
         end
 
         % Save results into Results file as latest optical flow calculation
-        save_flow(ResultsFile, inputs, flowField, flowFieldRotated, ...
+        save_flow(ResultsFile, inputs, flowField, flowFieldHHD, flowFieldRotated, ...
             Time, int_dF, errorData, errorReg, poincare);
     else
         flowField = ResultsMat.OpticalFlow.flowField;
@@ -354,7 +359,6 @@ function Compute(ResultsFile, inputs) %#ok<DEFNU>
     if inputs.segment
         bst_progress('start', 'Optical Flow', 'Segmenting into stable and transition states ...');
 
-        % interval = timeInterval(1) : SamplingInterval : timeInterval(2)+2*eps;
         [stableStates, transientStates, stablePoints, transientPoints, dEnergy] = ...
                bst_opticalflow_states(flowField, FV.Faces, FV.Vertices, 3, timeInterval, SamplingInterval, true);
 
@@ -426,7 +430,7 @@ function flowFieldRotated = rotate_optical_flow(flowField, Vertices, VertNormals
 end
 
 %% ===== SAVE OPTICAL FLOW INTO BRAINSTORM =====
-function save_flow(ResultsFile, inputs, flowField, flowFieldRotated, ...
+function save_flow(ResultsFile, inputs, flowField, flowFieldHHD, flowFieldRotated, ...
         Time, int_dF, errorData, errorReg, poincare)
     % SAVE_FLOW     Save flow results (and possibly publish microstates)
     % INPUTS:
@@ -434,6 +438,12 @@ function save_flow(ResultsFile, inputs, flowField, flowFieldRotated, ...
     %   inputs            - inputs to error-check whether results are written
     %   flowField         - Optical flow field
     %                       dimension (# of vertices) X length(tStart:tEnd)
+    %   flowFieldHHD      - flow field Helmholtz Hodge decomposition data
+    %       U             - potential field associated to the curl-free component
+    %       A             - potential field associated to the div-free component
+    %       H             - Harmonic component, suposedly ~0
+    %       Vcurl         - div-free component
+    %       Vdiv          - curl-free component
     %   flowFieldRotated  - flow field rotated for faux spherical brain
     %   Time              - time when activity was reconstructed (including
     %                       times for which optical flow is not calculated)
@@ -444,6 +454,11 @@ function save_flow(ResultsFile, inputs, flowField, flowFieldRotated, ...
 
     opticalFlow.flowField = flowField; % Optical flow results
     opticalFlow.flowFieldRotatedAvailable = inputs.rotate;
+    opticalFlow.flowFieldHHDAvailable = inputs.HHDAvailable;
+    if inputs.HHDAvailable
+        opticalFlow.depthHHD = inputs.depthHHD;
+        opticalFlow.flowFieldHHD = flowFieldHHD;
+    end
     if inputs.rotate % Results with surface normal rotated towards center of boundary's volume
         opticalFlow.flowFieldRotated = flowFieldRotated;
     end
@@ -459,21 +474,17 @@ function save_flow(ResultsFile, inputs, flowField, flowFieldRotated, ...
     opticalFlow.errorData = errorData; % Error in fit to data
     opticalFlow.errorReg = errorReg; % Error from smooth regularization
     opticalFlow.poincare = poincare;
-    opticalFlow.HHDAvailable = inputs.HHDAvailable;
-    if inputs.HHDAvailable
-        opticalFlow.depthHHD = inputs.depthHHD;
-    end
 
     % Save optical flow results in original results file
     Results = in_bst_results(ResultsFile);
-    if opticalFlow(end).HHDAvailable
-        Results = bst_history('add', Results, 'compute', ...
-            ['Optical flow estimated: [' int2str(inputs.tStart*1000) ...
-            ', ' int2str(inputs.tEnd*1000) ']ms']);
-    else
+    if opticalFlow(end).flowFieldHHDAvailable
         Results = bst_history('add', Results, 'compute', ...
             ['Optical flow & HHD estimated: [' ...
             int2str(inputs.tStart*1000) ...
+            ', ' int2str(inputs.tEnd*1000) ']ms']);
+    else
+        Results = bst_history('add', Results, 'compute', ...
+            ['Optical flow estimated: [' int2str(inputs.tStart*1000) ...
             ', ' int2str(inputs.tEnd*1000) ']ms']);
     end
     Results.OpticalFlow = opticalFlow;
@@ -786,9 +797,6 @@ function PlotOpticalFlow(hFig, opticalFlow, currentTime, sSurf)
     
     flowField = flowField(:,:,timeIdx);
     
-    % Uncomment scale and the second quiver 3 to have a scaled
-    % representation aver time of the vector's norm.
-    
     % scale = sum(flowField.^2,'all')/scalingParameter;
     useful = sum(flowField.^2, 2) > filterParameter;   % Le filtre s'applique sur chaque image au lieu de s'appliquer sur le tout
     flowField(~useful,:) = 0;
@@ -800,10 +808,6 @@ function PlotOpticalFlow(hFig, opticalFlow, currentTime, sSurf)
     %    Vertices(:,1), Vertices(:,2), Vertices(:,3), ...
     %    flowField(:,1), flowField(:,2), flowField(:,3), ...
     %    6*scale, 'c', 'LineWidth', 2, 'Tag', 'Optical Flow'); % Color is cyan, works well with hot colormap
-    % CODE USED IN VIEW_LEADFIELDS
-    % quiver3(HeadmodelMat{iLF}.GridLoc(:,1), HeadmodelMat{iLF}.GridLoc(:,2), HeadmodelMat{iLF}.GridLoc(:,3),
-    % LeadField(:,1), LeadField(:,2), LeadField(:,3), 5, 'Parent', hAxes, 'LineWidth', 1,
-    % 'Color',     ColorOrder(mod(iLF-1, length(ColorOrder)) + 1, :), 'Tag',       'lfArrows');
     hold(ax,'off');
 
     % Modify figure name if we are in stable/transient state
