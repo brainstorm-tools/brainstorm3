@@ -46,12 +46,6 @@ function [stable, transient, stablePoints, transientPoints, dEnergy] = ...
 dEnergy = zeros(1, size(flowField,3));
 % dEnergy2 = zeros(1, size(flowField,3));
 for m = 1:size(flowField,3)
-    % /!\ /!\
-    % Léo : Pour moi le calcul de la variation d'énergie est faux !!
-    % Pourquoi prendre le flux sur les côtés plutôt que la moyenne sur les
-    % sommets ? Le triangle ne se déplace qu'une seule fois, décomposition
-    % sur les côtés injustifiée de mon point de vue.
-    % /!\ /!\
 %     v12 = sum((flowField(Faces(:,1),:,m)+flowField(Faces(:,2),:,m)).^2,2) / 4;
 %     v23 = sum((flowField(Faces(:,2),:,m)+flowField(Faces(:,3),:,m)).^2,2) / 4;
 %     v13 = sum((flowField(Faces(:,1),:,m)+flowField(Faces(:,3),:,m)).^2,2) / 4;
