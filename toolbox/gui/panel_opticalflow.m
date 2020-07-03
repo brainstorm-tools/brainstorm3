@@ -330,7 +330,7 @@ function Compute(ResultsFile, inputs) %#ok<DEFNU>
         [flowField, int_dF, errorData, errorReg, poincare, timeInterval] = ...
             bst_call(@bst_opticalflow, F, FV, Time, ...
             inputs.tStart, inputs.tEnd, inputs.hornSchunck);
-        if isfield(inputs, 'depthHHD') %  ... and, optionally, HHD 
+        if inputs.HHDAvailable %  ... and, optionally, HHD 
             [U, A, H, Vcurl, Vdiv, index] = bst_opticalflow_hhd(flowField, FV, inputs.depthHHD);
             flowFieldHHD.DivergingPotential = U;
             flowFieldHHD.RotatingPotential = A;
