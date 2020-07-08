@@ -120,10 +120,10 @@ switch (lower(ScoutFunction))
         Fs = mean(F,1);
     % STD : Standard deviation of the patch activity at each time instant
     case 'std'
-        Fs = std(F,1);
+        Fs = std(F,[],1);
     % STDERR : Standard error
     case 'stderr'
-        Fs = std(F,1) ./ size(F,1);
+        Fs = std(F,[],1) ./ size(F,1);
     % RMS
     case 'rms'
         Fs = sqrt(sum(F.^2,1)); 
