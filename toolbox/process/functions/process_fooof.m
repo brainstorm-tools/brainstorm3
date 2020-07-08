@@ -60,10 +60,10 @@ end
 
 
 %% ===== GET OPTIONS =====
-function [fooofType, freqBand, allFreqs, peakType, peakWidthLims, maxPeaks, minPeakHeight, peakThresh, proxThresh, repOpt, aperMode, guessWeight] = GetOptions(sProcess)
+function [fooofType, freqBounds, allFreqs, peakType, peakWidthLims, maxPeaks, minPeakHeight, peakThresh, proxThresh, repOpt, aperMode, guessWeight] = GetOptions(sProcess)
     fooofType = sProcess.options.fooofType.Value;
     opts = panel_fooof_options('GetPanelContents');
-    freqBand = opts.freqRange;
+    freqBounds = opts.freqRange;
     allFreqs = opts.allFreqs;
     peakWidthLims = opts.peakWidthLimits;
     maxPeaks = opts.maxPeaks;
@@ -125,7 +125,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, min
             fMask = bst_round(inputFile.Freqs,1) >= fB(1) & inputFile.Freqs <= fB(2);
         end
         fs = inputFile.Freqs(fMask);
-        fB = [fs(1) fs(end)]; % Adjust to data limits
+        fBstr = [fs(1) fs(end)]; % Adjust to data limits
         spec = log10(squeeze(inputFile.TF(:,1,fMask))); % extract spectra
         % Initalize FOOOF structs
         fg(size(spec,1)) = struct('FOOOF',[]);
@@ -179,7 +179,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, min
                 'r_squared',        rsq_tmp(2));
         end
         % Return FOOOF settings
-        fp = struct('freq_range',           fB,...
+        fp = struct('freq_range',           fBstr,...
                     'peak_type',            pts,...
                     'peak_width_limits',    pwl,...
                     'max_peaks',            maxp,...
