@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 July 2020
 - Anatomy: Added 13 infant templates 0.5-25 months (O'Reilly)
+- Anatomy: Use custom background threshold for head surface generation
 ---------------------------------------------------------------
 June 2020
 - FEM: Computation and display of tetrahedral conductivity tensors
