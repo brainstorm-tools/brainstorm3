@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+July 2020
+- Anatomy: Added 13 infant templates 0.5-25 months (O'Reilly)
+---------------------------------------------------------------
 June 2020
 - FEM: Computation and display of tetrahedral conductivity tensors
 - Distrib: New default binary distribution: Matlab 2020a

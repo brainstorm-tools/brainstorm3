@@ -2225,10 +2225,6 @@ switch contextName
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
             sTemplates(end).Name = 'Colin27_2016';
         end
-        if ~ismember(lower({sTemplates.Name}), 'colin27_2012')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2012';
-            sTemplates(end).Name = 'Colin27_2012';
-        end
         if ~ismember(lower({sTemplates.Name}), 'colin27_brainsuite_2016')
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
             sTemplates(end).Name = 'Colin27_BrainSuite_2016';
@@ -2243,21 +2239,72 @@ switch contextName
         end
         if ~ismember(lower({sTemplates.Name}), 'fsaverage_2020')
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2020';
-            sTemplates(end).Name = 'FSAverage_2020';
+            sTemplates(end).Name = 'FsAverage_2020';
         end
-        if ~ismember(lower({sTemplates.Name}), 'infant7w_2015b')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015b';
-            sTemplates(end).Name = 'Infant7w_2015b';
+        if ~ismember(lower({sTemplates.Name}), 'kabdebon_7w')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Kabdebon_7w';
+            sTemplates(end).Name = 'Kabdebon_7w';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_1y')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1y';
-            sTemplates(end).Name = 'Oreilly_1y';
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_0.5m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_0.5m';
+            sTemplates(end).Name = 'Oreilly_0.5m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_1m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1m';
+            sTemplates(end).Name = 'Oreilly_1m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_2m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_2m';
+            sTemplates(end).Name = 'Oreilly_2m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_3m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_3m';
+            sTemplates(end).Name = 'Oreilly_3m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_4.5m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_4.5m';
+            sTemplates(end).Name = 'Oreilly_4.5m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_6m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_6m';
+            sTemplates(end).Name = 'Oreilly_6m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_7.5m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_7.5m';
+            sTemplates(end).Name = 'Oreilly_7.5m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_9m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_9m';
+            sTemplates(end).Name = 'Oreilly_9m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_10.5m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_10.5m';
+            sTemplates(end).Name = 'Oreilly_10.5m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_12m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_12m';
+            sTemplates(end).Name = 'Oreilly_12m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_15m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_15m';
+            sTemplates(end).Name = 'Oreilly_15m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_18m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_18m';
+            sTemplates(end).Name = 'Oreilly_18m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_24m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_24m';
+            sTemplates(end).Name = 'Oreilly_24m';
         end
         % If a specific template was requested
         if ~isempty(AnatName)
             iAnat = find(strcmpi({sTemplates.Name}, AnatName));
             sTemplates = sTemplates(iAnat);
         end
+        % Sort in alphabetical order
+        [tmp__, I] = sort_nat({sTemplates(2:end).Name});
+        sTemplates = sTemplates([1, I+1]);
         % Return defaults list
         argout1 = sTemplates;
         
