@@ -444,6 +444,23 @@ for iData = 1:length(Data)
             else
                 nComponents = OPTIONS.nComponents(iData);
             end
+            
+            % PSD: we don't want the bad segments
+            if ~isempty(iStudy) && strcmpi(OPTIONS.Method, 'psd')
+                % Load associated data file
+                sMat = in_bst_data(sStudy.Result(iFile).DataFile);
+                % Raw file
+                if isstruct(sMat.F)
+                    sFile = sMat.F;
+                else
+                    sFile = sMat;
+                end
+                % Get list of bad segments in file
+                isChannelEvtBad = 0;
+                BadSegments = panel_record('GetBadSegments', sFile, isChannelEvtBad);
+                % Convert them to the beginning of the time section that is processed
+                BadSegments = BadSegments - sFile.prop.sfreq * sMat.Time(1) + 1;
+            end
         end
         nAvg = 1;
     end
