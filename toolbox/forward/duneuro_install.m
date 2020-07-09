@@ -34,6 +34,8 @@ curdir = pwd;
 exeFile = ['bst_duneuro_meeg_', bst_get('OsType')];
 if ispc
     exeFile = [exeFile, '.exe'];
+else
+    exeFile = [exeFile, '.app'];
 end
 % Check if already available in path
 if exist(exeFile, 'file')
