@@ -628,12 +628,6 @@ function FigureKeyPressedCallback(hFig, ev)
             if isControl
                 view_topography(TfFile, [], '2DSensorCap', [], 0);
             end
-        % Y : Scale to fit Y axis
-        case 'y'
-            TsInfo = getappdata(hFig, 'TsInfo');
-            if strcmpi(TsInfo.DisplayMode, 'butterfly')
-                figure_timeseries('ScaleToFitY', hFig, ev);
-            end
         % RETURN: VIEW SELECTED CHANNELS
         case 'return'
             DisplaySelectedRows(hFig);
