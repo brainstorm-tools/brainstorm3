@@ -147,7 +147,7 @@ function downloadAndInstallMffLibrary()
         % Create folder
         mkdir(mffDirTmp);
 
-        url = ['https://neuroimage.usc.edu/bst/getupdate.php?d=' zipFile];
+        url = ['http://neuroimage.usc.edu/bst/getupdate.php?d=' zipFile];
         % Download file
         zipPath = bst_fullfile(mffDirTmp, zipFile);
         errMsg = gui_brainstorm('DownloadFile', url, zipPath, 'MFF library download');

@@ -299,8 +299,10 @@ if UseMontage
         % For NIRS (: Force the selection of a montage
         if strcmpi(Modality, 'NIRS') && isempty(MontageName)
             % 3DOptodes and 3DSensorCap: Only one value can be displayed at a time
-            if ismember(TopoType, {'3DSensorCap', '3DOptodes'}) 
+            if ismember(TopoType, {'3DSensorCap', '3DOptodes'}) && length(sFigMontages) > 1
                 MontageName = sFigMontages(2).Name;
+            elseif ismember(TopoType, {'3DSensorCap', '3DOptodes'}) 
+                MontageName = sFigMontages(1).Name;
             elseif strcmpi(TopoType, '2DLayout')
                 MontageName = sFigMontages(1).Name;
             end

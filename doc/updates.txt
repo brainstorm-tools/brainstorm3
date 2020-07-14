@@ -1,6 +1,20 @@
 ---------------------------------------------------------------
-Mai 2020
+July 2020
+- Anatomy: Added 13 infant templates 0.5-25 months (O'Reilly)
+- Anatomy: Use custom background threshold for head surface generation
+---------------------------------------------------------------
+June 2020
+- FEM: Computation and display of tetrahedral conductivity tensors
+- Distrib: New default binary distribution: Matlab 2020a
+- Distrib: Compatibility with Matlab 2020b prerelease
+- IO: Support for The Virtual Brain .h5 EEG recordings (TVB)
+---------------------------------------------------------------
+May 2020
+- FEM: Import and management of tissue segmentations
 - IO: Support for fNIRS format .snirf
+- Anatomy: Updated CAT12 to version 12.7
+- Anatomy: Added CAT12 extra maps (gyrification, sulcal depth)
+- Doc: Updated decoding tutorial with new processes
 ---------------------------------------------------------------
 April 2020
 - FEM: Integration of bst-duneuro into Brainstorm

@@ -233,12 +233,12 @@ function cmapA = ApplyColormap( A, CMap, intensityBounds, isIndexed )
 end
 
 %% ===== PLOT SLICES IN 3D ======
-function hCut = PlotSlice3DViz(hAxes, cmapSlice, sliceLocation, dimension, sMri, AlphaMap, UpsampleImage)
+function hCut = PlotSlice3DViz(hAxes, cmapSlice, sliceLocation, dim, sMri, AlphaMap, UpsampleImage)
     % Get locations of the slice
     nbPts = 50;
     baseVect = linspace(0,1,nbPts);
     mriSize = size(sMri.Cube);
-    switch(dimension)
+    switch (dim)
         case 1
             voxX = ones(nbPts) .* sliceLocation; 
             voxY = meshgrid(baseVect)  .* mriSize(2);   
@@ -278,7 +278,7 @@ function hCut = PlotSlice3DViz(hAxes, cmapSlice, sliceLocation, dimension, sMri,
     end
     
     % === PLOT SURFACE ===
-    tag = sprintf('MriCut%d', dimension);
+    tag = sprintf('MriCut%d', dim);
     % Delete previous cut
     delete(findobj(hAxes, '-depth', 1, 'Tag', tag));
     % Plot new surface  
@@ -305,4 +305,7 @@ function hCut = PlotSliceMriViewer(hImg, cmapSlice)
     set(hImg, 'CData', cmapSlice);
     hCut = hImg;
 end
+
+
+
 

@@ -78,6 +78,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     else
         OPTIONS.FemSelect = ones(size(OPTIONS.FemCond));
     end
+    % Get size of Tensors matrix
+    Tensors = whos('-file', OPTIONS.FemFile, 'Tensors');
+    OPTIONS.UseTensor = (~isempty(Tensors) && all(Tensors.size > 0));
     
     % ==== FRAME STRUCTURE ====
     % Create main panel: split in top (interface) / left(standard options) / right (details)
@@ -105,12 +108,16 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     jPanelLayers = gui_river([2,2], [0,6,6,6], 'FEM layers & conductivities');
         nLayers = length(OPTIONS.FemNames);
         jCheckLayer = javaArray('javax.swing.JCheckBox', nLayers);
-        jTextCond   = javaArray('javax.swing.JTextField', nLayers);
+        jTextCond = javaArray('javax.swing.JComponent', nLayers);
         % Loop on each layer
         for i = 1:nLayers
             % Add layer
             jCheckLayer(i) = gui_component('checkbox', jPanelLayers, 'br',  OPTIONS.FemNames{i}, [], [], @(h,ev)UpdatePanel(), []);
-            jTextCond(i) = gui_component('texttime', jPanelLayers, 'tab', num2str(OPTIONS.FemCond(i), '%g'), [], [], [], []);
+            if ~OPTIONS.UseTensor
+                jTextCond(i) = gui_component('texttime', jPanelLayers, 'tab', num2str(OPTIONS.FemCond(i), '%g'), [], [], [], []);
+            else
+                jTextCond(i) = gui_component('label', jPanelLayers, 'tab', '(using tensors)', [], [], [], []);
+            end
             % Default selection of layers
             jCheckLayer(i).setSelected(OPTIONS.FemSelect(i));
         end
@@ -271,7 +278,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                   'jTextIntorderadd',      jTextIntorderadd, ...
                   'jTextIntorderadd_lb',   jTextIntorderadd_lb, ...
                   'jTextSrcShrink',        jTextSrcShrink, ...
-                  'jCheckSaveTransfer',    jCheckSaveTransfer);
+                  'jCheckSaveTransfer',    jCheckSaveTransfer, ...
+                  'UseTensor',             OPTIONS.UseTensor);
     ctrl.FemNames = OPTIONS.FemNames;
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
@@ -365,8 +373,11 @@ function s = GetPanelContents() %#ok<DEFNU>
     % FEM layers
     for i = 1:length(ctrl.jCheckLayer)
         s.FemSelect(i) = ctrl.jCheckLayer(i).isSelected();
-        s.FemCond(i) = str2double(char(ctrl.jTextCond(i).getText()));
+        if ~ctrl.UseTensor
+            s.FemCond(i) = str2double(char(ctrl.jTextCond(i).getText()));
+        end
     end
+    s.UseTensor = ctrl.UseTensor;
 %     % FEM method type
 %     if ctrl.jRadioFemTypeFit.isSelected()
 %         s.FemType = 'fitted';

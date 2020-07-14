@@ -142,17 +142,13 @@ end
 MaskNii = file_find(SimDir, '*_final_contr.nii.gz', 2, 1);
 % Find final mesh
 MshFile = file_find(SimDir, '*.msh', 1, 0);
-if isempty(MshFile)
-    errorMsg = [errorMsg 'Final mesh *.msh found in top folder.' 10];
+if isempty(MshFile) || isempty(MshFile{1})
+    errorMsg = [errorMsg 'Mesh file *.msh found in top folder.' 10];
 elseif (length(MshFile) > 1)
     errorMsg = [errorMsg 'Multiple *.msh found in top folder.' 10];
 else
     MshFile = MshFile{1};
 end
-% Get subject id from msh file
-[fPath, subjid] = bst_fileparts(MshFile);
-% Find fiducials definitions
-FidFile = file_find(SimDir, 'fiducials.m');
 % Report errors
 if ~isempty(errorMsg)
     if isInteractive
@@ -160,6 +156,10 @@ if ~isempty(errorMsg)
     end
     return;
 end
+% Get subject id from msh file
+[fPath, subjid] = bst_fileparts(MshFile);
+% Find fiducials definitions
+FidFile = file_find(SimDir, 'fiducials.m');
 
 
 %% ===== IMPORT T1 MRI =====
@@ -321,7 +321,7 @@ db_add_surface(iSubject, CortexFile, NewTess.Comment);
 CatDir = bst_fullfile(SimDir, ['m2m_' subjid], 'segment', 'cat');
 if isdir(CatDir)
     % Import CAT12 folder
-    catErrMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractive, sFid, isExtraMaps, 2);
+    catErrMsg = import_anatomy_cat(iSubject, CatDir, nVertices, isInteractive, sFid, isExtraMaps, 2, 0);
     % Error handling
     if ~isempty(catErrMsg)
         if isInteractive

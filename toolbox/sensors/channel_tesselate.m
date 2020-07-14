@@ -66,7 +66,7 @@ if isPerimThresh
     % Find Vertices that are not in the Faces matrix
     iVertNotInFaces = setdiff(1:length(Vertices), unique(Faces(:)));
     if ~isempty(iVertNotInFaces)
-        disp(['CHANNEL_TESSELATE> WARNING: Some sensors are not in the Faces list: ' sprintf('%d ', iVertNotInFaces)]);
+        % disp(['CHANNEL_TESSELATE> WARNING: Some sensors are not in the Faces list: ' sprintf('%d ', iVertNotInFaces)]);
     end
     % Loop until all the Vertices are visible
     isMissing = 1;

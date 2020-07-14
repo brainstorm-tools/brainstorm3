@@ -70,16 +70,16 @@ end
 opt.rootpath=path;
 
 if(~(isfield(opt,'complexformat') && iscellstr(opt.complexformat) && numel(opt.complexformat)==2))
-    opt.complexformat={};
+    opt.complexformat={'Real','Imag'};
 end
 
-releaseid=0;
-v=ver('MATLAB');
-if(~isempty(v))
-    releaseid=datenum(v(1).Date);
+opt.releaseid=0;
+vers=ver('MATLAB');
+if(~isempty(vers))
+    opt.releaseid=datenum(vers(1).Date);
 end
 
-if((isfield(opt,'order') && strcmpi(opt.order,'alphabet'))  || releaseid<datenum('1-Jan-2015') )
+if((isfield(opt,'order') && strcmpi(opt.order,'alphabet'))  || opt.releaseid<datenum('1-Jan-2015') )
     opt.order='H5_INDEX_NAME';
 else
     opt.order='H5_INDEX_CRT_ORDER';
@@ -134,9 +134,11 @@ inputdata=struct('data',data,'meta',meta,'opt',opt);
 % Load groups and datasets
 try
     [status,count,inputdata] = H5L.iterate(loc,opt.order,'H5_ITER_INC',0,@group_iterate,inputdata);
-catch
+catch ME
     if(strcmp(opt.order,'H5_INDEX_CRT_ORDER'))
         [status,count,inputdata] = H5L.iterate(loc,'H5_INDEX_NAME','H5_ITER_INC',0,@group_iterate,inputdata);
+    else
+        rethrow(ME);
     end
 end
 
@@ -215,51 +217,51 @@ function data=fix_data(data, attr, opt)
 if isstruct(data)
   fields = fieldnames(data);
 
-  if(length(intersect(fields,{'SparseIndex','Real'}))==2)
-    if isnumeric(data.SparseIndex) && isnumeric(data.Real)
+  if(length(intersect(fields,{'SparseIndex',opt.complexformat{1}}))==2)
+    if isnumeric(data.SparseIndex) && isnumeric(data.(opt.complexformat{1}))
       if(nargin>1 && isstruct(attr))
           if(isfield(attr,'SparseArraySize'))
               spd=sparse(1,prod(attr.SparseArraySize));
-              if(isfield(data,'Imag'))
-                  spd(data.SparseIndex)=complex(data.Real,data.Imag);
+              if(isfield(data,opt.complexformat{2}))
+                  spd(data.SparseIndex)=complex(data.(opt.complexformat{1}),data.(opt.complexformat{2}));
               else
-                  spd(data.SparseIndex)=data.Real;
+                  spd(data.SparseIndex)=data.(opt.complexformat{1});
               end
               data=reshape(spd,attr.SparseArraySize(:)');
+              return;
           end
       end
     end
-  end
-
-  if(numel(opt.complexformat)==2 && length(intersect(fields,opt.complexformat))==2)
-    if isnumeric(data.(opt.complexformat{1})) && isnumeric(data.(opt.complexformat{2}))
-        data = data.(opt.complexformat{1}) + 1j*data.(opt.complexformat{2});
-    end
   else
-    % if complexformat is not specified or not found, try some common complex number storage formats
-    if(length(intersect(fields,{'Real','Imag'}))==2)
-      if isnumeric(data.Real) && isnumeric(data.Imag)
-        data = data.Real + 1j*data.Imag;
+      if(numel(opt.complexformat)==2 && length(intersect(fields,opt.complexformat))==2)
+        if isnumeric(data.(opt.complexformat{1})) && isnumeric(data.(opt.complexformat{2}))
+            data = data.(opt.complexformat{1}) + 1j*data.(opt.complexformat{2});
+        end
+      else
+        % if complexformat is not specified or not found, try some common complex number storage formats
+        if(length(intersect(fields,{'Real','Imag'}))==2)
+          if isnumeric(data.Real) && isnumeric(data.Imag)
+            data = data.Real + 1j*data.Imag;
+          end
+        elseif(length(intersect(fields,{'real','imag'}))==2)
+          if isnumeric(data.real) && isnumeric(data.imag)
+            data = data.real + 1j*data.imag;
+          end
+        elseif(length(intersect(fields,{'Re','Im'}))==2)
+          if isnumeric(data.Re) && isnumeric(data.Im)
+            data = data.Re + 1j*data.Im;
+          end
+        elseif(length(intersect(fields,{'re','im'}))==2)
+          if isnumeric(data.re) && isnumeric(data.im)
+            data = data.re + 1j*data.im;
+          end
+        elseif(length(intersect(fields,{'r','i'}))==2)
+          if isnumeric(data.r) && isnumeric(data.i)
+            data = data.r + 1j*data.i;
+          end
+        end
       end
-    elseif(length(intersect(fields,{'real','imag'}))==2)
-      if isnumeric(data.real) && isnumeric(data.imag)
-        data = data.real + 1j*data.imag;
-      end
-    elseif(length(intersect(fields,{'Re','Im'}))==2)
-      if isnumeric(data.Re) && isnumeric(data.Im)
-        data = data.Re + 1j*data.Im;
-      end
-    elseif(length(intersect(fields,{'re','im'}))==2)
-      if isnumeric(data.re) && isnumeric(data.im)
-        data = data.re + 1j*data.im;
-      end
-    elseif(length(intersect(fields,{'r','i'}))==2)
-      if isnumeric(data.r) && isnumeric(data.i)
-        data = data.r + 1j*data.i;
-      end
-    end
   end
-  
 end
 
 if(isa(data,'uint8') || isa(data,'int8'))

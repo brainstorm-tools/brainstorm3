@@ -84,6 +84,7 @@ function hFig = CreateFigure(FigureId)
         set(hFig, 'defaultLegendAutoUpdate', 'off');
     end
     % Prepare figure appdata
+    setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'isPlotEditToolbar', 0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -1436,6 +1437,11 @@ function FigureKeyPressedCallback(hFig, ev)
             if isControl && isFullDataFile
                 panel_record('JumpToVideoTime', hFig);
             end
+        % Y : Scale to fit Y axis
+        case 'y'
+            if strcmpi(TsInfo.DisplayMode, 'butterfly')
+                ScaleToFitY(hFig, ev);
+            end
         % RETURN: VIEW SELECTED CHANNELS
         case 'return'
             if isMenuSelectedChannels && isFullDataFile               
@@ -2523,6 +2529,12 @@ function DisplayConfigMenu(hFig, jParent)
                 case 'magnitude',  jScaleMag.setSelected(1);
                 case 'log',        jScaleLog.setSelected(1);
             end
+        end
+        % Scale to fit Y
+        if strcmpi(TsInfo.DisplayMode, 'butterfly')
+            jMenu.addSeparator();
+            jItem = gui_component('MenuItem', jMenu, [], 'Scale to fit screen', IconLoader.ICON_Y, [], @(h,ev)ScaleToFitY(hFig, ev));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0));
         end
         
     % === LINES ===
@@ -3861,7 +3873,7 @@ function CreateScaleButtons(iDS, iFig)
     if isRaw
         set([h1 h2], 'Visible', 'off');
     end
-    if isempty(TsInfo) || isempty(TsInfo.FileName) || ~ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
+    if (isempty(TsInfo) || isempty(TsInfo.FileName) || ~ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat'))
         set(h5, 'Visible', 'off');
     end
     if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'column') || ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries')
@@ -4155,6 +4167,58 @@ function SetAutoScale(hFig, isAutoScale)
     bst_figures('ReloadFigures', hFig);
     % Hide progress bar
     bst_progress('stop');
+end
+
+%% ===== RESCALE SPECTRUM AMPLITUDE =====
+function ScaleToFitY(hFig, ev)
+    TsInfo = getappdata(hFig, 'TsInfo');
+    % Only for butterfly display mode
+    if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'butterfly')
+        return;
+    end
+    % Get figure data
+    FigureId = getappdata(hFig, 'FigureId');
+    isSpectrum = strcmpi(FigureId.Type, 'spectrum');
+    [PlotHandles, iFig, iDS] = bst_figures('GetFigureHandles', hFig);
+    hAxes = PlotHandles.hAxes;
+
+    % ===== GET DATA =====
+    if isSpectrum
+        % Get data to plot
+        [Time, XVector, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
+        % Redimension TF according to what we want to display
+        TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
+    else
+        TF = GetFigureData(iDS, iFig);
+        TF = TF{1};
+        [XVector, iTime] = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
+        XVector = XVector(iTime);
+    end
+    
+    % Get limits of currently plotted data
+    XLim = get(hAxes, 'XLim');    
+    [val, idx1] = min(abs(XVector - XLim(1)));
+    [val, idx2] = min(abs(XVector - XLim(2)));
+    curTF = TF(:, idx1:idx2);
+    YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles.DisplayFactor;
+    % Add 5% margin above and below
+    YSpan = YLim(2) - YLim(1);
+    YLim(1) = YLim(1) - YSpan * 0.05;
+    YLim(2) = YLim(2) + YSpan * 0.05;
+    
+    % Power of 10 in the legend rather than in the axis
+    if isSpectrum && PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
+        Fpow = round(log10(max(abs(PlotHandles.DataMinMax))));
+        if (Fpow < -3)
+            YLim = YLim * 10^-Fpow;
+        end
+    end
+    
+    % Rescale axis
+    set(hAxes, 'YLim', YLim);
+    % Update TimeCursor position
+    hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
+    set(hCursor, 'YData', ylim);
 end
 
 

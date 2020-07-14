@@ -29,7 +29,7 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description of the process
     sProcess.Comment     = 'Swap head coils (CTF)';
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion#Fixing_swapped_head_coils';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Channel file'};
     sProcess.Index       = 52;
@@ -160,19 +160,22 @@ function OutputFiles = Run(sProcess, sInputs)
         % gets the channel info from file.
         bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
 
-        % Attempt to adjust the initial/reference head position.
-        [ChannelMat, Failed] = process_adjust_coordinates('AdjustHeadPosition', ...
-            ChannelMat, sInputs(iFile), sProcess);
-        if ~Failed
-            % Save channel file.
-            bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
-            % Show new alignment.
-            channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
-        % else Already noted in report.
-        end
+        %         % Attempt to adjust the initial/reference head position.
+        %         [ChannelMat, Failed] = process_adjust_coordinates('AdjustHeadPosition', ...
+        %             ChannelMat, sInputs(iFile), sProcess);
+        %         if ~Failed
+        %             % Save channel file.
+        %             bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
+        %             % Show new alignment.
+        %             channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+        %         % else Already noted in report.
+        %         end
                     
     end % file loop
     bst_progress('stop');
+
+    OutputFiles = bst_process('CallProcess', 'process_adjust_coordinates', OutputFiles, [], ...
+        'reset', 0, 'head', 1, 'bad', 1, 'points', 0, 'remove', 0, 'display', 1);
     
 end
 

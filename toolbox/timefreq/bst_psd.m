@@ -64,7 +64,6 @@ elseif (Lwin > nTime)
 else
     Lwin = Lwin - mod(Lwin,2);    % Make sure the number of samples is even
     Nwin = floor((nTime - Loverlap) ./ (Lwin - Loverlap));
-    Messages = [Messages, sprintf('Using %d windows of %d samples each', Nwin, Lwin)];
 end
 % Next power of 2 from length of signal
 % NFFT = 2^nextpow2(Lwin);      % Function fft() pads the signal with zeros before computing the FT
@@ -143,4 +142,7 @@ if (Nbad > 0)
     % TF = TF .* (Nwin ./ (Nwin - Nbad));   % OLD VERSION
     Nwin = Nwin - Nbad;
 end
-
+% Format message
+if isempty(Messages)
+    Messages = [Messages, sprintf('Using %d windows of %d samples each', Nwin, Lwin)];
+end

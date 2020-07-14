@@ -155,7 +155,7 @@ if (size(SurfColor,2) ~= Ntissue)
     labels = lower(FemMat.TissueLabels);
     % Get default color for each layer
     for iTissue = 1:Ntissue
-        switch process_generate_fem('GetFemLabel', labels{iTissue})
+        switch process_fem_mesh('GetFemLabel', labels{iTissue})
             case 'white'
                 % SurfColor(iTissue,:) = [250 250 250]/255;
                 SurfColor(iTissue,:) = [220, 220, 220] ./ 255;

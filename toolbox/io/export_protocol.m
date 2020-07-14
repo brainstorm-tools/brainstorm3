@@ -111,7 +111,7 @@ else
     ProtocolMat.ProtocolInfo = rmfield(ProtocolMat.ProtocolInfo, 'STUDIES');
     ProtocolMat.ProtocolInfo = rmfield(ProtocolMat.ProtocolInfo, 'SUBJECTS');
     ProtocolMat.ProtocolSubjects.Subject = ProtocolMat.ProtocolSubjects.Subject(iSubject);
-    [sStudies, iStudies] = bst_get('StudyWithSubject', ProtocolMat.ProtocolSubjects.Subject.FileName);
+    [sStudies, iStudies] = bst_get('StudyWithSubject', ProtocolMat.ProtocolSubjects.Subject.FileName, 'default_study', 'intra_subject');
     ProtocolMat.ProtocolStudies.Study = ProtocolMat.ProtocolStudies.Study(iStudies);
     ProtocolFile = bst_fullfile(dataFolder, 'protocol.mat');
     bst_save(ProtocolFile, ProtocolMat, 'v7');

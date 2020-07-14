@@ -1188,10 +1188,12 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
         % Get channels displayed in this figure
         iFigChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
         FigChannels = {GlobalData.DataSet(iDS).Channel(iFigChannels).Name};
+        AllChannels = {GlobalData.DataSet(iDS).Channel.Name};
         FigId = GlobalData.DataSet(iDS).Figure(iFig).Id;
         isStat = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat');
         % Remove all the spaces
         FigChannels = cellfun(@(c)c(c~=' '), FigChannels, 'UniformOutput', 0);
+        AllChannels = cellfun(@(c)c(c~=' '), AllChannels, 'UniformOutput', 0);
         % Get the predefined montages that match this list of channels
         iMontage = [];
         for i = 1:length(GlobalData.ChannelMontages.Montages)
@@ -1248,7 +1250,7 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             % Skip montages that have no common channels with the current figure (remove all the white spaces in the channel names)
             curSelChannels = GlobalData.ChannelMontages.Montages(i).ChanNames;
             curSelChannels = cellfun(@(c)c(c~=' '), curSelChannels, 'UniformOutput', 0);
-            if ~isBadMontage && ~isempty(curSelChannels) && (length(intersect(curSelChannels, FigChannels)) < 0.3 * length(curSelChannels))    % We need at least 30% of the montage channels
+            if ~isBadMontage && ~isempty(curSelChannels) && (length(intersect(curSelChannels, AllChannels)) < 0.3 * length(curSelChannels))    % We need at least 30% of the montage channels
                 continue;
             end
             % Remove the re-referencing montages when the reference is not available
