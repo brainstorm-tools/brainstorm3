@@ -163,7 +163,7 @@ function F = edf_read_epoch(sFile, sfid, iEpoch, iTimes, ChannelsRange, isAnnotO
     fseek(sfid, offsetStart, 'bof');
     % Read annotation data (char)
     if isAnnotOnly
-        dataClass = 'char';
+        dataClass = 'uint8';
         nReadTimes = bytesPerVal * nReadTimes;  % 1 byte instead of 2
     end
     % Read trial data
