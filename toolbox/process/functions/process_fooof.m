@@ -87,6 +87,11 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     if fT == 1 % Matlab standalone FOOOF
         OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, minph, pet, prt, rOpt, am, gw);  
     else % Python FOOOF
+        % Import python modules
+        py.importlib.import_module('fooof');
+        py.importlib.import_module('numpy');
+        py.importlib.import_module('scipy');
+        % Run process
         OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, pet, am);
     end    
 end
@@ -594,7 +599,7 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
 
             % Check peaks based on edges, and on overlap
             % Drop any that violate requirements.
-            guess_params = drop_peak_cf(guess_params, 1, [min(freqs) max(freqs)]);
+            guess_params = drop_peak_cf(guess_params, proxThresh, [min(freqs) max(freqs)]);
             guess_params = drop_peak_overlap(guess_params, proxThresh);
 
             % If there are peak guesses, fit the peaks, and sort results.
@@ -645,7 +650,7 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
 
             end
             guess_params(guess_params(:,1) == 0,:) = [];
-            guess_params = drop_peak_cf(guess_params, 1, [min(freqs) max(freqs)]);
+            guess_params = drop_peak_cf(guess_params, proxThresh, [min(freqs) max(freqs)]);
             guess_params = drop_peak_overlap(guess_params, proxThresh);
 
             % If there are peak guesses, fit the peaks, and sort results.
@@ -686,7 +691,7 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
                 flat_iter = flat_iter - peak_gauss;
             end
             guess_params(guess_params(:,1) == 0,:) = [];
-            guess_params = drop_peak_cf(guess_params, 1, [min(freqs) max(freqs)]);
+            guess_params = drop_peak_cf(guess_params, proxThresh, [min(freqs) max(freqs)]);
             guess_params = drop_peak_overlap(guess_params, proxThresh);
             if ~isempty(guess_params)
                 gauss_params = fit_peak_guess(guess_params, freqs, flat_spec, 1, guess_weight);
@@ -731,7 +736,7 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
                 flat_iter = flat_iter - peak_cauchy;
             end
             guess_params(guess_params(:,1) == 0,:) = [];
-            guess_params = drop_peak_cf(guess_params, 1, [min(freqs) max(freqs)]);
+            guess_params = drop_peak_cf(guess_params, proxThresh, [min(freqs) max(freqs)]);
             guess_params = drop_peak_overlap(guess_params, proxThresh);
             if ~isempty(guess_params)
                 cauchy_params = fit_peak_guess(guess_params, freqs, flat_spec, 2, guess_weight);
@@ -938,10 +943,6 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
     
     % Check settings - get defaults for those not provided
     settings = fooof_check_settings(settings);
-    % Import python modules
-    py.importlib.import_module('fooof');
-    py.importlib.import_module('numpy');
-    py.importlib.import_module('scipy');
     % Convert inputs
     freqs = py.numpy.array(freqs);
     power_spectrum = py.numpy.array(power_spectrum);
