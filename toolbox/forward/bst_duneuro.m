@@ -116,8 +116,23 @@ if strcmp(dnModality, 'meg')
     % Remove the elements corresponding to the unselected tissues
     iRemove = find(~ismember(FemMat.Tissue, find(cfg.FemSelect)));
     if ~isempty(iRemove)
-        FemMat.Elements(iRemove,:) = [];
-        FemMat.Tissue(iRemove,:) = [];
+        % Remove elements
+        FemMat.Elements(iRemove, :) = [];
+        FemMat.Tissue(iRemove) = [];
+        if isfield(FemMat, 'Tensors') && ~isempty(FemMat.Tensors)
+            FemMat.Tensors(iRemove, :) = [];
+        end        
+        % Find vertices to remove
+        nVert = size(FemMat.Vertices, 1);
+        iVertCut = setdiff(1:nVert, unique(FemMat.Elements(:)));
+        % Re-numbering matrix
+        iVertKept = setdiff(1:nVert, iVertCut);
+        iVertMap = zeros(1, nVert);
+        iVertMap(iVertKept) = 1:length(iVertKept);
+        % Remove vertices
+        FemMat.Vertices(iVertCut,:) = [];
+        % Renumber vertices in elements list
+        FemMat.Elements = iVertMap(FemMat.Elements);
     end
 elseif strcmp(dnModality,'meeg') && (sum(cfg.FemSelect) ~= length(unique(FemMat.Tissue)))
     errMsg = 'Reduced head model cannot be used when computing MEG+EEG simultaneously.';
