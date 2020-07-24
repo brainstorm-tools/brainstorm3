@@ -80,27 +80,27 @@ if isMeg
 end
 
 
-%% ====== SOURCE SPACE =====
-% Source space type
-switch (cfg.HeadModelType)
-    case 'volume'
-        % TODO or keep it as it's now....
-    case 'surface'
-        % Read cortex file
-        sCortex = bst_memory('LoadSurface', cfg.CortexFile);
-        cfg.GridLoc = sCortex.Vertices;
-        % Shrink the cortex surface by XX mm
-        if (cfg.SrcShrink > 0)
-            % Get spherical coordinates of the surface normals
-            [azimuth, elevation] = cart2sph(sCortex.VertNormals(:,1), sCortex.VertNormals(:,2), sCortex.VertNormals(:,3));
-            % Find components to shrink the surface in the three dimensions
-            depth = cfg.SrcShrink ./ 1000 .* [cos(elevation) .* cos(azimuth), cos(elevation) .* sin(azimuth), sin(elevation)];
-            % Apply to the cortex surface
-            cfg.GridLoc = sCortex.Vertices - depth;
-        end
-    case 'mixed'
-        % TODO : not used ?
-end
+% %% ====== SOURCE SPACE =====
+% % Source space type
+% switch (cfg.HeadModelType)
+%     case 'volume'
+%         % TODO or keep it as it's now....
+%     case 'surface'
+%         % Read cortex file
+%         sCortex = bst_memory('LoadSurface', cfg.CortexFile);
+%         cfg.GridLoc = sCortex.Vertices;
+%         % Shrink the cortex surface by XX mm
+%         if (cfg.SrcShrink > 0)
+%             % Get spherical coordinates of the surface normals
+%             [azimuth, elevation] = cart2sph(sCortex.VertNormals(:,1), sCortex.VertNormals(:,2), sCortex.VertNormals(:,3));
+%             % Find components to shrink the surface in the three dimensions
+%             depth = cfg.SrcShrink ./ 1000 .* [cos(elevation) .* cos(azimuth), cos(elevation) .* sin(azimuth), sin(elevation)];
+%             % Apply to the cortex surface
+%             cfg.GridLoc = sCortex.Vertices - depth;
+%         end
+%     case 'mixed'
+%         % TODO : not used ?
+% end
 
 
 %% ===== HEAD MODEL =====
@@ -194,6 +194,133 @@ end
 % Write mesh model
 MeshFile = fullfile(TmpDir, MeshFile);
 out_fem(FemMat, MeshFile);
+
+%% ====== SOURCE SPACE =====
+% Source space type
+switch (cfg.HeadModelType)
+    case 'volume'
+        % TODO or keep it as it's now....
+    case 'surface'
+        % Read cortex file
+        sCortex = bst_memory('LoadSurface', cfg.CortexFile);
+        cfg.GridLoc = sCortex.Vertices;
+        % Shrink the cortex surface by XX mm
+        if (cfg.SrcShrink > 0)
+            % Get spherical coordinates of the surface normals
+            [azimuth, elevation] = cart2sph(sCortex.VertNormals(:,1), sCortex.VertNormals(:,2), sCortex.VertNormals(:,3));
+            % Find components to shrink the surface in the three dimensions
+            depth = cfg.SrcShrink ./ 1000 .* [cos(elevation) .* cos(azimuth), cos(elevation) .* sin(azimuth), sin(elevation)];
+            % Apply to the cortex surface
+            cfg.GridLoc = sCortex.Vertices - depth;
+        end
+        % Force all the dipoles within the GM layer
+        cfg.ForceInsideGM = 1; % demande a Francois a prpose de la meilleure option pour ce parameter/ maybe from duneuro panel
+        if (cfg.ForceInsideGM > 0)   
+            % 1- check the number of layers or if the GM and WM are
+            % inclduded in the tisse label   
+            grey_string = 'GM gm grey gray graymatter greymatter brain cortex inner';           
+            gm_ispresent = sum(cellfun(@(s) ~isempty(strfind(grey_string, s)), FemMat.TissueLabels));
+            gmTissueID = find(cellfun(@(s) ~isempty(strfind(grey_string, s)), FemMat.TissueLabels));
+            
+            white_string = 'WM wm white whitematter';
+            wm_ispresent = sum(cellfun(@(s) ~isempty(strfind(white_string, s)), FemMat.TissueLabels));
+            wmTissueID = find(cellfun(@(s) ~isempty(strfind(white_string, s)), FemMat.TissueLabels)); 
+
+                % there is probacely WM and GM in this model
+                % Therefore, one may check and enforce the dipoles  
+                 % ID white matter should be 1 and GM should be 2
+                 %%% i - Extract GM tetra and outer surface
+                 % Extract GM tetra nodes and elements
+                [ngmt,egmt] = removeisolatednode(FemMat.Vertices,FemMat.Elements(FemMat.Tissue <= gmTissueID,:));
+                %%% Compute the centroide of the gM elements
+                elem_centroide = zeros(size(egmt, 1), 3);
+                for l = 1:3
+                    elem_centroide(:, l) = sum(reshape(ngmt(egmt(:, :), l), size(egmt, 1), size(egmt, 2))')'/size(egmt, 2);
+                end
+                %%% Check the location of dipoles 
+                % Extract GM outer surface
+                gm_face = volface(FemMat.Elements(FemMat.Tissue <= gmTissueID,:));
+                [ngmf, egmf] = removeisolatednode(FemMat.Vertices,gm_face);
+                gMfv.vertices = ngmf;
+                gMfv.faces = egmf;
+                % Get the dipoles outside of the surface
+                tic;
+                gMout = ~inpolyhedron(gMfv, sCortex.Vertices); 
+                gMindex_out = find(gMout);
+                tgmout = toc;
+                disp(['There are ' num2str(sum(gMout)) ' dipoles outside of the GM']);
+                disp('Moving these dipoles to the GM tissues ...');
+                % create a temoprary variable NewVertices
+                NewVertices = sCortex.Vertices;          
+                if ~isempty(gMindex_out)
+                    % Find the neighbors of the outside dipoles from the
+                    % centroides of the GM
+                    k = dsearchn(elem_centroide,sCortex.Vertices(gMindex_out,:));
+                    NewVertices(gMindex_out ,:) = elem_centroide(k,:);                    
+                    check = 1;
+                    if check
+                        gMoutFinal = ~inpolyhedron(gMfv, NewVertices);
+                        disp(['Now, there are ' num2str(sum(gMoutFinal)) ' dipoles outside of the GM']);
+                        disp('These dipoles are moved to the nearest cenroide of the GM element');
+                    end
+                end
+                %%%% =============================================
+               % Now similar process for the WM with an extra and unexpedted step ... 
+               if wm_ispresent
+                   disp('Checking the the WM ...');                
+                   %Extract WM surface
+                   wm_tetra = FemMat.Elements(FemMat.Tissue <= wmTissueID,:);
+                   wm_face = volface(wm_tetra);
+                   [nwmf, ewmf] = removeisolatednode(FemMat.Vertices,wm_face);
+                  % check if any dipoles is inside the WM
+                   wMfv.vertices = nwmf;
+                   wMfv.faces = ewmf;
+                   tic
+                   wMin = inpolyhedron(wMfv, sCortex.Vertices); 
+                   wMindex_in = find(wMin);
+                   disp(['There are ' num2str(sum(wMin)) ' dipoles inside the WM']);
+                   disp('Moving these dipoles to the GM tissues ...');
+                   twm = toc;
+                   if ~isempty(wMindex_in)
+                       % 1- move the dipole from inside the WM to the GM surface
+                       % ==> this is for testing, when we use the centroide
+                       % directely, some dipole remains within the WM ...
+                       GMcentroide = 0; % just for testing, to use directely the GM centroides
+                       if GMcentroide == 1
+                           k = dsearchn(elem_centroide,sCortex.Vertices(wMindex_in,:));
+                           NewVertices(wMindex_in ,:) = elem_centroide(k,:);
+                           wMoutFinal = inpolyhedron(wMfv, NewVertices);
+                           disp(['Now, there are ' num2str(sum(wMoutFinal)) ' dipoles inside  the WM']);
+                       else
+                           k = dsearchn(gMfv.vertices,sCortex.Vertices(wMindex_in,:));
+                           NewVertices(wMindex_in ,:) = gMfv.vertices(k,:);
+                           wMoutFinal = inpolyhedron(wMfv, NewVertices);
+                           disp(['There are ' num2str(sum(wMoutFinal)) ' dipoles inside  the WM']);
+                           disp(['These dipoles are moved to the GM outer surface nodes']);
+                           disp(['Moving these dipoles to the nearest centroide of the GM element...']);
+                           % Now, we move these same dipole from the surface to the
+                           % nearest centroide ==> to be sure it's inside the GM
+                           % ==> fill partially the FEM condition
+                           % move again  to the centoide
+                           k = dsearchn(elem_centroide,NewVertices(wMindex_in,:));
+                           NewVertices(wMindex_in ,:) = elem_centroide(k,:);
+                           % just to check
+                           wMoutFinal = inpolyhedron(wMfv, NewVertices);
+                           disp(['Now, there are ' num2str(sum(wMoutFinal)) ' dipoles inside  the WM']);
+                           disp(['All the dipoles are moved to nearest centroid of the GM']);
+                       end
+                   end
+               end
+               % update the dipole position
+               % TODO : Maybe we can do this just after the SPM-CAT/ or
+               % update the cortex file to th database from here .... Ask
+               % Francois .... these modification are slightely samll, and
+               % there is no much effect on the cortex
+               sCortex.Vertices = NewVertices;
+        end
+    case 'mixed'
+        % TODO : not used ?
+end
 
 
 %% ===== SOURCE MODEL =====
