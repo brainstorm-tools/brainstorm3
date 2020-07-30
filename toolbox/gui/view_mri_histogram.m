@@ -1,4 +1,4 @@
-function hFig = view_mri_histogram( MriFile )
+function hFig = view_mri_histogram( MriFile, Recompute )
 % VIEW_MRI_HISTOGRAM: Compute and view the histogram of a brainstorm MRI.
 %
 % USAGE:  hFig = view_mri_histogram( MriFile );
@@ -25,8 +25,11 @@ function hFig = view_mri_histogram( MriFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2006-2010
+% Authors: Francois Tadel, 2006-2010, Marc Lalancette 2020
 
+if nargin < 2 || isempty(Recompute)
+    Recompute = false;
+end
 %% ===== COMPUTE HISTOGRAM =====
 % Display progress bar
 bst_progress('start', 'View MRI historgram', 'Computing histogram...');
@@ -35,7 +38,7 @@ warning off
 MRI = load(MriFile, 'Histogram');
 warning on
 % Histogram not computed yet
-if ~isfield(MRI, 'Histogram') || isempty(MRI.Histogram)
+if Recompute || ~isfield(MRI, 'Histogram') || isempty(MRI.Histogram)
     % Load full MRI
     MRI = load(MriFile);
     % Compute histogram
@@ -43,6 +46,10 @@ if ~isfield(MRI, 'Histogram') || isempty(MRI.Histogram)
     % Save histogram
     s.Histogram = Histogram;
     bst_save(MriFile, s, 'v7', 1);
+    if Recompute
+        % Force reload next time.
+        bst_memory('UnloadMri', MriFile);
+    end
 else
     Histogram = MRI.Histogram;
 end
@@ -93,8 +100,8 @@ ylim(yLimits);
 % Display background and white matter thresholds
 line([Histogram.bgLevel, Histogram.bgLevel], yLimits, 'Color','b');
 line([Histogram.whiteLevel, Histogram.whiteLevel], yLimits, 'Color','y');
-h = legend('MRI hist.','Smoothed hist.','Cumulated hist.','Maxima','Minima',...
-    'Grey m thresh.','White m thresh.');
+h = legend('MRI hist.','Smoothed hist.','Cumulative hist.','Maxima','Minima',...
+    'Scalp or grey m thresh.','White m thresh.');
 set(h, 'FontSize',  bst_get('FigFont'), ...
        'FontUnits', 'points');
 

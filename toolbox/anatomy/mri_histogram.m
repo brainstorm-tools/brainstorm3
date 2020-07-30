@@ -228,8 +228,8 @@ switch(volumeType)
         %               - bg removed if : (nzero > 1) and (nnonzero > nzero)
         nzero = find(Histogram.fncY(2:length(Histogram.fncY)) ~= 0);
         nnonzero = find(Histogram.fncY((nzero(1)+1):length(Histogram.fncY)) == 0);
-        if (((nzero(1)>2) && ~isempty(nnonzero) && (nnonzero(1) > nzero(1))) ...
-            || ((Histogram.fncX(1) == 0) && (Histogram.fncY(1) / sum(Histogram.fncY) > 0.5)))
+        if (nzero(1)>2) && ~isempty(nnonzero) && (nnonzero(1) > nzero(1))
+            % || ((Histogram.fncX(1) == 0) && (Histogram.fncY(1) / sum(Histogram.fncY) > 0.5)))
             Histogram.bgLevel = nzero(1);
         % Else, background has not been removed yet
         % If there is less than two maxima : use the default background threshold
