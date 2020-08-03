@@ -80,29 +80,6 @@ if isMeg
 end
 
 
-%% ====== SOURCE SPACE =====
-% Source space type
-switch (cfg.HeadModelType)
-    case 'volume'
-        % TODO or keep it as it's now....
-    case 'surface'
-        % Read cortex file
-        sCortex = bst_memory('LoadSurface', cfg.CortexFile);
-        cfg.GridLoc = sCortex.Vertices;
-        % Shrink the cortex surface by XX mm
-        if (cfg.SrcShrink > 0)
-            % Get spherical coordinates of the surface normals
-            [azimuth, elevation] = cart2sph(sCortex.VertNormals(:,1), sCortex.VertNormals(:,2), sCortex.VertNormals(:,3));
-            % Find components to shrink the surface in the three dimensions
-            depth = cfg.SrcShrink ./ 1000 .* [cos(elevation) .* cos(azimuth), cos(elevation) .* sin(azimuth), sin(elevation)];
-            % Apply to the cortex surface
-            cfg.GridLoc = sCortex.Vertices - depth;
-        end
-    case 'mixed'
-        % TODO : not used ?
-end
-
-
 %% ===== HEAD MODEL =====
 % Load FEM mesh
 FemMat = load(cfg.FemFile);
@@ -116,8 +93,7 @@ if strcmp(dnModality, 'meg')
     % Remove the elements corresponding to the unselected tissues
     iRemove = find(~ismember(FemMat.Tissue, find(cfg.FemSelect)));
     if ~isempty(iRemove)
-        FemMat.Elements(iRemove,:) = [];
-        FemMat.Tissue(iRemove,:) = [];
+        FemMat = fem_remove_elem(FemMat, iRemove);
     end
 elseif strcmp(dnModality,'meeg') && (sum(cfg.FemSelect) ~= length(unique(FemMat.Tissue)))
     errMsg = 'Reduced head model cannot be used when computing MEG+EEG simultaneously.';
@@ -179,6 +155,29 @@ end
 % Write mesh model
 MeshFile = fullfile(TmpDir, MeshFile);
 out_fem(FemMat, MeshFile);
+
+
+%% ====== SOURCE SPACE =====
+% Source space type
+switch (cfg.HeadModelType)
+    case 'volume'
+        % TODO or keep it as it's now....
+    case 'surface'
+        % Read cortex file
+        sCortex = bst_memory('LoadSurface', cfg.CortexFile);
+        cfg.GridLoc = sCortex.Vertices;
+        % Shrink the cortex surface by XX mm
+        if (cfg.SrcShrink > 0)
+            % Get spherical coordinates of the surface normals
+            [azimuth, elevation] = cart2sph(sCortex.VertNormals(:,1), sCortex.VertNormals(:,2), sCortex.VertNormals(:,3));
+            % Find components to shrink the surface in the three dimensions
+            depth = cfg.SrcShrink ./ 1000 .* [cos(elevation) .* cos(azimuth), cos(elevation) .* sin(azimuth), sin(elevation)];
+            % Apply to the cortex surface
+            cfg.GridLoc = sCortex.Vertices - depth;
+        end
+    case 'mixed'
+        % TODO : not used ?
+end
 
 
 %% ===== SOURCE MODEL =====
