@@ -1151,7 +1151,8 @@ switch (lower(action))
                             AddSeparator(jMenuAlign);
                             gui_component('MenuItem', jMenuAlign, [], 'Load FreeSurfer sphere...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)TessAddSphere(filenameRelative));
                             gui_component('MenuItem', jMenuAlign, [], 'Load BrainSuite square...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)TessAddSquare(filenameRelative));
-                            gui_component('MenuItem', jMenuAlign, [], 'Display registration sphere/square', IconLoader.ICON_DISPLAY,     [], @(h,ev)view_surface_sphere(filenameRelative));
+                            gui_component('MenuItem', jMenuAlign, [], 'Display registration sphere/square', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_sphere(filenameRelative, 'orig'));
+                            gui_component('MenuItem', jMenuAlign, [], '2D projection (Mollweide)', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_sphere(filenameRelative, 'mollweide'));
                         end
                 
                     % No read-only
@@ -1700,7 +1701,8 @@ switch (lower(action))
                     % === DISPLAY ON SPHERE ===
                     if strcmpi(sStudy.Result(iResult).HeadModelType, 'surface') && ~isempty(sSubject) && ~isempty(sSubject.iCortex)
                         AddSeparator(jMenuActivations);
-                        gui_component('MenuItem', jMenuActivations, [], 'Display on spheres/squares', IconLoader.ICON_SURFACE, [], @(h,ev)view_surface_sphere(filenameRelative));
+                        gui_component('MenuItem', jMenuActivations, [], 'Display on spheres/squares', IconLoader.ICON_SURFACE, [], @(h,ev)view_surface_sphere(filenameRelative, 'orig'));
+                        gui_component('MenuItem', jMenuActivations, [], '2D projection (Mollweide)', IconLoader.ICON_SURFACE, [], @(h,ev)view_surface_sphere(filenameRelative, 'mollweide'));
                     end
                 end
 

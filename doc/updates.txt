@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+August 2020
+- Anatomy: Display surfaces/sources a flat 2D maps (Mollweide projection)
+---------------------------------------------------------------
 July 2020
 - Anatomy: Added 13 infant templates 0.5-25 months (O'Reilly)
 - Anatomy: Use custom background threshold for head surface generation
