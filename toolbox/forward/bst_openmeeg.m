@@ -284,11 +284,12 @@ for i = 1:length(OPTIONS.BemFiles)
     iDipInside = find(~inpolyhd(vDipoles, vInner, TessMat.Faces));
     if ~isempty(iDipInside)
         errMsg = sprintf(['Some dipoles are outside the BEM layers (%d dipoles).\n' ...
-                          'The leadfield for these dipoles is probably incorrect.\n\n'], length(iDipInside));
+                          'The leadfield for these dipoles could be incorrect.\n\n'], length(iDipInside));
         if strcmpi(OPTIONS.HeadModelType, 'surface')
             errMsg = [errMsg, 'To fix the cortex surface:', 10, 'Right-click on the surface file > Force inside skull.'];
         end
         disp([10 'WARNING: ' errMsg 10]);
+        return
     end
 end
 % Write geometry file
