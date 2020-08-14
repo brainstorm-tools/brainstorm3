@@ -112,12 +112,12 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, min
         case 2,     gws = 'weak';
         case 3,     gws = 'strong';
     end
+    % Initialize returned list of files
+    OutputFile = {};
     for iP = 1:length(sInputs)
         bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iP) ' of ' num2str(length(sInputs))]);
         clear fg
         inputFile = in_bst_timefreq(sInputs(iP).FileName);
-        % Initialize returned list of files
-        OutputFile = {};
         % Check input frequency bounds
         if (any(fB <= 0) || fB(1) >= fB(2)) && ~aF
             bst_report('error','Invalid Frequency range');
@@ -197,7 +197,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, min
         [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iP));
         OutputFile{end+1} = SaveFile(inputFile, fp, fs, fg, iOutputStudy);
     end
-
+    
 end
 
 %% ===== PYTHON FOOOF =====
@@ -211,6 +211,8 @@ function OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, 
         'min_peak_height', minph,'peak_threshold', pet,'aperiodic_mode',...
         ams,'verbose',0); 
     rm = 1; % Always return model
+    % Initialize returned list of files
+    OutputFile = {};
     for iP = 1:length(sInputs)
         bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iP) ' of ' num2str(length(sInputs))]);
         clear fg
