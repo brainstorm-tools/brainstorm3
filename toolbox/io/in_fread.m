@@ -143,7 +143,7 @@ switch (sFile.format)
             F = F(iChannels,:);
         end
     case 'EEG-EGI-MFF'
-        F = in_fread_mff(sFile, iEpoch, SamplesBounds);
+        F = in_fread_mff(sFile, iEpoch, SamplesBounds, ImportOptions);
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
