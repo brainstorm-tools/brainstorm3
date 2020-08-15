@@ -1,7 +1,5 @@
 function varargout = process_pac_dynamic( varargin )
 % PROCESS_PAC_DYNAMIC: Compute the Time resolved Phase-Amplitude Coupling
-%
-% DOCUMENTATION
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,7 +19,7 @@ function varargout = process_pac_dynamic( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Soheila Samiee, Francois Tadel 2013
+% Authors: Soheila Samiee, Francois Tadel, 2013-2020
 % 
 % Updates:
 %   - 1.0.4:  Soheila
@@ -722,9 +720,18 @@ for ifreq=1:nFa
         for iSource=1:nSources            
             % Extracting the peak from envelope's PSD and then confirming
             % with a peak on the original signal
-            [pks_env,locs_env] = findpeaks(Ffft(iSource,ind(1):ind(2)),'SORTSTR','descend');
-            [pks_orig, locs_orig] = findpeaks(FfftSig(iSource,ind(1):ind(2)),'SORTSTR','descend');  % To check if a peak close to the coupled fp is available in the original signal
-
+            if bst_get('UseSigProcToolbox')
+                [pks_env, locs_env] = findpeaks(Ffft(iSource,ind(1):ind(2)),'SORTSTR','descend');
+                [pks_orig, locs_orig] = findpeaks(FfftSig(iSource,ind(1):ind(2)),'SORTSTR','descend');  % To check if a peak close to the coupled fp is available in the original signal
+            else
+                [locs_env, pks_env] = peakseek(Ffft(iSource,ind(1):ind(2)));
+                [locs_orig, pks_orig] = peakseek(FfftSig(iSource,ind(1):ind(2)));  % To check if a peak close to the coupled fp is available in the original signal
+                % Sort peaks in descending order
+                [pks_env, I] = sort(pks_env, 'descend');
+                locs_env = locs_env(I);
+                [pks_orig, I] = sort(pks_orig, 'descend');
+                locs_orig = locs_orig(I);
+            end
             % Ignore small peaks
             pks_orig = pks_orig/max(pks_orig);
             locs_orig = locs_orig(pks_orig>0.1);            
