@@ -2371,7 +2371,7 @@ function UpdateColormap(hFig)
     % Get colormap bounds
     if strcmpi(sColormap.MaxMode, 'custom')
         CLim = [sColormap.MinValue, sColormap.MaxValue];
-    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte'})
+    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte','henv'})
         CLim = [DataMinMax(1) DataMinMax(2)];
     elseif ismember(Method, {'corr'})
         if strcmpi(sColormap.MaxMode, 'local')
