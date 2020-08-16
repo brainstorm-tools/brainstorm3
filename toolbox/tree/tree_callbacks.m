@@ -1822,7 +1822,8 @@ switch (lower(action))
                 sSubject  = bst_get('Subject', sStudy.BrainStormSubject);
                 DisplayMod= {};
                 % Get data type
-                if strcmpi(char(bstNodes(1).getType()), 'ptimefreq')
+                isStat = strcmpi(char(bstNodes(1).getType()), 'ptimefreq');
+                if isStat
                     TimefreqMat = in_bst_timefreq(filenameRelative, 0, 'DataType');
                     if ~isempty(TimefreqMat.DataType)
                         DataType = TimefreqMat.DataType;
@@ -1934,77 +1935,81 @@ switch (lower(action))
                         
                     % ===== PAC: FULL MAPS =====
                     elseif ~isempty(strfind(filenameRelative, '_pac_fullmaps'))
-                        gui_component('MenuItem', jPopup, [], 'DirectPAC maps', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative));
-                        AddSeparator(jPopup);
-                        % Depending on the datatype
-                        switch lower(DataType)
-                            case 'data'
-                                % Topography
-                                fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
-                            case 'results'
-                                gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
-                                AddSeparator(jPopup);
-                                % Cortex
-                                if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
-                                    gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
-                                end
-                                % MRI
-                                if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
-                                    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
-                                end
-                            otherwise
+                        if ~isStat
+                            gui_component('MenuItem', jPopup, [], 'DirectPAC maps', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative));
+                            AddSeparator(jPopup);
+                            % Depending on the datatype
+                            switch lower(DataType)
+                                case 'data'
+                                    % Topography
+                                    fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
+                                case 'results'
+                                    gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
+                                    AddSeparator(jPopup);
+                                    % Cortex
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
+                                        gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
+                                    end
+                                    % MRI
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
+                                        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                    end
+                                otherwise
+                            end
                         end
                         
                     % ===== DPAC: FULL MAPS =====
                     elseif ~isempty(strfind(filenameRelative, '_dpac_fullmaps'))
-                        jMenuPac = gui_component('Menu', jPopup, [], 'DynamicPAC maps', IconLoader.ICON_PAC, [], []);
-                            gui_component('MenuItem', jMenuPac, [], 'One channel', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'SingleSensor'));
-                            if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
-                                gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'AllSensors'));
-                                gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'Spectrum'));
-                                gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'TimeSeries'));
-                            end
-                            if strcmpi(DataType, 'data')
-                                AddSeparator(jMenuPac);
-                                gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '3DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DDisc'));
-                            end
-                        jMenuPac = gui_component('Menu', jPopup, [], 'DynamicNesting maps', IconLoader.ICON_PAC, [], []);
-                            gui_component('MenuItem', jMenuPac, [], 'One channel',  IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'SingleSensor'));
-                            if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
-                                gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'AllSensors'));
-                                gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'Spectrum'));
-                                gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'TimeSeries'));
-                            end
-                            if strcmpi(DataType, 'data')
-                                AddSeparator(jMenuPac);
-                                gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '3DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DDisc'));
-                            end
-                        AddSeparator(jPopup);
-                        % Depending on the datatype
-                        switch lower(DataType)
-                            case 'data'
-                                % Topography
-                                fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
-                            case 'results'
-                                gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
-                                AddSeparator(jPopup);
-                                % Cortex
-                                if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
-                                    gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
+                        if ~isStat
+                            jMenuPac = gui_component('Menu', jPopup, [], 'DynamicPAC maps', IconLoader.ICON_PAC, [], []);
+                                gui_component('MenuItem', jMenuPac, [], 'One channel', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'SingleSensor'));
+                                if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
+                                    gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'AllSensors'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'Spectrum'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'TimeSeries'));
                                 end
-                                % MRI
-                                if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
-                                    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                if strcmpi(DataType, 'data')
+                                    AddSeparator(jMenuPac);
+                                    gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '3DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DDisc'));
                                 end
-                            otherwise
+                            jMenuPac = gui_component('Menu', jPopup, [], 'DynamicNesting maps', IconLoader.ICON_PAC, [], []);
+                                gui_component('MenuItem', jMenuPac, [], 'One channel',  IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'SingleSensor'));
+                                if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
+                                    gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'AllSensors'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'Spectrum'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'TimeSeries'));
+                                end
+                                if strcmpi(DataType, 'data')
+                                    AddSeparator(jMenuPac);
+                                    gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '3DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DDisc'));
+                                end
+                            AddSeparator(jPopup);
+                            % Depending on the datatype
+                            switch lower(DataType)
+                                case 'data'
+                                    % Topography
+                                    fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
+                                case 'results'
+                                    gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
+                                    AddSeparator(jPopup);
+                                    % Cortex
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
+                                        gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
+                                    end
+                                    % MRI
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
+                                        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                    end
+                                otherwise
+                            end
                         end
                         
                     % ===== TIME-FREQUENCY =====
