@@ -35,8 +35,14 @@ end
 
 
 %% ===== READ DATA HEADERS =====
+% Go to NWB folder (if there is a need for generating more local files)
+curDir = pwd;
+NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
+cd(NWBDir);
 % Read header
 nwb2 = nwbRead(DataFile);
+% Restore current folder
+cd(curDir);
 
 try
     all_raw_keys = keys(nwb2.acquisition);
