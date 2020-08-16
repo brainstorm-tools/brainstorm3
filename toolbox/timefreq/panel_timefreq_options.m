@@ -22,7 +22,7 @@ function varargout = panel_timefreq_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2020
+% Authors: Francois Tadel, 2010-2020; Hossein Shahabi, 2020
 
 eval(macro_method);
 end
@@ -73,7 +73,17 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     else
         isClusterAll = 0;
     end
-    Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    
+    % Determine which function is calling this pannel
+    if strcmp(func2str(sProcess.Function),'process_henv')
+        switch sProcess.options.tfmeasure.Value
+            case 1,   Method = 'hilbert' ;
+            case 2,   Method = 'morlet' ;
+        end
+    else
+        Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    end
+    
     hFigWavelet = [];
     % Restrict time vector to selected time window
     if isfield(sProcess.options, 'timewindow') && ~isempty(sProcess.options.timewindow) && ~isempty(sProcess.options.timewindow.Value) && iscell(sProcess.options.timewindow.Value) && (length(sProcess.options.timewindow.Value{1}) == 2)
@@ -434,7 +444,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             end
         else
             jRadioFreqLinear.setEnabled(1);
-            jRadioFreqBands.setEnabled(1);
+            if strcmp(func2str(sProcess.Function),'process_henv')
+                jRadioFreqBands.setEnabled(0);
+            else
+                jRadioFreqBands.setEnabled(1);
+            end
             if ~isempty(jRadioFreqLog)
                 jRadioFreqLog.setEnabled(1);
             end
@@ -468,6 +482,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                     jRadioMeasPow.setSelected(1);
                 end                
             end
+        end
+        % Disable some options when called through process_henv
+        if strcmp(func2str(sProcess.Function),'process_henv')
+            jRadioMeasNon.setSelected(1);
+            jRadioMeasPow.setEnabled(0);
+            jRadioMeasMag.setEnabled(0);
         end
         % === OUTPUT ===
         if ~isempty(jRadioOutAvg)
@@ -905,6 +925,4 @@ function Freqs = GetLogFreq(strFreq)
     % Round the vector
     Freqs = unique(round(Freqs .* 10) ./ 10);
 end
-
-
 
