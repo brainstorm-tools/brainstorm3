@@ -133,6 +133,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_nk(DataFile);
     case 'EEG-SMR'
         [sFile, ChannelMat] = in_fopen_smr(DataFile);
+    case 'EEG-SMRX'
+        [sFile, ChannelMat] = in_fopen_smrx(DataFile);
     case 'EYELINK'
         [sFile, ChannelMat] = in_fopen_eyelink(DataFile);
     case 'NIRS-BRS'
