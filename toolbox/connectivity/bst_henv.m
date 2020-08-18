@@ -1,5 +1,5 @@
 function varargout = bst_henv(Data,OPTIONS)
-%% Inputs and Outputs Definition:
+% BST_HENV Compute the time-varying COherence and enVELope measures 
 %
 % INPUTS:
 %   - Data         : Input signal (nSignals x nSamples)
