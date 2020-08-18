@@ -1,7 +1,2 @@
 
 *.asv
-toolbox/.DS_Store
-toolbox/process/.DS_Store
-.DS_Store
-*.m~
-toolbox/process/functions/process_pac_dynamic.m

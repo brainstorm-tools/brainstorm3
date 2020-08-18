@@ -151,6 +151,7 @@ function [DefFunction, ColormapType] = GetDefaultFunction(sTimefreq) %#ok<DEFNU>
         case 'cohere',   DefFunction = 'other';       ColormapType = 'connect1';
         case 'granger',  DefFunction = 'other';       ColormapType = 'connect1';
         case 'spgranger',DefFunction = 'other';       ColormapType = 'connect1';
+        case 'henv',     DefFunction = 'other';       ColormapType = 'connect1';
         case 'plv',      DefFunction = 'magnitude';   ColormapType = 'connect1';
         case 'plvt',     DefFunction = 'magnitude';   ColormapType = 'connect1';
         case 'pac',      DefFunction = 'maxpac';      ColormapType = 'pac';

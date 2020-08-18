@@ -24,6 +24,7 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile, ImportOptions)
 %
 % Author: Konstantinos Nasiotis, Francois Tadel, 2019-2020
 
+error('This code is outdated, see: https://neuroimage.usc.edu/forums/t/error-opening-nwb-files/21025');
 
 %% ===== DOWNLOAD NWB LIBRARY IF NEEDED =====
 if ~exist('nwbRead', 'file')
@@ -266,6 +267,5 @@ if ~isempty(events)
     sFile = import_events(sFile, [], events);
 end
 
-end
 
 
