@@ -23,6 +23,7 @@ function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isCont
 %
 % Author: Konstantinos Nasiotis, Francois Tadel, 2019-2020
 
+error('This code is outdated, see: https://neuroimage.usc.edu/forums/t/error-opening-nwb-files/21025');
 
 %% ===== DOWNLOAD NWB LIBRARY IF NEEDED =====
 if ~exist('nwbRead', 'file')

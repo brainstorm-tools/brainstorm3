@@ -21,8 +21,7 @@ function TessMat = in_tess_nwb(TessFile)
 %
 % Authors: Konstantinos Nasiotis, 2019
 
-
-
+error('This code is outdated, see: https://neuroimage.usc.edu/forums/t/error-opening-nwb-files/21025');
 
 
 

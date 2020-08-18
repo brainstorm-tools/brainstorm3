@@ -22,7 +22,8 @@ function errMsg = bst_install_nwb(isInteractive)
 % Author: Konstantinos Nasiotis, Francois Tadel, 2019-2020
 
 %% ===== VERSION =====
-url = 'https://github.com/NeurodataWithoutBorders/matnwb/archive/v2.2.5.0.zip';
+% url = 'https://github.com/NeurodataWithoutBorders/matnwb/archive/v2.2.5.0.zip';
+url = 'https://github.com/NeurodataWithoutBorders/matnwb/archive/196b569626343804b7d64b0f1c279b5b84539908.zip';
 
 
 %% ===== PRELIMINARY CHECKS =====
