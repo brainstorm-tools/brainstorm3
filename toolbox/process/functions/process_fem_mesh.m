@@ -713,24 +713,64 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             if ~isempty(T2File)
                 T2Nii = bst_fullfile(roastDir, [subjid 'T2.nii']);
                 out_mri_nii(sMriT2, T2Nii);
+                segTag = '_T1andT2';
             else
                 T2Nii = [];
+                segTag = '_T1orT2';
             end
-            % === CALL ROAST PIPELINE ===
-            % Segmentation
-            bst_progress('text', 'MRI Segmentation & Mesh Generation...');
-% two independant function            
-%             segment_by_roast(T1Nii, T2Nii);            
-%             % Mesh by iso2mesh
-%             bst_progress('text', 'Mesh Generation...'); %
-%             [node,elem]  = mesh_by_iso2mesh(T1Nii, T2Nii);
-            % or call this full function ... wait francois inputs for
-            % modifications 
-            [node,elem]  = roast_GenerateHeadModel(T1Nii, T2Nii);
+            % === ROAST: SEGMENTATION (SPM) ===
+            bst_progress('text', 'ROAST: MRI segmentation (SPM)...');
+            % Check for segmented images
+            segNii = bst_fullfile(roastDir, ['c1' subjid 'T1' segTag '.nii']);
+            if file_exist(segNii)
+                disp(['ROAST> SPM segmented MRI found: ' segNii]);
+            % ROAST: Start MRI segmentation
+            else
+                start_seg(T1Nii, T2Nii);
+                close all;
+                % Error handling
+                if ~file_exist(segNii)
+                    errMsg = 'ROAST: MRI segmentation (SPM) failed.';
+                    return;
+                end
+            end
+            % === ROAST: SEGMENTATION TOUCHUP ===
+            bst_progress('text', 'ROAST: MRI segmentation touchup...');
+            % Check for segmented images
+            touchNii = bst_fullfile(roastDir, [subjid 'T1' segTag '_masks.nii']);
+            if file_exist(touchNii)
+                disp(['ROAST> Final masks found: ' touchNii]);
+            % ROAST: Start MRI segmentation
+            else
+                segTouchup(T1Nii, T2Nii);
+                % Error handling
+                if ~file_exist(touchNii)
+                    errMsg = 'ROAST: MRI segmentation touchup failed.';
+                    return;
+                end
+                % Save to the database
+                import_mri(iSubject, touchNii, [], 0, 1, 'tissues');
+            end
+            % === ROAST: MESH GENERATION ===
+            bst_progress('text', 'ROAST: Mesh generation (iso2mesh)...');
+            % Load segmentation masks
+            sMasks = in_mri_nii(touchNii);
+            % Call iso2mesh for mesh generation
+            meshOpt = struct(...
+                'radbound',  5, ...
+                'angbound',  30,...
+                'distbound', 0.3, ...
+                'reratio',   3);
+            maxvol = 10;
+            [node,elem] = cgalv2m(sMasks.Cube, meshOpt, maxvol);
+            % Error handling
             if isempty(elem)
-                errMsg = 'Mesh generation with roast failed.';
+                errMsg = 'Mesh generation failed (iso2mesh/cgalv2m).';
                 return;
             end
+            % Fix for voxel space
+            node(:,1:3) = node(:,1:3) + 0.5; 
+
             % Remove unwanted tissues (label <= 0)
             iRemove = find(elem(:,end) <= 0);
             if ~isempty(iRemove)
@@ -749,12 +789,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Orientation required for the FEM computation (at least with SimBio, maybe not for Duneuro)
             newelem = meshreorient(no, el(:,1:4));
             elem = [newelem elem(:,5)];
-            node = no; % need to updates the new list            
-            % Read masks to database as tissues
-            MaskNii = file_find(roastDir, '*_masks.nii', 2, 1);
-            if ~isempty(MaskNii)
-                MaskFile = import_mri(iSubject, MaskNii, [], 0, 1, 'tissues');
-            end            
+            node = no; % need to updates the new list         
             
         otherwise
             errMsg = ['Invalid method "' OPTIONS.Method '".'];
@@ -802,18 +837,6 @@ end
 
 %% ===== GET FEM LABEL =====
 function label = GetFemLabel(label)
-%     switch lower(label)
-%         case {'skin','scalp','head'}
-%             label = 'scalp';
-%         case {'bone','skull','outer','outerskull'}
-%             label = 'skull';
-%         case 'csf'
-%             label = 'csf';
-%         case {'brain','grey','gray','greymatter','graymatter','gm','cortex','inner','innerskull'}
-%             label = 'gray';
-%         case {'white','whitematter','wm'}
-%             label = 'white';
-%     end
     label = lower(label);
     if ~isempty(strfind(label, 'white')) || ~isempty(strfind(label, 'wm'))
         label = 'white';
@@ -1037,8 +1060,20 @@ function errMsg = InstallRoast(isInteractive)
     end
     % If installed but not in path: add roast to path
     if ~exist('roast', 'file')
-        addpath(bst_fileparts(exePath));
-        disp([10, 'ROAST path: ', bst_fileparts(roastDir), 10]);
+        % Add ROAST to the path
+        exeDir = bst_fileparts(exePath);
+        addpath(exeDir);
+        disp([10, 'ROAST path: ', exeDir, 10]);
+        % Add dependent libraries to the path
+        if ~exist('spm.m', 'file')
+            addpath(fullfile(exeDir, 'lib', 'spm12'));
+        end
+        if ~exist('iso2meshver.m', 'file')
+            addpath(fullfile(exeDir, 'lib', 'iso2mesh'));
+        end
+        addpath(fullfile(exeDir, 'lib', 'cvx'));
+        addpath(fullfile(exeDir, 'lib', 'ncs2daprox'));
+        addpath(fullfile(exeDir, 'lib', 'NIFTI_20110921'));
         % If the executable is still not accessible
     else
         errMsg = ['ROAST could not be installed in: ' roastDir];
