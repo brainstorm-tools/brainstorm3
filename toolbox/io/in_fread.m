@@ -34,7 +34,7 @@ function [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iC
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2020
 
 %% ===== PARSE INPUTS =====
 if (nargin < 6)
@@ -143,7 +143,7 @@ switch (sFile.format)
             F = F(iChannels,:);
         end
     case 'EEG-EGI-MFF'
-        F = in_fread_mff(sFile, iEpoch, SamplesBounds);
+        F = in_fread_mff(sFile, iEpoch, SamplesBounds, ImportOptions);
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
@@ -179,6 +179,8 @@ switch (sFile.format)
         F = in_fread_nk(sFile, sfid, iEpoch, SamplesBounds, ChannelRange);
     case 'EEG-SMR'
         F = in_fread_smr(sFile, sfid, SamplesBounds, iChannels);
+    case 'EEG-SMRX'
+        F = in_fread_smrx(sFile, SamplesBounds, iChannels);
     case 'EYELINK'
         [F, TimeVector] = in_fread_eyelink(sFile, iEpoch, SamplesBounds, iChannels);
     case 'NIRS-BRS'
@@ -209,7 +211,7 @@ switch (sFile.format)
         F = in_fread_tdt(sFile, SamplesBounds, iChannels);
     case {'NWB', 'NWB-CONTINUOUS'}
         isContinuous = strcmpi(sFile.format, 'NWB-CONTINUOUS');
-        F = in_fread_nwb(sFile, iEpoch, SamplesBounds, iChannels, isContinuous);
+        F = in_fread_nwb(sFile, iEpoch, SamplesBounds, iChannels, isContinuous, ImportOptions);
     case 'MNE-PYTHON'
         [F, TimeVector] = in_fread_mne(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels);
     otherwise

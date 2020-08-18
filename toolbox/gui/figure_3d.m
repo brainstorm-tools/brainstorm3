@@ -3048,6 +3048,10 @@ function SmoothSurface(hFig, iTess, smoothValue)
     if (length(sSurf) > 1)
         sSurf = sSurf(1);
     end
+    % If all the Z coordinates are the same: can't smooth
+    if all(sSurf.Vertices(:,3) == sSurf.Vertices(1,3))
+        return;
+    end
     % If smoothValue is null: restore initial vertices
     if (smoothValue == 0)
         set(TessInfo(iTess).hPatch, 'Vertices', sSurf.Vertices);

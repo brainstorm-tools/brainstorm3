@@ -368,6 +368,12 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             for i = 1:length(iRelatedStudies)
                 % Get data file
                 sStudyRel = bst_get('Study', iRelatedStudies(i));
+                % If bad trial: don't take it into consideration
+                if (sStudyRel.Data(iRelatedData(i)).BadTrial)
+                    nAvgAll(i) = Inf;
+                    LeffAll(i) = Inf;
+                    continue;
+                end
                 % Read bad channels and nAvg
                 DataMat = in_bst_data(sStudyRel.Data(iRelatedData(i)).FileName, 'ChannelFlag', 'nAvg', 'Leff');
                 if isfield(DataMat, 'nAvg') && ~isempty(DataMat.nAvg)

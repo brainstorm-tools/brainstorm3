@@ -628,6 +628,12 @@ function FigureKeyPressedCallback(hFig, ev)
             if isControl
                 view_topography(TfFile, [], '2DSensorCap', [], 0);
             end
+        % Y : Scale to fit Y axis
+        case 'y'
+            TsInfo = getappdata(hFig, 'TsInfo');
+            if strcmpi(TsInfo.DisplayMode, 'butterfly')
+                figure_timeseries('ScaleToFitY', hFig, ev);
+            end
         % RETURN: VIEW SELECTED CHANNELS
         case 'return'
             DisplaySelectedRows(hFig);
@@ -1027,11 +1033,6 @@ function UpdateFigurePlot(hFig, isForced)
     else
         TimeDef = [];
     end
-    % Get data to plot
-    [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, tmp, iTimefreq] = figure_timefreq('GetFigureData', hFig, TimeDef);
-    if isempty(TF)
-        return;
-    end
     % FOOOF: Swap TF data for relevant FOOOF data
     if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF) && ~strcmp(TfInfo.FOOOFDisp, 'spectrum')
          fFreqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF.FOOOF_freqs;
@@ -1055,6 +1056,11 @@ function UpdateFigurePlot(hFig, isForced)
                      TF(chan,1,i_model) = 10 .* log10(abs(TF(chan,1,i_model)));
              end
         end
+    end
+    % Get data to plot
+    [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, tmp, iTimefreq] = figure_timefreq('GetFigureData', hFig, TimeDef);
+    if isempty(TF)
+        return;
     end
     % Row names
     if ~isempty(RowNames) && ischar(RowNames)

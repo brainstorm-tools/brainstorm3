@@ -72,7 +72,7 @@ action = c{3};
 iUpdate = find((action == 'A') | (action == 'L') | (action == 'D'));
 [nUpdate,xUpdate] = hist(dates(iUpdate), length(unique(dates(iUpdate))));
 % Look for all dates in the current year (exclude current month)
-iAvg = find((xUpdate >= 2019) & (xUpdate < 2020));
+iAvg = find((xUpdate >= 2020) & (xUpdate < 2021));
 % Remove invalid data
 iBad = ((nUpdate < 100) | (nUpdate > 4000));
 nUpdate(iBad) = interp1(xUpdate(~iBad), nUpdate(~iBad), xUpdate(iBad), 'pchip');
@@ -80,7 +80,7 @@ nUpdate(iBad) = interp1(xUpdate(~iBad), nUpdate(~iBad), xUpdate(iBad), 'pchip');
 % Plot number of downloads
 [hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
            [2005, max(xUpdate(1:end-1))], [], ...
-           sprintf('Downloads per month: Avg(2019)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
+           sprintf('Downloads per month: Avg(2020)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
            [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'download.png'));
        
 % % Create histograms
@@ -112,7 +112,7 @@ hFig(end+1) = fig_report(year(1:end-1), nPosts(1:end-1), 0, ...
 % Hard coded list of publications
 year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019]; 
 nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  225  300];
-nPubliCurYear = 14;
+nPubliCurYear = 177;
 % Plot figure
 hFig(end+1) = fig_report(year, nPubli, 1, ...
            [2000 max(year)], [], ...

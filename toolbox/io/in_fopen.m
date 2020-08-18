@@ -112,7 +112,7 @@ switch (FileFormat)
     case 'EEG-MANSCAN'
         [sFile, ChannelMat] = in_fopen_manscan(DataFile);
     case 'EEG-EGI-MFF'
-        [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions);
+        [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions, 0);
     case 'EEG-MICROMED'
         [sFile, ChannelMat] = in_fopen_micromed(DataFile);
     case 'EEG-NEURONE'
@@ -133,6 +133,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_nk(DataFile);
     case 'EEG-SMR'
         [sFile, ChannelMat] = in_fopen_smr(DataFile);
+    case 'EEG-SMRX'
+        [sFile, ChannelMat] = in_fopen_smrx(DataFile);
     case 'EYELINK'
         [sFile, ChannelMat] = in_fopen_eyelink(DataFile);
     case 'NIRS-BRS'
@@ -148,7 +150,7 @@ switch (FileFormat)
     case 'EEG-TDT'
         [sFile, ChannelMat] = in_fopen_tdt(DataFile);
     case {'NWB', 'NWB-CONTINUOUS'}
-        [sFile, ChannelMat] = in_fopen_nwb(DataFile);
+        [sFile, ChannelMat] = in_fopen_nwb(DataFile, ImportOptions);
         
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'

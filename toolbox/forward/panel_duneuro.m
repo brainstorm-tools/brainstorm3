@@ -207,13 +207,20 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     jPanelRight.add(jPanelOptSub, c);
     
     % ==== PANEL RIGHT: INPUT OPTIONS ====
-    jPanelInput = gui_river([1,1], [0,6,6,6], 'Input options');
+    jPanelInput = gui_river([1,1], [0,6,6,6], 'Source space');
         % Shrink source space
         gui_component('label', jPanelInput, '', 'Shrink source space: ', [], '', [], []);
         jTextSrcShrink = gui_component('texttime', jPanelInput, '', '', [], '', [], []);
         gui_validate_text(jTextSrcShrink, [], [], {0,100,100}, '', 0, OPTIONS.SrcShrink, []);
         gui_component('label', jPanelInput, '', '  mm');
-    c.gridy = 3;
+        % Force source space inside grey matter
+        iGM = find(CheckType(OPTIONS.FemNames, 'gray'), 1);
+        if ~isempty(iGM)
+            jCheckSrcForceInGM = gui_component('checkbox', jPanelInput, 'br', ['Force source space inside layer "' OPTIONS.FemNames{iGM} '"'], [], '', [], []);
+        else
+            jCheckSrcForceInGM = [];
+        end
+        c.gridy = 3;
     jPanelRight.add(jPanelInput, c);
     
     % ==== PANEL RIGHT: OUTPUT OPTIONS ====
@@ -278,6 +285,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                   'jTextIntorderadd',      jTextIntorderadd, ...
                   'jTextIntorderadd_lb',   jTextIntorderadd_lb, ...
                   'jTextSrcShrink',        jTextSrcShrink, ...
+                  'jCheckSrcForceInGM',   jCheckSrcForceInGM, ...
                   'jCheckSaveTransfer',    jCheckSaveTransfer, ...
                   'UseTensor',             OPTIONS.UseTensor);
     ctrl.FemNames = OPTIONS.FemNames;
@@ -413,6 +421,11 @@ function s = GetPanelContents() %#ok<DEFNU>
     end
     % Input options
     s.SrcShrink = str2double(ctrl.jTextSrcShrink.getText());
+    if ~isempty(ctrl.jCheckSrcForceInGM)
+        s.SrcForceInGM = ctrl.jCheckSrcForceInGM.isSelected();
+    else
+        s.SrcForceInGM = 0;
+    end
     % Output options
     s.BstSaveTransfer = ctrl.jCheckSaveTransfer.isSelected();
 end
@@ -435,22 +448,40 @@ function FemCond = GetDefaultCondutivity(FemNames, Reference)
     FemCond = conductivity(2) * ones(1, length(FemNames));
     % Detect the conductivity layer by name
     for i = 1:length(FemNames)
-        if ~isempty(strfind(FemNames{i}, 'white')) || ~isempty(strfind(FemNames{i}, 'wm'))
+        if CheckType(FemNames{i}, 'white')
             FemCond(i) = conductivity(1);
-        elseif ~isempty(strfind(FemNames{i}, 'brain')) || ~isempty(strfind(FemNames{i}, 'grey')) || ~isempty(strfind(FemNames{i}, 'gray')) || ~isempty(strfind(FemNames{i}, 'gm')) || ~isempty(strfind(FemNames{i}, 'cortex'))
+        elseif CheckType(FemNames{i}, 'gray')
             FemCond(i) = conductivity(2);
-        elseif ~isempty(strfind(FemNames{i}, 'csf')) || ~isempty(strfind(FemNames{i}, 'inner'))
+        elseif CheckType(FemNames{i}, 'csf')
             FemCond(i) = conductivity(3);
-        elseif ~isempty(strfind(FemNames{i}, 'spong')) % 'Skull spongia'
+        elseif CheckType(FemNames{i}, 'skull')
             FemCond(i) = conductivity(5);
-        elseif ~isempty(strfind(FemNames{i}, 'bone')) || ~isempty(strfind(FemNames{i}, 'skull')) || ~isempty(strfind(FemNames{i}, 'outer'))  % 'Skull compacta'
-            FemCond(i) = conductivity(5);
-        elseif ~isempty(strfind(FemNames{i}, 'skin')) || ~isempty(strfind(FemNames{i}, 'scalp')) || ~isempty(strfind(FemNames{i}, 'head'))
+        elseif CheckType(FemNames{i}, 'scalp')
             FemCond(i) = conductivity(6);
         end
     end
 end
 
 
-
-
+%% ===== DETECTION FUNCTION =====
+% Check the type of a layer based on its name
+function isType = CheckType(strName, strType)
+    if iscell(strName)
+        isType = cellfun(@(c)CheckType(c, strType), strName);
+    else
+        strName = lower(strName);
+        switch strType
+            case 'white'
+                isType = ~isempty(strfind(strName, 'white')) || ~isempty(strfind(strName, 'wm'));
+            case 'gray'
+                isType = ~isempty(strfind(strName, 'brain')) || ~isempty(strfind(strName, 'grey')) || ~isempty(strfind(strName, 'gray')) || ~isempty(strfind(strName, 'gm')) || ~isempty(strfind(strName, 'cortex'));
+            case 'csf'
+                isType = ~isempty(strfind(strName, 'csf')) || ~isempty(strfind(strName, 'inner'));
+            case 'skull'
+                isType = ~isempty(strfind(strName, 'spong')) || ... % 'Skull spongia'
+                         ~isempty(strfind(strName, 'bone')) || ~isempty(strfind(strName, 'skull')) || ~isempty(strfind(strName, 'outer'));  % 'Skull compacta'
+            case 'scalp'
+                isType = ~isempty(strfind(strName, 'skin')) || ~isempty(strfind(strName, 'scalp')) || ~isempty(strfind(strName, 'head'));
+        end
+    end
+end

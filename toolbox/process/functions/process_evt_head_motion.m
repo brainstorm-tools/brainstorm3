@@ -19,7 +19,7 @@ function varargout = process_evt_head_motion(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Elizabeth Bock, Francois Tadel, Marc Lalancette, 2013-2018
+% Authors: Elizabeth Bock, Francois Tadel, Marc Lalancette, 2013-2020
 
 eval(macro_method);
 end
@@ -328,9 +328,16 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
     iFitErr = find(strcmp({ChannelMat.Channel.Type}, 'FitErr'));
     [Unused, iSortFitErr] = sort({ChannelMat.Channel(iFitErr).Name});
     nChannels = numel(iHLU);
-    if nChannels < 9
-        bst_report('Error', 'process_evt_head_motion', sInput, ...
+    if nChannels == 0
+        bst_report('Warning', 'process_evt_head_motion', sInput, ...
             'LoadHLU > Head coil position channels not found.');
+        Locations = [];
+        HeadSamplePeriod = [];
+        FitErrors = [];
+        return;
+    elseif nChannels < 9
+        bst_report('Error', 'process_evt_head_motion', sInput, ...
+            'LoadHLU > Fewer than 9 head coil position channels found.');
         Locations = [];
         HeadSamplePeriod = [];
         FitErrors = [];

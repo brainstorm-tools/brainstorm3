@@ -65,6 +65,7 @@ end
 FemFile = file_fullpath(FemFile);
 FemMat = load(FemFile);
 
+bst_progress('text', 'Removing elements...');
 % Get MNI transformation
 vox2mni = cs_convert(sMri, 'scs', 'mni');
 % Get cut plane in MRI coordinates
@@ -87,23 +88,7 @@ elseif (length(iElemCut) == nElem)
 end
 
 % Remove elements
-FemMat.Elements(iElemCut, :) = [];
-FemMat.Tissue(iElemCut) = [];
-if isfield(FemMat, 'Tensors') && ~isempty(FemMat.Tensors)
-    FemMat.Tensors(iElemCut, :) = [];
-end
-
-% Find vertices to remove
-nVert = size(FemMat.Vertices, 1);
-iVertCut = setdiff(1:nVert, unique(FemMat.Elements(:)));
-% Re-numbering matrix
-iVertKept = setdiff(1:nVert, iVertCut);
-iVertMap = zeros(1, nVert);
-iVertMap(iVertKept) = 1:length(iVertKept);
-% Remove vertices
-FemMat.Vertices(iVertCut,:) = [];
-% Renumber vertices in elements list
-FemMat.Elements = iVertMap(FemMat.Elements);
+FemMat = fem_remove_elem(FemMat, iElemCut);
 
 
 % ===== SAVE NEW FILE =====
