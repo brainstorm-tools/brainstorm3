@@ -246,6 +246,7 @@ switch (GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method)
     case 'spgranger',TfInfo.Function = 'other';
                      IsDirectionalData = 1;
                      IsBinaryData = 1;
+    case 'henv',     TfInfo.Function = 'other';
     case {'plv','plvt'}
         if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'other')
             TfInfo.Function = 'other';
@@ -283,10 +284,4 @@ panel_display('UpdatePanel', hFig);
 % Set figure visible
 set(hFig, 'Visible', 'on');
 bst_progress('stop');
-
-
-
-
-
-
 
