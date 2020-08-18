@@ -365,7 +365,20 @@ function ComputeInteractive(iSubject, FemFile) %#ok<DEFNU>
     bst_progress('stop');
 end
 
-
+function ClearTensors(FemFile)
+    bst_progress('start', 'FEM tensors', 'Clear conductivity tensors...');
+    bst_progress('text', 'Loading FEM head model...');
+    FemMat = load(FemFile);
+    bst_progress('text', 'Clear tensors...');
+    FemMat.Tensors = [];
+    bst_progress('text', 'Saving FEM head model ...');
+    % Add history entry
+    FemMat = bst_history('add', FemMat, 'process_fem_tensors', 'clear fem tensors');
+    % Save tensors to the FemFile
+    bst_save(FemFile, FemMat, 'v7');
+   % Close progress bar
+    bst_progress('stop');
+end
 
 %% =================================================================================
 %  === HELPER FUNCTIONS ============================================================
