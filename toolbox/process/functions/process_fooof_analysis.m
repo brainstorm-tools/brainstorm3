@@ -102,6 +102,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 function ePeaks = extractPeaks(inputFile, pt, sb, fb)
+    % Organize/extract peak components from FOOOF models
     ChanNames = inputFile.RowNames;
     FOOOFdata = inputFile.FOOOF.FOOOF_data;
     maxEnt = length(ChanNames)*inputFile.FOOOF.FOOOF_options.max_peaks;
@@ -162,6 +163,7 @@ function ePeaks = extractPeaks(inputFile, pt, sb, fb)
 end
 
 function eAper = extractAperiodic(inputFile)
+    % Organize/extract aperiodic components from FOOOF models
     ChanNames = inputFile.RowNames;
     FOOOFdata = inputFile.FOOOF.FOOOF_data;
     VarNames = {'channel', 'offset', 'exponent', 'knee_frequency'};
@@ -183,6 +185,7 @@ function eAper = extractAperiodic(inputFile)
 end
 
 function eStats = extractStats(inputFile, pmse, pr2, pfe)
+    % Organize/extract stats from FOOOF models
     if ~any([pmse pr2 pfe])
         eStats = 'No stats selected';
         return
@@ -210,13 +213,14 @@ function eStats = extractStats(inputFile, pmse, pr2, pfe)
             fspec = squeeze(log10(FOOOFdata(chan).FOOOF.fooofed_spectrum))';
             eStats(chan).frequency_wise_error = table('Size',[length(spec),1],...
                 'VariableNames',{'abs_error'}, 'VariableTypes',{'double'});
-            eStats(chan).frequency_wise_error.abs_error = abs(spec-fspec);
+            eStats(chan).frequency_wise_error = abs(spec-fspec);
         end
     end 
     eStats = struct2table(eStats);
 end
 
 function bandName = findBand(cf,bands)
+    % Find name of frequency band from user definitions
     bandName = 'None';
     for band = 1:size(bands,1)
         if cf >= bands{band,2}(1) && cf <= bands{band,2}(2)
@@ -227,7 +231,6 @@ end
 
 %% ===== SAVE FILE =====
 function inFileName = SaveFile(inFileName, inputFile, ep, ePeaks, ea, eAper, es, eStats, pt, fb, iOutputStudy)
-
     % ===== PREPARE OUTPUT STRUCTURE =====
     % Create file structure
     FileMat = inputFile;

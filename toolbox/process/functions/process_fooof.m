@@ -20,7 +20,12 @@ function varargout = process_fooof(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
+% Author: Luc Wilson (2020)
 %
+% Please cite the original algorithm designed by Haller, M., Donoghue, T., 
+% Peterson, E., Varma, P., Sebastian, P., Gao, R., Noto, T., Knight, R.T., 
+% Shestyuk, A., and Voytek, B. (2018). Parameterizing Neural Power Spectra. 
+% BioRxiv, 299859. doi: https://doi.org/10.1101/299859
 
 eval(macro_method);
 end
@@ -80,6 +85,7 @@ function [fooofType, freqBounds, allFreqs, peakType, peakWidthLims, maxPeaks, mi
     end
 end
 
+
 %% ===== RUN =====
 function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     % Fetch user settings
@@ -95,6 +101,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, pet, am);
     end    
 end
+
 
 %% ===== MATLAB STANDALONE FOOOF =====
 function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, minph, pet, prt, rOpt, am, gw)
@@ -116,7 +123,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, min
     OutputFile = {};
     for iP = 1:length(sInputs)
         bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iP) ' of ' num2str(length(sInputs))]);
-        clear fg
+        fg = [];
         inputFile = in_bst_timefreq(sInputs(iP).FileName);
         % Check input frequency bounds
         if (any(fB <= 0) || fB(1) >= fB(2)) && ~aF
@@ -200,6 +207,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, min
     
 end
 
+
 %% ===== PYTHON FOOOF =====
 function OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, pet, am)
     switch am
@@ -267,6 +275,7 @@ function OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, 
 
 end
 
+
 %% ===== SAVE FILE =====
 function NewFile = SaveFile(inputFile, FOOOF_params, FOOOF_freqs, FOOOF_group, iOutputStudy)
 
@@ -296,21 +305,24 @@ function NewFile = SaveFile(inputFile, FOOOF_params, FOOOF_freqs, FOOOF_group, i
     db_add_data(iOutputStudy, NewFile, FileMat);
 end
 
-%% Signal-generating function
+
+%% ===== GENERATE APERIODIC =====
 function ap_vals = gen_aperiodic(freqs,aperiodic_params,aperiodic_mode)
-%     Generate aperiodic values, from parameter definition.
+%       Generate aperiodic values, from parameter definition.
 %
-%     Parameters
-%     ----------
-%     freqs : 1d array
-%         Frequency vector to create aperiodic component for.
-%     aperiodic_params : list of float
-%         Parameters that define the aperiodic component.
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%               Frequency vector to create aperiodic component for.
+%       aperiodic_params : 1x3 array
+%               Parameters that define the aperiodic component.
+%       aperiodic_mode : 1 or 2
+%               Defines absence or presence of knee in aperiodic component.
 %
-%     Returns
-%     -------
-%     ap_vals : 1d array
-%         Generated aperiodic values.
+%       Returns
+%       -------
+%       ap_vals : 1d array
+%               Generated aperiodic values.
 
     if aperiodic_mode == 1 % no knee
         ap_vals = expo_nk_function(freqs,aperiodic_params);
@@ -319,112 +331,110 @@ function ap_vals = gen_aperiodic(freqs,aperiodic_params,aperiodic_mode)
     end
 end
 
-%% From FOOOF core funcs
-function ys = gaussian_function(xs, ctr, hgt, wid)
-% Gaussian function to use for fitting.
+
+%% ===== CORE MODELS =====
+function ys = gaussian_function(freqs, ctr, hgt, wid)
+%       Gaussian function to use for fitting.
 %
-%   Parameters
-%   ----------
-%   xs : 1d array
-%       Input x-axis values.
-%   *params : ctr, hgt, wid
-%       Parameters that define gaussian function (centre frequency, height,
-%       and standard deviation.
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%           Frequency vector to create gaussian fit for.
+%       ctr, hgt, wid : doubles
+%           Parameters that define gaussian function (centre frequency,
+%           height, and standard deviation).
 %
-%   Returns
-%   -------
-%   ys : 1d array
+%       Returns
+%       -------
+%       ys :    1xn array
 %       Output values for gaussian function.
 
-    ys = hgt*exp(-(xs-ctr).^2./(2*wid.^2));
+    ys = hgt*exp(-(freqs-ctr).^2./(2*wid.^2));
 
 end
 
-function ys = cauchy_function(xs, ctr, hgt, gam)
-% Gaussian function to use for fitting.
+function ys = cauchy_function(freqs, ctr, hgt, gam)
+%       Cauchy function to use for fitting.
 % 
-%   Parameters
-%   ----------
-%   xs : 1d array
-%       Input x-axis values.
-%   *params : ctr, hgt, wid
-%       Parameters that define gaussian function (centre frequency, height,
-%       and standard deviation.
-% 
-%   Returns
-%   -------
-%   ys : 1d array
-%       Output values for gaussian function.
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%           Frequency vector to create cauchy fit for.
+%       ctr, hgt, gam : doubles
+%           Parameters that define cauchy function (centre frequency,
+%           height, and "standard deviation" [gamma]).
+%
+%       Returns
+%       -------
+%       ys :    1xn array
+%       Output values for cauchy function.
 
-    ys = hgt./(1+((xs-ctr)/gam).^2);
+    ys = hgt./(1+((freqs-ctr)/gam).^2);
 
 end
 
-function ys = expo_function(xs,params)
-%   Exponential function to use for fitting 1/f, with a 'knee'.
+function ys = expo_function(freqs,params)
+%       Exponential function to use for fitting 1/f, with a 'knee'.
 %
-%	NOTE: this function requires linear frequency (not log).
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%           Input x-axis values.
+%       params : 1x3 array (offset, knee, exp)
+%           Parameters (offset, knee, exp) that define Lorentzian function:
+%           y = 10^offset * (1/(knee + x^exp))
 %
-%	Parameters
-%	----------
-%	xs : 1d array
-%       Input x-axis values.
-%	params : float
-%       Parameters (offset, knee, exp) that define Lorentzian function:
-%	y = 10^offset * (1/(knee + x^exp))
-%
-%	Returns
-%	-------
-%	ys : 1d array
-%       Output values for exponential function.
+%       Returns
+%       -------
+%       ys :    1xn array
+%           Output values for exponential function.
 
-    ys = zeros(size(xs));
+    ys = zeros(size(freqs));
 
-    ys = ys + params(1) - log10(params(2) +xs.^params(3));
+    ys = ys + params(1) - log10(params(2) +freqs.^params(3));
 
 end
 
-function ys = expo_nk_function(xs, params)
-%	Exponential function to use for fitting 1/f, with no 'knee'.
+function ys = expo_nk_function(freqs, params)
+%       Exponential function to use for fitting 1/f, with a 'knee'.
 %
-%   NOTE: this function requires linear frequency (not log).
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%           Input x-axis values.
+%       params : 1x2 array (offset, exp)
+%           Parameters (offset, knee, exp) that define Lorentzian function:
+%           y = 10^offset * (1/(x^exp))
 %
-%   Parameters
-%	----------
-%	xs : 1d array
-%       Input x-axis values.
-%	params : float
-%       Parameters (a, c) that define Lorentzian function:
-%       y = 10^off * (1/(x^exp))
-%       a: constant; c: slope past knee
-%
-%	Returns
-%	-------
-%	ys : 1d array
-%	Output values for exponential (no-knee) function.
+%       Returns
+%       -------
+%       ys :    1xn array
+%           Output values for exponential (no-knee) function.
 
-    ys = zeros(size(xs));
+    ys = zeros(size(freqs));
 
-    ys = ys + params(1) - log10(xs.^params(2));
+    ys = ys + params(1) - log10(freqs.^params(2));
 
 end
 
-%% From FOOOF fit script
 
+%% ===== FITTING ALGORITHM =====
 function aperiodic_params = simple_ap_fit(freqs, power_spectrum, aperiodic_mode)
-%         Fit the aperiodic component of the power spectrum.
+%       Fit the aperiodic component of the power spectrum.
 %
-%         Parameters
-%         ----------
-%         freqs : 1d array
-%             Frequency values for the power_spectrum, in linear scale.
-%         power_spectrum : 1d array
-%             Power values, in log10 scale.
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%           Frequency values for the power spectrum, in linear scale.
+%       power_spectrum : 1xn array
+%           Power values, in log10 scale.
+%       aperiodic_mode : 1 or 2
+%               Defines absence or presence of knee in aperiodic component.
 %
-%         Returns
-%         -------
-%         aperiodic_params : 1d array
-%             Parameter estimates for aperiodic fit.
+%       Returns
+%       -------
+%       aperiodic_params : 1xn array
+%           Parameter estimates for aperiodic fit.
 
 %       Set guess params for lorentzian aperiodic fit, guess params set at init
     options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
@@ -441,39 +451,39 @@ function aperiodic_params = simple_ap_fit(freqs, power_spectrum, aperiodic_mode)
 end
 
 function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
-%         Fit the aperiodic component of the power spectrum robustly, ignoring outliers.
+%       Fit the aperiodic component of the power spectrum robustly, ignoring outliers.
 %
-%         Parameters
-%         ----------
-%         freqs : 1d array
-%             Frequency values for the power spectrum, in linear scale.
-%         power_spectrum : 1d array
-%             Power values, in log10 scale.
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%           Frequency values for the power spectrum, in linear scale.
+%       power_spectrum : 1xn array
+%           Power values, in log10 scale.
+%       aperiodic_mode : 1 or 2
+%               Defines absence or presence of knee in aperiodic component.
 %
-%         Returns
-%         -------
-%         aperiodic_params : 1d array
-%             Parameter estimates for aperiodic fit.
+%       Returns
+%       -------
+%       aperiodic_params : 1xn array
+%           Parameter estimates for aperiodic fit.
 
+    % Do a quick, initial aperiodic fit
+    popt = simple_ap_fit(freqs, power_spectrum, aperiodic_mode);
+    initial_fit = gen_aperiodic(freqs, popt,aperiodic_mode);
 
-%       Do a quick, initial aperiodic fit
-        popt = simple_ap_fit(freqs, power_spectrum, aperiodic_mode);
-        initial_fit = gen_aperiodic(freqs, popt,aperiodic_mode);
+    % Flatten power_spectrum based on initial aperiodic fit
+    flatspec = power_spectrum - initial_fit;
 
-%       Flatten power_spectrum based on initial aperiodic fit
-        flatspec = power_spectrum - initial_fit;
+    % Flatten outliers - any points that drop below 0
+    flatspec(flatspec(:) < 0) = 0;
 
-%       Flatten outliers - any points that drop below 0
-        flatspec(flatspec(:) < 0) = 0;
+    % Use percential threshold, in terms of # of points, to extract and re-fit
+    perc_thresh = bst_prctile(flatspec, 2.5);
+    perc_mask = flatspec <= perc_thresh;
+    freqs_ignore = freqs(perc_mask);
+    spectrum_ignore = power_spectrum(perc_mask);
 
-%       Use percential threshold, in terms of # of points, to extract and re-fit
-        perc_thresh = bst_prctile(flatspec, 2.5);
-        perc_mask = flatspec <= perc_thresh;
-        freqs_ignore = freqs(perc_mask);
-        spectrum_ignore = power_spectrum(perc_mask);
-
-%       Second aperiodic fit - using results of first fit as guess parameters
-%       See note in _simple_ap_fit about warnings
+    % Second aperiodic fit - using results of first fit as guess parameters
 
     options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
         'MaxFunEvals', 5000, 'MaxIter', 5000);
@@ -487,53 +497,64 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
 end
 
 function spectrum_flat = flatten_spectrum(freqs, power_spectrum, robust_aperiodic_params, aperiodic_mode)
-%         Fit the aperiodic component of the power spectrum robustly, ignoring outliers.
+%       Flatten the power spectrum by removing the aperiodic component.
 %
-%         Parameters
-%         ----------
-%         freqs : 1d array
-%             Frequency values for the power spectrum, in linear scale.
-%         power_spectrum : 1d array
-%             Power values, in log10 scale.
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%           Frequency values for the power spectrum, in linear scale.
+%       power_spectrum : 1xn array
+%           Power values, in log10 scale.
+%       robust_aperiodic_params : 1x2 or 1x3 array (see aperiodic_mode)
+%           Parameter estimates for aperiodic fit.
+%       aperiodic_mode : 1 or 2
+%           Defines absence or presence of knee in aperiodic component.
 %
-%         Returns
-%         -------
-%         aperiodic_params : 1d array
-%             Parameter estimates for aperiodic fit.
+%       Returns
+%       -------
+%       spectrum_flat : 1xn array
+%           Flattened (aperiodic removed) power spectrum.
 
 
 spectrum_flat = power_spectrum - gen_aperiodic(freqs,robust_aperiodic_params,aperiodic_mode);
 
 end
 
-function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_threshold, min_peak_height, gauss_std_limits, proxThresh, pt, guess_weight)
-%         Iteratively fit peaks to flattened spectrum.
+function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_threshold, min_peak_height, gauss_std_limits, proxThresh, peakType, guess_weight)
+%       Iteratively fit peaks to flattened spectrum.
 %
-%         Parameters
-%         ----------
-%         freqs : 1d array
-%             Frequency values for the power spectrum, in linear scale.
-%         flat_iter : 1d array
-%             Flattened power spectrum values.
-%         max_n_peaks : int
-%             Maximum number of gaussians within the spectrum
-%         peak_threshold : double
-%             Threshold (in standard deviations) to detect a peak
-%         min_peak_height : double
-%             Minimum height of a peak (in log10)
-%         gauss_std_limits : 1 x 2 double
-%             Limits to gaussian standard deviation when detecting a peak
-%         proxThresh : double
-%             Minimum distance between two peaks, in st. dev. of peak
-%         guess_weight : int
-%             Parameter to weigh initial estimates during optimization
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%           Frequency values for the power spectrum, in linear scale.
+%       flat_iter : 1xn array
+%           Flattened (aperiodic removed) power spectrum.
+%       max_n_peaks : double
+%           Maximum number of gaussians to fit within the spectrum.
+%       peak_threshold : double
+%           Threshold (in standard deviations of noise floor) to detect a 
+%           peak.
+%       min_peak_height : double
+%           Minimum height of a peak (in log10).
+%       gauss_std_limits : 1x2 double
+%           Limits to gaussian (cauchy) standard deviation (gamma) when
+%           detecting a peak.
+%       proxThresh : double
+%           Minimum distance between two peaks, in st. dev. (gamma) of
+%           peaks.
+%       peakType : 1, 2, or 3
+%           Which types of peaks are being fitted (1: gaussian, 2: cauchy,
+%           3: best of both).
+%       guess_weight : 1, 2, or 3
+%           Parameter to weigh initial estimates during optimization (None,
+%           Weak, or Strong)
 %
-%         Returns
-%         -------
-%         gaussian_params : 2d array
-%             Parameters that define the gaussian fit(s).
-%             Each row is a gaussian, as [mean, height, standard deviation].
-    switch pt 
+%       Returns
+%       -------
+%       gaussian_params : mx3 array, where m = No. of peaks.
+%           Parameters that define the peak fit(s). Each row is a peak, as 
+%           [mean, height, st. dev. (gamma)].
+    switch peakType 
         case 1 % gaussian only
             pti = 'gaussian'; % Identify peaks as gaussian
             % Initialize matrix of guess parameters for gaussian fitting.
@@ -631,10 +652,10 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
                 ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height);
                 short_side = min(abs([le_ind,ri_ind]-max_ind));
 
-                % Estimate gamma from FWHM. Calculate FWHM, converting to Hz, get guess std from FWHM
+                % Estimate gamma from FWHM. Calculate FWHM, converting to Hz, get guess gamma from FWHM
                 fwhm = short_side * 2 * (freqs(2)-freqs(1));
                 guess_gamma = fwhm/2;
-                % Check that guess gamma isn't outside preset gamma limits; restrict if so.
+                % Check that guess gamma isn't outside preset limits; restrict if so.
                 % Note: without this, curve_fitting fails if given guess > or < bounds.
                 if guess_gamma < gauss_std_limits(1)
                     guess_gamma = gauss_std_limits(1);
@@ -764,18 +785,17 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
 end
 
 function guess = drop_peak_cf(guess, bw_std_edge, freq_range)
-%     Check whether to drop peaks based on center's proximity to the edge of the spectrum.
+%       Check whether to drop peaks based on center's proximity to the edge of the spectrum.
 %
-%     Parameters
-%     ----------
-%     guess : 2d array, shape=[n_peaks, 3]
-%         Guess parameters for gaussian fits to peaks, as gaussian parameters.
+%       Parameters
+%       ----------
+%       guess : mx3 array, where m = No. of peaks.
+%           Guess parameters for peak fits.
 %
-%     Returns
-%     -------
-%     guess : 2d array, shape=[n_peaks, 3]
-%         Guess parameters for gaussian fits to peaks, as gaussian parameters.
-
+%       Returns
+%       -------
+%       guess : qx3 where q <= m No. of peaks.
+%           Guess parameters for peak fits.
 
     cf_params = guess(:,1)';
     bw_params = guess(:,3)' * bw_std_edge;
@@ -790,31 +810,33 @@ function guess = drop_peak_cf(guess, bw_std_edge, freq_range)
 
 end
 
-function guess = drop_peak_overlap(guess, gauss_overlap_thresh)
-%     Checks whether to drop gaussians based on amount of overlap.
+function guess = drop_peak_overlap(guess, proxThresh)
+%       Checks whether to drop gaussians based on amount of overlap.
 %
-%     Parameters
-%     ----------
-%     guess : 2d array, shape=[n_peaks, 3]
-%         Guess parameters for gaussian fits to peaks, as gaussian parameters.
+%       Parameters
+%       ----------
+%       guess : mx3 array, where m = No. of peaks.
+%           Guess parameters for peak fits.
+%       proxThresh: double
+%           Proximity threshold (in st. dev. or gamma) between two peaks.
 %
-%     Returns
-%     -------
-%     guess : 2d array, shape=[n_peaks, 3]
-%         Guess parameters for gaussian fits to peaks, as gaussian parameters.
+%       Returns
+%       -------
+%       guess : qx3 where q <= m No. of peaks.
+%           Guess parameters for peak fits.
 %
-%     Notes
-%     -----
-%     For any gaussians with an overlap that crosses the threshold,
-%     the lowest height guess guassian is dropped.
+%       Note
+%       -----
+%       For any gaussians with an overlap that crosses the threshold,
+%       the lowest height guess guassian is dropped.
 
     % Sort the peak guesses, so can check overlap of adjacent peaks
     guess = sortrows(guess);
 
     % Calculate standard deviation bounds for checking amount of overlap
 
-    bounds = [guess(:,1) - guess(:,3) * gauss_overlap_thresh, ...
-        guess(:,1), guess(:,1) + guess(:,3) * gauss_overlap_thresh];
+    bounds = [guess(:,1) - guess(:,3) * proxThresh, ...
+        guess(:,1), guess(:,1) + guess(:,3) * proxThresh];
 
     % Loop through peak bounds, comparing current bound to that of next peak
     drop_inds =  [];
@@ -835,29 +857,39 @@ function guess = drop_peak_overlap(guess, gauss_overlap_thresh)
     guess(drop_inds,:) = [];
 end
 
-function  model_params = fit_peak_guess(guess, freqs, flat_spec, fit_type, guess_weight)
+function peak_params = fit_peak_guess(guess, freqs, flat_spec, peak_type, guess_weight)
 %     Fits a group of peak guesses with a fit function.
 %
 %     Parameters
 %     ----------
-%     guess : 2d array, shape=[n_peaks, 3]
-%         Guess parameters for gaussian fits to peaks, as gaussian parameters.
+%       guess : mx3 array, where m = No. of peaks.
+%           Guess parameters for peak fits.
+%       freqs : 1xn array
+%           Frequency values for the power spectrum, in linear scale.
+%       flat_iter : 1xn array
+%           Flattened (aperiodic removed) power spectrum.
+%       peakType : 1, 2, or 3
+%           Which types of peaks are being fitted (1: gaussian, 2: cauchy,
+%           3: best of both).
+%       guess_weight : 1, 2, or 3
+%           Parameter to weigh initial estimates during optimization (None,
+%           Weak, or Strong)
 %
-%     Returns
-%     -------
-%     gaussian_params : 2d array, shape=[n_peaks, 3]
-%         Parameters for gaussian fits to peaks, as gaussian parameters.
+%       Returns
+%       -------
+%       peak_params : mx3, where m =  No. of peaks.
+%           Peak parameters post-optimization.
 
     options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
         'MaxFunEvals', 5000, 'MaxIter', 5000);
 
-    model_params = fminsearch(@error_model,...
-        guess, options, freqs, flat_spec, fit_type, guess, guess_weight);
+    peak_params = fminsearch(@error_model,...
+        guess, options, freqs, flat_spec, peak_type, guess, guess_weight);
 
 end
 
-%% Error Functions
 
+%% ===== ERROR FUNCTIONS =====
 function err = error_expo_nk_function(params,xs,ys)
     ym = -log10(xs.^params(2)) + params(1);
     err = sum((ys - ym).^2);
@@ -868,26 +900,15 @@ function err = error_expo_function(params,xs,ys)
     err = sum((ys - ym).^2);
 end
 
-function err = error_model(params, xVals, yVals, fit_type, guess, guess_weight)
-% error_gaussian
-% Calculates error between data and a gaussian function, for use by fminsearch
-% Params        - parameter vector (ampltude, mean, standard deviation)
-% xVals         - values of independent variable
-% yVals         - values of dependent variable (data points) at each of xVals
-% guess         - initial estimates of parameter values
-% guess_weight  - weight placed on initial estimates
-
-%     m         = params(:,1);
-%     amp       = params(:,2);
-%     'stdev'   = params(:,3);
-
+function err = error_model(params, xVals, yVals, peak_type, guess, guess_weight)
     fitted_vals = 0;
-
+    weak = 1E2;
+    strong = 1E7;
     for set = 1:size(params,1)
-        if      fit_type == 1 % Gaussian model
+        if      peak_type == 1 % Gaussian model
             fitted_vals = fitted_vals + gaussian_function(xVals, ...
                 params(set,1), params(set,2), params(set,3));
-        elseif  fit_type == 2 % Cauchy model
+        elseif  peak_type == 2 % Cauchy model
             fitted_vals = fitted_vals + cauchy_function(xVals, ...
                 params(set,1), params(set,2), params(set,3));
         end
@@ -897,14 +918,16 @@ function err = error_model(params, xVals, yVals, fit_type, guess, guess_weight)
             err = sum((yVals - fitted_vals).^2);
         case 2 % Add small weight to deviations from guess m and amp
             err = sum((yVals - fitted_vals).^2) + ...
-                 1E2*sum((params(:,1)-guess(:,1)).^2) + ...
-                 1E2*sum((params(:,2)-guess(:,2)).^2);
+                 weak*sum((params(:,1)-guess(:,1)).^2) + ...
+                 weak*sum((params(:,2)-guess(:,2)).^2);
         case 3 % Add large weight to deviations from guess m and amp
             err = sum((yVals - fitted_vals).^2) + ...
-                 1E7*sum((params(:,1)-guess(:,1)).^2) + ...
-                 1E7*sum((params(:,2)-guess(:,2)).^2);
+                 strong*sum((params(:,1)-guess(:,1)).^2) + ...
+                 strong*sum((params(:,2)-guess(:,2)).^2);
     end
 end
+
+
 %% ===== FOOOF_py =====
 function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, return_model)
 % fooof_py() - Fit the FOOOF model on a neural power spectrum.
@@ -940,8 +963,9 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
 %
 % Notes
 %   Not all settings need to be defined by the user.
-%     Any settings that are not provided are set to default values.
-%     To run with all defaults, input settings as an empty struct.
+%   Any settings that are not provided are set to default values.
+%   To run with all defaults, input settings as an empty struct.
+% Author: Tom Donoghue
     
     % Check settings - get defaults for those not provided
     settings = fooof_check_settings(settings);
@@ -965,7 +989,7 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
     fooof_results = fm.get_results();
     fooof_results = fooof_unpack_results(fooof_results);
     
-    % Re-calculating r-squared
+    %   Re-calculating r-squared
     %   r_squared doesn't seem to get computed properly (in NaN).
     %   It is unclear why this happens, other than the error can be traced
     %   back to the internal call to `np.cov`, and fails when this function
@@ -975,7 +999,7 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
                      double(py.array.array('d', fm.fooofed_spectrum_)));
     fooof_results.r_squared = coefs(2);
     
-    % Also return the actual model fit, if requested
+    %   Also return the actual model fit, if requested
     %   This will default to not return model, if variable not set
     if exist('return_model', 'var') && return_model
         % Get the model, and add outputs to fooof_results
@@ -1004,7 +1028,9 @@ function model_fit = fooof_get_model(fm)
 %
 % Notes
 %   This function is mostly an internal function.
-%     It can be called directly by the user if you are interacting with FOOOF objects directly.
+%   It can be called directly by the user if you are interacting with FOOOF objects directly.
+% Author: Tom Donoghue
+%
     model_fit = struct();
 
     model_fit.freqs = double(py.array.array('d',fm.freqs));
@@ -1032,7 +1058,9 @@ function results_out = fooof_unpack_results(results_in)
 %
 % Notes
 %   This function is mostly an internal function.
-%     It can be called directly by the user if you are interacting with FOOOF objects directly.
+%   It can be called directly by the user if you are interacting with FOOOF objects directly.
+% Author: Tom Donoghue
+
     results_out = struct();
 
     results_out.aperiodic_params = ...
@@ -1082,6 +1110,8 @@ function settings = fooof_check_settings(settings)
 % Notes:
 %   This is a helper function, probably not called directly by the user.
 %   Any settings not specified are set to default values
+% Author: Tom Donoghue
+
     % Set defaults for all settings
     defaults = struct(...
         'peak_width_limits', [0.5, 12], ...
