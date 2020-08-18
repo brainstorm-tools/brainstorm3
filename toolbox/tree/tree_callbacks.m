@@ -1217,7 +1217,6 @@ switch (lower(action))
                         AddSeparator(jMenuFemDisp);
                         gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipses (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse', [], filenameFull));
                         gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow', [], filenameFull));
-                        AddSeparator(jMenuFemDisp);
                         gui_component('MenuItem', jPopup, [], 'Clear FEM tensors', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@process_fem_tensors, 'ClearTensors', filenameFull));
                     end
                 end
