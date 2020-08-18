@@ -123,7 +123,7 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, min
     OutputFile = {};
     for iP = 1:length(sInputs)
         bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iP) ' of ' num2str(length(sInputs))]);
-        fg = [];
+        clear fg;
         inputFile = in_bst_timefreq(sInputs(iP).FileName);
         % Check input frequency bounds
         if (any(fB <= 0) || fB(1) >= fB(2)) && ~aF
