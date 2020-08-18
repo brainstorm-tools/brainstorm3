@@ -1033,6 +1033,11 @@ function UpdateFigurePlot(hFig, isForced)
     else
         TimeDef = [];
     end
+    % Get data to plot
+    [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, tmp, iTimefreq] = figure_timefreq('GetFigureData', hFig, TimeDef);
+    if isempty(TF)
+        return;
+    end
     % FOOOF: Swap TF data for relevant FOOOF data
     if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF) && ~strcmp(TfInfo.FOOOFDisp, 'spectrum')
          fFreqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF.FOOOF_freqs;
@@ -1056,11 +1061,6 @@ function UpdateFigurePlot(hFig, isForced)
                      TF(chan,1,i_model) = 10 .* log10(abs(TF(chan,1,i_model)));
              end
         end
-    end
-    % Get data to plot
-    [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, tmp, iTimefreq] = figure_timefreq('GetFigureData', hFig, TimeDef);
-    if isempty(TF)
-        return;
     end
     % Row names
     if ~isempty(RowNames) && ischar(RowNames)
