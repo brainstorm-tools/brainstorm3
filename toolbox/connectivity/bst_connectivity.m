@@ -22,7 +22,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017; Hossein Shahabi, 2019-2020
+% Authors: Francois Tadel, 2012-2020; Martin Cousineau, 2017; Hossein Shahabi, 2019-2020
 
 
 %% ===== DEFAULT OPTIONS =====
@@ -589,11 +589,11 @@ for iFile = 1:length(FilesA)
         case 'henv'
             bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, ...
                 size(sInputA.Data,1), size(sInputB.Data,1)));
-            Comment = [OPTIONS.CohMeasure ' | ' OPTIONS.tfMeasure ' | '  sprintf('%ds',OPTIONS.WinParam(1)) ' | ' ...
-                sprintf('%ds',prod(OPTIONS.WinParam)) ' | '] ;
+            Comment = [OPTIONS.CohMeasure ' | ' OPTIONS.tfMeasure ' | '  sprintf('%1.2fs',OPTIONS.WinLength) ' | ' ...
+                sprintf('%1.2fs',OPTIONS.WinLength * OPTIONS.WinOverlap) ' | '] ;
             
             OPTIONS.SampleRate = sfreq;
-            OPTIONS.Freqs      = OPTIONS.Freqrange ;
+            OPTIONS.Freqs      = OPTIONS.Freqrange;
 
             [R4d,timeSamples]       = bst_henv(sInputA.Data,OPTIONS);
             sInputB.Time            = timeSamples + sInputB.Time(1) ;

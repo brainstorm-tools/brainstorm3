@@ -39,7 +39,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-
+    
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
     % === FREQ BANDS
