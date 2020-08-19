@@ -1038,6 +1038,30 @@ function UpdateFigurePlot(hFig, isForced)
     if isempty(TF)
         return;
     end
+    % FOOOF: Swap TF data for relevant FOOOF data
+    if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF) && ~strcmp(TfInfo.FOOOFDisp, 'spectrum')
+         fFreqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF.FOOOF_freqs;
+         i_model = ismember(Freqs, fFreqs);
+         TF = NaN(size(TF));
+         for chan = 1:size(TF,1)
+             % Get requested FOOOF measure
+             switch TfInfo.FOOOFDisp
+                 case 'model'
+                     TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.FOOOF.FOOOF_data(chan).FOOOF.fooofed_spectrum;
+                 case 'aperiodic'
+                     TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.FOOOF.FOOOF_data(chan).FOOOF.ap_fit;
+                 case 'peaks'
+                     TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.FOOOF.FOOOF_data(chan).FOOOF.peak_fit;
+             end
+             % Apply requested function to measure
+             switch TfInfo.Function
+                 case 'magnitude'
+                     TF(chan,1,i_model) = sqrt(abs(TF(chan,1,i_model)));
+                 case 'log'
+                     TF(chan,1,i_model) = 10 .* log10(abs(TF(chan,1,i_model)));
+             end
+        end
+    end
     % Row names
     if ~isempty(RowNames) && ischar(RowNames)
         RowNames = {RowNames};

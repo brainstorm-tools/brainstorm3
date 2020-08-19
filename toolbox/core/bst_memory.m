@@ -1578,7 +1578,7 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     isStat = strcmpi(FileType, 'ptimefreq');
     if ~isStat
         % Load .Mat
-        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'TF', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas');
+        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'TF', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas','FOOOF_freqs','FOOOF');
 %         % Load inverse kernel that goes with it if applicable
 %         if ~isempty(ParentFile) && strcmpi(TimefreqMat.DataType, 'results') % && (size(TimefreqMat.TF,1) < length(TimefreqMat.RowNames))
 %             [iDS, iResults] = LoadResultsFileFull(ParentFile);
@@ -1761,6 +1761,10 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     if isfield(TimefreqMat, 'StatClusters')
         Timefreq.StatClusters = TimefreqMat.StatClusters;
         Timefreq.StatClusters.Correction = TimefreqMat.Correction;
+    end
+    if isfield(TimefreqMat, 'FOOOF')
+        Timefreq.FOOOF = TimefreqMat.FOOOF;
+        Timefreq.FOOOF_freqs = TimefreqMat.FOOOF_freqs;
     end
     % ===== EXPAND SYMMETRIC MATRICES =====
     %if isfield(Timefreq.Options, 'isSymmetric') && Timefreq.Options.isSymmetric

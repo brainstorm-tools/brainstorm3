@@ -163,10 +163,13 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('DefaultSurfaceDisplay') : Default display options for surfaces (smooth, data threshold, sulci map)
 %    - bst_get('MagneticExtrapOptions') : Structure with the options for magnetic field extrapolation
 %    - bst_get('DefaultFreqBands')
+%    - bst_get('DefaultFreqBandsFOOOF)
 %    - bst_get('TimefreqOptions_morlet')
 %    - bst_get('TimefreqOptions_fft')
 %    - bst_get('TimefreqOptions_psd')
 %    - bst_get('TimefreqOptions_hilbert')
+%    - bst_get('TimefreqOptions_fooof')
+%    - bst_get('TimefreqOptions_fooof_analysis')
 %    - bst_get('OpenMEEGOptions')
 %    - bst_get('DuneuroOptions')
 %    - bst_get('GridOptions_headmodel')
@@ -2992,6 +2995,15 @@ switch contextName
             'gamma1', '30, 59', 'mean'; ...
             'gamma2', '60, 90', 'mean'};
         
+    case 'DefaultFreqBandsFOOOF'
+        argout1 = {...
+            'delta',     '2, 4'; ...
+            'theta',     '5, 7'; ...
+            'alpha',    '8, 12'; ...
+            'beta',    '15, 29'; ...
+            'gamma1',  '30, 59'; ...
+            'gamma2', '60, 90'};
+        
     case 'TimefreqOptions_morlet'
         defPref.isTimeBands     = 0;
         defPref.isFreqBands     = 0;
@@ -3090,6 +3102,33 @@ switch contextName
         if isempty(argout1.Freqs)
             argout1.Freqs = defPref.Freqs;
         end
+        if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
+            argout1.FreqBands = defPref.FreqBands;
+        end
+        
+    case 'TimefreqOptions_fooof'
+        defPref.freqRange       = [1,40];
+        defPref.allFreqs        = 0;
+        defPref.peakType        = 1;
+        defPref.peakWidthLimits = [0.5,12];
+        defPref.maxPeaks        = 3;
+        defPref.minPeakHeight   = 3;
+        defPref.peakThresh      = 2;
+        defPref.proxThresh      = 2;
+        defPref.repOpt          = 0;
+        defPref.aperMode        = 1;
+        defPref.guessWeight     = 1;
+        argout1 = FillMissingFields(contextName, defPref);
+        
+    case 'TimefreqOptions_fooof_analysis'
+        defPref.PeakType        = 1;
+        defPref.SortBy          = 1;
+        defPref.FreqBands       = bst_get('DefaultFreqBandsFOOOF');
+        defPref.Freqs           = [];
+        defPref.pullMSE         = 0;
+        defPref.pullR2          = 0;
+        defPref.pullFreqError   = 0;
+        argout1 = FillMissingFields(contextName, defPref);
         if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
             argout1.FreqBands = defPref.FreqBands;
         end
