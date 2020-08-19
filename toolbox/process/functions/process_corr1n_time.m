@@ -98,7 +98,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     end
     % Metric options
     OPTIONS.Method     = 'corr';
-    OPTIONS.pThresh    = 0.05;  % sProcess.options.pthresh.Value{1};
+    OPTIONS.pThresh    = 0.05;
     OPTIONS.RemoveMean = ~sProcess.options.scalarprod.Value;
     OPTIONS.isSave     = 0;
     % Time windows options

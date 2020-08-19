@@ -75,7 +75,6 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.Method     = 'corr';
     OPTIONS.pThresh    = 0.05;
     OPTIONS.RemoveMean = ~sProcess.options.scalarprod.Value;
-    OPTIONS.Freqs      = 0;
     
     % Compute metric
     OutputFiles = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);

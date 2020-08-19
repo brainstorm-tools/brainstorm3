@@ -103,7 +103,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.MaxFreqRes    = sProcess.options.maxfreqres.Value{1};
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
     OPTIONS.CohOverlap    = 0.50;  % First pre-define the overlap
-    OPTIONS.pThresh       = 0.05;  % sProcess.options.pthresh.Value{1};
+    OPTIONS.pThresh       = 0.05;
     OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
 
     % Change the overlap if it is specified
