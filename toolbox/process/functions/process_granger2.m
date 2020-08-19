@@ -19,7 +19,7 @@ function varargout = process_granger2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -46,28 +46,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;
-%     % === DIRECTION
-%     sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
-%     sProcess.options.label2.Type    = 'label';
-%     sProcess.options.dirlabel.Comment  = 'Direction of the causality:';
-%     sProcess.options.dirlabel.Type     = 'label';
-%     sProcess.options.direction.Comment = {'From the selected node (out)', 'To the selected node (in)', 'Both (generates two files)'};
-%     sProcess.options.direction.Type    = 'radio';
-%     sProcess.options.direction.Value   = 3;
+    sProcess.options.removeevoked.Group   = 'input';
     % === GRANGER ORDER
     sProcess.options.grangerorder.Comment = 'Maximum Granger model order (default=10):';
     sProcess.options.grangerorder.Type    = 'value';
     sProcess.options.grangerorder.Value   = {10, '', 0};
-%     % === P-VALUE THRESHOLD
-%     sProcess.options.pthresh.Comment = 'Metric significativity: &nbsp;&nbsp;&nbsp;&nbsp;p&lt;';
-%     sProcess.options.pthresh.Type    = 'value';
-%     sProcess.options.pthresh.Value   = {0.05,'',4};
     % === OUTPUT MODE
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Group   = 'output';
 end
 
 
@@ -95,14 +83,6 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
 
     % Computation depends on the direction
     OutputFiles = {};
-%     if ismember(sProcess.options.direction.Value, [1 3])
-%         OPTIONS.GrangerDir = 'out';
-%         OutputFiles = cat(2, OutputFiles, bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS));
-%     end
-%     if ismember(sProcess.options.direction.Value, [2 3])
-%         OPTIONS.GrangerDir = 'in';
-%         OutputFiles = cat(2, OutputFiles, bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS));
-%     end
     OPTIONS.GrangerDir = 'out';
     OutputFiles = cat(2, OutputFiles, bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS));
 end
