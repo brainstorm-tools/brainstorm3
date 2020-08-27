@@ -260,7 +260,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         return
     end
 
-    % ===== 3. BIAS FIELD CORRECTION (BFC) =====
+    % ===== 3. BRAINSUITE DIFFUSION PIPELINE (BDP) =====
     bst_progress('text', '3/3: BrainSuite Diffusion Pipeline...');
     strCall = [...
         'bdp "' fullfile(tmpDir,'output_mri.bfc.nii.gz"') ...
@@ -305,6 +305,9 @@ function DtiFile = ComputeInteractive(iSubject) %#ok<DEFNU>
     bst_set('LastUsedDirs', LastUsedDirs);
     % Try to find the bval/bvec files in the same folder
     [fPath, fBase, fExt] = bst_fileparts(DwiFile);
+    if strcmp(fExt,'.gz')
+            [tmp, fBase, fExt] = bst_fileparts(fBase);
+    end
     BvalFile = bst_fullfile(fPath, [fBase, '.bval']);
     BvecFile = bst_fullfile(fPath, [fBase, '.bvec']);
     % Validate or ask bval
