@@ -84,8 +84,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     % ===== ANISOTROPY OPTIONS =====
     jPanelAniso = gui_river([2,2], [6,6,6,6], 'Anisotropy method');
         jGroupAniso = ButtonGroup();
-        jRadioMethodEma = gui_component('radio', jPanelAniso, '', '<HTML><B>EMA</B>: Effective Medium Approach <FONT color="#777777"><I>(DTI)<BR>[Güllmar 2010, NeuroImage]</I></FONT>', jGroupAniso, [], @(h,ev)UpdatePanel(), []);
-        jRadioMethodEmaVc = gui_component('radio', jPanelAniso, 'br', '<HTML><B>EMA+VC</B>: EMA with volume constraint <FONT color="#777777"><I>(DTI)<BR>[Rullmann 2008 / Vorwerk 2014], used in Simbio</I></FONT>', jGroupAniso, [], @(h,ev)UpdatePanel(), []);
+        jRadioMethodEma = gui_component('radio', jPanelAniso, '', '<HTML><B>EMA</B>: Effective Medium Approach (k = 0.736) <FONT color="#777777"><I>(DTI)<BR>[Rullmann et al., 2009, Tuch et al., 1999, Haueisen et al., 2002]</I></FONT>', jGroupAniso, [], @(h,ev)UpdatePanel(), []);
+        jRadioMethodEmaVc = gui_component('radio', jPanelAniso, 'br', '<HTML><B>EMA+VC</B>: EMA with volume constraint <FONT color="#777777"><I>(DTI)<BR>[Rullmann et al., 2009, Vorwerk et al., 2014]</I></FONT>', jGroupAniso, [], @(h,ev)UpdatePanel(), []);
         jRadioMethodSim = gui_component('radio', jPanelAniso, 'br', '<HTML><B>Simulated</B>: Artificial anisotropy <FONT color="#777777"><I>(no DTI)</I></FONT>', jGroupAniso, [], @(h,ev)UpdatePanel(), []);
         jRadioMethodEma.setSelected(1);
     jPanelNew.add(jPanelAniso);
@@ -99,8 +99,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         gui_validate_text(jTextSimRatio, [], [], {0.0001,100,100}, '', 2, SimRatio, []);
         % Constraint
         jGroupConstr = ButtonGroup();
-        jRadioConstrWang = gui_component('radio', jPanelSim, 'br', '<HTML><B>Wang</B>''s constraint:<BR><FONT color="#777777">[sig_r*sig_t = sig^2]</FONT>', jGroupConstr, [], [], []);
-        jRadioConstrWolters = gui_component('radio', jPanelSim, 'br', '<HTML><B>Wolters</B>''s constraint (volume):<BR><FONT color="#777777">[(4/3)*pi*(sig_r*sig_t^2) = (4/3)*pi*(sig^3)]</FONT>', jGroupConstr, [], [], []);
+        jRadioConstrWang = gui_component('radio', jPanelSim, 'br', '<HTML><B>Wang</B>''s constraint(Wolters, 2003):<BR><FONT color="#777777">[sig_r*sig_t = sig_iso^2]</FONT>', jGroupConstr, [], [], []);
+        jRadioConstrWolters = gui_component('radio', jPanelSim, 'br', '<HTML><B>Wolters </B>''s (volume) constraint(Wolters, 2003):<BR><FONT color="#777777">[(4/3)*pi*(sig_r*sig_t^2) = (4/3)*pi*(sig_iso^3)]</FONT>', jGroupConstr, [], [], []);
         jRadioConstrWolters.setSelected(1);
     jPanelNew.add(jPanelSim);
     
