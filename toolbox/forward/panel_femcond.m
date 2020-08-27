@@ -96,7 +96,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         jLabelRatio = gui_component('label', jPanelSim, '', 'Ratio longitudinal/transversal (integer): ', [], [], [], []);
         SimRatio = 10;
         jTextSimRatio = gui_component('texttime', jPanelSim, '', '', [], [], [], []);
-        gui_validate_text(jTextSimRatio, [], [], {1,100,1}, '', [], SimRatio, []);
+        gui_validate_text(jTextSimRatio, [], [], {0.0001,100,100}, '', 2, SimRatio, []);
         % Constraint
         jGroupConstr = ButtonGroup();
         jRadioConstrWang = gui_component('radio', jPanelSim, 'br', '<HTML><B>Wang</B>''s constraint:<BR><FONT color="#777777">[sig_r*sig_t = sig^2]</FONT>', jGroupConstr, [], [], []);
