@@ -1212,10 +1212,10 @@ switch (lower(action))
                     varInfo = whos('-file', filenameFull, 'Tensors');
                     if ~isempty(varInfo) && all(varInfo.size >= 12)
                         jMenuFemDisp = gui_component('Menu', jPopup, [], 'Display FEM tensors', IconLoader.ICON_DISPLAY, [], []);
-                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipses (MRI)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse'));
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipsoids (MRI)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse'));
                         gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (MRI)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow'));
                         AddSeparator(jMenuFemDisp);
-                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipses (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse', [], filenameFull));
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipsoids (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse', [], filenameFull));
                         gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow', [], filenameFull));
                         gui_component('MenuItem', jPopup, [], 'Clear FEM tensors', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@process_fem_tensors, 'ClearTensors', filenameFull));
                     end
