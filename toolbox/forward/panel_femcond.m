@@ -93,7 +93,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     % ===== SIMULATED OPTIONS =====
     jPanelSim = gui_river([2,2], [6,6,6,6], 'Simulated anisotropy');
         % Ratio
-        jLabelRatio = gui_component('label', jPanelSim, '', 'Ratio longitudinal/transversal (integer): ', [], [], [], []);
+        jLabelRatio = gui_component('label', jPanelSim, '', 'Ratio longitudinal/transversal : ', [], [], [], []);
         SimRatio = 10;
         jTextSimRatio = gui_component('texttime', jPanelSim, '', '', [], [], [], []);
         gui_validate_text(jTextSimRatio, [], [], {0.0001,100,100}, '', 2, SimRatio, []);
