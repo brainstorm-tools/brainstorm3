@@ -135,6 +135,17 @@ end
 % Set application data
 setappdata(hFig, 'SubjectFile',  SubjectFile);
 
+%% ===== DISPLAY ANATOMY =====
+if isNewFig
+    switch (AnatType)
+        case 'subjectimage'
+            view_mri_3d(AnatFile, [], 0.7, hFig);           
+        case 'fem'
+            alphaLayer = zeros(length(FemMat.TissueLabels));
+            alphaLayer(iTissues) = 0.5;
+            view_surface_fem(AnatFile, alphaLayer, [], [], hFig);
+    end
+end
 
 %% ===== LOAD FEM TENSORS =====
 % Display progress bar
@@ -160,7 +171,7 @@ nElem = length(iElemTissue);
 nMesh = size(FemMat.Elements, 2);
 TensorDisplay.ElemCenter = zeros(nElem, 3);
 for i = 1:3
-    TensorDisplay.ElemCenter(:,i) = sum(reshape(FemMat.Vertices(FemMat.Elements(iElemTissue,:),i), nElem, nMesh)')' / nMesh;
+    TensorDisplay.ElemCenter(:,i) = sum(reshape(FemMat.Vertices(FemMat.Elements(iElemTissue,:),i), nElem, nMesh), 2) / nMesh;
 end
 % Compute average distance between element center and vertices
 TensorDisplay.tol = 0.5 .* sqrt(mean(sum(bst_bsxfun(@minus, FemMat.Vertices(FemMat.Elements(iElemTissue(1:10:end),1),:), TensorDisplay.ElemCenter(1:10:end,:)) .^ 2, 2)));
@@ -172,23 +183,16 @@ end
 TensorDisplay.ElemCenterAnat = cs_convert(sMri, 'scs', CoordSystem, TensorDisplay.ElemCenter);
 % Save display mode
 TensorDisplay.DisplayMode = DisplayMode;
+% Scaling factor for tensor object size
+TensorDisplay.Factor = 4 / 100;
+% Initialize other properties
+TensorDisplay.CutPosition = [];
+TensorDisplay.CutDim = [];
+TensorDisplay.isRelative = [];
 % Save display info in figure handles
 Handles = bst_figures('GetFigureHandles', hFig);
 Handles.TensorDisplay = TensorDisplay;
 bst_figures('SetFigureHandles', hFig, Handles);
-
-
-%% ===== DISPLAY ANATOMY =====
-if isNewFig
-    switch (AnatType)
-        case 'subjectimage'
-            view_mri_3d(AnatFile, [], 0.7, hFig);           
-        case 'fem'
-            alphaLayer = zeros(length(FemMat.TissueLabels));
-            alphaLayer(iTissues) = 0.5;
-            view_surface_fem(AnatFile, alphaLayer, [], [], hFig);
-    end
-end
 
 
 %% ===== UPDATE INTERFACE =====
@@ -220,6 +224,3 @@ if isProgress
     drawnow
     bst_progress('stop');
 end
-
-
-
