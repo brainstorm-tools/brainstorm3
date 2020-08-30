@@ -1009,7 +1009,49 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if isempty(TimeSliderMutex) || ~TimeSliderMutex
                         panel_time('TimeKeyCallback', keyEvent);
                     end
-                    
+           % === 'UPARROW', 'DOWNARROW','SPACE' : change fem tensor view ===
+            case {'uparrow', 'downarrow','space'}
+                if ismember('shift', keyEvent.Modifier)
+                    % Get figure handles
+                    Handles = bst_figures('GetFigureHandles', hFig);
+                    s = Handles.TensorDisplay;
+                    if isempty(s)
+                        hTensorCut = [];
+                        return;
+                    end                    
+                    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+                    for ind = 1 : 2
+                        if ind == 1
+                            data = findobj(hAxes, '-depth', 1, 'Tag', 'TensorEllipses');
+                            if ~isempty(data)
+                                break;
+                            end
+                        end
+                        if ind == 2
+                            data = findobj(hAxes, '-depth', 1, 'Tag', 'TensorArrows');
+                        end
+                    end                         
+                    % get the data 
+                    sliceLocation = data.UserData(1);
+                    dim = data.UserData(2);
+                    isRelative = data.UserData(3);
+                    factor =  data.UserData(4);
+                    switchTensorMode =  data.UserData(5);
+                    % Delete previous slices
+                    delete(findobj(hAxes, '-depth', 1, 'Tag', 'TensorArrows'));
+                    % Delete previous slices
+                    delete(findobj(hAxes, '-depth', 1, 'Tag', 'TensorEllipses'));
+                    if strcmp(keyEvent.Key,'uparrow')
+                        factor = factor*1.2;
+                    end
+                    if strcmp(keyEvent.Key,'downarrow')
+                        factor = factor/1.2;
+                    end
+                    if strcmp(keyEvent.Key,'space')
+                        switchTensorMode = ~switchTensorMode;
+                    end
+                    hTensorCut = PlotTensorCut(hFig, sliceLocation, dim, isRelative,factor,switchTensorMode);
+                end                 
                 % === UP DOWN : Processed by Freq panel ===
                 case {'uparrow', 'downarrow'}
                     panel_freq('FreqKeyCallback', keyEvent);
@@ -4523,7 +4565,14 @@ end
 
 
 %% ===== PLOT TENSORS =====
-function hTensorCut = PlotTensorCut(hFig, sliceLocation, dim, isRelative)
+function hTensorCut = PlotTensorCut(hFig, sliceLocation, dim, isRelative,factor,switchTensorMode)
+    if nargin < 6
+        switchTensorMode = 0;
+    end
+    if nargin < 5
+        factor = 4 / 100;
+        switchTensorMode = 0;
+    end
     % Get figure handles
     Handles = bst_figures('GetFigureHandles', hFig);
     s = Handles.TensorDisplay;
@@ -4537,7 +4586,7 @@ function hTensorCut = PlotTensorCut(hFig, sliceLocation, dim, isRelative)
         return;
     end
     % Convert relative slice to absolute
-    if isRelative
+    if isRelative && nargin  < 5
         TessInfo = getappdata(hFig, 'Surface');
         Vertices = get(TessInfo(1).hPatch, 'Vertices');
         % Compute mean and max of the coordinates
@@ -4549,8 +4598,17 @@ function hTensorCut = PlotTensorCut(hFig, sliceLocation, dim, isRelative)
     % Find elements in the current cut
     iElemCut = find(abs(s.ElemCenterAnat(:,dim) - sliceLocation) < s.tol);
     % Scaling tensor object size
-    factor = 4 / 1000; % 4=optimal value for the SCS coordinates, 1000=display S/m values at a millimeter scale
+    %factor = 4 / 1000; % 4=optimal value for the SCS coordinates, 1000=display S/m values at a millimeter scale
+
     % Different display modes
+    if switchTensorMode
+        if strcmp(s.DisplayMode,'ellipse')
+            s.DisplayMode = 'arrow';
+        else
+            s.DisplayMode = 'ellipse';
+        end
+    end
+
     switch lower(s.DisplayMode)
         case 'ellipse'
             % Delete previous slices
@@ -4587,6 +4645,7 @@ function hTensorCut = PlotTensorCut(hFig, sliceLocation, dim, isRelative)
                 'SpecularStrength', 0, ...
                 'FaceLighting',     'gouraud', ...
                 'Tag',              'TensorEllipses', ...
+                'UserData', [sliceLocation, dim, isRelative, factor, switchTensorMode],...
                 'Parent',           hAxes);
 
         case 'arrow'
@@ -4596,7 +4655,7 @@ function hTensorCut = PlotTensorCut(hFig, sliceLocation, dim, isRelative)
             tensorColor = reshape(repmat(abs(s.Tensors(iElemCut,[2,1,3]))', 2, 1), 3, [])';
             % Vertices: Segments from element centers in the direction of the tensor
             vertArrows = [s.ElemCenter(iElemCut,:)'; ...
-                          s.ElemCenter(iElemCut,:)' + factor .* s.Tensors(iElemCut, 10:12)' .* s.Tensors(iElemCut, 1:3)'];
+                s.ElemCenter(iElemCut,:)' + factor .* s.Tensors(iElemCut, 10:12)' .* s.Tensors(iElemCut, 1:3)'];
             % Display arrows
             hTensorCut = patch(...
                 'Vertices', reshape(vertArrows, 3, [])', ...
@@ -4607,8 +4666,9 @@ function hTensorCut = PlotTensorCut(hFig, sliceLocation, dim, isRelative)
                 'EdgeColor',       'flat', ...
                 'MarkerFaceColor', 'none', ...
                 'Tag',              'TensorArrows', ...
+                'UserData', [sliceLocation, dim, isRelative, factor, switchTensorMode],...
                 'Parent',           hAxes);
         otherwise
             error('Invalid display mode.');
-    end
+end
 end
