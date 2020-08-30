@@ -100,7 +100,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         % Constraint
         jGroupConstr = ButtonGroup();
         jRadioConstrWang = gui_component('radio', jPanelSim, 'br', '<HTML><B>Wang</B>''s constraint(Wolters, 2003):<BR><FONT color="#777777">[sig_r*sig_t = sig_iso^2]</FONT>', jGroupConstr, [], [], []);
-        jRadioConstrWolters = gui_component('radio', jPanelSim, 'br', '<HTML><B>Wolters </B>''s (volume) constraint(Wolters, 2003):<BR><FONT color="#777777">[(4/3)*pi*(sig_r*sig_t^2) = (4/3)*pi*(sig_iso^3)]</FONT>', jGroupConstr, [], [], []);
+        jRadioConstrWolters = gui_component('radio', jPanelSim, 'br', '<HTML><B>Volume</B>''s constraint(Wolters, 2003):<BR><FONT color="#777777">[(4/3)*pi*(sig_r*sig_t^2) = (4/3)*pi*(sig_iso^3)]</FONT>', jGroupConstr, [], [], []);
         jRadioConstrWolters.setSelected(1);
     jPanelNew.add(jPanelSim);
     
