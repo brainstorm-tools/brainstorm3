@@ -51,7 +51,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'ImportAnat', ...                  % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'single', ...                      % Selection mode: {single,multiple}
         'files', ...                       % Selection mode: {files,dirs,files_and_dirs}
-        {{'.nii','.gz'},    'MRI: NIfTI-1 (*.nii;*.nii.gz)', 'DWI-NII'}, ... % File formats       
+        {{'.nii','.gz'}, 'MRI: NIfTI-1 (*.nii;*.nii.gz)', 'DWI-NII'}, ... % File formats       
         1};                                % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn
     SelectOptionsBval = SelectOptionsNii;
     SelectOptionsBval{8} = {{'.bval'}, 'Raw DWI: b-values (*.bval)', 'DWI-BVAL'};
@@ -295,7 +295,7 @@ function DtiFile = ComputeInteractive(iSubject) %#ok<DEFNU>
     LastUsedDirs = bst_get('LastUsedDirs');
     % Get MRI file
     DwiFile = java_getfile('open', 'Import DWI', LastUsedDirs.ImportAnat, 'single', 'files', ...
-        { {'.nii','.gz'},    'MRI: NIfTI-1 (*.nii;*.nii.gz)', 'DWI-NII'}, 1);
+        {{'.nii','.gz'}, 'MRI: NIfTI-1 (*.nii;*.nii.gz)', 'DWI-NII'}, 1);
 
     if isempty(DwiFile)
         return
@@ -306,7 +306,7 @@ function DtiFile = ComputeInteractive(iSubject) %#ok<DEFNU>
     % Try to find the bval/bvec files in the same folder
     [fPath, fBase, fExt] = bst_fileparts(DwiFile);
     if strcmp(fExt,'.gz')
-            [tmp, fBase, fExt] = bst_fileparts(fBase);
+    	[tmp, fBase, fExt] = bst_fileparts(fBase);
     end
     BvalFile = bst_fullfile(fPath, [fBase, '.bval']);
     BvecFile = bst_fullfile(fPath, [fBase, '.bvec']);
