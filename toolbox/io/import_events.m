@@ -1,7 +1,7 @@
-function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFormat, EventName)
+function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFormat, EventName, isInteractive)
 % IMPORT_EVENTS: Reads events from a file/structure and add them to a Brainstorm raw file structure.
 %
-% USAGE:  [sFile, newEvents] = import_events(sFile, ChannelMat=[], EventFile, FileFormat, EventName)
+% USAGE:  [sFile, newEvents] = import_events(sFile, ChannelMat=[], EventFile, FileFormat, EventName, isInteractive=1)
 %         [sFile, newEvents] = import_events(sFile, ChannelMat=[], EventMat)
 %         [sFile, newEvents] = import_events(sFile, ChannelMat=[])  : Opens a dialog box to select the file
 % 
@@ -28,6 +28,9 @@ function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFo
 % Authors: Francois Tadel, 2010-2018
 
 %% ===== PARSE INPUTS =====
+if (nargin < 6) || isempty(isInteractive)
+    isInteractive = 1;
+end
 if (nargin < 5) || isempty(EventName)
     EventName = [];
 end
@@ -119,6 +122,8 @@ if isempty(newEvents)
             newEvents = in_events_curry(sFile, EventFile);
         case 'NEUROSCAN'
             newEvents = in_events_neuroscan(sFile, EventFile);
+        case 'OEBIN'
+            newEvents = in_events_oebin(sFile, EventFile);
         case 'GRAPH'
             newEvents = in_events_graph(sFile, EventFile);
         case 'TRL'
@@ -149,7 +154,7 @@ if isempty(newEvents)
     % Progress bar
     bst_progress('stop');
     % If no new events: return
-    if isempty(newEvents)
+    if isInteractive && isempty(newEvents)
         bst_error('No events found in this file.', 'Import events', 0);
         return
     end

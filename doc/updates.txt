@@ -3,6 +3,7 @@ August 2020
 - Anatomy: Display surfaces/sources as flat 2D maps (Mollweide projection)
 - IO: Support for Spike2 .smrx files
 - IO: Removed NWB support (not stable enough)
+- IO: Support for Open Ephys flat binary file (.dat/.oebin)
 - Connectivity: New envelope correction process (henv - H.Shahabi)
 ---------------------------------------------------------------
 July 2020

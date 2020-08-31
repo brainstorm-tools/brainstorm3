@@ -131,6 +131,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_nicolet(DataFile);
     case 'EEG-NK'
         [sFile, ChannelMat] = in_fopen_nk(DataFile);
+    case 'EEG-OEBIN'
+        [sFile, ChannelMat] = in_fopen_oebin(DataFile);
     case 'EEG-SMR'
         [sFile, ChannelMat] = in_fopen_smr(DataFile);
     case 'EEG-SMRX'
