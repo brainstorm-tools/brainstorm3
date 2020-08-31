@@ -54,18 +54,18 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     end
     
 % ===== PEAK EXTRACTION =====
-    jPanelPeaks = gui_river([1,1],[],'Peak Extraction Settings');
+    jPanelPeaks = gui_river([1,1],[],'Peak extraction settings');
                         gui_component('label', jPanelPeaks, [], 'Sort peaks using: ');
     jButtonGroup = ButtonGroup();
-        jRadioOrder =   gui_component('radio', jPanelPeaks, [], 'Peak Parameters', jButtonGroup,[], @UpdatePeakOption);
-        jRadioFreqBands=gui_component('radio', jPanelPeaks, [], 'Frequency Bands', jButtonGroup, [], @UpdatePeakOption);
+        jRadioOrder =   gui_component('radio', jPanelPeaks, [], 'Peak parameters', jButtonGroup,[], @UpdatePeakOption);
+        jRadioFreqBands=gui_component('radio', jPanelPeaks, [], 'Frequency bands', jButtonGroup, [], @UpdatePeakOption);
     jRadioOrder.setSelected(options.PeakType == 1);
     jRadioFreqBands.setSelected(options.PeakType == 2);
-                        gui_component('label', jPanelPeaks, 'br', 'Sort by Peak... ');
+                        gui_component('label', jPanelPeaks, 'br', 'Sort by peak... ');
     jButtonGroup2 = ButtonGroup();                    
         jRadioFreq =    gui_component('radio', jPanelPeaks, [], 'Frequency', jButtonGroup2); 
         jRadioAmp =     gui_component('radio', jPanelPeaks, [], 'Amplitude', jButtonGroup2); 
-        jRadioStd =     gui_component('radio', jPanelPeaks, [], 'St. Dev. ', jButtonGroup2); 
+        jRadioStd =     gui_component('radio', jPanelPeaks, [], 'Std dev.', jButtonGroup2); 
     jRadioFreq.setSelected(options.SortBy == 1);
     jRadioAmp.setSelected(options.SortBy == 2);
     jRadioStd.setSelected(options.SortBy == 3);
@@ -79,11 +79,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jPanelNew.add('br', jPanelPeaks);
     end
     % ===== STATS EXTRACTION =====
-    jPanelStats = gui_river([1,1],[],'Stat Extraction Settings');
+    jPanelStats = gui_river([1,1],[],'Stat extraction settings');
                         gui_component('label', jPanelStats, [], 'Extract: ');
     jCheckMSE =         gui_component('Checkbox', jPanelStats, [], 'MSE');
     jCheckR2 =          gui_component('Checkbox', jPanelStats, [], 'R-squared');
-    jCheckFreqError =   gui_component('Checkbox', jPanelStats, [], 'Absolute Error by Frequency');
+    jCheckFreqError =   gui_component('Checkbox', jPanelStats, [], 'Absolute error by frequency');
     jCheckMSE.setSelected(options.pullMSE);
     jCheckR2.setSelected(options.pullR2);
     jCheckFreqError.setSelected(options.pullFreqError);

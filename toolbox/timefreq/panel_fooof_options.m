@@ -61,7 +61,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     % ===== PEAK TYPE =====
     if fooof_type == 1
         jPanelPeakType = gui_river([1,1]);
-                            gui_component('label', jPanelPeakType, 'br', 'Peak Model:');
+                            gui_component('label', jPanelPeakType, 'br', 'Peak model:');
         jButtonGroup2 = ButtonGroup();
             jRadioGauss =   gui_component('radio', jPanelPeakType, [], 'Gaussian', jButtonGroup2);
             jRadioCauchy =  gui_component('radio', jPanelPeakType, [], 'Cauchy*', jButtonGroup2);
@@ -76,7 +76,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     
     % ===== PEAK WIDTH LIMITS =====
     jPanelPeakWidth = gui_river([1,1]);
-                                gui_component('label', jPanelPeakWidth, [], 'Peak Width Limits:');
+                                gui_component('label', jPanelPeakWidth, [], 'Peak width limits:');
         jTextPeakWidthLower =   gui_component('text', jPanelPeakWidth, 'hfill', '0.5');
         jTextPeakWidthLower.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
                                 gui_component('label', jPanelPeakWidth, [], ' - ');
@@ -120,7 +120,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     % ===== PROXIMITY THRESHOLD =====
     if fooof_type == 1
         jPanelProxThresh = gui_river([1,1]);
-                                gui_component('label', jPanelProxThresh, [], 'Proximity Threshold:');
+                                gui_component('label', jPanelProxThresh, [], 'Proximity threshold:');
             jTextProxThresh =   gui_component('text', jPanelProxThresh, 'hfill', '2.0');
             jTextProxThresh.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
                                 gui_component('label', jPanelProxThresh, [], ' stdev of distribution');
@@ -140,7 +140,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     
     % ===== APERIODIC MODE =====
     jPanelAperMode = gui_river([1,1]);
-                        gui_component('label', jPanelAperMode, 'br', 'Aperiodic Mode:');
+                        gui_component('label', jPanelAperMode, 'br', 'Aperiodic mode:');
     jButtonGroup1 = ButtonGroup();
         jRadioFixed =   gui_component('radio', jPanelAperMode, [],   'Fixed', jButtonGroup1);
         jRadioKnee =    gui_component('radio', jPanelAperMode, [], 'Knee', jButtonGroup1);
@@ -152,7 +152,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     % ===== GUESS WEIGHT =====
     if fooof_type == 1
         jPanelGuessWeight = gui_river([1,1]);
-                         gui_component('label', jPanelGuessWeight, 'br', 'Guess Weight:');
+                         gui_component('label', jPanelGuessWeight, 'br', 'Guess weight:');
         jButtonGroup3 = ButtonGroup();
             jRadioNone = gui_component('radio', jPanelGuessWeight, [], 'None', jButtonGroup3);
             jRadioWeak = gui_component('radio', jPanelGuessWeight, [], 'Weak', jButtonGroup3);
