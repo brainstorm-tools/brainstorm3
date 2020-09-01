@@ -914,7 +914,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 % FREQRANGE: {value, units, precision}
                 case {'freqrange','freqrange_static'}
                     % Build list of frequencies
-                    if strcmpi(sFiles(1).FileType, 'timefreq')
+                    if strcmpi(sFiles(1).FileType, 'timefreq') && ~strcmpi(option.Type, 'freqrange_static')
                         % Load Freqs field from the input file
                         TfMat = in_bst_timefreq(sFiles(1).FileName, 0, 'Freqs');
                         if iscell(TfMat.Freqs)
@@ -1051,6 +1051,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         jCheck = gui_component('radio', jPanelOpt, [], ['<HTML>', option.Comment{1,iRadio}], [], [], @(h,ev)OptionRadio_Callback(iProcess, optNames{iOpt}, option.Comment{2,iRadio}, ev.getSource().isSelected()));
                         jCheck.setSelected(strcmpi(option.Value, option.Comment{2,iRadio}));
                         jButtonGroup.add(jCheck);
+                    end
+                    % If class controller not selected, toggle off class
+                    if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller) && isfield(option.Controller, option.Value) && ~isempty(option.Controller.(option.Value))
+                        ClassesToToggleOff{end + 1} = setdiff(fieldnames(option.Controller), option.Value);
                     end
                 case 'combobox'
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
@@ -2089,8 +2093,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             bst_set('ProcessOptions', ProcessOptions);
         end
         % If a class controller, toggle class
-        if strcmp(optType, 'checkbox') && isfield(GlobalData.Processes.Current(iProcess).options.(optName), 'Controller')
-            ToggleClass(GlobalData.Processes.Current(iProcess).options.(optName).Controller, value);
+        if isfield(GlobalData.Processes.Current(iProcess).options.(optName), 'Controller')
+            opt = GlobalData.Processes.Current(iProcess).options.(optName);
+            if strcmp(optType, 'checkbox') && ~isempty(opt.Controller)
+                ToggleClass(opt.Controller, value);
+            elseif strcmp(optType, 'radio_linelabel') && ~isempty(opt.Controller) && isstruct(opt.Controller) && isfield(opt.Controller, opt.Value) && ~isempty(opt.Controller.(opt.Value))
+                for cl = fieldnames(opt.Controller)'
+                    ToggleClass(opt.Controller.(cl{1}), strcmp(cl{1}, value));
+                end
+            end
         end
     end
 
