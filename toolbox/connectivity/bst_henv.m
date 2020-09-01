@@ -1,8 +1,9 @@
-function varargout = bst_henv(Data,OPTIONS)
+function varargout = bst_henv(Data, Time, OPTIONS)
 % BST_HENV Compute the time-varying COherence and enVELope measures 
 %
 % INPUTS:
 %   - Data         : Input signal (nSignals x nSamples)
+%   - Time         : Time values for all the samples of the input signal
 %   - OPTIONS: 
 %     - SampleRate : Sampling frequency
 %     - CohMeasure : Desired measure of connectivity
@@ -124,7 +125,7 @@ for f = 1:nfBins
     % Predefine the complex frequency domain signal
     Xh = zeros(N,nSig) ;
     if numBlocks>1
-        OPTIONS_tf.TimeVector = linspace(OPTIONS.TimeWindow(1),blockLen3D/Fs,blockLen3D) ;
+        OPTIONS_tf.TimeVector = linspace(Time(1),blockLen3D/Fs,blockLen3D) ;
         for bl = 1:numBlocks
             tfOut_tmp = bst_timefreq(Data3D(:,:,bl), OPTIONS_tf) ;
             tfOut_tmp = tfOut_tmp{1}.TF ;
@@ -132,12 +133,12 @@ for f = 1:nfBins
             Xh((bl-1)*actLen+(1:actLen),:) = transpose(tfOut_tmp(:,(1:actLen)+tranLen)) ;
         end
     else
-        OPTIONS_tf.TimeVector = linspace(OPTIONS.TimeWindow(1),OPTIONS.TimeWindow(2),N) ;
+        OPTIONS_tf.TimeVector = Time;
         tfOut_tmp = bst_timefreq(Data, OPTIONS_tf) ;
         tfOut_tmp = tfOut_tmp{1}.TF ;
         Xh = transpose(tfOut_tmp) ;
     end
-        
+
     %% Connectivity computation
     for t = 1:nWindows
         % Display progress in command window

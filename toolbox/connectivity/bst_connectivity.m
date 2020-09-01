@@ -595,7 +595,7 @@ for iFile = 1:length(FilesA)
             OPTIONS.SampleRate = sfreq;
             OPTIONS.Freqs      = OPTIONS.Freqrange;
 
-            [R4d,timeSamples]       = bst_henv(sInputA.Data,OPTIONS);
+            [R4d,timeSamples]       = bst_henv(sInputA.Data, sInputA.Time, OPTIONS);
             sInputB.Time            = timeSamples + sInputB.Time(1) ;
             [tmp1,tmp1,nTime,nBand] = size(R4d) ;
             
