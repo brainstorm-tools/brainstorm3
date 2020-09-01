@@ -1774,7 +1774,7 @@ function DisplayFigurePopup(hFig)
     
     % ==== MENU: TENSORS DISPLAY ====
     Handles = bst_figures('GetFigureHandles', hFig);
-    if ~isempty(Handles.TensorDisplay)
+    if isfield(Handles, 'TensorDisplay') && ~isempty(Handles.TensorDisplay)
         jMenuTensors = gui_component('Menu', jPopup, [], 'FEM tensors', IconLoader.ICON_FEM);
         % Display mode
         jItemEllipse = gui_component('radiomenuitem', jMenuTensors, [], 'Ellipses', [], [], @(h,ev)PlotTensorCut(hFig, [], [], [], [], 'ellipse'));
