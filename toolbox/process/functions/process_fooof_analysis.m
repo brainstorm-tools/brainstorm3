@@ -109,38 +109,39 @@ function ePeaks = extractPeaks(inputFile, pt, sb, fb)
     switch pt
         case 1
             % Preallocate space
-            ePeaks = table('Size', [maxEnt, 4], 'VariableNames', ...
-                {'channel', 'center_frequency', 'amplitude', 'st_dev'}, ...
-                'VariableTypes',{'string', 'double', 'double', 'double'});
+            ePeaks = struct('channel', [], 'center_frequency', [],...
+                'amplitude', [], 'std_dev', ones(maxEnt,1)*-1);
             % Collect data from all peaks
             i = 0;
             for chan = 1:length(ChanNames)
                 if ~isempty(FOOOFdata(chan).FOOOF.peak_params)
                     for p = 1:size(FOOOFdata(chan).FOOOF.peak_params,1)
                         i = i +1;
-                        ePeaks.channel(i) = ChanNames(chan);
-                        ePeaks.center_frequency(i) = FOOOFdata(chan).FOOOF.peak_params(p,1);
-                        ePeaks.amplitude(i) = FOOOFdata(chan).FOOOF.peak_params(p,2);
-                        ePeaks.st_dev(i) = FOOOFdata(chan).FOOOF.peak_params(p,3);
+                        ePeaks(i).channel = ChanNames(chan);
+                        ePeaks(i).center_frequency = FOOOFdata(chan).FOOOF.peak_params(p,1);
+                        ePeaks(i).amplitude = FOOOFdata(chan).FOOOF.peak_params(p,2);
+                        ePeaks(i).std_dev = FOOOFdata(chan).FOOOF.peak_params(p,3);
                     end
                 end
             end
             % Remove unused rows
-            ePeaks = ePeaks(1:i,:);
+            ePeaks = ePeaks(1,1:i);
             % Apply specified sort
             switch sb
                 case 1
-                    ePeaks = sortrows(ePeaks,'center_frequency');
+                    [tmp,iSort] = sort([ePeaks.center_frequency]); 
+                    ePeaks = ePeaks(iSort);
                 case 2
-                    ePeaks = sortrows(ePeaks,'amplitude','descend');
+                    [tmp,iSort] = sort([ePeaks.amplitude]); 
+                    ePeaks = ePeaks(iSort(end:-1:1));
                 case 3
-                    ePeaks = sortrows(ePeaks,'st_dev');
+                    [tmp,iSort] = sort([ePeaks.std_dev]); 
+                    ePeaks = ePeaks(iSort);
             end 
         case 2
             % Preallocate space
-            ePeaks = table('Size', [maxEnt, 5], 'VariableNames', ...
-                {'channel', 'center_frequency', 'amplitude', 'st_dev', 'band'}, ...
-                'VariableTypes',{'string', 'double', 'double', 'double', 'string'});
+            ePeaks = struct('channel', [], 'center_frequency', [],...
+                'amplitude', [], 'std_dev', ones(maxEnt,1)*-1, 'band', []);
             % Generate bands from input
             bands = process_fooof_bands('Eval', fb);
             % Collect data from all peaks
@@ -149,16 +150,16 @@ function ePeaks = extractPeaks(inputFile, pt, sb, fb)
                 if ~isempty(FOOOFdata(chan).FOOOF.peak_params)
                     for p = 1:size(FOOOFdata(chan).FOOOF.peak_params,1)
                         i = i +1;
-                        ePeaks.channel(i) = ChanNames(chan);
-                        ePeaks.center_frequency(i) = FOOOFdata(chan).FOOOF.peak_params(p,1);
-                        ePeaks.amplitude(i) = FOOOFdata(chan).FOOOF.peak_params(p,2);
-                        ePeaks.st_dev(i) = FOOOFdata(chan).FOOOF.peak_params(p,3);
-                        ePeaks.band(i) = findBand(ePeaks.center_frequency(i), bands);
+                        ePeaks(i).channel = ChanNames(chan);
+                        ePeaks(i).center_frequency = FOOOFdata(chan).FOOOF.peak_params(p,1);
+                        ePeaks(i).amplitude = FOOOFdata(chan).FOOOF.peak_params(p,2);
+                        ePeaks(i).std_dev = FOOOFdata(chan).FOOOF.peak_params(p,3);
+                        ePeaks(i).band = findBand(ePeaks.center_frequency(i), bands);
                     end
                 end
-            end 
+            end
             % Remove unused rows
-            ePeaks = ePeaks(1:i,:);
+            ePeaks = ePeaks(1,1:i);
     end
 end
 
@@ -166,20 +167,16 @@ function eAper = extractAperiodic(inputFile)
     % Organize/extract aperiodic components from FOOOF models
     ChanNames = inputFile.RowNames;
     FOOOFdata = inputFile.FOOOF.FOOOF_data;
-    VarNames = {'channel', 'offset', 'exponent', 'knee_frequency'};
-    VarTypes = {'string', 'double', 'double', 'double'};
     hasKnee = length(FOOOFdata(1).FOOOF.aperiodic_params)-2;
-    eAper = table('Size', [length(ChanNames), 3+hasKnee], 'VariableNames', ...
-                {VarNames{logical([1 1 1 hasKnee])}}, 'VariableTypes', ...
-                {VarTypes{logical([1 1 1 hasKnee])}});
+    eAper = struct('channel', [], 'offset', [], 'exponent', ones(length(ChanNames),1));
     for chan = 1:length(ChanNames)
-            eAper.channel(chan) = ChanNames(chan);
-            eAper.offset(chan) = FOOOFdata(chan).FOOOF.aperiodic_params(1);
+            eAper(chan).channel = ChanNames(chan);
+            eAper(chan).offset = FOOOFdata(chan).FOOOF.aperiodic_params(1);
         if hasKnee % Legacy FOOOF alters order of parameters
-            eAper.exponent(chan) = FOOOFdata(chan).FOOOF.aperiodic_params(3);
-            eAper.knee_frequency(chan) = FOOOFdata(chan).FOOOF.aperiodic_params(2);
+            eAper(chan).exponent = FOOOFdata(chan).FOOOF.aperiodic_params(3);
+            eAper(chan).knee_frequency = FOOOFdata(chan).FOOOF.aperiodic_params(2);
         else
-            eAper.exponent(chan) = FOOOFdata(chan).FOOOF.aperiodic_params(2);
+            eAper(chan).exponent = FOOOFdata(chan).FOOOF.aperiodic_params(2);
         end
     end       
 end
@@ -192,16 +189,9 @@ function eStats = extractStats(inputFile, pmse, pr2, pfe)
     end
     ChanNames = inputFile.RowNames;
     FOOOFdata = inputFile.FOOOF.FOOOF_data;
-    VarUse = logical([1,pmse,pr2]);
-    VarNames = {'channel', 'MSE', 'r_squared'};
-    VarTypes = {'string','double','double'};
-    Cols = sum(VarUse);
     % Preallocate space
-    eStats = table('Size', [length(ChanNames), Cols], 'VariableNames', ...
-        {VarNames{1,VarUse}}, 'VariableTypes', {VarTypes{1,VarUse}});
-    eStats = table2struct(eStats);
+    eStats = struct('channel', inputFile.RowNames);
     for chan = 1:length(ChanNames)
-        eStats(chan).channel = ChanNames(chan);
         if pmse
             eStats(chan).MSE = FOOOFdata(chan).FOOOF.error;
         end
@@ -211,12 +201,9 @@ function eStats = extractStats(inputFile, pmse, pr2, pfe)
         if pfe
             spec = squeeze(log10(inputFile.TF(chan,1,ismember(inputFile.Freqs,inputFile.FOOOF.FOOOF_freqs))));
             fspec = squeeze(log10(FOOOFdata(chan).FOOOF.fooofed_spectrum))';
-            eStats(chan).frequency_wise_error = table('Size',[length(spec),1],...
-                'VariableNames',{'abs_error'}, 'VariableTypes',{'double'});
             eStats(chan).frequency_wise_error = abs(spec-fspec);
         end
     end 
-    eStats = struct2table(eStats);
 end
 
 function bandName = findBand(cf,bands)
