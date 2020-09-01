@@ -571,6 +571,11 @@ function FigureMouseUpCallback(hFig, varargin)
     if isappdata(hFig, 'Timefreq') && ~isempty(getappdata(hFig, 'Timefreq'))
         bst_figures('SetCurrentFigure', hFig, 'TF');
     end
+    % Check if clicked object is still available
+    if ~isempty(clickObject) && ~ishandle(clickObject)
+        clickObject = [];
+        clickAction = [];
+    end
     
     % ===== SIMPLE CLICK ===== 
     % If user did not move the mouse since the click
