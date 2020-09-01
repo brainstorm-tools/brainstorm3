@@ -94,9 +94,12 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, minph, pet, prt, rOpt, am, gw);  
     else % Python FOOOF
         % Import python modules
-        py.importlib.import_module('fooof');
-        py.importlib.import_module('numpy');
-        py.importlib.import_module('scipy');
+        modules = py.sys.modules;
+        modules = string(cell(py.list(modules.keys())));
+        % First, check if any modules are already imported
+        if ~any(strcmp('fooof',modules)), py.importlib.import_module('fooof'); end
+        if ~any(strcmp('scipy',modules)), py.importlib.import_module('scipy'); end
+        if ~any(strcmp('numpy',modules)), py.importlib.import_module('numpy'); end
         % Run process
         OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, pet, am);
     end    
