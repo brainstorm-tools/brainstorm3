@@ -1085,9 +1085,9 @@ function [ePeaks, eAper, eStats] = FOOOF_analysis(FOOOF_data, ChanNames, TF, max
     maxEnt = length(ChanNames) * max_peaks;
     switch sort_type
         case 'param'
-            % Preallocate space
+            % Initialize output struct
             ePeaks = struct('channel', [], 'center_frequency', [],...
-                'amplitude', [], 'std_dev', ones(maxEnt,1)*-1);
+                'amplitude', [], 'std_dev', []);
             % Collect data from all peaks
             i = 0;
             for chan = 1:length(ChanNames)
@@ -1116,9 +1116,9 @@ function [ePeaks, eAper, eStats] = FOOOF_analysis(FOOOF_data, ChanNames, TF, max
                     ePeaks = ePeaks(iSort);
             end 
         case 'band'
-            % Preallocate space
+            % Initialize output struct
             ePeaks = struct('channel', [], 'center_frequency', [],...
-                'amplitude', [], 'std_dev', ones(maxEnt,1)*-1, 'band', []);
+                'amplitude', [], 'std_dev', [], 'band', []);
             % Generate bands from input
             bands = process_tf_bands('Eval', sort_bands);
             % Collect data from all peaks
@@ -1132,7 +1132,8 @@ function [ePeaks, eAper, eStats] = FOOOF_analysis(FOOOF_data, ChanNames, TF, max
                         ePeaks(i).amplitude = FOOOF_data(chan).FOOOF.peak_params(p,2);
                         ePeaks(i).std_dev = FOOOF_data(chan).FOOOF.peak_params(p,3);
                         % Find name of frequency band from user definitions
-                        iBand = find((ePeaks.center_frequency(i) >= bands{:,2}(1)) && (ePeaks.center_frequency(i) <= bands{:,2}(2)), 1);
+                        bandRanges = cell2mat(bands(:,2));
+                        iBand = find(ePeaks(i).center_frequency >= bandRanges(:,1) & ePeaks(i).center_frequency <= bandRanges(:,2));
                         if ~isempty(iBand)
                             ePeaks(i).band = bands{iBand,1};
                         else
@@ -1148,7 +1149,8 @@ function [ePeaks, eAper, eStats] = FOOOF_analysis(FOOOF_data, ChanNames, TF, max
     % ===== EXTRACT APERIODIC =====
     % Organize/extract aperiodic components from FOOOF models
     hasKnee = length(FOOOF_data(1).FOOOF.aperiodic_params) - 2;
-    eAper = struct('channel', [], 'offset', [], 'exponent', ones(length(ChanNames),1));
+    % Initialize output struct
+    eAper = struct('channel', [], 'offset', [], 'exponent', []);
     for chan = 1:length(ChanNames)
             eAper(chan).channel = ChanNames(chan);
             eAper(chan).offset = FOOOF_data(chan).FOOOF.aperiodic_params(1);
@@ -1162,8 +1164,8 @@ function [ePeaks, eAper, eStats] = FOOOF_analysis(FOOOF_data, ChanNames, TF, max
 
     % ===== EXTRACT STAT =====
     % Organize/extract stats from FOOOF models
-    % Preallocate space
-    eStats = struct('channel', ChanNames);
+    % Initialize output struct
+    eStats = struct('channel', []);
     for chan = 1:length(ChanNames)
         eStats(chan).MSE = FOOOF_data(chan).FOOOF.error;
         eStats(chan).r_squared = FOOOF_data(chan).FOOOF.r_squared;
