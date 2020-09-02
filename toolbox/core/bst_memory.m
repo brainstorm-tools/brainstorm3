@@ -1762,7 +1762,6 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         Timefreq.StatClusters = TimefreqMat.StatClusters;
         Timefreq.StatClusters.Correction = TimefreqMat.Correction;
     end
-
     % ===== EXPAND SYMMETRIC MATRICES =====
     %if isfield(Timefreq.Options, 'isSymmetric') && Timefreq.Options.isSymmetric
     if (length(Timefreq.RowNames) == length(Timefreq.RefRowNames)) && (size(Timefreq.TF,1) < length(Timefreq.RowNames)^2)

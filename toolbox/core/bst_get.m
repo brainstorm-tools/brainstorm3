@@ -3093,7 +3093,7 @@ switch contextName
         if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
             argout1.FreqBands = defPref.FreqBands;
         end
-        
+    
     case 'ExportBidsOptions'
         defPref.ProjName    = [];
         defPref.ProjID      = [];
