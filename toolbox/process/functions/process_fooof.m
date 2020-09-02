@@ -274,13 +274,8 @@ end
 
 %% ===== PYTHON FOOOF =====
 function [fs, fg] = FOOOF_python(TF, Freqs, opt)
-    % Convert string options to integers
-    switch (opt.aperiodic_mode)
-        case 'fixed',  opt.aperiodic_mode = 1;
-        case 'knee',   opt.aperiodic_mode = 2;
-    end
     % Initalize FOOOF structs
-    fg = repmat(struct('FOOOF',[]), 1, size(spec,1));
+    fg = repmat(struct('FOOOF',[]), 1, size(TF,1));
     % Iterate across channels
     for chan = 1:size(TF,1)
         bst_progress('set', bst_round(chan / size(TF,1),2) * 100);
@@ -301,7 +296,7 @@ function [fs, fg] = FOOOF_python(TF, Freqs, opt)
         % Return FOOOF model
         fg(chan).FOOOF = fr;
     end
-    fs = fr.freqs;
+    fs = Freqs(Freqs >= opt.freq_range(1) & Freqs <= opt.freq_range(2));
 end
 
 
