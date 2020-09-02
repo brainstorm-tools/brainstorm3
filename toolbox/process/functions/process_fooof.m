@@ -1,6 +1,10 @@
 function varargout = process_fooof(varargin)
-% PROCESS_FOOOF: Applies the "Fitting Oscillations and One Over F"
-% algorithm on a Welch's PSD
+% PROCESS_FOOOF: Applies the "Fitting Oscillations and One Over F" algorithm on a Welch's PSD
+%
+% REFERENCE: Please cite the original algorithm:
+%    Haller M, Donoghue T, Peterson E, Varma P, Sebastian P, Gao R, Noto T, Knight RT, Shestyuk A, Voytek B (2018)
+%    Parameterizing Neural Power Spectra
+%    BioRxiv, 299859. doi: https://doi.org/10.1101/299859
 
 % @=============================================================================
 % This software is part of the Brainstorm software:
@@ -20,12 +24,7 @@ function varargout = process_fooof(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Luc Wilson (2020)
-%
-% Please cite the original algorithm designed by Haller, M., Donoghue, T., 
-% Peterson, E., Varma, P., Sebastian, P., Gao, R., Noto, T., Knight, R.T., 
-% Shestyuk, A., and Voytek, B. (2018). Parameterizing Neural Power Spectra. 
-% BioRxiv, 299859. doi: https://doi.org/10.1101/299859
+% Authors: Luc Wilson, Francois Tadel, 2020
 
 eval(macro_method);
 end
@@ -34,9 +33,9 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Generate FOOOF models';
+    sProcess.Comment     = 'FOOOF: Fitting oscillations and 1/f';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = {'Frequency','FOOOF'};
+    sProcess.SubGroup    = 'Frequency';
     sProcess.Index       = 503;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'timefreq'};
@@ -44,17 +43,47 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Definition of the options
-    % ===  FOOOF TYPE ===
-    sProcess.options.fooofType.Comment   = {'Matlab', 'Python', 'FOOOF version:'};
-    sProcess.options.fooofType.Type      = 'radio_line';
-    sProcess.options.fooofType.Value     = 1;
-    % === Options: FOOOF ===
-    sProcess.options.edit.Comment = {'panel_fooof_options', ' FOOOF options: '};
-    sProcess.options.edit.Type    = 'editpref';
-    sProcess.options.edit.Value   = [];
-    % === * EXPLANATION ===
-    sProcess.options.explanation.Comment = '<U><B>* Python Version Requires Python 3 (3.7 preferred) *</B></U>';
-    sProcess.options.explanation.Type    = 'label';
+    % === FOOOF TYPE
+    sProcess.options.implementation.Comment = {'Matlab', 'Python 3 (Python 3.7 recommended)', 'FOOOF implementation:'; 'matlab', 'python', ''};
+    sProcess.options.implementation.Type    = 'radio_linelabel';
+    sProcess.options.implementation.Value   = 'matlab';
+    sProcess.options.implementation.Controller.matlab = 'Matlab';
+    sProcess.options.implementation.Controller.python = 'Python';
+    % === FREQUENCY RANGE
+    sProcess.options.freqrange.Comment = 'Frequency range for analysis: ';
+    sProcess.options.freqrange.Type    = 'freqrange';   % 'freqrange_static';
+    sProcess.options.freqrange.Value   = {[1 40], 'Hz', 3};
+    % === PEAK TYPE
+    sProcess.options.peaktype.Comment = {'Gaussian', 'Cauchy*', 'Best of both* (* experimental)', 'Peak model:'; 'gaussian', 'cauchy', 'best', ''};
+    sProcess.options.peaktype.Type    = 'radio_linelabel';
+    sProcess.options.peaktype.Value   = 'gaussian';
+    sProcess.options.peaktype.Class   = 'Matlab';
+    % === PEAK WIDTH LIMITS
+    sProcess.options.peakwidth.Comment = 'Peak width limits (default=[0.5-12]): ';
+    sProcess.options.peakwidth.Type    = 'freqrange_static';
+    sProcess.options.peakwidth.Value   = {[0.5 12], 'Hz', 3};
+    % === MAX PEAKS
+    sProcess.options.maxpeaks.Comment = 'Maximum number of peaks (default=3): ';
+    sProcess.options.maxpeaks.Type    = 'value';
+    sProcess.options.maxpeaks.Value   = {3, '', 0};
+    % === MEAN PEAK HEIGHT
+    sProcess.options.minpeakheight.Comment = 'Minimum peak height (default=3): ';
+    sProcess.options.minpeakheight.Type    = 'value';
+    sProcess.options.minpeakheight.Value   = {3, 'dB', 1};
+    % === PROXIMITY THRESHOLD
+    sProcess.options.proxthresh.Comment = 'Proximity threshold (default=2): ';
+    sProcess.options.proxthresh.Type    = 'value';
+    sProcess.options.proxthresh.Value   = {2, 'stdev of noise', 1};
+    sProcess.options.proxthresh.Class   = 'Matlab';
+    % === APERIODIC MODE 
+    sProcess.options.apermode.Comment = {'Fixed', 'Knee', 'Aperiodic mode (default=fixed):'; 'fixed', 'knee', ''};
+    sProcess.options.apermode.Type    = 'radio_linelabel';
+    sProcess.options.apermode.Value   = 'fixed';
+    % === GUESS WEIGHT
+    sProcess.options.guessweight.Comment = {'None', 'Weak', 'Strong', 'Guess weight (default=none):'; 'none', 'weak', 'strong', ''};
+    sProcess.options.guessweight.Type    = 'radio_linelabel';
+    sProcess.options.guessweight.Value   = 'none';
+    sProcess.options.guessweight.Class   = 'Matlab';
 end
 
 
@@ -64,116 +93,91 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
 end
 
 
-%% ===== GET OPTIONS =====
-function [fooofType, freqBounds, allFreqs, peakType, peakWidthLims, maxPeaks, minPeakHeight, peakThresh, proxThresh, repOpt, aperMode, guessWeight] = GetOptions(sProcess)
-    fooofType = sProcess.options.fooofType.Value;
-    opts = panel_fooof_options('GetPanelContents');
-    freqBounds = opts.freqRange;
-    allFreqs = opts.allFreqs;
-    peakWidthLims = opts.peakWidthLimits;
-    maxPeaks = opts.maxPeaks;
-    minPeakHeight = opts.minPeakHeight/10; % convert from dB to B
-    peakThresh = opts.peakThresh;
-    aperMode = opts.aperMode;
-    if fooofType == 1
-        proxThresh = opts.proxThresh;    
-        guessWeight = opts.guessWeight;
-        peakType = opts.peakType;
-        repOpt = opts.repOpt;
-    else
-        proxThresh = []; guessWeight = []; peakType = []; repOpt = [];
-    end
-end
-
-
 %% ===== RUN =====
 function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     % Fetch user settings
-    [fT, fB, aF, pt, pwl, maxp, minph, pet, prt, rOpt, am, gw] = GetOptions(sProcess);
-    if fT == 1 % Matlab standalone FOOOF
-        OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, minph, pet, prt, rOpt, am, gw);  
-    else % Python FOOOF
-        % Import python modules
-        modules = py.sys.modules;
-        modules = string(cell(py.list(modules.keys())));
-        % First, check if any modules are already imported
-        if ~any(strcmp('fooof',modules)), py.importlib.import_module('fooof'); end
-        if ~any(strcmp('scipy',modules)), py.importlib.import_module('scipy'); end
-        if ~any(strcmp('numpy',modules)), py.importlib.import_module('numpy'); end
-        % Run process
-        OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, pet, am);
+    implementation = sProcess.options.implementation.Value;
+    opt.freq_range          = sProcess.options.freqrange.Value{1};
+    opt.peak_width_limits   = sProcess.options.peakwidth.Value{1};
+    opt.max_peaks           = sProcess.options.maxpeaks.Value{1};
+    opt.min_peak_height     = sProcess.options.minpeakheight.Value{1} / 10; % convert from dB to B
+    opt.aperiodic_mode      = sProcess.options.apermode.Value;
+    opt.peak_threshold      = 2;   % 2 std dev: parameter for interface simplification
+    % Matlab-only options
+    opt.peak_type           = sProcess.options.peaktype.Value;
+    opt.proximity_threshold = sProcess.options.proxthresh.Value{1};
+    opt.guess_weight        = sProcess.options.guessweight.Value;
+    opt.thresh_after        = true;   % Threshold after fitting always selected for Matlab (mirrors the Python FOOOF closest by removing peaks that do not satisfy a user's predetermined conditions)
+    % Python-only options
+    opt.verbose             = false;
+
+    % Switch between implementations
+    switch (implementation)
+        case 'matlab'   % Matlab standalone FOOOF
+            OutputFile = FOOOF_matlab(sProcess, sInputs, opt);  
+        case 'python'
+            % Import python modules
+            modules = py.sys.modules;
+            modules = string(cell(py.list(modules.keys())));
+            % First, check if any modules are already imported
+            if ~any(strcmp('fooof',modules)), py.importlib.import_module('fooof'); end
+            if ~any(strcmp('scipy',modules)), py.importlib.import_module('scipy'); end
+            if ~any(strcmp('numpy',modules)), py.importlib.import_module('numpy'); end
+            % Run process
+            OutputFile = FOOOF_python(sProcess, sInputs, opt);
+        otherwise
+            error('Invalid implentation.');
     end    
 end
 
 
 %% ===== MATLAB STANDALONE FOOOF =====
-function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, minph, pet, prt, rOpt, am, gw)
-    switch pt
-        case 1,     pts = 'gaussian';
-        case 2,     pts = 'cauchy';
-        case 3,     pts = 'best of both';
-    end
-    switch am
-        case 1,     ams = 'fixed';
-        case 2,     ams = 'knee';
-    end
-    switch gw
-        case 1,     gws = 'none';
-        case 2,     gws = 'weak';
-        case 3,     gws = 'strong';
-    end
+function OutputFile = FOOOF_matlab(sProcess, sInputs, opt)
     % Initialize returned list of files
     OutputFile = {};
-    for iP = 1:length(sInputs)
-        bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iP) ' of ' num2str(length(sInputs))]);
-        clear fg;
-        inputFile = in_bst_timefreq(sInputs(iP).FileName);
+    for iFile = 1:length(sInputs)
+        bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iFile) ' of ' num2str(length(sInputs))]);
+        inputFile = in_bst_timefreq(sInputs(iFile).FileName);
         % Check input frequency bounds
-        if (any(fB <= 0) || fB(1) >= fB(2)) && ~aF
+        if (any(opt.freq_range < 0) || opt.freq_range(1) >= opt.freq_range(2))
             bst_report('error','Invalid Frequency range');
             return
         end
         % Find all frequency values within user limits
-        if aF
-            fMask = inputFile.Freqs > 0;
-        else
-            fMask = bst_round(inputFile.Freqs,1) >= fB(1) & inputFile.Freqs <= fB(2);
-        end
+        fMask = bst_round(inputFile.Freqs,1) >= opt.freq_range(1) & inputFile.Freqs <= opt.freq_range(2);
         fs = inputFile.Freqs(fMask);
-        fBstr = [fs(1) fs(end)]; % Adjust to data limits
         spec = log10(squeeze(inputFile.TF(:,1,fMask))); % extract spectra
         % Initalize FOOOF structs
-        fg(size(spec,1)) = struct('FOOOF',[]);
+        fg = repmat(struct('FOOOF',[]), 1, size(spec,1));
         for chan = 1:size(spec,1)
             bst_progress('set', bst_round(chan / size(spec,1),2) * 100);
             % Fit aperiodic
-            aperiodic_pars = robust_ap_fit(fs,spec(chan,:),am);
+            aperiodic_pars = robust_ap_fit(fs, spec(chan,:), opt.aperiodic_mode);
             % Remove aperiodic
-            flat_spec = flatten_spectrum(fs,spec(chan,:),aperiodic_pars,am);
+            flat_spec = flatten_spectrum(fs, spec(chan,:), aperiodic_pars, opt.aperiodic_mode);
             % Fit peaks
-            [peak_pars, pti] = fit_peaks(fs,flat_spec,maxp,pet,minph,pwl/2,prt,pt,gw);
-            if rOpt % Check thresholding requirements are met again using rOpt
-                peak_pars(peak_pars(:,2) < minph,:)     = []; % remove peaks shorter than limit
-                peak_pars(peak_pars(:,3) < pwl(1)/2,:)  = []; % remove peaks narrower than limit
-                peak_pars(peak_pars(:,3) > pwl(2)/2,:)  = []; % remove peaks broader than limit
-                peak_pars = drop_peak_overlap(peak_pars, prt); % remove smallest of two peaks fit too closely
+            [peak_pars, pti] = fit_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
+                opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight);
+            if opt.thresh_after  % Check thresholding requirements are met again
+                peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
+                peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
+                peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
+                peak_pars = drop_peak_overlap(peak_pars, opt.proximity_threshold); % remove smallest of two peaks fit too closely
             end
             % Refit aperiodic
             aperiodic = spec(chan,:);
             if strcmp(pti,'gaussian')
                 for peak = 1:size(peak_pars,1)
-                    aperiodic = aperiodic - gaussian_function(fs,peak_pars(peak,1),...
-                        peak_pars(peak,2),peak_pars(peak,3));
+                    aperiodic = aperiodic - gaussian_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
                 end
             elseif strcmp(pti,'cauchy')
                 for peak = 1:size(peak_pars,1)
-                    aperiodic = aperiodic - cauchy_function(fs,peak_pars(peak,1),...
-                        peak_pars(peak,2),peak_pars(peak,3));
+                    aperiodic = aperiodic - cauchy_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
                 end
             end
-            aperiodic_pars = simple_ap_fit(fs,aperiodic,am);
+            aperiodic_pars = simple_ap_fit(fs, aperiodic, opt.aperiodic_mode);
             % Generate model fit
-            ap_fit = gen_aperiodic(fs,aperiodic_pars,am);
+            ap_fit = gen_aperiodic(fs, aperiodic_pars, opt.aperiodic_mode);
             model_fit = ap_fit;
             for peak = 1:size(peak_pars,1)
                 model_fit = model_fit + gaussian_function(fs,peak_pars(peak,1),...
@@ -193,60 +197,43 @@ function OutputFile = FOOOF_matlab(sProcess, sInputs, fB, aF, pt, pwl, maxp, min
                 'error',            MSE,...
                 'r_squared',        rsq_tmp(2));
         end
-        % Return FOOOF settings
-        fp = struct('freq_range',           fBstr,...
-                    'peak_type',            pts,...
-                    'peak_width_limits',    pwl,...
-                    'max_peaks',            maxp,...
-                    'min_peak_height',      minph,...
-                    'peak_threshold',       pet,...
-                    'proximity_threshold',  prt,...
-                    'aperiodic_mode',       ams,...
-                    'guess_weight',         gws);
         % Save file
-        [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iP));
-        OutputFile{end+1} = SaveFile(inputFile, fp, fs, fg, iOutputStudy);
+        [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iFile));
+        OutputFile{end+1} = SaveFile(inputFile, opt, fs, fg, iOutputStudy);
     end
-    
 end
 
 
 %% ===== PYTHON FOOOF =====
-function OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, pet, am)
-    switch am
-        case 1,     ams = 'fixed';
-        case 2,     ams = 'knee';
+function OutputFile = FOOOF_python(sProcess, sInputs, opt)
+    % Convert string options to integers
+    switch (opt.aperiodic_mode)
+        case 'fixed',  opt.aperiodic_mode = 1;
+        case 'knee',   opt.aperiodic_mode = 2;
     end
-    % set options
-    settings = struct('peak_width_limits' ,pwl,'max_n_peaks', maxp,...
-        'min_peak_height', minph,'peak_threshold', pet,'aperiodic_mode',...
-        ams,'verbose',0); 
     rm = 1; % Always return model
     % Initialize returned list of files
     OutputFile = {};
-    for iP = 1:length(sInputs)
-        bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iP) ' of ' num2str(length(sInputs))]);
-        clear fg
-        inputFile = in_bst_timefreq(sInputs(iP).FileName);
+    for iFile = 1:length(sInputs)
+        bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iFile) ' of ' num2str(length(sInputs))]);
+        
+        inputFile = in_bst_timefreq(sInputs(iFile).FileName);
         % Initialize returned list of files
         OutputFile = {};
         % Check input frequency bounds
-        if (any(fB <= 0) || fB(1) >= fB(2)) && ~aF
+        if (any(opt.freq_range <= 0) || opt.freq_range(1) >= opt.freq_range(2))
             bst_report('error','Invalid Frequency range');
             return
         end
         fs = inputFile.Freqs;
-        if aF % All frequencies
-            fs_tmp = fs(fs > 0);
-            fB = [fs_tmp(1) fs_tmp(end)]; % Adjust to data limits
-        end
         % Preallocate space for FOOOF models
+        clear fg
         fg(size(inputFile.TF,1)) = struct('FOOOF',[]);
         % Iterate across channels
         for chan = 1:size(inputFile.TF,1)
             bst_progress('set', bst_round(chan / size(inputFile.TF,1),2) * 100);
             % Run FOOOF on a single channel
-            fr = fooof_py(fs',squeeze(inputFile.TF(chan,1,:))',fB,settings,rm);
+            fr = fooof_py(fs', squeeze(inputFile.TF(chan,1,:))', fB, opt, rm);
             % Fix FOOOF error (Python and MATLAB give different values)
             fr.error = sum((fr.power_spectrum-fr.fooofed_spectrum).^2)/length(fr.freqs);
             % Fix FOOOF r_squared (Python and MATLAB give different values)
@@ -264,16 +251,9 @@ function OutputFile = FOOOF_python(sProcess, sInputs, fB, aF, pwl, maxp, minph, 
             fr.ap_fit = 10.^fr.ap_fit;
             % Return FOOOF model
             fg(chan).FOOOF = fr;
-        end
-        fp = struct('freq_range',           fB,...
-                    'peak_width_limits',    pwl,...
-                    'max_peaks',            maxp,...
-                    'min_peak_height',      minph,...
-                    'peak_threshold',       pet,...
-                    'aperiodic_mode',       ams);  
-        
-        [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iP));
-        OutputFile{end+1} = SaveFile(inputFile, fp, frqs, fg, iOutputStudy);
+        end       
+        [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iFile));
+        OutputFile{end+1} = SaveFile(inputFile, opt, frqs, fg, iOutputStudy);
     end
 
 end
@@ -285,13 +265,15 @@ function NewFile = SaveFile(inputFile, FOOOF_params, FOOOF_freqs, FOOOF_group, i
     % ===== PREPARE OUTPUT STRUCTURE =====
     % Create file structure
     FileMat = inputFile;
-    FileMat.FOOOF           = struct('FOOOF_options',FOOOF_params,...
-        'FOOOF_freqs', FOOOF_freqs, 'FOOOF_data', FOOOF_group);
+    FileMat.FOOOF = struct(...
+        'FOOOF_options', FOOOF_params, ...
+        'FOOOF_freqs',   FOOOF_freqs, ...
+        'FOOOF_data',    FOOOF_group);
     % Comment: Add FOOOF
     if ~isempty(strfind(FileMat.Comment, 'PSD:'))
-        FileMat.Comment     = strrep(FileMat.Comment, 'PSD:', 'FOOOF:');
+        FileMat.Comment = strrep(FileMat.Comment, 'PSD:', 'FOOOF:');
     else
-        FileMat.Comment     = strcat(FileMat.Comment, ' | FOOOF');
+        FileMat.Comment = strcat(FileMat.Comment, ' | FOOOF');
     end
     % History: Computation
     FileMat = bst_history('add', FileMat, 'compute', 'FOOOF');
@@ -316,21 +298,22 @@ function ap_vals = gen_aperiodic(freqs,aperiodic_params,aperiodic_mode)
 %       Parameters
 %       ----------
 %       freqs : 1xn array
-%               Frequency vector to create aperiodic component for.
+%       	Frequency vector to create aperiodic component for.
 %       aperiodic_params : 1x3 array
-%               Parameters that define the aperiodic component.
-%       aperiodic_mode : 1 or 2
-%               Defines absence or presence of knee in aperiodic component.
+%           Parameters that define the aperiodic component.
+%       aperiodic_mode : {'fixed', 'knee'}
+%           Defines absence or presence of knee in aperiodic component.
 %
 %       Returns
 %       -------
 %       ap_vals : 1d array
-%               Generated aperiodic values.
+%           Generated aperiodic values.
 
-    if aperiodic_mode == 1 % no knee
-        ap_vals = expo_nk_function(freqs,aperiodic_params);
-    elseif aperiodic_mode == 2 % knee
-        ap_vals = expo_function(freqs,aperiodic_params);
+    switch aperiodic_mode
+        case 'fixed'  % no knee
+            ap_vals = expo_nk_function(freqs,aperiodic_params);
+        case 'knee'
+            ap_vals = expo_function(freqs,aperiodic_params);
     end
 end
 
@@ -431,8 +414,8 @@ function aperiodic_params = simple_ap_fit(freqs, power_spectrum, aperiodic_mode)
 %           Frequency values for the power spectrum, in linear scale.
 %       power_spectrum : 1xn array
 %           Power values, in log10 scale.
-%       aperiodic_mode : 1 or 2
-%               Defines absence or presence of knee in aperiodic component.
+%       aperiodic_mode : {'fixed','knee'}
+%           Defines absence or presence of knee in aperiodic component.
 %
 %       Returns
 %       -------
@@ -443,12 +426,13 @@ function aperiodic_params = simple_ap_fit(freqs, power_spectrum, aperiodic_mode)
     options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
         'MaxFunEvals', 5000, 'MaxIter', 5000);
 
-    if aperiodic_mode == 1 % no knee
-        guess_vec = [power_spectrum(1), 2];
-        aperiodic_params = fminsearch(@error_expo_nk_function, guess_vec, options, freqs, power_spectrum);
-    elseif aperiodic_mode == 2 % knee
-        guess_vec = [power_spectrum(1),0, 2];
-        aperiodic_params = fminsearch(@error_expo_function, guess_vec, options, freqs, power_spectrum);
+    switch (aperiodic_mode)
+        case 'fixed'  % no knee
+            guess_vec = [power_spectrum(1), 2];
+            aperiodic_params = fminsearch(@error_expo_nk_function, guess_vec, options, freqs, power_spectrum);
+        case 'knee'
+            guess_vec = [power_spectrum(1),0, 2];
+            aperiodic_params = fminsearch(@error_expo_function, guess_vec, options, freqs, power_spectrum);
     end
 
 end
@@ -462,8 +446,8 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
 %           Frequency values for the power spectrum, in linear scale.
 %       power_spectrum : 1xn array
 %           Power values, in log10 scale.
-%       aperiodic_mode : 1 or 2
-%               Defines absence or presence of knee in aperiodic component.
+%       aperiodic_mode : {'fixed','knee'}
+%           Defines absence or presence of knee in aperiodic component.
 %
 %       Returns
 %       -------
@@ -472,7 +456,7 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
 
     % Do a quick, initial aperiodic fit
     popt = simple_ap_fit(freqs, power_spectrum, aperiodic_mode);
-    initial_fit = gen_aperiodic(freqs, popt,aperiodic_mode);
+    initial_fit = gen_aperiodic(freqs, popt, aperiodic_mode);
 
     % Flatten power_spectrum based on initial aperiodic fit
     flatspec = power_spectrum - initial_fit;
@@ -492,10 +476,11 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
         'MaxFunEvals', 5000, 'MaxIter', 5000);
     guess_vec = popt;
 
-    if aperiodic_mode == 1 % no knee
-        aperiodic_params = fminsearch(@error_expo_nk_function, guess_vec, options, freqs_ignore, spectrum_ignore);
-    elseif aperiodic_mode == 2 % knee
-        aperiodic_params = fminsearch(@error_expo_function, guess_vec, options, freqs, power_spectrum);
+    switch (aperiodic_mode)
+        case 'fixed'  % no knee
+            aperiodic_params = fminsearch(@error_expo_nk_function, guess_vec, options, freqs_ignore, spectrum_ignore);
+        case 'knee'
+            aperiodic_params = fminsearch(@error_expo_function, guess_vec, options, freqs, power_spectrum);
     end
 end
 
@@ -535,30 +520,24 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
 %       max_n_peaks : double
 %           Maximum number of gaussians to fit within the spectrum.
 %       peak_threshold : double
-%           Threshold (in standard deviations of noise floor) to detect a 
-%           peak.
+%           Threshold (in standard deviations of noise floor) to detect a peak.
 %       min_peak_height : double
 %           Minimum height of a peak (in log10).
 %       gauss_std_limits : 1x2 double
-%           Limits to gaussian (cauchy) standard deviation (gamma) when
-%           detecting a peak.
+%           Limits to gaussian (cauchy) standard deviation (gamma) when detecting a peak.
 %       proxThresh : double
-%           Minimum distance between two peaks, in st. dev. (gamma) of
-%           peaks.
-%       peakType : 1, 2, or 3
-%           Which types of peaks are being fitted (1: gaussian, 2: cauchy,
-%           3: best of both).
-%       guess_weight : 1, 2, or 3
-%           Parameter to weigh initial estimates during optimization (None,
-%           Weak, or Strong)
+%           Minimum distance between two peaks, in st. dev. (gamma) of peaks.
+%       peakType : {'gaussian', 'cauchy', 'both'}
+%           Which types of peaks are being fitted
+%       guess_weight : {'none', 'weak', 'strong'}
+%           Parameter to weigh initial estimates during optimization (None, Weak, or Strong)
 %
 %       Returns
 %       -------
 %       gaussian_params : mx3 array, where m = No. of peaks.
-%           Parameters that define the peak fit(s). Each row is a peak, as 
-%           [mean, height, st. dev. (gamma)].
+%           Parameters that define the peak fit(s). Each row is a peak, as [mean, height, st. dev. (gamma)].
     switch peakType 
-        case 1 % gaussian only
+        case 'gaussian' % gaussian only
             pti = 'gaussian'; % Identify peaks as gaussian
             % Initialize matrix of guess parameters for gaussian fitting.
             guess_params = zeros(max_n_peaks, 3);
@@ -635,7 +614,7 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
                 model_params = zeros(1, 3);
             end
             
-        case 2 % cauchy only
+        case 'cauchy' % cauchy only
             pti = 'cauchy'; % Identify peaks as cauchy
             guess_params = zeros(max_n_peaks, 3);
             flat_spec = flat_iter;
@@ -685,7 +664,7 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
             else
                 model_params = zeros(1, 3);
             end
-        case 3 % best of both: model both fits and compare error, save best
+        case 'best' % best of both: model both fits and compare error, save best
             % Gaussian Fit
             guess_params = zeros(max_n_peaks, 3);
             flat_spec = flat_iter;
@@ -871,12 +850,10 @@ function peak_params = fit_peak_guess(guess, freqs, flat_spec, peak_type, guess_
 %           Frequency values for the power spectrum, in linear scale.
 %       flat_iter : 1xn array
 %           Flattened (aperiodic removed) power spectrum.
-%       peakType : 1, 2, or 3
-%           Which types of peaks are being fitted (1: gaussian, 2: cauchy,
-%           3: best of both).
-%       guess_weight : 1, 2, or 3
-%           Parameter to weigh initial estimates during optimization (None,
-%           Weak, or Strong)
+%       peakType : {'gaussian', 'cauchy', 'best'}
+%           Which types of peaks are being fitted
+%       guess_weight : 'none', 'weak', 'strong'
+%           Parameter to weigh initial estimates during optimization
 %
 %       Returns
 %       -------
@@ -908,22 +885,21 @@ function err = error_model(params, xVals, yVals, peak_type, guess, guess_weight)
     weak = 1E2;
     strong = 1E7;
     for set = 1:size(params,1)
-        if      peak_type == 1 % Gaussian model
-            fitted_vals = fitted_vals + gaussian_function(xVals, ...
-                params(set,1), params(set,2), params(set,3));
-        elseif  peak_type == 2 % Cauchy model
-            fitted_vals = fitted_vals + cauchy_function(xVals, ...
-                params(set,1), params(set,2), params(set,3));
+        switch (peak_type)
+            case 'gaussian'
+                fitted_vals = fitted_vals + gaussian_function(xVals, params(set,1), params(set,2), params(set,3));
+            case 'cauchy'
+                fitted_vals = fitted_vals + cauchy_function(xVals, params(set,1), params(set,2), params(set,3));
         end
     end
     switch guess_weight
-        case 1
+        case 'none'
             err = sum((yVals - fitted_vals).^2);
-        case 2 % Add small weight to deviations from guess m and amp
+        case 'weak' % Add small weight to deviations from guess m and amp
             err = sum((yVals - fitted_vals).^2) + ...
                  weak*sum((params(:,1)-guess(:,1)).^2) + ...
                  weak*sum((params(:,2)-guess(:,2)).^2);
-        case 3 % Add large weight to deviations from guess m and amp
+        case 'strong' % Add large weight to deviations from guess m and amp
             err = sum((yVals - fitted_vals).^2) + ...
                  strong*sum((params(:,1)-guess(:,1)).^2) + ...
                  strong*sum((params(:,2)-guess(:,2)).^2);
@@ -944,7 +920,7 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
 %   f_range         = fitting range (Hz)
 %   settings        = fooof model settings, in a struct, including:
 %       settings.peak_width_limts
-%       settings.max_n_peaks
+%       settings.max_peaks
 %       settings.min_peak_height
 %       settings.peak_threshold
 %       settings.aperiodic_mode
@@ -969,9 +945,7 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
 %   Any settings that are not provided are set to default values.
 %   To run with all defaults, input settings as an empty struct.
 % Author: Tom Donoghue
-    
-    % Check settings - get defaults for those not provided
-    settings = fooof_check_settings(settings);
+
     % Convert inputs
     freqs = py.numpy.array(freqs);
     power_spectrum = py.numpy.array(power_spectrum);
@@ -979,7 +953,7 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
 
     % Initialize FOOOF object
     fm = py.fooof.FOOOF(settings.peak_width_limits, ...
-                        settings.max_n_peaks, ...
+                        settings.max_peaks, ...
                         settings.min_peak_height, ...
                         settings.peak_threshold, ...
                         settings.aperiodic_mode, ...
@@ -1084,51 +1058,4 @@ function results_out = fooof_unpack_results(results_in)
     %   Just in case, the code for type casting is:
     %results_out.r_squared = ...
     %    double(py.array.array('d', py.numpy.nditer(results_in.r_squared)));    
-end
-
-function settings = fooof_check_settings(settings)
-% fooof_check_settings() - Check a struct of settings for the FOOOF model.
-%
-% Usage:
-%  >> settings = fooof_check_settings(settings)
-%
-% Inputs:
-%   settings        = struct, can optionally include:
-%       settings.peak_width_limts
-%       settings.max_n_peaks
-%       settings.min_peak_height
-%       settings.peak_threshold
-%       settings.aperiodic_mode
-%       settings.verbose
-%
-% Outputs:
-%   settings        = struct, with all settings defined:
-%       settings.peak_width_limts
-%       settings.max_n_peaks
-%       settings.min_peak_height
-%       settings.peak_threshold
-%       settings.aperiodic_mode
-%       settings.verbose
-%
-% Notes:
-%   This is a helper function, probably not called directly by the user.
-%   Any settings not specified are set to default values
-% Author: Tom Donoghue
-
-    % Set defaults for all settings
-    defaults = struct(...
-        'peak_width_limits', [0.5, 12], ...
-        'max_n_peaks', Inf, ...
-        'min_peak_height', 0.0, ...
-        'peak_threshold', 2.0, ...
-        'aperiodic_mode', 'fixed', ...
-        'verbose', true);
-
-    % Overwrite any non-existent or nan settings with defaults
-    for field = fieldnames(defaults)'
-        if ~isfield(settings, field) || all(isnan(settings.(field{1})))
-            settings.(field{1}) = defaults.(field{1});
-        end
-    end
-
 end
