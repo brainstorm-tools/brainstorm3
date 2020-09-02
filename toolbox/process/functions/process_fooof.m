@@ -42,9 +42,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % Definition of the options
     % === FOOOF TYPE
-    sProcess.options.implementation.Comment = {'Matlab', 'Python 3 (Python 3.7 recommended)', 'FOOOF implementation:'; 'matlab', 'python', ''};
+    sProcess.options.implementation.Comment = {'Matlab', 'Python 3 (3.7 recommended)', 'FOOOF implementation:'; 'matlab', 'python', ''};
     sProcess.options.implementation.Type    = 'radio_linelabel';
     sProcess.options.implementation.Value   = 'matlab';
     sProcess.options.implementation.Controller.matlab = 'Matlab';
@@ -52,7 +53,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === FREQUENCY RANGE
     sProcess.options.freqrange.Comment = 'Frequency range for analysis: ';
     sProcess.options.freqrange.Type    = 'freqrange';   % 'freqrange_static';
-    sProcess.options.freqrange.Value   = {[1 40], 'Hz', 3};
+    sProcess.options.freqrange.Value   = {[1 40], 'Hz', 1};
     % === PEAK TYPE
     sProcess.options.peaktype.Comment = {'Gaussian', 'Cauchy*', 'Best of both* (* experimental)', 'Peak model:'; 'gaussian', 'cauchy', 'best', ''};
     sProcess.options.peaktype.Type    = 'radio_linelabel';
@@ -61,7 +62,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === PEAK WIDTH LIMITS
     sProcess.options.peakwidth.Comment = 'Peak width limits (default=[0.5-12]): ';
     sProcess.options.peakwidth.Type    = 'freqrange_static';
-    sProcess.options.peakwidth.Value   = {[0.5 12], 'Hz', 3};
+    sProcess.options.peakwidth.Value   = {[0.5 12], 'Hz', 1};
     % === MAX PEAKS
     sProcess.options.maxpeaks.Comment = 'Maximum number of peaks (default=3): ';
     sProcess.options.maxpeaks.Type    = 'value';
@@ -84,6 +85,27 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.guessweight.Type    = 'radio_linelabel';
     sProcess.options.guessweight.Value   = 'none';
     sProcess.options.guessweight.Class   = 'Matlab';
+    
+    % === SORT PEAKS TYPE
+    sProcess.options.sorttype.Comment = {'Peak parameters', 'Frequency bands', 'Sort peaks using:'; 'param', 'band', ''};
+    sProcess.options.sorttype.Type    = 'radio_linelabel';
+    sProcess.options.sorttype.Value   = 'param';
+    sProcess.options.sorttype.Controller.param = 'Param';
+    sProcess.options.sorttype.Controller.band = 'Band';
+    sProcess.options.sorttype.Group   = 'output';
+    % === SORT PEAKS PARAM
+    sProcess.options.sortparam.Comment = {'Frequency', 'Amplitude', 'Std dev.', 'Sort by peak...'; 'frequency', 'amplitude', 'std', ''};
+    sProcess.options.sortparam.Type    = 'radio_linelabel';
+    sProcess.options.sortparam.Value   = 'frequency';
+    sProcess.options.sortparam.Class   = 'Param';
+    sProcess.options.sortparam.Group   = 'output';
+    % === SORT FREQ BANDS
+    DefaultFreqBands = bst_get('DefaultFreqBands');
+    sProcess.options.sortbands.Comment = '';
+    sProcess.options.sortbands.Type    = 'groupbands';
+    sProcess.options.sortbands.Value   = DefaultFreqBands(:,1:2);
+    sProcess.options.sortbands.Class   = 'Band';
+    sProcess.options.sortbands.Group   = 'output';
 end
 
 
@@ -112,7 +134,11 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     opt.guess_weight        = sProcess.options.guessweight.Value;
     opt.thresh_after        = true;   % Threshold after fitting always selected for Matlab (mirrors the Python FOOOF closest by removing peaks that do not satisfy a user's predetermined conditions)
     % Python-only options
-    opt.verbose             = false;
+    opt.verbose    = false;
+    % Output options
+    opt.sort_type  = sProcess.options.sorttype.Value;
+    opt.sort_param = sProcess.options.sortparam.Value;
+	opt.sort_bands = sProcess.options.sortbands.Value;
 
     % Check input frequency bounds
     if (any(opt.freq_range < 0) || opt.freq_range(1) >= opt.freq_range(2))
@@ -126,6 +152,8 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iFile) ' of ' num2str(length(sInputs))]);
         % Load input file
         PsdMat = in_bst_timefreq(sInputs(iFile).FileName);
+        
+        % === COMPUTE FOOOF MODEL ===
         % Switch between implementations
         switch (implementation)
             case 'matlab'   % Matlab standalone FOOOF
@@ -143,13 +171,20 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
             otherwise
                 error('Invalid implentation.');
         end
-       
-        % ===== PREPARE OUTPUT STRUCTURE =====
+
+        % === FOOOF ANALYSIS ===
+        TFfooof = PsdMat.TF(:,1,ismember(PsdMat.Freqs,FOOOF_freqs));
+        [ePeaks, eAperiodics, eStats] = FOOOF_analysis(FOOOF_data, PsdMat.RowNames, TFfooof, opt.max_peaks, opt.sort_type, opt.sort_param, opt.sort_bands); 
+        
+        % === PREPARE OUTPUT STRUCTURE ===
         % Create file structure
-        PsdMat.FOOOF = struct(...
-            'FOOOF_options', opt, ...
-            'FOOOF_freqs',   FOOOF_freqs, ...
-            'FOOOF_data',    FOOOF_data);
+        PsdMat.Options.FOOOF = struct(...
+            'options',    opt, ...
+            'freqs',      FOOOF_freqs, ...
+            'data',       FOOOF_data, ...
+            'peaks',      ePeaks, ...
+            'aperiodics', eAperiodics, ...
+            'stats',      eStats);
         % Comment: Add FOOOF
         if ~isempty(strfind(PsdMat.Comment, 'PSD:'))
             PsdMat.Comment = strrep(PsdMat.Comment, 'PSD:', 'FOOOF:');
@@ -159,7 +194,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         % History: Computation
         PsdMat = bst_history('add', PsdMat, 'compute', 'FOOOF');
         
-        % ===== SAVE FILE =====
+        % === SAVE FILE ===
         % Filename: add _fooof tag
         [fPath, fName, fExt] = bst_fileparts(file_fullpath(sInputs(iFile).FileName));
         NewFile = file_unique(bst_fullfile(fPath, [fName, '_fooof', fExt]));
@@ -1039,3 +1074,103 @@ function results_out = fooof_unpack_results(results_in)
     %results_out.r_squared = ...
     %    double(py.array.array('d', py.numpy.nditer(results_in.r_squared)));    
 end
+
+
+
+%% ===================================================================================
+%  ===== PYTHON FOOOF ================================================================
+%  ===================================================================================
+function [ePeaks, eAper, eStats] = FOOOF_analysis(FOOOF_data, ChanNames, TF, max_peaks, sort_type, sort_param, sort_bands)
+    % ===== EXTRACT PEAKS =====
+    % Organize/extract peak components from FOOOF models
+    maxEnt = length(ChanNames) * max_peaks;
+    switch sort_type
+        case 'param'
+            % Preallocate space
+            ePeaks = struct('channel', [], 'center_frequency', [],...
+                'amplitude', [], 'std_dev', ones(maxEnt,1)*-1);
+            % Collect data from all peaks
+            i = 0;
+            for chan = 1:length(ChanNames)
+                if ~isempty(FOOOF_data(chan).FOOOF.peak_params)
+                    for p = 1:size(FOOOF_data(chan).FOOOF.peak_params,1)
+                        i = i +1;
+                        ePeaks(i).channel = ChanNames(chan);
+                        ePeaks(i).center_frequency = FOOOF_data(chan).FOOOF.peak_params(p,1);
+                        ePeaks(i).amplitude = FOOOF_data(chan).FOOOF.peak_params(p,2);
+                        ePeaks(i).std_dev = FOOOF_data(chan).FOOOF.peak_params(p,3);
+                    end
+                end
+            end
+            % Remove unused rows
+            ePeaks = ePeaks(1,1:i);
+            % Apply specified sort
+            switch sort_param
+                case 'frequency'
+                    [tmp,iSort] = sort([ePeaks.center_frequency]); 
+                    ePeaks = ePeaks(iSort);
+                case 'amplitude'
+                    [tmp,iSort] = sort([ePeaks.amplitude]); 
+                    ePeaks = ePeaks(iSort(end:-1:1));
+                case 'std'
+                    [tmp,iSort] = sort([ePeaks.std_dev]); 
+                    ePeaks = ePeaks(iSort);
+            end 
+        case 'band'
+            % Preallocate space
+            ePeaks = struct('channel', [], 'center_frequency', [],...
+                'amplitude', [], 'std_dev', ones(maxEnt,1)*-1, 'band', []);
+            % Generate bands from input
+            bands = process_tf_bands('Eval', sort_bands);
+            % Collect data from all peaks
+            i = 0;
+            for chan = 1:length(ChanNames)
+                if ~isempty(FOOOF_data(chan).FOOOF.peak_params)
+                    for p = 1:size(FOOOF_data(chan).FOOOF.peak_params,1)
+                        i = i +1;
+                        ePeaks(i).channel = ChanNames(chan);
+                        ePeaks(i).center_frequency = FOOOF_data(chan).FOOOF.peak_params(p,1);
+                        ePeaks(i).amplitude = FOOOF_data(chan).FOOOF.peak_params(p,2);
+                        ePeaks(i).std_dev = FOOOF_data(chan).FOOOF.peak_params(p,3);
+                        % Find name of frequency band from user definitions
+                        iBand = find((ePeaks.center_frequency(i) >= bands{:,2}(1)) && (ePeaks.center_frequency(i) <= bands{:,2}(2)), 1);
+                        if ~isempty(iBand)
+                            ePeaks(i).band = bands{iBand,1};
+                        else
+                            ePeaks(i).band = 'None';
+                        end
+                    end
+                end
+            end
+            % Remove unused rows
+            ePeaks = ePeaks(1,1:i);
+    end
+
+    % ===== EXTRACT APERIODIC =====
+    % Organize/extract aperiodic components from FOOOF models
+    hasKnee = length(FOOOF_data(1).FOOOF.aperiodic_params) - 2;
+    eAper = struct('channel', [], 'offset', [], 'exponent', ones(length(ChanNames),1));
+    for chan = 1:length(ChanNames)
+            eAper(chan).channel = ChanNames(chan);
+            eAper(chan).offset = FOOOF_data(chan).FOOOF.aperiodic_params(1);
+        if hasKnee % Legacy FOOOF alters order of parameters
+            eAper(chan).exponent = FOOOF_data(chan).FOOOF.aperiodic_params(3);
+            eAper(chan).knee_frequency = FOOOF_data(chan).FOOOF.aperiodic_params(2);
+        else
+            eAper(chan).exponent = FOOOF_data(chan).FOOOF.aperiodic_params(2);
+        end
+    end       
+
+    % ===== EXTRACT STAT =====
+    % Organize/extract stats from FOOOF models
+    % Preallocate space
+    eStats = struct('channel', ChanNames);
+    for chan = 1:length(ChanNames)
+        eStats(chan).MSE = FOOOF_data(chan).FOOOF.error;
+        eStats(chan).r_squared = FOOOF_data(chan).FOOOF.r_squared;
+        spec = squeeze(log10(TF(chan,:,:)));
+        fspec = squeeze(log10(FOOOF_data(chan).FOOOF.fooofed_spectrum))';
+        eStats(chan).frequency_wise_error = abs(spec-fspec);
+    end
+end
+

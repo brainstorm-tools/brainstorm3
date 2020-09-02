@@ -60,7 +60,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === FREQUENCY RANGE
     sProcess.options.freqband.Comment = 'Frequency band (default=[60,200]): ';
     sProcess.options.freqband.Type    = 'freqrange_static';
-    sProcess.options.freqband.Value   = {[60 200], 'Hz', 3};
+    sProcess.options.freqband.Value   = {[60 200], 'Hz', 1};
     % === LATENCY
     sProcess.options.latency.Comment = 'Latency: <FONT COLOR="#808080"><I>(eg. "t1", "[t1,t2,...]", "start:step:stop")</I></FONT>';
     sProcess.options.latency.Type    = 'text';

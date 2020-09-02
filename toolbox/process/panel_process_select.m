@@ -945,8 +945,13 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Units
                     gui_component('label', jPanelOpt, [], 'Hz');
                     
+                    % Get precision
+                    if iscell(option.Value) && (length(option.Value) >= 3) && ~isempty(option.Value{3})
+                        precision = option.Value{3};
+                    else
+                        precision = 3;
+                    end
                     % Set controls callbacks
-                    precision = 3;
                     if isempty(FreqList)
                         bounds = {0, 10000, 1000};
                         if ~isempty(option.Value) && iscell(option.Value) && ~isempty(option.Value{1})
@@ -2502,7 +2507,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
 
     %% ===== TOGGLE CLASS PANELS =====
     function ToggleClass(className, enable)
-        options = jPanelOptions.getComponents();
+        options = [jPanelInput.getComponents(), jPanelOptions.getComponents(), jPanelOutput.getComponents()];
         for iOption = 1:length(options)
             optName = options(iOption).getName();
             if ~isempty(optName) && strcmpi(optName, className)
@@ -2714,7 +2719,12 @@ function sProcesses = SetDefaultOptions(sProcesses, FileTimeVector, UseDefaults)
                         option.Value = {[FileTimeVector(iStart), FileTimeVector(iEnd)], 'time', []};
                     end
                 case 'freqrange'  % But do not reset 'freqrange_static'
-                    option.Value = {[], 'Hz', []};
+                    if iscell(option.Value) && (length(option.Value) >= 3) && ~isempty(option.Value{3})
+                        precision = option.Value{3};
+                    else
+                        precision = [];
+                    end
+                    option.Value = {[], 'Hz', precision};
             end
             % Override with previously defined values
             if UseDefaults

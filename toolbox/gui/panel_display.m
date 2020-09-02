@@ -420,8 +420,7 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFunPhase.setEnabled(1);            
         end
         % Display FOOOF panel
-        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq), 'FOOOF') && ...
-                ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).FOOOF)
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
             ctrl.jPanelFOOOF.setVisible(1);
         end
         % Entire panel
@@ -431,7 +430,7 @@ function UpdatePanel(hFig)
         else
             ctrl.jPanelFunction.setVisible(1);
             % If current figure is a FOOOF PSD
-            if ~isempty(GlobalData.DataSet(iDS).Timefreq.FOOOF)
+            if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
                 ctrl.jRadioFSpectrum.setEnabled(1);
                 ctrl.jRadioFModel.setEnabled(1);
                 ctrl.jRadioFAperiodic.setEnabled(1);
