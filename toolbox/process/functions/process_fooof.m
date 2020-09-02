@@ -900,9 +900,9 @@ function err = error_model(params, xVals, yVals, peak_type, guess, guess_weight)
     strong = 1E7;
     for set = 1:size(params,1)
         switch (peak_type)
-            case 'gaussian'
+            case 1 % Gaussian
                 fitted_vals = fitted_vals + gaussian_function(xVals, params(set,1), params(set,2), params(set,3));
-            case 'cauchy'
+            case 2 % Cauchy
                 fitted_vals = fitted_vals + cauchy_function(xVals, params(set,1), params(set,2), params(set,3));
         end
     end
@@ -1165,7 +1165,7 @@ function [ePeaks, eAper, eStats] = FOOOF_analysis(FOOOF_data, ChanNames, TF, max
     % ===== EXTRACT STAT =====
     % Organize/extract stats from FOOOF models
     % Initialize output struct
-    eStats = struct('channel', []);
+    eStats = struct('channel', ChanNames);
     for chan = 1:length(ChanNames)
         eStats(chan).MSE = FOOOF_data(chan).FOOOF.error;
         eStats(chan).r_squared = FOOOF_data(chan).FOOOF.r_squared;
