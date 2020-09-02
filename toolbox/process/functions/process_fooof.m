@@ -95,6 +95,9 @@ end
 
 %% ===== RUN =====
 function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
+    % Initialize returned list of files
+    OutputFile = {};
+    
     % Fetch user settings
     implementation = sProcess.options.implementation.Value;
     opt.freq_range          = sProcess.options.freqrange.Value{1};
@@ -111,185 +114,162 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     % Python-only options
     opt.verbose             = false;
 
-    % Switch between implementations
-    switch (implementation)
-        case 'matlab'   % Matlab standalone FOOOF
-            OutputFile = FOOOF_matlab(sProcess, sInputs, opt);  
-        case 'python'
-            % Import python modules
-            modules = py.sys.modules;
-            modules = string(cell(py.list(modules.keys())));
-            % First, check if any modules are already imported
-            if ~any(strcmp('fooof',modules)), py.importlib.import_module('fooof'); end
-            if ~any(strcmp('scipy',modules)), py.importlib.import_module('scipy'); end
-            if ~any(strcmp('numpy',modules)), py.importlib.import_module('numpy'); end
-            % Run process
-            OutputFile = FOOOF_python(sProcess, sInputs, opt);
-        otherwise
-            error('Invalid implentation.');
-    end    
-end
-
-
-%% ===== MATLAB STANDALONE FOOOF =====
-function OutputFile = FOOOF_matlab(sProcess, sInputs, opt)
+    % Check input frequency bounds
+    if (any(opt.freq_range < 0) || opt.freq_range(1) >= opt.freq_range(2))
+        bst_report('error','Invalid Frequency range');
+        return
+    end
+    
     % Initialize returned list of files
     OutputFile = {};
     for iFile = 1:length(sInputs)
         bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iFile) ' of ' num2str(length(sInputs))]);
-        inputFile = in_bst_timefreq(sInputs(iFile).FileName);
-        % Check input frequency bounds
-        if (any(opt.freq_range < 0) || opt.freq_range(1) >= opt.freq_range(2))
-            bst_report('error','Invalid Frequency range');
-            return
+        % Load input file
+        PsdMat = in_bst_timefreq(sInputs(iFile).FileName);
+        % Switch between implementations
+        switch (implementation)
+            case 'matlab'   % Matlab standalone FOOOF
+                [FOOOF_freqs, FOOOF_data] = FOOOF_matlab(PsdMat.TF, PsdMat.Freqs, opt);  
+            case 'python'
+                % Import python modules
+                modules = py.sys.modules;
+                modules = string(cell(py.list(modules.keys())));
+                % First, check if any modules are already imported
+                if ~any(strcmp('fooof',modules)), py.importlib.import_module('fooof'); end
+                if ~any(strcmp('scipy',modules)), py.importlib.import_module('scipy'); end
+                if ~any(strcmp('numpy',modules)), py.importlib.import_module('numpy'); end
+                % Run process
+                [FOOOF_freqs, FOOOF_data] = FOOOF_python(PsdMat.TF, PsdMat.Freqs, opt);
+            otherwise
+                error('Invalid implentation.');
         end
-        % Find all frequency values within user limits
-        fMask = bst_round(inputFile.Freqs,1) >= opt.freq_range(1) & inputFile.Freqs <= opt.freq_range(2);
-        fs = inputFile.Freqs(fMask);
-        spec = log10(squeeze(inputFile.TF(:,1,fMask))); % extract spectra
-        % Initalize FOOOF structs
-        fg = repmat(struct('FOOOF',[]), 1, size(spec,1));
-        for chan = 1:size(spec,1)
-            bst_progress('set', bst_round(chan / size(spec,1),2) * 100);
-            % Fit aperiodic
-            aperiodic_pars = robust_ap_fit(fs, spec(chan,:), opt.aperiodic_mode);
-            % Remove aperiodic
-            flat_spec = flatten_spectrum(fs, spec(chan,:), aperiodic_pars, opt.aperiodic_mode);
-            % Fit peaks
-            [peak_pars, pti] = fit_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
-                opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight);
-            if opt.thresh_after  % Check thresholding requirements are met again
-                peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
-                peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
-                peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
-                peak_pars = drop_peak_overlap(peak_pars, opt.proximity_threshold); % remove smallest of two peaks fit too closely
-            end
-            % Refit aperiodic
-            aperiodic = spec(chan,:);
-            if strcmp(pti,'gaussian')
-                for peak = 1:size(peak_pars,1)
-                    aperiodic = aperiodic - gaussian_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
-                end
-            elseif strcmp(pti,'cauchy')
-                for peak = 1:size(peak_pars,1)
-                    aperiodic = aperiodic - cauchy_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
-                end
-            end
-            aperiodic_pars = simple_ap_fit(fs, aperiodic, opt.aperiodic_mode);
-            % Generate model fit
-            ap_fit = gen_aperiodic(fs, aperiodic_pars, opt.aperiodic_mode);
-            model_fit = ap_fit;
-            for peak = 1:size(peak_pars,1)
-                model_fit = model_fit + gaussian_function(fs,peak_pars(peak,1),...
-                    peak_pars(peak,2),peak_pars(peak,3));
-            end
-            % Calculate model error
-            MSE = sum((spec(chan,:) - model_fit).^2)/length(model_fit);
-            rsq_tmp = corrcoef(spec(chan,:),model_fit).^2;
-            % Return FOOOF results
-            fg(chan).FOOOF = struct(...
-                'aperiodic_params', aperiodic_pars,...
-                'peak_params',      peak_pars,...
-                'peak_types',       pti,...
-                'ap_fit',           10.^ap_fit,...
-                'fooofed_spectrum', 10.^model_fit,...
-                'peak_fit',         10.^(model_fit-ap_fit),...
-                'error',            MSE,...
-                'r_squared',        rsq_tmp(2));
+       
+        % ===== PREPARE OUTPUT STRUCTURE =====
+        % Create file structure
+        PsdMat.FOOOF = struct(...
+            'FOOOF_options', opt, ...
+            'FOOOF_freqs',   FOOOF_freqs, ...
+            'FOOOF_data',    FOOOF_data);
+        % Comment: Add FOOOF
+        if ~isempty(strfind(PsdMat.Comment, 'PSD:'))
+            PsdMat.Comment = strrep(PsdMat.Comment, 'PSD:', 'FOOOF:');
+        else
+            PsdMat.Comment = strcat(PsdMat.Comment, ' | FOOOF');
         end
+        % History: Computation
+        PsdMat = bst_history('add', PsdMat, 'compute', 'FOOOF');
+        
+        % ===== SAVE FILE =====
+        % Filename: add _fooof tag
+        [fPath, fName, fExt] = bst_fileparts(file_fullpath(sInputs(iFile).FileName));
+        NewFile = file_unique(bst_fullfile(fPath, [fName, '_fooof', fExt]));
         % Save file
-        [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iFile));
-        OutputFile{end+1} = SaveFile(inputFile, opt, fs, fg, iOutputStudy);
+        bst_save(NewFile, PsdMat, 'v6');
+        % Add file to database structure
+        db_add_data(sInputs(iFile).iStudy, NewFile, PsdMat);
+        % Return new file
+        OutputFile{end+1} = NewFile;
+    end
+end
+
+
+%% ===== MATLAB STANDALONE FOOOF =====
+function [fs, fg] = FOOOF_matlab(TF, Freqs, opt)
+    % Find all frequency values within user limits
+    fMask = (bst_round(Freqs,1) >= opt.freq_range(1)) & (Freqs <= opt.freq_range(2));
+    fs = Freqs(fMask);
+    spec = log10(squeeze(TF(:,1,fMask))); % extract spectra
+    % Initalize FOOOF structs
+    fg = repmat(struct('FOOOF',[]), 1, size(spec,1));
+    % Iterate across channels
+    for chan = 1:size(spec,1)
+        bst_progress('set', bst_round(chan / size(spec,1),2) * 100);
+        % Fit aperiodic
+        aperiodic_pars = robust_ap_fit(fs, spec(chan,:), opt.aperiodic_mode);
+        % Remove aperiodic
+        flat_spec = flatten_spectrum(fs, spec(chan,:), aperiodic_pars, opt.aperiodic_mode);
+        % Fit peaks
+        [peak_pars, pti] = fit_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
+            opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight);
+        if opt.thresh_after  % Check thresholding requirements are met again
+            peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
+            peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
+            peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
+            peak_pars = drop_peak_overlap(peak_pars, opt.proximity_threshold); % remove smallest of two peaks fit too closely
+        end
+        % Refit aperiodic
+        aperiodic = spec(chan,:);
+        if strcmp(pti,'gaussian')
+            for peak = 1:size(peak_pars,1)
+                aperiodic = aperiodic - gaussian_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
+            end
+        elseif strcmp(pti,'cauchy')
+            for peak = 1:size(peak_pars,1)
+                aperiodic = aperiodic - cauchy_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
+            end
+        end
+        aperiodic_pars = simple_ap_fit(fs, aperiodic, opt.aperiodic_mode);
+        % Generate model fit
+        ap_fit = gen_aperiodic(fs, aperiodic_pars, opt.aperiodic_mode);
+        model_fit = ap_fit;
+        for peak = 1:size(peak_pars,1)
+            model_fit = model_fit + gaussian_function(fs,peak_pars(peak,1),...
+                peak_pars(peak,2),peak_pars(peak,3));
+        end
+        % Calculate model error
+        MSE = sum((spec(chan,:) - model_fit).^2)/length(model_fit);
+        rsq_tmp = corrcoef(spec(chan,:),model_fit).^2;
+        % Return FOOOF results
+        fg(chan).FOOOF = struct(...
+            'aperiodic_params', aperiodic_pars,...
+            'peak_params',      peak_pars,...
+            'peak_types',       pti,...
+            'ap_fit',           10.^ap_fit,...
+            'fooofed_spectrum', 10.^model_fit,...
+            'peak_fit',         10.^(model_fit-ap_fit),...
+            'error',            MSE,...
+            'r_squared',        rsq_tmp(2));
     end
 end
 
 
 %% ===== PYTHON FOOOF =====
-function OutputFile = FOOOF_python(sProcess, sInputs, opt)
+function [fs, fg] = FOOOF_python(TF, Freqs, opt)
     % Convert string options to integers
     switch (opt.aperiodic_mode)
         case 'fixed',  opt.aperiodic_mode = 1;
         case 'knee',   opt.aperiodic_mode = 2;
     end
-    rm = 1; % Always return model
-    % Initialize returned list of files
-    OutputFile = {};
-    for iFile = 1:length(sInputs)
-        bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iFile) ' of ' num2str(length(sInputs))]);
-        
-        inputFile = in_bst_timefreq(sInputs(iFile).FileName);
-        % Initialize returned list of files
-        OutputFile = {};
-        % Check input frequency bounds
-        if (any(opt.freq_range <= 0) || opt.freq_range(1) >= opt.freq_range(2))
-            bst_report('error','Invalid Frequency range');
-            return
-        end
-        fs = inputFile.Freqs;
-        % Preallocate space for FOOOF models
-        clear fg
-        fg(size(inputFile.TF,1)) = struct('FOOOF',[]);
-        % Iterate across channels
-        for chan = 1:size(inputFile.TF,1)
-            bst_progress('set', bst_round(chan / size(inputFile.TF,1),2) * 100);
-            % Run FOOOF on a single channel
-            fr = fooof_py(fs', squeeze(inputFile.TF(chan,1,:))', fB, opt, rm);
-            % Fix FOOOF error (Python and MATLAB give different values)
-            fr.error = sum((fr.power_spectrum-fr.fooofed_spectrum).^2)/length(fr.freqs);
-            % Fix FOOOF r_squared (Python and MATLAB give different values)
-            rsq_tmp = corrcoef(fr.power_spectrum,fr.fooofed_spectrum).^2;
-            fr.r_squared = rsq_tmp(2);
-            % Only save one instance of frequencies (saves space)
-            if ~exist('frqs','var')
-                frqs = fr.freqs;
-            end
-            fr = rmfield(fr,'freqs');
-            % Adjust data to raw power for Brainstorm
-            fr.peak_fit = 10.^(fr.fooofed_spectrum - fr.ap_fit);
-            fr.power_spectrum = 10.^fr.power_spectrum;
-            fr.fooofed_spectrum = 10.^fr.fooofed_spectrum;
-            fr.ap_fit = 10.^fr.ap_fit;
-            % Return FOOOF model
-            fg(chan).FOOOF = fr;
-        end       
-        [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputs(iFile));
-        OutputFile{end+1} = SaveFile(inputFile, opt, frqs, fg, iOutputStudy);
+    % Initalize FOOOF structs
+    fg = repmat(struct('FOOOF',[]), 1, size(spec,1));
+    % Iterate across channels
+    for chan = 1:size(TF,1)
+        bst_progress('set', bst_round(chan / size(TF,1),2) * 100);
+        % Run FOOOF on a single channel
+        fr = fooof_py(Freqs', squeeze(TF(chan,1,:))', opt.freq_range, opt);
+        % Fix FOOOF error (Python and MATLAB give different values)
+        fr.error = sum((fr.power_spectrum-fr.fooofed_spectrum).^2)/length(fr.freqs);
+        % Fix FOOOF r_squared (Python and MATLAB give different values)
+        rsq_tmp = corrcoef(fr.power_spectrum,fr.fooofed_spectrum).^2;
+        fr.r_squared = rsq_tmp(2);
+        % Only save one instance of frequencies (saves space)
+        fr = rmfield(fr,'freqs');
+        % Adjust data to raw power for Brainstorm
+        fr.peak_fit = 10.^(fr.fooofed_spectrum - fr.ap_fit);
+        fr.power_spectrum = 10.^fr.power_spectrum;
+        fr.fooofed_spectrum = 10.^fr.fooofed_spectrum;
+        fr.ap_fit = 10.^fr.ap_fit;
+        % Return FOOOF model
+        fg(chan).FOOOF = fr;
     end
-
+    fs = fr.freqs;
 end
 
 
-%% ===== SAVE FILE =====
-function NewFile = SaveFile(inputFile, FOOOF_params, FOOOF_freqs, FOOOF_group, iOutputStudy)
 
-    % ===== PREPARE OUTPUT STRUCTURE =====
-    % Create file structure
-    FileMat = inputFile;
-    FileMat.FOOOF = struct(...
-        'FOOOF_options', FOOOF_params, ...
-        'FOOOF_freqs',   FOOOF_freqs, ...
-        'FOOOF_data',    FOOOF_group);
-    % Comment: Add FOOOF
-    if ~isempty(strfind(FileMat.Comment, 'PSD:'))
-        FileMat.Comment = strrep(FileMat.Comment, 'PSD:', 'FOOOF:');
-    else
-        FileMat.Comment = strcat(FileMat.Comment, ' | FOOOF');
-    end
-    % History: Computation
-    FileMat = bst_history('add', FileMat, 'compute', 'FOOOF');
-    % ===== SAVE FILE =====
-    % Get output study
-    sOutputStudy = bst_get('Study', iOutputStudy);
-    % File tag
-    fileTag = 'timefreq_psd';
-    % Output filename
-    NewFile = bst_process('GetNewFilename', bst_fileparts(sOutputStudy.FileName), fileTag);
-    % Save file
-    bst_save(NewFile, FileMat, 'v6');
-    % Add file to database structure
-    db_add_data(iOutputStudy, NewFile, FileMat);
-end
-
+%% ===================================================================================
+%  ===== MATLAB FOOOF ================================================================
+%  ===================================================================================
 
 %% ===== GENERATE APERIODIC =====
 function ap_vals = gen_aperiodic(freqs,aperiodic_params,aperiodic_mode)
@@ -907,8 +887,13 @@ function err = error_model(params, xVals, yVals, peak_type, guess, guess_weight)
 end
 
 
+
+%% ===================================================================================
+%  ===== PYTHON FOOOF ================================================================
+%  ===================================================================================
+
 %% ===== FOOOF_py =====
-function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, return_model)
+function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings)
 % fooof_py() - Fit the FOOOF model on a neural power spectrum.
 %
 % Usage:
@@ -925,7 +910,6 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
 %       settings.peak_threshold
 %       settings.aperiodic_mode
 %       settings.verbose
-%   return_model    = boolean of whether to return the FOOOF model fit, optional
 %
 % Outputs:
 %   fooof_results   = fooof model ouputs, in a struct, including:
@@ -976,14 +960,10 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings, retu
                      double(py.array.array('d', fm.fooofed_spectrum_)));
     fooof_results.r_squared = coefs(2);
     
-    %   Also return the actual model fit, if requested
-    %   This will default to not return model, if variable not set
-    if exist('return_model', 'var') && return_model
-        % Get the model, and add outputs to fooof_results
-        model_out = fooof_get_model(fm);
-        for field = fieldnames(model_out)'
-            fooof_results.(field{1}) = model_out.(field{1});
-        end
+    % Get the model, and add outputs to fooof_results
+    model_out = fooof_get_model(fm);
+    for field = fieldnames(model_out)'
+        fooof_results.(field{1}) = model_out.(field{1});
     end
 end
 
