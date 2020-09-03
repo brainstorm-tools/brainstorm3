@@ -52,7 +52,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.implementation.Controller.python = 'Python';
     % === FREQUENCY RANGE
     sProcess.options.freqrange.Comment = 'Frequency range for analysis: ';
-    sProcess.options.freqrange.Type    = 'freqrange';   % 'freqrange_static';
+    sProcess.options.freqrange.Type    = 'freqrange_static';   % 'freqrange'
     sProcess.options.freqrange.Value   = {[1 40], 'Hz', 1};
     % === PEAK TYPE
     sProcess.options.peaktype.Comment = {'Gaussian', 'Cauchy*', 'Best of both* (* experimental)', 'Peak model:'; 'gaussian', 'cauchy', 'best', ''};
