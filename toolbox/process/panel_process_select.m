@@ -914,7 +914,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 % FREQRANGE: {value, units, precision}
                 case {'freqrange','freqrange_static'}
                     % Build list of frequencies
-                    if strcmpi(sFiles(1).FileType, 'timefreq')
+                    if strcmpi(sFiles(1).FileType, 'timefreq') && ~strcmpi(option.Type, 'freqrange_static')
                         % Load Freqs field from the input file
                         TfMat = in_bst_timefreq(sFiles(1).FileName, 0, 'Freqs');
                         if iscell(TfMat.Freqs)
@@ -945,8 +945,13 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Units
                     gui_component('label', jPanelOpt, [], 'Hz');
                     
+                    % Get precision
+                    if iscell(option.Value) && (length(option.Value) >= 3) && ~isempty(option.Value{3})
+                        precision = option.Value{3};
+                    else
+                        precision = 3;
+                    end
                     % Set controls callbacks
-                    precision = 3;
                     if isempty(FreqList)
                         bounds = {0, 10000, 1000};
                         if ~isempty(option.Value) && iscell(option.Value) && ~isempty(option.Value{1})
@@ -1051,6 +1056,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         jCheck = gui_component('radio', jPanelOpt, [], ['<HTML>', option.Comment{1,iRadio}], [], [], @(h,ev)OptionRadio_Callback(iProcess, optNames{iOpt}, option.Comment{2,iRadio}, ev.getSource().isSelected()));
                         jCheck.setSelected(strcmpi(option.Value, option.Comment{2,iRadio}));
                         jButtonGroup.add(jCheck);
+                    end
+                    % If class controller not selected, toggle off class
+                    if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller) && isfield(option.Controller, option.Value) && ~isempty(option.Controller.(option.Value))
+                        ClassesToToggleOff{end + 1} = setdiff(fieldnames(option.Controller), option.Value);
                     end
                 case 'combobox'
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
@@ -2089,8 +2098,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             bst_set('ProcessOptions', ProcessOptions);
         end
         % If a class controller, toggle class
-        if strcmp(optType, 'checkbox') && isfield(GlobalData.Processes.Current(iProcess).options.(optName), 'Controller')
-            ToggleClass(GlobalData.Processes.Current(iProcess).options.(optName).Controller, value);
+        if isfield(GlobalData.Processes.Current(iProcess).options.(optName), 'Controller')
+            opt = GlobalData.Processes.Current(iProcess).options.(optName);
+            if strcmp(optType, 'checkbox') && ~isempty(opt.Controller)
+                ToggleClass(opt.Controller, value);
+            elseif strcmp(optType, 'radio_linelabel') && ~isempty(opt.Controller) && isstruct(opt.Controller) && isfield(opt.Controller, opt.Value) && ~isempty(opt.Controller.(opt.Value))
+                for cl = fieldnames(opt.Controller)'
+                    ToggleClass(opt.Controller.(cl{1}), strcmp(cl{1}, value));
+                end
+            end
         end
     end
 
@@ -2491,7 +2507,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
 
     %% ===== TOGGLE CLASS PANELS =====
     function ToggleClass(className, enable)
-        options = jPanelOptions.getComponents();
+        options = [jPanelInput.getComponents(), jPanelOptions.getComponents(), jPanelOutput.getComponents()];
         for iOption = 1:length(options)
             optName = options(iOption).getName();
             if ~isempty(optName) && strcmpi(optName, className)
@@ -2703,7 +2719,12 @@ function sProcesses = SetDefaultOptions(sProcesses, FileTimeVector, UseDefaults)
                         option.Value = {[FileTimeVector(iStart), FileTimeVector(iEnd)], 'time', []};
                     end
                 case 'freqrange'  % But do not reset 'freqrange_static'
-                    option.Value = {[], 'Hz', []};
+                    if iscell(option.Value) && (length(option.Value) >= 3) && ~isempty(option.Value{3})
+                        precision = option.Value{3};
+                    else
+                        precision = [];
+                    end
+                    option.Value = {[], 'Hz', precision};
             end
             % Override with previously defined values
             if UseDefaults
