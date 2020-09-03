@@ -5,6 +5,7 @@ August 2020
 - IO: Removed NWB support (not stable enough)
 - IO: Support for Open Ephys flat binary file (.dat/.oebin)
 - Connectivity: New envelope correction process (henv - H.Shahabi)
+- FOOF: Fitting Oscillations and One-Over-F
 ---------------------------------------------------------------
 July 2020
 - Anatomy: Added 13 infant templates 0.5-25 months (O'Reilly)
