@@ -2467,7 +2467,7 @@ function DisplayConfigMenu(hFig, jParent)
                     newMode = 'log';
                     isSel = 0;
             end
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleX(hFig, newMode));
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleModeX(hFig, newMode));
             jItem.setSelected(isSel);
         end
     end
@@ -2533,6 +2533,18 @@ function DisplayConfigMenu(hFig, jParent)
                 case 'magnitude',  jScaleMag.setSelected(1);
                 case 'log',        jScaleLog.setSelected(1);
             end
+            % Log scale
+            switch (TsInfo.YScale)
+                case 'log'
+                    newMode = 'linear';
+                    isSel = 1;
+                case 'linear'
+                    newMode = 'log';
+                    isSel = 0;
+            end
+            jMenu.addSeparator();
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleModeY(hFig, newMode));
+            jItem.setSelected(isSel);
         end
         % Scale to fit Y
         if strcmpi(TsInfo.DisplayMode, 'butterfly')
@@ -3982,8 +3994,8 @@ function SetScaleY(iDS, iFig, newScale)
 end
 
 
-%% ===== SET X-SCALE =====
-function SetScaleX(hFig, newMode)
+%% ===== SET X-SCALE MODE =====
+function SetScaleModeX(hFig, newMode)
     TsInfo = getappdata(hFig, 'TsInfo');
     TsInfo.XScale = newMode;
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
@@ -3991,6 +4003,17 @@ function SetScaleX(hFig, newMode)
     setappdata(hFig, 'TsInfo', TsInfo);
     % Update value
     bst_set('XScale', newMode);
+end
+
+%% ===== SET Y-SCALE MODE =====
+function SetScaleModeY(hFig, newMode)
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.YScale = newMode;
+    hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
+    set(hAxes, 'YScale', newMode);
+    setappdata(hFig, 'TsInfo', TsInfo);
+    % Update value
+    bst_set('YScale', newMode);
 end
 
 

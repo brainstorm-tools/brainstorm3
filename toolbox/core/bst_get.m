@@ -181,6 +181,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('Resolution')                 : [resX,resY] fixed resolutions for X and Y axes
 %    - bst_get('FixedScaleY', Modality)      : Struct with the scales to impose on the recordings for the selected modality
 %    - bst_get('XScale', XScale)             : {'log', 'linear'}
+%    - bst_get('YScale', YScale)             : {'log', 'linear'}
 %    - bst_get('UseSigProcToolbox')       : Use Matlab's Signal Processing Toolbox when available
 %    - bst_get('RawViewerOptions', sFile) : Display options for RAW recordings, adapt for specific file
 %    - bst_get('RawViewerOptions')        : Display options for RAW recordings
@@ -2513,6 +2514,13 @@ switch contextName
         else
             argout1 = 'linear';
         end
+        
+    case 'YScale'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'YScale')
+            argout1 = GlobalData.Preferences.YScale;
+        else
+            argout1 = 'linear';
+        end        
         
     case 'ShowEventsMode'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ShowEventsMode')

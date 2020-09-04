@@ -152,6 +152,7 @@ TsInfo.ShowYGrid = bst_get('ShowYGrid');
 TsInfo.ShowZeroLines = bst_get('ShowZeroLines');
 TsInfo.ShowEventsMode = bst_get('ShowEventsMode');
 TsInfo.XScale = bst_get('XScale');
+TsInfo.YScale = bst_get('YScale');
 setappdata(hFig, 'TsInfo', TsInfo);
 
 % Display options panel

@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+September 2020
+- GUI: Added Y-log scale for spectrum figures
+---------------------------------------------------------------
 August 2020
 - Anatomy: Display surfaces/sources as flat 2D maps (Mollweide projection)
 - IO: Support for Spike2 .smrx files

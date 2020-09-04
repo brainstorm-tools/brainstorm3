@@ -817,12 +817,20 @@ function ToggleGrid(hAxes, hFig, xy)
 
     RefreshGridBtnDisplay(hFig, TsInfo);
 end
-function ToggleLogScale(hAxes, hFig, loglin)
+function ToggleLogScaleX(hAxes, hFig, loglin)
     set(hAxes, 'XScale', loglin);
     TsInfo = getappdata(hFig, 'TsInfo');
     TsInfo.XScale = loglin;
     setappdata(hFig, 'TsInfo', TsInfo);
     RefreshLogScaleBtnDisplay(hFig, TsInfo);
+    bst_set('XScale', loglin);
+end
+function ToggleLogScaleY(hAxes, hFig, loglin)
+    set(hAxes, 'YScale', loglin);
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.YScale = loglin;
+    setappdata(hFig, 'TsInfo', TsInfo);
+    bst_set('YScale', loglin);
 end
 function RefreshLogScaleBtnDisplay(hFig, TsInfo)
     % Toggle selection of associated button if possible
@@ -966,12 +974,19 @@ function DisplayFigurePopup(hFig, menuTitle)
         
     % ==== MENU: FIGURE ====    
     jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
-        % XGrid
+        % XScale
         isXLog = strcmpi(get(hAxes, 'XScale'), 'log');
         if isXLog
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: linear', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'linear'));
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: linear', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScaleX(hAxes, hFig, 'linear'));
         else
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: log', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScale(hAxes, hFig, 'log'));
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'X scale: log', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScaleX(hAxes, hFig, 'log'));
+        end
+        % YScale
+        isYLog = strcmpi(get(hAxes, 'YScale'), 'log');
+        if isYLog
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Y scale: linear', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScaleY(hAxes, hFig, 'linear'));
+        else
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Y scale: log', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScaleY(hAxes, hFig, 'log'));
         end
         jMenuFigure.addSeparator();
         
@@ -1217,6 +1232,12 @@ function UpdateFigurePlot(hFig, isForced)
         setappdata(hFig, 'TsInfo', TsInfo);
     else
         set(hAxes, 'XScale', TsInfo.XScale);
+    end
+    if ~isfield(TsInfo, 'YScale')
+        TsInfo.YScale = 'linear';
+        setappdata(hFig, 'TsInfo', TsInfo);
+    else
+        set(hAxes, 'YScale', TsInfo.YScale);
     end
 
     % Create scale buttons
