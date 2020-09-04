@@ -247,6 +247,8 @@ switch (GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method)
                      IsDirectionalData = 1;
                      IsBinaryData = 1;
     case 'henv',     TfInfo.Function = 'other';
+    case 'pte',  TfInfo.Function = 'other';
+                 IsDirectionalData = 1;
     case {'plv','plvt'}
         if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'other')
             TfInfo.Function = 'other';
