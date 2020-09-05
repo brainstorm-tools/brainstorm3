@@ -62,7 +62,7 @@ end
 % ===== GET MRI=>WORLD TRANSFORMATION =====
 if strcmpi(src, 'world') || strcmpi(dest, 'world')
     % Get the vox2ras transformation
-    if isempty(sMri.InitTransf)
+    if isempty(sMri) || isempty(sMri.InitTransf)
         P = [];
         return;
     end

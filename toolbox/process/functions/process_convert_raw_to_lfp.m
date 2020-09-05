@@ -145,20 +145,26 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
             poolobj = [];
         end
 
-        %% Initialize
+        %% Check if the files are separated per channel. If not do it now.
+        % These files will be converted to LFP right after
+        sFiles_temp_mat = in_spikesorting_rawelectrodes(sInput, sProcess.options.binsize.Value{1}(1) * 1e9, sProcess.options.paral.Value);
+        % Load full input file
+        sMat = in_bst(sInput.FileName, [], 0);
+        Fs = 1 / diff(sMat.Time(1:2)); % This is the original sampling rate
+        % Inialize LFP matrix
+        LFP = zeros(length(sFiles_temp_mat), length(downsample(sMat.Time,round(Fs/NewFreq)))); % This shouldn't create a memory problem
 
+        %% Initialize
         % Prepare output file
         ProtocolInfo = bst_get('ProtocolInfo');
         newCondition = [sInput.Condition, '_LFP'];
-        sMat = in_bst(sInput.FileName, [], 0);
-        Fs = 1 / diff(sMat.Time(1:2)); % This is the original sampling rate
 
         if mod(Fs,NewFreq) ~= 0
             % This should never be an issue. Never heard of an acquisition
             % system that doesn't record in multiples of 1kHz.
             warning(['The downsampling might not be accurate. This process downsamples from ' num2str(Fs) ' to ' num2str(NewFreq) ' Hz'])
         end
-
+        
         % Get new condition name
         newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInput.SubjectName, newCondition));
         % Output file name derives from the condition name
@@ -189,8 +195,9 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
 
         %% Update fields before initializing the header on the binary file
         sFileTemplate.prop.sfreq = NewFreq;
+        sFileTemplate.prop.times = round(sFileTemplate.prop.times(1) * NewFreq) / NewFreq + [0, size(LFP,2)-1] ./ NewFreq;
         sFileTemplate.header.sfreq = NewFreq;
-        sFileTemplate.header.nsamples = round((sFileTemplate.prop.times(2) - sFileTemplate.prop.times(1)) .* NewFreq) + 1;
+        sFileTemplate.header.nsamples = size(LFP,2);
 
         % Update file
         sFileTemplate.CommentTag     = sprintf('resample(%dHz)', round(NewFreq));
@@ -206,14 +213,8 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         [sFileOut, errMsg] = out_fopen(RawFileOut, RawFileFormat, sFileTemplate, ChannelMat);
 
 
-        %% Check if the files are separated per channel. If not do it now.
-        % These files will be converted to LFP right after
-        sFiles_temp_mat = in_spikesorting_rawelectrodes(sInput, sProcess.options.binsize.Value{1}(1) * 1e9, sProcess.options.paral.Value);
-
         %% Filter and derive LFP
-        LFP = zeros(length(sFiles_temp_mat), length(downsample(sMat.Time,round(Fs/NewFreq)))); % This shouldn't create a memory problem
         bst_progress('start', 'Spike-sorting', 'Converting RAW signals to LFP...', 0, (sProcess.options.paral.Value == 0) * nChannels);
-
         if sProcess.options.despikeLFP.Value
             if sProcess.options.paral.Value
                 parfor iChannel = 1:nChannels

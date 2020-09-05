@@ -1,7 +1,7 @@
-function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isContinuous)
+function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isContinuous, ImportOptions)
 % IN_FREAD_NWB Read a block of recordings from nwb files
 %
-% USAGE:  F = in_fread_nwb(sFile, SamplesBounds=[], iChannels=[])
+% USAGE:  F = in_fread_nwb(sFile, SamplesBounds, selectedChannels, isContinuous, ImportOptions)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,15 +21,18 @@ function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isCont
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Konstantinos Nasiotis 2019
+% Author: Konstantinos Nasiotis, Francois Tadel, 2019-2020
 
+error('This code is outdated, see: https://neuroimage.usc.edu/forums/t/error-opening-nwb-files/21025');
 
-% Parse inputs
-if (nargin < 3) || isempty(selectedChannels)
-    selectedChannels = 1:length(sFile.channelflag);
+%% ===== DOWNLOAD NWB LIBRARY IF NEEDED =====
+if ~exist('nwbRead', 'file')
+    errMsg = bst_install_nwb(ImportOptions.DisplayMessages);
+    if ~isempty(errMsg)
+        error(errMsg);
+    end
 end
 
-nChannels = length(selectedChannels);
 
 %% Load the nwbFile object that holds the info of the .nwb
 nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch
@@ -60,7 +63,7 @@ nSamples      = SamplesBounds(2) - SamplesBounds(1) + 1;
 
 allBehaviorKeys = sFile.header.ChannelType;
 
-
+nChannels = length(selectedChannels);
 F = zeros(nChannels, nSamples);
 
 % Get the Intracranial signals

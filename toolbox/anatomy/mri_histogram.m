@@ -50,7 +50,7 @@ function [Histogram] = mri_histogram(volume, intensityMax, volumeType)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2006-2010
+% Authors: Francois Tadel, 2006-2020
 
 % Parameters
 if (nargin < 2)

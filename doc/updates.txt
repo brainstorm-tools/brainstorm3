@@ -1,4 +1,25 @@
 ---------------------------------------------------------------
+September 2020
+- GUI: Added Y-log scale for spectrum figures
+---------------------------------------------------------------
+August 2020
+- Anatomy: Display surfaces/sources as flat 2D maps (Mollweide projection)
+- IO: Support for Spike2 .smrx files
+- IO: Removed NWB support (not stable enough)
+- IO: Support for Open Ephys flat binary file (.dat/.oebin)
+- Connectivity: New envelope correction process (henv - H.Shahabi)
+- FOOF: Fitting Oscillations and One-Over-F
+---------------------------------------------------------------
+July 2020
+- Anatomy: Added 13 infant templates 0.5-25 months (O'Reilly)
+- Anatomy: Use custom background threshold for head surface generation
+---------------------------------------------------------------
+June 2020
+- FEM: Computation and display of tetrahedral conductivity tensors
+- Distrib: New default binary distribution: Matlab 2020a
+- Distrib: Compatibility with Matlab 2020b prerelease
+- IO: Support for The Virtual Brain .h5 EEG recordings (TVB)
+---------------------------------------------------------------
 May 2020
 - FEM: Import and management of tissue segmentations
 - IO: Support for fNIRS format .snirf

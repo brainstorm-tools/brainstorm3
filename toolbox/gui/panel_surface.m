@@ -659,6 +659,13 @@ function ResectSurface(hFig, iSurf, resectDim, resectValue)
         end
         figure_callback(hFig, 'UpdateSurfaceAlpha', hFig, iSurf(i));
     end
+    % Update slice of tensors
+    if strcmpi(TessInfo(1).Name, 'FEM')
+        FigureId = getappdata(hFig, 'FigureId');
+        if isequal(FigureId.SubType, 'TensorsFem')
+            figure_callback(hFig, 'PlotTensorCut', hFig, resectValue, resectDim, 1);
+        end
+    end
     % Deselect both Left and Right buttons
     ctrl = bst_get('PanelControls', 'Surface');
     ctrl.jToggleResectLeft.setSelected(0);
@@ -1020,6 +1027,9 @@ function UpdateSurfaceProperties()
     end
     % Get selected surface index
     iSurface = getappdata(hFig, 'iSurface');
+    if isempty(iSurface) || (iSurface > length(TessInfo))
+        return;
+    end
     % If surface is sliced MRI
     isAnatomy = strcmpi(TessInfo(iSurface).Name, 'Anatomy');
 
@@ -1242,20 +1252,18 @@ function iTess = AddSurface(hFig, surfaceFile)
         end
         % Plot MRI
         PlotMri(hFig);
+        
     % === FIBERS ===
     elseif strcmpi(fileType, 'fibers')
         % Load fibers
         FibMat = bst_memory('LoadFibers', surfaceFile);
-        
+        % Update surface definition
         TessInfo(iTess).Name = 'Fibers';
-        % Special color of 0 for colormap following fiber curvature
-        TessInfo(iTess).AnatomyColor(:) = 0;
+        TessInfo(iTess).AnatomyColor(:) = 0;   % Special color of 0 for colormap following fiber curvature
         % Update figure's surfaces list and current surface pointer
         setappdata(hFig, 'Surface',  TessInfo);
-        
+        % Plot fibers
         isEmptyFigure = getappdata(hFig, 'EmptyFigure');
-
-        % === PLOT SURFACE ===
         if isempty(isEmptyFigure) || ~isEmptyFigure
             switch (FigureId.Type)
                 case 'MriViewer'
@@ -1264,10 +1272,13 @@ function iTess = AddSurface(hFig, surfaceFile)
                     % Create and display surface patch
                     [hFig, TessInfo(iTess).hPatch] = figure_3d('PlotFibers', hFig, FibMat.Points, FibMat.Colors);
             end
-            
             % Update figure's surfaces list and current surface pointer
             setappdata(hFig, 'Surface',  TessInfo);
         end
+        
+    % === FEM ===
+    else
+        view_surface_fem(surfaceFile, [], [], [], hFig);
     end
     % Update default surface
     setappdata(hFig, 'iSurface', iTess);
@@ -2043,9 +2054,12 @@ end
 
 
 %% ===== PLOT MRI =====
-% Usage:  hs = panel_surface('PlotMri', hFig, posXYZ) : Set the position of cuts and plot MRI
-%         hs = panel_surface('PlotMri', hFig)         : Plot MRI for current positions
-function hs = PlotMri(hFig, posXYZ)
+% Usage:  hs = panel_surface('PlotMri', hFig, posXYZ=[current], isFast=0) : Set the position of cuts and plot MRI
+function hs = PlotMri(hFig, posXYZ, isFast)
+    % Parse inputs
+    if (nargin < 3) || isempty(isFast)
+        isFast = 0;
+    end
     % Get MRI
     [sMri,TessInfo,iTess,iMri] = GetSurfaceMri(hFig);
     % Set positions or use default
@@ -2109,6 +2123,25 @@ function hs = PlotMri(hFig, posXYZ)
             ThreshBar = OPTIONS.OverlayBounds(1) + (OPTIONS.OverlayBounds(2)-OPTIONS.OverlayBounds(1)) * OPTIONS.OverlayThreshold;
         end
         figure_3d('AddThresholdMarker', hFig, OPTIONS.OverlayBounds, ThreshBar);
+    end
+    
+    % Plot tensors on MRI slices
+    FigureId = getappdata(hFig, 'FigureId');
+    if isequal(FigureId.SubType, 'TensorsMri') && ~isFast
+        isProgress = bst_progress('isVisible');
+        if ~isProgress
+            bst_progress('start', 'MRI display', 'Updating tensors...');
+        end
+        if (nnz(iDimPlot) > 1)
+            iDimTensor = 3;
+        else
+            iDimTensor = find(iDimPlot);
+        end
+        figure_3d('PlotTensorCut', hFig, OPTIONS.cutsCoords(iDimTensor), iDimTensor, 0);
+        if ~isProgress
+            drawnow;
+            bst_progress('stop');
+        end
     end
 end
 

@@ -181,6 +181,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('Resolution')                 : [resX,resY] fixed resolutions for X and Y axes
 %    - bst_get('FixedScaleY', Modality)      : Struct with the scales to impose on the recordings for the selected modality
 %    - bst_get('XScale', XScale)             : {'log', 'linear'}
+%    - bst_get('YScale', YScale)             : {'log', 'linear'}
 %    - bst_get('UseSigProcToolbox')       : Use Matlab's Signal Processing Toolbox when available
 %    - bst_get('RawViewerOptions', sFile) : Display options for RAW recordings, adapt for specific file
 %    - bst_get('RawViewerOptions')        : Display options for RAW recordings
@@ -2210,54 +2211,101 @@ switch contextName
         end
         % Get defaults from internet 
         if ~ismember(lower({sTemplates.Name}), 'icbm152')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
             sTemplates(end).Name = 'ICBM152';
         end
         if ~ismember(lower({sTemplates.Name}), 'icbm152_2019')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
             sTemplates(end).Name = 'ICBM152_2019';
         end
         if ~ismember(lower({sTemplates.Name}), 'icbm152_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
             sTemplates(end).Name = 'ICBM152_BrainSuite_2016';
         end
         if ~ismember(lower({sTemplates.Name}), 'colin27_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
             sTemplates(end).Name = 'Colin27_2016';
         end
-        if ~ismember(lower({sTemplates.Name}), 'colin27_2012')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2012';
-            sTemplates(end).Name = 'Colin27_2012';
-        end
         if ~ismember(lower({sTemplates.Name}), 'colin27_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
             sTemplates(end).Name = 'Colin27_BrainSuite_2016';
         end
         if ~ismember(lower({sTemplates.Name}), 'bci-dni_brainsuite_2020')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2020';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2020';
             sTemplates(end).Name = 'BCI-DNI_BrainSuite_2020';
         end
         if ~ismember(lower({sTemplates.Name}), 'uscbrain_brainsuite_2020')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2020';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2020';
             sTemplates(end).Name = 'USCBrain_BrainSuite_2020';
         end
         if ~ismember(lower({sTemplates.Name}), 'fsaverage_2020')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2020';
-            sTemplates(end).Name = 'FSAverage_2020';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2020';
+            sTemplates(end).Name = 'FsAverage_2020';
         end
-        if ~ismember(lower({sTemplates.Name}), 'infant7w_2015b')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015b';
-            sTemplates(end).Name = 'Infant7w_2015b';
+        if ~ismember(lower({sTemplates.Name}), 'kabdebon_7w')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Kabdebon_7w';
+            sTemplates(end).Name = 'Kabdebon_7w';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_1y')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1y';
-            sTemplates(end).Name = 'Oreilly_1y';
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_0.5m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_0.5m';
+            sTemplates(end).Name = 'Oreilly_0.5m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_1m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1m';
+            sTemplates(end).Name = 'Oreilly_1m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_2m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_2m';
+            sTemplates(end).Name = 'Oreilly_2m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_3m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_3m';
+            sTemplates(end).Name = 'Oreilly_3m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_4.5m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_4.5m';
+            sTemplates(end).Name = 'Oreilly_4.5m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_6m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_6m';
+            sTemplates(end).Name = 'Oreilly_6m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_7.5m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_7.5m';
+            sTemplates(end).Name = 'Oreilly_7.5m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_9m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_9m';
+            sTemplates(end).Name = 'Oreilly_9m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_10.5m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_10.5m';
+            sTemplates(end).Name = 'Oreilly_10.5m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_12m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_12m';
+            sTemplates(end).Name = 'Oreilly_12m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_15m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_15m';
+            sTemplates(end).Name = 'Oreilly_15m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_18m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_18m';
+            sTemplates(end).Name = 'Oreilly_18m';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_24m')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_24m';
+            sTemplates(end).Name = 'Oreilly_24m';
         end
         % If a specific template was requested
         if ~isempty(AnatName)
             iAnat = find(strcmpi({sTemplates.Name}, AnatName));
             sTemplates = sTemplates(iAnat);
         end
+        % Sort in alphabetical order
+        [tmp__, I] = sort_nat({sTemplates(2:end).Name});
+        sTemplates = sTemplates([1, I+1]);
         % Return defaults list
         argout1 = sTemplates;
         
@@ -2467,6 +2515,13 @@ switch contextName
             argout1 = 'linear';
         end
         
+    case 'YScale'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'YScale')
+            argout1 = GlobalData.Preferences.YScale;
+        else
+            argout1 = 'linear';
+        end        
+        
     case 'ShowEventsMode'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ShowEventsMode')
             argout1 = GlobalData.Preferences.ShowEventsMode;
@@ -2547,7 +2602,7 @@ switch contextName
             % Get screen resolution
             if isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'ScreenDef') && isfield(GlobalData.Program.ScreenDef, 'javaPos') && ~isempty(GlobalData.Program.ScreenDef(1).javaPos)
                 AvailableRes = [100 125 150 200 250 300 400];
-                iRes = bst_closest(GlobalData.Program.ScreenDef(1).javaPos.width * 125 / 1920, AvailableRes);
+                iRes = bst_closest(GlobalData.Program.ScreenDef(1).javaPos.width * 100 / 1920, AvailableRes);
                 argout1 = AvailableRes(iRes);
             else
                 argout1 = 100;
@@ -2698,10 +2753,12 @@ switch contextName
         end
         
     case 'UseSigProcToolbox'
-        % Check if Signal Processing Toolbox is installed
-        isToolboxInstalled = exist('fir2', 'file');
+        if isempty(GlobalData.Program.HasSigProcToolbox)
+            % Check if Signal Processing Toolbox is installed
+            GlobalData.Program.HasSigProcToolbox = exist('fir2', 'file') == 2;
+        end
         % Return user preferences
-        if ~isToolboxInstalled
+        if ~GlobalData.Program.HasSigProcToolbox
             argout1 = 0;
         elseif isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseSigProcToolbox')
             argout1 = GlobalData.Preferences.UseSigProcToolbox;
@@ -3273,7 +3330,8 @@ switch contextName
                      {'.txt'},               'EEG: BrainVision Analyzer (*.txt)',    'EEG-BRAINVISION'; ...
                      {'.sef','.ep','.eph'},  'EEG: Cartool (*.sef;*.ep;*.eph)',      'EEG-CARTOOL'; ...
                      {'.dat','.cdt'},        'EEG: Curry (*.dat;*.cdt)',             'EEG-CURRY'; ...
-                     {'.smr','.son'},        'EEG: CED Spike2 (*.smr;*.son)',        'EEG-SMR'; ...
+                     {'.smr','.son'},        'EEG: CED Spike2 old 32bit (*.smr;*.son)',  'EEG-SMR'; ...
+                     {'.smr','.smrx'},       'EEG: CED Spike2 new 64bit (*.smr;*.smrx)', 'EEG-SMRX'; ...
                      {'.rda'},               'EEG: Compumedics ProFusion Sleep (*.rda)',  'EEG-COMPUMEDICS-PFS'; ...
                      {'.bin'},               'EEG: Deltamed Coherence-Neurofile (*.bin)', 'EEG-DELTAMED'; ...
                      {'.edf','.rec'},        'EEG: EDF / EDF+ (*.rec;*.edf)',        'EEG-EDF'; ...
@@ -3295,8 +3353,10 @@ switch contextName
                      {'.eeg','.dat'},        'EEG: NeuroScope (*.eeg;*.dat)',        'EEG-NEUROSCOPE'; ...
                      {'.e'},                 'EEG: Nicolet (*.e)',                   'EEG-NICOLET'; ...
                      {'.eeg'},               'EEG: Nihon Kohden (*.eeg)',            'EEG-NK'; ...
+                     {'.dat'},               'EEG: Open Ephys flat binary (*.dat)',  'EEG-OEBIN'; ...
                      {'.plx','.pl2'},        'EEG: Plexon (*.plx;*.pl2)',            'EEG-PLEXON'; ...
                      {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Ripple Trellis (*.nsX/*.nev)', 'EEG-RIPPLE'; ...
+                     {'.h5'},                'EEG: The Virtual Brain (*_TimeSeriesEEG.h5)', 'EEG-TVB'; ...
                      {'.csv'},               'EEG: Wearable Sensing (*.csv)',        'EEG-WS-CSV'; ...
                      {'.nirs'},              'NIRS: Brainsight (*.nirs)',            'NIRS-BRS'; ...
                      {'.bnirs','.jnirs','.snirf'}, 'NIRS: SNIRF (*.snirf)',          'NIRS-SNIRF'; ...
@@ -3324,7 +3384,8 @@ switch contextName
                      {'.eeg','.dat'},        'EEG: BrainAmp (*.eeg;*.dat)',          'EEG-BRAINAMP'; ...
                      {'.txt'},               'EEG: BrainVision Analyzer (*.txt)',    'EEG-BRAINVISION'; ...
                      {'.sef','.ep','.eph'},  'EEG: Cartool (*.sef;*.ep;*.eph)',      'EEG-CARTOOL'; ...
-                     {'.smr','.son'},        'EEG: CED Spike2 (*.smr;*.son)',        'EEG-SMR'; ...
+                     {'.smr','.son'},        'EEG: CED Spike2 old 32bit (*.smr;*.son)',  'EEG-SMR'; ...
+                     {'.smr','.smrx'},       'EEG: CED Spike2 new 64bit (*.smr;*.smrx)', 'EEG-SMRX'; ...
                      {'.rda'},               'EEG: Compumedics ProFusion Sleep (*.rda)',  'EEG-COMPUMEDICS-PFS'; ...
                      {'.dat','.cdt'},        'EEG: Curry (*.dat;*.cdt)',             'EEG-CURRY'; ...
                      {'.bin'},               'EEG: Deltamed Coherence-Neurofile (*.bin)', 'EEG-DELTAMED'; ...
@@ -3346,8 +3407,10 @@ switch contextName
                      {'.eeg','.dat'},        'EEG: NeuroScope (*.eeg;*.dat)',        'EEG-NEUROSCOPE'; ...
                      {'.e'},                 'EEG: Nicolet (*.e)',                   'EEG-NICOLET'; ...
                      {'.eeg'},               'EEG: Nihon Kohden (*.eeg)',            'EEG-NK'; ...
+                     {'.dat'},               'EEG: Open Ephys flat binary (*.dat)',  'EEG-OEBIN'; ...
                      {'.plx','.pl2'},        'EEG: Plexon (*.plx;.pl2)'              'EEG-PLEXON'; ...
                      {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Ripple Trellis (*.nsX/*.nev)', 'EEG-RIPPLE'; ...
+                     {'.h5'},                'EEG: The Virtual Brain (*_TimeSeriesEEG.h5)', 'EEG-TVB'; ...
                      {'.tbk'},               'EEG: Tucker Davis Technologies (*.tbk)',    'EEG-TDT'; ...
                      {'.csv'},               'EEG: Wearable Sensing (*.csv)',        'EEG-WS-CSV'; ...
                      {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'SEEG: Deltamed/Micromed/NK/Nicolet/BrainAmp/EDF', 'SEEG-ALL'; ...
@@ -3399,6 +3462,7 @@ switch contextName
                     {'.txt','.mat'},   'FieldTrip trial definition (*.txt;*.mat)', 'TRL'; ...
                     {'.trg'},          'KRISS MEG (*.trg)',             'KDF'; ...
                     {'.ev2'},          'Neuroscan (*.ev2)',             'NEUROSCAN'; ...
+                    {'timestamps.npy'},'Open Ephys (timestamps.npy)', 'OEBIN'; ...
                     {'.log'},          'Presentation (*.log)',          'PRESENTATION'; ...
                     {'.mrk','.sqd','.con','.raw','.ave'},   'Ricoh (*.mrk;*.sqd;*.con;*.raw;*.ave)', 'RICOH'; ...
                     {'.txt'},          'XLTEK export (*.txt)',          'XLTEK'; ...
@@ -3439,6 +3503,7 @@ switch contextName
                     {'.dat','.tri','.txt','.asc'}, 'EEG: Neuroscan (*.dat;*.tri;*.txt;*.asc)',   'NEUROSCAN'; ...
                     {'.pos','.pol','.elp','.txt'}, 'EEG: Polhemus (*.pos;*.pol;*.elp;*.txt)',    'POLHEMUS'; ...
                     {'.csv'},                      'EEG: SimNIBS (*.csv)',             'SIMNIBS'; ...
+                    {'.h5'},                       'EEG: The Virtual Brain (*_SensorsEEG.h5)',    'TVB'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ (*.*)',       'ASCII_NXYZ'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ_MNI (*.*)',   'ASCII_NXYZ_MNI'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ_World (*.*)', 'ASCII_NXYZ_WORLD'; ...

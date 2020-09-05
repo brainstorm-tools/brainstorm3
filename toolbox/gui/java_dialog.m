@@ -273,7 +273,7 @@ switch(lower(msgType))
             res = char(java_res);
             isCancel = 0;
         elseif iscell(msg)
-            nbInputs = length(java_res);
+            nbInputs = numel(java_res);
             res = cell(1, nbInputs);
             for i=1:nbInputs
                 res{i} = char(java_res(i));

@@ -369,7 +369,7 @@ switch (lower(action))
                                 else
                                     view_struct(filenameFull);
                                 end
-                            elseif ~isempty(strfind(filenameRelative, '_connect1_cohere')) || ~isempty(strfind(filenameRelative, '_connect1_spgranger'))
+                            elseif ~isempty(strfind(filenameRelative, '_connect1_cohere')) || ~isempty(strfind(filenameRelative, '_connect1_spgranger')) || ~isempty(strfind(filenameRelative, '_connect1_henv'))
                                 view_spectrum(filenameRelative, 'Spectrum');
                             elseif ~isempty(strfind(filenameRelative, '_connect1')) && strcmpi(DataType, 'data')
                                 view_topography(filenameRelative, [], '2DSensorCap', [], 0);
@@ -556,19 +556,34 @@ switch (lower(action))
                     sTemplates = bst_get('AnatomyDefaults');
                     if ~isempty(sTemplates)
                         jMenuDefaults = gui_component('Menu', jPopup, [], 'Use template', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefMni = gui_component('Menu', jMenuDefaults, [], 'MNI', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefUsc = gui_component('Menu', jMenuDefaults, [], 'USC', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefFs = gui_component('Menu', jMenuDefaults, [], 'FsAverage', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefInfants = gui_component('Menu', jMenuDefaults, [], 'Infants', IconLoader.ICON_ANATOMY, [], []);
                         % Add an item per Template available
                         for i = 1:length(sTemplates)
+                            % Local or download?
                             if ~isempty(strfind(sTemplates(i).FilePath, 'http://')) || ~isempty(strfind(sTemplates(i).FilePath, 'https://')) || ~isempty(strfind(sTemplates(i).FilePath, 'ftp://'))
                                 Comment = ['Download: ' sTemplates(i).Name];
                             else
                                 Comment = sTemplates(i).Name;
                             end
-                            gui_component('MenuItem', jMenuDefaults, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
+                            % Sub-group
+                            if ~isempty(strfind(lower(sTemplates(i).Name), 'icbm')) || ~isempty(strfind(lower(sTemplates(i).Name), 'colin'))
+                                jParent = jMenuDefMni;
+                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'usc')) || ~isempty(strfind(lower(sTemplates(i).Name), 'bci-dni'))
+                                jParent = jMenuDefUsc;
+                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'fsaverage'))
+                                jParent = jMenuDefFs;
+                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'oreilly')) || ~isempty(strfind(lower(sTemplates(i).Name), 'kabdebon')) || ~isempty(strfind(lower(sTemplates(i).Name), 'infant'))
+                                jParent = jMenuDefInfants;
+                            end
+                            % Create item
+                            gui_component('MenuItem', jParent, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
                         end
                         % Create new template
                         AddSeparator(jMenuDefaults);
                         gui_component('MenuItem', jMenuDefaults, [], 'Create new template', IconLoader.ICON_ANATOMY, [], @(h,ev)export_default_anat(iSubject));
-                        AddSeparator(jMenuDefaults);
                         gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
                     end
 
@@ -1136,7 +1151,8 @@ switch (lower(action))
                             AddSeparator(jMenuAlign);
                             gui_component('MenuItem', jMenuAlign, [], 'Load FreeSurfer sphere...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)TessAddSphere(filenameRelative));
                             gui_component('MenuItem', jMenuAlign, [], 'Load BrainSuite square...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)TessAddSquare(filenameRelative));
-                            gui_component('MenuItem', jMenuAlign, [], 'Display registration sphere/square', IconLoader.ICON_DISPLAY,     [], @(h,ev)view_surface_sphere(filenameRelative));
+                            gui_component('MenuItem', jMenuAlign, [], 'Display registration sphere/square', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_sphere(filenameRelative, 'orig'));
+                            gui_component('MenuItem', jMenuAlign, [], '2D projection (Mollweide)', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_sphere(filenameRelative, 'mollweide'));
                         end
                 
                     % No read-only
@@ -1189,8 +1205,20 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
                     AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Resect neck', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_resect, filenameFull));
+                    AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Compute FEM tensors', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_tensors, 'ComputeInteractive', iSubject, filenameFull));
-%                     gui_component('MenuItem', jPopup, [], 'Display FEM tensors', IconLoader.ICON_FEM, [], @(h,ev)bst_view_tensor(iSubject));
+                    % If there are tensors to display
+                    varInfo = whos('-file', filenameFull, 'Tensors');
+                    if ~isempty(varInfo) && all(varInfo.size >= 12)
+                        jMenuFemDisp = gui_component('Menu', jPopup, [], 'Display FEM tensors', IconLoader.ICON_DISPLAY, [], []);
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipsoids (MRI)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse'));
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (MRI)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow'));
+                        AddSeparator(jMenuFemDisp);
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipsoids (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse', [], filenameFull));
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow', [], filenameFull));
+                        gui_component('MenuItem', jPopup, [], 'Clear FEM tensors', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@process_fem_tensors, 'ClearTensors', filenameFull));
+                    end
                 end
                 
 %% ===== POPUP: NOISECOV =====
@@ -1674,7 +1702,8 @@ switch (lower(action))
                     % === DISPLAY ON SPHERE ===
                     if strcmpi(sStudy.Result(iResult).HeadModelType, 'surface') && ~isempty(sSubject) && ~isempty(sSubject.iCortex)
                         AddSeparator(jMenuActivations);
-                        gui_component('MenuItem', jMenuActivations, [], 'Display on spheres/squares', IconLoader.ICON_SURFACE, [], @(h,ev)view_surface_sphere(filenameRelative));
+                        gui_component('MenuItem', jMenuActivations, [], 'Display on spheres/squares', IconLoader.ICON_SURFACE, [], @(h,ev)view_surface_sphere(filenameRelative, 'orig'));
+                        gui_component('MenuItem', jMenuActivations, [], '2D projection (Mollweide)', IconLoader.ICON_SURFACE, [], @(h,ev)view_surface_sphere(filenameRelative, 'mollweide'));
                     end
                 end
 
@@ -1794,7 +1823,8 @@ switch (lower(action))
                 sSubject  = bst_get('Subject', sStudy.BrainStormSubject);
                 DisplayMod= {};
                 % Get data type
-                if strcmpi(char(bstNodes(1).getType()), 'ptimefreq')
+                isStat = strcmpi(char(bstNodes(1).getType()), 'ptimefreq');
+                if isStat
                     TimefreqMat = in_bst_timefreq(filenameRelative, 0, 'DataType');
                     if ~isempty(TimefreqMat.DataType)
                         DataType = TimefreqMat.DataType;
@@ -1850,7 +1880,7 @@ switch (lower(action))
                         % Depending on the datatype
                         switch lower(DataType)
                             case 'data'
-                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt'))
+                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_henv'))
                                     gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                                 end
                                 if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))
@@ -1882,7 +1912,7 @@ switch (lower(action))
                                     gui_component('MenuItem', jMenuConn1, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
                                 end
                             otherwise
-                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt'))
+                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_henv'))
                                     gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                                 end
                                 if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))
@@ -1906,77 +1936,81 @@ switch (lower(action))
                         
                     % ===== PAC: FULL MAPS =====
                     elseif ~isempty(strfind(filenameRelative, '_pac_fullmaps'))
-                        gui_component('MenuItem', jPopup, [], 'DirectPAC maps', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative));
-                        AddSeparator(jPopup);
-                        % Depending on the datatype
-                        switch lower(DataType)
-                            case 'data'
-                                % Topography
-                                fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
-                            case 'results'
-                                gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
-                                AddSeparator(jPopup);
-                                % Cortex
-                                if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
-                                    gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
-                                end
-                                % MRI
-                                if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
-                                    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
-                                end
-                            otherwise
+                        if ~isStat
+                            gui_component('MenuItem', jPopup, [], 'DirectPAC maps', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative));
+                            AddSeparator(jPopup);
+                            % Depending on the datatype
+                            switch lower(DataType)
+                                case 'data'
+                                    % Topography
+                                    fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
+                                case 'results'
+                                    gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
+                                    AddSeparator(jPopup);
+                                    % Cortex
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
+                                        gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
+                                    end
+                                    % MRI
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
+                                        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                    end
+                                otherwise
+                            end
                         end
                         
                     % ===== DPAC: FULL MAPS =====
                     elseif ~isempty(strfind(filenameRelative, '_dpac_fullmaps'))
-                        jMenuPac = gui_component('Menu', jPopup, [], 'DynamicPAC maps', IconLoader.ICON_PAC, [], []);
-                            gui_component('MenuItem', jMenuPac, [], 'One channel', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'SingleSensor'));
-                            if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
-                                gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'AllSensors'));
-                                gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'Spectrum'));
-                                gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'TimeSeries'));
-                            end
-                            if strcmpi(DataType, 'data')
-                                AddSeparator(jMenuPac);
-                                gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '3DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DDisc'));
-                            end
-                        jMenuPac = gui_component('Menu', jPopup, [], 'DynamicNesting maps', IconLoader.ICON_PAC, [], []);
-                            gui_component('MenuItem', jMenuPac, [], 'One channel',  IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'SingleSensor'));
-                            if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
-                                gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'AllSensors'));
-                                gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'Spectrum'));
-                                gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'TimeSeries'));
-                            end
-                            if strcmpi(DataType, 'data')
-                                AddSeparator(jMenuPac);
-                                gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '3DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DDisc'));
-                            end
-                        AddSeparator(jPopup);
-                        % Depending on the datatype
-                        switch lower(DataType)
-                            case 'data'
-                                % Topography
-                                fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
-                            case 'results'
-                                gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
-                                AddSeparator(jPopup);
-                                % Cortex
-                                if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
-                                    gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
+                        if ~isStat
+                            jMenuPac = gui_component('Menu', jPopup, [], 'DynamicPAC maps', IconLoader.ICON_PAC, [], []);
+                                gui_component('MenuItem', jMenuPac, [], 'One channel', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'SingleSensor'));
+                                if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
+                                    gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'AllSensors'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'Spectrum'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'TimeSeries'));
                                 end
-                                % MRI
-                                if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
-                                    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                if strcmpi(DataType, 'data')
+                                    AddSeparator(jMenuPac);
+                                    gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '3DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DDisc'));
                                 end
-                            otherwise
+                            jMenuPac = gui_component('Menu', jPopup, [], 'DynamicNesting maps', IconLoader.ICON_PAC, [], []);
+                                gui_component('MenuItem', jMenuPac, [], 'One channel',  IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'SingleSensor'));
+                                if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
+                                    gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'AllSensors'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'Spectrum'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'TimeSeries'));
+                                end
+                                if strcmpi(DataType, 'data')
+                                    AddSeparator(jMenuPac);
+                                    gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '3DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DDisc'));
+                                end
+                            AddSeparator(jPopup);
+                            % Depending on the datatype
+                            switch lower(DataType)
+                                case 'data'
+                                    % Topography
+                                    fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
+                                case 'results'
+                                    gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
+                                    AddSeparator(jPopup);
+                                    % Cortex
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
+                                        gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
+                                    end
+                                    % MRI
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
+                                        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                    end
+                                otherwise
+                            end
                         end
                         
                     % ===== TIME-FREQUENCY =====
@@ -2678,7 +2712,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         % Add separator before the menu with default EEGcaps
         AddSeparator(jMenu);
     else
-        gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)ImportChannelCheck(iAllStudies));
+        gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@ImportChannelCheck, iAllStudies));
         jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], []);
     end
     % === USE DEFAULT CHANNEL FILE ===

@@ -445,14 +445,20 @@ end
 %% ===== GET SURFACE =====
 function [sSurf, iSurf] = GetSurface(SurfaceFile)
     global GlobalData;
-    % Remove full path
-    SurfaceFile = file_short(SurfaceFile);
     % Check if surface is already loaded
     iSurf = find(file_compare({GlobalData.Surface.FileName}, SurfaceFile));
     if ~isempty(iSurf)
         sSurf = GlobalData.Surface(iSurf);
     else
-        sSurf = [];
+        % Remove full path
+        SurfaceFile = file_short(SurfaceFile);
+        % Check again
+        iSurf = find(file_compare({GlobalData.Surface.FileName}, SurfaceFile));
+        if ~isempty(iSurf)
+            sSurf = GlobalData.Surface(iSurf);
+        else
+            sSurf = [];
+        end
     end
 end
 

@@ -19,7 +19,7 @@ function varargout = process_plv1( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -31,7 +31,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Phase locking value 1xN';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
-    sProcess.Index       = 659;
+    sProcess.Index       = 670;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',     'results',  'matrix'};
@@ -42,15 +42,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 0);
     % === FREQ BANDS
-    sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
-    sProcess.options.label2.Type    = 'label';
     sProcess.options.freqbands.Comment = 'Frequency bands for the Hilbert transform:';
     sProcess.options.freqbands.Type    = 'groupbands';
     sProcess.options.freqbands.Value   = bst_get('DefaultFreqBands');
-    % === Mirror
-    sProcess.options.mirror.Comment = 'Mirror signal before filtering (not recommended)';
-    sProcess.options.mirror.Type    = 'checkbox';
-    sProcess.options.mirror.Value   = 0;
     % === KEEP TIME
     sProcess.options.keeptime.Comment = 'Keep time information, and estimate the PLV across trials<BR>(requires the average of many trials)';
     sProcess.options.keeptime.Type    = 'checkbox';
@@ -60,11 +54,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.plvmeasure.Type    = 'radio_line';
     sProcess.options.plvmeasure.Value   = 2;
     % === OUTPUT MODE
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Group   = 'output';
 end
 
 
@@ -91,7 +84,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     end
     % Hilbert and frequency bands options
     OPTIONS.Freqs = sProcess.options.freqbands.Value;
-    OPTIONS.isMirror = sProcess.options.mirror.Value;
+    OPTIONS.isMirror = 0;
     % PLV measure
     if isfield(sProcess.options, 'plvmeasure') && isfield(sProcess.options.plvmeasure, 'Value') && ~isempty(sProcess.options.plvmeasure.Value) 
         switch (sProcess.options.plvmeasure.Value)

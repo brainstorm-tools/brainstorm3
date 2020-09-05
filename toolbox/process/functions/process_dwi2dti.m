@@ -51,7 +51,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'ImportAnat', ...                  % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'single', ...                      % Selection mode: {single,multiple}
         'files', ...                       % Selection mode: {files,dirs,files_and_dirs}
-        {{'.nii'}, 'Raw DWI: NIfTI-1 (*.nii)', 'DWI-NII'}, ... % File formats
+        {{'.nii','.gz'}, 'MRI: NIfTI-1 (*.nii;*.nii.gz)', 'DWI-NII'}, ... % File formats       
         1};                                % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn
     SelectOptionsBval = SelectOptionsNii;
     SelectOptionsBval{8} = {{'.bval'}, 'Raw DWI: b-values (*.bval)', 'DWI-BVAL'};
@@ -260,7 +260,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         return
     end
 
-    % ===== 3. BIAS FIELD CORRECTION (BFC) =====
+    % ===== 3. BRAINSUITE DIFFUSION PIPELINE (BDP) =====
     bst_progress('text', '3/3: BrainSuite Diffusion Pipeline...');
     strCall = [...
         'bdp "' fullfile(tmpDir,'output_mri.bfc.nii.gz"') ...
@@ -295,7 +295,8 @@ function DtiFile = ComputeInteractive(iSubject) %#ok<DEFNU>
     LastUsedDirs = bst_get('LastUsedDirs');
     % Get MRI file
     DwiFile = java_getfile('open', 'Import DWI', LastUsedDirs.ImportAnat, 'single', 'files', ...
-        {{'.nii'}, 'Raw DWI: NIfTI-1 (*.nii)', 'DWI-NII'}, 1);
+        {{'.nii','.gz'}, 'MRI: NIfTI-1 (*.nii;*.nii.gz)', 'DWI-NII'}, 1);
+
     if isempty(DwiFile)
         return
     end
@@ -304,6 +305,9 @@ function DtiFile = ComputeInteractive(iSubject) %#ok<DEFNU>
     bst_set('LastUsedDirs', LastUsedDirs);
     % Try to find the bval/bvec files in the same folder
     [fPath, fBase, fExt] = bst_fileparts(DwiFile);
+    if strcmp(fExt,'.gz')
+    	[tmp, fBase, fExt] = bst_fileparts(fBase);
+    end
     BvalFile = bst_fullfile(fPath, [fBase, '.bval']);
     BvecFile = bst_fullfile(fPath, [fBase, '.bvec']);
     % Validate or ask bval

@@ -1,9 +1,7 @@
-function F = in_fread_mff(sFile, iEpoch, SamplesBounds)
+function F = in_fread_mff(sFile, iEpoch, SamplesBounds, ImportOptions)
 % IN_FREAD_MFF:  Read a block of recordings from an Philips .MFF file
 %
-% USAGE:  F = in_fread_mff(sFile, iEpoch, SamplesBounds) : Read all channels
-%         F = in_fread_mff(sFile, iEpoch)                : Read all channels, all the times
-%         F = in_fread_mff(sFile)                        : Read all channels, all the times, for first epoch
+% USAGE:  F = in_fread_mff(sFile, iEpoch, SamplesBounds, ImportOptions)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -23,18 +21,20 @@ function F = in_fread_mff(sFile, iEpoch, SamplesBounds)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Martin Cousineau, 2018
+% Author: Martin Cousineau, Francois Tadel, 2018-2020
 
-%% ===== MAKE SURE JAR IS DOWNLOADED =====
-in_fopen_mff('downloadAndInstallMffLibrary');
+
+%% ===== DOWNLOAD MFF LIBRARY IF NEEDED =====
+if ~exist('mff_import', 'file')
+    errMsg = bst_install_mff(ImportOptions.DisplayMessages);
+    if ~isempty(errMsg)
+        error(errMsg);
+    end
+end
 
 %% ===== PARSE INPUTS =====
-% Epoch not specified: read only the first one
-if (nargin < 2)
-    iEpoch = 1;
-end
 % Samples not specified: read the entire epoch
-if (nargin < 3) || isempty(SamplesBounds)
+if isempty(SamplesBounds)
     if ~isempty(sFile.epochs)
         SamplesBounds = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
     else

@@ -1,4 +1,4 @@
-function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
+function [sFile, ChannelMat] = in_fopen_nwb(DataFile, ImportOptions)
 % IN_FOPEN_NWB: Open recordings saved in the Neurodata Without Borders format
 %
 % This format can save raw signals and/or LFP signals
@@ -22,35 +22,28 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Konstantinos Nasiotis 2019
+% Author: Konstantinos Nasiotis, Francois Tadel, 2019-2020
 
+error('This code is outdated, see: https://neuroimage.usc.edu/forums/t/error-opening-nwb-files/21025');
 
-%% ===== INSTALL NWB LIBRARY =====
-% Not available in the compiled version
-if (exist('isdeployed', 'builtin') && isdeployed)
-    error('Reading NWB files is not available in the compiled version of Brainstorm.');
-end
-% Check if the NWB builder has already been downloaded
-NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
-% Install toolbox
-if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
-    isOk = java_dialog('confirm', ...
-        ['The NWB SDK is not installed on your computer.' 10 10 ...
-             'Download and install the latest version?'], 'Neurodata Without Borders');
-    if ~isOk
-        bst_report('Error', sProcess, sInputs, 'This process requires the Neurodata Without Borders SDK.');
-        return;
+%% ===== DOWNLOAD NWB LIBRARY IF NEEDED =====
+if ~exist('nwbRead', 'file')
+    errMsg = bst_install_nwb(ImportOptions.DisplayMessages);
+    if ~isempty(errMsg)
+        error(errMsg);
     end
-    downloadNWB();
-% If installed: add folder to path
-elseif isempty(strfind(NWBDir, path))
-    addpath(genpath(NWBDir));
 end
 
 
 %% ===== READ DATA HEADERS =====
+% Go to NWB folder (if there is a need for generating more local files)
+curDir = pwd;
+NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
+cd(NWBDir);
 % Read header
 nwb2 = nwbRead(DataFile);
+% Restore current folder
+cd(curDir);
 
 try
     all_raw_keys = keys(nwb2.acquisition);
@@ -274,69 +267,5 @@ if ~isempty(events)
     sFile = import_events(sFile, [], events);
 end
 
-end
 
 
-
-function downloadNWB()
-
-    %% Download and extract the necessary files
-    NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
-    NWBTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB_tmp');
-    url = 'https://github.com/NeurodataWithoutBorders/matnwb/archive/master.zip';
-    % If folders exists: delete
-    if isdir(NWBDir)
-        file_delete(NWBDir, 1, 3);
-    end
-    if isdir(NWBTmpDir)
-        file_delete(NWBTmpDir, 1, 3);
-    end
-    % Create folder
-	mkdir(NWBTmpDir);
-    % Download file
-    zipFile = bst_fullfile(NWBTmpDir, 'NWB.zip');
-    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'NWB download');
-    
-    % Check if the download was succesful and try again if it wasn't
-    time_before_entering = clock;
-    updated_time = clock;
-    time_out = 60;% timeout within 60 seconds of trying to download the file
-    
-    % Keep trying to download until a timeout is reached
-    while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
-        % Try to download until the timeout is reached
-        pause(0.1);
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'NWB download');
-        updated_time = clock;
-    end
-    % If the timeout is reached and there is still an error, abort
-    if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
-        error(['Impossible to download NWB.' 10 errMsg]);
-    end
-    
-    % Unzip file
-    bst_progress('start', 'NWB', 'Installing NWB...');
-    unzip(zipFile, NWBTmpDir);
-    % Get parent folder of the unzipped file
-    diropen = dir(NWBTmpDir);
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newNWBDir = bst_fullfile(NWBTmpDir, diropen(idir).name);
-    % Move NWB directory to proper location
-    file_move(newNWBDir, NWBDir);
-    % Delete unnecessary files
-    file_delete(NWBTmpDir, 1, 3);
-    
-    
-    % Matlab needs to restart before initialization
-    NWB_initialized = 0;
-    save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
-    
-    
-    % Once downloaded, we need to restart Matlab to refresh the java path
-    java_dialog('warning', ...
-        ['The NWB importer was successfully downloaded.' 10 10 ...
-         'Both Brainstorm AND Matlab need to be restarted in order to load the JAR file.'], 'NWB');
-    error('Please restart Matlab to reload the Java path.');
-    
-    
-end

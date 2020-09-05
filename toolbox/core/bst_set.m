@@ -64,6 +64,7 @@ function bst_set( varargin )
 %    - bst_set('AutoScaleY',            isAutoScaleY)
 %    - bst_set('FixedScaleY',           Modality,  Value)
 %    - bst_set('XScale',                XScale)
+%    - bst_set('YScale',                YScale)
 %    - bst_set('ShowXGrid',             isShowXGrid)
 %    - bst_set('ShowYGrid',             isShowYGrid)
 %    - bst_set('ShowZeroLines',         isShowZeroLines)
@@ -251,7 +252,7 @@ switch contextName
         end
         GlobalData.Preferences.(contextName).(Modality) = ElectrodeConf;
         
-    case {'UniformizeTimeSeriesScales', 'XScale', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'ShowEventsMode', ...
+    case {'UniformizeTimeSeriesScales', 'XScale', 'YScale', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'ShowEventsMode', ...
           'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', 'GraphicsSmoothing', 'DownsampleTimeSeries', ...
           'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
           'BFSProperties', 'ImportDataOptions', 'ImportEegRawOptions', 'RawViewerOptions', 'MontageOptions', 'TopoLayoutOptions', ...

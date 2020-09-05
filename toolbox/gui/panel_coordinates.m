@@ -328,7 +328,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
             % Get MRI
             sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
             
-        case {'Scalp', 'InnerSkull', 'OuterSkull', 'Cortex', 'Other'}
+        case {'Scalp', 'InnerSkull', 'OuterSkull', 'Cortex', 'Other', 'FEM'}
             sSurf = bst_memory('GetSurface', TessInfo(iTess).SurfaceFile);
             scsLoc = sSurf.Vertices(vi,:);
             plotLoc = vout;
@@ -347,7 +347,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
                 end
             end
             % Get subject
-            sSubject = bst_get('SurfaceFile', TessInfo(iTess).SurfaceFile);
+            sSubject = bst_get('Subject', getappdata(hFig, 'SubjectFile'));
             % == GET MRI ==
             % If subject has a MRI defined
             if ~isempty(sSubject.iAnatomy)

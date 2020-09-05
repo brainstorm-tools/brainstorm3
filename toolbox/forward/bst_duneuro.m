@@ -26,11 +26,10 @@ function [Gain, errMsg] = bst_duneuro(cfg)
 
 % Initialize returned values
 Gain = [];
-errMsg = '';
 % Empty temp folder
 gui_brainstorm('EmptyTempFolder');
 % Install bst_duneuro if needed
-[DuneuroExe, errMsg] = duneuro_install();
+[DuneuroExe, errMsg] = duneuro_install(cfg.Interactive);
 if ~isempty(errMsg) || isempty(DuneuroExe)
     return;
 end
@@ -81,29 +80,6 @@ if isMeg
 end
 
 
-%% ====== SOURCE SPACE =====
-% Source space type
-switch (cfg.HeadModelType)
-    case 'volume'
-        % TODO or keep it as it's now....
-    case 'surface'
-        % Read cortex file
-        sCortex = bst_memory('LoadSurface', cfg.CortexFile);
-        cfg.GridLoc = sCortex.Vertices;
-        % Shrink the cortex surface by XX mm
-        if (cfg.SrcShrink > 0)
-            % Get spherical coordinates of the surface normals
-            [azimuth, elevation] = cart2sph(sCortex.VertNormals(:,1), sCortex.VertNormals(:,2), sCortex.VertNormals(:,3));
-            % Find components to shrink the surface in the three dimensions
-            depth = cfg.SrcShrink ./ 1000 .* [cos(elevation) .* cos(azimuth), cos(elevation) .* sin(azimuth), sin(elevation)];
-            % Apply to the cortex surface
-            cfg.GridLoc = sCortex.Vertices - depth;
-        end
-    case 'mixed'
-        % TODO : not used ?
-end
-
-
 %% ===== HEAD MODEL =====
 % Load FEM mesh
 FemMat = load(cfg.FemFile);
@@ -117,8 +93,7 @@ if strcmp(dnModality, 'meg')
     % Remove the elements corresponding to the unselected tissues
     iRemove = find(~ismember(FemMat.Tissue, find(cfg.FemSelect)));
     if ~isempty(iRemove)
-        FemMat.Elements(iRemove,:) = [];
-        FemMat.Tissue(iRemove,:) = [];
+        FemMat = fem_remove_elem(FemMat, iRemove);
     end
 elseif strcmp(dnModality,'meeg') && (sum(cfg.FemSelect) ~= length(unique(FemMat.Tissue)))
     errMsg = 'Reduced head model cannot be used when computing MEG+EEG simultaneously.';
@@ -182,7 +157,151 @@ MeshFile = fullfile(TmpDir, MeshFile);
 out_fem(FemMat, MeshFile);
 
 
+%% ====== SOURCE SPACE =====
+% Source space type
+switch (cfg.HeadModelType)
+    case 'volume'
+        % TODO or keep it as it's now....
+    case 'surface'
+        bst_progress('text', 'DUNEuro: Fixing source space...');
+        % Read cortex file
+        sCortex = bst_memory('LoadSurface', cfg.CortexFile);
+        cfg.GridLoc = sCortex.Vertices;
+        % Shrink the cortex surface by XX mm
+        if (cfg.SrcShrink > 0)
+            % Get spherical coordinates of the surface normals
+            [azimuth, elevation] = cart2sph(sCortex.VertNormals(:,1), sCortex.VertNormals(:,2), sCortex.VertNormals(:,3));
+            % Find components to shrink the surface in the three dimensions
+            depth = cfg.SrcShrink ./ 1000 .* [cos(elevation) .* cos(azimuth), cos(elevation) .* sin(azimuth), sin(elevation)];
+            % Apply to the cortex surface
+            cfg.GridLoc = cfg.GridLoc - depth;
+        end
+        % Force all the dipoles within the GM layer
+        iGM = find(panel_duneuro('CheckType', FemMat.TissueLabels, 'gray'), 1);
+        iWM = find(panel_duneuro('CheckType', FemMat.TissueLabels, 'white'), 1);
+        if cfg.SrcForceInGM && ~isempty(iGM)
+            % Install iso2mesh if needed
+            if ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
+                errMsg = process_fem_mesh('InstallIso2mesh', cfg.Interactive);
+                if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
+                    return;
+                end
+            end
+            % Extract GM vertices and elements
+            [gmVert, gmElem] = removeisolatednode(FemMat.Vertices, FemMat.Elements(FemMat.Tissue == iGM,:));
+            % Compute the centroid of the GM elements
+            nElem = size(gmElem, 1);
+            nMesh = size(gmElem, 2);
+            ElemCenter = zeros(nElem, 3);
+            for i = 1:3
+                ElemCenter(:,i) = sum(reshape(gmVert(gmElem,i), nElem, nMesh)')' / nMesh;
+            end
+
+            % Extract GM envelope
+            envFaces = volface(FemMat.Elements(FemMat.Tissue <= iGM,:));
+            [envVert, envFaces] = removeisolatednode(FemMat.Vertices, envFaces);
+            % Find the dipoles outside of the GM envelope
+            iVertOut = find(~inpolyhedron(envFaces, envVert, cfg.GridLoc));
+            if ~isempty(iVertOut)
+                disp(['DUNEURO> Warning: ' num2str(length(iVertOut)) ' dipole(s) outside of the GM.']);
+            end
+            
+            % If there is a white matter layer: find the dipoles inside the WM and move them outside to the GM
+            if ~isempty(iWM)
+                % Extract GM envelope
+                wmFaces = volface(FemMat.Elements(FemMat.Tissue == iWM,:));
+                [wmVert, wmFaces] = removeisolatednode(FemMat.Vertices, wmFaces);
+                % Find the dipoles outside of the GM envelope
+                iVertWM = find(inpolyhedron(wmFaces, wmVert, cfg.GridLoc));
+                if ~isempty(iVertWM)
+                    disp(['DUNEURO> Warning: ' num2str(length(iVertWM)) ' dipole(s) inside the WM.']);
+                    iVertOut = union(iVertOut, iVertWM);
+                end
+            end
+            
+            % Move each vertex towards the centroid of the closest GM element
+            % view_surface_matrix(cfg.GridLoc, sCortex.Faces)
+            for i = 1:length(iVertOut)
+                bst_progress('text', sprintf('DUNEuro: Fixing dipole %d/%d...', i, length(iVertOut)));
+                % Find the closest GM centroid
+                iTarget = dsearchn(ElemCenter, cfg.GridLoc(iVertOut(i),:));
+                targetFaces = volface(gmElem(iTarget,:));
+                
+                % OPTION #1: Replace the vertex position directly with the centroid.
+                % => Problem: might project multiple vertices on the same centroid...
+                % cfg.GridLoc(iVertOut ,:) = ElemCenter(iTarget,:);
+                
+                % OPTION #2: Gradually move the vertex towards the center of the centroid, until it is located inside the element
+                % Move the vertex towards the center until it is inside the element
+                nFix = 10;
+                for iFix = 1:nFix
+                    tmpVert = (nFix - iFix)/nFix * cfg.GridLoc(iVertOut(i),:) + iFix/nFix * ElemCenter(iTarget,:);
+                    if inpolyhedron(targetFaces, gmVert, tmpVert)
+                        distMove = sqrt(sum((cfg.GridLoc(iVertOut(i),:) - tmpVert) .^ 2)) * 1000;
+                        disp(sprintf('DUNEURO> Dipole #%d moved inside the GM (%1.2fmm)', iVertOut(i), distMove));
+                        cfg.GridLoc(iVertOut(i),:) = tmpVert;
+                        break;
+                    end
+                end
+            end
+            % view_surface_matrix(cfg.GridLoc, sCortex.Faces)
+
+%             %%%% =============================================
+%             % Now similar process for the WM with an extra and unexpedted step ...
+%             if ~isempty(iWM)
+%                 disp('Checking the the WM ...');
+%                 %Extract WM surface
+%                 wm_tetra = FemMat.Elements(FemMat.Tissue <= iWM,:);
+%                 wm_face = volface(wm_tetra);
+%                 [nwmf, ewmf] = removeisolatednode(FemMat.Vertices,wm_face);
+%                 % check if any dipoles is inside the WM
+%                 wMfv.vertices = nwmf;
+%                 wMfv.faces = ewmf;
+%                 tic
+%                 wMin = inpolyhedron(wMfv, sCortex.Vertices);
+%                 wMindex_in = find(wMin);
+%                 disp(['There are ' num2str(sum(wMin)) ' dipoles inside the WM']);
+%                 disp('Moving these dipoles to the GM tissues ...');
+%                 twm = toc;
+%                 if ~isempty(wMindex_in)
+%                     % 1- move the dipole from inside the WM to the GM surface
+%                     % ==> this is for testing, when we use the centroide
+%                     % directely, some dipole remains within the WM ...
+%                     GMcentroide = 0; % just for testing, to use directely the GM centroides
+%                     if GMcentroide == 1
+%                         k = dsearchn(elem_centroide,sCortex.Vertices(wMindex_in,:));
+%                         NewVertices(wMindex_in ,:) = ElemCenter(k,:);
+%                         wMoutFinal = inpolyhedron(wMfv, NewVertices);
+%                         disp(['Now, there are ' num2str(sum(wMoutFinal)) ' dipoles inside  the WM']);
+%                     else
+%                         k = dsearchn(gMfv.vertices,sCortex.Vertices(wMindex_in,:));
+%                         NewVertices(wMindex_in ,:) = gMfv.vertices(k,:);
+%                         wMoutFinal = inpolyhedron(wMfv, NewVertices);
+%                         disp(['There are ' num2str(sum(wMoutFinal)) ' dipoles inside  the WM']);
+%                         disp(['These dipoles are moved to the GM outer surface nodes']);
+%                         disp(['Moving these dipoles to the nearest centroide of the GM element...']);
+%                         % Now, we move these same dipole from the surface to the
+%                         % nearest centroide ==> to be sure it's inside the GM
+%                         % ==> fill partially the FEM condition
+%                         % move again  to the centoide
+%                         k = dsearchn(ElemCenter,NewVertices(wMindex_in,:));
+%                         NewVertices(wMindex_in ,:) = ElemCenter(k,:);
+%                         % just to check
+%                         wMoutFinal = inpolyhedron(wMfv, NewVertices);
+%                         disp(['Now, there are ' num2str(sum(wMoutFinal)) ' dipoles inside  the WM']);
+%                         disp(['All the dipoles are moved to nearest centroid of the GM']);
+%                     end
+%                 end
+%             end
+
+        end
+    case 'mixed'
+        % TODO : not used ?
+end
+
+
 %% ===== SOURCE MODEL =====
+bst_progress('text', 'DUNEuro: Writing temporary files...');
 % Write the source/dipole file
 DipoleFile = fullfile(TmpDir, 'dipole_model.txt');
 % Unconstrained orientation for each dipole. ie the output file have 3*N dipoles (3 directions for each)
@@ -231,8 +350,18 @@ if ~cfg.UseTensor
     fclose(fid);
 % With tensor (isotropic or anisotropic)
 else
-    CondFile = fullfile(TmpDir, 'conductivity_model.knw');
-    out_fem_knw(cfg.elem, cfg.CondTensor, CondFile);
+    CondFile = fullfile(TmpDir, 'conductivity_model.knw'); 
+    % Transformation matrix  and tensor mapping on each direction
+    CondTensor = zeros(length(FemMat.Elements),6) ;
+    for ind =1 : length(FemMat.Elements)
+        temp0 = reshape(FemMat.Tensors(ind,:),3,[]);
+        T1 = temp0(:,1:3); % get the 3 eigen vectors
+        l =  diag(temp0(:,4)); % get the eigen value as 3x3
+        temp = T1 * l * T1'; % reconstruct the tensors
+        CondTensor(ind,:) = [temp(1) temp(5) temp(9) temp(4) temp(8) temp(7)]; % this is the right order       
+    end
+    % write the tensors 
+    out_fem_knw(FemMat, CondTensor, CondFile);
 end
 
 

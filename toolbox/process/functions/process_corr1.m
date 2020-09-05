@@ -21,7 +21,7 @@ function varargout = process_corr1( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -43,23 +43,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 0);
-    % === TITLE
-    sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
-    sProcess.options.label2.Type    = 'label';
-%     % === P-VALUE THRESHOLD
-%     sProcess.options.pthresh.Comment = 'Metric significativity: &nbsp;&nbsp;&nbsp;&nbsp;p&lt;';
-%     sProcess.options.pthresh.Type    = 'value';
-%     sProcess.options.pthresh.Value   = {0.05,'',4};
     % === SCALAR PRODUCT
     sProcess.options.scalarprod.Comment    = 'Compute scalar product instead of correlation<BR>(do not remove average of the signal)';
     sProcess.options.scalarprod.Type       = 'checkbox';
     sProcess.options.scalarprod.Value      = 0;
     % === OUTPUT MODE
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Group   = 'output';
 end
 
 
@@ -80,9 +72,8 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     
     % Metric options
     OPTIONS.Method     = 'corr';
-    OPTIONS.pThresh    = 0.05;  % sProcess.options.pthresh.Value{1};
+    OPTIONS.pThresh    = 0.05;
     OPTIONS.RemoveMean = ~sProcess.options.scalarprod.Value;
-    OPTIONS.Freqs      = 0;
 
     % Compute metric
     OutputFiles = bst_connectivity({sInputA.FileName}, {sInputA.FileName}, OPTIONS);

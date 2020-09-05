@@ -22,7 +22,7 @@ function varargout = panel_timefreq_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2020
+% Authors: Francois Tadel, 2010-2020; Hossein Shahabi, 2020
 
 eval(macro_method);
 end
@@ -73,7 +73,15 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     else
         isClusterAll = 0;
     end
-    Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    
+    % Determine which function is calling this pannel
+    isProcHenv = ismember(func2str(sProcess.Function), {'process_henv1', 'process_henv1n', 'process_henv2'});
+    if isProcHenv
+        Method = sProcess.options.tfmeasure.Value;
+    else
+        Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    end
+    
     hFigWavelet = [];
     % Restrict time vector to selected time window
     if isfield(sProcess.options, 'timewindow') && ~isempty(sProcess.options.timewindow) && ~isempty(sProcess.options.timewindow.Value) && iscell(sProcess.options.timewindow.Value) && (length(sProcess.options.timewindow.Value{1}) == 2)
@@ -130,7 +138,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jPanelNew = gui_river();
     
     % ===== COMMENT =====
-                   gui_component('label', jPanelNew, [], 'Comment:  ');
+    gui_component('label', jPanelNew, [], 'Comment:  ');
     jTextComment = gui_component('text', jPanelNew, 'hfill', ' ');
     
     % ===== TIME PANEL =====
@@ -149,7 +157,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         % Button: Generate
         jButtonTimeBands = gui_component('button', jPanelTime, 'br', 'Generate', [], [], @CreateTimeBands);
         jButtonTimeBands.setMargin(Insets(0,3,0,3));
-    if ~ismember(Method, {'fft', 'psd'})
+    if ~ismember(Method, {'fft', 'psd'}) && ~isProcHenv
         jPanelNew.add('br', jPanelTime);
     else
         gui_component('label', jPanelNew, 'br', '');
@@ -295,7 +303,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         
         % === FILE SIZE ===
         jTextOutputSize = gui_component('label', jPanelProc, 'br', '');
-    jPanelNew.add('br hfill', jPanelProc);
+    if ~isProcHenv
+        jPanelNew.add('br hfill', jPanelProc);
+    end
     
     % ===== SET DEFAULT =====
     if TimefreqOptions.isTimeBands
@@ -434,7 +444,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             end
         else
             jRadioFreqLinear.setEnabled(1);
-            jRadioFreqBands.setEnabled(1);
+            if isProcHenv
+                jRadioFreqBands.setEnabled(0);
+            else
+                jRadioFreqBands.setEnabled(1);
+            end
             if ~isempty(jRadioFreqLog)
                 jRadioFreqLog.setEnabled(1);
             end
@@ -468,6 +482,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                     jRadioMeasPow.setSelected(1);
                 end                
             end
+        end
+        % Disable some options when called through process_henv*
+        if isProcHenv
+            jRadioMeasNon.setSelected(1);
+            jRadioMeasPow.setEnabled(0);
+            jRadioMeasMag.setEnabled(0);
         end
         % === OUTPUT ===
         if ~isempty(jRadioOutAvg)
@@ -905,6 +925,4 @@ function Freqs = GetLogFreq(strFreq)
     % Round the vector
     Freqs = unique(round(Freqs .* 10) ./ 10);
 end
-
-
 

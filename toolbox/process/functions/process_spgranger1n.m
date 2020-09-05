@@ -22,7 +22,7 @@ function varargout = process_spgranger1n( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2020
 
 eval(macro_method);
 end
@@ -34,7 +34,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Bivariate Granger causality (spectral) NxN';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
-    sProcess.Index       = 658;
+    sProcess.Index       = 666;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',     'results',  'matrix'};
@@ -49,9 +49,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;
+    sProcess.options.removeevoked.Group   = 'input';
     % === GRANGER ORDER
-    sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
-    sProcess.options.label2.Type    = 'label';
     sProcess.options.grangerorder.Comment = 'Maximum Granger model order (default=10):';
     sProcess.options.grangerorder.Type    = 'value';
     sProcess.options.grangerorder.Value   = {10, '', 0};
@@ -63,16 +62,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.maxfreq.Comment = 'Highest frequency of interest:';
     sProcess.options.maxfreq.Type    = 'value';
     sProcess.options.maxfreq.Value   = {100,'Hz',2};
-%     % === P-VALUE THRESHOLD
-%     sProcess.options.pthresh.Comment = 'Metric significativity: &nbsp;&nbsp;&nbsp;&nbsp;p&lt;';
-%     sProcess.options.pthresh.Type    = 'value';
-%     sProcess.options.pthresh.Value   = {0.05,'',4};
     % === OUTPUT MODE
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Group   = 'output';
 end
 
 

@@ -161,25 +161,12 @@ function [isOk, errMsg] = Compute(iSubject, DtiFile, FemFile, isInteractive, OPT
         ElemCenter(:,i) = sum(reshape(FemMat.Vertices(FemMat.Elements,i), nElem, nMesh)')' / nMesh;
     end
     % Generate triedre on each point (normalized vectors)
+    % This method is not accurate in the complexe geometry 
+    % (only for sphere and simplified head models), we need to
+    % define the local tangential and normal for each element unstead to
+    % compute all from the center of the whole mesh mean(FemMat.Vertices). 
     vElemCenter = bst_bsxfun(@minus, ElemCenter, mean(FemMat.Vertices));
     vElemCenter = vElemCenter ./ sqrt(sum(vElemCenter.^2, 2));
-%     % Compute the tangential vectors
-%     vector_t1 = zeros(nNodes,3);
-%     vector_t2 = zeros(nNodes,3);
-%     for iNode = 1:nElem
-%         r = null(vElemCenter(iNode,:));
-%         vector_t1(iNode,:) = r(:,1)';
-%         vector_t2(iNode,:) = r(:,2)';
-%     end
-%     
-%     % Generate the local tensor according to the golobal coordinates X,Y,Z
-%     A = bst_bsxfun(@times, repmat(eye(3,3), [1,1,nTissues]), reshape(OPTIONS.FemCond,1,1,nTissues));
-%     % Transformation matrix and tensor mapping on each direction
-%     for iElem = 1:length(FemMat.Tissue)
-%         cfg.eigen.eigen_vector{iElem} = [vElemCenter(iElem,:)', vector_t1(iElem,:)', vector_t2(iElem,:)'];
-%         cfg.eigen.eigen_value{iElem} = A(:,:,FemMat.Tissue(iElem));    
-%     end
-%     Tensors = cfg.eigen;
 
     % Compute the tangential vectors
     bst_progress('text', 'Computing tengential vectors... 0%%');
@@ -201,13 +188,14 @@ function [isOk, errMsg] = Compute(iSubject, DtiFile, FemFile, isInteractive, OPT
         bst_progress('text', 'Simulated eigen values...');
         % Compute the new eigen values
         switch (OPTIONS.SimConstrMethod)
+            % the order will follow the vector on the triedre, the first is the radial and the two tengential 
             case 'wang'
-                lm1 = (OPTIONS.FemCond.^2 .* OPTIONS.SimRatio) .^ (1/2); % sigma longitidunal
-                lm2 = (OPTIONS.FemCond.^2 ./ OPTIONS.SimRatio) .^ (1/2); % sigma transversal
+                lm2 = (OPTIONS.FemCond.^2 .* OPTIONS.SimRatio) .^ (1/2); % sigma longitudinal ==> parallel
+                lm1 = (OPTIONS.FemCond.^2 ./ OPTIONS.SimRatio) .^ (1/2); % sigma transversal ==> radial/or perpendicular
                 lm3 = lm2;
             case 'wolters'   % Volume is preserved
-                lm1 = (OPTIONS.FemCond.^3 .* OPTIONS.SimRatio.^2) .^ (1/3); % sigma longitidunal
-                lm2 = (OPTIONS.FemCond.^3 ./ OPTIONS.SimRatio) .^ (1/3);    % sigma transversal
+                lm2 = (OPTIONS.FemCond.^3 .* OPTIONS.SimRatio.^2) .^ (1/3); % sigma longitudinal
+                lm1 = (OPTIONS.FemCond.^3 ./ OPTIONS.SimRatio) .^ (1/3);    % sigma transversal
                 lm3 = lm2;
         end
         % Replace eigen values in final tensor matrix
@@ -251,6 +239,10 @@ function [isOk, errMsg] = Compute(iSubject, DtiFile, FemFile, isInteractive, OPT
         L2a = abs(L2a); 
         L3a = abs(L3a);
         
+        % Ensure that all the eigen values exists
+        L1a(isnan(L1a)) = min(L1a); 
+        L2a(isnan(L2a)) = min(L2a); 
+        L3a(isnan(L3a)) = min(L3a); 
         % === DETECT INVALID EIGENVALUES ===
         % Ensure maximal ratio of 10 between the largest and smallest conductivity eigenvalues
         maxRatio = 10;
@@ -297,15 +289,24 @@ function [isOk, errMsg] = Compute(iSubject, DtiFile, FemFile, isInteractive, OPT
             case 'ema'
                 % Apply the volume approach
                 % Tuch parameters
-                k = 0.844;  % +/- 0.0545
-                de = 0.124;
+%                 k = 0.844;  % +/- 0.0545
+%                 de = 0.124;
+                k = 0.736;  % Use the most recent value from Rullmann et al 2009,
+                % Or we can make this factor as an input from the GUI ? ask Ftadel
+                de = 0; % not used in the last paper, and it introduce the imaginary part,.
                 lm1 = k .* (L1a - de);
                 lm2 = k .* (L2a - de);
                 lm3 = k .* (L3a - de);
                 % Apply the normalized volume
-                lm1n = tissueCond .* lm1 ./ (lm1.*lm2.*lm3).^(1/3);
-                lm2n = tissueCond .* lm2 ./ (lm1.*lm2.*lm3).^(1/3);
-                lm3n = tissueCond .* lm3 ./ (lm1.*lm2.*lm3).^(1/3);
+%                 lm1n = tissueCond .* lm1 ./ (lm1.*lm2.*lm3).^(1/3);
+%                 lm2n = tissueCond .* lm2 ./ (lm1.*lm2.*lm3).^(1/3);
+%                 lm3n = tissueCond .* lm3 ./ (lm1.*lm2.*lm3).^(1/3);
+%            Do not apply the normalisation here,  the coefficient should
+%            be given in um then we need to convert to mm ==> x1000 since
+%            the unit of k is assumed to use mm ==> Rullman paper
+                lm1n = 1000.* lm1 ;
+                lm2n = 1000.* lm2 ;
+                lm3n = 1000.* lm3 ;
 
             % METHOD 7 : As SimBio toolbox  [Rullmann et al 2008 / Vorwerk et al 2014 ]
             case 'ema+vc'
@@ -314,6 +315,9 @@ function [isOk, errMsg] = Compute(iSubject, DtiFile, FemFile, isInteractive, OPT
                 meanDiffusity = (sum(L1a .* L2a .* L3a) ./ length(iElemAniso)) .^ (1/3);
                 scalingFactor = tissueCond ./ meanDiffusity;
                 disp(['BST> EMA+VC: meanDiffusity = ', num2str(meanDiffusity)]);
+                disp(['BST> EMA+VC: scalingFactor = ', num2str(mean(scalingFactor))]);
+                disp(['BST> EMA+VC: scalingFactor * meanDiffusity = ', num2str(meanDiffusity*mean(scalingFactor))]);
+
                 % Scale eigen values
                 lm1 = scalingFactor .* L1a;
                 lm2 = scalingFactor .* L2a;
@@ -322,11 +326,12 @@ function [isOk, errMsg] = Compute(iSubject, DtiFile, FemFile, isInteractive, OPT
                 lm1n = tissueCond .* lm1 ./ (lm1.*lm2.*lm3).^(1/3);
                 lm2n = tissueCond .* lm2 ./ (lm1.*lm2.*lm3).^(1/3);
                 lm3n = tissueCond .* lm3 ./ (lm1.*lm2.*lm3).^(1/3);
-                % Max value of the conductivity should not be larger than the reference value (eg. CSF) 
-                lm1n = min(lm1n, max(OPTIONS.FemCond));
-                lm2n = min(lm2n, max(OPTIONS.FemCond));
-                lm3n = min(lm3n, max(OPTIONS.FemCond));
         end
+        % Max value of the conductivity should not be larger than the reference value (eg. CSF)
+        lm1n = min(lm1n, max(OPTIONS.FemCond));
+        lm2n = min(lm2n, max(OPTIONS.FemCond));
+        lm3n = min(lm3n, max(OPTIONS.FemCond));
+        
         % Set the anisotropic conductivity tensors
         Tensors(iElemAniso, 1:12) = [V1rot, V2rot, V3rot, lm1n, lm2n, lm3n];
                 
@@ -382,7 +387,20 @@ function ComputeInteractive(iSubject, FemFile) %#ok<DEFNU>
     bst_progress('stop');
 end
 
-
+function ClearTensors(FemFile)
+    bst_progress('start', 'FEM tensors', 'Clear conductivity tensors...');
+    bst_progress('text', 'Loading FEM head model...');
+    FemMat = load(FemFile);
+    bst_progress('text', 'Clear tensors...');
+    FemMat.Tensors = [];
+    bst_progress('text', 'Saving FEM head model ...');
+    % Add history entry
+    FemMat = bst_history('add', FemMat, 'process_fem_tensors', 'clear fem tensors');
+    % Save tensors to the FemFile
+    bst_save(FemFile, FemMat, 'v7');
+   % Close progress bar
+    bst_progress('stop');
+end
 
 %% =================================================================================
 %  === HELPER FUNCTIONS ============================================================

@@ -57,7 +57,7 @@ for i = 1:length(ColNames)
     if ~isempty(iCol)
         cTsv(:,i) = tsvValues{iCol};
     elseif isWarning
-        disp(['Error: Column "' ColNames{i} '" not found in file: ' TsvFile]);
+        disp(['Warning: Column "' ColNames{i} '" not found in file: ' TsvFile]);
     end
 end
 

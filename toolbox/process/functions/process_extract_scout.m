@@ -633,8 +633,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
                     scoutValues = cat(1, scoutValues, tmpScout);
                     if ~isempty(sourceStd)
+                        tmpScoutStd = [];
                         for iBound = 1:size(sourceStd,4)
-                            tmpScoutStd(:,:,:,iBound) = bst_scout_value(sourceStd(:,:,iFreq,iBound), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);
+                            tmp = bst_scout_value(sourceStd(:,:,iFreq,iBound), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);
+                            if isempty(tmpScoutStd)
+                                tmpScoutStd = tmp;
+                            else
+                                tmpScoutStd = cat(4, tmpScoutStd, tmp);
+                            end
                         end
                         scoutStd = cat(1, scoutStd, tmpScoutStd);
                     end

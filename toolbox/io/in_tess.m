@@ -191,8 +191,8 @@ switch (FileFormat)
         TessMat = in_tess_simnibs(TessFile);
         % World/voxel => SCS coordinates
         if ~isempty(sMri)
-            TessMat.Vertices=TessMat.Vertices+0.5; %we compensate for half a pixel mismatch in x,y and z between simnibs and bst.
-            TessMat.Vertices = cs_convert(sMri, 'voxel', 'mri', TessMat.Vertices);
+            TessMat.Vertices = TessMat.Vertices+0.5; %we compensate for half a pixel mismatch in x,y and z between simnibs and bst.
+            TessMat.Vertices = TessMat.Vertices ./ 1000;
             TessMat.Vertices = cs_convert(sMri, 'world', 'scs', TessMat.Vertices);
         end
         isConvertScs = 0;

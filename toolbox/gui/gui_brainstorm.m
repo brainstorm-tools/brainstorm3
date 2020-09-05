@@ -60,7 +60,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
     % Clone control
     if isequal(GlobalData.Program.CloneLock, 1)
         bst_splash('hide');
-        GlobalData.Program.CloneLock = ~org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+        % GlobalData.Program.CloneLock = ~org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+        GlobalData.Program.CloneLock = ~CloneProble(bst_get('BrainstormHomeDir'));
         if isequal(GlobalData.Program.CloneLock, 1)
             GUI = [];
             return;
@@ -1548,35 +1549,6 @@ function MakeProtocolPortable()
 end
 
 
-% %% ===== TEST CONNECTION =====
-% function TestConnection()
-%     % Test address
-%     srcUrl  = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015';
-%     % Get URL
-%     handler = sun.net.www.protocol.http.Handler;
-%     jUrl = java.net.URL([],srcUrl,handler);
-%     % Get proxy
-%     com.mathworks.mlwidgets.html.HTMLPrefs.setProxySettings;
-%     proxy = com.mathworks.webproxy.WebproxyFactory.findProxyForURL(java.net.URL(srcUrl));
-%     % Create connection
-%     if ~isempty(proxy)
-%         connection = jUrl.openConnection(proxy);
-%     else
-%         connection = jUrl.openConnection();
-%     end
-%     % Set connection properties
-%     connection.setRequestProperty('Range', 'bytes=0-');
-%     connection.setRequestProperty('User-Agent', 'MATLAB-Brainstorm');
-%     java.net.Authenticator.setDefault([]);
-%     % Open connection
-%     connection.connect();
-%     % Make sure response code is in the 200 range.
-%     connection.getResponseCode()
-%     % Check for valid content length.
-%     contentLength = connection.getContentLength();
-% end
-
-
 %% ===== SHOW GUIDELINES =====
 function ShowGuidelines(ScenarioName)
     % Close tab if it already exists
@@ -1603,3 +1575,55 @@ function ShowGuidelines(ScenarioName)
     SetSelectedTab(panelName, 0, 'Process');
 end
 
+
+%% ===== CLONE PROBE =====
+function status = CloneProble(bstDir)
+    status = -1;
+    % Check if there are any GIT files in the folder
+    if ~file_exist(bst_fullfile(bstDir, 'LICENSE')) && ~file_exist(bst_fullfile(bstDir, 'README.md'))
+        status = 1;
+        return;
+    end
+    % If Matlab version too old: try using the older Java login
+    if (bst_get('MatlabVersion') < 901)
+        status = org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+        return;
+    end
+    % Allow multiple trials
+    while (status == -1)
+        % Get username and password
+        res = java_dialog('input', ...
+            {['<HTML>You got this version of Brainstorm from GitHub.<BR><BR>' 10 10 ...
+             'Please take a minute to register on our website before using the software:<BR>' 10 ...
+             'https://neuroimage.usc.edu/brainstorm > Download > Create an account now<BR><BR><FONT color="#999999">' ... 
+             'This project is supported by public grants. Keeping track of usage demographics <BR>' ...
+             'is key to document the impact of Brainstorm and obtain continued support.<BR>' ...
+             'Please take a moment to create a free account - thank you.</FONT><BR><BR>' ...
+             'Email or username:'], 'Password:'}, 'Brainstorm login');
+        % If user aborted
+        if isempty(res) || (length(res) ~= 2)
+            status = 0;
+            return;
+        end
+        % Connect
+        bst_progress('start', 'Brainstorm login', 'Contacting server');
+        try
+            % Send connect request
+            header = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
+            options = matlab.net.http.HTTPOptions();
+            request = matlab.net.http.RequestMessage(matlab.net.http.RequestMethod.POST, header, ['email=',res{1},'&mdp=',res{2}]);
+            resp = send(request, 'https://neuroimage.usc.edu/bst/check_user.php', options);
+            % Check server response
+            if isempty(resp) || isempty(resp.Body) || ~isa(resp.Body, 'matlab.net.http.MessageBody')
+                status = 0;
+            elseif strcmp(resp.Body.Data, '1')
+                status = 1;
+            else
+                bst_error('Invalid username or password.', 'Brainstorm login', 0);
+            end
+        catch
+            status = 0;
+        end
+        bst_progress('stop');
+    end
+end

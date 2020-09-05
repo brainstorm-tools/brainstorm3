@@ -31,6 +31,7 @@ cfgDef.FemSelect        = [];
 cfgDef.UseTensor        = false;
 cfgDef.Isotropic        = true;
 cfgDef.SrcShrink        = 0;
+cfgDef.SrcForceInGM     = false;
 % DUNEuro general settings
 cfgDef.FemType          = 'fitted';                % 'fitted' or 'unfitted'
 cfgDef.SolverType       = 'cg';                    % 'cg' or 'dg'

@@ -1110,6 +1110,8 @@ function [sScouts, sSurf, iSurf] = GetScouts(SurfaceFile)
                 sScouts = sScouts(iScouts);
             end
         end
+    elseif (length(sSurf) > 1)
+        sSurf = sSurf(1);
     end
 end
 
@@ -4049,12 +4051,15 @@ function PlotScouts(iScouts, hFigSel)
         return;
     end
     % Get anatomy file
-    [sSubject, iSubject] = bst_get('SurfaceFile', sSurf.FileName);
+    sSubject = bst_get('SurfaceFile', sSurf.FileName);
     % Volume scouts: Get number of points for this atlas
     [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
     isStructAtlas = ismember(sAtlas.Name, {'Structures', 'Source model'});
     % Get cortex + anatomy
-    SurfaceFiles = {sSurf.FileName, sSubject.Anatomy(sSubject.iAnatomy).FileName};
+    SurfaceFiles = {sSurf.FileName};
+    if ~isempty(sSubject)
+        SurfaceFiles{2} = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    end
     % Get all the figures concerned with Scout cortex and/or MRI surface
     [hFigures, iFigures, iDataSets, iSurfaces] = bst_figures('GetFigureWithSurface', SurfaceFiles);
     if isempty(hFigures)
@@ -4467,10 +4472,14 @@ function ReloadScouts(hFig)
     global GlobalData;
     % If figure not defined: process current 3D figure
     if (nargin < 1) || isempty(hFig)
-        % Get subject
-        sSubject = bst_get('SurfaceFile', GlobalData.CurrentScoutsSurface);
         % Get current surface and/or subject MRI
-        hFigures = bst_figures('GetFigureWithSurface', {GlobalData.CurrentScoutsSurface, sSubject.Anatomy(sSubject.iAnatomy).FileName});
+        SurfaceFiles = {GlobalData.CurrentScoutsSurface};
+        sSubject = bst_get('SurfaceFile', GlobalData.CurrentScoutsSurface);
+        if ~isempty(sSubject) && ~isempty(sSubject.Anatomy)
+            SurfaceFiles{2} = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+        end
+        % Get figures to update
+        hFigures = bst_figures('GetFigureWithSurface', SurfaceFiles);
         if isempty(hFigures)
             return;
         end
